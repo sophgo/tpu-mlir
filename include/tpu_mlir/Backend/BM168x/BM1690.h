@@ -29,6 +29,14 @@ typedef void (*sdma_tensor_general_move_gen_cmd)(
     int transpose, // N/C transpose
     int port_id, CMD_ID_NODE *pid_node);
 
+typedef void (*tensor_stride_move_reduce_gen_cmd)(
+    int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
+    int src_N, int src_C, int src_H, int src_W, uint32_t src_N_stride,
+    uint32_t src_C_stride, uint32_t src_H_stride, uint32_t src_W_stride,
+    uint32_t dst_N_stride, uint32_t dst_C_stride, uint32_t dst_H_stride,
+    uint32_t dst_W_stride, int src_format, int direction, int transpose,
+    int reduce_psum_op, int reduce_opcode, int thread_id, CMD_ID_NODE *pid_node);
+
 namespace tpu_mlir {
 namespace backend {
 #define BUFFER_SIZE (4 * 1024 * 1024)
@@ -53,6 +61,7 @@ public:
   tpu_sync_all dl_tpu_sync_all;
   tpu_core_context_setup dl_tpu_core_context_setup;
   sdma_tensor_general_move_gen_cmd dl_sdma_tensor_general_move_gen_cmd;
+  tensor_stride_move_reduce_gen_cmd dl_tensor_stride_move_reduce_gen_cmd;
 
   void setCoreNum(int core = 1) final;
   int getCoreNum() final { return multiCode.size(); };

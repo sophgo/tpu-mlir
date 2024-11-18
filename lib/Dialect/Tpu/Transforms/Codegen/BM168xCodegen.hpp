@@ -54,7 +54,8 @@ private:
   CreateMergeParamVector(vector<vector<int>> &output_from);
   void codegen(FuncOp funcOp);
   void codegen_for_group(GroupOp gOP, Operation *prev_op, Operation *next_op);
-  void codegen_for_group2(GroupOp gOP, int &syncall_num, bool l2mop_codegen);
+  void codegen_for_group2(GroupOp gOP, int& syncall_num, std::pair<int, int>& core_num_idx);
+  void codegen_for_store_to_l2m_op(Operation* store_to_l2m_op, std::pair<int, int>& core_num_idx);
   void codegen_for_overlap_ops(
       std::map<int64_t, std::vector<Operation *>> cur_other_downs,
       std::map<int64_t, std::vector<Operation *>> cur_other_ups,

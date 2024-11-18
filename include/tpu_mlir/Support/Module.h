@@ -44,6 +44,7 @@ typedef enum {
   GROUP_SMALL_C = 2,
   GROUP_MM_INT4 = 3,
   GROUP_MM = 4,
+  GROUP_MM_OPT3 = 5,
   GROUP_UNSUPPORT
 } group_type_t;
 
@@ -142,7 +143,7 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
 void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
              int64_t &w, bool left_align = true);
 void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
-             int64_t &w, group_type_t group_type);
+             int64_t &w, group_type_t group_type, bool IsHdimIsBatch = false);
 void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
              group_type_t group_type);
 void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
@@ -186,6 +187,8 @@ f64_array_t getF64Array(ArrayAttr arrayAttr);
 f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
+bool IsHdimIsBatch(Operation *Op);
+bool IsHdimIsBatch(Value value);
 bool isOpInCoreMatch(Operation *Op);
 bool isOpInCoreParallel(Operation *Op);
 bool isOpInDevParallel(Operation *Op);
@@ -343,6 +346,7 @@ commonShapeValInfer(mlir::Operation *op,
 bool startsWith(const std::string &fullString,
                 const std::string &startingSubstring);
 bool endsWith(const std::string &fullString, const std::string &suffix);
+bool IsRightMat(Value v);
 } // namespace module
 
 #define ASSERT_OP(COND, OP)                                                    \

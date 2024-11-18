@@ -64,6 +64,12 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
   ];
 }
 
+def NetStatistic : Pass<"net_statistic", "ModuleOp"> {
+  let summary = "net statistic";
+  let constructor = "createNetStatisticPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def DevParallel : Pass<"dev-parallel", "ModuleOp"> {
   let summary = "distribute module to multi modules to run in multi devices";
   let constructor = "createDevParallelPass()";

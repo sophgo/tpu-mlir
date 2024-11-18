@@ -16,6 +16,7 @@ void BM1690::load_functions() {
   CAST_FUNCTION(tpu_sync_all);
   CAST_FUNCTION(tpu_core_context_setup);
   CAST_FUNCTION(sdma_tensor_general_move_gen_cmd);
+  CAST_FUNCTION(tensor_stride_move_reduce_gen_cmd);
 }
 
 void BM1690::before_codegen() {

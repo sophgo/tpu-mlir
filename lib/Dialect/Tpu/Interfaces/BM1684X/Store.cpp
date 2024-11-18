@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
@@ -31,6 +32,7 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                          local_sec_info_t &sec_info) {
   auto op = getOperation();
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
+  // llvm::errs() <<"StoreOp codegen, n_step:"<<n_step<<", c_step:"<<c_step<<", h_step:"<<h_step<<"\n";
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto v = op->getOperand(0);
   auto pre_op = v.getDefiningOp();
@@ -39,8 +41,7 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     auto vec_move_dest_addr = *module::getI64Array(moveOp.getMoveDestAdd());
     int idx = v.cast<OpResult>().getResultNumber();
     gi.out_addr = vec_move_dest_addr[idx];
-    llvm::errs() << "StoreOp codegen, idx:" << idx
-                 << ", vec_move_dest_addr:" << gi.out_addr << "\n";
+    // llvm::errs() <<"StoreOp codegen, idx:"<<idx<<", vec_move_dest_addr:"<<gi.out_addr<<"\n";
   }
   int64_t N, C, D, H, W, real_hslice, real_wslice, real_dslice, real_cslice;
 
@@ -156,6 +157,13 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     }
   }
 
+  bool need_all_reduce = false;
+  if (getL2mAddr().has_value()) {
+    need_all_reduce = true;
+    g_addr = getL2mAddr().value();
+    llvm::errs() <<"  will store to l2m, addr:"<<g_addr<<"\n";
+  }
+
   int64_t c_num_local = ceiling_func(real_cslice, Arch::NPU_NUM);
   int64_t c_stride =
       gi.eu_align ? align_up(real_hslice * real_wslice, Arch::eu_num(fmt_bytes))
@@ -214,13 +222,34 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                       (gi.d_idx + d) * H * W * fmt_bytes +
                                       gi.h_idx * W * fmt_bytes +
                                       gi.w_idx * fmt_bytes + dst_offset_c;
-          BM168x::instance()->dl_tensor_stride_move_gen_cmd(
-              gi.out_addr + cur_local_offset, real_npu_idx,
-              g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
-              real_wslice, c_num_local * c_stride, c_stride, real_wslice, 1,
-              C * D * H * W, D * H * W, W, 1, gdma_format,
-              GDMA_VALUE_DIR_L2S, // 1,
-              0, pid_node);
+          if (module::isDebugCmdEnable("codegen_debug")) {
+            llvm::errs() <<"gi.n_idx:"<<gi.n_idx<<", gi.c_idx:"<<gi.c_idx<<", gi.d_idx:"<<gi.d_idx
+                        <<", gi.h_idx:"<<gi.h_idx<<", gi.w_idx:"<<gi.w_idx
+                        <<", d:"<<d<<", C:"<<C<<", D:"<<D<<", H:"<<H<<", W:"<<W
+                        <<", gi.out_addr:"<<gi.out_addr<<", cur_local_offset:"<<cur_local_offset
+                        <<", g_addr:"<<g_addr<<", cur_global_offset:"<<cur_global_offset
+                        <<", gi.n_slice:"<<gi.n_slice<<", cur_cslice:"<<cur_cslice
+                        <<", real_hslice:"<<real_hslice<<", real_wslice:"<<real_wslice
+                        <<", c_num_local:"<<c_num_local<<", c_stride:"<<c_stride<<"\n";
+          }
+
+          if (need_all_reduce) {
+            BM1690::instance().dl_tensor_stride_move_reduce_gen_cmd(
+                gi.out_addr + cur_local_offset, real_npu_idx,
+                g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
+                real_wslice, c_num_local * c_stride, c_stride, real_wslice, 1,
+                C * D * H * W, D * H * W, W, 1, gdma_format,
+                GDMA_VALUE_DIR_L2S, // 1,
+                0, 1, 4, 0, pid_node); //1:reduce_psum_op, rw, 4:add, 0:MASTER_THREAD
+          } else {
+            BM168x::instance()->dl_tensor_stride_move_gen_cmd(
+                gi.out_addr + cur_local_offset, real_npu_idx,
+                g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
+                real_wslice, c_num_local * c_stride, c_stride, real_wslice, 1,
+                C * D * H * W, D * H * W, W, 1, gdma_format,
+                GDMA_VALUE_DIR_L2S, // 1,
+                0, pid_node);
+          }
         }
         channel_index++;
       }

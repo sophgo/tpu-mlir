@@ -222,6 +222,11 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
       llvm::errs() << "value_to_spec, v:" << module::getName(v).str()
                    << ", idx:" << idx
                    << ", vec_input_move_addr[idx]:" << spec.addr << "\n";
+    } else if (isa<tpu::LoadToL2MOp>(pre_op)) {
+      auto tmpOp = dyn_cast<tpu::LoadToL2MOp>(pre_op);
+      spec.addr = tmpOp.getL2mAddr();
+      llvm::errs() << "  value_to_spec, v:" << module::getName(v).str()
+                   << ", get l2m addr:" << spec.addr << "\n";
     } else {
       auto gi = LocalGenInterface::getGroupInfo(v);
       spec.addr = gi.out_addr;
@@ -232,7 +237,7 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   spec.dtype = getDataType(v);
   auto shape = module::getShape(v);
   if (group_type == GROUP_NORMAL || group_type == GROUP_3D ||
-      group_type == GROUP_MM) {
+      group_type == GROUP_MM || group_type == GROUP_MM_OPT3) {
     spec.dims = shape.size();
     for (int i = 0; i < spec.dims; i++) {
       spec.shape[i] = shape[i];

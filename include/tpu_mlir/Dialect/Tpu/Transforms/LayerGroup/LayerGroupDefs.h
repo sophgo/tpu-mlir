@@ -42,10 +42,10 @@ typedef enum ld_st_type2 {
   TIMESTEP2_STORE = 2,   // store from lmem to gmem
   TIMESTEP2_MOVE = 4,    // move between global mem
   TIMESTEP2_LD_G2L2 = 8, // load from gmem to l2mem
-  TIMESTEP2_STORE_AND_LOAD =
-      16, // first store, and skip some timesteps, then load
+  TIMESTEP2_STORE_AND_LOAD = 16, //first store, and skip some timesteps, then load
   // TIMESTEP2_STORE_ONLY_FREE = 32, //only free
-  TIMESTEP2_MOVE_BTW_LMEM = 64, // move between lmem mem
+  TIMESTEP2_MOVE_BTW_LMEM = 64,    // move between lmem mem
+  TIMESTEP2_ONLY_RESIDE = 128,
   TIMESTEP2_LDST_UNKNOWN
 } TIMESTEP_LD_ST2;
 
@@ -178,12 +178,12 @@ struct op_related_info_t {
   int buffer_size;
   int bdc_cycle;
   int mem_size_for_load;
-  std::map<Value, std::vector<std::string>, value_compare> need_load_var;
+  std::map<Value, std::vector<std::string>, value_compare> vars_need_load_to_l2m;
   std::map<Value, int, value_compare> tensor_size;
   std::map<Value, int, value_compare> load_tensor_cycles;
-  // std::vector<ts_var_t>  ada_var_for_free_mem;
-  // //在本op执行后可以释放的自动驻留输入tensor
-  op_related_info_t() : op(nullptr) {}
+  // std::vector<ts_var_t>  ada_var_for_free_mem; //在本op执行后可以释放的自动驻留输入tensor
+  op_related_info_t()
+      : op(nullptr){}
 };
 
 typedef struct TimestepRow2 {
@@ -212,12 +212,41 @@ typedef struct l2m_value_info {
       : slice_idx(0), size(0), free_ts(0), load_ts(0), valid(true) {}
 } l2m_value_info;
 
-typedef struct {
+typedef struct shape_secs {
   int64_t nsecs;
   int64_t hsecs;
   int64_t dsecs;
   int64_t wsecs;
   int64_t csecs;
+
+  int64_t n;
+  int64_t c;
+  int64_t h;
+  int64_t n_slice_num;
+  int64_t c_slice_num;
+  int64_t h_slice_num;
+
+  shape_secs() {
+    nsecs = hsecs = dsecs = wsecs = csecs = 1;
+    c_slice_num  = h_slice_num  = n_slice_num = n = c = h= -1;
+  }
+  int64_t get_sec_num(bool only_nc = false) {
+    if (c_slice_num > 0) {
+      if (only_nc) {
+        return n_slice_num*c_slice_num;
+      } else {
+        return n_slice_num*c_slice_num*h_slice_num;
+      }
+    } else {
+      return nsecs*hsecs*dsecs*wsecs*csecs;
+    }
+  }
+
+  std::string info() {
+    return llvm::formatv("nsecs:{0}, csecs:{1}, dsecs:{2}, hsecs:{3}, wsecs:{4}, n:{5}, c:{6}, h:{7}, n_slice_num:{8}, c_slice_num:{9}, h_slice_num:{10}",
+                  nsecs, csecs, dsecs, hsecs, wsecs, n, c, h, n_slice_num, c_slice_num, h_slice_num).str();
+  }
+
 } shape_secs_t;
 
 struct LgInfo {
@@ -239,6 +268,9 @@ struct LgInfo {
     this->group_op_outs.clear();
 
     for (auto op : group_ops) {
+      if (!op) {
+        continue;
+      }
       // update group_ins
       for (auto in : op->getOperands()) {
         auto src_op = in.getDefiningOp();
@@ -283,6 +315,9 @@ struct LgInfo {
   void update_bank_info() {
     group_banked_tensors.clear();
     for (auto op : group_ops) {
+      if (!op) {
+        continue;
+      }
       if (op->getNumOperands() > 1) {
         auto pre_op = op->getOperand(1).getDefiningOp();
         if ((pre_op == nullptr || !isa<top::NoneOp>(pre_op))) {
@@ -317,7 +352,9 @@ struct LgInfo {
     }
   }
   void const dump_lginfo() const {
-    // should only use in LLVM_DEBUG, don't use DebugCmd
+    if (!module::isDebugCmdEnable("detail_info_show")) {
+      return;
+    }
     llvm::dbgs() << "LgInfo Begin {"
                  << "\n";
     llvm::dbgs() << "ins"
@@ -374,16 +411,24 @@ class CycleCalculator;
 class dot_graph;
 class l2mem_alloc;
 class ILPTimeStep;
+class speical_layer_group_base;
 struct ilp_LgInfo {
   solver_strategy_type_t _cur_strategy = STRATEGY_NORMAL;
   LgInfo _lgInfo;
-  std::vector<Operation *> global_layers;
+  std::vector<Operation*> global_layers;
+  std::vector<Operation*> failed_ops;
+  std::vector<Operation*> backup_ops;
+  bool is_fail_op_in_grp = true;
+
   std::vector<std::shared_ptr<ilp_LgInfo>> sub_ilp_LgInfos;
   bool group_success = false;
 
   //考察是否将global conv作为分割点
-  int group_cycle = 0;
+  int  group_cycle = 0;
   bool conv_cut_optimized = false;
+  std::shared_ptr<speical_layer_group_base> p_special_grp = nullptr;
+  std::map<Value, int, value_compare> value_load_to_l2m;
+  std::map<Value, int, value_compare> value_store_to_l2m;
 
   //二进制搜索可行分割点
   std::vector<Operation *> group_ops_all;
@@ -394,7 +439,6 @@ struct ilp_LgInfo {
   int pre_middle_ptr = -1;
   int left_ptr = 0;
   int right_ptr = 0;
-  int group_id = 0;
   static int group_count;
 
   shape_secs_t shape_secs;
@@ -406,25 +450,41 @@ struct ilp_LgInfo {
 
   ilp_LgInfo(solver_strategy_type_t cur_strategy = STRATEGY_NORMAL) {
     _cur_strategy = cur_strategy;
-    group_id = group_count++;
+    _lgInfo.group_id = group_count++;
   }
-  ilp_LgInfo(const ilp_LgInfo &other) {
-    group_id = other.group_id;
-    _lgInfo.group_ops.assign(other._lgInfo.group_ops.begin(),
-                             other._lgInfo.group_ops.end());
+  ilp_LgInfo(const ilp_LgInfo& other){
+    _lgInfo.group_id = other._lgInfo.group_id;
+    _lgInfo.group_ops.assign(other._lgInfo.group_ops.begin(), other._lgInfo.group_ops.end());
     _lgInfo.update_bank_info();
     _lgInfo.update_group_io();
   }
 
-  void base_solver(LgPassIR *pass_ir,
-                   std::shared_ptr<CycleCalculator> cycle_calculator_);
-  std::shared_ptr<ilp_LgInfo>
-  high_solver(LgPassIR *pass_ir,
-              std::shared_ptr<CycleCalculator> cycle_calculator_);
-  bool binary_search_group(bool move_right,
-                           std::shared_ptr<dot_graph> dot_graph_log = nullptr);
-  std::vector<Operation *> GetParallelNodes(Operation *op);
+  void base_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator> cycle_calculator_);
+  std::shared_ptr<ilp_LgInfo> high_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator> cycle_calculator_);
+  bool binary_search_group(bool move_right, std::shared_ptr<dot_graph> dot_graph_log = nullptr);
+  std::vector<Operation*> GetParallelNodes(Operation* op);
   void save_result(LgPassIR *pass_ir);
+};
+
+class speical_layer_group_base {
+public:
+  speical_layer_group_base() {}
+  virtual ~speical_layer_group_base() {}
+
+  virtual bool pattern_match_and_parser(Operation* start_op, std::vector<Operation*>& subnet_ops, std::vector<Operation*>& accessed_ops) = 0;
+  virtual std::string name() = 0;
+  virtual std::string brief() { return ""; }
+
+  void get_batch_size(shape_secs_t &shape_secs);
+  bool update_shape_secs_for_ilp_group(shape_secs_t &shape_secs,const shape_secs_t &max_shape_secs);
+  void fill_slice_info(ilp_LgInfo &ilp_lg_info);
+  bool inc_slice_num(int& try_c_slice_num, int& try_h_slice_num, int max_c_slice_num,
+                     int max_h_slice_num,  Operation*& failed_op, bool inc_c_slice = true);
+  virtual bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation*& failed_op, int64_t core_num) = 0;
+
+  std::vector<Operation*> ops;
+  std::map<int, Operation*> forbid_cut_dim_to_owner_op;
+  std::map<Value, std::vector<int>, value_compare> map_value_to_cut_dims;
 };
 
 } // namespace tpu

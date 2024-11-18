@@ -34,46 +34,39 @@ void tpu::LoadToL2MOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   return;
 }
 
-void tpu::LoadToL2MOp::codegen_only_for_LoadToL2MOp() {
+void tpu::LoadToL2MOp::codegen_only_for_LoadToL2MOp(std::pair<int, int>& core_num_idx) {
   auto op = getOperation();
   auto dst_addr = BM1690::L2_SRAM_START_ADDR + getL2mAddr();
-
-  auto opd = op->getOperand(0).getDefiningOp();
-  auto src_addr = module::getAddress(opd->getResult(0));
-  llvm::errs() << "LoadToL2MOp dst_addr:" << dst_addr
-               << " src_addr:" << src_addr << "\n";
-
+  auto src_addr = module::getAddress(op->getOperand(0));
+  llvm::errs() <<"LoadToL2MOp src_addr:"<<src_addr<<" dst_addr:"<<dst_addr<<" for "<<module::getName(op).str()<<"\n";
   assert((BM1690::COEFF_START_ADDR && src_addr >= BM1690::COEFF_START_ADDR) ||
-         (BM1690::CTX_START_ADDR && src_addr >= BM1690::CTX_START_ADDR));
-
-  // assert(BM1690::COEFF_START_ADDR && BM1690::CTX_START_ADDR &&
-  //     BM1690::L2_SRAM_START_ADDR && dst_addr > BM1690::COEFF_START_ADDR &&
-  //     dst_addr > BM1690::CTX_START_ADDR &&
-  //     dst_addr >= BM1690::L2_SRAM_START_ADDR);
-
-  auto shape = op->getOperand(0).getType().cast<RankedTensorType>().getShape();
-  int N = 1, C = 1, H = 1, W = 1;
-  if (shape.size() == 4) {
-    N = shape[0];
-    C = shape[1];
-    H = shape[2];
-    W = shape[3];
-  } else if (shape.size() == 2) {
-    H = shape[0];
-    W = shape[1];
+      (BM1690::CTX_START_ADDR && src_addr >= BM1690::CTX_START_ADDR));
+  int total_size = module::getNumElements(getOutput());
+  int num_per_core = ceiling_func(total_size, core_num_idx.first);
+  auto move_size = std::min(num_per_core, (int)(total_size - num_per_core*core_num_idx.second));
+  if (move_size < 1) {
+    return;
   }
-
   auto data_type = BM1690::getDataType(getOutput());
   auto gdma_format = BM1690::getGdmaFormat(data_type);
-  // gdma_format = BM1690::GDMA_VALUE_FORMAT_FLOAT16;
-
   auto pid_node = (CMD_ID_NODE *)BM1690::instance()->cmdid_node;
+  int slice_c = move_size, slice_h = 1;
+  if (slice_c > 65535) {
+    slice_c = 65535;
+    slice_h = ceiling_func(move_size, 65535);
+  }
   BM1690::instance().dl_sdma_tensor_general_move_gen_cmd(
-      src_addr, N, C, H, W, C * H * W, H * W, W, 1, gdma_format, dst_addr, N, C,
-      H, W, C * H * W, H * W, W, 1,
+      src_addr + num_per_core*core_num_idx.second,
+      1, slice_c, slice_h, 1,
+      slice_c*slice_h, slice_h, 1, 1,
+      gdma_format,
+      dst_addr + num_per_core*core_num_idx.second,
+      1, slice_c, slice_h, 1,
+      slice_c*slice_h, slice_h, 1, 1,
       0,  // transpose
       -1, // port
       pid_node);
+
   return;
 }
 

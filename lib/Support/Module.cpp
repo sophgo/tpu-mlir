@@ -651,11 +651,11 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
 }
 
 void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
-             int64_t &w, group_type_t group_type) {
+             int64_t &w, group_type_t group_type, bool IsHdimIsBatch) {
+  int64_t npu_num = backend::Arch::NPU_NUM;
   if (group_type == GROUP_NORMAL) {
     module::getNCHW(shape, n, c, h, w, true);
   } else if (group_type == GROUP_SMALL_C) {
-    int64_t npu_num = backend::Arch::NPU_NUM;
     auto shape_vec = shape.vec();
     shape_vec.resize(4);
     // shape.size() == 2/1 is for MatMul weight and bias
@@ -692,6 +692,43 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
         shape_vec[1] = npu_num;
         shape_vec[0] = shape[3] * shape[2] * shape[1] * shape[0] / npu_num;
       }
+    }
+    module::getNCHW(shape_vec, n, c, h, w, false);
+  } else if (group_type == GROUP_MM_OPT3) {
+    auto shape_vec = shape.vec();
+    shape_vec.resize(4);
+    if (shape.size() == 2) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[1];
+      shape_vec[1] = shape[0];
+      shape_vec[0] = 1;
+    } else if (shape.size() == 3) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[2];
+      shape_vec[1] = shape[1];
+      shape_vec[0] = shape[0];
+    } else if (shape.size() == 1) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[0];
+      shape_vec[1] = 1;
+      shape_vec[0] = 1;
+    } else if (shape.size() == 4) { //wxc
+      if (IsHdimIsBatch) {
+        shape_vec[3] = 1;
+        shape_vec[2] = shape[3];
+        shape_vec[1] = shape[1];
+        shape_vec[0] = shape[2] * shape[0];
+      } else {
+        shape_vec[3] = 1;
+        shape_vec[2] = shape[3];
+        shape_vec[1] = shape[2];
+        shape_vec[0] = shape[1]* shape[0];
+      }
+    } else if (shape.size() == 5) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[4];
+      shape_vec[1] = shape[3];
+      shape_vec[0] = shape[2] * shape[1] * shape[0];
     }
     module::getNCHW(shape_vec, n, c, h, w, false);
   } else if (GROUP_MM_INT4 == group_type) {
@@ -733,8 +770,33 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
     w = 1;
   } else {
     d = 1;
-    getNCHW(shape, n, c, h, w, group_type);
+    getNCHW(shape, n, c, h, w, group_type, module::IsHdimIsBatch(v));
   }
+}
+
+bool IsHdimIsBatch(Operation *Op) {
+  assert(Op);
+  if (isa<tpu::MatMulOp>(Op)) {
+    auto mmOp = dyn_cast<tpu::MatMulOp>(Op);
+    if (mmOp.getHdimIsBatch()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsHdimIsBatch(Value value) {
+  auto op = value.getDefiningOp();
+  if (op && module::IsHdimIsBatch(op)) {
+    return true;
+  }
+
+  for (auto user: value.getUsers()) {
+    if (module::IsHdimIsBatch(user)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool isOpInGroup(Operation *Op, int64_t *group_type) {
@@ -1985,5 +2047,18 @@ bool startsWith(const std::string &fullString,
 bool endsWith(const std::string &fullString, const std::string &suffix) {
   return fullString.rfind(suffix) == fullString.length() - suffix.length();
 }
+
+
+bool IsRightMat(Value v) {
+  for (auto user: v.getUsers()) {
+    if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(user)) {
+      if (v == MatMulOp.getRight() || v == MatMulOp.getBias()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 } // namespace module
 } // namespace tpu_mlir

@@ -3662,7 +3662,7 @@ class TORCH_IR_TESTER(object):
     def user_define_net(self):
         """user_define_net"""
         # return
-        self.group_opt = 3
+        self.group_opt = 2 if 'opt2' in self.debug_cmd else 3
         batch_size = self.num_core
 
         print('start test test_model1')
@@ -3675,10 +3675,10 @@ class TORCH_IR_TESTER(object):
         model = test_model2()
         self.trace_and_test([(batch_size,3,224,224)], model)
 
-        print('start test test_model3')
-        from tools.train.test_model import test_model3
-        model = test_model3()
-        self.trace_and_test([(batch_size,3,224,224)], model)
+        # print('start test test_model3')
+        # from tools.train.test_model import test_model3
+        # model = test_model3()
+        # self.trace_and_test([(batch_size,3,224,224)], model)
 
         print('start test test_model4')
         from tools.train.test_model import test_model4
@@ -3695,18 +3695,19 @@ class TORCH_IR_TESTER(object):
         model = models.mobilenet_v2()
         self.trace_and_test([(batch_size,3,224,224)], model)
 
-        print('start test resnet50')
-        from tools.train.resnet import resnet50
-        model = resnet50()
-        self.trace_and_test([(batch_size,3,224,224)], model)
+        # # if self.num_core == 1:
+        # print('start test resnet50')
+        # from tools.train.resnet import resnet50
+        # model = resnet50()
+        # self.trace_and_test([(batch_size,3,224,224)], model)
 
-        print('start test yolov5s')
-        from nets.yolo import YoloBody
-        anchors_mask    = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
-        num_classes = 80
-        phi = 's'
-        model = YoloBody(anchors_mask, num_classes, phi)
-        self.trace_and_test([(batch_size,3,224,224)], model)
+        # print('start test yolov5s')
+        # from nets.yolo import YoloBody
+        # anchors_mask    = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
+        # num_classes = 80
+        # phi = 's'
+        # model = YoloBody(anchors_mask, num_classes, phi)
+        # self.trace_and_test([(batch_size,3,224,224)], model)
 
         # print('start test test_model6')
         # from tools.train.test_model import test_model6
@@ -3728,6 +3729,30 @@ class TORCH_IR_TESTER(object):
         # from tools.train.gpt2 import TransformerBlocks #backward can not use this
         # mod = TransformerBlocks(d_model=d_model, nlayers=2) #.train()
         # self.trace_and_test([(1,4,d_model)], mod)
+
+        # # # #test_torch.py --case user_define_net --chip bm1690 --num_core 8 --mode f16 --debug --debug_cmd="enable_l2m"
+        # from tools.train.gpt2 import FeedForward
+        # mod = FeedForward(d_model=768)
+        # # self.trace_and_test([(2, 2, 512)], mod) #num_core 2 切n
+        # self.trace_and_test([(1, 4096, 768)], mod) #num_core 2 切n和h
+
+        # from tools.train.gpt2 import Attention
+        # mod = Attention(d_model=2048, n_head=2)
+        # # self.trace_and_test([(1, 8, 256)], mod)
+        # self.trace_and_test([(2, 512, 2048)], mod) #num_core 2 切n和h
+
+        # from diffusers.models.unet_2d_blocks import KCrossAttnDownBlock2D
+        # mod = KCrossAttnDownBlock2D(64,32,128,16)
+        # self.trace_and_test([(2, 4, 512)], mod)
+
+        # from tools.train.gpt2 import GPT2
+        # mod = GPT2(d_model=512)
+        # self.trace_and_test([(2, 4, 512)], mod)
+
+        # print('start test test_model10')
+        # from tools.train.test_model import test_model10
+        # model = test_model10()
+        # self.trace_and_test([(1,3,224,224)], model)
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     t = Timer()

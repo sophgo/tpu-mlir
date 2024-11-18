@@ -9,6 +9,7 @@ file(GLOB _sources
           Transforms/BM168x/*.cpp
           Transforms/CV18xx/*.cpp
           Transforms/LayerGroup/*.cpp
+          Transforms/LayerGroup/opt3/*.cpp
           Transforms/Codegen/*.cpp
           Transforms/Codegen/Dynamic/*.cpp
           Transforms/AddressAssign/*.cpp

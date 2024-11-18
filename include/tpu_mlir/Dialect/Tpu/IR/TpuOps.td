@@ -1635,7 +1635,7 @@ def Tpu_LoadToL2MOp:Tpu_Op<"LoadToL2M",
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
-    void codegen_only_for_LoadToL2MOp();
+    void codegen_only_for_LoadToL2MOp(std::pair<int, int>& core_num_idx);
   }];
 }
 
@@ -1650,7 +1650,8 @@ def Tpu_StoreOp:Tpu_Op<"Store",
     AnyTensorOrNone:$input_gmem,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info
+    OptionalAttr<Tpu_CompressAttr>:$compress_info,
+    OptionalAttr<I64Attr>:$l2m_addr
   );
   let results = (outs AnyRankedTensor:$output);
 }

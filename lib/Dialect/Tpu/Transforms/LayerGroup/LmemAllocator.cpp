@@ -1079,11 +1079,12 @@ void LmemAllocator::sc_method_brute_force(
         // assign_dhwsecs(lg_info, shape_secs, ++dhw_secs, max_shape_secs_);
         for (int _d = 1; _d <= max_shape_secs_.dsecs; _d++) {
           for (int _w = 1; _w <= max_shape_secs_.wsecs; _w++) {
-            shape_secs_t cur_shape_secs = {.nsecs = _n,
-                                           .hsecs = _h,
-                                           .dsecs = _d,
-                                           .wsecs = _w,
-                                           .csecs = _c};
+            shape_secs_t cur_shape_secs;
+            cur_shape_secs.nsecs = _n;
+            cur_shape_secs.hsecs = _h;
+            cur_shape_secs.dsecs = _d;
+            cur_shape_secs.wsecs = _w;
+            cur_shape_secs.csecs = _c;
             if (cur_shape_secs.nsecs * cur_shape_secs.csecs *
                     cur_shape_secs.dsecs * cur_shape_secs.hsecs *
                     cur_shape_secs.wsecs <

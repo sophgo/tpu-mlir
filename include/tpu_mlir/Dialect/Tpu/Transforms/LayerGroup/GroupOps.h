@@ -58,21 +58,18 @@ protected:
              bool can_merge = false,
              std::vector<std::vector<int64_t>> opd_h_slice_offset = {});
   //  bool need_none(group_lmem_t &group_lmem);
-  void CreateLmemMoveOp(int64_t ts, ts_move_info &move_info);
-  void CreateLoadOp2(int64_t ts, ts_var_t &ts_var, int64_t pipe_id,
-                     const std::vector<Operation *> &ops,
-                     std::vector<int64_t> ncdhw_idx, const LgInfo &lgInfo,
-                     bool can_merge);
-  void CreateLoadToL2mOp(int64_t ts, l2m_value_info &it, int64_t pipe_id,
-                         l2mem_alloc_Ptr l2mem_alloc_ptr);
-  Value CreateStoreOp2(Value &output, tensor_info_t &ti, int64_t ts,
-                       int64_t slice_idx, int64_t pipe_id,
-                       group_type_t group_type, bool can_merge);
+  void CreateLmemMoveOp(int64_t ts, ts_move_info& move_info);
+  void CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
+                     const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
+                     const LgInfo& lgInfo, bool can_merge);
+  void CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id, l2mem_alloc_Ptr l2mem_alloc_ptr);
+  Value CreateStoreOp2(Value &output, tensor_info_t& ti, int64_t ts, int64_t slice_idx, int64_t pipe_id,
+                       group_type_t group_type, bool can_merge, l2mem_alloc_Ptr l2mem_alloc_ptr = nullptr);
   void UpdateOpLgParam2(Operation *op, Operation *old_op, int64_t ts,
                         int64_t slice_idx, TensorInfo &tensor_info,
                         std::vector<int64_t> ncdhw_idx, group_type_t group_type,
                         bool can_merge);
-  void find_local_layer_base_group(Operation *op);
+  std::vector<std::shared_ptr<speical_layer_group_base>> findSpecialGroup(std::vector<Operation*>& subnet_ops);
 
 protected:
   std::shared_ptr<GroupMethod> group_method_;
@@ -83,6 +80,7 @@ protected:
 
   mlir::MLIRContext *ctx_;
   Operation *current_op_;
+  Operation *none_op_;
   Block *body_;
   int64_t MAX_ID_;
 
@@ -101,9 +99,9 @@ protected:
   std::map<Value, Value, value_compare> map_store_to_load_value;
   std::map<Value, Value, value_compare> map_l2m_out_to_load_in;
   std::vector<std::vector<Value>> will_store_value;
-  std::vector<Operation *> tmp_local_layer_group;
-  std::vector<Operation *> all_local_layer_nodes;
-  bool branch_parallel = false;
+  std::vector<Operation*> tmp_local_layer_group;
+  std::vector<Operation*> all_local_layer_nodes;
+  // bool branch_parallel = false;
 };
 
 } // namespace tpu

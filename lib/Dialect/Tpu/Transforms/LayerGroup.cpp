@@ -10,6 +10,8 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
+#include <iostream>
+#include <fstream>
 
 using namespace llvm;
 
@@ -59,6 +61,9 @@ class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
   void runOnOperation() override {
+    if (module::isDebugCmdEnable("disable_layer_group")) {
+      return;
+    }
     // init global options
     LgPass::OPTIONS.opt = opt;
     LgPass::OPTIONS.group_by_cores = force_group_by_cores(group_by_cores);
@@ -80,6 +85,85 @@ public:
 
 std::unique_ptr<OperationPass<ModuleOp>> createLayerGroupPass() {
   return std::make_unique<LayerGroupPass>();
+}
+
+class NetStatisticPass : public NetStatisticBase<NetStatisticPass> {
+public:
+  NetStatisticPass() {}
+  void runOnOperation() override {
+    auto modules = module::getAllModules();
+    int64_t total_bytes = 0, total_bytes2 = 0;
+    // std::ofstream file("group_after.txt", std::ios::ate | std::ios::out);
+    for (auto s : *modules) {
+      for (auto f : s.getOps<FuncOp>()) {
+        if (f.getName() != "subfunc_0") {
+          continue;
+        }
+        std::vector<Operation*> exclude_ops, exclude_ops2;
+        f.walk([&](Operation *op) {
+          if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
+            // do nothing
+          } else {
+            if (std::find(exclude_ops.begin(), exclude_ops.end(), op) == exclude_ops.end()) {
+              if (isa<tpu::GroupOp>(op)) {
+                auto nextOp = *(op->getUsers().begin());
+                if (isa<tpu::SliceMergeOp>(nextOp)) {
+                  for (auto v : nextOp->getOperands()) {
+                    exclude_ops.push_back(v.getDefiningOp());
+                  }
+                }
+              }
+
+              if (!module::isOpInGroup(op) && !module::isOpInCoreParallel(op)) {
+                for (auto v : op->getOperands()) {
+                  if (v.getType().isa<NoneType>()) {
+                    continue;
+                  }
+                  if (!v.getDefiningOp() || isa<ReturnOp>(op)) {
+                    auto width = module::getStorageType(v).getIntOrFloatBitWidth()/8;
+                    total_bytes += v.getType().cast<RankedTensorType>().getNumElements()*width;
+                  }
+                }
+              }
+            }
+
+            if (module::isOpInGroup(op)) {
+              auto parent = op->getParentOp();
+              if (std::find(exclude_ops2.begin(), exclude_ops2.end(), parent) == exclude_ops2.end()) {
+                auto nextOp = *(parent->getUsers().begin());
+                if (isa<tpu::SliceMergeOp>(nextOp)) {
+                  for (auto v : nextOp->getOperands()) {
+                    if (v.getDefiningOp() != parent) {
+                      exclude_ops2.push_back(v.getDefiningOp());
+                    }
+                  }
+                }
+                if (!isa<tpu::ReshapeOp, tpu::LoadOp, tpu::StoreOp, tpu::MoveOp>(op)) {
+                  for (auto v : op->getOperands()) {
+                    if (v.getType().isa<NoneType>()) {
+                      continue;
+                    }
+                    if (module::isOpInGroup(v.getDefiningOp())) {
+                      if (!isa<tpu::LoadOp>(v.getDefiningOp())) {
+                        auto width = module::getStorageType(v).getIntOrFloatBitWidth()/8;
+                        total_bytes2 += v.getType().cast<RankedTensorType>().getNumElements()*width;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+    // file.close();
+    llvm::outs() <<"NetStatisticPass total_bytes: "<<total_bytes<<", total_bytes2: "<<total_bytes2<<"\n";
+  }
+};
+
+std::unique_ptr<OperationPass<ModuleOp>> createNetStatisticPass() {
+  return std::make_unique<NetStatisticPass>();
 }
 } // namespace tpu
 } // namespace tpu_mlir

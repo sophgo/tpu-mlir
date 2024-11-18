@@ -35,6 +35,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createDDRInterleavePass();
 std::unique_ptr<OperationPass<ModuleOp>> createShapeOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createShowAddressPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTruncIOPass();
+std::unique_ptr<OperationPass<ModuleOp>> createNetStatisticPass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
