@@ -198,6 +198,44 @@ struct ConcatToDepth2SpacePattern : public OpRewriterPatternEx<ConcatOp> {
   }
 };
 
+template <typename T>
+void ProcessRopeWeights(std::vector<T> &new_weight0,
+                        std::vector<T> &new_weight1, std::vector<T> &new_w0,
+                        std::vector<T> &new_w1,
+                        const std::vector<T> &left_weight,
+                        const std::vector<T> &right_weight,
+                        const std::vector<int64_t> &weight_shape,
+                        int mul1_shift, int add_shift) {
+
+  // 4D weight_shape is {A=1, B=1, C=weight_shape[2], D=weight_shape[3]};
+  int64_t C = weight_shape[2];
+  int64_t D = weight_shape[3];
+
+  for (int j = 0; j < D; j++) {
+    new_weight0[j] = 0;
+    new_weight1[j] = static_cast<T>(pow(2, (mul1_shift + add_shift)));
+  }
+
+  int cnt = 0;
+  for (int i = 0; i < C; i++) {
+    for (int j = 0; j < D; j++) {
+      int index = (i + 1) * D + j;
+      new_weight0[index] = left_weight[cnt];
+      new_weight1[index] = right_weight[cnt];
+      cnt += 1;
+    }
+  }
+
+  int count = 0;
+  for (int i = 0; i < C + 1; i++) {
+    for (int j = 0; j < D; j++) {
+      new_w0[count] = new_weight0[i * D + j];
+      new_w1[count] = new_weight1[i * D + j];
+      count += 1;
+    }
+  }
+}
+
 struct ConcatToRope : public OpRewriterPatternEx<ConcatOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
@@ -209,26 +247,30 @@ struct ConcatToRope : public OpRewriterPatternEx<ConcatOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
-    int indx = 0;
+
+    int indx = -1;
     for (int i = 0; i < 2; ++i) {
-      auto rope_op = dyn_cast<RopeOp>(op.getInputs()[i].getDefiningOp());
-      if (rope_op) {
+      if (dyn_cast<RopeOp>(op.getInputs()[i].getDefiningOp())) {
         indx = i;
-      } else {
-        indx = 1 - i;
+        break;
       }
     }
+
+    if (indx == -1)
+      return failure();
+
     auto rope_op = dyn_cast<RopeOp>(op.getInputs()[indx].getDefiningOp());
     auto slice0_op =
         dyn_cast<SliceOp>(op.getInputs()[1 - indx].getDefiningOp());
     if (!rope_op || !slice0_op) {
       return failure();
     }
+
     auto slice1_op = dyn_cast<SliceOp>(rope_op.getInput1().getDefiningOp());
     if (!slice1_op) {
       return failure();
     }
-    Value in_value;
+
     auto weight0 = rope_op.getInput2();
     auto weight1 = rope_op.getInput3();
     auto weight_shape = module::getShape(weight0);
@@ -237,59 +279,61 @@ struct ConcatToRope : public OpRewriterPatternEx<ConcatOp> {
     if (!W0 || !W1) {
       return failure();
     }
-    auto left_weight = *(W0.read_as_float());
-    auto right_weight = *(W1.read_as_float());
-    std::vector<std::vector<std::vector<std::vector<float>>>> new_weight0(
-        weight_shape[0],
-        std::vector<std::vector<std::vector<float>>>(
-            weight_shape[1],
-            std::vector<std::vector<float>>(
-                weight_shape[2] + 1, std::vector<float>(weight_shape[3]))));
-    std::vector<std::vector<std::vector<std::vector<float>>>> new_weight1(
-        weight_shape[0],
-        std::vector<std::vector<std::vector<float>>>(
-            weight_shape[1],
-            std::vector<std::vector<float>>(
-                weight_shape[2] + 1, std::vector<float>(weight_shape[3]))));
-
-    std::vector<float> new_w0((weight_shape[2] + 1) * weight_shape[3]);
-    std::vector<float> new_w1((weight_shape[2] + 1) * weight_shape[3]);
-
-    for (int j = 0; j < weight_shape[3]; j++) {
-      new_weight0[0][0][0][j] = 0.0f;
-      new_weight1[0][0][0][j] = 1.0f;
-    }
-    int cnt = 0;
-    for (int i = 0; i < weight_shape[2]; i++) {
-      for (int j = 0; j < weight_shape[3]; j++) {
-        new_weight0[0][0][i + 1][j] = left_weight[cnt];
-        new_weight1[0][0][i + 1][j] = right_weight[cnt];
-        cnt += 1;
-      }
-    }
-
-    int count = 0;
-    for (int i = 0; i < weight_shape[2] + 1; i++) {
-      for (int j = 0; j < weight_shape[3]; j++) {
-        new_w0[count] = new_weight0[0][0][i][j];
-        new_w1[count] = new_weight1[0][0][i][j];
-        count += 1;
-      }
-    }
 
     auto storage_type = module::getStorageType(op.getOutput());
-    if (!storage_type.isF32() && !storage_type.isF16()) {
-      return failure();
-    }
-
     std::vector<int64_t> new_weight_shape = {
         weight_shape[0], weight_shape[1], weight_shape[2] + 1, weight_shape[3]};
 
-    auto new_Weight0 = WeightOp::create_float(op, "weight0", new_w0,
-                                              new_weight_shape, storage_type);
-    auto new_Weight1 = WeightOp::create_float(op, "weight1", new_w1,
-                                              new_weight_shape, storage_type);
+    if (storage_type.isF32() || storage_type.isF16()) {
+      auto left_weight = *(W0.read_as_float());
+      auto right_weight = *(W1.read_as_float());
+      std::vector<float> new_weight0(weight_shape[0] * weight_shape[1] *
+                                     (weight_shape[2] + 1) * weight_shape[3]);
+      std::vector<float> new_weight1(weight_shape[0] * weight_shape[1] *
+                                     (weight_shape[2] + 1) * weight_shape[3]);
+      std::vector<float> new_w0((weight_shape[2] + 1) * weight_shape[3]);
+      std::vector<float> new_w1((weight_shape[2] + 1) * weight_shape[3]);
 
+      ProcessRopeWeights(new_weight0, new_weight1, new_w0, new_w1, left_weight,
+                         right_weight, weight_shape, 0, 0);
+      auto new_Weight0 = WeightOp::create_float(op, "weight0", new_w0,
+                                                new_weight_shape, storage_type);
+      auto new_Weight1 = WeightOp::create_float(op, "weight1", new_w1,
+                                                new_weight_shape, storage_type);
+      return handleSliceReplacement(rewriter, op, slice0_op, slice1_op,
+                                    new_Weight0, new_Weight1);
+    } else {
+      auto left_weight = *W0.read<int8_t>();
+      auto right_weight = *W1.read<int8_t>();
+      std::vector<int8_t> new_weight0(weight_shape[0] * weight_shape[1] *
+                                      (weight_shape[2] + 1) * weight_shape[3]);
+      std::vector<int8_t> new_weight1(weight_shape[0] * weight_shape[1] *
+                                      (weight_shape[2] + 1) * weight_shape[3]);
+      std::vector<int8_t> new_w0((weight_shape[2] + 1) * weight_shape[3]);
+      std::vector<int8_t> new_w1((weight_shape[2] + 1) * weight_shape[3]);
+
+      int mul1_shift = rope_op.getMul1Shift();
+      int add_shift = rope_op.getAddShift();
+      ProcessRopeWeights(new_weight0, new_weight1, new_w0, new_w1, left_weight,
+                         right_weight, weight_shape, mul1_shift, add_shift);
+
+      auto new_type = RankedTensorType::get(
+          new_weight_shape, module::getElementType(op.getOutput()));
+      auto new_Weight0 =
+          top::WeightOp::create<int8_t>(op, "weight0", new_w0, new_type);
+      auto new_Weight1 =
+          top::WeightOp::create<int8_t>(op, "weight1", new_w1, new_type);
+      return handleSliceReplacement(rewriter, op, slice0_op, slice1_op,
+                                    new_Weight0, new_Weight1);
+    }
+  }
+
+private:
+  LogicalResult handleSliceReplacement(PatternRewriter &rewriter, ConcatOp op,
+                                       SliceOp slice0_op, SliceOp slice1_op,
+                                       Value new_Weight0,
+                                       Value new_Weight1) const {
+    Value in_value;
     if (slice0_op.getInput().getDefiningOp() ==
         slice1_op.getInput().getDefiningOp()) {
       in_value = slice0_op.getInput();
