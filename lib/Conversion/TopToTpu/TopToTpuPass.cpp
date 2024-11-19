@@ -1156,23 +1156,35 @@ public:
         !storage_type.isBF16()) {
       return failure();
     }
-    auto ctx = in.getContext();
-    OpBuilder builder(ctx);
-    builder.setInsertionPointAfterValue(in);
-    auto op_to_repl = op.getOperation();
-    // if (op->hasOneUse()) {
-    //   if (auto cast_op2 = dyn_cast<tpu::CastOp>(*out.getUsers().begin())) {
-    //     auto out2 = cast_op2.getOutput();
-    //     auto storage_type = module::getStorageType(out2);
-    //     if (storage_type.isF16() || storage_type.isBF16()) {
-    //       out = out2;
-    //       op_to_repl = cast_op2.getOperation();
-    //     }
-    //   }
-    // }
-    auto table = create_lookup_table_fp(in, out, getActivateFunc(op));
-    rewriter.replaceOpWithNewOp<tpu::LutOp>(op_to_repl, out.getType(),
-                                            ValueRange{in, table});
+    bool is_fp = true;
+    if (op->hasOneUse()) {
+      if (auto cast_op2 = dyn_cast<tpu::CastOp>(*out.getUsers().begin())) {
+        auto out2 = cast_op2.getOutput();
+        auto storage_type = module::getStorageType(out2);
+        if (storage_type.isInteger(8)) {
+          out = out2;
+          is_fp = false;
+        }
+      }
+    }
+    if (is_fp) {
+      auto lutOp = rewriter.create<tpu::LutOp>(out.getLoc(), out.getType(),
+                                               ValueRange{in, in});
+      auto new_out = lutOp.getOutput();
+      auto table = create_lookup_table_fp(in, new_out, getActivateFunc(op));
+      lutOp->setOperand(1, table);
+      out.replaceAllUsesWith(new_out);
+    } else {
+      auto lutOp = rewriter.create<tpu::LutOp>(out.getLoc(), out.getType(),
+                                               ValueRange{in, in});
+      auto new_out = lutOp.getOutput();
+      auto table = create_lookup_table(in, new_out, module::isAsymmetric(),
+                                       getActivateFunc(op),
+                                       8, ROUNDING_HALF_AWAY_FROM_ZERO,
+                                       module::isAsymmetric());
+      lutOp->setOperand(1, table);
+      out.replaceAllUsesWith(new_out);
+    }
     return success();
   }
   bool shouldPrint(tpu::ActiveOp op) const override { return false; }
