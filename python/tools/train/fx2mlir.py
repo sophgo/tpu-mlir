@@ -263,7 +263,7 @@ class fx2mlir(object):
             gc.collect()
             f32_blobs_compare('tpu_ir_out_data.npz', 'ref_data.npz', '0.99,0.99')
 
-        mlir_to_model(tpu_ir, self.bmodel_path, 'final_'+mlir_file)
+        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file)
         if self.args.cmp:
             tensors = bmodel_inference(self.bmodel_path, in_ref_data)
             np.savez('bmodel_out_data.npz', **tensors)
@@ -353,7 +353,7 @@ class fx2mlir(object):
             gc.collect()
             f32_blobs_compare('tpu_ir_out_data.npz', 'ref_data.npz', '0.99,0.99')
 
-        mlir_to_model(tpu_ir, self.bmodel_path, 'final_'+mlir_file,num_core=self.num_core)
+        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file, num_core=self.num_core)
         if self.args.cmp:
             tensors = bmodel_inference(self.bmodel_path, in_ref_data)
             np.savez('bmodel_out_data.npz', **tensors)

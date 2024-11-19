@@ -177,4 +177,14 @@ def TruncIO : Pass<"trunc-io", "ModuleOp"> {
   ];
 }
 
+def TruncLayer : Pass<"trunc-layer", "ModuleOp"> {
+  let summary = "Cut any mlir as sub mlir";
+  let constructor = "createTruncLayerPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"cutLocs", "cutLocs", "std::string", /*default=*/"",
+           "cut loc names, split by comma, like 0,1,2">,
+  ];
+}
+
 #endif

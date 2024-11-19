@@ -19,6 +19,8 @@
 #include <random>
 
 #define DEBUG_TYPE "layer-group"
+#define CACHE_FILE_NAME                                                        \
+  module::getName(module::getModuleOp()).str() + ".layer_group_cache.json"
 using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {
@@ -205,39 +207,37 @@ void GroupMethod::set_layer_group_cache(LgInfo lg_info) {
   //              << "; cache_key = " << lg_info.cache_key
   //              << "; group_cost = " << lg_info.group_cost
   //              << "\n";
-  lg_cache_[lg_info.base_group_idx][lg_info.cache_key] = std::make_shared<LgInfo>(lg_info);
+  // lg_cache_[lg_info.base_group_idx][lg_info.cache_key] =
+  //     std::make_shared<LgInfo>(lg_info);
 }
 
 void GroupMethod::get_layer_group(LgInfo &lg_info,
-                            const std::vector<Operation *> &base_group,
-                            int64_t left, int64_t right, int64_t base_group_idx) {
+                                  const std::vector<Operation *> &base_group,
+                                  int64_t left, int64_t right,
+                                  int64_t base_group_idx) {
   auto key = pair_key(left, right);
-  if (lg_cache_.find(base_group_idx) != lg_cache_.end() &&
-      lg_cache_[base_group_idx].find(key) != lg_cache_[base_group_idx].end()) {
+  // if (lg_cache_.find(base_group_idx) != lg_cache_.end() &&
+  //     lg_cache_[base_group_idx].find(key) != lg_cache_[base_group_idx].end())
+  //     {
 
-    auto lg_info_ptr = lg_cache_[base_group_idx][key];
-    if (lg_info_ptr->is_valid != NOT_CHECK) {
-      lg_info = *(lg_info_ptr);
-      DEBUG_WITH_TYPE("lg_cache_info", {
-        llvm::dbgs() << "; action = lg_cache_info"
-                    << "; key = " << key
-                    << "; step = hit"
-                    << "; base_group_idx = " << base_group_idx
-                    << "; start_idx = " << left << "; end_idx = " << right
-                    << "\n";
-      });
-      return;
-    }
-    return;
-  }
+  //   auto lg_info_ptr = lg_cache_[base_group_idx][key];
+  //   if (lg_info_ptr->is_valid != NOT_CHECK) {
+  //     lg_info = *(lg_info_ptr);
+  //     DEBUG_WITH_TYPE("lg_cache_info", {
+  //       llvm::dbgs() << "; action = lg_cache_info"
+  //                    << "; key = " << key << "; step = hit"
+  //                    << "; base_group_idx = " << base_group_idx
+  //                    << "; start_idx = " << left << "; end_idx = " << right
+  //                    << "\n";
+  //     });
+  //     return;
+  //   }
+  // }
   DEBUG_WITH_TYPE("lg_cache_info", {
     llvm::dbgs() << "; action = lg_cache_info"
-                << "; key = " << key
-                << "; step = miss"
-                << "; base_group_idx = " << base_group_idx
-                << "; start_idx = " << left
-                << "; end_idx = " << right
-                << "\n";
+                 << "; key = " << key << "; step = miss"
+                 << "; base_group_idx = " << base_group_idx
+                 << "; start_idx = " << left << "; end_idx = " << right << "\n";
   });
   lg_info.clear();
   for (int idx = left; idx <= right; ++idx) {
@@ -247,6 +247,8 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
   set_group_type(lg_info);
   lg_info.base_group_idx = base_group_idx;
   lg_info.cache_key = key;
+  lg_info.start_idx = left;
+  lg_info.end_idx = right;
 }
 
 GroupMethod::GroupMethod(int64_t opt) {
@@ -439,17 +441,17 @@ bool GroupMethod::group_valid_pre_check(const LgInfo &lg_info) {
 
 bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                                        int64_t *group_cost) {
-  if (lg_info.is_valid != NOT_CHECK) {
-    *group_cost = lg_info.group_cost;
-    return lg_info.is_valid == VALID;
-  }
+  // if (lg_info.is_valid != NOT_CHECK) {
+  //   *group_cost = lg_info.group_cost;
+  //   return lg_info.is_valid == VALID;
+  // }
   PROFILE_LOG("is_layer_group_valid", true);
   bool status;
   status = group_one_layer_proc(lg_info, calc_cost, group_cost);
   if (status && LgPass::OPTIONS.group_by_cores == false) {
     PROFILE_LOG("is_layer_group_valid", false);
     lg_info.is_valid = VALID;
-    lg_info.group_cost = MAX_COST;
+    lg_info.group_cost = *group_cost;
     set_layer_group_cache(lg_info);
     return true;
   }
@@ -459,6 +461,12 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.is_valid = NOT_VALID;
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
+    DEBUG_WITH_TYPE("lg_failed", {
+      llvm::dbgs() << "; action = lg_failed"
+                   << "; reason = "
+                   << "group_valid_pre_check"
+                   << "\n";
+    });
     return false;
   }
 
@@ -469,6 +477,12 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.is_valid = NOT_VALID;
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
+    DEBUG_WITH_TYPE("lg_failed", {
+      llvm::dbgs() << "; action = lg_failed"
+                   << "; reason = "
+                   << "init_group_data_secs"
+                   << "\n";
+    });
     return false;
   }
   DEBUG_WITH_TYPE("shape_secs", {
@@ -484,6 +498,12 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.is_valid = NOT_VALID;
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
+    DEBUG_WITH_TYPE("lg_failed", {
+      llvm::dbgs() << "; action = lg_failed"
+                   << "; reason = "
+                   << "dynamic_group_valid_check"
+                   << "\n";
+    });
     return false;
   }
 
@@ -494,6 +514,12 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.is_valid = NOT_VALID;
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
+    DEBUG_WITH_TYPE("lg_failed", {
+      llvm::dbgs() << "; action = lg_failed"
+                   << "; reason = "
+                   << "assignTimeStep"
+                   << "\n";
+    });
     return false;
   }
 
@@ -505,6 +531,12 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.is_valid = NOT_VALID;
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
+    DEBUG_WITH_TYPE("lg_failed", {
+      llvm::dbgs() << "; action = lg_failed"
+                   << "; reason = "
+                   << "assignLmemAddrWithSecs"
+                   << "\n";
+    });
     return false;
   }
 
@@ -565,14 +597,14 @@ void GroupMethod::get_group_clusters(
                        << "; group_cost = " << pre_cost << "\n";
         });
       }
-      int64_t post_cost = cycle_calculator_->getGlobalLayerCycle(base_group[end_idx]);
+      int64_t post_cost =
+          cycle_calculator_->getGlobalLayerCycle(base_group[end_idx]);
       pre_cost = cost_add(pre_cost, post_cost);
 
       DEBUG_WITH_TYPE("lg_cost", {
         llvm::dbgs() << "; action = lg_cost"
                      << "; step = get_group_cluster"
-                     << "; start_idx = " << end_idx
-                     << "; end_idx = " << end_idx
+                     << "; start_idx = " << end_idx << "; end_idx = " << end_idx
                      << "; group_idx = " << group_idx
                      << "; group_cost = " << post_cost << "\n";
       });
@@ -584,7 +616,8 @@ void GroupMethod::get_group_clusters(
       DEBUG_WITH_TYPE("lg_cost", {
         llvm::dbgs() << "; action = lg_cost"
                      << "; step = get_group_cluster"
-                     << "; start_idx = " << start_idx << "; end_idx = " << end_idx
+                     << "; start_idx = " << start_idx
+                     << "; end_idx = " << end_idx
                      << "; group_idx = " << group_idx
                      << "; group_cost = " << temp_cost << "\n";
       });
@@ -628,7 +661,7 @@ void GroupMethod::get_group_clusters(
                                    clusters[i].second);
     });
   }
-  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({ llvm::outs() << "\n"; });
 
   DEBUG_WITH_TYPE("cluster_info", {
     for (size_t i = 0; i < clusters.size(); ++i) {
@@ -636,8 +669,8 @@ void GroupMethod::get_group_clusters(
                    << "; cluster_idx = " << i
                    << "; start_idx = " << clusters[i].first
                    << "; cluster_size = " << clusters[i].second
-                   << "; end_idx = " << clusters[i].first + clusters[i].second - 1
-                   << "\n";
+                   << "; end_idx = "
+                   << clusters[i].first + clusters[i].second - 1 << "\n";
     }
   });
 }
@@ -654,7 +687,6 @@ void GroupMethod::sweep_for_min_cost(
     }
   }
 }
-
 
 void GroupMethod::dynamic_programming_layer_group_with_cluster(
     std::vector<LgInfo> &lg_infos,
@@ -701,16 +733,13 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
         assert(is_layer_group_valid(sub_group, true, &cost_table[j][j]));
 
-        DEBUG_WITH_TYPE("lg_cost",{
-            llvm::errs()
-                        << "; action = lg_cost"
-                        << "; step = global_layer"
-                        << "; start_idx = " << start_idx
-                         << "; end_idx = " << end_idx
-                         << "; start = " << j
-                         << "; end = " << j
-                         << "; group_idx = " << i
-                         << "; group_cost = " << cost_table[j][j] << "\n";
+        DEBUG_WITH_TYPE("lg_cost", {
+          llvm::errs() << "; action = lg_cost"
+                       << "; step = global_layer"
+                       << "; start_idx = " << start_idx
+                       << "; end_idx = " << end_idx << "; start = " << j
+                       << "; end = " << j << "; group_idx = " << i
+                       << "; group_cost = " << cost_table[j][j] << "\n";
         });
 
         cut_points[j][j] = j;
@@ -743,11 +772,10 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
           DEBUG_WITH_TYPE("lg_index", {
             llvm::dbgs() << "; action = lg_index"
-                          << "; start = " << start
-                          << "; end = " << end
-                          << "; start_idx = " << start_idx
-                          << "; end_idx = " << end_idx
-                          << "; group_idx = " << i << "\n";
+                         << "; start = " << start << "; end = " << end
+                         << "; start_idx = " << start_idx
+                         << "; end_idx = " << end_idx << "; group_idx = " << i
+                         << "\n";
           });
           DEBUG_WITH_TYPE("lg_index_info", {
             llvm::dbgs() << "; action = lg_index_info: " << i << "\n";
@@ -761,11 +789,9 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           DEBUG_WITH_TYPE("lg_cost", {
             llvm::dbgs() << "; action = lg_cost"
                          << "; step = group_layer"
-                         << "; start = " << start
-                          << "; end = " << end
-                          << "; start_idx = " << start_idx
-                          << "; end_idx = " << end_idx
-                         << "; group_idx = " << i
+                         << "; start = " << start << "; end = " << end
+                         << "; start_idx = " << start_idx
+                         << "; end_idx = " << end_idx << "; group_idx = " << i
                          << "; group_cost = " << group_cost << "\n";
           });
           for (int64_t sweep = start; sweep < end; ++sweep) {
@@ -777,12 +803,10 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
               DEBUG_WITH_TYPE("lg_cost", {
                 llvm::dbgs() << "; action = lg_cost"
-                            << "; step = sweep"
-                            << "; start = " << start
-                            << "; end = " << end
-                            << "; sweep = " << sweep
-                            << "; group_idx = " << i
-                            << "; group_cost = " << group_cost << "\n";
+                             << "; step = sweep"
+                             << "; start = " << start << "; end = " << end
+                             << "; sweep = " << sweep << "; group_idx = " << i
+                             << "; group_cost = " << group_cost << "\n";
               });
             }
           }
@@ -790,11 +814,9 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           DEBUG_WITH_TYPE("lg_cost", {
             llvm::dbgs() << "; action = lg_cost"
                          << "; step = update_better"
-                         << "; start = " << start
-                          << "; end = " << end
-                          << "; start_idx = " << start_idx
-                          << "; end_idx = " << end_idx
-                         << "; group_idx = " << i
+                         << "; start = " << start << "; end = " << end
+                         << "; start_idx = " << start_idx
+                         << "; end_idx = " << end_idx << "; group_idx = " << i
                          << "; group_cost = " << group_cost << "\n";
           });
 
@@ -803,12 +825,10 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
           DEBUG_WITH_TYPE("cut_points", {
             llvm::dbgs() << "; action = cut_points"
-                         << "; start = " << start
-                         << "; end = " << end
+                         << "; start = " << start << "; end = " << end
                          << "; cut_points = " << cut_points[start][end]
                          << "; start_idx = " << start_idx
-                         << "; end_idx = " << end_idx
-                         << "; group_idx = " << i
+                         << "; end_idx = " << end_idx << "; group_idx = " << i
                          << "\n";
           });
         }
@@ -861,11 +881,11 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           int64_t cost;
 
           assert(is_layer_group_valid(sub_group, true, &cost));
-          llvm::dbgs()  << "; action = lg_cost"
-                        << "; step = global_layer"
-                        << "; start_idx = " << 0 << "; end_idx = " << 0
-                        << "; start = " << 0 << "; end = " << 0
-                        << "; group_idx = " << i << "; group_cost = " << cost
+          llvm::dbgs() << "; action = lg_cost"
+                       << "; step = global_layer"
+                       << "; start_idx = " << 0 << "; end_idx = " << 0
+                       << "; start = " << 0 << "; end = " << 0
+                       << "; group_idx = " << i << "; group_cost = " << cost
                        << "\n";
         } else {
           llvm::dbgs() << "; action = lg_cost"
@@ -939,6 +959,8 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
   // for debug
 }
 
+#define CALC_FULL
+#ifdef CALC_FULL
 bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
                                              LgInfo *right_layer_group,
                                              bool *left_first,
@@ -973,22 +995,140 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
       break;
     }
   }
+  opt_seq_info.left_cost = group_costs[0];
+  opt_seq_info.right_cost = group_costs[1];
   if (!valid) {
     return false;
   }
   int64_t total_cost = group_costs[0] + group_costs[1];
-  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "The final cost of the two group is " << total_cost << "\n";});
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::outs() << "The final cost of the two group is " << total_cost << "\n";
+  });
   if (opt_seq_info.min_cost >= 0 && opt_seq_info.min_cost <= total_cost) {
     return false;
   }
   opt_seq_info.min_cost = total_cost;
-  opt_seq_info.left_cost = group_costs[0];
-  opt_seq_info.right_cost = group_costs[1];
+
   memcpy(p_shape_secs[0], &shape_secs[0], sizeof(shape_secs_t));
   memcpy(p_shape_secs[1], &shape_secs[1], sizeof(shape_secs_t));
 
   return true;
 }
+
+#else
+
+bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
+                                             LgInfo *right_layer_group,
+                                             bool *left_first,
+                                             SequenceGroupsInfo &opt_seq_info) {
+  assert(left_layer_group->group_ops.size() > 0);
+  assert(right_layer_group->group_ops.size() > 0);
+  LgInfo *groups[2];
+  shape_secs_t *p_shape_secs[2];
+  if (*left_first) {
+    groups[0] = left_layer_group;
+    groups[1] = right_layer_group;
+    p_shape_secs[0] = &(opt_seq_info.left_shape_secs);
+    p_shape_secs[1] = &(opt_seq_info.right_shape_secs);
+  } else {
+    groups[0] = right_layer_group;
+    groups[1] = left_layer_group;
+    p_shape_secs[0] = &(opt_seq_info.right_shape_secs);
+    p_shape_secs[1] = &(opt_seq_info.left_shape_secs);
+  }
+  bool valid = true;
+  shape_secs_t shape_secs[2];
+  BasicTimeStepPtr time_steps[2] = {std::make_shared<BasicTimeStep>(),
+                                    std::make_shared<BasicTimeStep>()};
+  auto lmem_allocator = std::make_shared<LmemAllocator>();
+  int64_t group_costs[2] = {0, 0};
+  bool pre_cost_judge = true;
+  for (size_t i = 0; i < 2; ++i) {
+    if (group_one_layer_proc(*groups[i], true, &group_costs[i])) {
+      shape_secs[i].nsecs = 1;
+      shape_secs[i].csecs = 1;
+      shape_secs[i].hsecs = 1;
+      shape_secs[i].dsecs = 1;
+      shape_secs[i].wsecs = 1;
+      continue;
+    }
+
+    std::vector<std::pair<Value, int64_t>> value_size;
+    if (!init_group_data_secs(*groups[i], shape_secs[i], value_size)) {
+      valid = false;
+      break;
+    }
+    if (!time_steps[i]->assignTimeStep(*groups[i], shape_secs[i], true)) {
+      valid = false;
+      break;
+    }
+    if (!update_data_split(time_steps[i], *groups[i], shape_secs[i])) {
+      valid = false;
+      break;
+    }
+
+    *left_first = !(*left_first);
+    if (pre_cost_judge) {
+      if (memcmp(&shape_secs[i], p_shape_secs[i], sizeof(shape_secs_t)) != 0) {
+        pre_cost_judge = false;
+        continue;
+      }
+      if (!stripe_mine_max_slice(*groups[i], shape_secs[i],
+                                 time_steps[i]->get_tensor_infos())) {
+        valid = false;
+        break;
+      }
+      group_costs[i] = cycle_calculator_->getGroupCycle(
+          time_steps[i], shape_secs[i], groups[i]->type);
+    }
+  }
+  opt_seq_info.left_cost = group_costs[0];
+  opt_seq_info.right_cost = group_costs[1];
+  if (!valid) {
+    return false;
+  }
+  int64_t total_cost = group_costs[0] + group_costs[1];
+  if (pre_cost_judge) {
+    LLVM_DEBUG(llvm::dbgs() << "The pre cost of the two group is " << total_cost
+                            << "\n";);
+    if (opt_seq_info.min_cost >= 0 && opt_seq_info.min_cost < total_cost) {
+      return false;
+    }
+  }
+
+  for (size_t i = 0; i < 2; ++i) {
+    if (groups[i]->group_ops.size() == 1) {
+      continue;
+    }
+    if (!lmem_allocator->assignLmemAddrWithSecs(*groups[i], time_steps[i],
+                                                shape_secs[i])) {
+      valid = false;
+      break;
+    }
+    *left_first = !(*left_first);
+    group_costs[i] = cycle_calculator_->getGroupCycle(
+        time_steps[i], shape_secs[i], groups[i]->type);
+  }
+  opt_seq_info.left_cost = group_costs[0];
+  opt_seq_info.right_cost = group_costs[1];
+  if (!valid) {
+    return false;
+  }
+  total_cost = group_costs[0] + group_costs[1];
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::outs() << "The final cost of the two group is " << total_cost << "\n";
+  });
+  if (opt_seq_info.min_cost >= 0 && opt_seq_info.min_cost <= total_cost) {
+    return false;
+  }
+  opt_seq_info.min_cost = total_cost;
+  memcpy(p_shape_secs[0], &shape_secs[0], sizeof(shape_secs_t));
+  memcpy(p_shape_secs[1], &shape_secs[1], sizeof(shape_secs_t));
+
+  return true;
+}
+
+#endif
 
 bool GroupMethod::consider_redundant_computation_and_gdma_cost(
     const std::vector<std::vector<Operation *>> &base_groups) {
@@ -1007,12 +1147,12 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
         left_cut_idx = j > 0 ? (cut_result[j - 1] + 1) : (int64_t)0;
 
         DEBUG_WITH_TYPE("lg_index", {
-            llvm::dbgs() << "; action = lg_index"
-                         << "; step = consider_redundant_computation_and_gdma_cost"
-                         << "; start_idx = " << left_cut_idx
-                         << "; end_idx = " << cut_result[j]
-                         << "; group_idx = " << i
-                         << "\n";
+          llvm::dbgs()
+              << "; action = lg_index"
+              << "; step = consider_redundant_computation_and_gdma_cost"
+              << "; start_idx = " << left_cut_idx
+              << "; end_idx = " << cut_result[j] << "; group_idx = " << i
+              << "\n";
         });
 
         memset(&seq_info, 0, sizeof(SequenceGroupsInfo));
@@ -1029,21 +1169,25 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
               &left_sub_group, &right_sub_group, &left_first, seq_info);
 
           DEBUG_WITH_TYPE("lg_cost", {
-            llvm::dbgs() << "; action = " << "lg_cost"
+            llvm::dbgs() << "; action = "
+                         << "lg_cost"
                          << "; start_idx = " << left_cut_idx
                          << "; end_idx = " << cut_result[j]
                          << "; group_cost = " << seq_info.left_cost
                          << "; group_idx = " << i << "; step = "
                          << "consider_redundant_computation_and_gdma_cost"
-                         << "; part = " << "left"
+                         << "; part = "
+                         << "left"
                          << "\n";
-            llvm::dbgs() << "; action = " << "lg_cost"
+            llvm::dbgs() << "; action = "
+                         << "lg_cost"
                          << "; start_idx = " << cut_result[j] + 1
                          << "; end_idx = " << cut_result[j + 1]
                          << "; group_cost = " << seq_info.right_cost
                          << "; group_idx = " << i << "; step = "
                          << "consider_redundant_computation_and_gdma_cost"
-                         << "; part = " << "right"
+                         << "; part = "
+                         << "right"
                          << "\n";
           });
           if (is_better) {
@@ -1057,11 +1201,12 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
         cut_result[j] = optimal_cut_idx;
 
         DEBUG_WITH_TYPE("cut_optimize", {
-          llvm::dbgs() << "; action = cut_optimize"
-                       << "; step = consider_redundant_computation_and_gdma_cost"
-                       << "; left_range = " << left_cut_idx << "-" << optimal_cut_idx
-                       << "; right_range = " << optimal_cut_idx + 1 << "-" << cut_result[j + 1]
-                       << "; group_idx = " << i << "\n";
+          llvm::dbgs()
+              << "; action = cut_optimize"
+              << "; step = consider_redundant_computation_and_gdma_cost"
+              << "; left_range = " << left_cut_idx << "-" << optimal_cut_idx
+              << "; right_range = " << optimal_cut_idx + 1 << "-"
+              << cut_result[j + 1] << "; group_idx = " << i << "\n";
         });
       }
     }
@@ -1094,10 +1239,12 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
             llvm::dbgs() << "; start_idx = " << start_cut_idx
                          << "; end_idx = " << cut_idx
                          << "; group_cost = " << left_group_cost
-                         << "; group_idx = " << i
-                         << "; action = " << "lg_cost"
-                         << "; step = " << "merge_cut_idx_to_reduce_gdma_cost"
-                         << "; part = " << "left"
+                         << "; group_idx = " << i << "; action = "
+                         << "lg_cost"
+                         << "; step = "
+                         << "merge_cut_idx_to_reduce_gdma_cost"
+                         << "; part = "
+                         << "left"
                          << "\n";
           });
         }
@@ -1110,10 +1257,12 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
           llvm::dbgs() << "; start_idx = " << cut_idx + 1
                        << "; end_idx = " << end_cut_idx
                        << "; group_cost = " << right_group_cost
-                       << "; group_idx = " << i
-                       << "; action = " << "lg_cost"
-                       << "; step = " << "merge_cut_idx_to_reduce_gdma_cost"
-                       << "; part = " << "right"
+                       << "; group_idx = " << i << "; action = "
+                       << "lg_cost"
+                       << "; step = "
+                       << "merge_cut_idx_to_reduce_gdma_cost"
+                       << "; part = "
+                       << "right"
                        << "\n";
         });
 
@@ -1126,17 +1275,19 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
               llvm::dbgs() << "; start_idx = " << start_cut_idx
                            << "; end_idx = " << end_cut_idx
                            << "; group_cost = " << combine_group_cost
-                           << "; group_idx = " << i
-                           << "; action = " << "lg_cost"
-                           << "; step = " << "merge_cut_idx_to_reduce_gdma_cost"
+                           << "; group_idx = " << i << "; action = "
+                           << "lg_cost"
+                           << "; step = "
+                           << "merge_cut_idx_to_reduce_gdma_cost"
                            << "\n";
             });
             DEBUG_WITH_TYPE("cut_optimize", {
               llvm::dbgs() << "; action = cut_optimize"
                            << "; step = merge_cut_idx"
-                           << "; left_range = " << start_cut_idx << "-" << cut_idx
-                           << "; right_range = " << cut_idx + 1 << "-" << end_cut_idx
-                           << "; group_idx = " << i << "\n";
+                           << "; left_range = " << start_cut_idx << "-"
+                           << cut_idx << "; right_range = " << cut_idx + 1
+                           << "-" << end_cut_idx << "; group_idx = " << i
+                           << "\n";
             });
             cut_result.erase(cut_result.begin() + j);
 
@@ -1215,6 +1366,9 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   if (getenv("LOAD_TPU_GROUP") || LgPass::OPTIONS.opt == 4) {
     if (is_lg_results_exists()) {
       load_lg_results(lg_infos, subnet_ops);
+      if (getenv("RESEARCH_SHAPE_SECS")) {
+        dump_lg_results(lg_infos);
+      }
     } else {
       llvm_unreachable("file not exist's, ues opt=1/2/3 to generate");
     }
@@ -1299,7 +1453,7 @@ void GroupMethod::show_cut_results() {
     for (size_t i = 0; i < cut_results_.size(); ++i) {
       auto &cut_result = cut_results_[i];
       int64_t start_idx = 0;
-      for (size_t j = 0; j < cut_result.size() - 1; ++j) {
+      for (size_t j = 0; j < cut_result.size(); ++j) {
         int64_t end_idx = cut_result[j];
         llvm::dbgs() << "; action = cut_optimize"
                      << "; step = show_cut_results"
@@ -1312,8 +1466,7 @@ void GroupMethod::show_cut_results() {
 }
 
 bool GroupMethod::is_lg_results_exists() {
-  auto filename = "layer_group_cache." +
-                  module::getName(module::getModuleOp()).str() + ".json";
+  auto filename = CACHE_FILE_NAME;
   auto ret = std::filesystem::exists(filename);
   if (!ret) {
     llvm::errs() << filename << "not exists\n";
@@ -1326,10 +1479,7 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
   }
 
   std::error_code EC;
-  llvm::raw_fd_ostream OS("layer_group_cache." +
-                              module::getName(module::getModuleOp()).str() +
-                              ".json",
-                          EC);
+  llvm::raw_fd_ostream OS(CACHE_FILE_NAME, EC);
   if (EC) {
     llvm::errs() << "Failed to open file for writing: " << EC.message() << "\n";
     return;
@@ -1349,11 +1499,14 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
       continue;
     }
     auto index = it.index();
-    llvm::dbgs() << index << "\n";
 
     J.objectBegin();
-    J.attribute("index", index);
+    J.attribute("base_group_idx", group.base_group_idx);
+    J.attribute("start_idx", group.start_idx);
+    J.attribute("end_idx", group.end_idx);
     J.attribute("group_cost", group.group_cost);
+    J.attribute("index", index); // sort_index when load
+
     // Write locs array
     J.attributeArray("locs", [&] {
       for (const auto &loc : group.group_ops) {
@@ -1398,9 +1551,7 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
 void GroupMethod::load_lg_results(
     std::vector<LgInfo> &lg_infos,
     const llvm::SetVector<Operation *> &subnet_ops) {
-  auto bufferOrErr = llvm::MemoryBuffer::getFile(
-      "layer_group_cache." + module::getName(module::getModuleOp()).str() +
-      ".json");
+  auto bufferOrErr = llvm::MemoryBuffer::getFile(CACHE_FILE_NAME);
   if (!bufferOrErr) {
     llvm::errs() << "Failed to open file: " << bufferOrErr.getError().message()
                  << "\n";
@@ -1438,7 +1589,16 @@ void GroupMethod::load_lg_results(
         if (auto *groupObj_ = groupObj.getAsObject()) {
           // Get operation locations
           if (auto index = groupObj_->getInteger("index")) {
-            lg_info.group_id = *index;
+            lg_info.sort_index = *index;
+          }
+          if (auto start_idx = groupObj_->getInteger("start_idx")) {
+            lg_info.start_idx = *start_idx;
+          }
+          if (auto end_idx = groupObj_->getInteger("end_idx")) {
+            lg_info.end_idx = *end_idx;
+          }
+          if (auto base_group_idx = groupObj_->getInteger("base_group_idx")) {
+            lg_info.base_group_idx = *base_group_idx;
           }
           if (auto group_cost = groupObj_->getInteger("group_cost")) {
             lg_info.group_cost = *group_cost;
@@ -1489,7 +1649,7 @@ void GroupMethod::load_lg_results(
         LgInfo lg_info;
         if (auto *globalObj_ = globalObj.getAsObject()) {
           if (auto index = globalObj_->getInteger("index")) {
-            lg_info.group_id = *index;
+            lg_info.sort_index = *index;
           }
           if (auto group_cost = globalObj_->getInteger("group_cost")) {
             lg_info.group_cost = *group_cost;
@@ -1508,19 +1668,35 @@ void GroupMethod::load_lg_results(
   }
 
   // Sort lg_infos by index if needed
-  std::sort(
-      lg_infos.begin(), lg_infos.end(),
-      [](const LgInfo &a, const LgInfo &b) { return a.group_id < b.group_id; });
+  std::sort(lg_infos.begin(), lg_infos.end(),
+            [](const LgInfo &a, const LgInfo &b) {
+              return a.sort_index < b.sort_index;
+            });
 
   for (auto &lg_info : lg_infos) {
     int64_t cost = 0;
     lg_info.use_cache = true;
     if (lg_info.group_cost > 0) {
+      DEBUG_WITH_TYPE("lg_index", {
+        llvm::dbgs() << "; action = lg_index"
+                     << "; start_idx = " << lg_info.start_idx
+                     << "; end_idx = " << lg_info.end_idx
+                     << "; group_idx = " << lg_info.base_group_idx << "\n";
+      });
       if (!is_layer_group_valid(lg_info, true, &cost)) {
         llvm_unreachable("group_cost is not valid");
       }
+      DEBUG_WITH_TYPE("lg_cost", {
+        llvm::dbgs() << "; action = lg_cost"
+                     << "; step = group_layer"
+                     << "; start_idx = " << lg_info.start_idx
+                     << "; end_idx = " << lg_info.end_idx
+                     << "; group_idx = " << lg_info.base_group_idx
+                     << "; group_cost = " << lg_info.group_cost << "\n";
+      });
     }
   }
+  llvm::outs() << "load lg results\n";
 }
 
 /// The pass of layer group searching

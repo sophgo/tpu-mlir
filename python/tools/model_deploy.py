@@ -106,6 +106,7 @@ class DeployTool:
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
         self.compare_all = args.compare_all
+
         self.skip_validation = args.skip_validation
         self.model_version = args.model_version
         self.addr_mode = args.addr_mode
@@ -128,6 +129,10 @@ class DeployTool:
         self.future_update_list = args.future_update_list
         self.gelu_mode = args.gelu_mode
 
+        self.trunc_final = args.trunc_final
+        if self.trunc_final:
+            self.compare_all = True
+            
     def cleanup(self):
         file_clean()
 
@@ -295,6 +300,8 @@ class DeployTool:
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all)
         tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
         np.savez(self.tpu_npz, **tpu_outputs)
+        if self.trunc_final:
+            self.inputs.update(tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts, fuzzy_match=self.fazzy_match)
         if self.cuda:
@@ -311,15 +318,33 @@ class DeployTool:
             tosa_to_llvm(self.tosa_mlir, self.model)
             return {}
         else:
-            patterns = mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
-                                     self.quant_input, self.quant_output, self.quant_input_list,
-                                     self.quant_output_list, self.disable_layer_group, self.opt,
-                                     self.merge_weight, self.op_divide, self.embed_debug_info,
-                                     self.group_by_cores, self.model_version,
-                                     True if self.patterns_count else False, self.compress_mode,
-                                     self.future_update_rank, self.future_update_list)
-            if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
-                    self.model, self.model_npz):
+            patterns = mlir_to_model(
+                tpu_mlir=self.tpu_mlir,
+                model=self.model,
+                final_mlir=self.final_mlir,
+                dynamic=self.dynamic,
+                quant_input=self.quant_input,
+                quant_output=self.quant_output,
+                quant_input_list=self.quant_input_list,
+                quant_output_list=self.quant_output_list,
+                disable_layer_group=self.disable_layer_group,
+                opt=self.opt,
+                merge_weight=self.merge_weight,
+                op_divide=self.op_divide,
+                embed_debug_info=self.embed_debug_info,
+                group_by_cores=self.group_by_cores,
+                model_version=self.model_version,
+                count_patterns=True if self.patterns_count else False,
+                compress_mode=self.compress_mode,
+                future_update_rank=self.future_update_rank,
+                future_update_list=self.future_update_list,
+                trunc_final=self.trunc_final
+            )
+            if (
+                not self.skip_validation
+                and self.do_validate
+                and self.cache_tool.do_model_validate(self.model, self.model_npz)
+            ):
                 tool.validate_model()
             return patterns
 
@@ -338,7 +363,7 @@ class DeployTool:
         model_outputs = model_inference(self.inputs, self.model, self.compare_all)
         np.savez(self.model_npz, **model_outputs)
         if self.enable_maskrcnn:
-           self.revise_MaskRCNN_tpu_ref()
+            self.revise_MaskRCNN_tpu_ref()
         if self.state == "TOP_QUANTIZED":
             f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True, self.fazzy_match)
         else:
@@ -428,6 +453,7 @@ if __name__ == '__main__':
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
+    parser.add_argument("--trunc_final", nargs="*", help="assign op to be trunced in final mlir.")
     # ========== Other Options ==============
     # for cv18xx
     parser.add_argument("--op_divide", action="store_true", help="if do large global op divide.")

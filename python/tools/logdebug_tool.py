@@ -23,7 +23,7 @@ def comsume_in_main(func):
             iterable = [iterable]
 
         for i in iterable:
-            print(i.to_csv(sep=","))
+            print(i.to_csv(sep=",",index=False))
 
     return wrapper
 
@@ -124,13 +124,91 @@ def show_cut_results_costs(log_file):
     cut_ret.clear()
     for row in cut_df.to_dict("records"):
         # breakpoint()
-        row["group_cost"] = cost_df.loc[(row["start_idx"], row["end_idx"], row["group_idx"])]["group_cost"].iloc[0]
+        row["group_cost"] = cost_df.loc[
+            (row["start_idx"], row["end_idx"], row["group_idx"])
+        ]["group_cost"].iloc[0]
         cut_ret.append(row)
 
     cut_df = pd.DataFrame.from_records(cut_ret)
 
     return cut_df
-    # print(cost_df.to_csv(sep=","))
+
+
+def op_lg_cost(log_file):
+    cut_ret = []
+    cost_ret = []
+    with Path(log_file).open("r") as r:
+        for line in r:
+            if "base group" in line:
+                # cost_ret.clear()
+                cut_ret.clear()
+
+            dic = parse_dic(line, "cut_optimize")
+            if dic:
+                if dic["step"] == "show_cut_results":
+                    start_idx, end_idx = dic["range"].split("-")
+                    dic["start_idx"] = int(start_idx)
+                    dic["end_idx"] = int(end_idx)
+                    cut_ret.append(dic)
+
+            dic = parse_dic(line, "lg_cost")
+            if dic:
+                cost_ret.append(dic)
+
+    cut_df = pd.DataFrame.from_records(cut_ret)
+    cost_df = pd.DataFrame.from_records(cost_ret)
+    cost_df.drop_duplicates(
+        ["start_idx", "end_idx", "group_idx"], keep="first", inplace=True
+    )
+    # breakpoint()
+    cost_df = cost_df.set_index(["start_idx", "end_idx", "group_idx"])
+
+    cut_ret.clear()
+
+    acc = 0
+    index = 0
+    prev = -1
+    group_idx = 0
+    for _, row in enumerate(cut_df.to_dict("records")):
+        base_group_idx = row["group_idx"]
+        group_cost = cost_df.loc[(row["start_idx"], row["end_idx"], row["group_idx"])][
+            "group_cost"
+        ] / 1000
+        while base_group_idx - prev > 1:
+            prev += 1
+            group_cost = cost_df.loc[(0, 0, prev)][
+                "group_cost"
+            ] / 1000
+            cut_ret.append({
+                    # "base_group_idx": prev,
+                    "group_idx": group_idx,
+                    "op_index": index,
+                    "group_cost": group_cost,
+                    "acc": acc,
+                })
+            acc += group_cost
+            group_idx += 1
+        
+        acc += group_cost
+        for i in range(row["start_idx"], row["end_idx"] + 1):
+            cut_ret.append(
+                {
+                    # "base_group_idx": base_group_idx,
+                    "group_idx": group_idx,
+                    "op_index": index,
+                    "group_cost": group_cost,
+                    "acc": acc,
+                }
+            )
+            index += 1
+        prev = base_group_idx
+        group_idx += 1
+        # breakpoint()
+        # row["group_cost"] = cost_df.loc[(row["start_idx"], row["end_idx"], row["group_idx"])]["group_cost"].iloc[0]
+
+    cut_df = pd.DataFrame.from_records(cut_ret)
+
+    return cut_df
 
 
 def cut_points(log_file):
@@ -255,6 +333,7 @@ entry = {
     "grep_lg_index": grep_lg_index,
     "cut_points": comsume_in_main(cut_points),
     "cost_table": comsume_in_main(cost_table),
+    "op_lg_cost": comsume_in_main(op_lg_cost),
     "draw_live_range": draw_live_range,
     "show_cut_results_costs": comsume_in_main(show_cut_results_costs),
 }

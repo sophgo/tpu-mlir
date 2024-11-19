@@ -358,7 +358,15 @@ class TORCH_IR_TESTER(object):
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
         bmodel = tpu_mlir + self.model_file
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, opt= self.group_opt, quant_input=self.quant_input, quant_output=self.quant_output, embed_debug_info=self.debug, debug_cmd = f'--debug_cmd={self.debug_cmd}', dynamic=self.dynamic)
+        mlir_to_model(tpu_mlir=tpu_mlir + ".mlir",
+                      model=bmodel,
+                      final_mlir=tpu_final,
+                      opt=self.group_opt,
+                      quant_input=self.quant_input,
+                      quant_output=self.quant_output,
+                      embed_debug_info=self.debug,
+                      debug_cmd=f'--debug_cmd={self.debug_cmd}',
+                      dynamic=self.dynamic)
 
         return (tpu_mlir + ".mlir", bmodel)
 

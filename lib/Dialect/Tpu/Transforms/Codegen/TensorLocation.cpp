@@ -206,10 +206,20 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
     layout += "_group3d"; // {d * n, c, h, w}
   }
 
-  return json::Object{
-      {"name", name},     {"address", address}, {"memory_type", memory_type},
-      {"layout", layout}, {"type", type},       {"reshape", reshape},
-      {"slice", slice}};
+  auto shape = ArrayRef(module::getShape(val));
+  json::Array shapeArray;
+  for (auto dim : shape) {
+    shapeArray.push_back(dim);
+  }
+
+  return json::Object{{"name", name},
+                      {"address", address},
+                      {"memory_type", memory_type},
+                      {"shape", std::move(shapeArray)},
+                      {"layout", layout},
+                      {"type", type},
+                      {"reshape", reshape},
+                      {"slice", slice}};
 }
 
 SmallVector<int64_t> ind2sub(int64_t index, ArrayRef<int64_t> shape) {

@@ -36,21 +36,19 @@ std::string shape_str(std::vector<int64_t> ncdhw) {
   }
   return shape_str(ncdhw[0], ncdhw[1], ncdhw[2], ncdhw[3], ncdhw[4]);
 }
-int64_t align(int64_t input, int64_t align_size)
-{
-    // if (input % align_size != 0) {
-    //   fprintf(stderr, "warning, input:%ld is not align %ld\n", input, align_size);
-    // }
-    return (int64_t)((input + align_size - 1)/align_size*align_size);
+int64_t align(int64_t input, int64_t align_size) {
+  // if (input % align_size != 0) {
+  //   fprintf(stderr, "warning, input:%ld is not align %ld\n", input,
+  //   align_size);
+  // }
+  return (int64_t)((input + align_size - 1) / align_size * align_size);
 }
 
-int64_t align_64(int64_t input) {
-  return (int64_t)((input + 63) / 64 * 64);
-}
+int64_t align_64(int64_t input) { return (int64_t)((input + 63) / 64 * 64); }
 
-bool grp_is_valid(std::vector<Operation*>& group_ops) {
+bool grp_is_valid(std::vector<Operation *> &group_ops) {
   int valid_op_count = 0;
-  for (auto op: group_ops) {
+  for (auto op : group_ops) {
     if (op && !isa<tpu::ReshapeOp>(op)) {
       valid_op_count++;
     }
@@ -68,7 +66,7 @@ void show_group(const LgInfo *sub_group) {
   llvm::errs() << "group_ops, size:" << sub_group->group_ops.size() << "\n";
   for (auto op : sub_group->group_ops) {
     if (op) {
-      llvm::errs() << show_op_info(op)<< "\n";
+      llvm::errs() << show_op_info(op) << "\n";
     }
   }
   for (auto out : sub_group->group_outs) {
@@ -102,11 +100,11 @@ sortOpsByOtherOpsOrder(const std::vector<Operation *> &exp_ops,
   return std::move(tmp_ops);
 }
 
-
-bool isCheckOpInOtherOps(std::vector<Operation*>& check_ops, std::vector<Operation*>& other_ops) {
-  for (auto op: check_ops) {
+bool isCheckOpInOtherOps(std::vector<Operation *> &check_ops,
+                         std::vector<Operation *> &other_ops) {
+  for (auto op : check_ops) {
     if (std::find(other_ops.begin(), other_ops.end(), op) != other_ops.end()) {
-      llvm::errs() <<"check_op is already in other_ops\n";
+      llvm::errs() << "check_op is already in other_ops\n";
       return false;
     }
   }
@@ -185,8 +183,6 @@ process_in_value_have_mulit_user(const std::vector<Operation *> &ops) {
   return std::move(new_grps);
 }
 
-
-
 static void find_op_in_same_block(Operation *op,
                                   std::vector<Operation *> &group_ops,
                                   std::map<Operation *, int> &op_block_id,
@@ -219,7 +215,8 @@ static void find_op_in_same_block(Operation *op,
 }
 
 static std::vector<std::vector<Operation *>>
-ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops, std::vector<Operation*>& single_ops){
+ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops,
+                                  std::vector<Operation *> &single_ops) {
   std::vector<std::vector<Operation *>> new_grps;
   if (ops.size() < 2) {
     single_ops.insert(single_ops.end(), ops.begin(), ops.end());
@@ -248,10 +245,11 @@ ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops, std::vector<Oper
     if (block_ops.size() > 1) {
       new_grps.push_back(block_ops);
       std::string tmpStr = "";
-      for (auto op: block_ops) {
+      for (auto op : block_ops) {
         tmpStr = tmpStr + " + " + module::getName(op).str();
       }
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "add new grp:" << tmpStr << "\n";});
+      LAYER_GROUP_LOG_DEBUG_BLOCK(
+          { llvm::errs() << "add new grp:" << tmpStr << "\n"; });
     } else {
       single_ops.insert(single_ops.end(), block_ops.begin(), block_ops.end());
     }
@@ -259,50 +257,63 @@ ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops, std::vector<Oper
   return new_grps;
 }
 
-std::vector<std::vector<Operation*>>
-seg_grp_ops_by_global_op(const std::vector<Operation*>& grp_ops, const std::vector<Operation*>& break_ops,
-                         std::vector<Operation*>& excluded_ops, std::map<Operation*, bool>* break_op_reside) {
-  std::vector<std::vector<Operation*>> new_grps, new_grps2;
-  std::vector<Operation*> left_ops;
+std::vector<std::vector<Operation *>>
+seg_grp_ops_by_global_op(const std::vector<Operation *> &grp_ops,
+                         const std::vector<Operation *> &break_ops,
+                         std::vector<Operation *> &excluded_ops,
+                         std::map<Operation *, bool> *break_op_reside) {
+  std::vector<std::vector<Operation *>> new_grps, new_grps2;
+  std::vector<Operation *> left_ops;
   for (auto it = grp_ops.rbegin(); it != grp_ops.rend(); ++it) {
     auto op = *it;
     if (!op)
       continue;
-    if (std::find(excluded_ops.begin(), excluded_ops.end(), op) == excluded_ops.end()) {
-      if (std::find(break_ops.begin(), break_ops.end(), op) != break_ops.end()) {
-        if (break_op_reside && (*break_op_reside).find(op) != (*break_op_reside).end() && (*break_op_reside)[op]) {
-          std::vector<Operation*> op_tree;
+    if (std::find(excluded_ops.begin(), excluded_ops.end(), op) ==
+        excluded_ops.end()) {
+      if (std::find(break_ops.begin(), break_ops.end(), op) !=
+          break_ops.end()) {
+        if (break_op_reside &&
+            (*break_op_reside).find(op) != (*break_op_reside).end() &&
+            (*break_op_reside)[op]) {
+          std::vector<Operation *> op_tree;
           find_op_tree_by_root2(op, op_tree, grp_ops, excluded_ops, break_ops);
           new_grps.push_back(op_tree);
-          excluded_ops.insert(excluded_ops.end(), op_tree.begin(), op_tree.end());
+          excluded_ops.insert(excluded_ops.end(), op_tree.begin(),
+                              op_tree.end());
         } else {
-          for (auto user: op->getUsers()) {
-            if (!isa<ReturnOp>(user)
-                && std::find(grp_ops.begin(), grp_ops.end(), user) != grp_ops.end()
-                && std::find(break_ops.begin(), break_ops.end(), user) == break_ops.end()) {
-              std::vector<Operation*> op_tree;
-              find_op_tree_by_root2(user, op_tree, grp_ops, excluded_ops, break_ops);
+          for (auto user : op->getUsers()) {
+            if (!isa<ReturnOp>(user) &&
+                std::find(grp_ops.begin(), grp_ops.end(), user) !=
+                    grp_ops.end() &&
+                std::find(break_ops.begin(), break_ops.end(), user) ==
+                    break_ops.end()) {
+              std::vector<Operation *> op_tree;
+              find_op_tree_by_root2(user, op_tree, grp_ops, excluded_ops,
+                                    break_ops);
               new_grps.push_back(op_tree);
-              excluded_ops.insert(excluded_ops.end(), op_tree.begin(), op_tree.end());
+              excluded_ops.insert(excluded_ops.end(), op_tree.begin(),
+                                  op_tree.end());
             }
           }
         }
       }
     }
   }
-  for (auto op: grp_ops) {
-    if (op && !isa<ReturnOp>(op) && std::find(excluded_ops.begin(), excluded_ops.end(), op) == excluded_ops.end()
-     && std::find(break_ops.begin(), break_ops.end(), op) == break_ops.end()) {
+  for (auto op : grp_ops) {
+    if (op && !isa<ReturnOp>(op) &&
+        std::find(excluded_ops.begin(), excluded_ops.end(), op) ==
+            excluded_ops.end() &&
+        std::find(break_ops.begin(), break_ops.end(), op) == break_ops.end()) {
       left_ops.push_back(op);
     }
   }
-  std::vector<Operation*> single_ops;
+  std::vector<Operation *> single_ops;
   auto tmpGrps = ConvertDisconnectedBlocksToGroups(left_ops, single_ops);
   new_grps.insert(new_grps.end(), tmpGrps.begin(), tmpGrps.end());
 
-  for (auto grp: new_grps) {
+  for (auto grp : new_grps) {
     if (grp.size() > 1) {
-      for (auto grp2: process_in_value_have_mulit_user(grp)) {
+      for (auto grp2 : process_in_value_have_mulit_user(grp)) {
         if (grp2.size() > 1) {
           new_grps2.push_back(grp2);
         }
@@ -368,7 +379,7 @@ CreateIlpLgInfo(std::vector<Operation *> ops,
   ilp_lgInfo->_lgInfo.group_ops.assign(ops.begin(), ops.end());
   ilp_lgInfo->_lgInfo.update_group_io(LgPass::OPTIONS.opt);
   // set_group_type(ilp_lgInfo->_lgInfo);
-  llvm::errs()<<"add_group_id:"<<ilp_lgInfo->_lgInfo.group_id<<"\n";
+  llvm::errs() << "add_group_id:" << ilp_lgInfo->_lgInfo.group_id << "\n";
   return ilp_lgInfo;
 }
 
@@ -504,7 +515,6 @@ get_group_max_secs(const LgInfo &lg_info,
       } else {
         max_csecs = 1;
       }
-
 
       // if (max_nsecs * max_csecs < module::getCoreNum()) {
       //   max_csecs = module::getCoreNum();
@@ -663,7 +673,8 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
 }
 
 bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
-                          std::vector<std::pair<Value, int64_t>> &value_size, std::shared_ptr<dot_graph> dot_graph_log) {
+                           std::vector<std::pair<Value, int64_t>> &value_size,
+                           std::shared_ptr<dot_graph> dot_graph_log) {
   auto lg_info = ilp_lg_info._lgInfo;
   if (lg_info.group_ops.size() == 1 &&
       false == LgPass::OPTIONS.group_by_cores) {
@@ -688,9 +699,9 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
 
     int64_t total_size = in0_lmem_bytes + out0_lmem_bytes;
     auto lg_op = cast<LocalGenInterface>(op);
-    int64_t buffer_size = lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n,
-                                      in_c, in_h, in_d, in_w, out_n, out_c,
-                                      out_h, out_d, out_w, lg_info.type);
+    int64_t buffer_size = lg_op.getBufferSize(
+        in0_lmem_bytes, out0_lmem_bytes, in_n, in_c, in_h, in_d, in_w, out_n,
+        out_c, out_h, out_d, out_w, lg_info.type);
     total_size += buffer_size;
     int64_t non_weight_size = Arch::LMEM_BYTES;
     for (size_t i = 1; i < ins.size(); ++i) {
@@ -721,7 +732,8 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
     }
 
     // Need consider different backends
-    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES); //假设权重也切分了，实际上权重不能切分
+    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES);
+    // //假设权重也切分了，实际上权重不能切分
     int64_t total_secs = ceiling_func(total_size, non_weight_size);
     shape_secs.nsecs =
         std::max(std::min(total_secs, max_shape_secs.nsecs), shape_secs.nsecs);
@@ -742,11 +754,13 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
     total_secs = ceiling_func(total_secs, shape_secs.dsecs);
     shape_secs.hsecs = std::max(total_secs, shape_secs.hsecs);
     auto name = module::getName(op).str();
-    dot_graph_log->add_node_label(name + "_ori", "hsecs: " + std::to_string(total_secs));
+    dot_graph_log->add_node_label(name + "_ori",
+                                  "hsecs: " + std::to_string(total_secs));
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
       shape_secs.wsecs = ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs);
       if (shape_secs.wsecs > max_shape_secs.wsecs) {
-        llvm::errs() << "init_group_data_secs2 fail at op:"<<module::getName(op).str()<<"\n";
+        llvm::errs() << "init_group_data_secs2 fail at op:"
+                     << module::getName(op).str() << "\n";
         return false;
       }
       shape_secs.hsecs = max_shape_secs.hsecs;
@@ -790,7 +804,8 @@ int64_t get_split_max_secs(BasicTimeStepPtr time_step) {
   return ceiling_func(lmem_req[0], Arch::LMEM_BYTES);
 }
 
-void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos, int speical_pattern) {
+void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
+                         int speical_pattern) {
   for (auto &iter : tensor_infos) {
     auto v = iter.first;
     iter.second.use_3ic_opt = use_3ic(v);
@@ -1154,14 +1169,16 @@ bool is_attention_not_input_tensor(Operation *op, Value v) {
   return res;
 }
 
-void slice_distributor(std::vector<slice_pair_t> &slice_pairs, int64_t vec_length, int64_t secs){
+void slice_distributor(std::vector<slice_pair_t> &slice_pairs,
+                       int64_t vec_length, int64_t secs) {
   slice_pairs.clear();
   int64_t per_sec_base = vec_length / secs; // 每个分片的基本大小
   int64_t extra = vec_length % secs; // 需要额外分配一个单位的分片数量
 
   int64_t start_idx = 0; // 当前分片的起始索引
   for (int64_t i = 0; i < secs; ++i) {
-    int64_t current_slice = per_sec_base + (i < extra ? 1 : 0); // 当前分片的大小
+    int64_t current_slice =
+        per_sec_base + (i < extra ? 1 : 0); // 当前分片的大小
     if (current_slice > 0) {
       slice_pairs.emplace_back(slice_pair_t(start_idx, current_slice));
       start_idx += current_slice; // 更新下一个分片的起始索引
@@ -1200,7 +1217,8 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
     // 计算每一步的步长和索引
     bool extra = c_per_npu_mod_secs > i;
     int64_t step = (c_per_npu_div_secs + extra) * npu_num;
-    int64_t idx = (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) * npu_num;
+    int64_t idx =
+        (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) * npu_num;
 
     // 计算切片大小
     int64_t slice = std::min(step, c - idx);
@@ -1728,7 +1746,6 @@ static bool backward_update_slice(
   return true;
 }
 
-
 bool stripe_mine_max_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos) {
@@ -1980,6 +1997,8 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
 // case3 :matmul attrs: r_trans=true, hdim_is_batch=true
 //=>[1, 16, 320, 64] * [1, 320, 320, 64] => [1, 16, 320, 64] * [1, 64, 320, 320]
 //=> batch =320 , M = 16, K = 64, N = 320
+// case4: matmul attrs: r_trans=false, l_trans=false, hdim_is_batch=true
+//=> 1x248x8x64xf16, 1x64x8x248xf16 -> 1x248x8x248xf16
 // other cases TODO
 bool check_split_matmul(Operation *op) {
   if (!isa<tpu::MatMulOp>(op)) {
@@ -2009,13 +2028,20 @@ bool check_split_matmul(Operation *op) {
   }
 
   // case 3
-  if (a_s.size() == 4 && a_s[0] == b_s[0] && a_s[2] == b_s[2] &&
-      a_s[3] == b_s[3]) {
+  if (matmulOp.getHdimIsBatch() && a_s.size() == 4 && a_s[0] == b_s[0] &&
+      a_s[2] == b_s[2] && a_s[3] == b_s[3]) {
     return true;
   }
 
+  // case 4
+  if (matmulOp.getHdimIsBatch() && a_s.size() == 4 && a_s[0] == b_s[0] &&
+      a_s[1] == b_s[3] && a_s[2] == b_s[2] && a_s[3] == b_s[1]) {
+    return true;
+  }
   // other cases
   // TODO
+
+  // Wenet:
 
   return false;
 }
@@ -2276,27 +2302,27 @@ std::vector<Value> get_output_values(Operation *op) {
   return std::move(value_vec);
 }
 
-
-static std::string format_op_in_out_info(Operation* op) {
+static std::string format_op_in_out_info(Operation *op) {
   std::string tmpStr = " ";
   int64_t n, c, d, h, w;
   for (auto [index, in] : llvm::enumerate(get_input_values(op))) {
     if (is_value_weight(in)) {
       module::getNCDHW(in, n, c, d, h, w, GROUP_NORMAL);
-      tmpStr = tmpStr + llvm::formatv(" in{0}:[{1},{2},{3},{4},{5}]",
-              index, n, c, d, h, w).str();
-
+      tmpStr = tmpStr + llvm::formatv(" in{0}:[{1},{2},{3},{4},{5}]", index, n,
+                                      c, d, h, w)
+                            .str();
     }
   }
   tmpStr = tmpStr + ", ";
   auto outs = get_output_values(op);
   module::getNCDHW(outs[0], n, c, d, h, w, GROUP_NORMAL);
-  tmpStr = tmpStr + llvm::formatv(" out:[{1},{2},{3},{4},{5}], num:{6}",
-          index, n, c, d, h, w, outs.size()).str();
+  tmpStr = tmpStr + llvm::formatv(" out:[{1},{2},{3},{4},{5}], num:{6}", index,
+                                  n, c, d, h, w, outs.size())
+                        .str();
   return tmpStr;
 }
 
-std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation*>& ops) {
+std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation *> &ops) {
   std::shared_ptr<dot_graph> dot_graph_log = std::make_shared<dot_graph>();
   std::string pre_op_name, op_name, node_label;
   for (auto op : ops) {
@@ -2306,14 +2332,16 @@ std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation*>& ops) {
       op_name = module::getName(op).str();
       dot_graph_log->add_node_into_graph(op_name);
       dot_graph_log->add_node_label(op_name,
-        op->getName().getStringRef().str() + format_op_in_out_info(op));
+                                    op->getName().getStringRef().str() +
+                                        format_op_in_out_info(op));
       bool next_layer_has_return = false;
       for (auto itr = op->user_begin(); itr != op->user_end(); itr++) {
         if (!isa<ReturnOp>(*itr)) {
           auto to = module::getName(*itr).str();
           dot_graph_log->add_node_into_graph(to);
           dot_graph_log->add_node_label(to,
-            (*itr)->getName().getStringRef().str() + format_op_in_out_info(*itr));
+                                        (*itr)->getName().getStringRef().str() +
+                                            format_op_in_out_info(*itr));
           dot_graph_log->add_edge_into_graph(op_name, to);
         } else {
           next_layer_has_return = true;
@@ -2331,12 +2359,14 @@ std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation*>& ops) {
         if (std::find(ops.begin(), ops.end(), pre_op) == ops.end()) {
           if (pre_op) {
             pre_op_name = module::getName(pre_op).str();
-            node_label = pre_op->getName().getStringRef().str() + format_op_in_out_info(pre_op);
+            node_label = pre_op->getName().getStringRef().str() +
+                         format_op_in_out_info(pre_op);
           } else {
-            pre_op_name = "arg"+ std::to_string(v.cast<BlockArgument>().getArgNumber());
+            pre_op_name =
+                "arg" + std::to_string(v.cast<BlockArgument>().getArgNumber());
             auto shape = v.getType().cast<RankedTensorType>().getShape();
             node_label = "[";
-            for (auto i: shape) {
+            for (auto i : shape) {
               node_label = node_label + std::to_string(i) + ",";
             }
             node_label.back() = ']';
