@@ -821,9 +821,75 @@ struct TopPermuteEliminate : public OpRewriterPatternEx<PermuteOp> {
   }
 };
 
+struct TopMoveSoftmaxAfterPermute : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  TopMoveSoftmaxAfterPermute(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "TopMoveSoftmaxAfterPermute") {
+  }
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
+    // permute{0, 3, 1, 2}->softmax->permute{0, 3, 2, 1} => permute{0, 2, 1, 3}->softmax
+    // for yolov8_p2
+    auto in_shape = module::getShape(op.getInput());
+    auto out_shape = module::getShape(op.getOutput());
+    if ((in_shape.size() != 4) || (out_shape.size() != 4)) {
+      return failure();
+    }
+
+    auto order = *module::getI64Array(op.getOrder());
+    std::vector<int64_t> order_0321{0, 3, 2, 1};
+    if (order != order_0321)
+      return failure();
+    auto in_sm = op.getInput();
+    auto in_sm_op = dyn_cast<top::SoftmaxOp>(in_sm.getDefiningOp());
+    if (!in_sm_op) {
+      return failure();
+    }
+    if (!(in_sm_op->hasOneUse())) {
+      return failure();
+    }
+    auto axis_dim = in_sm_op.getAxis();
+    if (axis_dim != 3) {
+      return failure();
+    }
+
+    auto in_permute = in_sm_op.getInput();
+    auto in_permute_op = dyn_cast<top::PermuteOp>(in_permute.getDefiningOp());
+    if (!in_permute_op) {
+      return failure();
+    }
+    if (!(in_permute_op->hasOneUse())) {
+      return failure();
+    }
+
+    auto order2 = *module::getI64Array(in_permute_op.getOrder());
+    std::vector<int64_t> order_0312{0, 3, 1, 2};
+    if (order2 != order_0312)
+      return failure();
+    std::vector<int64_t> new_order = {0, 2, 1, 3};
+    in_permute_op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
+
+    int new_axis = 1;
+    in_sm_op->setAttr("axis", rewriter.getSI32IntegerAttr(new_axis));
+    module::setShape(in_permute_op, out_shape);
+    module::setShape(in_sm_op, out_shape);
+
+    in_permute_op->setLoc(NameLoc::get(rewriter.getStringAttr(
+        module::getName(in_permute_op.getOperation()).str() + "_reordered")));
+
+    in_sm_op->setLoc(op.getLoc());
+
+    op.getOutput().replaceAllUsesExcept(in_sm_op.getOutput(), in_sm_op);
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
                  PermuteFuse, NonZeroPermutePattern, TopDecomposedRelPosEmb,
-                 TopPermuteEliminate>(context);
+                 TopPermuteEliminate, TopMoveSoftmaxAfterPermute>(context);
 }
