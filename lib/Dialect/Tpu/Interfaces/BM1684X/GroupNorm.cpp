@@ -110,6 +110,18 @@ int64_t tpu::GroupNormOp::dyn_codegen_global_bm1684x(void *buffer) {
 // ======================================
 // Dynamic LocalGenInterface
 // ======================================
-int64_t tpu::GroupNormOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::GroupNormOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(group_norm_local_param_t);
+  group_norm_local_param_t param = {0};
+  const bool have_weight = !module::isNone(getWeight());
+  const bool have_bias = !module::isNone(getBias());
+  param.common.group_num = (int)getNumGroups();
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
+  param.buffer_addr = gi.buffer_addr;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 int64_t tpu::GroupNormOp::get_fw_type_bm1684x() { return FW_BMNET_GROUP_NORM; }

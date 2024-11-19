@@ -680,6 +680,16 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
+        if (true==op.getDoRelu()){
+          auto name = module::getName(op->getResult(0));
+          auto matmul_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_a16matmul"));
+          auto a16matmul_op = rewriter.create<tpu::A16MatMulOp>(matmul_loc, newType, operands, attrs);
+          std::vector<NamedAttribute> relu_attrs;
+          auto relu_limit = rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr());
+          relu_attrs.push_back(relu_limit);
+          rewriter.replaceOpWithNewOp<tpu::ReluOp>(op, newType, ValueRange{a16matmul_op.getOutput()}, relu_attrs);
+          return;
+        }
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
                                                       attrs);
         return;
