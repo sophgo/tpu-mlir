@@ -407,7 +407,58 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                 if cmd.operands[index].is_scalar:
                     data = cmd.operands[index].data
                 else:
-                    data = self.tdb.memory.get_data(cmd.operands[index].to_ref(core_id=cmd.core_id))
+                    data = self.tdb.memory.get_data(
+                        cmd.operands[index].to_ref(core_id=cmd.core_id)
+                    )
+            else:
+                self.tdb.error("")
+                return
+            print(data)
+        except (IndexError, SyntaxError, ValueError) as e:
+            self.tdb.error(e)
+
+    def do_test_stride(self, arg):
+        try:
+            cmd = self.tdb.get_cmd()
+        except StopIteration:
+            self.tdb.message("no cmd next.")
+            return
+        if arg == "":
+            self.tdb.message(cmd.operands)
+            return
+
+        chunk = arg.split()
+        if len(chunk) != 2:
+            self.tdb.error("should into idx stride format")
+            return
+
+        try:
+            index = int(chunk[0])
+            if cmd.cmd_type == CMDType.cpu:
+                if cmd.cmd_id == 0:
+                    data = self.tdb.memory.get_data(cmd.operands[index].to_ref())
+                else:
+                    data = self.tdb.memory.get_cpu_data(cmd.cmd_id)[cmd.operands[index]]
+            elif cmd.cmd_type.is_static():
+                if cmd.operands[index].is_scalar:
+                    data = cmd.operands[index].data
+                else:
+                    value = cmd.operands[index]
+                    ori = value.stride
+                    new = chunk[1]
+                    try:
+                        new = list(map(int, new.split("x")))
+                        value.stride = tuple(new)
+                    except:
+                        self.tdb.error(f"not a valid stride: {new}")
+
+                    try:
+                        data = self.tdb.memory.get_data(
+                            value.to_ref(core_id=cmd.core_id)
+                        )
+                    finally:
+                        value.stride = ori
+
             else:
                 self.tdb.error("")
                 return
@@ -507,19 +558,47 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         if self.dump_all:
             self.dump_current()
 
-    def do_load_range(self, args):
+    def do_load_magic(self, args):
         try:
             cmd = self.tdb.get_cmd()
             if cmd.cmd_type.is_static():
                 for i, result in enumerate(cmd.operands):
                     if not result.is_scalar:
-                        ipt = np.arange(np.prod(result.shape), dtype=result.np_dtype).reshape(result.shape)
+                        if args == "range":
+                            ipt = (
+                                np.arange(
+                                    np.prod(result.shape), dtype=np.float32
+                                ).reshape(result.shape)
+                                / 100
+                            )
+
+                            ipt -= ipt.mean()
+                            ipt = ipt.astype(dtype=result.np_dtype)
+                            self.tdb.message("load range")
+                        elif args == "range_head":
+                            ipt = np.zeros(
+                                np.prod(result.shape), dtype=np.float32
+                            ).reshape(result.shape)
+                            index = np.arange(np.prod(ipt.shape[:-1])).reshape(-1, 1)
+                            ipt.reshape(-1, ipt.shape[-1])[:] += index
+                            ipt = ipt.astype(dtype=result.np_dtype)
+
+                            self.tdb.message(f"load index range")
+                        else:
+                            ipt = np.ones(
+                                np.prod(result.shape), dtype=result.np_dtype
+                            ).reshape(result.shape)
+                            self.tdb.message("load all 1")
                         self.tdb.memory.set_data(result, ipt)
             else:
                 self.tdb.error("")
                 return
         except StopIteration:
             self.tdb.message("no cmd pre.")
+
+    def complete_load_magic(self, text="", line="", begidx=0, endidx=0) -> List[str]:
+        cand = ["range", "range_head", "1"]
+        return [i for i in cand if i.startswith(text)]
 
     def dump_current(self):
         if self.tdb.context.using_cmodel:

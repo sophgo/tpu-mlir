@@ -198,6 +198,13 @@ def commom_args(parser: ArgumentParser):
         default=2**32,
         help="The ddr_size of cmodel.",
     )
+    parser.add_argument(
+        "-C",
+        "--on_load_commands",
+        nargs="*",
+        default="",
+        help="The commands to be executed after loading bmodel.",
+    )
 
 
 class TdbCmdBackend(cmd.Cmd):
@@ -222,6 +229,7 @@ class TdbCmdBackend(cmd.Cmd):
         args = dict(args)
         assert args is not None
         self.bmodel_file = bmodel_file
+        self.bmodel_dir = os.path.dirname(bmodel_file)
         self.final_mlir_fn = final_mlir_fn
         self.tensor_loc_file = tensor_loc_file
         self.input_data_fn = input_data_fn
@@ -292,6 +300,10 @@ class TdbCmdBackend(cmd.Cmd):
                 "You are in quiet mode, add `-v/--verbose` argument to open prograss bar,\n"
                 "or use `info progress` to show progress information."
             )
+
+
+        for i in self.args.get("on_load_commands", []):
+            self.onecmd(i)
 
     def _load_cmds(self):
         bmodel_file = self.bmodel_file

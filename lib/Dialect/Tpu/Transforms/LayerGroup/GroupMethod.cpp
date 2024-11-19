@@ -19,6 +19,8 @@
 #include <random>
 
 #define DEBUG_TYPE "layer-group"
+#define CACHE_FILE_NAME                                                        \
+  module::getName(module::getModuleOp()).str() + ".layer_group_cache.json"
 using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {
@@ -247,6 +249,8 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
   set_group_type(lg_info);
   lg_info.base_group_idx = base_group_idx;
   lg_info.cache_key = key;
+  lg_info.start_idx = left;
+  lg_info.end_idx = right;
 }
 
 GroupMethod::GroupMethod(int64_t opt) {
@@ -1216,6 +1220,9 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   if (getenv("LOAD_TPU_GROUP") || LgPass::OPTIONS.opt == 4) {
     if (is_lg_results_exists()) {
       load_lg_results(lg_infos, subnet_ops);
+      if (getenv("RESEARCH_SHAPE_SECS")) {
+        dump_lg_results(lg_infos);
+      }
     } else {
       llvm_unreachable("file not exist's, ues opt=1/2/3 to generate");
     }
@@ -1313,8 +1320,7 @@ void GroupMethod::show_cut_results() {
 }
 
 bool GroupMethod::is_lg_results_exists() {
-  auto filename = "layer_group_cache." +
-                  module::getName(module::getModuleOp()).str() + ".json";
+  auto filename = CACHE_FILE_NAME;
   auto ret = std::filesystem::exists(filename);
   if (!ret) {
     llvm::errs() << filename << "not exists\n";
@@ -1327,10 +1333,7 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
   }
 
   std::error_code EC;
-  llvm::raw_fd_ostream OS("layer_group_cache." +
-                              module::getName(module::getModuleOp()).str() +
-                              ".json",
-                          EC);
+  llvm::raw_fd_ostream OS(CACHE_FILE_NAME, EC);
   if (EC) {
     llvm::errs() << "Failed to open file for writing: " << EC.message() << "\n";
     return;
@@ -1350,11 +1353,14 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
       continue;
     }
     auto index = it.index();
-    llvm::dbgs() << index << "\n";
 
     J.objectBegin();
-    J.attribute("index", index);
+    J.attribute("base_group_idx", group.base_group_idx);
+    J.attribute("start_idx", group.start_idx);
+    J.attribute("end_idx", group.end_idx);
     J.attribute("group_cost", group.group_cost);
+    J.attribute("index", index); // sort_index when load
+
     // Write locs array
     J.attributeArray("locs", [&] {
       for (const auto &loc : group.group_ops) {
@@ -1399,9 +1405,7 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
 void GroupMethod::load_lg_results(
     std::vector<LgInfo> &lg_infos,
     const llvm::SetVector<Operation *> &subnet_ops) {
-  auto bufferOrErr = llvm::MemoryBuffer::getFile(
-      "layer_group_cache." + module::getName(module::getModuleOp()).str() +
-      ".json");
+  auto bufferOrErr = llvm::MemoryBuffer::getFile(CACHE_FILE_NAME);
   if (!bufferOrErr) {
     llvm::errs() << "Failed to open file: " << bufferOrErr.getError().message()
                  << "\n";
@@ -1439,7 +1443,16 @@ void GroupMethod::load_lg_results(
         if (auto *groupObj_ = groupObj.getAsObject()) {
           // Get operation locations
           if (auto index = groupObj_->getInteger("index")) {
-            lg_info.group_id = *index;
+            lg_info.sort_index = *index;
+          }
+          if (auto start_idx = groupObj_->getInteger("start_idx")) {
+            lg_info.start_idx = *start_idx;
+          }
+          if (auto end_idx = groupObj_->getInteger("end_idx")) {
+            lg_info.end_idx = *end_idx;
+          }
+          if (auto base_group_idx = groupObj_->getInteger("base_group_idx")) {
+            lg_info.base_group_idx = *base_group_idx;
           }
           if (auto group_cost = groupObj_->getInteger("group_cost")) {
             lg_info.group_cost = *group_cost;
@@ -1490,7 +1503,7 @@ void GroupMethod::load_lg_results(
         LgInfo lg_info;
         if (auto *globalObj_ = globalObj.getAsObject()) {
           if (auto index = globalObj_->getInteger("index")) {
-            lg_info.group_id = *index;
+            lg_info.sort_index = *index;
           }
           if (auto group_cost = globalObj_->getInteger("group_cost")) {
             lg_info.group_cost = *group_cost;
@@ -1509,19 +1522,35 @@ void GroupMethod::load_lg_results(
   }
 
   // Sort lg_infos by index if needed
-  std::sort(
-      lg_infos.begin(), lg_infos.end(),
-      [](const LgInfo &a, const LgInfo &b) { return a.group_id < b.group_id; });
+  std::sort(lg_infos.begin(), lg_infos.end(),
+            [](const LgInfo &a, const LgInfo &b) {
+              return a.sort_index < b.sort_index;
+            });
 
   for (auto &lg_info : lg_infos) {
     int64_t cost = 0;
     lg_info.use_cache = true;
     if (lg_info.group_cost > 0) {
+      DEBUG_WITH_TYPE("lg_index", {
+        llvm::dbgs() << "; action = lg_index"
+                     << "; start_idx = " << lg_info.start_idx
+                     << "; end_idx = " << lg_info.end_idx
+                     << "; group_idx = " << lg_info.base_group_idx << "\n";
+      });
       if (!is_layer_group_valid(lg_info, true, &cost)) {
         llvm_unreachable("group_cost is not valid");
       }
+      DEBUG_WITH_TYPE("lg_cost", {
+        llvm::dbgs() << "; action = lg_cost"
+                     << "; step = group_layer"
+                     << "; start_idx = " << lg_info.start_idx
+                     << "; end_idx = " << lg_info.end_idx
+                     << "; group_idx = " << lg_info.base_group_idx
+                     << "; group_cost = " << lg_info.group_cost << "\n";
+      });
     }
   }
+  llvm::outs() << "load lg results\n";
 }
 
 /// The pass of layer group searching

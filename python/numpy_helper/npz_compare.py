@@ -35,7 +35,9 @@ def parse_args(args_list):
                         help="Do statistics on int8 tensor for saturate ratio and low ratio")
     parser.add_argument("--int8_tensor_close", type=int, default=1,
                         help="whether int8 tensor compare close")
-    parser.add_argument("--save", '-s', type=str, help="Save result as a csv file")
+    parser.add_argument("--save", type=str, help="Save result as a csv file")
+    parser.add_argument("--only_key", action='store_true', help="Only compare the keys")
+
     parser.add_argument("--per_axis_compare", type=int, default=-1,
                         help="Compare along axis, usually along axis 1 as per-channel")
     parser.add_argument("--fuzzy_match", action='store_true',
@@ -53,7 +55,7 @@ def bf16_to_fp32(d_bf16):
     assert d_bf16.dtype == np.uint16
     d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
     for i in range(len(d_bf16)):
-        d_fp32[i] = struct.unpack('<f', struct.pack('<HH', 0, d_bf16[i]))[0]
+        d_fp32[i] = struct.unpack("<f", struct.pack("<HH", 0, d_bf16[i]))[0]
     return d_fp32.reshape(s)
 
 
@@ -63,8 +65,8 @@ def fp32_to_bf16(d_fp32):
     assert d_fp32.dtype == np.float32
     d_bf16 = np.empty_like(d_fp32, dtype=np.uint16)
     for i in range(len(d_bf16)):
-        bytes = struct.pack('f', d_fp32[i])
-        d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
+        bytes = struct.pack("f", d_fp32[i])
+        d_bf16[i] = struct.unpack("<H", struct.pack("BB", bytes[2], bytes[3]))[0]
     return d_bf16.reshape(s)
 
 
@@ -114,8 +116,17 @@ def dequantize(d1, threshold):
     return d1
 
 
-def compare_one_array(tc : TensorCompare, npz1, npz2, name, verbose, lock, dic, int8_tensor_close,
-                      per_axis_compare):
+def compare_one_array(
+    tc: TensorCompare,
+    npz1,
+    npz2,
+    name,
+    verbose,
+    lock,
+    dic,
+    int8_tensor_close,
+    per_axis_compare,
+):
     lock.acquire()
     d1 = npz1.get(name)
     d2 = npz2.get(name)
@@ -130,8 +141,11 @@ def compare_one_array(tc : TensorCompare, npz1, npz2, name, verbose, lock, dic, 
             d1 = d1[:min_v, :]
         d1, d2 = align_type_and_shape(d1, d2)
     except:
-        print("Error: {} in two npz file is not same shape. {} v.s. {}".format(
-            name, d1.shape, d2.shape))
+        print(
+            "Error: {} in two npz file is not same shape. {} v.s. {}".format(
+                name, d1.shape, d2.shape
+            )
+        )
         result = (False, tc.NOT_MATCH, 0, {}, None)
         dic[name] = result
         return result
@@ -157,10 +171,10 @@ def npz_compare(args_list, log_level="normal"):
     if args.full_array:
         np.set_printoptions(threshold=sys.maxsize)
     if args.tolerance:
-        tolerance = [float(s) for s in args.tolerance.split(',')]
+        tolerance = [float(s) for s in args.tolerance.split(",")]
     excepts = []
     if args.excepts:
-        excepts = [str(s) for s in args.excepts.split(',')]
+        excepts = [str(s) for s in args.excepts.split(",")]
     # excepts.append("Y_Index_TopK")
     ordered_names = []
     operations = {}
@@ -169,11 +183,13 @@ def npz_compare(args_list, log_level="normal"):
     int8_tensor_close = args.int8_tensor_close
     npz1 = np.load(f1)
     npz2 = np.load(f2)
-    tc = TensorCompare(close_order_tol=3,
-                       cosine_similarity_tol=tolerance[0],
-                       euclidean_similarity_tol=tolerance[1],
-                       signal_to_quantization_noise_tol=float('-inf'),
-                       per_axis_compare=args.per_axis_compare)
+    tc = TensorCompare(
+        close_order_tol=3,
+        cosine_similarity_tol=tolerance[0],
+        euclidean_similarity_tol=tolerance[1],
+        signal_to_quantization_noise_tol=float("-inf"),
+        per_axis_compare=args.per_axis_compare,
+    )
     if args.fuzzy_match:
         min_cos, min_euc = 1, 1
         for name in npz1.files:
@@ -183,16 +199,18 @@ def npz_compare(args_list, log_level="normal"):
                 d2 = npz2.get(name2)
                 if d1.shape == d2.shape:
                     d1, d2 = align_type_and_shape(d1, d2)
-                    result = tc.compare(d1, d2, args.verbose, int8_tensor_close, args.per_axis_compare)
-                    if result[1] == 'EQUAL':
+                    result = tc.compare(
+                        d1, d2, args.verbose, int8_tensor_close, args.per_axis_compare
+                    )
+                    if result[1] == "EQUAL":
                         if log_level == "normal":
-                            print(f'find EQUAL for {name}')
+                            print(f"find EQUAL for {name}")
                         break
-                    elif result[3]['cosine'] > max_cos:
-                        max_cos = result[3]['cosine']
-                        max_euc = result[3]['euclid']
+                    elif result[3]["cosine"] > max_cos:
+                        max_cos = result[3]["cosine"]
+                        max_euc = result[3]["euclid"]
             if log_level == "normal":
-                print(f'find max_cos:{max_cos}, max_euc:{max_euc} for {name}')
+                print(f"find max_cos:{max_cos}, max_euc:{max_euc} for {name}")
             if min_cos > max_cos:
                 min_cos = max_cos
             if min_euc > max_euc:
@@ -234,8 +252,14 @@ def npz_compare(args_list, log_level="normal"):
     if args.per_axis_compare >= 0:
         process_number = 1
 
-    pbar = tqdm(names, total=len(names_list), position=0, leave=True, disable=(log_level != "normal"))
-    while (len(names_list) > 0):
+    pbar = tqdm(
+        names,
+        total=len(names_list),
+        position=0,
+        leave=True,
+        disable=(log_level != "normal"),
+    )
+    while len(names_list) > 0:
         compare_process_name_list = names_list[:process_number]
         names_list = names_list[process_number:]  # remove done name
         # take process number names
@@ -245,9 +269,20 @@ def npz_compare(args_list, log_level="normal"):
             if log_level == "normal":
                 pbar.set_description("compare {}".format(name))
                 pbar.update(1)
-            p = multiprocessing.Process(target=compare_one_array,
-                                        args=(tc, npz1, npz2, name, args.verbose, lock, dic,
-                                              int8_tensor_close, args.per_axis_compare))
+            p = multiprocessing.Process(
+                target=compare_one_array,
+                args=(
+                    tc,
+                    npz1,
+                    npz2,
+                    name,
+                    args.verbose,
+                    lock,
+                    dic,
+                    int8_tensor_close,
+                    args.per_axis_compare,
+                ),
+            )
             processes.append(p)
             p.start()
 
@@ -255,20 +290,28 @@ def npz_compare(args_list, log_level="normal"):
             j.join()
         gc.collect()
 
-    print('\n', flush=True)
+    print("\n", flush=True)
 
     for name in names:
         if dic.get(name) is None:
             continue
         stats.update(name, dic.get(name))
         if log_level == "normal":
-            print_result_one_array(tc, npz1, name, dic, args.verbose, args.per_axis_compare)
+            print_result_one_array(
+                tc, npz1, name, dic, args.verbose, args.per_axis_compare
+            )
 
     if log_level == "normal":
         stats.print_result()
 
     if args.save:
-        stats.save_result(args.save, operations, quant_types)
+        if args.only_key:
+            with open(args.save, "w") as f:
+                for k,v in stats.results.items():
+                    if not v[0]:
+                        f.write(k + "\n")
+        else:
+            stats.save_result(args.save, operations, quant_types)
         print("Results saved as {}".format(args.save))
 
     if log_level != "quiet":
@@ -282,6 +325,5 @@ def npz_compare(args_list, log_level="normal"):
             sys.exit(-1)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     npz_compare(sys.argv)

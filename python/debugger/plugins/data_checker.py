@@ -95,6 +95,7 @@ class DumpMode(Enum):
     ALL = 2
     COMB = 3
     TPULANG = 4
+    COMB_ALL = 5
 
 
 class CmpState(Enum):
@@ -577,7 +578,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
     def collect_infer_data_from_ref(self, operand: TLValue, actual, desired):
         for idx, ref in enumerate(self.ref_data):
-            if operand.name not in ref:
+            if operand.name not in ref and self.dump_mode != DumpMode.COMB_ALL:
                 continue
             _slice = operand.slice
             if _slice == "[...]":
@@ -809,7 +810,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
         desired = self.get_ref_data(value)
-        if self.dump_mode == DumpMode.COMB or self.dump_mode == DumpMode.TPULANG:
+        if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL} or self.dump_mode == DumpMode.TPULANG:
             self.collect_infer_data(value, actual, desired)
 
         if self.skip_check:  # CModel mode or Pcie mode
@@ -947,9 +948,10 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
     def after_stop(self, tdb: TdbCmdBackend):
         # make sure npz file is valid
-        if self.dump_mode == DumpMode.COMB:
+        if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL}:
             for idx, tensor_dict in enumerate(self.ref_data_from_inference):
-                np.savez(f"bmodel_inference_{idx}.npz", **tensor_dict)
+                np.savez(os.path.join(self.tdb.bmodel_dir, f"bmodel_inference_{idx}.npz"), **tensor_dict)
+                self.tdb.message(f"write to {os.path.join(self.tdb.bmodel_dir, f'bmodel_inference_{idx}.npz')}")
         else:
             self.failed_tensor.close()
         return super().after_stop(tdb)

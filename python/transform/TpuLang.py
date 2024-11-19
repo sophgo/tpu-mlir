@@ -251,7 +251,7 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
     bmodel = tpu_mlir + ".bmodel"
     disable_layer_group = opt == 0
     assert opt in [0, 1, 2]
-    mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group,log_level=log_level, embed_debug_info=embed_debug_info)
+    mlir_to_model(tpu_mlir=tpu_mlir + ".mlir", model=bmodel, final_mlir=tpu_final, dynamic=dynamic, opt=opt, disable_layer_group=disable_layer_group,log_level=log_level, embed_debug_info=embed_debug_info)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"
