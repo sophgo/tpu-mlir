@@ -113,94 +113,95 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
 
   // ==== do topo sort to build better ordered op list ====
   if (runmode == RunMode::TPU_STATIC) {
-    TopoSorter sorter;
-    // 1. sort
-    auto top_order = sorter.topologicalSortWithPriority(edges);
+    // Has problems, need better toposorter
+    // TopoSorter sorter;
+    // // 1. sort
+    // auto top_order = sorter.topologicalSortWithPriority(edges);
 
-    // 2. validation and detection
-    bool doReorder = true;
-    if (lg_pass_ir_->subnet_ops.size() != (top_order.size() + 1)) {
-      doReorder = false;
-    } else {
+    // // 2. validation and detection
+    // bool doReorder = true;
+    // if (lg_pass_ir_->subnet_ops.size() != (top_order.size() + 1)) {
+    //   doReorder = false;
+    // } else {
 
-      int oriCost = 0;
-      int time = 0;
-      std::unordered_map<std::string, int> oriOrder;
-      for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
-        if (!isa<ReturnOp>(it.value())) {
-          oriOrder[module::getName(it.value()).str()] = it.index();
-        }
-      }
-      for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
-        if (!isa<ReturnOp>(it.value())) {
-          oriCost +=
-              it.index() -
-              oriOrder[sorter.getParent(module::getName(it.value()).str())];
-          time++;
-        }
-      }
+    //   int oriCost = 0;
+    //   int time = 0;
+    //   std::unordered_map<std::string, int> oriOrder;
+    //   for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
+    //     if (!isa<ReturnOp>(it.value())) {
+    //       oriOrder[module::getName(it.value()).str()] = it.index();
+    //     }
+    //   }
+    //   for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
+    //     if (!isa<ReturnOp>(it.value())) {
+    //       oriCost +=
+    //           it.index() -
+    //           oriOrder[sorter.getParent(module::getName(it.value()).str())];
+    //       time++;
+    //     }
+    //   }
 
-      if (oriCost <= sorter.getCost() || time != sorter.getTime()) {
-        doReorder = false;
-      }
-    }
+    //   if (oriCost <= sorter.getCost() || time != sorter.getTime()) {
+    //     doReorder = false;
+    //   }
+    // }
 
-    // temp close this logic
-    doReorder = false;
-    // 3. do it
-    if (doReorder) {
-      // adjust lg_pass_ir_->subnet_ops
-      std::vector<Operation *> vector(lg_pass_ir_->subnet_ops.size());
-      for (auto op : lg_pass_ir_->subnet_ops) {
-        if (!isa<ReturnOp>(op)) {
-          vector[top_order[module::getName(op).str()]] = op;
-        } else {
-          vector[lg_pass_ir_->subnet_ops.size() - 1] = op;
-        }
-      }
+    // // temp close this logic
+    // doReorder = false;
+    // // 3. do it
+    // if (doReorder) {
+    //   // adjust lg_pass_ir_->subnet_ops
+    //   std::vector<Operation *> vector(lg_pass_ir_->subnet_ops.size());
+    //   for (auto op : lg_pass_ir_->subnet_ops) {
+    //     if (!isa<ReturnOp>(op)) {
+    //       vector[top_order[module::getName(op).str()]] = op;
+    //     } else {
+    //       vector[lg_pass_ir_->subnet_ops.size() - 1] = op;
+    //     }
+    //   }
 
-      // adjust mlir context to avoid "does not dominate this use" problem
-      lg_pass_ir_->subnet_ops.clear();
-      for (auto it : llvm::enumerate(vector)) {
-        auto op = it.value();
-        lg_pass_ir_->subnet_ops.insert(op);
-        if (it.index() >= 1) {
-          op->moveAfter(vector[it.index() - 1]);
-          DEBUG_WITH_TYPE("topo_reorder_mlir", {
-            llvm::dbgs() << "; action = topo"
-                         << "; before_op = "
-                         << module::getName(vector[it.index() - 1])
-                         << "; op = " << module::getName(op) << "\n";
-          });
-        } else {
-          op->moveBefore(vector[it.index() + 1]);
-          DEBUG_WITH_TYPE("topo_reorder_mlir", {
-            llvm::dbgs() << "; action = topo"
-                         << "; before_op = " << module::getName(op)
-                         << "; op = " << module::getName(vector[it.index() + 1])
-                         << "\n";
-          });
-        }
-        // op->dump();
-        for (auto opd : op->getOperands()) {
-          auto opdOp = opd.getDefiningOp();
-          if (opdOp && isa<top::WeightOp>(opdOp)) {
-            opdOp->moveBefore(op);
-            DEBUG_WITH_TYPE("topo_reorder_mlir", {
-              llvm::dbgs() << "; action = topo"
-                           << "; step = moveWeight"
-                           << "; weightOp = " << module::getName(opdOp)
-                           << "; op = " << module::getName(op) << "\n";
-            });
-          }
-        }
-      }
+    //   // adjust mlir context to avoid "does not dominate this use" problem
+    //   lg_pass_ir_->subnet_ops.clear();
+    //   for (auto it : llvm::enumerate(vector)) {
+    //     auto op = it.value();
+    //     lg_pass_ir_->subnet_ops.insert(op);
+    //     if (it.index() >= 1) {
+    //       op->moveAfter(vector[it.index() - 1]);
+    //       DEBUG_WITH_TYPE("topo_reorder_mlir", {
+    //         llvm::dbgs() << "; action = topo"
+    //                      << "; before_op = "
+    //                      << module::getName(vector[it.index() - 1])
+    //                      << "; op = " << module::getName(op) << "\n";
+    //       });
+    //     } else {
+    //       op->moveBefore(vector[it.index() + 1]);
+    //       DEBUG_WITH_TYPE("topo_reorder_mlir", {
+    //         llvm::dbgs() << "; action = topo"
+    //                      << "; before_op = " << module::getName(op)
+    //                      << "; op = " << module::getName(vector[it.index() + 1])
+    //                      << "\n";
+    //       });
+    //     }
+    //     // op->dump();
+    //     for (auto opd : op->getOperands()) {
+    //       auto opdOp = opd.getDefiningOp();
+    //       if (opdOp && isa<top::WeightOp>(opdOp)) {
+    //         opdOp->moveBefore(op);
+    //         DEBUG_WITH_TYPE("topo_reorder_mlir", {
+    //           llvm::dbgs() << "; action = topo"
+    //                        << "; step = moveWeight"
+    //                        << "; weightOp = " << module::getName(opdOp)
+    //                        << "; op = " << module::getName(op) << "\n";
+    //         });
+    //       }
+    //     }
+    //   }
 
-      auto &lastOp = func_.getBody().back().back();
-      if (!isa<ReturnOp>(lastOp)) {
-        vector.back()->moveAfter(&lastOp);
-      }
-    }
+    //   auto &lastOp = func_.getBody().back().back();
+    //   if (!isa<ReturnOp>(lastOp)) {
+    //     vector.back()->moveAfter(&lastOp);
+    //   }
+    // }
   }
 
   if (opt != 3) {

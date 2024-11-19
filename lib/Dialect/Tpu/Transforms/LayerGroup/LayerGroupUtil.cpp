@@ -505,6 +505,11 @@ get_group_max_secs(const LgInfo &lg_info,
         max_csecs = 1;
       }
 
+
+      // if (max_nsecs * max_csecs < module::getCoreNum()) {
+      //   max_csecs = module::getCoreNum();
+      // }
+
       // split d now only supports BM1684X and not int4, not dynamic
       if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
           (!stype.isInteger(4)) && lg_info.type == GROUP_3D &&
@@ -1183,16 +1188,19 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
     slice_distributor(slice_info.n, n, shape_secs.nsecs);
   }
   // c slice info
+  auto npu_num = Arch::NPU_NUM;
   secs = shape_secs.csecs;
-  int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
+  // if (secs * npu_num > c){
+  //    npu_num = ceiling_func(c, secs);
+  // }
+  int64_t c_per_npu = ceiling_func(c, npu_num);
   int64_t c_per_npu_div_secs = c_per_npu / secs;
   int64_t c_per_npu_mod_secs = c_per_npu % secs;
   for (int64_t i = 0; i < secs; ++i) {
     // 计算每一步的步长和索引
     bool extra = c_per_npu_mod_secs > i;
-    int64_t step = (c_per_npu_div_secs + extra) * Arch::NPU_NUM;
-    int64_t idx = (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) *
-                  Arch::NPU_NUM;
+    int64_t step = (c_per_npu_div_secs + extra) * npu_num;
+    int64_t idx = (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) * npu_num;
 
     // 计算切片大小
     int64_t slice = std::min(step, c - idx);

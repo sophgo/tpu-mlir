@@ -443,17 +443,28 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                (stmode == STORE_MODE_2N && elm_bits == 16) ||
                (stmode == STORE_MODE_4N && elm_bits == 8));
 
-        module::setAddress(out_value, addr);
-        int64_t n, c, h, w;
-        module::getNCHW(out_value, n, c, h, w);
-        int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
-                        stmode_map.at(stmode).second * c * h * w;
-        /// consider int4 storage
-        bytes = ceiling_func(bytes, 8l);
-        addr = align_up(addr + bytes, alignment);
+      module::setAddress(out_value, addr);
+      int64_t n, c, h, w;
+      module::getNCHW(out_value, n, c, h, w);
+      int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
+                      stmode_map.at(stmode).second * c * h * w;
+      /// consider int4 storage
+      bytes = ceiling_func(bytes, 8l);
+
+      DEBUG_WITH_TYPE("gmem_allocator", {
+        llvm::dbgs() << "; action = assignGaddr"
+                    << "; step = weight_static"
+                    << "; start_addr = " << addr
+                    << "; end_addr = " << addr + bytes
+                    << "; live_start = " << 0
+                    << "; live_end = " << 0x7FFFFFFF
+                    << "; loc = " << module::getName(out_value).str() << "\n";
       });
-    }
+
+      addr = align_up(addr + bytes, alignment);
+    });
   }
+    }
   module::setCoeffAddr(m, start_addr);
   module::setCoeffSize(m, addr - start_addr);
   // ================= assign l2sram to activation =============================
@@ -722,30 +733,120 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     std::vector<ValueInfo> &common_ops, std::vector<ValueInfo> &inplace_ops,
     int alignment) {
   auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
+    DEBUG_WITH_TYPE("on_live_range", {
+      llvm::dbgs() << "\n; action = updateOperandsLiveRange"
+                  << "; step = begin"
+                  << "; op = " << module::getName(op)
+                  << "; endPosition = " << endPosition
+                  << "\n";
+    });
     for (uint32_t i = 0; i < op->getNumOperands(); i++) {
       auto operand = module::getOperand(op, i);
       auto opd = operand.getDefiningOp();
+      DEBUG_WITH_TYPE("on_live_range", {
+        llvm::dbgs() << "; action = updateOperandsLiveRange"
+                    << "; step = opd_begin"
+                    << "; opd_type = " << opd->getName()
+                    << "; opd_loc = " << module::getName(operand)
+                    << "; opd_index = " << i
+                    << "\n";
+      });
       if (opd == 0x0 || isa<top::WeightOp, top::NoneOp>(opd)) {
+        DEBUG_WITH_TYPE("on_live_range", {
+          llvm::dbgs() << "; action = updateOperandsLiveRange"
+                      << "; step = opd_skip"
+                      << "\n";
+        });
         continue;
       }
       ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
+      DEBUG_WITH_TYPE("on_live_range", {
+        llvm::dbgs() << "; action = updateOperandsLiveRange"
+                    << "; step = opd_find"
+                    << "; opd_loc = " << module::getName(operand)
+                    << "; vinfo.index = " << v_info.index
+                    << "\n";
+      });
       if (liveRange.find(v_info) != liveRange.end()) {
         // not first, update operand's liverange
+        DEBUG_WITH_TYPE("on_live_range", {
+          llvm::dbgs() << "; action = updateOperandsLiveRange"
+                      << "; step = opd_first_meet_before"
+                      << "; live_start = " << liveRange[v_info].start
+                      << "; live_end = " << liveRange[v_info].end
+                      << "; loc = " << module::getName(v_info.op)
+                      << "; op = " << v_info.op->getName()
+                      << "; position = " << ops_loc[opd]
+                      << "\n";
+        });
         liveRange[v_info].start =
             std::min(liveRange[v_info].start, ops_loc[opd]);
         liveRange[v_info].end = std::max(liveRange[v_info].end, endPosition);
+        DEBUG_WITH_TYPE("on_live_range", {
+          llvm::dbgs() << "; action = update_live_range"
+                      << "; step = opd_first_meet_after"
+                      << "; live_start = " << liveRange[v_info].start
+                      << "; live_end = " << liveRange[v_info].end
+                      << "; loc = " << module::getName(v_info.op)
+                      << "; op = " << v_info.op->getName()
+                      << "; position = " << ops_loc[opd]
+                      << "\n";
+        });
       } else {
         // first update the operand, set its start, end and tensor_size
+        DEBUG_WITH_TYPE("on_live_range", {
+          llvm::dbgs() << "; action = update_live_range"
+                      << "; step = opd_second_meet_before"
+                      << "; live_start = " << liveRange[v_info].start
+                      << "; live_end = " << liveRange[v_info].end
+                      << "; loc = " << module::getName(v_info.op)
+                      << "; op = " << v_info.op->getName()
+                      << "\n";
+        });
         liveRange[v_info].start = ops_loc[opd];
         liveRange[v_info].end = endPosition;
         liveRange[v_info].tensor_size =
             getTensorGmemSize(opd, v_info.index, alignment);
+
+        DEBUG_WITH_TYPE("on_live_range", {
+          llvm::dbgs() << "; action = update_live_range"
+                      << "; step = opd_second_meet_after"
+                      << "; live_start = " << liveRange[v_info].start
+                      << "; live_end = " << liveRange[v_info].end
+                      << "; loc = " << module::getName(v_info.op)
+                      << "; op = " << v_info.op->getName()
+                      << "; position = " << ops_loc[opd]
+                      << "; tensor_size = " << liveRange[v_info].tensor_size
+                      << "\n";
+        });
       }
 
       if (isInPlaceOp(op)) {
+        // if op is inplace op, operand live_end should be the same as op's
         ValueInfo op_info(op, 0);
+        DEBUG_WITH_TYPE("live_range", {
+          llvm::dbgs() << "; action = live_range"
+                      << "; step = inplace_op_reset_before"
+                      << "; live_start = " << liveRange[v_info].start
+                      << "; live_end = " << liveRange[v_info].end
+                      << "; loc = " << module::getName(v_info.op)
+                      << "; inplace_op = " << module::getName(op)
+                      << "; op = " << v_info.op->getName()
+                      << "; op_info.live_range.end = " << liveRange[op_info].end
+                      << "; v_info.live_range.end = " << liveRange[v_info].end
+                      << "\n";
+        });
         liveRange[v_info].end =
             std::max(liveRange[op_info].end, liveRange[v_info].end);
+        DEBUG_WITH_TYPE("live_range", {
+          llvm::dbgs() << "; action = live_range"
+                      << "; step = inplace_op_reset_after"
+                      << "; loc = " << module::getName(operand)
+                      << "; live_start = " << liveRange[v_info].start
+                      << "; live_end = " << liveRange[v_info].end
+                      << "; "
+                      << "\n";
+        });
       }
 
       if (isa<top::InputOp>(opd) ||
@@ -837,7 +938,22 @@ void BMAddressAssign::updateLiveRangeofBMOps(
           dfs(dfs, opd);
         }
       }
+
+      DEBUG_WITH_TYPE("on_live_range", {
+        llvm::dbgs() << "; action = updateOperandsLiveRange"
+                    << "; step = opd_end"
+                    << "; opd_type = " << opd->getName()
+                    << "; opd_loc = " << module::getName(operand)
+                    << "; opd_index = " << i
+                    << "\n";
+      });
     }
+    DEBUG_WITH_TYPE("on_live_range", {
+      llvm::dbgs() << "; action = updateOperandsLiveRange"
+                  << "; step = end"
+                  << "; op = " << module::getName(op)
+                  << "\n";
+    });
   };
   auto updateSOLOLiveRange = [&](Operation *op, ValueInfo v_info,
                                  uint32_t endPosition) {
@@ -845,6 +961,18 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     liveRange[v_info].end = endPosition;
     liveRange[v_info].tensor_size =
         getTensorGmemSize(op, v_info.index, alignment);
+
+    DEBUG_WITH_TYPE("live_range", {
+        llvm::dbgs() << "; action = live_range"
+        << "; step = update_solo"
+        << "; live_start = " << liveRange[v_info].start
+        << "; live_end = " << liveRange[v_info].end
+        << "; loc = " << module::getName(v_info.op)
+        << "; op = " << v_info.op->getName()
+        << "; tensor_size = " << liveRange[v_info].tensor_size
+        << "; index = " << v_info.index
+        << "\n";
+    });
   };
   ValueInfo v(op, index);
   uint32_t loc = ops_loc[op];
@@ -888,6 +1016,17 @@ void BMAddressAssign::updateLiveRangeofBMOps(
           liveRange[pre_v].tensor_size = 0;
           opd = rop.getInput();
           preOp = opd.getDefiningOp();
+          DEBUG_WITH_TYPE("live_range", {
+              llvm::dbgs() << "; action = live_range"
+                          << "; step = concat_reshape_opd_reset"
+                          << "; live_start = " << liveRange[pre_v].start
+                          << "; live_end = " << liveRange[pre_v].end
+                          << "; loc = " << module::getName(pre_v.op)
+                          << "; op = " << pre_v.op->getName()
+                          << "; tensor_size = " << liveRange[pre_v].tensor_size
+                          << "; opd_index = " << i
+                          << "\n";
+            });
         }
         ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
         liveRange[pre_v].start = concatLive[0];
@@ -897,6 +1036,18 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         } else {
           liveRange[pre_v].tensor_size = 0;
         }
+
+        DEBUG_WITH_TYPE("live_range", {
+          llvm::dbgs() << "; action = live_range"
+                       << "; step = inplace_concat"
+                       << "; live_start = " << liveRange[pre_v].start
+                       << "; live_end = " << liveRange[pre_v].end
+                       << "; loc = " << module::getName(pre_v.op)
+                       << "; op = " << pre_v.op->getName()
+                       << "; tensor_size = " << liveRange[pre_v].tensor_size
+                       << "; opd_index = " << i
+                       << "\n";
+        });
       }
       inplace_ops.emplace_back(v);
     } else {

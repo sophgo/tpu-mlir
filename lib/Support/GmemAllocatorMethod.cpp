@@ -211,13 +211,26 @@ GmemAllocFitFirst::assignGaddr(std::vector<ValueInfo> &ops,
     auto out_index = op.index;
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
-    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName() << ", name:"
-                            << module::getName(real_op->getResult(out_index))
-                            << ", addr:" << gaddrMap_[op] << ", baseGaddr:"
-                            << baseGaddr << ", size:" << tensor_size
-                            << ", end:" << gaddrMap_[op] + tensor_size
-                            << ", range:" << liveRange[op].start << " ~ "
-                            << liveRange[op].end << "\n";);
+    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName()
+                 << ", name:" << module::getName(real_op->getResult(out_index))
+                 << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
+                 << ", size:" << tensor_size
+                 << ", end:" << gaddrMap_[op] + tensor_size
+                 << ", range:" << liveRange[op].start << " ~ "
+                 << liveRange[op].end << "\n";);
+
+    DEBUG_WITH_TYPE("gmem_allocator",{
+       llvm::errs()
+                <<"; action = assignGaddr"
+                <<"; step = GmemAllocFitFirst"
+                <<"; op = " << real_op->getName()
+                <<"; loc = " << module::getName(real_op->getResult(out_index))
+                <<"; start_addr = " << gaddrMap_[op]
+                <<"; end_addr = " << gaddrMap_[op] + tensor_size
+                <<"; tensor_size = " << tensor_size
+                <<"; live_start = " << liveRange[op].start
+                << "; live_end = " << liveRange[op].end << "\n";
+    });
   }
   return totalGmemUsed;
 }
@@ -309,13 +322,26 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
     auto out_index = op.index;
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
-    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName() << ", name:"
-                            << module::getName(real_op->getResult(out_index))
-                            << ", addr:" << gaddrMap_[op] << ", baseGaddr:"
-                            << baseGaddr << ", size:" << tensor_size
-                            << ", end:" << gaddrMap_[op] + tensor_size
-                            << ", range:" << liveRange[op].start << " ~ "
-                            << liveRange[op].end << "\n";);
+    LLVM_DEBUG(llvm::errs() << "op:" << real_op->getName()
+                 << ", name:" << module::getName(real_op->getResult(out_index))
+                 << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
+                 << ", size:" << tensor_size
+                 << ", end:" << gaddrMap_[op] + tensor_size
+                 << ", range:" << liveRange[op].start << " ~ "
+                 << liveRange[op].end << "\n";);
+
+    DEBUG_WITH_TYPE("gmem_allocator",{
+       llvm::errs()
+                <<"; action = assignGaddr"
+                <<"; step = GmemAllocOpSizeOrder"
+                <<"; op = " << real_op->getName()
+                <<"; loc = " << module::getName(real_op->getResult(out_index))
+                <<"; start_addr = " << gaddrMap_[op]
+                <<"; end_addr = " << gaddrMap_[op] + tensor_size
+                <<"; tensor_size = " << tensor_size
+                <<"; live_start = " << liveRange[op].start
+                << "; live_end = " << liveRange[op].end << "\n";
+    });
   }
   return total_consumption;
 }

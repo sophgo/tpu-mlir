@@ -249,6 +249,13 @@ typedef struct shape_secs {
 
 } shape_secs_t;
 
+typedef enum {
+  NOT_CHECK = 0,
+  NOT_VALID = 1,
+  VALID = 2,
+} group_valid_type_t;
+
+
 struct LgInfo {
   LgInfo() { this->clear(); }
   ~LgInfo() { this->clear(); }
@@ -259,6 +266,10 @@ struct LgInfo {
     this->group_outs.clear();
     this->group_op_outs.clear();
     this->type = GROUP_NORMAL;
+    this->base_group_idx = -1;
+    this->cache_key = -1;
+    this->group_cost = 0;
+    this->is_valid = NOT_CHECK;
   }
 
   void update_group_io(int opt = 2) {
@@ -390,14 +401,18 @@ struct LgInfo {
   bool use_cache = false;
   shape_secs_t shape_secs;
   int64_t group_cost;
+  int64_t base_group_idx = -1;
+  int64_t cache_key = -1;
   // layer group type
   group_type_t type;
   int64_t group_id = 0;
+  group_valid_type_t is_valid = NOT_CHECK;
 
   std::vector<int> free_cores;
   std::map<std::string, std::vector<std::string>> group_banked_tensors;
   int _opt = 2;
 };
+
 
 typedef enum {
   STRATEGY_NORMAL = 0,

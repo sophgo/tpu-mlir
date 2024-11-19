@@ -16,19 +16,19 @@ namespace tpu {
 void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
                                                        TensorInfo &tensor_infos,
                                                        const LgInfo &lg_info) {
-  const std::vector<Operation *> &group = lg_info.group_ops;
+  const std::vector<Operation *> &group_ops = lg_info.group_ops;
   bool have_load_tensor;
-  TpuTsField layer_field;
-  GdmaTsField tensor_field;
+  TpuTsField tpu_field;
+  GdmaTsField gdma_field;
   std::set<Value, value_compare> tensor_in_lmem;
 
   Operation *op;
   tensor_info_t tensor_info;
-  for (size_t i = 0; i < group.size(); ++i) {
-    op = group[i];
+  for (size_t i = 0; i < group_ops.size(); ++i) {
+    op = group_ops[i];
     // layer: 0
     if (i == 0) {
-      tensor_field.clear();
+      gdma_field.clear();
       have_load_tensor = false;
       for (auto in : op->getOperands()) {
         if (in.getType().isa<NoneType>()) {
@@ -40,26 +40,26 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
             tensor_info = iter->second;
           }
           tensor_info.mode = TIMESTEP_LOAD;
-          tensor_field.push_back(std::make_pair(in, tensor_info));
+          gdma_field.push_back(std::make_pair(in, tensor_info));
           have_load_tensor = true;
           tensor_in_lmem.insert(in);
         }
       }
       if (have_load_tensor) {
-        time_step->add_gdma0_ts_field(tensor_field);
+        time_step->add_gdma0_ts_field(gdma_field);
       }
     }
 
-    layer_field.clear();
-    tensor_field.clear();
+    tpu_field.clear();
+    gdma_field.clear();
     for (auto out : get_output_values(op)) {
       tensor_in_lmem.insert(out);
     }
-    layer_field.push_back(op);
+    tpu_field.push_back(op);
 
     // layer: [1, N-1)
-    if (i != group.size() - 1) {
-      auto next_op = group[i + 1];
+    if (i != group_ops.size() - 1) {
+      auto next_op = group_ops[i + 1];
       for (auto next_in : next_op->getOperands()) {
         if (next_in.getType().isa<NoneType>()) {
           continue;
@@ -70,41 +70,41 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
             tensor_info = iter->second;
           }
           tensor_info.mode = TIMESTEP_LOAD;
-          tensor_field.push_back(std::make_pair(next_in, tensor_info));
+          gdma_field.push_back(std::make_pair(next_in, tensor_info));
           tensor_in_lmem.insert(next_in);
         }
       }
     }
 
     if (i > 0) {
-      auto pre_op = group[i - 1];
+      auto pre_op = group_ops[i - 1];
       for (auto pre_out : get_output_values(pre_op)) {
         if (std::find(lg_info.group_outs.begin(), lg_info.group_outs.end(),
                       pre_out) != lg_info.group_outs.end()) {
           tensor_info = tensor_infos[pre_out];
           tensor_info.mode = TIMESTEP_STORE;
-          tensor_field.push_back(std::make_pair(pre_out, tensor_info));
+          gdma_field.push_back(std::make_pair(pre_out, tensor_info));
         }
       }
     }
 
-    if (!(layer_field.empty() && tensor_field.empty())) {
-      time_step->add_tpu0_gdma0_ts_field(layer_field, tensor_field);
+    if (!(tpu_field.empty() && gdma_field.empty())) {
+      time_step->add_tpu0_gdma0_ts_field(tpu_field, gdma_field);
     }
 
-    if (i == group.size() - 1) {
-      tensor_field.clear();
+    if (i == group_ops.size() - 1) {
+      gdma_field.clear();
       for (auto out : get_output_values(op)) {
         tensor_info = tensor_infos[out];
         tensor_info.mode = TIMESTEP_STORE;
-        tensor_field.push_back(std::make_pair(out, tensor_info));
+        gdma_field.push_back(std::make_pair(out, tensor_info));
       }
-      time_step->add_gdma0_ts_field(tensor_field);
+      time_step->add_gdma0_ts_field(gdma_field);
     }
   }
 
   // use software pipeline
-  if (group.size() > 1) {
+  if (group_ops.size() > 1) {
     time_step->software_pipeline();
   }
 }
@@ -164,41 +164,41 @@ void TimeStepMethod::bubble_tensor_to_best_ts(
 
   bool is_valid;
   int64_t pre_ts = cur_ts;
-  int64_t to_ts = get_to_ts(is_valid, cur_ts, gdma_type, best_ts);
+  int64_t next_ts = get_next_ts(is_valid, cur_ts, gdma_type, best_ts);
   while (is_valid) {
-    tensor_timesteps[to_ts].push_back(*sel_list_iter);
-    timestep_cycle_slack[to_ts] -= tensor_to_cycle[best_sel_tensor];
+    tensor_timesteps[next_ts].push_back(*sel_list_iter);
+    timestep_cycle_slack[next_ts] -= tensor_to_cycle[best_sel_tensor];
     tensor_timesteps[pre_ts].erase(sel_list_iter);
     timestep_cycle_slack[pre_ts] += tensor_to_cycle[best_sel_tensor];
 
-    if (to_ts == best_ts) {
+    if (next_ts == best_ts) {
       break;
     }
 
     if (gdma_type == TIMESTEP_STORE &&
-        is_tensor_accessed_by_npu(best_sel_tensor, time_step, to_ts)) {
-      sel_list_iter = tensor_timesteps[to_ts].end();
+        is_tensor_accessed_by_npu(best_sel_tensor, time_step, next_ts)) {
+      sel_list_iter = tensor_timesteps[next_ts].end();
       sel_list_iter--;
     } else {
       max_profit = 0;
       find_best = false;
-      for (auto list_iter = tensor_timesteps[to_ts].begin();
-           list_iter != tensor_timesteps[to_ts].end(); ++list_iter) {
+      for (auto list_iter = tensor_timesteps[next_ts].begin();
+           list_iter != tensor_timesteps[next_ts].end(); ++list_iter) {
         if (gdma_type != list_iter->second.mode) {
           continue;
         }
         tensor = list_iter->first;
         int64_t new_range_end =
-            time_step->get_tensor_range_end(*list_iter, to_ts);
+            time_step->get_tensor_range_end(*list_iter, next_ts);
         if ((is_timestep_load(gdma_type) && new_range_end > best_ts) ||
             (gdma_type == TIMESTEP_STORE && new_range_end < best_ts) ||
             (gdma_type == TIMESTEP_STORE &&
              is_tensor_accessed_by_npu(tensor, time_step, best_ts))) {
           continue;
         }
-        cur_new_slack = timestep_cycle_slack[to_ts] + tensor_to_cycle[tensor];
+        cur_new_slack = timestep_cycle_slack[next_ts] + tensor_to_cycle[tensor];
         cur_profit = std::min(cur_new_slack, (int64_t)0) -
-                     std::min(timestep_cycle_slack[to_ts], (int64_t)0);
+                     std::min(timestep_cycle_slack[next_ts], (int64_t)0);
 
         dst_cost = timestep_cycle_slack[best_ts] - tensor_to_cycle[tensor];
         dst_cost = dst_cost >= 0 ? 0 : dst_cost;
@@ -216,8 +216,8 @@ void TimeStepMethod::bubble_tensor_to_best_ts(
         break;
       }
     }
-    pre_ts = to_ts;
-    to_ts = get_to_ts(is_valid, to_ts, gdma_type, best_ts);
+    pre_ts = next_ts;
+    next_ts = get_next_ts(is_valid, next_ts, gdma_type, best_ts);
   }
 }
 
@@ -312,18 +312,18 @@ void TimeStepMethod::get_timestep_cycle_slack(
   }
 }
 
-int64_t TimeStepMethod::get_to_ts(bool &is_valid, int64_t cur_ts,
+int64_t TimeStepMethod::get_next_ts(bool &is_valid, int64_t cur_ts,
                                   TIMESTEP_LD_ST ld_st, int64_t range_end) {
-  int64_t to_ts = 0;
+  int64_t next_ts = 0;
   if (is_timestep_load(ld_st)) {
-    to_ts = cur_ts - 1;
-    is_valid = to_ts >= range_end;
+    next_ts = cur_ts - 1;
+    is_valid = next_ts >= range_end;
   } else {
-    to_ts = cur_ts + 1;
-    is_valid = to_ts <= range_end;
+    next_ts = cur_ts + 1;
+    is_valid = next_ts <= range_end;
   }
 
-  return to_ts;
+  return next_ts;
 }
 
 int64_t
@@ -348,36 +348,36 @@ TimeStepMethod::get_best_ts(BasicTimeStep *time_step, const LgInfo &lg_info,
 
     auto gdma_type = list_iter->second.mode;
     int64_t range_end = time_step->get_tensor_range_end(*list_iter, cur_ts);
-    int64_t to_ts = get_to_ts(is_valid, cur_ts, gdma_type, range_end);
+    int64_t next_ts = get_next_ts(is_valid, cur_ts, gdma_type, range_end);
 
     while (is_valid) {
       if (gdma_type == TIMESTEP_STORE &&
-          is_tensor_accessed_by_npu(tensor, time_step, to_ts)) {
-        to_ts = get_to_ts(is_valid, to_ts, gdma_type, range_end);
+          is_tensor_accessed_by_npu(tensor, time_step, next_ts)) {
+        next_ts = get_next_ts(is_valid, next_ts, gdma_type, range_end);
         continue;
       }
-      if (timestep_cycle_slack[to_ts] > 0) {
-        dst_cost = timestep_cycle_slack[to_ts] - tensor_to_cycle[tensor];
+      if (timestep_cycle_slack[next_ts] > 0) {
+        dst_cost = timestep_cycle_slack[next_ts] - tensor_to_cycle[tensor];
         dst_cost = dst_cost >= 0 ? 0 : dst_cost;
-        cur_area = tensor_to_bufsize[tensor] * (std::abs(to_ts - cur_ts) + 1);
+        cur_area = tensor_to_bufsize[tensor] * (std::abs(next_ts - cur_ts) + 1);
         cur_profit = src_profit + dst_cost;
         if (cur_profit > max_profit) {
           max_profit = cur_profit;
-          best_ts = to_ts;
+          best_ts = next_ts;
           sel_list_iter = list_iter;
           best_sel_tensor = tensor;
           best_area = cur_area;
         } else if (cur_profit == max_profit && best_ts != -1) {
           if (cur_area < best_area) {
             max_profit = cur_profit;
-            best_ts = to_ts;
+            best_ts = next_ts;
             sel_list_iter = list_iter;
             best_sel_tensor = tensor;
             best_area = cur_area;
           }
         }
       }
-      to_ts = get_to_ts(is_valid, to_ts, gdma_type, range_end);
+      next_ts = get_next_ts(is_valid, next_ts, gdma_type, range_end);
     }
   }
   return best_ts;
