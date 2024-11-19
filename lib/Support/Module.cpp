@@ -2060,5 +2060,50 @@ bool IsRightMat(Value v) {
   return false;
 }
 
+bool isOpSameCalc(Operation *op0, Operation *op1) {
+  auto compare = [&](mlir::ValueRange left, mlir::ValueRange right) -> bool {
+    for (auto it : llvm::zip(left, right)) {
+      auto left = std::get<0>(it);
+      auto right = std::get<1>(it);
+      if (module::isNone(left) || module::isNone(right)) {
+        continue;
+      }
+      auto l_s = module::getShape(left);
+      auto r_s = module::getShape(right);
+      if (l_s != r_s) {
+        return false;
+      }
+    }
+    return true;
+  };
+  if (op0 == op1) {
+    // can't be the same op
+    return false;
+  }
+  if (op0->getName() != op1->getName()) {
+    return false;
+  }
+  if (false == compare(op0->getOperands(), op1->getOperands())) {
+    return false;
+  }
+  if (false == compare(op0->getResults(), op1->getResults())) {
+    return false;
+  }
+  return true;
+}
+
+bool isOpSameCalc(const std::vector<Operation *> &ops) {
+  if (ops.size() < 2) {
+    return false;
+  }
+  for (int i = 1; i < ops.size(); i++) {
+    if (!isOpSameCalc(ops[0], ops[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
 } // namespace module
 } // namespace tpu_mlir

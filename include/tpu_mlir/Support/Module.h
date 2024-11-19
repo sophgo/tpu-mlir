@@ -347,6 +347,10 @@ bool startsWith(const std::string &fullString,
                 const std::string &startingSubstring);
 bool endsWith(const std::string &fullString, const std::string &suffix);
 bool IsRightMat(Value v);
+
+bool isOpSameCalc(Operation *op0, Operation *op1);
+bool isOpSameCalc(const std::vector<Operation *> &ops);
+
 } // namespace module
 
 #define ASSERT_OP(COND, OP)                                                    \
