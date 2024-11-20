@@ -337,10 +337,17 @@ int64_t GmemAllocL2SRAM::assignGaddr(std::vector<ValueInfo> &ops,
   assert(neuronMemoryReuse);
   for (auto &info : ops) {
     auto op_ = (Operation *)info.op;
-    bool is_must = isa<tpu::BufferOp>(op_);
+    bool is_must = false;
+    if (auto bOp = dyn_cast<tpu::BufferOp>(op_)) {
+      if (bOp.getBufferType() == tpu::BufferType::L2) {
+        is_must = true;
+      }
+    }
     uint32_t op_size = liveRange[info].tensor_size;
     if (op_size > l2sram_size) {
       if (!is_must) {
+        op_->dump();
+        llvm::errs() << "WARNING: Buffer is not in L2SRam !!!!\n";
         continue;
       }
       UNREACHABLE_OP("L2SRam is smaller than op must", op_);
