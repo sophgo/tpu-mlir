@@ -39,8 +39,8 @@ def _convert_gdma(buf):
     # print("{")
     # print("BEGIN_FAST_GEN_CMD(GDMA)")
     for index, i in enumerate(range(0, len(buf), 16)):
-        low = struct.unpack("Q", buf[i:i + 8])[0]
-        high = struct.unpack("Q", buf[i + 8:i + 16])[0]
+        low = struct.unpack("Q", buf[i : i + 8])[0]
+        high = struct.unpack("Q", buf[i + 8 : i + 16])[0]
         print(f"WRITE_CMD_GDMA({index,high,low})")
     #     print(f"WRITE_CMD_GDMA({index}, high, low);")
     # print("END_FAST_GEN_CMD(GDMA, pid_node)")
@@ -51,8 +51,8 @@ def _convert_bdc(buf):
     # print("{")
     # print("BEGIN_FAST_GEN_CMD(BD)")
     for index, i in enumerate(range(0, len(buf), 16)):
-        low = struct.unpack("Q", buf[i:i + 8])[0]
-        high = struct.unpack("Q", buf[i + 8:i + 16])[0]
+        low = struct.unpack("Q", buf[i : i + 8])[0]
+        high = struct.unpack("Q", buf[i + 8 : i + 16])[0]
         print(f"WRITE_CMD_BD({index}, {high}, {low});")
     # print("END_FAST_GEN_CMD(BD, pid_node)")
     # print("}")
@@ -63,7 +63,7 @@ def memcpy_addr_mask(addr):
 
 
 def memtag(addr):
-    return ((addr >> 36) & 0x7)
+    return (addr >> 36) & 0x7
 
 
 class soc_launch_struct:
@@ -78,12 +78,17 @@ class soc_launch_struct:
 
 
 class BM1688Runner(DeviceRunner):
-    lib_name = "libatomic_exec_bm1688.so" if platform.machine(
-    ) == 'x86_64' else 'libatomic_exec_bm1688_aarch64.so'
+    lib_name = (
+        "libatomic_exec_bm1688.so"
+        if platform.machine() == "x86_64"
+        else "libatomic_exec_bm1688_aarch64.so"
+    )
 
     soc_structs = []
     memory: "Memory"
-    kernel_fn = os.path.join(os.environ["TPUC_ROOT"], "lib/libbmtpulv60_kernel_module.so")
+    kernel_fn = os.path.join(
+        os.environ["TPUC_ROOT"], "lib/libbmtpulv60_kernel_module.so"
+    )
 
     def __init__(self, memory_size=None):
         super().__init__()
@@ -93,7 +98,11 @@ class BM1688Runner(DeviceRunner):
             ctypes.c_void_p,
             ctypes.POINTER(ctypes.c_uint32),
         ]
-        self.lib.init_memory.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_ulonglong]
+        self.lib.init_memory.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_ulonglong,
+        ]
         self.lib.init_memory.restype = ctypes.c_ulonglong
         self.lib.init_handle.restype = ctypes.c_void_p
         self.lib.memcpy_l2s.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint]
@@ -227,8 +236,14 @@ class BM1688Runner(DeviceRunner):
             else:
                 dma.append(cmditer[cur_cmd_point + buf_cmds])
 
-            result_not_empty = (len(df.loc[df["executed_id"] == cur_cmd_point + 1 + buf_cmds,
-                                           "results"].tolist()[0]) > 0)
+            result_not_empty = (
+                len(
+                    df.loc[
+                        df["executed_id"] == cur_cmd_point + 1 + buf_cmds, "results"
+                    ].tolist()[0]
+                )
+                > 0
+            )
 
             if result_not_empty:
                 break
@@ -336,7 +351,9 @@ class Memory(DeviceMemory):
                 n_offset = nidx * stride[0]
                 for cidx in range(0, shape[1]):
                     npu_idx = (start_npu_idx + cidx) % info.NPU_NUM
-                    LMEM = self.LMEM[self.core_id][npu_idx * info.LANE_SIZE:(npu_idx + 1) * info.LANE_SIZE]
+                    LMEM = self.LMEM[self.core_id][
+                        npu_idx * info.LANE_SIZE : (npu_idx + 1) * info.LANE_SIZE
+                    ]
                     c_offset = ((start_npu_idx + cidx) // info.NPU_NUM) * stride[1]
                     h_offset = np.arange(0, shape[2]) * stride[2]
                     w_offset = np.arange(0, shape[3]) * stride[3]
@@ -346,7 +363,9 @@ class Memory(DeviceMemory):
                     ).ravel()
                     index = start_offset + (dst_offset >> 1)
                     values = LMEM[index].view(np.uint8)
-                    result[nidx][cidx] = np.where(dst_offset & 1 == 0, values & 0xF, values >> 4)
+                    result[nidx][cidx] = np.where(
+                        dst_offset & 1 == 0, values & 0xF, values >> 4
+                    )
             result.reshape(shape)
             if memref.dtype == DType.si4:
                 return np.where(result > 7, result - 16, result).astype(np.int8)
@@ -355,7 +374,7 @@ class Memory(DeviceMemory):
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * info.LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[self.core_id][offset:offset + 4].view(memref.np_dtype),
+                self.LMEM[self.core_id][offset : offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
@@ -364,56 +383,45 @@ class Memory(DeviceMemory):
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
             n_s, c_s, h_s, w_s = stride
-            _shape = [n, (NPU_OFFSET + c + info.NPU_NUM - 1) // info.NPU_NUM, info.NPU_NUM, h, w]
+            _shape = [
+                n,
+                (NPU_OFFSET + c + info.NPU_NUM - 1) // info.NPU_NUM,
+                info.NPU_NUM,
+                h,
+                w,
+            ]
             _stride = (n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
-            return data_view(_shape, _stride).reshape(n, -1, h, w)[:n,
-                                                                   NPU_OFFSET:NPU_OFFSET + c, :, :]
+            return data_view(_shape, _stride).reshape(n, -1, h, w)[
+                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+            ]
 
         def get_stride_data():
             if memref.dtype in (DType.i4, DType.si4, DType.ui4):
                 return data_view_int4(memref.shape, memref.stride)
             return get_stride_data_base(memref.shape, memref.stride)
 
-        def get_64ic_data():
+        def get_alignic_data():
             n, c, h, w = memref.shape
-            shape = ((n + 63) // 64, 64, (c + 63) // 64, 64, h, w)
-            stride = (
-                (c + 63) // 64 * 64 * h * w,
-                info.LANE_SIZE // itemsize,
-                64 * h * w,
-                1,
-                64 * w,
-                64,
-            )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
-                                                    w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
-
-        def get_32ic_data():
-            n, c, h, w = memref.shape
-            shape = ((n + 63) // 64, 64, (c + 32) // 32, 32, h, w)
-            stride = (
-                (c + 32) // 32 * 32 * h * w,
-                info.LANE_SIZE // itemsize,
-                32 * h * w,
-                1,
-                32 * w,
-                32,
-            )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
-                                                    w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
-
-        def get_1ic_data():
-            n, c, h, w = memref.shape
-            shape = ((n + 63) // 64, 64, c, h, w)
-            stride = (
-                c * h * w,
-                info.LANE_SIZE // itemsize,
-                h * w,
+            cube_num = info.CUBE_NUM(memref.dtype)
+            shape = (
+                div_up(n, info.NPU_NUM),
+                info.NPU_NUM,
+                div_up(c, cube_num),
+                cube_num,
+                h,
                 w,
-                1,
             )
-            return data_view(shape, stride).reshape(-1, c, h, w)[:n,
-                                                                 NPU_OFFSET:NPU_OFFSET + c, :, :]
+            stride = (
+                align_up(c, cube_num) * h * w,
+                int(info.LANE_SIZE / itemsize),
+                cube_num * h * w,
+                1,
+                cube_num * w,
+                cube_num,
+            )
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
+                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+            ]
 
         def get_matrix_data():
             r, c = memref.shape
@@ -435,10 +443,12 @@ class Memory(DeviceMemory):
             return get_stride_data_base(shape, stride).reshape(r, c)
 
         def _lane_mask_filter(c, lane_mask):
-            lane_mask = np.unpackbits(np.uint64([lane_mask]).view(np.uint8), bitorder="little")
+            lane_mask = np.unpackbits(
+                np.uint64([lane_mask]).view(np.uint8), bitorder="little"
+            )
             _c = (NPU_OFFSET + c + 63) // 64
             index = np.zeros(_c * 64, bool)
-            index[NPU_OFFSET:NPU_OFFSET + c] = True
+            index[NPU_OFFSET : NPU_OFFSET + c] = True
             index = index.reshape(_c, 64)
             index[:, lane_mask == 0] = False
             return index.flatten()
@@ -453,7 +463,13 @@ class Memory(DeviceMemory):
 
         def get_dma_stride_data(_memref=memref):
             n, c, h, w = _memref.shape
-            shape = (n, (NPU_OFFSET + c + info.NPU_NUM - 1) // info.NPU_NUM, info.NPU_NUM, h, w)
+            shape = (
+                n,
+                (NPU_OFFSET + c + info.NPU_NUM - 1) // info.NPU_NUM,
+                info.NPU_NUM,
+                h,
+                w,
+            )
             n_s, c_s, h_s, w_s = _memref.stride
             stride = (n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, _memref.layout.args[0])
@@ -475,12 +491,10 @@ class Memory(DeviceMemory):
             Layout.compact: get_stride_data,
             Layout.offset: get_stride_data,
             Layout.stride: get_stride_data,
-            Layout._64IC: get_64ic_data,
-            Layout._32IC: get_32ic_data,
-            Layout._1IC: get_1ic_data,
+            Layout.alignIC: get_alignic_data,
             Layout.matrix: get_matrix_data,
             Layout.matrix2: get_matrix2_data,
-            Layout.T3: get_stride_data,
+            Layout.alignLine: get_stride_data,
             Layout.T4: get_stride_data,
             Layout.T5: get_stride_data,
             Layout.DMA4Bank: get_dma4bank_data,
@@ -510,7 +524,9 @@ class Memory(DeviceMemory):
             dst_offset = _cal_offset(offsets).ravel()
             index = memref.r_addr + (dst_offset >> 1)
             values = self.DDR[index].view(np.uint8)
-            result = np.where(dst_offset & 1 == 0, values & 0xF, values >> 4).reshape(shape)
+            result = np.where(dst_offset & 1 == 0, values & 0xF, values >> 4).reshape(
+                shape
+            )
             if memref.dtype == DType.si4:
                 return np.where(result > 7, result - 16, result).astype(np.int8)
             return result
@@ -520,7 +536,7 @@ class Memory(DeviceMemory):
         #     if memref.shape[i] != 0 and memref.stride[i] != 0:
         #         elements = memref.shape[i] * memref.stride[i]
         #         break
-        for i in range(4):
+        for i in range(len(memref.shape)):
             elements += (memref.shape[i] - 1) * memref.stride[i]
 
         raw_data = np.zeros(elements, dtype=memref.np_dtype)

@@ -26,19 +26,23 @@ from .target_common import (
     BaseCmd,
     use_backend,
     StaticCmdGroup,
+    LazyInfo
 )
-from .target_1684.context import BM1684Context
-from .target_1688.context import BM1688Context
-from .target_1690.context import BM1690Context
-from .target_2380.context import SG2380Context
-from .target_mars3.context import MARS3Context
+
 import functools
 import textwrap
 
 INDENT_SPACE = "  "
 
 
+
+
+
 def BModel2MLIR(bmodel_net: BModel):
+    from .target_1688.context import BM1688Context
+    from .target_2380.context import SG2380Context
+    from .target_mars3.context import MARS3Context
+
     with use_backend(bmodel_net.chip) as context:
         if isinstance(context, BM1688Context) or isinstance(context, SG2380Context) or isinstance(context, MARS3Context):
             coeff = bmodel_net.net[0].parameter[0].coeff_mem
@@ -187,6 +191,9 @@ class Block(Node):
                     for core_id, x in enumerate(subnet.core_commands)
                     for cmd in x.gdma_tiu_commands
                 ]
+                from .target_1688.context import BM1688Context
+                from .target_2380.context import SG2380Context
+                from .target_1690.context import BM1690Context
 
                 if isinstance(context, BM1690Context):
                     from .target_1690.multi_core import MultiCore, MsgCore
@@ -223,7 +230,7 @@ class Block(Node):
                     decode_cmdgroup(context, x, self.subnet_id)
                     for x in subnet.cmd_group
                 ]
-
+                from .target_1684.context import BM1684Context
                 if isinstance(context, BM1684Context):
                     # tricky make cmd_id of cmd groups after first but in the same subnet add offset from previou cmd_id
                     if len(self.cmds[0].tiu) > 0:

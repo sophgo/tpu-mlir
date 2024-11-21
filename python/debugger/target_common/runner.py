@@ -130,7 +130,7 @@ def open_lib(lib_name):
                 lib_full_name = os.path.join(path, lib_name)
                 break
         if not lib_full_name:
-            raise OSError
+            raise FileNotFoundError()
 
         # lib_temp_name = temp_position(lib_full_name)
 

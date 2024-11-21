@@ -15,6 +15,7 @@ import math
 import re
 import shutil
 import textwrap
+import functools
 
 _DEPTH = 0
 
@@ -51,6 +52,7 @@ class TaskDep:
                 for file in gen_files:
                     that.gen_file_map.setdefault(file, []).append(func.__name__)
 
+            @functools.wraps(func)
             def inner(self, target_file: str, *args, **kwargs):
                 recorder = CommandRecorder(target_file, read=True)
                 target = RefFile(**recorder.dic)
@@ -244,6 +246,7 @@ class DebugProperty(BaseModel):
     chip: str
     deploy_pwd: Optional[str] = None
     compare_all: Optional[bool] = None
+    cache_mode: Optional[str] = None
 
 
 class DebugCommand(BaseModel):
@@ -718,7 +721,7 @@ class DebugBase:
 
         content = "\n".join(lines)
         Path(f"{mlir}.loc.mlir").write_text(content)
-        print(f"{mlir}.loc.mlir")
+        logger.info(f"write to {mlir}.loc.mlir")
 
 
 class DebugMetric(DebugBase):
@@ -741,9 +744,7 @@ class DebugMetric(DebugBase):
 
         command_args = [target.files.context_dir.path, "--ref_data", ref_data]
         logger.debug(f"run tdb.py {' '.join(command_args)}")
-        tdb = get_tdb(
-            command_args
-        )
+        tdb = get_tdb(command_args)
         tdb.cmdloop()
 
     @check(
@@ -797,6 +798,49 @@ class DebugMetric(DebugBase):
             )
             if ret != 0:
                 raise RuntimeError(f"bmodel_checker failed: {output}")
+
+    @check()
+    def task_bmodel_checker_cache(self, target_file: str):
+        """prepare soc infer cache data"""
+        target_recorder = CommandRecorder(target_file, read=True)
+        target = RefFile(**target_recorder.dic)
+        if target.files.context_dir and target.files.tpu_output:
+            ret, output = getstatusoutput_v2(
+                f"bmodel_checker.py {target.files.context_dir.path} {target.files.tpu_output.path} --no_interactive --cache_mode generate --quiet",
+                shell=True,
+                cwd=target.files.context_dir.path,
+                print_output=False,
+            )
+            if ret != 0:
+                raise RuntimeError(f"bmodel_checker failed: {output}")
+
+    def task_bmodel_checker(self, target_file: str):
+        target_recorder = CommandRecorder(target_file, read=True)
+        target = RefFile(**target_recorder.dic)
+        if target.files.context_dir and target.files.tpu_output:
+            from tools.bmodel_checker import main
+            from debugger.tdb_support import CACHE_MODE_VERSION
+            import platform
+
+            argv = [
+                target.files.context_dir.path,
+                target.files.tpu_output.path,
+            ]
+
+            if platform.machine() != "x86_64":
+                if target.properties.cache_mode is None:
+                    raise RuntimeError("cache data not found, you should try to run bmodel_checker_cache command to generate cache data")
+                if CACHE_MODE_VERSION != target.properties.cache_mode:
+                    raise RuntimeError(
+                        f"cache_mode mismatch: {CACHE_MODE_VERSION} != {target.properties.cache_mode}, you should try to re-run bmodel_checker_cache command to generate cache data"
+                    )
+                argv.extend(
+                    [
+                        "--cache_mode",
+                        "offline",
+                    ]
+                )
+            main(argv)
 
     @check()
     def task_npz_bmodel_compare(self, target_file: str, reference_file: str):
@@ -898,6 +942,7 @@ class DebugPerformance(DebugBase):
                 simulation_dir = os.path.abspath(simulation(target.files.bmodel.path))
                 recorder.add_file(simulation_dir=simulation_dir)
                 recorder.dump()
+                logger.info("run perfweb or perfdoc to parse simulation data")
             except Exception as e:
                 logger.error(f"simulation failed: {e}")
 
@@ -913,6 +958,7 @@ class DebugPerformance(DebugBase):
                 profile_raw = bmprofile(target.files.bmodel.path)
                 recorder.add_file(bmprofile_dir=os.path.abspath(profile_raw))
                 recorder.dump()
+                logger.info("run perfweb or perfdoc to parse bmprofile data")
             except Exception as e:
                 logger.error(f"bmprofile failed: {e}")
 

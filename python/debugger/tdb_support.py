@@ -21,17 +21,13 @@ from enum import Enum
 from .atomic_dialect import BModel2MLIR
 from .target_common import MType, BaseTpuCmd, CpuCmd, CMDType, DynIrCmd, StaticCmdGroup, CModelRunner
 from .disassembler import BModel
-from .target_1688.context import BM1688Context
-from .target_1690.context import BM1690Context
-from .target_2380.context import SG2380Context
-from .target_mars3.context import MARS3Context
-from utils.cache_tool import CommandRecorder
 import pandas as pd
 import builtins
 import json
-
+from utils.cache_tool import CommandRecorder
 from collections import Counter
 
+CACHE_MODE_VERSION = "v1.0"
 
 class TdbStatus(Enum):
     # bmodel not loaded
@@ -259,6 +255,9 @@ class TdbCmdBackend(cmd.Cmd):
         self.fast_checker_enabled = False
         self.is_soc = is_soc
         self.cache_mode: str = args.get("cache_mode", "online")
+        os.environ['TDB_CACHE_MODE'] = self.cache_mode
+        os.environ["BMODEL_ROOT"] = os.path.dirname(os.path.abspath(self.bmodel_file))
+
         self.args = args
         # should be import locally to avoid circular import
         from .static_check import Checker
@@ -315,6 +314,9 @@ class TdbCmdBackend(cmd.Cmd):
             self.file_recorder = None
         if self.file_recorder is not None:
             self.add_plugin("auto-dump")
+
+            if self.cache_mode == "generate":
+                self.file_recorder.add_property(cache_mode=CACHE_MODE_VERSION)
 
         self.message(f"Load plugins: {self.plugins}")
         self.message(
@@ -390,6 +392,10 @@ class TdbCmdBackend(cmd.Cmd):
 
         if coeff:
             address = coeff.address
+            from .target_1688.context import BM1688Context
+            from .target_1690.context import BM1690Context
+            from .target_2380.context import SG2380Context
+            from .target_mars3.context import MARS3Context
             if isinstance(self.context, BM1688Context) or isinstance(
                 self.context, BM1690Context) or isinstance(
                 self.context, SG2380Context) or isinstance(
@@ -773,6 +779,20 @@ class TdbCmdBackend(cmd.Cmd):
         if self.file_recorder is not None and name is not None:
             self.file_recorder.add_file(**{name: path})
 
+    def save_pickle(self, path: str, items: dict, name: Optional[str] = None):
+        import pickle
+
+        with open(path, "wb") as w:
+            pickle.dump(items, w)
+        self.message(f"write to [{name}] {os.path.abspath(path)}")
+        if self.file_recorder is not None and name is not None:
+            self.file_recorder.add_file(**{name: path})
+
+    def load_pickle(self, path: str):
+        import pickle
+
+        with open(path, "rb") as r:
+            return pickle.load(r)
 
 class BreakpointStop(Exception):
     pass

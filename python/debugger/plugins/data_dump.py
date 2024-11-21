@@ -93,7 +93,7 @@ class DataDump(TdbPlugin, TdbPluginCmd):
         file = self.output
         if os.path.exists(file):
             os.remove(file)
-            print(f"remove exist {file}")
+            tdb.message(f"remove exist {file}")
         self.out_tensors = IncNpzFile2(file)
 
     def dump_all(self, tdb: TdbCmdBackend, is_operand):

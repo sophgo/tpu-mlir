@@ -7,7 +7,19 @@
 #
 # ==============================================================================
 
-from ..target_common import DType, MType, Layout, MemRefBase, Target, div_up, align_up, lib_wrapper, open_lib
+from ..target_common import (
+    DType,
+    MType,
+    Layout,
+    MemRefBase,
+    Target,
+    div_up,
+    align_up,
+    lib_wrapper,
+    open_lib,
+    LazyInfo,
+    LazyDict,
+)
 from typing import Tuple, TYPE_CHECKING
 import functools
 from functools import lru_cache
@@ -104,16 +116,26 @@ class BM1690Info:
         }
         return TYPED_CUBE_NUM[dtype]
 
-info = BM1690Info()
+
+info = LazyInfo(BM1690Info)
+
+
+class LazyMemmap(LazyDict):
+    def get_dict(self):
+        return {
+            MType.R: (
+                0,
+                (1 << 18) * 64,
+            ),  # each lmem has 256KB, use addr[26] to determine if it's lmem or smem
+            MType.S: (0, 64 * 1024),  # 64KB
+            MType.L: (0x6980000000, 0x6980000000 + info.L2MEM_SIZE),  # L2 SRAM 128M
+            MType.G: (0x0, 0x100000000),  # global memory 4G
+        }
 
 
 # /TPU1686/sg2260/spec/include/memmap.h
-memmap = {
-    MType.R: (0, (1 << 18)*64),  # each lmem has 256KB, use addr[26] to determine if it's lmem or smem
-    MType.S: (0, 64 * 1024),  # 64KB
-    MType.L: (0x6980000000, 0x6980000000 + info.L2MEM_SIZE),  # L2 SRAM 128M
-    MType.G: (0x0, 0x100000000),  # global memory 4G
-}
+memmap = LazyMemmap()
+
 
 def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
     """
@@ -232,7 +254,9 @@ class MemRef(MemRefBase):
     @functools.lru_cache()
     def r_addr(self):
         if self.mtype in [MType.UNKNOWN, MType.G, MType.L]:
-            return self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
+            return (
+                self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
+            )
 
         r_addr = self.address & 0x3FFFFFF  # remain 26 bit as local offset
         return r_addr
@@ -268,7 +292,12 @@ class MemRef(MemRefBase):
 
         if self.layout == Layout.alignIC:
             cube_num = info.CUBE_NUM(self.dtype)
-            return 1, min(n, info.NPU_NUM), 1, div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num)
+            return (
+                1,
+                min(n, info.NPU_NUM),
+                1,
+                div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num),
+            )
 
         if self.layout == Layout.matrix:
             w = self.layout.args[0]

@@ -14,6 +14,8 @@ import ctypes
 import numpy as np
 import os
 from dataclasses import dataclass
+from functools import lru_cache
+import json
 
 __all__ = [
     "MType",
@@ -22,11 +24,14 @@ __all__ = [
     "Engine",
 ]
 
+
 def div_up(x: int, y: int) -> int:
     return (x + y - 1) // y if y else 0
 
+
 def align_up(x: int, y: int) -> int:
     return div_up(x, y) * y
+
 
 # ./tpu-cpuop/include/bmcpu_common.h
 class CpuLayerType(Enum):
@@ -154,7 +159,14 @@ class DType(IntEnum):
     f8e4m3 = f8 + 16  # type: ignore
 
     def is_float(self):
-        return self in (DType.f32, DType.f16, DType.bf16, DType.f8e4m3, DType.f8e5m2, DType.f8)
+        return self in (
+            DType.f32,
+            DType.f16,
+            DType.bf16,
+            DType.f8e4m3,
+            DType.f8e5m2,
+            DType.f8,
+        )
 
     def is_int(self):
         return not self.is_float()
@@ -263,12 +275,22 @@ def fp8e4m3_to_fp16(d_fp8):
 
     exp_mask = ~nan_mask & (exponent == 0x2000)
     mantissa_mask = exp_mask & (mantissa != 0)
-    mantissa[exp_mask] = np.where(mantissa[exp_mask] != 0, mantissa[exp_mask] << 1, mantissa[exp_mask])
+    mantissa[exp_mask] = np.where(
+        mantissa[exp_mask] != 0, mantissa[exp_mask] << 1, mantissa[exp_mask]
+    )
     exponent[exp_mask] = np.where(mantissa[exp_mask] != 0, exponent[exp_mask], 0)
 
     while np.any((mantissa[mantissa_mask] & 0x0400) == 0):
-        mantissa[mantissa_mask] = np.where((mantissa[mantissa_mask] & 0x0400) == 0,mantissa[mantissa_mask] << 1,mantissa[mantissa_mask])
-        exponent[mantissa_mask] = np.where((mantissa[mantissa_mask] & 0x0400) == 0,exponent[mantissa_mask] - 0x0400,exponent[mantissa_mask])
+        mantissa[mantissa_mask] = np.where(
+            (mantissa[mantissa_mask] & 0x0400) == 0,
+            mantissa[mantissa_mask] << 1,
+            mantissa[mantissa_mask],
+        )
+        exponent[mantissa_mask] = np.where(
+            (mantissa[mantissa_mask] & 0x0400) == 0,
+            exponent[mantissa_mask] - 0x0400,
+            exponent[mantissa_mask],
+        )
     mantissa[mantissa_mask] &= 0x03FF
 
     ur[~nan_mask] = (sign[~nan_mask] | exponent[~nan_mask]) | mantissa[~nan_mask]
@@ -302,6 +324,7 @@ class Layout(Enum):
     """
     Data layout type in Local memory.
     """
+
     # BM168X
     # Tensor alignment
     alignEU = 0
@@ -315,8 +338,8 @@ class Layout(Enum):
     alignIC = 20
     # Gather/Scatter alignment
     alignLine = 30
-    T4 = 31 # TODO: give it a better name
-    T5 = 32 # TODO: give it a better name
+    T4 = 31  # TODO: give it a better name
+    T5 = 32  # TODO: give it a better name
     # GDMA special layout
     DMAstride = 40  # contains lane mask
     DMA4Bank = 41
@@ -752,3 +775,79 @@ def get_type_str(*args) -> str:
         types.append(type_str)
     outer = ", ".join(types)
     return f"{outer}"
+
+
+class LazyInfo:
+    def __init__(self, cls):
+        self.cls = cls
+        self.instance = None
+
+    def get_instance(self):
+        if self.instance is None:
+            self.instance = self.cls()
+        return self.instance
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.get_instance(), name)
+
+
+class LazyDict:
+    def __init__(self):
+        self.dict = None
+
+    def get_instance(self):
+        if self.dict is None:
+            self.dict = self.get_dict()
+        return self.dict
+
+    def get_dict(self):
+        raise NotImplementedError()
+
+    def __getitem__(self, key):
+        return self.get_instance()[key]
+
+
+class TPUInfo:
+    def __init__(self, lib_name) -> None:
+        self._lib = None
+        self._lib_name = lib_name
+        self._tpu_info = {}
+        if os.environ.get("TDB_CACHE_MODE") == "offline":
+            self.load_lib_info_from_cache()
+        else:
+            self.load_lib_info()
+            if os.environ.get("TDB_CACHE_MODE") == "generate":
+                self.dump_lib_info()
+
+    @property
+    @lru_cache()
+    def lib(self):
+        from .runner import lib_wrapper, open_lib
+
+        if not self._lib:
+            self._lib = lib_wrapper(open_lib(self._lib_name))
+        return self._lib
+
+    def load_lib_info(self):
+        raise NotImplementedError()
+
+    @property
+    def cache_file(self):
+        return os.path.join(
+            os.environ.get("BMODEL_ROOT", "./"), f"{self._lib_name}.tdb_cache.json"
+        )
+
+    def dump_lib_info(self):
+        with open(self.cache_file, "w") as w:
+            json.dump(self._tpu_info, w)
+
+    def load_lib_info_from_cache(self):
+        with open(self.cache_file, "r") as r:
+            self._tpu_info = json.load(r)
+            for k, v in self._tpu_info.items():
+                super().__setattr__(k, v)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+        if not name.startswith("_") and name.upper():
+            self._tpu_info[name] = value

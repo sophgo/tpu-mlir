@@ -7,51 +7,37 @@
 #
 # ==============================================================================
 
-from ..target_common import DType, MType, Layout, MemRefBase, Target, div_up, align_up, lib_wrapper, open_lib
+from ..target_common import (
+    DType,
+    MType,
+    Layout,
+    MemRefBase,
+    Target,
+    div_up,
+    align_up,
+    lib_wrapper,
+    open_lib,
+    TPUInfo,
+)
 from typing import Tuple, TYPE_CHECKING
 import functools
-from functools import lru_cache
 
 if TYPE_CHECKING:
     from .context import BM1688Context
 
 
-class BM1688Info:
+class BM1688Info(TPUInfo):
     def __init__(self) -> None:
-        self.lib_name = "libcmodel_1688.so"
-        self._lib = None
+        super().__init__("libcmodel_1688.so")
 
-    @property
-    @lru_cache()
-    def lib(self):
-        if not self._lib:
-            self._lib = lib_wrapper(open_lib(self.lib_name))
-        return self._lib
-
-    @property
-    def NPU_NUM(self) -> int:
-        return self.lib.tpu_npu_num()
-
-    @property
-    def BANK_NUM(self) -> int:
-        return self.lib.tpu_bank_num()
-
-    @property
-    def LANE_SIZE(self) -> int:
-        return self.lib.tpu_local_mem_size_per_npu()
-
-    @property
-    def BANK_SIZE(self) -> int:
-        return self.LANE_SIZE // self.BANK_NUM
-
-    @property
-    def LMEM_SIZE(self) -> int:
-        return self.LANE_SIZE * self.NPU_NUM
-
-    # eu_num when byte size is 1
-    @property
-    def ALIGN_EU_BASE(self) -> int:
-        return self.lib.tpu_eu_num(1)
+    def load_lib_info(self):
+        self.NPU_NUM = self.lib.tpu_npu_num()
+        self.BANK_NUM = self.lib.tpu_bank_num()
+        self.LANE_SIZE = self.lib.tpu_local_mem_size_per_npu()
+        self.BANK_SIZE = self.LANE_SIZE // self.BANK_NUM
+        self.LMEM_SIZE = self.LANE_SIZE * self.NPU_NUM
+        self.ALIGN_EU_BASE = self.lib.tpu_eu_num(1)
+        self.CUBE_NUM_BASE = self.lib.tpu_get_ic_parallel(1)
 
     def EU_NUM(self, dtype: DType) -> int:
         BASE_EU_NUM = self.ALIGN_EU_BASE
@@ -74,11 +60,6 @@ class BM1688Info:
         }
         return TYPED_EU_NUM[dtype]
 
-    # eu_num when byte size is 1
-    @property
-    def CUBE_NUM_BASE(self) -> int:
-        return self.lib.tpu_get_ic_parallel(1)
-
     def CUBE_NUM(self, dtype: DType) -> int:
         BASE_CUBE_NUM = self.CUBE_NUM_BASE
         TYPED_CUBE_NUM = {
@@ -100,12 +81,13 @@ class BM1688Info:
         }
         return TYPED_CUBE_NUM[dtype]
 
+
 info = BM1688Info()
 
 # TPU1688/bm1688/spec/include/memmap.h
 memmap = {
-    MType.R: (0, (1<<17)*32),  # lmen_base 4MB
-    MType.S: (0, 65536),      # static memory 64KB
+    MType.R: (0, (1 << 17) * 32),  # lmen_base 4MB
+    MType.S: (0, 65536),  # static memory 64KB
     MType.G: (2**32, 2**33),  # global memory 4GB
 }
 
@@ -258,7 +240,12 @@ class MemRef(MemRefBase):
 
         if self.layout == Layout.alignIC:
             cube_num = info.EU_NUM(self.dtype)
-            return 1, min(n, info.NPU_NUM), 1, div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num)
+            return (
+                1,
+                min(n, info.NPU_NUM),
+                1,
+                div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num),
+            )
 
         if self.layout == Layout.matrix:
             w = self.layout.args[0]

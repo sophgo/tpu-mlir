@@ -54,3 +54,5 @@ from .op_support import (
     ValueRef,
     StaticCmdGroup,
 )
+
+from .op_support import LazyInfo, LazyDict, TPUInfo

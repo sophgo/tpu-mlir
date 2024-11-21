@@ -41,10 +41,6 @@ from ..tdb_support import (
 from dataclasses import dataclass
 from .common import FinalMlirIndexPlugin, ValueView
 from enum import Enum
-from ..target_1688.context import BM1688Context
-from ..target_1690.context import BM1690Context
-from ..target_2380.context import SG2380Context
-
 
 class IncNpzFile:
     def __init__(self, file: str):
@@ -284,14 +280,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def collect_op_name_dict(self, ref_fn, tdb: TdbCmdBackend):
         if tdb.cache_mode in {"generate", "online"}:
             from utils.mlir_parser import MlirParser
-
             ops = MlirParser(ref_fn).collect_op_name_dict()
             if tdb.cache_mode == "generate":
-                with open(f"{ref_fn}.tdb_cache.ops.pickle", "wb") as w:
-                    pickle.dump(ops, w)
+                tdb.save_pickle(f"{ref_fn}.tdb_cache.ops.pickle", ops)
         elif tdb.cache_mode == "offline":
-            with open(f"{ref_fn}.tdb_cache.ops.pickle", "rb") as r:
-                ops = pickle.load(r)
+            ops = tdb.load_pickle(f"{ref_fn}.tdb_cache.ops.pickle")
         return ops
 
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):

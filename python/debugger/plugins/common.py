@@ -39,9 +39,6 @@ from ..tdb_support import (
     Watchpoint,
     complete_file,
 )
-from ..target_1688.context import BM1688Context
-from ..target_1690.context import BM1690Context
-from ..target_2380.context import SG2380Context
 
 _invalid_fc = r"[+?@#$&%*()=;|,<>: +" r"\^\/\t\b\[\]\"]+"
 
@@ -161,14 +158,13 @@ class FinalMlirIndexPlugin(TdbPlugin):
             self._build_index(tdb)
 
     def _build_index(self, tdb: TdbCmdBackend):
+        cache_file = os.path.abspath(f"{self.tdb.final_mlir_fn}.tdb_cache.pickle")
         if tdb.cache_mode in {'online', 'generate'}:
             ret = self._build_mlir_loc(tdb)
             if tdb.cache_mode == 'generate':
-                with open(f"{self.tdb.final_mlir_fn}.tdb_cache.pickle", 'wb') as w:
-                    pickle.dump(ret, w)
+                tdb.save_pickle(cache_file, ret)
         elif tdb.cache_mode == 'offline':
-            with open(f"{self.tdb.final_mlir_fn}.tdb_cache.pickle", 'rb') as r:
-                ret = pickle.load(r)
+            ret = tdb.load_pickle(cache_file)
         else:
             raise NotImplementedError(tdb.cache_mode)
 

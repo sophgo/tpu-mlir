@@ -1,3 +1,4 @@
 pandas
 rich
 flatbuffers
+tqdm
