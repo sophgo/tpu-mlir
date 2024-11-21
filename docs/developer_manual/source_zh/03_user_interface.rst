@@ -512,7 +512,7 @@ model_deploy.py
      - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - quantize
      - 是
-     - 指定默认量化类型, 支持F32/F16/BF16/INT8
+     - 指定默认量化类型, 支持F32/F16/BF16/INT8, 不同芯片支持的量化类型如下表所示。
    * - quant_input
      - 否
      - 指定输入数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输入数据类型也为int8，若不指定则为F32
@@ -624,6 +624,27 @@ model_deploy.py
    * - enable_maskrcnn
      - 否
      - 是否启用 MaskRCNN大算子.
+
+对于不同chip和支持的quantize类型对应关系如下表所示：
+
+.. list-table:: 不同芯片支持的 quantize 量化类型
+   :widths: 18 15
+   :header-rows: 1
+
+   * - 芯片
+     - 支持的quantize
+   * - BM1688
+     - F32/F16/BF16/INT8/INT4
+   * - BM1684X
+     - F32/F16/BF16/INT8
+   * - BM1684
+     - F32/INT8
+   * - CV186X
+     - F32/F16/BF16/INT8/INT4
+   * - CV183X/CV182X/CV181X/CV180X
+     - BF16/INT8
+   * - BM1690
+     - F32/F16/BF16/INT8/F8E4M3/F8E5M2
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~

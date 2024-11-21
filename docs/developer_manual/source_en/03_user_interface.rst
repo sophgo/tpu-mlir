@@ -499,7 +499,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - quantize
      - Y
-     - Quantization type (F32/F16/BF16/INT8)
+     - Quantization type (F32/F16/BF16/INT8), the quantization types supported by different chips are shown in the table below.
    * - quant_input
      - N
      - Strip input type cast in bmodel, need outside type conversion
@@ -611,6 +611,27 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - enable_maskrcnn
      - N
      - if enable comparison for MaskRCNN.
+
+The following table shows the correspondence between different chips and the supported quantize types:
+
+.. list-table:: Quantization types supported by different chips
+   :widths: 18 15
+   :header-rows: 1
+
+   * - Chip
+     - Supported quantize
+   * - BM1688
+     - F32/F16/BF16/INT8/INT4
+   * - BM1684X
+     - F32/F16/BF16/INT8
+   * - BM1684
+     - F32/INT8
+   * - CV186X
+     - F32/F16/BF16/INT8/INT4
+   * - CV183X/CV182X/CV181X/CV180X
+     - BF16/INT8
+   * - BM1690
+     - F32/F16/BF16/INT8/F8E4M3/F8E5M2
 
 model_runner.py
 ~~~~~~~~~~~~~~~~
