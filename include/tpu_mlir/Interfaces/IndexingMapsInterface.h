@@ -16,5 +16,7 @@
 namespace tpu_mlir {
 
 mlir::ArrayAttr getBinaryIndexingMaps(mlir::Operation *op);
+mlir::AffineMap getBinaryMap(const mlir::AffineMap &refer_map,
+                             const llvm::ArrayRef<int64_t> &shape);
 
 } // namespace tpu_mlir

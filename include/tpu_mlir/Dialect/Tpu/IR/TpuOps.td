@@ -2471,6 +2471,7 @@ def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
 def Tpu_ScaleOp: Tpu_Op<"Scale", [
   SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Scale operator";
 

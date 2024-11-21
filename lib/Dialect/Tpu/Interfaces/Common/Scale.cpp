@@ -93,4 +93,24 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
   return success();
 }
 
+ArrayAttr tpu::ScaleOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  auto out_shape = module::getShape(getOutput());
+  auto num_dims = out_shape.size();
+  SmallVector<AffineMap, 8> indexingMaps;
+  AffineMap outMap = AffineMap::getMultiDimIdentityMap(num_dims, ctx);
+  auto empty_map = AffineMap::get(num_dims, 0, ctx);
+  for (auto opd : getOperands()) {
+    if (module::isNone(opd)) {
+      indexingMaps.emplace_back(empty_map);
+      continue;
+    }
+    auto shape = module::getShape(opd);
+    auto map = getBinaryMap(outMap, shape);
+    indexingMaps.emplace_back(map);
+  }
+  indexingMaps.emplace_back(outMap);
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
+}
+
 bool tpu::ScaleOp::support_multi_core() { return false; }

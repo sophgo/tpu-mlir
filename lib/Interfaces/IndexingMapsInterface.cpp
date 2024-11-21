@@ -48,4 +48,23 @@ mlir::ArrayAttr getBinaryIndexingMaps(mlir::Operation *op) {
   return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
 };
 
+mlir::AffineMap getBinaryMap(const mlir::AffineMap &refer_map,
+                             const llvm::ArrayRef<int64_t> &shape) {
+  if (refer_map.getNumDims() != shape.size()) {
+    llvm_unreachable("map dim is not the same");
+  }
+  auto ctx = refer_map.getContext();
+  auto one = mlir::getAffineConstantExpr(1, ctx);
+  auto num_dim = shape.size();
+  SmallVector<AffineExpr> index_v;
+  for (int i = 0; i < num_dim; i++) {
+    if (shape[i] == 1) {
+      index_v.push_back(one);
+    } else {
+      index_v.push_back(refer_map.getResults()[i]);
+    }
+  }
+  return AffineMap::get(num_dim, 0, index_v, ctx);
+}
+
 }; // namespace tpu_mlir
