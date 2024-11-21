@@ -35,7 +35,7 @@ def parse_args(args_list):
                         help="Do statistics on int8 tensor for saturate ratio and low ratio")
     parser.add_argument("--int8_tensor_close", type=int, default=1,
                         help="whether int8 tensor compare close")
-    parser.add_argument("--save", type=str, help="Save result as a csv file")
+    parser.add_argument("--save", '-s', type=str, help="Save result as a csv file")
     parser.add_argument("--per_axis_compare", type=int, default=-1,
                         help="Compare along axis, usually along axis 1 as per-channel")
     parser.add_argument("--fuzzy_match", action='store_true',
