@@ -859,6 +859,8 @@ def Tpu_PackRawOp: Tpu_Op<"PackRaw"> {
   }];
   let arguments = (
     ins AnyTensor:$input,
+    AnyTensorOrNone:$high_table,
+    AnyTensorOrNone:$low_table,
     F64Attr:$white_level,
     F64Attr:$black_level,
     F64Attr:$threshold,
