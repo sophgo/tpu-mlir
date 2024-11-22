@@ -330,6 +330,187 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
   return;
 }
 
+void BMAddressAssign::assignAfter(ModuleOp &m,
+                                  std::vector<ValueInfo> &inplace_ops) {
+  // step 0: assign inplace ops
+  std::reverse(inplace_ops.begin(), inplace_ops.end());
+  for (auto v_info : inplace_ops) {
+    Operation *op = (Operation *)v_info.op;
+    if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
+      auto in0 = concatOp.getInputs()[0];
+      in0 = module::getOriValue(in0);
+      if (auto rop = dyn_cast<tpu::ReshapeOp>(in0.getDefiningOp())) {
+        in0 = rop.getInput();
+      }
+      int64_t addr = module::getAddress(in0);
+      if (addr == 0) {
+        continue;
+      }
+      module::setAddress(concatOp.getOutput(), addr);
+      int64_t offset = module::getBytes(in0);
+      for (uint32_t i = 1; i < concatOp.getInputs().size(); i++) {
+        auto input = concatOp.getInputs()[i];
+        input = module::getOriValue(input);
+        if (auto rop = dyn_cast<tpu::ReshapeOp>(input.getDefiningOp())) {
+          module::setAddress(input, addr + offset);
+          input = rop.getInput();
+        }
+        module::setAddress(input, addr + offset);
+        offset += module::getBytes(input);
+      }
+    } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
+      auto addr = module::getAddress(reshapeOp.getInput());
+      if (addr == 0) {
+        addr = module::getAddress(module::getOriValue(reshapeOp.getOperand(0)));
+      }
+      if (addr == 0) {
+        continue;
+      }
+      module::setAddress(reshapeOp.getOutput(), addr);
+    } else if (auto identityOp = dyn_cast<tpu::IdentityOp>(op)) {
+      for (auto it : llvm::enumerate(identityOp.getInput())) {
+        auto addr = module::getAddress(module::getOriValue(it.value()));
+        if (addr == 0) {
+          continue;
+        }
+        module::setAddress(identityOp.getOutput()[it.index()], addr);
+      }
+    } else if (auto autoincOp = dyn_cast<tpu::AutoIncreaseOp>(op)) {
+      auto addr = module::getAddress(module::getOriValue(autoincOp.getInput()));
+      if (addr == 0) {
+        continue;
+      }
+      module::setAddress(autoincOp.getOutput(), addr);
+    } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
+      auto addr = module::getAddress(sliceOp.getInput());
+      if (addr == 0) {
+        continue;
+      }
+      auto p = sliceOp.parseParam();
+      int axis;
+      for (axis = 0; p.offset_4[axis] == 0 && axis < 4; axis++)
+        ;
+      size_t offset_bytes = 0;
+      if (axis != 4) {
+        auto _offset = p.offset_4[axis] < 0 ? p.offset_4[axis] + p.is_4[axis]
+                                            : p.offset_4[axis];
+        offset_bytes = _offset * module::getDtypeSize(sliceOp.getOutput());
+        for (int i = axis + 1; i < 4; ++i) {
+          offset_bytes *= p.is_4[i];
+        }
+      }
+      module::setAddress(sliceOp.getOutput(), addr + offset_bytes);
+    } else if (auto weight2activation_op =
+                   dyn_cast<tpu::Weight2ActivationOp>(op)) {
+      auto addr = module::getAddress(weight2activation_op.getInput());
+      if (addr == 0) {
+        continue;
+      }
+      module::setAddress(weight2activation_op.getOutput(), addr);
+    } else {
+      llvm_unreachable("set address of undefined inplace op!");
+    }
+  }
+  // step 1: assign group ops
+  for (auto func : m.getOps<FuncOp>()) {
+    for (auto gOp : func.getOps<tpu::GroupOp>()) {
+      auto &last_op = gOp.getBody().back().back();
+      auto yield_op = dyn_cast<tpu::YieldOp>(last_op);
+      assert(yield_op);
+      int idx = 0;
+      for (auto opd : yield_op.getOperands()) {
+        auto addr = module::getAddress(gOp.getResult(idx));
+        if (addr != 0) {
+          module::setAddress(opd, addr);
+        }
+        idx++;
+      }
+    }
+  }
+
+  // step 2: populate groupParallel address to its regions.
+  for (auto func : m.getOps<FuncOp>()) {
+    for (auto groupParallelOp : func.getOps<tpu::GroupParallelOp>()) {
+      for (auto [value, region] : llvm::zip(groupParallelOp.getResults(),
+                                            groupParallelOp.getParallel())) {
+        region.back().getTerminator()->getOperand(0).setType(value.getType());
+      }
+    }
+  }
+  // step 3: set parallel Op address
+  auto If8channel = [](auto &checkOp, bool isSplitOp) {
+    mlir::RankedTensorType valueType;
+    if (isSplitOp) {
+      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
+          ((tpu::SplitOp)checkOp).getOperand().getType());
+    } else {
+      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
+          checkOp.getResult(0).getType());
+    }
+    auto ddrAttr =
+        dyn_cast_or_null<tpu::CPInterleaveAttr>(valueType.getEncoding());
+    return ddrAttr;
+  };
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp parallelOp) {
+      auto ifCPOut8ch = If8channel(parallelOp, false);
+      for (auto &op : parallelOp.getRegion().getOps()) {
+        llvm::TypeSwitch<Operation &>(op)
+            .Case([&](tpu::SplitOp splitOp) {
+              auto ifSplitOp8ch = If8channel(splitOp, true);
+              if (!isa_and_present<tpu::CPInterleaveAttr>(ifSplitOp8ch)) {
+                int64_t address = module::getAddress(splitOp->getOperand(0));
+                if (address != 0) {
+                  for (auto v : splitOp->getResults()) {
+                    module::setAddress(v, address);
+                    address += module::getBytes(v);
+                  }
+                }
+              } else {
+                for (auto [index, v] : llvm::enumerate(splitOp->getResults())) {
+                  int64_t offset = ifSplitOp8ch.getOffset();
+                  module::set8chAddress(v, index, offset, -1);
+                }
+              }
+            })
+            .Case([&](tpu::YieldOp yieldOp) {
+              if (!isa_and_present<tpu::CPInterleaveAttr>(ifCPOut8ch)) {
+                for (auto [joinOpValue, returnType] :
+                     llvm::zip(yieldOp->getOperands(),
+                               parallelOp->getResultTypes())) {
+                  joinOpValue.setType(returnType);
+                  if (!isa<tpu::JoinOp>(joinOpValue.getDefiningOp()))
+                    continue;
+                  int64_t address = module::getAddress(joinOpValue);
+                  if (address == 0) {
+                    continue;
+                  }
+                  for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
+                    if (v.getType().isa<NoneType>()) {
+                      continue;
+                    }
+                    module::setAddress(v, address);
+                    address += module::getBytes(v);
+                  }
+                }
+              } else {
+                for (auto [joinOpValue, returnType] :
+                     llvm::zip(yieldOp->getOperands(),
+                               parallelOp->getResultTypes())) {
+                  joinOpValue.setType(returnType);
+                  int64_t offset = ifCPOut8ch.getOffset();
+                  for (auto [index, v] : llvm::enumerate(
+                           joinOpValue.getDefiningOp()->getOperands())) {
+                    module::set8chAddress(v, index, offset, -1);
+                  }
+                }
+              }
+            });
+      }
+    });
+  }
+}
+
 void BMAddressAssign::assignL2SRAM(ModuleOp &m) {
   if (!module::isBM1690Family()) {
     return;
@@ -400,6 +581,7 @@ void BMAddressAssign::assignL2SRAM(ModuleOp &m) {
     auto v = op->getResult(info.index);
     module::setAddress(v, addr);
   }
+  assignAfter(m, inplace_ops);
 }
 
 void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
@@ -443,33 +625,33 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                (stmode == STORE_MODE_2N && elm_bits == 16) ||
                (stmode == STORE_MODE_4N && elm_bits == 8));
 
-      module::setAddress(out_value, addr);
-      int64_t n, c, h, w;
-      module::getNCHW(out_value, n, c, h, w);
-      int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
-                      stmode_map.at(stmode).second * c * h * w;
-      /// consider int4 storage
-      bytes = ceiling_func(bytes, 8l);
+        module::setAddress(out_value, addr);
+        int64_t n, c, h, w;
+        module::getNCHW(out_value, n, c, h, w);
+        int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
+                        stmode_map.at(stmode).second * c * h * w;
+        /// consider int4 storage
+        bytes = ceiling_func(bytes, 8l);
 
-      DEBUG_WITH_TYPE("gmem_allocator", {
-        llvm::dbgs() << "; action = assignGaddr"
-                    << "; step = weight_static"
-                    << "; start_addr = " << addr
-                    << "; end_addr = " << addr + bytes
-                    << "; live_start = " << 0
-                    << "; live_end = " << 0x7FFFFFFF
-                    << "; loc = " << module::getName(out_value).str() << "\n";
+        DEBUG_WITH_TYPE("gmem_allocator", {
+          llvm::dbgs() << "; action = assignGaddr"
+                       << "; step = weight_static"
+                       << "; start_addr = " << addr
+                       << "; end_addr = " << addr + bytes
+                       << "; live_start = " << 0
+                       << "; live_end = " << 0x7FFFFFFF
+                       << "; loc = " << module::getName(out_value).str()
+                       << "\n";
+        });
+
+        addr = align_up(addr + bytes, alignment);
       });
-
-      addr = align_up(addr + bytes, alignment);
-    });
-  }
     }
+  }
   module::setCoeffAddr(m, start_addr);
   module::setCoeffSize(m, addr - start_addr);
   // ================= assign l2sram to activation =============================
   assignL2SRAM(m);
-
   // ================= assign ddr to activation ================================
   if (BM168x::SUPPORT_MEM_TAG) {
     addr = BM168x::CTX_START_ADDR;
@@ -509,7 +691,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     int n = op->getNumResults();
     for (int i = 0; i < n; i++) {
       auto v = op->getResult(i);
-      if (module::isNone(v) || 0 != module::getAddress(v)) {
+      if (module::isNone(v)) {
         continue;
       }
       updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops, inplace_ops,
@@ -565,166 +747,20 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     updateAddressByAddrMode(m, start_addr, addr);
   }
 
-  // 2.set inplace_ops address
-  // inplace_ops' order should be from input to output,thus reverse
-  std::reverse(inplace_ops.begin(), inplace_ops.end());
-  for (auto v_info : inplace_ops) {
-    Operation *op = (Operation *)v_info.op;
-    if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
-      auto in0 = concatOp.getInputs()[0];
-      in0 = module::getOriValue(in0);
-      if (auto rop = dyn_cast<tpu::ReshapeOp>(in0.getDefiningOp())) {
-        in0 = rop.getInput();
-      }
-      int64_t addr = module::getAddress(in0);
-      module::setAddress(concatOp.getOutput(), addr);
-      int64_t offset = module::getBytes(in0);
-      for (uint32_t i = 1; i < concatOp.getInputs().size(); i++) {
-        auto input = concatOp.getInputs()[i];
-        input = module::getOriValue(input);
-        if (auto rop = dyn_cast<tpu::ReshapeOp>(input.getDefiningOp())) {
-          module::setAddress(input, addr + offset);
-          input = rop.getInput();
-        }
-        module::setAddress(input, addr + offset);
-        offset += module::getBytes(input);
-      }
-    } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
-      auto addr = module::getAddress(reshapeOp.getInput());
-      if (addr == 0) {
-        addr = module::getAddress(module::getOriValue(reshapeOp.getOperand(0)));
-      }
-      module::setAddress(reshapeOp.getOutput(), addr);
-    } else if (auto identityOp = dyn_cast<tpu::IdentityOp>(op)) {
-      for (auto it : llvm::enumerate(identityOp.getInput())) {
-        auto addr = module::getAddress(module::getOriValue(it.value()));
-        module::setAddress(identityOp.getOutput()[it.index()], addr);
-      }
-    } else if (auto autoincOp = dyn_cast<tpu::AutoIncreaseOp>(op)) {
-      auto addr = module::getAddress(module::getOriValue(autoincOp.getInput()));
-      module::setAddress(autoincOp.getOutput(), addr);
-    } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
-      auto addr = module::getAddress(sliceOp.getInput());
-      auto p = sliceOp.parseParam();
-      int axis;
-      for (axis = 0; p.offset_4[axis] == 0 && axis < 4; axis++)
-        ;
-      size_t offset_bytes = 0;
-      if (axis != 4) {
-        auto _offset = p.offset_4[axis] < 0 ? p.offset_4[axis] + p.is_4[axis]
-                                            : p.offset_4[axis];
-        offset_bytes = _offset * module::getDtypeSize(sliceOp.getOutput());
-        for (int i = axis + 1; i < 4; ++i) {
-          offset_bytes *= p.is_4[i];
-        }
-      }
-      module::setAddress(sliceOp.getOutput(), addr + offset_bytes);
-    } else if (auto weight2activation_op =
-                   dyn_cast<tpu::Weight2ActivationOp>(op)) {
-      module::setAddress(weight2activation_op.getOutput(),
-                         module::getAddress(weight2activation_op.getInput()));
-    } else {
-      llvm_unreachable("set address of undefined inplace op!");
-    }
-  }
+  assignAfter(m, inplace_ops);
 
-  // 3. set group op address
-  for (auto func : m.getOps<FuncOp>()) {
-    for (auto gOp : func.getOps<tpu::GroupOp>()) {
-      auto &last_op = gOp.getBody().back().back();
-      auto yield_op = dyn_cast<tpu::YieldOp>(last_op);
-      assert(yield_op);
-      int idx = 0;
-      for (auto opd : yield_op.getOperands()) {
-        auto addr = module::getAddress(gOp.getResult(idx));
-        module::setAddress(opd, addr);
-        idx++;
-      }
-    }
-  }
-
-  // 4. populate groupParallel address to its regions.
-  for (auto func : m.getOps<FuncOp>()) {
-    for (auto groupParallelOp : func.getOps<tpu::GroupParallelOp>()) {
-      for (auto [value, region] : llvm::zip(groupParallelOp.getResults(),
-                                            groupParallelOp.getParallel())) {
-        region.back().getTerminator()->getOperand(0).setType(value.getType());
-      }
-    }
-  }
-  // 5. set parallel Op address
-  auto If8channel = [](auto &checkOp, bool isSplitOp) {
-    mlir::RankedTensorType valueType;
-    if (isSplitOp) {
-      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
-          ((tpu::SplitOp)checkOp).getOperand().getType());
-    } else {
-      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
-          checkOp.getResult(0).getType());
-    }
-    auto ddrAttr =
-        dyn_cast_or_null<tpu::CPInterleaveAttr>(valueType.getEncoding());
-    return ddrAttr;
-  };
-
-  for (auto func : m.getOps<FuncOp>()) {
-    func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp parallelOp) {
-      auto ifCPOut8ch = If8channel(parallelOp, false);
-      for (auto &op : parallelOp.getRegion().getOps()) {
-        llvm::TypeSwitch<Operation &>(op)
-            .Case([&](tpu::SplitOp splitOp) {
-              auto ifSplitOp8ch = If8channel(splitOp, true);
-              if (!isa_and_present<tpu::CPInterleaveAttr>(ifSplitOp8ch)) {
-                int64_t address = module::getAddress(splitOp->getOperand(0));
-                for (auto v : splitOp->getResults()) {
-                  module::setAddress(v, address);
-                  address += module::getBytes(v);
-                }
-              } else {
-                for (auto [index, v] : llvm::enumerate(splitOp->getResults())) {
-                  int64_t offset = ifSplitOp8ch.getOffset();
-                  module::set8chAddress(v, index, offset, -1);
-                }
-              }
-            })
-            .Case([&](tpu::YieldOp yieldOp) {
-              if (!isa_and_present<tpu::CPInterleaveAttr>(ifCPOut8ch)) {
-                for (auto [joinOpValue, returnType] :
-                     llvm::zip(yieldOp->getOperands(),
-                               parallelOp->getResultTypes())) {
-                  joinOpValue.setType(returnType);
-                  if (!isa<tpu::JoinOp>(joinOpValue.getDefiningOp()))
-                    continue;
-                  int64_t address = module::getAddress(joinOpValue);
-                  for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
-                    if (v.getType().isa<NoneType>()) {
-                      continue;
-                    }
-                    module::setAddress(v, address);
-                    address += module::getBytes(v);
-                  }
-                }
-              } else {
-                for (auto [joinOpValue, returnType] :
-                     llvm::zip(yieldOp->getOperands(),
-                               parallelOp->getResultTypes())) {
-                  joinOpValue.setType(returnType);
-                  int64_t offset = ifCPOut8ch.getOffset();
-                  for (auto [index, v] : llvm::enumerate(
-                           joinOpValue.getDefiningOp()->getOperands())) {
-                    module::set8chAddress(v, index, offset, -1);
-                  }
-                }
-              }
-            });
-      }
-    });
-  }
   module::updateModuleTypes();
   // update io address by io_alone
   if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
     updateAddressByAddrMode(m, start_addr, addr);
   }
+}
+
+static bool noNeedAddress(Value v) {
+  if (module::isNone(v) || 0 != module::getAddress(v)) {
+    return true;
+  }
+  return false;
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(
@@ -735,73 +771,67 @@ void BMAddressAssign::updateLiveRangeofBMOps(
   auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
     DEBUG_WITH_TYPE("on_live_range", {
       llvm::dbgs() << "\n; action = updateOperandsLiveRange"
-                  << "; step = begin"
-                  << "; op = " << module::getName(op)
-                  << "; endPosition = " << endPosition
-                  << "\n";
+                   << "; step = begin"
+                   << "; op = " << module::getName(op)
+                   << "; endPosition = " << endPosition << "\n";
     });
     for (uint32_t i = 0; i < op->getNumOperands(); i++) {
       auto operand = module::getOperand(op, i);
       auto opd = operand.getDefiningOp();
       DEBUG_WITH_TYPE("on_live_range", {
         llvm::dbgs() << "; action = updateOperandsLiveRange"
-                    << "; step = opd_begin"
-                    << "; opd_type = " << opd->getName()
-                    << "; opd_loc = " << module::getName(operand)
-                    << "; opd_index = " << i
-                    << "\n";
+                     << "; step = opd_begin"
+                     << "; opd_type = " << opd->getName()
+                     << "; opd_loc = " << module::getName(operand)
+                     << "; opd_index = " << i << "\n";
       });
-      if (opd == 0x0 || isa<top::WeightOp, top::NoneOp>(opd)) {
+      if (noNeedAddress(operand)) {
         DEBUG_WITH_TYPE("on_live_range", {
           llvm::dbgs() << "; action = updateOperandsLiveRange"
-                      << "; step = opd_skip"
-                      << "\n";
+                       << "; step = opd_skip"
+                       << "\n";
         });
         continue;
       }
       ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
       DEBUG_WITH_TYPE("on_live_range", {
         llvm::dbgs() << "; action = updateOperandsLiveRange"
-                    << "; step = opd_find"
-                    << "; opd_loc = " << module::getName(operand)
-                    << "; vinfo.index = " << v_info.index
-                    << "\n";
+                     << "; step = opd_find"
+                     << "; opd_loc = " << module::getName(operand)
+                     << "; vinfo.index = " << v_info.index << "\n";
       });
       if (liveRange.find(v_info) != liveRange.end()) {
         // not first, update operand's liverange
         DEBUG_WITH_TYPE("on_live_range", {
           llvm::dbgs() << "; action = updateOperandsLiveRange"
-                      << "; step = opd_first_meet_before"
-                      << "; live_start = " << liveRange[v_info].start
-                      << "; live_end = " << liveRange[v_info].end
-                      << "; loc = " << module::getName(v_info.op)
-                      << "; op = " << v_info.op->getName()
-                      << "; position = " << ops_loc[opd]
-                      << "\n";
+                       << "; step = opd_first_meet_before"
+                       << "; live_start = " << liveRange[v_info].start
+                       << "; live_end = " << liveRange[v_info].end
+                       << "; loc = " << module::getName(v_info.op)
+                       << "; op = " << v_info.op->getName()
+                       << "; position = " << ops_loc[opd] << "\n";
         });
         liveRange[v_info].start =
             std::min(liveRange[v_info].start, ops_loc[opd]);
         liveRange[v_info].end = std::max(liveRange[v_info].end, endPosition);
         DEBUG_WITH_TYPE("on_live_range", {
           llvm::dbgs() << "; action = update_live_range"
-                      << "; step = opd_first_meet_after"
-                      << "; live_start = " << liveRange[v_info].start
-                      << "; live_end = " << liveRange[v_info].end
-                      << "; loc = " << module::getName(v_info.op)
-                      << "; op = " << v_info.op->getName()
-                      << "; position = " << ops_loc[opd]
-                      << "\n";
+                       << "; step = opd_first_meet_after"
+                       << "; live_start = " << liveRange[v_info].start
+                       << "; live_end = " << liveRange[v_info].end
+                       << "; loc = " << module::getName(v_info.op)
+                       << "; op = " << v_info.op->getName()
+                       << "; position = " << ops_loc[opd] << "\n";
         });
       } else {
         // first update the operand, set its start, end and tensor_size
         DEBUG_WITH_TYPE("on_live_range", {
           llvm::dbgs() << "; action = update_live_range"
-                      << "; step = opd_second_meet_before"
-                      << "; live_start = " << liveRange[v_info].start
-                      << "; live_end = " << liveRange[v_info].end
-                      << "; loc = " << module::getName(v_info.op)
-                      << "; op = " << v_info.op->getName()
-                      << "\n";
+                       << "; step = opd_second_meet_before"
+                       << "; live_start = " << liveRange[v_info].start
+                       << "; live_end = " << liveRange[v_info].end
+                       << "; loc = " << module::getName(v_info.op)
+                       << "; op = " << v_info.op->getName() << "\n";
         });
         liveRange[v_info].start = ops_loc[opd];
         liveRange[v_info].end = endPosition;
@@ -810,14 +840,14 @@ void BMAddressAssign::updateLiveRangeofBMOps(
 
         DEBUG_WITH_TYPE("on_live_range", {
           llvm::dbgs() << "; action = update_live_range"
-                      << "; step = opd_second_meet_after"
-                      << "; live_start = " << liveRange[v_info].start
-                      << "; live_end = " << liveRange[v_info].end
-                      << "; loc = " << module::getName(v_info.op)
-                      << "; op = " << v_info.op->getName()
-                      << "; position = " << ops_loc[opd]
-                      << "; tensor_size = " << liveRange[v_info].tensor_size
-                      << "\n";
+                       << "; step = opd_second_meet_after"
+                       << "; live_start = " << liveRange[v_info].start
+                       << "; live_end = " << liveRange[v_info].end
+                       << "; loc = " << module::getName(v_info.op)
+                       << "; op = " << v_info.op->getName()
+                       << "; position = " << ops_loc[opd]
+                       << "; tensor_size = " << liveRange[v_info].tensor_size
+                       << "\n";
         });
       }
 
@@ -826,26 +856,26 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         ValueInfo op_info(op, 0);
         DEBUG_WITH_TYPE("live_range", {
           llvm::dbgs() << "; action = live_range"
-                      << "; step = inplace_op_reset_before"
-                      << "; live_start = " << liveRange[v_info].start
-                      << "; live_end = " << liveRange[v_info].end
-                      << "; loc = " << module::getName(v_info.op)
-                      << "; inplace_op = " << module::getName(op)
-                      << "; op = " << v_info.op->getName()
-                      << "; op_info.live_range.end = " << liveRange[op_info].end
-                      << "; v_info.live_range.end = " << liveRange[v_info].end
-                      << "\n";
+                       << "; step = inplace_op_reset_before"
+                       << "; live_start = " << liveRange[v_info].start
+                       << "; live_end = " << liveRange[v_info].end
+                       << "; loc = " << module::getName(v_info.op)
+                       << "; inplace_op = " << module::getName(op)
+                       << "; op = " << v_info.op->getName()
+                       << "; op_info.live_range.end = "
+                       << liveRange[op_info].end
+                       << "; v_info.live_range.end = " << liveRange[v_info].end
+                       << "\n";
         });
         liveRange[v_info].end =
             std::max(liveRange[op_info].end, liveRange[v_info].end);
         DEBUG_WITH_TYPE("live_range", {
           llvm::dbgs() << "; action = live_range"
-                      << "; step = inplace_op_reset_after"
-                      << "; loc = " << module::getName(operand)
-                      << "; live_start = " << liveRange[v_info].start
-                      << "; live_end = " << liveRange[v_info].end
-                      << "; "
-                      << "\n";
+                       << "; step = inplace_op_reset_after"
+                       << "; loc = " << module::getName(operand)
+                       << "; live_start = " << liveRange[v_info].start
+                       << "; live_end = " << liveRange[v_info].end << "; "
+                       << "\n";
         });
       }
 
@@ -895,7 +925,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
             // also set the life forerver
             auto operand = module::getOriValue(op->getOperand(i));
             auto opd = operand.getDefiningOp(); // other Op
-            if (!isa<top::WeightOp, top::NoneOp>(opd)) {
+            if (!noNeedAddress(operand)) {
               ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
               set_life_forerver(v_info);
             }
@@ -908,7 +938,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
           set_life_forerver(v_info);
           operand = module::getOriValue(opd->getOperand(0));
           opd = operand.getDefiningOp();
-          if (!isa<top::WeightOp, top::NoneOp>(opd)) {
+          if (!noNeedAddress(operand)) {
             ValueInfo v_info2(opd, operand.cast<OpResult>().getResultNumber());
             set_life_forerver(v_info2);
           }
@@ -926,7 +956,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
             for (int i = 0; i < opd->getNumOperands(); i++) {
               auto operand2 = module::getOriValue(opd->getOperand(i));
               auto opd2 = operand2.getDefiningOp();
-              if (!isa<top::WeightOp, top::NoneOp>(opd2)) {
+              if (!noNeedAddress(operand2)) {
                 ValueInfo v_info4(opd2,
                                   operand2.cast<OpResult>().getResultNumber());
                 set_life_forerver(v_info4);
@@ -941,18 +971,16 @@ void BMAddressAssign::updateLiveRangeofBMOps(
 
       DEBUG_WITH_TYPE("on_live_range", {
         llvm::dbgs() << "; action = updateOperandsLiveRange"
-                    << "; step = opd_end"
-                    << "; opd_type = " << opd->getName()
-                    << "; opd_loc = " << module::getName(operand)
-                    << "; opd_index = " << i
-                    << "\n";
+                     << "; step = opd_end"
+                     << "; opd_type = " << opd->getName()
+                     << "; opd_loc = " << module::getName(operand)
+                     << "; opd_index = " << i << "\n";
       });
     }
     DEBUG_WITH_TYPE("on_live_range", {
       llvm::dbgs() << "; action = updateOperandsLiveRange"
-                  << "; step = end"
-                  << "; op = " << module::getName(op)
-                  << "\n";
+                   << "; step = end"
+                   << "; op = " << module::getName(op) << "\n";
     });
   };
   auto updateSOLOLiveRange = [&](Operation *op, ValueInfo v_info,
@@ -963,15 +991,14 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         getTensorGmemSize(op, v_info.index, alignment);
 
     DEBUG_WITH_TYPE("live_range", {
-        llvm::dbgs() << "; action = live_range"
-        << "; step = update_solo"
-        << "; live_start = " << liveRange[v_info].start
-        << "; live_end = " << liveRange[v_info].end
-        << "; loc = " << module::getName(v_info.op)
-        << "; op = " << v_info.op->getName()
-        << "; tensor_size = " << liveRange[v_info].tensor_size
-        << "; index = " << v_info.index
-        << "\n";
+      llvm::dbgs() << "; action = live_range"
+                   << "; step = update_solo"
+                   << "; live_start = " << liveRange[v_info].start
+                   << "; live_end = " << liveRange[v_info].end
+                   << "; loc = " << module::getName(v_info.op)
+                   << "; op = " << v_info.op->getName()
+                   << "; tensor_size = " << liveRange[v_info].tensor_size
+                   << "; index = " << v_info.index << "\n";
     });
   };
   ValueInfo v(op, index);
@@ -989,9 +1016,11 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       liveRange[v].end = 0xFFFFFFFF;
       liveRange[v].tensor_size = getTensorGmemSize(op, v.index, alignment);
     }
-  } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp, func::CallOp,
-                 tpu::YieldOp>(op) ||
-             module::isOpInGroup(op)) {
+    return;
+  }
+  if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp, func::CallOp,
+          tpu::YieldOp>(op) ||
+      module::isOpInGroup(op)) {
     /* for multi_subnet, the returnOp's live range increase if it connect to
        next subnet Todo: other complex case need to handle, such as it connect
        to next func's inner group op */
@@ -1000,11 +1029,17 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     // updateLiveRange from the last op to the first op, no need to concern
     // it.
     updateOperandsLiveRange(op, endPosition);
-  } else if (isInPlaceOp(op)) {
+    return;
+  }
+
+  if (isInPlaceOp(op)) {
     if (isa<tpu::ConcatOp>(op)) {
+      updateOperandsLiveRange(op, endPosition);
+      if (noNeedAddress(op->getResult(index))) {
+        return;
+      }
       uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
       // liveRange[v] = TensorLive(index, loc, 0xFFFFFFFF, 0);
-      updateOperandsLiveRange(op, endPosition);
       std::vector<uint32_t> concatLive = getConcatOpLive(op, liveRange);
       for (int i = 0; i < op->getNumOperands(); ++i) {
         auto opd = module::getOperand(op, i);
@@ -1017,16 +1052,15 @@ void BMAddressAssign::updateLiveRangeofBMOps(
           opd = rop.getInput();
           preOp = opd.getDefiningOp();
           DEBUG_WITH_TYPE("live_range", {
-              llvm::dbgs() << "; action = live_range"
-                          << "; step = concat_reshape_opd_reset"
-                          << "; live_start = " << liveRange[pre_v].start
-                          << "; live_end = " << liveRange[pre_v].end
-                          << "; loc = " << module::getName(pre_v.op)
-                          << "; op = " << pre_v.op->getName()
-                          << "; tensor_size = " << liveRange[pre_v].tensor_size
-                          << "; opd_index = " << i
-                          << "\n";
-            });
+            llvm::dbgs() << "; action = live_range"
+                         << "; step = concat_reshape_opd_reset"
+                         << "; live_start = " << liveRange[pre_v].start
+                         << "; live_end = " << liveRange[pre_v].end
+                         << "; loc = " << module::getName(pre_v.op)
+                         << "; op = " << pre_v.op->getName()
+                         << "; tensor_size = " << liveRange[pre_v].tensor_size
+                         << "; opd_index = " << i << "\n";
+          });
         }
         ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
         liveRange[pre_v].start = concatLive[0];
@@ -1045,8 +1079,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
                        << "; loc = " << module::getName(pre_v.op)
                        << "; op = " << pre_v.op->getName()
                        << "; tensor_size = " << liveRange[pre_v].tensor_size
-                       << "; opd_index = " << i
-                       << "\n";
+                       << "; opd_index = " << i << "\n";
         });
       }
       inplace_ops.emplace_back(v);
@@ -1054,35 +1087,46 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       uint32_t maxPosition = endPosition;
       findInPlaceOpMaxUsePosition(op, maxPosition, ops_loc);
       updateOperandsLiveRange(op, maxPosition);
-      inplace_ops.emplace_back(v);
+      if (!noNeedAddress(op->getResult(index))) {
+        inplace_ops.emplace_back(v);
+      }
     }
-  } else if (isa_and_nonnull<tpu::GroupParallelOp>(op->getParentOp())) {
+    return;
+  }
+  if (isa_and_nonnull<tpu::GroupParallelOp>(op->getParentOp())) {
     // all the ops in parallel region have the liveRange the same as this
     // region.
     updateOperandsLiveRange(op, ops_loc[op->getParentOp()->getNextNode()]);
-    common_ops.emplace_back(v);
-  } else if (isa_and_nonnull<tpu::CoreParallelOp>(op->getParentOp())) {
+    if (!noNeedAddress(op->getResult(index))) {
+      common_ops.emplace_back(v);
+    }
+    return;
+  }
+  if (isa_and_nonnull<tpu::CoreParallelOp>(op->getParentOp())) {
     auto upper = op->getParentOp()->getParentOp(); // nested liveRange
     if (isa_and_nonnull<tpu::GroupParallelOp>(upper))
       endPosition = ops_loc[upper->getNextNode()];
     else
       endPosition = ops_loc[op->getParentOp()->getNextNode()];
     updateSOLOLiveRange(op, v, endPosition);
-    common_ops.emplace_back(v);
-  } else if (op->getDialect()->getNamespace() == "tpu") {
-    ValueInfo cur_info(op, index);
-    if (!module::isNone(op->getResult(index))) {
-      if (liveRange.find(cur_info) == liveRange.end()) {
-        updateSOLOLiveRange(op, cur_info, endPosition);
-        common_ops.emplace_back(v);
-        return;
-      }
+    if (!noNeedAddress(op->getResult(index))) {
+      common_ops.emplace_back(v);
     }
+    return;
+  }
+  if (op->getDialect()->getNamespace() != "tpu" ||
+      noNeedAddress(op->getResult(index))) {
     updateOperandsLiveRange(op, endPosition);
-    common_ops.emplace_back(v);
+    return;
+  }
+
+  ValueInfo cur_info(op, index);
+  if (liveRange.find(cur_info) == liveRange.end()) {
+    updateSOLOLiveRange(op, cur_info, endPosition);
   } else {
     updateOperandsLiveRange(op, endPosition);
   }
+  common_ops.emplace_back(v);
 }
 
 void BMAddressAssign::findInPlaceOpMaxUsePosition(
@@ -1103,6 +1147,9 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
   auto run_mode = tpu::getRunMode(op);
+  if (module::isOpInBlock(op)) {
+    return false;
+  }
   if (auto ReshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
     if (Arch::ALIGN_4N &&
         module::getStorageType(ReshapeOp.getInput()).getIntOrFloatBitWidth() ==
