@@ -39,6 +39,7 @@ protected:
   std::vector<uint32_t>
   getConcatOpLive(Operation *op, std::map<ValueInfo, TensorLive> &liveRange);
   void assignL2SRAM(ModuleOp &module);
+  void assignAfter(ModuleOp &module, std::vector<ValueInfo> &inplace_ops);
 
 protected:
   StringRef chip;
