@@ -853,7 +853,7 @@ class OnnxConverter(BaseConverter):
         last_name = None
         for x in onnx_node.inputs:
             if self.isWeight(x):
-                data = self.getWeight(x)
+                data = self.getWeight(x).copy()
                 data[data == int64_max] = int32_max - 1024
                 if len(data.shape) == 1 and data.shape[0] == 0:
                     continue
