@@ -595,7 +595,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - whether layer groups force group by cores, auto/true/false, default is auto
    * - opt
      - N
-     - Optimization type of LayerGroup, 1 or 2, default is 2
+     - Optimization type of LayerGroup, 1/2/3, default is 2. 1: Simple LayerGroup mode, all operators will be grouped as much as possible, and the compilation speed is faster; 2: Dynamic compilation calculates the global cycle optimal Group grouping, suitable for single-core inference graphs; 3: Linear programming LayerGroup mode, suitable for training graphs.
    * - addr_mode
      - N
      - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'], if not set, auto as default
