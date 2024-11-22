@@ -137,6 +137,7 @@ protected:
 
     rewriter.setInsertionPointAfterValue(input_val);
     int offset = 0;
+    int ends = 0;
     std::vector<Value> concat_operands;
     for (auto &slice : h_slices) {
       std::vector<Value> slice_operands;
@@ -145,13 +146,17 @@ protected:
       slice_operands.push_back(none);
       slice_operands.push_back(none);
       slice_operands.push_back(none);
+      ends += slice;
       std::vector<NamedAttribute> slice_attrs;
       slice_attrs.emplace_back(rewriter.getNamedAttr(
           "offset", rewriter.getI64ArrayAttr({0, 0, offset, 0})));
       slice_attrs.emplace_back(rewriter.getNamedAttr(
           "steps", rewriter.getI64ArrayAttr({1, 1, 1, 1})));
       slice_attrs.emplace_back(rewriter.getNamedAttr(
-          "ends", rewriter.getI64ArrayAttr({-1, -1, -1, -1})));
+          "ends",
+          rewriter.getI64ArrayAttr({std::numeric_limits<int64_t>::max(),
+                                    std::numeric_limits<int64_t>::max(), ends,
+                                    std::numeric_limits<int64_t>::max()})));
       offset += slice;
       std::string slice_name = "slice_" + name + std::to_string(offset);
       auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_name));

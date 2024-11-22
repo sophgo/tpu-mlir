@@ -339,6 +339,8 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
       slice_op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
       slice_op->setAttr("ends", rewriter.getI64ArrayAttr(new_ends));
       slice_op->setAttr("steps", rewriter.getI64ArrayAttr(new_steps));
+      slice_op->setAttr("hasparamConvert_axes",
+                        rewriter.getI64ArrayAttr(order_final[slice_axis]));
       slice_op->setOperand(0, reshape_after_matmul.getOutput());
       auto slice_output = slice_op.getResult();
       slice_output.setType(
