@@ -58,6 +58,7 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   auto offset_v = module::getI64Array(getOffset());
   auto steps_v = module::getI64Array(getSteps());
   std::vector<int64_t> in_shape = module::getShape(getInput());
+  auto in_dims = in_shape.size();
   if (out_num_elem == 0) {
     return success();
   }
@@ -66,11 +67,14 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   auto axes = module::getI64Array(getHasparamConvertAxesAttr());
   auto slice_n = axes->size();
   auto ends_v = ends_v_old;
-  if(slice_n) {
+  if (slice_n) {
     ends_v = std::make_shared<std::vector<int64_t>>(in_shape);
   }
   for (int i = 0; i < slice_n; ++i) {
     int axis = axes->at(i);
+    if (axis < 0) {
+      axis += in_dims;
+    }
     int step = steps_v->at(axis);
     int64_t end = ends_v_old->at(axis);
     int64_t offset = offset_v->at(axis);
@@ -83,7 +87,6 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
       offset_v->at(i) += in_shape[i];
     }
   }
-  auto in_dims = in_shape.size();
   std::vector<int64_t> out_shape(in_dims);
   for (size_t i = 0; i < in_dims; ++i) {
     if (i < slice_dims) {
