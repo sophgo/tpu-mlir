@@ -156,7 +156,8 @@ struct TopGatherToSliceByUnsqueeze : public OpRewriterPatternEx<GatherOp> {
       auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> steps(input_shape.size(), 1);
-      std::vector<int64_t> ends(input_shape.size(), 1);
+      std::vector<int64_t> ends(input_shape.size(),
+                                std::numeric_limits<int64_t>::max());
       offsets[ax] = (int64_t)inds_f32->at(0);
       int64_t step = offsets[ax] - steps[ax];
       if (step <= 0)
