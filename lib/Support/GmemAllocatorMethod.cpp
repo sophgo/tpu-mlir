@@ -379,6 +379,8 @@ int64_t GmemAllocL2SRAM::assignGaddr(std::vector<ValueInfo> &ops,
         continue;
       }
       UNREACHABLE_OP("L2SRam is smaller than op must", op_);
+    } else if (op_size == 0) {
+      continue;
     }
     auto is_continuous = false;
     if (op_->getResult(info.index).hasOneUse()) {
