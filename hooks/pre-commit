@@ -1,16 +1,32 @@
 #!/bin/bash
 
 files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(lib|include|tools)/.*\.(cpp|h|hpp)$')
+RED='\033[0;31m'
+NC='\033[0m'
 
 if [ -n "$files" ]; then
     echo "Running clang-format on staged files..."
     clang-format -i $files
     if ! git diff --quiet; then
-        echo "Warning: Some files were formatted. Please review the changes."
+        echo "${RED}Warning${NC}: Some files were formatted. Please review the changes."
         git add $files
         exit 0
     fi
 fi
 echo "Success: clang-format check ok"
+
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+LIB_DIR="${PROJECT_ROOT}/third_party/nntoolchain/lib"
+README_FILE="${PROJECT_ROOT}/third_party/nntoolchain/README.md"
+if git diff --cached --name-only | grep -qE "^third_party/nntoolchain/lib/.*\.(so*|a)$"; then
+    echo "Library files update detected, check whether README.md is updated accordingly.."
+
+    if ! git diff --cached --name-only | grep -q "^third_party/nntoolchain/README.md$"; then
+        echo -e "${RED}ERROR${NC}: README.md file not updated! Please update ${README_FILE} file to reflect changes to dynamic libraries."
+        exit 1
+    fi
+fi
+
+echo "Success: README.md update check ok"
 exit 0
 
