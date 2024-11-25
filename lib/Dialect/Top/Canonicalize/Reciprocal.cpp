@@ -48,6 +48,7 @@ struct MergeToRMSNormPattern : public OpRewriterPatternEx<ReciprocalOp> {
     auto axes = module::getI64Array(reduce_op.getAxes());
     auto dim_size = module::getShape(reduce_op.getInput()).size();
     auto axis = axes->at(0);
+    auto reduce_size = module::getShape(reduce_op.getInput())[axis];
     if (axis < 0) {
       axis += dim_size;
     }
@@ -88,6 +89,9 @@ struct MergeToRMSNormPattern : public OpRewriterPatternEx<ReciprocalOp> {
         return failure();
       }
       weight_value = weight.getResult();
+      if (module::getNumElements(weight_value) != reduce_size) {
+        return failure();
+      }
       output = weight_mul_op.getOutput();
     } else if (scale_op) {
       // weight multiplication will be converted to scale when

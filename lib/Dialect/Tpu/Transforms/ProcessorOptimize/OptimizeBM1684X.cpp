@@ -3387,7 +3387,9 @@ public:
         }
       }
     }
-
+    if (module::getShape(k_in) != module::getShape(v_in)) {
+      return failure();
+    }
     rewriter.setInsertionPointAfter(reshape_op);
     auto o_shape = module::getShape(op.getOutput());
     auto sf_shape = module::getShape(softmax.getInput());
