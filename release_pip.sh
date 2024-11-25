@@ -6,28 +6,45 @@ set -e
 source envsetup.sh
 rm -rf ${INSTALL_PATH}
 rm -rf ${PROJECT_ROOT}/regression/regression_out
-# Check for CUDA support
+
 USE_CUDA=""
-if [ -n "$1" ]; then
-    if [ "$1" = "CUDA" ]; then
-        USE_CUDA="CUDA"
-    elif [ "$1" != "CPU" ]; then
-        echo "Invalid CUDA option: $1"
-        exit 1
-    fi
+TEST_MODE=""
+for arg in "$@"; do
+    case $arg in
+        CUDA)
+            USE_CUDA="CUDA"
+            ;;
+        test)
+            TEST_MODE="test"
+            ;;
+        *)
+            echo "Invalid option: $arg"
+            exit 1
+            ;;
+    esac
+done
+
+# Check for CUDA support
+if [ "$USE_CUDA" == "CUDA" ]; then
+    echo "Building with CUDA support."
+    source build.sh RELEASE $USE_CUDA
+elif [ "$USE_CUDA" == "" ]; then
+    echo "Building without CUDA support."
+    source build.sh RELEASE
 fi
-source build.sh RELEASE $USE_CUDA
 
 # build customlayer for regression test
-source ${PROJECT_ROOT}/third_party/customlayer/envsetup.sh
-rebuild_custom_plugin
-rebuild_custom_backend
-rebuild_custom_firmware_cmodel bm1684x
-rebuild_custom_firmware_cmodel bm1688
-rebuild_custom_firmware_soc bm1684x
-rebuild_custom_firmware_soc bm1688
-rebuild_custom_firmware_pcie
-rm -rf ${PROJECT_ROOT}/third_party/customlayer/build
+if [ "$TEST_MODE" == "test" ]; then
+    source ${PROJECT_ROOT}/third_party/customlayer/envsetup.sh
+    rebuild_custom_plugin
+    rebuild_custom_backend
+    rebuild_custom_firmware_cmodel bm1684x
+    rebuild_custom_firmware_cmodel bm1688
+    rebuild_custom_firmware_soc bm1684x
+    rebuild_custom_firmware_soc bm1688
+    rebuild_custom_firmware_pcie
+    rm -rf ${PROJECT_ROOT}/third_party/customlayer/build
+fi
 
 # set mlir_version
 export mlir_version="$(grep MLIR_VERSION ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
@@ -87,6 +104,14 @@ for file in libpython3.10.so.1.0 \
 do
     cp /usr/lib/x86_64-linux-gnu/${file} ${release_archive}/lib/third_party/
 done
+
+# remove docs
+rm -rf ${release_archive}/docs
+rm -rf ${release_archive}/ppl/doc
+
+# remove redundant .so files
+rm ${release_archive}/lib/libortools.so
+rm ${release_archive}/lib/libortools.so.9.8.3296
 
 # collect_oneDNN_dependence
 cp -L /usr/local/lib/libdnnl.so.3 ${release_archive}/lib/third_party/
