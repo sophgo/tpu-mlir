@@ -52,6 +52,7 @@ struct SplitSlicePattern : public OpRewriterPatternEx<SliceOp> {
     const auto &offset = op->getAttr("offset");
     const auto &steps = op->getAttr("steps");
     const auto &ends = op->getAttr("ends");
+    const auto &axes = op->getAttr("hasparamConvert_axes");
     rewriter.setInsertionPointAfterValue(opd);
     for (const auto user : users) {
       const std::string name_slice =
@@ -61,6 +62,7 @@ struct SplitSlicePattern : public OpRewriterPatternEx<SliceOp> {
       attrs.push_back(rewriter.getNamedAttr("offset", offset));
       attrs.push_back(rewriter.getNamedAttr("steps", steps));
       attrs.push_back(rewriter.getNamedAttr("ends", ends));
+      attrs.push_back(rewriter.getNamedAttr("hasparamConvert_axes", axes));
       auto none = module::getNoneOp(op);
       std::vector<Value> operands;
       operands.push_back(opd);
@@ -99,15 +101,26 @@ struct MergeSlicePattern : public OpRewriterPatternEx<SliceOp> {
     if (!isa<SliceOp>(in_op) || in_op->hasOneUse() == false) {
       return failure();
     }
+    auto input_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
     auto num_dims = output_shape.size();
     auto in_slice = cast<SliceOp>(in_op);
     auto cur_offset = module::getI64Array(op.getOffset());
     auto cur_ends = module::getI64Array(op.getEnds());
     auto cur_steps = module::getI64Array(op.getSteps());
+    auto op_axes = module::getI64Array(op.getHasparamConvertAxesAttr());
     auto in_offset = module::getI64Array(in_slice.getOffset());
     auto in_steps = module::getI64Array(in_slice.getSteps());
-
+    auto in_axes = module::getI64Array(in_slice.getHasparamConvertAxesAttr());
+    auto in_axes_num = in_axes->size();
+    std::vector<int64_t> axes_ = *op_axes;
+    for (int i = 0; i < in_axes_num; ++i) {
+      auto axis = in_axes->at(i);
+      if (std::find(axes_.begin(), axes_.end(), axis) == axes_.end()) {
+        cur_ends->at(axis) = input_shape[axis];
+        axes_.push_back(axis);
+      }
+    }
     std::vector<int64_t> new_offset(num_dims, 0);
     std::vector<int64_t> new_ends(num_dims, 0);
     std::vector<int64_t> new_steps(num_dims, 1);
@@ -126,6 +139,7 @@ struct MergeSlicePattern : public OpRewriterPatternEx<SliceOp> {
     op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
     op->setAttr("ends", rewriter.getI64ArrayAttr(new_ends));
     op->setAttr("steps", rewriter.getI64ArrayAttr(new_steps));
+    op->setAttr("hasparamConvert_axes", rewriter.getI64ArrayAttr(axes_));
     op->setOperand(0, in_slice.getInput());
     rewriter.eraseOp(in_op);
     return success();

@@ -105,8 +105,10 @@ deconv_attr_t top::DeconvOp::dynparseParam() {
   ASSERT_THIS(getPads().size() == spacial_rank * 2);
   std::vector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]); // batch size
+  bool dyn_weight_reorderd = getDynweightReorderd();
 
-  if (module::isWeight(getOperand(1)) || module::isTrain()) {
+  if (module::isWeight(getOperand(1)) || module::isTrain() ||
+      dyn_weight_reorderd) {
     // WeightOp, weight reorder will be finished in origin.mlir generation phase
     // oc, ic
     out_shape.push_back(filter_shape[0] * getGroup());
@@ -136,10 +138,10 @@ deconv_attr_t top::DeconvOp::dynparseParam() {
   auto oshape = getOutput().getType().cast<RankedTensorType>().getShape();
   auto kernel = module::getI64Array(getKernelShape());
   auto stride = module::getI64Array(getStrides());
-  dilation =
-      module::getI64Array(getDilations(), getKernelShape().size(), 1);
+  dilation = module::getI64Array(getDilations(), getKernelShape().size(), 1);
   auto pad = module::getI64Array(getPads());
-  auto output_padding = module::getI64Array(getOutputPadding(), getKernelShape().size(), 0);
+  auto output_padding =
+      module::getI64Array(getOutputPadding(), getKernelShape().size(), 0);
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.with_bias = !getBias().getType().isa<NoneType>();
