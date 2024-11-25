@@ -49,6 +49,7 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
+      attrs.set("hasparamConvert_axes", rewriter.getI64ArrayAttr(ax));
       auto none = module::getNoneOp(op);
       std::vector<Value> operands;
       operands.push_back(op.getInput());
@@ -91,7 +92,8 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       NamedAttrList attrs;
       auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
-      std::vector<int64_t> ends(input_shape.size(), std::numeric_limits<int64_t>::max());
+      std::vector<int64_t> ends(input_shape.size(),
+                                std::numeric_limits<int64_t>::max());
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);
       steps[ax] = step;
