@@ -348,7 +348,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
     for (auto tensor : timestep_tensors) {
       int64_t stage = time_step->get_tensor_swpipl_stage(tensor.first);
       auto tensor_info = tensor.second;
-      if (module::getChip() == module::Chip::BM1688) {
+      if (module::isBM1688()) {
         auto bm1688 = (BM1688 *)BM168x::instance();
         float BW = 24;
         if (consider_multi_core_bw) {
@@ -362,7 +362,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         }
       }
       int64_t cycle = this->getGdmaCycle(tensor.first, tensor_info, group_type);
-      if (module::getChip() == module::Chip::BM1688) {
+      if (module::isBM1688()) {
         auto bm1688 = (BM1688 *)BM168x::instance();
         float BW = 24;
         bm1688->dl_set_gdma_bw_s2l(BW);
@@ -536,7 +536,7 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
 
   auto bm168x = BM168x::instance();
 
-  if (module::getChip() == module::Chip::BM1688) {
+  if (module::isBM1688()) {
     auto bm1688 = (BM1688 *)bm168x;
     bool imp_multi_core_global =
         isa<tpu::Conv2DOp>(op) || splitedOps.size() > 1;
@@ -588,7 +588,7 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
   }
 
   // restore default BW
-  if (module::getChip() == module::Chip::BM1688) {
+  if (module::isBM1688()) {
     auto bm1688 = (BM1688 *)bm168x;
     float BW = 24;
     // for other targets, writer
