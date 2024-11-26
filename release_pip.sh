@@ -112,6 +112,7 @@ rm -rf ${release_archive}/ppl/doc
 # remove redundant .so files
 rm ${release_archive}/lib/libortools.so
 rm ${release_archive}/lib/libortools.so.9.8.3296
+rm ${release_archive}/lib/*.a
 
 # collect_oneDNN_dependence
 cp -L /usr/local/lib/libdnnl.so.3 ${release_archive}/lib/third_party/
