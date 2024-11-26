@@ -32,6 +32,22 @@ LogicalResult top::GatherNDOp::inference(InferenceParameter &p) {
   indices.size = module::getNumElements(getIndices());
   param.inputs.push_back(indices);
 
+  std::vector<int64_t> output_shape;
+  for (int i = 0; i < param.batch_dims; ++i) {
+    output_shape.push_back(indices.shape[i]);
+  }
+  for (int i = param.batch_dims; i < indices.shape.size() - 1; ++i) {
+    output_shape.push_back(indices.shape[i]);
+  }
+  if (indices.shape[indices.shape.size() - 1] !=
+      input.shape.size() - param.batch_dims) {
+    for (int i = param.batch_dims + indices.shape[indices.shape.size() - 1];
+         i < input.shape.size(); ++i) {
+      output_shape.push_back(input.shape[i]);
+    }
+  }
+  module::setShape(getOutput(), output_shape);
+
   tensor_list_t output;
   output.ptr = p.outputs[0];
   output.shape = module::getShape(getOutput());

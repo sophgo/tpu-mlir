@@ -176,3 +176,69 @@ detect_yolov3.py \
 rm -rf *.npz
 
 popd
+
+mkdir -p yolov8s_seg
+pushd yolov8s_seg
+
+# yolov8_seg
+model_transform.py \
+  --model_name yolov8s_seg \
+  --model_def ${NNMODELS_PATH}/onnx_models/yolov8s-seg.onnx \
+  --input_shapes=[[1,3,640,640]] \
+  --keep_aspect_ratio \
+  --scale=0.0039216,0.0039216,0.0039216 \
+  --pixel_format=rgb \
+  --test_input=${REGRESSION_PATH}/image/dog.jpg \
+  --test_result=yolov8s_seg_top_outputs.npz \
+  --add_postprocess=yolov8_seg \
+  --mlir yolov8s_seg.mlir
+
+model_deploy.py \
+  --mlir yolov8s_seg.mlir \
+  --quantize F32 \
+  --chip bm1684x \
+  --test_input ${REGRESSION_PATH}/image/dog.jpg \
+  --test_reference yolov8s_seg_top_outputs.npz \
+  --except masks_uncrop,seg_out \
+  --fuse_preprocess \
+  --debug \
+  --model yolov8s_seg_f32.bmodel
+
+segment_yolo.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov8s_seg_f32.bmodel \
+  --net_input_dims 640,640 \
+  --fuse_postprocess \
+  --fuse_preprocess \
+  --output dog_seg_out_f32.jpg
+
+# f16
+fp_forward.py yolov8s_seg.mlir \
+  --fpfwd_outputs yolo_seg_post_mulconst3 \
+  --chip bm1684x \
+  --fp_type F32 \
+  -o yolov8s_seg_qtable
+
+model_deploy.py \
+  --mlir yolov8s_seg.mlir \
+  --quantize F16 \
+  --chip bm1684x \
+  --test_input ${REGRESSION_PATH}/image/dog.jpg \
+  --test_reference yolov8s_seg_top_outputs.npz \
+  --except masks_uncrop,seg_out \
+  --fuse_preprocess \
+  --debug \
+  --quantize_table yolov8s_seg_qtable \
+  --model yolov8s_seg_f16.bmodel
+
+segment_yolo.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov8s_seg_f16.bmodel \
+  --net_input_dims 640,640 \
+  --fuse_postprocess \
+  --fuse_preprocess \
+  --output dog_seg_out_f16.jpg
+
+rm -rf *.npz
+
+popd
