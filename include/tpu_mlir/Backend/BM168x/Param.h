@@ -1266,6 +1266,7 @@ typedef struct a16_matmul_spec {
   int weight_bits;
   bool has_zp;
   int q_group_size;
+  int use_multi_core;
 } a16_matmul_spec_t;
 
 typedef struct batch_matmul_common_spec {

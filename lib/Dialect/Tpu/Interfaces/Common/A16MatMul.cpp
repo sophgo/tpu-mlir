@@ -493,4 +493,4 @@ ArrayAttr tpu::A16MatMulOp::getIndexingMaps() {
   return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
 }
 
-bool tpu::A16MatMulOp::support_multi_core() { return module::isSG2380(); }
+bool tpu::A16MatMulOp::support_multi_core() { return (module::isSG2380() || module::isBM1690Family()) && !module::isOpInGroupParallel(*this);}

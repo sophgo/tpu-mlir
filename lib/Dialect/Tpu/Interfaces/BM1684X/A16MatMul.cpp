@@ -26,8 +26,14 @@ void tpu::A16MatMulOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  BM168x::call_global_func("backend_api_a16_matmul_global", &spec, sizeof(spec),
-                           input_spec->data(), output_spec->data());
+  if (supportMultiCore(*this)){
+    spec.use_multi_core = 1;
+  } else {
+    spec.use_multi_core = 0;
+  }
+  BM168x::call_global_func("backend_api_a16_matmul_global", &spec,
+                           sizeof(spec), input_spec->data(),
+                           output_spec->data());
 }
 
 // ======================================

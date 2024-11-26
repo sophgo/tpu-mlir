@@ -191,6 +191,7 @@ bool IsHdimIsBatch(Operation *Op);
 bool IsHdimIsBatch(Value value);
 bool isOpInCoreMatch(Operation *Op);
 bool isOpInCoreParallel(Operation *Op);
+bool isOpInGroupParallel(Operation *Op);
 bool isOpInDevParallel(Operation *Op);
 bool isOpInBlock(Operation *op);
 FuncOp getFuncOp(ModuleOp module, StringRef func_name);
