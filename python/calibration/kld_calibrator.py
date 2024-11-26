@@ -1287,7 +1287,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 muti_output_tensor.append(op)
             if self.parser.get_pre_op_by_op_name(op) == []:
                 self.input_op.append(op)
-        if self.args.part_asymmtric:
+        if self.args.part_asymmetric:
             self.choose_asym_op(self.tensor_list)
         self.step = (99.999999 - 99.99) / len(all_tensors)
         input_number = [i for i in range(self.args.input_num)]
@@ -1814,6 +1814,11 @@ class ActivationCalibrator(BaseKldCalibrator):
                             min_value, max_value = -threshold*8.0/7.0, threshold
                             f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
                                                                     max_value))
+                if self.args.part_asymmetric:
+                    f.write("\n")
+                    f.write("#asym_op\n")
+                    for i, op_name in enumerate(self.asym_op1):
+                        f.write("{}\n".format(op_name))
 
             # if 'use_torch_observer_for_cali' in self.debug_cmd:
             #     exit(0)
@@ -1857,7 +1862,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         min_value, max_value, _ = self.activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
                                                            max_value))
-            if self.args.part_asymmtric:
+            if self.args.part_asymmetric:
                 f.write("\n")
                 f.write("#asym_op\n")
                 for i, op_name in enumerate(self.asym_op1):

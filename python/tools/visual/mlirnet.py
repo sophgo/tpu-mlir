@@ -91,7 +91,7 @@ class mlir_net:
                         name, self.inputs[name].astype(np.float32))
                 else:
                     self.mlir_module.set_tensor(
-                        name, self.inputs[name].astype(np.float32))
+                        name, self.inputs[name].astype(np.float32), self.inputs[name].shape)
         else:
             from utils.preprocess import preprocess
             for i in np.arange(self.mlir_parser.get_input_num()):
