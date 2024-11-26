@@ -1009,47 +1009,38 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   }
 
   if (getenv("SC_BRUTE_FORCE")) {
-    sc_method_brute_force(lg_info, shape_secs, allow_bank_conflict, time_step,
-                          group_costs, shape_secs_space, cycle_calculator_);
-  } else if (lg_info.use_cache && lg_info.shape_secs.nsecs != 0) {
-    group_costs.push_back(lg_info.group_cost);
-    shape_secs_space.push_back(lg_info.shape_secs);
+    sc_method_brute_force(lg_info, shape_secs, allow_bank_conflict, time_step);
+  } else if (lg_info.use_cache && lg_info.shape_secs.nsecs != 0 &&
+             !getenv("RESEARCH_SHAPE_SECS")) {
+    min_group_costs_ = lg_info.group_cost;
+    min_shape_secs_ = lg_info.shape_secs;
   } else {
-    sc_method_quick_search(lg_info, shape_secs, allow_bank_conflict, time_step,
-                           group_costs, shape_secs_space, cycle_calculator_);
+    sc_method_quick_search(lg_info, shape_secs, allow_bank_conflict, time_step);
 
     if (module::getCoreNum() > 1) {
-      sc_method_multi_core(lg_info, shape_secs, allow_bank_conflict, time_step,
-                           group_costs, shape_secs_space, cycle_calculator_);
+      sc_method_multi_core(lg_info, shape_secs, allow_bank_conflict, time_step);
       sc_method_multi_core_v2(lg_info, shape_secs, allow_bank_conflict,
-                              time_step, group_costs, shape_secs_space,
-                              cycle_calculator_);
+                              time_step);
       sc_method_multi_core_v3(lg_info, shape_secs, allow_bank_conflict,
-                              time_step, group_costs, shape_secs_space,
-                              cycle_calculator_);
+                              time_step);
     }
   }
 
-  if (group_costs.empty()) {
+  if (min_group_costs_ == -1) {
     return false;
   }
 
-  int64_t min_index =
-      std::distance(group_costs.begin(),
-                    std::min_element(group_costs.begin(), group_costs.end()));
-  shape_secs = shape_secs_space[min_index];
+  shape_secs = min_shape_secs_;
 
   DEBUG_WITH_TYPE("shape_secs", {
     llvm::dbgs() << "; action = shape_secs"
                  << "; step = assign_lmem_addr_with_secs"
-                 << "; choose_from = " << group_costs.size()
-                 << "; min_index = " << min_index
                  << "; nsecs = " << shape_secs.nsecs
                  << "; csecs = " << shape_secs.csecs
                  << "; dsecs = " << shape_secs.dsecs
                  << "; hsecs = " << shape_secs.hsecs
                  << "; wsecs = " << shape_secs.wsecs
-                 << "; min_cost = " << group_costs[min_index] << "\n";
+                 << "; min_cost = " << min_group_costs_ << "\n";
   });
 
   auto status = time_step->assignTimeStep(lg_info, shape_secs, true);
@@ -1063,12 +1054,41 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   return true;
 }
 
-// best but slowest
-void LmemAllocator::sc_method_brute_force(
+search_result_t LmemAllocator::try_this_shape_secs(
     const LgInfo &lg_info, shape_secs_t &shape_secs, bool allow_bank_conflict,
-    BasicTimeStepPtr &time_step, std::vector<int64_t> &group_costs,
-    std::vector<shape_secs_t> &shape_secs_space,
-    std::shared_ptr<CycleCalculator> cycle_calculator_) {
+    BasicTimeStepPtr &time_step) {
+  bool status = time_step->assignTimeStep(lg_info, shape_secs, true);
+
+  if (!status) {
+    return SECS_TIMESTEP_INVALID;
+  }
+  status = assignLmemAddr(lg_info, time_step, shape_secs);
+
+  if (!status) {
+    return SECS_LMEM_INVALID;
+  }
+
+  int64_t _group_cost;
+
+#pragma omp critical(get_cycle)
+  _group_cost =
+      cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
+
+  last_group_cost_ = _group_cost;
+  if (min_group_costs_ == -1 || _group_cost < min_group_costs_) {
+    min_group_costs_ = _group_cost;
+    min_shape_secs_ = shape_secs;
+    return SECS_VALID_AND_BETTER;
+  }
+
+  return SECS_VALID;
+}
+
+// best but slowest
+void LmemAllocator::sc_method_brute_force(const LgInfo &lg_info,
+                                          shape_secs_t &shape_secs,
+                                          bool allow_bank_conflict,
+                                          BasicTimeStepPtr &time_step) {
 
   for (int _n = 1; _n <= max_shape_secs_.nsecs; _n++) {
     for (int _c = 1; _c <= max_shape_secs_.csecs; _c++) {
@@ -1091,36 +1111,20 @@ void LmemAllocator::sc_method_brute_force(
                 min_total_secs_) {
               continue;
             }
-
-            bool status =
-                time_step->assignTimeStep(lg_info, cur_shape_secs, true);
-            if (status == false) {
-              continue;
+            search_result_t ret = try_this_shape_secs(
+                lg_info, cur_shape_secs, allow_bank_conflict, time_step);
+            if (ret >= SECS_VALID) {
+              DEBUG_WITH_TYPE("shape_secs", {
+                llvm::dbgs() << "; action = shape_secs"
+                             << "; step = sc_method_brute_force"
+                             << "; nsecs = " << cur_shape_secs.nsecs
+                             << "; csecs = " << cur_shape_secs.csecs
+                             << "; dsecs = " << cur_shape_secs.dsecs
+                             << "; hsecs = " << cur_shape_secs.hsecs
+                             << "; wsecs = " << cur_shape_secs.wsecs
+                             << "; cost = " << last_group_cost_ << "\n";
+              });
             }
-
-            status = assignLmemAddr(lg_info, time_step, cur_shape_secs,
-                                    allow_bank_conflict);
-            if (status == false) {
-              continue;
-            }
-            int64_t _group_cost = 0;
-
-#pragma omp critical(get_cycle)
-            _group_cost = cycle_calculator_->getGroupCycle(
-                time_step, cur_shape_secs, lg_info.type);
-
-            DEBUG_WITH_TYPE("shape_secs", {
-              llvm::dbgs() << "; action = shape_secs"
-                           << "; step = sc_method_brute_force"
-                           << "; nsecs = " << cur_shape_secs.nsecs
-                           << "; csecs = " << cur_shape_secs.csecs
-                           << "; dsecs = " << cur_shape_secs.dsecs
-                           << "; hsecs = " << cur_shape_secs.hsecs
-                           << "; wsecs = " << cur_shape_secs.wsecs
-                           << "; cost = " << _group_cost << "\n";
-            });
-            group_costs.push_back(_group_cost);
-            shape_secs_space.push_back(cur_shape_secs);
           }
         }
       }
@@ -1128,15 +1132,13 @@ void LmemAllocator::sc_method_brute_force(
   }
 }
 
-void LmemAllocator::sc_method_quick_search(
-    const LgInfo &lg_info, shape_secs_t &_shape_secs, bool allow_bank_conflict,
-    BasicTimeStepPtr &time_step, std::vector<int64_t> &group_costs,
-    std::vector<shape_secs_t> &shape_secs_space,
-    std::shared_ptr<CycleCalculator> cycle_calculator_) {
+void LmemAllocator::sc_method_quick_search(const LgInfo &lg_info,
+                                           shape_secs_t &_shape_secs,
+                                           bool allow_bank_conflict,
+                                           BasicTimeStepPtr &time_step) {
 
   shape_secs_t shape_secs = _shape_secs;
   int64_t try_num = 0;
-  bool status = false;
   const int64_t MAX_TRY_NUM = 20;
   int64_t dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
   while (shape_secs.nsecs <= max_shape_secs_.nsecs &&
@@ -1145,22 +1147,9 @@ void LmemAllocator::sc_method_quick_search(
          shape_secs.wsecs <= max_shape_secs_.wsecs &&
          shape_secs.csecs <= max_shape_secs_.csecs) {
     // reassign time step
-    status = time_step->assignTimeStep(lg_info, shape_secs, true);
-    if (status == false) {
-      break;
-    }
-    status =
-        assignLmemAddr(lg_info, time_step, shape_secs, allow_bank_conflict);
-
-    if (status == false) {
-      update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs_);
-    } else {
-
-      int64_t _group_cost;
-#pragma omp critical(get_cycle)
-      _group_cost =
-          cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
-
+    search_result_t ret = try_this_shape_secs(lg_info, shape_secs,
+                                              allow_bank_conflict, time_step);
+    if (ret >= SECS_VALID) {
       DEBUG_WITH_TYPE("shape_secs", {
         llvm::dbgs() << "; action = shape_secs"
                      << "; step = sc_method_quick_search"
@@ -1169,11 +1158,11 @@ void LmemAllocator::sc_method_quick_search(
                      << "; dsecs = " << shape_secs.dsecs
                      << "; hsecs = " << shape_secs.hsecs
                      << "; wsecs = " << shape_secs.wsecs
-                     << "; cost = " << _group_cost << "\n";
+                     << "; cost = " << last_group_cost_ << "\n";
       });
-      group_costs.push_back(_group_cost);
-      shape_secs_space.push_back(shape_secs);
       break;
+    } else if (ret > SECS_TIMESTEP_INVALID) {
+      update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs_);
     }
     if (++try_num >= MAX_TRY_NUM) {
       break;
@@ -1181,11 +1170,10 @@ void LmemAllocator::sc_method_quick_search(
   }
 }
 
-void LmemAllocator::sc_method_multi_core(
-    const LgInfo &lg_info, shape_secs_t &_shape_secs, bool allow_bank_conflict,
-    BasicTimeStepPtr &time_step, std::vector<int64_t> &group_costs,
-    std::vector<shape_secs_t> &shape_secs_space,
-    std::shared_ptr<CycleCalculator> cycle_calculator_) {
+void LmemAllocator::sc_method_multi_core(const LgInfo &lg_info,
+                                         shape_secs_t &_shape_secs,
+                                         bool allow_bank_conflict,
+                                         BasicTimeStepPtr &time_step) {
 
   shape_secs_t shape_secs = _shape_secs;
   auto core_num = module::getCoreNum();
@@ -1221,31 +1209,26 @@ void LmemAllocator::sc_method_multi_core(
     return;
   }
 
-  int64_t _group_cost;
-#pragma omp critical(get_cycle)
-  _group_cost =
-      cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
-
-  DEBUG_WITH_TYPE("shape_secs", {
-    llvm::dbgs() << "; action = shape_secs"
-                 << "; step = sc_method_multi_core"
-                 << "; nsecs = " << shape_secs.nsecs
-                 << "; csecs = " << shape_secs.csecs
-                 << "; dsecs = " << shape_secs.dsecs
-                 << "; hsecs = " << shape_secs.hsecs
-                 << "; wsecs = " << shape_secs.wsecs
-                 << "; cost = " << _group_cost << "\n";
-  });
-
-  group_costs.push_back(_group_cost);
-  shape_secs_space.push_back(shape_secs);
+  search_result_t ret =
+      try_this_shape_secs(lg_info, shape_secs, allow_bank_conflict, time_step);
+  if (ret >= SECS_VALID) {
+    DEBUG_WITH_TYPE("shape_secs", {
+      llvm::dbgs() << "; action = shape_secs"
+                   << "; step = sc_method_multi_core"
+                   << "; nsecs = " << shape_secs.nsecs
+                   << "; csecs = " << shape_secs.csecs
+                   << "; dsecs = " << shape_secs.dsecs
+                   << "; hsecs = " << shape_secs.hsecs
+                   << "; wsecs = " << shape_secs.wsecs
+                   << "; cost = " << last_group_cost_ << "\n";
+    });
+  }
 }
 
-void LmemAllocator::sc_method_multi_core_v2(
-    const LgInfo &lg_info, shape_secs_t &shape_secs, bool allow_bank_conflict,
-    BasicTimeStepPtr &time_step, std::vector<int64_t> &group_costs,
-    std::vector<shape_secs_t> &shape_secs_space,
-    std::shared_ptr<CycleCalculator> cycle_calculator_) {
+void LmemAllocator::sc_method_multi_core_v2(const LgInfo &lg_info,
+                                            shape_secs_t &shape_secs,
+                                            bool allow_bank_conflict,
+                                            BasicTimeStepPtr &time_step) {
 
   int64_t nch_secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.hsecs;
   auto core_num = module::getCoreNum();
@@ -1253,7 +1236,7 @@ void LmemAllocator::sc_method_multi_core_v2(
   if (nch_secs % core_num == 0 || nch_secs < core_num) {
     return;
   }
-
+  int MAX_TRY_NUM = getenv("MAX_TRY_NUM") ? atoi(getenv("MAX_TRY_NUM")) : 200;
   int64_t max_nch_secs =
       max_shape_secs_.nsecs * max_shape_secs_.csecs * max_shape_secs_.hsecs;
 
@@ -1262,6 +1245,7 @@ void LmemAllocator::sc_method_multi_core_v2(
 
   std::vector<int64_t> history_costs;
 
+  int not_best_count = 0;
   // search all possible n/c/h values
   for (int64_t i = min_nch_secs; i <= max_nch_secs; i++) {
 
@@ -1283,22 +1267,16 @@ void LmemAllocator::sc_method_multi_core_v2(
       core_shape_secs.csecs = dist[1];
       core_shape_secs.hsecs = dist[2];
 
-      // Check if this combination is valid
-      bool status = time_step->assignTimeStep(lg_info, core_shape_secs, true);
-
-      if (status) {
-        status = assignLmemAddr(lg_info, time_step, core_shape_secs);
+      search_result_t ret = try_this_shape_secs(lg_info, core_shape_secs,
+                                                allow_bank_conflict, time_step);
+      if (ret == SECS_VALID_AND_BETTER) {
+        not_best_count = 0;
+      } else if (ret == SECS_VALID) {
+        // only count valid but not best
+        not_best_count++;
       }
 
-      if (status) {
-        // Valid combination found, update shape_secs and return
-
-        int64_t _group_cost;
-
-#pragma omp critical(get_cycle)
-        _group_cost = cycle_calculator_->getGroupCycle(
-            time_step, core_shape_secs, lg_info.type);
-
+      if (ret >= SECS_VALID) {
         DEBUG_WITH_TYPE("shape_secs", {
           llvm::dbgs() << "; action = shape_secs"
                        << "; step = sc_method_multi_core_v2"
@@ -1308,20 +1286,21 @@ void LmemAllocator::sc_method_multi_core_v2(
                        << "; dsecs = " << core_shape_secs.dsecs
                        << "; hsecs = " << core_shape_secs.hsecs
                        << "; wsecs = " << core_shape_secs.wsecs
-                       << "; cost = " << _group_cost << "\n";
+                       << "; cost = " << last_group_cost_ << "\n";
         });
-        group_costs.push_back(_group_cost);
-        shape_secs_space.push_back(core_shape_secs);
+      }
+      if (not_best_count >= MAX_TRY_NUM) {
+        // max search times
+        return;
       }
     }
   }
 }
 
-void LmemAllocator::sc_method_multi_core_v3(
-    const LgInfo &lg_info, shape_secs_t &_shape_secs, bool allow_bank_conflict,
-    BasicTimeStepPtr &time_step, std::vector<int64_t> &group_costs,
-    std::vector<shape_secs_t> &shape_secs_space,
-    std::shared_ptr<CycleCalculator> cycle_calculator_) {
+void LmemAllocator::sc_method_multi_core_v3(const LgInfo &lg_info,
+                                            shape_secs_t &_shape_secs,
+                                            bool allow_bank_conflict,
+                                            BasicTimeStepPtr &time_step) {
 
   shape_secs_t shape_secs = _shape_secs;
   auto num_cores = module::getCoreNum();
@@ -1348,25 +1327,20 @@ void LmemAllocator::sc_method_multi_core_v3(
         return;
       }
 
-      int64_t _group_cost;
-#pragma omp critical(get_cycle)
-      _group_cost =
-          cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
-
-      DEBUG_WITH_TYPE("shape_secs", {
-        llvm::dbgs() << "; action = shape_secs"
-                     << "; step = sc_method_multi_core_v3"
-                     << "; nsecs = " << shape_secs.nsecs
-                     << "; csecs = " << shape_secs.csecs
-                     << "; dsecs = " << shape_secs.dsecs
-                     << "; hsecs = " << shape_secs.hsecs
-                     << "; wsecs = " << shape_secs.wsecs
-                     << "; cost = " << _group_cost << "\n";
-      });
-
-      group_costs.push_back(_group_cost);
-      shape_secs_space.push_back(shape_secs);
-      return;
+      search_result_t ret = try_this_shape_secs(lg_info, shape_secs,
+                                                allow_bank_conflict, time_step);
+      if (ret >= SECS_VALID) {
+        DEBUG_WITH_TYPE("shape_secs", {
+          llvm::dbgs() << "; action = shape_secs"
+                       << "; step = sc_method_multi_core_v3"
+                       << "; nsecs = " << shape_secs.nsecs
+                       << "; csecs = " << shape_secs.csecs
+                       << "; dsecs = " << shape_secs.dsecs
+                       << "; hsecs = " << shape_secs.hsecs
+                       << "; wsecs = " << shape_secs.wsecs
+                       << "; cost = " << last_group_cost_ << "\n";
+        });
+      }
     }
   }
   return;
