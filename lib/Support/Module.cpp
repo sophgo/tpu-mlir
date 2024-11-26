@@ -826,6 +826,17 @@ bool isOpInCoreParallel(Operation *Op) {
   return false;
 }
 
+bool isOpInGroupParallel(Operation *Op) {
+  if (Op == nullptr) {
+    return false;
+  }
+  auto parent = Op->getParentOp();
+  if (isa_and_nonnull<tpu::GroupParallelOp>(parent)) {
+    return true;
+  }
+  return false;
+}
+
 // op in [CoreBegin, CoreEnd]
 bool isOpInCoreMatch(Operation *op) {
   while (!op->use_empty()) {
