@@ -1253,7 +1253,7 @@ add_shift数据相加后，以INT64为中间结果保存，然后在INT64基础�
 返回一个Tensor。
 该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
 * BM1684X：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
@@ -1299,7 +1299,7 @@ sub_shift数据相减后，以INT64为中间结果保存，然后在INT64基础�
 返回一个Tensor。
 该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
 * BM1684X：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
@@ -1346,7 +1346,7 @@ mul_shift数据相乘后，以INT64为中间结果保存，然后在INT64基础�
 返回一个Tensor。
 该Tensor的数据类型由out_dtype指定，或与输入数据类型一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
 * BM1684X：输入数据类型可以是INT32/UINT32/INT16/UINT6/INT8/UINT8。
@@ -3857,7 +3857,7 @@ requant_int
 """""""""""
 返回一个Tensor。该Tensor的数据类型由out_dtype确定。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1684X
 * BM1688
@@ -3903,7 +3903,7 @@ dequant_int_to_fp
 """""""""""
 返回一个Tensor。该Tensor的数据类型由out_dtype指定。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1684X：input数据类型可以是INT16/UINT16/INT8/UINT8。
 
@@ -3966,7 +3966,7 @@ dequant_int
 """""""""""
 返回一个Tensor。该Tensor的数据类型由out_dtype确定。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1684X
 
@@ -4048,7 +4048,7 @@ maxpool2d
 """""""""""
 返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
@@ -4090,7 +4090,7 @@ maxpool2d_with_mask
 """""""""""
 返回两个Tensor，一个Tensor的数据类型与输入Tensor相同。另一个返回一个坐标Tensor，该Tensor是记录使用比较运算池化时所选择的坐标。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32。
@@ -4136,7 +4136,7 @@ maxpool3d
 """""""""""
 返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
@@ -4187,7 +4187,7 @@ avgpool2d
 """""""""""
 返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
@@ -4237,7 +4237,7 @@ avgpool3d
 """""""""""
 返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
@@ -4357,7 +4357,7 @@ batch_norm
 """""""""""
 返回Tensor类型，表示输出归一化后的Tensor，数据类型与输入一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
@@ -4400,7 +4400,7 @@ layer_norm
 """""""""""
 返回Tensor类型，表示输出归一化后的Tensor，数据类型与输入一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
@@ -4443,7 +4443,7 @@ group_norm
 """""""""""
 返回Tensor类型，表示输出归一化后的Tensor，数据类型与输入一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
@@ -4483,7 +4483,7 @@ rms_norm
 """""""""""
 返回Tensor类型，表示输出归一化的后的Tensor，数据类型与输入一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
@@ -4526,7 +4526,7 @@ v = \frac{v}{\max(\lVert v \rVert_p, \epsilon)}
 """""""""""
 返回Tensor类型，表示输出归一化的后的Tensor，数据类型与输入一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
@@ -4932,7 +4932,7 @@ scatter
 """""""""""
 返回一个新的Tensor，该Tensor在指定位置上进行了更新操作，其他位置保持了原始输入的Tensor值。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1684X：输入数据类型可以是FLOAT32,FLOAT16,INT8。
 * BM1688：输入数据类型可以是FLOAT32,FLOAT16,INT8。
@@ -4968,7 +4968,7 @@ scatterND
 """""""""""
 返回一个新的Tensor，该Tensor在指定位置上进行了更新操作，其他位置保持了原始输入的Tensor值。形状与数据类型和input一致。
 
-芯片支持
+处理器支持
 """""""""""
 * BM1684X：输入数据类型可以是FLOAT32,FLOAT16,INT8。
 * BM1688：输入数据类型可以是FLOAT32,FLOAT16,INT8。

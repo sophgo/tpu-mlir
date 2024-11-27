@@ -163,8 +163,7 @@
 model_transform.py
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-用于将各种神经网络模型转换成MLIR文件, 支持的参数如下:
-
+用于将各种神经网络模型转换成MLIR文件（``.mlir``后缀）以及配套的权重文件（ ``${model_name}_top_${quantize}_all_weight.npz`` ），支持的参数如下:
 
 .. list-table:: model_transform 参数功能
    :widths: 20 12 50
@@ -179,24 +178,24 @@ model_transform.py
    * - model_def
      - 是
      - 指定模型定义文件, 比如 ``.onnx`` 或 ``.tflite`` 或 ``.prototxt`` 文件
-   * - model_extern
-     - 否
-     - 其他模型定义文件, 用于与model_def模型合并（目前主要用于MaskRCNN功能），默认处理为None; 多个输入模型文件时，用 ``,`` 隔开
    * - mlir
      - 是
-     - 指定输出的mlir文件名称和路径
-   * - model_data
-     - 否
-     - 指定模型权重文件, caffe模型需要, 对应 ``.caffemodel`` 文件
+     - 指定输出的mlir文件名称和路径, ``.mlir`` 后缀
    * - input_shapes
      - 否
      - 指定输入的shape, 例如 ``[[1,3,640,640]]`` ; 二维数组, 可以支持多输入情况
+   * - model_extern
+     - 否
+     - 其他模型定义文件, 用于与model_def模型合并（目前主要用于MaskRCNN功能），默认处理为None; 多个输入模型文件时，用 ``,`` 隔开
+   * - model_data
+     - 否
+     - 指定模型权重文件, caffe模型需要, 对应 ``.caffemodel`` 文件
    * - input_types
      - 否
-     - 指定输入的类型, 例如int32; 多输入用 ``,`` 隔开; 不指定情况下默认处理为float32
+     - 当模型为 ``.pt`` 文件时指定输入的类型, 例如int32; 多输入用 ``,`` 隔开; 不指定情况下默认处理为float32。
    * - keep_aspect_ratio
      - 否
-     - 在Resize时是否保持长宽比, 默认为false; 设置时会对不足部分补0
+     - 当test_input与input_shapes不同时，在resize时是否保持长宽比, 默认为false; 设置时会对不足部分补0
    * - mean
      - 否
      - 图像每个通道的均值, 默认为 0.0,0.0,0.0
@@ -214,13 +213,13 @@ model_transform.py
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后按照该指定名称的顺序做输出
    * - add_postprocess
      - 否
-     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5和ssd后处理
+     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5、yolov8、yolov11、ssd后处理
    * - test_input
      - 否
-     - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会正确性验证
+     - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会正确性验证
    * - test_result
      - 否
-     - 指定验证后的输出文件
+     - 指定验证后的输出文件, ``.npz``格式
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用 ``,`` 隔开
@@ -512,7 +511,7 @@ model_deploy.py
      - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - quantize
      - 是
-     - 指定默认量化类型, 支持F32/F16/BF16/INT8, 不同芯片支持的量化类型如下表所示。
+     - 指定默认量化类型, 支持F32/F16/BF16/INT8等, 不同处理器支持的量化类型如下表所示。
    * - quant_input
      - 否
      - 指定输入数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输入数据类型也为int8，若不指定则为F32
@@ -533,7 +532,7 @@ model_deploy.py
      - 指定是否将预处理融合到模型中，如果指定了此参数，则模型输入为uint8类型，直接输入resize后的原图即可
    * - calibration_table
      - 否
-     - 指定校准表路径, 当存在INT8量化的时候需要校准表
+     - 指定校准表路径, 当存在INT8/F8E4M3量化的时候需要校准表
    * - ignore_f16_overflow
      - 否
      - 打开时则有F16溢出风险的算子依然按F16实现;否则默认会采用F32实现, 如LayerNorm
@@ -542,7 +541,7 @@ model_deploy.py
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果余弦与欧式相似度的误差容忍度，默认为0.8,0.5
    * - test_input
      - 否
-     - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会正确性验证
+     - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会正确性验证
    * - test_reference
      - 否
      - 用于验证模型正确性的参考数据(使用npz格式)。其为各算子的计算结果
@@ -625,13 +624,13 @@ model_deploy.py
      - 否
      - 是否启用 MaskRCNN大算子.
 
-对于不同chip和支持的quantize类型对应关系如下表所示：
+对于不同处理器和支持的量化类型对应关系如下表所示：
 
-.. list-table:: 不同芯片支持的 quantize 量化类型
+.. list-table:: 不同处理器支持的 quantize 量化类型
    :widths: 18 15
    :header-rows: 1
 
-   * - 芯片
+   * - 处理器
      - 支持的quantize
    * - BM1688
      - F32/F16/BF16/INT8/INT4
@@ -864,7 +863,7 @@ gen_rand_input.py
      - 说明
    * - mlir
      - 是
-     - 指定输入的mlir文件名称和路径
+     - 指定输出的mlir文件名称和路径, ``.mlir`` 后缀
    * - img
      - 否
      - 用于CV任务生成随机图片，否则生成npz文件。默认图片的取值范围为[0,255]，数据类型为'uint8'，不通过'ranges'或'input_types'更改。
@@ -907,7 +906,7 @@ model_tool
 .. code-block:: text
 
   bmodel version: B.2.2+v1.7.beta.134-ge26380a85-20240430
-  chip: BM1684X
+  processor: BM1684X
   create time: Tue Apr 30 18:04:06 2024
 
   kernel_module name: libbm1684x_kernel_module.so

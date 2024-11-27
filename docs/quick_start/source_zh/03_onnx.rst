@@ -117,7 +117,7 @@ ONNX转MLIR
      - 原始图片需要resize之后的尺寸; 如果不指定, 则resize成模型的输入尺寸
    * - keep_aspect_ratio
      - 否
-     - 在Resize时是否保持长宽比, 默认为false; 设置时会对不足部分补0
+     - 当test_input与input_shapes不同时，在resize时是否保持长宽比, 默认为false; 设置时会对不足部分补0
    * - mean
      - 否
      - 图像每个通道的均值, 默认为0.0,0.0,0.0
@@ -135,16 +135,16 @@ ONNX转MLIR
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出
    * - test_input
      - 否
-     - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会进行正确性验证
+     - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会进行正确性验证
    * - test_result
      - 否
-     - 指定验证后的输出文件
+     - 指定验证后的输出文件, ``.npz``格式
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用 , 隔开
    * - mlir
      - 是
-     - 指定输出的mlir文件名称和路径
+     - 指定输出的mlir文件名称和路径, ``.mlir`` 后缀
 
 
 转成mlir文件后，会生成一个 ``${model_name}_in_f32.npz`` 文件，该文件是模型的输入文件。
@@ -182,20 +182,20 @@ MLIR转F16模型
      - 指定mlir文件
    * - quantize
      - 是
-     - 指定默认量化类型, 支持F32/F16/BF16/INT8
+     - 指定默认量化类型, 支持F32/F16/BF16/INT8等, 不同处理器支持的量化类型如下表所示。
    * - processor
      - 是
      - 指定模型将要用到的平台,
        支持bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - calibration_table
      - 否
-     - 指定校准表路径, 当存在INT8量化的时候需要校准表
+     - 指定校准表路径, 当存在INT8/F8E4M3量化的时候需要校准表
    * - tolerance
      - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度
    * - test_input
      - 否
-     - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会进行正确性验证
+     - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会进行正确性验证
    * - test_reference
      - 否
      - 用于验证模型正确性的参考数据(使用npz格式)。其为各算子的计算结果
@@ -218,6 +218,26 @@ MLIR转F16模型
      - 否
      - 跳过验证bmodel正确性环节，用于提升模型部署的效率，默认执行bmodel验证
 
+对于不同处理器和支持的quantize类型对应关系如下表所示：
+
+.. list-table:: 不同处理器支持的 quantize 量化类型
+   :widths: 18 15
+   :header-rows: 1
+
+   * - 处理器
+     - 支持的quantize
+   * - BM1688
+     - F32/F16/BF16/INT8/INT4
+   * - BM1684X
+     - F32/F16/BF16/INT8
+   * - BM1684
+     - F32/INT8
+   * - CV186X
+     - F32/F16/BF16/INT8/INT4
+   * - CV183X/CV182X/CV181X/CV180X
+     - BF16/INT8
+   * - BM1690
+     - F32/F16/BF16/INT8/F8E4M3/F8E5M2
 
 编译完成后，会生成名为 ``yolov5s_1684x_f16.bmodel`` 的文件。
 

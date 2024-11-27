@@ -78,7 +78,7 @@ Add the following python module import interface to the training file:
     #Use the pre-trained ResNet18 model from the torchvision model zoo.
     model = models.__dict__['resnet18'](pretrained=True)
 
-    #1.Trace the model, using a dictionary to specify the chip type as BM1690 and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
+    #1.Trace the model, using a dictionary to specify the processor type as BM1690 and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
     extra_prepare_dict = {
     'quant_dict': {
                     'chip': 'BM1690',
@@ -89,7 +89,7 @@ Add the following python module import interface to the training file:
     model_quantized = prepare_by_platform(model, prepare_custom_config_dict=extra_prepare_dict)
 
 
-When the above interface selects the BM1690 chip, the default quantization configuration is as shown in the following figure:
+When the above interface selects the BM1690 processor, the default quantization configuration is as shown in the following figure:
 
 .. figure:: ../assets/bm1690_default_para.png
    :align: center
@@ -232,7 +232,7 @@ c、In the case of asymmetric quantization, min and max above are calculated acc
 
 Tpu-mlir QAT test environment
 --------------------------------
-QAT model is targeted to SOPHGO ASIC, accuracy of the model can be verified with end to end verification program, usually it is deployed on chip. Within development environment, accuracy can be evaluated by tpu-mlir inference interface for convinence, sample code as following:
+QAT model is targeted to SOPHGO ASIC, accuracy of the model can be verified with end to end verification program, usually it is deployed on processor. Within development environment, accuracy can be evaluated by tpu-mlir inference interface for convinence, sample code as following:
 
 
 Adding a cfg File

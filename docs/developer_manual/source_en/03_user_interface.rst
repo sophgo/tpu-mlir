@@ -163,7 +163,7 @@ Introduction to Tool Parameters
 model_transform.py
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Used to convert various neural network models into MLIR files, the supported parameters are shown below:
+Used to convert various neural network models into MLIR files (with ``.mlir`` suffix) and corresponding weight files (``${model_name}_top_${quantize}_all_weight.npz``). The supported parameters are as follows:
 
 
 .. list-table:: Function of model_transform parameters
@@ -179,21 +179,24 @@ Used to convert various neural network models into MLIR files, the supported par
    * - model_def
      - Y
      - Model definition file (e.g., '.onnx', '.tflite' or '.prototxt' files)
+   * - mlir
+     - Y
+     - Specify the output mlir file name and path, with the suffix ``.mlir``
+   * - input_shapes
+     - N
+     - The shape of the input, such as ``[[1,3,640,640]]`` (a two-dimensional array), which can support multiple inputs
    * - model_extern
      - N
      - Extra multi model definition files (currently mainly used for MaskRCNN). None by default. separate by ','
    * - model_data
      - N
      - Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file)
-   * - input_shapes
-     - N
-     - The shape of the input, such as ``[[1,3,640,640]]`` (a two-dimensional array), which can support multiple inputs
    * - input_types
      - N
-     - Type of the inputs, such int32; separate by ',' for multi inputs; float32 as default
+     - When the model is a ``.pt`` file, specify the input type, such as int32; separate multiple inputs with ``,``. If not specified, it will be treated as float32 by default.
    * - keep_aspect_ratio
      - N
-     - Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting
+     - When the size of test_input is different from input_shapes, whether to keep the aspect ratio when resizing, the default is false; when set, the insufficient part will be padded with 0
    * - mean
      - N
      - The mean of each channel of the image. The default is 0.0,0.0,0.0
@@ -211,22 +214,19 @@ Used to convert various neural network models into MLIR files, the supported par
      - The names of the output. Use the output of the model if not specified, otherwise output in the order of the specified names
    * - add_postprocess
      - N
-     - add postprocess op into bmodel, set the type of post handle op such as yolov3/yolov3_tiny/yolov5/ssd
+     - add postprocess op into bmodel, set the type of post handle op such as yolov3/yolov3_tiny/yolov5/yolov8/yolov11/ssd
    * - test_input
      - N
-     - The input file for verification, which can be an image, npy or npz. No verification will be carried out if it is not specified
+     - The input file for verification, which can be an jpg, npy or npz file. No verification will be carried out if it is not specified
    * - test_result
      - N
-     - Output file to save verification result
+     - Output file to save verification result with suffix ``.npz``
    * - excepts
      - N
      - Names of network layers that need to be excluded from verification. Separated by comma
    * - onnx_sim
      - N
      - option for onnx-sim, currently only support 'skip_fuse_bn' args
-   * - mlir
-     - Y
-     - The output mlir file name (including path)
    * - debug
      - N
      - If open debug, immediate model file will keep; or will remove after conversion done
@@ -322,9 +322,9 @@ Supported parameters:
    * - max_float_layers
      - N
      - The number of floating-point layers in search_qtable
-   * - chip
+   * - processor
      - N
-     - Chip type
+     - Processor type
    * - cali_method
      - N
      - Choose quantization threshold calculation method
@@ -499,7 +499,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
    * - quantize
      - Y
-     - Quantization type (F32/F16/BF16/INT8), the quantization types supported by different chips are shown in the table below.
+     - Quantization type (e.g., F32/F16/BF16/INT8), the quantization types supported by different processors are shown in the table below.
    * - quant_input
      - N
      - Strip input type cast in bmodel, need outside type conversion
@@ -520,7 +520,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Specify whether to fuse preprocessing into the model. If this parameter is specified, the model input will be of type uint8, and the resized original image can be directly input
    * - calibration_table
      - N
-     - The quantization table path. Required when it is INT8 quantization
+     - The quantization table path. Required when it is INT8/F8E4M3 quantization
    * - ignore_f16_overflow
      - N
      - Operators with F16 overflow risk are still implemented according to F16; otherwise, F32 will be implemented by default, such as LayerNorm
@@ -529,7 +529,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Tolerance for the minimum Cosine and Euclidean similarity between MLIR quantized and MLIR fp32 inference results. 0.8,0.5 by default.
    * - test_input
      - N
-     - The input file for verification, which can be an image, npy or npz. No verification will be carried out if it is not specified
+     - The input file for verification, which can be an jpg, npy or npz. No verification will be carried out if it is not specified
    * - test_reference
      - N
      - Reference data for verifying mlir tolerance (in npz format). It is the result of each operator
@@ -612,13 +612,13 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - N
      - if enable comparison for MaskRCNN.
 
-The following table shows the correspondence between different chips and the supported quantize types:
+The following table shows the correspondence between different processors and the supported quantize types:
 
-.. list-table:: Quantization types supported by different chips
+.. list-table:: Quantization types supported by different processors
    :widths: 18 15
    :header-rows: 1
 
-   * - Chip
+   * - Processor
      - Supported quantize
    * - BM1688
      - F32/F16/BF16/INT8/INT4
@@ -852,7 +852,7 @@ Supported functions:
      - Explanation
    * - mlir
      - Y
-     - The input mlir file name (including path)
+     - Specify the output mlir file name and path, with the suffix ``.mlir``
    * - img
      - N
      - Used for CV tasks to generate random images, otherwise generate npz
@@ -904,7 +904,7 @@ The display effect is as follows:
 .. code-block:: text
 
   bmodel version: B.2.2+v1.7.beta.134-ge26380a85-20240430
-  chip: BM1684X
+  processor: BM1684X
   create time: Tue Apr 30 18:04:06 2024
 
   kernel_module name: libbm1684x_kernel_module.so
