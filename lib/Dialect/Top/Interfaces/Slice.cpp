@@ -39,9 +39,6 @@ void top::SliceOp::paramConvert() {
     int step = steps_ori->at(i);
     int64_t end = ends_ori->at(i);
     int64_t offset = offset_ori->at(i);
-    if (offset < 0) {
-      offset += input_shapes[axis];
-    }
     offset_v->at(axis) = offset;
     ends_v->at(axis) = end;
     steps_v->at(axis) = step;
