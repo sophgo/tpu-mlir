@@ -39,13 +39,16 @@ def is_fp(dtype, width = None):
         return True
     return False
 
-def rand_data(shape, dtype, min=-10, max=10, seed=None):
+def rand_data(shape, dtype, min=-10, max=10, seed=None, int_satu=False):
     if seed is not None:
         np.random.seed(seed)
     if dtype in ['float32', 'float16']:
         return np.clip(np.random.randn(*shape).astype(dtype), min, max)
     if dtype == 'int32' or 'uint32' or 'int16' or 'uint16' or 'int8' or 'uint8':
-        return np.random.randint(0, 127, size=shape).astype(dtype)
+        if int_satu:
+            return np.clip(np.random.randint(0, 127, size=shape).astype(dtype), min, max)
+        else:
+            return np.random.randint(0, 127, size=shape).astype(dtype)
     raise Exception("Not supported data type: {}!".format(dtype))
 
 
@@ -157,6 +160,7 @@ class TPULANG_IR_TESTER(object):
             "Repeat": (self.test_Repeat,                Y, Y),
             "Reshape": (self.test_Reshape,              Y, Y),
             "RMSNorm": (self.test_RMSNorm,              Y, Y),
+            "RoiExtractor": (self.test_RoiExtractor,    Y, Y),
             "Roll": (self.test_Roll,                    Y, Y),
             "Round": (self.test_Round,                  Y, Y),
             "Rsqrt": (self.test_Rsqrt,                  Y, Y),
@@ -4329,6 +4333,45 @@ class TPULANG_IR_TESTER(object):
                         mul2_saturation = True,
                         add_saturation = True
                         )
+
+    def test_RoiExtractor(self, case_name):
+        """test_RoiExtractor"""
+        @tpulang(self.chip)
+        def _test_RoiExtractor(input0_shape,
+                               input1_shape,
+                               input2_shape,
+                               input3_shape,
+                               input4_shape,
+                               input5_shape,
+                               PH: int,
+                               PW: int,
+                               sampling_ratio: int,
+                               list_spatial_scale: List[int],
+                               is_quantized=False):
+            rois = rand_data(input0_shape, "float32")
+            target_lvls = rand_data(input1_shape, "int32", min=0, max=4, int_satu=True)
+            feat0 = rand_data(input2_shape, "float32")
+            feat1 = rand_data(input3_shape, "float32")
+            feat2 = rand_data(input4_shape, "float32")
+            feat3 = rand_data(input5_shape, "float32")
+            x0 = tpul.Tensor(dtype="float32", shape=list(input0_shape), data=rois)
+            x1 = tpul.Tensor(dtype="int32", shape=list(input1_shape), data=target_lvls)
+            x2 = tpul.Tensor(dtype="float32", shape=list(input2_shape), data=feat0)
+            x3 = tpul.Tensor(dtype="float32", shape=list(input3_shape), data=feat1)
+            x4 = tpul.Tensor(dtype="float32", shape=list(input4_shape), data=feat2)
+            x5 = tpul.Tensor(dtype="float32", shape=list(input5_shape), data=feat3)
+
+            y = tpul.roiExtractor(rois=x0,
+                                  target_lvls=x1,
+                                  feat0=x2, feat1=x3,
+                                  feat2=x4, feat3=x5,
+                                  PH=PH, PW=PW,
+                                  sampling_ratio=sampling_ratio,
+                                  list_spatial_scale=list_spatial_scale)
+            self.compile_and_check(self.unique_name(case_name), [x0, x1, x2, x3, x4, x5],
+                                   [y], is_quantized=is_quantized)
+
+        _test_RoiExtractor([761,7], [761], [1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40], 7, 7, 2, [4,8,16,32])
 
     #######################################################################
     # Error Case: some error case

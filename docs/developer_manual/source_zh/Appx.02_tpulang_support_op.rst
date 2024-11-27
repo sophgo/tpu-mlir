@@ -4675,6 +4675,53 @@ yuv2rgb
 * BM1684X：输入数据类型是INT8/UINT8, 输出UINT8。
 * BM1688：输入数据类型是INT8/UINT8，输出UINT8。
 
+roiExtractor
+:::::::::::::::::
+
+接口定义
+"""""""""""
+
+    .. code-block:: python
+
+        def roiExtractor(rois: Tensor,
+                         target_lvls: Tensor,
+                         feat0: Tensor,
+                         feat1: Tensor,
+                         feat2: Tensor,
+                         feat3: Tensor,
+                         PH: int,
+                         PW: int,
+                         sampling_ratio: int,
+                         list_spatial_scale: Union[int, List[int], Tuple[int]],
+                         out_name:str=None)
+
+功能描述
+"""""""""""
+给定4个featrue map，根据target_lvls索引从rois中抽取对应的roi，并与对应的featrue map做roi align，得到最终输出。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* rois：Tensor类型，表示所有的rois。
+* target_lvls：Tensor类型，表示roi对应哪层feature map。
+* feat0：Tensor类型，表示第0层feature map。
+* feat1：Tensor类型，表示第1层feature map。
+* feat2：Tensor类型，表示第2层feature map。
+* feat3：Tensor类型，表示第3层feature map。
+* PH：int类型，表示输出的height。
+* PW：int类型，表示输出的width。
+* sampling_ratio：int类型，表示每层feature map的sample ratio。
+* list_spatial_scale：int，List[int]或Tuple[int]型，表示每层feature map对应的spatial scale。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，该Tensor的数据类型与输入rois相同。
+
+处理器支持
+"""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
 
 
 Select Operator

@@ -2470,6 +2470,99 @@ def roll(input:Tensor,
 @auto_name()
 @annotation_check
 @assert_with_out_name
+def roiExtractor(rois: Tensor,
+                 target_lvls: Tensor,
+                 feat0: Tensor,
+                 feat1: Tensor,
+                 feat2: Tensor,
+                 feat3: Tensor,
+                 PH: int,
+                 PW: int,
+                 sampling_ratio: int,
+                 list_spatial_scale: Union[int, List[int], Tuple[int]],
+                 out_name:str=None):
+    if isinstance(list_spatial_scale, Tuple): list_spatial_scale = list(list_spatial_scale)
+    list_spatial_scale = [1.0 / x for x in list_spatial_scale]
+    assert feat0.shape[1] == feat1.shape[1]
+    assert feat1.shape[1] == feat2.shape[1]
+    assert feat2.shape[1] == feat3.shape[1]
+
+    roi_num = rois.shape[0]
+    feat = [feat0, feat1, feat2, feat3]
+    o_dtype = rois.dtype
+
+    pad = Tensor(dtype=o_dtype, shape=[roi_num, 1], data=np.zeros([roi_num, 1], dtype=np.float32))
+
+    Slice_attr = {
+        "offset": ArrayAttr([0, 2]),
+        "steps": ArrayAttr([1, 1]),
+        "ends": ArrayAttr([roi_num, 6]),
+        "axes": ArrayAttr([]),
+        "hasparamConvert_axes": ArrayAttr([1]),
+    }
+    Slice_out = Tensor(dtype=o_dtype, name=out_name+"_Slice")
+    TpuLang.insert_op("top.Slice", inputs=[rois, None, None, None], outputs=[Slice_out], params=Slice_attr)
+
+    Concat_attr = {
+        "axis": Attr(1, "int32")
+    }
+    Concat_out = Tensor(dtype=o_dtype, name=out_name+"_Concat")
+    TpuLang.insert_op("top.Concat", inputs=[pad, Slice_out], outputs=[Concat_out], params=Concat_attr)
+
+    layers = 4
+    out_shape = [roi_num, feat0.shape[1], PH, PW]
+    roi_feats = Tensor(dtype=o_dtype, shape=list(out_shape), data=np.zeros(out_shape, dtype=np.float32))
+
+    ScatterND_outputs = [Tensor(dtype=o_dtype, name=out_name+"_ScatterND_{}".format(i)) for i in range(layers)]
+
+    for i in range(layers):
+        CompareConst_attr = {
+            "mode": Attr("Equal", "string"),
+            "const_val": Attr(float(i), "float64"),
+            "inversed": Attr(False, "bool")
+        }
+        CompareConst_out = Tensor(dtype=o_dtype, name=out_name+"_CompareConst_{}".format(i))
+        TpuLang.insert_op("top.CompareConst", inputs=[target_lvls], outputs=[CompareConst_out], params=CompareConst_attr)
+
+        NonZero_attr = {
+            "order": Attr("ColMajor", "string"),
+        }
+        NonZero_out = Tensor(dtype=o_dtype, name=out_name+"_NonZero_{}".format(i))
+        TpuLang.insert_op("top.NonZero", inputs=[CompareConst_out], outputs=[NonZero_out], params=NonZero_attr)
+
+        Gather_attr = {
+            "axis": Attr(0, "int32"),
+        }
+        Gather_out = Tensor(dtype=o_dtype, name=out_name+"_Gather_{}".format(i))
+        TpuLang.insert_op("top.Gather", inputs=[Concat_out, NonZero_out], outputs=[Gather_out], params=Gather_attr)
+
+        Squeeze_attr = {
+            "axes": ArrayAttr([1]),
+        }
+        Squeeze_out = Tensor(dtype=o_dtype, name=out_name+"_Squeeze_{}".format(i))
+        TpuLang.insert_op("top.Squeeze", inputs=[Gather_out], outputs=[Squeeze_out], params=Squeeze_attr)
+
+        RoiAlign_attr = {
+            "mode": Attr("Avg", "string"),
+            "output_height": Attr(PH, "int64"),
+            "output_width": Attr(PW, "int64"),
+            "sampling_ratio": Attr(sampling_ratio, "int64"),
+            "spatial_scale": Attr(list_spatial_scale[i], "float64"),
+            "align_corners": Attr(False, "bool"),
+        }
+        RoiAlign_out = Tensor(dtype=o_dtype, name=out_name+"_RoiAlign_{}".format(i))
+        TpuLang.insert_op("top.RoiAlign", inputs=[feat[i], Squeeze_out], outputs=[RoiAlign_out], params=RoiAlign_attr)
+
+        if i == 0:
+            TpuLang.insert_op("top.ScatterND", inputs=[roi_feats, NonZero_out, RoiAlign_out], outputs=[ScatterND_outputs[i]])
+        else:
+            TpuLang.insert_op("top.ScatterND", inputs=[ScatterND_outputs[i-1], NonZero_out, RoiAlign_out], outputs=[ScatterND_outputs[i]])
+
+    return ScatterND_outputs[-1]
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
 def topk(input: Tensor,
          axis: int,
          k: int,

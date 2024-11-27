@@ -2894,8 +2894,8 @@ Returns a Tensor. The data type of this Tensor is determined by out_dtype.
 
 Processor support
 """""""""""
-* BM1688：Support input datatype: INT32/INT16/UINT16.
-* BM1684X：Support input datatype: INT32/INT16/UINT16.
+* BM1688: Support input datatype: INT32/INT16/UINT16.
+* BM1684X: Support input datatype: INT32/INT16/UINT16.
 
 requant_int
 :::::::::::::::::
@@ -3765,6 +3765,54 @@ Processor support
 """""""""""
 * BM1684X: The input data type must be UINT8/INT8. Output data type is INT8.
 * BM1688: The input data type must be UINT8/INT8. Output data type is INT8.
+
+roiExtractor
+:::::::::::::::::
+
+Definition
+"""""""""""
+
+    .. code-block:: python
+
+        def roiExtractor(rois: Tensor,
+                         target_lvls: Tensor,
+                         feat0: Tensor,
+                         feat1: Tensor,
+                         feat2: Tensor,
+                         feat3: Tensor,
+                         PH: int,
+                         PW: int,
+                         sampling_ratio: int,
+                         list_spatial_scale: Union[int, List[int], Tuple[int]],
+                         out_name:str=None)
+
+Description
+"""""""""""
+Given 4 feature maps, extract the corresponding ROI from `rois` based on the `target_lvls` indices and perform ROI Align with the corresponding feature maps to obtain the final output. This operation is considered a **restricted local operation**.
+
+Parameters
+"""""""""""
+* rois: Tensor type, representing all the ROIs.
+* target_lvls: Tensor type, representing which level of feature map each ROI corresponds to.
+* feat0: Tensor type, representing the feature map at level 0.
+* feat1: Tensor type, representing the feature map at level 1.
+* feat2: Tensor type, representing the feature map at level 2.
+* feat3: Tensor type, representing the feature map at level 3.
+* PH: Int type, representing the height of the output.
+* PW: Int type, representing the width of the output.
+* sampling_ratio: Int type, representing the sample ratio for each level of the feature maps.
+* list_spatial_scale: List[int] or int, representing the spatial scale corresponding to each feature map level..
+* out_name: string type, representing the name of output tensor, default= `None`.
+
+Returns
+"""""""""""
+Returns a Tensor with the same data type as the input `rois`.
+
+Processor support
+"""""""""""
+* BM1688: Supports input data types FLOAT32/FLOAT16.
+* BM1684X: Supports input data types FLOAT32/FLOAT16.
+
 
 
 Select Operator
