@@ -54,7 +54,7 @@ def _get_disc_decomp():
             # aten.addcmul,
             # aten.avg_pool2d_backward,
             # aten.binary_cross_entropy_with_logits,
-            aten.gelu,
+            # aten.gelu,
             aten.gelu_backward,
             # aten.glu_backward,
             # aten.grid_sampler_2d,
@@ -66,8 +66,8 @@ def _get_disc_decomp():
             # aten.hardtanh_backward,
             # aten.logsumexp.default,
             # aten.max_pool2d_with_indices_backward,
-            # aten.mse_loss,
-            # aten.mse_loss_backward,
+            aten.mse_loss,
+            aten.mse_loss_backward,
             # aten.mv,
             # aten.narrow,
             # aten.native_batch_norm,
@@ -135,8 +135,9 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         time_str = f'{graph_idx}'
         graph_idx += 1
     os.system(f'rm -rf fx_graph_dumped*;mkdir -p {time_str}')
-    print('run tpu_mlir_compiler, original graph:')
-    #fx_g.graph.print_tabular()
+    if 'print_ori_fx_graph' in args.debug:
+        print('run tpu_mlir_compiler, original graph:')
+        fx_g.graph.print_tabular()
     save_fxgraph_dot(f"fx_g_{time_str}", fx_g)
 
     # for i, node in enumerate(fx_g.graph.nodes):
@@ -147,10 +148,15 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         print('skip_module_num:', args.skip_module_num)
         return make_boxed_func(fx_g.forward)
 
+    if args.exit_at > -1:
+        if args.exit_at == 0:
+            exit(0)
+        args.exit_at -= 1
+
     fx_g_bk = copy.deepcopy(fx_g)
 
     from torch.fx.passes.fake_tensor_prop import FakeTensorProp
-    # FakeTensorProp(fx_g).propagate(*example_inputs)
+    FakeTensorProp(fx_g).propagate(*example_inputs)
 
     if fx_pass_for_bmm_expand(fx_g):
         print('run tpu_mlir_compiler, updated graph:')
@@ -232,7 +238,7 @@ def test_compiler(gm, example_inputs):
 ### change start
 tpu_dev = "cpu"
 # tpu_dev = "cuda:0"
-# tpu_dev = "privateuseone:0"
+# tpu_dev = "privateuseone"
 device = torch.device(tpu_dev)
 # import torch_tpu
 # device = (
@@ -241,5 +247,9 @@ device = torch.device(tpu_dev)
 #     else "cpu"
 # )
 
-#from functorch.compile import min_cut_rematerialization_partition
-aot_backend = aot_autograd(bw_compiler = tpu_mlir_compiler,fw_compiler=tpu_mlir_compiler,decompositions=_get_disc_decomp())#fw_compiler=skip_compiler,
+from functorch.compile import min_cut_rematerialization_partition
+aot_backend = aot_autograd(bw_compiler = tpu_mlir_compiler,
+                           fw_compiler=tpu_mlir_compiler,
+                           partition_fn=min_cut_rematerialization_partition,
+                           decompositions=_get_disc_decomp())#fw_compiler=skip_compiler,
+

@@ -78,8 +78,7 @@ class TpuMlirModule(torch.nn.Module):
         self.in_tensor_name_to_idx_dict = in_tensor_name_to_idx_dict
         self.output_tensor_names = output_tensor_names
         self.output_tensor_names = None
-        self.skip_runtime_call = False
-        if model_file and not self.skip_runtime_call:
+        if model_file and 'skip_runtime_call' not in self.args.debug:
             self._initialize()
 
     def _initialize(self):
@@ -133,7 +132,7 @@ class TpuMlirModule(torch.nn.Module):
         print(f'>>>runtime call bmodel:{self.model_file}:')
 
         tpu_outputs: List[torch.Tensor] = []
-        if self.skip_runtime_call:
+        if 'skip_runtime_call' in self.args.debug:
             if self.output_dtypes is not None:
                 for shape, dtype in zip(self.output_shapes, self.output_dtypes):
                     output = np.random.rand(*shape).astype(get_np_type_from_torch_type2(dtype))

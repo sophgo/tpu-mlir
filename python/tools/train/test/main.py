@@ -15,6 +15,46 @@ def enable_dynamo_debug_info():
     td.config.output_code = True
     os.environ["TORCHDYNAMO_PRINT_GUARDS"] = "1"
 
+def test_model9():
+    print('start test test_model9')
+    from tools.train.test_model import test_model9
+    mod = test_model9()
+    # mod = weight_reorder(mod)
+    # mod = weight_saver(mod)
+    mod.to(device)
+    model_opt = torch.compile(mod, backend=aot_backend)
+    d1 = torch.randn((2, 4096, 512), dtype = torch.float16)
+    d2 = torch.randn((2, 512, 4096), dtype = torch.float16)
+    d3 = torch.randn((2, 4096, 512), dtype = torch.float16)
+    d4 = torch.randn((512, 512), dtype = torch.float16)
+    d5 = torch.randn((1, 512), dtype = torch.float16)
+    for i in range(1):
+        print(f"now run forward{i}")
+        res = model_opt(d1, d2, d3, d4, d5)
+        # print(f"now run backward{i}")
+        # res.sum().backward()
+
+def test_model10():
+    # print('start test test_model10')
+    # from tools.train.test_model import test_model10
+    # mod = test_model10()
+    # d1 = torch.randn((2, 4096, 320), dtype = torch.float16)
+    # d2 = torch.randn((1, 320, 2560), dtype = torch.float16)
+    # d3 = torch.randn((2560, 320), dtype = torch.float16)
+
+    print('start test FeedForward')
+    from tools.train.gpt2 import FeedForward
+    mod = FeedForward().half()
+    d1 = torch.randn((2, 2, 768), dtype = torch.float16)
+
+    mod.to(device)
+    model_opt = torch.compile(mod, backend=aot_backend)
+    for i in range(1):
+        print(f"now run forward{i}")
+        # res = model_opt(d1, d2, d3)
+        res = model_opt(d1)
+        # print(f"now run backward{i}")
+        # res.sum().backward()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -28,12 +68,14 @@ if __name__ == '__main__':
                         help="fast_test")
     parser.add_argument("--skip_module_num", default=0, type=int,
                         help='skip_module_num')
+    parser.add_argument("--exit_at", default=-1, type=int,
+                        help='exit_at')
     parser.add_argument("--num_core", default=1, type=int,
                         help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--opt", default=3, type=int,
                         help='layer group opt')
     parser.add_argument("--fp", default="",help="fp")
-    parser.add_argument("--rank",type=int,default=4,help="The dimension of the LoRA update matrices.")
+    parser.add_argument("--rank",type=int,default=64,help="The dimension of the LoRA update matrices.")
     parser.add_argument("--model", default="",help="model name")
     args = parser.parse_args()
     tpu_mlir_jit.args = args
@@ -139,7 +181,7 @@ if __name__ == '__main__':
             in_size = 32
             in_size2 = 4
         if args.fp == "fp16":
-            mod = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+            mod = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16, ignore_mismatched_sizes=True)
             vae_input = torch.randn(batch_size,3,in_size,in_size,dtype = torch.float16).to(device)
             noise = torch.randn(batch_size,4,in_size2,in_size2,dtype = torch.float16).to(device)
             # beta = torch.linspace(beta_start, beta_end, num_train_timesteps, dtype=torch.float32)
@@ -172,6 +214,7 @@ if __name__ == '__main__':
         text_encoder.requires_grad_(False)
         ########## set lora_layers ############
         lora_attn_procs = {}
+        count = 0
         for name in unet.attn_processors.keys():
             cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
             if name.startswith("mid_block"):
@@ -182,12 +225,23 @@ if __name__ == '__main__':
             elif name.startswith("down_blocks"):
                 block_id = int(name[len("down_blocks.")])
                 hidden_size = unet.config.block_out_channels[block_id]
-
-            lora_attn_procs[name] = LoRAAttnProcessor(
+            print('name:', name, 'cross_attention_dim:', cross_attention_dim, 'hidden_size:', hidden_size)
+            lora_obj = LoRAAttnProcessor(
                 hidden_size=hidden_size,
                 cross_attention_dim=cross_attention_dim,
                 rank=args.rank,
             )
+            lora_attn_procs[name] = lora_obj
+            count += lora_obj.to_q_lora.down.weight.numel()
+            count += lora_obj.to_q_lora.up.weight.numel()
+            count += lora_obj.to_k_lora.down.weight.numel()
+            count += lora_obj.to_k_lora.up.weight.numel()
+            count += lora_obj.to_v_lora.down.weight.numel()
+            count += lora_obj.to_v_lora.up.weight.numel()
+            count += lora_obj.to_out_lora.down.weight.numel()
+            count += lora_obj.to_out_lora.up.weight.numel()
+
+        print('lora mem size:', count*4*12)
         unet.set_attn_processor(lora_attn_procs)
         lora_layers = AttnProcsLayers(unet.attn_processors)
 
@@ -345,6 +399,9 @@ if __name__ == '__main__':
         loss_d.sum().backward()
         optimizer.step()
     elif args.model == "test_model":
+        test_model10()
+        exit(0)
+
         input = torch.randn((args.num_core, 3, 224, 224))
         input_d = input.to(device)
 

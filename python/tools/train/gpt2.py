@@ -30,10 +30,11 @@ class FeedForward(nn.Module):
         super().__init__()
         self.c_fc    = Conv1D(d_model, nx)
         self.c_proj  = Conv1D(nx, d_model)
-        self.act     = F.relu
+        self.act     = F.gelu
 
     def forward(self, x):
         return self.c_proj(self.act(self.c_fc(x)))
+        # return self.c_proj(self.c_fc(x))
 
 class Attention(nn.Module):
     def __init__(self, d_model=768, n_head=12, n_ctx=1024, d_head=64, bias=True, scale=False):
@@ -83,26 +84,30 @@ class TransformerBlock(nn.Module):
         self.ln_2        = LayerNorm(d_model)
 
     def forward(self, x):
-        x1 = self.ln_1(x)
-        x = x + self.attn(x1)
-        x2 = self.ln_2(x)
-        x = x + self.feedforward(x2)
+        # x1 = self.ln_1(x)
+        # x = x + self.attn(x1)
+        # x2 = self.ln_2(x)
+        # x = x + self.feedforward(x2)
+
+        # test the simplest mlp and attention
+        x = self.feedforward(x)
+        # x = self.attn(x)
         return x
 
 def _get_clones(module, n):
     return torch.nn.ModuleList([copy.deepcopy(module) for i in range(n)])
 
 class GPT2(nn.Module):
-    def __init__(self, nlayers=2, n_ctx=1024, d_model=768, vcb_sz=50257):
+    def __init__(self, nlayers=1, n_ctx=1024, d_model=768, vcb_sz=50257):
         super(GPT2, self).__init__()
         self.nlayers = nlayers
-        block        = TransformerBlock(d_model=768, n_head=3, dropout=0.1)
+        block        = TransformerBlock(d_model=d_model, n_head=2, dropout=0.1)
         self.h       = _get_clones(block, 2)
         self.wte     = nn.Embedding(vcb_sz, d_model)
         self.wpe     = nn.Embedding(n_ctx, d_model)
-        # self.drop    = nn.Dropout(0.1)
+        self.drop    = nn.Dropout(0.1)
         self.ln_f    = LayerNorm(d_model)
-        # self.out     = nn.Linear(d_model, vcb_sz, bias=False)
+        self.out     = nn.Linear(d_model, vcb_sz, bias=False)
         self.init_weights()
 
     def init_weights(self):
@@ -120,11 +125,15 @@ class GPT2(nn.Module):
 
     def forward(self, src, labels=None, pos_ids=None):
         if pos_ids is None: pos_ids = torch.arange(0, src.size(-1)).unsqueeze(0)
-        # inp = self.drop((self.wte(src)+self.wpe(pos_ids)))
-        inp = self.wte(src)+self.wpe(pos_ids)
-        for i in range(self.nlayers): inp = self.h[i](inp)
-        inp     = self.ln_f(inp)
+        # inp = self.drop(self.wte(src)+self.wpe(pos_ids))
+        # inp = self.wte(src)+self.wpe(pos_ids)
+        # for i in range(self.nlayers): inp = self.h[i](inp)
+
+        for i in range(self.nlayers): inp = self.h[i](src)
+
+        # inp     = self.ln_f(inp)
         # inp  = self.out(inp)
+
         # return inp.sum()
         return inp
 

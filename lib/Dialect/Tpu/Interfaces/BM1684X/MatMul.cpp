@@ -296,6 +296,11 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     common.mul_val = *(int *)&scale;
   }
 
+  if (module::isDebugCmdEnable("codegen_debug")) {
+    llvm::errs() <<"n_step:"<<n_step<<", c_step:"<<c_step<<", h_step:"<<h_step<<"\n";
+    sec_info.print();
+  }
+
   BM168x::call_local_func("backend_api_batch_matmul_local", &param,
                           sizeof(param), &sec_info, input_spec->data(),
                           output_spec->data());

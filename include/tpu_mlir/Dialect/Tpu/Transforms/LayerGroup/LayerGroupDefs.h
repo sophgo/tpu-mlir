@@ -444,14 +444,14 @@ struct ilp_LgInfo {
   std::vector<std::shared_ptr<ilp_LgInfo>> sub_ilp_LgInfos;
   bool group_success = false;
 
-  //考察是否将global conv作为分割点
+  // 考察是否将global conv作为分割点
   int group_cycle = 0;
   bool conv_cut_optimized = false;
   std::shared_ptr<speical_layer_group_base> p_special_grp = nullptr;
   std::map<Value, int, value_compare> value_load_to_l2m;
   std::map<Value, int, value_compare> value_store_to_l2m;
 
-  //二进制搜索可行分割点
+  // 二进制搜索可行分割点
   std::vector<Operation *> group_ops_all;
   std::vector<Operation *> divided_group_ops;
   std::map<Operation *, std::vector<Operation *>> map_parallel_node;
@@ -503,19 +503,28 @@ public:
                            std::vector<Operation *> &accessed_ops) = 0;
   virtual std::string name() = 0;
   virtual std::string brief() { return ""; }
+  virtual bool convert_to_other_type(
+      const std::vector<Operation *> &sub_ops,
+      std::shared_ptr<speical_layer_group_base> &p_special_grp) = 0;
 
+  bool search_two_mmOp(Operation *start_op, Operation *&next_mmOp,
+                       std::vector<Operation *> &subnet_ops,
+                       std::vector<Operation *> &accessed_ops);
   void get_batch_size(shape_secs_t &shape_secs);
   bool update_shape_secs_for_ilp_group(shape_secs_t &shape_secs,
                                        const shape_secs_t &max_shape_secs);
   void fill_slice_info(ilp_LgInfo &ilp_lg_info);
-  bool inc_slice_num(int &try_c_slice_num, int &try_h_slice_num,
-                     int max_c_slice_num, int max_h_slice_num,
-                     Operation *&failed_op, bool inc_c_slice = true);
-  virtual bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation *&failed_op,
-                                    int64_t core_num) = 0;
+  bool inc_slice_num(int &test_slice_n, int &try_c_slice_num,
+                     int &try_h_slice_num, int max_c_slice_num,
+                     int max_h_slice_num, bool inc_c_slice = true);
+  int get_secs(Operation *op, int n, int slice_n, int c_slice_num,
+               int h_slice_num);
+  bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation *&failed_op,
+                            int64_t core_num);
 
   std::vector<Operation *> ops;
-  std::map<int, Operation *> forbid_cut_dim_to_owner_op;
+  bool col_cut = true;
+  bool find_softmax = false;
   std::map<Value, std::vector<int>, value_compare> map_value_to_cut_dims;
 };
 

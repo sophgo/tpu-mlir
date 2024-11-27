@@ -365,7 +365,7 @@ class TORCH_IR_TESTER(object):
                       quant_input=self.quant_input,
                       quant_output=self.quant_output,
                       embed_debug_info=self.debug,
-                      debug_cmd=f'--debug_cmd={self.debug_cmd}',
+                      debug_info=self.debug_cmd,
                       dynamic=self.dynamic)
 
         return (tpu_mlir + ".mlir", bmodel)

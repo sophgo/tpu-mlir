@@ -90,6 +90,12 @@ class fx2mlir(object):
         # self.load_weight = dict()
         # self.const_val = dict()
         self.num_core = args.num_core
+        self.processed_op = []
+
+        self.pattern_matchers = {
+            "sigmoid/empty_like/fill": [lambda node: self.sigmoid_matcher(node), lambda node: self.sigmoid_folder(node)],
+            "empty/baddbmm": [lambda node: self.empty_baddbmm_matcher(node), lambda node: self.empty_baddbmm_folder(node)],
+        }
 
         self.op_factory = {
             #############################
@@ -174,7 +180,7 @@ class fx2mlir(object):
             "native_group_norm":lambda node:self.convert_group_norm_op(node),
             "gelu":lambda node:self.convert_gelu_op(node),
             # "empty_like":lambda node:self.convert_constant_like_op(node,0),
-            "empty_like":lambda node:self.convert_new_constant_op(node,0),
+            "empty_like":lambda node:self.convert_empty_like_op(node,0),
             "empty":lambda node:self.convert_zero_op(node),
             "fill":lambda node:self.convert_full_op(node),
             "constant_pad_nd":lambda node:self.convert_pad_op(node,'constant'),
@@ -262,9 +268,17 @@ class fx2mlir(object):
                     output_args_txt = self.parseOutputNode([i for i in module.graph.nodes if i.op == 'output' and len(i.args) > 0][0])
                     self.mlir.createMlirModuleAndInput(self.input_nodes, ', '.join(in_args_txt_list), output_args_txt,self.operands)
                     first_call_op = False
-                op_type = torch.typename(node.target).split('.')[-1]
+                op_type = self.get_op_type_by_node(node)
                 print(f'{i}th op, node.name:', node.name, 'target:',node.target, 'op_type:', op_type, 'args:', node.args, 'users:', list(node.users.keys()), 'kwargs:', node.kwargs)
-                self.op_factory.get(op_type, lambda x: NoneAndRaise(x))(node)
+                for matcher_name in self.pattern_matchers:
+                    if self.pattern_matchers[matcher_name][0](node):
+                        print(f'{matcher_name} matched')
+                        self.pattern_matchers[matcher_name][1](node)
+                        break
+                if node not in self.processed_op:
+                    self.op_factory.get(op_type, lambda x: NoneAndRaise(x))(node)
+                else:
+                    self.processed_op.remove(node)
 
         # add return op
         return_op = list()
@@ -323,7 +337,7 @@ class fx2mlir(object):
             gc.collect()
             npz_compare(['tpu_ir_out_data.npz', 'ref_data.npz', "--tolerance", "0.99,0.99", "-v"])
 
-        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file, opt = self.args.opt, debug_cmd = f'--debug_cmd={self.args.debug}')
+        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file, opt = self.args.opt, debug_info = self.args.debug)
         if self.args.cmp:
             tensors = model_inference(in_ref_data, self.bmodel_path)
             np.savez('bmodel_out_data.npz', **tensors)
@@ -339,6 +353,9 @@ class fx2mlir(object):
             del self.mlir
             self.mlir = None
         return mlir_mod
+
+    def get_op_type_by_node(self, node):
+        return torch.typename(node.target).split('.')[-1]
 
     def convert_test(self, module,in_ref_data,ref_data):
 
@@ -425,7 +442,7 @@ class fx2mlir(object):
             gc.collect()
             npz_compare(['tpu_ir_out_data.npz', 'ref_data.npz', "--tolerance", "0.99,0.99", "-v"])
 
-        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file, opt = 2, debug_cmd = f'--debug_cmd={self.args.debug}')
+        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file, opt = 2, debug_info = self.args.debug)
         if self.args.cmp:
             tensors = model_inference(in_ref_data, self.bmodel_path)
             np.savez('bmodel_out_data.npz', **tensors)
@@ -684,6 +701,56 @@ class fx2mlir(object):
                                 loc=self.get_loc(node),
                                 ip=self.mlir.insert_point).output
         self.operands[node] = new_op
+
+    def empty_baddbmm_matcher(self, node):
+        if self.get_op_type_by_node(node) == 'empty':
+            for user in node.users:
+                if self.get_op_type_by_node(user) != 'baddbmm':
+                    return False
+                if 'beta' not in user.kwargs or ('beta' in user.kwargs and user.kwargs['beta'] != 0):
+                    return False
+            self.processed_op.append(node)
+            return True
+        return False
+
+    def empty_baddbmm_folder(self, node):
+        pass
+
+    def sigmoid_matcher(self, node):
+        if self.get_op_type_by_node(node) == 'empty_like':
+            subnet_input = node.args[0]
+            assert(len(node.users) == 1)
+            next_node = next(iter(node.users))
+            matched_ops = [node, next_node]
+            if self.get_op_type_by_node(next_node) == 'fill':
+                assert(len(next_node.users) == 1)
+                next_node = next(iter(next_node.users))
+                matched_ops.append(next_node)
+                if self.get_op_type_by_node(next_node) == 'sub':
+                    for i in next_node.args:
+                        if i == subnet_input:
+                            self.processed_op.extend(matched_ops)
+                            return True
+        return False
+
+    def sigmoid_folder(self, node):
+        last_op = next(iter(node.users))
+        last_op = next(iter(last_op.users))
+        out_shape = self.mlir.get_output_shapes(last_op)
+        shape = self.mlir.get_output_shapes(node.args[0])[0]
+        shape[1:] = [1]*(len(shape) - 1)
+        in_value = self.operands[node.args[0]]
+        # self.mlir.create_weight_op(f'scalar_tensorOp_{node.name}', node.args[0])
+        scale = self.mlir.create_constant_weight_op(f'sigmoid_folder_{node.name}_scale',shape,-1)
+        bias = self.mlir.create_constant_weight_op(f'sigmoid_folder_{node.name}_bias',shape,1)
+        dtype = self.mlir.get_output_dtypes(last_op)
+        out = top.ScaleOp(*self.mlir.get_tensor_type(out_shape, dtype),
+                                in_value,
+                                scale,
+                                bias,
+                                loc=self.get_loc(node.name),
+                                ip=self.mlir.insert_point).output
+        self.operands[last_op] = out
 
     def convert_base_conv_op(self, node):
         #(primals_7, primals_1, None, [2, 2], [3, 3], [1, 1], False, [0, 0], 1)]
@@ -2133,6 +2200,7 @@ class fx2mlir(object):
         new_op = top.PadOp(
             *self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
             op,
+            self.mlir.none_op,
             paddings = padding,
             val = val,
             mode = StringAttr.get(mode),
@@ -2230,14 +2298,22 @@ class fx2mlir(object):
             shape = node.args[1]
         else:
             shape = list(node.args[0].meta['val'].size())
-        op = self.mlir.create_constant_weight_op(f'{node.name}_c',shape,value)
-        # dtype = self.mlir.get_output_dtypes(node)
-        # new_op = top.ConstantFillOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
-        #                             op,
-        #                             value=value,
-        #                             loc=self.get_loc(node),
-        #                             ip=self.mlir.insert_point).output
-        self.operands[node] = op
+        new_op = self.mlir.create_constant_weight_op(f'{node.name}_c',shape,value)
+        self.operands[node] = new_op
+
+    def convert_empty_like_op(self,node,value):
+        op0 = self.operands[node.args[0]]
+        if len(node.args)>1:
+            shape = node.args[1]
+        else:
+            shape = list(node.args[0].meta['val'].size())
+        dtype = self.mlir.get_output_dtypes(node)
+        new_op = top.ConstantFillOp(*self.mlir.get_tensor_type([shape], dtype),
+                                    op0,
+                                    value=value,
+                                    loc=self.get_loc(node),
+                                    ip=self.mlir.insert_point).output
+        self.operands[node] = new_op
 
     def convert_constant_like_op(self,node,value):
         dtype = self.mlir.get_output_dtypes(node)
@@ -2256,13 +2332,11 @@ class fx2mlir(object):
 
     def convert_baddbmm_op(self, node):
         """baddbmm: val4*op0 + val3*op1@op2"""
-        op0 = self.operands[node.args[0]]
-        op1 = self.operands[node.args[1]]
-        op2 = self.operands[node.args[2]]
-        val4 = node.kwargs['alpha']
-        val3 = node.kwargs['beta']
+        val3 = node.kwargs['alpha']
+        val4 = node.kwargs['beta']
         dtype = self.mlir.get_output_dtypes(node)
         if val4 == 0 and val3 == 0:  # only zero is need
+            op0 = self.operands[node.args[0]]
             new_op3 = top.MulConstOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
                                      op0,
                                      val4,
@@ -2271,6 +2345,7 @@ class fx2mlir(object):
             self.operands[node] = new_op3
             return
         elif val3 == 0:  # only alpha*op0 is need
+            op0 = self.operands[node.args[0]]
             new_op3 = top.MulConstOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
                                      op0,
                                      val4,
@@ -2279,6 +2354,8 @@ class fx2mlir(object):
             self.operands[node] = new_op3
             return
         elif val4 == 0:  # only beta*op1*op2 is need
+            op1 = self.operands[node.args[1]]
+            op2 = self.operands[node.args[2]]
             new_op = top.MatMulOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
                                   op1,
                                   op2,
@@ -2293,6 +2370,9 @@ class fx2mlir(object):
             self.operands[node] = new_op2
             return
         elif val4 == 1 and val3 == 1:  # only op1*op2 + op0 is need
+            op0 = self.operands[node.args[0]]
+            op1 = self.operands[node.args[1]]
+            op2 = self.operands[node.args[2]]
             new_op = top.MatMulOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
                                   op1,
                                   op2,
@@ -2306,6 +2386,9 @@ class fx2mlir(object):
                                 ip=self.mlir.insert_point).output
             self.operands[node] = new_op2
             return
+        op0 = self.operands[node.args[0]]
+        op1 = self.operands[node.args[1]]
+        op2 = self.operands[node.args[2]]
         new_op = top.MatMulOp(*self.mlir.get_tensor_type(self.mlir.get_output_shapes(node), dtype),
                               op1,
                               op2,
