@@ -347,11 +347,12 @@ def mlir_to_model(
     compress_mode: str = "none",
     future_update_rank: int = 0,
     future_update_list: str = "",
-    debug_cmd: str = "",
+    debug_info: str = "",
     log_level: str = "normal",
     trunc_final: list = None,
 ):
     cmd = ["tpuc-opt", tpu_mlir]
+    debug_cmd = f"--debug_cmd={debug_info}"
     options = tpu_opt_options(quant_input,
                               quant_output,
                               quant_input_list,
@@ -390,13 +391,16 @@ def mlir_to_model(
 
     cmd.extend([
         "-o",
-        final_mlir,
-        debug_cmd
+        final_mlir
     ])
+
     log_file = ""
     if count_patterns:
+        assert not debug_info and "patterns_count is not allowed to be used with debug_cmd"
         log_file = "tpu_patterns.log"
         cmd.extend(["-debug-only=pattern-application,dialect-conversion,greedy-rewriter", "> {} 2>&1".format(log_file)])
+    else:
+        cmd.extend([debug_cmd])
 
     if log_level == "quiet":
         cmd.extend(["> /dev/null"])

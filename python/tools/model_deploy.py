@@ -81,6 +81,7 @@ class DeployTool:
         self.quant_output_list = args.quant_output_list
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
+        self.debug_cmd = args.debug_cmd
         self.model = args.model
         self.ref_npz = args.test_reference
         self.fazzy_match = args.fazzy_match
@@ -132,7 +133,7 @@ class DeployTool:
         self.trunc_final = args.trunc_final
         if self.trunc_final:
             self.compare_all = True
-            
+
     def cleanup(self):
         file_clean()
 
@@ -338,6 +339,7 @@ class DeployTool:
                 compress_mode=self.compress_mode,
                 future_update_rank=self.future_update_rank,
                 future_update_list=self.future_update_list,
+                debug_info=self.debug_cmd,
                 trunc_final=self.trunc_final
             )
             if (
@@ -444,7 +446,7 @@ if __name__ == '__main__':
                         help="whether layer groups force group by cores")
     # ========== Compiler Options ==============
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
-    parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")
+    parser.add_argument("--opt", default=2, type=int, choices=[1, 2, 3], help="Optimization level")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'],
                         help="set address assign mode, if not set, auto as default")
@@ -489,6 +491,8 @@ if __name__ == '__main__':
                         help="the rank of matmul, when use the pass of future-update")
     parser.add_argument("--future_update_list", default="", type=str,
                         help="the idx list of weight, when use the pass of future-update, suck as 1,2,3")
+    parser.add_argument("--debug_cmd", default="", type=str,
+                        help="debug cmd")
 
     # yapf: enable
     args = parser.parse_args()

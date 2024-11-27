@@ -892,6 +892,7 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
 }
 
 void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int, int>& core_num_idx) {
+  llvm::errs() <<"codegen_for_group2 start\n";
   auto first_op_name = module::getName(gOp.getResult(0)).str();
   if (module::isDebugCmdEnable("skip_group_codegen_with_first_name_" + first_op_name)) {
     return;

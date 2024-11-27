@@ -1594,7 +1594,8 @@ bool backward_gen_ilp_var2(
       }
       bool is_weight = is_value_weight(in);
       int64_t lmem_bytes = getTensorLmemBytes(op, in, tensor_infos, ncdhw_idx, ilp_lg_info, is_weight?false:true);
-      if (ilp_lg_info.p_special_grp && ilp_lg_info.p_special_grp->name() == "attention_group" && isa<tpu::MatMulOp>(op)) {
+      if (ilp_lg_info.p_special_grp && ilp_lg_info.p_special_grp->name() == "attention_group"
+        && ilp_lg_info.shape_secs.h_slice_num > 1 && isa<tpu::MatMulOp>(op) && ilp_lg_info.p_special_grp->ops.back() == op) {
         llvm::errs() << "inc res lmem_bytes for attention_grp\n";
         lmem_bytes *= 2;
       }
@@ -1686,7 +1687,8 @@ bool backward_gen_ilp_var2(
       int64_t lmem_bytes = getTensorLmemBytes(op, res, tensor_infos, ncdhw_idx, ilp_lg_info);
       assert(lmem_bytes > 0);
       if (ilp_lg_info.p_special_grp) {
-        if (ilp_lg_info.p_special_grp->name() == "attention_group" && isa<tpu::MatMulOp>(op)) {
+        if (ilp_lg_info.p_special_grp->name() == "attention_group"
+          && ilp_lg_info.shape_secs.h_slice_num > 1 && isa<tpu::MatMulOp>(op) && ilp_lg_info.p_special_grp->ops.back() == op) {
           llvm::errs() << "inc opd lmem_bytes for attention_grp\n";
           lmem_bytes *= 2;
         }
@@ -1910,7 +1912,7 @@ bool backward_gen_ilp_var2(
         int64_t lmem_bytes = getTensorLmemBytes(op, res, tensor_infos, ncdhw_idx, ilp_lg_info);
         int dma_cycle = cycle_calculator_->getGdmaCycle(res, info, lg_info.type);
         std::vector<std::string> var_names;
-        int ts_idx = var_pos_info.ts_id + 1;
+        int ts_idx = pre_user_pos + 1;
         int ts_idx2 = ts_idx;
         for (; ts_idx < var_pos_info.end_ts + 1; ts_idx++) {
           std::string var_name = llvm::formatv(
@@ -1943,7 +1945,7 @@ bool backward_gen_ilp_var2(
           }
         }
         if (var_names.size() > 0) {
-          ilp_timeStep.addRowConstraint(var_pos_info.ts_id, res, var_names, true, false);
+          ilp_timeStep.addRowConstraint(pre_user_pos, res, var_names, true, false);
         }
       }
     }
@@ -2266,8 +2268,12 @@ void ilp_LgInfo::base_solver(LgPassIR *pass_ir, std::shared_ptr<CycleCalculator>
         auto sub_ops = sortOpsByOtherOpsOrder(_lgInfo.group_ops, grp);
         auto tmpLgInfo= CreateIlpLgInfo(sub_ops);
         if (p_special_grp) {
-          p_special_grp->ops.assign(sub_ops.begin(), sub_ops.end());
           tmpLgInfo->p_special_grp = p_special_grp;
+          if (!p_special_grp->convert_to_other_type(sub_ops, tmpLgInfo->p_special_grp)) {
+            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: matmul grp convert_to_other_type fail\n";});
+            global_layers.insert(global_layers.end(), sub_ops.begin(), sub_ops.end());
+            continue;
+          }
           tmpLgInfo->_lgInfo.type = GROUP_MM_OPT3;
         }
         tmpLgInfo->base_solver(pass_ir, cycle_calculator_);
@@ -2412,17 +2418,29 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
                << "*********** ilp_layer_group **********\n"
                << "=======================================================\n";});
   std::vector<Operation*> subnet_ops;
+  Operation* dot_root_op = nullptr;
   for (auto it: pass_ir->subnet_ops) {
+    if (!dot_root_op && module::isDebugCmdEnable("dot_root_op_name-" + module::getName(it).str() + ",")) {
+      llvm::errs() <<"ilp_layer_group find dot_root_op_name:" << module::getName(it).str()<<"\n";
+      dot_root_op = it;
+    }
     subnet_ops.push_back(it);
   }
+  if (module::isDebugCmdEnable("dot_root_op_name") && dot_root_op) {
+    std::vector<Operation*> op_tree, exclude_ops, break_ops;
+    find_op_tree_by_root2(dot_root_op, op_tree, subnet_ops, exclude_ops, break_ops, 0, 8);
+    auto dot_graph_log = createSubnetGraph(op_tree);
+    dot_graph_log->export_dot("svg_initial2_" + module::getName(module::getModuleOp()).str(), true);
+  }
+
   pass_ir->dot_graph_log_subnet = createSubnetGraph(subnet_ops);
   //------------------------part0: pre processing----------------------------------------------------
   init_ilp_base_groups(pass_ir);
   pass_ir->dot_graph_log_subnet->add_node_label("global_info",
     "init group_num:" + std::to_string(pass_ir->tmp_base_groups.size()));
-  // if (module::isDebugCmdEnable("export_full_svg")) {
-  //   pass_ir->dot_graph_log_subnet->export_dot("svg_initial2_" + module::getName(module::getModuleOp()).str(), true);
-  // }
+  if (module::isDebugCmdEnable("export_full_svg")) {
+    pass_ir->dot_graph_log_subnet->export_dot("svg_initial2_" + module::getName(module::getModuleOp()).str(), true);
+  }
 
   //------------------------part1: processing----------------------------------------------------
   std::vector<std::shared_ptr<ilp_LgInfo>> base_groups2;

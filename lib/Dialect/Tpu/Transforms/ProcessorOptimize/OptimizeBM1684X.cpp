@@ -885,7 +885,7 @@ public:
         return failure();
       }
       auto inB_shape = module::getShape(inB);
-      if (inB_shape[1] != 1) {
+      if (inB_shape.size() < 2 || inB_shape[1] != 1) {
         return failure();
       }
       std::vector<int64_t> new_inB_shape = {inB_shape[0], inB_shape[2],

@@ -253,6 +253,60 @@ class test_model8(nn.Module):
             x = x.sum()
         return x
 
+class test_model9(nn.Module):
+    def __init__(self):
+        super(test_model9, self).__init__()
+        self.name = 'test_model9'
+        self.relu = nn.ReLU()
+
+        '''
+        d1 = torch.randn((2, 4096, 512))
+        d2 = torch.randn((2, 512, 4096))
+        d3 = torch.randn((2, 4096, 512))
+        d4 = torch.randn((512, 512))
+        d5 = torch.randn((1, 512))'''
+    def forward(self, d1, d2, d3, d4, d5):
+        x = torch.bmm(d1, d2)
+        x = torch.nn.functional.softmax(x, dim=2)
+        x = torch.bmm(x, d3)
+        x = x.reshape(8192, 512)
+        x = torch.addmm(d5, x, d4)
+        return x
+
+class test_model10(nn.Module):
+    def __init__(self):
+        super(test_model10, self).__init__()
+        self.name = 'test_model10'
+        self.gelu = nn.GELU()
+
+        '''
+        d1 = torch.randn((2, 4096, 320), dtype = torch.float16)
+        d2 = torch.randn((1, 320, 2560), dtype = torch.float16)
+        d3 = torch.randn((2560, 320), dtype = torch.float16)
+        '''
+    def forward(self, d1, d2, d3):
+        x = torch.bmm(d1, d2)
+        x = self.gelu(x)
+        x = x.reshape(8192, 2560)
+        x = torch.mm(x, d3)
+        return x
+
+class test_model11(nn.Module):
+    def __init__(self):
+        super(test_model11, self).__init__()
+        self.name = 'test_model11'
+        self.relu = nn.ReLU()
+
+        '''
+        d1 = torch.randn((2, 4096, 320), dtype = torch.float16)
+        d2 = torch.randn((1, 320, 2560), dtype = torch.float16)
+        d3 = torch.randn((2560, 320), dtype = torch.float16)
+        '''
+    def forward(self, d1, d2):
+        x = torch.mm(x, d3)
+        x = self.relu(x)
+        return x
+
 # class test_model(nn.Module):
 #     def __init__(self, for_train = False):
 #         super(test_model, self).__init__()

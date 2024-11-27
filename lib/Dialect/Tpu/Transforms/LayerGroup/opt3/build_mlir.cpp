@@ -30,7 +30,9 @@ typedef struct node_info {
   }
 
   void show_info(std::string extra_info = "I am") {
-    return;
+    if (!module::isDebugCmdEnable("print_node_topo_change")) {
+      return;
+    }
     if (global_op) {
       LOG(INFO)<<extra_info <<" at global_op: "<<module::getName(global_op).str();
     } else {
@@ -44,7 +46,7 @@ typedef struct node_info {
         }
         tmp_str = tmp_str + "---" + module::getName(it).str();
       }
-      assert (tmp_str.size() > 0);
+      assert(tmp_str.size() > 0);
       LOG(INFO)<<extra_info  <<" at group:"<<tmp_str.substr(3, tmp_str.size());
     }
   }
@@ -59,15 +61,14 @@ static void nodes_topo_order_dfs(node_info& cur_node, std::vector<node_info>& to
   assert (cur_node.global_op || cur_node.lgInfo);
   cur_node.idx = idx++;
   topo_nodes.push_back(cur_node);
-  // cur_node.show_info("add into topo_nodes, idx:"+std::to_string(idx - 1));
+  cur_node.show_info("add into topo_nodes, idx:"+std::to_string(idx - 1));
   for (auto next_node : cur_node.next_nodes) {
     next_node->indeg -=1;
     auto& nodes = next_node->tmp_pre_nodes;
     nodes.erase(std::remove(nodes.begin(), nodes.end(), &cur_node), nodes.end());
-    // next_node->show_info("check next_node, indeg:"+std::to_string(next_node->indeg));
+    next_node->show_info("check next_node, indeg:"+std::to_string(next_node->indeg));
     if (next_node->indeg == 0) {
       if (std::find(topo_nodes.begin(), topo_nodes.end(), *next_node) == topo_nodes.end()) {
-        // LOG(INFO) <<"  call nodes_topo_order_dfs";
         nodes_topo_order_dfs(*next_node, topo_nodes, idx);
       }
     }
@@ -389,6 +390,7 @@ void GroupOps::buildMlir_for_opt3() {
   none_op_ = module::getNoneOp(lg_infos[0].group_ops[0]);
 
   //添加group node
+  bool print_node_topo_change = module::isDebugCmdEnable("print_node_topo_change");
   std::vector<node_info> nodes;
   std::vector<Operation*> all_local_ops;
   std::map<node_info*, std::vector<node_info*>> map_parallel_node_subnet;
@@ -397,17 +399,18 @@ void GroupOps::buildMlir_for_opt3() {
       node_info tmp(&lg_infos[i]);
       tmp.show_info("add group");
       nodes.push_back(tmp);
-      all_local_ops.insert(all_local_ops.begin(), lg_infos[i].group_ops.begin(), lg_infos[i].group_ops.end());
-
-      for (auto op : lg_infos[i].group_ops) {
-        if (op)
-          llvm::errs() << "op: "<<module::getName(op).str()<<"\n";
-      }
-      for (auto out: lg_infos[i].group_outs) {
-        llvm::errs() <<"   group_outs: "<<module::getName(out).str()<<"\n";
-      }
-      for (auto in: lg_infos[i].group_ins) {
-        llvm::errs() <<"   group_ins: "<<module::getName(in).str()<<"\n";
+      all_local_ops.insert(all_local_ops.end(), lg_infos[i].group_ops.begin(), lg_infos[i].group_ops.end());
+      if (print_node_topo_change) {
+        for (auto op : lg_infos[i].group_ops) {
+          if (op)
+            llvm::errs() << "op: "<<module::getName(op).str()<<"\n";
+        }
+        for (auto out: lg_infos[i].group_outs) {
+          llvm::errs() <<"   group_outs: "<<module::getName(out).str()<<"\n";
+        }
+        for (auto in: lg_infos[i].group_ins) {
+          llvm::errs() <<"   group_ins: "<<module::getName(in).str()<<"\n";
+        }
       }
     }
   }
@@ -416,7 +419,9 @@ void GroupOps::buildMlir_for_opt3() {
   func_.walk([&](Operation *op) {
     if (!isa<FuncOp, ReturnOp, top::NoneOp>(op)) {
       if (std::find(all_local_ops.begin(), all_local_ops.end(), op) == all_local_ops.end()) {
-        // LOG(INFO) <<"add global_op: "<<module::getName(op).str();
+        if (print_node_topo_change) {
+          LOG(INFO) <<"add global_op: "<<module::getName(op).str();
+        }
         nodes.push_back(node_info(op));
       }
     }
@@ -442,7 +447,9 @@ void GroupOps::buildMlir_for_opt3() {
             if (node2.global_op) {
               if (in_op == node2.global_op) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
+                  if (print_node_topo_change) {
+                    LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
+                  }
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -451,7 +458,9 @@ void GroupOps::buildMlir_for_opt3() {
               auto& node_ops = node2.lgInfo->group_ops;
               if (std::find(node_ops.begin(), node_ops.end(), in_op) != node_ops.end()) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
+                  if (print_node_topo_change) {
+                    LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
+                  }
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -471,7 +480,9 @@ void GroupOps::buildMlir_for_opt3() {
             if (node2.global_op) {
               if (user == node2.global_op) {
                 if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                  // LOG(INFO) <<"find next node: "<<module::getName(user).str();
+                  if (print_node_topo_change) {
+                    LOG(INFO) <<"find next node: "<<module::getName(user).str();
+                  }
                   node.next_nodes.push_back(&node2);
                   break;
                 }
@@ -480,7 +491,9 @@ void GroupOps::buildMlir_for_opt3() {
               auto& node_ops = node2.lgInfo->group_ops;
               if (std::find(node_ops.begin(), node_ops.end(), user) != node_ops.end()) {
                 if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                  // LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
+                  if (print_node_topo_change) {
+                    LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
+                  }
                   node.next_nodes.push_back(&node2);
                   break;
                 }
@@ -490,7 +503,9 @@ void GroupOps::buildMlir_for_opt3() {
         }
       }
     } else {
-      // LOG(INFO) <<"check node: "<<module::getName(node.global_op).str();
+      if (print_node_topo_change) {
+        LOG(INFO) <<"check node: "<<module::getName(node.global_op).str();
+      }
       node.show_info();
       for (auto in: node.global_op->getOperands()) {
         auto in_op = in.getDefiningOp();
@@ -501,7 +516,9 @@ void GroupOps::buildMlir_for_opt3() {
             if (node2.global_op) {
               if (in_op == node2.global_op) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
+                  if (print_node_topo_change) {
+                    LOG(INFO) <<"find pre node: "<<module::getName(in_op).str();
+                  }
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -510,7 +527,9 @@ void GroupOps::buildMlir_for_opt3() {
               auto& node_ops = node2.lgInfo->group_ops;
               if (std::find(node_ops.begin(), node_ops.end(), in_op) != node_ops.end()) {
                 if (std::find(node.pre_nodes.begin(), node.pre_nodes.end(), &node2) == node.pre_nodes.end()) {
-                  // LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
+                  if (print_node_topo_change) {
+                    LOG(INFO) <<"find pre group: "<<module::getName(in_op).str();
+                  }
                   node.pre_nodes.push_back(&node2);
                   break;
                 }
@@ -529,7 +548,9 @@ void GroupOps::buildMlir_for_opt3() {
           if (node2.global_op) {
             if (user == node2.global_op) {
               if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                // LOG(INFO) <<"find next node: "<<module::getName(user).str();
+                if (print_node_topo_change) {
+                  LOG(INFO) <<"find next node: "<<module::getName(user).str();
+                }
                 node.next_nodes.push_back(&node2);
                 break;
               }
@@ -538,7 +559,9 @@ void GroupOps::buildMlir_for_opt3() {
             auto& node_ops = node2.lgInfo->group_ops;
             if (std::find(node_ops.begin(), node_ops.end(), user) != node_ops.end()) {
               if (std::find(node.next_nodes.begin(), node.next_nodes.end(), &node2) == node.next_nodes.end()) {
-                // LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
+                if (print_node_topo_change) {
+                  LOG(INFO) <<"find next group, have:"<<module::getName(user).str();
+                }
                 node.next_nodes.push_back(&node2);
                 break;
               }
@@ -560,7 +583,7 @@ void GroupOps::buildMlir_for_opt3() {
   for (auto node : nodes) {
     if (node.indeg == 0) {
       if (std::find(topo_nodes.begin(), topo_nodes.end(), node) == topo_nodes.end()) {
-        // node.show_info("dfs start point");
+        node.show_info("dfs start point");
         nodes_topo_order_dfs(node, topo_nodes, idx);
       }
     }
@@ -570,14 +593,16 @@ void GroupOps::buildMlir_for_opt3() {
 
   std::sort(topo_nodes.begin(), topo_nodes.end(), node_info_Sort_by_int);
   LOG(INFO) <<"topo_nodes.size: "<<topo_nodes.size();
-  // for (auto& node : nodes) {
-  //   if (node.tmp_pre_nodes.size() > 0) {
-  //     node.show_info("have untrack pre_nodes:");
-  //     for (auto node2 : node.tmp_pre_nodes) {
-  //       node2->show_info("  ");
-  //     }
-  //   }
-  // }
+  if (print_node_topo_change) {
+    for (auto& node : nodes) {
+      if (node.tmp_pre_nodes.size() > 0) {
+        node.show_info("have untrack pre_nodes:");
+        for (auto node2 : node.tmp_pre_nodes) {
+          node2->show_info("  ");
+        }
+      }
+    }
+  }
 
   typedef struct lg_extra_info {
     std::vector<Operation*> slice_merge_ops;
@@ -1011,7 +1036,7 @@ void GroupOps::buildMlir_for_opt3() {
     }
   }
 
-  if (module::isDebugCmdEnable("print_node_topo_change")) {
+  if (print_node_topo_change) {
     idx = 0;
     for (auto node: topo_nodes) {
       if (node.global_op) {
@@ -1031,7 +1056,7 @@ void GroupOps::buildMlir_for_opt3() {
   for (auto node: topo_nodes) {
     if (node.global_op) {
       node.global_op->moveAfter(firstOp);
-      if (module::isDebugCmdEnable("print_node_topo_change")) {
+      if (print_node_topo_change) {
         if (isa<top::NoneOp>(firstOp))
           LOG(INFO) <<"  move node, from: "<<module::getName(node.global_op).str()<<", to:NoneOp";
         else
@@ -1041,7 +1066,7 @@ void GroupOps::buildMlir_for_opt3() {
     } else {
       for (auto it2: map_lg_extra_info[(int64_t)node.lgInfo].outbuffer_ops) {
         it2->moveAfter(firstOp);
-        if (module::isDebugCmdEnable("print_node_topo_change")) {
+        if (print_node_topo_change) {
           if (isa<top::NoneOp>(firstOp))
             LOG(INFO) <<"  move group, from: "<<module::getName(it2).str()<<", to:NoneOp";
           else
@@ -1051,7 +1076,7 @@ void GroupOps::buildMlir_for_opt3() {
       }
       for (auto it2: map_lg_extra_info[(int64_t)node.lgInfo].grp_group_ops) {
         it2->moveAfter(firstOp);
-        if (module::isDebugCmdEnable("print_node_topo_change")) {
+        if (print_node_topo_change) {
           if (isa<top::NoneOp>(firstOp))
             LOG(INFO) <<"  move group, from: "<<module::getName(it2).str()<<", to:NoneOp";
           else

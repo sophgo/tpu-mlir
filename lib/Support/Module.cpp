@@ -987,6 +987,10 @@ void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
        tensor<*xf32>->tensor<1xf32> */
     if ((std::max(s.size(), shape.size()) > 1) && s != shape) {
       v.dump();
+      llvm::errs() <<"error infer shape:";
+      for (auto it: shape)
+        llvm::errs() << " "<<it;
+      llvm::errs() <<"\n";
       llvm_unreachable("Shape Verify failed");
     }
   }
@@ -2104,6 +2108,16 @@ bool isOpSameCalc(const std::vector<Operation *> &ops) {
   return true;
 }
 
+
+bool isInMatMulGrpOp(Operation *op) {
+  if (isa<top::ReshapeOp, top::GELUOp, top::SiLUOp, top::CastOp, top::MulConstOp, top::MulOp, top::AddOp, top::ConcatOp, top::MatMulOp>(op)) {
+    return true;
+  }
+  if (isa<tpu::ReshapeOp, tpu::ActiveOp, tpu::CastOp, tpu::MulConstOp, tpu::MulOp, tpu::AddOp, tpu::ConcatOp, tpu::MatMulOp>(op)) {
+    return true;
+  }
+  return false;
+}
 
 } // namespace module
 } // namespace tpu_mlir

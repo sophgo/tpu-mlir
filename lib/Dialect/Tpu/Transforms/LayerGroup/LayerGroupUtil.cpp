@@ -118,12 +118,17 @@ inline bool opIsInGrpOps(Operation *op, std::vector<Operation *> grp_ops) {
   return false;
 }
 
-static void find_op_tree_by_root2(Operation *op,
+void find_op_tree_by_root2(Operation *op,
                                   std::vector<Operation *> &op_tree,
                                   const std::vector<Operation *> &ops,
                                   const std::vector<Operation *> &exclude_ops,
-                                  const std::vector<Operation *> &break_ops) {
+                                  const std::vector<Operation *> &break_ops,
+                                  int cur_depth, int max_depth) {
   op_tree.push_back(op);
+  if (max_depth > 0 && cur_depth > max_depth) {
+    return;
+  }
+  int tmp_depth = cur_depth + 1;
   for (auto user : op->getUsers()) {
     if (!isa<ReturnOp>(user) &&
         std::find(ops.begin(), ops.end(), user) != ops.end() &&
@@ -132,7 +137,7 @@ static void find_op_tree_by_root2(Operation *op,
         std::find(op_tree.begin(), op_tree.end(), user) == op_tree.end() &&
         std::find(break_ops.begin(), break_ops.end(), user) ==
             break_ops.end()) {
-      find_op_tree_by_root2(user, op_tree, ops, exclude_ops, break_ops);
+      find_op_tree_by_root2(user, op_tree, ops, exclude_ops, break_ops, tmp_depth, max_depth);
     }
   }
 }

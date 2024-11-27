@@ -143,7 +143,9 @@ int64_t align(int64_t input, int64_t align_size);
 int64_t align_64(int64_t input);
 std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation*>& ops);
 void slice_distributor(std::vector<slice_pair_t> &slice_pairs, int64_t vec_length, int64_t secs);
-
+void find_op_tree_by_root2(Operation *op, std::vector<Operation *> &op_tree,
+                        const std::vector<Operation *> &ops, const std::vector<Operation *> &exclude_ops,
+                        const std::vector<Operation *> &break_ops, int cur_depth = 0, int max_depth = -1);
 struct dot_graph {
   dot_graph() { add_node_into_graph("global_info"); }
   ~dot_graph() {}

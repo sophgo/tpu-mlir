@@ -549,7 +549,7 @@ class ONNX_IR_TESTER(object):
                       quant_input=quant_input,
                       quant_output=quant_output,
                       opt = self.opt,
-					  debug_cmd = f'--debug_cmd={self.debug_cmd}')
+					  debug_info = self.debug_cmd)
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,

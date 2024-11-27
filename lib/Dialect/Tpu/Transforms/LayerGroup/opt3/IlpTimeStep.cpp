@@ -1857,6 +1857,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
 
   std::vector<mem_alloc_req_info> vec_mem_req;
   std::vector<std::pair<int,int>> vec_pre_ts_free_mem, vec_pre_ts_free_mem_pre;
+  std::set<std::string> used_op_name_splice;
   fprintf(stderr, "start analog allocation\n");
   for(int ts_idx = 0; ts_idx < ts_count; ts_idx++) {
     int total_store_size = 0, total_load_size = 0;
@@ -1872,6 +1873,11 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
             tmp.name = name;
             tmp.value = it.value;
             tmp.size = it.lmem_bytes;
+            auto key = convert_name_to_key(tmp.name, tmp.slice_idx);
+            if(used_op_name_splice.find(key) != used_op_name_splice.end()) {
+              continue;
+            }
+            used_op_name_splice.insert(key);
             vec_mem_req.push_back(tmp);
             total_load_size += it.lmem_bytes;
             llvm::errs() << "    load value: "<<module::getName(it.value).str()
@@ -2038,6 +2044,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         if (it.var_value == 1 &&  (it.info.mode2&TIMESTEP2_STORE
           || (it.info.mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it.varName].store_load_mode == 0))) {
           lmem_alloc_ptr->free(convert_name_to_key(name, it.slice_idx), &vec_pre_ts_free_mem);
+          fprintf(stderr, "    store value for varName:%s\n", it.varName.c_str());
         }
       }
     }
