@@ -81,7 +81,7 @@ if __name__ == '__main__':
     tpu_mlir_jit.args = args
     # enable_dynamo_debug_info()
     if args.chip == 'bm1690':
-        os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')
+        os.system('ln -sf $TPUC_ROOT/lib/libtpuv7_emulator.so $TPUC_ROOT/lib/libcmodel.so')
     if args.model == "test":
         ## yolo ###
         # input = torch.randn((1,3,224,224))

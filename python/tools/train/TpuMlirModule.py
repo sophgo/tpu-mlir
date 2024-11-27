@@ -84,7 +84,7 @@ class TpuMlirModule(torch.nn.Module):
     def _initialize(self):
         print('_initialize for', self.args.chip)
         # if self.args.chip == 'bm1690':
-        #     os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')
+        #     os.system('ln -sf $TPUC_ROOT/lib/libtpuv7_emulator.so $TPUC_ROOT/lib/libcmodel.so')
         # else:
         #     os.system('ln -sf $TPUC_ROOT/lib/libcmodel_1684x.so $TPUC_ROOT/lib/libcmodel.so')
         pyruntime = importlib.import_module("pyruntime_bm")

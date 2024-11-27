@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class BM1690Info:
     def __init__(self) -> None:
-        self.lib_name = "libcmodel_bm1690.so"
+        self.lib_name = "libtpuv7_emulator.so"
         self._lib = None
 
     @property
