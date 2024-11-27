@@ -293,6 +293,9 @@ protected:
       // transpose the weight
       auto weight_type = module::getElementType(weight_op.getOutput());
       auto weight_shape = module::getShape(weight_op.getOutput());
+      if (weight_shape.size() != 4) {
+        return failure();
+      }
       if (weight_type.isInteger(8)) {
         auto weight_data = weight_op.read<uint8_t>();
         auto weight_trans =
@@ -594,7 +597,8 @@ public:
       auto new_op = rewriter.create<tpu::PermuteOp>(
           out_loc, newType,
           ValueRange{add_op.getOutput(), module::getNoneOp(add_op)}, attrs);
-      add_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
+      rewriter.replaceAllUsesExcept(add_op.getOutput(), new_op.getOutput(),
+                                    {new_op});
       rewriter.eraseOp(op);
       return success();
     } else if (auto mul_op = dyn_cast<tpu::MulOp>(nextOp)) {
@@ -623,7 +627,7 @@ public:
       auto new_op = rewriter.create<tpu::PermuteOp>(
           out_loc, newType, ValueRange{mul_out, module::getNoneOp(mul_op)},
           attrs);
-      mul_out.replaceAllUsesExcept(new_op.getOutput(), {new_op});
+      rewriter.replaceAllUsesExcept(mul_out, new_op.getOutput(), {new_op});
       rewriter.eraseOp(op);
       return success();
     }
@@ -762,7 +766,8 @@ public:
       auto new_op = rewriter.create<tpu::PermuteOp>(
           out_loc, newType,
           ValueRange{rope_op.getOutput(), module::getNoneOp(rope_op)}, attrs);
-      rope_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
+      rewriter.replaceAllUsesExcept(rope_op.getOutput(), new_op.getOutput(),
+                                    {new_op});
       rewriter.eraseOp(op);
       return success();
     }
@@ -827,8 +832,8 @@ public:
           ValueRange{mulconst_or_mulshift_out,
                      module::getNoneOp(mulconst_or_mulshift_op)},
           attrs);
-      mulconst_or_mulshift_out.replaceAllUsesExcept(new_op.getOutput(),
-                                                    {new_op});
+      rewriter.replaceAllUsesExcept(mulconst_or_mulshift_out,
+                                    new_op.getOutput(), {new_op});
       rewriter.eraseOp(op);
       return success();
     }
@@ -980,7 +985,8 @@ public:
         "order", rewriter.getI64ArrayAttr(l_permute_order)));
     auto new_permute_op = rewriter.create<tpu::PermuteOp>(
         loc, output_type, ValueRange{output, module::getNoneOp(op)}, attrs);
-    output.replaceAllUsesExcept(new_permute_op.getOutput(), new_permute_op);
+    rewriter.replaceAllUsesExcept(output, new_permute_op.getOutput(),
+                                  new_permute_op);
     return success();
   }
 };
@@ -1033,7 +1039,8 @@ public:
     auto reshape_type = module::getTypeLike(output, l_out_shape);
     auto new_reshape_op =
         rewriter.create<tpu::ReshapeOp>(loc, reshape_type, ValueRange{output});
-    output.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
+    rewriter.replaceAllUsesExcept(output, new_reshape_op.getOutput(),
+                                  new_reshape_op);
     rewriter.eraseOp(l_reshape_op);
     rewriter.eraseOp(r_reshape_op);
     return success();
@@ -1112,7 +1119,8 @@ public:
       rewriter.setInsertionPointAfterValue(next_out);
       auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
           ori_loc, ori_out_type, ValueRange{next_out});
-      next_out.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
+      rewriter.replaceAllUsesExcept(next_out, new_reshape_op.getOutput(),
+                                    new_reshape_op);
       rewriter.eraseOp(op);
       rewriter.eraseOp(right_op);
       return success();
@@ -1146,7 +1154,8 @@ public:
       rewriter.setInsertionPointAfterValue(next_out);
       auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
           ori_loc, ori_out_type, ValueRange{next_out});
-      next_out.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
+      rewriter.replaceAllUsesExcept(next_out, new_reshape_op.getOutput(),
+                                    new_reshape_op);
 
       if (auto next_op = dyn_cast<tpu::SoftmaxOp>(next_op_)) {
         next_op->setAttr("axis", rewriter.getSI32IntegerAttr(3));
@@ -1885,7 +1894,8 @@ struct PermuteFuseAddSoftmaxSlice : public OpRewriterPatternEx<tpu::ReshapeOp> {
     auto reshape_type = module::getTypeLike(output, l_out_shape);
     auto new_reshape_op =
         rewriter.create<tpu::ReshapeOp>(loc, reshape_type, ValueRange{output});
-    output.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
+    rewriter.replaceAllUsesExcept(output, new_reshape_op.getOutput(),
+                                  new_reshape_op);
     return new_reshape_op;
   }
 
@@ -2652,7 +2662,8 @@ struct ErasePermuteAroundAdd : public OpRewriterPatternEx<tpu::AddOp> {
         new_order[i] = l_permute_order[r_permute_order[i]];
       }
       op.setOperand(0, r_permute_op.getInput());
-      out_permute_op.getOutput().replaceAllUsesExcept(op.getOutput(), op);
+      rewriter.replaceAllUsesExcept(out_permute_op.getOutput(), op.getOutput(),
+                                    op);
 
       l_permute_op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
       auto new_shape = module::getShape(out_permute_op.getOutput()).vec();
@@ -2668,7 +2679,8 @@ struct ErasePermuteAroundAdd : public OpRewriterPatternEx<tpu::AddOp> {
         new_order[i] = r_permute_order[l_permute_order[i]];
       }
       op.setOperand(0, l_permute_op.getInput());
-      out_permute_op.getOutput().replaceAllUsesExcept(op.getOutput(), op);
+      rewriter.replaceAllUsesExcept(out_permute_op.getOutput(), op.getOutput(),
+                                    op);
 
       r_permute_op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
       auto new_shape = module::getShape(out_permute_op.getOutput()).vec();
@@ -3046,8 +3058,9 @@ public:
     auto reshape_after_unsqueeze_0_op = rewriter.create<tpu::ReshapeOp>(
         reshape_after_unsqueeze_0_loc, reshape_after_unsqueeze_0_type,
         ValueRange{unsqueeze_0_op.getOutput()});
-    unsqueeze_0_op.getOutput().replaceAllUsesExcept(
-        reshape_after_unsqueeze_0_op.getOutput(), reshape_after_unsqueeze_0_op);
+    rewriter.replaceAllUsesExcept(unsqueeze_0_op.getOutput(),
+                                  reshape_after_unsqueeze_0_op.getOutput(),
+                                  reshape_after_unsqueeze_0_op);
     module::setShape(unsqueeze_1_op.getOutput(), unsqueeze_0_shape);
     auto reshape_after_unsqueeze_1_type = RankedTensorType::get(
         reshape_after_unsqueeze_shape,
@@ -3059,8 +3072,9 @@ public:
     auto reshape_after_unsqueeze_1_op = rewriter.create<tpu::ReshapeOp>(
         reshape_after_unsqueeze_1_loc, reshape_after_unsqueeze_1_type,
         ValueRange{unsqueeze_1_op.getOutput()});
-    unsqueeze_1_op.getOutput().replaceAllUsesExcept(
-        reshape_after_unsqueeze_1_op.getOutput(), reshape_after_unsqueeze_1_op);
+    rewriter.replaceAllUsesExcept(unsqueeze_1_op.getOutput(),
+                                  reshape_after_unsqueeze_1_op.getOutput(),
+                                  reshape_after_unsqueeze_1_op);
     std::vector<int64_t> concat_0_shape{batch, hw - 1, head_n * head_sz / 2, 2};
     module::setShape(concat_0_op.getOutput(), concat_0_shape);
     concat_0_op->setAttr("axis", rewriter.getSI32IntegerAttr(3));
@@ -3076,8 +3090,9 @@ public:
     auto reshape_after_concat_0_op = rewriter.create<tpu::ReshapeOp>(
         reshape_after_concat_0_loc, reshape_after_concat_0_type,
         ValueRange{concat_0_op.getOutput()});
-    concat_0_op.getOutput().replaceAllUsesExcept(
-        reshape_after_concat_0_op.getOutput(), reshape_after_concat_0_op);
+    rewriter.replaceAllUsesExcept(concat_0_op.getOutput(),
+                                  reshape_after_concat_0_op.getOutput(),
+                                  reshape_after_concat_0_op);
     module::setShape(reshape_op.getOutput(), common_shape);
     module::setShape(mul_1_op.getOutput(), common_shape);
     auto mul_1_weight = mul_1_op.getInputs()[1];
@@ -3106,8 +3121,8 @@ public:
         attrs);
     std::vector<int64_t> permute_shape{batch, head_n, hw, head_sz};
     module::setShape(permute_op.getOutput(), permute_shape);
-    concat_1_op.getOutput().replaceAllUsesExcept(permute_op.getOutput(),
-                                                 permute_op);
+    rewriter.replaceAllUsesExcept(concat_1_op.getOutput(),
+                                  permute_op.getOutput(), permute_op);
     for (auto mulshift_op : mulshifts) {
       module::setShape(mulshift_op->getResult(0),
                        module::getShape(mulshift_op->getOperand(0)));
@@ -3845,7 +3860,8 @@ public:
     auto permute_op = rewriter.create<tpu::PermuteOp>(
         permute_out, type, ValueRange{op.getOutput(), module::getNoneOp(op)},
         attrs);
-    op.getOutput().replaceAllUsesExcept(permute_op.getOutput(), permute_op);
+    rewriter.replaceAllUsesExcept(op.getOutput(), permute_op.getOutput(),
+                                  permute_op);
     return success();
   }
 };
@@ -4569,7 +4585,7 @@ public:
           auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
               ori_loc, reshape_type, ValueRange{next_out},
               rewriter.getNamedAttr("shape", shapeAttr));
-          next_out.replaceAllUsesExcept(new_reshape_op.getOutput(),
+          rewriter.replaceAllUsesExcept(next_out, new_reshape_op.getOutput(),
                                         new_reshape_op);
           rewriter.eraseOp(reshapeOp);
           return success();
@@ -4588,8 +4604,8 @@ public:
           module::setShape(layerNorm_out, ishape);
           auto castOpInst_out = castOpInst.getResult();
           module::setShape(castOpInst_out, ishape);
-          layerNorm_out.replaceAllUsesExcept(newReshapeOp.getOutput(),
-                                             newReshapeOp);
+          rewriter.replaceAllUsesExcept(layerNorm_out, newReshapeOp.getOutput(),
+                                        newReshapeOp);
           rewriter.eraseOp(reshapeOp);
           return success();
         } else {
