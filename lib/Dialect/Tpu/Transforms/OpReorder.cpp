@@ -165,38 +165,6 @@ struct GlobalOpReorderPattern : public OpRewriterPatternEx3 {
   bool shouldPrint(Operation *op) const override { return false; }
 };
 
-mlir::Operation *getPrevPositionOp(mlir::Operation *currentOp) {
-  if (!currentOp)
-    return nullptr;
-
-  mlir::Block *block = currentOp->getBlock();
-  mlir::Operation *prevOp = nullptr;
-  for (auto &op : block->getOperations()) {
-    if (&op == currentOp) {
-      return prevOp;
-    }
-    prevOp = &op;
-  }
-  return nullptr;
-}
-
-mlir::Operation *getNextPositionOp(mlir::Operation *currentOp) {
-  if (!currentOp)
-    return nullptr;
-
-  mlir::Block *block = currentOp->getBlock();
-  bool foundCurrentOp = false;
-  for (auto &op : block->getOperations()) {
-    if (foundCurrentOp) {
-      return &op;
-    }
-    if (&op == currentOp) {
-      foundCurrentOp = true;
-    }
-  }
-  return nullptr;
-}
-
 struct ReshapeReorderPattern : public OpRewriterPatternEx3 {
   ReshapeReorderPattern(MLIRContext *context)
       : OpRewriterPatternEx3(context, "ReshapeReorderPattern", 1) {}
@@ -211,8 +179,8 @@ struct ReshapeReorderPattern : public OpRewriterPatternEx3 {
     auto funcOp = cast<FuncOp>(parent_op);
 
     // if reshape is directly connected to ReturnOp
-    if ((dyn_cast_if_present<ReturnOp>(getNextPositionOp(op)) ||
-         dyn_cast_if_present<tpu::ReshapeOp>(getNextPositionOp(op))) &&
+    if ((dyn_cast_if_present<ReturnOp>(op->getNextNode()) ||
+         dyn_cast_if_present<tpu::ReshapeOp>(op->getNextNode())) &&
         dyn_cast_if_present<top::InputOp>(op->getOperand(0).getDefiningOp())) {
       return failure();
     }
@@ -239,7 +207,7 @@ struct ReshapeReorderPattern : public OpRewriterPatternEx3 {
     // if reshape is directly connected to function arguments,
     // this happens when reshapeOp is in subfunctions
     for (auto arg : funcOp.getArguments()) {
-      if (dyn_cast_if_present<tpu::ReshapeOp>(getPrevPositionOp(op)) &&
+      if (dyn_cast_if_present<tpu::ReshapeOp>(op->getPrevNode()) &&
           arg == op->getOperand(0)) {
         return failure();
       }
@@ -252,8 +220,8 @@ struct ReshapeReorderPattern : public OpRewriterPatternEx3 {
     }
 
     // if op is in outer function, and is directly connected to top::InputOp
-    if ((dyn_cast_if_present<top::InputOp>(getPrevPositionOp(op)) ||
-         dyn_cast_if_present<tpu::ReshapeOp>(getPrevPositionOp(op))) &&
+    if ((dyn_cast_if_present<top::InputOp>(op->getPrevNode()) ||
+         dyn_cast_if_present<tpu::ReshapeOp>(op->getPrevNode())) &&
         dyn_cast_if_present<top::InputOp>(op->getOperand(0).getDefiningOp())) {
       return failure();
     }
