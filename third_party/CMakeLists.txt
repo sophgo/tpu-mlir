@@ -12,7 +12,6 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libcmodel_1684x.so
               nntoolchain/lib/libcmodel_1688.so
               nntoolchain/lib/libcmodel_mars3.so
-              nntoolchain/lib/libcmodel_bm1690.so
               nntoolchain/lib/libcmodel_sg2380.so
               nntoolchain/lib/libcmodel.so
               nntoolchain/lib/libbmrt.so

@@ -161,7 +161,7 @@ if __name__ == '__main__':
                         help='The numer of TPU cores used for parallel computation')
     args = parser.parse_args()
     if args.chip == 'bm1690':
-        os.system('ln -sf $TPUC_ROOT/lib/libcmodel_bm1690.so $TPUC_ROOT/lib/libcmodel.so')
+        os.system('ln -sf $TPUC_ROOT/lib/libtpuv7_emulator.so $TPUC_ROOT/lib/libcmodel.so')
     if args.chip == 'bm1684x':
         os.system('ln -sf $TPUC_ROOT/lib/libcmodel_1684x.so $TPUC_ROOT/lib/libcmodel.so')
     tpu_mlir_jit.args = args
