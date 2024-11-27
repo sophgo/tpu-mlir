@@ -132,7 +132,7 @@ Please explore ``tool_maskrcnn.py`` for more guidance.
 
 - **Inference Skip**: quant compare and simulation compare are skipped here.
 
-- **Mandatory Parameters**: ``--quantize`` mode is forced to be ``F32`` and ``--chip`` is forced to be ``BM1684X``.
+- **Mandatory Parameters**: ``--quantize`` mode is forced to be ``F32`` and ``--processor`` is forced to be ``BM1684X``.
 - **New Enable Flag**: please remeber ``enable_maskrcnn``.
 
 .. code-block:: bash
@@ -140,7 +140,7 @@ Please explore ``tool_maskrcnn.py`` for more guidance.
     $ model_deploy.py \
         --mlir MaskRCNN.mlir \
         --quantize F32 \
-        --chip BM1684X \
+        --processor BM1684X \
         --model MaskRCNN.bmodel \
         --debug \
         --enable_maskrcnn

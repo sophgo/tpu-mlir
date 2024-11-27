@@ -70,8 +70,8 @@ The table below provides an introduction to the parameters of the ``run_calibrat
      - the lower bound of similarity between the quantized output and the floating-point output of the layer in bias_correction; compensation is required for the layer when it falls below this threshold, with a value range of [0,1], default is 0.99
    * - max_float_layers
      - set the number of floating-point layers for search_qtable, default is 5
-   * - chip
-     - chip type, default is bm1684x
+   * - processor
+     - processor type, default is bm1684x
    * - cali_method
      - select the calibration mode; if this parameter is not added, the default is KLD calibration. "use_percentile9999" uses the 99.99 percentile as the threshold. "use_max" uses the absolute maximum value as the threshold. "use_torch_observer_for_cali" uses torch's observer for calibration. "use_mse" uses octav for calibration.
    * - fp_type
@@ -127,7 +127,7 @@ Based on the user's needs and their understanding of the model itself and quanti
      - unclear
      - the cali_method selects a fixed calibration method; for details on choosing a specific calibration method, refer to the subsequent sections
    * - case4
-     - after model quantization, the accuracy on the bm1684 chip does not meet the requirements
+     - after model quantization, the accuracy on the bm1684 processor does not meet the requirements
      - /
      - /
      - open we and bc methods
@@ -143,12 +143,12 @@ which records the quantization information for different calibration methods. Th
    $ run_calibration mlir.file \
        --dataset data_path \
        --input_num 100 \
-       --chip bm1684x \
+       --processor bm1684x \
        --search search_threshold \
        --inference_num 30 \
        -o cali_table
 
-Notes:1.At this point, it is necessary to select the chip parameter, which corresponds to the chip platform on which the model is intended to be deployed. The current default is bm1684x.
+Notes:1.At this point, it is necessary to select the processor parameter, which corresponds to the processor platform on which the model is intended to be deployed. The current default is bm1684x.
 2. ``inference_num`` corresponds to the number of inference data required for the ``search_threshold`` process (this data will be extracted from the dataset you provide).
 The larger the ``inference_num``, the more accurate the ``search_threshold`` result, but the longer the quantization time required. Here, the default for ``inference_num`` is set to 30, which can be customized according to the actual situation.
 
@@ -204,7 +204,7 @@ If the ``use_max`` method also fails to meet the requirements, at this point, yo
 Apart from the overall selection rules mentioned above, here are some specific details for choosing calibration methods:1.If your model is a YOLO series object detection model, it is recommended to use the default KLD calibration method.2.If your model is a multi-output classification model,
 it is also recommended to use the default KLD calibration method.
 
-case4: When your model is deployed on the bm1684 chip and the full int8 quantized model obtained through the methods mentioned above has poor accuracy,
+case4: When your model is deployed on the bm1684 processor and the full int8 quantized model obtained through the methods mentioned above has poor accuracy,
 you can try enabling cross-layer weight equalization (``we``) and bias correction (``bc``). To do this, simply add the ``we`` and ``bc`` parameters to the original command.
 If you have used ``search_threshold`` for searching, the operations for adding we and bc are as follows:
 
@@ -215,7 +215,7 @@ If you have used ``search_threshold`` for searching, the operations for adding w
        --bc \
        --dataset data_path \
        --input_num 100 \
-       --chip bm1684 \
+       --processor bm1684 \
        --search search_threshold \
        --inference_num 30 \
        --bc_inference_num 100 \
@@ -230,14 +230,14 @@ If you choose a fixed calibration method using ``cali_method`` , for example, us
        --bc \
        --dataset data_path \
        --input_num 100 \
-       --chip bm1684 \
+       --processor bm1684 \
        --cali_method use_mse \
        --bc_inference_num 100 \
        -o cali_table
 
 If you are using the default KLD calibration method, simply remove the ``cali_method`` parameter.
 
-Notes:1.Make sure to specify the chip parameter as bm1684. 2.The ``bc_inference_num`` parameter is the number of data samples required when using the ``bc`` quantization method (these samples will be extracted from the dataset you provide), so the number of images should not be too few.
+Notes:1.Make sure to specify the processor parameter as bm1684. 2.The ``bc_inference_num`` parameter is the number of data samples required when using the ``bc`` quantization method (these samples will be extracted from the dataset you provide), so the number of images should not be too few.
 3.The ``we`` and ``bc`` methods can be used independently. If you choose only the ``we`` method, simply omit the ``bc`` parameter in the operation. 4. Shape calculation ops will be found and set as float in model_name_shape_ops qtable saved in the current directory, the content of this file can be merged by hand with following mix-precision setting files.
 
 Overview of TPU-MLIR Mixed Precision Quantization
@@ -406,7 +406,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
    * - data_list
      - N
      - The sample list (cannot be used together with "dataset")
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
@@ -479,7 +479,7 @@ In this example, 100 images are used for quantization, 30 images are used for in
        --quantize_method_list KL,MSE \
        --search search_qtable \
        --transformer False \
-       --chip bm1684 \
+       --processor bm1684 \
        --post_process post_process_func.py \
        --quantize_table mobilenet_v2_qtable \
        --calibration_table mobilenet_v2_cali_table \

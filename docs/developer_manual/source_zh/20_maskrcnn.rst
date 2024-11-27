@@ -135,7 +135,7 @@ MaskRCNN 大算子框架需要 5 个输入:
 
 - **跳过推理**: 此处跳过量化比较和仿真比较。
 
-- **强制参数**: ``--quantize`` 模式被强制为 ``F32``, ``--chip`` 被强制为 ``BM1684X``
+- **强制参数**: ``--quantize`` 模式被强制为 ``F32``, ``--processor`` 被强制为 ``BM1684X``
 
  - **新的启动符**: 注意 ``enable_maskrcnn``.
 
@@ -144,7 +144,7 @@ MaskRCNN 大算子框架需要 5 个输入:
     $ model_deploy.py \
         --mlir MaskRCNN.mlir \
         --quantize F32 \
-        --chip BM1684X \
+        --processor BM1684X \
         --model MaskRCNN.bmodel \
         --debug \
         --enable_maskrcnn

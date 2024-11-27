@@ -118,7 +118,7 @@ The main parameters of ``model_transform`` are described as follows (for a compl
      - The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model
    * - keep_aspect_ratio
      - N
-     - Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting
+     - When the size of test_input is different from input_shapes, whether to keep the aspect ratio when resizing, the default is false; when set, the insufficient part will be padded with 0
    * - mean
      - N
      - The mean of each channel of the image. The default is 0.0,0.0,0.0
@@ -136,16 +136,16 @@ The main parameters of ``model_transform`` are described as follows (for a compl
      - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
    * - test_input
      - N
-     - The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified
+     - The input file for validation, which can be an jpg, npy or npz file. No validation will be carried out if it is not specified
    * - test_result
      - N
-     - Output file to save validation result
+     - Output file to save verification result with suffix ``.npz``
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
    * - mlir
      - Y
-     - The output mlir file name (including path)
+     - Specify the output mlir file name and path, with the suffix ``.mlir``
 
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
@@ -184,19 +184,19 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - Mlir file
    * - quantize
      - Y
-     - Quantization type (F32/F16/BF16/INT8)
+     - Quantization type (e.g., F32/F16/BF16/INT8), the quantization types supported by different processors are shown in the table below.
    * - processor
      - Y
      - The platform that the model will use. Support bm1690/bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
      - N
-     - The calibration table path. Required when it is INT8 quantization
+     - The calibration table path. Required when it is INT8/F8E4M3 quantization
    * - tolerance
      - N
      - Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results
    * - test_input
      - N
-     - The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified
+     - The input file for validation, which can be an jpg, npy or npz file. No validation will be carried out if it is not specified
    * - test_reference
      - N
      - Reference data for validating mlir tolerance (in npz format). It is the result of each operator
@@ -219,6 +219,24 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - N
      - Skip bmodel correctness verification to boost deployment efficiency; bmodel verification is on by default
 
+.. list-table:: Quantization types supported by different processors
+   :widths: 18 15
+   :header-rows: 1
+
+   * - Processor
+     - Supported quantize
+   * - BM1688
+     - F32/F16/BF16/INT8/INT4
+   * - BM1684X
+     - F32/F16/BF16/INT8
+   * - BM1684
+     - F32/INT8
+   * - CV186X
+     - F32/F16/BF16/INT8/INT4
+   * - CV183X/CV182X/CV181X/CV180X
+     - BF16/INT8
+   * - BM1690
+     - F32/F16/BF16/INT8/F8E4M3/F8E5M2
 
 After compilation, a file named ``yolov5s_1684x_f16.bmodel`` is generated.
 

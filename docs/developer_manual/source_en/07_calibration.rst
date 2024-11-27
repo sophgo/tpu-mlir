@@ -379,7 +379,7 @@ we+bc:
       --bc \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --chip bm1684x \
+      --processor bm1684x \
       --bc_inference_num 200 \
       --cali_method use_mse \
       -o yolov5s_cali_table
@@ -394,7 +394,7 @@ we+bc+search_threshold:
       --bc \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --chip bm1684x \
+      --processor bm1684x \
       --bc_inference_num 200 \
       --search search_threshold \
       -o yolov5s_cali_table
@@ -407,7 +407,7 @@ search_qtable:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --chip bm1684x \
+      --processor bm1684x \
       --max_float_layers 5 \
       --expected_cos 0.99 \
       --transformer False \
@@ -451,8 +451,8 @@ search_qtable:
      - The minimum similarity between the quantized output and the floating-point output of a layer in bias_correction. Compensation is required for the layer when the similarity is below this threshold, with a value range of [0,1]
    * - --max_float_layers
      - The number of floating-point layers in search_qtable
-   * - --chip
-     - Chip type
+   * - --processor
+     - processor type
    * - --cali_method
      - Choose quantization threshold calculation method
    * - --fp_type
@@ -534,12 +534,12 @@ Areas of the UI is marked with light blue rectangle for reference, dark green co
    5. tensor data compare figure area
    6. infomation summary and tensor distribution area (by switching tabs)
 
-With scroll wheel over graph display area, the displayed net graph can be zoomed in and out, and hover or click on the nodes (layer), the attributes of 
+With scroll wheel over graph display area, the displayed net graph can be zoomed in and out, and hover or click on the nodes (layer), the attributes of
 it will be displayed in the layer information card, by clicking on the edges (tensor), the compare of tensor data in float and quantized net is displayed
 in tensor data compare figure, and by clicking on the dot in accuracy summary or information list cells, the layer/tensor will be located in graph display
 area.
 
-**Notice: the net graph is displayed according to quantized net, and there may be difference in it comparing to float net, some layer/tensor may not exist in 
+**Notice: the net graph is displayed according to quantized net, and there may be difference in it comparing to float net, some layer/tensor may not exist in
 float net, but the data is copied from quantized net for compare, so the accuracy may seem perfect, but in fact, it should be ignored. Typical layer is Cast
 layer in quantized net, in following picture, the non-exist tensor data type will be NA.**
 **Notice: without --debug parameter in deployment of the net, some essential intermediate files needed by visual tool would have been deleted by default,
