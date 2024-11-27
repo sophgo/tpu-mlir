@@ -3701,7 +3701,9 @@ def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain"> {
 }
 
 
-def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd"> {
+def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd" ,[
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>
+]> {
   let summary = "BatchNormalization operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
@@ -3723,6 +3725,7 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd"> {
     AnyTensorOrNone:$weight_opt,
     AnyTensorOrNone:$saved_mean,
     AnyTensorOrNone:$saved_invstd,
+    AnyTensorOrNone:$buffer,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon
   );
   let results = (outs

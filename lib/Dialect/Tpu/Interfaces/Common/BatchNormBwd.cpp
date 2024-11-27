@@ -82,4 +82,20 @@ uint32_t tpu::BatchNormBwdOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 
 int64_t tpu::BatchNormBwdOp::get_fw_type_bm1684() { return -1; }
 
-bool tpu::BatchNormBwdOp::support_multi_core() { return false; }
+bool tpu::BatchNormBwdOp::support_multi_core() { return true; }
+
+LogicalResult tpu::BatchNormBwdOp::LocalGenSupport() {
+  if (module::isBM1690Family() || module::isBM1684X()) {
+    return success();
+  } else {
+    return failure();
+  }
+}
+
+LogicalResult tpu::BatchNormBwdOp::AllowDataSplit(int64_t axis,
+                                                  group_type_t group_type) {
+  if (axis == 1) {
+    return success();
+  }
+  return failure();
+}
