@@ -351,6 +351,23 @@ GmemAllocL2SRAM::GmemAllocL2SRAM(uint32_t aligment, int64_t l2_size)
   l2sram_size = l2_size;
 }
 
+static bool userIsNextOp(Operation *op, int index) {
+  auto out = op->getResult(index);
+  if (!out.hasOneUse()) {
+    return false;
+  }
+  auto user = *out.getUsers().begin();
+  auto next = op->getNextNode();
+  while (next != nullptr &&
+         isa<top::WeightOp, tpu::BufferOp, top::NoneOp>(next)) {
+    next = next->getNextNode();
+  }
+  if (next == user) {
+    return true;
+  }
+  return false;
+}
+
 int64_t GmemAllocL2SRAM::assignGaddr(std::vector<ValueInfo> &ops,
                                      std::map<ValueInfo, TensorLive> &liveRange,
                                      bool neuronMemoryReuse,
@@ -382,14 +399,7 @@ int64_t GmemAllocL2SRAM::assignGaddr(std::vector<ValueInfo> &ops,
     } else if (op_size == 0) {
       continue;
     }
-    auto is_continuous = false;
-    if (op_->getResult(info.index).hasOneUse()) {
-      auto out = op_->getResult(info.index);
-      auto user = *out.getUsers().begin();
-      if (op_->getNextNode() == user) {
-        is_continuous = true;
-      }
-    }
+    auto is_continuous = userIsNextOp(op_, info.index);
     std::shared_ptr<OpAddr> op_addr = std::make_shared<OpAddr>(
         info, op_size, liveRange[info].start, liveRange[info].end);
     if (is_must) {
