@@ -207,8 +207,8 @@ void GroupMethod::set_layer_group_cache(LgInfo lg_info) {
   //              << "; cache_key = " << lg_info.cache_key
   //              << "; group_cost = " << lg_info.group_cost
   //              << "\n";
-  lg_cache_[lg_info.base_group_idx][lg_info.cache_key] =
-      std::make_shared<LgInfo>(lg_info);
+  // lg_cache_[lg_info.base_group_idx][lg_info.cache_key] =
+  //     std::make_shared<LgInfo>(lg_info);
 }
 
 void GroupMethod::get_layer_group(LgInfo &lg_info,
@@ -443,10 +443,6 @@ bool GroupMethod::group_valid_pre_check(const LgInfo &lg_info) {
 
 bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                                        int64_t *group_cost) {
-  if (lg_info.is_valid != NOT_CHECK) {
-    *group_cost = lg_info.group_cost;
-    return lg_info.is_valid == VALID;
-  }
   PROFILE_LOG("is_layer_group_valid", true);
   bool status;
   status = group_one_layer_proc(lg_info, calc_cost, group_cost);
