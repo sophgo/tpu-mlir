@@ -202,33 +202,32 @@ Compile the model
 
 The model compilation process needs to be done within Docker, where ``tpu_mlir`` and ``tpu_perf`` need to be installed as described above.
 
-``confg.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/config.yaml`` .
+``confg.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` .
 
 Execute the following command to compile the ``resnet18-v2`` model:
 
 .. code-block:: shell
 
    $ cd ../model-zoo
-   $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2
+   $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2/mlir.config.yaml
 
 where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
 
-Execute the following command to compile all test samples:
+Execute the following command to compile all the high priority test samples:
 
 .. code-block:: shell
 
    $ cd ../model-zoo
-   $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
-The following models are compiled (Due to continuous additions of models in the
-model-zoo, only a partial list of models is provided here):
+The following high priority models will be compiled (Due to continuous additions of models in the model-zoo, only a partial list of models is provided here):
 
 .. code-block:: shell
 
    * efficientnet-lite4
-   * mobilenet_v2
-   * resnet18
-   * resnet50_v2
+   * mobilenetv2
+   * resnet18-v2
+   * resnet50-v2
    * shufflenet_v2
    * squeezenet1.0
    * vgg16
@@ -254,13 +253,13 @@ Running the test needs to be done in an environment outside Docker, it is assume
 
 **PCIE board**
 
-Run the following commands under the PCIE board to test the performance of the generated ``bmodel`` :
+Run the following commands under the PCIE board to test the performance of the generated high priority model ``bmodel`` :
 
 .. code-block:: shell
 
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
 where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
 
@@ -270,11 +269,11 @@ specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
 **SOC device**
 
-The SOC device uses the following steps to test the performance of the generated ``bmodel``.
+The SOC device uses the following steps to test the performance of the generated high priority model ``bmodel``.
 
 Get the latest ``tpu-perf`` wheel installer from the SDK package provided by SOPHGO. For example, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl``, then transfer the file to the SOC device and execute the following operations:
 
@@ -282,7 +281,7 @@ Get the latest ``tpu-perf`` wheel installer from the SDK package provided by SOP
 
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
 **Output results**
 
@@ -308,13 +307,13 @@ Running the test needs to be done in an environment outside Docker, it is assume
 
    $ exit
 
-Run the following commands under the PCIE board to test the precision of the generated ``bmodel`` :
+Run the following commands under the PCIE board to test the precision of the generated high priority model ``bmodel`` :
 
 .. code-block:: shell
 
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
 where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
 
@@ -324,7 +323,7 @@ specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
 Specific parameter descriptions can be obtained with the following commands:
 
