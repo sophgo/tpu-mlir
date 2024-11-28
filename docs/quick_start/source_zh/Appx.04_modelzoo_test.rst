@@ -198,32 +198,32 @@ Vid4 (可选)
 
 模型编译过程需要在Docker内进行，Docker内需要按照上文要求安装 ``tpu_mlir`` 和 ``tpu_perf`` 。
 
-``model-zoo`` 的相关 ``confg.yaml`` 配置了SDK的测试内容。以 ``resnet18-v2`` 为例，其配置文件为 ``model-zoo/vision/classification/resnet18-v2/config.yaml`` 。
+``model-zoo`` 的相关 ``confg.yaml`` 配置了SDK的测试内容。以 ``resnet18-v2`` 为例，其配置文件为 ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` 。
 
 执行以下命令，可以编译 ``resnet18-v2`` 模型：
 
 .. code-block:: shell
 
    $ cd ../model-zoo
-   $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2
+   $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2/mlir.config.yaml
 
 其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
-执行以下命令, 可以编译全部测试样例:
+执行以下命令, 可以编译全部高优先级测试样例:
 
 .. code-block:: shell
 
    $ cd ../model-zoo
-   $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
-此时会编译以下模型（由于model-zoo的模型在持续添加中，这里只列出部分模型）：
+此时会编译以下高优先级模型（由于model-zoo的模型在持续添加中，这里只列出部分模型）：
 
 .. code-block:: shell
 
    * efficientnet-lite4
-   * mobilenet_v2
-   * resnet18
-   * resnet50_v2
+   * mobilenetv2
+   * resnet18-v2
+   * resnet50-v2
    * shufflenet_v2
    * squeezenet1.0
    * vgg16
@@ -248,13 +248,13 @@ Vid4 (可选)
 
 **PCIE板卡**
 
-PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 性能：
+PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`` 性能：
 
 .. code-block:: shell
 
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
 其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
@@ -262,11 +262,11 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 性能：
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
 **SOC设备**
 
-SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
+SOC 设备使用以下步骤, 测试生成的高优先级模型的 ``bmodel`` 性能。
 
 从SOPHGO提供的SDK包中获取最新的 ``tpu-perf`` wheel安装包，例如 ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl`` ，并将文件传输到SOC设备上执行以下操作:
 
@@ -274,7 +274,7 @@ SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
 
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
 **输出结果**
 
@@ -301,13 +301,13 @@ SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
 
    $ exit
 
-PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度：
+PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`` 精度：
 
 .. code-block:: shell
 
    $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
 其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
@@ -316,7 +316,7 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度：
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
 具体参数说明可以通过以下命令获得：
 
