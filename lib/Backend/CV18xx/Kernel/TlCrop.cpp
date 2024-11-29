@@ -64,7 +64,8 @@ void cvi_backend_tl_crop(uint32_t layer_id, int64_t *input_dim,
   uint32_t input_addr = la_input + input_offset;
   tl_input.start_address = input_addr;
   tl_input.shape = output_shape;
-  if (ic == oc) {
+  if (in == on && ic == oc & ih == oh && iw == ow && in < 4096 && ic < 4096 &&
+      ih < 4096 - 32 && iw < 4096 - 32) {
     cvk_tiu_copy_param_t p = {0};
     p.src = &tl_input;
     p.dst = &tl_output;
