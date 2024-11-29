@@ -40,7 +40,8 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
 #bm1690 sha256: 90428e6d47c53c73fab8f846a1f579af456862aa
-# + MaxPoolingWithMask optimize:
+# + MaxPoolingWithMask optimize: 85e07f6a2e6059f84b1b591b2df40fe7e88f21dc
+# + RMSNorm global layer bugfix: d100aad8b3b7d6b9d262b5aaee7e1e0f46daef43 (not merged)
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
