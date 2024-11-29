@@ -2368,6 +2368,118 @@ protected:
   }
 };
 
+// interp (nearst_mode) using gather -> matmul
+// gather(8x64x32x32,64,axis=2) + gather(8x64x64x32,64,axis=3)->
+// matmul(8x64x32x32,1x1x32x64) + matmul(1x1x64x32,8x64x32x64)
+
+class InterpNearst2Matmul : public OpRewriterPatternEx<top::GatherOp> {
+public:
+  InterpNearst2Matmul(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::GatherOp>(context, "InterpNearst2Matmul") {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(top::GatherOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+
+    auto gather_input = op.getOperand(0);
+    auto gather_op = dyn_cast<top::GatherOp>(gather_input.getDefiningOp());
+    if(!gather_op){
+      return failure();
+    }
+
+    auto gather_shape = module::getShape(gather_op.getInput());
+    auto op_weight = dyn_cast<top::WeightOp>((op.getOperands()[1]).getDefiningOp());
+    auto gather_weight = dyn_cast<top::WeightOp>((gather_op.getOperands()[1]).getDefiningOp());
+    std::vector<int> unsample_ratio={0,0};
+    if(op.getAxis()==gather_shape.size()-1||op.getAxis()==gather_shape.size()-2){
+      checkWeightUpsample<float>(op_weight,gather_shape,unsample_ratio,op.getAxis());
+    }
+    if(gather_op.getAxis()==gather_shape.size()-1||gather_op.getAxis()==gather_shape.size()-2){
+      checkWeightUpsample<float>(gather_weight,gather_shape,unsample_ratio,gather_op.getAxis());
+    }
+    // not nearst_mode or shape don't change
+    if(unsample_ratio[0]*unsample_ratio[1]<=1)
+      return failure();
+
+    rewriter.setInsertionPointAfter(op);
+    std::string weightName = module::getName(gather_op.getOperands()[0]).str() + "_weight";
+    auto weightType = RankedTensorType::get({1, 1, gather_shape[2], gather_shape[3]*unsample_ratio[1]}, module::getElementType(gather_op.getOperands()[0]));
+    auto weight_size = weightType.getNumElements();
+    auto weightCoeff = std::make_shared<std::vector<float>>(weight_size, 0);
+
+    for(int row_idx=0;row_idx<gather_shape[2];row_idx++){
+        weightCoeff->at(row_idx*gather_shape[3]*unsample_ratio[1]+row_idx*unsample_ratio[1]) = 1;
+        weightCoeff->at(row_idx*gather_shape[3]*unsample_ratio[1]+row_idx*unsample_ratio[1]+1) = 1;
+    }
+    auto wret =
+        module::weightFile().addTensor(weightName, (float*)weightCoeff->data(), weightType);
+    assert(succeeded(wret));
+    auto weight_op0 = rewriter.create<top::WeightOp>(
+      NameLoc::get(rewriter.getStringAttr(weightName)),
+      weightType,
+      ValueRange{});
+
+    auto none = module::getNoneOp(op);
+    auto matmul0 = rewriter.create<top::MatMulOp>(
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(gather_op.getOperation()).str() +
+            "_2matmul")),
+        RankedTensorType::get({gather_shape[0], gather_shape[1], gather_shape[2], gather_shape[3]*unsample_ratio[1]},
+                              module::getElementType(gather_op.getOutput())),
+        ValueRange{gather_op.getInput(), weight_op0, none},
+        op->getAttrs());
+
+    weightName = module::getName(op.getOperands()[0]).str() + "_weight";
+    weightType = RankedTensorType::get({1, 1, gather_shape[2]*unsample_ratio[0], gather_shape[3]}, module::getElementType(op.getOperands()[0]));
+    weight_size = weightType.getNumElements();
+    weightCoeff = std::make_shared<std::vector<float>>(weight_size, 0);
+
+    for(int row_idx=0;row_idx<gather_shape[2]*unsample_ratio[0];row_idx++){
+        weightCoeff->at(row_idx*gather_shape[3]+row_idx/unsample_ratio[0]) = 1;
+    }
+    wret =
+        module::weightFile().addTensor(weightName, (float*)weightCoeff->data(), weightType);
+    assert(succeeded(wret));
+    auto weight_op1 = rewriter.create<top::WeightOp>(
+      NameLoc::get(rewriter.getStringAttr(weightName)),
+      weightType,
+      ValueRange{});
+
+    auto matmul1 = rewriter.create<top::MatMulOp>(
+        op.getLoc(),
+        RankedTensorType::get({gather_shape[0], gather_shape[1], gather_shape[2]*unsample_ratio[0], gather_shape[3]*unsample_ratio[1]},
+                              module::getElementType(op.getOutput())),
+        ValueRange{weight_op1, matmul0.getOutput(),none},
+        op->getAttrs());
+
+    op.replaceAllUsesWith(matmul1.getOutput());
+    rewriter.eraseOp(op);
+    rewriter.eraseOp(gather_op);
+    return success();
+  }
+private:
+  template <typename T>
+  void checkWeightUpsample(top::WeightOp op, llvm::ArrayRef<int64_t> origin_shape, std::vector<int>& unsample_ratio, int axis) const {
+    auto weight = op.read<T>();
+    auto weight_size = weight->size();
+    int origin_size = origin_shape[axis];
+    if(weight_size%origin_size!=0){
+      unsample_ratio[axis-(origin_shape.size()-2)]=0;
+      return;
+    }
+    int ratio = weight_size/origin_size;
+    for(int idx=0;idx<weight_size;idx++){
+      if((int32_t)weight->at(idx)!=idx/ratio){
+        unsample_ratio[axis-(origin_shape.size()-2)]=0;
+        return;
+      }
+    }
+    unsample_ratio[axis-(origin_shape.size()-2)]=ratio;
+    return;
+  }
+};
+
 } // namespace bm1684x
 
 namespace top {
@@ -2380,7 +2492,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
             SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner,
             ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddReshape,
-            ConvertToRSqrt, ConvertToSquare, ConvertToQGELU>(
+            ConvertToRSqrt, ConvertToSquare, ConvertToQGELU, InterpNearst2Matmul>(
           patterns->getContext(), 8);
 }
 } // namespace top
