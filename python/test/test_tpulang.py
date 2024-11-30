@@ -4520,7 +4520,6 @@ def test_all(tester: TPULANG_IR_TESTER):
     f, s = test_all_base(tester)
     if f:
       return f
-    print("====== start no save test ======")
     tester.no_save = True
     f, s = test_all_base(tester)
     return f

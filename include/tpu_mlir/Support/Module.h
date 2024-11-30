@@ -348,9 +348,6 @@ bool startsWith(const std::string &fullString,
 bool endsWith(const std::string &fullString, const std::string &suffix);
 bool IsRightMat(Value v);
 
-bool isOpSameCalc(Operation *op0, Operation *op1);
-bool isOpSameCalc(const std::vector<Operation *> &ops);
-
 bool isInMatMulGrpOp(Operation *op);
 } // namespace module
 

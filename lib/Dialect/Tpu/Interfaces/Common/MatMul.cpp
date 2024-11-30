@@ -129,8 +129,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
       for (int i = 1; i < a_dims - 2; i++) {
         a_temp *= a_s[i];
       }
-      // consider left_transpose
-      p.M = a_s[o_dims - 2 + p.left_transpose] * a_temp;
+      p.M = a_s[o_dims - 2] * a_temp;
     }
   }
   return p;
