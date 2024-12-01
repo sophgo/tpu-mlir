@@ -48,7 +48,7 @@ LogicalResult top::RepeatOp::inference(InferenceParameter &p) {
     if (r <= 1) {
       continue;
     }
-    tile(ptr0, ptr1, shape, i, r);
+    function_tile(ptr0, ptr1, shape, i, r);
     shape[i] *= r;
     std::swap(ptr0, ptr1);
   }

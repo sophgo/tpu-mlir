@@ -45,8 +45,9 @@ LogicalResult top::TileOp::inference(InferenceParameter &p) {
                               std::multiplies<int64_t>());
     float *cur_input = new float[len];
     std::copy(last_op, last_op + len, cur_input);
-    tile(cur_input, p.outputs[0],
-         llvm::ArrayRef<int64_t>(tmp_shape.data(), tmp_size), i, tile_vec[i]);
+    function_tile(cur_input, p.outputs[0],
+                  llvm::ArrayRef<int64_t>(tmp_shape.data(), tmp_size), i,
+                  tile_vec[i]);
     last_op = p.outputs[0];
     tmp_shape[i] *= tile_vec[i];
     delete[] cur_input;

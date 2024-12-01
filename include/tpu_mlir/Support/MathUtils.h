@@ -224,8 +224,15 @@ std::shared_ptr<std::vector<T>>
 tensor_slice(T *src_data, const std::vector<int64_t> &shape, int64_t axis,
              int64_t offset, int64_t length, std::string mode);
 
-int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
-            int k, int n, bool transpose);
+void dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
+             int k, int n, bool transpose);
+
+// clang-format off
+// mode 0, transpose = true: [1,512,28,128]x[1,8193,4,128] => [1,512,28,8193]
+// mode 1, transpose = false: [1,512,28,8193]x[1,8193,4,128] => [1,512,28,128]
+// clang-format on
+void dnnl_mm_gqa(float *left, float *right, float *output, int batch,
+                 int head_left, int head_right, int M, int K, int N, int mode);
 
 std::shared_ptr<std::vector<float>>
 binary_add(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
@@ -259,8 +266,8 @@ std::vector<int64_t> shape_expand_dim(const std::vector<T> &shape, int dims);
 std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape,
                                         int dims);
 template <typename T>
-void tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape, int axis,
-          int times);
+void function_tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape,
+                   int axis, int times);
 
 // reset pad to 4 dim
 bool pad_reset(const std::vector<int64_t> &shape,

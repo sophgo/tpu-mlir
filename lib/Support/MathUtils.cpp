@@ -853,21 +853,8 @@ void function_relu(float *src, float *dst, int64_t size, float relu_limit,
   }
 }
 
-int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
-            int k, int n, bool transpose) {
-  if (!bias) {
-    auto zero_bias = new std::vector<float>(n, 0.0f);
-    bias = zero_bias->data();
-  }
-
-#ifdef DUMP_FLAG
-  static int dump_idx = 0;
-  std::string prefix = std::string("ip") + std::to_string(dump_idx);
-  if (dump_idx == 0) {
-    write_bianry_file(prefix + std::string("_in.bin"), (const char *)input,
-                      m * k * sizeof(float));
-  }
-#endif // DUMP_FLAG
+void dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
+             int k, int n, bool transpose) {
 
   using tag = memory::format_tag;
   using dt = memory::data_type;
@@ -883,9 +870,11 @@ int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
   memory::dims bias_tz = {n};
   memory::dims dst_tz = {m, n};
 
-  if (!bias) {
-    auto zero_bias = new std::vector<float>(n, 0.0f);
-    bias = zero_bias->data();
+  bool has_bias = bias != nullptr;
+  std::vector<float> zero_bias;
+  if (!has_bias) {
+    zero_bias.resize(n, 0.0f);
+    bias = zero_bias.data();
   }
 
   // memory
@@ -942,16 +931,75 @@ int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
     net.at(i).execute(s, net_args.at(i));
 
   s.wait();
+}
 
-#ifdef DUMP_FLAG
-  if (dump_idx == 0) {
-    write_bianry_file(prefix + std::string("_out.bin"), (const char *)output,
-                      m * n * sizeof(float));
+// clang-format off
+// mode 0, transpose=true: [1,512,28,128]x[1,8193,4,128] => [1,512,28,8193]
+// mode 1, transpose=false: [1,512,28,8193]x[1,8193,4,128] => [1,512,28,128]
+// clang-format on
+void dnnl_mm_gqa(float *left, float *right, float *output, int batch,
+                 int head_left, int head_right, int M, int K, int N, int mode) {
+  if (head_left < head_right) {
+    llvm_unreachable("Not Implemented");
   }
-  dump_idx++;
-#endif // DUMP_FLAG
+  assert(head_left % head_right == 0);
+  // arange left
+  std::shared_ptr<std::vector<float>> left_buffer;
+  float *left_p = left;
+  if (mode == 0) {
+    left_buffer =
+        std::make_shared<std::vector<float>>(batch * head_left * M * K);
+    tensor_hc_transpose(left_buffer->data(), left, batch, M, head_left, K);
+    left_p = left_buffer->data();
+  }
+  // arange right
+  float *temp = new float[batch * head_right * K * N];
+  std::vector<int64_t> right_shape;
+  std::vector<int64_t> right_order;
+  if (mode == 0) {
+    right_shape = {batch, N, head_right, K};
+    right_order = {0, 2, 3, 1};
+  } else if (mode == 1) {
+    right_shape = {batch, K, head_right, N};
+    right_order = {0, 2, 1, 3};
+  } else {
+    llvm_unreachable("case is not supported");
+  }
+  // new shape is [batch, head_right, K, N]
+  function_permute(right, temp, right_shape, right_order);
+  auto right_buffer =
+      std::make_shared<std::vector<float>>(batch * head_left * K * N);
+  std::vector<int64_t> tile_shape = {batch * head_right, 1, K * N};
+  function_tile(temp, right_buffer->data(), tile_shape, 1,
+                head_left / head_right);
+  delete[] temp;
 
-  return 0;
+  // onednnl to do matmul
+  using tag = memory::format_tag;
+  using dt = memory::data_type;
+
+  engine eng(engine::kind::cpu, 0);
+  stream s(eng);
+
+  // Create memory descriptors
+  auto a_md = memory::desc({batch * head_left, M, K}, memory::data_type::f32,
+                           memory::format_tag::abc);
+  auto b_md = memory::desc({batch * head_left, K, N}, memory::data_type::f32,
+                           memory::format_tag::abc);
+  auto c_md = memory::desc({batch * head_left, M, N}, memory::data_type::f32,
+                           memory::format_tag::abc);
+
+  // memory
+  auto a_mem = memory(a_md, eng, left_p);
+  auto b_mem = memory(b_md, eng, right_buffer->data());
+  auto c_mem = memory(c_md, eng, output);
+
+  auto matmul_pd = matmul::primitive_desc(eng, a_md, b_md, c_md);
+  auto matmul_prim = matmul(matmul_pd);
+  matmul_prim.execute(s, {{DNNL_ARG_SRC, a_mem},
+                          {DNNL_ARG_WEIGHTS, b_mem},
+                          {DNNL_ARG_DST, c_mem}});
+  s.wait();
 }
 
 void stride_slice_gen_params(const int64_t *input_shape_, int input_dim_,
@@ -1142,8 +1190,8 @@ std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape,
 }
 
 template <typename T>
-void tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape, int axis,
-          int times) {
+void function_tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape,
+                   int axis, int times) {
   auto outer_count = std::accumulate(in_shape.begin(), in_shape.begin() + axis,
                                      1, std::multiplies<int64_t>());
   auto inner_count = std::accumulate(in_shape.begin() + axis, in_shape.end(), 1,
@@ -1158,8 +1206,9 @@ void tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape, int axis,
     }
   }
 }
-template void tile(float *input, float *output,
-                   llvm::ArrayRef<int64_t> in_shape, int axis, int times);
+template void function_tile(float *input, float *output,
+                            llvm::ArrayRef<int64_t> in_shape, int axis,
+                            int times);
 
 template <typename T>
 static int remove_value(std::vector<T> &v, int value) {

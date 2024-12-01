@@ -447,20 +447,21 @@ class MatMulMergeAddConstPattern : public OpRewriterPatternEx<tpu::AddConstOp> {
 public:
   // using OpRewriterPatternEx::OpRewriterPatternEx;
   MatMulMergeAddConstPattern(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::AddConstOp>(
-            context, "MatMulMergeAddConstPattern", 10) {}
+      : OpRewriterPatternEx<tpu::AddConstOp>(context,
+                                             "MatMulMergeAddConstPattern", 10) {
+  }
   LogicalResult matchAndRewriteImpl(tpu::AddConstOp op,
                                     PatternRewriter &rewriter) const override {
-                                      // temp result
-    if (auto matmulIpt = dyn_cast<tpu::MatMulOp>(op.getInput().getDefiningOp())) {
-        op.replaceAllUsesWith(matmulIpt.getOperation());
-        rewriter.eraseOp(op);
-    return success();
+    // temp result
+    if (auto matmulIpt =
+            dyn_cast<tpu::MatMulOp>(op.getInput().getDefiningOp())) {
+      op.replaceAllUsesWith(matmulIpt.getOperation());
+      rewriter.eraseOp(op);
+      return success();
     }
     return failure();
   }
 };
-
 
 /**
  *
@@ -469,7 +470,8 @@ public:
  * original input shape = (1, 1, M)
  * original right shape = (1, M, N)
  * original result shape = (1, 1, N)
- * step1. Matmul(input, right, bias) -> Permute(Matmul(right, Permute(input), bias))
+ * step1. Matmul(input, right, bias) -> Permute(Matmul(right, Permute(input),
+ * bias))
  *
  *
  * after apply pattern:
@@ -480,8 +482,8 @@ public:
 class MatmulUsePermutePattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
   MatmulUsePermutePattern(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<tpu::MatMulOp>(
-            context, "MatmulUsePermutePattern", benefit) {}
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatmulUsePermutePattern",
+                                           benefit) {}
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
@@ -517,46 +519,49 @@ public:
     for (auto matmul : sameMatmuls) {
       auto right = matmul.getRight();
       auto rightShape = module::getShape(right);
-      auto newRightType = RankedTensorType::get(rightShape, module::getElementType(right));
+      auto newRightType =
+          RankedTensorType::get(rightShape, module::getElementType(right));
       right.setType(newRightType);
       matmul.setOperand(0, right);
     }
 
     std::vector<NamedAttribute> attrs;
     std::vector<int64_t> order = {0, 2, 1};
-    attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     rewriter.setInsertionPointAfter(input.getDefiningOp());
     auto permute_op = rewriter.create<tpu::PermuteOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(input) + "_permute")),
-        RankedTensorType::get({inputShape[0], inputShape[2], inputShape[1]}, module::getElementType(input)),
+        NameLoc::get(
+            rewriter.getStringAttr(module::getName(input) + "_permute")),
+        RankedTensorType::get({inputShape[0], inputShape[2], inputShape[1]},
+                              module::getElementType(input)),
         ValueRange{input, module::getNoneOp(op)}, attrs);
-
 
     for (auto matmul : sameMatmuls) {
       matmul.setOperand(1, permute_op.getOutput());
 
-
       auto resultShape = module::getShape(matmul.getResult());
       // auto oriType = matmul.getResult().getType();
-      matmul.getResult().setType(RankedTensorType::get({resultShape[0], resultShape[2], resultShape[1]}, module::getElementType(matmul.getResult())));
+      matmul.getResult().setType(RankedTensorType::get(
+          {resultShape[0], resultShape[2], resultShape[1]},
+          module::getElementType(matmul.getResult())));
 
       rewriter.setInsertionPointAfter(matmul);
 
-      auto reshapeType = RankedTensorType::get(resultShape, module::getElementType(matmul.getResult()));
+      auto reshapeType = RankedTensorType::get(
+          resultShape, module::getElementType(matmul.getResult()));
       auto reshapeOp = rewriter.create<tpu::ReshapeOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(matmul.getOutput()) + "_reshape")),
-        reshapeType,
-      ValueRange{matmul.getOutput()});
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(matmul.getOutput()) + "_reshape")),
+          reshapeType, ValueRange{matmul.getOutput()});
 
-      matmul.getOutput().replaceAllUsesExcept(reshapeOp.getOutput(), {reshapeOp});
+      matmul.getOutput().replaceAllUsesExcept(reshapeOp.getOutput(),
+                                              {reshapeOp});
     }
-
 
     return success();
   }
 };
-
-
 
 /**
  * Matmul(input, right1, bias1) - \                                        / ...
@@ -564,7 +569,8 @@ public:
  * Matmul(input, right3, bias3) - /                                        \ ...
  *
  */
-class MultipleSameLeftMatmulMergePattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+class MultipleSameLeftMatmulMergePattern
+    : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
   MultipleSameLeftMatmulMergePattern(mlir::MLIRContext *context, int benefit)
       : OpRewriterPatternEx<tpu::MatMulOp>(
@@ -573,8 +579,9 @@ public:
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
     auto none = module::getNoneOp(op);
-    if (op->getUsers().empty() || isa<tpu::AddConstOp>(*(op->getUsers().begin()))) {
-        return failure();
+    if (op->getUsers().empty() ||
+        isa<tpu::AddConstOp>(*(op->getUsers().begin()))) {
+      return failure();
     }
 
     Value input = op.getOperands()[1];
@@ -587,11 +594,15 @@ public:
     // Find all MatMulOps with the same input
     for (auto user : input.getUsers()) {
       if (auto matmulOp = dyn_cast<tpu::MatMulOp>(user)) {
-        if (matmulOp.getRight() == input && !op.getBias().getType().isa<NoneType>()) {
+        if (matmulOp.getRight() == input &&
+            !op.getBias().getType().isa<NoneType>()) {
           // TODO detect is Same Op
-          if(auto op = dyn_cast<top::WeightOp>((matmulOp.getOperands()[0]).getDefiningOp())){
+          if (auto op = dyn_cast<top::WeightOp>(
+                  (matmulOp.getOperands()[0]).getDefiningOp())) {
             mmWeightOps_fp16.push_back(op.read<uint16_t>());
-            mmBiasOps_fp16.push_back(cast<top::WeightOp>((matmulOp.getBias()).getDefiningOp()).read<uint16_t>());
+            mmBiasOps_fp16.push_back(
+                cast<top::WeightOp>((matmulOp.getBias()).getDefiningOp())
+                    .read<uint16_t>());
             sameMatmuls.push_back(matmulOp);
             mmWeights.push_back(matmulOp.getOperands()[0]);
             mmBiases.push_back(matmulOp.getBias());
@@ -599,9 +610,9 @@ public:
             return failure();
           }
 
-        }else {
+        } else {
           return failure();
-          }
+        }
       } else {
         return failure();
       }
@@ -621,41 +632,46 @@ public:
 
     rewriter.setInsertionPointAfter(input.getDefiningOp());
     // step1. concat weight, get shape (size*K) x N
-    std::string weightName = module::getName(op.getOperands()[0]).str() + "_merge_right";
+    std::string weightName =
+        module::getName(op.getOperands()[0]).str() + "_merge_right";
     long newweight_row_size = weightShape[1] * sameMatmuls.size();
-    auto weightType = RankedTensorType::get({1, newweight_row_size, weightShape[0]}, module::getElementType(op.getOperands()[0]));
+    auto weightType =
+        RankedTensorType::get({1, newweight_row_size, weightShape[0]},
+                              module::getElementType(op.getOperands()[0]));
     auto weight_size = weightType.getNumElements();
     auto weightCoeff = std::make_shared<std::vector<uint16_t>>(weight_size, 0);
     // TOTO ：use efficient copy method ; check relative order of coeff
-    for(int row_idx=0;row_idx<newweight_row_size;row_idx++)
-      for(int col_idx=0;col_idx<weightShape[0];col_idx++){
-        weightCoeff->at(row_idx*weightShape[0]+col_idx) = mmWeightOps_fp16[row_idx/weightShape[1]]->at(col_idx*weightShape[1]+row_idx%weightShape[1]);
+    for (int row_idx = 0; row_idx < newweight_row_size; row_idx++)
+      for (int col_idx = 0; col_idx < weightShape[0]; col_idx++) {
+        weightCoeff->at(row_idx * weightShape[0] + col_idx) =
+            mmWeightOps_fp16[row_idx / weightShape[1]]->at(
+                col_idx * weightShape[1] + row_idx % weightShape[1]);
       }
-    auto wret =
-        module::weightFile().addTensor(weightName, (uint16_t*)weightCoeff->data(), weightType);
+    auto wret = module::weightFile().addTensor(
+        weightName, (uint16_t *)weightCoeff->data(), weightType);
     assert(succeeded(wret));
     auto weight_op = rewriter.create<top::WeightOp>(
-      NameLoc::get(rewriter.getStringAttr(weightName)),
-      weightType,
-      ValueRange{});
+        NameLoc::get(rewriter.getStringAttr(weightName)), weightType,
+        ValueRange{});
 
     // step2. concat bias, get shape (size*K)
     std::string biasName = module::getName(op.getBias()).str() + "_merge_bias";
-    auto biasType = RankedTensorType::get({newweight_row_size}, module::getElementType(op.getBias()));
+    auto biasType = RankedTensorType::get({newweight_row_size},
+                                          module::getElementType(op.getBias()));
     auto bias_size = biasType.getNumElements();
     auto biasCoeff = std::make_shared<std::vector<uint16_t>>(bias_size, 0);
-    for(int col_idx=0;col_idx<newweight_row_size;col_idx++){
-      biasCoeff->at(col_idx) = mmBiasOps_fp16[col_idx/weightShape[1]]->at(col_idx%weightShape[1]);
+    for (int col_idx = 0; col_idx < newweight_row_size; col_idx++) {
+      biasCoeff->at(col_idx) = mmBiasOps_fp16[col_idx / weightShape[1]]->at(
+          col_idx % weightShape[1]);
     }
-    auto bret =
-        module::weightFile().addTensor(biasName, (uint16_t*)biasCoeff->data(), biasType);
+    auto bret = module::weightFile().addTensor(
+        biasName, (uint16_t *)biasCoeff->data(), biasType);
     assert(succeeded(bret));
     auto bias_op = rewriter.create<top::WeightOp>(
-      NameLoc::get(rewriter.getStringAttr(biasName)),
-      biasType,
-      ValueRange{});
+        NameLoc::get(rewriter.getStringAttr(biasName)), biasType, ValueRange{});
 
-    // step3. create new large MatMulOp, W(size*K x N) @ Ipt(1 x N x 1) + B(size*K) => R(1 x size*K)
+    // step3. create new large MatMulOp, W(size*K x N) @ Ipt(1 x N x 1) +
+    // B(size*K) => R(1 x size*K)
     auto newMatmulOp = rewriter.create<tpu::MatMulOp>(
         op.getLoc(),
         RankedTensorType::get({1, newweight_row_size, 1},
@@ -665,45 +681,54 @@ public:
 
     auto resultShape = module::getShape(newMatmulOp.getResult());
     rewriter.setInsertionPointAfter(newMatmulOp);
-    auto reshapeType = RankedTensorType::get({resultShape[0],resultShape[2],resultShape[1]}, module::getElementType(newMatmulOp.getResult()));
+    auto reshapeType =
+        RankedTensorType::get({resultShape[0], resultShape[2], resultShape[1]},
+                              module::getElementType(newMatmulOp.getResult()));
     auto reshapeOp = rewriter.create<tpu::ReshapeOp>(
-      NameLoc::get(rewriter.getStringAttr(module::getName(newMatmulOp.getOutput()) + "_new_reshape")),
-      reshapeType,
-    ValueRange{newMatmulOp.getOutput()});
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(newMatmulOp.getOutput()) + "_new_reshape")),
+        reshapeType, ValueRange{newMatmulOp.getOutput()});
 
-    auto add_loc = NameLoc::get(
-        rewriter.getStringAttr(module::getName(reshapeOp.getOperation()).str() +"_add"));
+    auto add_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(reshapeOp.getOperation()).str() + "_add"));
     auto add_op = rewriter.create<tpu::AddOp>(
         add_loc, reshapeType,
         mlir::ValueRange{reshapeOp.getOutput(), bias_op.getOutput()});
     // step4. slice each original MatMulOp
     int64_t sliceOffset = 0;
-    std::vector<Operation*> operands;
-    std::vector<Operation*> reshape_ops;
+    std::vector<Operation *> operands;
+    std::vector<Operation *> reshape_ops;
     auto lastSliceOp = none.getOperation();
     for (size_t i = 0; i < sameMatmuls.size(); ++i) {
       auto originalOp = sameMatmuls[i];
       auto originalShape = module::getShape(originalOp.getOutput());
 
       std::vector<NamedAttribute> attrs;
-      attrs.push_back(rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({0, 1, 2})));
-      attrs.push_back(rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr({originalShape[0],originalShape[2],sliceOffset})));
-      attrs.push_back(rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({0, 0, sliceOffset})));
-      attrs.push_back(rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
+      attrs.push_back(
+          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({0, 1, 2})));
+      attrs.push_back(rewriter.getNamedAttr(
+          "ends", rewriter.getI64ArrayAttr(
+                      {originalShape[0], originalShape[2], sliceOffset})));
+      attrs.push_back(rewriter.getNamedAttr(
+          "offset", rewriter.getI64ArrayAttr({0, 0, sliceOffset})));
+      attrs.push_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
       rewriter.setInsertionPointAfter(add_op);
 
-      auto slice_type = RankedTensorType::get({1, 1, originalShape[1]}, module::getElementType(add_op.getOperands()[0]));
+      auto slice_type = RankedTensorType::get(
+          {1, 1, originalShape[1]},
+          module::getElementType(add_op.getOperands()[0]));
       auto sliceOp = rewriter.create<tpu::SliceOp>(
-          originalOp.getLoc(),
-          slice_type,
-          ValueRange{add_op.getResult(), none, none, none, none},
-          attrs);
+          originalOp.getLoc(), slice_type,
+          ValueRange{add_op.getResult(), none, none, none, none}, attrs);
       module::setLocSuffix(sliceOp, std::to_string(i));
       lastSliceOp = sliceOp;
 
-      auto reshape_op = dyn_cast_or_null<tpu::ReshapeOp>(*originalOp.getOutput().getUsers().begin());
+      auto reshape_op = dyn_cast_or_null<tpu::ReshapeOp>(
+          *originalOp.getOutput().getUsers().begin());
       reshape_op.getOutput().replaceAllUsesWith(sliceOp.getResult());
-      reshape_ops.insert(reshape_ops.end(), originalOp->getUsers().begin(), originalOp->getUsers().end());
+      reshape_ops.insert(reshape_ops.end(), originalOp->getUsers().begin(),
+                         originalOp->getUsers().end());
       sliceOffset += originalShape[1];
     }
     for (auto op : reshape_ops) {
@@ -725,8 +750,6 @@ public:
     return success();
   }
 };
-
-
 
 // transform group conv to normal conv, when int8/f16/bf16 &&
 // input_c<=ic_parallel && isBM1684XFamily()
@@ -3500,262 +3523,6 @@ public:
   }
 };
 
-class MatMul2FAttentionPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
-public:
-  // using OpRewriterPatternEx::OpRewriterPatternEx;
-  MatMul2FAttentionPattern(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMul2FAttentionPattern",
-                                           benifit) {}
-  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
-                                    PatternRewriter &rewriter) const override {
-    // return failure();
-    std::vector<Operation *> op_need_del;
-    if (!module::isBM1684X() && !module::isBM1688()) {
-      return failure();
-    }
-    auto out_type = module::getStorageType(op.getOutput());
-    if (!out_type.isBF16() && !out_type.isF16()) {
-      return failure();
-    }
-    if (op->hasOneUse() == false) {
-      return failure();
-    }
-
-    // forward
-    tpu::ReshapeOp reshape_op;
-    auto o_permute =
-        dyn_cast<tpu::PermuteOp>(*(op.getOutput().getUsers().begin()));
-    // (*(op.getOutput().getUsers().begin()))->dump();
-    if (!o_permute) {
-      return failure();
-    } else {
-      if (!o_permute->hasOneUse()) {
-        return failure();
-      }
-      auto o_permute_order = module::getI64Array(o_permute.getOrder());
-      if (o_permute_order->size() != 4 || o_permute_order->at(0) != 0 ||
-          o_permute_order->at(1) != 2 || o_permute_order->at(2) != 1 ||
-          o_permute_order->at(3) != 3) {
-        return failure();
-      }
-      reshape_op =
-          dyn_cast<tpu::ReshapeOp>(*(o_permute.getOutput().getUsers().begin()));
-    }
-    if (!reshape_op || !reshape_op->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(reshape_op);
-    if (o_permute) {
-      op_need_del.emplace_back(o_permute);
-    }
-    op_need_del.emplace_back(op);
-
-    // backward
-    tpu::SoftmaxOp softmax;
-    if (auto cast_op = dyn_cast<tpu::CastOp>(op.getInput().getDefiningOp())) {
-      if (!cast_op->hasOneUse()) {
-        return failure();
-      }
-      softmax = dyn_cast<tpu::SoftmaxOp>(cast_op.getInput().getDefiningOp());
-      op_need_del.emplace_back(cast_op);
-    } else {
-      softmax = dyn_cast<tpu::SoftmaxOp>(op.getInput().getDefiningOp());
-    }
-    if (!softmax || !softmax->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(softmax);
-    Value mul_out;
-    tpu::AddOp add;
-    tpu::CastOp cast_op =
-        dyn_cast<tpu::CastOp>(softmax.getInput().getDefiningOp());
-    if (cast_op) {
-      if (!cast_op->hasOneUse()) {
-        return failure();
-      }
-      add = dyn_cast<tpu::AddOp>(cast_op.getInput().getDefiningOp());
-      op_need_del.emplace_back(cast_op);
-    } else {
-      add = dyn_cast<tpu::AddOp>(softmax.getInput().getDefiningOp());
-    }
-    if (!add) {
-      if (cast_op) {
-        mul_out = cast_op.getInput();
-      } else {
-        mul_out = softmax.getInput();
-      }
-    } else {
-      mul_out = add.getInputs()[0];
-      op_need_del.emplace_back(add);
-    }
-    auto mul_const = dyn_cast<tpu::MulConstOp>(mul_out.getDefiningOp());
-    if (!mul_const || !mul_const->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(mul_const);
-    auto matmul0 =
-        dyn_cast<tpu::MatMulOp>(mul_const.getInput().getDefiningOp());
-    if (!matmul0) {
-      return failure();
-    }
-    op_need_del.emplace_back(matmul0);
-    // queries
-    Value q_in;
-    auto q_permute =
-        dyn_cast<tpu::PermuteOp>(matmul0.getInput().getDefiningOp());
-    if (!q_permute || !q_permute->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(q_permute);
-    q_in = q_permute.getInput();
-
-    // keys
-    auto k_permute =
-        dyn_cast<tpu::PermuteOp>(matmul0.getRight().getDefiningOp());
-    if (!k_permute || !k_permute->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(k_permute);
-    Value k_in = k_permute.getInput();
-    /// keys tile
-    bool has_tile = false;
-    auto k_reshape = dyn_cast<tpu::ReshapeOp>(k_in.getDefiningOp());
-    if (k_reshape) {
-      auto k_tile = k_reshape.getInput().getDefiningOp();
-      if (isa<tpu::MulOp, tpu::TileOp>(k_tile)) {
-        auto k_unsqu =
-            dyn_cast<tpu::UnsqueezeOp>(k_tile->getOperand(0).getDefiningOp());
-        if (k_unsqu) {
-          has_tile = true;
-          op_need_del.emplace_back(k_reshape);
-          op_need_del.emplace_back(k_tile);
-          op_need_del.emplace_back(k_unsqu);
-          k_in = k_unsqu.getInput();
-        } else {
-          return failure();
-        }
-      }
-    }
-
-    // Avoid getting into wrong FAttention
-    auto k_permute_order = module::getI64Array(k_permute.getOrder());
-    auto right_trans = matmul0.getRightTranspose();
-    if (right_trans) {
-      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0 ||
-          k_permute_order->at(1) != 2 || k_permute_order->at(2) != 1 ||
-          k_permute_order->at(3) != 3) {
-        return failure();
-      }
-    } else {
-      if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0 ||
-          k_permute_order->at(1) != 2 || k_permute_order->at(2) != 3 ||
-          k_permute_order->at(3) != 1) {
-        return failure();
-      }
-    }
-    auto q_permute_order = module::getI64Array(q_permute.getOrder());
-    if (q_permute_order->size() != 4 || q_permute_order->at(0) != 0 ||
-        q_permute_order->at(1) != 2 || q_permute_order->at(2) != 1 ||
-        q_permute_order->at(3) != 3) {
-      return failure();
-    }
-
-    // values
-    auto v_permute = dyn_cast<tpu::PermuteOp>(op.getRight().getDefiningOp());
-    if (!v_permute || !v_permute->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(v_permute);
-    Value v_in = v_permute.getInput();
-    /// values tile
-    auto v_reshape = dyn_cast<tpu::ReshapeOp>(v_in.getDefiningOp());
-    if (v_reshape) {
-      auto v_tile = v_reshape.getInput().getDefiningOp();
-      if (isa<tpu::MulOp, tpu::TileOp>(v_tile)) {
-        auto v_unsqu =
-            dyn_cast<tpu::UnsqueezeOp>(v_tile->getOperand(0).getDefiningOp());
-        if (v_unsqu) {
-          if (!has_tile) {
-            return failure();
-          }
-          op_need_del.emplace_back(v_reshape);
-          op_need_del.emplace_back(v_tile);
-          op_need_del.emplace_back(v_unsqu);
-          v_in = v_unsqu.getInput();
-        } else {
-          return failure();
-        }
-      }
-    }
-    if (module::getShape(k_in) != module::getShape(v_in)) {
-      return failure();
-    }
-    rewriter.setInsertionPointAfter(reshape_op);
-    auto o_shape = module::getShape(op.getOutput());
-    auto sf_shape = module::getShape(softmax.getInput());
-    auto kv_shape = module::getShape(k_in);
-    auto none = module::getNoneOp(op);
-    int64_t q_head, kv_head;
-    int64_t d;
-    int64_t mq;
-    int64_t mk;
-    int64_t batch;
-
-    assert(o_shape.size() == 4 && sf_shape.size() == 4);
-    batch = o_shape[0];
-    q_head = o_shape[1];
-    kv_head = kv_shape[2];
-    d = o_shape[3];
-    mq = sf_shape[2];
-    mk = sf_shape[3];
-    assert(o_shape[2] == mq && sf_shape[1] == q_head);
-
-    // ppl flash attention only support d <= 256, bf16 & fp16
-    if (d > 128 || mk < 4) {
-      return failure();
-    }
-    if ((module::isBM1684X() && (q_head / kv_head > 16)) ||
-        (module::isBM1688() && (q_head / kv_head > 8))) {
-      return failure();
-    }
-    if (add) {
-      auto add_shape = module::getShape(add.getInputs()[1]);
-      if (add_shape[0] != batch || add_shape[2] != mq || add_shape[3] != mk) {
-        return failure();
-      }
-    }
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
-    attrs.push_back(
-        rewriter.getNamedAttr("q_head", rewriter.getI64IntegerAttr(q_head)));
-    attrs.push_back(
-        rewriter.getNamedAttr("kv_head", rewriter.getI64IntegerAttr(kv_head)));
-    attrs.push_back(
-        rewriter.getNamedAttr("dim", rewriter.getI64IntegerAttr(d)));
-    attrs.push_back(
-        rewriter.getNamedAttr("batch", rewriter.getI64IntegerAttr(batch)));
-    attrs.push_back(
-        rewriter.getNamedAttr("mq", rewriter.getI64IntegerAttr(mq)));
-    attrs.push_back(
-        rewriter.getNamedAttr("mk", rewriter.getI64IntegerAttr(mk)));
-    std::vector<Value> operands;
-    operands.push_back(q_in);
-
-    operands.push_back(k_in);
-    operands.push_back(v_in);
-    operands.push_back(add ? add.getInputs()[1] : none);
-    operands.push_back(none);
-    auto attention = rewriter.create<tpu::FAttentionOp>(
-        reshape_op.getLoc(), reshape_op.getOutput().getType(), operands, attrs);
-    reshape_op.replaceAllUsesWith(attention.getOperation());
-    for (auto op : op_need_del) {
-      rewriter.eraseOp(op);
-    }
-    return success();
-  }
-};
-
 // merge_mode = 1: only merge weight oc
 // merge_mode = 2: merge weight ic and oc
 static Value merge_conv_weight(PatternRewriter &rewriter, Operation *op,
@@ -4959,7 +4726,7 @@ namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
-  patterns->add<MatMulRequantIntFusion, MatMul2FAttentionPattern>(ctx, 10);
+  patterns->add<MatMulRequantIntFusion>(ctx, 10);
   patterns->add<LargePadConvPattern>(ctx, 9);
   // clang-format off
   patterns->add<MatMulHdimBatchPattern,

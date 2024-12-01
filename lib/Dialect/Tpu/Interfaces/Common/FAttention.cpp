@@ -8,53 +8,91 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Float16.h"
-
-#include "tpu_mlir/Support/Dnnl/FAttention.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::FAttentionOp::init(InferenceParameter &p) {
-  auto attention = new FAttention();
+  return success();
+}
+
+void tpu::FAttentionOp::deinit(InferenceParameter &p) {}
+
+LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
+  bool is_bf16 = out_type.isBF16();
   int batch = getBatch();
   int M_q = getMq();
   int M_k = getMk();
   uint64_t d = getDim();
-  uint64_t head = getQHead();
-  auto scale = getScale().convertToDouble();
-
-  int type = out_type.isF16() ? 1 : 0;
-  type = out_type.isBF16() ? 2 : type;
-  type = out_type.isInteger(32) ? 3 : type;
-
-  attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3],
-                   p.outputs[0], batch, M_q, M_k, head, d, scale, type);
-  p.handle = (void *)attention;
-  return success();
-}
-
-void tpu::FAttentionOp::deinit(InferenceParameter &p) {
-  if (p.handle != nullptr) {
-    auto attention = (FAttention *)p.handle;
-    attention->deinit();
-    delete attention;
-    p.handle = nullptr;
+  uint64_t q_head = getQHead();
+  auto kv_head = getKvHead();
+  float scale = getScale().convertToDouble();
+  int m_size = batch * q_head * M_q * M_k;
+  bool has_mask = !module::isNone(getMask());
+  auto qk_buffer = new float[m_size];
+  auto a16_f = [&](float data) { return is_bf16 ? BF16(data) : F16(data); };
+  // Q * K
+  dnnl_mm_gqa(p.inputs[0], p.inputs[1], qk_buffer, batch, q_head, kv_head, M_q,
+              d, M_k, 0);
+  // * scale
+  if (!is_bf16) {
+    scale = a16_f(scale);
+    F16(qk_buffer, qk_buffer, m_size);
   }
-  return;
-}
+#pragma omp parallel for schedule(static, omp_schedule(m_size))
+  for (int i = 0; i < m_size; i++) {
+    qk_buffer[i] *= scale;
+    if (has_mask) {
+      int mask_offset = i % (M_q * M_k);
+      qk_buffer[i] += p.inputs[3][mask_offset];
+    }
+  }
+  if (!is_bf16) {
+    F16(qk_buffer, qk_buffer, m_size);
+  }
+  // do softmax
+  int outer_dim = batch * q_head * M_q;
+  std::vector<float> sub_buffer(M_k, 0.0f);
+#pragma omp parallel for schedule(static, omp_schedule(outer_dim))
+  for (int i = 0; i < outer_dim; i++) {
+    int offset = i * M_k;
+    // find max
+    float max = is_bf16 ? a16_f(qk_buffer[offset]) : qk_buffer[offset];
+    for (int j = 1; j < M_k; j++) {
+      float data =
+          is_bf16 ? a16_f(qk_buffer[offset + j]) : qk_buffer[offset + j];
+      if (max < data) {
+        max = data;
+      }
+    }
+    // exp(x- max), sum
+    float sum = 0;
+    for (int j = 0; j < M_k; j++) {
+      sub_buffer[j] = a16_f(qk_buffer[offset + j] - max);
+      sub_buffer[j] = a16_f(std::exp(sub_buffer[j]));
+      sum = a16_f(sum + sub_buffer[j]);
+    }
+    // divided by sum
+    for (int j = 0; j < M_k; j++) {
+      qk_buffer[offset + j] = a16_f(sub_buffer[j] * a16_f(1.0f / sum));
+    }
+  }
+  // * V
+  float *temp = new float[batch * q_head * M_q * d];
+  assert(temp != nullptr);
+  dnnl_mm_gqa(qk_buffer, p.inputs[2], temp, batch, q_head, kv_head, M_q, M_k, d,
+              1);
+  delete[] qk_buffer;
+  // * transpose output
+  tensor_hc_transpose(p.outputs[0], temp, batch, q_head, M_q, d);
+  delete[] temp;
 
-LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
-  if (p.handle == nullptr) {
-    return failure();
+  int out_num = module::getNumElements(getOutput());
+  if (is_bf16) {
+    BF16(p.outputs[0], p.outputs[0], out_num);
+  } else {
+    F16(p.outputs[0], p.outputs[0], out_num);
   }
-  auto attention = (FAttention *)p.handle;
-  auto out_type = module::getStorageType(getOutput());
-  auto num_elem = module::getNumElements(getOutput());
-  attention->run();
-  if (out_type.isBF16()) {
-    BF16(p.outputs[0], p.outputs[0], num_elem);
-  } else if (out_type.isF16()) {
-    F16(p.outputs[0], p.outputs[0], num_elem);
-  }
+
   return success();
 }
 

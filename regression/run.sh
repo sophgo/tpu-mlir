@@ -4,8 +4,8 @@ pip list
 
 if [ "$1" = "op" ]; then
     echo "::RUN operation set 0 test."
+    $REGRESSION_PATH/main_entry.py --test_set maskrcnn
     $REGRESSION_PATH/main_entry.py --test_type basic --test_set op0
-    $REGRESSION_PATH/main_entry.py                   --test_set maskrcnn
 elif [ "$1" = "script" ]; then
     echo "::RUN operation set 1 test."
     source $PROJECT_ROOT/third_party/customlayer/envsetup.sh
