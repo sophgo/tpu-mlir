@@ -1685,7 +1685,6 @@ class OnnxConverter(BaseConverter):
         else:
             new_op = top.PadOp(self.unranked_type,
                             op,
-                            self.mlir.none_op,
                             paddings=pads,
                             val=val,
                             mode=StringAttr.get(mode),

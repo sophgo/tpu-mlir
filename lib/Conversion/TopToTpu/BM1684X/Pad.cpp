@@ -17,6 +17,8 @@ void PadLowering::LoweringF32(PatternRewriter &rewriter, top::PadOp op) const {
   auto mode = tpu::symbolizePaddingMode(op.getMode())
                   .value_or(tpu::PaddingMode::constant);
   op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
+  if (!op.getPaddingsT())
+    op->insertOperands(1, {module::getNoneOp(op)});
   lowering_common_f32<tpu::PadOp>(rewriter, op, 5);
 }
 void PadLowering::LoweringINT4(PatternRewriter &rewriter, top::PadOp op,
@@ -29,7 +31,7 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   double in_scale;
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  if (!module::isNone(op.getPaddingsT())) {
+  if (op.getPaddingsT()) {
     operands.push_back(op.getPaddingsT());
   } else {
     operands.push_back(module::getNoneOp(op));
@@ -57,6 +59,8 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
   auto mode = tpu::symbolizePaddingMode(op.getMode())
                   .value_or(tpu::PaddingMode::constant);
   op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
+  if (!op.getPaddingsT())
+    op->insertOperands(1, {module::getNoneOp(op)});
   lowering_common_bf16<tpu::PadOp>(rewriter, op, 5);
 }
 
@@ -65,6 +69,8 @@ void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
   auto mode = tpu::symbolizePaddingMode(op.getMode())
                   .value_or(tpu::PaddingMode::constant);
   op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
+  if (!op.getPaddingsT())
+    op->insertOperands(1, {module::getNoneOp(op)});
   lowering_common_f16<tpu::PadOp>(rewriter, op, 5);
 }
 
@@ -78,6 +84,8 @@ void PadLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto mode = tpu::symbolizePaddingMode(op.getMode())
                   .value_or(tpu::PaddingMode::constant);
   op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
+  if (!op.getPaddingsT())
+    op->insertOperands(1, {module::getNoneOp(op)});
   lowering_common<tpu::PadOp>(rewriter, op, op.getOutput().getType(), 5);
 }
 

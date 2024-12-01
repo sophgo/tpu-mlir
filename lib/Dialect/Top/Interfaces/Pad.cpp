@@ -21,7 +21,7 @@ LogicalResult top::PadOp::init(InferenceParameter &p) {
   std::vector<int64_t> in_shape = module::getShape(getInput());
   i64_array_t pads_origin = module::getI64Array(getPaddings());
   std::vector<int64_t> pads(in_shape.size() * 2, 0);
-  if (module::isNone(getPaddingsT())) {
+  if (!getPaddingsT()) {
     pads = *pads_origin;
   }
   auto ret = pad_reset(in_shape, pads, info->shape_4, info->pads_4);
@@ -53,7 +53,7 @@ void top::PadOp::deinit(InferenceParameter &p) {
 LogicalResult top::PadOp::inference(InferenceParameter &p) {
   auto p_info = (pad_info *)p.handle;
   auto pad_mode = getMode();
-  if (!module::isNone(getPaddingsT())) {
+  if (getPaddingsT()) {
     std::vector<int64_t> in_shape = module::getShape(getInput());
     int pad_dim = in_shape.size() * 2;
     std::vector<int64_t> pads(pad_dim, 0);

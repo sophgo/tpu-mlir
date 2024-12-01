@@ -59,7 +59,7 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
       operands.push_back(selectOp);
     }
   } else {
-    if (!module::isNone(op.getPaddingsT())) {
+    if (op.getPaddingsT()) {
       operands.push_back(op.getPaddingsT());
     } else {
       operands.push_back(module::getNoneOp(op));
@@ -114,7 +114,7 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
       operands.push_back(selectOp.clone_bf16(op));
     }
   } else {
-    if (!module::isNone(op.getPaddingsT())) {
+    if (op.getPaddingsT()) {
       operands.push_back(op.getPaddingsT());
     } else {
       operands.push_back(module::getNoneOp(op));
