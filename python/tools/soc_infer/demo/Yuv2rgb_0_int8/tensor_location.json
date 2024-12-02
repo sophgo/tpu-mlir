@@ -4,6 +4,7 @@
     "subnet_id": 0,
     "core_id": 0,
     "opcode": "tpu.Yuv2rgbFormula",
+    "is_local": false,
     "tiu_dma_id(before)": [
       0,
       0
@@ -19,6 +20,11 @@
         "memory_type": "<3x90x60xui8>",
         "name": "BMTensor0",
         "reshape": "",
+        "shape": [
+          3,
+          90,
+          60
+        ],
         "slice": "[...]",
         "type": "tensor<3x90x60xui8, 4294967296 : i64>"
       }
@@ -28,11 +34,18 @@
         "address": 4294983680,
         "layout": "continuous",
         "memory_type": "<3x3x60x60xui8>",
-        "name": "yuv2rgb_cd66f5ba-4fa5-4944-a716-beabb865689a",
+        "name": "yuv2rgb_d9453665-e20c-47e1-8b68-16ec073c21b4",
         "reshape": "",
+        "shape": [
+          3,
+          3,
+          60,
+          60
+        ],
         "slice": "[...]",
         "type": "tensor<3x3x60x60xui8, 4294983680 : i64>"
       }
-    ]
+    ],
+    "buffers": []
   }
 ]

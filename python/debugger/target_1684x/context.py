@@ -9,8 +9,6 @@
 import os
 from typing import List
 from ..target_common import *
-from .cmodel import BM1684XRunner as BM1684XCModel
-from .pcie import BM1684XRunner as BM1684XPcie
 from .decoder import decoder_instance
 from .memmap import memmap, MemRef
 from .regdef import sDMA_sys_reg as dma_sys, SYSID_reg as tiu_sys
@@ -61,10 +59,17 @@ class BM1684XContext(BModelContext):
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         if self.using_cmodel:
+            from .cmodel import BM1684XRunner as BM1684XCModel
             if self._runner is None:
                 self._runner = BM1684XCModel(memory_size)
             runner = self._runner
+        elif self.using_soc:
+            from .soc import BM1684XRunner as BM1684XSoc
+            if self._runner is None:
+                self._runner = BM1684XSoc(memory_size)
+            runner = self._runner
         else:
+            from .pcie import BM1684XRunner as BM1684XPcie
             if self._runner is None:
                 self._runner = BM1684XPcie(memory_size)
             runner = self._runner

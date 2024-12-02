@@ -27,11 +27,12 @@ class BModelContext:
     tiu_sys: atomic_reg = None
 
     def __init__(self) -> None:
-        self.using_cmodel = eval(
-            os.environ.get("USING_CMODEL", "True"))
+        self.using_cmodel = eval(os.environ.get("USING_CMODEL", "True"))
+        self.using_soc = eval(os.environ.get("USING_SOC", "False"))
 
-        if platform.machine() == 'aarch64':
+        if platform.machine() == "aarch64":
             self.using_cmodel = False
+            self.using_soc = True
 
         self._runner: Runner = None
 

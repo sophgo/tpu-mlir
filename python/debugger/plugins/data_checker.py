@@ -777,37 +777,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         # only used for soc mode
         if self.is_soc:
             if is_operand:
-                DataCheck.soc_values_in[point_index].append(
-                    Pickled_Value(
-                        value,
-                        memref,
-                        value.dtype,
-                        value.zero_point,
-                        value.scale,
-                        value_view.file_line,
-                        value_view.cmd_point,
-                    )
-                )
+                DataCheck.soc_values_in[point_index].append(Pickled_Value(value, value_view.file_line, value_view.cmd_point, cmd.core_id))
             else:
-                # memref_type = 0 if isinstance(memref, Scalar) else 1
-                DataCheck.soc_values_out.append(
-                    Pickled_Value(
-                        value,
-                        memref,
-                        value.dtype,
-                        value.zero_point,
-                        value.scale,
-                        value_view.file_line,
-                        value_view.cmd_point,
-                    )
-                )
-            return ComparedResult(value_view, None, msg="ignore")
-
-        if self.tdb.cache_mode == "generate":
-            if is_operand:
-                DataCheck.soc_values_in[point_index].append(value)
-            else:
-                DataCheck.soc_values_out.append(value)
+                DataCheck.soc_values_out.append(Pickled_Value(value, value_view.file_line, value_view.cmd_point, cmd.core_id))
             return ComparedResult(value_view, None, msg="ignore")
         # breakpoint()
         raw_data = context.memory.get_data(ValueRef(memref, core_id=cmd.core_id))

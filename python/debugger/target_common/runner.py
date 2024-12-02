@@ -318,10 +318,10 @@ class DeviceRunner(Runner):
 
     def __init__(self) -> None:
         super().__init__()
-
-        lib = lib_wrapper(open_lib(self.lib_name))
-        self.lib = lib
-        self.init_runner()
+        if self.lib_name:
+            lib = lib_wrapper(open_lib(self.lib_name))
+            self.lib = lib
+            self.init_runner()
 
     def init_runner(self):
         pass

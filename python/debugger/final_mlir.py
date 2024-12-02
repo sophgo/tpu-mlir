@@ -174,28 +174,16 @@ class TLValue:
         return f"@{self.address}({{name={self.name}, layout={self.layout}, shape={self.shape}, slice={self.slice}, mlir_type={self.mlir_type_str}, memory_type={self.memory_type}}})"
 
 
-class Pickled_Value:
-    def __init__(
-        self, value: TLValue, Memref, Type, Zero_point, Scale, file_line, cmd_point
-    ):
-        self.address: int = value.address
-        self.layout: str = value.layout
-        self.memory_type: str = value.memory_type
-        self.name: str = value.name
-        self.reshape: str = value.reshape
-        self.slice: str = value.slice
-        self._type: Type = value.dtype
-        self.dtype = to_dtype[self.memory_type.strip(">").split("x")[-1]].np_dtype()
+class Pickled_Value(TLValue):
+    def __init__(self, value: TLValue, file_line, cmd_point, core_id):
+        self.tlvalue = value
         self.file_line = file_line
         self.cmd_point = cmd_point
-
-        self.memref = Memref
-        self.mlir_type = str(Type)
-        self.zero_point = Zero_point
-        self.scale = Scale
+        self.core_id = core_id
 
     def __repr__(self) -> str:
-        return f"@{self.address}({{name={self.name}, cmd_point={self.cmd_point}, file_line={self.file_line}, layout={self.layout}, slice={self.slice}, mlir_type={self.mlir_type}, memory_type={self.memory_type}}})"
+        return f"@{self.tlvalue.address}({{name={self.tlvalue.name}, layout={self.tlvalue.layout}, shape={self.tlvalue.shape}, slice={self.tlvalue.slice}, mlir_type={self.tlvalue.mlir_type_str}, memory_type={self.tlvalue.memory_type}, file_line={self.file_line}, cmd_point={self.cmd_point}, core_id={self.core_id}}})"
+
 
 
 class CMD:

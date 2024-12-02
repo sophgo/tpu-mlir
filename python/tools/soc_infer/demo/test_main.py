@@ -9,7 +9,6 @@ if not local_tools_path:
 tpul.bmodel_inference_combine(
     os.path.join(local_tools_path, "python/tools/soc_infer/demo/Yuv2rgb_0_int8/compilation.bmodel"),
     os.path.join(local_tools_path, "python/tools/soc_infer/demo/Yuv2rgb_0_int8/final.mlir"),
-    # os.path.join(local_tools_path, "python/tools/soc_infer/demo/Yuv2rgb_0_int8/input_ref_data.dat"),
     os.path.join(local_tools_path, "python/tools/soc_infer/demo/Yuv2rgb_0_int8/Yuv2rgb_0_in_f32.npz"),
     os.path.join(local_tools_path, "python/tools/soc_infer/demo/Yuv2rgb_0_int8/tensor_location.json"),
     os.path.join(local_tools_path, "python/tools/soc_infer/demo/Yuv2rgb_0_int8/Yuv2rgb_0_int8_tpu_out.npz"),
@@ -17,8 +16,7 @@ tpul.bmodel_inference_combine(
     save_path=os.path.join(local_tools_path, "soc_infer"),
     out_fixed=False,
     is_soc=True,
-    tmp_path="/tmp/soc_tmp",
-    tools_path="/tmp/soc_infer",
+    soc_tmp_path="/tmp/soc_tmp",
 )
 print()
 

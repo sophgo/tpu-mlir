@@ -6,6 +6,8 @@
 # third-party components.
 #
 # ==============================================================================
+import platform
+import shutil
 import struct
 from typing import Union, List, Dict, NamedTuple, Callable, Any, Tuple
 from enum import Enum, IntEnum
@@ -814,6 +816,18 @@ class TPUInfo:
         self._tpu_info = {}
         if os.environ.get("TDB_CACHE_MODE") == "offline":
             self.load_lib_info_from_cache()
+        elif os.environ.get("TDB_CACHE_MODE") == "auto":
+            if platform.machine()=="x86_64":
+                self.load_lib_info()
+                self.dump_lib_info()
+                cur_dir = os.path.dirname(__file__)
+                tmp_cache_dir = os.path.join(cur_dir, "../soc_tools/tmp_cache")
+                os.makedirs(tmp_cache_dir, mode=755, exist_ok=True)
+                self.copy_cache_file(os.path.join(tmp_cache_dir,"memmap_config.json"))
+            else:
+                cur_dir = os.path.dirname(__file__)
+                tmp_cache_dir = os.path.join(cur_dir, "../../tmp_cache/memmap_config.json")
+                self.load_lib_info_from_cache(tmp_cache_dir)
         else:
             self.load_lib_info()
             if os.environ.get("TDB_CACHE_MODE") == "generate":
@@ -841,11 +855,19 @@ class TPUInfo:
         with open(self.cache_file, "w") as w:
             json.dump(self._tpu_info, w)
 
-    def load_lib_info_from_cache(self):
-        with open(self.cache_file, "r") as r:
-            self._tpu_info = json.load(r)
-            for k, v in self._tpu_info.items():
-                super().__setattr__(k, v)
+    def load_lib_info_from_cache(self, path=None):
+        if not path:
+            with open(self.cache_file, "r") as r:
+                self._tpu_info = json.load(r)
+        else:
+            with open(path, "r") as r:
+                self._tpu_info = json.load(r)
+
+        for k, v in self._tpu_info.items():
+            super().__setattr__(k, v)
+
+    def copy_cache_file(self, abs_dst):
+        shutil.copy(self.cache_file, abs_dst)
 
     def __setattr__(self, name: str, value: Any) -> None:
         super().__setattr__(name, value)

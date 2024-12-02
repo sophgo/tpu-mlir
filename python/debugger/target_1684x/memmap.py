@@ -7,6 +7,7 @@
 #
 # ==============================================================================
 
+import platform
 from ..target_common import DType, MType, Layout, MemRefBase, Target, div_up, align_up, lib_wrapper, open_lib
 import functools
 from typing import Tuple
@@ -14,7 +15,11 @@ from functools import lru_cache
 
 class BM1684XInfo:
     def __init__(self) -> None:
-        self.lib_name = "libcmodel_1684x.so"
+        self.lib_name = (
+            "libcmodel_1684x.so"
+            if platform.machine() == "x86_64"
+            else "libbm1684x_atomic_kernel.so" # do not use libbm1684x_kernel_module, which may cause nan error
+        )
         self._lib = None
 
     @property

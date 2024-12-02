@@ -159,7 +159,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
 
     def _build_index(self, tdb: TdbCmdBackend):
         cache_file = os.path.abspath(f"{self.tdb.final_mlir_fn}.tdb_cache.pickle")
-        if tdb.cache_mode in {'online', 'generate'}:
+        if tdb.cache_mode in {'online', 'generate', 'auto'}:
             ret = self._build_mlir_loc(tdb)
             if tdb.cache_mode == 'generate':
                 tdb.save_pickle(cache_file, ret)

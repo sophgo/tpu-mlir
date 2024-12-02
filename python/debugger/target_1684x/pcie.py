@@ -11,67 +11,57 @@
 cmodel.py provide a python interface of cmodel, which can compute cmd and access (global/local/smem) memory.
 """
 import os
+import platform
 from numpy import ndarray
 import warnings
 import ctypes
-from typing import Union
 import numpy as np
 from copy import copy
 from ..target_common import *
 from .opdef import TiuCmd, DmaCmd, BaseTpuCmd
 from .memmap import *
-from ..plugins.common import FinalMlirIndexPlugin
 
 
 class soc_launch_struct:
-    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf):
+    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf, core_ids=set({0})):
         self.tiu_num = tiu_num
         self.dma_num = dma_num
         self.tiu_buf = tiu_buf
         self.dma_buf = dma_buf
         self.tiu_buf_len = len(tiu_buf)
         self.dma_buf_len = len(dma_buf)
+        self.core_ids = core_ids
 
 
 class BM1684XRunner(DeviceRunner):
     lib_name = "libatomic_exec.so"
     soc_structs = []
+    kernel_fn = os.path.join(os.environ["TPUC_ROOT"], "lib/libbm1684x_atomic_kernel.so") # do not use libbm1684x_kernel_module, which may cause nan error
 
-    def __init__(self, memory_size, use_pcie=False):
+    def __init__(self, memory_size):
         super().__init__()
-        lib = lib_wrapper(open_lib(self.lib_name))
-
-        self.lib = lib
-        self.kernel_fn = os.path.join(
-            os.environ["TPUC_ROOT"], "lib/libbm1684x_atomic_kernel.so"
-        )
         self.fast_checker = False
-        if use_pcie:
-            self.use_pcie()
-        else:
-            self.use_soc()
 
-        # used for get_cur_op_cmds()
-        self.op_start_execute_id = 1
-        self.in_op = False
-        self.cur_op_cmds = 0
+        # # used for get_cur_op_cmds()
+        # self.op_start_execute_id = 1
+        # self.in_op = False
+        # self.cur_op_cmds = 0
 
-    def use_pcie(self):
-        self.is_pcie = True
-        self.is_soc = False
+    def init_runner(self):
         self.lib.init_handle.restype = ctypes.c_void_p
         self.lib.init_handle_b.restype = ctypes.c_void_p
-
         runner = self.lib.init_handle(self.kernel_fn.encode(), 0)
-
         self.runner = ctypes.c_void_p(runner)
-
         self.lib.convert_addr.argtypes = [
             ctypes.POINTER(ctypes.c_uint32),
             ctypes.c_uint64,
         ]
         self.init_memory()
         self.reserved_offset = self.memory.reserved_offset
+
+    def use_pcie(self):
+        self.is_pcie = True
+        self.is_soc = False
 
     def use_soc(self):
         self.is_pcie = False
@@ -133,41 +123,6 @@ class BM1684XRunner(DeviceRunner):
 
     def dma_compute(self, command: DmaCmd):
         return self._compute(command, 1)
-
-    def get_stack_cmds(self, cur_cmd_point, cmditer):
-        tiu = []
-        dma = []
-        df = FinalMlirIndexPlugin.data_frame
-        buf_cmds = 0
-
-        while cur_cmd_point + buf_cmds < len(cmditer):
-            if cmditer[cur_cmd_point + buf_cmds].cmd_type == CMDType.tiu:
-                tiu.append(cmditer[cur_cmd_point + buf_cmds])
-            else:
-                dma.append(cmditer[cur_cmd_point + buf_cmds])
-
-            result_not_empty = (
-                len(df.loc[df["executed_id"] == cur_cmd_point + 1 + buf_cmds, "results"].tolist()[0])> 0
-            )
-
-            if result_not_empty:
-                break
-            buf_cmds += 1
-
-        return tiu, dma
-
-    def get_cur_op_cmds(self, cur_cmd_point, cmditer):
-        if not self.in_op:
-            self.op_start_execute_id = cur_cmd_point + 1
-            self.in_op = True
-            tiu, dma = self.get_stack_cmds(cur_cmd_point, cmditer)
-            self.cur_op_cmds = len(tiu) + len(dma)
-            if self.cur_op_cmds == 1:
-                self.in_op = False
-        else:
-            if cur_cmd_point + 1 == self.op_start_execute_id + self.cur_op_cmds - 1:
-                self.in_op = False
-        return self.cur_op_cmds
 
     def checker_fast_compute_soc(self, cmd_group: StaticCmdGroup):
         tiu, dma = cmd_group.tiu, cmd_group.dma
@@ -249,7 +204,6 @@ class BM1684XRunner(DeviceRunner):
                 self.fast_compute_soc(commands.all[0])
             else:
                 self.checker_fast_compute_soc(commands)
-
 
 
 class PcieMemoryArray:

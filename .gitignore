@@ -9,6 +9,7 @@ work_dir/
 .DS_Store
 __pycache__
 python/transform/tflite
+python/debugger/soc_tools/tmp_cache
 regression_out/
 tags
 .vscode/

@@ -3936,8 +3936,7 @@ Definition
             is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
             using_memory_opt: bool = False, # required when is_soc=True
             enable_soc_log: bool = False, # required when is_soc=True
-            tmp_path: str = "/tmp",  # required when is_soc=True
-            tools_path: str = "/soc_infer",  # required when is_soc=True
+            soc_tmp_path: str = "/tmp",  # required when is_soc=True
             hostname: str = None,  # required when is_soc=True
             port: int = None,  # required when is_soc=True
             username: str = None,  # required when is_soc=True
@@ -3966,8 +3965,7 @@ Parameters
 * is_soc: Bool type, representing whether to use in soc mode.
 * using_memory_opt: Bool type, enable to use memory opt, decrease memory usage at the expense of increasing time cost. Suggest to enable when running large model.
 * enable_soc_log: Bool type, enable to print and save log at `save_path`.
-* tmp_path: String type, representing the abs path of tmp files on device in soc mode.
-* tools_path: String type, representing the dir of soc_infer tools on device in soc mode.
+* soc_tmp_path: String type, representing the abs path of tmp files and tools on device in soc mode.
 * hostname: String type, representing the ip address of device in soc mode.
 * port: Int type, representing the port of device in soc mode.
 * username: String type, representing the username of device in soc mode.

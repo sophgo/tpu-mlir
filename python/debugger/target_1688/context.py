@@ -111,14 +111,13 @@ class BM1688Context(BModelContext):
         return isinstance(cmd.reg, (dma_sys, tiu_sys))
 
     def get_runner(self, memory_size: int) -> Runner:
-        from .cmodel import BM1688Runner as BM1688CModel
-        from .device_rt import BM1688Runner as BM1688SOC
-
         if self.using_cmodel:
+            from .cmodel import BM1688Runner as BM1688CModel
             if self._runner is None:
                 self._runner = BM1688CModel(memory_size, self.base_addr)
             runner = self._runner
         else:
+            from .device_rt import BM1688Runner as BM1688SOC
             if self._runner is None:
                 self._runner = BM1688SOC(memory_size)
             runner = self._runner

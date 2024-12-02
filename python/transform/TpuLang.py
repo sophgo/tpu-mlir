@@ -9,7 +9,6 @@ import getpass
 import time
 from typing import List, Union, Tuple, Optional
 
-from debugger.tdb_support import TdbCmdBackend
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name, assert_with_out_name
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.model_deploy import getCustomFormat
@@ -20,7 +19,6 @@ from tools.npz_tool import npz_compare
 from tools.tdb import TdbInterface
 from debugger.plugins.data_checker import DataCheck, DumpMode
 import pymlir
-from debugger.target_1684x.pcie import BM1684XRunner
 
 import numpy as np
 import logging
@@ -276,39 +274,6 @@ def bmodel_generate_and_inference(model_name: str, quant_mode: str, inference: b
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"], log_level=log_level)
 
 
-def _soc_upload_dir(sftp, local_dir, remote_dir):
-    sftp.mkdir(remote_dir)
-    for root, dirs, files in os.walk(local_dir):
-        for file in files:
-            local_path = os.path.join(root, file)
-            remote_path = os.path.join(
-                remote_dir, os.path.relpath(local_path, local_dir)
-            )
-            sftp.put(local_path, remote_path)
-
-        for dir in dirs:
-            local_path = os.path.join(root, dir)
-            remote_path = os.path.join(
-                remote_dir, os.path.relpath(local_path, local_dir)
-            )
-            try:
-                sftp.mkdir(remote_path)
-            except:
-                pass
-
-def _soc_mk_dir(client, remote_dir):
-    command = f"mkdir -p {remote_dir}"
-    stdin, stdout, stderr = client.exec_command(command)
-    if stderr:
-        print(stderr.read().decode("utf-8"))
-
-def _soc_rm_dir(client, remote_dir):
-    command = f"rm -rf {remote_dir}"
-    stdin, stdout, stderr = client.exec_command(command)
-    if stderr:
-        print(stderr.read().decode("utf-8"))
-
-
 def bmodel_inference_combine(
     bmodel_file: str,
     final_mlir_fn: str,
@@ -325,8 +290,7 @@ def bmodel_inference_combine(
     is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
     using_memory_opt: bool = False, # required when is_soc=True
     enable_soc_log: bool = False, # required when is_soc=True
-    tmp_path: str = "/tmp",  # required when is_soc=True
-    tools_path: str = "/soc_infer",  # required when is_soc=True
+    soc_tmp_path: str = "/tmp",  # required when is_soc=True
     hostname: str = None,  # required when is_soc=True
     port: int = None,  # required when is_soc=True
     username: str = None,  # required when is_soc=True
@@ -340,7 +304,7 @@ def bmodel_inference_combine(
         reference_data_fn=reference_data_fn,
         extra_plugins=["progress"],
         extra_check=[],
-        is_soc=is_soc,
+        auto_soc=is_soc,
         args={
             "run_by_atomic": not run_by_op,
             "ddr_size": 2**32,
@@ -365,143 +329,75 @@ def bmodel_inference_combine(
             plugin.dump_dataframe(save_path)
 
     if is_soc:
-        import pickle, paramiko
+        import pickle
+        import debugger.soc_tools.utils as soc_tools
 
         # prepare the cmds and values_info
         os.makedirs(os.path.join(save_path, "soc_tmp"), exist_ok=True)
         with open(os.path.join(save_path, "soc_tmp", "cmds.pkl"), "wb") as cmds_pkl:
-            pickle.dump(BM1684XRunner.soc_structs, cmds_pkl)
+            pickle.dump(tdb.runner.soc_structs, cmds_pkl)
         with open(os.path.join(save_path, "soc_tmp", "values_in.pkl"), "wb") as values_in_pkl:
             pickle.dump(DataCheck.soc_values_in, values_in_pkl)
         with open(os.path.join(save_path, "soc_tmp", "values_out.pkl"), "wb") as values_out_pkl:
             pickle.dump(DataCheck.soc_values_out, values_out_pkl)
 
-        # connect remote ssh server
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        if not hostname:
-            hostname = input("Enter the hostname: ")
-        if not port:
-            port = int(input("Enter the port: "))
-        if not username:
-            username = input("Enter your username: ")
-        if not password:
-            password = getpass.getpass("Enter your password: ")
+        assert len(DataCheck.soc_values_in)==len(DataCheck.soc_values_out), f"len_value_in: {len(DataCheck.soc_values_in)}, len_value_out: {len(DataCheck.soc_values_out)}"
 
-        client.connect(
-            hostname=hostname, port=port, username=username, password=password
-        )
+        try:
+            # connect remote ssh server
+            client, sftp = soc_tools.soc_connect(hostname, port, username, password)
 
-        # transfer file
-        def progress(size, total):
-            progress = (size / total) * 100
-            print(f"Processing : {size}/{total} bytes ({progress:.2f}%)\r", end="")
+            # collect dependences
+            soc_tools.collect_files()
 
-        def progress_put(file_name, local_path="", remote_path="", progress=None):
-            print(f"Transfering {file_name}:")
-            sftp.put(local_path, remote_path, callback=progress)
-            print()
-
-        def progress_get(file_name, local_path="", remote_path="", progress=None):
-            print(f"Getting {file_name}:")
-            sftp.get(remote_path, local_path, callback=progress)
-            print()
-
-        sftp = paramiko.SFTPClient.from_transport(client.get_transport())
-        _soc_mk_dir(client, tmp_path)
-        sftp.chdir(tmp_path)
-        progress_put("cmds.pkl", os.path.join(save_path, "soc_tmp", "cmds.pkl"), "cmds.pkl", progress)
-        progress_put("values_in.pkl", os.path.join(save_path, "soc_tmp", "values_in.pkl"), "values_in.pkl", progress)
-        progress_put("values_out.pkl", os.path.join(save_path, "soc_tmp", "values_out.pkl"), "values_out.pkl", progress)
-        progress_put("bmodel file", bmodel_file, os.path.basename(bmodel_file), progress)
-        progress_put("input data", input_data_fn, os.path.basename(input_data_fn), progress)
-        progress_put("ref data", reference_data_fn, os.path.basename(reference_data_fn), progress)
-
-        # transfer soc_infer tools
-        print("Transfering Soc_infer Tools...")
-        local_tools_path = os.getenv("PROJECT_ROOT", None)
-        if not local_tools_path:
-            local_tools_path = os.getenv("TPUC_ROOT")
-            assert local_tools_path
-        _soc_upload_dir(
-            sftp,
-            os.path.join(local_tools_path, "python/tools/soc_infer/"),
-            tools_path,
-        )
-        # execute soc_bmodel_infer
-        remote_bmodel = os.path.basename(bmodel_file)
-        remote_input = os.path.basename(input_data_fn)
-        remote_ref = os.path.basename(reference_data_fn)
-        exec_command = f"cd {tools_path} && source envsetup.sh && nohup python3 soc_bmodel_infer.py --path {tmp_path} --bmodel {remote_bmodel} --input {remote_input} --ref {remote_ref} --tool_path {tools_path}"
-        if desire_op:
-            exec_command +=f" --desire_op {','.join(desire_op)}"
-        if out_fixed:
-            exec_command += " --out_fixed"
-        if enable_soc_log:
-            exec_command += " --enable_log"
-        if using_memory_opt:
-            exec_command += " --using_memory_opt"
-        if not run_by_op:
-            exec_command += " --run_by_atomic"
-        exec_command += " &"
-        print(f"soc execute command: {exec_command}")
-        print("####### REMOTE OUTPUTS START #######\n")
-
-        shell = client.invoke_shell()
-        shell.send(exec_command + "\n")
-        while True:
-            try:
-                sftp.stat(os.path.join(tools_path, "log.txt"))
-                print("REMOTE PROGRESS FINISHED!")
-                break
-            except FileNotFoundError:
-                time.sleep(0.5)  # refresh output every 0.5s
-                if shell.recv_ready():
-                    output = shell.recv(1024).decode("utf-8", errors="ignore")
-                    print(output, end="")
-                if shell.recv_stderr_ready():
-                    error = shell.recv_stderr(1024).decode("utf-8", errors="ignore")
-                    print(error, end="")
-                    print("Error encountered, exiting.")
-                    shell.close()
-                    return
-        shell.close()
-        print("######## REMOTE OUTPUTS END ########\n")
-
-        if enable_soc_log:
-            progress_get(
-                "stdout file",
-                os.path.join(save_path, "log.txt"),
-                os.path.join(tools_path, "log.txt"),
-                progress,
+            # transfer cache files and soc_infer tools
+            soc_tools.soc_trans_files(
+                client,
+                sftp,
+                save_path,
+                soc_tmp_path,
+                bmodel_file,
+                input_data_fn,
+                reference_data_fn,
             )
-            progress_get(
-                "stderr file",
-                os.path.join(save_path, "nohup.out"),
-                os.path.join(tools_path, "nohup.out"),
-                progress,
-            )
-            print(f"log file recieved at {os.path.join(save_path, 'log.txt')} and {os.path.join(save_path, 'nohup.out')}")
 
-        # retrieve results
-        remote_infer_combine_path = os.path.join(tools_path, f"soc_infer_{remote_ref}")
-        local_infer_combine_path = os.path.join(save_path, f"soc_infer_{remote_ref}")
-        progress_get(
-            "Inference_combine file",
-            local_infer_combine_path,
-            remote_infer_combine_path,
-            progress,
-        )
-        _soc_rm_dir(client, tmp_path)
-        _soc_rm_dir(client, tools_path)
-        client.close()
+            # raise KeyError
+            # execute soc_bmodel_infer
+            remote_bmodel = os.path.basename(bmodel_file)
+            remote_input = os.path.basename(input_data_fn)
+            remote_ref = os.path.basename(reference_data_fn)
+            soc_tools_path = os.path.join(soc_tmp_path, "soc_tools")
+            exec_command = f"cd {soc_tools_path} && source envsetup.sh && nohup python3 soc_bmodel_infer.py --path {soc_tmp_path} --bmodel {remote_bmodel} --input {remote_input} --ref {remote_ref} --tool_path {soc_tools_path}"
+            if desire_op:
+                exec_command += f" --desire_op {','.join(desire_op)}"
+            if out_fixed:
+                exec_command += " --out_fixed"
+            if enable_soc_log:
+                exec_command += " --enable_log"
+            if using_memory_opt:
+                exec_command += " --using_memory_opt"
+            if not run_by_op:
+                exec_command += " --run_by_atomic"
+            exec_command += " &"
+
+            # check wheth program on soc is finished
+            soc_tools.soc_check_end_status(exec_command, client, sftp, soc_tools_path)
+
+            # fetch log and infer result
+            soc_tools.soc_fetch_log_and_npz(
+                client, sftp, save_path, soc_tools_path, remote_ref, enable_soc_log
+            )
+            soc_tools._soc_rm_dir(client, soc_tmp_path)
+        finally:
+            soc_tools.clean_collected_files()
+            client.close()
+
         return
 
     if dump_file:  # plugin.ref_data_from_inference -> [np_dict]
-        for idx, tensor_dict in enumerate(plugin.ref_data_from_inference):
-            file_name = os.path.basename(reference_data_fn).split(".")[0]
-            out_path = os.path.join(save_path, f"bmodel_infer_{file_name}_{idx}.npz")
-            np.savez(out_path, **tensor_dict)
+        file_name = os.path.basename(reference_data_fn).split(".")[0]
+        out_path = os.path.join(save_path, f"bmodel_infer_{file_name}.npz")
+        np.savez(out_path, **plugin.ref_data_from_inference)
     else:
         return plugin.ref_data_from_inference
 

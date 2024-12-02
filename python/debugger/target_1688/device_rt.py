@@ -67,28 +67,27 @@ def memtag(addr):
 
 
 class soc_launch_struct:
-
-    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf):
+    def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf, core_ids=set({0})):
         self.tiu_num = tiu_num
         self.dma_num = dma_num
         self.tiu_buf = tiu_buf
         self.dma_buf = dma_buf
         self.tiu_buf_len = len(tiu_buf)
         self.dma_buf_len = len(dma_buf)
+        self.core_ids = core_ids
 
 
 class BM1688Runner(DeviceRunner):
     lib_name = (
-        "libatomic_exec_bm1688.so"
-        if platform.machine() == "x86_64"
-        else "libatomic_exec_bm1688_aarch64.so"
+        "" if platform.machine() == "x86_64" else "libatomic_exec_bm1688_aarch64.so"
     )
 
     soc_structs = []
     memory: "Memory"
-    kernel_fn = os.path.join(
-        os.environ["TPUC_ROOT"], "lib/libbmtpulv60_kernel_module.so"
-    )
+    if os.path.exists(os.path.join(os.getenv("TPUC_ROOT",""), "lib/libbmtpulv60_kernel_module.so")):
+        kernel_fn = os.path.join(os.getenv("TPUC_ROOT",""), "lib/libbmtpulv60_kernel_module.so")
+    else:
+        kernel_fn = os.path.join(os.getenv("PROJECT_ROOT",""), "debugger/lib/libbmtpulv60_kernel_module.so")
 
     def __init__(self, memory_size=None):
         super().__init__()
@@ -129,6 +128,35 @@ class BM1688Runner(DeviceRunner):
             buf_list.append(buf)
         return b"".join(buf_list)
 
+    def trans_cmds_to_buf_soc_prepare(self, cmds, engine_type):
+        buf_list = []
+        for cmd in cmds:
+            reg = copy(cmd.reg)
+            reg.cmd_id = 1
+            reg.cmd_id_dep = 0
+            if engine_type == 1:  # dma
+                u32_buf = (ctypes.c_uint32 * (len(cmd.buf) // 4)).from_buffer_copy(reg)
+                buf = bytes(u32_buf)
+            else:
+                buf = bytes(reg)
+            buf_list.append(buf)
+        return buf_list
+
+    def trans_cmds_to_buf_soc_consume(self, cmd_bufs, engine_type):
+        buf_list = []
+        for cmd_buf in cmd_bufs:
+            if engine_type == 1:  # dma
+                cmd_buf_array = (ctypes.c_uint32 * (len(cmd_buf) // 4))()
+                ctypes.memmove(ctypes.addressof(cmd_buf_array), cmd_buf, len(cmd_buf))
+                c_uint32_obj = (ctypes.c_uint32 * (len(cmd_buf) // 4)).from_buffer_copy(
+                    cmd_buf_array
+                )
+                self.lib.convert_addr(self.runner_p, c_uint32_obj)
+                # self.lib.convert_addr(c_uint32_obj, self.reserved_offset)
+                cmd_buf = bytes(c_uint32_obj)
+            buf_list.append(cmd_buf)
+        return b"".join(buf_list)
+
     def __del__(self):
         self.lib.deinit(self.runner_p)
 
@@ -163,14 +191,14 @@ class BM1688Runner(DeviceRunner):
     def init_memory(self):
         self.memory = Memory(self.lib, self.runner_p)
 
-    def cmds_compute(self, cmd_group: StaticCmdGroup):
+    def _cmds_compute(self, cmd_group: StaticCmdGroup):
         if len(cmd_group.all) > 1:
             for cmd in cmd_group.all:
                 if cmd.cmd_type == CMDType.tiu:
                     # _convert_bdc(bytes(cmd.reg))
-                    self.cmds_compute(StaticCmdGroup([cmd], [], [cmd]))
+                    self._cmds_compute(StaticCmdGroup([cmd], [], [cmd]))
                 elif cmd.cmd_type == CMDType.dma:
-                    self.cmds_compute(StaticCmdGroup([], [cmd], [cmd]))
+                    self._cmds_compute(StaticCmdGroup([], [cmd], [cmd]))
             return len(cmd_group.all)
 
         tiu, dma = cmd_group.tiu, cmd_group.dma
@@ -216,40 +244,58 @@ class BM1688Runner(DeviceRunner):
         assert ret == 0
         return len(tiu) + len(dma)
 
+    def _cmds_soc_cache(self, cmd_group: StaticCmdGroup):
+        if len(cmd_group.all) > 1:
+            for cmd in cmd_group.all:
+                if cmd.cmd_type == CMDType.tiu:
+                    # _convert_bdc(bytes(cmd.reg))
+                    self._cmds_compute(StaticCmdGroup([cmd], [], [cmd]))
+                elif cmd.cmd_type == CMDType.dma:
+                    self._cmds_compute(StaticCmdGroup([], [cmd], [cmd]))
+            return len(cmd_group.all)
+
+        tiu, dma = cmd_group.tiu, cmd_group.dma
+        assert len(tiu) + len(dma) == 1
+        tiu_buf = self.trans_cmds_to_buf_soc_prepare(tiu, 0)
+        dma_buf = self.trans_cmds_to_buf_soc_prepare(dma, 1)
+
+        core_ids = set()
+        for cmd in cmd_group.all:
+            core_ids.add(cmd.core_id)
+        assert len(core_ids) == 1, len(core_ids)
+
+        self.soc_structs.append(soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf, core_ids))
+        return 1
+
+    def _cmds_soc_single_compute(self, tiu_num, dma_num, tiu_buf, dma_buf, core_ids):
+        assert tiu_num + dma_num == 1
+        assert len(core_ids) == 1, len(core_ids)
+        tiu_buf = self.trans_cmds_to_buf_soc_consume(tiu_buf, 0)
+        dma_buf = self.trans_cmds_to_buf_soc_consume(dma_buf, 1)
+
+        ret = self.lib.debug_cmds(
+            self.runner_p,
+            ctypes.byref(ctypes.create_string_buffer(tiu_buf)),
+            ctypes.byref(ctypes.create_string_buffer(dma_buf)),
+            ctypes.c_size_t(len(tiu_buf)),
+            ctypes.c_size_t(len(dma_buf)),
+            ctypes.c_int(tiu_num),
+            ctypes.c_int(dma_num),
+            list(core_ids)[0],
+        )
+        assert ret == 0
+
     def tiu_compute(self, command: TiuCmd):
-        return self.cmds_compute(StaticCmdGroup([command], [], [command]))
+        return self._cmds_compute(StaticCmdGroup([command], [], [command]))
 
     def dma_compute(self, command: DmaCmd):
-        return self.cmds_compute(StaticCmdGroup([], [command], [command]))
+        return self._cmds_compute(StaticCmdGroup([], [command], [command]))
 
-    def get_stack_cmds(self, cur_cmd_point, cmditer):
-        from ..plugins.common import FinalMlirIndexPlugin
-
-        tiu = []
-        dma = []
-        df = FinalMlirIndexPlugin.data_frame
-        buf_cmds = 0
-
-        while cur_cmd_point + buf_cmds < len(cmditer):
-            if cmditer[cur_cmd_point + buf_cmds].cmd_type == CMDType.tiu:
-                tiu.append(cmditer[cur_cmd_point + buf_cmds])
-            else:
-                dma.append(cmditer[cur_cmd_point + buf_cmds])
-
-            result_not_empty = (
-                len(
-                    df.loc[
-                        df["executed_id"] == cur_cmd_point + 1 + buf_cmds, "results"
-                    ].tolist()[0]
-                )
-                > 0
-            )
-
-            if result_not_empty:
-                break
-            buf_cmds += 1
-
-        return tiu, dma
+    def cmds_compute(self, commands: StaticCmdGroup):
+        if platform.machine() == "x86_64":
+            self._cmds_soc_cache(commands)
+        else:
+            self._cmds_compute(commands)
 
 
 class Memory(DeviceMemory):

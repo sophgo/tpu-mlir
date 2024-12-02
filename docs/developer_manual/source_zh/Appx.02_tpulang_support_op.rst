@@ -4847,8 +4847,7 @@ bmodel_inference_combine
           is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
           using_memory_opt: bool = False, # required when is_soc=True
           enable_soc_log: bool = False, # required when is_soc=True
-          tmp_path: str = "/tmp",  # required when is_soc=True
-          tools_path: str = "/soc_infer",  # required when is_soc=True
+          soc_tmp_path: str = "/tmp",  # required when is_soc=True
           hostname: str = None,  # required when is_soc=True
           port: int = None,  # required when is_soc=True
           username: str = None,  # required when is_soc=True
@@ -4876,8 +4875,7 @@ bmodel_inference_combine
 * is_soc: Bool类型，表示是否启用soc模式进行推理。
 * using_memory_opt: Bool类型，启用后会减小在device端的内存消耗，但会增加耗时。推荐在大模型时启用。
 * enable_soc_log: Bool类型，启用此项打印并在save_path下保存log日志。
-* tmp_path: String类型，表示soc模式下，板卡(device)端存放临时文件的绝对路径。
-* tools_path: String类型，表示soc模式下，device端存放工具的文件夹名称。
+* soc_tmp_path: String类型，表示soc模式下，板卡(device)端存放临时文件与推理工具的绝对路径。
 * hostname: String类型，表示soc模式下，device端的ip地址。
 * port: Int类型，表示soc模式下，device端的端口号。
 * username: String类型，表示soc模式下，device端的用户名。

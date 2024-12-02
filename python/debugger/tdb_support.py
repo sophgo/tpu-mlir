@@ -8,6 +8,7 @@
 # ==============================================================================
 from argparse import ArgumentParser, Namespace
 import collections
+import platform
 from typing import List, Union, Dict, NamedTuple, Type, Optional
 from functools import partial
 import re
@@ -229,7 +230,7 @@ class TdbCmdBackend(cmd.Cmd):
         completekey="tab",
         stdin=None,
         stdout=None,
-        is_soc=False,  # this option is valid only when USING_CMODEL = False
+        auto_soc=False,  # this option is valid only when USING_CMODEL = False
         args=None,
     ):
         super().__init__(completekey, stdin, stdout)
@@ -253,8 +254,11 @@ class TdbCmdBackend(cmd.Cmd):
         self.run_by_atomic: bool = args.get("run_by_atomic", False)
         self.fast_checker = not self.run_by_atomic
         self.fast_checker_enabled = False
-        self.is_soc = is_soc
-        self.cache_mode: str = args.get("cache_mode", "online")
+        self.auto_soc = auto_soc
+        if self.auto_soc:
+            self.cache_mode: str = "auto"
+        else:
+            self.cache_mode: str = args.get("cache_mode", "online")
         os.environ['TDB_CACHE_MODE'] = self.cache_mode
         os.environ["BMODEL_ROOT"] = os.path.dirname(os.path.abspath(self.bmodel_file))
 
@@ -299,7 +303,6 @@ class TdbCmdBackend(cmd.Cmd):
         self.add_plugin("static-check")
         self.extra_check = extra_check
 
-
         if os.path.exists(os.path.join(self.bmodel_dir, "final.mlir")):
             self.file_recorder = CommandRecorder(
                 os.path.join(self.bmodel_dir, "ref_files.json")
@@ -322,7 +325,6 @@ class TdbCmdBackend(cmd.Cmd):
         self.message(
             f"Type `s` to initialize bmodel, type `r` to run full commands, or `help` to see other commands."
         )
-
 
     @add_callback("load")
     def _reset(self):
@@ -373,7 +375,9 @@ class TdbCmdBackend(cmd.Cmd):
             self.runner.fast_checker = True
             self.fast_checker_enabled = True
 
-        if self.is_soc:
+        if self.auto_soc:
+            if hasattr(self.runner, "use_soc"):
+                self.runner.use_soc()
             return
 
         if hasattr(self.runner, "use_pcie"):
@@ -416,7 +420,7 @@ class TdbCmdBackend(cmd.Cmd):
                 )
 
     def _load_data(self):
-        if self.is_soc:
+        if self.auto_soc:
             return
         file = self.input_data_fn
         if file is None or (isinstance(file, str) and not os.path.isfile(file)):
@@ -510,7 +514,6 @@ class TdbCmdBackend(cmd.Cmd):
                 dma_offset = counter["dma"]
                 dma = dma_offset
             return (subnet_id, tiu, dma, core_id)
-
 
         op_df['cmd_index'] = op_df['cmd_index'].apply(fix_cmd_index)
         self.op_df = op_df.set_index("cmd_index", drop=False)
