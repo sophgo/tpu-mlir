@@ -219,7 +219,7 @@ model_transform.py
      - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会正确性验证
    * - test_result
      - 否
-     - 指定验证后的输出文件, ``.npz``格式
+     - 指定验证后的输出文件, ``.npz`` 格式
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用 ``,`` 隔开
@@ -508,7 +508,7 @@ model_deploy.py
      - 指定mlir文件
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
+     - 指定模型将要用到的平台, 支持BM1684，BM1684X，BM1688，BM1690，CV186X，CV183X，CV182X，CV181X，CV180X
    * - quantize
      - 是
      - 指定默认量化类型, 支持F32/F16/BF16/INT8等, 不同处理器支持的量化类型如下表所示。
@@ -550,7 +550,7 @@ model_deploy.py
      - 指定需要排除验证的网络层的名称, 多个用,隔开
    * - op_divide
      - 否
-     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
+     - CV183x/CV182x/CV181x/CV180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
    * - model
      - 是
      - 指定输出的model文件名称和路径
@@ -607,7 +607,7 @@ model_deploy.py
      - layer groups是否根据core数目进行强制分组, 可选auto/true/false, 默认为auto
    * - opt
      - 否
-     - LayerGroup优化类型，可选1/2/3, 默认为2。1：简单LayerGroup模式，所有算子会尽可能做Group，编译速度较快；2：通过动态编译计算全局cycle最优的Group分组，适用于单核推理图；3：线性规划LayerGroup模式，适用于模型训练图编译。
+     - LayerGroup优化类型，可选1/2/3, 默认为2。1：简单LayerGroup模式，所有算子会尽可能做Group，编译速度较快；2：通过动态编译计算全局cycle最优的Group分组，适用于推理图编译；3：线性规划LayerGroup模式，适用于模型训练图编译。
    * - addr_mode
      - 否
      - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'], 默认为auto
@@ -627,23 +627,25 @@ model_deploy.py
 对于不同处理器和支持的量化类型对应关系如下表所示：
 
 .. list-table:: 不同处理器支持的 quantize 量化类型
-   :widths: 18 15
+   :widths: 15 30
    :header-rows: 1
 
    * - 处理器
      - 支持的quantize
-   * - BM1688
-     - F32/F16/BF16/INT8/INT4
-   * - BM1684X
-     - F32/F16/BF16/INT8
    * - BM1684
-     - F32/INT8
-   * - CV186X
-     - F32/F16/BF16/INT8/INT4
-   * - CV183X/CV182X/CV181X/CV180X
-     - BF16/INT8
+     - F32, INT8
+   * - BM1684X
+     - F32, F16, BF16, INT8, W4F16, W8F16, W4BF16, W8BF16
+   * - BM1688
+     - F32, F16, BF16, INT8, INT4, W4F16, W8F16, W4BF16, W8BF16
    * - BM1690
-     - F32/F16/BF16/INT8/F8E4M3/F8E5M2
+     - F32, F16, BF16, INT8, F8E4M3, F8E5M2, W4F16, W8F16, W4BF16, W8BF16
+   * - CV186X
+     - F32, F16, BF16, INT8, INT4
+   * - CV183X, CV182X, CV181X, CV180X
+     - BF16, INT8
+
+其中， ``W4A16`` 与 ``W8A16`` 的 ``Weight-only`` 量化模式仅作用于 MatMul 运算，其余算子根据实际情况仍会进行 ``F16`` 或 ``BF16`` 量化。
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~

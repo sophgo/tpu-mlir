@@ -220,7 +220,7 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
      - The input file for verification, which can be an jpg, npy or npz file. No verification will be carried out if it is not specified
    * - test_result
      - N
-     - Output file to save verification result with suffix ``.npz``
+     - Output file to save verification result with suffix .npz
    * - excepts
      - N
      - Names of network layers that need to be excluded from verification. Separated by comma
@@ -496,7 +496,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
+     - The platform that the model will use. Support BM1684, BM1684X, BM1688, BM1690, CV186X, CV183X, CV182X, CV181X, CV180X
    * - quantize
      - Y
      - Quantization type (e.g., F32/F16/BF16/INT8), the quantization types supported by different processors are shown in the table below.
@@ -538,7 +538,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Names of network layers that need to be excluded from verification. Separated by comma
    * - op_divide
      - N
-     - cv183x/cv182x/cv181x/cv180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
+     - CV183x/CV182x/CV181x/CV180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
    * - model
      - Y
      - Name of output model file (including path)
@@ -595,7 +595,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - whether layer groups force group by cores, auto/true/false, default is auto
    * - opt
      - N
-     - Optimization type of LayerGroup, 1/2/3, default is 2. 1: Simple LayerGroup mode, all operators will be grouped as much as possible, and the compilation speed is faster; 2: Dynamic compilation calculates the global cycle optimal Group grouping, suitable for single-core inference graphs; 3: Linear programming LayerGroup mode, suitable for training graphs.
+     - Optimization type of LayerGroup, 1/2/3, default is 2. 1: Simple LayerGroup mode, all operators will be grouped as much as possible, and the compilation speed is faster; 2: Dynamic compilation calculates the global cycle optimal Group grouping, suitable for inference graphs; 3: Linear programming LayerGroup mode, suitable for training graphs.
    * - addr_mode
      - N
      - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'], if not set, auto as default
@@ -615,23 +615,25 @@ Convert the mlir file into the corresponding model, the parameters are as follow
 The following table shows the correspondence between different processors and the supported quantize types:
 
 .. list-table:: Quantization types supported by different processors
-   :widths: 18 15
+   :widths: 18 30
    :header-rows: 1
 
    * - Processor
      - Supported quantize
-   * - BM1688
-     - F32/F16/BF16/INT8/INT4
-   * - BM1684X
-     - F32/F16/BF16/INT8
    * - BM1684
-     - F32/INT8
-   * - CV186X
-     - F32/F16/BF16/INT8/INT4
-   * - CV183X/CV182X/CV181X/CV180X
-     - BF16/INT8
+     - F32, INT8
+   * - BM1684X
+     - F32, F16, BF16, INT8, W4F16, W8F16, W4BF16, W8BF16
+   * - BM1688
+     - F32, F16, BF16, INT8, INT4, W4F16, W8F16, W4BF16, W8BF16
    * - BM1690
-     - F32/F16/BF16/INT8/F8E4M3/F8E5M2
+     - F32, F16, BF16, INT8, F8E4M3, F8E5M2, W4F16, W8F16, W4BF16, W8BF16
+   * - CV186X
+     - F32, F16, BF16, INT8, INT4
+   * - CV183X, CV182X, CV181X, CV180X
+     - BF16, INT8
+
+The ``Weight-only`` quantization mode of ``W4A16`` and ``W8A16`` only applies to the MatMul operation, and other operators will still perform ``F16`` or ``BF16`` quantization.
 
 model_runner.py
 ~~~~~~~~~~~~~~~~
