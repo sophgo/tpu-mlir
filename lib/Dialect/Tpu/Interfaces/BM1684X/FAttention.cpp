@@ -31,14 +31,8 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.scale = getScale().convertToDouble();
   common.hasmask = !module::isNone(getMask());
 
-  if (module::isBM1684X()) {
-    BM168x::call_global_func("backend_api_flash_attention_global", &param,
-                             sizeof(param), input_spec->data(),
-                             output_spec->data());
-  } else {
-    BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
-                                 input_spec->data(), output_spec->data());
-  }
+  BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
+                               input_spec->data(), output_spec->data());
 }
 
 int64_t tpu::FAttentionOp::get_fw_type_bm1684x() { return FW_BMNET_FATTENTION; }

@@ -1,9 +1,12 @@
 #include "flash_attention_gqa_bf16.h"
 #include "flash_attention_gqa_f16.h"
+#include "flash_attention_mha_bf16.h"
+#include "flash_attention_mha_f16.h"
 #include "helper.h"
 #include "tpu_mlir/Backend/BM168x/Param.h"
 #include <assert.h>
 #include <cstdio>
+#include <functional>
 #include <stddef.h>
 #include <stdint.h>
 #include <string>
@@ -11,6 +14,32 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+static int bm1688_mha_bf16_decode[3] = {32, 288, 8};
+static int bm1688_mha_bf16_encode[3] = {160, 96, 8};
+static int bm1688_mha_fp16_decode[3] = {32, 352, 8};
+static int bm1688_mha_fp16_encode[3] = {224, 96, 8};
+
+static int bm1688_gqa_bf16_decode[3] = {32, 352, 8};
+static int bm1688_gqa_bf16_encode[3] = {160, 96, 8};
+static int bm1688_gqa_fp16_decode[3] = {32, 352, 8};
+static int bm1688_gqa_fp16_encode[3] = {224, 96, 8};
+
+static int bm1684x_mha_bf16_decode[3] = {64, 384, 16};
+static int bm1684x_mha_bf16_encode[3] = {320, 96, 16};
+static int bm1684x_mha_fp16_decode[3] = {64, 512, 16};
+static int bm1684x_mha_fp16_encode[3] = {384, 128, 16};
+
+static int bm1684x_gqa_bf16_decode[3] = {64, 512, 16};
+static int bm1684x_gqa_bf16_encode[3] = {320, 96, 16};
+static int bm1684x_gqa_fp16_decode[3] = {64, 768, 16};
+static int bm1684x_gqa_fp16_encode[3] = {384, 128, 16};
+
+using ATTENTION = std::function<int(
+    const char *chip, void *pid_node, unsigned long long v1,
+    unsigned long long v2, unsigned long long v3, unsigned long long v4,
+    unsigned long long v5, int32_t v6, int32_t v7, int32_t v8, int32_t v9,
+    int32_t v10, int32_t v11, float v12, int32_t v13, int32_t v14, int32_t v15,
+    int32_t v16, int32_t v17)>;
 
 void api_fattention_global(void *param, size_t param_size, void *input_spec,
                            void *output_spec, const char *chip, void *cmdid) {
@@ -28,49 +57,56 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
   int dmax = align_up(_param->common.dim, 32 /*eu num*/);
   int block_m, block_k, block_h;
   std::string chip_str(chip);
+  bool is_mha = _param->common.q_head == _param->common.kv_head;
+  bool is_decode = _param->common.mq == 1;
+  bool is_fp16 = in_spec[0].dtype == DTYPE_FP16;
+  int *split = nullptr;
+  ATTENTION func = nullptr;
   if (chip_str == PPL_BM1688) {
-    if (_param->common.mq == 1) {
-      block_m = 32;
-      block_k = 352;
-      block_h = 8;
-    } else {
-      block_m = 224; // 128;
-      block_k = 80;  // 128;
-      if (in_spec[0].dtype == DTYPE_FP16) {
-        block_k = 96; // 128;
+    if (is_mha) {
+      func = is_fp16 ? flash_attention_mha_f16 : flash_attention_mha_bf16;
+      if (is_decode) {
+        split = is_fp16 ? bm1688_mha_fp16_decode : bm1688_mha_bf16_decode;
+      } else {
+        split = is_fp16 ? bm1688_mha_fp16_encode : bm1688_mha_bf16_encode;
       }
-      block_h = 8; // 32;
+    } else {
+      func = is_fp16 ? flash_attention_gqa_f16 : flash_attention_gqa_bf16;
+      if (is_decode) {
+        split = is_fp16 ? bm1688_gqa_fp16_decode : bm1688_gqa_bf16_decode;
+      } else {
+        split = is_fp16 ? bm1688_gqa_fp16_encode : bm1688_gqa_bf16_encode;
+      }
     }
   } else {
-    if (_param->common.mq == 1) {
-      block_m = 64;
-      block_k = 192;
-      block_h = 32;
+    if (is_mha) {
+      func = is_fp16 ? flash_attention_mha_f16 : flash_attention_mha_bf16;
+      if (is_decode) {
+        split = is_fp16 ? bm1684x_mha_fp16_decode : bm1684x_mha_bf16_decode;
+      } else {
+        split = is_fp16 ? bm1684x_mha_fp16_encode : bm1684x_mha_bf16_encode;
+      }
     } else {
-      block_m = 256; // 128;
-      block_k = 256; // 128;
-      block_h = 32;  // 32;
+      func = is_fp16 ? flash_attention_gqa_f16 : flash_attention_gqa_bf16;
+      if (is_decode) {
+        split = is_fp16 ? bm1684x_gqa_fp16_decode : bm1684x_gqa_bf16_decode;
+      } else {
+        split = is_fp16 ? bm1684x_gqa_fp16_encode : bm1684x_gqa_bf16_encode;
+      }
     }
   }
 
+  block_m = split[0];
+  block_k = split[1];
+  block_h = split[2];
+
   while (block_m > 0 && block_k > 0) {
-    if (in_spec[0].dtype == DTYPE_FP16) {
-      ret = flash_attention_gqa_f16(
-          chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
-          _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
-          _param->common.mq, _param->common.mk, _param->common.dim,
-          _param->common.q_head, _param->common.kv_head, _param->common.scale,
-          _param->common.hasmask, dmax, block_m, block_k, block_h);
-    } else if (in_spec[0].dtype == DTYPE_BFP16) {
-      ret = flash_attention_gqa_bf16(
-          chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
-          _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
-          _param->common.mq, _param->common.mk, _param->common.dim,
-          _param->common.q_head, _param->common.kv_head, _param->common.scale,
-          _param->common.hasmask, dmax, block_m, block_k, block_h);
-    } else {
-      assert(0);
-    }
+    ret = func(chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr,
+               v_spec->addr, _param->common.hasmask ? mask_spec->addr : 0,
+               _param->common.batch, _param->common.mq, _param->common.mk,
+               _param->common.dim, _param->common.q_head,
+               _param->common.kv_head, _param->common.scale,
+               _param->common.hasmask, dmax, block_m, block_k, block_h);
     CHECK_PPL_RET(ret);
     if (ret == PplAddressAssignErr) {
       block_m -= 2;
