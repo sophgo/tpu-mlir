@@ -488,7 +488,7 @@ public:
     Value input = op.getInput();
     std::vector<tpu::MatMulOp> sameMatmuls;
     auto inputShape = module::getShape(input);
-    if (inputShape.size() != 3 || inputShape[0] != 1 || inputShape[1] != 1) {
+    if (!isa<top::WeightOp>(op->getOperand(1).getDefiningOp()) || inputShape.size() != 3 || inputShape[0] != 1 || inputShape[1] != 1) {
       return failure();
     }
 
@@ -496,6 +496,9 @@ public:
     for (auto user : input.getUsers()) {
       if (auto matmulOp = dyn_cast<tpu::MatMulOp>(user)) {
         if (matmulOp.getInput() == input) {
+          if(!isa<top::WeightOp>(matmulOp->getOperand(1).getDefiningOp())){
+            continue;
+          }
           sameMatmuls.push_back(matmulOp);
           // mmWeights.push_back(matmulOp.getRight());
           if (isa<tpu::AddConstOp>(*(matmulOp->getUsers().begin()))) {
