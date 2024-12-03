@@ -18,10 +18,10 @@ from utils.mlir_parser import *
 from utils.misc import *
 from utils.auto_remove import file_mark, file_clean
 from utils.preprocess import get_preprocess_parser, preprocess
-from utils.cache_tool import CacheTool
 from utils.log_setting import setup_logger
 import pymlir
 import warnings
+from utils.cache_tool import CommandRecorder
 
 logger = setup_logger("transform")
 
@@ -34,6 +34,12 @@ class ModelTransformer(object):
         self.converter = BaseConverter()
         self.in_f32_npz = self.model_name + '_in_f32.npz'
         self.ref_npz = self.model_name + '_ref_outputs.npz'
+        self.file_recorder = None
+
+
+    def set_mlir_file(self, mlir_file: str):
+        self.mlir_file = mlir_file
+        self.file_recorder = CommandRecorder(f"{self.model_name}.ref_files.json")
 
     def cleanup(self):
         file_clean()
@@ -50,8 +56,8 @@ class ModelTransformer(object):
         return trimmed_arr
 
     def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}):
-        self.mlir_file = mlir_file
-        mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
+        self.set_mlir_file(mlir_file)
+        mlir_origin = self.mlir_file.replace('.mlir', '_origin.mlir', 1)
         if self.converter:
             file_mark(mlir_origin)
             self.converter.generate_mlir(mlir_origin)
@@ -64,10 +70,18 @@ class ModelTransformer(object):
                 "The number of times {} was applied does not meet the requirements. Expected {}, got {}" \
                 .format(k, v, patterns.get(k))
 
-        logger.info("Mlir file generated:{}".format(mlir_file))
+        logger.info("Mlir file generated:{}".format(self.mlir_file))
 
         self.module_parsered = MlirParser(self.mlir_file)
         self.input_num = self.module_parsered.get_input_num()
+
+        if self.file_recorder:
+            self.file_recorder.add_file(
+                origin_model=self.model_def,
+                origin_mlir=mlir_origin,
+                top_mlir=self.mlir_file,
+            )
+            self.file_recorder.add_command(transform_cmd=' '.join(sys.argv))
 
     def model_validate(self, file_list: str, tolerance, excepts, test_result):
         from tools.model_runner import mlir_inference, free_mlir_module, show_fake_cmd
@@ -124,7 +138,11 @@ class ModelTransformer(object):
         # compare all blobs layer by layers
         f32_blobs_compare(test_result, self.ref_npz, tolerance, excepts=excepts)
         file_mark(self.ref_npz)
-        cache_tool.mark_top_success()
+        if self.file_recorder:
+            self.file_recorder.add_file(
+                mlir_input=self.in_f32_npz,
+                top_output=self.ref_npz,
+            )
 
     @abc.abstractmethod
     def origin_inference(self, inputs: dict) -> dict:
@@ -254,6 +272,7 @@ class MlirTransformer(ModelTransformer):
 class MaskRCNNTransformer(ModelTransformer):
 
     def __init__(self,
+                 *,
                  model_name:   str  = None,
                  model_def:    list = [],
                  model_extern: list = [],
@@ -332,6 +351,8 @@ def get_model_transform(args):
     else:
         # TODO: support more deep learning model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
+
+    tool.set_mlir_file(args.mlir)
     return tool
 
 def model_transform_func(model_name, model_def, input_shapes, mlir_scale, mlir_mean, output_mlir):
@@ -411,11 +432,11 @@ if __name__ == '__main__':
         import json
         args.op_custom_shape = json.loads(args.op_custom_shape)
         print("op_custom_shape:", args.op_custom_shape)
-    cache_tool = CacheTool(args.cache_skip)
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
-    if (not args.not_inference) and args.test_input and cache_tool.do_top_validate(tool.mlir_file, tool.in_f32_npz, args.tolerance, args.debug):
+    if (not args.not_inference) and args.test_input:
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
+    tool.file_recorder.dump()
     if not args.debug:
         tool.cleanup()

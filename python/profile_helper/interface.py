@@ -39,26 +39,58 @@ def bmprofile_check_command(input_dir: str, output_dir: str, mark_str, arch="bm1
     parser.check_static_command(input_dir, output_dir, mark_str, arch)
 
 
-def bmprofile_parse_perfAI(input_dir: str, output_dir: str, mark_str, arch="A2", debug=False):
+def bmprofile_parse_perfAI(
+    input_dir: str,
+    output_dir: str,
+    mark_str="",
+    arch="A2",
+    debug=False,
+    doc=True,
+    web=True,
+):
+    import shutil
+
     core_num = 2
     style = 1
     if arch == "BM1690":
         from bmprofile_perfAI_2260 import BMProfileParserPerfAI
+
         core_num = 8
         style = 0
     else:
         from bmprofile_perfAI import BMProfileParserPerfAI
+    try:
+        bmProfile = BMProfileParserPerfAI()
+        bmProfile.parse(input_dir)
+        bmProfile.to_txt(output_dir)
+        target_dir = output_dir
+    except Exception as e:
+        target_dir = input_dir
+        print(f"parse {arch} profile failed, try run PerfAI directly")
 
-    bmProfile = BMProfileParserPerfAI()
-    bmProfile.parse(input_dir)
-
-    bmProfile.to_txt(output_dir)
     if not debug:
-        print("Generate web...")
-        subprocess.run(
-            [f"python  $TPUC_ROOT/python/PerfAI/PerfAI.web/run_web.py {os.path.abspath(output_dir)} \
-             --layerinfo_dir {input_dir} --name PerfAI_web"],  shell=True)
-        print("Generate doc...")
-        subprocess.run(
-            [f"python  $TPUC_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(output_dir)} \
-                --layerinfo_dir {input_dir} {core_num} --style {style}"],  shell=True)
+        if web:
+            print("Generate web...")
+            subprocess.run(
+                [
+                    f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.web/run_web.py {os.path.abspath(target_dir)} \
+                --layerinfo_dir {input_dir} --name PerfAI_web"
+                ],
+                shell=True,
+            )
+            shutil.move(
+                os.path.join(target_dir, "PerfWeb"), os.path.join(output_dir, "PerfWeb")
+            )
+        if doc:
+            print("Generate doc...")
+            subprocess.run(
+                [
+                    f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(target_dir)} \
+                    --layerinfo_dir {input_dir} {core_num} --style {style}"
+                ],
+                shell=True,
+            )
+
+            shutil.move(
+                os.path.join(target_dir, "PerfDoc"), os.path.join(output_dir, "PerfDoc")
+            )

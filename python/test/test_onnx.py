@@ -543,7 +543,7 @@ class ONNX_IR_TESTER(object):
             quant_input = False
             quant_output = False
         mlir_to_model(tpu_mlir=tpu_mlir + ".mlir",
-                      model=bmodel,
+                      bmodel_path=bmodel,
                       final_mlir=tpu_final,
                       dynamic=self.dynamic,
                       quant_input=quant_input,

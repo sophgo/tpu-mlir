@@ -23,7 +23,7 @@ def comsume_in_main(func):
             iterable = [iterable]
 
         for i in iterable:
-            print(i.to_csv(sep=",",index=False))
+            print(i.to_csv(sep=",", index=False))
 
     return wrapper
 
@@ -135,13 +135,16 @@ def show_cut_results_costs(log_file):
 
 
 def op_lg_cost(log_file):
+    cut_rets = []
     cut_ret = []
     cost_ret = []
+
     with Path(log_file).open("r") as r:
         for line in r:
             if "base group" in line:
                 # cost_ret.clear()
-                cut_ret.clear()
+                cut_rets.append(cut_ret)
+                cut_ret = []
 
             dic = parse_dic(line, "cut_optimize")
             if dic:
@@ -154,6 +157,9 @@ def op_lg_cost(log_file):
             dic = parse_dic(line, "lg_cost")
             if dic:
                 cost_ret.append(dic)
+    while not cut_rets[-1]:
+        cut_rets.pop()
+        cut_ret = cut_rets[-1]
 
     cut_df = pd.DataFrame.from_records(cut_ret)
     cost_df = pd.DataFrame.from_records(cost_ret)
@@ -171,33 +177,36 @@ def op_lg_cost(log_file):
     group_idx = 0
     for _, row in enumerate(cut_df.to_dict("records")):
         base_group_idx = row["group_idx"]
-        group_cost = cost_df.loc[(row["start_idx"], row["end_idx"], row["group_idx"])][
-            "group_cost"
-        ] / 1000
+        group_cost = (
+            cost_df.loc[(row["start_idx"], row["end_idx"], row["group_idx"])][
+                "group_cost"
+            ]
+            / 1000
+        )
         while base_group_idx - prev > 1:
             prev += 1
-            group_cost = cost_df.loc[(0, 0, prev)][
-                "group_cost"
-            ] / 1000
-            cut_ret.append({
-                    # "base_group_idx": prev,
+            group_cost = cost_df.loc[(0, 0, prev)]["group_cost"] / 1000
+            cut_ret.append(
+                {
+                    "base_group_idx": prev,
                     "group_idx": group_idx,
-                    "op_index": index,
-                    "group_cost": group_cost,
-                    "acc": acc,
-                })
+                    "op_idx": index,
+                    "lg_group_cost": group_cost,
+                    "lg_cost_accumulate": acc,
+                }
+            )
             acc += group_cost
             group_idx += 1
-        
+
         acc += group_cost
         for i in range(row["start_idx"], row["end_idx"] + 1):
             cut_ret.append(
                 {
-                    # "base_group_idx": base_group_idx,
+                    "base_group_idx": base_group_idx,
                     "group_idx": group_idx,
-                    "op_index": index,
-                    "group_cost": group_cost,
-                    "acc": acc,
+                    "op_idx": index,
+                    "lg_group_cost": group_cost,
+                    "lg_cost_accumulate": acc,
                 }
             )
             index += 1
@@ -212,6 +221,8 @@ def op_lg_cost(log_file):
 
 
 def cut_points(log_file):
+    # status: TODO
+    # show the change of cut points step by step
     ret = []
     with Path(log_file).open("r") as r:
         for line in r:
@@ -255,14 +266,23 @@ def cost_table(log_file):
 
     df = pd.DataFrame.from_records(ret)
 
+    total_group_idx = 0
+    matrix = []
+    col_names = ["base_group_idx", "op_idx"]
+    op_index = 0
     for idx, sdf in df.groupby("group_idx"):
         sdf = sdf.drop_duplicates(["start_idx", "end_idx"], keep="first")
         min_idx = int(sdf["start_idx"].min())
         max_idx = int(sdf["end_idx"].max())
         sdf = sdf.set_index(["start_idx", "end_idx"])
-        matrix = []
+        # make table
         for i in range(min_idx, max_idx + 1):
-            row = []
+            col_names.append(op_index)
+            op_index += 1
+            row = [idx, i]
+            for k in range(0, total_group_idx):
+                row.append(None)
+            # print(len(row))
             for j in range(min_idx, max_idx + 1):
                 try:
                     value = sdf.loc[(i, j)]["group_cost"]
@@ -273,13 +293,16 @@ def cost_table(log_file):
                 except KeyError:
                     row.append(None)
             matrix.append(row)
-        mdf = pd.DataFrame(matrix)
+        total_group_idx += max_idx + 1
+        # print(total_group_idx)
 
-        print(mdf.to_csv(sep=","))
-        yield mdf
+    df = pd.DataFrame(matrix)
+    df.columns = col_names
+    return df
 
 
 def draw_live_range(log_file):
+    # status: TODO
     dic = []
     with Path(log_file).open("r") as r:
         for line in r:

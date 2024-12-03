@@ -449,7 +449,7 @@ class BMProfileParser:
     #     ginfo.quant_type = attr['module.mode'].value.lower()
 
     def __parse_global_file(self, filename):
-        assert os.path.isfile(filename)
+        assert os.path.isfile(filename), filename
         re_subnet_info_start = re.compile(r'\[bmprofile\] subnet_id (?P<subnet_id>\d+) start')
         re_group_start = re.compile(r'.*start local memory usage of group (?P<group_id>\d+) subnet_id (?P<subnet_id>\d+)')
         re_layer_local_info = re_key_value("", "layer_id total_size feature_size weight_size")
@@ -942,6 +942,7 @@ class BMProfileParser:
         global_file_path = os.path.join(in_dir,self.global_filename)
         mlir_file_path = os.path.join(in_dir,self.mlir_filename)
         iter_data = []
+
         global_info = self.__parse_global_file(global_file_path)
         # self.__parse_mlir_file(mlir_file_path, global_info)
 

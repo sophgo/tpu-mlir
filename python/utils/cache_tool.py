@@ -1,13 +1,25 @@
+#!/usr/bin/env python3
+# ==============================================================================
+#
+# Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+#
+# TPU-MLIR is licensed under the 2-Clause BSD License except for the
+# third-party components.
+#
+# ==============================================================================
+
 import json
 import os
 from typing import Optional
-from .log_setting import setup_logger
+from utils.log_setting import setup_logger
 from tools.bmodel_dis import dis, BModel2MLIR
 import pickle
 import hashlib
 import datetime
+import sys
 
 logger = setup_logger("cache")
+
 
 def BModel2Hash(bmodel_file):
     try:
@@ -138,3 +150,98 @@ class CacheTool:
     def __setitem__(self, k, v):
         self.cache[k] = v
         self.replace_key_json(self.fn, **{k: v})
+
+
+import os
+import time
+from pathlib import Path
+
+try:
+    import pymlir
+
+    version = pymlir.__version__
+except ImportError:
+    version = "unknown"
+
+history_commands = []
+
+
+class CommandRecorder:
+    def __init__(self, cache_fn):
+        self.dic = {"version": version}
+        self.cache_fn = cache_fn
+        if os.path.exists(cache_fn):
+            self.dic.update(json.loads(Path(cache_fn).read_text()))
+
+        self.cache_rev = {}
+        try:
+            for type, val in self.dic.get("files", {}).items():
+                self.cache_rev[val["path"]] = val["last_modify"]
+        except KeyError:
+            logger.error(f"cache file {cache_fn} is invalid")
+            os.remove(cache_fn)
+
+    def clear(self):
+        self.dic = {"version": version}
+
+    def add_property(self, **kwargs):
+        for key, value in kwargs.items():
+            ret = self.dic.setdefault("properties", {})
+            ret[key] = value
+
+    def add_file(self, **kwargs):
+        for name, file_path in kwargs.items():
+            if not isinstance(file_path, str):
+                continue
+            if os.path.exists(file_path):
+                ret = self.dic.setdefault("files", {})
+                if os.path.isdir(file_path):
+                    Path(file_path).joinpath(".modify").write_text("1")
+                    ret[name] = {
+                        "path": os.path.abspath(file_path),
+                        "last_modify": os.path.getmtime(
+                            Path(file_path).joinpath(".modify")
+                        ),
+                    }
+                else:
+                    ret[name] = {
+                        "path": os.path.abspath(file_path),
+                        "last_modify": os.path.getmtime(file_path),
+                    }
+
+    def refresh(self):
+        self.update_file(self.cache_fn)
+
+    def add_command(self, **kwargs):
+        for stage, command in kwargs.items():
+            self.dic.setdefault("commands", {})[stage] = command
+
+    def update_file(self, file_path):
+        try:
+            load_from = CommandRecorder(file_path)
+
+            self.dic.update(load_from.dic)
+        except Exception:
+            logger.error(f"cache file {file_path} is invalid")
+
+    def all_file_no_change(self, *file_names):
+        for file_name in file_names:
+            if file_name not in self.cache_rev:
+                return False
+            if self.cache_rev[file_name] != os.path.getmtime(file_name):
+                return False
+        return True
+
+    def dump(self, fn=None):
+        if fn is None:
+            fn = self.cache_fn
+        with open(fn, "w") as w:
+            json.dump(self.dic, w, indent=2, ensure_ascii=False)
+
+    def check(self):
+        return self.all_file_no_change(*self.cache_rev.keys())
+
+
+if __name__ == "__main__":
+    fr = CommandRecorder(sys.argv[1] if len(sys.argv) > 1 else "ref_files.json")
+    print(fr.check())

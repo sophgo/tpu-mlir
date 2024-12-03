@@ -250,10 +250,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         self.ref_data = []
         self.desire_op = []
-        self.ref_data_from_inference = []
+        self.ref_data_from_inference = {}
         self.mlir_ref = False
         for ref_fn in tdb.reference_data_fns:
-            self.ref_data_from_inference.append({})
             if ref_fn.endswith(".mlir"):
                 self.ops = self.collect_op_name_dict(ref_fn, tdb)
                 self.mlir_ref = True
@@ -312,6 +311,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.index_record.clear()
 
         self._failed_tensor = None
+        self._failed_tensor_meta = {}
         self.tdb.message(f"dump mode = {self.dump_mode}")
 
     @property
@@ -320,7 +320,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             file = self.failed_results_fn
             if os.path.exists(file):
                 os.remove(file)
-                print(f"remove exist {file}")
+                self.tdb.message(f"remove exist {file}")
             self._failed_tensor = IncNpzFile(file)
         return self._failed_tensor
 
@@ -335,9 +335,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                     failed_names.add(cmp_res.value_view.value.name)
 
         if len(failed_names) > 0:
-            with open(f"{arg}.txt", "w") as w:
-                w.write("\n".join(failed_names))
-                self.tdb.message(f"failed value name list are saved in {arg}.txt")
+            failed_list_fn = f"{arg}.txt"
+            self.tdb.save_txt(failed_list_fn, list(failed_names), name="bmodel_failed_names")
 
     def do_dump_mode(self, arg: str):
         mode = DumpMode.__members__.get(arg, None)
@@ -576,88 +575,102 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         else:
             self.collect_infer_data_from_mlir(operand, actual)
 
+    def _collect_infer_data_from_one_ref(
+        self,
+        operand: TLValue,
+        ref: Dict[str, np.ndarray],
+        idx: int,
+        actual: np.ndarray,
+        desired: np.ndarray,
+    ):
+        if operand.name not in ref and self.dump_mode != DumpMode.COMB_ALL:
+            return False
+        _slice = operand.slice
+        if _slice == "[...]":
+            slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
+            sliced_shape = tuple(int(i) for i in slice_list)
+            slices = [slice(None, None) for _ in slice_list]
+        else:
+            slice_list = _slice[1:-1].split(",")
+            sliced_shape = tuple(
+                [
+                    int(slice.split(":")[1]) - int(slice.split(":")[0])
+                    for slice in slice_list
+                ]
+            )
+            slices = [
+                slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
+                for s in slice_list
+            ]
+        if desired is None:
+            desired = self.format_data(operand, None)
+        actual = actual.reshape(desired.shape)
+
+        if operand.layout in (
+            "continuous_group3d",
+            "eu_align_group3d",
+            "compact_group3d",
+            "eu_align_xn_group3d",
+            "compact_xn_group3d",
+        ):
+            d, n, c, h, w = 0, 1, 2, 3, 4
+            actual = actual.transpose((n, c, d, h, w))
+
+        reshape = operand.reshape
+
+        origin_shape = operand.shape
+        if reshape:
+            reshape = eval(reshape[1:-1].replace("x", ","))
+        else:
+            reshape = sliced_shape
+
+        tmp = self.ref_data_from_inference.get(operand.name, None)
+        if tmp is None:
+            tmp = np.zeros(origin_shape)
+
+        try:
+            if len(tmp.shape) != len(sliced_shape):
+                unsqeeze_shape = []
+                left_index = 0
+                right_index = 0
+                while len(unsqeeze_shape) < len(sliced_shape):
+                    if left_index >= len(tmp.shape):
+                        unsqeeze_shape.append(1)
+                        right_index += 1
+                    elif (
+                        tmp.shape[left_index] > 1 and sliced_shape[right_index] > 1
+                    ):
+                        unsqeeze_shape.append(tmp.shape[left_index])
+                        left_index += 1
+                        right_index += 1
+                    elif tmp.shape[left_index] == sliced_shape[right_index]:
+                        unsqeeze_shape.append(tmp.shape[left_index])
+                        left_index += 1
+                        right_index += 1
+                    else:
+                        unsqeeze_shape.append(1)
+                        right_index += 1
+                tmp = tmp.reshape(unsqeeze_shape)
+            tmp[tuple(slices)] = actual
+            self.ref_data_from_inference[operand.name] = tmp.reshape(
+                origin_shape
+            )
+        except:
+            print(f"{operand.name} store failed")
+            print(operand)
+            print(tmp.shape)
+            print(actual.shape)
+
+            return True
+        return True
+
     def collect_infer_data_from_ref(self, operand: TLValue, actual, desired):
         for idx, ref in enumerate(self.ref_data):
-            if operand.name not in ref and self.dump_mode != DumpMode.COMB_ALL:
-                continue
-            _slice = operand.slice
-            if _slice == "[...]":
-                slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
-                sliced_shape = tuple(int(i) for i in slice_list)
-                slices = [slice(None, None) for _ in slice_list]
-            else:
-                slice_list = _slice[1:-1].split(",")
-                sliced_shape = tuple(
-                    [
-                        int(slice.split(":")[1]) - int(slice.split(":")[0])
-                        for slice in slice_list
-                    ]
-                )
-                slices = [
-                    slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
-                    for s in slice_list
-                ]
-            if desired is None:
-                desired = self.format_data(operand, None)
-            actual = actual.reshape(desired.shape)
-
-            if operand.layout in (
-                "continuous_group3d",
-                "eu_align_group3d",
-                "compact_group3d",
-                "eu_align_xn_group3d",
-                "compact_xn_group3d",
-            ):
-                d, n, c, h, w = 0, 1, 2, 3, 4
-                actual = actual.transpose((n, c, d, h, w))
-
-            reshape = operand.reshape
-
-            origin_shape = operand.shape
-            if reshape:
-                reshape = eval(reshape[1:-1].replace("x", ","))
-            else:
-                reshape = sliced_shape
-
-            tmp = self.ref_data_from_inference[idx].get(operand.name, None)
-            if tmp is None:
-                tmp = np.zeros(origin_shape)
-
-            try:
-                if len(tmp.shape) != len(sliced_shape):
-                    unsqeeze_shape = []
-                    left_index = 0
-                    right_index = 0
-                    while len(unsqeeze_shape) < len(sliced_shape):
-                        if left_index >= len(tmp.shape):
-                            unsqeeze_shape.append(1)
-                            right_index += 1
-                        elif (
-                            tmp.shape[left_index] > 1 and sliced_shape[right_index] > 1
-                        ):
-                            unsqeeze_shape.append(tmp.shape[left_index])
-                            left_index += 1
-                            right_index += 1
-                        elif tmp.shape[left_index] == sliced_shape[right_index]:
-                            unsqeeze_shape.append(tmp.shape[left_index])
-                            left_index += 1
-                            right_index += 1
-                        else:
-                            unsqeeze_shape.append(1)
-                            right_index += 1
-                    tmp = tmp.reshape(unsqeeze_shape)
-                tmp[tuple(slices)] = actual
-                self.ref_data_from_inference[idx][operand.name] = tmp.reshape(
-                    origin_shape
-                )
-            except:
-                print(f"{operand.name} store failed")
-                print(operand)
-                print(tmp.shape)
-                print(actual.shape)
-
+            if self._collect_infer_data_from_one_ref(operand, ref,idx, actual, desired):
                 return
-            return
+
+        if self.dump_mode == DumpMode.COMB_ALL:
+            self._collect_infer_data_from_one_ref(operand, {}, 0, actual, desired)
 
     def cal_desired_shape(self, sliced_shape: Tuple[int], layout: str):
         if layout in (
@@ -718,15 +731,15 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         else:
             reshape = sliced_shape
 
-        if operand.name not in self.ref_data_from_inference[0]:
+        if operand.name not in self.ref_data_from_inference:
             tmp = np.zeros(reshape)
             tmp[tuple(slices)] = actual
-            self.ref_data_from_inference[0][operand.name] = tmp.reshape(origin_shape)
+            self.ref_data_from_inference[operand.name] = tmp.reshape(origin_shape)
         else:
-            tmp = self.ref_data_from_inference[0][operand.name]
+            tmp = self.ref_data_from_inference[operand.name]
             tmp = tmp.reshape(reshape)
             tmp[tuple(slices)] = actual
-            self.ref_data_from_inference[0][operand.name] = tmp.reshape(origin_shape)
+            self.ref_data_from_inference[operand.name] = tmp.reshape(origin_shape)
 
     def do_watch_mem(self, args):
         try:
@@ -817,17 +830,18 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             value_res = ComparedResult(value_view, None, msg="ignore")
             return value_res
 
-        if desired is None:
-            value_res = ComparedResult(value_view, None)
-            name = f"{value.name}_asm_{value_view.file_line}_{value_view.loc_index}_{value_view.cmd_point}"
-            if self.dump_mode == DumpMode.ALL:
-                self.failed_tensor[f"{name}_actual"] = actual
-        else:
+        name = f"{value.name}_asm_{value_view.file_line}_{value_view.loc_index}_{value_view.cmd_point}"
+        dump_actual = False
+        dump_desired = False
+
+        if self.dump_mode == DumpMode.ALL:
+            dump_actual = True
+
+        if desired is not None:
             actual = actual.reshape(desired.shape)
             cmp_res, msg = list(
                 self.tc.assert_allclose(actual, desired, dump_mode=self.dump_mode)
             )
-
             value_res = ComparedResult(
                 value_view,
                 cmp=cmp_res,
@@ -835,37 +849,35 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 scale=value.scale,
                 msg=msg,
             )
-            cmd_failed = not cmp_res[0]
-            name = f"{value.name}_asm_{value_view.file_line}_{value_view.loc_index}_{value_view.cmd_point}"
-            if self.dump_mode == DumpMode.ALL:
-                self.failed_tensor[f"{name}_actual"] = actual
-                if cmd_failed:
-                    self.failed_tensor[f"{name}_desired"] = desired
-            elif self.dump_mode == DumpMode.FAILED and cmd_failed:
-                self.failed_tensor[f"{name}_actual"] = actual
-                self.failed_tensor[f"{name}_desired"] = desired
-                cmd = self.tdb.get_cmd()
-                self.failed_summary_info.append(
-                    {
-                        "loc": value.name,
-                        "cmd_point": value_view.cmd_point,
-                        "cmd_id": cmd.cmd_id,
-                        "core_id": cmd.core_id,
-                        "subnet_id": cmd.subnet_id,
-                        "loc_index": value_view.loc_index,
-                        "operand": is_operand,
-                    }
-                )
+            cmp_failed = not cmp_res[0]
+            cmd = self.tdb.get_cmd()
+
+            dump_desired = cmp_failed
+            if self.dump_mode == DumpMode.ALL or cmp_failed:
+                dump_actual = True
+        else:
+            value_res = ComparedResult(value_view, None)
+
+        if dump_actual:
+            self.failed_tensor[f"{name}_actual"] = actual
+        if dump_desired:
+            self.failed_tensor[f"{name}_desired"] = desired
+        if dump_actual or dump_desired:
+            self.failed_summary_info.append(
+                {
+                    "loc": value.name,
+                    "cmd_point": value_view.cmd_point,
+                    "cmd_id": cmd.cmd_id,
+                    "core_id": cmd.core_id,
+                    "subnet_id": cmd.subnet_id,
+                    "loc_index": value_view.loc_index,
+                    "operand": is_operand,
+                    "value": value.to_dict(),
+                    "cmp_failed": cmp_failed,
+                }
+            )
+
         return value_res
-
-    def do_dump_failed_summary(self, args):
-        if not self.failed_summary_info:
-            return
-
-        fn = "bmodel_failed_summary.json"
-        with open(fn, "w") as w:
-            w.write(json.dumps(self.failed_summary_info, indent=2, ensure_ascii=False))
-            print(f"write to {fn}")
 
     def compare(self, tdb: TdbCmdBackend, is_operand):
         index_plugin = self.index
@@ -949,11 +961,18 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def after_stop(self, tdb: TdbCmdBackend):
         # make sure npz file is valid
         if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL}:
-            for idx, tensor_dict in enumerate(self.ref_data_from_inference):
-                np.savez(os.path.join(self.tdb.bmodel_dir, f"bmodel_inference_{idx}.npz"), **tensor_dict)
-                self.tdb.message(f"write to {os.path.join(self.tdb.bmodel_dir, f'bmodel_inference_{idx}.npz')}")
-        else:
+            comb_infer_path = os.path.join(
+                self.tdb.bmodel_dir, f"bmodel_inference.npz"
+            )
+            self.tdb.save_npz(comb_infer_path, self.ref_data_from_inference, "bmodel_inference")
+
+        if self._failed_tensor:
             self.failed_tensor.close()
+            self.tdb.file_recorder.add_file(bmodel_failed_tensor=self.failed_tensor.fn)
+
+            if len(self.failed_summary_info) > 0:
+                fn = "bmodel_failed_summary.json"
+                self.tdb.save_json(fn, self.failed_summary_info, "bmodel_failed_summary")
         return super().after_stop(tdb)
 
 

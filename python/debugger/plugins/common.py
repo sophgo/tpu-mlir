@@ -769,3 +769,22 @@ class AutoStaticCheck(TdbPlugin, TdbPluginCmd):
         for check_name in tdb.extra_check:
             tdb.checker.do_checker(check_name)
             tdb.message(f"[DONE] {check_name}")
+
+
+class AutoDump(TdbPlugin):
+    name = "auto-dump"
+
+    def after_stop(self, tdb: TdbCmdBackend):
+        if tdb.file_recorder is not None:
+            tdb.file_recorder.dump()
+
+
+class PredictTime(TdbPlugin):
+    name = "predict-time"
+
+    def after_load(self, tdb: TdbCmdBackend):
+        total_cmd = len(tdb.cmditer)
+        self.tdb.message(f"total cmd: {total_cmd}, may finished in {total_cmd / 180:.2f}~{total_cmd / 70:.2f}s")
+
+        return super().after_load(tdb)
+

@@ -22,7 +22,7 @@ def wrap_print(logger: logging.Logger):
     return log_print
 
 
-def setup_logger(name, log_level="INFO"):
+def setup_logger(name, log_level="INFO", replace_root=False):
     if name in log_name:
         return log_name[name]
 
@@ -35,12 +35,14 @@ def setup_logger(name, log_level="INFO"):
 
 
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(logging.INFO)
+    stdout_handler.setLevel(logging.DEBUG)
     stdout_handler.setFormatter(formatter)
     logger.addHandler(stdout_handler)
 
     log_name[name] = logger
     logger.parent = None
+    if replace_root:
+        logging.root = logger
     # logger.print = wrap_print(logger)
     return logger
 

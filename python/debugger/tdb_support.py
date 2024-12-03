@@ -25,8 +25,10 @@ from .target_1688.context import BM1688Context
 from .target_1690.context import BM1690Context
 from .target_2380.context import SG2380Context
 from .target_mars3.context import MARS3Context
+from utils.cache_tool import CommandRecorder
 import pandas as pd
 import builtins
+import json
 
 from collections import Counter
 
@@ -205,9 +207,20 @@ def commom_args(parser: ArgumentParser):
         default="",
         help="The commands to be executed after loading bmodel.",
     )
-
+    parser.add_argument(
+        "--quiet", action="store_true", default=False, help="disable progress bar"
+    )
+    parser.add_argument(
+        "--plugins",
+        type=str,
+        nargs="*",
+        default=None,
+        help="The extra plugins to be added.",
+    )
 
 class TdbCmdBackend(cmd.Cmd):
+    file_recorder: Optional[CommandRecorder] = None
+
     def __init__(
         self,
         bmodel_file: str = None,
@@ -250,7 +263,6 @@ class TdbCmdBackend(cmd.Cmd):
         # should be import locally to avoid circular import
         from .static_check import Checker
 
-
         # initialize registered plugins
         from . import plugins as _
 
@@ -263,7 +275,15 @@ class TdbCmdBackend(cmd.Cmd):
 
         self.plugins = PluginCompact(self)
         # default plugins
+        if not isinstance(extra_plugins, list):
+            extra_plugins = []
+        if not args.get("quiet", False):
+            extra_plugins.append("progress")
+
+        extra_plugins.extend(args.get('plugins',[]) or [])
+
         self.add_plugin("breakpoint")  # `break/b` command
+        self.add_plugin("predict-time")
         self.add_plugin("display")  # `display` command
         self.add_plugin("print")  # `print`` command
         self.add_plugin("info")  # `info`` command
@@ -280,10 +300,27 @@ class TdbCmdBackend(cmd.Cmd):
         self.add_plugin("static-check")
         self.extra_check = extra_check
 
+
+        if os.path.exists(os.path.join(self.bmodel_dir, "final.mlir")):
+            self.file_recorder = CommandRecorder(
+                os.path.join(self.bmodel_dir, "ref_files.json")
+            )
+        elif os.path.exists(
+            os.path.join(self.bmodel_file.replace(".bmodel", ""), "ref_files.json")
+        ):
+            self.file_recorder = CommandRecorder(
+                os.path.join(self.bmodel_file.replace(".bmodel", ""), "ref_files.json")
+            )
+        else:
+            self.file_recorder = None
+        if self.file_recorder is not None:
+            self.add_plugin("auto-dump")
+
         self.message(f"Load plugins: {self.plugins}")
         self.message(
             f"Type `s` to initialize bmodel, type `r` to run full commands, or `help` to see other commands."
         )
+
 
     @add_callback("load")
     def _reset(self):
@@ -301,7 +338,6 @@ class TdbCmdBackend(cmd.Cmd):
                 "or use `info progress` to show progress information."
             )
 
-
         for i in self.args.get("on_load_commands", []):
             self.onecmd(i)
 
@@ -310,6 +346,7 @@ class TdbCmdBackend(cmd.Cmd):
         if bmodel_file is None:
             raise Exception("Nothing to debug.")
         bmodel = BModel(bmodel_file)
+
         self.message(f"Load {bmodel_file}")
         self.context = bmodel.context
         self.bmodel = bmodel
@@ -716,6 +753,26 @@ class TdbCmdBackend(cmd.Cmd):
                 except ImportError:
                     pass
 
+    def save_npz(self, path: str, items: dict, name: Optional[str] = None):
+        np.savez(path, **items)
+        self.message(f"write to {os.path.abspath(path)}")
+        if self.file_recorder is not None and name is not None:
+            self.file_recorder.add_file(**{name: path})
+
+    def save_txt(self, path: str, items: list, name: Optional[str] = None):
+        with open(path, "w") as w:
+            w.write("\n".join(items))
+        self.message(f"write to [{name}] {os.path.abspath(path)}")
+        if self.file_recorder is not None and name is not None:
+            self.file_recorder.add_file(**{name: path})
+
+    def save_json(self, path: str, items: dict, name: Optional[str] = None):
+        with open(path, "w") as w:
+            json.dump(items, w, indent=2)
+        self.message(f"write to [{name}] {os.path.abspath(path)}")
+        if self.file_recorder is not None and name is not None:
+            self.file_recorder.add_file(**{name: path})
+
 
 class BreakpointStop(Exception):
     pass
@@ -903,7 +960,8 @@ class PluginCompact:
             try:
                 plugin = register_plugins[plugin].from_tdb(self.tdb)
             except KeyError as e:
-                raise KeyError(register_plugins.keys()) from e
+                message = "only regist plugin: {}, but try to add plugin named '{}'".format(list(register_plugins.keys()), plugin)
+                raise KeyError(message) from e
         self.plugins[plugin.name] = plugin
         return plugin
 

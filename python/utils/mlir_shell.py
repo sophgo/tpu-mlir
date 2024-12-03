@@ -10,31 +10,210 @@ import subprocess
 import logging
 import utils.pattern_counter
 import multiprocessing
+import traceback
+import sys
 
-def _os_system_log(cmd_str):
+stdout = sys.stdout
+stderr = sys.stderr
+import json
+import textwrap
+import shutil
+import tempfile
+from typing import Tuple
+from subprocess import run, CalledProcessError, TimeoutExpired
+import os
+import sys
+from typing import TextIO
+
+
+def env2bashstr(env: dict, auto_pick=True):
+    ret = []
+
+    def pick():
+        if not auto_pick:
+            return True
+
+        if kk.endswith("PATH"):
+            return True
+        if kk.endswith("ROOT"):
+            return True
+
+        return kk in {
+            "PWD",
+            "GIT_SSH_COMMAND",
+            "UPGRADE_BRANCH",
+            "HOST_IP",
+            "REDIS_OM_URL",
+        }
+
+    for kk, vv in env.items():
+        if not pick():
+            continue
+
+        if kk.startswith("#"):
+            ret.append(f"# {kk}={vv}")
+        else:
+            ret.append(f'export {kk}="{vv}"')
+    return "\n".join(ret)
+
+
+from io import StringIO
+
+
+def getstatusoutput_v2(
+    cmd, cwd=None, env=None, timeout=None, check=False, shell=False,
+    print_output=False,
+    **kwargs
+) -> Tuple[int, str]:
+    """Return (exitcode, output) of executing cmd in a shell."""
+    if env is None:
+        env = os.environ.copy()
+    # kwargs = {}
+    if cwd is not None:
+        assert os.path.isdir(cwd), cwd
+        kwargs["cwd"] = cwd
+    if env is not None:
+        assert isinstance(env, dict)
+        if "PWD" in env:
+            env.pop("PWD")
+        kwargs["env"] = env
+
+    logf = StringIO()
+    # logfn = get_logfilename()
+    logger = logging.root
+    ex = None
+
+    temp_logf = tempfile.NamedTemporaryFile("w+", delete=False)
+    logger.debug(f"running command: {cmd}")
+    logger.debug(f"you can review middle output in {temp_logf.name}")
+    # if env
+    try:
+        cmd_str = cmd if shell else " ".join(cmd)
+        logf.write(f" cwd: {cwd}\n")
+        logf.write(f" -> Executing {cmd_str}\n")
+        logf.write(f"========Command Output Start=========\n")
+        logf.flush()
+
+        run(
+            cmd,
+            shell=shell,
+            stdout=temp_logf,
+            stderr=temp_logf,
+            timeout=timeout,
+            check=True,
+            # universal_newlines=True,
+            bufsize=0,
+            text=True,
+            **kwargs,
+        )
+        exitcode = 0
+        temp_logf.seek(0)
+        shutil.copyfileobj(temp_logf, logf)
+
+        logf.write(f"========Command Output End=========\n")
+        logf.write(f" -> [Success]\n")
+
+    except (CalledProcessError, TimeoutExpired) as e:
+        temp_logf.seek(0)
+        logf.write(
+            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
+        )
+        logf.write(f"========Command Output End=========\n")
+        logf.write(f" -> [Failed in Command]\n")
+        ex = e
+        if isinstance(e, TimeoutExpired):
+            exitcode = 110
+        else:
+            exitcode = e.returncode
+        logf.write(f"# cwd\n")
+        logf.write(f"cd {cwd}\n\n")
+
+        logf.write(f"# Environments: \n")
+        logf.write(textwrap.indent(json.dumps(env, indent=2), "# ") + "\n")
+        logf.write(env2bashstr(env, auto_pick=False))
+
+        logf.write("# command: \n")
+        cmd_opt = " ".join(cmd) if isinstance(cmd, list) else cmd
+        logf.write(f"{cmd_opt}\n")
+        logf.write(traceback.format_exc())
+        logf.write(f"======traceback info end======\n")
+    except Exception as e:
+        temp_logf.seek(0)
+
+        logf.write(
+            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
+        )
+        logf.write(f"========Command Output End=========\n")
+        logf.write(f" -> [Failed Outside Command]\n")
+        ex = e
+        exitcode = -256
+        logf.write(f"cmd={cmd}\n")
+        logf.write(f"cwd={cwd}\n")
+        logf.write(f"env={env}\n")
+        logf.write(traceback.format_exc())
+        logf.write(f"======traceback info end======\n")
+        traceback.print_exc()
+
+    temp_logf.seek(0)
+    output = temp_logf.read()
+    temp_logf.close()
+
+    if print_output:
+        logger.info(output)
+
+    try:
+        os.remove(temp_logf.name)
+    except Exception as e:
+        logger.error(f"remove temp log file {temp_logf.name} failed: {e}")
+
+    if check and ex:
+        raise RuntimeError(f"{output}\n[Failed] {cmd}")
+    elif ex:
+        logger.error(output)
+        logger.error(f"[Failed] {cmd}")
+    else:
+        logger.debug(f"[Success]: {cmd}")
+    return exitcode, output
+
+
+def _os_system_log(cmd_str, cwd=None):
     # use subprocess to redirect the output stream
     # the file for saving the output stream should be set if using this function
     logging.info("[Running]: %s", cmd_str)
 
-    process = subprocess.Popen(cmd_str,
-                               shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
-                               universal_newlines=True)
+    return getstatusoutput_v2(cmd_str, cwd=cwd, shell=True, check=True, print_output=True)
+    subprocess.run(
+        cmd_str,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        cwd=cwd,
+    )
 
-    while True:
-        output = process.stdout.readline().strip()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            logging.info(output)
+    # while True:
+    #     output = process.stdout.readline().strip()
 
-    process.wait()
-    ret = process.returncode
+    #     if output:
+    #         logging.info(output)
+
+    #     if output == '' and process.poll() is not None:
+    #         break
+
+    # while True:
+    #     error = process.stderr.readline().strip()
+    #     if error:
+    #         logging.error(error)
+    #     else:
+    #         break
+
+    # process.wait()
+    # ret = process.returncode
 
     if ret == 0:
         logging.info("[Success]: %s", cmd_str)
     else:
+        logging.error(cmd_str)
         raise RuntimeError("[!Error]: {}".format(cmd_str))
 
 
@@ -329,7 +508,7 @@ def build_ppl(
 def mlir_to_model(
     *,
     tpu_mlir: str,
-    model: str,
+    bmodel_path: str,
     final_mlir: str,
     dynamic: bool = False,
     quant_input: bool = False,
@@ -350,13 +529,15 @@ def mlir_to_model(
     debug_info: str = "",
     log_level: str = "normal",
     trunc_final: list = None,
+    command_mem: dict = None,
 ):
+    if command_mem is None:
+        command_mem = {}
     cmd = ["tpuc-opt", tpu_mlir]
     debug_cmd = f"--debug_cmd={debug_info}"
-    options = tpu_opt_options(quant_input,
-                              quant_output,
-                              quant_input_list,
-                              quant_output_list)
+    options = tpu_opt_options(
+        quant_input, quant_output, quant_input_list, quant_output_list
+    )
     cmd.extend(options)
 
     # yapf: enable
@@ -364,16 +545,10 @@ def mlir_to_model(
     if embed_debug_info:
         tpu_opt_mlir = final_mlir[:-10] + "tpu_opt.mlir"
         # save the optimized tpu.mlir
-        cmd.extend([
-            "-o",
-            tpu_opt_mlir,
-            debug_cmd
-        ])
-        _os_system(cmd,log_level=log_level)
-        cmd = [
-            "tpuc-opt",
-            tpu_opt_mlir
-        ]
+        cmd.extend(["-o", tpu_opt_mlir, debug_cmd])
+        _os_system(cmd, log_level=log_level)
+        command_mem["tpu_opt"] = " ".join(cmd)
+        cmd = ["tpuc-opt", tpu_opt_mlir]
 
     options = tpu_ada_options(
         dynamic=dynamic,
@@ -410,31 +585,32 @@ def mlir_to_model(
     elif log_level == "simple":
         cmd.insert(2, '--init="level=1"')
 
-    _os_system(cmd,log_level=log_level)
-
+    _os_system(cmd, log_level=log_level)
+    command_mem["final"] = " ".join(cmd)
     # compile ppl code
     # build_ppl()
 
     # codegen based on final mlir
     cmd = ["tpuc-opt", final_mlir]
-    options = codegen_options(model,
+    options = codegen_options(bmodel_path,
                               embed_debug_info,
                               model_version)
     cmd.extend(options)
     cmd.extend(["-o /dev/null"])
     _os_system(cmd,log_level=log_level)
+    command_mem["bmodel"] = " ".join(cmd)
 
-    out_dir = model.rsplit(".", maxsplit=1)[0]
-    os.makedirs(out_dir, exist_ok=True)
-    shutil.copy(final_mlir, os.path.join(out_dir, 'final.mlir'))
+    context_dir = os.path.splitext(bmodel_path)[0]
+    os.makedirs(context_dir, exist_ok=True)
+    shutil.copy(final_mlir, os.path.join(context_dir, "final.mlir"))
     try:
-        if model.endswith(".bmodel") and not dynamic:
+        if bmodel_path.endswith(".bmodel") and not dynamic:
             # The suffix of the profile file is not consistent.
             # bm1684 uses ".dat", bm1684x uses ".txt".
-            _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"], log_level=log_level)
-            _os_system(["mv net_0.profile", model + ".net_0.profile"],log_level=log_level)
-            tensor_loc = model + ".json"
-            shutil.copy(tensor_loc, os.path.join(out_dir, "tensor_location.json"))
+            _os_system(["mv compiler_profile_0.[td][xa]t",bmodel_path + ".compiler_profile_0.txt",],log_level=log_level,)
+            _os_system(["mv net_0.profile", bmodel_path + ".net_0.profile"],log_level=log_level)
+            tensor_loc = bmodel_path + ".json"
+            shutil.copy(tensor_loc, os.path.join(context_dir, "tensor_location.json"))
     except RuntimeError:
         pass
 

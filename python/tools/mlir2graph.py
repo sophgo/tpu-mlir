@@ -24,6 +24,8 @@ from typing import List
 import re
 from utils.log_setting import setup_logger
 import random
+from pydantic import BaseModel
+from utils.cache_tool import CommandRecorder
 
 random.seed(10)
 
@@ -519,12 +521,30 @@ if __name__ == "__main__":
         default="",
         help="output dot file, if not assigned, use {mlir file}.{suffix}",
     )
+    parser.add_argument(
+        "--ref_file",
+        type=str,
+        default=None,
+        help="record generated files",
+    )
 
     parser.add_argument(
         "--bmodel_checker_data",
         type=str,
         default=None,
         help="for final.mlir, a bmodel_checker_data will render red for failed operation",
+    )
+    parser.add_argument(
+        "--layer_group_cache",
+        type=str,
+        default=None,
+        help="for mlir file before final.mlir, a layer_group_cache will render different color for each group",
+    )
+    parser.add_argument(
+        "--failed_key_list",
+        type=str,
+        default=None,
+        help="file that contains keys, line by line",
     )
     parser.add_argument(
         "--failed_keys",
@@ -553,6 +573,7 @@ if __name__ == "__main__":
         type=int,
         help="force order in mlir (do not consider normal edge weight when layout)",
     )
+
     parser.add_argument(
         "--colorful",
         default=None,
@@ -582,6 +603,9 @@ if __name__ == "__main__":
         else:
             keys = Path(args.bmodel_checker_data).read_text().splitlines()
             failed_keys.update({k.split("_asm_")[0].strip() for k in keys})
+
+    if args.failed_key_list is not None:
+        failed_keys.update({i.strip() for i in Path(args.failed_key_list).read_text().splitlines()})
 
     if args.failed_keys is not None:
         failed_keys.update({i.strip() for i in args.failed_keys.split(",")})
@@ -845,6 +869,17 @@ if __name__ == "__main__":
 
     with open(f"{args.mlir}.graph", "w") as w:
         w.write(json.dumps(graph, indent=2))
+
+    if args.ref_file:
+        recorder = CommandRecorder(args.ref_file)
+        mlir_state = str(module.operation.attributes['module.state']).lower()
+        recorder.add_file(
+            **{
+                f"{mlir_state}.dot": f"{args.mlir}.dot",
+                f"{mlir_state}.svg": f"{args.mlir}.svg",
+                f"{mlir_state}.graph": f"{args.mlir}.graph",
+            }
+        )
 
     print(os.path.abspath(f"{args.mlir}.dot"))
     print(os.path.abspath(f"{args.mlir}.svg"))

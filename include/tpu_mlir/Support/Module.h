@@ -82,9 +82,12 @@ int64_t getDeviceNum();
 void setDeviceNum(int64_t device_num = 1);
 
 Chip getChip();
+StringRef getChipStr();
 void setChip(Chip chip);
 bool isChip(Chip chip);
 Mode getMode();
+std::string toLower(StringRef str);
+std::string getModeStr();
 void setMode(Mode mode);
 State getState();
 void setState(State state);

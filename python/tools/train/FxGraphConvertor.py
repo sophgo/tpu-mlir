@@ -337,7 +337,7 @@ class fx2mlir(object):
             gc.collect()
             npz_compare(['tpu_ir_out_data.npz', 'ref_data.npz', "--tolerance", "0.99,0.99", "-v"])
 
-        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file, opt = self.args.opt, debug_info = self.args.debug)
+        mlir_to_model(tpu_mlir=tpu_ir, bmodel_path=self.bmodel_path, final_mlir='final_'+mlir_file, opt = self.args.opt, debug_info = self.args.debug)
         if self.args.cmp:
             tensors = model_inference(in_ref_data, self.bmodel_path)
             np.savez('bmodel_out_data.npz', **tensors)
@@ -442,7 +442,7 @@ class fx2mlir(object):
             gc.collect()
             npz_compare(['tpu_ir_out_data.npz', 'ref_data.npz', "--tolerance", "0.99,0.99", "-v"])
 
-        mlir_to_model(tpu_mlir=tpu_ir, model=self.bmodel_path, final_mlir='final_'+mlir_file, opt = 2, debug_info = self.args.debug)
+        mlir_to_model(tpu_mlir=tpu_ir, bmodel_path=self.bmodel_path, final_mlir='final_'+mlir_file, opt = 2, debug_info = self.args.debug)
         if self.args.cmp:
             tensors = model_inference(in_ref_data, self.bmodel_path)
             np.savez('bmodel_out_data.npz', **tensors)

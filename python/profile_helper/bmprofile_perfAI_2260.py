@@ -322,7 +322,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             self._BMProfileParser__parse_command_info(raw_data))
 
     def __parse_global_file(self, filename):
-        assert os.path.isfile(filename)
+        assert os.path.isfile(filename), filename
         re_arch = re_key_value("", "arch")
         ginfo = GlobalInfo()
         with open(filename) as f:

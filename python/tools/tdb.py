@@ -212,21 +212,11 @@ def parse_args(args=None):
         # default=None,
         help="The reference data of the BModel.",
     )
-    parser.add_argument(
-        "--plugins",
-        type=str,
-        nargs="?",
-        default=None,
-        help="The extra plugins to be added.",
-    )
+
     parser.add_argument(
         "--edit",
         action="store_true",
         help="to keep all intermediate files for debug",
-    )
-
-    parser.add_argument(
-        "--quiet", action="store_true", default=False, help="disable progress bar"
     )
 
     return parser.parse_args(args)
@@ -255,15 +245,7 @@ def get_tdb(args=None):
 
     reference_data_fn = args.ref_data
 
-    extra_plugins = args.plugins
-    if extra_plugins is None:
-        extra_plugins = []
-    else:
-        extra_plugins = extra_plugins.split(",")
-
-    if not args.quiet:
-        extra_plugins.append("progress")
-
+    extra_plugins = []
     if args.edit:
         extra_plugins.append("edit-bmodel")
 

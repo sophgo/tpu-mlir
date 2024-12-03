@@ -20,7 +20,9 @@
 
 #define DEBUG_TYPE "layer-group"
 #define CACHE_FILE_NAME                                                        \
-  module::getName(module::getModuleOp()).str() + ".layer_group_cache.json"
+  module::getName(module::getModuleOp()).str() + "_" +                         \
+      module::getChipStr().str() + "_" + module::getModeStr() +                \
+      ".layer_group_cache.json"
 using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {

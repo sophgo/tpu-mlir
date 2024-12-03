@@ -95,6 +95,20 @@ class TLValue:
         self.raw_dict = dic
         return self
 
+    def to_dict(self):
+        return {
+            "address": self.address,
+            "layout": self.layout,
+            "memory_type": self.memory_type,
+            "name": self.name,
+            "shape": self.shape,
+            "reshape": self.reshape,
+            "slice": self.slice,
+            "mlir_type": self.mlir_type_str,
+            "zero_point": self.zero_point,
+            "scale": self.scale,
+        }
+
     @staticmethod
     def get_shape_and_dtype(input_string: str):
         pattern = r"<(\d+(?:x\d+)*)x(\S+)>"

@@ -31,6 +31,7 @@ def main():
         default="failed",
         help="dump mode",
     )
+
     parser.add_argument(
         "--report",
         type=str,
@@ -42,10 +43,11 @@ def main():
                         action="store_true",
                         help="Stop if there is a check failure.")
     parser.add_argument("--excepts", type=str, help="List of tensors except from comparing")
-    parser.add_argument("--quiet", action="store_true", default=False, help="disable progress bar")
+
 
     parser.add_argument("--no_interactive", action="store_true")
     parser.add_argument("--dump_dataframe", action="store_true")
+    
     args = parser.parse_args()
     return args
 
@@ -63,6 +65,8 @@ if __name__ == "__main__":
     input_data_fn = os.path.join(context_dir, "input_ref_data.dat")
 
     reference_data_fn = args.reference_data
+    if not os.path.isfile(reference_data_fn):
+        reference_data_fn = None
 
     cos_t, euc_t = eval(args.tolerance)
 

@@ -19,8 +19,8 @@ from utils.auto_remove import file_mark, file_clean
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 import pymlir
 from utils.misc import str2bool
-from utils.cache_tool import CacheTool
 from utils.log_setting import setup_logger
+from utils.cache_tool import CommandRecorder
 
 logger = setup_logger("deploy")
 
@@ -59,7 +59,7 @@ def getCustomFormat(pixel_format, channel_format):
         custom_format == "RGGB_RAW"
     else:
         logger.info("pixel_format of {} no supported!".format(pixel_format))
-        assert (0)
+        assert 0
     return custom_format
 
 
@@ -82,7 +82,7 @@ class DeployTool:
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
         self.debug_cmd = args.debug_cmd
-        self.model = args.model
+        self.bmodel_path = args.model
         self.ref_npz = args.test_reference
         self.fazzy_match = args.fazzy_match
         self.customization_format = args.customization_format
@@ -118,21 +118,39 @@ class DeployTool:
                 self.prefix += "_asym"
             else:
                 self.prefix += "_sym"
-        self.cache_tool = CacheTool(args.cache_skip)
         self.cache_skip = args.cache_skip
+
+        self.tpu_npz = "{}_tpu_outputs.npz".format(self.prefix)
+        self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         self._prepare_input_npz()
         self.patterns_count = args.patterns_count
         self.compress_mode = args.compress_mode if self.chip == "bm1688" else "none"
         self.mute = args.not_gen_bmodel
         self.matmul_perchannel = args.matmul_perchannel
-        self.enable_maskrcnn   = args.enable_maskrcnn
+        self.enable_maskrcnn = args.enable_maskrcnn
         self.future_update_rank = args.future_update_rank
         self.future_update_list = args.future_update_list
         self.gelu_mode = args.gelu_mode
 
+        self.tosa_mlir = "{}_tosa.mlir".format(self.prefix)
+        self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
+        self.tpu_opt_mlir = "{}_tpu_opt.mlir".format(self.prefix)
+        self.final_mlir = "{}_final.mlir".format(self.prefix)
+
         self.trunc_final = args.trunc_final
         if self.trunc_final:
             self.compare_all = True
+
+        self.file_recorder_cache_path = f"{self.bmodel_path}.ref_files.json"
+        self.file_recorder = CommandRecorder(self.file_recorder_cache_path)
+        self.file_recorder.clear()
+        self.file_recorder.update_file(
+            f"{self.mlir_file.replace('.mlir','')}.ref_files.json"
+        )
+        self.file_recorder.add_file(
+            tpuc_opt=shutil.which("tpuc-opt"),
+        )
+        self.file_recorder.dump()
 
     def cleanup(self):
         file_clean()
@@ -169,34 +187,31 @@ class DeployTool:
             delete_file("tmp_tosa.mlir")
             return {}
         else:
-            self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
-            self.tpu_opt_mlir = "{}_tpu_opt.mlir".format(self.prefix)
             file_mark(self.tpu_mlir)
-            self.final_mlir = "{}_final.mlir".format(self.prefix)
-            patterns = mlir_lowering(self.mlir_file,
-                                     self.tpu_mlir,
-                                     self.quantize,
-                                     self.chip,
-                                     self.num_device,
-                                     self.num_core,
-                                     self.cali_table,
-                                     self.asymmetric,
-                                     self.quantize_table,
-                                     self.customization_format,
-                                     self.fuse_preprocess,
-                                     self.aligned_input,
-                                     self.ignore_f16_overflow,
-                                     self.do_winograd,
-                                     self.q_group_size,
-                                     True if self.patterns_count else False,
-                                     addr_mode=self.addr_mode,
-                                     mute=self.mute,
-                                     matmul_perchannel=self.matmul_perchannel,
-                                     gelu_mode=self.gelu_mode)
-            if self.do_validate and self.cache_tool.do_tpu_validate(
-                    self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info) \
-               and not self.enable_maskrcnn:
-                tool.validate_tpu_mlir()
+            patterns = mlir_lowering(
+                self.mlir_file,
+                self.tpu_mlir,
+                self.quantize,
+                self.chip,
+                self.num_device,
+                self.num_core,
+                self.cali_table,
+                self.asymmetric,
+                self.quantize_table,
+                self.customization_format,
+                self.fuse_preprocess,
+                self.aligned_input,
+                self.ignore_f16_overflow,
+                self.do_winograd,
+                self.q_group_size,
+                True if self.patterns_count else False,
+                addr_mode=self.addr_mode,
+                mute=self.mute,
+                matmul_perchannel=self.matmul_perchannel,
+                gelu_mode=self.gelu_mode,
+            )
+            if self.do_validate and not self.enable_maskrcnn:
+                self.validate_tpu_mlir()
             return patterns
 
     def _prepare_input_npz(self):
@@ -211,7 +226,7 @@ class DeployTool:
                     self.customization_format = getCustomFormat(ppa.pixel_format,
                                                                 ppa.channel_format)
             return
-        self.inputs = {}
+        self.tpu_inputs = {}
         gen_input_f32 = {}
         gen_ref = True if len(self.ref_npz) == 0 else False
 
@@ -220,9 +235,9 @@ class DeployTool:
         if num_inputs == 1 and self.test_input[0].endswith(".npz"):
             x = np.load(self.test_input[0])
             for name in x.files:
-                self.inputs[name] = x[name]
+                self.tpu_inputs[name] = x[name]
             if gen_ref:
-                gen_input_f32 = self.inputs
+                gen_input_f32 = self.tpu_inputs
         else:
             assert (len(self.test_input) == len(self.module.inputs))
             for infile, op in zip(self.test_input, self.module.inputs):
@@ -252,24 +267,24 @@ class DeployTool:
                         logger.info("Add preprocess, set the following params:")
                         ppb = preprocess()
                         ppb.config(**config)
-                        self.inputs[op.name + "_raw"] = ppb.run(infile)
+                        self.tpu_inputs[op.name + "_raw"] = ppb.run(infile)
                         self.in_f32_npz = self.module_name + "_in_ori.npz"
                     else:
-                        self.inputs[ppa.input_name] = ppa.run(infile)
+                        self.tpu_inputs[ppa.input_name] = ppa.run(infile)
                     if gen_ref:
                         gen_input_f32[ppa.input_name] = ppa.run(infile)
 
                 elif infile.endswith(".npy"):
                     data = np.load(infile)
-                    self.inputs[op.name] = data
+                    self.tpu_inputs[op.name] = data
                     if gen_ref:
-                        gen_input_f32[op.name] = self.inputs
+                        gen_input_f32[op.name] = self.tpu_inputs
                 else:
                     raise TypeError("Unsupport input type *{}".format(os.path.splitext(infile)))
         if self.aligned_input and not self.fuse_preprocess:
             raise RuntimeError(
                 "Not support now, aligned_input requires fuse_preprocess to be set to True.")
-        np.savez(self.in_f32_npz, **self.inputs)
+        np.savez(self.in_f32_npz, **self.tpu_inputs)
         if gen_ref:
             gen_in_f32_npz = self.module_name + '_in_f32.npz'
             file_mark(gen_in_f32_npz)
@@ -278,10 +293,10 @@ class DeployTool:
             show_fake_cmd(gen_in_f32_npz, self.mlir_file, self.ref_npz)
             top_outputs = mlir_inference(gen_input_f32, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
-        self.tpu_npz = "{}_tpu_outputs.npz".format(self.prefix)
+
         if not self.cache_skip:
             file_mark(self.tpu_npz)
-        self.model_npz = "{}_model_outputs.npz".format(self.prefix)
+
         if not self.cache_skip:
             file_mark(self.model_npz)
         # dynamic layer output data dump
@@ -299,61 +314,79 @@ class DeployTool:
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all)
-        tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
+        tpu_outputs = mlir_inference(self.tpu_inputs, self.tpu_mlir, self.compare_all)
         np.savez(self.tpu_npz, **tpu_outputs)
         if self.trunc_final:
-            self.inputs.update(tpu_outputs)
+            self.tpu_inputs.update(tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts, fuzzy_match=self.fazzy_match)
         if self.cuda:
             show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all, True)
-            cuda_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all, use_cuda= True)
+            cuda_outputs = mlir_inference(self.tpu_inputs, self.tpu_mlir, self.compare_all, use_cuda=True)
             cuda_npz = self.tpu_npz.replace("_tpu_","_cuda_")
             np.savez(cuda_npz, **cuda_outputs)
             file_mark(cuda_npz)
             f32_blobs_compare(cuda_npz, self.tpu_npz, "0.9999,0.9999", self.excepts)
-        self.cache_tool.mark_tpu_success()
 
     def build_model(self):
-        if self.chip == 'cpu':
-            tosa_to_llvm(self.tosa_mlir, self.model)
-            return {}
-        else:
-            patterns = mlir_to_model(
-                tpu_mlir=self.tpu_mlir,
-                model=self.model,
-                final_mlir=self.final_mlir,
-                dynamic=self.dynamic,
-                quant_input=self.quant_input,
-                quant_output=self.quant_output,
-                quant_input_list=self.quant_input_list,
-                quant_output_list=self.quant_output_list,
-                disable_layer_group=self.disable_layer_group,
-                opt=self.opt,
-                merge_weight=self.merge_weight,
-                op_divide=self.op_divide,
-                embed_debug_info=self.embed_debug_info,
-                group_by_cores=self.group_by_cores,
-                model_version=self.model_version,
-                count_patterns=True if self.patterns_count else False,
-                compress_mode=self.compress_mode,
-                future_update_rank=self.future_update_rank,
-                future_update_list=self.future_update_list,
-                debug_info=self.debug_cmd,
-                trunc_final=self.trunc_final
-            )
-            if (
-                not self.skip_validation
-                and self.do_validate
-                and self.cache_tool.do_model_validate(self.model, self.model_npz)
-            ):
-                tool.validate_model()
+        try:
+            if self.chip == "cpu":
+                tosa_to_llvm(self.tosa_mlir, self.bmodel_path)
+                return {}
+            else:
+                command_mem = {}
+                patterns = mlir_to_model(
+                    tpu_mlir=self.tpu_mlir,
+                    bmodel_path=self.bmodel_path,
+                    final_mlir=self.final_mlir,
+                    dynamic=self.dynamic,
+                    quant_input=self.quant_input,
+                    quant_output=self.quant_output,
+                    quant_input_list=self.quant_input_list,
+                    quant_output_list=self.quant_output_list,
+                    disable_layer_group=self.disable_layer_group,
+                    opt=self.opt,
+                    merge_weight=self.merge_weight,
+                    op_divide=self.op_divide,
+                    embed_debug_info=self.embed_debug_info,
+                    group_by_cores=self.group_by_cores,
+                    model_version=self.model_version,
+                    count_patterns=True if self.patterns_count else False,
+                    compress_mode=self.compress_mode,
+                    future_update_rank=self.future_update_rank,
+                    future_update_list=self.future_update_list,
+                    debug_info=self.debug_cmd,
+                    trunc_final=self.trunc_final,
+                    command_mem=command_mem,
+                )
+                if not self.skip_validation and self.do_validate:
+                    self.validate_model()
+
             return patterns
+        finally:
+            if self.chip != "cpu":
+                context_dir = os.path.splitext(self.bmodel_path)[0]
+                self.file_recorder.add_file(
+                    bmodel=self.bmodel_path,
+                    tensor_location=f"{self.bmodel_path}.json",
+                    final_mlir=self.final_mlir,
+                    tpu_mlir=self.tpu_mlir,
+                    tpu_output=self.tpu_npz,
+                    bmodel_output=self.model_npz,
+                    context_dir=context_dir,
+                    layer_group_cache=f"{self.prefix}.layer_group_cache.json",
+                )
+                self.file_recorder.add_command(**command_mem)
+                self.file_recorder.add_command(deploy_cmd=" ".join(sys.argv))
+                self.file_recorder.add_property(
+                    chip=self.chip, compare_all=self.compare_all
+                )
+                self.file_recorder.dump(os.path.join(context_dir, "ref_files.json"))
 
     def revise_MaskRCNN_tpu_ref(self):
         if self.enable_maskrcnn:
-            dict_ref_npz    = np.load(self.ref_npz)
-            dict_model_npz  = np.load(self.model_npz)
+            dict_ref_npz = np.load(self.ref_npz)
+            dict_model_npz = np.load(self.model_npz)
             keys_list = list(dict_model_npz.keys())
             temp_ref_ = dict()
             for i, per_key in enumerate(dict_ref_npz.keys()):
@@ -361,8 +394,8 @@ class DeployTool:
             np.savez(self.tpu_npz, **temp_ref_)
 
     def validate_model(self):
-        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz, self.compare_all)
-        model_outputs = model_inference(self.inputs, self.model, self.compare_all)
+        show_fake_cmd(self.in_f32_npz, self.bmodel_path, self.model_npz, self.compare_all)
+        model_outputs = model_inference(self.tpu_inputs, self.bmodel_path, self.compare_all)
         np.savez(self.model_npz, **model_outputs)
         if self.enable_maskrcnn:
             self.revise_MaskRCNN_tpu_ref()
@@ -370,8 +403,6 @@ class DeployTool:
             f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True, self.fazzy_match)
         else:
             f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, True)
-
-        self.cache_tool.mark_model_success()
 
 
 def deprecated_option(cond, msg):
@@ -513,9 +544,6 @@ if __name__ == '__main__':
     tpu_patterns = tool.build_model()
     if not args.debug:
         tool.cleanup()
-    else:
-        if not args.enable_maskrcnn:
-            tool.pack_profile()
 
     total_patterns = {**lowering_patterns, **tpu_patterns}
     if args.patterns_count:

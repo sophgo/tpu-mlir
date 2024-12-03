@@ -201,7 +201,7 @@ class TFLITE_IR_TESTER(object):
         tpu_final = tpu_mlir + "_final.mlir"
         bmodel = tpu_mlir + ".bmodel"
         mlir_to_model(tpu_mlir=tpu_mlir + ".mlir",
-                      model=bmodel,
+                      bmodel_path=bmodel,
                       final_mlir=tpu_final)
 
         return (tpu_mlir + ".mlir", bmodel)

@@ -712,7 +712,7 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
       shape_vec[2] = shape[0];
       shape_vec[1] = 1;
       shape_vec[0] = 1;
-    } else if (shape.size() == 4) { //wxc
+    } else if (shape.size() == 4) { // wxc
       if (IsHdimIsBatch) {
         shape_vec[3] = 1;
         shape_vec[2] = shape[3];
@@ -722,7 +722,7 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
         shape_vec[3] = 1;
         shape_vec[2] = shape[3];
         shape_vec[1] = shape[2];
-        shape_vec[0] = shape[1]* shape[0];
+        shape_vec[0] = shape[1] * shape[0];
       }
     } else if (shape.size() == 5) {
       shape_vec[3] = 1;
@@ -791,7 +791,7 @@ bool IsHdimIsBatch(Value value) {
     return true;
   }
 
-  for (auto user: value.getUsers()) {
+  for (auto user : value.getUsers()) {
     if (module::IsHdimIsBatch(user)) {
       return true;
     }
@@ -998,10 +998,10 @@ void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
        tensor<*xf32>->tensor<1xf32> */
     if ((std::max(s.size(), shape.size()) > 1) && s != shape) {
       v.dump();
-      llvm::errs() <<"error infer shape:";
-      for (auto it: shape)
-        llvm::errs() << " "<<it;
-      llvm::errs() <<"\n";
+      llvm::errs() << "error infer shape:";
+      for (auto it : shape)
+        llvm::errs() << " " << it;
+      llvm::errs() << "\n";
       llvm_unreachable("Shape Verify failed");
     }
   }
@@ -1118,6 +1118,8 @@ void setPostprocess(StringRef post) {
 
 Chip getChip() { return chip; }
 
+StringRef getChipStr() { return stringifyChip(chip); }
+
 Mode getMode() {
   if (false == m->hasAttrOfType<StringAttr>(Attr::MODE)) {
     return Mode::F32;
@@ -1125,6 +1127,14 @@ Mode getMode() {
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
   return symbolizeMode(s).value_or(Mode::F32);
 }
+
+std::string toLower(llvm::StringRef str) {
+  std::string lower = str.str();
+  std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+  return lower;
+}
+
+std::string getModeStr() { return toLower(stringifyMode(getMode())); }
 
 bool isBF16Modes() {
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
@@ -2063,9 +2073,8 @@ bool endsWith(const std::string &fullString, const std::string &suffix) {
   return fullString.rfind(suffix) == fullString.length() - suffix.length();
 }
 
-
 bool IsRightMat(Value v) {
-  for (auto user: v.getUsers()) {
+  for (auto user : v.getUsers()) {
     if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(user)) {
       if (v == MatMulOp.getRight() || v == MatMulOp.getBias()) {
         return true;
@@ -2119,12 +2128,14 @@ bool isOpSameCalc(const std::vector<Operation *> &ops) {
   return true;
 }
 
-
 bool isInMatMulGrpOp(Operation *op) {
-  if (isa<top::ReshapeOp, top::GELUOp, top::SiLUOp, top::CastOp, top::MulConstOp, top::MulOp, top::AddOp, top::ConcatOp, top::MatMulOp>(op)) {
+  if (isa<top::ReshapeOp, top::GELUOp, top::SiLUOp, top::CastOp,
+          top::MulConstOp, top::MulOp, top::AddOp, top::ConcatOp,
+          top::MatMulOp>(op)) {
     return true;
   }
-  if (isa<tpu::ReshapeOp, tpu::ActiveOp, tpu::CastOp, tpu::MulConstOp, tpu::MulOp, tpu::AddOp, tpu::ConcatOp, tpu::MatMulOp>(op)) {
+  if (isa<tpu::ReshapeOp, tpu::ActiveOp, tpu::CastOp, tpu::MulConstOp,
+          tpu::MulOp, tpu::AddOp, tpu::ConcatOp, tpu::MatMulOp>(op)) {
     return true;
   }
   return false;
