@@ -169,33 +169,72 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
     // keys
     auto k_permute =
         dyn_cast<tpu::PermuteOp>(matmul0.getRight().getDefiningOp());
-    if (!k_permute || !k_permute->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(k_permute);
-    Value k_in = k_permute.getInput();
-    /// keys tile
+    auto k_reshape =
+        dyn_cast<tpu::ReshapeOp>(matmul0.getRight().getDefiningOp());
     bool has_tile = false;
-    auto k_reshape = dyn_cast<tpu::ReshapeOp>(k_in.getDefiningOp());
-    if (k_reshape) {
-      auto k_tile = k_reshape.getInput().getDefiningOp();
-      if (isa<tpu::MulOp, tpu::TileOp>(k_tile)) {
+    Value k_in;
+    std::shared_ptr<std::vector<int64_t>> k_permute_order;
+
+    if (k_permute) {
+      if (!k_permute->hasOneUse()) {
+        return failure();
+      }
+      k_permute_order = module::getI64Array(k_permute.getOrder());
+      op_need_del.emplace_back(k_permute);
+      k_in = k_permute.getInput();
+      /// keys tile
+      auto k_reshape = dyn_cast<tpu::ReshapeOp>(k_in.getDefiningOp());
+      if (k_reshape) {
+        auto k_tile = k_reshape.getInput().getDefiningOp();
+        if (isa<tpu::MulOp, tpu::TileOp>(k_tile)) {
+          auto k_unsqu =
+              dyn_cast<tpu::UnsqueezeOp>(k_tile->getOperand(0).getDefiningOp());
+          if (k_unsqu) {
+            has_tile = true;
+            op_need_del.emplace_back(k_reshape);
+            op_need_del.emplace_back(k_tile);
+            op_need_del.emplace_back(k_unsqu);
+            k_in = k_unsqu.getInput();
+          } else {
+            return failure();
+          }
+        }
+      }
+    } else if (k_reshape) {
+      if (!k_reshape->hasOneUse()) {
+        return failure();
+      }
+      op_need_del.emplace_back(k_reshape);
+      k_in = k_reshape.getInput();
+      /// keys tile
+      auto k_tile = dyn_cast<tpu::TileOp>(k_reshape.getInput().getDefiningOp());
+      if (k_tile && k_tile->hasOneUse()) {
         auto k_unsqu =
             dyn_cast<tpu::UnsqueezeOp>(k_tile->getOperand(0).getDefiningOp());
-        if (k_unsqu) {
-          has_tile = true;
-          op_need_del.emplace_back(k_reshape);
-          op_need_del.emplace_back(k_tile);
-          op_need_del.emplace_back(k_unsqu);
-          k_in = k_unsqu.getInput();
+        if (k_unsqu && k_unsqu->hasOneUse()) {
+          auto k_permute =
+              dyn_cast<tpu::PermuteOp>(k_unsqu.getInput().getDefiningOp());
+          if (k_permute && k_permute->hasOneUse()) {
+            has_tile = true;
+            op_need_del.emplace_back(k_tile);
+            op_need_del.emplace_back(k_unsqu);
+            op_need_del.emplace_back(k_permute);
+            k_in = k_permute.getInput();
+            k_permute_order = module::getI64Array(k_permute.getOrder());
+          } else {
+            return failure();
+          }
         } else {
           return failure();
         }
+      } else {
+        return failure();
       }
+    } else {
+      return failure();
     }
 
     // Avoid getting into wrong FAttention
-    auto k_permute_order = module::getI64Array(k_permute.getOrder());
     auto right_trans = matmul0.getRightTranspose();
     if (right_trans) {
       if (k_permute_order->size() != 4 || k_permute_order->at(0) != 0 ||
@@ -219,31 +258,68 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
 
     // values
     auto v_permute = dyn_cast<tpu::PermuteOp>(op.getRight().getDefiningOp());
-    if (!v_permute || !v_permute->hasOneUse()) {
-      return failure();
-    }
-    op_need_del.emplace_back(v_permute);
-    Value v_in = v_permute.getInput();
-    /// values tile
-    auto v_reshape = dyn_cast<tpu::ReshapeOp>(v_in.getDefiningOp());
-    if (v_reshape) {
-      auto v_tile = v_reshape.getInput().getDefiningOp();
-      if (isa<tpu::MulOp, tpu::TileOp>(v_tile)) {
+    auto v_reshape = dyn_cast<tpu::ReshapeOp>(op.getRight().getDefiningOp());
+    Value v_in;
+
+    if (v_permute) {
+      if (!v_permute->hasOneUse()) {
+        return failure();
+      }
+      op_need_del.emplace_back(v_permute);
+      v_in = v_permute.getInput();
+      /// values tile
+      auto v_reshape = dyn_cast<tpu::ReshapeOp>(v_in.getDefiningOp());
+      if (v_reshape) {
+        auto v_tile = v_reshape.getInput().getDefiningOp();
+        if (isa<tpu::MulOp, tpu::TileOp>(v_tile)) {
+          auto v_unsqu =
+              dyn_cast<tpu::UnsqueezeOp>(v_tile->getOperand(0).getDefiningOp());
+          if (v_unsqu) {
+            if (!has_tile) {
+              return failure();
+            }
+            op_need_del.emplace_back(v_reshape);
+            op_need_del.emplace_back(v_tile);
+            op_need_del.emplace_back(v_unsqu);
+            v_in = v_unsqu.getInput();
+          } else {
+            return failure();
+          }
+        }
+      }
+    } else if (v_reshape) {
+      if (!v_reshape->hasOneUse()) {
+        return failure();
+      }
+      op_need_del.emplace_back(v_reshape);
+      auto v_tile = dyn_cast<tpu::TileOp>(v_reshape.getInput().getDefiningOp());
+      if (v_tile && v_tile->hasOneUse()) {
         auto v_unsqu =
             dyn_cast<tpu::UnsqueezeOp>(v_tile->getOperand(0).getDefiningOp());
-        if (v_unsqu) {
+        if (v_unsqu && v_unsqu->hasOneUse()) {
           if (!has_tile) {
             return failure();
           }
-          op_need_del.emplace_back(v_reshape);
-          op_need_del.emplace_back(v_tile);
-          op_need_del.emplace_back(v_unsqu);
-          v_in = v_unsqu.getInput();
+          auto v_permute =
+              dyn_cast<tpu::PermuteOp>(v_unsqu.getInput().getDefiningOp());
+          if (v_permute && v_permute->hasOneUse()) {
+            op_need_del.emplace_back(v_tile);
+            op_need_del.emplace_back(v_unsqu);
+            op_need_del.emplace_back(v_permute);
+            v_in = v_permute.getInput();
+          } else {
+            return failure();
+          }
         } else {
           return failure();
         }
+      } else {
+        return failure();
       }
+    } else {
+      return failure();
     }
+
     if (module::getShape(k_in) != module::getShape(v_in)) {
       return failure();
     }
