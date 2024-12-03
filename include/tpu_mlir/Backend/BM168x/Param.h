@@ -2232,4 +2232,10 @@ typedef struct MaskRCNN_mask_pooler_global_param {
 typedef struct randn_like_spec {
   uint32_t max_shape[MAX_SHAPE_DIMS];
 } randn_like_spec_t;
+
+typedef struct maxpooling_indices_bwd {
+    int kernels[2];
+    int strides[2];
+    int paddings[2];
+} maxpooling_indices_bwd_spec_t;
 #endif

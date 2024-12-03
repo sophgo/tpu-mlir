@@ -4180,4 +4180,27 @@ def Tpu_MaskRCNNMaskPoolerOp: Tpu_Op<"MaskRCNN_MaskPooler", [
   );
   let results = (outs AnyTensor:$result_res);
 }
+
+def tpu_MaxPoolingIndicesBwdOp: Tpu_Op<"MaxPoolingIndicesBwd", [
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "MaxPoolingIndicesBwd operator";
+
+  let description = [{
+    Integrates some operations related to MaxPoolingIndicesBwd.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$grad_output,
+    AnyTensor:$indices,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    I64ArrayAttr:$dilations,
+    I64ArrayAttr:$input_shape
+  );
+
+  let results = (outs AnyRankedTensor:$grad_input);
+}
+
 #endif // TPU_OPS

@@ -3735,4 +3735,24 @@ def Top_MaskRCNNMaskPoolerOp: Top_Op<"MaskRCNN_MaskPooler"> {
   );
   let results = (outs AnyTensor:$result_res);
 }
+
+def Top_MaxPoolingIndicesBwdOp: Top_Op<"MaxPoolingIndicesBwd"> {
+  let summary = "MaxPoolingIndicesBwd operator";
+
+  let description = [{
+    MaxPoolingIndicesBwd operator
+  }];
+
+  let arguments = (ins
+    AnyTensor:$grad_output,
+    AnyTensor:$indices,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    I64ArrayAttr:$dilations,
+    I64ArrayAttr:$input_shape
+  );
+
+  let results = (outs AnyTensor:$grad_input);
+}
 #endif // Top_OPS
