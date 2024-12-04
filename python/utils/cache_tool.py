@@ -167,7 +167,9 @@ history_commands = []
 
 
 class CommandRecorder:
-    def __init__(self, cache_fn):
+    def __init__(self, cache_fn, read=False):
+        if read and not os.path.exists(cache_fn):
+            raise FileNotFoundError(f"cache file {cache_fn} not found")
         self.dic = {"version": version}
         self.cache_fn = cache_fn
         if os.path.exists(cache_fn):

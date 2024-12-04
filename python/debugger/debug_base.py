@@ -35,6 +35,7 @@ class TaskDep:
         self.ignore = False
         self.in_check = False
         self._DEPTH = 0
+        self.gen_file_map = {}
 
     def check(
         that,
@@ -46,8 +47,12 @@ class TaskDep:
         force: bool = False,
     ):
         def wrapper(func: Callable):
+            if gen_files:
+                for file in gen_files:
+                    that.gen_file_map.setdefault(file, []).append(func.__name__)
+
             def inner(self, target_file: str, *args, **kwargs):
-                recorder = CommandRecorder(target_file)
+                recorder = CommandRecorder(target_file, read=True)
                 target = RefFile(**recorder.dic)
                 logger.info(
                     textwrap.indent(
@@ -87,9 +92,13 @@ class TaskDep:
                     if depend_files:
                         for file in depend_files:
                             cont = getattr(target.files, file)
-                            if cont is None:
+                            if cont is None or not os.path.exists(cont.path):
+                                logger.error(f"{file} not found")
+                                if file in that.gen_file_map:
+                                    for func in that.gen_file_map[file]:
+                                        logger.error(f" try to run {func.replace('task_', '')} command to generate {file}")
                                 raise FileNotFoundError(f"{file} not found")
-
+    
                             if _file_modified(cont):
                                 raise ValueError(
                                     f"{file} is modified, {cont.last_modify}, got {os.path.getmtime(cont.path)}"
@@ -448,7 +457,7 @@ def _all_file_no_change(*files: FileFlag):
 
 
 def load_ref_file(file: str):
-    recorder = CommandRecorder(file)
+    recorder = CommandRecorder(file, read=True)
     return RefFile(**recorder.dic)
 
 
@@ -468,7 +477,7 @@ class DebugBase:
 
         try include any useful info
         """
-        target_recorder = CommandRecorder(target_file)
+        target_recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**target_recorder.dic)
 
         cmd = [
@@ -505,7 +514,7 @@ class DebugBase:
     @check()
     def task_tpu2graph(self, target_file: str):
         """draw graph of tpu.mlir"""
-        target_recorder = CommandRecorder(target_file)
+        target_recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**target_recorder.dic)
         cmd = [
             "mlir2graph.py",
@@ -556,7 +565,7 @@ class DebugBase:
     @check()
     def task_redeploy(self, target_file: str):
         """re-run deploy command"""
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
 
         cwd = None
@@ -594,7 +603,7 @@ class DebugBase:
         import re
 
         match_loceq = re.compile("(#loc[0-9]+) = loc\((.*)\)")
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
         mlir = target.files.final_mlir.path
         tl = target.files.tensor_location.path
@@ -705,7 +714,7 @@ class DebugMetric(DebugBase):
         """
         get all tpu.mlir inference result (dump_all)
         """
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
 
         if _all_file_no_change(
@@ -737,7 +746,7 @@ class DebugMetric(DebugBase):
         """
         get bmodel inference result
         """
-        target_recorder = CommandRecorder(target_file)
+        target_recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**target_recorder.dic)
         if target.files.context_dir and target.files.tpu_output:
             ret, output = getstatusoutput_v2(
@@ -752,9 +761,9 @@ class DebugMetric(DebugBase):
     @check()
     def task_npz_bmodel_compare(self, target_file: str, reference_file: str):
         """compare bmodel inference npz result of target and reference"""
-        target_recorder = CommandRecorder(target_file)
+        target_recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**target_recorder.dic)
-        reference = RefFile(**CommandRecorder(reference_file).dic)
+        reference = RefFile(**CommandRecorder(reference_file, read=True).dic)
 
         save_file = os.path.join(
             os.path.dirname(target.files.bmodel_inference.path), "history_compare.log"
@@ -772,7 +781,7 @@ class DebugMetric(DebugBase):
         ]
         exitcode, output = getstatusoutput_v2(
             " ".join(cmd),
-            cwd=os.path.dirname(target.files.bmodel_failed_tensor.path),
+            cwd=os.path.dirname(target.files.bmodel.path),
             shell=True,
         )
         if exitcode != 0:
@@ -802,7 +811,7 @@ class DebugPerformance(DebugBase):
     @check(depend_files=["tpu_mlir"], gen_files=["lg_log", "final_mlir"])
     def task_layer_group_log(self, target_file: str):
         """re-run tpuc-opt command with --layer-group pass and -debug-only to generate lg log"""
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
         command = target.commands.final
 
@@ -826,6 +835,7 @@ class DebugPerformance(DebugBase):
         time_end = time.time()
         lg_file = Path(target.files.final_mlir.path).parent.joinpath("lg.log")
         lg_file.write_text(f"{output}\n\nTime cost: {time_end - time_start:.2f}s")
+        logger.info(f"write log to {lg_file.absolute()}")
         recorder.add_file(lg_log=str(lg_file.absolute()))
         recorder.dump()
 
@@ -834,7 +844,7 @@ class DebugPerformance(DebugBase):
         """simulation mode, use TPUPerf, should set env PERFAI_SIMULATION_ROOT=/path/to/TPUPerf"""
         from tools.run_bmprofile import simulation
 
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
         if _all_file_no_change(target.files.bmodel):
             try:
@@ -849,7 +859,7 @@ class DebugPerformance(DebugBase):
         """bmrt_test mode, export BMRUNTIME_ENABLE_PROFILE=1"""
         from tools.run_bmprofile import bmprofile
 
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
         if _all_file_no_change(target.files.bmodel):
             try:
@@ -864,7 +874,7 @@ class DebugPerformance(DebugBase):
         """
         get raw profile data, if devices is found, use bmrt_test mode, otherwise use simulation mode(TPUPerf)
         """
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
         if _all_file_no_change(target.files.bmprofile_dir) and _all_file_no_change(
             target.files.simulation_dir
@@ -878,7 +888,7 @@ class DebugPerformance(DebugBase):
             bmprofile_analyze,
         )
 
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
 
         raw_dir = None
@@ -912,7 +922,7 @@ class DebugPerformance(DebugBase):
             bmprofile_analyze,
         )
 
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
 
         output_dir = os.path.join(
@@ -954,14 +964,13 @@ class DebugPerformance(DebugBase):
     def task_profile_rich(self, target_file: str):
         """"""
 
-    @check(depend_tasks=[task_layer_group_log], force=True)
+    @check(depend_files=["lg_log"], force=True)
     def task_parse_lglog2table(self, target_file: str):
         """
         use lg log to get op granularity cycle and lg cost table
         """
-        from tools.logdebug_tool import op_lg_cost, cost_table
-
-        recorder = CommandRecorder(target_file)
+        from tools.logdebug_tool import op_lg_cost, cost_table        
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
 
         if _all_file_no_change(target.files.lg_log):
@@ -1002,7 +1011,7 @@ class DebugPerformance(DebugBase):
         """
         use perf csv file to get op granularity cycle
         """
-        recorder = CommandRecorder(target_file)
+        recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
         final_mlir, tl_file = target.files.final_mlir, target.files.tensor_location
         df = _load(tl_file.path)
@@ -1239,7 +1248,7 @@ class DebugPerformance(DebugBase):
                 return ret_style
 
         target_ret = {}
-        target = RefFile(**CommandRecorder(target_file).dic)
+        target = RefFile(**CommandRecorder(target_file, read=True).dic)
         # target.files.
 
         target_ret.update(self.task_parse_lglog2table(target_file))
