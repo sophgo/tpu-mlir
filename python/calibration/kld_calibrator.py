@@ -74,7 +74,11 @@ class CalibrationTable:
         with open(table, 'r') as f:
             for line in f.readlines():
                 line = line.strip()
+                if len(line) == 0:
+                    continue
                 if line.startswith('#'):
+                    if line.startswith('#asym_op') or line.startswith('#int4_th'):
+                        break
                     headers.append(line)
                     continue
                 # op_name    threshold    min    max
