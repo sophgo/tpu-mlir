@@ -96,9 +96,11 @@ class TaskDep:
                                 logger.error(f"{file} not found")
                                 if file in that.gen_file_map:
                                     for func in that.gen_file_map[file]:
-                                        logger.error(f" try to run {func.replace('task_', '')} command to generate {file}")
+                                        logger.error(
+                                            f" try to run {func.replace('task_', '')} command to generate {file}"
+                                        )
                                 raise FileNotFoundError(f"{file} not found")
-    
+
                             if _file_modified(cont):
                                 raise ValueError(
                                     f"{file} is modified, {cont.last_modify}, got {os.path.getmtime(cont.path)}"
@@ -164,7 +166,11 @@ class TaskDep:
                         ret = func(self, target_file, *args)
                         that.in_check = True
                         logger.debug(f"open skip raise after {func.__name__}")
-                        logger.info(textwrap.indent(f" * run {func.__name__} success", "  " * that._DEPTH))
+                        logger.info(
+                            textwrap.indent(
+                                f" * run {func.__name__} success", "  " * that._DEPTH
+                            )
+                        )
                     except SkipTask:
                         ret = None
                         logger.debug(f"skip some tasks in {func.__name__}")
@@ -209,14 +215,25 @@ class DebugFile(BaseModel):
     tensor_location: Optional[FileFlag]
     layer_group_cache: Optional[FileFlag] = None
     bmodel_failed_summary: Optional[FileFlag] = None
+
     bmodel_failed_tensor: Optional[FileFlag] = None
+    ## bmodel_checker.py COMB_ALL output
     bmodel_inference: Optional[FileFlag] = None
+    ## npz_tool.py
     history_compare_file: Optional[FileFlag] = None
+    ## layer-group >> lg.log
     lg_log: Optional[FileFlag] = None
+    ## perfai simulation output
     simulation_dir: Optional[FileFlag] = None
+    ## runtime output
     bmprofile_dir: Optional[FileFlag] = None
+    ## perfai output
     profile_csv: Optional[FileFlag] = None
     profile_web: Optional[FileFlag] = None
+    ## mlir2graph output
+    tpu_lowered_svg: Optional[FileFlag] = None
+    tpu_addressed_svg: Optional[FileFlag] = None
+
     # output
     top_output: Optional[FileFlag] = None
     tpu_output: Optional[FileFlag] = None
@@ -485,7 +502,7 @@ class DebugBase:
             "--mlir",
             target.files.final_mlir.path,
             "--ref_file",
-            target_file,
+            os.path.abspath(target_file),
             "--mlir_order",
             "--force_order",
             "2",
@@ -521,7 +538,7 @@ class DebugBase:
             "--mlir",
             target.files.tpu_mlir.path,
             "--ref_file",
-            target_file,
+            os.path.abspath(target_file),
             "--mlir_order",
             "--force_order",
             "2",
@@ -706,6 +723,29 @@ class DebugBase:
 
 class DebugMetric(DebugBase):
 
+    @check(depend_files=["context_dir", "tpu_output"], force=True)
+    def task_tdb(self, target_file: str, reference_file: str = None):
+        """run tdb directly"""
+        recorder = CommandRecorder(target_file, read=True)
+        target = RefFile(**recorder.dic)
+        from tools.tdb import get_tdb
+
+        ref_data = target.files.tpu_output.path
+
+        if reference_file:
+            ref_recorder = CommandRecorder(reference_file, read=True)
+            reference = RefFile(**ref_recorder.dic)
+            if _all_file_no_change(reference.files.bmodel_inference):
+                ref_data = reference.files.bmodel_inference.path
+                logger.info("use reference bmodel inference result for compare")
+
+        command_args = [target.files.context_dir.path, "--ref_data", ref_data]
+        logger.debug(f"run tdb.py {' '.join(command_args)}")
+        tdb = get_tdb(
+            command_args
+        )
+        tdb.cmdloop()
+
     @check(
         depend_files=["mlir_input", "tpu_mlir"],
         properties=[PropertyCheck(k="compare_all", v=True, failed_action="rerun")],
@@ -783,6 +823,7 @@ class DebugMetric(DebugBase):
             " ".join(cmd),
             cwd=os.path.dirname(target.files.bmodel.path),
             shell=True,
+            check=False,
         )
         if exitcode != 0:
             logger.error(f"[failed] {cmd}")
@@ -804,6 +845,12 @@ class DebugMetric(DebugBase):
             self.task_npz_bmodel_compare(target_file, reference_file)
             self.task_tpu2graph(target_file)
             self.task_final2graph(target_file)
+
+        record = CommandRecorder(target_file, read=True)
+        target = RefFile(**record.dic)
+        if _all_file_no_change(target.files.tpu_addressed_svg):
+            logger.info(f"see address graph in {target.files.tpu_addressed_svg.path}")
+            logger.info(f"see lowered graph in {target.files.tpu_lowered_svg.path}")
 
 
 class DebugPerformance(DebugBase):
@@ -969,7 +1016,8 @@ class DebugPerformance(DebugBase):
         """
         use lg log to get op granularity cycle and lg cost table
         """
-        from tools.logdebug_tool import op_lg_cost, cost_table        
+        from tools.logdebug_tool import op_lg_cost, cost_table
+
         recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
 
@@ -1191,7 +1239,7 @@ class DebugPerformance(DebugBase):
             """
             if same_commit:
                 right = right.drop(columns=["group_idx", "op_idx"])
-                left[" "] = ""
+            left[" "] = ""
 
             ret = pd.concat([left, right], ignore_index=True, axis=1)
             if not same_commit:
@@ -1218,6 +1266,8 @@ class DebugPerformance(DebugBase):
                 right_acc_col = _find_acc_col_name(right)
                 ret["residual"] = left[left_acc_col] - right[right_acc_col]
 
+                mid_column_index = ret.columns.tolist().index(" ")
+
                 def color_diff(x):
                     color_pool = [
                         "background-color: #f4c1c7;",
@@ -1225,22 +1275,23 @@ class DebugPerformance(DebugBase):
                     ]
                     font_pool = ["font-weight: bold;", ""]
                     color_list = [""] * len(x.index)
-                    for i, xindx in enumerate(x.index[:-1]):
-                        cur = (
-                            ret.iloc[xindx]["group_idx"],
-                            ret.iloc[xindx]["ref_group_idx"],
-                        )
-                        nxt = (
-                            ret.iloc[xindx + 1]["group_idx"],
-                            ret.iloc[xindx + 1]["ref_group_idx"],
-                        )
-                        color_list[i] = color_pool[0] + font_pool[0]
-
-                        if cur[0] == cur[1] and nxt[0] == nxt[1] and cur[0] != nxt[0]:
+                    x_index = ret.columns.tolist().index(x.name)
+                    if x_index < mid_column_index:
+                        name = "group_idx"
+                    elif x_index > mid_column_index:
+                        name = "ref_group_idx"
+                    else:
+                        return color_list
+                    color_list[0] = color_pool[0]
+                    for i, xindx in enumerate(x.index[1:], start=1):
+                        cur = ret.iloc[xindx][name]
+                        pre = ret.iloc[xindx - 1][name]
+                        if cur != pre:
                             color_pool[0], color_pool[1] = color_pool[1], color_pool[0]
 
-                        if cur != nxt:
-                            font_pool[0], font_pool[1] = font_pool[1], font_pool[0]
+                        color_list[i] = color_pool[0]
+
+                        # font_pool[0], font_pool[1] = font_pool[1], font_pool[0]
 
                     return color_list
 
@@ -1293,26 +1344,26 @@ class DebugPerformance(DebugBase):
         """
 
 
-def context(func: Callable):
-    def process_ret(ret):
-        if isinstance(ret, pd.DataFrame):
-            return ret.to_csv(sys.stdout, index=False, sep=",")
-        elif isinstance(ret, dict):
-            nret = {}
-            for k, v in ret.items():
-                nret[k] = process_ret(v)
-            return nret
-        elif isinstance(ret, list):
-            return [process_ret(v) for v in ret]
-        else:
-            return ret
+# def context(func: Callable):
+#     def process_ret(ret):
+#         if isinstance(ret, pd.DataFrame):
+#             return ret.to_csv(sys.stdout, index=False, sep=",")
+#         elif isinstance(ret, dict):
+#             nret = {}
+#             for k, v in ret.items():
+#                 nret[k] = process_ret(v)
+#             return nret
+#         elif isinstance(ret, list):
+#             return [process_ret(v) for v in ret]
+#         else:
+#             return ret
 
-    def wrapper(*args, **kwargs):
-        logger.info(f"start {func.__name__}")
+#     def wrapper(*args, **kwargs):
+#         logger.info(f"start {func.__name__}")
 
-        ret = func(*args, **kwargs)
-        logger.info(f"end {func.__name__}")
+#         ret = func(*args, **kwargs)
+#         logger.info(f"end {func.__name__}")
 
-        return process_ret(ret)
+#         return process_ret(ret)
 
-    return wrapper
+#     return wrapper

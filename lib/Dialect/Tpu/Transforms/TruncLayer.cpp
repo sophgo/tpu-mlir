@@ -34,7 +34,7 @@ public:
     auto update_io = [&](Operation *op) {
       for (auto in : op->getOperands()) {
         op->dump();
-        if (isa<top::NoneOp>(in.getDefiningOp())) {
+        if (!isa<BlockArgument>(in) && isa<top::NoneOp>(in.getDefiningOp())) {
           continue;
         }
         if (!keep_ops.count(module::getName(in).str())) {
@@ -79,6 +79,9 @@ public:
     keep_ops[module::getName(op).str()] = op;
     llvm::dbgs() << "keep op: " << module::getName(op).str();
     for (auto opd : op->getOperands()) {
+      if (isa<BlockArgument>(opd)) {
+        continue;
+      }
       if (isa<tpu::ReshapeOp>(opd.getDefiningOp())) {
         _keep_operands(opd.getDefiningOp());
       }
@@ -140,9 +143,15 @@ public:
     auto &entryBlock = func.front();
     int oldArgNum = entryBlock.getNumArguments();
     for (auto op : op_ins) {
-      llvm::dbgs() << op.second.getDefiningOp()->getName() << "; "
-                   << module::getName(op.second) << "\n";
-      if (isa<top::WeightOp>(op.second.getDefiningOp())) {
+      if (isa<BlockArgument>(op.second)) {
+        llvm::dbgs() << "block arg: "
+                     << "; " << module::getName(op.second) << "\n";
+      } else {
+        llvm::dbgs() << op.second.getDefiningOp()->getName() << "; "
+                     << module::getName(op.second) << "\n";
+      }
+      if (!isa<BlockArgument>(op.second) &&
+          isa<top::WeightOp>(op.second.getDefiningOp())) {
         continue;
       }
       auto arg = entryBlock.addArgument(
@@ -176,43 +185,15 @@ public:
       removed_ops = removed_ops2;
       removed_ops2.clear();
       if (removed_ops.size() > 0 && !erase_some) {
-        // func.dump();
         llvm_unreachable("too many ops");
       }
     }
+    func.dump();
 
     for (int i = oldArgNum - 1; i >= 0; --i) {
       entryBlock.eraseArgument(i);
     }
 
-    // std::vector<Type> new_arg_types;
-    // for (auto arg : entryBlock.getArguments()) {
-    //   new_arg_types.push_back(arg.getType());
-    // }
-
-    // std::vector<Type> new_result_types;
-    // for (auto out : returnOp.getOperands()) {
-    //   new_result_types.push_back(out.getType());
-    // }
-    // auto newFuncType = FunctionType::get(func.getContext(), new_arg_types,
-    //                                      new_result_types);
-    // func.setType(newFuncType);
-    // llvm::dbgs() << "============keep_ops=============\n";
-    // for (auto op : keep_ops) {
-    //   llvm::dbgs() << op.second->getName() << "; " <<
-    //   module::getName(op.second)
-    //                << "\n";
-    // }
-    // llvm::dbgs() << "============op_outs=============\n";
-
-    // // step2. set op_outs as return values
-    // for (auto op : op_outs) {
-    //   llvm::dbgs() << op.second.getDefiningOp()->getName() << "; "
-    //                << module::getName(op.second) << "\n";
-    // }
-    // llvm::dbgs() << "============finish=============\n";
-    // module::removeUnusedOp();
-    // step3. remove unused ops
     return true;
   }
 

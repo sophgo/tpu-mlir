@@ -872,14 +872,15 @@ if __name__ == "__main__":
 
     if args.ref_file:
         recorder = CommandRecorder(args.ref_file)
-        mlir_state = str(module.operation.attributes['module.state']).lower()
+        mlir_state = str(module.operation.attributes['module.state']).lower().strip('"')
         recorder.add_file(
             **{
-                f"{mlir_state}.dot": f"{args.mlir}.dot",
-                f"{mlir_state}.svg": f"{args.mlir}.svg",
-                f"{mlir_state}.graph": f"{args.mlir}.graph",
+                f"{mlir_state}_dot": f"{args.mlir}.dot",
+                f"{mlir_state}_svg": f"{args.mlir}.svg",
+                f"{mlir_state}_graph": f"{args.mlir}.graph",
             }
         )
+        recorder.dump()
 
     print(os.path.abspath(f"{args.mlir}.dot"))
     print(os.path.abspath(f"{args.mlir}.svg"))

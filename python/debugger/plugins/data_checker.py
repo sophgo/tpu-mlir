@@ -629,6 +629,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             tmp = np.zeros(origin_shape)
 
         try:
+            if len(tmp.shape) == 4 and len(tmp.shape) != len(sliced_shape):
+                tmp = tmp.reshape(tmp.shape[0], tmp.shape[1], 1, tmp.shape[2], tmp.shape[3])
             if len(tmp.shape) != len(sliced_shape):
                 unsqeeze_shape = []
                 left_index = 0

@@ -292,9 +292,9 @@ class TdbCmdBackend(cmd.Cmd):
         self.add_plugin("watch")
 
         if len(reference_data_fn) > 0:
-            self.add_plugin("data-check")
-
-        for extra_plugin in extra_plugins:
+            extra_plugins.append("data-check")
+            # self.add_plugin("data-check")
+        for extra_plugin in set(extra_plugins):
             self.add_plugin(extra_plugin)
 
         self.add_plugin("static-check")
