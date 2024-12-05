@@ -76,31 +76,31 @@ def BModel2Bin(bmodel_file):
         fname.core_id = 0
         fname.subnet_id = subnet.id
         for fname.gid, cmds in enumerate(subnet.cmd_group):
-            fname.length, fname.suffix = cmds.tiu_num, ".BD"
+            fname.length, fname.suffix = cmds.tiu_num, ".tiu"
             with open(str(fname), "wb") as f:
                 f.write(bytes(cmds.tiu_cmd))
-            fname.length, fname.suffix = cmds.dma_num, ".GDMA"
+            fname.length, fname.suffix = cmds.dma_num, ".gdma"
             with open(str(fname), "wb") as f:
                 f.write(bytes(cmds.dma_cmd))
         for fname.core_id, _cmds in enumerate(subnet.core_commands):
             for fname.gid, cmds in enumerate(_cmds.gdma_tiu_commands):
-                fname.length, fname.suffix = cmds.tiu_num, ".BD"
+                fname.length, fname.suffix = cmds.tiu_num, ".tiu"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds.tiu_cmd))
-                fname.length, fname.suffix = cmds.dma_num, ".GDMA"
+                fname.length, fname.suffix = cmds.dma_num, ".gdma"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds.dma_cmd))
             for fname.gid, cmds in enumerate(_cmds.sdma_commands):
                 # cmds contains system-end.
-                fname.length, fname.suffix = math.ceil(len(cmds) / 96), ".SDMA"
+                fname.length, fname.suffix = math.ceil(len(cmds) / 96), ".sdma"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
             for fname.gid, cmds in enumerate(_cmds.hau_commands):
-                fname.length, fname.suffix = math.ceil(len(cmds) / 80), ".HAU"
+                fname.length, fname.suffix = math.ceil(len(cmds) / 80), ".hau"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
             for fname.gid, cmds in enumerate(_cmds.cdma_commands):
-                fname.length, fname.suffix = math.ceil(len(cmds) / 120), ".HAU"
+                fname.length, fname.suffix = math.ceil(len(cmds) / 120), ".hau"
                 with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
 
