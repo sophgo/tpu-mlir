@@ -714,7 +714,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   );
 
   let results = (outs AnyRankedTensor:$output);
-  let hasCanonicalizeMethod = 1;
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     void assign_fw_param(void *param);
   }];
@@ -768,7 +768,7 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
-  let hasCanonicalizeMethod = 1;
+  let hasCanonicalizer = 1;
   let results = (outs AnyRankedTensor:$output);
 }
 
@@ -800,7 +800,6 @@ def Tpu_RopeOp: Tpu_Op<"Rope", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
-  // let hasCanonicalizeMethod = 1;
   let results = (outs AnyRankedTensor:$output);
 }
 def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
@@ -818,7 +817,7 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
     F64ArrayAttr:$mean,
     DefaultValuedAttr<BoolAttr, "true">:$sign
   );
-  let hasCanonicalizeMethod = 1;
+  let hasCanonicalizer = 1;
   let results = (outs AnyTensor:$output);
 }
 
@@ -1362,7 +1361,7 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
     DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
-  let hasCanonicalizeMethod = 1;
+  let hasCanonicalizer = 1;
   let results = (outs AnyRankedTensor:$output);
 }
 
@@ -2751,7 +2750,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
     OptionalAttr<I64ArrayAttr>:$rshift
   );
 
-  let hasCanonicalizeMethod = 1;
+  let hasCanonicalizer = 1;
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
     reduce_attr_t parseParam();
@@ -2834,7 +2833,7 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
     F64Attr:$const_val
   );
   let results = (outs AnyRankedTensor:$output);
-  let hasCanonicalizeMethod = 1;
+  let hasCanonicalizer = 1;
 }
 
 def Tpu_CompareOp: Tpu_Op<"Compare", [

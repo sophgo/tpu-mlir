@@ -52,20 +52,4 @@ LogicalResult tpu::MaskedFillOp::inference(InferenceParameter &p) {
   return success();
 }
 
-// const to large, to 10k
-
-LogicalResult tpu::MaskedFillOp::canonicalize(tpu::MaskedFillOp op,
-                                              PatternRewriter &rewriter) {
-  double const_val = op.getConstVal().convertToDouble();
-  if (const_val >= 1e10) {
-    const_val = 10000;
-  } else if (const_val <= -1e10) {
-    const_val = -10000;
-  } else {
-    return failure();
-  }
-  op.setConstVal(APFloat(const_val));
-  return success();
-}
-
 bool tpu::MaskedFillOp::support_multi_core() { return false; }

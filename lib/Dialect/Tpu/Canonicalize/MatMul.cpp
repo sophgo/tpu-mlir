@@ -10,12 +10,14 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
+namespace tpu_mlir {
+namespace tpu {
 // MatMul(fp16) + Add(fp16) => MatMul
-struct TpuMatMulWithBias : public OpRewriterPatternEx<tpu::MatMulOp> {
+struct MatMulWithBias : public OpRewriterPatternEx<tpu::MatMulOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
-  TpuMatMulWithBias(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::MatMulOp>(context, "TpuMatMulWithBias") {}
+  MatMulWithBias(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulWithBias") {}
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
@@ -313,5 +315,8 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
 
 void tpu::MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                 MLIRContext *context) {
-  results.insert<TpuMatMulWithBias, MatMul2FAttention>(context);
+  results.insert<MatMulWithBias, MatMul2FAttention>(context);
 }
+
+} // namespace tpu
+} // namespace tpu_mlir

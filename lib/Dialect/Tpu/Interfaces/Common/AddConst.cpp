@@ -80,23 +80,6 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
-                                            PatternRewriter &rewriter) {
-  bool is_type_match = module::getStorageType(op.getInput()) ==
-                       module::getStorageType(op.getResult());
-  bool is_identity = std::abs(op.getConstVal().convertToDouble()) < 1e-15 &&
-                     op.getMultiplier() == 1 && op.getRshift() == 0;
-
-  bool isTangents =
-      module::isTrain() &&
-      module::endsWith(module::getName(op.getResult()).str(), "_add_zero");
-  if (!isTangents && is_type_match && is_identity) {
-    rewriter.replaceOp(op, op.getInput());
-    return success();
-  }
-  return failure();
-};
-
 mlir::Type tpu::AddConstOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
   auto in_stype = module::getStorageType(getInput());
