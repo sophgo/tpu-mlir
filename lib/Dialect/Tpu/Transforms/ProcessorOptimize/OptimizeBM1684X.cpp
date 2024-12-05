@@ -4537,6 +4537,80 @@ public:
   }
 };
 
+class SwapDimMerge : public OpRewriterPatternEx<tpu::SwapDimInnerOp> {
+public:
+  SwapDimMerge(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::SwapDimInnerOp>(context, "SwapDimMerge",
+                                            benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::SwapDimInnerOp op,
+                                    PatternRewriter &rewriter) const override {
+      if (!(module::isMARS3())) {
+        return failure();
+      }
+
+      auto nextOp = dyn_cast<tpu::SwapDimInnerOp>(*op.getOutput().user_begin());
+      if (!nextOp || !nextOp->hasOneUse()) {
+        return failure();
+      }
+
+      auto offset_lv0 = *module::getI64Array(op.getOffset());
+      auto offset_lv1 = *module::getI64Array(nextOp.getOffset());
+      if (offset_lv0.size() !=  offset_lv1.size()) {
+          return failure();
+      }
+
+      int offset_nonzero_lv0 = 0;
+      int num_nonzero_lv0    = 0;
+      int index_lv0          = 0;
+      for (int i = 0; i < offset_lv0.size(); ++i) {
+        if(offset_lv0[i] > 0) num_nonzero_lv0 += 1;
+      }
+      if (num_nonzero_lv0 > 1)  return failure();
+
+      int offset_nonzero_lv1 = 0;
+      int num_nonzero_lv1    = 0;
+      int index_lv1          = 0;
+      for (int i = 0; i < offset_lv1.size(); ++i) {
+        if(offset_lv1[i] > 0) num_nonzero_lv1 += 1;
+      }
+      if (num_nonzero_lv1 > 1)  return failure();
+
+      for (int i = 0; i < offset_lv0.size(); ++i) {
+        if(offset_lv0[i] > 0) {
+          offset_nonzero_lv0 = offset_lv0[i];
+          index_lv0          = i;
+          break;
+        }
+      }
+      for (int i = 0; i < offset_lv1.size(); ++i) {
+        if(offset_lv1[i] > 0) {
+          offset_nonzero_lv1 = offset_lv1[i];
+          index_lv1          = i;
+          break;
+        }
+      }
+      if (std::abs(index_lv1 - index_lv0) != 1) return failure();
+      std::vector<int64_t> new_offset(offset_lv0.size(), 0);
+      new_offset[index_lv0] = offset_nonzero_lv0;
+      new_offset[index_lv1] = offset_nonzero_lv1;
+
+
+      std::vector<mlir::Value> operands(op->getOperands().begin(),
+                                          op->getOperands().end());
+
+      auto newSwapDimOp = rewriter.create<tpu::SwapDimInnerOp>(
+          nextOp->getLoc(), nextOp.getOutput().getType(),
+          operands, op->getAttrs());
+
+      newSwapDimOp.setOffsetAttr(rewriter.getI64ArrayAttr(new_offset));
+      rewriter.replaceOp(nextOp, newSwapDimOp.getResult());
+      rewriter.eraseOp(op);
+      return success();
+    }
+
+};
+
 // reshape -> cast -> layernorm -> cast ==> cast -> layernorm -> cast -> reshape
 class MoveReshapeInSubGraphPattern
     : public OpRewriterPatternEx<tpu::ReshapeOp> {
@@ -4771,7 +4845,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 ConvMergeRequant,
                 CastGradWeight,
                 RemoveReshape,
-                MoveReshapeInSubGraphPattern
+                MoveReshapeInSubGraphPattern,
+                SwapDimMerge
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on
