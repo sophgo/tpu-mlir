@@ -940,61 +940,61 @@ Value createLinalgPayloadCalculationForNormOpsWithVar(
 //===------------------------------------------------------------===//
 void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter,
                                               top::BatchNormTrainOp op) const {
-  Location loc = op->getLoc();
-  MLIRContext *context = op->getContext();
-  auto input = op.getInput();
-  auto weight = op.getGamma();
-  auto bias = op.getBeta();
-  auto runningMean = op.getMean();
-  auto runningVar = op.getVariance();
-  auto inputType = input.getType().cast<RankedTensorType>();
-  auto weightType = weight.getType().cast<RankedTensorType>();
-  auto biasType = bias.getType().cast<RankedTensorType>();
-  auto runningMeanType = runningMean.getType().cast<RankedTensorType>();
-  auto runningVarType = runningVar.getType().cast<RankedTensorType>();
-  Value eps = rewriter.create<arith::ConstantOp>(
-      loc,
-      FloatAttr::get(rewriter.getF32Type(), op.getEpsilon().convertToDouble()));
+  // Location loc = op->getLoc();
+  // MLIRContext *context = op->getContext();
+  // auto input = op.getInput();
+  // auto weight = op.getGamma();
+  // auto bias = op.getBeta();
+  // auto runningMean = op.getMean();
+  // auto runningVar = op.getVariance();
+  // auto inputType = input.getType().cast<RankedTensorType>();
+  // auto weightType = weight.getType().cast<RankedTensorType>();
+  // auto biasType = bias.getType().cast<RankedTensorType>();
+  // auto runningMeanType = runningMean.getType().cast<RankedTensorType>();
+  // auto runningVarType = runningVar.getType().cast<RankedTensorType>();
+  // Value eps = rewriter.create<arith::ConstantOp>(
+  //     loc,
+  //     FloatAttr::get(rewriter.getF32Type(), op.getEpsilon().convertToDouble()));
 
-  auto inputRank = inputType.getRank();
-  if (inputRank < 2)
-    llvm_unreachable("input should have rank larger than 1");
+  // auto inputRank = inputType.getRank();
+  // if (inputRank < 2)
+  //   llvm_unreachable("input should have rank larger than 1");
 
-  if (weightType.getRank() != 1 || biasType.getRank() != 1 ||
-      runningMeanType.getRank() != 1 || runningVarType.getRank() != 1) {
-    llvm_unreachable(
-        "expect weight, bias, running_mean and running_var to be rank 1");
-  }
+  // if (weightType.getRank() != 1 || biasType.getRank() != 1 ||
+  //     runningMeanType.getRank() != 1 || runningVarType.getRank() != 1) {
+  //   llvm_unreachable(
+  //       "expect weight, bias, running_mean and running_var to be rank 1");
+  // }
 
-  auto indexingMap = AffineMap::get(
-      /*dimCount=*/inputRank,
-      /*symbolCount=*/0, rewriter.getAffineDimExpr(1), context);
-  SmallVector<AffineMap> indexingMaps = {
-      rewriter.getMultiDimIdentityMap(inputRank), // input
-      indexingMap,                                // weight
-      indexingMap,                                // bias
-      indexingMap,                                // runningMean
-      indexingMap,                                // runningVar
-      rewriter.getMultiDimIdentityMap(inputRank), // output
-  };
-  SmallVector<utils::IteratorType> iteratorTypes(inputRank,
-                                                 utils::IteratorType::parallel);
-  Value batchNorm =
-      rewriter
-          .create<linalg::GenericOp>(
-              loc, input.getType(),
-              ValueRange{input, weight, bias, runningMean, runningVar}, input,
-              /*indexingMaps=*/indexingMaps,
-              /*iteratorTypes=*/iteratorTypes,
-              [&](OpBuilder &b, Location loc, ValueRange args) {
-                Value input = args[0], weight = args[1], bias = args[2],
-                      mean = args[3], var = args[4];
-                Value result = createLinalgPayloadCalculationForNormOpsWithVar(
-                    b, loc, var.getType(), input, mean, var, eps, weight, bias);
-                b.create<linalg::YieldOp>(loc, result);
-              })
-          .getResult(0);
-  rewriter.replaceOp(op, {batchNorm, runningMean, runningVar});
+  // auto indexingMap = AffineMap::get(
+  //     /*dimCount=*/inputRank,
+  //     /*symbolCount=*/0, rewriter.getAffineDimExpr(1), context);
+  // SmallVector<AffineMap> indexingMaps = {
+  //     rewriter.getMultiDimIdentityMap(inputRank), // input
+  //     indexingMap,                                // weight
+  //     indexingMap,                                // bias
+  //     indexingMap,                                // runningMean
+  //     indexingMap,                                // runningVar
+  //     rewriter.getMultiDimIdentityMap(inputRank), // output
+  // };
+  // SmallVector<utils::IteratorType> iteratorTypes(inputRank,
+  //                                                utils::IteratorType::parallel);
+  // Value batchNorm =
+  //     rewriter
+  //         .create<linalg::GenericOp>(
+  //             loc, input.getType(),
+  //             ValueRange{input, weight, bias, runningMean, runningVar}, input,
+  //             /*indexingMaps=*/indexingMaps,
+  //             /*iteratorTypes=*/iteratorTypes,
+  //             [&](OpBuilder &b, Location loc, ValueRange args) {
+  //               Value input = args[0], weight = args[1], bias = args[2],
+  //                     mean = args[3], var = args[4];
+  //               Value result = createLinalgPayloadCalculationForNormOpsWithVar(
+  //                   b, loc, var.getType(), input, mean, var, eps, weight, bias);
+  //               b.create<linalg::YieldOp>(loc, result);
+  //             })
+  //         .getResult(0);
+  // rewriter.replaceOp(op, {batchNorm, runningMean, runningVar});
 }
 
 //===------------------------------------------------------------===//

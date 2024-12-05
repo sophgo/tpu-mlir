@@ -40,8 +40,8 @@ static void LoweringBatchNorm(PatternRewriter &rewriter,
   }
 
   std::vector<Type> new_types;
-  new_types.reserve(3);
-  for (int i = 0; i < 3; i++) {
+  new_types.reserve(5);
+  for (int i = 0; i < 5; i++) {
     auto out = op.getResult(i);
     if (type.isF16()) {
       new_types.push_back(getQuantF16Type(out));

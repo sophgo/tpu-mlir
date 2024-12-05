@@ -40,7 +40,20 @@ struct TopFuseRelu : public OpRewriterPatternEx<ReluOp> {
     }
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
-    formerOp->setLoc(op.getLoc());
+    bool if_multi_output = formerOp->getNumResults() > 1;
+    if(if_multi_output){
+      std::vector<Location> locs;
+      locs.push_back(op.getLoc());
+      for (int i = 1; i < formerOp->getNumResults(); i++) {
+        auto value = formerOp->getResult(i);
+        auto loc = tpu_mlir::module::getLoc(value);
+        locs.push_back(loc);
+      }
+      auto new_loc = FusedLoc::get(module::getCtx(), locs);
+      formerOp->setLoc(new_loc);
+    }else{
+      formerOp->setLoc(op.getLoc());
+    }
     // remove the relu Op
     rewriter.replaceOp(op, {op.getInput()});
     return success();

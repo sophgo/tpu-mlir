@@ -3323,7 +3323,7 @@ def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain", [SupportFuseRelu]> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$mean,
-    AnyTensor:$variance,
+    AnyTensor:$var,
     AnyTensorOrNone:$gamma,
     AnyTensorOrNone:$beta,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
@@ -3334,7 +3334,9 @@ def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain", [SupportFuseRelu]> {
   let results = (outs
     AnyTensor:$output,
     AnyTensor:$mean_out,
-    AnyTensor:$variance_out
+    AnyTensor:$saved_invstd,
+    AnyTensor:$running_mean,
+    AnyTensor:$running_var
   );
 }
 

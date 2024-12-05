@@ -3689,16 +3689,19 @@ def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$mean,
-    AnyTensor:$variance,
+    AnyTensor:$var,
     AnyTensorOrNone:$gamma,
     AnyTensorOrNone:$beta,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
     DefaultValuedAttr<F64Attr, "0.1">:$momentum
   );
   let results = (outs
     AnyTensor:$output,
     AnyTensor:$mean_out,
-    AnyTensor:$variance_out
+    AnyTensor:$saved_invstd,
+    AnyTensor:$running_mean,
+    AnyTensor:$running_var
   );
 }
 

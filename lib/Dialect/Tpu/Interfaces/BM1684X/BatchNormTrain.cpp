@@ -22,6 +22,7 @@ void tpu::BatchNormTrainOp::codegen_global_bm1684x() {
   batchnorm_train_param_t param = {0};
   param.eps = getEpsilon().convertToDouble();
   param.momentum = getMomentum().convertToDouble();
+  // TODO fix with relu
   BM168x::call_global_func("backend_api_batchnorm_train_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
