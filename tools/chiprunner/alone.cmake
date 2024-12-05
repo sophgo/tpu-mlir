@@ -7,7 +7,7 @@ endif()
 # Set the C and C++ compilers for ARM
 
 set(CROSS_TOOLCHAINS $ENV{CROSS_TOOLCHAINS})
-if(CROSS_TOOLCHAINS)
+if(USE_CROSS_TOOLCHAINS)
   set(CMAKE_C_COMPILER $ENV{CROSS_TOOLCHAINS}/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc)
   set(CMAKE_CXX_COMPILER $ENV{CROSS_TOOLCHAINS}/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-g++)
 endif()
