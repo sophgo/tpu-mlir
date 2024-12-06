@@ -528,12 +528,14 @@ class Memory(CModelMemory):
             return self._local_mem_to_numpy(value, core_id)
         raise ValueError(f"unsupported memory view: {value}")
 
-    def set_data(self, value, data: np.ndarray):
+    def set_data(self, value_ref: ValueRef, data: np.ndarray):
+        value = value_ref.value
         m_type = value.mtype
         if m_type == MType.G:
             offset = value.r_addr
             assert data.dtype == value.np_dtype
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
             self.DDR[offset : offset + src_u8.size] = src_u8.flatten()
-            return
-        raise NotImplementedError(f"Not support setting {m_type} memory data.")
+            return True
+        return False
+        # raise NotImplementedError(f"Not support setting {m_type} memory data.")

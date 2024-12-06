@@ -784,14 +784,27 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         # breakpoint()
         raw_data = context.memory.get_data(ValueRef(memref, core_id=cmd.core_id))
 
+        desired = self.get_ref_data(value)
         if self.dump_mode == DumpMode.TPULANG and self.out_fixed == True:
             actual = raw_data.astype(np.float32)
         else:
             actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
-        desired = self.get_ref_data(value)
+        if self.tdb.args.get("infer_mode") == "standalone":
+            if self.dump_mode == DumpMode.TPULANG and self.out_fixed == True:
+                actual = raw_data.astype(np.float32)
+                raw_desired = desired.astype(raw_data.dtype) if desired is not None else None
+            else:
+                actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
+                raw_desired = (desired / value.scale + value.zero_point).astype(raw_data.dtype) if desired is not None else None
+            if raw_desired is not None:
+                if not context.memory.set_data(ValueRef(memref, core_id=cmd.core_id), raw_desired):
+                    # self.tdb.debug(f"set data {value.name} failed")
+                    pass
+
         if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL} or self.dump_mode == DumpMode.TPULANG:
             self.collect_infer_data(value, actual, desired)
+
 
         if self.skip_check:  # CModel mode or Pcie mode
             value_res = ComparedResult(value_view, None, msg="ignore")

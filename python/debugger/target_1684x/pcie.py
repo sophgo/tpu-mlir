@@ -422,7 +422,8 @@ class Memory(DeviceMemory):
         )
         assert s2d_ret == 0
 
-    def set_data(self, value: MemRef, data: np.ndarray):
+    def set_data(self, value_ref: ValueRef, data: np.ndarray):
+        value = value_ref.value
         m_type = value.mtype
         address = value.address + self.reserved_offset
         print(f"save to {address}({value.address})")
@@ -435,8 +436,8 @@ class Memory(DeviceMemory):
                 data.ctypes.data_as(ctypes.c_void_p),
             )
             assert s2d_ret == 0
-        else:
-            raise NotImplementedError(f"Not support setting {m_type} memory data.")
+            return True
+        return False
 
     def check_data(self, gd, address):
         actual = np.zeros_like(gd)

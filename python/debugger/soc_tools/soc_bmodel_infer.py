@@ -69,7 +69,7 @@ def set_inputs_dict(atomic_mlir, inputs, memory):
             pscale=arg.scale,
         )
         mem = args[id].memref
-        memory.set_data(mem, input)
+        assert memory.set_data(mem, input)
 
 
 def get_ref_data(operand: Pickled_Value, ref):
@@ -376,7 +376,7 @@ if __name__ == "__main__":
             for arg in atomic_mlir.functions[0].signature[0]:
                 mem = arg.memref
                 size = int(np.prod(mem.shape) * mem.itemsize)
-                soc_runner.memory.set_data(
+                assert soc_runner.memory.set_data(
                     mem, inputs[_offset : _offset + size].view(mem.np_dtype)
                 )  #  load input tensor
                 _offset += size

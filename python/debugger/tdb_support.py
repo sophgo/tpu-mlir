@@ -20,7 +20,7 @@ import sys
 import cmd
 from enum import Enum
 from .atomic_dialect import BModel2MLIR
-from .target_common import MType, BaseTpuCmd, CpuCmd, CMDType, DynIrCmd, StaticCmdGroup, CModelRunner
+from .target_common import MType, BaseTpuCmd, CpuCmd, CMDType, DynIrCmd, StaticCmdGroup, CModelRunner, ValueRef
 from .disassembler import BModel
 import pandas as pd
 import builtins
@@ -207,6 +207,7 @@ def commom_args(parser: ArgumentParser):
     parser.add_argument(
         "--quiet", action="store_true", default=False, help="disable progress bar"
     )
+    parser.add_argument("--infer_mode", choices=["cascade", "standalone"], default="cascade")
     parser.add_argument(
         "--plugins",
         type=str,
@@ -436,8 +437,8 @@ class TdbCmdBackend(cmd.Cmd):
             for arg in self.atomic_mlir.functions[0].signature[0]:
                 mem = arg.memref
                 size = int(np.prod(mem.shape) * mem.itemsize)
-                self.memory.set_data(
-                    mem, inputs[_offset : _offset + size].view(mem.np_dtype)
+                assert self.memory.set_data(
+                    ValueRef(mem), inputs[_offset : _offset + size].view(mem.np_dtype)
                 )  #  load input tensor
 
                 _offset += size
@@ -552,7 +553,7 @@ class TdbCmdBackend(cmd.Cmd):
     def set_input(self, id, input):
         args = self.atomic_mlir.functions[0].signature[0]  # input_tensors
         mem = args[id].memref
-        self.memory.set_data(mem, input)
+        assert self.memory.set_data(ValueRef(mem), input)
 
     def get_names(self):
         # This method used to pull in base class attributes
@@ -670,6 +671,10 @@ class TdbCmdBackend(cmd.Cmd):
 
     # cmd basic functions
     def message(self, msg):
+        if self.enable_message:
+            pprint(msg, file=self.stdout)
+
+    def debug(self, msg):
         if self.enable_message:
             pprint(msg, file=self.stdout)
 

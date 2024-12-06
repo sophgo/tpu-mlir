@@ -224,7 +224,8 @@ class Memory(CModelMemory):
             return self._local_mem_to_numpy(value)
         raise ValueError(f"unsupported memory view: {value}")
 
-    def set_data(self, value: MemRef, data: np.ndarray):
+    def set_data(self, value_ref: ValueRef, data: np.ndarray):
+        value = value_ref.value
         m_type = value.mtype
         if m_type == MType.G:
             assert data.dtype == value.np_dtype, f"{data.dtype} != {value.np_dtype}"
@@ -246,5 +247,6 @@ class Memory(CModelMemory):
             # continuous memory
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
             self.DDR[offset : offset + src_u8.size] = src_u8.ravel()
-        else:
-            raise NotImplementedError(m_type)
+            return True
+
+        return False

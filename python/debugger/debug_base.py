@@ -52,7 +52,6 @@ class TaskDep:
                 for file in gen_files:
                     that.gen_file_map.setdefault(file, []).append(func.__name__)
 
-            @functools.wraps(func)
             def inner(self, target_file: str, *args, **kwargs):
                 recorder = CommandRecorder(target_file, read=True)
                 target = RefFile(**recorder.dic)
@@ -183,7 +182,7 @@ class TaskDep:
                     )
                     if that._DEPTH > 0 and that.in_check:
                         raise SkipTask()
-
+            setattr(inner, "__doc__", func.__doc__)
             return inner
 
         return wrapper

@@ -88,7 +88,7 @@ ref = context.MemRef(
     stride=[32 * 32 * 16, 32 * 32, 32, 1],
     layout=Layout.compact,
 )
-memory.set_data(ref, data)
+assert memory.set_data(ref, data)
 ret = memory.get_data(ref.to_ref())
 
 test_ddr()

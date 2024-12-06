@@ -585,7 +585,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                                 np.prod(result.shape), dtype=result.np_dtype
                             ).reshape(result.shape)
                             self.tdb.message("load all 1")
-                        self.tdb.memory.set_data(result, ipt)
+                        self.tdb.memory.set_data(ValueRef(result), ipt)
             else:
                 self.tdb.error("")
                 return

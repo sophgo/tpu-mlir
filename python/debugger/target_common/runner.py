@@ -174,7 +174,7 @@ class MemoryBase:
     def get_data(self, value_ref: ValueRef) -> np.ndarray:
         raise NotImplementedError()
 
-    def set_data(self, value: MemRefBase, data: np.ndarray):
+    def set_data(self, value_ref: ValueRef, data: np.ndarray):
         raise NotImplementedError()
 
     def set_data_to_address(self, address: int, data: np.ndarray):
@@ -271,7 +271,7 @@ List[List[int]]"""
                 idx
             ]  # hack replace new shape of cpu operation, or assert?
             data = np.array(output_tensors[idx], dtype=opt.dtype.np_dtype())
-            self.memory.set_data(opt, data)
+            assert self.memory.set_data(ValueRef(opt), data)
             self.memory.set_cpu_data(command.cmd_id, data)
 
     def dynamic_compute(self, command, core_id=0):
