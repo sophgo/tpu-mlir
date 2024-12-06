@@ -142,7 +142,6 @@ class TaskDep:
 
                 if (
                     depend_tasks is None
-                    and depend_files is None
                     and gen_files is None
                     and properties is None
                 ):
