@@ -839,7 +839,10 @@ protected:
     if (module::isWeight(filter)) {
       return failure();
     }
-    if (filter.hasOneUse() == false) {
+
+    // find the cascading matmul op using the filter other than the current op
+    std::vector<top::MatMulOp> matmul_ops = getCascadingMatMulOp(filter, op);
+    if (filter.hasOneUse() == false && matmul_ops.size() == 0) {
       return failure();
     }
     auto trans_op = dyn_cast<top::PermuteOp>(filter.getDefiningOp());
@@ -870,11 +873,35 @@ protected:
         order_fix[n_idx] == k_idx && order_fix[k_idx] == n_idx) {
       // bingo !
       op.setOperand(1, trans_op.getInput());
-      op.setRightTranspose(true);
+      for(auto matmul_op : matmul_ops) {
+        matmul_op.setRightTranspose(!matmul_op.getRightTranspose());
+        matmul_op.setOperand(1, trans_op.getInput());
+      }
+      op.setRightTranspose(!op.getRightTranspose());
       rewriter.eraseOp(trans_op);
       return success();
     }
     return failure();
+  }
+private:
+  std::vector<top::MatMulOp> getCascadingMatMulOp(Value in, top::MatMulOp op) const {
+    std::vector<top::MatMulOp> matmul_ops;
+    auto permute = dyn_cast<top::PermuteOp>(in.getDefiningOp());
+    if (!permute) {
+      return std::vector<top::MatMulOp>();
+    }
+    for(auto user : permute->getUsers()) {
+      auto matmul = dyn_cast<top::MatMulOp>(user);
+      if (!matmul || matmul.getRight() != permute->getResult(0)) {
+        return std::vector<top::MatMulOp>();
+      }
+      if (matmul==op){
+        continue;
+      } else {
+        matmul_ops.push_back(matmul);
+      }
+    }
+    return matmul_ops;
   }
 };
 
