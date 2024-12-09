@@ -146,6 +146,19 @@ public:
     for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<tpu_mlir::InferenceInterface>(op) || isa<InputOp>(op)) {
+          if (isa<top::GELUOp>(op) || isa<top::SiLUOp>(op)) {
+            if (std::find(asym_op_names.begin(), asym_op_names.end(),
+                          module::getName(op).str()) != asym_op_names.end()) {
+              op->setAttr("output_asym", builder.getBoolAttr(true));
+            }
+          }
+
+          if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)) {
+            if (std::find(asym_op_names.begin(), asym_op_names.end(),
+                          module::getName(op).str()) != asym_op_names.end()) {
+              op->setAttr("input_asym", builder.getBoolAttr(true));
+            }
+          }
           for (auto value : op->getResults()) {
             if (module::isNone(value)) {
               continue;
@@ -187,6 +200,8 @@ public:
             if (min == 0 && max == 0) {
               continue;
             }
+            if (op->hasAttr("output_asym"))
+              std::cout << "haha" << std::endl;
             auto quant_type = quant::CalibratedQuantizedType::get(
                 type.getElementType(), min, max);
             auto new_type = RankedTensorType::get(type.getShape(), quant_type);
@@ -202,19 +217,6 @@ public:
           }
         }
 
-        if (isa<top::GELUOp>(op) || isa<top::SiLUOp>(op)) {
-          if (std::find(asym_op_names.begin(), asym_op_names.end(),
-                        module::getName(op).str()) != asym_op_names.end()) {
-            op->setAttr("output_asym", builder.getBoolAttr(true));
-          }
-        }
-
-        if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)) {
-          if (std::find(asym_op_names.begin(), asym_op_names.end(),
-                        module::getName(op).str()) != asym_op_names.end()) {
-            op->setAttr("input_asym", builder.getBoolAttr(true));
-          }
-        }
         if (calibration_map_int4.size() > 0 && module::isInt4Op(op)) {
           OpBuilder builder(op);
           double scale;
@@ -262,6 +264,7 @@ public:
 
   void getMinMax(Operation *op, const cali_info &info, double &min,
                  double &max) {
+    bool asymmetric = op->hasAttr("output_asym") || isAsymmetric;
     if (isa<top::AbsOp>(op)) {
       min = -info.threshold;
       max = info.threshold;
@@ -293,7 +296,7 @@ public:
     } else if (isa<top::SubOp>(op)) {
       min = info.min < 0 ? (-info.threshold) : -1e-5;
       max = info.threshold;
-    } else if (isAsymmetric == false) {
+    } else if (asymmetric == false) {
       min = info.min < 0 ? (-info.threshold) : 0;
       max = info.threshold;
     } else {
