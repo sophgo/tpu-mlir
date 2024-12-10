@@ -190,9 +190,20 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                              : -1.;
     }
   }
-
+#if 0
+  if (!module::isMARS3() && common.avg_pooling_mode == 0 &&
+      output_spec->data()[0].dtype == 8) {
+    BM168x::call_ppl_local_func("api_avgpool_local", &spec, sizeof(spec),
+                                &sec_info, input_spec->data(),
+                                output_spec->data());
+  } else {
+    BM168x::call_local_func("backend_api_pooling_local", &spec, sizeof(spec),
+                            &sec_info, input_spec->data(), output_spec->data());
+  }
+#else
   BM168x::call_local_func("backend_api_pooling_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
+#endif
 }
 
 // dynamic codegen

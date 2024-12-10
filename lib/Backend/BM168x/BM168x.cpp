@@ -405,7 +405,7 @@ void BM168x::call_ppl_local_func(const char *symbolName, void *params,
                                  int param_size, void *info, void *input,
                                  void *output) {
   std::string chip_str = get_ppl_chip();
-  auto func = instance()->CastToFPtr<ppl_local_backend_api_t>(symbolName);
+  auto func = instance()->PplCastToFPtr<ppl_local_backend_api_t>(symbolName);
   func(params, param_size, info, input, output, chip_str.c_str(),
        (*instance())->bdc_node);
 }

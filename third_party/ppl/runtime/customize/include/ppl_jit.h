@@ -17,16 +17,22 @@
 #include <utility>
 #include <vector>
 
-enum PplErrorCode {
-  PplAddressAssignErr = 0x1001,
-  FileErr = 0x1002,
-  LlvmFeErr = 0x1003,
-  PplFeErr = 0x1004,
-  PplOpt1Err = 0x1005,
-  PplOpt2Err = 0x1006,
-  PplFinalErr = 0x1007,
-  PplTransErr = 0x1008,
-  EnvErr = 0x1009,
+enum PplErrorCode_t {
+  PplLocalAddrAssignErr = 0x11,
+  FileErr = 0x12,
+  LlvmFeErr = 0x13,
+  PplFeErr = 0x14,
+  PplOpt1Err = 0x15,
+  PplOpt2Err = 0x16,
+  PplFinalErr = 0x17,
+  PplTransErr = 0x18,
+  EnvErr = 0x19,
+  PplL2AddrAssignErr = 0x1A,
+  PplShapeInferErr = 0x1B,
+  PplSetMemRefShapeErr = 0x1C,
+  ToPplErr = 0x1D,
+  PplTensorConvErr = 0x1E,
+  PplDynBlockErr = 0x1F,
 };
 
 namespace fs = std::filesystem;
@@ -209,12 +215,17 @@ static int ppl_jit_call(const char *file_name, const char *func_name,
         << inc_path << " " << path << " " << chip << " " << args
         << " > nul 2>nul";
     auto ret = system(cmd.str().c_str());
+    ret >>= 8;
     switch (ret) {
     case 0: {
       gen_flag(cache_dir + "/", key, true);
+#ifdef DDEBUG
+      printf("[compile jit success]\n");
+#endif
       break;
     }
-    case PplAddressAssignErr: {
+    case PplL2AddrAssignErr:
+    case PplLocalAddrAssignErr: {
       fs::remove_all(path);
       gen_flag(cache_dir + "/", key, false);
       return ret;
@@ -267,6 +278,10 @@ static int ppl_jit_call(const char *file_name, const char *func_name,
     iter = std::get<2>(*v).find("get_id_node");
     iter->second(pid_node);
   }
+
+#ifdef DDEBUG
+  printf("[run success]\n");
+#endif
 
   return 0;
 }

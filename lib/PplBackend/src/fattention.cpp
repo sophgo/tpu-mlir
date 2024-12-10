@@ -1,7 +1,7 @@
-#include "flash_attention_gqa_bf16.h"
-#include "flash_attention_gqa_f16.h"
-#include "flash_attention_mha_bf16.h"
-#include "flash_attention_mha_f16.h"
+#include "attention_GQA_mlir_bf16.h"
+#include "attention_GQA_mlir_fp16.h"
+#include "attention_MHA_mlir_bf16.h"
+#include "attention_MHA_mlir_fp16.h"
 #include "helper.h"
 #include "tpu_mlir/Backend/BM168x/Param.h"
 #include <assert.h>
@@ -108,7 +108,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
                _param->common.kv_head, _param->common.scale,
                _param->common.hasmask, dmax, block_m, block_k, block_h);
     CHECK_PPL_RET(ret);
-    if (ret == PplAddressAssignErr) {
+    if (ret == PplLocalAddrAssignErr) {
       block_m -= 2;
       block_k -= 2;
       continue;

@@ -10,6 +10,10 @@ namespace tiu {
 template <typename DataType>
 void arange_broadcast(tensor<DataType> &dst, int start, int step, int num);
 
+template <typename DataType>
+void broadcast(tensor<DataType> &dst, tensor<DataType> &src,
+               int num = LANE_NUM);
+
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void mm(tensor<DataType0> &dst, DataType1 &left, tensor<DataType2> &right,
@@ -136,130 +140,6 @@ void fmm(tensor<fp32> &dst, fp32 &left, tensor<fp32> &right, fp32 &bias,
 void fmm(tensor<fp32> &dst, fp32 &left, tensor<fp32> &right, bool result_add) {
   tensor<fp32> *bias = nullptr;
   mm(dst, left, right, bias, false, false, result_add, 0, 0, false, RM_HALF_UP);
-}
-
-//=================== mm2 int ===================
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-         DataType3 &bias, DataType4 &r_zp, DataType5 &requant, int multiplier,
-         int8 rshift, int16 y_zp, bool ltrans, bool rtrans, bool rst_trans,
-         bool result_add, data_type_t out_dtype, bool has_bias, bool do_relu,
-         bool do_rq, bool saturate, rounding_mode_t round_mode); // MM2Op
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-         DataType3 &bias, DataType4 &r_zp, bool ltrans, bool rtrans,
-         bool rst_trans, bool result_add, data_type_t out_dtype,
-         bool has_bias) {
-  tensor<int32> *requant = nullptr;
-  int multiplier = 0;
-  int8 rshift = 0;
-  int16 y_zp = 0;
-  bool do_relu = false;
-  bool do_rq = false;
-  bool saturate = false;
-  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
-  mm2(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp, ltrans,
-      rtrans, rst_trans, result_add, out_dtype, has_bias, do_relu, do_rq,
-      saturate, round_mode);
-}
-
-// tpu_bdc_int8_zp_mm_all_trans, tpu_bdc_int8_zp_mm_R_trans in BM1684x
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-         DataType3 &r_zp, bool ltrans, bool rtrans, bool rst_trans,
-         bool result_add, data_type_t out_dtype) {
-  tensor<int32> *bias = nullptr;
-  bool has_bias = false;
-  mm2(rst, left, right, bias, r_zp, ltrans, rtrans, rst_trans, result_add,
-      out_dtype, has_bias);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right, bool ltrans,
-         bool rtrans, bool rst_trans) {
-  int8 r_zp = 0;
-  mm2(rst, left, right, r_zp, ltrans, rtrans, rst_trans, false, DT_NONE);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right) {
-  int8 r_zp = 0;
-  mm2(rst, left, right, r_zp, false, false, false, false, DT_NONE);
-}
-
-// tpu_bdc_int8_zp_mm
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-         DataType3 r_zp, bool result_add, data_type_t out_dtype) {
-  tensor<int32> *bias = nullptr;
-  bool ltrans = false;
-  bool rtrans = false;
-  bool rst_trans = false;
-  mm2(rst, left, right, bias, r_zp, ltrans, rtrans, rst_trans, result_add,
-      out_dtype, false);
-}
-
-//=================== mm2 fp32 ===================
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
-          bool do_relu, bool result_add, data_type_t out_dtype, bool has_bias,
-          bool saturate = false); // MM2FpOp
-
-// tpu_bdc_fp_mm_with_bias in BM1690
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          DataType3 &bias, bool result_add, data_type_t out_dtype,
-          bool has_bias, bool saturate = false) {
-  fmm2(dst, left, right, bias, false, false, false, false, result_add,
-       out_dtype, has_bias, saturate);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          DataType3 &bias) {
-  fmm2(dst, left, right, bias, false, false, false, false, false,
-       convert_dtype<DataType0>(), true, false);
-}
-
-// tpu_bdc_fp_mm_all_trans, tpu_bdc_fp_mm_R_trans in BM1684x
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          bool ltrans, bool rtrans, bool rst_trans, bool do_relu,
-          bool result_add, data_type_t out_dtype, bool saturate = false) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2(dst, left, right, bias, ltrans, rtrans, rst_trans, do_relu, result_add,
-       out_dtype, false, saturate);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          bool ltrans, bool rtrans, bool rst_trans) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2(dst, left, right, bias, ltrans, rtrans, rst_trans, false, false,
-       convert_dtype<DataType0>(), false, false);
-}
-// tpu_bdc_fp_mm in BM1684x
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          bool result_add, data_type_t out_dtype) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2(dst, left, right, bias, false, false, false, false, result_add,
-       out_dtype, false, false);
-}
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2(dst, left, right, bias, false, false, false, false, false,
-       convert_dtype<DataType0>(), false, false);
 }
 
 template <typename DataType0, typename DataType1>
@@ -493,212 +373,6 @@ void fdw_deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3, typename DataType4, typename DataType5,
           typename DataType6>
-void conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
-          DataType3 &bias, int oc, dim2 *k_shape, dim2 *stride, dim2 *dilation,
-          padding_t *pad, dim2 *ins, DataType4 &pad_val, bool result_relu,
-          bool result_add, data_type_t out_dtype, bool has_bias, bool sym,
-          DataType5 &quant, bool rq, DataType6 &requant, int8 rq_shift,
-          short out_zp, bool saturate, rounding_mode_t round,
-          bool kernel_rotate); // Conv2DOp
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
-          DataType3 &bias, int oc, dim2 *k_shape, dim2 *stride, dim2 *dilation,
-          padding_t *pad, bool result_relu, bool result_add,
-          data_type_t out_dtype, bool has_bias); // Conv2DOp
-
-//=================== conv sym without requant ===================
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
-              tensor<DataType2> &weight, DataType3 &bias, int oc, dim2 *k_shape,
-              dim2 *stride, dim2 *dilation, padding_t *pad, bool result_relu,
-              bool has_bias, int8 rshift) {
-  int pad_val = 0;
-  int requant = 0;
-  int8 rq_shift = 0;
-  short out_zp = 0;
-  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-       (dim2 *)nullptr, pad_val, /*pad_val*/
-       result_relu, false,       /*result_add*/
-       DT_NONE,                  /*out_dtype*/
-       has_bias,                 /*has_bias*/
-       true,                     /*sym*/
-       rshift,                   /*quant*/
-       false,                    /*rq*/
-       requant,                  /*requant*/
-       rq_shift,                 /*rq_shift*/
-       out_zp,                   /*out_zp*/
-       false,                    /*sym_range*/
-       RM_HALF_UP,               /*round_mode*/
-       false /*kernel rotate*/);
-}
-
-// tpu_bdc_int8_sym_quant_conv2d
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
-              tensor<DataType2> &weight, DataType3 &bias, int oc, dim2 *k_shape,
-              dim2 *stride, dim2 *dilation, padding_t *pad, bool result_relu,
-              int8 rshift) {
-  conv_sym(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-           result_relu, true, rshift);
-}
-template <typename DataType0, typename DataType1, typename DataType2>
-void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
-              tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
-              dim2 *dilation, padding_t *pad, bool result_relu, int8 rshift) {
-  tensor<fp32> *bias = nullptr;
-  conv_sym(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-           result_relu, false, rshift);
-}
-
-//=================== conv sym with requant ===================
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4>
-void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-                 tensor<DataType2> &weight, DataType3 &bias, int oc,
-                 dim2 *k_shape, dim2 *stride, dim2 *dilation, padding_t *pad,
-                 bool result_relu, bool has_bias, DataType4 &requant,
-                 int8 rshift, short out_zp, bool sym_range) {
-  int pad_val = 0;
-  int kzp = 0;
-  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-       (dim2 *)nullptr, pad_val, /*pad_val*/
-       result_relu,              /*result_relu*/
-       false,                    /*result_add*/
-       DT_NONE, has_bias, true,  /*sym*/
-       kzp,                      /*quant*/
-       true,                     /*rq*/
-       requant,                  /*requant or multiplier*/
-       rshift,                   /*rq_shift*/
-       out_zp,                   /*out_zp*/
-       sym_range, RM_HALF_UP, false);
-}
-
-// tpu_bdc_conv2d_requant_C (only in bm1690)
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-                 tensor<DataType2> &weight, DataType3 &bias, int oc,
-                 dim2 *k_shape, dim2 *stride, dim2 *dilation, padding_t *pad,
-                 bool result_relu, int multiplier, int8 rshift, short out_zp,
-                 bool sym_range) {
-  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-              result_relu, true, multiplier, rshift, out_zp, sym_range);
-}
-template <typename DataType0, typename DataType1, typename DataType2>
-void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-                 tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
-                 dim2 *dilation, padding_t *pad, bool result_relu,
-                 int multiplier, int8 rshift, short out_zp, bool sym_range) {
-  tensor<fp32> *bias = nullptr;
-  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-              result_relu, false, multiplier, rshift, out_zp, sym_range);
-}
-
-// tpu_bdc_conv2d_requant_pc (only in bm1690)
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4>
-void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-                 tensor<DataType2> &weight, DataType3 &bias, int oc,
-                 dim2 *k_shape, dim2 *stride, dim2 *dilation, padding_t *pad,
-                 bool result_relu, DataType4 &requant, bool sym_range) {
-  int8 rshift = 0;
-  short out_zp = 0;
-  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-              result_relu, true, requant, rshift, out_zp, sym_range);
-}
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-                 tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
-                 dim2 *dilation, padding_t *pad, bool result_relu,
-                 DataType3 &requant, bool sym_range) {
-  tensor<fp32> *bias = nullptr;
-  int8 rshift = 0;
-  short out_zp = 0;
-  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-              result_relu, false, requant, rshift, out_zp, sym_range);
-}
-
-//=================== conv asym without requant ===================
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4>
-void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
-               DataType2 &weight, int oc, dim2 *k_shape, dim2 *stride,
-               dim2 *dilation, padding_t *pad, DataType3 pad_val,
-               bool result_add, data_type_t out_dtype, DataType4 &kzp) {
-  tensor<fp32> *bias = nullptr;
-  int requant = 0;
-  int rq_shift = 0;
-  int out_zp = 0;
-  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-       (dim2 *)nullptr, pad_val, /*pad_val*/
-       false, result_add,        /*result_add*/
-       out_dtype,                /*out_dtype*/
-       false,                    /*has_bias*/
-       false,                    /*sym*/
-       kzp,                      /*quant*/
-       false,                    /*rq*/
-       requant,                  /*requant*/
-       rq_shift,                 /*rq_shift*/
-       out_zp,                   /*out_zp*/
-       false, RM_HALF_UP, false);
-}
-
-// tpu_bdc_int8_asym_quant_conv2d (kzp and pad_val are const)
-template <typename DataType0, typename DataType1, typename DataType2>
-void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
-               dim2 *dilation, padding_t *pad, bool result_add,
-               data_type_t out_dtype, int kzp) {
-  int pad_val = 0;
-  conv_asym(dst, src, weight, oc, k_shape, stride, dilation, pad, pad_val,
-            result_add, out_dtype, kzp);
-}
-
-// tpu_bdc_int8_asym_quant_conv2d_kernel_const (weight, kzp and pad_val are
-// const)
-template <typename DataType0, typename DataType1>
-void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src, int8 weight,
-               int oc, dim2 *k_shape, dim2 *stride, dim2 *dilation,
-               padding_t *pad, bool result_add, data_type_t out_dtype,
-               int kzp) {
-  int pad_val = 0;
-  conv_asym(dst, src, weight, oc, k_shape, stride, dilation, pad, pad_val,
-            result_add, out_dtype, kzp);
-}
-
-// tpu_bdc_int8_asym_pc_quant_conv2d
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4>
-void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
-               dim2 *dilation, padding_t *pad, tensor<DataType3> &pad_val,
-               bool result_add, data_type_t out_dtype, tensor<DataType4> &kzp) {
-  tensor<fp32> *bias = nullptr;
-  int requant = 0;
-  int rq_shift = 0;
-  int out_zp = 0;
-  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
-       (dim2 *)nullptr, pad_val, /*pad_val*/
-       false, result_add,        /*result_add*/
-       out_dtype,                /*out_dtype*/
-       false,                    /*has_bias*/
-       false,                    /*sym*/
-       kzp,                      /*quant*/
-       false,                    /*rq*/
-       requant,                  /*requant*/
-       rq_shift,                 /*rq_shift*/
-       out_zp,                   /*out_zp*/
-       false, RM_HALF_UP, false);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5,
-          typename DataType6>
 void deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
             tensor<DataType2> &weight, DataType3 &bias, int oc, dim2 *k_shape,
             dim2 *dilation, padding_t *pad, dim2 *ins, DataType4 &pad_val,
@@ -859,6 +533,112 @@ void fsub_abs(tensor<DataType> &dst, tensor<DataType> &src0,
 template <typename DataType>
 void fsub_abs(tensor<DataType> &dst, tensor<DataType> &src, float C);
 
+//=================== mm2 fp32 ===================
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void fmm2_base(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+               DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
+               bool do_relu, bool result_add, data_type_t out_dtype,
+               bool has_bias,
+               bool saturate = false); // MM2FpOp
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void fmm2_common(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+                 DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
+                 bool do_relu, bool result_add, data_type_t out_dtype,
+                 bool has_bias, bool saturate = false) {
+#if defined(__bm1684x__) || defined(__bm1688__)
+  tensor<DataType0> *null = nullptr;
+  bool do_relu_false = false;
+  fmm2_base(dst, left, right, *null, ltrans, rtrans, rst_trans, do_relu_false,
+            result_add, out_dtype, false, saturate);
+  if (has_bias) {
+    if constexpr (!std::is_same<tensor<DataType0>, DataType3>::value) {
+      tensor<DataType0> bias_cast;
+      cast(bias_cast, bias);
+      fadd(dst, dst, bias_cast);
+    } else {
+      fadd(dst, dst, bias);
+    }
+  }
+  if (do_relu) {
+    max(dst, dst, 0);
+  }
+#else
+  fmm2_base(dst, left, right, bias, ltrans, rtrans, rst_trans, do_relu,
+            result_add, out_dtype, has_bias, saturate);
+#endif
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
+          bool do_relu, bool result_add, data_type_t out_dtype, bool has_bias,
+          bool saturate = false) {
+  fmm2_common(dst, left, right, bias, ltrans, rtrans, rst_trans, do_relu,
+              result_add, out_dtype, has_bias, saturate);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias, bool result_add, data_type_t out_dtype,
+          bool has_bias, bool saturate = false) {
+  fmm2_common(dst, left, right, bias, false, false, false, false, result_add,
+              out_dtype, has_bias, saturate);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias) {
+  fmm2_common(dst, left, right, bias, false, false, false, false, false,
+              convert_dtype<DataType0>(), true, false);
+}
+
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool ltrans, bool rtrans, bool rst_trans, bool do_relu,
+          bool result_add, data_type_t out_dtype, bool saturate = false) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, ltrans, rtrans, rst_trans, do_relu,
+              result_add, out_dtype, false, saturate);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool ltrans, bool rtrans, bool rst_trans) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, ltrans, rtrans, rst_trans, false, false,
+              convert_dtype<DataType0>(), false, false);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans) {
+  fmm2_common(dst, left, right, bias, ltrans, rtrans, rst_trans, false, false,
+              convert_dtype<DataType0>(), true, false);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool result_add, data_type_t out_dtype) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, false, false, false, false, result_add,
+              out_dtype, false, false);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, false, false, false, false, false,
+              convert_dtype<DataType0>(), false, false);
+}
+
 // dst += src0 * src1
 void fmac(tensor<float> &dst, tensor<float> &src0, tensor<float> &src1);
 void fmac(tensor<float> &dst, tensor<float> &src, float C);
@@ -884,6 +664,145 @@ void add(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 C) {
   rounding_mode_t round_mode = RM_HALF_UP;
   bool saturation = false;
   add(dst, src, C, shift, round_mode, saturation);
+}
+
+//=================== mm2 int ===================
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_base(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+              DataType3 &bias, DataType4 &r_zp, DataType5 &requant,
+              int multiplier, int8 rshift, int16 y_zp, bool ltrans, bool rtrans,
+              bool rst_trans, bool result_add, data_type_t out_dtype,
+              bool has_bias, bool do_relu, bool do_rq, bool saturate,
+              rounding_mode_t round_mode); // MM2Op
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_common(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+                DataType3 &bias, DataType4 &r_zp, DataType5 &requant,
+                int multiplier, int8 rshift, int16 y_zp, bool ltrans,
+                bool rtrans, bool rst_trans, bool result_add,
+                data_type_t out_dtype, bool has_bias, bool do_relu, bool do_rq,
+                bool saturate, rounding_mode_t round_mode) {
+#if defined(__bm1684x__) || defined(__bm1688__)
+  tensor<DataType0> *null = nullptr;
+  bool do_relu_false = false;
+  mm2_base(rst, left, right, *null, r_zp, requant, multiplier, rshift, y_zp,
+           ltrans, rtrans, rst_trans, result_add, out_dtype, false, do_relu_false,
+           do_rq, saturate, round_mode);
+  if (has_bias) {
+    if constexpr (!std::is_same<tensor<DataType0>, DataType3>::value) {
+      tensor<DataType0> bias_cast;
+      cast(bias_cast, bias);
+      add(rst, rst, bias_cast);
+    } else {
+      add(rst, rst, bias);
+    }
+  }
+  if (do_relu) {
+    max(rst, rst, 0);
+  }
+#else
+  mm2_base(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp,
+           ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias, do_relu,
+           do_rq, saturate, round_mode);
+#endif
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+         DataType3 &bias, DataType4 &r_zp, bool ltrans, bool rtrans,
+         bool rst_trans, bool result_add, data_type_t out_dtype,
+         bool has_bias = false, bool do_relu = false) {
+  tensor<int32> *requant = nullptr;
+  int multiplier = 0;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias,
+             do_relu, do_rq, saturate, round_mode);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+         DataType3 &r_zp, bool ltrans, bool rtrans,
+         bool rst_trans, bool result_add,
+         data_type_t out_dtype, bool has_bias) {
+  tensor<int32> *bias = nullptr;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 0;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias,
+             do_relu, do_rq, saturate, round_mode);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right, bool ltrans,
+         bool rtrans, bool rst_trans) {
+  int8 r_zp = 0;
+  tensor<int32> *bias = nullptr;
+  bool has_bias = false;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 0;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, false, DT_NONE, has_bias, do_relu,
+             do_rq, saturate, round_mode);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right) {
+  int8 r_zp = 0;
+  tensor<int32> *bias = nullptr;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 0;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             false, false, false, false, DT_NONE, false, do_relu, do_rq,
+             saturate, round_mode);
+}
+
+// tpu_bdc_int8_zp_mm
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+         DataType3 r_zp, bool result_add, data_type_t out_dtype) {
+  tensor<int32> *bias = nullptr;
+  bool ltrans = false;
+  bool rtrans = false;
+  bool rst_trans = false;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 0;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, result_add, out_dtype, false, do_relu,
+             do_rq, saturate, round_mode);
 }
 
 template <typename DataType0, typename DataType1, typename DataType2>
@@ -1134,6 +1053,273 @@ template <typename DataType0, typename DataType1>
 void shift(tensor<DataType0> &dst, tensor<DataType1> &src, char shift_c,
            rounding_mode_t round_mode);
 
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5,
+          typename DataType6>
+void conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
+          DataType3 &bias, int oc, dim2 *k_shape, dim2 *stride, dim2 *dilation,
+          padding_t *pad, dim2 *ins, DataType4 &pad_val, bool result_relu,
+          bool result_add, data_type_t out_dtype, bool has_bias, bool sym,
+          DataType5 &quant, bool rq, DataType6 &requant, int8 rq_shift,
+          short out_zp, bool saturate, rounding_mode_t round,
+          bool kernel_rotate); // Conv2DOp
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
+          DataType3 &bias, int oc, dim2 *k_shape, dim2 *stride, dim2 *dilation,
+          padding_t *pad, bool result_relu, bool result_add,
+          data_type_t out_dtype, bool has_bias); // Conv2DOp
+
+//=================== conv sym without requant ===================
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
+              tensor<DataType2> &weight, DataType3 &bias, int oc, dim2 *k_shape,
+              dim2 *stride, dim2 *dilation, padding_t *pad, bool result_relu,
+              bool has_bias, int8 rshift) {
+  int pad_val = 0;
+  int requant = 0;
+  int8 rq_shift = 0;
+  short out_zp = 0;
+#if defined(__bm1684x__)
+  dim4 bias_shape = {1, oc, 1, 1};
+  if constexpr (std::is_same<DataType3, tensor<int32>>::value) {
+    auto bias_cast = tensor<int16>(bias_shape, TPU_COMPACT);
+    cast(bias_cast, bias);
+    conv(dst, src, weight, bias_cast, oc, k_shape, stride, dilation, pad,
+         (dim2 *)nullptr, pad_val, result_relu, false, DT_NONE, has_bias, true,
+         rshift, false, requant, rq_shift, out_zp, false, RM_HALF_UP, false);
+  } else if (std::is_same<DataType3, tensor<uint32>>::value) {
+    auto bias_cast = tensor<uint16>(bias_shape, TPU_COMPACT);
+    cast(bias_cast, bias);
+    conv(dst, src, weight, bias_cast, oc, k_shape, stride, dilation, pad,
+         (dim2 *)nullptr, pad_val, result_relu, false, DT_NONE, has_bias, true,
+         rshift, false, requant, rq_shift, out_zp, false, RM_HALF_UP, false);
+  } else {
+    conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+         (dim2 *)nullptr, pad_val, result_relu, false, DT_NONE, has_bias, true,
+         rshift, false, requant, rq_shift, out_zp, false, RM_HALF_UP, false);
+  }
+#else
+  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+       (dim2 *)nullptr, pad_val, /*pad_val*/
+       result_relu, false,       /*result_add*/
+       DT_NONE,                  /*out_dtype*/
+       has_bias,                 /*has_bias*/
+       true,                     /*sym*/
+       rshift,                   /*quant*/
+       false,                    /*rq*/
+       requant,                  /*requant*/
+       rq_shift,                 /*rq_shift*/
+       out_zp,                   /*out_zp*/
+       false,                    /*sym_range*/
+       RM_HALF_UP,               /*round_mode*/
+       false /*kernel rotate*/);
+#endif
+}
+
+// tpu_bdc_int8_sym_quant_conv2d
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
+              tensor<DataType2> &weight, DataType3 &bias, int oc, dim2 *k_shape,
+              dim2 *stride, dim2 *dilation, padding_t *pad, bool result_relu,
+              int8 rshift) {
+  conv_sym(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+           result_relu, true, rshift);
+}
+template <typename DataType0, typename DataType1, typename DataType2>
+void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
+              tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
+              dim2 *dilation, padding_t *pad, bool result_relu, int8 rshift) {
+  tensor<fp32> *bias = nullptr;
+  conv_sym(dst, src, weight, *bias, oc, k_shape, stride, dilation, pad,
+           result_relu, false, rshift);
+}
+
+//=================== conv asym without requant ===================
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
+               DataType2 &weight, int oc, dim2 *k_shape, dim2 *stride,
+               dim2 *dilation, padding_t *pad, DataType3 pad_val,
+               bool result_add, data_type_t out_dtype, DataType4 &kzp) {
+  tensor<fp32> *bias = nullptr;
+  int requant = 0;
+  int rq_shift = 0;
+  int out_zp = 0;
+  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+       (dim2 *)nullptr, pad_val, /*pad_val*/
+       false, result_add,        /*result_add*/
+       out_dtype,                /*out_dtype*/
+       false,                    /*has_bias*/
+       false,                    /*sym*/
+       kzp,                      /*quant*/
+       false,                    /*rq*/
+       requant,                  /*requant*/
+       rq_shift,                 /*rq_shift*/
+       out_zp,                   /*out_zp*/
+       false, RM_HALF_UP, false);
+}
+
+// tpu_bdc_int8_asym_quant_conv2d (kzp and pad_val are const)
+template <typename DataType0, typename DataType1, typename DataType2>
+void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
+               tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
+               dim2 *dilation, padding_t *pad, bool result_add,
+               data_type_t out_dtype, int kzp) {
+  int pad_val = 0;
+  conv_asym(dst, src, weight, oc, k_shape, stride, dilation, pad, pad_val,
+            result_add, out_dtype, kzp);
+}
+
+// tpu_bdc_int8_asym_quant_conv2d_kernel_const (weight, kzp and pad_val are
+// const)
+template <typename DataType0, typename DataType1>
+void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src, int8 weight,
+               int oc, dim2 *k_shape, dim2 *stride, dim2 *dilation,
+               padding_t *pad, bool result_add, data_type_t out_dtype,
+               int kzp) {
+  int pad_val = 0;
+  conv_asym(dst, src, weight, oc, k_shape, stride, dilation, pad, pad_val,
+            result_add, out_dtype, kzp);
+}
+
+// tpu_bdc_int8_asym_pc_quant_conv2d
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
+               tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
+               dim2 *dilation, padding_t *pad, tensor<DataType3> &pad_val,
+               bool result_add, data_type_t out_dtype, tensor<DataType4> &kzp) {
+  tensor<fp32> *bias = nullptr;
+  int requant = 0;
+  int rq_shift = 0;
+  int out_zp = 0;
+  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+       (dim2 *)nullptr, pad_val, /*pad_val*/
+       false, result_add,        /*result_add*/
+       out_dtype,                /*out_dtype*/
+       false,                    /*has_bias*/
+       false,                    /*sym*/
+       kzp,                      /*quant*/
+       false,                    /*rq*/
+       requant,                  /*requant*/
+       rq_shift,                 /*rq_shift*/
+       out_zp,                   /*out_zp*/
+       false, RM_HALF_UP, false);
+}
+
+//=================== conv sym with requant ===================
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, DataType3 &bias, int oc,
+                 dim2 *k_shape, dim2 *stride, dim2 *dilation, padding_t *pad,
+                 bool result_relu, bool has_bias, DataType4 &requant,
+                 int8 rshift, short out_zp, bool sym_range) {
+  int pad_val = 0;
+  int kzp = 0;
+#if defined(__bm1684x__)
+  tensor<fp32> *bias_null = nullptr;
+  int requant_ = 0;
+  int rshift_ = 0;
+  int out_zp_ = 0;
+  bool has_bias_ = false;
+  bool result_relu_ = false;
+  conv(dst, src, weight, bias_null, oc, k_shape, stride, dilation, pad,
+       (dim2 *)nullptr, pad_val, result_relu_, false, DT_NONE, has_bias_, true,
+       kzp, false, requant_, rshift_, out_zp_, sym_range, RM_HALF_UP, false);
+  if (has_bias) {
+    add(dst, dst, bias);
+  }
+
+  if constexpr (!std::is_same<DataType0, int16>::value) {
+    tensor<int32> dst_i32;
+    if constexpr (std::is_fundamental<DataType4>::value) {
+      mul(dst_i32, dst, requant, rshift, RM_HALF_UP, true);
+    } else {
+      rq1(dst_i32, dst, requant, RM_HALF_UP);
+    }
+    if (result_relu) {
+      max(dst_i32, dst_i32, 0);
+    }
+    add(dst_i32, dst_i32, out_zp);
+    cast(dst, dst_i32);
+  } else {
+    if constexpr (std::is_fundamental<DataType4>::value) {
+      mul(dst, dst, requant, rshift, RM_HALF_UP, true);
+    } else {
+      rq1(dst, dst, requant, RM_HALF_UP);
+    }
+    if (result_relu) {
+      max(dst, dst, 0);
+    }
+    add(dst, dst, out_zp);
+  }
+
+#else
+  conv(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+       (dim2 *)nullptr, pad_val, /*pad_val*/
+       result_relu,              /*result_relu*/
+       false,                    /*result_add*/
+       DT_NONE, has_bias, true,  /*sym*/
+       kzp,                      /*quant*/
+       true,                     /*rq*/
+       requant,                  /*requant or multiplier*/
+       rshift,                   /*rq_shift*/
+       out_zp,                   /*out_zp*/
+       sym_range, RM_HALF_UP, false);
+#endif
+}
+
+// tpu_bdc_conv2d_requant_C (only in bm1690)
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, DataType3 &bias, int oc,
+                 dim2 *k_shape, dim2 *stride, dim2 *dilation, padding_t *pad,
+                 bool result_relu, int multiplier, int8 rshift, short out_zp,
+                 bool sym_range) {
+  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+              result_relu, true, multiplier, rshift, out_zp, sym_range);
+}
+template <typename DataType0, typename DataType1, typename DataType2>
+void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
+                 dim2 *dilation, padding_t *pad, bool result_relu,
+                 int multiplier, int8 rshift, short out_zp, bool sym_range) {
+  tensor<fp32> *bias = nullptr;
+  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+              result_relu, false, multiplier, rshift, out_zp, sym_range);
+}
+
+// tpu_bdc_conv2d_requant_pc (only in bm1690)
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, DataType3 &bias, int oc,
+                 dim2 *k_shape, dim2 *stride, dim2 *dilation, padding_t *pad,
+                 bool result_relu, DataType4 &requant, bool sym_range) {
+  int8 rshift = 0;
+  short out_zp = 0;
+  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+              result_relu, true, requant, rshift, out_zp, sym_range);
+}
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, int oc, dim2 *k_shape, dim2 *stride,
+                 dim2 *dilation, padding_t *pad, bool result_relu,
+                 DataType3 &requant, bool sym_range) {
+  tensor<fp32> *bias = nullptr;
+  int8 rshift = 0;
+  short out_zp = 0;
+  conv_sym_rq(dst, src, weight, bias, oc, k_shape, stride, dilation, pad,
+              result_relu, false, requant, rshift, out_zp, sym_range);
+}
+
 template <typename DataType0, typename DataType1, typename DataType2>
 void logical_shift(tensor<DataType0> &dst, tensor<DataType1> &src,
                    tensor<DataType2> &shift, rounding_mode_t round_mode);
@@ -1149,10 +1335,6 @@ void circular_shift(tensor<DataType0> &dst, tensor<DataType1> &src,
                     char shift_c, rounding_mode_t round_mode);
 
 template <typename d> d scalar_cast(float scalar, int mode);
-
-template <typename DataType>
-void broadcast(tensor<DataType> &dst, tensor<DataType> &src,
-               int num = LANE_NUM);
 
 template <typename DataType>
 void smem_bcast(tensor<DataType> &dst, coeff_table_mode_t static_mem_mode);
