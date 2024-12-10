@@ -203,7 +203,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
                 info = f'{type}{cmd},physical start addr:{src}<br>{direction},{data["src_shape"][i]}'
                 lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, src, size, info])
         # import pdb; pdb.set_trace()
-        if 'des_res0_c' in data and data['des_res0_c'][i] and int(data['des_res0_c'][i]) < lane_num:
+        if 'des_res0_c' in data and data['des_res0_c'][i] and int(data['des_res0_c'][i]) and int(data['des_res0_c'][i]) < lane_num:
             worklane = int(data['des_res0_c'][i])
         else:
             worklane = lane_num

@@ -118,8 +118,10 @@ def parse_data_blocks(filename):
             blocks.append(BlockItem(block_type, block_content))
     return blocks
 
-def parse_dyn_extra(raw_data):
+def parse_dyn_extra(raw_data, serialize=False):
     extra_data = dict()
+    if serialize:
+        extra_data = []
     head_len = 12
     while True:
         if len(raw_data) == 0:
@@ -136,10 +138,13 @@ def parse_dyn_extra(raw_data):
         content = raw_data[:extra_len]
         raw_data = raw_data[extra_len:]
         extra_item = DynExtra(profile_id, DynExtraType(extra_type), content)
-        if profile_id not in extra_data:
-            extra_data[profile_id] = [extra_item]
+        if serialize:
+            extra_data.append(extra_item)
         else:
-            extra_data[profile_id].append(extra_item)
+            if profile_id not in extra_data:
+                extra_data[profile_id] = [extra_item]
+            else:
+                extra_data[profile_id].append(extra_item)
     return extra_data
 
 def parse_bmlib_extra(raw_data):

@@ -68,6 +68,8 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 
     def parse_cmd(self, file_list):
+        self.gdma_parser = self.archlib.GDMACommandParser()
+        self.bdc_parser = self.archlib.BDCommandParser()
         print("Parsing...")
         self.cdma_cmd = [[] for _ in range(self.archlib.CDMA_NUM)]
         for infile in tqdm(file_list):
@@ -76,13 +78,15 @@ class BMProfileParserPerfAI(BMProfileParser):
                 continue
             item = IterRecord()
             item.command_info = []
+            item.dyn_extra = []
             blocks_factory = {
                 BlockType.MONITOR_GDMA.value: (item.monitor_gdma, self.__parse_monitor_gdma),
                 # # include sdma, vsdma pmu data
                 BlockType.MONITOR_SDMA.value: (item.monitor_sdma, self.__parse_monitor_sdma),
                 BlockType.MONITOR_BD.value: (item.monitor_bd, self.__parse_monitor_tiu),
                 BlockType.DYN_DATA.value: (item.dyn_data, self.__parse_dyn_data),
-                BlockType.COMMAND.value: (item.command_info, self.__parse_command_info)
+                BlockType.COMMAND.value: (item.command_info, self.__parse_command_info),
+                BlockType.DYN_EXTRA.value: (item.dyn_extra, self.__parse_dyn_extra)
             }
             for block in blocks:
                 item_list, item_func = blocks_factory.get(
@@ -321,6 +325,10 @@ class BMProfileParserPerfAI(BMProfileParser):
         command_info.append(
             self._BMProfileParser__parse_command_info(raw_data))
 
+    def __parse_dyn_extra(self, dyn_extra_data: List, raw_data):
+        tmp = parse_dyn_extra(raw_data, True)
+        dyn_extra_data.extend(tmp)
+
     def __parse_global_file(self, filename):
         assert os.path.isfile(filename), filename
         re_arch = re_key_value("", "arch")
@@ -336,22 +344,20 @@ class BMProfileParserPerfAI(BMProfileParser):
 
     def __read_command_data(self, item):
         # static cmd include hole cores cmd per iter.profile
-        bd_parser = self.archlib.BDCommandParser()
-        gdma_parser = self.archlib.GDMACommandParser()
         for core_num, cmd_info in enumerate(item.command_info):
             bd_cmd = self.__base_read_command_data(cmd_info.bd_base,
                                                 cmd_info.bd_offset,
                                                 self.archlib.EngineType.BD,
-                                                core_num, bd_parser)
+                                                core_num, self.bdc_parser)
             gdma_cmd = self.__base_read_command_data(cmd_info.gdma_base,
                                                     cmd_info.gdma_offset,
                                                     self.archlib.EngineType.GDMA,
-                                                    core_num, gdma_parser)
+                                                    core_num, self.gdma_parser)
             sdma_cmd = self.__base_read_command_data(cmd_info.sdma_base,
                                                     cmd_info.sdma_offset,
             # TODO tpuv7-runtime/model-runtime/runtime/src/sgruntime_bmodel.cpp:576
                                                     self.archlib.EngineType.VSDMA,
-                                                    core_num, gdma_parser)
+                                                    core_num, self.gdma_parser)
 
             bd_pair, _ = self.__find_profile_sync_points(bd_cmd, item.monitor_bd[core_num],
                                             self.archlib.bd_sys_code, self.archlib.profile_sys_num)
@@ -601,8 +607,10 @@ class BMProfileParserPerfAI(BMProfileParser):
             gdma_cmd = []
             sdma_cmd = []
             bd_cmd = []
-            for d in dyn_data[1:]:  # skip init record
+            for i, d in enumerate(dyn_data[1:]):  # skip init record
                 if d.type == self.archlib.DynRecordType.NODE_SET.value:
+                    if item.dyn_extra:
+                        d.detailed_cmd = item.dyn_extra[i].content
                     if d.engine == self.archlib.EngineType.GDMA.value:
                         gdma_cmd.append(d)
                     elif d.engine == self.archlib.EngineType.SDMA.value:
@@ -621,6 +629,17 @@ class BMProfileParserPerfAI(BMProfileParser):
             self.sdma_pairs.append(sdma_pair)
             # skip profile init and call sync_all
             self.cdmlib_extra.append(dyn_data[1 + bd_sys_num + sdma_sys_num + gdma_sys_num:])
+        # if item.dyn_extra:
+        #     print(item.dyn_extra )
+        #     for k, v in item.dyn_extra.items():
+        #         print(k)
+        #         engine = self.archlib.EngineType((k >> 8) & 0x7)
+        #         print(engine, engine == self.archlib.EngineType.GDMA)
+        #         parser = self.archlib.GDMACommandParser()
+        #         if engine == self.archlib.EngineType.GDMA:
+        #             gdma_parser = parser.parse(v[0].content)
+        #             print(gdma_parser)
+
 
     def __read_pure_pmu_data(self, item):
             bd_pair, _ = self.__find_profile_sync_points([], item.monitor_bd[0], self.archlib.bd_sys_code, self.archlib.profile_sys_num, pure_pmu=True)
@@ -644,12 +663,18 @@ class BMProfileParserPerfAI(BMProfileParser):
 
     def __get_gdma_info(self, monitor_info, reg_info, core_id, engine_id=1):
         if self.is_dyn:
+            if hasattr(reg_info, 'detailed_cmd'):
+                _reg_info = self.gdma_parser.parse(reg_info.detailed_cmd)[0]
+                return get_dma_info(monitor_info, _reg_info, core_id, engine_id)
             return get_dma_info_dyn(monitor_info, reg_info, engine_id)
         else:
             return get_dma_info(monitor_info, reg_info, core_id, engine_id)
 
     def __get_tiu_info(self, monitor_info, reg_info, core_id=None, engine_id=0):
         if self.is_dyn:
+            if hasattr(reg_info, 'detailed_cmd'):
+                _reg_info = self.bdc_parser.parse(reg_info.detailed_cmd)[0]
+                return get_tiu_info(monitor_info, _reg_info)
             return get_tiu_info_dyn(monitor_info, reg_info)
         else:
             return get_tiu_info(monitor_info, reg_info)
