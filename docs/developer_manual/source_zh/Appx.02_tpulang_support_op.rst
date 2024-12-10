@@ -4685,10 +4685,7 @@ roiExtractor
 
         def roiExtractor(rois: Tensor,
                          target_lvls: Tensor,
-                         feat0: Tensor,
-                         feat1: Tensor,
-                         feat2: Tensor,
-                         feat3: Tensor,
+                         feats: List[Tensor],
                          PH: int,
                          PW: int,
                          sampling_ratio: int,
@@ -4704,10 +4701,7 @@ roiExtractor
 """""""""""
 * rois：Tensor类型，表示所有的rois。
 * target_lvls：Tensor类型，表示roi对应哪层feature map。
-* feat0：Tensor类型，表示第0层feature map。
-* feat1：Tensor类型，表示第1层feature map。
-* feat2：Tensor类型，表示第2层feature map。
-* feat3：Tensor类型，表示第3层feature map。
+* feats：List[Tensor]型，表示多层feature map。
 * PH：int类型，表示输出的height。
 * PW：int类型，表示输出的width。
 * sampling_ratio：int类型，表示每层feature map的sample ratio。

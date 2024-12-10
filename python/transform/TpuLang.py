@@ -2472,23 +2472,19 @@ def roll(input:Tensor,
 @assert_with_out_name
 def roiExtractor(rois: Tensor,
                  target_lvls: Tensor,
-                 feat0: Tensor,
-                 feat1: Tensor,
-                 feat2: Tensor,
-                 feat3: Tensor,
+                 feats: List[Tensor],
                  PH: int,
                  PW: int,
                  sampling_ratio: int,
                  list_spatial_scale: Union[int, List[int], Tuple[int]],
+                 num_layer: int,
                  out_name:str=None):
     if isinstance(list_spatial_scale, Tuple): list_spatial_scale = list(list_spatial_scale)
     list_spatial_scale = [1.0 / x for x in list_spatial_scale]
-    assert feat0.shape[1] == feat1.shape[1]
-    assert feat1.shape[1] == feat2.shape[1]
-    assert feat2.shape[1] == feat3.shape[1]
+    for i in range(len(feats) - 1):
+        assert feats[i].shape[1] == feats[i+1].shape[1]
 
     roi_num = rois.shape[0]
-    feat = [feat0, feat1, feat2, feat3]
     o_dtype = rois.dtype
 
     pad = Tensor(dtype=o_dtype, shape=[roi_num, 1], data=np.zeros([roi_num, 1], dtype=np.float32))
@@ -2509,8 +2505,8 @@ def roiExtractor(rois: Tensor,
     Concat_out = Tensor(dtype=o_dtype, name=out_name+"_Concat")
     TpuLang.insert_op("top.Concat", inputs=[pad, Slice_out], outputs=[Concat_out], params=Concat_attr)
 
-    layers = 4
-    out_shape = [roi_num, feat0.shape[1], PH, PW]
+    layers = num_layer
+    out_shape = [roi_num, feats[0].shape[1], PH, PW]
     roi_feats = Tensor(dtype=o_dtype, shape=list(out_shape), data=np.zeros(out_shape, dtype=np.float32))
 
     ScatterND_outputs = [Tensor(dtype=o_dtype, name=out_name+"_ScatterND_{}".format(i)) for i in range(layers)]
@@ -2551,7 +2547,7 @@ def roiExtractor(rois: Tensor,
             "align_corners": Attr(False, "bool"),
         }
         RoiAlign_out = Tensor(dtype=o_dtype, name=out_name+"_RoiAlign_{}".format(i))
-        TpuLang.insert_op("top.RoiAlign", inputs=[feat[i], Squeeze_out], outputs=[RoiAlign_out], params=RoiAlign_attr)
+        TpuLang.insert_op("top.RoiAlign", inputs=[feats[i], Squeeze_out], outputs=[RoiAlign_out], params=RoiAlign_attr)
 
         if i == 0:
             TpuLang.insert_op("top.ScatterND", inputs=[roi_feats, NonZero_out, RoiAlign_out], outputs=[ScatterND_outputs[i]])

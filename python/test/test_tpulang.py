@@ -4337,41 +4337,37 @@ class TPULANG_IR_TESTER(object):
     def test_RoiExtractor(self, case_name):
         """test_RoiExtractor"""
         @tpulang(self.chip)
-        def _test_RoiExtractor(input0_shape,
-                               input1_shape,
-                               input2_shape,
-                               input3_shape,
-                               input4_shape,
-                               input5_shape,
+        def _test_RoiExtractor(rois_shape,
+                               lvls_shape,
+                               feats_shape,
                                PH: int,
                                PW: int,
                                sampling_ratio: int,
                                list_spatial_scale: List[int],
+                               num_layer: int,
                                is_quantized=False):
-            rois = rand_data(input0_shape, "float32")
-            target_lvls = rand_data(input1_shape, "int32", min=0, max=4, int_satu=True)
-            feat0 = rand_data(input2_shape, "float32")
-            feat1 = rand_data(input3_shape, "float32")
-            feat2 = rand_data(input4_shape, "float32")
-            feat3 = rand_data(input5_shape, "float32")
-            x0 = tpul.Tensor(dtype="float32", shape=list(input0_shape), data=rois)
-            x1 = tpul.Tensor(dtype="int32", shape=list(input1_shape), data=target_lvls)
-            x2 = tpul.Tensor(dtype="float32", shape=list(input2_shape), data=feat0)
-            x3 = tpul.Tensor(dtype="float32", shape=list(input3_shape), data=feat1)
-            x4 = tpul.Tensor(dtype="float32", shape=list(input4_shape), data=feat2)
-            x5 = tpul.Tensor(dtype="float32", shape=list(input5_shape), data=feat3)
+            rois = rand_data(rois_shape, "float32")
+            target_lvls = rand_data(lvls_shape, "int32", min=0, max=num_layer, int_satu=True)
+            feats = []
+            for i in range(len(feats_shape)):
+                feat = rand_data(feats_shape[i], "float32")
+                x = tpul.Tensor(dtype="float32", shape=list(feats_shape[i]), data=feat)
+                feats.append(x)
 
-            y = tpul.roiExtractor(rois=x0,
-                                  target_lvls=x1,
-                                  feat0=x2, feat1=x3,
-                                  feat2=x4, feat3=x5,
+            rois = tpul.Tensor(dtype="float32", shape=list(rois_shape), data=rois)
+            target_lvls = tpul.Tensor(dtype="int32", shape=list(lvls_shape), data=target_lvls)
+
+            y = tpul.roiExtractor(rois=rois,
+                                  target_lvls=target_lvls,
+                                  feats=feats,
                                   PH=PH, PW=PW,
                                   sampling_ratio=sampling_ratio,
-                                  list_spatial_scale=list_spatial_scale)
-            self.compile_and_check(self.unique_name(case_name), [x0, x1, x2, x3, x4, x5],
+                                  list_spatial_scale=list_spatial_scale,
+                                  num_layer=num_layer)
+            self.compile_and_check(self.unique_name(case_name), [rois, target_lvls] + feats,
                                    [y], is_quantized=is_quantized)
 
-        _test_RoiExtractor([761,7], [761], [1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40], 7, 7, 2, [4,8,16,32])
+        _test_RoiExtractor([761,7], [761], [[1,256,364,640], [1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32,64], 5)
 
     #######################################################################
     # Error Case: some error case

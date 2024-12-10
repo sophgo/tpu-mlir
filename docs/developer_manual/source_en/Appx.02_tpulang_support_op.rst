@@ -3776,10 +3776,7 @@ Definition
 
         def roiExtractor(rois: Tensor,
                          target_lvls: Tensor,
-                         feat0: Tensor,
-                         feat1: Tensor,
-                         feat2: Tensor,
-                         feat3: Tensor,
+                         feats: List[Tensor],
                          PH: int,
                          PW: int,
                          sampling_ratio: int,
@@ -3794,10 +3791,7 @@ Parameters
 """""""""""
 * rois: Tensor type, representing all the ROIs.
 * target_lvls: Tensor type, representing which level of feature map each ROI corresponds to.
-* feat0: Tensor type, representing the feature map at level 0.
-* feat1: Tensor type, representing the feature map at level 1.
-* feat2: Tensor type, representing the feature map at level 2.
-* feat3: Tensor type, representing the feature map at level 3.
+* feats: List[Tensor], representing all feature maps.
 * PH: Int type, representing the height of the output.
 * PW: Int type, representing the width of the output.
 * sampling_ratio: Int type, representing the sample ratio for each level of the feature maps.
