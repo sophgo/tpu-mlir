@@ -166,9 +166,13 @@ It is recommended to use the toolchain software in a docker environment, see :re
 .. code-block:: shell
 
    $ docker pull sophgo/tpuc_dev:v3.2
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
-The ``--rm`` parameter ensures that the container is automatically removed after exiting. If you want to keep the container after it exits, simply remove this parameter.
+If you want to keep the container after it exits, simply remove the ``--rm`` parameter:
+
+.. code-block:: shell
+
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2 --rm
 
 After running the command, it will be in a Docker container. You can the latest ``tpu-mlir`` wheel installation package from the SDK package provided by SOPHGO, such as ``tpu_mlir-*-py3-none-any.whl``. Install tpu_mlir in the Docker container:
 
@@ -219,6 +223,8 @@ Execute the following command to compile all the high priority test samples:
 
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt --priority_filter high
+
+Full compilation may require reserving more than 2T of space, please adjust according to actual conditions. The ``--clear_if_success`` parameter can be used to delete intermediate files after successful compilation, saving space.
 
 The following high priority models will be compiled (Due to continuous additions of models in the model-zoo, only a partial list of models is provided here):
 

@@ -166,9 +166,13 @@ Vid4 (可选)
 .. code-block:: shell
 
    $ docker pull sophgo/tpuc_dev:v3.2
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
 
-``--rm`` 参数会保证容器在退出后自动回收删除，如果要让容器不在退出后删除，请删除该参数。
+如果要让容器在退出后删除，可以添加 ``--rm`` 参数：
+
+.. code-block:: shell
+
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2 --rm
 
 运行命令后会处于Docker的容器中，从SOPHGO提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装TPU-MLIR:
 
@@ -215,6 +219,9 @@ Vid4 (可选)
 
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt --priority_filter high
+
+
+完整编译可能需要提前预留 2T 以上的空间，请根据实际情况调整。其中 ``--clear_if_success`` 参数可用于在编译成功后删除中间文件，节省空间。
 
 此时会编译以下高优先级模型（由于model-zoo的模型在持续添加中，这里只列出部分模型）：
 
