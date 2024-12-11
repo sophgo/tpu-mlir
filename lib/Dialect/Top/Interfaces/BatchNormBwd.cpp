@@ -80,6 +80,6 @@ void top::BatchNormBwdOp::shape_inference() {
   auto grad_out_shape = module::getShape(getGradOut());
   auto weight_shape   = module::getShape(getWeightOpt());
   module::setShapeOrVerify(getGradIn(), grad_out_shape);
-  module::setShapeOrVerify(getWeightGrad(), weight_shape);
-  module::setShapeOrVerify(getBiasGrad(), weight_shape);
+  module::setShapeOrVerify(getWeightGrad(), {1, weight_shape[0], 1, 1});
+  module::setShapeOrVerify(getBiasGrad(), {1, weight_shape[0], 1, 1});
 }

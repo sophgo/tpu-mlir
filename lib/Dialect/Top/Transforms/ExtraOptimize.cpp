@@ -42,7 +42,7 @@ public:
     // remove unuse output
     RewritePatternSet patterns(ctx);
     patterns.add<RemoveUnuseOutput<top::LSTMOp>, RemoveUnuseOutput<top::GRUOp>,
-                 patterns::FuseSameOp>(ctx);
+                 patterns::FuseSameOp, patterns::InputReshape>(ctx);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     // mark flops
     int64_t flops = 0;

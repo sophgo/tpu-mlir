@@ -131,7 +131,8 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
     return false;
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
-             ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp>(op)) {
+             ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp, WhereOp,
+             BatchNormBwdOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -758,7 +759,6 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
         get_layer_group(sub_group, base_groups[i], start_idx, end_idx, i);
         int64_t group_cost = MAX_COST;
         is_layer_group_valid(sub_group, true, &group_cost);
-
         return group_cost;
       };
 

@@ -25,6 +25,7 @@ export PATH=$PROJECT_ROOT/python/utils:$PATH
 export PATH=$PROJECT_ROOT/python/test:$PATH
 export PATH=$PROJECT_ROOT/python/samples:$PATH
 export PATH=$PROJECT_ROOT/third_party/customlayer/python:$PATH
+export PATH=$PROJECT_ROOT/python/tools/train/test:$PATH
 
 # ppl compiler path
 export PPL_PROJECT_ROOT=$INSTALL_PATH/ppl

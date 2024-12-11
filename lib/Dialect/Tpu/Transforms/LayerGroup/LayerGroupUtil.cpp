@@ -512,7 +512,6 @@ get_group_max_secs(const LgInfo &lg_info,
         auto stype = module::getStorageType(v);
         n_align = 32 / stype.getIntOrFloatBitWidth();
       }
-
       if (succeeded(lgOp.AllowDataSplit(0, lg_info.type))) {
         auto nsecs = ceiling_func(n, n_align);
         max_nsecs = std::min(max_nsecs, nsecs);
@@ -655,7 +654,6 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
       total_size += Arch::get_tensor_lmem_bytes(outs[i], out_n, out_c, out_d,
                                                 out_h, out_w);
     }
-
     // Need consider different backends
     int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES);
     shape_secs.nsecs =
@@ -668,7 +666,7 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
         int64_t cslice_per_npu = max_shape_secs.csecs / total_secs;
         shape_secs.csecs =
             std::max(ceiling_func(max_shape_secs.csecs, cslice_per_npu),
-                     shape_secs.csecs);
+                      shape_secs.csecs);
       }
       total_secs = ceiling_func(total_secs, shape_secs.csecs);
     }
@@ -762,7 +760,7 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
 
     // Need consider different backends
 	//Let's say the weights are also divided. In fact, the weights cannot be divided
-    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES); 
+    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES);
     if (non_weight_size <= 0) {
       fail_op = op;
       return false;

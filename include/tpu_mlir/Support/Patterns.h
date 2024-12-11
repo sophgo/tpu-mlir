@@ -26,6 +26,13 @@ struct FuseSameOp : public OpRewriterPatternEx3 {
                                     PatternRewriter &rewriter) const override;
 };
 
+struct InputReshape : public OpRewriterPatternEx3 {
+  InputReshape(MLIRContext *context)
+      : OpRewriterPatternEx3(context, "InputReshape", 1) {}
+  LogicalResult matchAndRewriteImpl(Operation *op,
+                                    PatternRewriter &rewriter) const override;
+};
+
 // if op =  op + op, fuse to one op. such as top::Reshape
 template <typename OpTy>
 struct FuseRepeatPattern : public OpRewriterPatternEx<OpTy> {

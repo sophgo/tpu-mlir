@@ -103,8 +103,8 @@ void top::BatchNormTrainOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   auto mean_shape  = module::getShape(getMean());
   module::setShapeOrVerify(getOutput(), input_shape);
-  module::setShapeOrVerify(getMeanOut(), mean_shape);
-  module::setShapeOrVerify(getSavedInvstd(), mean_shape);
-  module::setShapeOrVerify(getRunningMean(), mean_shape);
-  module::setShapeOrVerify(getRunningVar(), mean_shape);
+  module::setShapeOrVerify(getMeanOut(), {1, mean_shape[0], 1, 1});
+  module::setShapeOrVerify(getSavedInvstd(), {1, mean_shape[0], 1, 1});
+  module::setShapeOrVerify(getRunningMean(), {1, mean_shape[0], 1, 1});
+  module::setShapeOrVerify(getRunningVar(), {1, mean_shape[0], 1, 1});
 }

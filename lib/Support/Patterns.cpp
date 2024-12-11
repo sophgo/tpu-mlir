@@ -44,5 +44,33 @@ LogicalResult FuseSameOp::matchAndRewriteImpl(Operation *op,
   }
   return failure();
 }
+
+// for input of batchnormtrain and batchnormbwd
+// insert reshape (cxdtype) -> (1xcx1x1xdtype)
+LogicalResult
+InputReshape::matchAndRewriteImpl(Operation *op,
+                                  PatternRewriter &rewriter) const {
+  if (!isa<top::BatchNormBwdOp, top::BatchNormTrainOp>(op)) {
+    return failure();
+  }
+  bool reshape_insert = false;
+  for (int i = 0; i < op->getOperands().size(); i++) {
+    auto in = op->getOperand(i);
+    auto in_shape = module::getShape(in);
+    if (in_shape.size() == 1) {
+      auto reshape_v = rewriter.create<top::ReshapeOp>(
+          NameLoc::get(
+              rewriter.getStringAttr(module::getName(in).str() + "_reshape")),
+          RankedTensorType::get({1, in_shape[0], 1, 1},
+                                module::getElementType(in)),
+          in);
+      op->setOperand(i, reshape_v);
+      reshape_insert = true;
+    }
+  }
+
+  return reshape_insert ? success() : failure();
+}
+
 } // namespace patterns
 } // namespace tpu_mlir

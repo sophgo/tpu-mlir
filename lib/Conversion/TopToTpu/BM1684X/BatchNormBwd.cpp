@@ -17,31 +17,31 @@ static void LoweringBatchNormBwd(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
-  for(auto i = 0; i< nInputs; ++i){
+  for (auto i = 0; i < nInputs; ++i) {
     operands.push_back(op->getOperand(i));
   }
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
   std::vector<NamedAttribute> attrs;
-  for(auto &attr: op->getAttrs()){
+  for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
   std::vector<Type> new_types;
   new_types.reserve(3);
-  for(int i = 0; i < 3; i++){
+  for (int i = 0; i < 3; i++) {
     auto out = op.getResult(i);
-    if(type.isF16()){
+    if (type.isF16()) {
       new_types.push_back(getQuantF16Type(out));
-    } else if(type.isBF16()){
+    } else if (type.isBF16()) {
       new_types.push_back(getQuantBF16Type(out));
     } else {
       new_types.push_back(out.getType());
     }
   }
-  rewriter.replaceOpWithNewOp<tpu::BatchNormBwdOp>(op, new_types, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::BatchNormBwdOp>(op, new_types, operands,
+                                                   attrs);
   return;
 }
-
 
 void BatchNormBwdLowering::LoweringF32(PatternRewriter &rewriter,
                                        top::BatchNormBwdOp op) const {
