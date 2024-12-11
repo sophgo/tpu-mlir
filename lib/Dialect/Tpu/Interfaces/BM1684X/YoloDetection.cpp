@@ -94,6 +94,7 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.keep_top_k = getKeepTopk();
     spec.nms_threshold = getNmsThreshold().convertToDouble();
     spec.confidence_threshold = getObjThreshold().convertToDouble();
+    spec.agnostic_nms = (int)getAgnosticNms();
     auto anchors = module::getF64Array(getAnchors());
     for (uint32_t i = 0; i < anchors->size(); i++) {
       spec.anchors[i] = (float)(anchors->at(i));
