@@ -216,13 +216,13 @@ if __name__ == "__main__":
                          - bt (backtrace) means cut `num` operations back for each output_name;
                          - ft (forward trace) means cut `num` operation back for each input_name
                         """, default='io')
-    parser.add_argument("--num", type=int, help="model name")
+    parser.add_argument("--num", type=int, help="number of operations to be cut, only used for bt and ft mode")
     parser.add_argument("--input_names", type=str2list, default=list(),
-                        help="if set, will find names in model and set as real outputs")
+                        help="If set, will find names in model and set as real outputs")
     parser.add_argument("--output_names", type=str2list, default=list(),
-                        help="if set, will find names in model and set as real outputs")
+                        help="If set, will output names in model and set as real outputs")
     parser.add_argument("--ref_data", type=str, default= None,
-                        help="if set, will find names in model and set as real outputs")
+                        help="Reference data of the model after cutting. Dictionary stored as npz file.")
 
     args, unknown_args = parser.parse_known_args()
 

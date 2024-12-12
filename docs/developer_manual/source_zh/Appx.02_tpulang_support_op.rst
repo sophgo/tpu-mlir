@@ -584,7 +584,7 @@ deconv_int
 
     .. code-block:: python
 
-      def conv_int(input: Tensor,
+      def deconv_int(input: Tensor,
                    weight: Tensor,
                    bias: Tensor = None,
                    stride: List[int] = None,
@@ -600,7 +600,7 @@ deconv_int
 
 功能描述
 """""""""""
-二维卷积定点运算。可参考各框架下的二维卷积定义。
+二维反卷积定点运算。可参考各框架下的二维卷积定义。
 ::
 
   for c in channel
@@ -748,7 +748,7 @@ conv3d_quant
 
     .. code-block:: python
 
-      def conv_quant(input: Tensor,
+      def conv3d_quant(input: Tensor,
                    weight: Tensor,
                    bias: Tensor = None,
                    stride: List[int] = None,
