@@ -164,7 +164,8 @@ class OnnxTransformer(ModelTransformer):
                  dynamic=False,
                  shape_influencing_input_names: list = [],
                  dump_final_opt=True,
-                 op_custom_shape: dict = {}):
+                 op_custom_shape: dict = {},
+                 replace_topk_indices=False):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name,
@@ -179,7 +180,8 @@ class OnnxTransformer(ModelTransformer):
                                        dynamic=dynamic,
                                        shape_influencing_input_names=shape_influencing_input_names,
                                        dump_final_opt=dump_final_opt,
-                                       op_custom_shape=op_custom_shape)
+                                       op_custom_shape=op_custom_shape,
+                                       replace_topk_indices=replace_topk_indices)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference
@@ -333,7 +335,8 @@ def get_model_transform(args):
                                dynamic=args.dynamic,
                                shape_influencing_input_names=args.shape_influencing_input_names,
                                dump_final_opt=args.dump_final_opt,
-                               op_custom_shape=args.op_custom_shape)
+                               op_custom_shape=args.op_custom_shape,
+                               replace_topk_indices=args.replace_topk_indices)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                 args.output_names, preprocessor.to_dict(),
@@ -413,6 +416,9 @@ if __name__ == '__main__':
     parser.add_argument("--op_custom_shape", type=str, help="set custom shape for some op, like:\'{\"Range\":{\"/Range_output_0\":[2048],\"/Range_1_output_0\":[2048]}}\'")
     # ========== MaskRCNN Options ==============
     parser.add_argument("--enable_maskrcnn", action='store_true', help="if enable maskrcnn")
+    # ========== Replace Topk Options ==============
+    parser.add_argument("--replace_topk_indices", default=False, type=str2bool, help="replace topk indices with the correct onnx topk indices")
+
 
 
     # yapf: enable

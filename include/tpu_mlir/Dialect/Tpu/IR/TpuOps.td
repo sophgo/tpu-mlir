@@ -2368,7 +2368,8 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
     DefaultValuedAttr<BoolAttr, "true">:$sorted,
     DefaultValuedAttr<BoolAttr, "false">:$values_used_only,
     AnyTensorOrNone:$buffer_val,
-    AnyTensorOrNone:$buffer_idx
+    AnyTensorOrNone:$buffer_idx,
+    DefaultValuedAttr<BoolAttr, "false">:$replace_topk_indices
   );
   let results = (outs
     AnyTensorOrNone:$values,

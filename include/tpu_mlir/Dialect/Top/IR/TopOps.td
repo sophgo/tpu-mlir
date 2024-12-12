@@ -1389,7 +1389,8 @@ def Top_TopKOp:Top_Op<"TopK"> {
     DefaultValuedAttr<I64Attr, "-1">:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
     DefaultValuedAttr<BoolAttr, "true">:$sorted,
-    Optional<AnyTensor>:$kT
+    Optional<AnyTensor>:$kT,
+    DefaultValuedAttr<BoolAttr, "false">:$replace_topk_indices
   );
   let results = (outs
     AnyTensorOrNone:$values,

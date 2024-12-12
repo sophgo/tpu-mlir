@@ -117,7 +117,8 @@ class OnnxConverter(BaseConverter):
                  shape_influencing_input_names=[],
                  dynamic=False,
                  dump_final_opt=True,
-                 op_custom_shape: dict = {}):
+                 op_custom_shape: dict = {},
+                 replace_topk_indices=False):
         super().__init__()
 
         self.dynamic_shape_input_names = dynamic_shape_input_names
@@ -166,6 +167,7 @@ class OnnxConverter(BaseConverter):
                 self.preprocess_args = preprocess_args
         self.converted_nodes = list()
         self.subgraph_initializer = None
+        self.replace_topk_indices = replace_topk_indices
 
         self.onnxop_factory = {
             # NOTICE: Please add the Op alphabetically !!!
@@ -2171,7 +2173,8 @@ class OnnxConverter(BaseConverter):
                             largest=largest,
                             sorted=sorted,
                             loc=self.get_loc(loc_names),
-                            ip=self.mlir.insert_point)
+                            ip=self.mlir.insert_point,
+                            replace_topk_indices=self.replace_topk_indices)
         out_ops = [out_op.values, out_op.indices]
         for idx, need in enumerate(out_needs):
             if need:
