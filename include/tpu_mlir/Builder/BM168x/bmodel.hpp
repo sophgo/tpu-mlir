@@ -29,8 +29,8 @@ typedef struct {
   uint32_t magic;
   uint32_t header_size;
   uint32_t flatbuffers_size;
-  uint32_t binary_size;
-  uint32_t reserved[12];
+  uint64_t binary_size;
+  uint32_t reserved[11];
 } __attribute__((packed)) MODEL_HEADER_T;
 #else
 #pragma pack(push, 1)
@@ -38,8 +38,8 @@ typedef struct {
   uint32_t magic;
   uint32_t header_size;
   uint32_t flatbuffers_size;
-  uint32_t binary_size;
-  uint32_t reserved[12];
+  uint64_t binary_size;
+  uint32_t reserved[11];
 } MODEL_HEADER_T;
 #pragma pack(pop)
 #endif
