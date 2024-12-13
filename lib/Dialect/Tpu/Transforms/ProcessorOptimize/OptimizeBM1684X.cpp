@@ -4591,6 +4591,13 @@ public:
         }
       }
       if (std::abs(index_lv1 - index_lv0) != 1) return failure();
+
+      auto shape_0 = module::getShape(op.getInput());
+      auto shape_1 = module::getShape(nextOp.getInput());
+      if (shape_0.size() != shape_1.size()) return failure();
+      if (shape_0[index_lv0] != shape_0[index_lv1]) return failure();
+      if (shape_1[index_lv0] != shape_1[index_lv1]) return failure();
+
       std::vector<int64_t> new_offset(offset_lv0.size(), 0);
       new_offset[index_lv0] = offset_nonzero_lv0;
       new_offset[index_lv1] = offset_nonzero_lv1;
