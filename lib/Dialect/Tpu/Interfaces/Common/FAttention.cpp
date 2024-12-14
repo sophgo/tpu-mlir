@@ -51,7 +51,6 @@ LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
   }
   // do softmax
   int outer_dim = batch * q_head * M_q;
-  std::vector<float> sub_buffer(M_k, 0.0f);
 #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; i++) {
     int offset = i * M_k;
@@ -65,15 +64,16 @@ LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
       }
     }
     // exp(x- max), sum
+    std::vector<float> sub_buffer(M_k, 0.0f);
     float sum = 0;
     for (int j = 0; j < M_k; j++) {
       sub_buffer[j] = a16_f(qk_buffer[offset + j] - max);
       sub_buffer[j] = a16_f(std::exp(sub_buffer[j]));
-      sum = a16_f(sum + sub_buffer[j]);
+      sum = sum + sub_buffer[j];
     }
     // divided by sum
     for (int j = 0; j < M_k; j++) {
-      qk_buffer[offset + j] = a16_f(sub_buffer[j] * a16_f(1.0f / sum));
+      qk_buffer[offset + j] = a16_f(sub_buffer[j] * a16_f(1.0f / a16_f(sum)));
     }
   }
   // * V
