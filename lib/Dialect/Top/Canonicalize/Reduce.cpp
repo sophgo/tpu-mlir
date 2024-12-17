@@ -108,6 +108,11 @@ struct ReduceFusePattern : public OpRewriterPatternEx<ReduceOp> {
     if (!formerOp->getResult(0).hasOneUse()) {
       return failure();
     }
+    auto formerOpShape = module::getShape(formerOp.getInput());
+    auto formerOpDims = formerOpShape.size();
+    if (formerOpShape[formerOpDims - 1] * formerOpShape[formerOpDims - 2] >= 65536) {
+      return failure();
+    }
     auto axis_list_former = module::getI64Array(formerOp.getAxes());
     auto axis_list_current = module::getI64Array(op.getAxes());
     int axis_num_former = axis_list_former->size();
