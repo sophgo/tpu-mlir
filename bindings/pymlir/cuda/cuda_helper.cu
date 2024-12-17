@@ -195,43 +195,45 @@ void mulInt8(void *a, void *b, void *o, int n0, int c0, int h0, int w0, int n1,
   }
 }
 
-void addInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-             int shift0, int shift1, bool a_sign, bool b_sign, bool o_sign,
-             int size, bool relu) {
+void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+               int shift0, int shift1, bool a_sign, bool b_sign, bool o_sign,
+               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   if (a_sign && b_sign && o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((int8_t *)input0, (int8_t *)input1,
-                                          (int8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   } else if (!a_sign && b_sign && o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((uint8_t *)input0, (int8_t *)input1,
-                                          (int8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   } else if (a_sign && !b_sign && o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((int8_t *)input0, (uint8_t *)input1,
-                                          (int8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (uint8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   } else if (a_sign && b_sign && !o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((int8_t *)input0, (int8_t *)input1,
-                                          (uint8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (int8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   } else if (!a_sign && !b_sign && o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((uint8_t *)input0, (uint8_t *)input1,
-                                          (int8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (uint8_t *)input1, (int8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   } else if (!a_sign && b_sign && !o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((uint8_t *)input0, (int8_t *)input1,
-                                          (uint8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (int8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   } else if (a_sign && !b_sign && !o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((int8_t *)input0, (uint8_t *)input1,
-                                          (uint8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, (uint8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   } else if (!a_sign && !b_sign && !o_sign) {
-    g_addInt8<<<num_blocks, block_size>>>((uint8_t *)input0, (uint8_t *)input1,
-                                          (uint8_t *)output, mul0, mul1, shift0,
-                                          shift1, size, relu);
+    g_add4DInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, (uint8_t *)input1, (uint8_t *)output, mul0, mul1,
+        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   }
 }
 
@@ -619,13 +621,15 @@ void cvQuantInt8(void *input, void *output, float scale, int size,
   }
 }
 
-void cvAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-               int shift, int size, bool relu) {
+void cvAdd4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+                 int shift, bool relu, int n0, int c0, int h0, int w0, int n1,
+                 int c1, int h1, int w1, int on, int oc, int oh, int ow) {
+  int size = on * oc * oh * ow;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  g_cvAddInt8<<<num_blocks, block_size>>>((int8_t *)input0, (int8_t *)input1,
-                                          (int8_t *)output, mul0, mul1, shift,
-                                          size, relu);
+  g_cvAdd4DInt8<<<num_blocks, block_size>>>(
+      (int8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1, shift,
+      relu, n0, c0, h0, w0, n1, c1, h1, w1, on, oc, oh, ow);
 }
 
 void cvMulShiftInt8(void *input, void *output, int multiplier, int shift,

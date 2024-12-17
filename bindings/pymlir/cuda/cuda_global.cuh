@@ -191,22 +191,38 @@ __global__ void g_mulInt8(T0 *a, T1 *b, T2 *out, int n0, int c0, int h0, int w0,
 }
 
 template <typename T0, typename T1, typename T2>
-__global__ void g_addInt8(T0 *a, T1 *b, T2 *out, int32_t mul0, int32_t mul1,
-                          int shift0, int shift1, int size, bool relu) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < size) {
-    int32_t a_data = static_cast<int32_t>(a[idx]) * mul0;
+__global__ void g_add4DInt8(T0 *a, T1 *b, T2 *out, int32_t mul0, int32_t mul1,
+                            int shift0, int shift1, bool relu, int n0, int c0,
+                            int h0, int w0, int n1, int c1, int h1, int w1,
+                            int on, int oc, int oh, int ow) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int idx_n0 = idx_n % n0;
+    int idx_c0 = idx_c % c0;
+    int idx_h0 = idx_h % h0;
+    int idx_w0 = idx_w % w0;
+    int idx_0 = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_n1 = idx_n % n1;
+    int idx_c1 = idx_c % c1;
+    int idx_h1 = idx_h % h1;
+    int idx_w1 = idx_w % w1;
+    int idx_1 = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
+    int32_t a_data = static_cast<int32_t>(a[idx_0]) * mul0;
     a_data = (a_data + (1 << (shift0 - 1))) >> shift0;
-    int32_t b_data = static_cast<int32_t>(b[idx]) * mul1;
+    int32_t b_data = static_cast<int32_t>(b[idx_1]) * mul1;
     b_data = (b_data + (1 << (shift1 - 1))) >> shift1;
     a_data = a_data + b_data;
     if (std::is_same<T2, int8_t>::value) {
       int32_t min_ = relu ? 0 : -128;
       a_data = max(min_, min(127, a_data));
-      out[idx] = static_cast<int8_t>(a_data);
+      out[dst_idx] = static_cast<int8_t>(a_data);
     } else {
       a_data = max(0, min(255, a_data));
-      out[idx] = static_cast<uint8_t>(a_data);
+      out[dst_idx] = static_cast<uint8_t>(a_data);
     }
   }
 }
@@ -780,15 +796,31 @@ __global__ void g_cvBF16ScaleToInt8(uint16_t *input, int8_t *output,
   }
 }
 
-__global__ void g_cvAddInt8(int8_t *a, int8_t *b, int8_t *out, int32_t mul0,
-                            int32_t mul1, int shift, int size, bool relu) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < size) {
-    int32_t temp = (int32_t)a[idx] * mul0 + (int32_t)b[idx] * mul1;
+__global__ void g_cvAdd4DInt8(int8_t *a, int8_t *b, int8_t *out, int32_t mul0,
+                              int32_t mul1, int shift, bool relu, int n0,
+                              int c0, int h0, int w0, int n1, int c1, int h1,
+                              int w1, int on, int oc, int oh, int ow) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int idx_n0 = idx_n % n0;
+    int idx_c0 = idx_c % c0;
+    int idx_h0 = idx_h % h0;
+    int idx_w0 = idx_w % w0;
+    int idx_0 = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_n1 = idx_n % n1;
+    int idx_c1 = idx_c % c1;
+    int idx_h1 = idx_h % h1;
+    int idx_w1 = idx_w % w1;
+    int idx_1 = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
+    int32_t temp = (int32_t)a[idx_0] * mul0 + (int32_t)b[idx_1] * mul1;
     temp = (temp + (1 << (shift - 1))) >> shift;
     int32_t min_ = relu ? 0 : -128;
     temp = max(min_, min(127, temp));
-    out[idx] = static_cast<int8_t>(temp);
+    out[dst_idx] = static_cast<int8_t>(temp);
   }
 }
 

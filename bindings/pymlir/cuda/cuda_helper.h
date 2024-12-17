@@ -74,9 +74,10 @@ void mulInt8(void *a, void *b, void *o, int n0, int c0, int h0, int w0, int n1,
              bool qdm, bool relu);
 
 // add: i8 * i32 >> s0 + i8 * i32 >> s1 = int8 (half away from zero)
-void addInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-             int shift0, int shift1, bool sign0, bool sign1, bool sign2,
-             int size, bool relu);
+void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+               int shift0, int shift1, bool sign0, bool sign1, bool sign2,
+               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2);
 
 void neg(void *input, void *output, int size, data_type_t type);
 // zero pad
@@ -158,8 +159,9 @@ void cvMulShiftInt8(void *input, void *output, int multiplier, int shift,
                     int size);
 
 // add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
-void cvAddInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-               int shift, int size, bool relu);
+void cvAdd4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+                 int shift, bool relu, int n0, int c0, int h0, int w0, int n1,
+                 int c1, int h1, int w1, int on, int oc, int oh, int ow);
 
 void cvLutSlope(void *data, void *table0, void *table1, int num, float scale,
                 float offset);

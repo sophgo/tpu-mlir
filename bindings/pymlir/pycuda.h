@@ -94,6 +94,7 @@ private:
   void cudaSqueezeOp(tpu::SqueezeOp op);
   void cudaTileOp(tpu::TileOp op);
   void cudaUpsampleOp(tpu::UpsampleOp op);
+  void cudaUnsqueezeOp(tpu::UnsqueezeOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

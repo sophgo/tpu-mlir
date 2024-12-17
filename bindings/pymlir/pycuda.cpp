@@ -242,6 +242,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaTileOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::UpsampleOp>(op)) {
           cudaUpsampleOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::UnsqueezeOp>(op)) {
+          cudaUnsqueezeOp(tpuOp);
         } else {
           UNREACHABLE_OP("Not Implemented", op);
         }
