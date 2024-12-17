@@ -443,41 +443,21 @@ public:
   }
 };
 
-class MatMulMergeAddConstPattern : public OpRewriterPatternEx<tpu::AddConstOp> {
-public:
-  // using OpRewriterPatternEx::OpRewriterPatternEx;
-  MatMulMergeAddConstPattern(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::AddConstOp>(context,
-                                             "MatMulMergeAddConstPattern", 10) {
-  }
-  LogicalResult matchAndRewriteImpl(tpu::AddConstOp op,
-                                    PatternRewriter &rewriter) const override {
-    // temp result
-    if (auto matmulIpt =
-            dyn_cast<tpu::MatMulOp>(op.getInput().getDefiningOp())) {
-      op.replaceAllUsesWith(matmulIpt.getOperation());
-      rewriter.eraseOp(op);
-      return success();
-    }
-    return failure();
-  }
-};
-
 /**
- *
+ * Improve uArchRate of matmul: significant perf benefit in f16/bf16 case
  * A @ B = (B^T @ A^T)^T
  *
- * original input shape = (1, 1, M)
- * original right shape = (1, M, N)
- * original result shape = (1, 1, N)
- * step1. Matmul(input, right, bias) -> Permute(Matmul(right, Permute(input),
- * bias))
+ * original input shape = (1, 1, K)
+ * original weight shape = (1, K, N)
+ * original output shape = (1, 1, N)
+ * step1. Matmul(input, weight, bias) -> Reshape(Matmul(Transpose(weight),
+ * Reshape(input), bias))
  *
  *
  * after apply pattern:
- * new right shape = (1, N, M)
- * new input shape = (1, M, 1)
- * new result shape = (1, N, 1) = (1, 1, N)
+ * new weight shape = (1, N, K)
+ * new input shape = (1, K, 1)
+ * new output shape = (1, N, 1) -reshape-> (1, 1, N)
  */
 class MatmulUsePermutePattern : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
@@ -488,6 +468,13 @@ public:
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
     Value input = op.getInput();
+    if (!module::getElementType(input).isa<Float16Type, BFloat16Type>()) {
+      return failure();
+    }
+    if (op.getLeftTranspose() || op.getRightTranspose() ||
+        op.getOutputTranspose() || op.getHdimIsBatch()) {
+      return failure();
+    }
     std::vector<tpu::MatMulOp> sameMatmuls;
     auto inputShape = module::getShape(input);
     if (!isa<top::WeightOp>(op->getOperand(1).getDefiningOp()) ||
@@ -503,10 +490,6 @@ public:
             continue;
           }
           sameMatmuls.push_back(matmulOp);
-          // mmWeights.push_back(matmulOp.getRight());
-          if (isa<tpu::AddConstOp>(*(matmulOp->getUsers().begin()))) {
-            return failure();
-          }
         }
       } else {
         return failure();
@@ -519,27 +502,40 @@ public:
 
     for (auto matmul : sameMatmuls) {
       auto right = matmul.getRight();
+      auto right_name = module::getName(right).str();
       auto rightShape = module::getShape(right);
-      auto newRightType =
-          RankedTensorType::get(rightShape, module::getElementType(right));
-      right.setType(newRightType);
-      matmul.setOperand(0, right);
+      if (rightShape.size() != 2) {
+        return failure();
+      }
+      auto row = rightShape[0];
+      auto col = rightShape[1];
+      auto new_right_type =
+          RankedTensorType::get({col, row}, module::getElementType(right));
+      auto weight_data = right.getDefiningOp<top::WeightOp>().read<uint16_t>();
+      // transpose the weight data
+      auto trans_weight =
+          std::make_shared<std::vector<uint16_t>>(weight_data->size());
+      for (int i = 0; i < col; ++i) {
+        for (int j = 0; j < row; ++j) {
+          (*trans_weight)[i * row + j] = (*weight_data)[j * col + i];
+        }
+      }
+
+      auto new_right = top::WeightOp::create(matmul, right_name + "_trans",
+                                             *trans_weight, new_right_type);
+      matmul.setOperand(0, new_right);
     }
 
-    std::vector<NamedAttribute> attrs;
-    std::vector<int64_t> order = {0, 2, 1};
-    attrs.push_back(
-        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     rewriter.setInsertionPointAfter(input.getDefiningOp());
-    auto permute_op = rewriter.create<tpu::PermuteOp>(
+    auto in_reshape_op = rewriter.create<tpu::ReshapeOp>(
         NameLoc::get(
-            rewriter.getStringAttr(module::getName(input) + "_permute")),
+            rewriter.getStringAttr(module::getName(input) + "_reshape")),
         RankedTensorType::get({inputShape[0], inputShape[2], inputShape[1]},
                               module::getElementType(input)),
-        ValueRange{input, module::getNoneOp(op)}, attrs);
+        ValueRange{input, module::getNoneOp(op)});
 
     for (auto matmul : sameMatmuls) {
-      matmul.setOperand(1, permute_op.getOutput());
+      matmul.setOperand(1, in_reshape_op.getOutput());
 
       auto resultShape = module::getShape(matmul.getResult());
       // auto oriType = matmul.getResult().getType();
@@ -551,13 +547,15 @@ public:
 
       auto reshapeType = RankedTensorType::get(
           resultShape, module::getElementType(matmul.getResult()));
-      auto reshapeOp = rewriter.create<tpu::ReshapeOp>(
-          NameLoc::get(rewriter.getStringAttr(
-              module::getName(matmul.getOutput()) + "_reshape")),
-          reshapeType, ValueRange{matmul.getOutput()});
+      auto matmul_name = module::getName(matmul.getOutput());
+      module::setLoc(matmul.getResult(), NameLoc::get(rewriter.getStringAttr(
+                                             matmul_name + "_prereshape")));
+      auto mm_reshape_op = rewriter.create<tpu::ReshapeOp>(
+          NameLoc::get(rewriter.getStringAttr(matmul_name)), reshapeType,
+          ValueRange{matmul.getOutput()});
 
-      matmul.getOutput().replaceAllUsesExcept(reshapeOp.getOutput(),
-                                              {reshapeOp});
+      matmul.getOutput().replaceAllUsesExcept(mm_reshape_op.getOutput(),
+                                              {mm_reshape_op});
     }
 
     return success();
@@ -565,47 +563,71 @@ public:
 };
 
 /**
- * Matmul(input, right1, bias1) - \                                        / ...
- * Matmul(input, right2, bias2) -  | -> A X concat(B1..Bk) -> Slice x k -> - ...
- * Matmul(input, right3, bias3) - /                                        \ ...
+ * Use together with MatmulUsePermutePattern
+ *
+ * Matmul(weight1, input1, bias1) - \                                        / ...
+ * Matmul(weight2, input2, bias2) -  | -> concat(B1..Bn) X A -> Slice x n -> - ...
+ * Matmul(weight3, input3, bias3) - /                                        \ ...
  *
  */
-class MultipleSameLeftMatmulMergePattern
+class MultipleSameActivationMatmulMergePattern
     : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
-  MultipleSameLeftMatmulMergePattern(mlir::MLIRContext *context, int benefit)
+  MultipleSameActivationMatmulMergePattern(mlir::MLIRContext *context,
+                                           int benefit)
       : OpRewriterPatternEx<tpu::MatMulOp>(
-            context, "MultipleSameLeftMatmulMergePattern", benefit) {}
+            context, "MultipleSameActivationMatmulMergePattern", benefit) {}
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
     auto none = module::getNoneOp(op);
-    if (op->getUsers().empty() ||
-        isa<tpu::AddConstOp>(*(op->getUsers().begin()))) {
+    if (op->getUsers().empty()) {
       return failure();
     }
 
-    Value input = op.getOperands()[1];
+    auto input = op.getOperand(1);
+    if (!module::getElementType(input).isa<BFloat16Type, Float16Type>()) {
+      return failure();
+    }
+    if (isa<top::WeightOp>(input.getDefiningOp())) {
+      return failure();
+    }
+    auto inputShape = module::getShape(input);
+    if (inputShape.size() != 3 || inputShape[2] != 1 || inputShape[0] != 1) {
+      return failure();
+    }
+
+    // weight shape may differ
+    std::vector<int> weight_rows;
+    auto weight_col = inputShape[1];
     std::vector<tpu::MatMulOp> sameMatmuls;
     std::vector<Value> mmWeights;
     std::vector<Value> mmBiases;
 
-    std::vector<std::shared_ptr<std::vector<uint16_t>>> mmWeightOps_fp16;
-    std::vector<std::shared_ptr<std::vector<uint16_t>>> mmBiasOps_fp16;
+    std::vector<std::shared_ptr<std::vector<uint16_t>>> weight_data_set;
+    std::vector<std::shared_ptr<std::vector<uint16_t>>> bias_data_set;
     // Find all MatMulOps with the same input
+    bool is_first_mm = true;
+    Operation *first_mm = none;
     for (auto user : input.getUsers()) {
       if (auto matmulOp = dyn_cast<tpu::MatMulOp>(user)) {
-        if (matmulOp.getRight() == input &&
-            !op.getBias().getType().isa<NoneType>()) {
-          // TODO detect is Same Op
-          if (auto op = dyn_cast<top::WeightOp>(
+        if (matmulOp.getRight() == input && !module::isNone(op.getBias())) {
+          if (auto cur_weight_op = dyn_cast<top::WeightOp>(
                   (matmulOp.getOperands()[0]).getDefiningOp())) {
-            mmWeightOps_fp16.push_back(op.read<uint16_t>());
-            mmBiasOps_fp16.push_back(
+            if (is_first_mm) {
+              is_first_mm = false;
+              first_mm = user;
+            } else if (!module::areAttributesEqual(first_mm, user)) {
+              return failure();
+            }
+            weight_rows.push_back(
+                module::getShape(cur_weight_op.getResult())[0]);
+            weight_data_set.push_back(cur_weight_op.read<uint16_t>());
+            bias_data_set.push_back(
                 cast<top::WeightOp>((matmulOp.getBias()).getDefiningOp())
                     .read<uint16_t>());
             sameMatmuls.push_back(matmulOp);
-            mmWeights.push_back(matmulOp.getOperands()[0]);
+            mmWeights.push_back(matmulOp.getOperand(0));
             mmBiases.push_back(matmulOp.getBias());
           } else {
             return failure();
@@ -623,62 +645,58 @@ public:
       return failure();
     }
 
-    auto inputShape = module::getShape(input);
-    if (inputShape[2] != 1) {
-      return failure();
-    }
-
-    auto weightShape = module::getShape(op.getOperands()[0]); // actual weight
-    // auto biasShape = module::getShape(op.getBias());
-
     rewriter.setInsertionPointAfter(input.getDefiningOp());
-    // step1. concat weight, get shape (size*K) x N
-    std::string weightName =
-        module::getName(op.getOperands()[0]).str() + "_merge_right";
-    long newweight_row_size = weightShape[1] * sameMatmuls.size();
-    auto weightType =
-        RankedTensorType::get({1, newweight_row_size, weightShape[0]},
+    // step1. concat weight, get shape (size*N) x K
+    std::string weight_name =
+        module::getName(op.getOperands()[0]).str() + "_merged_weight";
+    auto new_weight_row =
+        std::accumulate(weight_rows.begin(), weight_rows.end(), 0);
+    auto weight_type =
+        RankedTensorType::get({new_weight_row, weight_col},
                               module::getElementType(op.getOperands()[0]));
-    auto weight_size = weightType.getNumElements();
-    auto weightCoeff = std::make_shared<std::vector<uint16_t>>(weight_size, 0);
-    // TOTO ：use efficient copy method ; check relative order of coeff
-    for (int row_idx = 0; row_idx < newweight_row_size; row_idx++)
-      for (int col_idx = 0; col_idx < weightShape[0]; col_idx++) {
-        weightCoeff->at(row_idx * weightShape[0] + col_idx) =
-            mmWeightOps_fp16[row_idx / weightShape[1]]->at(
-                col_idx * weightShape[1] + row_idx % weightShape[1]);
-      }
+    auto weight_size = weight_type.getNumElements();
+    auto weight_data = std::make_shared<std::vector<uint16_t>>(weight_size, 0);
+
+    int offset = 0;
+    for (int i = 0; i < weight_rows.size(); i++) {
+      std::copy_n(weight_data_set[i]->begin(), weight_rows[i] * weight_col,
+                  weight_data->begin() + offset);
+      offset += weight_rows[i] * weight_col;
+    }
+    offset = 0;
     auto wret = module::weightFile().addTensor(
-        weightName, (uint16_t *)weightCoeff->data(), weightType);
+        weight_name, (uint16_t *)weight_data->data(), weight_type);
     assert(succeeded(wret));
-    auto weight_op = rewriter.create<top::WeightOp>(
-        NameLoc::get(rewriter.getStringAttr(weightName)), weightType,
+    auto weight_value = rewriter.create<top::WeightOp>(
+        NameLoc::get(rewriter.getStringAttr(weight_name)), weight_type,
         ValueRange{});
 
-    // step2. concat bias, get shape (size*K)
-    std::string biasName = module::getName(op.getBias()).str() + "_merge_bias";
-    auto biasType = RankedTensorType::get({newweight_row_size},
-                                          module::getElementType(op.getBias()));
-    auto bias_size = biasType.getNumElements();
-    auto biasCoeff = std::make_shared<std::vector<uint16_t>>(bias_size, 0);
-    for (int col_idx = 0; col_idx < newweight_row_size; col_idx++) {
-      biasCoeff->at(col_idx) = mmBiasOps_fp16[col_idx / weightShape[1]]->at(
-          col_idx % weightShape[1]);
+    // step2. concat bias, get shape (size*N)
+    std::string bias_name =
+        module::getName(op.getBias()).str() + "_merged_bias";
+    auto bias_type = RankedTensorType::get(
+        {new_weight_row}, module::getElementType(op.getBias()));
+    auto bias_size = bias_type.getNumElements();
+    auto bias_data = std::make_shared<std::vector<uint16_t>>(bias_size, 0);
+    for (int i = 0; i < weight_rows.size(); i++) {
+      std::copy_n(bias_data_set[i]->begin(), weight_rows[i],
+                  bias_data->begin() + offset);
+      offset += weight_rows[i];
     }
     auto bret = module::weightFile().addTensor(
-        biasName, (uint16_t *)biasCoeff->data(), biasType);
+        bias_name, (uint16_t *)bias_data->data(), bias_type);
     assert(succeeded(bret));
-    auto bias_op = rewriter.create<top::WeightOp>(
-        NameLoc::get(rewriter.getStringAttr(biasName)), biasType, ValueRange{});
-
-    // step3. create new large MatMulOp, W(size*K x N) @ Ipt(1 x N x 1) +
-    // B(size*K) => R(1 x size*K)
+    auto bias_value = rewriter.create<top::WeightOp>(
+        NameLoc::get(rewriter.getStringAttr(bias_name)), bias_type,
+        ValueRange{});
+    // step3. create new large MatMulOp, W(N_new x K) @ Ipt(1 x K x 1) +
+    // B(N_new) => R(1 x N_new)
     auto newMatmulOp = rewriter.create<tpu::MatMulOp>(
-        op.getLoc(),
-        RankedTensorType::get({1, newweight_row_size, 1},
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(op.getOutput()).str() + "_merged")),
+        RankedTensorType::get({1, new_weight_row, 1},
                               module::getElementType(op.getOutput())),
-        ValueRange{weight_op.getResult(), input, none, none, none},
-        op->getAttrs());
+        ValueRange{weight_value, input, none, none, none}, op->getAttrs());
 
     auto resultShape = module::getShape(newMatmulOp.getResult());
     rewriter.setInsertionPointAfter(newMatmulOp);
@@ -694,22 +712,17 @@ public:
         module::getName(reshapeOp.getOperation()).str() + "_add"));
     auto add_op = rewriter.create<tpu::AddOp>(
         add_loc, reshapeType,
-        mlir::ValueRange{reshapeOp.getOutput(), bias_op.getOutput()});
+        mlir::ValueRange{reshapeOp.getOutput(), bias_value});
     // step4. slice each original MatMulOp
-    int64_t sliceOffset = 0;
     std::vector<Operation *> operands;
     std::vector<Operation *> reshape_ops;
-    auto lastSliceOp = none.getOperation();
+    auto sliceOffset = 0;
     for (size_t i = 0; i < sameMatmuls.size(); ++i) {
-      auto originalOp = sameMatmuls[i];
-      auto originalShape = module::getShape(originalOp.getOutput());
-
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({0, 1, 2})));
       attrs.push_back(rewriter.getNamedAttr(
-          "ends", rewriter.getI64ArrayAttr(
-                      {originalShape[0], originalShape[2], sliceOffset})));
+          "ends", rewriter.getI64ArrayAttr({1, 1, weight_rows[i]})));
       attrs.push_back(rewriter.getNamedAttr(
           "offset", rewriter.getI64ArrayAttr({0, 0, sliceOffset})));
       attrs.push_back(
@@ -717,20 +730,16 @@ public:
       rewriter.setInsertionPointAfter(add_op);
 
       auto slice_type = RankedTensorType::get(
-          {1, 1, originalShape[1]},
-          module::getElementType(add_op.getOperands()[0]));
+          {1, 1, weight_rows[i]}, module::getElementType(add_op.getOutput()));
       auto sliceOp = rewriter.create<tpu::SliceOp>(
-          originalOp.getLoc(), slice_type,
-          ValueRange{add_op.getResult(), none, none, none, none}, attrs);
-      module::setLocSuffix(sliceOp, std::to_string(i));
-      lastSliceOp = sliceOp;
+          sameMatmuls[i]->getLoc(), slice_type,
+          ValueRange{add_op.getOutput(), none, none, none, none}, attrs);
 
-      auto reshape_op = dyn_cast_or_null<tpu::ReshapeOp>(
-          *originalOp.getOutput().getUsers().begin());
+      auto reshape_op = dyn_cast<tpu::ReshapeOp>(
+          *sameMatmuls[i].getOutput().getUsers().begin());
       reshape_op.getOutput().replaceAllUsesWith(sliceOp.getResult());
-      reshape_ops.insert(reshape_ops.end(), originalOp->getUsers().begin(),
-                         originalOp->getUsers().end());
-      sliceOffset += originalShape[1];
+      reshape_ops.push_back(reshape_op);
+      sliceOffset += weight_rows[i];
     }
     for (auto op : reshape_ops) {
       rewriter.eraseOp(op);
@@ -4541,81 +4550,87 @@ class SwapDimMerge : public OpRewriterPatternEx<tpu::SwapDimInnerOp> {
 public:
   SwapDimMerge(mlir::MLIRContext *context, int benefit)
       : OpRewriterPatternEx<tpu::SwapDimInnerOp>(context, "SwapDimMerge",
-                                            benefit) {}
+                                                 benefit) {}
 
   LogicalResult matchAndRewriteImpl(tpu::SwapDimInnerOp op,
                                     PatternRewriter &rewriter) const override {
-      if (!(module::isMARS3())) {
-        return failure();
-      }
-
-      auto nextOp = dyn_cast<tpu::SwapDimInnerOp>(*op.getOutput().user_begin());
-      if (!nextOp || !nextOp->hasOneUse()) {
-        return failure();
-      }
-
-      auto offset_lv0 = *module::getI64Array(op.getOffset());
-      auto offset_lv1 = *module::getI64Array(nextOp.getOffset());
-      if (offset_lv0.size() !=  offset_lv1.size()) {
-          return failure();
-      }
-
-      int offset_nonzero_lv0 = 0;
-      int num_nonzero_lv0    = 0;
-      int index_lv0          = 0;
-      for (int i = 0; i < offset_lv0.size(); ++i) {
-        if(offset_lv0[i] > 0) num_nonzero_lv0 += 1;
-      }
-      if (num_nonzero_lv0 > 1)  return failure();
-
-      int offset_nonzero_lv1 = 0;
-      int num_nonzero_lv1    = 0;
-      int index_lv1          = 0;
-      for (int i = 0; i < offset_lv1.size(); ++i) {
-        if(offset_lv1[i] > 0) num_nonzero_lv1 += 1;
-      }
-      if (num_nonzero_lv1 > 1)  return failure();
-
-      for (int i = 0; i < offset_lv0.size(); ++i) {
-        if(offset_lv0[i] > 0) {
-          offset_nonzero_lv0 = offset_lv0[i];
-          index_lv0          = i;
-          break;
-        }
-      }
-      for (int i = 0; i < offset_lv1.size(); ++i) {
-        if(offset_lv1[i] > 0) {
-          offset_nonzero_lv1 = offset_lv1[i];
-          index_lv1          = i;
-          break;
-        }
-      }
-      if (std::abs(index_lv1 - index_lv0) != 1) return failure();
-
-      auto shape_0 = module::getShape(op.getInput());
-      auto shape_1 = module::getShape(nextOp.getInput());
-      if (shape_0.size() != shape_1.size()) return failure();
-      if (shape_0[index_lv0] != shape_0[index_lv1]) return failure();
-      if (shape_1[index_lv0] != shape_1[index_lv1]) return failure();
-
-      std::vector<int64_t> new_offset(offset_lv0.size(), 0);
-      new_offset[index_lv0] = offset_nonzero_lv0;
-      new_offset[index_lv1] = offset_nonzero_lv1;
-
-
-      std::vector<mlir::Value> operands(op->getOperands().begin(),
-                                          op->getOperands().end());
-
-      auto newSwapDimOp = rewriter.create<tpu::SwapDimInnerOp>(
-          nextOp->getLoc(), nextOp.getOutput().getType(),
-          operands, op->getAttrs());
-
-      newSwapDimOp.setOffsetAttr(rewriter.getI64ArrayAttr(new_offset));
-      rewriter.replaceOp(nextOp, newSwapDimOp.getResult());
-      rewriter.eraseOp(op);
-      return success();
+    if (!(module::isMARS3())) {
+      return failure();
     }
 
+    auto nextOp = dyn_cast<tpu::SwapDimInnerOp>(*op.getOutput().user_begin());
+    if (!nextOp || !nextOp->hasOneUse()) {
+      return failure();
+    }
+
+    auto offset_lv0 = *module::getI64Array(op.getOffset());
+    auto offset_lv1 = *module::getI64Array(nextOp.getOffset());
+    if (offset_lv0.size() != offset_lv1.size()) {
+      return failure();
+    }
+
+    int offset_nonzero_lv0 = 0;
+    int num_nonzero_lv0 = 0;
+    int index_lv0 = 0;
+    for (int i = 0; i < offset_lv0.size(); ++i) {
+      if (offset_lv0[i] > 0)
+        num_nonzero_lv0 += 1;
+    }
+    if (num_nonzero_lv0 > 1)
+      return failure();
+
+    int offset_nonzero_lv1 = 0;
+    int num_nonzero_lv1 = 0;
+    int index_lv1 = 0;
+    for (int i = 0; i < offset_lv1.size(); ++i) {
+      if (offset_lv1[i] > 0)
+        num_nonzero_lv1 += 1;
+    }
+    if (num_nonzero_lv1 > 1)
+      return failure();
+
+    for (int i = 0; i < offset_lv0.size(); ++i) {
+      if (offset_lv0[i] > 0) {
+        offset_nonzero_lv0 = offset_lv0[i];
+        index_lv0 = i;
+        break;
+      }
+    }
+    for (int i = 0; i < offset_lv1.size(); ++i) {
+      if (offset_lv1[i] > 0) {
+        offset_nonzero_lv1 = offset_lv1[i];
+        index_lv1 = i;
+        break;
+      }
+    }
+    if (std::abs(index_lv1 - index_lv0) != 1)
+      return failure();
+
+    auto shape_0 = module::getShape(op.getInput());
+    auto shape_1 = module::getShape(nextOp.getInput());
+    if (shape_0.size() != shape_1.size())
+      return failure();
+    if (shape_0[index_lv0] != shape_0[index_lv1])
+      return failure();
+    if (shape_1[index_lv0] != shape_1[index_lv1])
+      return failure();
+
+    std::vector<int64_t> new_offset(offset_lv0.size(), 0);
+    new_offset[index_lv0] = offset_nonzero_lv0;
+    new_offset[index_lv1] = offset_nonzero_lv1;
+
+    std::vector<mlir::Value> operands(op->getOperands().begin(),
+                                      op->getOperands().end());
+
+    auto newSwapDimOp = rewriter.create<tpu::SwapDimInnerOp>(
+        nextOp->getLoc(), nextOp.getOutput().getType(), operands,
+        op->getAttrs());
+
+    newSwapDimOp.setOffsetAttr(rewriter.getI64ArrayAttr(new_offset));
+    rewriter.replaceOp(nextOp, newSwapDimOp.getResult());
+    rewriter.eraseOp(op);
+    return success();
+  }
 };
 
 // reshape -> cast -> layernorm -> cast ==> cast -> layernorm -> cast -> reshape
@@ -4835,7 +4850,6 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 PermutePadSwap,
                 FitPermute2Hdim,
                 ErasePermuteAroundAdd,
-                MatMulMergeAddConstPattern,
                 PermuteMulconstSwap,
                 MatMulActiveMatMulPattern,
                 RotaryPosEmbPattern,
@@ -4861,7 +4875,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3);
   patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
   patterns->add<MatmulUsePermutePattern>(ctx, 4);
-  patterns->add<MultipleSameLeftMatmulMergePattern>(ctx, 3);
+  patterns->add<MultipleSameActivationMatmulMergePattern>(ctx, 3);
 }
 } // namespace tpu
 

@@ -2141,5 +2141,27 @@ bool isInMatMulGrpOp(Operation *op) {
   return false;
 }
 
+bool areAttributesEqual(mlir::Operation *op1, mlir::Operation *op2) {
+    auto attrs1 = op1->getAttrs();
+    auto attrs2 = op2->getAttrs();
+
+    if (attrs1.size() != attrs2.size()) {
+        return false;
+    }
+
+    llvm::DenseMap<mlir::StringRef, mlir::Attribute> attrsMap;
+    for (const auto &attr : attrs2) {
+        attrsMap[attr.getName()] = attr.getValue();
+    }
+
+    for (const auto &attr : attrs1) {
+        auto it = attrsMap.find(attr.getName());
+        if (it == attrsMap.end() || it->second != attr.getValue()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace module
 } // namespace tpu_mlir

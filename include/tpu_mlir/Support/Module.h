@@ -356,6 +356,12 @@ bool isOpSameCalc(Operation *op0, Operation *op1);
 bool isOpSameCalc(const std::vector<Operation *> &ops);
 
 bool isInMatMulGrpOp(Operation *op);
+
+//-----------------------------------------------------------------
+// Helper for op compare
+//-----------------------------------------------------------------
+bool areAttributesEqual(mlir::Operation *op1, mlir::Operation *op2);
+
 } // namespace module
 
 #define ASSERT_OP(COND, OP)                                                    \
