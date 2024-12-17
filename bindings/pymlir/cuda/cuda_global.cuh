@@ -824,6 +824,28 @@ __global__ void g_cvAdd4DInt8(int8_t *a, int8_t *b, int8_t *out, int32_t mul0,
   }
 }
 
+__global__ void g_cvPReluInt8(int8_t *input, int8_t *slope, int8_t *output,
+                              int outer_dim, int inner_dim, int num_slope,
+                              int multi_pos, int shift_pos, int shift_neg) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < outer_dim * inner_dim) {
+    int outer_idx = idx / inner_dim;
+    int slope_idx = outer_idx % num_slope;
+    int8_t data = input[idx];
+    if (data < 0) {
+      int32_t value = static_cast<int32_t>(data * slope[slope_idx]);
+      value = (value + (1 << (shift_neg - 1))) >> shift_neg; // half up
+      value = max(-128, min(127, value));
+      output[idx] = static_cast<int8_t>(value);
+    } else {
+      int32_t value = static_cast<int32_t>(data) * multi_pos;
+      value = (value + (1 << (shift_pos - 1))) >> shift_pos; // half up
+      value = max(-128, min(127, value));
+      output[idx] = static_cast<int8_t>(value);
+    }
+  }
+}
+
 __global__ void g_cvMulShiftInt8(int8_t *input, int8_t *output, int multiplier,
                                  int shift, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;

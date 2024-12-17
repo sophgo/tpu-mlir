@@ -163,6 +163,10 @@ void cvAdd4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                  int shift, bool relu, int n0, int c0, int h0, int w0, int n1,
                  int c1, int h1, int w1, int on, int oc, int oh, int ow);
 
+void cvPReluInt8(void *input, void *slope, void *output, int outer_dim,
+                 int inner_dim, int num_slope, int multi_pos, int shift_pos,
+                 int shift_neg);
+
 void cvLutSlope(void *data, void *table0, void *table1, int num, float scale,
                 float offset);
 void cvLutMantissa(void *input, void *output, void *table0, void *table1,

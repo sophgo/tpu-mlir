@@ -632,6 +632,16 @@ void cvAdd4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
       relu, n0, c0, h0, w0, n1, c1, h1, w1, on, oc, oh, ow);
 }
 
+void cvPReluInt8(void *input, void *slope, void *output, int outer_dim,
+                 int inner_dim, int num_slope, int multi_pos, int shift_pos,
+                 int shift_neg) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_cvPReluInt8<<<num_blocks, block_size>>>(
+      (int8_t *)input, (int8_t *)slope, (int8_t *)output, outer_dim, inner_dim,
+      num_slope, multi_pos, shift_pos, shift_neg);
+}
+
 void cvMulShiftInt8(void *input, void *output, int multiplier, int shift,
                     int size) {
   int num_blocks = CUDA_NUM_BLOCKS(size);

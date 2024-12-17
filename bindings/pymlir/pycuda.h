@@ -88,6 +88,7 @@ private:
   void cudaReshapeOp(tpu::ReshapeOp op);
   void cudaRequantIntAxisOp(tpu::RequantIntAxisOp op);
   void cudaPool2DOp(tpu::Pool2DOp op);
+  void cudaPReluOp(tpu::PReluOp op);
   void cudaPermuteOp(tpu::PermuteOp op);
   void cudaSliceOp(tpu::SliceOp op);
   void cudaSoftmaxOp(tpu::SoftmaxOp op);

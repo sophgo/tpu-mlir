@@ -230,6 +230,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaRequantIntAxisOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::Pool2DOp>(op)) {
           cudaPool2DOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::PReluOp>(op)) {
+          cudaPReluOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::PermuteOp>(op)) {
           cudaPermuteOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::SliceOp>(op)) {
