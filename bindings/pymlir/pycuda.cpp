@@ -238,6 +238,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaSoftmaxOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::SqueezeOp>(op)) {
           cudaSqueezeOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::TileOp>(op)) {
+          cudaTileOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::UpsampleOp>(op)) {
           cudaUpsampleOp(tpuOp);
         } else {

@@ -133,6 +133,8 @@ void print(void *data, int size, data_type_t type);
 void slice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
              int off1, int off2, int off3, int s0, int s1, int s2, int s3,
              int on, int oc, int oh, int ow, int tbytes);
+void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
+            int oh, int ow, int tbytes);
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
               data_type_t type);
 // src is i8, table has 256 value

@@ -335,7 +335,7 @@ def _mlir_inference_by_cuda(inputs: dict, mlir_file: str, dump_all: bool = False
             input = inputs[name]
         else:
             input = list(inputs.values())[0]
-        g_mlir_cuda.set_tensor(name, input.astype(np.float32), input.shape)
+        g_mlir_cuda.set_tensor(name, input.astype(np.float32))
     g_mlir_cuda.invoke(dump_all)
     return g_mlir_cuda.get_all_tensor()
 

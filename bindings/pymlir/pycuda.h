@@ -9,12 +9,12 @@
 
 #pragma once
 
-#include "pymlir.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Float16.h"
 #include "cuda/cuda_helper.h"
-#include <cudnn.h>
+#include "pymlir.h"
+#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include <cuda_runtime.h>
+#include <cudnn.h>
 
 // Error checking macros
 #define CHECK_CUDNN(status)                                                    \
@@ -92,6 +92,7 @@ private:
   void cudaSliceOp(tpu::SliceOp op);
   void cudaSoftmaxOp(tpu::SoftmaxOp op);
   void cudaSqueezeOp(tpu::SqueezeOp op);
+  void cudaTileOp(tpu::TileOp op);
   void cudaUpsampleOp(tpu::UpsampleOp op);
 
 private:

@@ -418,6 +418,14 @@ void slice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
                                         tbytes);
 }
 
+void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
+            int oh, int ow, int tbytes) {
+  int num_blocks = CUDA_NUM_BLOCKS(on * oc * oh * ow);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_tile4D<<<num_blocks, block_size>>>(src, dst, n, c, h, w, on, oc, oh, ow,
+                                       tbytes);
+}
+
 void mmF32(void *input, void *right, void *output, int m, int k, int n) {
   // Dimensions for blocks and grid
   int num_blocks = CUDA_NUM_BLOCKS(m * n);

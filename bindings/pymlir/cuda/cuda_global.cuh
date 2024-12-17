@@ -284,6 +284,23 @@ __global__ void g_slice4D(void *src, void *dst, int n, int c, int h, int w,
   }
 }
 
+__global__ void g_tile4D(void *src, void *dst, int n, int c, int h, int w,
+                         int on, int oc, int oh, int ow, int tbytes) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int in = idx_n % n;
+    int ic = idx_c % c;
+    int ih = idx_h % h;
+    int iw = idx_w % w;
+    int src_idx = ((in * c + ic) * h + ih) * w + iw;
+    d_copyElement(src, src_idx, dst, dst_idx, tbytes);
+  }
+}
+
 __global__ void g_copyAxis(void *src, void *dst, int outer_dim, int axis_dim,
                            int inner_dim, int offset, int num, int tbytes) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
