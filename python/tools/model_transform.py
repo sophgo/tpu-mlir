@@ -315,14 +315,14 @@ def get_model_transform(args):
         raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
     tool = None
     if args.enable_maskrcnn:
-        tool = MaskRCNNTransformer(args.model_name,
-                                   args.model_def,
-                                   args.model_extern,
-                                   args.input_shapes,
-                                   args.input_types,
-                                   args.output_names,
-                                   preprocessor.to_dict(),
-                                   path_yaml  =  args.path_yaml)
+        tool = MaskRCNNTransformer(model_name=args.model_name,
+                                   model_def=args.model_def,
+                                   model_extern=args.model_extern,
+                                   input_shapes=args.input_shapes,
+                                   input_types=args.input_types,
+                                   output_names=args.output_names,
+                                   preprocessor=preprocessor.to_dict(),
+                                   path_yaml=args.path_yaml)
     elif args.model_def.endswith('.onnx'):
         tool = OnnxTransformer(args.model_name,
                                args.model_def,
