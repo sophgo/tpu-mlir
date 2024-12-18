@@ -215,6 +215,7 @@ class ONNX_IR_TESTER(object):
             "TopK":         (self.test_TopK,          N, Y, Y, N, Y, N),
             "TopK2":        (self.test_TopK2,         N, Y, N, N, Y, N),
             "TopK4":        (self.test_TopK4,         N, N, N, Y, N, N),
+            "TopKSlice":    (self.test_TopKSlice,     N, Y, N, N, N, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y, Y),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N, Y, Y),
             # Only 1D shape is supported currently
@@ -5391,6 +5392,26 @@ class ONNX_IR_TESTER(object):
                                       case_name, [X], [Y_Index, Add_Value],
                                       initializer=[K, C])
         self.onnx_and_test(graph_def)
+
+    def test_TopKSlice(self, case_name):
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                k = 100
+                n = -10
+                dim = 2
+                values, indices = torch.topk(x, k, dim = dim)
+                v_slice = values[:, :, n:]
+                i_slice = indices[:, :, n:]
+                return v_slice + i_slice
+
+        x = torch.randn(10,5, 100).float()
+
+        self.torch_and_test(x, Model(), case_name)
+
 
     def test_QDQConv(self, case_name):
         oc = 32

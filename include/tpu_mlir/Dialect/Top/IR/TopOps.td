@@ -1396,6 +1396,7 @@ def Top_TopKOp:Top_Op<"TopK"> {
     AnyTensorOrNone:$values,
     AnyTensorOrNone:$indices
   );
+  let hasCanonicalizer=1;
 }
 
 def Top_TriluOp:Top_Op<"Trilu"> {
