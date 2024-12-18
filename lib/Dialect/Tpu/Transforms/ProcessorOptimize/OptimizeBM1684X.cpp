@@ -10,6 +10,7 @@
 #include "Common.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
+#include "tpu_mlir/Support/Float16.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -611,7 +612,9 @@ public:
     Operation *first_mm = none;
     for (auto user : input.getUsers()) {
       if (auto matmulOp = dyn_cast<tpu::MatMulOp>(user)) {
-        if (matmulOp.getRight() == input && !module::isNone(op.getBias())) {
+        if (matmulOp.getRight() == input &&
+            !module::isNone(matmulOp.getBias()) &&
+            isa<top::WeightOp>((matmulOp.getBias()).getDefiningOp())) {
           if (auto cur_weight_op = dyn_cast<top::WeightOp>(
                   (matmulOp.getOperands()[0]).getDefiningOp())) {
             if (is_first_mm) {
@@ -623,9 +626,25 @@ public:
             weight_rows.push_back(
                 module::getShape(cur_weight_op.getResult())[0]);
             weight_data_set.push_back(cur_weight_op.read<uint16_t>());
-            bias_data_set.push_back(
-                cast<top::WeightOp>((matmulOp.getBias()).getDefiningOp())
-                    .read<uint16_t>());
+            auto bias_op =
+                cast<top::WeightOp>((matmulOp.getBias()).getDefiningOp());
+            std::shared_ptr<std::vector<uint16_t>> bias_data;
+            if (module::getElementType(bias_op.getOutput())
+                    .isa<Float32Type>()) {
+              auto f32_bias = bias_op.read<float>();
+              auto count = f32_bias->size();
+              bias_data = std::make_shared<std::vector<uint16_t>>(count);
+#pragma omp parallel for schedule(static, omp_schedule(count))
+              for (uint32_t i = 0; i < count; i++) {
+                bias_data->at(i) =
+                    module::getElementType(input).isa<Float16Type>()
+                        ? f32_to_f16(f32_bias->at(i))
+                        : f32_to_bf16(f32_bias->at(i));
+              }
+            } else {
+              bias_data = bias_op.read<uint16_t>();
+            }
+            bias_data_set.push_back(bias_data);
             sameMatmuls.push_back(matmulOp);
             mmWeights.push_back(matmulOp.getOperand(0));
             mmBiases.push_back(matmulOp.getBias());
@@ -675,7 +694,7 @@ public:
     std::string bias_name =
         module::getName(op.getBias()).str() + "_merged_bias";
     auto bias_type = RankedTensorType::get(
-        {new_weight_row}, module::getElementType(op.getBias()));
+        {new_weight_row}, module::getElementType(op.getOperands()[0]));
     auto bias_size = bias_type.getNumElements();
     auto bias_data = std::make_shared<std::vector<uint16_t>>(bias_size, 0);
     for (int i = 0; i < weight_rows.size(); i++) {
@@ -715,7 +734,6 @@ public:
         mlir::ValueRange{reshapeOp.getOutput(), bias_value});
     // step4. slice each original MatMulOp
     std::vector<Operation *> operands;
-    std::vector<Operation *> reshape_ops;
     auto sliceOffset = 0;
     for (size_t i = 0; i < sameMatmuls.size(); ++i) {
       std::vector<NamedAttribute> attrs;
@@ -731,18 +749,20 @@ public:
 
       auto slice_type = RankedTensorType::get(
           {1, 1, weight_rows[i]}, module::getElementType(add_op.getOutput()));
-      auto sliceOp = rewriter.create<tpu::SliceOp>(
-          sameMatmuls[i]->getLoc(), slice_type,
-          ValueRange{add_op.getOutput(), none, none, none, none}, attrs);
+      auto slice_value =
+          rewriter
+              .create<tpu::SliceOp>(
+                  sameMatmuls[i]->getLoc(), slice_type,
+                  ValueRange{add_op.getOutput(), none, none, none, none}, attrs)
+              .getResult();
 
       auto reshape_op = dyn_cast<tpu::ReshapeOp>(
           *sameMatmuls[i].getOutput().getUsers().begin());
-      reshape_op.getOutput().replaceAllUsesWith(sliceOp.getResult());
-      reshape_ops.push_back(reshape_op);
+      reshape_op.getOutput().replaceAllUsesWith(slice_value);
+      auto ori_loc = reshape_op.getLoc();
+      rewriter.eraseOp(reshape_op);
+      slice_value.setLoc(ori_loc);
       sliceOffset += weight_rows[i];
-    }
-    for (auto op : reshape_ops) {
-      rewriter.eraseOp(op);
     }
 
     for (auto op : sameMatmuls) {
