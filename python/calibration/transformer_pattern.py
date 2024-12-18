@@ -160,10 +160,11 @@ class MatchPattern:
         else:
             self.mix_mode = args.fp_type
             if args.fp_type not in chip_support_mix_fp_type[self.chip]:
-                print('parameter error, fp_type:{args.fp_type} not support by {self.chip}')
+                print(f'parameter error, fp_type:{args.fp_type} not support by {self.chip}')
                 exit(1)
 
     def gen_qtable(self, fp_layer_list, flag):
+        print(f'The qtable has been generated in: {self.quantize_table} !!!')
         with open(self.quantize_table, "w") as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
