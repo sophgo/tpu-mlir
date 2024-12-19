@@ -37,13 +37,13 @@ bmodel_checker.py ./yolov5s_1684x_f16 ./yolov5s_bm1684x_f16_tpu_outputs.npz --no
 # bmodel_inference_combine
 # .dat as input and .npz as ref
 python $DIR/test_bmodel_dump_1.py
-npz_tool.py compare ./yolov5s_bm1684x_f16_tpu_outputs.npz ./soc_infer/bmodel_infer_yolov5s_bm1684x_f16_tpu_outputs_0.npz
+npz_tool.py compare ./yolov5s_bm1684x_f16_tpu_outputs.npz ./soc_infer/bmodel_infer_yolov5s_bm1684x_f16_tpu_outputs.npz
 # .npz as input and .npz as ref
 python $DIR/test_bmodel_dump_2.py
-npz_tool.py compare ./yolov5s_bm1684x_f16_tpu_outputs.npz ./soc_infer/bmodel_infer_yolov5s_bm1684x_f16_tpu_outputs_0.npz
+npz_tool.py compare ./yolov5s_bm1684x_f16_tpu_outputs.npz ./soc_infer/bmodel_infer_yolov5s_bm1684x_f16_tpu_outputs.npz
 # .dat as input and .mlir as ref
 python $DIR/test_bmodel_dump_3.py
-npz_tool.py compare ./yolov5s_bm1684x_f16_tpu_outputs.npz ./soc_infer/bmodel_infer_yolov5s_bm1684x_f16_tpu_outputs_0.npz
+npz_tool.py compare ./yolov5s_bm1684x_f16_tpu_outputs.npz ./soc_infer/bmodel_infer_yolov5s_bm1684x_f16_tpu_outputs.npz
 
 
 
