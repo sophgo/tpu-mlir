@@ -4871,7 +4871,7 @@ private:
 struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
   // using OpRewriterPatternEx::OpRewriterPatternEx;
 
- WhereBnbwdFusePattern(mlir::MLIRContext *context, int benifit)
+  WhereBnbwdFusePattern(mlir::MLIRContext *context, int benifit)
       : OpRewriterPatternEx<tpu::BatchNormBwdOp>(
             context, "WhereBnbwdFusePattern", benifit) {}
 
@@ -4879,15 +4879,15 @@ struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
                                     PatternRewriter &rewriter) const override {
     auto where_op =
         dyn_cast_or_null<tpu::WhereOp>(op.getOperand(0).getDefiningOp());
-    if(!where_op)
+    if (!where_op)
       return failure();
-    auto batchnormfwd_op =
-        dyn_cast_or_null<tpu::BatchNormTrainOp>(where_op.getOperand(0).getDefiningOp());
+    auto batchnormfwd_op = dyn_cast_or_null<tpu::BatchNormTrainOp>(
+        where_op.getOperand(0).getDefiningOp());
     // auto input_shape = module::getShape(where_op.getOperand(0));
     // if(input_shape.size() != 4 || input_shape[3] < 56)
     //   return failure();
     std::vector<Value> operands;
-    if(!batchnormfwd_op){
+    if (!batchnormfwd_op) {
       return failure();
       operands.push_back(where_op.getOperand(0));
     } else {
@@ -4896,7 +4896,7 @@ struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
     operands.push_back(where_op.getOperand(1));
     operands.push_back(op.getOperand(1));
     operands.push_back(op.getOperand(2));
-    if(!batchnormfwd_op){
+    if (!batchnormfwd_op) {
       operands.push_back(module::getNoneOp(op));
     } else {
       operands.push_back(batchnormfwd_op.getOperand(4));
@@ -4911,22 +4911,192 @@ struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
     }
     auto whereBnbwdOp = rewriter.create<tpu::WhereBnbwdOp>(
         op->getLoc(), new_types, operands, op->getAttrs());
-    whereBnbwdOp->setAttr("do_recompute", rewriter.getBoolAttr(batchnormfwd_op != NULL));
-    rewriter.replaceAllUsesWith(op->getResult(0),
-                                  whereBnbwdOp.getResult(0));
-    rewriter.replaceAllUsesWith(op->getResult(1),
-                                  whereBnbwdOp.getResult(1));
-    rewriter.replaceAllUsesWith(op->getResult(2),
-                                  whereBnbwdOp.getResult(2));
+    whereBnbwdOp->setAttr("do_recompute",
+                          rewriter.getBoolAttr(batchnormfwd_op != NULL));
+    rewriter.replaceAllUsesWith(op->getResult(0), whereBnbwdOp.getResult(0));
+    rewriter.replaceAllUsesWith(op->getResult(1), whereBnbwdOp.getResult(1));
+    rewriter.replaceAllUsesWith(op->getResult(2), whereBnbwdOp.getResult(2));
     return success();
   }
 };
+// conv => reshape(in0)+reshape(in1)+matmul(right_transpose=true)+reshape(out)
+// matmul extend do_relu from conv
+// condition: kh, kw = ih, iw and pad_shape is [0,0,0,0]
+struct ConvToMatMulPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
+  ConvToMatMulPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context, "ConvToMatMulPattern",
+                                           benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::Conv2DOp convOp,
+                                    PatternRewriter &rewriter) const override {
+    // get conv input
+    auto input = convOp.getInput();
+    auto filter = convOp.getFilter();
+    auto bias = convOp.getBias();
+    // get pad shape
+    auto pad_top =
+        convOp.getPadsAttr().getValue()[0].cast<mlir::IntegerAttr>().getInt();
+    auto pad_left =
+        convOp.getPadsAttr().getValue()[1].cast<mlir::IntegerAttr>().getInt();
+    auto pad_bottom =
+        convOp.getPadsAttr().getValue()[2].cast<mlir::IntegerAttr>().getInt();
+    auto pad_right =
+        convOp.getPadsAttr().getValue()[3].cast<mlir::IntegerAttr>().getInt();
+    // pad must be 0
+    if (pad_top != 0 || pad_left != 0 || pad_bottom != 0 || pad_right != 0) {
+      return failure();
+    }
+
+    // group must be 1 and weight is coeff and not merged and not
+    // use_3icOptimize
+    if (convOp.getGroup() != 1 || convOp.getWeightIsCoeff() != true ||
+        convOp.getCoeffMerged() || convOp.getUse_3icOptimize()) {
+      return failure();
+    }
+    // dialation must be 1
+    if (auto dilations = convOp.getDilations()) {
+      auto values = dilations.value().getValue();
+      if (values[0].cast<mlir::IntegerAttr>().getInt() != 1 ||
+          values[1].cast<mlir::IntegerAttr>().getInt() != 1) {
+        return failure();
+      }
+    }
+
+    // use_winograd must be 0
+    if (auto use_winograd = convOp.getUseWinograd()) {
+      if (use_winograd.value()) {
+        return failure();
+      }
+    }
+
+    // multiplier must be 1
+    if (auto multiplier = convOp.getMultiplier()) {
+      if (multiplier.value().getValue()[0].cast<mlir::IntegerAttr>().getInt() !=
+          1) {
+        return failure();
+      }
+    }
+
+    // rshift must be 0
+    if (auto rshift = convOp.getRshift()) {
+      if (rshift.value().getValue()[0].cast<mlir::IntegerAttr>().getInt() !=
+          0) {
+        return failure();
+      }
+    }
+
+    // do_leaky_relu must be 0
+    if (auto do_leaky_relu = convOp.getDoLeakyRelu()) {
+      if (do_leaky_relu.value()) {
+        return failure();
+      }
+    }
+
+    // get input shape
+    auto inputShape = module::getShape(input);
+    auto filterShape = module::getShape(filter);
+    // check shape.size()
+    if (inputShape.size() < 4 || filterShape.size() < 4) {
+      return failure();
+    }
+    // get nchw
+    auto batchSize = inputShape[0];
+    int64_t inChannel = inputShape[1];
+    int64_t inHeight = inputShape[2];
+    int64_t inWidth = inputShape[3];
+    int64_t outChannel = filterShape[0];
+    int64_t kernelHeight = filterShape[2];
+    int64_t kernelWidth = filterShape[3];
+    // condition: kh, kw = ih, iw
+    if (kernelHeight != inHeight || kernelWidth != inWidth) {
+      return failure();
+    }
+    if (!module::isBM1688()) {
+      return failure();
+    }
+    auto input_type = module::getStorageType(input);
+    // if (!input_type.isInteger(8)) {
+    if (input_type.isF16()) {
+      return failure();
+    }
+    // reshape input and filter
+    auto inputName = module::getName(input);
+    auto filterName = module::getName(filter);
+    auto outputName = module::getName(convOp.getOutput());
+    auto reshapeL_loc = NameLoc::get(rewriter.getStringAttr(
+        inputName.str() + outputName.str() + "_matmalL_reshape"));
+    auto reshapeR_loc = NameLoc::get(rewriter.getStringAttr(
+        filterName.str() + outputName.str() + "_matmalR_reshape"));
+    std::vector<int64_t> reshapeL_shape = {1, batchSize,
+                                           inChannel * inHeight * inWidth};
+    std::vector<int64_t> reshapeR_shape = {
+        1, outChannel, inChannel * kernelHeight * kernelWidth};
+    // std::vector<int64_t> reshapeL_shape = {1, batchSize, -1};
+    // std::vector<int64_t> reshapeR_shape = {1, outChannel, -1};
+    auto reshapeL_type = module::getTypeLike(input, reshapeL_shape);
+    auto reshapeR_type = module::getTypeLike(filter, reshapeR_shape);
+    rewriter.setInsertionPointAfter(convOp);
+    auto reshapeL_op = rewriter.create<tpu::ReshapeOp>(
+        reshapeL_loc, reshapeL_type, ValueRange{input});
+    rewriter.setInsertionPointAfter(reshapeL_op);
+    auto reshapeR_op = rewriter.create<tpu::ReshapeOp>(
+        reshapeR_loc, reshapeR_type, ValueRange{filter});
+    // matmul
+    auto none = module::getNoneOp(convOp);
+    auto matmul_loc =
+        module::getLocLike(reshapeR_op.getOutput(), "conv2matmul");
+    std::vector<int64_t> matmul_shape = {1, batchSize, outChannel};
+    auto matmul_type = RankedTensorType::get(
+        matmul_shape, module::getElementType(convOp.getOutput()));
+    rewriter.setInsertionPointAfter(reshapeR_op);
+    std::vector<NamedAttribute> attrs;
+    // right_transpose
+    attrs.push_back(
+        rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+    // do_relu
+    attrs.push_back(rewriter.getNamedAttr("do_relu", convOp.getDoReluAttr()));
+    // relu_limit
+    attrs.push_back(
+        rewriter.getNamedAttr("relu_limit", convOp.getReluLimitAttr()));
+    // kernel_zp
+    attrs.push_back(
+        rewriter.getNamedAttr("right_zp", convOp.getKernelZpAttr()));
+    // quant mode
+    attrs.push_back(
+        rewriter.getNamedAttr("quant_mode", convOp.getQuantModeAttr()));
+    // round_mode
+    attrs.push_back(
+        rewriter.getNamedAttr("round_mode", convOp.getRoundModeAttr()));
+
+    auto matmul_op = rewriter.create<tpu::MatMulOp>(
+        matmul_loc, matmul_type,
+        ValueRange{reshapeL_op.getOutput(), reshapeR_op.getOutput(), bias, none,
+                   none},
+        attrs);
+    // reshape output
+    std::vector<int64_t> reshape_matmul_shape = {batchSize, outChannel, 1, 1};
+    auto reshape_matmul_type = RankedTensorType::get(
+        reshape_matmul_shape, module::getElementType(matmul_op.getOutput()));
+    rewriter.setInsertionPointAfter(matmul_op);
+    auto reshape_matmul_op =
+        rewriter.create<tpu::ReshapeOp>(convOp.getLoc(), reshape_matmul_type,
+                                        ValueRange{matmul_op.getOutput()});
+    // rewrite
+    rewriter.replaceAllUsesWith(convOp.getOutput(),
+                                reshape_matmul_op.getOutput());
+    // rewriter.replaceAllUsesExcept(convOp.getOutput(),
+    // reshape_matmul_op.getOutput(), reshape_matmul_op);
+    rewriter.eraseOp(convOp);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<MatMulRequantIntFusion>(ctx, 10);
-  patterns->add<LargePadConvPattern>(ctx, 9);
+  patterns->add<LargePadConvPattern, ConvToMatMulPattern>(ctx, 9);
   // clang-format off
   patterns->add<MatMulHdimBatchPattern,
                 MatMulRemoveReshapePattern,
