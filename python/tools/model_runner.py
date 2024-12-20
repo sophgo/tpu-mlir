@@ -131,7 +131,10 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
             else:
                 input_shapes.append(i.data.shape)
         # i.data[:] = lowering(input, pdtype=i.dtype, pshape=i.data.shape,pzero_point=i.qzero_point, pscale=i.qscale)
-        i.data.reshape(-1)[:np.prod(input.shape)] = lowering(input, pdtype=i.dtype,
+        if list(input.shape) == []:
+            i.data[0] = input
+        else:
+            i.data.reshape(-1)[:np.prod(input.shape)] = lowering(input, pdtype=i.dtype,
                                                              pshape=input.shape, pzero_point=i.qzero_point, pscale=i.qscale).flatten()
 
     size = os.path.getsize(model_file)

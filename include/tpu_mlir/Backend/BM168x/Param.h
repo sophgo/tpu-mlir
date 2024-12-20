@@ -794,6 +794,7 @@ typedef struct scatter_elements_global_spec {
   int updates_dims;
   uint64_t intermediate_buffer_global_addr;
   int axis;
+  int replace_add;
 } scatter_elements_global_spec_t;
 
 typedef struct index_select_common_spec {
@@ -1990,6 +1991,8 @@ typedef struct weight_reorder_param {
 typedef struct batchnorm_train_param {
   float momentum;
   float eps;
+  int if_relu;
+  int using_multicore;
 } batchnorm_train_param_t;
 
 typedef struct {

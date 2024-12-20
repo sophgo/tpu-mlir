@@ -190,4 +190,4 @@ uint32_t tpu::BatchNormTrainOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 
 int64_t tpu::BatchNormTrainOp::get_fw_type_bm1684() { return -1; }
 
-bool tpu::BatchNormTrainOp::support_multi_core() { return false; }
+bool tpu::BatchNormTrainOp::support_multi_core() { return true; }

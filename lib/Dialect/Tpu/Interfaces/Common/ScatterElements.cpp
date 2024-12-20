@@ -25,6 +25,7 @@ LogicalResult tpu::ScatterElementsOp::inference(InferenceParameter &p) {
   const auto updates_shape = module::getShape(getUpdates());
   const int r = input_shape.size();
   const int _axis = getAxis();
+  const int replace_add = getReduction();
   const int axis = _axis < 0 ? _axis + r : _axis;
   assert(0 <= axis && axis < r);
 
@@ -32,8 +33,9 @@ LogicalResult tpu::ScatterElementsOp::inference(InferenceParameter &p) {
     if (i != axis) {
       assert(input_shape[i] >= indices_shape[i]);
       assert(input_shape[i] >= updates_shape[i]);
-    }
+    } else{
     assert(indices_shape[i] == updates_shape[i]);
+    }
   }
 
   auto all_num_elem = module::getNumElements(getInput());
@@ -51,7 +53,11 @@ LogicalResult tpu::ScatterElementsOp::inference(InferenceParameter &p) {
     assert(-s <= p && p < s);
     list_[axis] = p;
     int64_t in_idx = list_to_idx(list_, in_stride);
-    output[in_idx] = updates[n];
+    if(replace_add) {
+      output[in_idx] += updates[n];
+    } else {
+      output[in_idx] = updates[n];
+    }
   }
 
   return success();
@@ -79,3 +85,21 @@ mlir::Type tpu::ScatterElementsOp::type_verify(uint64_t opd_idx,
 }
 
 bool tpu::ScatterElementsOp::support_multi_core() { return false; }
+
+ArrayAttr tpu::ScatterElementsOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  MLIRContext *ctx = getContext();
+  auto num_dims = shape.size();
+
+  int axis = (int) getAxis();
+  axis = axis < 0 ? axis + num_dims : axis;
+  auto nc_can_split = (bool)getNcCanSplit();
+  if(axis != num_dims -1 || not nc_can_split || num_dims <= 1)
+  {
+    return Builder(ctx).getAffineMapArrayAttr({});
+  }
+  auto empty_map = AffineMap::get(1, 0, ctx);
+  auto input_map = AffineMap::getMultiDimIdentityMap(num_dims-1, ctx);
+  SmallVector<AffineMap> indexingMaps{input_map, input_map, input_map, empty_map, empty_map, input_map};
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
+}

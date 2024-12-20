@@ -122,4 +122,18 @@ LogicalResult tpu::WhereOp::LocalGenSupport() {
   return success();
 }
 
+ArrayAttr tpu::WhereOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  auto out_shape = module::getShape(getOutput());
+  auto num_dims = out_shape.size();
+  // shape < 4 not support
+  if ( num_dims < 4) {
+    return Builder(ctx).getAffineMapArrayAttr({});
+  }
+  AffineMap outMap = AffineMap::getMultiDimIdentityMap(num_dims, ctx);
+  auto empty_map = AffineMap::get(num_dims, 0, ctx);
+  SmallVector<AffineMap> indexingMaps{outMap, outMap, empty_map ,empty_map,  outMap};
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
+};
+
 bool tpu::WhereOp::support_multi_core() { return false; }

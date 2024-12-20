@@ -94,7 +94,7 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
   // use the first resultsMap as a sample, each AffineMap in indexingMap have
   // the same dimCount.
   auto resultMap = cast<AffineMapAttr>(resultsMap[0]).getValue();
-  if (!resultMap.isIdentity() || resultMap.isEmpty())
+  if (resultMap.isEmpty())
     return nullptr;
 
   // :load balance:

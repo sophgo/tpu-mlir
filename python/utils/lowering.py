@@ -60,6 +60,8 @@ def lowering(input:np.array, pdtype:str, pshape, pzero_point=0, pscale=1):
     elif pdtype == "u4" and input.dtype == np.float32:
         data = round_away_from_zero(input * pscale + pzero_point)
         res = np.clip(data, 0, 15).astype(np.uint8).reshape(pshape)
+    elif pdtype == "f16" and input.dtype == np.int64:
+        res = input.astype(np.float16).reshape(pshape)
     elif pdtype == "f32":
         res = input.astype(np.float32).reshape(pshape)
     else:

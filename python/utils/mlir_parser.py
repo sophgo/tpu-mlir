@@ -194,8 +194,11 @@ class MlirParser:
                     if str(r.type) == "none":
                         skip_value += 1
                         continue
+                    t = idx - skip_value
+                    if t >= len(Operation.outputs(prev_op)):
+                        t = len(Operation.outputs(prev_op)) - 1
                     cache_map.setdefault(r, []).append(
-                        [i, Operation.outputs(prev_op)[idx - skip_value]]
+                        [i, Operation.outputs(prev_op)[t]]
                     )
         Operation.cache_map = cache_map
 

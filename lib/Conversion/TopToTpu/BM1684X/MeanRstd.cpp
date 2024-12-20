@@ -76,9 +76,28 @@ void MeanRstdLowering::LoweringBF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
-void MeanRstdLowering::LoweringF16(PatternRewriter &rewriter,
-                                   top::MeanRstdOp op) const {
-  LoweringF32(rewriter, op);
+void MeanRstdLowering::LoweringF16(PatternRewriter &rewriter, top::MeanRstdOp op) const {
+  std::vector<Value> operands;
+  std::vector<Type>  new_types;
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr: op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  for (auto in: op.getOperands())
+  {
+     operands.push_back(in);
+  }
+
+  auto ctx = op->getContext();
+  auto builder = OpBuilder(ctx);
+  builder.setInsertionPoint(op);
+
+  for (int i = 0; i < 6; i++) {
+    auto out = op.getResult(i);
+    new_types.push_back(getQuantF16Type(out));
+  }
+  rewriter.replaceOpWithNewOp<tpu::MeanRstdOp>(op, new_types, operands, attrs);
+  // LoweringF32(rewriter, op);
 }
 
 void MeanRstdLowering::LoweringF8(PatternRewriter &rewriter,

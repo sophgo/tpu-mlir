@@ -27,6 +27,7 @@ LogicalResult top::ScatterElementsOp::inference(InferenceParameter &p) {
   const auto updates_shape = module::getShape(getUpdates());
   const int r = input_shape.size();
   const int _axis = getAxis();
+  const int replace_add = getReduction();
   const int axis = _axis < 0 ? _axis + r : _axis;
   ASSERT_THIS(0 <= axis && axis < r);
 
@@ -54,7 +55,11 @@ LogicalResult top::ScatterElementsOp::inference(InferenceParameter &p) {
     ASSERT_THIS(-s <= p && p < s);
     list_[axis] = p;
     int64_t in_idx = list_to_idx(list_, in_stride);
-    output[in_idx] = updates[n];
+    if (replace_add) {
+      output[in_idx] += updates[n];
+    } else {
+      output[in_idx] = updates[n];
+    }
   }
 
   return success();

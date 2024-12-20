@@ -1318,9 +1318,9 @@ def DMA_gather_converter(context: "BM1690Context", reg: DMA_gather_reg):
     return dma_gather_base(context, reg)
 
 
-@opparam_converter_regitstry("DMA_scatter ")
+@opparam_converter_regitstry("DMA_scatter")
 def DMA_scatter_converter(context: "BM1690Context", reg: DMA_scatter_reg):
-    results, _, operands = dma_gather_base(reg)
+    results, _, operands = dma_gather_base(context, reg)
 
     return (results, {}, operands)
 

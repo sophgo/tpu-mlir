@@ -210,4 +210,19 @@ LogicalResult tpu::SoftmaxOp::AllowDataSplit(int64_t axis,
   return axis < ax ? success() : failure();
 }
 
+ArrayAttr tpu::SoftmaxOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  auto out_shape = module::getShape(getOutput());
+  auto num_dims = out_shape.size();
+  int axis = getAxis();
+  // shape < 4 not support
+  if ( num_dims < 3 and axis != num_dims -1) {
+    return Builder(ctx).getAffineMapArrayAttr({});
+  }
+  AffineMap outMap = AffineMap::getMultiDimIdentityMap(num_dims, ctx);
+  auto empty_map = AffineMap::get(num_dims, 0, ctx);
+  SmallVector<AffineMap> indexingMaps{outMap, empty_map, empty_map, empty_map, empty_map, empty_map, outMap};
+  return Builder(ctx).getAffineMapArrayAttr(indexingMaps);
+};
+
 bool tpu::SoftmaxOp::support_multi_core() { return module::isSG2380(); }

@@ -88,6 +88,7 @@ bool isChip(Chip chip);
 Mode getMode();
 std::string toLower(StringRef str);
 std::string getModeStr();
+bool getTrain();
 void setMode(Mode mode);
 State getState();
 void setState(State state);

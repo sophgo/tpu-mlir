@@ -83,7 +83,8 @@ public:
       rewriter.replaceOp(op, out);
       return success();
     }
-    // for case input -> reshape -> cast -> any op
+
+    // input -> reshape -> cast -> any op
     if (auto reshapeOp = op.getInput().getDefiningOp<tpu::ReshapeOp>()) {
       if (!reshapeOp.getResult().hasOneUse()) {
         return failure();
@@ -105,6 +106,28 @@ public:
           new_ele_type);
       reshapeOp.getResult().setType(reshape_new_type);
       rewriter.replaceOp(op, reshapeOp.getResult());
+      return success();
+    }
+
+    // for case input -> unsqueeze -> cast
+    if (auto unsqueezeOp = op.getInput().getDefiningOp<tpu::UnsqueezeOp>()) {
+      auto inputOp = unsqueezeOp.getInput().getDefiningOp<top::InputOp>();
+      if (!inputOp) {
+        return failure();
+      }
+      if (!inputOp.getOutput().hasOneUse()) {
+        return failure();
+      }
+      auto new_ele_type = module::getElementType(op.getResult());
+      auto input_new_type = RankedTensorType::get(
+          inputOp.getResult().getType().cast<RankedTensorType>().getShape(),
+          new_ele_type);
+      inputOp.getResult().setType(input_new_type);
+      auto unsqueeze_new_type = RankedTensorType::get(
+          unsqueezeOp.getResult().getType().cast<RankedTensorType>().getShape(),
+          new_ele_type);
+      unsqueezeOp.getResult().setType(unsqueeze_new_type);
+      rewriter.replaceOp(op, unsqueezeOp.getResult());
       return success();
     }
     return failure();

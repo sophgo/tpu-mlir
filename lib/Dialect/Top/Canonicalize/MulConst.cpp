@@ -182,8 +182,55 @@ public:
   }
 };
 
+struct MulConstAfterTile : public OpRewriterPatternEx<MulConstOp> {
+public:
+  MulConstAfterTile(MLIRContext *context)
+      : OpRewriterPatternEx<MulConstOp>(context, "MulConstAfterTile") {}
+  LogicalResult matchAndRewriteImpl(MulConstOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto former_op = dyn_cast<top::TileOp>(op.getInput().getDefiningOp());
+    if (!former_op) {
+      return failure();
+    }
+    auto const_val = op.getConstVal().convertToDouble();
+    std::vector<int64_t> tile_vec;
+    if (former_op.getTile().has_value()) {
+      auto tile_v = module::getI64Array(former_op.getTile().value());
+      tile_vec = *tile_v;
+    } else if (auto tile_w = dyn_cast<top::WeightOp>(former_op.getTileT().getDefiningOp())) {
+      auto tile_v = tile_w.read_as_float();
+      std::transform(tile_v->begin(), tile_v->end(), std::back_inserter(tile_vec),
+                    [](auto &v) { return static_cast<int64_t>(v); });
+    } else if (module::isShape(former_op.getTileT())) {
+      tile_vec = module::getShapeTensorValue(former_op.getTileT());
+    } else {
+      llvm_unreachable("tile_vec is illegal");
+    }
+    int data_len = 1;
+    for (int i = 0; i < tile_vec.size(); i++) {
+      data_len *= tile_vec[i];
+    }
+    auto weight_data = std::make_shared<std::vector<float>>(data_len, const_val);
+    std::string weight_name = module::getName(op.getOperation()).str() + "_after_tile";
+    auto weight_type = RankedTensorType::get(tile_vec, rewriter.getF32Type());
+    auto ret = module::weightFile().addTensor(weight_name, weight_data->data(), weight_type);
+    assert(succeeded(ret));
+    auto nameAttr = rewriter.getStringAttr(weight_name);
+    auto weight_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr), weight_type, ValueRange{});
+
+    std::vector<Value> operands;
+    std::vector<NamedAttribute> attrs;
+    operands.push_back(former_op->getOperand(0));
+    operands.push_back(weight_op);
+    auto mul_op = rewriter.create<top::MulOp>(op.getLoc(), op.getType(), operands, attrs);
+    op.replaceAllUsesWith(mul_op.getOperation());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void MulConstOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                              MLIRContext *context) {
   results.insert<MergeContinuousMulConst, RemoveMulConst, MergeMulConst,
-                 MulTooLarge, MulConstantFill>(context);
+                 MulTooLarge, MulConstantFill, MulConstAfterTile>(context);
 }

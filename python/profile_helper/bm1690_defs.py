@@ -679,7 +679,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
         (5, 0): 'DMA_nonzero',
         (6, 0): 'DMA_sys', (6, 1): 'nop', (6, 2): 'sys_tr_wr', (6, 3): 'sys_send', (6, 4): 'sys_wait',
         (7, 0): 'DMA_gather',
-        (8, 0): 'DMA_scatter',
+        (8, 0): 'DMA_scatter',(8, 1): 'DMA_scatter',
         (9, 0): 'DMA_reverse', (9, 1): 'h reverse', (9, 2): 'c reverse', (9, 3): 'n reverse',
         (10, 0): 'DMA_compress',
         (11, 0): 'DMA_decompress',

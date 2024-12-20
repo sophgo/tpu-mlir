@@ -1936,6 +1936,7 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield",
 }
 
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>,
@@ -2605,6 +2606,7 @@ def Tpu_MatchTemplateOp: Tpu_Op<"MatchTemplate", [
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Tile operation";
@@ -2801,6 +2803,7 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
 }
 
 def Tpu_WhereOp: Tpu_Op<"Where", [
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Where operator";
@@ -3150,6 +3153,7 @@ def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
 }
 
 def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "ScatterElements op";
   let description = [{
@@ -3180,7 +3184,9 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
     AnyRankedTensor:$updates,
     AnyTensorOrNone:$indices_coeff,
     AnyTensorOrNone:$buffer,
-    I64Attr:$axis
+    I64Attr:$axis,
+    DefaultValuedAttr<I64Attr, "0">:$reduction,
+    DefaultValuedAttr<BoolAttr, "false">:$nc_can_split
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3956,7 +3962,8 @@ def Tpu_LogicalAndOp :Tpu_Op<"LogicalAnd">{
     AnyTensor:$output
   );
 }
-def Tpu_ConvbwdOp :Tpu_Op<"Convbwd">{
+def Tpu_ConvbwdOp :Tpu_Op<"Convbwd", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "convolution backward";
   let description = [{calculate grad_input,grad_weight,grad_bias of convolution operation}];
   let arguments = (ins

@@ -11,7 +11,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 int64_t top::BatchNormTrainOp::getFLOPs() {
-  return module::getNumElements(getOutput()) * 2;
+  return module::getNumElements(getOutput()) * 6;
 }
 
 LogicalResult top::BatchNormTrainOp::init(InferenceParameter &p) {

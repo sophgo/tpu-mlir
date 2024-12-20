@@ -653,6 +653,7 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   operands.push_back(module::getNoneOp(op));
   auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                                           op->getAttrs());
+  // for bm1690 matmul_multi_core backend, bias dtype is the same as output
   if (!module::isNone(operands[2]) && supportMultiCore(newOp) &&
       bias_use_fp32) {
     auto biasOp = dyn_cast<top::WeightOp>(newOp.getOperand(2).getDefiningOp());
@@ -680,14 +681,18 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
-        if (true==op.getDoRelu()){
+        if (true == op.getDoRelu()) {
           auto name = module::getName(op->getResult(0));
-          auto matmul_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_a16matmul"));
-          auto a16matmul_op = rewriter.create<tpu::A16MatMulOp>(matmul_loc, newType, operands, attrs);
+          auto matmul_loc =
+              NameLoc::get(rewriter.getStringAttr(name.str() + "_a16matmul"));
+          auto a16matmul_op = rewriter.create<tpu::A16MatMulOp>(
+              matmul_loc, newType, operands, attrs);
           std::vector<NamedAttribute> relu_attrs;
-          auto relu_limit = rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr());
+          auto relu_limit =
+              rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr());
           relu_attrs.push_back(relu_limit);
-          rewriter.replaceOpWithNewOp<tpu::ReluOp>(op, newType, ValueRange{a16matmul_op.getOutput()}, relu_attrs);
+          rewriter.replaceOpWithNewOp<tpu::ReluOp>(
+              op, newType, ValueRange{a16matmul_op.getOutput()}, relu_attrs);
           return;
         }
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,

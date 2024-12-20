@@ -1136,6 +1136,13 @@ std::string toLower(llvm::StringRef str) {
 
 std::string getModeStr() { return toLower(stringifyMode(getMode())); }
 
+bool getTrain() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::TRAIN)) {
+    return m->getAttrOfType<BoolAttr>(Attr::TRAIN).getValue();
+  }
+  return false;
+}
+
 bool isBF16Modes() {
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
   auto mode = symbolizeMode(s).value_or(Mode::F32);

@@ -2718,7 +2718,9 @@ def Top_ScatterElementsOp: Top_Op<"ScatterElements"> {
     AnyTensor:$input,
     AnyTensor:$indices,
     AnyTensor:$updates,
-    I64Attr:$axis
+    I64Attr:$axis,
+    DefaultValuedAttr<I64Attr, "0">:$reduction,
+    DefaultValuedAttr<BoolAttr, "false">:$nc_can_split
   );
 
   let results = (outs AnyTensor:$output);
@@ -3524,7 +3526,12 @@ def Top_SortOp:Top_Op<"Sort"> {
 def Top_MeanRstdOp: Top_Op<"MeanRstd">{
   let summary = "Compute Mean, Rstd, Running_mean, Running_var in batchnorm train op ";
   let description = [{
-    mean(x),1/sqrt(var+eps),(1-momentum)*running_mean + momentum*mean,(1-momentum)*running_var + momentum*var
+    mean(x),
+    1/sqrt(var+eps),
+    (1-momentum)*running_mean + momentum*mean,
+    (1-momentum)*running_var + momentum*var,
+    weight * (1 / sqrt(var+eps)),
+    bias - (mean * weight * (1 / sqrt(var+eps)))
   }];
   let arguments = (ins
     AnyTensor:$input,

@@ -16,7 +16,7 @@ static void LoweringBatchNorm(PatternRewriter &rewriter,
                               top::BatchNormTrainOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
-  opds.reserve(3);
+  opds.reserve(6);
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);

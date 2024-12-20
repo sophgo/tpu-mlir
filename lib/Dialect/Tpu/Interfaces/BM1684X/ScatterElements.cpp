@@ -28,6 +28,7 @@ void tpu::ScatterElementsOp::codegen_global_bm1684x() {
   param.updates_dims = updates_shape.size();
   param.intermediate_buffer_global_addr = module::getAddress(getBuffer());
   param.axis = getAxis();
+  param.replace_add = getReduction();
   BM168x::call_global_func("backend_api_scatter_elements_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());

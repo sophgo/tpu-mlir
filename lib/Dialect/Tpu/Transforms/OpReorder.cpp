@@ -172,7 +172,6 @@ struct ReshapeReorderPattern : public OpRewriterPatternEx3 {
                                     PatternRewriter &rewriter) const override {
     if (!isa<tpu::ReshapeOp>(op) || op->getNumOperands() > 1)
       return failure();
-
     auto reshapeOp = cast<tpu::ReshapeOp>(op);
     auto parent_op = reshapeOp->getParentOp();
     assert(isa<FuncOp>(parent_op));
