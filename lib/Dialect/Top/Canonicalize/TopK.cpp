@@ -22,16 +22,16 @@ struct TopKWithSlice: public OpRewriterPatternEx<TopKOp> {
       : OpRewriterPatternEx<TopKOp>(context, "TopKWithSlice") {}
   LogicalResult matchAndRewriteImpl(TopKOp op,
                                     PatternRewriter &rewriter) const override {
-    llvm::errs() << "Topkslice entered\n";
+
     if(op.getIndices().hasOneUse() && op.getValues().hasOneUse()){
       return compare_slice(op, rewriter);
-    }else if (op.getIndices().hasOneUse()){
+    }else if (op.getIndices().hasOneUse() && op.getValues().use_empty()){
       if(auto slice_indices_op = dyn_cast_or_null<SliceOp>(*op.getIndices().getUsers().begin())){
         return which_axes(op, slice_indices_op, rewriter);
       }else{
         return failure();
       }
-    }else if (op.getValues().hasOneUse()){
+    }else if (op.getValues().hasOneUse() && op.getIndices().use_empty()){
       if(auto slice_values_op = dyn_cast_or_null<SliceOp>(*op.getValues().getUsers().begin())){
         return which_axes(op, slice_values_op, rewriter);
       }else{
