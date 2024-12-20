@@ -208,6 +208,13 @@ void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t c_step,
 }
 
 LogicalResult tpu::Conv3DOp::LocalGenSupport() {
+  auto strides_v = module::getI64Array(getStrides());
+  int sh = strides_v->at(1);
+  int sw = strides_v->at(2);
+  if (sh > 15 || sw > 15) {
+    return failure();
+  }
+
   if (module::isBM1684XFamily() || module::isBM1690Family()) {
     return success();
   } else if (module::isBM1684Family() &&

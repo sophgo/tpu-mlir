@@ -496,6 +496,8 @@ class TPULANG_IR_TESTER(object):
 
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3)
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3, dtype="float16")
+        _test_convolution([1, 3, 28, 28, 28], [324, 1, 2, 16, 16], stride=[2,16,16], group=3, dtype="float16")
+        _test_convolution([1, 3, 28, 28, 28], [324, 1, 2, 16, 16], stride=[2,16,16], group=3, dtype="float32")
 
     #######################################################################
     # Deconvolution

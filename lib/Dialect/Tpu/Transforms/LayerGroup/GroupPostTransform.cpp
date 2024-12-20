@@ -118,6 +118,153 @@ void conv3d_weight_transform_bm1684(int IC, int OC, int KT, int KH, int KW,
   }
 }
 
+template <typename T>
+void conv3d_stride_gt_15_weightreorder(Operation *op) {
+  auto conv3d_op = dyn_cast<tpu::Conv3DOp>(op);
+  auto attr = conv3d_op.parseParam();
+  auto filter_op = conv3d_op.getFilter().getDefiningOp<top::WeightOp>();
+  auto filter_type = module::getStorageType(conv3d_op.getFilter());
+  // int64_t OC = attr.oc;
+  int64_t IC = attr.ic / attr.groups;
+  int64_t KT = attr.kd;
+  int64_t KH = attr.kh;
+  int64_t KW = attr.kw;
+  auto data_type = BM168x::getDataType(conv3d_op.getFilter());
+  auto fmt_bytes = BM168x::getFmtBytes(data_type);
+  int npu_num = BM168x::NPU_NUM;
+  int64_t IC_PARALLEL = BM168x::ic_num(fmt_bytes);
+  if (data_type == DTYPE_FP32 || data_type == DTYPE_INT32 ||
+      data_type == DTYPE_UINT32) {
+    IC_PARALLEL = 1;
+  }
+
+  int stride_h = attr.sh;
+  int stride_w = attr.sw;
+  int groups = attr.groups;
+  bool strideh_gt_15 = stride_h > 15;
+  bool stridew_gt_15 = stride_w > 15;
+  std::vector<int> cell_h;
+  std::vector<int> cell_w;
+  std::vector<int> cell_h_sum;
+  std::vector<int> cell_w_sum;
+  int cell_num_h = 1;
+  int cell_num_w = 1;
+  int max_cell_h = KH;
+  int max_cell_w = KW;
+
+  if (strideh_gt_15) {
+    cell_num_h = ceiling_func(KH, 15);
+    max_cell_h = ceiling_func(KH, cell_num_h);
+    int cur_h = 0;
+    int sum_h = 0;
+    for (int i = 0; i < cell_num_h; i++) {
+      cur_h = KH / cell_num_h + ((i < KH % cell_num_h) ? 1 : 0);
+      cell_h.push_back(cur_h);
+      cell_h_sum.push_back(sum_h);
+      sum_h += cur_h;
+    }
+  } else {
+    cell_h.push_back(max_cell_h);
+    cell_h_sum.push_back(0);
+  }
+  if (stridew_gt_15) {
+    cell_num_w = ceiling_func(KW, 15);
+    max_cell_w = ceiling_func(KW, cell_num_w);
+    int cur_w = 0;
+    int sum_w = 0;
+    for (int i = 0; i < cell_num_w; i++) {
+      cur_w = KW / cell_num_w + ((i < KW % cell_num_w) ? 1 : 0);
+      cell_w.push_back(cur_w);
+      cell_w_sum.push_back(sum_w);
+      sum_w += cur_w;
+    }
+  } else {
+    cell_w.push_back(max_cell_w);
+    cell_w_sum.push_back(0);
+  }
+  int oc_per_groups = attr.oc / attr.groups;
+  int ocloops = ceiling_func(oc_per_groups, npu_num);
+  int weight_size_per_group =
+      ((oc_per_groups < npu_num) ? oc_per_groups
+                                 : align_up(oc_per_groups, npu_num)) *
+      align_up(IC * KT, IC_PARALLEL) * cell_num_h * max_cell_h * cell_num_w *
+      max_cell_w;
+  int weight_size = attr.groups * weight_size_per_group;
+  auto filter_new = std::make_shared<std::vector<T>>(weight_size, 0);
+  auto filter_old = filter_op.read<T>();
+  std::vector<int64_t> filter_shape(5);
+  // Must be initialized to 0. It is to avoid memory increase when bmodel
+  // combine.
+
+  // oc
+  for (int group_idx = 0; group_idx < attr.groups; group_idx++) {
+    for (int oc = 0; oc < oc_per_groups; oc++) {
+      // ic
+      for (int ic_idx = 0; ic_idx < ceiling_func(IC * KT, IC_PARALLEL);
+           ic_idx++) {
+        for (int ic_inner = 0; ic_inner < IC_PARALLEL; ic_inner++) {
+          // kh
+          for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
+            for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
+              // kw
+              for (int cell_w_idx = 0; cell_w_idx < cell_num_w; cell_w_idx++) {
+                for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
+                  if (ic_idx * IC_PARALLEL + ic_inner >= IC * KT)
+                    continue;
+
+                  int orig_offset =
+                      (group_idx * oc_per_groups + oc) * (IC * KT) * KH * KW +
+                      (ic_idx * IC_PARALLEL + ic_inner) * KH * KW +
+                      (cell_h_sum[cell_h_idx] + ih) * KW +
+                      (cell_w_sum[cell_w_idx] + iw);
+                  int trans_offset =
+                      (oc % npu_num) * groups * ocloops *
+                          align_up(IC * KT, IC_PARALLEL) * cell_num_h *
+                          max_cell_h * cell_num_w * max_cell_w + // npu idx
+                      group_idx * ocloops * align_up(IC * KT, IC_PARALLEL) *
+                          cell_num_h * max_cell_h * cell_num_w *
+                          max_cell_w + // group idx
+                      (cell_h_idx * cell_num_w + cell_w_idx) * ocloops *
+                          max_cell_h * max_cell_w *
+                          align_up(IC * KT, IC_PARALLEL) + // cell idx
+                      (oc / npu_num) * cell_h[cell_h_idx] * cell_w[cell_w_idx] *
+                          align_up(IC * KT, IC_PARALLEL) + // oc offset
+                      ic_idx * IC_PARALLEL * cell_h[cell_h_idx] *
+                          cell_w[cell_w_idx] + // ic idx
+                      (ih * cell_w[cell_w_idx] + iw) * IC_PARALLEL +
+                      ic_inner;
+                  filter_new->at(trans_offset) = filter_old->at(orig_offset);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  filter_shape[0] = 1;
+  filter_shape[1] = (oc_per_groups < npu_num) ? oc_per_groups : npu_num;
+  filter_shape[2] = 1;
+  filter_shape[3] = 1;
+  filter_shape[4] = groups * cell_num_h * cell_num_w * ocloops * max_cell_h *
+                    max_cell_w * align_up(IC * KT, IC_PARALLEL);
+  if (filter_shape[4] > MAX_TPU_DIM) {
+    if (attr.is_dw) {
+      filter_shape[3] = ceiling_func(attr.oc, (int64_t)IC_PARALLEL);
+      filter_shape[4] /= filter_shape[3];
+    } else {
+      filter_shape[3] = IC_PARALLEL;
+      filter_shape[4] /= IC_PARALLEL;
+    }
+  }
+
+  filter_old = filter_new;
+  auto filter_ranked_type = RankedTensorType::get(filter_shape, filter_type);
+  auto new_filter = top::WeightOp::create(op, "postreordered", *filter_old,
+                                          filter_ranked_type);
+  op->setOperand(1, new_filter);
+}
+
 static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
   auto conv3d_op = dyn_cast<tpu::Conv3DOp>(op);
   auto attr = conv3d_op.parseParam();
@@ -130,9 +277,18 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
   int64_t KW = attr.kw;
   auto data_type = BM168x::getDataType(conv3d_op.getFilter());
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
+  // int npu_num = BM168x::NPU_NUM;
   int64_t IC_PARALLEL = BM168x::ic_num(fmt_bytes);
   std::vector<int64_t> ori_filter_shape = {OC, IC, KT, KH, KW};
   auto ori_type = RankedTensorType::get(ori_filter_shape, filter_type);
+  auto out_type = module::getStorageType(conv3d_op.getOutput());
+
+  int stride_h = attr.sh;
+  int stride_w = attr.sw;
+  // int groups = attr.groups;
+  bool strideh_gt_15 = stride_h > 15;
+  bool stridew_gt_15 = stride_w > 15;
+
   // conv3d_op.getFilter().setType(ori_type);
   if (attr.has_bias) {
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
@@ -208,6 +364,11 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
       auto new_filter = top::WeightOp::create(op, "postreordered", *filter_f32,
                                               filter_ranked_type);
       op->setOperand(1, new_filter);
+    } else if (filter_type.isF32() && out_type.isF32() &&
+               lg_info.group_ops.size() == 1) {
+      if (strideh_gt_15 || stridew_gt_15) {
+        conv3d_stride_gt_15_weightreorder<float>(op);
+      }
     } else if ((filter_type.isF16() || filter_type.isBF16()) &&
                lg_info.group_ops.size() > 1) {
       // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw *
@@ -245,34 +406,39 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
       op->setOperand(1, new_filter);
     } else if ((filter_type.isF16() || filter_type.isBF16()) &&
                lg_info.group_ops.size() == 1) {
-      // (oc, ic, kt, kh, kw) -> (oc, (ic*kt)/IC_PARALLEL, kh, kw, IC_PARALLEL)
-      auto filter_u16 = filter_op.read<uint16_t>();
-      std::vector<int64_t> filter_shape = {
-          1, OC, ceiling_func(IC * KT, IC_PARALLEL), KH * KW, IC_PARALLEL};
-      auto filter_new = std::make_shared<std::vector<uint16_t>>(
-          get_shape_size(filter_shape), 0);
-      for (int oc = 0; oc < OC; ++oc) {
-        for (int ic = 0; ic < ceiling_func(IC * KT, IC_PARALLEL); ++ic) {
-          for (int khw = 0; khw < KH * KW; ++khw) {
-            for (int inner = 0; inner < IC_PARALLEL; ++inner) {
-              if (ic * IC_PARALLEL + inner >= IC * KT)
-                break;
-              long long src = oc * IC * KT * KH * KW +
-                              (ic * IC_PARALLEL + inner) * KH * KW + khw;
-              long long dst = oc * align_up(IC * KT, IC_PARALLEL) * KH * KW +
-                              ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
-                              inner;
-              filter_new->at(dst) = filter_u16->at(src);
+      if (strideh_gt_15 || stridew_gt_15) {
+        conv3d_stride_gt_15_weightreorder<uint16_t>(op);
+      } else {
+        // (oc, ic, kt, kh, kw) -> (oc, (ic*kt)/IC_PARALLEL, kh, kw,
+        // IC_PARALLEL)
+        auto filter_u16 = filter_op.read<uint16_t>();
+        std::vector<int64_t> filter_shape = {
+            1, OC, ceiling_func(IC * KT, IC_PARALLEL), KH * KW, IC_PARALLEL};
+        auto filter_new = std::make_shared<std::vector<uint16_t>>(
+            get_shape_size(filter_shape), 0);
+        for (int oc = 0; oc < OC; ++oc) {
+          for (int ic = 0; ic < ceiling_func(IC * KT, IC_PARALLEL); ++ic) {
+            for (int khw = 0; khw < KH * KW; ++khw) {
+              for (int inner = 0; inner < IC_PARALLEL; ++inner) {
+                if (ic * IC_PARALLEL + inner >= IC * KT)
+                  break;
+                long long src = oc * IC * KT * KH * KW +
+                                (ic * IC_PARALLEL + inner) * KH * KW + khw;
+                long long dst = oc * align_up(IC * KT, IC_PARALLEL) * KH * KW +
+                                ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
+                                inner;
+                filter_new->at(dst) = filter_u16->at(src);
+              }
             }
           }
         }
+        filter_u16 = filter_new;
+        auto filter_ranked_type =
+            RankedTensorType::get(filter_shape, filter_type);
+        auto new_filter = top::WeightOp::create(
+            op, "postreordered", *filter_u16, filter_ranked_type);
+        op->setOperand(1, new_filter);
       }
-      filter_u16 = filter_new;
-      auto filter_ranked_type =
-          RankedTensorType::get(filter_shape, filter_type);
-      auto new_filter = top::WeightOp::create(op, "postreordered", *filter_u16,
-                                              filter_ranked_type);
-      op->setOperand(1, new_filter);
     } else if (filter_type.isInteger(8) && lg_info.group_ops.size() > 1) {
       // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw *
       // IC_PARALLEL)
@@ -308,34 +474,40 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
                                               filter_ranked_type);
       op->setOperand(1, new_filter);
     } else if (filter_type.isInteger(8) && lg_info.group_ops.size() == 1) {
-      // (oc, ic, kt, kh, kw) -> (oc, (ic*kt)/IC_PARALLEL, kh, kw, IC_PARALLEL)
-      auto filter_i8 = filter_op.read<int8_t>();
-      std::vector<int64_t> filter_shape = {
-          1, OC, ceiling_func(IC * KT, IC_PARALLEL), KH * KW, IC_PARALLEL};
-      auto filter_new = std::make_shared<std::vector<int8_t>>(
-          get_shape_size(filter_shape), 0);
-      for (int oc = 0; oc < OC; ++oc) {
-        for (int ic = 0; ic < ceiling_func(IC * KT, IC_PARALLEL); ++ic) {
-          for (int khw = 0; khw < KH * KW; ++khw) {
-            for (int inner = 0; inner < IC_PARALLEL; ++inner) {
-              if (ic * IC_PARALLEL + inner >= IC * KT)
-                break;
-              long long src = oc * IC * KT * KH * KW +
-                              (ic * IC_PARALLEL + inner) * KH * KW + khw;
-              long long dst = oc * align_up(IC * KT, IC_PARALLEL) * KH * KW +
-                              ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
-                              inner;
-              filter_new->at(dst) = filter_i8->at(src);
+      if (strideh_gt_15 || stridew_gt_15) {
+        llvm_unreachable(
+            "Currently conv3d uint8/int8 stride>15 is not supported.");
+      } else {
+        // (oc, ic, kt, kh, kw) -> (oc, (ic*kt)/IC_PARALLEL, kh, kw,
+        // IC_PARALLEL)
+        auto filter_i8 = filter_op.read<int8_t>();
+        std::vector<int64_t> filter_shape = {
+            1, OC, ceiling_func(IC * KT, IC_PARALLEL), KH * KW, IC_PARALLEL};
+        auto filter_new = std::make_shared<std::vector<int8_t>>(
+            get_shape_size(filter_shape), 0);
+        for (int oc = 0; oc < OC; ++oc) {
+          for (int ic = 0; ic < ceiling_func(IC * KT, IC_PARALLEL); ++ic) {
+            for (int khw = 0; khw < KH * KW; ++khw) {
+              for (int inner = 0; inner < IC_PARALLEL; ++inner) {
+                if (ic * IC_PARALLEL + inner >= IC * KT)
+                  break;
+                long long src = oc * IC * KT * KH * KW +
+                                (ic * IC_PARALLEL + inner) * KH * KW + khw;
+                long long dst = oc * align_up(IC * KT, IC_PARALLEL) * KH * KW +
+                                ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
+                                inner;
+                filter_new->at(dst) = filter_i8->at(src);
+              }
             }
           }
         }
+        filter_i8 = filter_new;
+        auto filter_ranked_type =
+            RankedTensorType::get(filter_shape, filter_type);
+        auto new_filter = top::WeightOp::create(op, "postreordered", *filter_i8,
+                                                filter_ranked_type);
+        op->setOperand(1, new_filter);
       }
-      filter_i8 = filter_new;
-      auto filter_ranked_type =
-          RankedTensorType::get(filter_shape, filter_type);
-      auto new_filter = top::WeightOp::create(op, "postreordered", *filter_i8,
-                                              filter_ranked_type);
-      op->setOperand(1, new_filter);
     }
   }
   return;
