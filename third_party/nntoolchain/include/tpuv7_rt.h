@@ -40,6 +40,11 @@ typedef struct tpuRtModule {
 	unsigned char md5[MD5SUM_LEN];
 } tpuRtModule;
 
+struct tpuRtCheckModule {
+	unsigned char md5[MD5SUM_LEN];
+	int loaded;
+};
+
 typedef struct tpuRtLaunchOutput {
 	void *output_args;
 	uint32_t output_size;
@@ -634,6 +639,30 @@ tpuRtStatus_t tpuRtSetupTopology(void);
  *          Other code Fails.
  */
 tpuRtStatus_t tpuRtGetTopology(struct c2c_port_info **topology);
+
+/**
+ * @name    tpuRtGetChipSN
+ * @brief   To get chip sn
+ * @ingroup tpuv7_rt
+ *
+ * @param [in]	device_id	chip id
+ * @param [in]	sn			sn, should be at least 18 bytes
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtGetChipSN(int device_id, char *sn);
+
+/**
+ * @name    tpuRtGetPcieStatus
+ * @brief   To get chip topology pcie status
+ * @ingroup tpuv7_rt
+ *
+ * @param [in]	device_id	chip id
+ * @param [in]	pcie_id		error pcie id, if there are no errors, return -1
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtGetPcieStatus(int device_id, int *pcie_id);
 #ifdef __cplusplus
 }
 #endif

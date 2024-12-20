@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: ead92658fce9ad437a71a3a873600d968ded14db
+#bm1690 sha256: 016af230fe5d2ebe52d990add9e0b97787587ff5
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -92,11 +92,11 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 # libbmcpu.so/libusercpu.so are deprecated
 ```
 
-## tpuv7-runtime 2024-11-08
-build from tpuv7-runtime 007069c8ec10823a60fedb7a1be8dafd49aae15e
+## tpuv7-runtime 2024-12-20
+build from tpuv7-runtime e06660ead76443d9dc6cabd59d9d003a1d5ccfd6
 ```bash
 mkdir -p -p build/emulator
-cd -p build/emulator
+cd build/emulator
 cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=OFF -DUSING_TP_DEBUG=OFF ../..
 make -j$(nproc)
 cp model-runtime/runtime/libtpuv7_modelrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
