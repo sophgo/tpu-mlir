@@ -461,7 +461,7 @@ class TPULANG_IR_TESTER(object):
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
-        bias = self.coeff_tensor(oc, 'float32') if bias else None
+        bias = self.coeff_tensor([oc], 'float32') if bias else None
         deconv = tpul.conv3d(x,
                             weight,
                             bias=bias,
@@ -478,6 +478,7 @@ class TPULANG_IR_TESTER(object):
         @tpulang(self.chip)
         def _test_convolution(input_shape: List[int],
                               kernel_shape: List[int],
+                              bias=False,
                               stride: List[int] = [1, 1, 1],
                               dilation: List[int] = [1, 1, 1],
                               pad: List[int] = None,
@@ -491,13 +492,14 @@ class TPULANG_IR_TESTER(object):
                                 pad,
                                 group=group,
                                 dilation=dilation,
+                                bias=bias,
                                 dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [conv], dtype!="float32")
 
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3)
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3, dtype="float16")
-        _test_convolution([1, 3, 28, 28, 28], [324, 1, 2, 16, 16], stride=[2,16,16], group=3, dtype="float16")
-        _test_convolution([1, 3, 28, 28, 28], [324, 1, 2, 16, 16], stride=[2,16,16], group=3, dtype="float32")
+        _test_convolution([1, 6, 16, 224, 224], [324, 2, 2, 16, 16], bias=True, stride=[2,16,16], group=3, dtype="float16")
+        _test_convolution([1, 3, 28, 28, 28], [324, 1, 2, 16, 16], bias=True, stride=[2,16,16], group=3, dtype="float32")
 
     #######################################################################
     # Deconvolution
@@ -514,7 +516,7 @@ class TPULANG_IR_TESTER(object):
                 dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
-        bias = self.coeff_tensor(oc, 'flioat32') if bias else None
+        bias = self.coeff_tensor([oc], 'float32') if bias else None
         deconv = tpul.deconv(x,
                             weight,
                             bias=bias,
@@ -539,7 +541,7 @@ class TPULANG_IR_TESTER(object):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
         out_dtype = dtype if dtype == 'float32' else 'int32'
-        bias = self.coeff_tensor(oc, out_dtype) if bias else None
+        bias = self.coeff_tensor([oc], out_dtype) if bias else None
         deconv = tpul.deconv3d(x,
                             weight,
                             bias=bias,
@@ -615,7 +617,7 @@ class TPULANG_IR_TESTER(object):
                 out_dtype="int32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, x.dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])), zero_point=zp[1])
-        bias = self.coeff_tensor(oc, out_dtype) if bias else None
+        bias = self.coeff_tensor([oc], out_dtype) if bias else None
         conv = tpul.deconv_int(x,
                             weight,
                             bias=bias,
@@ -695,7 +697,7 @@ class TPULANG_IR_TESTER(object):
             oc = kshape[0]
             weight = self.coeff_tensor(kshape, dtype, scale=[scale[1]] * oc, zero_point=zp[1])
             out_dtype = dtype
-            bias = self.coeff_tensor(oc, 'int32') if has_bias else None
+            bias = self.coeff_tensor([oc], 'int32') if has_bias else None
             conv = tpul.conv_quant(x,
                                    weight,
                                    bias=bias,
@@ -894,7 +896,7 @@ class TPULANG_IR_TESTER(object):
                 out_dtype="int32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, x.dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])), zero_point=0)
-        bias = self.coeff_tensor(oc, out_dtype) if bias else None
+        bias = self.coeff_tensor([oc], out_dtype) if bias else None
         conv = tpul.conv_int(x,
                             weight,
                             bias=bias,
@@ -3552,7 +3554,7 @@ class TPULANG_IR_TESTER(object):
                     dtype="float32"):
             oc = kshape[0]
             weight = self.coeff_tensor(kshape, dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])))
-            bias = self.coeff_tensor(oc, dtype) if bias else None
+            bias = self.coeff_tensor([oc], dtype) if bias else None
             conv = tpul.conv(x,
                             weight,
                             bias=bias,
@@ -3616,7 +3618,7 @@ class TPULANG_IR_TESTER(object):
                     dtype="float32"):
             oc = kshape[0]
             weight = self.coeff_tensor(kshape, dtype, scale=1/(math.sqrt(kshape[1] * kshape[2] * kshape[3])))
-            bias = self.coeff_tensor(oc, dtype) if bias else None
+            bias = self.coeff_tensor([oc], dtype) if bias else None
             conv = tpul.conv(x,
                             weight,
                             bias=bias,
