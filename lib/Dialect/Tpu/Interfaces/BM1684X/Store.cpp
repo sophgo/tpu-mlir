@@ -109,10 +109,10 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   assert(isa_and_nonnull<tpu::GroupOp>(parent));
   auto group_next_op = *(parent->getResult(0).getUsers().begin());
   bool have_more_groupOp = isa<SliceMergeOp>(group_next_op) ? true : false;
-  auto input_gmem = op->getOperand(1);
-  if (!isa<top::NoneOp>(input_gmem.getDefiningOp())) {
-    g_addr = module::getAddress(input_gmem);
-    // llvm::errs() <<"get input_gmem addr: " << g_addr<<"\n";
+  auto buffer = op->getOperand(1);
+  if (!isa<top::NoneOp>(buffer.getDefiningOp())) {
+    g_addr = module::getAddress(buffer);
+    // llvm::errs() <<"get buffer addr: " << g_addr<<"\n";
   } else {
     for (auto user : out_value.getUsers()) {
       if (isa<SliceMergeOp>(user)) {
@@ -158,9 +158,9 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   }
 
   bool need_all_reduce = false;
-  if (getL2mAddr().has_value()) {
+  if (!module::isNone(getBuffer())) {
     need_all_reduce = true;
-    g_addr = getL2mAddr().value();
+    g_addr = module::getAddress(buffer);
     llvm::errs() <<"  will store to l2m, addr:"<<g_addr<<"\n";
   }
 
@@ -223,7 +223,7 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                       gi.h_idx * W * fmt_bytes +
                                       gi.w_idx * fmt_bytes + dst_offset_c;
           if (module::isDebugCmdEnable("codegen_debug")) {
-            llvm::errs() <<"gi.n_idx:"<<gi.n_idx<<", gi.c_idx:"<<gi.c_idx<<", gi.d_idx:"<<gi.d_idx
+            llvm::errs() <<"storeOp, gi.n_idx:"<<gi.n_idx<<", gi.c_idx:"<<gi.c_idx<<", gi.d_idx:"<<gi.d_idx
                         <<", gi.h_idx:"<<gi.h_idx<<", gi.w_idx:"<<gi.w_idx
                         <<", d:"<<d<<", C:"<<C<<", D:"<<D<<", H:"<<H<<", W:"<<W
                         <<", gi.out_addr:"<<gi.out_addr<<", cur_local_offset:"<<cur_local_offset

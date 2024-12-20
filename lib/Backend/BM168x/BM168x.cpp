@@ -209,9 +209,12 @@ STORE_MODE_T BM168x::getStoreMode(Value v) {
   return stmode;
 }
 
-tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
+tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type, int64_t n_step,
+                                    int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
   tensor_spec_t spec;
+  group_info_t ginfo = {0};
   memset(&spec, 0, sizeof(spec));
+  auto shape = module::getShape(v);
   auto pre_op = v.getDefiningOp();
   if (module::isOpInGroup(pre_op)) {
     if (isa<tpu::MoveOp>(pre_op)) {
@@ -222,26 +225,38 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
       llvm::errs() << "value_to_spec, v:" << module::getName(v).str()
                    << ", idx:" << idx
                    << ", vec_input_move_addr[idx]:" << spec.addr << "\n";
+      if (group_type == GROUP_MM_OPT3 && !isa<tpu::LoadToL2MOp>(pre_op->getOperand(idx).getDefiningOp())) {
+        ginfo = LocalGenInterface::getGroupInfo(pre_op->getOperand(idx), n_step, h_step, d_step, w_step, c_step);
+      }
     } else if (isa<tpu::LoadToL2MOp>(pre_op)) {
-      auto tmpOp = dyn_cast<tpu::LoadToL2MOp>(pre_op);
-      spec.addr = tmpOp.getL2mAddr();
-      llvm::errs() << "  value_to_spec, v:" << module::getName(v).str()
-                   << ", get l2m addr:" << spec.addr << "\n";
+      spec.addr = module::getAddress(pre_op->getOperand(1));
     } else {
-      auto gi = LocalGenInterface::getGroupInfo(v);
-      spec.addr = gi.out_addr;
+      ginfo = LocalGenInterface::getGroupInfo(v, n_step, h_step, d_step, w_step, c_step);
+      spec.addr = ginfo.out_addr;
     }
   } else {
     spec.addr = module::getAddress(v);
   }
   spec.dtype = getDataType(v);
-  auto shape = module::getShape(v);
   if (group_type == GROUP_NORMAL || group_type == GROUP_3D ||
-      group_type == GROUP_MM || group_type == GROUP_MM_OPT3) {
+      group_type == GROUP_MM) {
     spec.dims = shape.size();
     for (int i = 0; i < spec.dims; i++) {
       spec.shape[i] = shape[i];
     }
+  } else if (group_type == GROUP_MM_OPT3) {
+      spec.dims = 4;
+      if (module::IsHdimIsBatch(v)) {
+        spec.shape[0] = 1;
+        spec.shape[1] = ginfo.c_slice;
+        spec.shape[2] = ginfo.n_slice;
+        spec.shape[3] = ginfo.h_slice;
+      } else {
+        spec.shape[0] = ginfo.n_slice;
+        spec.shape[1] = ginfo.c_slice;
+        spec.shape[2] = ginfo.h_slice;
+        spec.shape[3] = 1;
+      }
   } else if (group_type == GROUP_SMALL_C) {
     int64_t n, c, h, w;
     module::getNCHW(v, n, c, h, w, group_type);
@@ -255,23 +270,26 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   return spec;
 }
 std::shared_ptr<std::vector<tensor_spec_t>>
-BM168x::get_input_spec(Operation *op, group_type_t group_type) {
-  return get_spec(op->getOperands(), group_type);
+BM168x::get_input_spec(Operation *op, group_type_t group_type, int64_t n_step,
+                      int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
+  return get_spec(op->getOperands(), group_type, n_step, h_step, d_step, w_step, c_step);
 }
 
 std::shared_ptr<std::vector<tensor_spec_t>>
-BM168x::get_output_spec(Operation *op, group_type_t group_type) {
-  return get_spec(op->getResults(), group_type);
+BM168x::get_output_spec(Operation *op, group_type_t group_type, int64_t n_step,
+                      int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
+  return get_spec(op->getResults(), group_type, n_step, h_step, d_step, w_step, c_step);
 }
 
 std::shared_ptr<std::vector<tensor_spec_t>>
-BM168x::get_spec(ValueRange values, group_type_t group_type) {
+BM168x::get_spec(ValueRange values, group_type_t group_type, int64_t n_step,
+                int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
   auto specs = std::make_shared<std::vector<tensor_spec_t>>();
   for (auto v : values) {
     if (module::isNone(v)) {
       continue;
     }
-    specs->push_back(value_to_spec(v, group_type));
+    specs->push_back(value_to_spec(v, group_type, n_step, h_step, d_step, w_step, c_step));
   }
   return std::move(specs);
 }

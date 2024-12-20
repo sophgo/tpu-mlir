@@ -29,12 +29,9 @@ typedef struct node_info {
     return global_op == rhs.global_op && lgInfo == rhs.lgInfo;
   }
 
-  void show_info(std::string extra_info = "I am") {
-    if (!module::isDebugCmdEnable("print_node_topo_change")) {
-      return;
-    }
+  std::string name() {
     if (global_op) {
-      LOG(INFO)<<extra_info <<" at global_op: "<<module::getName(global_op).str();
+      return module::getName(global_op).str();
     } else {
       std::string tmp_str = "";
       int i = 0;
@@ -47,14 +44,33 @@ typedef struct node_info {
         tmp_str = tmp_str + "---" + module::getName(it).str();
       }
       assert(tmp_str.size() > 0);
-      LOG(INFO)<<extra_info  <<" at group:"<<tmp_str.substr(3, tmp_str.size());
+      return tmp_str.substr(3, tmp_str.size());
+    }
+  }
+
+  std::string first_op_name() {
+    if (global_op) {
+      return module::getName(global_op).str();
+    } else {
+      return module::getName(lgInfo->group_ops[0]).str();
+    }
+  }
+
+  void show_info(std::string extra_info = "I am") {
+    if (!module::isDebugCmdEnable("print_node_topo_change")) {
+      return;
+    }
+    if (global_op) {
+      LOG(INFO)<<extra_info <<" at global_op: "<<name();
+    } else {
+      LOG(INFO)<<extra_info  <<" at group:"<<name();
     }
   }
 } node_info;
 
 bool node_info_Sort_by_int(const node_info &v1, const node_info &v2)
 {
-    return v1.idx < v2.idx;//升序排列
+    return v1.idx < v2.idx;//Ascending arrangement
 }
 
 static void nodes_topo_order_dfs(node_info& cur_node, std::vector<node_info>& topo_nodes, int& idx) {
@@ -62,8 +78,10 @@ static void nodes_topo_order_dfs(node_info& cur_node, std::vector<node_info>& to
   cur_node.idx = idx++;
   topo_nodes.push_back(cur_node);
   cur_node.show_info("add into topo_nodes, idx:"+std::to_string(idx - 1));
-  for (auto next_node : cur_node.next_nodes) {
-    next_node->indeg -=1;
+  for (auto& next_node : cur_node.next_nodes) {
+    if (next_node->indeg > 0) {
+      next_node->indeg -=1;
+    }
     auto& nodes = next_node->tmp_pre_nodes;
     nodes.erase(std::remove(nodes.begin(), nodes.end(), &cur_node), nodes.end());
     next_node->show_info("check next_node, indeg:"+std::to_string(next_node->indeg));
@@ -144,8 +162,8 @@ void GroupOps::CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id
     key = llvm::formatv("{0}_slice-1", in_name).str();
   }
   llvm::errs() <<" load value:"<<name<<", key:"<<key<<"\n";
-  auto l2mem_s_addr = l2mem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[0].second.addr;
-  attrs.push_back(builder.getNamedAttr("l2m_addr", builder.getI64IntegerAttr(l2mem_s_addr)));
+  auto buffer_value = l2mem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[0].second.buffer;
+
   attrs.push_back(
       builder.getNamedAttr("id", builder.getI64IntegerAttr(ts)));
   if (current_op_ == nullptr) {
@@ -156,20 +174,12 @@ void GroupOps::CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id
 
   std::vector<Value> operands;
   operands.push_back(input);
+  operands.push_back(buffer_value);
   auto loadToL2mOp = builder.create<tpu::LoadToL2MOp>(NameLoc::get(builder.getStringAttr(name)),
                 input.getType(), operands, attrs);
   map_l2m_out_to_load_in[input] = loadToL2mOp->getResult(0);
   current_op_ = loadToL2mOp;
 }
-
-// std::string my_to_string(int num, int print_width = 0) {
-//   std::stringstream ss;
-//   if (print_width == 0)
-//     ss << num;
-//   else
-//     ss << std::setw(print_width) << std::setfill('0') << num;
-//   return ss.str();
-// }
 
 void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
                             const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
@@ -228,7 +238,7 @@ void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
   std::string key = llvm::formatv("{0}_slice{1}", in_name, slice_idx).str();
   auto mem_s_addr = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[0].second.addr;
   if (map_store_to_load_value.find(input) != map_store_to_load_value.end()) {
-    //load的value曾被store过，则使用第2次分配的lmem地址
+    //If the value of the load is previously stored, the lmem address assigned for the second time is used
     mem_s_addr = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[1].second.addr;
   }
   auto mem_s_size = ILP_time_step->lmem_alloc_ptr->vec_mem_alloc_his[key].size;
@@ -297,27 +307,22 @@ Value GroupOps::CreateStoreOp2(Value &output, tensor_info_t& ti, int64_t ts, int
       getLgParam(ti, ts, mem_s_addr, mem_s_size, group_type, 0, 0, slice_idx, can_merge)));
 
   key = llvm::formatv("{0}_slice0", out_tensor_name).str();
-  if (l2mem_alloc_ptr
-    && l2mem_alloc_ptr->vec_mem_alloc_his.find(key) != l2mem_alloc_ptr->vec_mem_alloc_his.end()) {
-    auto l2mem_s_addr = l2mem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[0].second.addr;
-    attrs.push_back(builder.getNamedAttr("l2m_addr", builder.getI64IntegerAttr(l2mem_s_addr)));
-  }
-
   builder.setInsertionPointAfter(current_op_);
 
   Operation* storeOp = nullptr;
   // bool will_store = std::find(will_store_value[pipe_id].begin(), will_store_value[pipe_id].end(), output) != will_store_value[pipe_id].end();
   if (map_store_tensor_to_outbuffer_out.find(output) != map_store_tensor_to_outbuffer_out.end()) {
     operands.push_back(map_store_tensor_to_outbuffer_out[output]);
-    storeOp =
-        builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
-                                    output.getType(), operands, attrs);
+  } else if (l2mem_alloc_ptr
+    && l2mem_alloc_ptr->vec_mem_alloc_his.find(key) != l2mem_alloc_ptr->vec_mem_alloc_his.end()) {
+    auto buffer_value = l2mem_alloc_ptr->vec_mem_alloc_his[key].vec_reload_addr[0].second.buffer;
+    operands.push_back(buffer_value);
   } else {
     operands.push_back(none_op_->getResult(0));
-    storeOp =
-        builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
-                                    output.getType(), operands, attrs);
   }
+  storeOp =
+      builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
+                                  output.getType(), operands, attrs);
   if (std::find(need_store_load_value[pipe_id].begin(), need_store_load_value[pipe_id].end(), output)
                 != need_store_load_value[pipe_id].end()) {
     map_store_to_load_value[output] = storeOp->getResult(0);
@@ -378,6 +383,44 @@ void GroupOps::UpdateOpLgParam2(Operation *op, Operation *old_op, int64_t ts,  i
                         slice_idx, can_merge, opd_h_slice_offset));
 }
 
+static void BFSPrintNodeGraph(std::shared_ptr<dot_graph> dot_graph_log, node_info* start_node,
+                              bool fwd = true, int depth = 8) {
+  if (depth == 0) {
+    return;
+  }
+  int tmp_depth = depth - 1;
+  dot_graph_log->add_node_into_graph(start_node->name());
+  if (fwd) {
+    for (auto node : start_node->next_nodes) {
+      dot_graph_log->add_node_into_graph(node->name());
+      dot_graph_log->add_edge_into_graph(start_node->name(), node->name());
+      llvm::errs() << "depth: "<<tmp_depth<<", next_node: "<<node->name()<<"\n";
+      BFSPrintNodeGraph(dot_graph_log, node, fwd, tmp_depth);
+    }
+  } else {
+    for (auto pre_node : start_node->pre_nodes) {
+      dot_graph_log->add_node_into_graph(pre_node->name());
+      dot_graph_log->add_edge_into_graph(pre_node->name(), start_node->name());
+      llvm::errs() << "depth: "<<tmp_depth<<", pre_node: "<<pre_node->name()<<"\n";
+      BFSPrintNodeGraph(dot_graph_log, pre_node, fwd, tmp_depth);
+    }
+  }
+}
+
+void export_node_subnet_dot(std::vector<node_info>& nodes) {
+  if (module::isDebugCmdEnable("export_node_subnet_dot")) {
+    for (auto node: nodes) {
+      if (module::isDebugCmdEnable("export_node_subnet_dot-" + node.first_op_name() + "-")) {
+        auto dot_graph_log = std::make_shared<dot_graph>();
+        BFSPrintNodeGraph(dot_graph_log, &node, false, 8);
+        BFSPrintNodeGraph(dot_graph_log, &node, true, 8);
+        dot_graph_log->export_dot("export_node_subnet_dot-" + node.first_op_name());
+        break;
+      }
+    }
+  }
+}
+
 void GroupOps::buildMlir_for_opt3() {
   auto &lg_infos = lg_pass_ir_->lg_infos;
   if (lg_infos.empty()) {
@@ -387,9 +430,8 @@ void GroupOps::buildMlir_for_opt3() {
   groups_.clear();
   int64_t group_num = lg_infos.size();
   auto builder = OpBuilder(ctx_);
-  none_op_ = module::getNoneOp(lg_infos[0].group_ops[0]);
+  // none_op_ = module::getNoneOp(lg_infos[0].group_ops[0]);
 
-  //添加group node
   bool print_node_topo_change = module::isDebugCmdEnable("print_node_topo_change");
   std::vector<node_info> nodes;
   std::vector<Operation*> all_local_ops;
@@ -424,6 +466,9 @@ void GroupOps::buildMlir_for_opt3() {
         }
         nodes.push_back(node_info(op));
       }
+    }
+    if (isa<top::NoneOp>(op)) {
+      none_op_ = op;
     }
   });
   Operation* retrunOp = nullptr;
@@ -572,15 +617,13 @@ void GroupOps::buildMlir_for_opt3() {
     }
   }
   LOG(INFO) <<"nodes.size: "<<nodes.size();
-  //设置node的入度
   for (auto& node : nodes) {
     node.indeg = node.pre_nodes.size();
     node.tmp_pre_nodes.assign(node.pre_nodes.begin(), node.pre_nodes.end());
   }
-  //深度搜索node的topo序
   int idx = 0;
   std::vector<node_info> topo_nodes;
-  for (auto node : nodes) {
+  for (auto& node : nodes) {
     if (node.indeg == 0) {
       if (std::find(topo_nodes.begin(), topo_nodes.end(), node) == topo_nodes.end()) {
         node.show_info("dfs start point");
@@ -603,11 +646,13 @@ void GroupOps::buildMlir_for_opt3() {
       }
     }
   }
+  export_node_subnet_dot(nodes);
 
   typedef struct lg_extra_info {
     std::vector<Operation*> slice_merge_ops;
     std::vector<Operation*> grp_group_ops;
     std::vector<Operation*> outbuffer_ops;
+    std::vector<Operation*> buffer_ops;
   } lg_extra_info;
 
   std::vector<std::string> need_dump_tensors = {"not_dump"};
@@ -753,8 +798,27 @@ void GroupOps::buildMlir_for_opt3() {
       for (auto in: lg_info.group_ins) {
         llvm::errs() << "    in:"<<module::getName(in).str()<<"\n";
       }
-      assert(lg_pass_ir_->ILP_time_steps[group_idx].size() > 0);
+
+      std::vector<Value> buffer_values;
       auto& l2mem_alloc_ptr = lg_pass_ir_->lg_l2mem_alloc_ptr[group_idx];
+      int idx = 0;
+      builder.setInsertionPointAfter(current_op_);
+      for (auto& itr: l2mem_alloc_ptr->vec_mem_alloc_his) {
+        auto type = ::mlir::Builder(ctx_).getIntegerType(8);
+        auto out_type = RankedTensorType::get({(int64_t)itr.second.size}, type);
+        auto tmpStr = "buffer_for_group_idx" + std::to_string(group_idx) + "_idx"+std::to_string(idx++);
+        auto newName = NameLoc::get(builder.getStringAttr(tmpStr));
+        std::vector<NamedAttribute> attrs;
+        attrs.push_back(builder.getNamedAttr(
+            "buffer_type", tpu::BufferTypeAttr::get(ctx_, tpu::BufferType::L2)));
+        auto newOp = builder.create<tpu::BufferOp>(newName, out_type, ValueRange{}, attrs);
+        current_op_ = newOp.getResult().getDefiningOp();
+        map_lg_extra_info[(int64_t)&lg_info].buffer_ops.push_back(current_op_);
+        itr.second.vec_reload_addr[0].second.buffer = newOp.getResult();
+        buffer_values.push_back(newOp.getResult());
+      }
+
+      assert(lg_pass_ir_->ILP_time_steps[group_idx].size() > 0);
       for (int pipe_id = 0; pipe_id < lg_pass_ir_->ILP_time_steps[group_idx].size(); pipe_id++) {
         LOG(INFO) <<"grp: " << group_idx << ", unique pipe_id:"<<pipe_id;
         ILP_time_step = lg_pass_ir_->ILP_time_steps[group_idx][pipe_id];
@@ -784,6 +848,10 @@ void GroupOps::buildMlir_for_opt3() {
             in_types.push_back(outbuffer_out.getType());
             operands.push_back(outbuffer_out);
           }
+        }
+        for (auto in: buffer_values) {
+          in_types.push_back(in.getType());
+          operands.push_back(in);
         }
         std::map<Value, std::vector<Value>, value_compare> map_output_to_merge_slice;
         std::map<Value, Value, value_compare> map_group_out_to_yield_in;
@@ -845,10 +913,12 @@ void GroupOps::buildMlir_for_opt3() {
         //  replace outputs
         for (auto it : llvm::enumerate(groupOp.getResults())) {
           if (one_grp) {
+            //The old grp outputs are replaced with new groupOp results, and these grp outputs are converted
+            //to OpOperand whose owners are not in the grp, i.e. the opd of the out-of-group user is replaced
             outputs[it.index()].replaceUsesWithIf(it.value(), [&](OpOperand &operand) {
               Operation *user = operand.getOwner();
               return find(ops.begin(), ops.end(), user) == ops.end();
-            }); //旧的grp outputs用新的groupOp results替换，这些grp output转为OpOperand，其拥有者不在grp中，即组外user的opd会替换
+            });
             map_old_grp_out_to_new_grp_out[outputs[it.index()]] = it.value();
             map_new_grp_out_to_old_grp_out[it.value()] = outputs[it.index()];
           } else {
@@ -866,7 +936,7 @@ void GroupOps::buildMlir_for_opt3() {
           if (lg_pass_ir_->map_l2m_loads.size() > 0) {
             auto& map_l2m_load = lg_pass_ir_->map_l2m_loads[group_idx];
             // The start time slot must end as soon as possible, so the LoadToL2M op cannot be inserted
-            if (ts == 0) { //启动时隙需要尽快启动，故不能插入LoadToL2M op
+            if (ts == 0) {
               if (map_l2m_load.find(-1) != map_l2m_load.end()) {
                 LOG(INFO) <<"----------------ts"<<ts_id<<" for CreateLoadToL2mOp-----------------";
                 for (auto it: map_l2m_load[-1]) {
@@ -875,7 +945,7 @@ void GroupOps::buildMlir_for_opt3() {
                 ts_id++;
               }
             }
-            if (ts >= 0) { //从ts1开始插入LoadToL2M op，因为ts0同时执行ddr到l2m和lmem的搬运会降低效率，不利于ts0的快速启动
+            if (ts >= 0) {
               if (map_l2m_load.find(ts) != map_l2m_load.end()) {
                 LOG(INFO) <<"----------------ts"<<ts_id<<" for CreateLoadToL2mOp-----------------";
                 for (auto it: map_l2m_load[ts]) {
@@ -946,7 +1016,7 @@ void GroupOps::buildMlir_for_opt3() {
               }
               Value new_value = opd.get();
               if (map_new_grp_out_to_old_grp_out.find(opd.get()) != map_new_grp_out_to_old_grp_out.end()) {
-                //opd已被替换为前面group的输出
+                //opd has been replaced with the output of the previous group
                 new_value = map_old_to_new_value[map_new_grp_out_to_old_grp_out[opd.get()]][it.slice_idx];
               } else {
                 if (map_old_to_new_value.find(opd.get()) != map_old_to_new_value.end()) {
@@ -954,7 +1024,7 @@ void GroupOps::buildMlir_for_opt3() {
                   if (tmp_map.find(it.slice_idx) != tmp_map.end()) {
                     new_value = tmp_map[it.slice_idx];
                   } else {
-                    new_value = tmp_map[0]; //使用驻留的权重
+                    new_value = tmp_map[0]; //Use resident weights
                   }
                 }
               }
@@ -968,8 +1038,10 @@ void GroupOps::buildMlir_for_opt3() {
             current_op_ = new_op;
 
             bool first_time = true;
-            //针对复合op的情形，下面处理应该在完成vec_op_infos的遍历后再统一处理，目前的处理会在复合op中插入多个dump的时隙
-            //但考虑到dump只是调试功能，不会影响正常运行的性能，而目前的实现大致是可行的，也还没有发现bug，故暂不修改
+            //In the case of composite op, the following processing should be unified after the vec_op_infos traversal.
+            // The current processing inserts multiple dump time slots in the composite op
+            //However, considering that dump is only a debugging function and does not affect the normal running performance,
+            //the current implementation is generally feasible, and no bugs have been found, so do not modify it
             for (auto res : llvm::enumerate(it.op->getResults())) {
               if (std::find(will_store_value[pipe_id].begin(), will_store_value[pipe_id].end(), res.value())
                             == will_store_value[pipe_id].end()) {
@@ -1016,7 +1088,7 @@ void GroupOps::buildMlir_for_opt3() {
         builder.create<tpu::YieldOp>(group_loc, new_stores);
         LOG(INFO) <<"groupOp.dump: ";
         groupOp.dump();
-        current_op_ = groupOp; //下一个group插入在当前group后
+        current_op_ = groupOp; //The next group is inserted after the current group
       }
       if (!one_grp) {
         builder.setInsertionPointAfter(current_op_);
@@ -1064,6 +1136,16 @@ void GroupOps::buildMlir_for_opt3() {
       }
       firstOp  = node.global_op;
     } else {
+      for (auto it2: map_lg_extra_info[(int64_t)node.lgInfo].buffer_ops) {
+        it2->moveAfter(firstOp);
+        if (print_node_topo_change) {
+          if (isa<top::NoneOp>(firstOp))
+            LOG(INFO) <<"  move group, from: "<<module::getName(it2).str()<<", to:NoneOp";
+          else
+            LOG(INFO) <<"  move group, from: "<<module::getName(it2).str()<<", to:"<<module::getName(firstOp).str();
+        }
+        firstOp  = it2;
+      }
       for (auto it2: map_lg_extra_info[(int64_t)node.lgInfo].outbuffer_ops) {
         it2->moveAfter(firstOp);
         if (print_node_topo_change) {
@@ -1092,11 +1174,9 @@ void GroupOps::buildMlir_for_opt3() {
   }
   retrunOp->moveBefore(&retrunOp->getBlock()->back());
 
-  //设置node的入度
   /*for (auto& node : nodes) {
     node.indeg = node.pre_nodes.size();
   }
-  //深度搜索node的topo序
   int idx = 0;
   std::vector<node_info> topo_nodes;
   while(true) {

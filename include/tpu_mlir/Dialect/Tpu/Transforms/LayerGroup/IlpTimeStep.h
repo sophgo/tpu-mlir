@@ -26,6 +26,7 @@ using namespace operations_research;
 
 typedef struct reload_mem_struct {
  int addr;
+ Value buffer;
  std::vector<int> bank_id;
 } reload_mem_struct;
 

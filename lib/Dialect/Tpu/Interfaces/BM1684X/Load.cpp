@@ -31,8 +31,15 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                         int64_t w_step, group_type_t group_type,
                                         local_sec_info_t &sec_info) {
   auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
+  // for matmul second right matrix
+
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  // assert(false == gi.overstepped);
+  if (group_type == GROUP_MM_OPT3 && module::IsRightMat(getOutput())){
+    if (module::IsSecondMatInMlp(getOutput())){
+      gi = getGroupInfo(n_step, 1, d_step, w_step, h_step);
+      llvm::errs() <<"IsSecondMatInMlp\n";
+    }
+  }
 
   int64_t N, C, D, H, W;
   int64_t real_cslice, real_hslice, real_wslice, real_dslice;
@@ -105,13 +112,12 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     // In the case of tensor store followed by load, the input to load is the
     // output of the previous store
     if (isa<tpu::StoreOp>(inputOp)) {
-      auto input_gmem = inputOp->getOperand(1);
-      assert(!isa<top::NoneOp>(input_gmem.getDefiningOp()));
-      g_addr = module::getAddress(input_gmem);
+      auto buffer = inputOp->getOperand(1);
+      assert(!isa<top::NoneOp>(buffer.getDefiningOp()));
+      g_addr = module::getAddress(buffer);
     }
     if (isa<tpu::LoadToL2MOp>(inputOp)) {
-      g_addr =
-          BM1690::L2_SRAM_START_ADDR + cast<LoadToL2MOp>(inputOp).getL2mAddr();
+      g_addr = module::getAddress(inputOp->getOperand(1));
     }
 
     for (auto user : inputOp->getUsers()) {
@@ -267,6 +273,16 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                         (gi.d_idx + d) * H * W * fmt_bytes +
                                         gi.h_idx * W * fmt_bytes +
                                         gi.w_idx * fmt_bytes + src_offset_c;
+            if (module::isDebugCmdEnable("codegen_debug")) {
+              llvm::errs() <<"loadOp, gi.n_idx:"<<gi.n_idx<<", gi.c_idx:"<<gi.c_idx<<", gi.d_idx:"<<gi.d_idx
+                          <<", gi.h_idx:"<<gi.h_idx<<", gi.w_idx:"<<gi.w_idx
+                          <<", d:"<<d<<", C:"<<C<<", D:"<<D<<", H:"<<H<<", W:"<<W
+                          <<", gi.out_addr:"<<gi.out_addr<<", cur_local_offset:"<<cur_local_offset
+                          <<", g_addr:"<<g_addr<<", cur_global_offset:"<<cur_global_offset
+                          <<", gi.n_slice:"<<gi.n_slice<<", cur_cslice:"<<cur_cslice
+                          <<", real_hslice:"<<real_hslice<<", real_wslice:"<<real_wslice
+                          <<", c_num_local:"<<c_num_local<<", c_stride:"<<c_stride<<"\n";
+            }
             BM168x::instance()->dl_tensor_stride_move_gen_cmd(
                 gi.out_addr + cur_local_offset, real_npu_idx,
                 g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,

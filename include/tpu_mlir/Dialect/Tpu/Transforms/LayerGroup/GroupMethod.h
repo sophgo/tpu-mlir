@@ -91,12 +91,7 @@ public:
   void load_lg_results(std::vector<LgInfo> &lg_infos,
                        const llvm::SetVector<Operation *> &subnet_ops);
   bool is_lg_results_exists();
-
   void ilp_layer_group(LgPassIR *pass_ir);
-  void
-  get_base_branch_groups(std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-                         const llvm::SetVector<Operation *> &subnet_ops,
-                         const std::vector<Value> &subnet_return_opds);
   void get_base_dfs_topo_groups(
       std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void cut_this_group_is_better(

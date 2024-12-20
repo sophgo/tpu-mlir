@@ -40,7 +40,7 @@ bool opt_cost_all = false;
 
 bool Sort_by_int(const std::pair<Value, int64_t> &v1,
                  const std::pair<Value, int64_t> &v2) {
-  return v1.second < v2.second; // ��������
+  return v1.second < v2.second;
 }
 
 bool pair_op_int_Sort_by_int(const std::pair<Operation *, int> &v1,
@@ -61,13 +61,13 @@ static bool can_be_group_3d(std::vector<Operation *> &group_ops) {
 std::string GenerateRandomString(int length) {
     std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     std::random_device rd;
-    std::mt19937 gen(rd()); // Mersenne Twister 19937 生成器
+    std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, charset.length() - 1);
 
     std::string s;
-    s.reserve(length); // 预分配字符串空间以提高效率
+    s.reserve(length);
     for (int i = 0; i < length; ++i) {
-        s += charset[dis(gen)]; // 从字符集中随机选取字符
+        s += charset[dis(gen)];
     }
     return s;
 }
@@ -222,156 +222,6 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
   return true;
 }
 
-void GroupMethod::get_base_branch_groups(
-    std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-    const llvm::SetVector<Operation *> &subnet_ops,
-    const std::vector<Value> &subnet_return_opds) {
-  /*std::vector<std::vector<Operation *>> tmp_base_groups;
-  for (auto v : subnet_return_opds) { // ���������value��ʼ����
-    auto tmp_op = v.getDefiningOp();
-    std::vector<Operation *> tmp;
-    tmp.push_back(tmp_op);
-    tmp_base_groups.push_back(tmp);
-  }
-
-  LAYER_GROUP_LOG_DEBUG_BLOCK({
-    llvm::outs() << "get_base_branch_groups start, group num:"
-                 << tmp_base_groups.size() << "\n";
-  });
-  while (true) {
-    bool can_break = true;
-    for (auto group : tmp_base_groups) { // �ж��Ƿ����к�ѡ���Ѵ������
-      if (group.back() != nullptr) {
-        can_break = false;
-        break;
-      }
-    }
-    if (can_break) {
-      break; // �Ѵ�����ϣ��˳�ѭ��
-    }
-
-    for (auto &group : tmp_base_groups) {
-      auto tmp_op = group.back();
-      if (tmp_op == nullptr) {
-        continue;
-      }
-      int count = 0, imm_tensor_idx = 0, idx = 0;
-      for (auto v : tmp_op->getOperands()) {
-        auto pre_op = v.getDefiningOp();
-        if (pre_op == nullptr ||
-            isa<top::NoneOp, top::WeightOp, top::InputOp>(pre_op)) {
-          continue;
-        }
-        if (isPreOpHaveAComputeOp(pre_op)) {
-          count++;
-          imm_tensor_idx = idx;
-        }
-        idx++;
-      }
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "op:" << module::getName(tmp_op).str() << " have "
-                   << count << " input tensor is not weight\n";});
-      if (count == 1) {
-        auto tmp_op2 = tmp_op->getOperand(imm_tensor_idx).getDefiningOp();
-        int user_count = 0;
-        for (auto itr : tmp_op2->getResult(0).getUsers()) {
-          if (!isa<ReturnOp>(itr)) {
-            user_count++;
-          }
-        }
-        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "have " << user_count << " next node\n";});
-        if (user_count > 1) { // �����ֲ��
-          group.push_back(nullptr);
-          bool grp_exist = false;
-          for (auto tmp_group : tmp_base_groups) {
-            if (tmp_op2 == tmp_group[0]) {
-              grp_exist = true;
-              break;
-            }
-          }
-          if (!grp_exist) {
-            LAYER_GROUP_LOG_DEBUG_BLOCK({
-              llvm::outs() << "meet divide node, add new group, start op name:"
-                           << module::getName(tmp_op2).str() << "\n";
-            });
-            std::vector<Operation *> tmp;
-            tmp.push_back(tmp_op2);
-            tmp_base_groups.push_back(tmp);
-          }
-        } else {
-          group.push_back(tmp_op2);
-        }
-      } else if (count > 1) {     // ������ϵ�
-        group.push_back(nullptr); // ������ǰ��ѡ��
-        for (auto v : tmp_op->getOperands()) { // ����ϵ�����2���·�֧��Ϊ�µĺ�ѡ��
-          auto pre_op = v.getDefiningOp();
-          if (pre_op != nullptr &&
-              isa<top::NoneOp, top::WeightOp, top::InputOp>(pre_op)) {
-            continue;
-          }
-          LAYER_GROUP_LOG_DEBUG_BLOCK({
-            llvm::outs() << "meet merge node, add new group, start op name:"
-                         << module::getName(pre_op).str() << "\n";
-          });
-          std::vector<Operation *> tmp;
-          tmp.push_back(pre_op);
-          tmp_base_groups.push_back(tmp);
-        }
-        break; // �������base_groups����Ԫ�أ���������ѭ��������Ӱ��ѭ������
-      } else {
-        group.push_back(nullptr);
-        break; // �����������
-      }
-    }
-  }
-
-  for (auto &group : tmp_base_groups) {
-    group.pop_back();
-    reverse(group.begin(), group.end());
-  }
-
-  int i = 0;
-  for (auto group : tmp_base_groups) {
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << ">>>tmp_base_groups grp:" << i++ << "\n";});
-    int j = 0;
-    for (auto op : group) {
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  op:" << j++ << " name: " << module::getName(op).str()
-                   << "\n";});
-    }
-  }
-
-  base_groups.clear();
-  for (auto group : tmp_base_groups) {
-    std::vector<Operation *> tmp;
-    for (auto op : group) {
-      if (isLgSupport(op)) {
-        tmp.push_back(op);
-      } else {
-        LAYER_GROUP_LOG_DEBUG_BLOCK({
-          llvm::outs() << "global layer name: " << module::getName(op).str()
-                       << "\n";
-        });
-        if (tmp.size() > 1) {
-          base_groups.push_back(tmp);
-        }
-        tmp.clear();
-      }
-    }
-    if (tmp.size() > 1) {
-      base_groups.push_back(tmp);
-    }
-  }
-
-  i = 0;
-  for (auto group : base_groups) {
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << ">>>base_groups grp:" << i++ << "\n";});
-    int j = 0;
-    for (auto op : group) {
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "  op:" << j++ << " name: " << module::getName(op).str()
-                   << "\n";});
-    }
-  }*/
-}
-
 static void topo_order_dfs(Operation *cur_op, std::vector<Operation *> ops,
                            std::map<Operation *, int> &indeg,
                            std::vector<Operation *> &topo_ops) {
@@ -493,6 +343,9 @@ static inline bool update_shape_secs_for_ilp_group(shape_secs_t &shape_secs,cons
   } else if (shape_secs.hsecs < max_shape_secs.hsecs) {
     shape_secs.hsecs++;
     updated = true;
+  } else if (shape_secs.csecs < max_shape_secs.csecs) {
+    shape_secs.csecs++;
+    updated = true;
   }
 
   return updated;
@@ -520,7 +373,7 @@ void get_sec_per_cores(shape_secs_t &shape_secs,
       }
     }
   } else {
-    for (int n = 0; n < shape_secs.nsecs; n++) { // todo Ѱ���ø���core����ˮһ�µ�˳��
+    for (int n = 0; n < shape_secs.nsecs; n++) {
       for (int c = 0; c < shape_secs.csecs; c++) {
         for (int d = 0; d < shape_secs.dsecs; d++) {
           for (int h = 0; h < shape_secs.hsecs; h++) {
@@ -686,7 +539,7 @@ void GroupMethod::cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR 
     auto cur_op = group_ops[i];
     if(cur_op) {
       reduced_ops.push_back(cur_op);
-      // if(isa<tpu::Conv2DOp, tpu::DeconvOp, tpu::MatMulOp>(cur_op)) {
+      // if(isa<tpu::Conv2DOp, tpu::DeconvOp, tpu::MatMulOp, tpu::SoftmaxOp>(cur_op)) {
       if(isa<tpu::Conv2DOp, tpu::DeconvOp>(cur_op)) {
         cut_ops.push_back(cur_op);
       }
@@ -722,8 +575,16 @@ void GroupMethod::cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR 
         left_sub_group_cost = cycle_calculator_->getGlobalLayerCycle(left_sub_ops.back());
       } else {
         auto left_sub_group = CreateIlpLgInfo(sortOpsByOtherOpsOrder(reduced_ops, left_sub_ops), STRATEGY_SEARCH_CONV_CUT);
+        if (original_group.p_special_grp) {
+          left_sub_group->p_special_grp = original_group.p_special_grp;
+          if (!original_group.p_special_grp->convert_to_other_type(left_sub_ops, left_sub_group->p_special_grp)) {
+            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: matmul grp convert_to_other_type fail in cut_this_group_is_better\n";});
+            continue;
+          }
+          left_sub_group->_lgInfo.type = GROUP_MM_OPT3;
+        }
         left_sub_group->base_solver(pass_ir, cycle_calculator_);
-        if (left_sub_group->group_cycle > 0) { //确保group成功才行
+        if (left_sub_group->group_cycle > 0) { //Make sure the group succeeds
           left_sub_group_cost = left_sub_group->group_cycle;
         }
       }
@@ -736,6 +597,14 @@ void GroupMethod::cut_this_group_is_better(ilp_LgInfo& original_group, LgPassIR 
         right_sub_group_cost = cycle_calculator_->getGlobalLayerCycle(right_sub_ops.back());
       } else {
         auto right_sub_group = CreateIlpLgInfo(sortOpsByOtherOpsOrder(reduced_ops, right_sub_ops), STRATEGY_SEARCH_CONV_CUT);
+        if (original_group.p_special_grp) {
+          right_sub_group->p_special_grp = original_group.p_special_grp;
+          if (!original_group.p_special_grp->convert_to_other_type(left_sub_ops, right_sub_group->p_special_grp)) {
+            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: matmul grp convert_to_other_type fail in cut_this_group_is_better\n";});
+            continue;
+          }
+          right_sub_group->_lgInfo.type = GROUP_MM_OPT3;
+        }
         right_sub_group->base_solver(pass_ir, cycle_calculator_);
         if (right_sub_group->group_cycle > 0) {
           right_sub_group_cost = right_sub_group->group_cycle;
@@ -814,29 +683,33 @@ void GroupMethod::try_cut_some_group(LgPassIR *pass_ir, std::vector<std::shared_
 static void l2m_process(ilp_LgInfo &sub_group,
                         std::vector<std::pair<Value, int64_t>>& value_size, bool l2m_en) {
   LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "process l2m...\n";});
+  auto l2mem_alloc_ptr = std::make_shared<l2mem_alloc>();
+  sub_group.l2mem_alloc = l2mem_alloc_ptr;
   auto& map_l2m_load = sub_group.map_l2m_load;
   auto& grp_time_step = sub_group.timeStepPtrs;
   if (sub_group.p_special_grp) {
-    auto l2mem_alloc_ptr = std::make_shared<l2mem_alloc>();
     if (l2m_en) {
       for (auto itr : grp_time_step[0]->vec_l2m_value_info) {
         auto name = module::getName(itr.value).str();
         uint32_t size = Arch::get_gmem_bytes(itr.value);
         LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "alloc tensor:"<<name<< ", size:"<<size<<" in l2m\n";});
-        l2mem_alloc_ptr->alloc(0, name, itr.value, size);
-        map_l2m_load[itr.load_ts].push_back(itr);
+        if (l2mem_alloc_ptr->alloc(0, name, itr.value, size)) {
+          map_l2m_load[itr.load_ts].push_back(itr);
+        }
       }
     }
 
-    if (sub_group.shape_secs.h_slice_num > 1) { //若有tp并行，需要在l2m做reduce
+    //If tp is deployed concurrently, reduce tasks need to be performed on l2m
+    if (sub_group.shape_secs.h_slice_num > 1) {
       for (auto itr: sub_group.value_store_to_l2m) {
         auto name = module::getName(itr.first).str();
         uint32_t size = Arch::get_gmem_bytes(itr.first);
         LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "alloc tensor:"<<name<< ", size:"<<size<<" in l2m for store\n";});
-        l2mem_alloc_ptr->alloc(0, name, itr.first, size);
+        if (!l2mem_alloc_ptr->alloc(0, name, itr.first, size)) {
+          assert(false);
+        }
       }
     }
-    sub_group.l2mem_alloc = l2mem_alloc_ptr;
     return;
   }
 
@@ -853,7 +726,8 @@ static void l2m_process(ilp_LgInfo &sub_group,
     });
     int parallel_core_num = core_num_per_pipe0;
     int min = itr.load_ts;
-    for (int j = 1; j < grp_time_step.size(); j++) { //遍历除第1个流水外的其他流水，第1个流水最长
+    //Traverse all other streams except the first stream, the first stream being the longest
+    for (int j = 1; j < grp_time_step.size(); j++) {
       parallel_core_num += grp_time_step[j]->ncdhw_steps.size();
       for (auto itr3 = grp_time_step[j]->vec_l2m_value_info.begin();
                 itr3 != grp_time_step[j]->vec_l2m_value_info.end(); ++itr3) {
@@ -893,7 +767,6 @@ static void l2m_process(ilp_LgInfo &sub_group,
   for (auto it2: value_size) {
     total_weight_size += it2.second;
   }
-  l2mem_alloc_Ptr l2mem_alloc_ptr = std::make_shared<l2mem_alloc>();
   std::vector<Value> value_l2m;
   if (total_weight_size > l2_mem_size) {
     int share_mem_size = 0;
@@ -924,14 +797,14 @@ static void l2m_process(ilp_LgInfo &sub_group,
       std::map<int, std::vector<l2m_value_info>> map_l2m_free;
       bool failed = false;
       for (int m = -1; m < ts_count; m++) {
-        //处理在该时隙需要释放的l2m tensor
+        //Process the l2m tensor that needs to be released in this time slot
         if (map_l2m_free.find(m) != map_l2m_free.end()) {
           for (auto it3:map_l2m_free[m]) {
             auto name = module::getName(it3.value).str();
             l2mem_alloc_ptr->free(it3.slice_idx, name);
           }
         }
-        //处理在该时隙需要分配的l2m tensor
+        //Process the l2m tensor that needs to be allocated in this time slot
         if (map_l2m_load.find(m) != map_l2m_load.end()) {
           for (auto it3:map_l2m_load[m]) {
             if (std::find(value_l2m.begin(), value_l2m.end(), it3.value) == value_l2m.end()) {
@@ -941,7 +814,7 @@ static void l2m_process(ilp_LgInfo &sub_group,
               if (failed) {
                 break;
               }
-              //记录当前分配的l2m tensor待释放的时隙
+              //Records the currently allocated l2m tensor time slot to be released
               if (map_l2m_free.find(it3.free_ts) == map_l2m_free.end()) {
                 map_l2m_free[it3.free_ts] = std::vector<l2m_value_info>();
               }
@@ -977,7 +850,6 @@ static void l2m_process(ilp_LgInfo &sub_group,
   }
   // pass_ir->map_l2m_loads.push_back(map_l2m_load);
   // pass_ir->lg_l2mem_alloc_ptr.push_back(l2mem_alloc_ptr);
-  sub_group.l2mem_alloc = l2mem_alloc_ptr;
 }
 
 static void EliminatingDuplicatePipeline(ilp_LgInfo &ilp_sub_group) {
@@ -1016,9 +888,9 @@ static bool is_same_pipeline(int core_id, ilp_LgInfo &ilp_sub_group, TensorInfo&
   auto& timeStepPtrs = ilp_sub_group.timeStepPtrs;
   bool all_slice_same = false;
   LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "pipeline num:" << timeStepPtrs.size()<<"\n";});
-  for (int n = 0; n < timeStepPtrs.size(); n++) { // 遍历历史流水线
+  for (int n = 0; n < timeStepPtrs.size(); n++) {
     std::vector<std::vector<int64_t>> &ncdhw_steps = timeStepPtrs[n]->ncdhw_steps.begin()->second;
-    if (ncdhw_steps.size() == core_slice_num) { // 历史流水线与当前有相同slice数量
+    if (ncdhw_steps.size() == core_slice_num) {
       all_slice_same = true;
       for (int m = 0; m < core_slice_num; m++) {
         std::vector<int64_t>& his_steps = ncdhw_steps[m];
@@ -1026,7 +898,8 @@ static bool is_same_pipeline(int core_id, ilp_LgInfo &ilp_sub_group, TensorInfo&
         if (tensor_infos.find(sub_group.group_ops[0]->getOperand(0)) == tensor_infos.end()) {
           assert(false);
         }
-        slice_info_t &slice_info = tensor_infos[sub_group.group_ops[0]->getOperand(0)].slice_info; // todo 这里是使用于单分支
+        // todo Here it is used for single branches
+        slice_info_t &slice_info = tensor_infos[sub_group.group_ops[0]->getOperand(0)].slice_info;
         // for (auto itr = tensor_infos.begin(); itr != tensor_infos.end(); ++itr) {
         if (slice_info.n[his_steps[0]].second != slice_info.n[ncdhw[0]].second) {
             LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "slice n not equal:"
@@ -1095,7 +968,7 @@ backward_update_slice2(ilp_LgInfo &ilp_lg_info, const shape_secs_t &shape_secs,
   if (isa<tpu::Conv2DOp>(op) && module::isBM1684Family()) {
     auto conv_attr = dyn_cast<tpu::Conv2DOp>(op).parseParam();
     if (conv_attr.use_3ic_optimize) {
-      return false; // todo ���䨪??D??��?�䨮??��?��??a?a2??����?
+      return false;
     }
   }
   auto mode = getRunMode(op);
@@ -1136,9 +1009,7 @@ backward_update_slice2(ilp_LgInfo &ilp_lg_info, const shape_secs_t &shape_secs,
           continue;
         }
         if (tensor_infos.find(res) != tensor_infos.end()) {
-          tensor_infos[res] = tensor_info_t(
-              op,
-              si); //??��?????��?3???��D���䨪?tensor?����?��??��?��shape��?������?maxpool��?outputo��mask��D��?��??��
+          tensor_infos[res] = tensor_info_t(op, si);
         }
       }
     }
@@ -1429,7 +1300,6 @@ static void align_secs_to_core_num(ilp_LgInfo& sub_group, const shape_secs_t& ma
   }
 }
 
-//若失败op先前曾失败过，已插入NonOp,则
 static bool failProcess_insertNonOp(ilp_LgInfo &ilp_lg_info, Operation* fail_op,
                                     bool& inc_secs,  int nonOp_insert_mode = 0) {
   assert(nonOp_insert_mode >= 0 && nonOp_insert_mode <= 2);
@@ -1490,6 +1360,9 @@ bool stripe_mine_idx_slice2(ilp_LgInfo &ilp_lg_info,
 
   for (auto out : lg_info.group_outs) {
     module::getNCDHW(out, n, c, d, h, w, lg_info.type);
+  llvm::errs() <<"   n: " << n<<"   c: " << c
+                <<" , h:"<<h<<" , d:"<<d
+                <<", w:"<<w<<"\n";
     auto istype = module::getStorageType(lg_info.group_ins[0]);
     auto ostype = module::getStorageType(out);
     int64_t bitwidth = std::min(istype.getIntOrFloatBitWidth(),
@@ -1571,8 +1444,9 @@ bool backward_gen_ilp_var2(
       failMode = 2;
       return false;
     }
+    auto type = lg_info.type == GROUP_MM_OPT3?GROUP_MM:lg_info.type;
     int bdc_cycle = cycle_calculator_->getLocalLayerCycle(
-        op, tensor_infos, lg_info.type, true); // todo ?��?��1��?����?slice0��?��|???��?Y����?������
+        op, tensor_infos, type, true);
     tmpStr = "mem_size_for_load: " + std::to_string(mem_size_for_load)
                 + ", buffer_size: " + std::to_string(buffer_size)
                 + ", slice_idx:" + std::to_string(slice_idx);
@@ -1590,7 +1464,9 @@ bool backward_gen_ilp_var2(
         continue;
       }
       if (!inOp) {
-        inOp = (Operation*)0x1111;//由于下面ops中用nullptr作为空位op，故这里将外部参数的nullptr改为任意值，只要在ops中找不到就行
+        //Since the following ops uses nullptr as the vacant op, the nullptr of
+        //the external parameter is changed to any value, as long as it cannot be found in ops
+        inOp = (Operation*)0x1111;
       }
       bool is_weight = is_value_weight(in);
       int64_t lmem_bytes = getTensorLmemBytes(op, in, tensor_infos, ncdhw_idx, ilp_lg_info, is_weight?false:true);
@@ -1600,8 +1476,8 @@ bool backward_gen_ilp_var2(
         lmem_bytes *= 2;
       }
       std::string value_name = module::getName(in).str();
-      auto itr = std::find(ops.begin(), ops.end(), inOp); //?�̨�����??D������?��?��??�騪?������?��?data��?��?value��??����?op?anull��?��?????��??����??��
-      if (itr == ops.end()) { // D����a�䨮group��a??load��??��???������??
+      auto itr = std::find(ops.begin(), ops.end(), inOp);
+      if (itr == ops.end()) {
         tensor_info_t info;
         if (tensor_infos.find(in) != tensor_infos.end()) {
           info = tensor_infos[in];
@@ -1671,7 +1547,8 @@ bool backward_gen_ilp_var2(
         int producer_pos =
             slice_pos_info.ts_id + std::distance(ops.begin(), itr);
         if (producer_pos != var_pos_info.ts_id - 1) {
-          //若等于，对应最一般直接相邻情形，这里不用加，前面时隙已算//上面2个条件是恒等的?
+          //If equal, corresponding to the most general direct adjacent case, there is no need to add,
+          //the front slot has been calculated // the above 2 conditions are identical.
           load_bytes_for_next_ts += lmem_bytes;
         }
       }
@@ -1717,17 +1594,16 @@ bool backward_gen_ilp_var2(
       std::string ada_var_name;
       int idx = 0;
       bool first_user = true;
-      if (map_user_pos.size() > 0) { //没有组内user时，不进入本分支，到后面去处理store;
+      if (map_user_pos.size() > 0) { //If there is no user in the group, do not enter the branch, and then process the store.
         // std::map<MPVariable *, std::vector<std::pair<int, MPVariable *>>> map_x_var_items;
         Operation* pre_user = nullptr;
-        for (auto it : map_user_pos) { //最普通情形会有1个user
+        for (auto it : map_user_pos) { //In the most common case, there will be one user
           auto user_pos = it.first;
           auto user = it.second;
           llvm::errs() << "process " << idx << "th user, user_pos:"<<user_pos<<" "<<show_op_info(user)
                        << ", pre_user_pos:"<<pre_user_pos<<"\n";
           auto user_name = module::getName(user).str();
           MPVariable *reside_x = nullptr;
-          //?����??����|���訢?��?��?
           if (user_pos - pre_user_pos >= 2) {
             ada_var_name = llvm::formatv("ada_var_for_{0}_gen_by_{1}_at_pos{2}_use_by_{3}_at_pos{4}",
                                         name.c_str(), op_name, var_pos_info.ts_id, user_name, user_pos);
@@ -1749,7 +1625,8 @@ bool backward_gen_ilp_var2(
             tmp.slice_idx = slice_idx;
             std::vector<std::string> varNames;
             varNames.push_back(ada_var_name);
-            //凡是不被op自身固有以及变量控制的张量内存占用都要明确设置mem_contrains;ada_var不需设置cycle_contrains
+            //All tensor memory usage that is not controlled by op itself
+            //and variables should be explicitly set mem_contrains; ada_var does not need to set cycle_contrains
             for (int ts_idx = pre_user_pos + 1; ts_idx < user_pos; ts_idx++) {
               ilp_timeStep.timestep_table_[ts_idx].vec_ts_var.push_back(tmp);
               ilp_timeStep.addTimestepMemUse(ts_idx, full_slice_bytes, varNames);
@@ -1759,9 +1636,8 @@ bool backward_gen_ilp_var2(
               }
             }
           }
-          // op??��D1????����?��?user?��resnet2D2?��??����??��??��D2??������2??op�ꡧopo��?����|user??op2??������2??op��?2???��?????��??t
+
           if (user_pos - pre_user_pos >= 4) {
-            //?����?store��?��?
             info.mode2 = TIMESTEP2_STORE_AND_LOAD;
             dma_cycle = cycle_calculator_->getGdmaCycle(res, info, lg_info.type); // nullptr, 0
             ilp_timeStep.addTensorCycle(res, slice_idx, dma_cycle);
@@ -1809,7 +1685,6 @@ bool backward_gen_ilp_var2(
               }
             }
 
-            //?����?load��?��?
             dma_cycle = cycle_calculator_->getGdmaCycle(res, info, lg_info.type, user, 1);
             var_names.clear();
             std::vector<std::pair<std::string, int>> load_var_names;
@@ -1834,7 +1709,6 @@ bool backward_gen_ilp_var2(
               ilp_timeStep.addTimestepMemUse(ts_idx, full_slice_bytes, var_names);
             }
 
-            //?����?���訢?��?��?o��?��??store/load��?��?1??��
             coeff_var_items.clear();
             for (auto store_var : store_var_names) {
               coeff_var_items.push_back(std::make_pair(
@@ -1857,7 +1731,7 @@ bool backward_gen_ilp_var2(
                   1, ilp_timeStep.getMPVarByName(load_var.first)));
             }
             coeff_var_items.push_back(std::make_pair(1, reside_x));
-            ilp_timeStep.addConstraint(1, 1, coeff_var_items); //定义sum(load_var) + ada_var = 1
+            ilp_timeStep.addConstraint(1, 1, coeff_var_items); //define sum(load_var) + ada_var = 1
 
             coeff_var_items.clear();
             for (auto load_var : load_var_names) {
@@ -1869,13 +1743,13 @@ bool backward_gen_ilp_var2(
                                  ilp_timeStep.getMPVarByName(store_var.first)));
             }
             coeff_var_items.push_back(std::make_pair(2, reside_x));
-            //定义2*ada_var + sum(pos*load_var) - sum(pos*store_var) >= 2
+            //define 2*ada_var + sum(pos*load_var) - sum(pos*store_var) >= 2
             ilp_timeStep.addConstraint(2, MPSolver::infinity(), coeff_var_items);
           } else {
             if (reside_x) {
               coeff_var_items.clear();
               coeff_var_items.push_back(std::make_pair(1, reside_x));
-              ilp_timeStep.addConstraint(1, 1, coeff_var_items); //设置ada_var = 1
+              ilp_timeStep.addConstraint(1, 1, coeff_var_items);
             }
             if (pre_user) {
               assert(idx != 0);
@@ -1888,10 +1762,8 @@ bool backward_gen_ilp_var2(
           first_user = false;
         }
 
-        if (all_store_varnames.size() > 0) { // ��Dstore��?��?��??3��?��|����3?��?store grp out
-          if (have_grp_out) { // 3?��?��Dstore grp
-                              // out��?����???������1??store��?��??a1��?��?o��????��???3?��?store
-                              // grp out��|����
+        if (all_store_varnames.size() > 0) {
+          if (have_grp_out) {
             coeff_var_items.clear();
             for (auto store_var : all_store_varnames) {
               coeff_var_items.push_back(
@@ -1900,21 +1772,23 @@ bool backward_gen_ilp_var2(
             ilp_timeStep.addConstraint(1, 1, coeff_var_items);
             have_grp_out = false;
           } else {
-            // 3?��??Tstore��?grp out,D����a��?3?��?grp out��?������?
             ilp_timeStep.addNewOutIntoReturnOp(all_store_varnames, res);
           }
         }
       }
 
       if (have_grp_out) {
-        // ��???���????����??����2��������??��o?2��o����?3?��?����store��?��DD?����D����y?Y��?�����㨢��?ddr����?��?��?2???��?��
         info.mode2 = TIMESTEP2_STORE;
         int64_t lmem_bytes = getTensorLmemBytes(op, res, tensor_infos, ncdhw_idx, ilp_lg_info);
         int dma_cycle = cycle_calculator_->getGdmaCycle(res, info, lg_info.type);
         std::vector<std::string> var_names;
         int ts_idx = pre_user_pos + 1;
+        int end_idx = var_pos_info.end_ts + 1;
+        if (ts_idx >= end_idx) {
+          end_idx = ts_idx + 1;
+        }
         int ts_idx2 = ts_idx;
-        for (; ts_idx < var_pos_info.end_ts + 1; ts_idx++) {
+        for (; ts_idx < end_idx; ts_idx++) {
           std::string var_name = llvm::formatv(
               "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_{5}", name.c_str(),
               var_pos_info.ts_id, lmem_bytes, dma_cycle, ts_idx, slice_name.c_str());
@@ -1929,7 +1803,7 @@ bool backward_gen_ilp_var2(
           }
         }
         ts_idx = ts_idx2;
-        for (int offset = 0; ts_idx < var_pos_info.end_ts + 1; ts_idx++) {
+        for (int offset = 0; ts_idx < end_idx; ts_idx++) {
           std::string var_name = llvm::formatv(
               "x_tensor_{0}_gen_at_pos{1}_store_{2}byte_{3}cycle_at_ts{4}_{5}", name.c_str(),
               var_pos_info.ts_id, lmem_bytes, dma_cycle, ts_idx, slice_name.c_str());
@@ -1991,13 +1865,16 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
     }
   } else {
     std::sort(vec_op_hwsecs.begin(), vec_op_hwsecs.end(),pair_op_int_Sort_by_int);
-    if (!init_group_data_secs2(sub_group, shape_secs, value_size, tmp_dot_graph_log)) {
+    if (!init_group_data_secs2(sub_group, shape_secs, value_size, fail_op, tmp_dot_graph_log)) {
       sub_group.is_fail_op_in_grp = false;
-      llvm::errs() << "vec_op_hwsecs:\n";
-      for (auto itr: vec_op_hwsecs) {
-        llvm::errs() <<show_op_info(itr.first)<< ", count:"<<itr.second<<"\n";
+      if (!fail_op) {
+        fail_op = vec_op_hwsecs[0].first;
+      } else {
+        llvm::errs() << "vec_op_hwsecs:\n";
+        for (auto itr: vec_op_hwsecs) {
+          llvm::errs() <<show_op_info(itr.first)<< ", count:"<<itr.second<<"\n";
+        }
       }
-      fail_op = vec_op_hwsecs[0].first;
       tmpStr = module::getName(fail_op).str();
       LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "init_group_data_secs2 fail, will del op:"<<tmpStr<<"\n";});
       tmp_dot_graph_log->add_node_label(tmpStr, "init_group_data_secs2 fail");
@@ -2013,13 +1890,13 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
   std::sort(value_size.begin(), value_size.end(), Sort_by_int);
   int slice_try_count = 0, nonOp_insert_mode, max_slice_cut_count = ops.size() > 10?1:3;
   auto& tensor_infos = sub_group.tensor_infos;
-  bool l2m_switch = module::isDebugCmdEnable("enable_l2m")?true:false, inc_secs = true;
+  bool l2m_switch = module::isDebugCmdEnable("disable_l2m")?false:true, inc_secs = true;
   tmp_dot_graph_log->add_node_label("global_info", "enable_l2m");
 
   while (true) {
     if (inc_secs && ++slice_try_count > max_slice_cut_count) {
       LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"layer group fail\n";});
-      return false; //设为global layer
+      return false; //Set to global layer
     }
     if (!inc_secs) {
       inc_secs = true;
@@ -2114,13 +1991,13 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
         // tmp_dot_graph_log->export_dot("merge_small_cycle_op_after", true);
         ret = ilp_timeStep->run(fail_op);
         if (!ret) {
-          auto error_info = "ilp_timeStep run fail, for core_id:" + std::to_string(core_id);
+          auto error_info = "ilp_timeStep run fail, for core_id:"+ std::to_string(core_id);
           LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<error_info<<"\n";});
           tmp_dot_graph_log->add_node_label(fail_op?module::getName(fail_op).str():"global_info", error_info);
           if (!failProcess_insertNonOp(sub_group, fail_op, inc_secs)) {
             return false;
           }
-          // fail_process_mode = 1; //求解失败则二分搜索能成功group的分割点，大组分小组
+          // fail_process_mode = 1;
           break;
         }
 
@@ -2133,7 +2010,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
           if (!failProcess_insertNonOp(sub_group, fail_op, inc_secs, nonOp_insert_mode)) {
             return false;
           }
-          break; //分配内存失败则可以考虑切成更小片
+          break;
         }
 
         int group_cycle, group_cycle_diff;

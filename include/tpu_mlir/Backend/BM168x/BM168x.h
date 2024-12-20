@@ -192,13 +192,21 @@ public:
   static int getGdmaFormat(DATA_TYPE_T data_type);
   static double getFmtBytes(DATA_TYPE_T data_type);
   static STORE_MODE_T getStoreMode(Value v);
-  static tensor_spec_t value_to_spec(Value v, group_type_t group_type);
+  static tensor_spec_t value_to_spec(Value v, group_type_t group_type,
+                int64_t n_step = 0, int64_t c_step = 0, int64_t h_step = 0,
+                int64_t d_step = 0, int64_t w_step = 0);
   static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_input_spec(Operation *op, group_type_t group_type = GROUP_NORMAL);
+  get_input_spec(Operation *op, group_type_t group_type = GROUP_NORMAL,
+                int64_t n_step = 0, int64_t c_step = 0, int64_t h_step = 0,
+                int64_t d_step = 0, int64_t w_step = 0);
   static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_output_spec(Operation *op, group_type_t group_type = GROUP_NORMAL);
+  get_output_spec(Operation *op, group_type_t group_type = GROUP_NORMAL,
+                int64_t n_step = 0, int64_t c_step = 0, int64_t h_step = 0,
+                int64_t d_step = 0, int64_t w_step = 0);
   static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_spec(ValueRange values, group_type_t group_type = GROUP_NORMAL);
+  get_spec(ValueRange values, group_type_t group_type = GROUP_NORMAL,
+          int64_t n_step = 0, int64_t c_step = 0, int64_t h_step = 0,
+          int64_t d_step = 0, int64_t w_step = 0);
   static void fix_shape(tensor_spec_t &spec,
                         const std::vector<int64_t> &new_shape);
   static void getBetterNCHW(Value v, int64_t &n, int64_t &c, int64_t &h,

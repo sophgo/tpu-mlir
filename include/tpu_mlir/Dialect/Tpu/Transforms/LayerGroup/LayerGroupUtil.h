@@ -30,7 +30,7 @@ get_group_max_secs(const LgInfo &lg_info,
 bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
                           std::vector<std::pair<Value, int64_t>>& value_size);
 bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
-                          std::vector<std::pair<Value, int64_t>> &value_size,
+                          std::vector<std::pair<Value, int64_t>> &value_size, Operation*& fail_op,
                           std::shared_ptr<dot_graph> dot_graph_log);
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos, int speical_pattern = 0);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,

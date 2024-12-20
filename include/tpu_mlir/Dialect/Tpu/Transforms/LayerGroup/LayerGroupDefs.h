@@ -368,6 +368,9 @@ struct LgInfo {
     }
   }
   void const dump_lginfo() const {
+    if (!module::isDebugCmdEnable("detail_info_show")) {
+      return;
+    }
     llvm::dbgs() << "LgInfo Begin {"
                  << "\n";
     llvm::dbgs() << "ins"
@@ -492,6 +495,13 @@ struct ilp_LgInfo {
   void save_result(LgPassIR *pass_ir);
 };
 
+struct dag_subnet {
+  bool matched = false;
+  bool checked = false;
+  std::vector<Operation*> ops;
+  std::vector<dag_subnet> sub_ops;
+};
+
 class speical_layer_group_base {
 public:
   speical_layer_group_base() {}
@@ -499,30 +509,30 @@ public:
 
   virtual bool
   pattern_match_and_parser(Operation *start_op,
-                           std::vector<Operation *> &subnet_ops,
-                           std::vector<Operation *> &accessed_ops) = 0;
+                           std::vector<Operation *> &subnet_ops) = 0;
+  virtual std::shared_ptr<speical_layer_group_base> clone() = 0;
   virtual std::string name() = 0;
   virtual std::string brief() { return ""; }
   virtual bool convert_to_other_type(
-      const std::vector<Operation *> &sub_ops,
+      std::vector<Operation *> &sub_ops,
       std::shared_ptr<speical_layer_group_base> &p_special_grp) = 0;
 
   bool search_two_mmOp(Operation *start_op, Operation *&next_mmOp,
-                       std::vector<Operation *> &subnet_ops,
-                       std::vector<Operation *> &accessed_ops);
+                       std::vector<Operation *> &subnet_ops);
   void get_batch_size(shape_secs_t &shape_secs);
   bool update_shape_secs_for_ilp_group(shape_secs_t &shape_secs,
                                        const shape_secs_t &max_shape_secs);
   void fill_slice_info(ilp_LgInfo &ilp_lg_info);
   bool inc_slice_num(int &test_slice_n, int &try_c_slice_num,
                      int &try_h_slice_num, int max_c_slice_num,
-                     int max_h_slice_num, bool inc_c_slice = true);
+                     int max_h_slice_num, bool inc_c_slice = true, bool cut_c_first = true);
   int get_secs(Operation *op, int n, int slice_n, int c_slice_num,
                int h_slice_num);
   bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation *&failed_op,
                             int64_t core_num);
 
-  std::vector<Operation *> ops;
+  std::vector<Operation*> ops;
+  std::vector<Operation*> h_cut_ops;
   bool col_cut = true;
   bool find_softmax = false;
   std::map<Value, std::vector<int>, value_compare> map_value_to_cut_dims;

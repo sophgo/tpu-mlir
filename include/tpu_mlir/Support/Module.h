@@ -352,12 +352,13 @@ bool startsWith(const std::string &fullString,
                 const std::string &startingSubstring);
 bool endsWith(const std::string &fullString, const std::string &suffix);
 bool IsRightMat(Value v);
+bool IsSecondMatInMlp(Value v);
 
 bool isOpSameCalc(Operation *op0, Operation *op1);
 bool isOpSameCalc(const std::vector<Operation *> &ops);
 
 bool isInMatMulGrpOp(Operation *op);
-
+bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h, int64_t &w);
 //-----------------------------------------------------------------
 // Helper for op compare
 //-----------------------------------------------------------------

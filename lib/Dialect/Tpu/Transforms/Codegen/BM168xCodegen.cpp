@@ -898,15 +898,17 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
     return;
   }
 
-  bool valid_softmax_group = true;
+  bool valid_softmax_group = true, first_mm = true;
   for (Operation &op : gOp.getBody().front().getOperations()) {
     if (!isa<tpu::SoftmaxOp, tpu::MatMulOp, StoreOp, LoadOp, YieldOp, SliceMergeOp, LoadToL2MOp>(op)) {
       valid_softmax_group = false;
       break;
     }
-    if (isa<tpu::MatMulOp>(op) &&
-        op.getAttr(LocalGenInterface::kLayerGroupAttrName).cast<tpu::LayerGroupAttr>().getHSlice().size() == 1) {
-      valid_softmax_group = false;
+    if (isa<tpu::MatMulOp>(op)) {
+      if (!first_mm && op.getAttr(LocalGenInterface::kLayerGroupAttrName).cast<tpu::LayerGroupAttr>().getHSlice().size() == 1) {
+        valid_softmax_group = false;
+      }
+      first_mm = false;
     }
   }
 
@@ -942,12 +944,16 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
 
   bool first_core = true;
   if (valid_softmax_group) {
+    llvm::errs() <<"valid_softmax_group\n";
     std::vector<Operation*> tmp_ops;
     std::vector<std::vector<Operation*>> new_pipeline_ops;
     bool first_mm = true;
     int his_timestep_idx = -1, timestep_idx;
     Operation* mm_storeOp = nullptr;
     for (Operation &op : gOp.getBody().front().getOperations()) {
+      if (isa<YieldOp>(op)) {
+        continue;
+      }
       if (isa<MoveOp>(op)) {
         timestep_idx = op.getAttr("ts_id").cast<IntegerAttr>().getInt();
       } else if (isa<LoadToL2MOp>(op)) {
@@ -958,76 +964,37 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
                           .cast<tpu::LayerGroupAttr>();
         timestep_idx = g_param.getId();
       }
+      if (isa<tpu::MatMulOp>(op)) {
+        if (first_mm) {
+          first_mm = false;
+        } else {
+          mm_storeOp = *(op.getUsers().begin());
+          //A stream has multiple slices, 2 in a group,
+          //and only the second one needs column segmentation to clone matmul op
+          first_mm = true;
+          int h_slice_size = op.getAttr(LocalGenInterface::kLayerGroupAttrName)
+                              .cast<tpu::LayerGroupAttr>().getHSlice().size();
+          for (int i = 0; i < h_slice_size; i++) {
+            if (i < h_slice_size - 1) {
+              tmp_ops.push_back(op.getOperand(1).getDefiningOp());
+            }
+            tmp_ops.push_back(&op);
+            if (i != 0) {
+              tmp_ops.push_back(mm_storeOp);
+            }
+            new_pipeline_ops.push_back(tmp_ops);
+            tmp_ops.clear();
+          }
+          continue;
+        }
+      }
+      tmp_ops.push_back(&op);
       if (timestep_idx != his_timestep_idx && his_timestep_idx != -1) {
         new_pipeline_ops.push_back(tmp_ops);
         tmp_ops.clear();
       }
-      if (isa<tpu::MatMulOp>(op)) {
-        if (first_mm) {
-          tmp_ops.push_back(&op);
-          first_mm = false;
-        } else {
-          mm_storeOp = *(op.getUsers().begin());
-          first_mm = true;
-          int h_slice_size = op.getAttr(LocalGenInterface::kLayerGroupAttrName)
-                              .cast<tpu::LayerGroupAttr>().getHSlice().size();
-          for (int i = 0; i < h_slice_size + 1; i++) {
-            if (i != 0) {
-              tmp_ops.push_back(mm_storeOp);
-            }
-            if (i != h_slice_size) {
-              tmp_ops.push_back(&op);
-              if (i < h_slice_size - 1) {
-                tmp_ops.push_back(op.getOperand(1).getDefiningOp());
-              }
-              new_pipeline_ops.push_back(tmp_ops);
-              tmp_ops.clear();
-            } else {
-              new_pipeline_ops.push_back(tmp_ops);
-            }
-          }
-        }
-      } else {
-        if (&op != mm_storeOp) {
-          tmp_ops.push_back(&op);
-        }
-      }
       his_timestep_idx = timestep_idx;
     }
-
-    // for (Operation &op : gOp.getBody().front().getOperations()) {
-    //   if (isa<tpu::SoftmaxOp>(op)) {
-    //     tmp_ops.push_back(op.getOperand(0).getDefiningOp());
-    //     new_pipeline_ops.push_back(tmp_ops);
-    //     tmp_ops.clear();
-    //     tmp_ops.push_back(&op);
-
-    //     auto matmulOp = *(op.getUsers().begin());
-    //     assert((isa<tpu::MatMulOp>(matmulOp)));
-    //     tmp_ops.push_back(matmulOp->getOperand(1).getDefiningOp());
-    //     new_pipeline_ops.push_back(tmp_ops);
-    //     tmp_ops.clear();
-    //     int h_slice_size = matmulOp->getAttr(LocalGenInterface::kLayerGroupAttrName)
-    //                         .cast<tpu::LayerGroupAttr>().getHSlice().size();
-    //     for (int i = 0; i < h_slice_size + 1; i++) {
-    //       if (i != 0) {
-    //         tmp_ops.push_back(*(matmulOp->getUsers().begin()));
-    //       }
-    //       if (i != h_slice_size) {
-    //         tmp_ops.push_back(matmulOp);
-    //         if (i < h_slice_size - 1) {
-    //           tmp_ops.push_back(matmulOp->getOperand(1).getDefiningOp());
-    //         }
-    //         new_pipeline_ops.push_back(tmp_ops);
-    //         tmp_ops.clear();
-    //       } else {
-    //         new_pipeline_ops.push_back(tmp_ops);
-    //       }
-    //     }
-    //   } else if (isa<tpu::LoadToL2MOp>(op)) {
-    //     tmp_ops.push_back(&op);
-    //   }
-    // }
 
     for (auto [timestep_idx, op2] : llvm::enumerate(new_pipeline_ops)) {
       for (auto op3: op2) {
@@ -1137,13 +1104,16 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
         continue;
       }
       if (isa<YieldOp>(op)) {
+        bm168x->merge_sync_id();
+        llvm::errs() <<"merge_sync_id\n";
         for (auto v: op.getOperands()) {
           auto storeOp = v.getDefiningOp();
           if (isa<SliceMergeOp>(storeOp)) {
             storeOp = storeOp->getOperand(0).getDefiningOp();
           }
-          auto tmp_op = dyn_cast<StoreOp>(storeOp);
-          if (tmp_op.getL2mAddr().has_value()) {
+          if (!module::isNone(dyn_cast<StoreOp>(storeOp).getBuffer())) {
+            multi_core->syncAll();
+            llvm::errs() <<"syncAll store_to_l2m_op\n";
             codegen_for_store_to_l2m_op(storeOp, core_num_idx);
           }
         }
@@ -1238,8 +1208,6 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
     } else {
       syncall_num = tmp_syncall_num;
     }
-    bm168x->merge_sync_id();
-    llvm::errs() <<"merge_sync_id\n";
     if (useMuliCore) {
       multi_core->syncAll();
       llvm::errs() <<"last syncAll\n";
@@ -1338,9 +1306,8 @@ void codegenGroupParallelOp(
 
 
 void BMCodegen::codegen_for_store_to_l2m_op(Operation* store_to_l2m_op, std::pair<int, int>& core_num_idx) {
-  auto tmp_op = dyn_cast<tpu::StoreOp>(store_to_l2m_op);
-  auto src_addr = BM1690::L2_SRAM_START_ADDR + tmp_op.getL2mAddr().value();
-  auto res = tmp_op->getResult(0);
+  auto src_addr = module::getAddress(store_to_l2m_op->getOperand(1));
+  auto res = store_to_l2m_op->getResult(0);
   auto user = *(res.getUsers().begin());
   auto dst_addr = module::getAddress(res);
   if (isa<tpu::SliceMergeOp>(user)) {
@@ -1352,6 +1319,7 @@ void BMCodegen::codegen_for_store_to_l2m_op(Operation* store_to_l2m_op, std::pai
   int num_per_core = ceiling_func(total_size, core_num_idx.first);
   auto move_size = std::min(num_per_core, (int)(total_size - num_per_core*core_num_idx.second));
   auto data_type = BM1690::getDataType(res);
+  auto fmt_bytes = BM1690::getFmtBytes(data_type);
   auto gdma_format = BM1690::getGdmaFormat(data_type);
   auto pid_node = (CMD_ID_NODE *)BM1690::instance()->cmdid_node;
   int slice_c = move_size, slice_h = 1;
@@ -1360,11 +1328,11 @@ void BMCodegen::codegen_for_store_to_l2m_op(Operation* store_to_l2m_op, std::pai
     slice_h = ceiling_func(move_size, 65535);
   }
   BM1690::instance().dl_sdma_tensor_general_move_gen_cmd(
-      src_addr + num_per_core*core_num_idx.second,
+      src_addr + num_per_core*core_num_idx.second*fmt_bytes,
       1, slice_c, slice_h, 1,
       slice_c*slice_h, slice_h, 1, 1,
       gdma_format,
-      dst_addr + num_per_core*core_num_idx.second,
+      dst_addr + num_per_core*core_num_idx.second*fmt_bytes,
       1, slice_c, slice_h, 1,
       slice_c*slice_h, slice_h, 1, 1,
       0,  // transpose

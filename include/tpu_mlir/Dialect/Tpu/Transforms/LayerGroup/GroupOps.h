@@ -69,7 +69,8 @@ protected:
                         int64_t slice_idx, TensorInfo &tensor_info,
                         std::vector<int64_t> ncdhw_idx, group_type_t group_type,
                         bool can_merge);
-  std::vector<std::shared_ptr<speical_layer_group_base>> findSpecialGroup(std::vector<Operation*>& subnet_ops);
+  void SearchGroup(std::vector<dag_subnet>& dag_subnets, std::shared_ptr<speical_layer_group_base> grp_ptr);
+  void findSpecialGroup(std::vector<Operation*>& subnet_ops);
 
 protected:
   std::shared_ptr<GroupMethod> group_method_;

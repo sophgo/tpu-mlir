@@ -750,6 +750,10 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
 
 void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
               int64_t &w, group_type_t group_type) {
+  d = 1;
+  if (ChangeValueShape(v, n, c, h, w)) {
+    return;
+  }
   auto shape = v.getType().cast<RankedTensorType>().getShape();
   int num_dims = shape.size();
   if (GROUP_3D == group_type) {
@@ -765,11 +769,9 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
     assert(num_dims == 2);
     n = shape[0];
     c = 1;
-    d = 1;
     h = shape[1];
     w = 1;
   } else {
-    d = 1;
     getNCHW(shape, n, c, h, w, group_type, module::IsHdimIsBatch(v));
   }
 }
@@ -2091,6 +2093,19 @@ bool IsRightMat(Value v) {
   return false;
 }
 
+bool IsSecondMatInMlp(Value v){
+  for (auto user : v.getUsers()) {
+    if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(user)) {
+      for (auto use : MatMulOp.getOutput().getUsers()) {
+        if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(use)){
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 bool isOpSameCalc(Operation *op0, Operation *op1) {
   auto compare = [&](mlir::ValueRange left, mlir::ValueRange right) -> bool {
     for (auto it : llvm::zip(left, right)) {
@@ -2170,5 +2185,32 @@ bool areAttributesEqual(mlir::Operation *op1, mlir::Operation *op2) {
     return true;
 }
 
+bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h, int64_t &w) {
+  bool can_change =false;
+  auto op = value.getDefiningOp();
+  if (op && isa<tpu::BatchNormBwdOp>(op)) {
+    can_change = true;
+  }
+
+  for (auto user : value.getUsers()) {
+    if (isa<tpu::BatchNormBwdOp>(user)) {
+      can_change = true;
+      break;
+    }
+  }
+
+  auto shape = value.getType().cast<RankedTensorType>().getShape();
+  auto shape_vec = shape.vec();
+  if (can_change && shape.size() == 1) {
+    shape_vec.resize(4);
+    shape_vec[3] = 1;
+    shape_vec[2] = 1;
+    shape_vec[1] = shape[0];
+    shape_vec[0] = 1;
+    module::getNCHW(shape_vec, n, c, h, w, true);
+    return true;
+  }
+  return false;
+}
 } // namespace module
 } // namespace tpu_mlir

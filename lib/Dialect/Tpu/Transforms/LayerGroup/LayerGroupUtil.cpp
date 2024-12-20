@@ -325,6 +325,11 @@ seg_grp_ops_by_global_op(const std::vector<Operation *> &grp_ops,
       }
     }
   }
+
+  for (auto& ops: new_grps2) {
+    auto tmp_ops = sortOpsByOtherOpsOrder(grp_ops, ops);
+    ops.assign(tmp_ops.begin(), tmp_ops.end());
+  }
   return std::move(new_grps2);
 }
 
@@ -507,12 +512,18 @@ get_group_max_secs(const LgInfo &lg_info,
         auto stype = module::getStorageType(v);
         n_align = 32 / stype.getIntOrFloatBitWidth();
       }
-      auto nsecs = ceiling_func(n, n_align);
-      max_nsecs = std::min(max_nsecs, nsecs);
-      total_secs *= nsecs;
+
+      if (succeeded(lgOp.AllowDataSplit(0, lg_info.type))) {
+        auto nsecs = ceiling_func(n, n_align);
+        max_nsecs = std::min(max_nsecs, nsecs);
+        total_secs *= nsecs;
+      } else {
+        max_nsecs = 1;
+      }
 
       if (mode != RunMode::TPU_DYNAMIC &&
-          (lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C) &&
+          (lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C
+            || (lg_info.type == GROUP_NORMAL && isa<tpu::BatchNormBwdOp>(op))) &&
           succeeded(lgOp.AllowDataSplit(1, lg_info.type))) {
         int64_t csecs = ceiling_func(c, Arch::NPU_NUM);
         max_csecs = std::min(max_csecs, csecs);
@@ -678,8 +689,9 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
 }
 
 bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
-                           std::vector<std::pair<Value, int64_t>> &value_size,
-                           std::shared_ptr<dot_graph> dot_graph_log) {
+                          std::vector<std::pair<Value, int64_t>> &value_size, Operation*& fail_op,
+                          std::shared_ptr<dot_graph> dot_graph_log) {
+  fail_op = nullptr;
   auto lg_info = ilp_lg_info._lgInfo;
   if (lg_info.group_ops.size() == 1 &&
       false == LgPass::OPTIONS.group_by_cores) {
@@ -693,14 +705,20 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
   for (auto op : lg_info.group_ops) {
     if (!op)
       continue;
+    llvm::errs() << "init_group_data_secs2 for op:"
+                  << module::getName(op).str() << "\n";
     auto ins = get_input_values(op);
     auto outs = get_output_values(op);
     module::getNCDHW(ins[0], in_n, in_c, in_d, in_h, in_w, lg_info.type);
     module::getNCDHW(outs[0], out_n, out_c, out_d, out_h, out_w, lg_info.type);
     int64_t in0_lmem_bytes =
         Arch::get_tensor_lmem_bytes(ins[0], in_n, in_c, in_d, in_h, in_w);
+    llvm::errs() << "  in0_lmem_bytes:" << in0_lmem_bytes<< ", in_n:" <<in_n
+                 << ", in_c:" <<in_c<< ", in_h:" <<in_h<< ", in_w:" <<in_w<< "\n";
     int64_t out0_lmem_bytes =
         Arch::get_tensor_lmem_bytes(outs[0], out_n, out_c, out_d, out_h, out_w);
+    llvm::errs() << "  out0_lmem_bytes:" << out0_lmem_bytes<< ", out_n:" <<out_n
+                 << ", out_c:" <<out_c<< ", out_h:" <<out_h<< ", out_w:" <<out_w<< "\n";
 
     int64_t total_size = in0_lmem_bytes + out0_lmem_bytes;
     auto lg_op = cast<LocalGenInterface>(op);
@@ -708,6 +726,7 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
         in0_lmem_bytes, out0_lmem_bytes, in_n, in_c, in_h, in_d, in_w, out_n,
         out_c, out_h, out_d, out_w, lg_info.type);
     total_size += buffer_size;
+    llvm::errs() << "  buffer_size:" << buffer_size<< ", total_size:" <<total_size<< "\n";
     int64_t non_weight_size = Arch::LMEM_BYTES;
     for (size_t i = 1; i < ins.size(); ++i) {
       if ((module::isTrain() &&
@@ -720,13 +739,17 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
         }
         int w_size =
             Arch::get_weight_lmem_bytes(ins[i], lg_info.type, eu_align);
+        llvm::errs() << "  w_size:" << w_size<< "\n";
         // total_size += w_size;
-        non_weight_size -= w_size;
+        if (eu_align) {
+          non_weight_size -= w_size;
+        }
         value_size.push_back(std::make_pair(ins[i], (w_size + 63) / 64 * 64));
       } else {
         module::getNCDHW(ins[i], in_n, in_c, in_d, in_h, in_w, lg_info.type);
         total_size +=
             Arch::get_tensor_lmem_bytes(ins[i], in_n, in_c, in_d, in_h, in_w);
+        llvm::errs() << "  total_size:" << total_size<< "\n";
       }
     }
     for (size_t i = 1; i < outs.size(); ++i) {
@@ -734,16 +757,22 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
                        lg_info.type);
       total_size += Arch::get_tensor_lmem_bytes(outs[i], out_n, out_c, out_d,
                                                 out_h, out_w);
+      llvm::errs() << "  total_size:" << total_size<< "\n";
     }
 
     // Need consider different backends
-    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES);
-    // //假设权重也切分了，实际上权重不能切分
+	//Let's say the weights are also divided. In fact, the weights cannot be divided
+    // int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES); 
+    if (non_weight_size <= 0) {
+      fail_op = op;
+      return false;
+    }
     int64_t total_secs = ceiling_func(total_size, non_weight_size);
+    llvm::errs() << "  total_secs:" << total_secs<< ", non_weight_size:" <<non_weight_size<< "\n";
     shape_secs.nsecs =
         std::max(std::min(total_secs, max_shape_secs.nsecs), shape_secs.nsecs);
     total_secs = ceiling_func(total_secs, shape_secs.nsecs);
-    if (lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C) {
+    if (lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C || lg_info.type == GROUP_NORMAL) {
       if (total_secs > max_shape_secs.csecs) {
         shape_secs.csecs = max_shape_secs.csecs;
       } else {
@@ -2213,6 +2242,9 @@ bool is_eu_align(Value opd) {
 }
 
 bool is_value_weight(Value opd) {
+  if (isa<NoneType>(opd.getType())) {
+    return false;
+  }
   if (opd.getDefiningOp() && isa<top::WeightOp>(opd.getDefiningOp())) {
     return true;
   }
@@ -2225,6 +2257,10 @@ bool is_value_weight(Value opd) {
     }
   } else if (isa<tpu::PReluOp>(op)) {
     if (opd == op->getOperand(1)) {
+      return true;
+    }
+  } else if (isa<tpu::BatchNormBwdOp>(op)) {
+    if (opd != op->getOperand(0) && opd != op->getOperand(1)) {
       return true;
     }
   } else if (isa<tpu::ScaleOp>(op)) {

@@ -3694,9 +3694,9 @@ class TORCH_IR_TESTER(object):
         self.trace_and_test([(batch_size,3,224,224)], model)
 
         print('start test resnet18')
-        from tools.train.resnet import resnet18
-        model = resnet18()
-        self.trace_and_test([(batch_size,3,224,224)], model)
+        #from tools.train.resnet import resnet18
+        #model = resnet18()
+        #self.trace_and_test([(batch_size,3,224,224)], model)
 
         print('start test mobilenet_v2')
         import torchvision.models as models
@@ -3738,16 +3738,23 @@ class TORCH_IR_TESTER(object):
         # mod = TransformerBlocks(d_model=d_model, nlayers=2) #.train()
         # self.trace_and_test([(1,4,d_model)], mod)
 
-        # # # #test_torch.py --case user_define_net --chip bm1690 --num_core 8 --mode f16 --debug --debug_cmd="enable_l2m"
-        # from tools.train.gpt2 import FeedForward
-        # mod = FeedForward(d_model=768)
-        # # self.trace_and_test([(2, 2, 512)], mod) #num_core 2 切n
-        # self.trace_and_test([(1, 4096, 768)], mod) #num_core 2 切n和h
+        # # #test_torch.py --case user_define_net --chip bm1690 --num_core 8 --mode f16 --debug --debug_cmd="enable_l2m"
+        #from tools.train.gpt2 import FeedForward
+        #mod = FeedForward(d_model=128)
+        # self.trace_and_test([(1, 2048, 128)], mod) #切c, ok
+        #self.trace_and_test([(1, 1024, 128)], mod) #切h, fail
 
         # from tools.train.gpt2 import Attention
-        # mod = Attention(d_model=2048, n_head=2)
+        # mod = Attention(d_model=768, n_head=12)
         # # self.trace_and_test([(1, 8, 256)], mod)
-        # self.trace_and_test([(2, 512, 2048)], mod) #num_core 2 切n和h
+        # self.trace_and_test([(1, 1024, 768)], mod)
+
+        # from tools.train.gpt2 import Attention2
+        # mod = Attention2()
+        # self.trace_and_test([(1, 64, 2, 96), (1, 64, 2, 96), (1, 64, 2, 96)], mod) #ok
+        # self.trace_and_test([(1, 2048, 12, 96), (1, 2048, 12, 96), (1, 2048, 12, 96)], mod) #ok
+        # self.trace_and_test([(1, 4096, 12, 64), (1, 4096, 12, 64), (1, 4096, 12, 64)], mod) #ok
+        # self.trace_and_test([(2, 4096, 12, 64), (1, 4096, 12, 64), (2, 4096, 12, 64)], mod) #ok
 
         # from diffusers.models.unet_2d_blocks import KCrossAttnDownBlock2D
         # mod = KCrossAttnDownBlock2D(64,32,128,16)

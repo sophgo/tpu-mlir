@@ -26,15 +26,16 @@ class Conv1D(nn.Module):
         x = x.view(*size_out)
         return x
 class FeedForward(nn.Module):
-    def __init__(self, d_model=768, nx=768*4):
+    def __init__(self, d_model=768):
         super().__init__()
+        nx=d_model*4
         self.c_fc    = Conv1D(d_model, nx)
         self.c_proj  = Conv1D(nx, d_model)
         self.act     = F.gelu
 
     def forward(self, x):
-        return self.c_proj(self.act(self.c_fc(x)))
-        # return self.c_proj(self.c_fc(x))
+        # return self.c_proj(self.act(self.c_fc(x)))
+        return self.c_proj(self.c_fc(x))
 
 class Attention(nn.Module):
     def __init__(self, d_model=768, n_head=12, n_ctx=1024, d_head=64, bias=True, scale=False):
@@ -73,6 +74,26 @@ class Attention(nn.Module):
         out      = self._attn(q, k, v)
         out      = self.merge_heads(out)
         out      = self.c_proj(out)
+        return out
+
+
+class Attention2(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.softmax = nn.Softmax(dim=-1)
+
+    def _attn(self, q, k, v, attn_mask=None):
+        scores  = torch.matmul(q, k.transpose(-2, -1))
+        if attn_mask is not None: scores = scores + attn_mask
+        scores  = self.softmax(scores) #todo the output of cmodel is nan
+        outputs = torch.matmul(scores, v)
+        return outputs
+
+    def forward(self, q, k, v):
+        q = q.permute(0, 2, 1, 3)
+        k = k.permute(0, 2, 1, 3)
+        v = v.permute(0, 2, 1, 3)
+        out      = self._attn(q, k, v)
         return out
 
 class TransformerBlock(nn.Module):

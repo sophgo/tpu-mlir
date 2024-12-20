@@ -1632,8 +1632,8 @@ def Tpu_LoadToL2MOp:Tpu_Op<"LoadToL2M",
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    I64Attr:$id,
-    I64Attr:$l2m_addr
+    AnyRankedTensor:$buffer,
+    I64Attr:$id
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -1649,11 +1649,10 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    AnyTensorOrNone:$input_gmem,
+    AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info,
-    OptionalAttr<I64Attr>:$l2m_addr
+    OptionalAttr<Tpu_CompressAttr>:$compress_info
   );
   let results = (outs AnyRankedTensor:$output);
 }

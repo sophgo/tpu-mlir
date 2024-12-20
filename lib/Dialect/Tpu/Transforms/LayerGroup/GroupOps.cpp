@@ -236,7 +236,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
   func.walk([&](Operation *op) {
     if (isa<ReturnOp>(op)) {
       lg_pass_ir_->returnOp = op;
-    } else if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp>(op) &&
+    } else if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp, tpu::SoftmaxOp>(op) &&
                !module::isInMatMulGrpOp(op) && !isLgSupport(op)) {
       if (is_value_weight(op->getResult(0))) {
         tmp_ops.erase(std::remove(tmp_ops.begin(), tmp_ops.end(), op),
@@ -251,36 +251,8 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
 
   for (auto grp_ops: seg_grp_ops_by_global_op(tmp_ops, global_layers, excluded_ops)) {
     if (grp_is_valid(grp_ops)) {
-      ops_bk.assign(grp_ops.begin(), grp_ops.end());
-      auto vec_group_ptr = findSpecialGroup(grp_ops);
-      if (grp_ops.size() < ops_bk.size()) {
-        for (auto op: ops_bk) {
-          if (std::find(grp_ops.begin(), grp_ops.end(), op) == grp_ops.end()) {
-            lg_pass_ir_->subnet_ops.remove(op);
-          }
-        }
-      }
-      global_layers.clear();
-      excluded_ops.clear();
-      for (auto itr: vec_group_ptr) {
-        if (grp_is_valid(itr->ops)) {
-          auto lgInfo = CreateIlpLgInfo(itr->ops);
-          lgInfo->p_special_grp = itr;
-          lgInfo->_lgInfo.type = GROUP_MM_OPT3;
-          lg_pass_ir_->tmp_base_groups.push_back(lgInfo);
-          global_layers.insert(global_layers.end(), itr->ops.begin(), itr->ops.end());
-        }
-      }
-      for (auto op2: grp_ops) {
-        if (!isLgSupport(op2) && !is_value_weight(op2->getResult(0)) && module::isInMatMulGrpOp(op2)) {
-          global_layers.push_back(op2);
-        }
-      }
-      for (auto grp_ops2: seg_grp_ops_by_global_op(grp_ops, global_layers, excluded_ops)) {
-        if (grp_is_valid(grp_ops2)) {
-          lg_pass_ir_->tmp_base_groups.push_back(CreateIlpLgInfo(grp_ops2));
-        }
-      }
+      llvm::errs()<<"call findSpecialGroup, grp_ops.size:"<<grp_ops.size()<<"\n";
+      findSpecialGroup(grp_ops);
     }
   }
 }

@@ -459,7 +459,9 @@ bool lmem_alloc::alloc_multi(int ts_idx, int op_idx, std::vector<mem_alloc_req_i
     std::vector<int> vec_merge_mem;
     std::vector<int> vec_move_mem;
     vec_merge_mem.push_back(max_free_mem_idx);
-    for(int i = 1; i <= 8; i++) { //以最大空闲区域为中心，均匀的在两侧寻找最多5块空闲区域,以便能满足本次内存分配空间
+    //Take the maximum free area as the center, evenly find a maximum of 5
+    //free areas on both sides, so as to meet the memory allocation space
+    for(int i = 1; i <= 8; i++) { //
       step = 0, tmp_size = max_free_mem_size;
       align_num = 0;
       for(int j = max_free_mem_idx + 1; j < vec_mem_struct2.size(); j++) {
@@ -471,7 +473,8 @@ bool lmem_alloc::alloc_multi(int ts_idx, int op_idx, std::vector<mem_alloc_req_i
           tmp_size += vec_mem_struct2[j].second.size;
           if (tmp_size > total_alloc_size) {
             int addr = vec_mem_struct2[vec_merge_mem[0]].second.addr;
-              //去掉最前面(vec_merge_mem[0])的空闲起始地址的非64字节对齐部分，保证移动后的tensor起始地址也满足64字节对齐
+            //Remove the non-64-byte alignment of the first (vec_merge_mem[0]) free start
+            //address to ensure that the moved tensor start address is also 64-byte alignment
             align_num = 0;
             while (addr % 64 != 0) {
               addr++;
@@ -549,7 +552,7 @@ bool lmem_alloc::alloc_multi(int ts_idx, int op_idx, std::vector<mem_alloc_req_i
 
     fprintf(stderr, "vec_move_mem:\n");
     for (auto i: vec_move_mem) {
-      if (i > min && i < max) { //只对最上和最下空闲区域间的tensor进行移动
+      if (i > min && i < max) { //Only move the tensor between the uppermost and lowermost free regions
         order_idx.push_back(i);
         alloc_ret[i] = true;
         fprintf(stderr, "  i:%d\n", i);
@@ -816,7 +819,7 @@ void ILPTimeStep::addValueInfo(int slice_idx, Value value, std::string varName) 
       mapValueInfo[value][slice_idx] = tmp;
     }
   }
-  mapValueInfo[value][slice_idx].push_back(varName); //确保时隙后面的变量放在最后面
+  mapValueInfo[value][slice_idx].push_back(varName); //Make sure that the variable after the time slot is placed at the end
 }
 
 void ILPTimeStep::addBinaryVar(int ts_idx, int slice_idx, int mode, std::string varName,
@@ -1260,8 +1263,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       std::vector<int> cycle_sum;
       int sum = 0;
       bool meet_nullOp = false;
-      for (int k = 0; k < max_merge_op_num; k++) { //最多连续4个op合并在一起
-        if (merge_start - k < 1) //ts0没有op
+      for (int k = 0; k < max_merge_op_num; k++) { //A maximum of four consecutive ops can be combined
+        if (merge_start - k < 1) //ts0 has no op
           break;
         auto vec_op_info = timestep_table_[merge_start - k].vec_op_infos[0];
         if (!vec_op_info.op) {
@@ -1283,7 +1286,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       }
       min_pos = 0;
       if (cycle_sum.size() > 1) {
-        auto min_cycle = *std::min_element(cycle_sum.begin(), cycle_sum.end()); //找到相差最小的
+        //Find the one with the smallest difference
+        auto min_cycle = *std::min_element(cycle_sum.begin(), cycle_sum.end());
         auto it2 = std::find(cycle_sum.begin(), cycle_sum.end(), min_cycle);
         if (it2 != cycle_sum.end()) {
           min_pos = std::distance(cycle_sum.begin(), it2);
@@ -1437,7 +1441,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
         tmp.vec_ts_var.push_back(it3);
       }
     }
-    for (int m = 1; m <= min_pos; m++) { //load类型变量，保留融合op中最后一个ts(merge_start)的变量设置，其他ts的变量固定为0
+    //load type variable, the last ts(merge_start) variable in the fusion op is retained, and other ts variables are fixed to 0
+    for (int m = 1; m <= min_pos; m++) {
       for (auto it3: cycle_contrains[merge_start - m]) {
         int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
         if (mode2&TIMESTEP2_LOAD || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].store_load_mode == 1)) {
@@ -1457,7 +1462,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
         tmp.vec_ts_var.push_back(it3);
       }
     }
-    for (int m = 0; m < min_pos; m++) { //store类型变量，保留融合op中第1个ts的变量设置，其他ts的变量固定为0
+    //store type variable. The variable setting of the first ts in the fusion op is retained, and the variables of other ts are fixed to 0
+    for (int m = 0; m < min_pos; m++) {
       for (auto it3: cycle_contrains[merge_start - m]) {
         int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
         if (mode2&TIMESTEP2_STORE || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].store_load_mode == 0)) {
@@ -1496,7 +1502,6 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
     }
     reverse(tmp.vec_op_infos.begin(), tmp.vec_op_infos.end());
 
-    //更新cycle约束、内存约束
     std::vector<std::pair<int, std::string>> new_cycle;
     for (auto it2: cycle_contrains[merge_start]) {
       int64_t mode2 = mapILPVarInfo[it2.second].tensor_info.mode2;
@@ -1727,11 +1732,11 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
         int size = 0;
         for (auto it: mem_contrains_new[i]) {
           if (mapILPVarInfo[it.second].ilp_var->solution_value() == 1) {
-            size += it.first; //累加当前时隙存在的tensor的内存占用量
+            size += it.first; //Adds up the memory footprint of the tensor present in the current time slot
           }
         }
         for (auto it: timestep_table_new[i].vec_op_infos) {
-          double free_mem_size = it.mem_size_for_load - size; //每个op的可加载内存减去size
+          double free_mem_size = it.mem_size_for_load - size; //The loadable memory for each op is subtracted by size
           if (free_mem_size < min_always_free_mem_size) {
             min_always_free_mem_size = free_mem_size;
           }
@@ -1742,12 +1747,12 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
 
     LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "add reside_value:\n";});
     if (min_always_free_mem_size > 0) {
-      int addr = lmem_alloc_ptr->total_size - 16, new_addr = 0; //todo 减16的根因
+      int addr = lmem_alloc_ptr->total_size - 16, new_addr = 0; //todo why 16?
       for (auto itr: value_size) {
         if (min_always_free_mem_size > itr.second) {
           reside_value_info tmp;
           addr -= itr.second;
-          new_addr = addr/64*64; //对齐后实际占用空间更大
+          new_addr = addr/64*64; //The actual space used after the alignment is larger
           tmp.addr = new_addr;
           tmp.size = itr.second;
           map_reside_value_info[itr.first] = tmp;
@@ -1800,7 +1805,7 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
     llvm::errs() << "-------------------ts"<<i<<"--------------------\n";;
     for (auto itr2: itr.vec_op_infos) {
       for (auto itr3 = itr2.vars_need_load_to_l2m.begin(); itr3 != itr2.vars_need_load_to_l2m.end(); ++itr3) {
-        //第1个slice的驻留权重也预先加载到l2m
+        //The resident weight of the first slice is also pre-loaded to l2m
         if (itr2.slice_idx == 0 || map_reside_value_info.find(itr3->first) == map_reside_value_info.end()) {
           for (auto var: itr3->second) {
             if (mapILPVarInfo[var].ilp_var->solution_value() == 1) {
@@ -1826,7 +1831,9 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
   if (map_reside_value_info.size() > 0) {
     llvm::errs() << "cancel reside_value load:\n";;
     for(int i = 0; i < ts_count; i++) {
-      //第1个slice的驻留权重加载不取消，后面的均取消，这样即能保证加载时的隐藏，又取消后面slice的加载，减少功耗
+      //The resident weight loading of the first slice is not cancelled, and the following are cancelled,
+      //which can ensure the hiding during loading, and cancel the loading of the following
+      //slice to reduce power consumption
       if (i < ts_count - 2) {
         for (auto& it: timestep_table_new[i].vec_ts_var) {
           if (it.slice_idx > 0 && it.var_value == 1
@@ -1922,12 +1929,13 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
           auto size = dam_tensor_size[key2];
           llvm::errs() << "      size: "<<size<<"\n";
           tmp.size = size;
-          // if (tmp.size > 0) //训练图中maxpool的mask输出有时无需处理,why
+          // if (tmp.size > 0) //The mask output of maxpool in the training diagram sometimes does not need to be processed,why
           vec_mem_req.push_back(tmp);
         }
 
         int buffer_size = it2.buffer_size;
-        if (buffer_size > 0) { //将op buffer分配放在outs分配后面能避免碎片处理复杂化
+        //Placing the op buffer allocation after the outs allocation prevents fragmentation from becoming complicated
+        if (buffer_size > 0) {
           Value tmp_value;
           mem_alloc_req_info tmp;
           tmp.slice_idx = it2.slice_idx;
@@ -1962,8 +1970,10 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
           fail_op = it2.op;
           return false;
         }
-        if (ts_idx > 1 && !have_mem_dependent) { //复合op中某子op已与上一时戳有依赖，则不再重复检查
-          for (auto it1: vec_mem_req) { //当前的请求不能与上一个时戳的任一释放有依赖
+        //If a sub-OP in the composite op is already dependent on the previous timestamp, the check is not repeated
+        if (ts_idx > 1 && !have_mem_dependent) {
+          //The current request cannot be dependent on any release of the previous timestamp
+          for (auto it1: vec_mem_req) {
             mem_struct mem_s;
             auto key = convert_name_to_key(it1.name, it1.slice_idx);
             lmem_alloc_ptr->get_mem_struct(key, mem_s);
@@ -1993,11 +2003,12 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
           // if (mapValueUserCount.find(in) == mapValueUserCount.end()) {
           //   mapValueUserCount[in] = 0;
           // }
-          // mapValueUserCount[in] += 1; //每个op都要处理，不能跳过
+          // mapValueUserCount[in] += 1; //
           // mapValueUserCount[in] == get_user_count_in_group(in, _lgInfo.group_ops)
 
           bool to_be_used = false;
-          //只要下一个时隙存在store或adaReside变量，这里放弃内存释放权;TIMESTEP2_LDST_UNKNOWN表示驻留
+          //As long as the store or adaReside variable exists in the next time slot, the memory
+          // release right is waived here. TIMESTEP2_LDST_UNKNOWN Specifies the resident value
           //As long as the store or adaReside variable exists in the next time slot, the memory free right is waived here
           if (is_value_stored(in, ts_idx) || is_value_stored(in, ts_idx - 1)) {
             to_be_used = true;
@@ -2039,7 +2050,8 @@ bool ILPTimeStep::mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pai
 
     fprintf(stderr, "  deal dma store:\n");
     if (ts_idx > 1) {
-      for (auto it: timestep_table_new[ts_idx].vec_ts_var) {//在最后store，本ts store时也不能给本时隙的load用
+      //In the last store, this ts store cannot be used for the load of the current time slot
+      for (auto it: timestep_table_new[ts_idx].vec_ts_var) {
         name = module::getName(it.value).str();
         if (it.var_value == 1 &&  (it.info.mode2&TIMESTEP2_STORE
           || (it.info.mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it.varName].store_load_mode == 0))) {

@@ -59,7 +59,7 @@ int64_t tpu::BatchNormBwdOp::getBufferSize_bm1684x(
     if( !stype.isF32() ) {
       int64_t channel_fp32_size = ceiling_func(in_cslice, BM168x::NPU_NUM) *
             align_up( 1, tile) * sizeof(float);
-      buffer_size = in_slice_fp32_size * 4 + channel_fp32_size * 5;
+      buffer_size = in_slice_fp32_size * 3 + channel_fp32_size * 5;
     }
     return buffer_size;
 }
