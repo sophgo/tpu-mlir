@@ -566,9 +566,9 @@ public:
 /**
  * Use together with MatmulUsePermutePattern
  *
- * Matmul(weight1, input1, bias1) - \                                        / ...
- * Matmul(weight2, input2, bias2) -  | -> concat(B1..Bn) X A -> Slice x n -> - ...
- * Matmul(weight3, input3, bias3) - /                                        \ ...
+ * Matmul(weight1, input1, bias1) - \                                        /
+ * ... Matmul(weight2, input2, bias2) -  | -> concat(B1..Bn) X A -> Slice x n ->
+ * - ... Matmul(weight3, input3, bias3) - / \ ...
  *
  */
 class MultipleSameActivationMatmulMergePattern
@@ -4894,7 +4894,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
   patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3);
   patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
-  patterns->add<MatmulUsePermutePattern>(ctx, 4);
+  // patterns->add<MatmulUsePermutePattern>(ctx, 4);
   patterns->add<MultipleSameActivationMatmulMergePattern>(ctx, 3);
 }
 } // namespace tpu
