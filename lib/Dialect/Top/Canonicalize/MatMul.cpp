@@ -481,7 +481,7 @@ struct MatMulWithSlice : public OpRewriterPatternEx<MatMulOp> {
         }
         auto s_shape = module::getShape(slice_op.getOutput());
         if (shape[0] != s_shape[0] || shape[1] != s_shape[1] ||
-            s_shape[2] < 128) {
+            s_shape[s_shape.size()-1] < 128) {
           return failure();
         }
         auto offset = module::getI64Array(slice_op.getOffsetAttr());
@@ -503,8 +503,9 @@ struct MatMulWithSlice : public OpRewriterPatternEx<MatMulOp> {
       auto slice_op = dyn_cast<SliceOp>(*user);
       std::vector<Value> operands;
       operands.push_back(op.getInput());
-      auto offset = module::getI64Array(slice_op.getOffsetAttr())->at(2);
-      auto size = module::getShape(slice_op.getOutput())[2];
+      auto s_shape = module::getShape(slice_op.getOutput());
+      auto offset = module::getI64Array(slice_op.getOffsetAttr())->at(s_shape.size()-1);
+      auto size = module::getShape(slice_op.getOutput())[s_shape.size()-1];
       operands.push_back(get_weight(op.getRight(), offset, offset + size, -1,
                                     rewriter.getF32Type(),
                                     "_offset" + std::to_string(offset)));
