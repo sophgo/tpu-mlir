@@ -60,6 +60,7 @@ cpu_num=$(cat /proc/stat | grep cpu[0-9] -c)
 cmake --build $BUILD_PATH --target install -j${cpu_num}
 
 # build ppl code
+rm -rf lib/PplBackend/build
 bash lib/PplBackend/build.sh
 
 # Clean up some files for release build
