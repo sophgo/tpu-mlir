@@ -12,6 +12,7 @@ if [ x${CACHE_PATH} = x ];then
 fi
 
 rm -rf $CACHE_PATH
+rm -rf build
 
 mkdir -p build
 cd build
