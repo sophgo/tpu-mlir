@@ -209,6 +209,36 @@ private:
   std::vector<int64_t> quant_output_idx;
 };
 
+class ForceOutputQuantBF16Pattern : public OpRewriterPatternEx<ReturnOp> {
+public:
+  ForceOutputQuantBF16Pattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ReturnOp>(context, "ForceOutputQuantBF16Pattern") {}
+
+  LogicalResult matchAndRewriteImpl(ReturnOp op,
+                                    PatternRewriter &rewriter) const override {
+    rewriter.setInsertionPoint(op);
+    auto num_opd = op.getNumOperands();
+    bool is_fixed = false;
+    for (int i = 0; i < num_opd; i++) {
+      auto opd = op.getOperand(i);
+      auto type = module::getStorageType(opd);
+      if (!type.isF32()) {
+        continue;
+      }
+      auto cast_loc = module::getLocLike(opd, "bf16");
+      auto cast_shape = module::getShape(opd);
+      auto cast_type =
+          RankedTensorType::get(cast_shape, rewriter.getBF16Type());
+      auto cast_op =
+          rewriter.create<tpu::CastOp>(cast_loc, cast_type, ValueRange{opd});
+      op.setOperand(i, cast_op.getOutput());
+      is_fixed = true;
+    }
+    return is_fixed ? success() : failure();
+  };
+  bool shouldPrint(ReturnOp op) const override { return false; }
+};
+
 struct StripOutputQuantCpuCastPattern
     : public OpRewriterPatternEx<tpu::GenericCpuOp> {
 public:
@@ -263,6 +293,8 @@ public:
       std::vector<int64_t> quant_output_idx = string2vec(quant_output_list);
       patterns.add<StripOutputQuantTpuCastPattern>(ctx, quant_output_idx);
       patterns.add<StripOutputQuantCpuCastPattern>(ctx, quant_output_idx);
+    } else if (quant_output_bf16) {
+      patterns.add<ForceOutputQuantBF16Pattern>(ctx);
     }
     applyPatternsAndFoldGreedily(func, std::move(patterns));
     module::updateModuleTypes();

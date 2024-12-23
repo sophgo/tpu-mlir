@@ -385,10 +385,11 @@ def tpu_opt_options(quant_input: bool = False,
                     quant_output: bool = False,
                     quant_input_list: str = "",
                     quant_output_list: str = "",
-                    mlir_disable_threading: bool = True) :
+                    mlir_disable_threading: bool = True,
+                    quant_output_bf16: bool = False) :
     # generate final mlir
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
-        quant_input, quant_output, quant_input_list, quant_output_list)
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={} quant_output_bf16={}"'.format(
+        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16)
     # yapf: disable
     options = []
     if mlir_disable_threading:
@@ -530,13 +531,14 @@ def mlir_to_model(
     log_level: str = "normal",
     trunc_final: list = None,
     command_mem: dict = None,
+    quant_output_bf16: bool = False,
 ):
     if command_mem is None:
         command_mem = {}
     cmd = ["tpuc-opt", tpu_mlir]
     debug_cmd = f"--debug_cmd={debug_info}"
     options = tpu_opt_options(
-        quant_input, quant_output, quant_input_list, quant_output_list
+        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16=quant_output_bf16
     )
     cmd.extend(options)
 
@@ -655,6 +657,7 @@ def origin_mlir_txt_to_bmodel(
     future_update_list: str = "",
     matmul_perchannel: bool = False,
     gelu_mode: str = "normal",
+    quant_output_bf16: bool = False,
 ):
 
     options = []
@@ -682,7 +685,8 @@ def origin_mlir_txt_to_bmodel(
                                     quant_output,
                                     quant_input_list,
                                     quant_output_list,
-                                    False)
+                                    False,
+                                    quant_output_bf16)
     options.extend(new_options)
     new_options = tpu_ada_options(
         dynamic=dynamic,

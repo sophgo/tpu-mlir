@@ -79,6 +79,7 @@ class DeployTool:
         self.quant_output = args.quant_output
         self.quant_input_list = args.quant_input_list
         self.quant_output_list = args.quant_output_list
+        self.quant_output_bf16 = args.quant_output_bf16
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
         self.debug_cmd = args.debug_cmd
@@ -358,6 +359,7 @@ class DeployTool:
                     debug_info=self.debug_cmd,
                     trunc_final=self.trunc_final,
                     command_mem=command_mem,
+                    quant_output_bf16=self.quant_output_bf16,
                 )
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
@@ -438,6 +440,8 @@ if __name__ == '__main__':
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
+    parser.add_argument("--quant_output_bf16", action="store_true",
+                        help="force output to be bf16 type")
     parser.add_argument("--quant_input_list", default="", type=str,
                         help="choose index to strip cast, such as 1,3 means first & third input`s cast")
     parser.add_argument("--quant_output_list", default="", type=str,
@@ -528,6 +532,11 @@ if __name__ == '__main__':
     # yapf: enable
     args = parser.parse_args()
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
+    if args.quant_output_bf16:
+        if args.quantize == "BF16":
+            RuntimeError("quantize is BF16, please use --quant_output instead")
+        if args.quant_output:
+            RuntimeError("quant_output and quant_output_bf16 can't both be true")
 
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True

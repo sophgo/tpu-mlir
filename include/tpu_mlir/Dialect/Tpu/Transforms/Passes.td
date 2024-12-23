@@ -137,6 +137,8 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
            "choose index to strip input quant.">,
     Option<"quant_output_list", "quant_output_list", "std::string", /*default=*/"",
            "choose index to strip output quant.">,
+    Option<"quant_output_bf16", "quant_output_bf16", "bool", /*default=*/"false",
+           "force output to be bf16 type">,
   ];
 }
 
