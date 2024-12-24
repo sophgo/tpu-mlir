@@ -453,6 +453,54 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
   let summary = "convolution 2d operator";
 
   let description = [{
+    1.Op Introduction
+    The Tpu_Conv2DOp operation implements a 2D convolution, which is a fundamental operation in many neural networks,particularly in convolutional neural networks (CNNs).
+    This operation takes an input tensor (often representing an image or feature map) and applies a set of learnable filters (kernels) to produce an output tensor.
+
+    2.Math formula
+    ```math
+        output(N, C_{out}, H, W) = \sum_{C_{in}} input(N, C_{in}, H + sH * kH, W + sW * kW) * filter(C_{in}, C_{out}, kH, kW) + bias(C_{out})
+    ```
+    where, kH and kW are the height and width of the filter (kernel), sH and sW are the vertical and horizontal strides.
+            N is a batch size, C denotes a number of channels, H is a height of input, and W is width.
+
+    3.activation and weight
+    input(act.): input tensor;
+    filter(w.): the learnable weights of the convolution 2d operation.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attribute
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    stride: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    groups: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
+    dilation: controls the spacing between the kernel points;
+    inserts: additional parameters that may be used for specific optimizations or configurations.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    //new param
+    with_bias: whether to include a bias term in the convolution operation.;
+    weight_is_coeff: whether the weights (filters) are coefficients.;
+    coeff_merged: whether the coefficients have been merged.;
+    use_3ic_optimize: whether to use 3-input channel optimization.;
+    kernel_zp: the zero-point for the kernel.It is used in quantized models to adjust the range of the weights.;
+    use_winograd: This attribute indicates whether to use the Winograd algorithm for convolution.;
+    multiplier: This parameter is used for scaling the output values.;
+    rshift: the number of bits to right-shift the quantized values.;
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    ginfo: This attribute contains information about layer grouping, which can be useful for organizing layers in a neural network.;
+    // fuse leakyRelu
+    do_leaky_relu: whether to apply the Leaky ReLU activation function after the convolution operation.;
+    neg_slope: sets the slope for the negative part of the Leaky ReLU function, determining how much the output can be negative.;
+    multiplier_pos: This parameter specifies the multiplier for the positive part of the output, used in the context of quantization.;
+    multiplier_neg: This parameter specifies the multiplier for the negative part of the output, used in the context of quantization.;
+    rshift_pos: This attribute defines the right shift for the positive output values during quantization.;
+    rshift_neg: This attribute defines the right shift for the negative output values during quantization.;
+    out_f8_scales: This parameter contains the scaling factors for the output in FP8 (8-bit floating point) format.;
+    //nnvlc
+    support_compress: whether the operation supports compression.;
+    compress_info: contains information about the compression method used.;
   }];
 
   let arguments = (ins
@@ -507,7 +555,43 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
       ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "convolution 2d operator";
 
-  let description = [{}];
+  let description = [{
+    1.Op Introduction
+    The Tpu_Conv2DOp operation implements a 2D convolution, which is a fundamental operation in many neural networks,particularly in convolutional neural networks (CNNs).
+    This operation takes an input tensor (often representing an image or feature map) and applies a set of learnable filters (kernels) to produce an output tensor.
+
+    2.Math formula
+    ```math
+        output(N, C_{out}, D, H, H) = \sum_{C_{in}} input(N, C_{in}, D + sD * kD, H + sH * kH, W + sW * kW) * filter(C_{in}, C_{out}, kD, kH, kW) + bias(C_{out})
+    ```
+    where, kD, kH and kW are the depth, height and width of the filter (kernel), sH and sW are the vertical and horizontal strides.
+            N is a batch size, C denotes a number of channels, H is a height of input, and W is width.
+
+    3.activation and weight
+    input(act.): input tensor;
+    filter(w.): the learnable weights of the convolution 2d operation.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attribute
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    stride: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    groups: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
+    dilation: controls the spacing between the kernel points;
+    inserts: additional parameters that may be used for specific optimizations or configurations.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    //new param
+    with_bias: whether to include a bias term in the convolution operation.;
+    kernel_zp: the zero-point for the kernel.It is used in quantized models to adjust the range of the weights.;
+    multiplier: This parameter is used for scaling the output values.;
+    rshift: the number of bits to right-shift the quantized values.;
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    ginfo: This attribute contains information about layer grouping, which can be useful for organizing layers in a neural network.;
+    out_f8_scale: This parameter contains the scaling factors for the output in FP8 (8-bit floating point) format.;
+
+  }];
 
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -546,8 +630,42 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   let summary = "pool operator";
 
   let description = [{
+    1.Op Introduction
     This performs an  pooling over the given input tensor. A sliding
     window of size given by <kernel size> is passed over the input tensor.
+
+    2.Math formula
+    ```math
+        output(N, C, H', W') = Pool(max(input(N, C, H, W)))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    stride: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    pool_mode: ;
+    pad_value: whether to retain the dimensions of the input tensor in the output.
+                If true, will have the same number of dimensions as the input tensor.;
+    is_adaptive: whether the pooling operation is adaptive.
+                 If true, adjusts the kernel size based on the input size to produce a specified output size.
+    count_include_pad: whether to include the padded values in the pooling count.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    ceil_mode: whether to use ceiling or floor when calculating the output size.;
+    /// symmetric quantize param
+    multipliers: an array of multipliers used for quantization, It allows for scaling the input values before the addition operation.;
+    rshift: right shift values corresponding to each input tensor.;
+    /// asymmetric quantize param
+    scale: Scalar;
+    offset: Scalar;
+    round_mode: how values are rounded during the conversion from higher precision to lower precision.;
+    first_round_mode: the rounding behavior applied to the scaled value before the offset is added.;
+    layer_group: multiple layers to be processed together or treated as a single unit during computation.;
+    /// fp8 quantize param
+    fp8_out_scale: scaling factor used for the output tensor when utilizing 8-bit floating-point (FP8) representation.;
   }];
 
   let arguments = (ins
@@ -619,9 +737,27 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   let summary = "max pool with operator";
 
   let description = [{
+    1.Op Introduction
     This performs an  max pooling over the given input tensor. A sliding
     window of size given by <kernel size> is passed over the input tensor.
     get output tensor and mask tensor
+
+    2.Math formula
+    ```math
+        output(N, C, H', W') = MaxPool(max(input(N, C, H, W)))
+        maskOutput(N, C, H', W') = MaxPoolWithMask(argmax(input(N, C, H, W)))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    strides: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    layer_group: multiple layers to be processed together or treated as a single unit during computation.;
   }];
 
   let arguments = (ins
@@ -644,7 +780,21 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
   let summary = "pool mask operator";
 
   let description = [{
+    1.Op Introduction
     pooling mask on input
+
+    2.Math formula
+    ```math
+        output1(N, C, H', W') = Pool(max(input(N, C, H, W)))
+        maskOutput(N, C, H', W') = PoolMask(argmax(input(N, C, H, W)))
+        output = scale * output1
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    scale: a scaling factor is applied to the output of the pooling operation, can adjust the intensity or magnitude of the output mask.;
   }];
 
   let arguments = (ins
@@ -663,8 +813,32 @@ def Tpu_AddOp: Tpu_Op<"Add", [
   let summary = "add operator";
 
   let description = [{
+    1.Op Introduction
     Elementwise addition of input1 and input2. Axis of size 1 will be broadcast,
     as necessary.
+
+    2.Math formula
+    ```math
+        output = ReLU((input1 + input2; dim))
+    ```
+    Axis of size 1 will be broadcast if necessary.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    coeff: It is an array and allows for scaling the output of the addition operation.;
+    // early stride param
+    do_early_stride: whether to apply early stride optimization during the addition operation.;
+    early_stride_h: the height of the early stride.;
+    early_stride_w: the width of the early stride.;
+    // quant param
+    multipliers: an array of multipliers used for quantization, It allows for scaling the input values before the addition operation.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    f8_scales: scaling factors for FP8 (8-bit floating point) quantization.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -698,7 +872,27 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   let summary = "add const operator";
 
   let description = [{
+    1.Op Introduction
     Elementwise add of input1 and input2. Input2 is constant.
+
+    2.Math formula
+    ```math
+        output = input + const_val
+    ```
+    Where input1, input2, ..., inputN are the input tensors.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    const_val: the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // quant param
+    multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
+    rshift: the number of bits to right-shift the quantized values.;
+    f8_scale: the scaling factor for FP8 (8-bit floating point) quantization.;
+    ginfo: contains layer grouping information.;
   }];
 
   let arguments = (ins
@@ -850,11 +1044,47 @@ def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale",
 def Tpu_PackRawOp: Tpu_Op<"PackRaw"> {
   let summary = "Preprocess for raw image.";
   let description = [{
-    1. preprocess raw image from 3 byte 2 pixel to 2 byte 1 pixel,
-      for each row pixel fill 0 in top 4 bits;
-      for each img block pack to 4 channels pattern;
-    2. cast to float then normalize and clip by black & white level;
-    3. cast to odtype then pad img to align padding param and move to ddr;
+    1.Op Introduction
+    (1) preprocess raw image from 3 byte 2 pixel to 2 byte 1 pixel,
+        for each row pixel fill 0 in top 4 bits;
+        for each img block pack to 4 channels pattern;
+    (2) cast to float then normalize and clip by black & white level;
+    (3) cast to odtype then pad img to align padding param and move to ddr;
+
+    2.Math formula
+    (1)Pixel Conversion:
+    For each pixel in the input tensor, the conversion can be represented as:
+    ```math
+        packed_pixel = (input & 0x3FF) (keeping lower 10 bits) (with top 4 bits set to 0);
+    ```
+    Here, input_pixel is the original pixel value, and packed_pixel is the newly formatted pixel value.
+    (2)Normalization:
+    The normalization step can be described as:
+    ```math
+        normalized_value = (packed_pixel - black_level) / (white_level - black_level);
+    ```
+    This formula ensures that the pixel values are scaled between 0 and 1 based on the specified black and white levels.
+    (3)Clipping:
+    After normalization, the values are clipped to ensure they remain within the valid range:
+    ```math
+        clipped_value = clip(normalized_value, 0, 1);
+    ```
+    (4)Output Casting and Padding:
+    Finally, the output tensor is formed by casting the clipped values to the desired output data type and applying padding:
+    ```math
+        output = pad(cast(clipped_value), padding_params);
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    high_table(w.): defines the upper bounds for pixel values during normalization.;
+    low_table(w.): defines the lower bounds for pixel values.;
+
+    4.attribute
+    white_level: the maximum intensity level for normalization.;
+    black_level: the minimum intensity level for normalization.;
+    threshold: a threshold value that can be used during the normalization or clipping stages.;
+    channel_order: the order of the color channels in the output tensor.(e.g., RGB, BGR).;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -872,9 +1102,45 @@ def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
     [DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Postprocess for raw image.";
   let description = [{
-    1. depack channel (b, bh * bw, ih + ph, iw + pw) -> (b, 1, oh * bh, ow * bw)
-    2. cast to INT16 then postprocess img to raw pattern ( 3 byte 2 pixel )
-    3. (b, bh * bw, ih + ph, iw + pw) 16bit -> (b, 1, oh * bh, ow * bw * 3 / 2) 8bit
+    1.Op Introduction
+    (1) depack channel (b, bh * bw, ih + ph, iw + pw) -> (b, 1, oh * bh, ow * bw)
+    (2) cast to INT16 then postprocess img to raw pattern ( 3 byte 2 pixel )
+    (3) (b, bh * bw, ih + ph, iw + pw) 16bit -> (b, 1, oh * bh, ow * bw * 3 / 2) 8bit
+
+    2.Math formula
+    (1)Depacking:
+    The depacking operation can be represented as:
+    ```math
+        depacked_tensor = reshape(input, (b, 1, oh · bh,ow · bw));
+    ```
+    Here, input is the packed tensor, and depacked_tensor is the resulting tensor after reshaping.
+    (2)Casting to INT16:
+    After reshaping, the values are cast to 16-bit integers:
+    ```math
+        int16_tensor = cast(depacked_tensor, int16);
+    ```
+    (3)Postprocessing to Raw Pattern:
+    The conversion from INT16 back to the raw image format can be described as:
+    ```math
+        raw_image = int16_tensor x (255 / (white_level - black_level));
+    ```
+    This scaling ensures that the pixel values are appropriately adjusted based on the specified white and black levels.
+    (4)Final Output Tensor:
+    Finally, the output tensor is formed by packing the processed values into the required format:
+    ```math
+        output=reshape(raw_image, (b, 1, oh · bh, ow · bw · 2/3));
+    ```
+    This ensures that the output tensor has the correct dimensions and format for further processing.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    padding_h: the height of the padding applied to the input image.;
+    padding_w: the width of the padding applied to the input image.;
+    white_level: the maximum intensity level for normalization.;
+    black_level: the minimum intensity level for normalization.;
+    channel_order: the order of the color channels in the output tensor.(e.g., RGB, BGR).;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -895,8 +1161,29 @@ def Tpu_SubOp: Tpu_Op<"Sub",
   let summary = "sub operator";
 
   let description = [{
+    1.Op Introduction
     Elementwise subtraction of input1 and input2. Axis of size 1 will be broadcast,
     as necessary.
+
+    2.Math formula
+    ```math
+        output = ReLU((input1 - input2; dim))
+    ```
+    Axis of size 1 will be broadcast if necessary.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    is_reverse: whether the subtraction operation is performed in reverse order.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    coeff: It is an array and allows for scaling the output of the addition operation.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    f8_scales: scaling factors for FP8 (8-bit floating point) quantization.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -926,8 +1213,28 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
   let summary = "sub const operator";
 
   let description = [{
+    1.Op Introduction
     Elementwise subtraction of input1 and input2. Input1 or Input2 is constant.
     as necessary.
+
+    2.Math formula
+    ```math
+        output = input - const_val or const_val - input
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    const_val: the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    is_reverse: This boolean attribute indicates whether the subtraction operation is performed in reverse order.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // quant param
+    multiplier: applied during the concatenation process to adjust the values of the input tensors.;
+    rshift: right shift values corresponding to each input tensor.;
+    f8_scale: scaling factors for FP8 (8-bit floating point) quantization.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -954,7 +1261,26 @@ def Tpu_MulOp: Tpu_Op<"Mul",
   let summary = "mul operator";
 
   let description = [{
-    Elementwise mul of input1 and input2. Input1 and input2 are tensors.
+    1.Op Introduction
+    Elementwise multiplication of input1 and input2. input1 and input2 are tensors.
+
+    2.Math formula
+    ```math
+        output = ReLU((input1 * input2))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    quant_mode: It determines how the output tensor should be quantized.;
+    out_f8_scales: This parameter contains the scaling factors for the output in FP8 (8-bit floating point) format.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -982,7 +1308,26 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
   let summary = "max operator";
 
   let description = [{
+    1.Op Introduction
     Elementwise max of input1 and input2. All inputs and outputs must have the same data type.
+
+    2.Math formula
+    ```math
+        output = max(input1,input2, ..., inputN)
+    ```
+    Where input1, input2, ..., inputN are the input tensors.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    coeff: It is an array and allows for scaling the output of the addition operation.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -1009,7 +1354,26 @@ def Tpu_MinOp: Tpu_Op<"Min", [
   let summary = "min operator";
 
   let description = [{
+    1.Op Introduction
     Elementwise min of input1 and input2. All inputs and outputs must have the same data type.
+
+    2.Math formula
+    ```math
+        output = min(input1,input2, ..., inputN)
+    ```
+    Where input1, input2, ..., inputN are the input tensors.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    coeff: It is an array and allows for scaling the output of the addition operation.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -1037,7 +1401,25 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
   let summary = "max_const operator";
 
   let description = [{
+    1.Op Introduction
     max of one input and one const.
+
+    2.Math formula
+    ```math
+        output = Max(input, const_val)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    const_val: the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -1065,7 +1447,25 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
   let summary = "min_const operator";
 
   let description = [{
+    1.Op Introduction
     min of one input and one const.
+
+    2.Math formula
+    ```math
+        output = Min(input, const_val)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    const_val: the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -1169,7 +1569,25 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
   let summary = "mul const operator";
 
   let description = [{
+    1.Op Introduction
     Elementwise mul of input1 and input2. Input2 is constant.
+
+    2.Math formula
+    ```math
+        output = input * const_val
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    const_val: the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -1217,14 +1635,43 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
   let summary = "Depth2Space operator";
 
   let description = [{
+    1.Op Introduction
     Refer to `https://github.com/onnx/onnx/blob/main/docs/Operators.md#depthtospace`
     [n, c, h, w] => [n, c / (block_h * block_w), h * block_h, w * block_w];
     if inversed, [n, c, h, w] => [n, c * block_h * block_w, h / block_h, w / block_w];
-
     if DCR(depth-column-row), channel ordered by block_h * block_w * c;
     else CRD(column-row-depth), channel ordered by c * block_h * block_w;
-
     The format of input or output is NCHW or NHWC.
+
+    2.Math formula
+
+    (1)Standard Transformation:
+    Given an input tensor of shape ( (N, C, H, W) ):
+    The output tensor after applying the Depth2Space operation can be calculated as:
+    ```math
+        {output}(N_i, C_j', H_k, W_l) = input(N_i, C_j, k / block_h, l / block_w)
+    ```
+    where k / block_h and l / block_w are rounded down.
+
+    (2)Inverse Transformation:
+    Given an input tensor of shape ( (N, C, H, W) ):
+    The output tensor after applying the Depth2Space operation can be calculated as:
+    ```math
+        {output}(N_i, C_j, H_k, W_l) = input(N_i, C_j', (k x block_h + j / (C / (block_h x block_w))), (l x block_w + j % (C / (block_h x block_w))))
+    ```
+    where C / (block_h x block_w) is rounded down.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    block_h: The height of the blocks used to rearrange the depth into spatial dimensions.;
+    block_w: The width of the blocks used to rearrange the depth into spatial dimensions.;
+    is_CRD: whether the channel ordering is in Column-Row-Depth format.;
+    is_inversed: whether the channel ordering is in Column-Row-Depth format.;
+    in_is_NCHW: whether the input tensor is in NCHW format.;
+    out_is_NCHW: whether the output tensor should be in NCHW format.;
+    swap_cr: swaps the height and width dimensions in the output tensor.;
   }];
 
   let arguments = (
@@ -1560,6 +2007,20 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Cast operation";
   let description = [{
+    1.Op Introduction
+    The Tpu_CastOp is a tensor operation that performs type casting on the input tensor.
+
+    2.Math formula
+    output = Cast(input);
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    extra_input: whether additional input is required for the casting operation.;
+    ginfo: contains layer grouping information.;
+    with_scale: whether the casting operation should include a scaling factor.;
+    round_mode: the rounding mode to be used during the casting operation.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1581,7 +2042,21 @@ def Tpu_DtypeCastOp:Tpu_Op<"DtypeCast", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Cast F32 to F16";
   let description = [{
+    1.Op Introduction
     Cast F32 to F16
+    The Tpu_DtypeCastOp is a specialized operation designed to cast floating-point tensors from 32-bit precision (F32) to 16-bit precision (F16).
+
+    2.Math formula
+    FLOAT16(output) = DtypeCastOp (FLOAT32(input));
+
+    3.activation
+    input(act.): input tensor;
+
+    4.attribute
+    extra_input: whether additional input is required for the casting operation.;
+    ginfo: contains layer grouping information.;
+    with_scale: whether the casting operation should include a scaling factor.;
+    round_mode: the rounding mode to be used during the casting operation.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1598,6 +2073,14 @@ def Tpu_ShapeCastOp:Tpu_Op<"ShapeCast", [
     DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Shape Cast operation";
   let description = [{
+    1.Op Introduction
+    designed to perform shape casting, which allows the transformation of the shape of an input tensor while preserving its data type.
+
+    2.Math formula
+    output = reshape(input, new_shape);
+
+    3.activation
+    input(act.): input tensor;
   }];
   let arguments = (ins AnyRankedTensor:$input);
   let results = (outs AnyRankedTensor:$output);
@@ -1665,7 +2148,21 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "requant operation";
   let description = [{
-    Requant 32/16/8 bit data to int8 or uint8 data, by int multiplier and int shift
+    1.Op Introduction
+    Requant 32/16/8 bit data to int8 or uint8 data, by int multiplier and int shift;
+
+    2.Math formula
+    int8/uint8(output) = RequantIntOp (int32/16/8(input));
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
+    rshift: the number of bits to right-shift the quantized values.;
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    ginfo: contains layer grouping information.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1684,7 +2181,22 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
   DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
-    Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
+    1.Op Introduction
+    Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel);
+
+    2.Math formula
+    int8/uint8(output) = RequantIntAxisOp(int32/16/8(input), quant);
+
+    3.activation and weight
+    input(act.): input tensor;
+    quant(act.): the quantization parameters tensor.;
+
+    4.attribute
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    ginfo: contains layer grouping information.;
+    rq_axis: the axis along which the requantization is performed.;
+    fuse_rq_axis: whether to fuse the requantization operation with subsequent operations along the specified axis.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1706,7 +2218,22 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "requant float operation";
   let description = [{
-    Requant 32/16/8 bit data to int8 or uint8 or fp8 data, by float scale and float offset, when to fp8 data, offset is not used
+    1.Op Introduction
+    Requant 32/16/8 bit data to int8 or uint8 or fp8 data, by float scale and float offset, when to fp8 data, offset is not used;
+
+    2.Math formula
+    int8/uint8/fp8(output) = round(float32/float16/float8(input) x scale + offset);
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    scale: Scalar;
+    offset: Scalar;
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    first_round_mode: the rounding behavior applied to the scaled value before the offset is added.;
+    ginfo: contains layer grouping information.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1726,7 +2253,23 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
   DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant float operation";
   let description = [{
-    Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
+    1.Op Introduction
+    Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel);
+
+    2.Math formula
+    int8/uint8(output) = RequantFpAxisOp(float32/float16/float8(input),quant);
+
+    3.activation and weight
+    input(act.): input tensor;
+    quant(act.): This attribute represents the quantization parameters tensor.
+                 It contains the values used for requantization, such as multipliers and shifts,
+                 which are specific to each axis or channel.;
+
+    4.attribute
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    first_round_mode: the rounding behavior applied to the scaled value before the offset is added.;
+    ginfo: contains layer grouping information.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1747,7 +2290,22 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "dequant operation";
   let description = [{
-    Dequant 8 bit data to 32/16 bit data
+    1.Op Introduction
+    Dequant 8 bit data to 32/16 bit data.
+
+    2.Math formula
+    32/16bit(output) = DequantIntOp((8bit(input), shift) x multiplier) ≪ lshift;
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
+    shift: a shift value applied to the quantized data before scaling.;
+    lshift: a left shift operation applied to the dequantized data after scaling.;
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    ginfo: contains layer grouping information.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1767,7 +2325,22 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
   DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
+    1.Op Introduction
     Dequant 8 bit data to 32/16 bit data, PerAxis(or PerChannel)
+
+    2.Math formula
+    32/16bit(output) = DequantIntAxisOp((8bit(input), quant, shift) x multiplier) ≪ lshift;
+
+    3.activation and weight
+    input(act.): input tensor;
+    quant(act.): This attribute represents the quantization parameters tensor used during the dequantization process.
+                 It typically includes scale factors that define how the 8-bit values are mapped back to higher precision formats. ;
+
+    4.attribute
+    lshift: a left shift operation applied to the dequantized data after scaling.;
+    quant_mode: It determines how the output tensor should be quantized.;
+    round_mode: This parameter specifies the rounding mode to be used during quantization.;
+    ginfo: contains layer grouping information.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1995,8 +2568,27 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Concatate operation";
   let description = [{
-  Concatenates the given sequence of seq tensors in the given dimension.
-  All tensors must either have the same shape (except in the concatenating dimension) or be empty.
+    1.Op Introduction
+    Concatenates the given sequence of seq tensors in the given dimension.
+    All tensors must either have the same shape (except in the concatenating dimension) or be empty.
+
+    2.Math formula
+    output = Concat(input1, input2, axis)
+           = input1[axis] + input2[axis];
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    axis: the dimension along which the input tensors will be concatenated.;
+    only_merge: whether the operation should only perform a merge of tensors without additional processing.;
+    // param for cv18xx
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // for group
+    ginfo: contains layer group information.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -2151,7 +2743,23 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
     DeclareOpInterfaceMethods<DynLocalGenInterface>]>  {
   let summary = "MaxUnpool operation";
   let description = [{
+    1.Op Introduction
     Perform MaxUnpool on input.
+
+    2.Math formula
+    ```math
+        output1(N, C, H', W') = input(N, C, H, W) #if (h,w) is the index of the max value in the mask, otherwise is 0;
+        output = scale * output1
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    mask(act.): place the pooled values in the output tensor.;
+
+    4.attribute
+    scale_h: scaling factor for the height dimension of the output tensor.;
+    scale_w: scaling factor for the width dimension of the output tensor.;
+    ginfo: group information for layer grouping;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2198,7 +2806,25 @@ def Tpu_DivOp: Tpu_Op<"Div", [
   let summary = "div operator";
 
   let description = [{
+    1.Op Introduction
     Performs element-wise binary division.
+
+    2.Math formula
+    ```math
+        output = input/const_val or const_val/input
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    is_reverse: whether the subtraction operation is performed in reverse order.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    // quant param
+    multipliers: applied during the concatenation process to adjust the values of the input tensors.;
+    rshifts: an array of right shift values corresponding to each input tensor.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -3677,18 +4303,30 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
 def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain"> {
   let summary = "BatchNormalization operation";
   let description = [{
+    1.Op Introduction
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
     with additional channel dimension) as described in the paper
     Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
 
+    2.Math formula
     ```math
-        y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+        output = \frac{input - \mathrm{E}[input]}{ \variance + \epsilon} * \gamma + \beta
     ```
 
+    3.activation and weight
+    input(act.): input tensor;
+    mean(w.): mean of input tensor in dim C;
+    variance(w.): the spread of the input tensor values along the channel dimension for each mini-batch.;
+    gamma(w.): scalar;
+    beta(w.): scalar;
     The mean and standard-deviation are calculated per-dimension over
     the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
     of size C (where C is the input channel size).
+
+    4.attribute
+    epsilon;
+    momentum: Momentum is a hyperparameter that controls the moving average of the mean and variance of the input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -3715,18 +4353,31 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd" ,[
 ]> {
   let summary = "BatchNormalization operation";
   let description = [{
+    1.Op Introduction
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
     with additional channel dimension) as described in the paper
     Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
 
+    2.Math formula
     ```math
-        y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+        output = \frac{input - \mathrm{E}[input]}{ \variance + \epsilon} * \gamma + \beta
     ```
 
+    3.activation and weight
+    grad_out(act.): the gradients of the output of the Batch Normalization layer with respect to the loss. ;
+    input(act.): input tensor;
+    weight_opt(w.): the optimized weight (or scale) parameter.;
+    saved_mean(w.): the mean of the input tensor calculated during the forward pass.;
+    saved_invstd(w.): the saved inverse standard deviation (or the reciprocal of the standard deviation) of the input tensor,
+                      also computed during the forward pass.;
+    buffer(w.): serve as a temporary storage or workspace that may be used during the computation of gradients.;
     The mean and standard-deviation are calculated per-dimension over
     the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
     of size C (where C is the input channel size).
+
+    4.attribute
+    epsilon;
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
@@ -3963,7 +4614,33 @@ def Tpu_LogicalAndOp :Tpu_Op<"LogicalAnd">{
 def Tpu_ConvbwdOp :Tpu_Op<"Convbwd", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "convolution backward";
-  let description = [{calculate grad_input,grad_weight,grad_bias of convolution operation}];
+  let description = [{
+    1.Op Introduction
+    calculate grad_input,grad_weight,grad_bias of convolution operation;
+
+    2.Math formula
+    ```math
+        input(N, C_{in}, D, H, W) = \sum_{C_{out}} output(N, C_{output}, D + sD, H + sH * kH, W + sW * kW) * kernel(C_{in}, C_{out}, kD, kH, kW)
+    ```
+    3.activation and weight
+    grad_out(act.): how the loss changes with respect to the output of the convolution operation.;
+    input(act.): input tensor;
+    kernel(w.): weights (filters) ;
+    buffer(act.): intermediate computations or storage during the backward pass;
+
+    4.attribute
+    groups: the number of groups for grouped convolutions.;
+    input_shape: the shape of the input tensor.;
+    grad_out_shape: the shape of the tensor that is being backpropagated.;
+    kernel_shape: an array of integers.;
+    stride: an array of integers for each dimension.;
+    dilations: dilation rate for the convolution, controls the spacing between kernel elements.;
+    padding: an array of integers.;
+    inserts: additional parameters;
+    grad_input_enable: whether to compute the gradient with respect to the input tensor.;
+    grad_weight_enable: whether to compute the gradient with respect to the kernel tensor.;
+    grad_bias_enable: whether to compute the gradient with respect to the bias tensor.;
+    }];
   let arguments = (ins
     AnyTensor:$grad_out,
     AnyTensor:$input,
