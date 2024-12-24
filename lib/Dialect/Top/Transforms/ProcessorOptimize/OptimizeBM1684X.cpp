@@ -873,7 +873,7 @@ protected:
         order_fix[n_idx] == k_idx && order_fix[k_idx] == n_idx) {
       // bingo !
       op.setOperand(1, trans_op.getInput());
-      for(auto matmul_op : matmul_ops) {
+      for (auto matmul_op : matmul_ops) {
         matmul_op.setRightTranspose(!matmul_op.getRightTranspose());
         matmul_op.setOperand(1, trans_op.getInput());
       }
@@ -883,19 +883,21 @@ protected:
     }
     return failure();
   }
+
 private:
-  std::vector<top::MatMulOp> getCascadingMatMulOp(Value in, top::MatMulOp op) const {
+  std::vector<top::MatMulOp> getCascadingMatMulOp(Value in,
+                                                  top::MatMulOp op) const {
     std::vector<top::MatMulOp> matmul_ops;
     auto permute = dyn_cast<top::PermuteOp>(in.getDefiningOp());
     if (!permute) {
       return std::vector<top::MatMulOp>();
     }
-    for(auto user : permute->getUsers()) {
+    for (auto user : permute->getUsers()) {
       auto matmul = dyn_cast<top::MatMulOp>(user);
       if (!matmul || matmul.getRight() != permute->getResult(0)) {
         return std::vector<top::MatMulOp>();
       }
-      if (matmul==op){
+      if (matmul == op) {
         continue;
       } else {
         matmul_ops.push_back(matmul);
@@ -955,8 +957,12 @@ protected:
   matchAndRewriteImpl(top::MatMulOp op,
                       mlir::PatternRewriter &rewriter) const override {
     if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
-        module::isMARS3())
+        module::isMARS3()) {
       return failure();
+    }
+    if (module::isHighPrecision()) {
+      return failure();
+    }
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
       return failure();
@@ -2411,98 +2417,115 @@ protected:
 
     auto gather_input = op.getOperand(0);
     auto gather_op = dyn_cast<top::GatherOp>(gather_input.getDefiningOp());
-    if(!gather_op){
+    if (!gather_op) {
       return failure();
     }
 
     auto gather_shape = module::getShape(gather_op.getInput());
-    auto op_weight = dyn_cast<top::WeightOp>((op.getOperands()[1]).getDefiningOp());
-    auto gather_weight = dyn_cast<top::WeightOp>((gather_op.getOperands()[1]).getDefiningOp());
-    std::vector<int> unsample_ratio={0,0};
-    if(op.getAxis()==gather_shape.size()-1||op.getAxis()==gather_shape.size()-2){
-      checkWeightUpsample<float>(op_weight,gather_shape,unsample_ratio,op.getAxis());
+    auto op_weight =
+        dyn_cast<top::WeightOp>((op.getOperands()[1]).getDefiningOp());
+    auto gather_weight =
+        dyn_cast<top::WeightOp>((gather_op.getOperands()[1]).getDefiningOp());
+    std::vector<int> unsample_ratio = {0, 0};
+    if (op.getAxis() == gather_shape.size() - 1 ||
+        op.getAxis() == gather_shape.size() - 2) {
+      checkWeightUpsample<float>(op_weight, gather_shape, unsample_ratio,
+                                 op.getAxis());
     }
-    if(gather_op.getAxis()==gather_shape.size()-1||gather_op.getAxis()==gather_shape.size()-2){
-      checkWeightUpsample<float>(gather_weight,gather_shape,unsample_ratio,gather_op.getAxis());
+    if (gather_op.getAxis() == gather_shape.size() - 1 ||
+        gather_op.getAxis() == gather_shape.size() - 2) {
+      checkWeightUpsample<float>(gather_weight, gather_shape, unsample_ratio,
+                                 gather_op.getAxis());
     }
     // not nearst_mode or shape don't change
-    if(unsample_ratio[0]*unsample_ratio[1]<=1)
+    if (unsample_ratio[0] * unsample_ratio[1] <= 1)
       return failure();
 
     rewriter.setInsertionPointAfter(op);
-    std::string weightName = module::getName(gather_op.getOperands()[0]).str() + "_weight";
-    auto weightType = RankedTensorType::get({1, 1, gather_shape[2], gather_shape[3]*unsample_ratio[1]}, module::getElementType(gather_op.getOperands()[0]));
+    std::string weightName =
+        module::getName(gather_op.getOperands()[0]).str() + "_weight";
+    auto weightType = RankedTensorType::get(
+        {1, 1, gather_shape[2], gather_shape[3] * unsample_ratio[1]},
+        module::getElementType(gather_op.getOperands()[0]));
     auto weight_size = weightType.getNumElements();
     auto weightCoeff = std::make_shared<std::vector<float>>(weight_size, 0);
 
-    for(int row_idx=0;row_idx<gather_shape[2];row_idx++){
-        weightCoeff->at(row_idx*gather_shape[3]*unsample_ratio[1]+row_idx*unsample_ratio[1]) = 1;
-        weightCoeff->at(row_idx*gather_shape[3]*unsample_ratio[1]+row_idx*unsample_ratio[1]+1) = 1;
+    for (int row_idx = 0; row_idx < gather_shape[2]; row_idx++) {
+      weightCoeff->at(row_idx * gather_shape[3] * unsample_ratio[1] +
+                      row_idx * unsample_ratio[1]) = 1;
+      weightCoeff->at(row_idx * gather_shape[3] * unsample_ratio[1] +
+                      row_idx * unsample_ratio[1] + 1) = 1;
     }
-    auto wret =
-        module::weightFile().addTensor(weightName, (float*)weightCoeff->data(), weightType);
+    auto wret = module::weightFile().addTensor(
+        weightName, (float *)weightCoeff->data(), weightType);
     assert(succeeded(wret));
     auto weight_op0 = rewriter.create<top::WeightOp>(
-      NameLoc::get(rewriter.getStringAttr(weightName)),
-      weightType,
-      ValueRange{});
+        NameLoc::get(rewriter.getStringAttr(weightName)), weightType,
+        ValueRange{});
 
     auto none = module::getNoneOp(op);
     auto matmul0 = rewriter.create<top::MatMulOp>(
         NameLoc::get(rewriter.getStringAttr(
-            module::getName(gather_op.getOperation()).str() +
-            "_2matmul")),
-        RankedTensorType::get({gather_shape[0], gather_shape[1], gather_shape[2], gather_shape[3]*unsample_ratio[1]},
+            module::getName(gather_op.getOperation()).str() + "_2matmul")),
+        RankedTensorType::get({gather_shape[0], gather_shape[1],
+                               gather_shape[2],
+                               gather_shape[3] * unsample_ratio[1]},
                               module::getElementType(gather_op.getOutput())),
-        ValueRange{gather_op.getInput(), weight_op0, none},
-        op->getAttrs());
+        ValueRange{gather_op.getInput(), weight_op0, none}, op->getAttrs());
 
     weightName = module::getName(op.getOperands()[0]).str() + "_weight";
-    weightType = RankedTensorType::get({1, 1, gather_shape[2]*unsample_ratio[0], gather_shape[3]}, module::getElementType(op.getOperands()[0]));
+    weightType = RankedTensorType::get(
+        {1, 1, gather_shape[2] * unsample_ratio[0], gather_shape[3]},
+        module::getElementType(op.getOperands()[0]));
     weight_size = weightType.getNumElements();
     weightCoeff = std::make_shared<std::vector<float>>(weight_size, 0);
 
-    for(int row_idx=0;row_idx<gather_shape[2]*unsample_ratio[0];row_idx++){
-        weightCoeff->at(row_idx*gather_shape[3]+row_idx/unsample_ratio[0]) = 1;
+    for (int row_idx = 0; row_idx < gather_shape[2] * unsample_ratio[0];
+         row_idx++) {
+      weightCoeff->at(row_idx * gather_shape[3] + row_idx / unsample_ratio[0]) =
+          1;
     }
-    wret =
-        module::weightFile().addTensor(weightName, (float*)weightCoeff->data(), weightType);
+    wret = module::weightFile().addTensor(
+        weightName, (float *)weightCoeff->data(), weightType);
     assert(succeeded(wret));
     auto weight_op1 = rewriter.create<top::WeightOp>(
-      NameLoc::get(rewriter.getStringAttr(weightName)),
-      weightType,
-      ValueRange{});
+        NameLoc::get(rewriter.getStringAttr(weightName)), weightType,
+        ValueRange{});
 
     auto matmul1 = rewriter.create<top::MatMulOp>(
         op.getLoc(),
-        RankedTensorType::get({gather_shape[0], gather_shape[1], gather_shape[2]*unsample_ratio[0], gather_shape[3]*unsample_ratio[1]},
+        RankedTensorType::get({gather_shape[0], gather_shape[1],
+                               gather_shape[2] * unsample_ratio[0],
+                               gather_shape[3] * unsample_ratio[1]},
                               module::getElementType(op.getOutput())),
-        ValueRange{weight_op1, matmul0.getOutput(),none},
-        op->getAttrs());
+        ValueRange{weight_op1, matmul0.getOutput(), none}, op->getAttrs());
 
     op.replaceAllUsesWith(matmul1.getOutput());
     rewriter.eraseOp(op);
     rewriter.eraseOp(gather_op);
     return success();
   }
+
 private:
   template <typename T>
-  void checkWeightUpsample(top::WeightOp op, llvm::ArrayRef<int64_t> origin_shape, std::vector<int>& unsample_ratio, int axis) const {
+  void checkWeightUpsample(top::WeightOp op,
+                           llvm::ArrayRef<int64_t> origin_shape,
+                           std::vector<int> &unsample_ratio, int axis) const {
     auto weight = op.read<T>();
     auto weight_size = weight->size();
     int origin_size = origin_shape[axis];
-    if(weight_size%origin_size!=0){
-      unsample_ratio[axis-(origin_shape.size()-2)]=0;
+    if (weight_size % origin_size != 0) {
+      unsample_ratio[axis - (origin_shape.size() - 2)] = 0;
       return;
     }
-    int ratio = weight_size/origin_size;
-    for(int idx=0;idx<weight_size;idx++){
-      if((int32_t)weight->at(idx)!=idx/ratio){
-        unsample_ratio[axis-(origin_shape.size()-2)]=0;
+    int ratio = weight_size / origin_size;
+    for (int idx = 0; idx < weight_size; idx++) {
+      if ((int32_t)weight->at(idx) != idx / ratio) {
+        unsample_ratio[axis - (origin_shape.size() - 2)] = 0;
         return;
       }
     }
-    unsample_ratio[axis-(origin_shape.size()-2)]=ratio;
+    unsample_ratio[axis - (origin_shape.size() - 2)] = ratio;
     return;
   }
 };
@@ -2513,14 +2536,13 @@ namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
-  patterns
-      ->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,
-            ConvertMatMul2Attention, ReshapeReorderPattern,
-            ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
-            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner,
-            ConcatWithReduceSum2SliceWithAdd, ConcatReduceSum2AddReshape,
-            ConvertToRSqrt, ConvertToSquare, ConvertToQGELU, InterpNearst2Matmul>(
-          patterns->getContext(), 8);
+  patterns->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,
+                ConvertMatMul2Attention, ReshapeReorderPattern,
+                ConvertMultiInputAdd, WhereBroadcastToTile,
+                ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,
+                ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd,
+                ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
+                ConvertToQGELU, InterpNearst2Matmul>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir

@@ -97,6 +97,8 @@ bool isSubnetDividedState();
 void setAddrMode(AddrMode mode);
 AddrMode getAddrMode();
 bool isAddrMode(AddrMode mode);
+void setHighPrecision(bool is_high);
+bool isHighPrecision();
 void setTopRunMode(TopRunMode mode);
 TopRunMode getTopRunMode();
 bool isDynamic();
@@ -358,7 +360,8 @@ bool isOpSameCalc(Operation *op0, Operation *op1);
 bool isOpSameCalc(const std::vector<Operation *> &ops);
 
 bool isInMatMulGrpOp(Operation *op);
-bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h, int64_t &w);
+bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h,
+                      int64_t &w);
 //-----------------------------------------------------------------
 // Helper for op compare
 //-----------------------------------------------------------------

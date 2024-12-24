@@ -533,9 +533,9 @@ model_deploy.py
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8/F8E4M3量化的时候需要校准表
-   * - ignore_f16_overflow
+   * - high_precision
      - 否
-     - 打开时则有F16溢出风险的算子依然按F16实现;否则默认会采用F32实现, 如LayerNorm
+     - 打开时一部分算子会固定用float32
    * - tolerance
      - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果余弦与欧式相似度的误差容忍度，默认为0.8,0.5

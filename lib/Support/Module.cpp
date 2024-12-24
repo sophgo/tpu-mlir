@@ -53,6 +53,7 @@ struct Attr {
   static constexpr llvm::StringRef TOP_RUN_MODE = "module.top_run_mode";
   static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET =
       "module.dynamic_coeff_offset";
+  static constexpr llvm::StringRef HIGH_PRECISION = "module.high_precision";
 };
 
 static ModuleOp m = nullptr;
@@ -1263,6 +1264,17 @@ AddrMode getAddrMode() {
 
 bool isAddrMode(AddrMode mode) { return mode == getAddrMode(); }
 
+void setHighPrecision(bool is_high) {
+  m->setAttr(Attr::HIGH_PRECISION, BoolAttr::get(ctx, is_high));
+}
+
+bool isHighPrecision() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::HIGH_PRECISION)) {
+    return m->getAttrOfType<BoolAttr>(Attr::HIGH_PRECISION).getValue();
+  }
+  return false;
+}
+
 void setTopRunMode(TopRunMode mode) {
   auto s = stringifyTopRunMode(mode);
   m->setAttr(Attr::TOP_RUN_MODE, StringAttr::get(ctx, s));
@@ -2093,11 +2105,11 @@ bool IsRightMat(Value v) {
   return false;
 }
 
-bool IsSecondMatInMlp(Value v){
+bool IsSecondMatInMlp(Value v) {
   for (auto user : v.getUsers()) {
     if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(user)) {
       for (auto use : MatMulOp.getOutput().getUsers()) {
-        if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(use)){
+        if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(use)) {
           return false;
         }
       }
@@ -2164,29 +2176,30 @@ bool isInMatMulGrpOp(Operation *op) {
 }
 
 bool areAttributesEqual(mlir::Operation *op1, mlir::Operation *op2) {
-    auto attrs1 = op1->getAttrs();
-    auto attrs2 = op2->getAttrs();
+  auto attrs1 = op1->getAttrs();
+  auto attrs2 = op2->getAttrs();
 
-    if (attrs1.size() != attrs2.size()) {
-        return false;
-    }
+  if (attrs1.size() != attrs2.size()) {
+    return false;
+  }
 
-    llvm::DenseMap<mlir::StringRef, mlir::Attribute> attrsMap;
-    for (const auto &attr : attrs2) {
-        attrsMap[attr.getName()] = attr.getValue();
-    }
+  llvm::DenseMap<mlir::StringRef, mlir::Attribute> attrsMap;
+  for (const auto &attr : attrs2) {
+    attrsMap[attr.getName()] = attr.getValue();
+  }
 
-    for (const auto &attr : attrs1) {
-        auto it = attrsMap.find(attr.getName());
-        if (it == attrsMap.end() || it->second != attr.getValue()) {
-            return false;
-        }
+  for (const auto &attr : attrs1) {
+    auto it = attrsMap.find(attr.getName());
+    if (it == attrsMap.end() || it->second != attr.getValue()) {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
-bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h, int64_t &w) {
-  bool can_change =false;
+bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h,
+                      int64_t &w) {
+  bool can_change = false;
   auto op = value.getDefiningOp();
   if (op && isa<tpu::BatchNormBwdOp>(op)) {
     can_change = true;

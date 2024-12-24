@@ -54,6 +54,7 @@ def ProcessorAssign : Pass<"processor-assign", "ModuleOp"> {
     Option<"num_core", "num_core", "int64_t", /*default=*/"1",
            "core_num=1: Set how many cores will be used to run model in parallel.">,
     Option<"addr_mode", "addr_mode", "std::string", /*default=*/"\"auto\"", "addr assign mode">,
+    Option<"high_precision", "high_precision", "bool", /*default=*/"false", "force some ops goto fp32">,
   ];
 }
 

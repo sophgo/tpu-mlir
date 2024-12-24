@@ -286,7 +286,7 @@ def lowering_options(mode: str,
                      customization_format: str = None,
                      fuse_preprocess: bool = False,
                      aligned_input: bool = False,
-                     ignore_f16_overflow: bool = False,
+                     high_precision: bool = False,
                      do_winograd: bool = False,
                      q_group_size: int = 0,
                      addr_mode: str = "auto",
@@ -294,8 +294,8 @@ def lowering_options(mode: str,
                      gelu_mode: str = "normal"):
     mode = mode.upper()
     options = [
-        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={}\"".format(
-            chip.lower(), mode, num_device, num_core, addr_mode)
+        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={} high_precision={}\"".format(
+            chip.lower(), mode, num_device, num_core, addr_mode, high_precision)
     ]
 
     # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
@@ -311,9 +311,8 @@ def lowering_options(mode: str,
         options.extend([fuse_pre_param])
     qw = "qtable={} weightFileName={}".format(quantize_table, weight_name) if quantize_table else ""
     lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={}" \
-                  " ignore_f16_overflow={} q_group_size={} matmul_perchannel={} gelu_mode={}\"".format(
-        qw, asymmetric, do_winograd,
-        ignore_f16_overflow, q_group_size, matmul_perchannel, gelu_mode)
+                  " q_group_size={} matmul_perchannel={} gelu_mode={}\"".format(
+        qw, asymmetric, do_winograd, q_group_size, matmul_perchannel, gelu_mode)
     options.extend([
         lower_param,
         "--canonicalize",
@@ -333,7 +332,7 @@ def mlir_lowering(top_mlir: str,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False,
-                  ignore_f16_overflow: bool = False,
+                  high_precision: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0,
                   count_patterns: bool = False,
@@ -359,7 +358,7 @@ def mlir_lowering(top_mlir: str,
                                 customization_format,
                                 fuse_preprocess,
                                 aligned_input,
-                                ignore_f16_overflow,
+                                high_precision,
                                 do_winograd,
                                 q_group_size,
                                 addr_mode,
@@ -634,7 +633,7 @@ def origin_mlir_txt_to_bmodel(
     customization_format: str = None,
     fuse_preprocess: bool = False,
     aligned_input: bool = False,
-    ignore_f16_overflow: bool = False,
+    high_precision: bool = False,
     do_winograd: bool = False,
     q_group_size: int = 0,
     dynamic: bool = False,
@@ -674,7 +673,7 @@ def origin_mlir_txt_to_bmodel(
                                     customization_format,
                                     fuse_preprocess,
                                     aligned_input,
-                                    ignore_f16_overflow,
+                                    high_precision,
                                     do_winograd,
                                     q_group_size,
                                     addr_mode,

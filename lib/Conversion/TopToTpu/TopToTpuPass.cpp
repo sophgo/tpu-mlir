@@ -1178,10 +1178,9 @@ public:
       auto lutOp = rewriter.create<tpu::LutOp>(out.getLoc(), out.getType(),
                                                ValueRange{in, in});
       auto new_out = lutOp.getOutput();
-      auto table = create_lookup_table(in, new_out, module::isAsymmetric(),
-                                       getActivateFunc(op),
-                                       8, ROUNDING_HALF_AWAY_FROM_ZERO,
-                                       module::isAsymmetric());
+      auto table = create_lookup_table(
+          in, new_out, module::isAsymmetric(), getActivateFunc(op), 8,
+          ROUNDING_HALF_AWAY_FROM_ZERO, module::isAsymmetric());
       lutOp->setOperand(1, table);
       out.replaceAllUsesWith(new_out);
     }
@@ -1849,12 +1848,11 @@ module::Mode ConvertTopToTpu::qmode(const std::string &mode) {
 
 void ConvertTopToTpu::init_qtable() {
   LoweringConfig::quantize_map.clear();
-  if (ignore_f16_overflow == false && module::isF16Modes()) {
+  if (module::isHighPrecision()) {
     mainFunc_.walk([&](Operation *op) {
-      // if have other op need convert from f16 to f32, add here.
-      // if need better performence, just set ignore_f16_overflow in
+      // if have other op force to f32, add here.
       // model_deploy. defaultly we need ensure the computation is correct.
-      if (isa<top::AvgPoolOp>(op)) {
+      if (isa<top::AvgPoolOp, top::SoftmaxOp>(op)) {
         auto name = module::getName(op).str();
         LoweringConfig::quantize_map[name] = module::Mode::F32;
       }

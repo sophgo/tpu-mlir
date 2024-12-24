@@ -97,7 +97,7 @@ class DeployTool:
         self.opt = args.opt
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide
-        self.ignore_f16_overflow = args.ignore_f16_overflow
+        self.high_precision = args.high_precision
         self.num_device = args.num_device
         self.num_core = args.num_core
         self.group_by_cores = args.group_by_cores
@@ -202,7 +202,7 @@ class DeployTool:
                 self.customization_format,
                 self.fuse_preprocess,
                 self.aligned_input,
-                self.ignore_f16_overflow,
+                self.high_precision,
                 self.do_winograd,
                 self.q_group_size,
                 True if self.patterns_count else False,
@@ -446,6 +446,8 @@ if __name__ == '__main__':
                         help="choose index to strip cast, such as 1,3 means first & third input`s cast")
     parser.add_argument("--quant_output_list", default="", type=str,
                         help="choose index to strip cast, such as 1,3 means first & third output`s cast")
+    parser.add_argument("--high_precision", action='store_true',
+                        help="some ops will force to be fp32")
     parser.add_argument("--ignore_f16_overflow", action='store_true',
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
     # ========== Validation Options ==============
@@ -532,6 +534,7 @@ if __name__ == '__main__':
     # yapf: enable
     args = parser.parse_args()
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
+    deprecated_option(args.ignore_f16_overflow, "DEPRECATED, please use --high_precision")
     if args.quant_output_bf16:
         if args.quantize == "BF16":
             RuntimeError("quantize is BF16, please use --quant_output instead")
