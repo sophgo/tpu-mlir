@@ -1456,7 +1456,7 @@ protected:
     const int ic = filterShape[1];
     const int kh = filterShape[2];
     const int kw = filterShape[3];
-    if (!(ic <= 3 && kh >= 16 && kw >= 16 && strides->at(0) == kh &&
+    if (!(ic <= 3 && kh >= 14 && kw >= 14 && strides->at(0) == kh &&
           strides->at(1) == kw)) {
       return failure();
     }

@@ -4398,12 +4398,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isBM1684X()) {
-      return failure();
-    }
-    auto in_size = module::getNumElements(matMulOp.getInput());
-    if (in_size >
-        BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 8) * BM168x::NPU_NUM) {
+    if (!module::isBM1684X() && !module::isBM1688()) {
       return failure();
     }
     bool f_fuse_rq = matMulOp.getFuseRq();
@@ -4427,12 +4422,27 @@ public:
     bool l_fuse_rq = prevMatMulOp.getFuseRq();
     if (!l_fuse_rq)
       return failure();
+    auto in_size = module::getNumElements(prevMatMulOp.getInput());
+    auto out_size = module::getNumElements(matMulOp.getOutput()) * 4; // stored as INT32 before sumed together and requantized.
     auto w_shape = module::getShape(matMulOp.getRight());
     auto dim = w_shape.size();
     auto w_size = module::getNumElements(matMulOp.getRight());
+    auto ceilDiv = [](int64_t a, int64_t b) -> int64_t {
+      return (a + b - 1) / b;
+    };
+    // at tpu.Add(BinaryShift) timestep, min_Lmem = 3 x outsize + insize.
+    if ( BM168x::LMEM_BANKS <
+           ceilDiv( 3 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES)
+           + ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES)) {
+      return failure();
+    }
     // get split number
-    auto max_weight_size =
-        BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 4) * BM168x::NPU_NUM;
+    // at tpu.matmul timestep, min_Lmem = 2 x outsize + insize + bias,lut size + 2 * weightsize
+    auto max_weight_banks = BM168x::LMEM_BANKS
+        - ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES)
+        - ceilDiv(2 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES )
+        -  1;
+    auto max_weight_size = (int64_t)(max_weight_banks / 2) * BM168x::LMEM_BANK_BYTES * BM168x::NPU_NUM;
     int split_num = 1;
     while (w_size > max_weight_size) {
       split_num *= 2;
