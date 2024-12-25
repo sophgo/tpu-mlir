@@ -869,20 +869,20 @@ void AddPostprocessPass::insertYolosegOp(OpBuilder &builder) {
   auto seg_out_op =
           builder.create<SliceOp>(new_loc, new_type, operands, attrs);
 
-  attrs.clear();
-  attrs.push_back(
-      builder.getNamedAttr("const_val", builder.getF64FloatAttr(0.5)));
-  attrs.push_back(
-      builder.getNamedAttr("mode", builder.getStringAttr("Greater")));
-  attrs.push_back(
-      builder.getNamedAttr("inversed", builder.getBoolAttr(false)));
-  new_type = RankedTensorType::get({max_boxes, mh, mw},
-                                      module::getElementType(predication_op));
-  new_loc = NameLoc::get(builder.getStringAttr("masks_uncrop"));
-  auto masks_uncrop_op =
-          builder.create<CompareConstOp>(new_loc, new_type, masks_uncrop_uncompare_op.getOutput(), attrs);
+//   attrs.clear();
+//   attrs.push_back(
+//       builder.getNamedAttr("const_val", builder.getF64FloatAttr(0.5)));
+//   attrs.push_back(
+//       builder.getNamedAttr("mode", builder.getStringAttr("Greater")));
+//   attrs.push_back(
+//       builder.getNamedAttr("inversed", builder.getBoolAttr(false)));
+//   new_type = RankedTensorType::get({max_boxes, mh, mw},
+//                                       module::getElementType(predication_op));
+//   new_loc = NameLoc::get(builder.getStringAttr("masks_uncrop"));
+//   auto masks_uncrop_op =
+//           builder.create<CompareConstOp>(new_loc, new_type, masks_uncrop_uncompare_op.getOutput(), attrs);
 
-  terminator->setOperands({masks_uncrop_op.getOutput(), seg_out_op.getOutput()});
+  terminator->setOperands({masks_uncrop_uncompare_op.getOutput(), seg_out_op.getOutput()});
 }
 
 
