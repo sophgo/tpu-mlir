@@ -174,6 +174,7 @@ class ONNX_IR_TESTER(object):
             "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y, Y),
             "ReduceL1":     (self.test_ReduceL1,      Y, Y, Y, N, Y, Y),
             "ReduceL2":     (self.test_ReduceL2,      Y, Y, Y, Y, Y, Y),
+            "ReduceLogSumExp": (self.test_ReduceLogSumExp, Y, Y, Y, N, N, N),
             "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y, Y, Y),
             "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y, Y, Y),
             "ReduceProd":   (self.test_ReduceProd,    Y, Y, Y, N, Y, Y),
@@ -2491,6 +2492,19 @@ class ONNX_IR_TESTER(object):
 
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
+
+    def test_ReduceLogSumExp(self, case_name):
+        class Model(nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+                self.dim = 3
+
+            def forward(self, input):
+                return torch.logsumexp(input, dim=self.dim)
+
+        x = torch.randn(4, 8, 60, 80).float()
+        self.torch_and_test(x, Model(), case_name)
+
 
     def test_ReduceSum(self, case_name):
         input_shape = [4, 4, 4, 16, 16, 64]

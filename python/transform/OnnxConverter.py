@@ -253,6 +253,7 @@ class OnnxConverter(BaseConverter):
             "ReduceL1": lambda node: self.convert_reduce_op(node),
             "ReduceProd": lambda node: self.convert_reduce_op(node),
             "ReduceSum": lambda node: self.convert_reduce_op(node),
+            "ReduceLogSumExp": lambda node: self.convert_reduce_log_sum_exp_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
@@ -1920,6 +1921,53 @@ class OnnxConverter(BaseConverter):
                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                               ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_reduce_log_sum_exp_op(self, onnx_node):
+        assert (onnx_node.op_type == "ReduceLogSumExp")
+        op = self.getOperand(onnx_node.inputs[0])
+        keepdims = onnx_node.attrs.get('keepdims', 1)
+        axes = onnx_node.attrs.get('axes', list())
+        output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        reducemax_value = top.ReduceOp(self.unranked_type,
+                              op,
+                              axes=axes,
+                              keepdims=1,
+                              mode=StringAttr.get("ReduceMax"),
+                              loc=self.get_loc(output_name + "_reducemax"),
+                              ip=self.mlir.insert_point).output
+        sub_value = top.SubOp(self.unranked_type, [op, reducemax_value],
+                               loc=self.get_loc(output_name + "_sub"),
+                               ip=self.mlir.insert_point).output
+        exp_value = top.ExpOp(self.unranked_type,
+                              sub_value,
+                              loc=self.get_loc(output_name + "_exp"),
+                              ip=self.mlir.insert_point).output
+        reducesum_value = top.ReduceOp(self.unranked_type,
+                              exp_value,
+                              axes=axes,
+                              keepdims=1,
+                              mode=StringAttr.get("ReduceSum"),
+                              loc=self.get_loc(output_name + "_reducesum"),
+                              ip=self.mlir.insert_point).output
+        log_value = top.LogOp(self.unranked_type,
+                              reducesum_value,
+                              loc=self.get_loc(output_name + "_log"),
+                              ip=self.mlir.insert_point).output
+        if keepdims:
+            new_op = top.AddOp(self.unranked_type, [reducemax_value, log_value],
+                                loc=self.get_loc(output_name),
+                                ip=self.mlir.insert_point).output
+        else:
+            add_value = top.AddOp(self.unranked_type, [reducemax_value, log_value],
+                                loc=self.get_loc(output_name + "_add"),
+                                ip=self.mlir.insert_point).output
+            new_op = top.SqueezeOp(self.unranked_type,
+                                  add_value,
+                                  axes=axes,
+                                  loc=self.get_loc(output_name),
+                                  ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, new_op)
+
 
     def convert_arg_op(self, onnx_node):
         assert (onnx_node.op_type in ["ArgMin", "ArgMax"])
