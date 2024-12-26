@@ -116,6 +116,74 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
   // input -> unary
   rewriter.updateRootInPlace(nextOp, [&] {
     nextOp->setOperand(0, input);
+    if (nextOp->getOperands().size() == 2 &&
+        module::isWeight(nextOp->getOperand(1))) {
+      if (auto binaryshift_op = dyn_cast<tpu::BinaryShiftOp>(nextOp)) {
+        auto binaryshift_weight_Op =
+            dyn_cast<top::WeightOp>(nextOp->getOperand(1).getDefiningOp());
+        // transpose the weight
+        auto weight_type =
+            module::getElementType(binaryshift_weight_Op.getOutput());
+        auto weight_shape = module::getShape(binaryshift_weight_Op.getOutput());
+        if (weight_shape.size() != 4) {
+          return;
+        }
+        if (weight_type.isInteger(8)) {
+          auto weight_data = binaryshift_weight_Op.read<uint8_t>();
+          auto weight_trans =
+              std::make_shared<std::vector<uint8_t>>(weight_data->size(), 0);
+          function_permute(weight_data->data(), weight_trans->data(),
+                           weight_shape, {0, 2, 1, 3});
+          std::vector<int64_t> weight_new_shape = {
+              weight_shape[0], weight_shape[2], weight_shape[1],
+              weight_shape[3]};
+          rewriter.setInsertionPointAfter(op);
+          auto type = RankedTensorType::get(weight_new_shape, weight_type);
+          auto new_weight = top::WeightOp::create<uint8_t>(
+              op,
+              module::getName(binaryshift_weight_Op.getOperation()).str() +
+                  "transposed",
+              *weight_trans, type);
+          nextOp->setOperand(1, new_weight);
+        } else if (weight_type.isInteger(32)) {
+          auto weight_data = binaryshift_weight_Op.read<uint32_t>();
+          auto weight_trans =
+              std::make_shared<std::vector<uint32_t>>(weight_data->size(), 0);
+          function_permute(weight_data->data(), weight_trans->data(),
+                           weight_shape, {0, 2, 1, 3});
+          std::vector<int64_t> weight_new_shape = {
+              weight_shape[0], weight_shape[2], weight_shape[1],
+              weight_shape[3]};
+          rewriter.setInsertionPointAfter(op);
+          auto type = RankedTensorType::get(weight_new_shape, weight_type);
+          auto new_weight = top::WeightOp::create<uint32_t>(
+              op,
+              module::getName(binaryshift_weight_Op.getOperation()).str() +
+                  "transposed",
+              *weight_trans, type);
+          nextOp->setOperand(1, new_weight);
+        } else if (weight_type.isInteger(16)) {
+          auto weight_data = binaryshift_weight_Op.read<uint16_t>();
+          auto weight_trans =
+              std::make_shared<std::vector<uint16_t>>(weight_data->size(), 0);
+          function_permute(weight_data->data(), weight_trans->data(),
+                           weight_shape, {0, 2, 1, 3});
+          std::vector<int64_t> weight_new_shape = {
+              weight_shape[0], weight_shape[2], weight_shape[1],
+              weight_shape[3]};
+          rewriter.setInsertionPointAfter(op);
+          auto type = RankedTensorType::get(weight_new_shape, weight_type);
+          auto new_weight = top::WeightOp::create<uint16_t>(
+              op,
+              module::getName(binaryshift_weight_Op.getOperation()).str() +
+                  "transposed",
+              *weight_trans, type);
+          nextOp->setOperand(1, new_weight);
+        } else {
+          llvm_unreachable("Weight type error!");
+        }
+      }
+    }
 
     auto newType =
         newUnaryShape == nullptr
@@ -153,7 +221,7 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
   // nextOp->dump();
   // op.dump();
   return;
-}
+} // namespace tpu
 
 // reorder op when transpose is before unary and biary operation to optimize
 // bert
