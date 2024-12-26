@@ -464,8 +464,8 @@ struct NonZeroPermutePattern : public OpRewriterPatternEx<PermuteOp> {
 // ==>
 //
 //                                                                                  ...MatMul
-//      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze- |
-// ...-{ }-Add-Reshape-Permute-Reshape-Add-...
+//      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze-                                |
+// ...-{                                                   }-Add-Reshape-Permute-Reshape-Add-...
 //      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze-
 // clang-format on
 struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
@@ -503,9 +503,9 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
         *permute_before_w_op.getOutput().getUsers().begin());
     if (!matmul_w_op || !matmul_w_op->hasOneUse())
       return failure();
-    if (!module::isWeight(matmul_h_op.getRight()) ||
-        !module::isWeight(matmul_w_op.getRight()))
-      return failure();
+    // if (!module::isWeight(matmul_h_op.getRight()) ||
+    //     !module::isWeight(matmul_w_op.getRight()))
+    //   return failure();
     auto permute_after_w_op = dyn_cast_or_null<PermuteOp>(
         *matmul_w_op.getOutput().getUsers().begin());
     if (!permute_after_w_op || !permute_after_w_op->hasOneUse())
@@ -622,7 +622,8 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
     }
     // rewrite h_weight: 300x14x14x64 => 25x(12)x(14)x14x64 =>
     // 25x(14)x(12)x14x64 => (25x14)x12x14x64
-    auto h_weight_op = matmul_h_op.getRight().getDefiningOp<WeightOp>();
+    auto h_permute_op = matmul_h_op.getRight().getDefiningOp<PermuteOp>();
+    auto h_weight_op = h_permute_op.getInput().getDefiningOp<WeightOp>();
     auto h_weight_data = h_weight_op.read_as_float();
     auto h_weight_trans =
         std::make_shared<std::vector<float>>(h_weight_data->size(), 0);
@@ -633,7 +634,20 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
         WeightOp::create_float(matmul_h_op, "rewrited", *h_weight_trans,
                                h_weight_new_shape, storage_type);
     matmul_h_op->setOperand(0, new_permute_h_op.getOutput());
-    matmul_h_op->setOperand(1, new_weight_h);
+    rewriter.setInsertionPoint(matmul_h_op);
+    attrs.clear();
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0,1,3,2})));
+    auto permute_h_right_type = RankedTensorType::get(
+        {batch * h, head_n, head_sz, w}, module::getElementType(new_reshape_h_op.getOutput()));
+    auto permute_h_right_loc =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_permute_right_h"));
+    auto new_permute_h_right_op = rewriter.create<PermuteOp>(
+        permute_h_right_loc, permute_h_right_type, ValueRange{new_weight_h},
+        attrs);
+    h_permute_op.replaceAllUsesWith(new_permute_h_right_op.getOperation());
+    rewriter.eraseOp(h_permute_op);
+    matmul_h_op->setOperand(1, new_permute_h_right_op);
     // matmul_h_out: (25x14)x12x14x14
     matmul_h_output.setType(
         UnrankedTensorType::get(module::getElementType(matmul_h_output)));
@@ -694,7 +708,8 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
         attrs);
     // rewrite w_weight: 300x14x14x64 => 25x(12)x(14)x[14]x64 =>
     // 25x(14)x(12)x14x64 => 25x(14x12)x14x64
-    auto w_weight_op = matmul_w_op.getRight().getDefiningOp<WeightOp>();
+    auto w_permute_op = matmul_w_op.getRight().getDefiningOp<PermuteOp>();
+    auto w_weight_op = w_permute_op.getInput().getDefiningOp<WeightOp>();
     auto w_weight_data = w_weight_op.read_as_float();
     auto w_weight_trans =
         std::make_shared<std::vector<float>>(w_weight_data->size(), 0);
@@ -705,7 +720,20 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
         WeightOp::create_float(matmul_w_op, "rewrited", *w_weight_trans,
                                w_weight_new_shape, storage_type);
     matmul_w_op->setOperand(0, new_permute_w_op.getOutput());
-    matmul_w_op->setOperand(1, new_weight_w);
+    rewriter.setInsertionPoint(matmul_w_op);
+    attrs.clear();
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0,1,3,2})));
+    auto permute_w_right_type = RankedTensorType::get(
+        {batch, w * head_n, head_sz, h}, module::getElementType(new_reshape_w_op.getOutput()));
+    auto permute_w_right_loc =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_permute_right_w"));
+    auto new_permute_w_right_op = rewriter.create<PermuteOp>(
+        permute_w_right_loc, permute_w_right_type, ValueRange{new_weight_w},
+        attrs);
+    w_permute_op.replaceAllUsesWith(new_permute_w_right_op.getOperation());
+    rewriter.eraseOp(w_permute_op);
+    matmul_w_op->setOperand(1, new_permute_w_right_op);
     // matmul_w_out: 25x(14x12)x14x14
     matmul_w_output.setType(
         UnrankedTensorType::get(module::getElementType(matmul_w_output)));
