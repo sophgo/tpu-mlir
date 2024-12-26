@@ -14,6 +14,7 @@ from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import clean_kmp_files
 from utils.timer import Timer
+from utils.regression_logger import run_in_log_wrapper
 import os
 
 import torch
@@ -42,7 +43,8 @@ class TORCH_IR_TESTER(object):
                  num_core : int = 1,
                  debug_cmd: str = '',
                  cuda: bool = False,
-                 dynamic: bool = False):
+                 dynamic: bool = False,
+                 concise_log: bool = False):
         Y, N = True, False
         self.quant_input = quant_input
         self.quant_output = quant_output
@@ -51,6 +53,7 @@ class TORCH_IR_TESTER(object):
         self.group_opt = 2
         self.test_cuda = cuda
         self.dynamic = dynamic
+        self.concise_log = concise_log # use when run regression/main_entry.py
         # yapf: disable
         self.test_cases = {
             ##################################
@@ -230,6 +233,7 @@ class TORCH_IR_TESTER(object):
             self.min = min
             self.max = max
 
+    @run_in_log_wrapper
     def test_single(self, case: str):
         np.random.seed(0)
         torch.manual_seed(7)
@@ -3835,11 +3839,12 @@ if __name__ == "__main__":
     parser.add_argument("--dynamic", action="store_true", help='dynamic mode in model deployment')
     parser.add_argument("--debug_cmd", default="", type=str, help="debug_cmd")
     parser.add_argument("--cuda", action="store_true", help="test cuda inference")
+    parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
     args = parser.parse_args()
     tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread,
                              args.quant_input, args.quant_output, args.debug, args.num_core,
-                             args.debug_cmd, args.cuda, args.dynamic)
+                             args.debug_cmd, args.cuda, args.dynamic, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

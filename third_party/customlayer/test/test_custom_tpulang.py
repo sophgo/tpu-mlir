@@ -14,6 +14,7 @@ import os
 import transform.TpuLang as tpul
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 import my_tpulang_layer
+from utils.regression_logger import run_in_log_wrapper
 
 def coeff_tensor(shape, dtype, scale=1.0):
     data = rand_data(shape, dtype)
@@ -36,7 +37,8 @@ class CUSTOM_TPULANG_TESTER(object):
                  simple: bool = False,
                  disable_thread: bool = False,
                  num_core: int = 1,
-                 op_type: str = "all"):
+                 op_type: str = "all",
+                 concise_log: bool = False):
         Y, N = True, False
         # yapf: disable
         self.test_tpu_cases = {
@@ -73,6 +75,7 @@ class CUSTOM_TPULANG_TESTER(object):
         self.multithread = not disable_thread
         self.num_core = num_core
         self.mode = mode.lower()
+        self.concise_log = concise_log # use when run regression/main_entry.py
         if self.simple:
             self.support_quant_modes = ["f16"]
             self.support_asym = [False]
@@ -87,6 +90,7 @@ class CUSTOM_TPULANG_TESTER(object):
         # initialize tpulang
         tpul.init(self.chip.upper())
 
+    @run_in_log_wrapper
     def test_single(self, case: str):
         np.random.seed(0)
         print("Test: {}".format(case))
@@ -371,11 +375,12 @@ if __name__ == "__main__":
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--report", default="", type=str, help="report file name")
+    parser.add_argument("--concise_log", action="store_true", help="use concise log")
 
     # yapf: enable
     args = parser.parse_args()
     tester = CUSTOM_TPULANG_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread,
-                                   args.num_core, args.op_type)
+                                   args.num_core, args.op_type, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

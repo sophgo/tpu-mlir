@@ -16,6 +16,7 @@ from utils.timer import Timer
 import cv2
 from typing import List, Union
 import random
+from utils.regression_logger import run_in_log_wrapper
 
 def is_int(dtype, width = None):
     if width == None:
@@ -77,7 +78,7 @@ class TPULANG_IR_TESTER(object):
     ID = 0
 
     # This class is built for testing single operator transform.
-    def __init__(self, chip: str = "bm1684x", mode: str = "all", simple: bool = False, no_save: bool = False):
+    def __init__(self, chip: str = "bm1684x", mode: str = "all", simple: bool = False, no_save: bool = False, concise_log: bool = False):
         Y, N = True, False
         self.test_function = {
             #############################
@@ -217,6 +218,7 @@ class TPULANG_IR_TESTER(object):
         self.simple = simple
         self.chip = chip.lower()
         self.no_save = no_save
+        self.concise_log = concise_log # use when run regression/main_entry.py
         if self.simple:
             self.support_quant_modes = ["f16"]
         if self.mode == "" or self.mode == "all":
@@ -231,6 +233,7 @@ class TPULANG_IR_TESTER(object):
         TPULANG_IR_TESTER.ID += 1
         return name
 
+    @run_in_log_wrapper
     def test_single(self, case: str):
         np.random.seed(0)
         TPULANG_IR_TESTER.ID = 0
@@ -4581,9 +4584,10 @@ if __name__ == "__main__":
     parser.add_argument("--report", default="", type=str, help="report file name")
     parser.add_argument("--no_save", action="store_true", help="whether to save mlir/weight in memory instead of hard disk.")
     parser.add_argument("--path", default="", type=str, help="the path to store intermediate file, accept "" or absolute path.")
+    parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
     args = parser.parse_args()
-    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple, args.no_save)
+    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple, args.no_save, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_function:

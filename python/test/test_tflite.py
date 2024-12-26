@@ -15,6 +15,7 @@ from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 from utils.timer import Timer
+from utils.regression_logger import run_in_log_wrapper
 import os
 
 # from tflite.BuiltinOperator import BuiltinOperator
@@ -50,7 +51,7 @@ Failed_Cases = ["Add", "Cast", "Gather", "ReduceMin", "Deconv2d",
 
 class TFLITE_IR_TESTER(object):
     # This class is built for testing single operator transform.
-    def __init__(self, chip: str = "bm1684x", mode: str = "all"):
+    def __init__(self, chip: str = "bm1684x", mode: str = "all", concise_log: bool = False):
         self.test_function = {
             #######################################
             # TfLite Test Case, Alphabetically
@@ -87,6 +88,7 @@ class TFLITE_IR_TESTER(object):
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["int8"]
         self.support_chip = ["bm1684x", 'bm1688']
+        self.concise_log = concise_log # use when run regression/main_entry.py
         if chip not in self.support_chip:
             raise RuntimeError("{} not support tflite now.".format(self.chip))
         self.chip = chip.lower()
@@ -97,6 +99,7 @@ class TFLITE_IR_TESTER(object):
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
             self.quant_modes = [mode]
 
+    @run_in_log_wrapper
     def test_single(self, case: str):
       np.random.seed(0)
       if case in self.test_function:
@@ -996,9 +999,10 @@ if __name__ == "__main__":
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'int8'],
                         help="chip platform name")
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
+    parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
     args = parser.parse_args()
-    tester = TFLITE_IR_TESTER(args.chip, args.mode)
+    tester = TFLITE_IR_TESTER(args.chip, args.mode, args.concise_log)
     dir = "tflite_test_{}".format(args.chip)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)

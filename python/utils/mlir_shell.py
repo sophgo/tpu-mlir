@@ -60,10 +60,63 @@ def env2bashstr(env: dict, auto_pick=True):
 from io import StringIO
 
 
+def is_logger_configured(logger_name):
+    logger = logging.getLogger(logger_name)
+    return len(logger.handlers) > 0
+
+
 def getstatusoutput_v2(
-    cmd, cwd=None, env=None, timeout=None, check=False, shell=False,
+    cmd,
+    cwd=None,
+    env=None,
+    timeout=None,
+    check=False,
+    shell=False,
     print_output=False,
-    **kwargs
+    **kwargs,
+) -> Tuple[int, str]:
+    if is_logger_configured("logger_to_file") and is_logger_configured(
+        "logger_to_file.console"
+    ):
+        # for handler in logging.getLogger("logger_to_file").handlers:
+        #     if isinstance(handler, logging.FileHandler):
+        #         print(f"FileHandler found: {handler.baseFilename}")
+        #         print(f"Level: {handler.level}")
+        #         print(f"Formatter: {handler.formatter._fmt}")
+        #         print(f"Mode: {handler.mode}")
+        #         print(f"Encoding: {handler.encoding}")
+
+        getstatusoutput_v2_split_log(
+            cmd,
+            cwd=cwd,
+            env=env,
+            timeout=timeout,
+            check=check,
+            shell=shell,
+            **kwargs,
+        )
+    else:
+        getstatusoutput_v2_without_split_log(
+            cmd,
+            cwd=cwd,
+            env=env,
+            timeout=timeout,
+            check=check,
+            shell=shell,
+            print_output=print_output,
+            **kwargs,
+        )
+
+
+def getstatusoutput_v2_without_split_log(
+    cmd,
+    cwd=None,
+    env=None,
+    timeout=None,
+    check=False,
+    shell=False,
+    print_output=False,
+    **kwargs,
 ) -> Tuple[int, str]:
     """Return (exitcode, output) of executing cmd in a shell."""
     if env is None:
@@ -173,6 +226,115 @@ def getstatusoutput_v2(
         logger.error(f"[Failed] {cmd}")
     else:
         logger.debug(f"[Success]: {cmd}")
+    return exitcode, output
+
+
+def getstatusoutput_v2_split_log(
+    cmd,
+    cwd=None,
+    env=None,
+    timeout=None,
+    check=False,
+    shell=False,
+    **kwargs,
+) -> Tuple[int, str]:
+    """Return (exitcode, output) of executing cmd in a shell."""
+    if env is None:
+        env = os.environ.copy()
+    # kwargs = {}
+    if cwd is not None:
+        assert os.path.isdir(cwd), cwd
+        kwargs["cwd"] = cwd
+    if env is not None:
+        assert isinstance(env, dict)
+        if "PWD" in env:
+            env.pop("PWD")
+        kwargs["env"] = env
+
+    file_logger = logging.getLogger("logger_to_file")
+    console_logger = logging.getLogger("logger_to_file.console")
+    file_logger.setLevel(logging.DEBUG) # do not delete this
+    ex = None
+
+    temp_logf = tempfile.NamedTemporaryFile("w+", delete=False)
+
+    # if env
+    try:
+        cmd_str = cmd if shell else " ".join(cmd)
+        console_logger.info(f" cwd: {cwd}\n")
+        console_logger.info(f" -> Executing {cmd_str}\n")
+        file_logger.debug(f"========Command Output Start=========\n")
+        run(
+            cmd,
+            shell=shell,
+            stdout=temp_logf,
+            stderr=temp_logf,
+            timeout=timeout,
+            check=True,
+            # universal_newlines=True,
+            bufsize=0,
+            text=True,
+            **kwargs,
+        )
+        exitcode = 0
+        temp_logf.seek(0)
+        file_logger.debug(temp_logf.read())
+        file_logger.debug(f"========Command Output End=========\n")
+        console_logger.info(f" -> [Success]\n")
+
+    except (CalledProcessError, TimeoutExpired) as e:
+        temp_logf.seek(0)
+        file_logger.debug(
+            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!!")
+        )
+        file_logger.debug(f"========Command Output End=========\n")
+        console_logger.info(f" -> [Failed in Command]\n")
+        ex = e
+        if isinstance(e, TimeoutExpired):
+            exitcode = 110
+        else:
+            exitcode = e.returncode
+        file_logger.debug(f"# cwd\n")
+        file_logger.debug(f"cd {cwd}\n\n")
+
+        file_logger.debug(f"# Environments: \n")
+        file_logger.debug(textwrap.indent(json.dumps(env, indent=2), "# ") + "\n")
+        file_logger.debug(env2bashstr(env, auto_pick=False))
+
+        file_logger.debug("# command: \n")
+        cmd_opt = " ".join(cmd) if isinstance(cmd, list) else cmd
+        file_logger.debug(f"{cmd_opt}\n")
+        console_logger.info(traceback.format_exc())
+        console_logger.info(f"======traceback info end======\n")
+    except Exception as e:
+        temp_logf.seek(0)
+        file_logger.debug(
+            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
+        )
+        file_logger.debug(f"========Command Output End=========\n")
+        console_logger.info(f" -> [Failed Outside Command]\n")
+        ex = e
+        exitcode = -256
+        file_logger.debug(f"cmd={cmd}\n")
+        file_logger.debug(f"cwd={cwd}\n")
+        file_logger.debug(f"env={env}\n")
+        console_logger.info(traceback.format_exc())
+        console_logger.info(f"======traceback info end======\n")
+    temp_logf.seek(0)
+    output = temp_logf.read()
+    temp_logf.close()
+    try:
+        os.remove(temp_logf.name)
+    except Exception as e:
+        console_logger.error(f"remove temp log file {temp_logf.name} failed: {e}")
+
+    if check and ex:
+        raise RuntimeError(f"{output}\n[Failed] {cmd}")
+    elif ex:
+        console_logger.error(output)
+        console_logger.error(f"[Failed] {cmd}")
+    else:
+        console_logger.debug(f"[Success]: {cmd}")
     return exitcode, output
 
 

@@ -17,6 +17,7 @@ from tools.model_transform import *
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 from utils.mlir_shell import *
 from utils.timer import Timer
+from utils.regression_logger import run_in_log_wrapper
 import os
 import torch
 import torch.nn as nn
@@ -35,7 +36,8 @@ class ONNX_IR_TESTER(object):
                  disable_thread: bool = False,
                  num_core: int = 1,
                  debug_cmd: str = '',
-                 cuda: bool = False):
+                 cuda: bool = False,
+                 concise_log: bool = False):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -357,6 +359,7 @@ class ONNX_IR_TESTER(object):
         self.multithread = not disable_thread
         self.num_core = num_core
         self.opt = 2
+        self.concise_log = concise_log  # use when run regression/main_entry.py
         if self.simple:
             self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
@@ -392,6 +395,7 @@ class ONNX_IR_TESTER(object):
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
             self.quant_modes = [self.mode]
 
+    @run_in_log_wrapper
     def test_single(self, case: str):
         np.random.seed(0)
         torch.manual_seed(7)
@@ -796,8 +800,6 @@ class ONNX_IR_TESTER(object):
                            dynamic_shape_input_names = dynamic_shape_input_names,
                            shape_influencing_input_names=shape_influencing_input_names)
 
-
-
     def onnx_and_test(self,
                       graph_def,
                       name: str = "",
@@ -871,7 +873,6 @@ class ONNX_IR_TESTER(object):
             if counter == 0:
                 raise RuntimeError("No compare between onnx outs and mlir outts")
             print("Small Success: Small ONNX outs and Small Mlir outs are equal\n")
-
 
         for quant_mode in quant_modes:
             if quant_mode == "int8" or quant_mode == "int4":
@@ -3452,7 +3453,6 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
-
     def test_FitPermute2Hdim(self, case_name):
 
         class Model(torch.nn.Module):
@@ -5412,7 +5412,6 @@ class ONNX_IR_TESTER(object):
 
         self.torch_and_test(x, Model(), case_name)
 
-
     def test_QDQConv(self, case_name):
         oc = 32
         input_shape = [10, 3, 224, 224]
@@ -6444,7 +6443,6 @@ class ONNX_IR_TESTER(object):
         finally:
             self.dynamic = False
 
-
     def test_DynamicPad(self, case_name):
         class Model(nn.Module):
 
@@ -6476,7 +6474,6 @@ class ONNX_IR_TESTER(object):
             )
         finally:
             self.dynamic = False
-
 
     def test_DynamicAdd(self, case_name):
         class Model(nn.Module):
@@ -6565,7 +6562,6 @@ class ONNX_IR_TESTER(object):
                 dynamic_shape_input_names = dynamic_shape_input_names,
                 dynamic_axes = dynamic_axes
             )
-
 
         _test_concat((1, 3, 32, 32), (1, 6, 32, 32), (1, 3, 16, 16), (1, 6, 16, 16),1)
 
@@ -7212,9 +7208,9 @@ def test_int4(tester: ONNX_IR_TESTER):
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
-        print("====== test_onnx.py --chip {} TEST Failed ======".format(tester.chip))
+        print("====== test_onnx.py --chip {} --mode int4 TEST Failed ======".format(tester.chip))
     else:
-        print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
+        print("====== test_onnx.py --chip {} --mode int4 TEST Success ======".format(tester.chip))
     return error_cases
 
 
@@ -7286,9 +7282,9 @@ def test_fp8(tester: ONNX_IR_TESTER):
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
-        print("====== test_onnx.py --chip {} FP8 TEST Failed ======".format(tester.chip))
+        print("====== test_onnx.py --chip {} --mode fp8 TEST Failed ======".format(tester.chip))
     else:
-        print("====== test_onnx.py --chip {} FP8 TEST Success ======".format(tester.chip))
+        print("====== test_onnx.py --chip {} --mode fp8 TEST Success ======".format(tester.chip))
     return error_cases
 
 def test_all(tester: ONNX_IR_TESTER):
@@ -7349,10 +7345,11 @@ if __name__ == "__main__":
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--debug_cmd", default="", type=str, help="debug_cmd")
     parser.add_argument("--cuda", action="store_true", help="test cuda inference")
+    parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
     args = parser.parse_args()
     tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread,
-                            args.num_core, args.debug_cmd, args.cuda)
+                            args.num_core, args.debug_cmd, args.cuda, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
