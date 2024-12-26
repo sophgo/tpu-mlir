@@ -477,10 +477,16 @@ inline void update_addr_1688(uint32_t *cmd, uint64_t coeff_limit,
                              const int64_t ctx_offset,
                              std::vector<addr_update_t> &addr_v) {
   uint64_t addr = ((uint64_t)(cmd[1] & 0xff) << 32) | ((uint64_t)cmd[0]);
-  if (((addr >> 39) & 0x1) && (((addr >> 36) & 0x7) == 0)) {
-    uint64_t fix_addr =
-        update_addr(coeff_limit, ctx_offset, addr & ((1ull << 35) - 1), addr_v);
-    fix_addr |= (1ull << 39);
+  if (((addr >> 39) & 0x1) &&
+      (((addr >> 36) & 0x7) == 1)) { // tag == 1, coeff addr
+    uint64_t fix_addr = addr & ((1ull << 36) - 1);
+    for (int i = 0; i < addr_v.size(); ++i) {
+      if (fix_addr >= addr_v[i].addr &&
+          fix_addr < addr_v[i].addr + addr_v[i].size) {
+        fix_addr += addr_v[i].offset;
+      }
+    }
+    fix_addr |= (9ull << 36);
     if (fix_addr != addr) {
       cmd[0] = fix_addr & 0xffffffff;
       cmd[1] = ((uint32_t)((fix_addr >> 32) & 0xff)) | (cmd[1] & 0xffffff00);
@@ -971,9 +977,12 @@ static void combine_bmodels_coeff(ModelGen &model_gen,
            dynamic_coeff_size);
     dynamic_base_size += dynamic_coeff_size;
     // update addr_v
-    auto cur_coeff_addr = param->coeff_mem()->address();
-    for (int i = 0; i < addr_update_v[model_idx].size(); ++i) {
-      addr_update_v[model_idx][i].addr += cur_coeff_addr;
+    if (model->chip()->str() == "BM1684X") {
+      // BM1684X save real address. addr = base_addr + offset;
+      auto cur_coeff_addr = param->coeff_mem()->address();
+      for (int i = 0; i < addr_update_v[model_idx].size(); ++i) {
+        addr_update_v[model_idx][i].addr += cur_coeff_addr;
+      }
     }
   }
   base_buffer.resize(base_size + dynamic_base_size);
