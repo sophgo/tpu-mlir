@@ -120,6 +120,7 @@ bool isLgSupport(Operation *op);
 std::vector<Operation*> sortOpsByOtherOpsOrder(const std::vector<Operation*>& exp_ops, const std::vector<Operation*>& ops);
 std::vector<std::vector<Operation*>> seg_grp_ops_by_global_op(const std::vector<Operation*>& grp_ops,
     const std::vector<Operation*>& break_ops, std::vector<Operation*>& excluded_ops, std::map<Operation*, bool>* break_op_reside = nullptr);
+void findReshapeAtEdge(std::vector<Operation*>& ops, std::vector<Operation*>& del_ops);
 void find_all_pre_ops(Operation * op, std::vector<Operation*>& glayer_pre_ops, std::vector<Operation*>* grp_ops = nullptr);
 void find_all_next_ops(Operation * op, std::vector<Operation*>& glayer_next_ops, std::vector<Operation*>* grp_ops = nullptr);
 std::shared_ptr<ilp_LgInfo> CreateIlpLgInfo(std::vector<Operation*> ops, solver_strategy_type_t cur_strategy = STRATEGY_NORMAL);

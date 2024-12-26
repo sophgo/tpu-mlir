@@ -193,6 +193,8 @@ f64_array_t getF64Array(ArrayAttr arrayAttr);
 f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
+bool IsSliceOpInOrOut(Value value);
+bool IsReshapeOpInOrOut(Value value);
 bool IsHdimIsBatch(Operation *Op);
 bool IsHdimIsBatch(Value value);
 bool isOpInCoreMatch(Operation *Op);

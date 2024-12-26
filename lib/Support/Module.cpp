@@ -802,6 +802,34 @@ bool IsHdimIsBatch(Value value) {
   return false;
 }
 
+bool IsSliceOpInOrOut(Value value) {
+  auto op = value.getDefiningOp();
+  if (op && isa<tpu::SliceOp>(op)) {
+    return true;
+  }
+
+  for (auto user : value.getUsers()) {
+    if (isa<tpu::SliceOp>(user)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsReshapeOpInOrOut(Value value) {
+  auto op = value.getDefiningOp();
+  if (op && isa<tpu::ReshapeOp>(op)) {
+    return true;
+  }
+
+  for (auto user : value.getUsers()) {
+    if (isa<tpu::ReshapeOp>(user)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool isOpInGroup(Operation *Op, int64_t *group_type) {
   if (Op == nullptr) {
     return false;
@@ -1571,13 +1599,21 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
         outputs.push_back(return_op.getOperand(result.getResultNumber()));
 
         func_op.walk([&](tpu::OutBufferOp op) {
-          // llvm::errs() <<"ModuleOp dump
-          // OutBufferOp:"<<getName(op->getResult(0)).str()<<" as outputs\n";
           bool need_dump = op.getNeedDump();
           if (need_dump) {
             outputs.push_back(op->getResult(0));
           }
         });
+
+        if (module::isDebugCmdEnable("dump_all_global_op_out")) {
+          func_op.walk([&](Operation* op) {
+            if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(op) && !isOpInGroup(op)) {
+              for (auto v : op->getResults()) {
+                outputs.push_back(v);
+              }
+            }
+          });
+        }
       } else {
         outputs.push_back(out);
       }
@@ -1634,6 +1670,15 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
       outputs.push_back(op->getResult(0));
     }
   });
+  if (module::isDebugCmdEnable("dump_all_global_op_out")) {
+    func.walk([&](Operation* op) {
+      if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(op) && !isOpInGroup(op)) {
+        for (auto v : op->getResults()) {
+          outputs.push_back(v);
+        }
+      }
+    });
+  }
 }
 
 void getScaleAndZeroPoint(double rmin, double rmax, double &scale,
@@ -2107,15 +2152,20 @@ bool IsRightMat(Value v) {
 
 bool IsSecondMatInMlp(Value v) {
   for (auto user : v.getUsers()) {
-    if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(user)) {
-      for (auto use : MatMulOp.getOutput().getUsers()) {
-        if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(use)) {
+    if (isa<tpu::MatMulOp>(user)) {
+      Operation *prev_op = user->getPrevNode();
+      while (prev_op) {
+        if (isa<tpu::SoftmaxOp>(prev_op)) {
           return false;
         }
+        if (isOpInGroup(prev_op) && isa<tpu::MatMulOp>(prev_op)) {
+          return true;
+        }
+        prev_op = prev_op->getPrevNode();
       }
     }
   }
-  return true;
+  return false;
 }
 
 bool isOpSameCalc(Operation *op0, Operation *op1) {

@@ -524,15 +524,19 @@ public:
                                        const shape_secs_t &max_shape_secs);
   void fill_slice_info(ilp_LgInfo &ilp_lg_info);
   bool inc_slice_num(int &test_slice_n, int &try_c_slice_num,
-                     int &try_h_slice_num, int max_c_slice_num,
+                     int &try_h_slice_num, int max_n_slice_num, int max_c_slice_num,
                      int max_h_slice_num, bool inc_c_slice = true, bool cut_c_first = true);
-  int get_secs(Operation *op, int n, int slice_n, int c_slice_num,
-               int h_slice_num);
+  bool inc_n_slice_num(int& n_slice_num, int max_n_slice_num, bool cut_c_first);
+  int get_secs(Operation *op, int slice_n, int c_slice_num, int h_slice_num);
+  int get_slice_max_n(int n, int slice_num);
+  int get_best_n_slice_num(int n, int slice_num);
+  void fill_n_slice(Value in, int n, int n_slice_num, slice_info_t& si);
   bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation *&failed_op,
                             int64_t core_num);
 
   std::vector<Operation*> ops;
   std::vector<Operation*> h_cut_ops;
+  std::map<int, int> map_n_slice_num_to_max_n;
   bool col_cut = true;
   bool find_softmax = false;
   std::map<Value, std::vector<int>, value_compare> map_value_to_cut_dims;

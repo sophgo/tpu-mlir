@@ -3749,6 +3749,8 @@ class TORCH_IR_TESTER(object):
         # # self.trace_and_test([(1, 8, 256)], mod)
         # self.trace_and_test([(1, 1024, 768)], mod)
 
+        # mod = Attention(d_model=16, n_head=2)
+        # self.trace_and_test([(2, 16, 16)], mod)
         # from tools.train.gpt2 import Attention2
         # mod = Attention2()
         # self.trace_and_test([(1, 64, 2, 96), (1, 64, 2, 96), (1, 64, 2, 96)], mod) #ok

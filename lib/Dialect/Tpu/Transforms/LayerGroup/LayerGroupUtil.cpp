@@ -262,6 +262,34 @@ ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops,
   return new_grps;
 }
 
+void findReshapeAtEdge(std::vector<Operation*>& ops, std::vector<Operation*>& del_ops) {
+  for (auto op: ops) {
+    if (isa<tpu::ReshapeOp>(op)) {
+      bool in_grp = false;
+      for (auto user : op->getUsers()) {
+        if (std::find(ops.begin(), ops.end(), user) != ops.end()) {
+          in_grp = true;
+          break;
+        }
+      }
+      if (!in_grp) {
+        del_ops.push_back(op);
+      }
+
+      in_grp = false;
+      for (auto v : op->getOperands()) {
+        if (std::find(ops.begin(), ops.end(), v.getDefiningOp()) != ops.end()) {
+          in_grp = true;
+          break;
+        }
+      }
+      if (!in_grp) {
+        del_ops.push_back(op);
+      }
+    }
+  }
+}
+
 std::vector<std::vector<Operation *>>
 seg_grp_ops_by_global_op(const std::vector<Operation *> &grp_ops,
                          const std::vector<Operation *> &break_ops,
@@ -330,6 +358,16 @@ seg_grp_ops_by_global_op(const std::vector<Operation *> &grp_ops,
     auto tmp_ops = sortOpsByOtherOpsOrder(grp_ops, ops);
     ops.assign(tmp_ops.begin(), tmp_ops.end());
   }
+
+  for (auto& ops: new_grps2) {
+    std::vector<Operation*> del_ops;
+    findReshapeAtEdge(ops, del_ops);
+    for (auto del_op: del_ops) {
+      llvm::errs()<<"seg_grp_ops_by_global_op findReshapeAtEdge: "<<module::getName(del_op).str()<<"\n";
+      ops.erase(std::remove(ops.begin(), ops.end(), del_op), ops.end());
+    }
+  }
+
   return std::move(new_grps2);
 }
 
@@ -550,6 +588,7 @@ get_group_max_secs(const LgInfo &lg_info,
         max_hsecs = std::min(max_hsecs, h);
         total_secs *= h;
       } else {
+        llvm::errs() << "can not split h at op:" << module::getName(op).str() << "\n";
         max_hsecs = 1;
       }
       // split w now only supports BM1684X and not int4, not dynamic

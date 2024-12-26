@@ -149,12 +149,24 @@ void speical_layer_group_base::get_batch_size(shape_secs_t &shape_secs) {
   module::getNCDHW(op->getOperand(0), in_n, in_c, in_d, in_h, in_w, GROUP_MM_OPT3);
   shape_secs.n = in_n;
   shape_secs.c = in_c;
-  if (dyn_cast<tpu::MatMulOp>(op).getLeftTranspose()) {
+  auto mm_op = dyn_cast<tpu::MatMulOp>(op);
+  if (mm_op.getHdimIsBatch()) {
+    auto shape = op->getOperand(0).getType().cast<RankedTensorType>().getShape();
+    assert(shape.size() == 4);
+    for (int i = 1; i <= shape[0]; i++) {
+      map_n_slice_num_to_max_n[i] = shape[2]*ceiling_func(shape[0], i);
+    }
+    for (int i = 2; i <= shape[2]; i++) {
+      map_n_slice_num_to_max_n[shape[0]*i] = ceiling_func(shape[2], i);
+    }
+  }
+
+  if (mm_op.getLeftTranspose()) {
     shape_secs.c = in_h;
   }
   module::getNCDHW(op->getOperand(1), in_n, in_c, in_d, in_h, in_w, GROUP_MM_OPT3);
   shape_secs.h = in_h;
-  if (dyn_cast<tpu::MatMulOp>(op).getRightTranspose()) {
+  if (mm_op.getRightTranspose()) {
     shape_secs.h = in_c;
   }
   if (!col_cut) {
@@ -184,20 +196,37 @@ bool speical_layer_group_base::update_shape_secs_for_ilp_group(shape_secs_t &sha
   return updated;
 }
 
+void speical_layer_group_base::fill_n_slice(Value in, int n, int n_slice_num, slice_info_t& si) {
+  if (module::IsHdimIsBatch(in)) {
+    auto shape = in.getType().cast<RankedTensorType>().getShape();
+    if (n_slice_num > shape[0]) {
+      assert(n_slice_num % shape[0] == 0);
+      for (int i = 0; i < shape[0]; i++) {
+        std::vector<slice_pair_t> slice_pairs;
+        slice_distributor(slice_pairs, shape[2], n_slice_num / shape[0]);
+        si.n.insert(si.n.end(), slice_pairs.begin(), slice_pairs.end());
+      }
+    } else {
+      slice_distributor(si.n, shape[0], n_slice_num);
+    }
+  } else {
+    slice_distributor(si.n, n, n_slice_num);
+  }
+}
 
 void speical_layer_group_base::fill_slice_info(ilp_LgInfo &ilp_lg_info) {
   int64_t n, c, d, h, w;
   ilp_lg_info.tensor_infos.clear();
   ilp_lg_info.value_store_to_l2m.clear();
   ilp_lg_info.value_load_to_l2m.clear();
-  llvm::errs() <<"n_slice_num: "<<ilp_lg_info.shape_secs.n_slice_num
+  llvm::errs() <<"n_slice_num: "<< ilp_lg_info.shape_secs.n_slice_num
                 <<", c_slice_num: "<<ilp_lg_info.shape_secs.c_slice_num
                 <<", h_slice_num: "<<ilp_lg_info.shape_secs.h_slice_num<<"\n";
   for (auto op: ilp_lg_info._lgInfo.group_ops) {
     for (auto in: get_input_values(op)) {
       module::getNCDHW(in, n, c, d, h, w, ilp_lg_info._lgInfo.type);
       slice_info_t si;
-      slice_distributor(si.n, n, ilp_lg_info.shape_secs.n_slice_num);
+      fill_n_slice(in, n, ilp_lg_info.shape_secs.n_slice_num, si);
       slice_distributor(si.c, c, 1);
       slice_distributor(si.d, d, 1);
       slice_distributor(si.h, h, 1);
@@ -247,7 +276,7 @@ void speical_layer_group_base::fill_slice_info(ilp_LgInfo &ilp_lg_info) {
       module::getNCDHW(out, n, c, d, h, w, ilp_lg_info._lgInfo.type);
       llvm::errs() <<"out: "<<module::getName(out).str()<<", cut n/c to n/c_slice_num\n";
       slice_info_t si;
-      slice_distributor(si.n, n, ilp_lg_info.shape_secs.n_slice_num);
+      fill_n_slice(out, n, ilp_lg_info.shape_secs.n_slice_num, si);
       slice_distributor(si.c, c, ilp_lg_info.shape_secs.c_slice_num);
       slice_distributor(si.d, d, 1);
       slice_distributor(si.h, h, 1);
@@ -278,13 +307,30 @@ void speical_layer_group_base::fill_slice_info(ilp_LgInfo &ilp_lg_info) {
   }
 }
 
-
-bool speical_layer_group_base::inc_slice_num(int& test_slice_n, int& try_c_slice_num, int& try_h_slice_num,
-                    int max_c_slice_num, int max_h_slice_num,  bool inc_c_slice, bool cut_c_first) {
-  if (test_slice_n > 1 && !cut_c_first) {
-    test_slice_n--;
-    llvm::errs() << "test_slice_n-- ->"<<test_slice_n<<"\n";
+bool speical_layer_group_base::inc_n_slice_num(int& n_slice_num, int max_n_slice_num, bool cut_c_first) {
+  if (map_n_slice_num_to_max_n.size() > 0) {
+    if (n_slice_num < map_n_slice_num_to_max_n.rbegin()->first && !cut_c_first) {
+      for (auto itr: map_n_slice_num_to_max_n) {
+        if (itr.first > n_slice_num) {
+          n_slice_num = itr.first;
+          llvm::errs() << "get new n_slice_num:"<<n_slice_num<<"\n";
+          return true;
+        }
+      }
+    }
   } else {
+    if (n_slice_num < max_n_slice_num) {
+      n_slice_num++;
+      llvm::errs() << "inc n_slice_num, get:"<<n_slice_num<<"\n";
+      return true;
+    }
+  }
+  return false;
+}
+
+bool speical_layer_group_base::inc_slice_num(int& n_slice_num, int& try_c_slice_num, int& try_h_slice_num,
+                    int max_n_slice_num, int max_c_slice_num, int max_h_slice_num,  bool inc_c_slice, bool cut_c_first) {
+  if (!inc_n_slice_num(n_slice_num, max_n_slice_num, cut_c_first)) {
     if (inc_c_slice) {
       if (try_c_slice_num < max_c_slice_num) {
         try_c_slice_num++;
@@ -294,10 +340,7 @@ bool speical_layer_group_base::inc_slice_num(int& test_slice_n, int& try_c_slice
           try_h_slice_num++;
           llvm::errs() << "try_h_slice_num++ ->"<<try_h_slice_num<<"\n";
         } else {
-          if (cut_c_first && test_slice_n > 1) {
-            test_slice_n--;
-            llvm::errs() << "test_slice_n2-- ->"<<test_slice_n<<"\n";
-          } else {
+          if (!inc_n_slice_num(n_slice_num, max_n_slice_num, false)) {
             llvm::errs() << "inc_slice_num fail1\n";
             return false;
           }
@@ -312,10 +355,7 @@ bool speical_layer_group_base::inc_slice_num(int& test_slice_n, int& try_c_slice
           try_c_slice_num++;
           llvm::errs() << "try_c_slice_num++ ->"<<try_c_slice_num<<"\n";
         } else {
-          if (cut_c_first && test_slice_n > 1) {
-            test_slice_n--;
-            llvm::errs() << "test_slice_n3-- ->"<<test_slice_n<<"\n";
-          } else {
+          if (!inc_n_slice_num(n_slice_num, max_n_slice_num, false)) {
             llvm::errs() << "inc_slice_num fail2\n";
             return false;
           }
@@ -326,15 +366,48 @@ bool speical_layer_group_base::inc_slice_num(int& test_slice_n, int& try_c_slice
   return true;
 }
 
-int speical_layer_group_base::get_secs(Operation* op, int n, int slice_n, int c_slice_num, int h_slice_num) {
+int speical_layer_group_base::get_secs(Operation* op, int n_slice_num, int c_slice_num, int h_slice_num) {
   int secs = 0;
   if (name() == "single_matmul_group" || name() == "mlp_group"
      || (name() == "attention_group" && isa<tpu::MatMulOp>(op) && op == ops.back())) {
-    secs = h_slice_num*c_slice_num*align(n, slice_n)/slice_n;
+    secs = h_slice_num*c_slice_num*n_slice_num;
   } else {
-    secs = c_slice_num*align(n, slice_n)/slice_n;
+    secs = c_slice_num*n_slice_num;
   }
   return secs;
+}
+
+int speical_layer_group_base::get_slice_max_n(int n, int slice_num) {
+  if (map_n_slice_num_to_max_n.size() > 0) {
+    int pre_num = 0;
+    for (auto itr: map_n_slice_num_to_max_n) {
+      if (slice_num < itr.first) {
+        return pre_num;
+      }
+      pre_num = itr.second;
+    }
+    return pre_num;
+  }
+  return ceiling_func(n, slice_num);
+}
+
+int speical_layer_group_base::get_best_n_slice_num(int n, int expect_slice_num) {
+  if (map_n_slice_num_to_max_n.size() > 0) {
+    int pre_num = 0;
+    for (auto itr: map_n_slice_num_to_max_n) {
+      if (expect_slice_num < itr.first) {
+        return pre_num;
+      }
+      pre_num = itr.first;
+    }
+    return pre_num;
+  } else {
+    if (n >= expect_slice_num) {
+      return expect_slice_num;
+    } else {
+      return n;
+    }
+  }
 }
 
 bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation*& failed_op, int64_t core_num) {
@@ -342,11 +415,12 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
   group_type_t type = lg_info._lgInfo.type;
   lg_info.p_special_grp->get_batch_size(lg_info.shape_secs);
   bool cut_c_first = false;
-  int min_test_slice_n = ceiling_func(lg_info.shape_secs.n, core_num);
-  if (cut_c_first && name() == "attention_group") {
-    min_test_slice_n = lg_info.shape_secs.n;
-  }
   int batch_size = lg_info.shape_secs.n;
+  int n_slice_num = get_best_n_slice_num(batch_size, core_num);
+  int max_n_slice_num = n_slice_num;
+  // if (cut_c_first && name() == "attention_group") {
+  //   min_test_slice_n = lg_info.shape_secs.n;
+  // }
 
   std::vector<Operation*> tmp_ops, tmp_ops2;
   for (auto op: lg_info._lgInfo.group_ops) {
@@ -366,14 +440,20 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
     auto outs = get_output_values(op);
     int try_c_slice_num = c_slice_num, try_h_slice_num = h_slice_num;
     int h_slice_num_ok = h_slice_num, c_slice_num_ok = c_slice_num;
-    int test_slice_n = min_test_slice_n, slice_n_ok = min_test_slice_n;
+    int slice_max_n = get_slice_max_n(batch_size, max_n_slice_num), slice_n_ok = max_n_slice_num;
     llvm::errs() << "CalcMatMulGroupTpNum for op:" <<module::getName(op).str()<<'\n';
-    int secs = get_secs(op, batch_size, test_slice_n, try_c_slice_num, try_h_slice_num);
+    llvm::errs() << "max_n_slice_num:" <<max_n_slice_num<< ", slice_max_n:" <<slice_max_n<<'\n';
+    int secs = get_secs(op, n_slice_num, try_c_slice_num, try_h_slice_num);
     int old_target_secs = align(secs, core_num);
     bool init_secs_is_ok =  old_target_secs == secs;
     do {
       module::getNCDHW(ins[0], in_n, in_c, in_d, in_h, in_w, type);
       llvm::errs() << "in0_n:" <<in_n<< ", in_c:" <<in_c << ", in_h:" <<in_h<< ", in_w:" <<in_w<<'\n';
+      if (in_n != batch_size && module::IsReshapeOpInOrOut(ins[0])) {
+        failed_op = op;
+        llvm::errs() <<"in_n != batch_size at op:" <<module::getName(op).str()<<'\n';
+        return false;
+      }
       int64_t in0_lmem_bytes = 0, in1_lmem_bytes = 0, out0_lmem_bytes = 0;
       in_c = align(in_c, try_c_slice_num)/try_c_slice_num;
       if (name() == "mlp_group") {
@@ -386,10 +466,15 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
         }
       }
       llvm::errs() <<"new in_c:" <<in_c << ", in_h:" <<in_h<<'\n';
-      in0_lmem_bytes = align_64(Arch::get_tensor_lmem_bytes(ins[0], test_slice_n, in_c, in_d, in_h, in_w));
+      in0_lmem_bytes = align_64(Arch::get_tensor_lmem_bytes(ins[0], slice_max_n, in_c, in_d, in_h, in_w));
 
       module::getNCDHW(outs[0], out_n, out_c, out_d, out_h, out_w, type);
       llvm::errs() << "out0_n:" <<out_n<< ", out_c:" <<out_c << ", out_h:" <<out_h<< ", out_w:" <<out_w<<'\n';
+      if (out_n != batch_size && module::IsReshapeOpInOrOut(outs[0])) {
+        failed_op = op;
+        llvm::errs() <<"out_n != batch_size at op:" <<module::getName(op).str()<<'\n';
+        return false;
+      }
       out_c = align(out_c, try_c_slice_num)/try_c_slice_num;
       if (name() == "mlp_group") {
         if (!isa<tpu::MatMulOp>(op) || op == lg_info._lgInfo.group_ops[0]) {
@@ -406,7 +491,7 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
         }
       }
       llvm::errs() <<"new out_c:" <<out_c << ", out_h:" <<out_h<<'\n';
-      out0_lmem_bytes = align_64(Arch::get_tensor_lmem_bytes(outs[0], test_slice_n, out_c, out_d, out_h, out_w));
+      out0_lmem_bytes = align_64(Arch::get_tensor_lmem_bytes(outs[0], slice_max_n, out_c, out_d, out_h, out_w));
       if (name() == "attention_group") {
         if (isa<tpu::MatMulOp>(op) && try_h_slice_num > 1 && op == ops.back()) {
           //The second matmul input and output occupy twice the memory to consider
@@ -416,11 +501,16 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
       }
 
       auto lg_op = cast<LocalGenInterface>(op);
-      int64_t buffer_size = lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, test_slice_n, in_c,
-                                        in_h, in_d, in_w, test_slice_n, out_c, out_h, out_d, out_w, type);
+      int64_t buffer_size = lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, slice_max_n, in_c,
+                                        in_h, in_d, in_w, slice_max_n, out_c, out_h, out_d, out_w, type);
       if (ins.size() > 1) {
         module::getNCDHW(ins[1], in_n, in_c, in_d, in_h, in_w, type);
         llvm::errs() << "in1_n:" <<in_n<< ", in_c:" <<in_c << ", in_h:" <<in_h<< ", in_w:" <<in_w<<'\n';
+        if (in_n != batch_size && module::IsReshapeOpInOrOut(ins[1])) {
+          failed_op = op;
+          llvm::errs() <<"for ins[1], in_n != batch_size at op:" <<module::getName(op).str()<<'\n';
+          return false;
+        }
         if (name() == "mlp_group") {
           if (isa<tpu::MatMulOp>(op)) {
             if (op == lg_info._lgInfo.group_ops[0]) {
@@ -453,7 +543,7 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
           }
         }
         llvm::errs() <<"new in1_c:" <<in_c << ", in1_h:" <<in_h<<'\n';
-        in1_lmem_bytes = align_64(Arch::get_tensor_lmem_bytes(ins[1], test_slice_n, in_c, in_d, in_h, in_w));
+        in1_lmem_bytes = align_64(Arch::get_tensor_lmem_bytes(ins[1], slice_max_n, in_c, in_d, in_h, in_w));
         if (name() == "attention_group") {
           if (isa<tpu::MatMulOp>(op)) {
             if (op == ops.back()) {
@@ -489,27 +579,29 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
           llvm::errs() << "init_secs_is_ok\n";
           break;
         }
-        if(!inc_slice_num(test_slice_n, try_c_slice_num, try_h_slice_num, lg_info.shape_secs.c,
+        if(!inc_slice_num(n_slice_num, try_c_slice_num, try_h_slice_num, batch_size, lg_info.shape_secs.c,
                           lg_info.shape_secs.h, inc_c_slice, cut_c_first)) {
           failed_op = op;
           return false;
         }
-        secs = get_secs(op, batch_size, test_slice_n, try_c_slice_num, try_h_slice_num);
+        secs = get_secs(op, n_slice_num, try_c_slice_num, try_h_slice_num);
         if (secs > old_target_secs) {
           llvm::errs() << "new secs("<<secs<<") >= old_target_secs, break\n";
           break;
         }
       } else {
-        if(!inc_slice_num(test_slice_n, try_c_slice_num, try_h_slice_num, lg_info.shape_secs.c,
+        if(!inc_slice_num(n_slice_num, try_c_slice_num, try_h_slice_num, batch_size, lg_info.shape_secs.c,
                           lg_info.shape_secs.h, inc_c_slice, cut_c_first)) {
           failed_op = op;
           return false;
         }
-        secs = get_secs(op, batch_size, test_slice_n, try_c_slice_num, try_h_slice_num);
+        secs = get_secs(op, n_slice_num, try_c_slice_num, try_h_slice_num);
         old_target_secs = align(secs, core_num);
         init_secs_is_ok =  old_target_secs == secs;
       }
-      slice_n_ok = test_slice_n;
+      slice_max_n = get_slice_max_n(batch_size, n_slice_num);
+      llvm::errs() << "update slice_max_n:" <<slice_max_n<<'\n';
+      slice_n_ok = n_slice_num;
       c_slice_num_ok = try_c_slice_num;
       h_slice_num_ok = try_h_slice_num;
     } while(true);
@@ -521,14 +613,14 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operati
     if (h_slice_num_ok > h_slice_num) {
       h_slice_num = h_slice_num_ok;
     }
-    if (min_test_slice_n > slice_n_ok) {
-      min_test_slice_n = slice_n_ok;
+    if (max_n_slice_num < slice_n_ok) {
+      max_n_slice_num = slice_n_ok;
     }
     first_matmul = false;
   }
 
   llvm::errs() << "fill_slice_info start\n";
-  lg_info.shape_secs.n_slice_num = align(lg_info.shape_secs.n, min_test_slice_n)/min_test_slice_n;
+  lg_info.shape_secs.n_slice_num = max_n_slice_num;
   lg_info.shape_secs.c_slice_num = c_slice_num;
   lg_info.shape_secs.h_slice_num = h_slice_num;
   fill_slice_info(lg_info);
@@ -656,36 +748,8 @@ public:
           }
         }
       }
-
-      LgInfo lg_info;
-      lg_info.group_ops.assign(ops.begin(), ops.end());
-      lg_info.update_group_io();
-      std::vector<Operation *> del_ops;
-      for (auto op: ops) {
-        if (isa<tpu::ReshapeOp>(op)) {
-          bool in_grp = false;
-          for (auto user : op->getUsers()) {
-            if (std::find(ops.begin(), ops.end(), user) != ops.end()) {
-              in_grp = true;
-              break;
-            }
-          }
-          if (!in_grp) {
-            del_ops.push_back(op);
-          }
-
-          in_grp = false;
-          for (auto v : op->getOperands()) {
-            if (std::find(ops.begin(), ops.end(), v.getDefiningOp()) != ops.end()) {
-              in_grp = true;
-              break;
-            }
-          }
-          if (!in_grp) {
-            del_ops.push_back(op);
-          }
-        }
-      }
+      std::vector<Operation*> del_ops;
+      findReshapeAtEdge(ops, del_ops);
       for (auto del_op: del_ops) {
         llvm::errs()<<"del_op: "<<module::getName(del_op).str()<<"\n";
         ops.erase(std::remove(ops.begin(), ops.end(), del_op), ops.end());

@@ -245,17 +245,29 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type, int6
       spec.shape[i] = shape[i];
     }
   } else if (group_type == GROUP_MM_OPT3) {
-      spec.dims = 4;
-      if (module::IsHdimIsBatch(v)) {
-        spec.shape[0] = 1;
-        spec.shape[1] = ginfo.c_slice;
-        spec.shape[2] = ginfo.n_slice;
-        spec.shape[3] = ginfo.h_slice;
+      if (module::IsSliceOpInOrOut(v)) {
+        spec.dims = shape.size();
+        for (int i = 0; i < spec.dims; i++) {
+          spec.shape[i] = 1;
+        }
+        spec.shape[spec.dims - 2] = ginfo.c_slice;
+        spec.shape[spec.dims - 1] = ginfo.h_slice;
+        if (spec.dims >= 3) {
+          spec.shape[0] = ginfo.n_slice;
+        }
       } else {
-        spec.shape[0] = ginfo.n_slice;
-        spec.shape[1] = ginfo.c_slice;
-        spec.shape[2] = ginfo.h_slice;
-        spec.shape[3] = 1;
+        spec.dims = 4;
+        if (module::IsHdimIsBatch(v)) {
+          spec.shape[0] = 1;
+          spec.shape[1] = ginfo.c_slice;
+          spec.shape[2] = ginfo.n_slice;
+          spec.shape[3] = ginfo.h_slice;
+        } else {
+          spec.shape[0] = ginfo.n_slice;
+          spec.shape[1] = ginfo.c_slice;
+          spec.shape[2] = ginfo.h_slice;
+          spec.shape[3] = 1;
+        }
       }
   } else if (group_type == GROUP_SMALL_C) {
     int64_t n, c, h, w;
