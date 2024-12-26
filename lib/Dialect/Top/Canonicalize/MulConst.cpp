@@ -154,9 +154,9 @@ public:
         w *= const_val;
       }
       auto weight_type = value.getType().cast<RankedTensorType>();
-      auto new_weight =
-          WeightOp::create_float(formerOp, "_mergeMulConst", *weight_f32,
-                                 weight_type.getShape(), storage_type);
+      auto new_weight = WeightOp::create_float(
+          formerOp, "_mergeMulConst", *weight_f32, weight_type.getShape(),
+          weight_type.getElementType());
       formerOp->setOperand(i, new_weight);
     }
     module::setLocSuffix(formerOp, "withMulConst");
