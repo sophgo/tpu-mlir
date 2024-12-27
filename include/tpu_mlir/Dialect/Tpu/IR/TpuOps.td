@@ -4404,6 +4404,41 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd" ,[
   );
 }
 
+def Tpu_WhereBnbwdOp: Tpu_Op<"WhereBnbwdOp"> {
+  let summary = "WhereBnbwd operation";
+  let description = [{
+    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
+    with additional channel dimension) as described in the paper
+    Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
+
+    ```math
+        y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+    ```
+
+    The mean and standard-deviation are calculated per-dimension over
+    the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
+    of size C (where C is the input channel size).
+  }];
+  let arguments = (ins
+    AnyTensorOrNone:$where_output,
+    AnyTensor:$where_grad_out,
+    AnyTensor:$bnbwd_input,
+    AnyTensorOrNone:$bnbwd_weight,
+    AnyTensorOrNone:$bnbwd_bias,
+    AnyTensorOrNone:$bnbwd_saved_mean,
+    AnyTensorOrNone:$bnbwd_saved_invstd,
+    AnyTensorOrNone:$buffer,
+    DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
+    DefaultValuedAttr<BoolAttr, "false">:$do_recompute
+  );
+  let results = (outs
+    AnyTensor:$grad_in,
+    AnyTensorOrNone:$weight_grad,
+    AnyTensorOrNone:$bias_grad
+  );
+}
+
 def Tpu_EmbDenseBwdOp : Tpu_Op<"EmbDenseBwd"> {
   let summary = "EmbDenseBwd operation for train";
   let description = [{
