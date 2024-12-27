@@ -675,7 +675,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
         (1, 0): 'DMA_matrix', (1, 1): 'matrix transpose',
         (2, 0): 'DMA_masked_select', (2, 1): 'ncw mode',
         (3, 0): 'DMA_general', (3, 1): 'broadcast',
-        (4, 0): 'DMA_cw transpose',
+        (4, 0): 'DMA_cw transpose', (4, 1): 'DMA transpose',
         (5, 0): 'DMA_nonzero',
         (6, 0): 'DMA_sys', (6, 1): 'nop', (6, 2): 'sys_tr_wr', (6, 3): 'sys_send', (6, 4): 'sys_wait',
         (7, 0): 'DMA_gather',
