@@ -2605,7 +2605,6 @@ def Tpu_MatchTemplateOp: Tpu_Op<"MatchTemplate", [
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
-    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Tile operation";
