@@ -22,6 +22,7 @@ import pymlir
 
 import numpy as np
 import logging
+from copy import deepcopy
 
 logger = logging.getLogger("root")
 
@@ -37,7 +38,7 @@ class TpuLang:
         device: str,
     ):
         if device.lower() in device_list:
-            TpuLang.chip = device
+            TpuLang.chip = device.lower()
         else:
             KeyError('TpuLang: unsupported device.')
         # self.model_name = model_name
@@ -416,7 +417,8 @@ def deinit():
 
 
 def ArrayAttr(data: list, data_type: str = 'int64'):
-    return [data, data_type, False]
+    _data = deepcopy(data)
+    return [_data, data_type, False]
 
 
 # data_type must be in ["float32", "float16", "int64" "int32", "int16". "int8", "uint8", "bool", "string", "dict"]
@@ -2345,6 +2347,513 @@ def extract(input: Tensor, start: Union[List[int], Tuple[int]] = None, end: Unio
     }
     TpuLang.insert_op("top.Slice", inputs=[input, None, None, None], outputs=[output], params=attr)
     return output
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def multi_scale_deformable_attention(
+    query: Tensor,
+    value: Tensor,
+    key_padding_mask: Tensor,
+    reference_points: Tensor,
+    sampling_offsets_weight: Tensor,
+    sampling_offsets_bias_ori: Tensor,
+    attention_weights_weight: Tensor,
+    attention_weights_bias_ori: Tensor,
+    value_proj_weight: Tensor,
+    value_proj_bias_ori: Tensor,
+    output_proj_weight: Tensor,
+    output_proj_bias_ori: Tensor,
+    spatial_shapes: List[List[int]],
+    embed_dims: int,
+    num_heads: int = 8,
+    num_levels: int = 4,
+    num_points: int = 4,
+    out_name: str = None,
+):
+    assert query.shape[0] == 1
+    assert value.shape[0] == 1
+    bs = 1
+    assert embed_dims % (num_heads * num_levels) == 0
+    assert TpuLang.chip in ["bm1684x", "bm1688"]
+    npu_num = 64 if TpuLang.chip == "bm1684x" else 32
+    _, num_query, _ = query.shape
+    _, num_value, _ = value.shape
+    _, _, num_levels, _ = reference_points.shape
+    spatial_shapes_np = np.array(spatial_shapes)
+    assert (spatial_shapes_np[:, 0] * spatial_shapes_np[:, 1]).sum() == num_value
+    import math
+    num_padding = math.ceil(num_query / npu_num) * npu_num - num_query
+    num_query_padding = num_padding + num_query
+
+    if out_name is None:
+        out_name = generate_name("multi_scale_deformable_attention")
+    o_dtype = query.dtype
+    int64_max = np.iinfo(np.int64).max
+
+    # reshape: reshape all bias to [1, 1, bias_len]
+    bias_reshape_attr = {
+        "shape": ArrayAttr([1, 1, -1]),
+    }
+    sampling_offsets_bias = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_bias_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_offsets_bias_ori], outputs=[sampling_offsets_bias], params=bias_reshape_attr)
+    attention_weights_bias = Tensor(dtype=o_dtype, name=out_name + "_attention_weights_bias_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[attention_weights_bias_ori], outputs=[attention_weights_bias], params=bias_reshape_attr)
+    value_proj_bias = Tensor(dtype=o_dtype, name=out_name + "_value_proj_bias_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[value_proj_bias_ori], outputs=[value_proj_bias], params=bias_reshape_attr)
+    output_proj_bias = Tensor(dtype=o_dtype, name=out_name + "_output_proj_bias_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[output_proj_bias_ori], outputs=[output_proj_bias], params=bias_reshape_attr)
+
+    #  concat: padding query to align with npu_num
+    query_padding_weight_np = np.zeros((bs, num_padding, embed_dims), dtype=o_dtype)
+    query_padding_weight = Tensor(dtype=o_dtype, shape=[bs, num_padding, embed_dims], data=query_padding_weight_np, ttype="coeff")
+    query_concat_input_list = [query, query_padding_weight]
+    query_padding_out = Tensor(dtype=o_dtype, name=out_name + "_padding_query_with_concat")
+    concat_attr = {
+        "axis": Attr(1, "int32"),
+    }
+    TpuLang.insert_op("top.Concat", inputs=query_concat_input_list, outputs=[query_padding_out], params=concat_attr)
+
+    # concat: padding reference_points to align with npu_num
+    reference_points_padding_weight_np = np.zeros((bs, num_padding, num_levels, 2), dtype=o_dtype)
+    reference_points_padding_weight = Tensor(dtype=o_dtype, shape=[bs, num_padding, num_levels, 2], data=reference_points_padding_weight_np, ttype="coeff")
+    reference_points_concat_input_list = [reference_points, reference_points_padding_weight]
+    reference_points_padding_out = Tensor(dtype=o_dtype, name=out_name + "_padding_reference_points_with_concat")
+    concat_attr = {
+        "axis": Attr(1, "int32"),
+    }
+    TpuLang.insert_op("top.Concat", inputs=reference_points_concat_input_list, outputs=[reference_points_padding_out], params=concat_attr)
+
+    # reshape: convert reference_points from [1, align_up(num_query, npu_num), num_levels, 2] to [align_up(num_query, npu_num), num_levels*2]
+    reference_points_reshape_attr = {
+        "shape": ArrayAttr([num_query_padding, num_levels*2]),
+    }
+    reference_points_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_reference_points_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[reference_points_padding_out], outputs=[reference_points_reshape_out], params=reference_points_reshape_attr)
+
+    # permute: permute reference_points to [num_levels*2, align_up(num_query, npu_num)], order=[1, 0]
+    reference_points_permute_attr = {
+        "order": ArrayAttr([1, 0]),
+    }
+    reference_points_permute_out = Tensor(dtype=o_dtype, name=out_name + "_reference_points_permute")
+    TpuLang.insert_op("top.Permute", inputs=[reference_points_reshape_out], outputs=[reference_points_permute_out], params=reference_points_permute_attr)
+
+    # loop for num_levels*2 times
+    reference_points_list = []
+    reference_points_shape_len = 2
+    reference_points_slice_offset = [0] * reference_points_shape_len
+    reference_points_slice_ends = [int64_max] * reference_points_shape_len
+    reference_points_slice_steps = [1] * reference_points_shape_len
+    for i in range(num_levels):
+        for k in range(2):
+            idx = i * 2 + k
+            # slice: split reference_points
+            reference_points_slice_offset[0] = idx
+            reference_points_slice_ends[0] = idx + 1
+            reference_points_slice_attr = {
+                "offset": ArrayAttr(reference_points_slice_offset),
+                "ends": ArrayAttr(reference_points_slice_ends),
+                "steps": ArrayAttr(reference_points_slice_steps),
+                "axes": ArrayAttr([]),
+            }
+            reference_points_slice_out = Tensor(dtype=o_dtype, name=out_name + "_reference_points_slice_{}".format(idx))
+            TpuLang.insert_op("top.Slice", inputs=[reference_points_permute_out, None, None, None], outputs=[reference_points_slice_out], params=reference_points_slice_attr)
+            # reshape: reshape reference_points to convert dimension c to npu_num
+            reference_points_reshape_attr = {
+                "shape": ArrayAttr([1, npu_num, -1]),
+            }
+            reference_points_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_reference_points_reshape_{}".format(idx))
+            TpuLang.insert_op("top.Reshape", inputs=[reference_points_slice_out], outputs=[reference_points_reshape_out], params=reference_points_reshape_attr)
+            reference_points_list.append(reference_points_reshape_out)
+
+    # reorder weight & bias of linear layer which is used to compute sampling_offsets
+    # reorder weight
+    # reshape
+    sampling_offsets_weight_reshape_0_attr = {
+        "shape": ArrayAttr([embed_dims, num_heads, num_levels, num_points, 2]),
+    }
+    sampling_offsets_weight_reshape_0_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_weight_reshape_0")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_offsets_weight], outputs=[sampling_offsets_weight_reshape_0_out], params=sampling_offsets_weight_reshape_0_attr)
+    # permute
+    sampling_offsets_weight_permute_attr = {
+        "order": ArrayAttr([0, 2, 1, 4, 3]),
+    }
+    sampling_offsets_weight_permute_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_weight_permute")
+    TpuLang.insert_op("top.Permute", inputs=[sampling_offsets_weight_reshape_0_out], outputs=[sampling_offsets_weight_permute_out], params=sampling_offsets_weight_permute_attr)
+    # reshape
+    sampling_offsets_weight_reshape_1_attr = {
+        "shape": ArrayAttr([embed_dims, -1]),
+    }
+    sampling_offsets_weight_reshape_1_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_weight_reshape_1")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_offsets_weight_permute_out], outputs=[sampling_offsets_weight_reshape_1_out], params=sampling_offsets_weight_reshape_1_attr)
+    # reorder bias
+    # reshape
+    sampling_offsets_bias_reshape_attr = {
+        "shape": ArrayAttr([num_heads, num_levels, num_points, 2]),
+    }
+    sampling_offsets_bias_reshape_0_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_bias_reshape_0")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_offsets_bias], outputs=[sampling_offsets_bias_reshape_0_out], params=sampling_offsets_bias_reshape_attr)
+    # permute
+    sampling_offsets_bias_permute_attr = {
+        "order": ArrayAttr([1, 0, 3, 2]),
+    }
+    sampling_offsets_bias_permute_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_bias_permute")
+    TpuLang.insert_op("top.Permute", inputs=[sampling_offsets_bias_reshape_0_out], outputs=[sampling_offsets_bias_permute_out], params=sampling_offsets_bias_permute_attr)
+    # reshape
+    sampling_offsets_bias_reshape_attr = {
+        "shape": ArrayAttr([1, 1, -1]),
+    }
+    sampling_offsets_bias_reshape_1_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_bias_reshape_1")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_offsets_bias_permute_out], outputs=[sampling_offsets_bias_reshape_1_out], params=sampling_offsets_bias_reshape_attr)
+
+    # matmul with weight & bias: compute sampling_offsets
+    sampling_offsets_matmul_attr = {
+        "right_transpose": Attr(False, "bool"),
+        "left_transpose": Attr(False, "bool"),
+        "output_transpose": Attr(False, "bool"),
+        "hdim_is_batch": Attr(False, "bool"),
+        "keep_dims": Attr(True, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+    sampling_offsets_matmul_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_matmul")
+    TpuLang.insert_op("top.MatMul", inputs=[query_padding_out, sampling_offsets_weight_reshape_1_out, sampling_offsets_bias_reshape_1_out], outputs=[sampling_offsets_matmul_out], params=sampling_offsets_matmul_attr)
+
+    # permute: permute sampling_offsets to [1, num_levels*num_heads*2*num_points, align_up(num_query, npu_num)], order=[0, 2, 1]
+    sampling_offsets_permute_attr = {
+        "order": ArrayAttr([0, 2, 1]),
+    }
+    sampling_offsets_permute_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_permute")
+    TpuLang.insert_op("top.Permute", inputs=[sampling_offsets_matmul_out], outputs=[sampling_offsets_permute_out], params=sampling_offsets_permute_attr)
+
+    # reshape: reshape sampling_offsets to [num_heads, num_levels, num_points, 2, align_up(num_query, npu_num)]
+    sampling_offsets_reshape_0_attr = {
+        "shape": ArrayAttr([num_levels*num_heads*2, num_points, -1]),
+    }
+    sampling_offsets_reshape_0_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_offsets_permute_out], outputs=[sampling_offsets_reshape_0_out], params=sampling_offsets_reshape_0_attr)
+
+    # loop for num_levels*num_heads*2 times
+    sampling_offsets_list = []
+    sampling_offsets_shape_len = 3
+    sampling_offsets_slice_offset = [0] * sampling_offsets_shape_len
+    sampling_offsets_slice_ends = [int64_max] * sampling_offsets_shape_len
+    sampling_offsets_slice_steps = [1] * sampling_offsets_shape_len
+    for i in range(num_levels*num_heads*2):
+        # slice: split sampling_offsets
+        sampling_offsets_slice_offset[0] = i
+        sampling_offsets_slice_ends[0] = i + 1
+        sampling_offsets_slice_attr = {
+            "offset": ArrayAttr(sampling_offsets_slice_offset),
+            "ends": ArrayAttr(sampling_offsets_slice_ends),
+            "steps": ArrayAttr(sampling_offsets_slice_steps),
+            "axes": ArrayAttr([]),
+        }
+        sampling_offsets_slice_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[sampling_offsets_reshape_0_out, None, None, None], outputs=[sampling_offsets_slice_out], params=sampling_offsets_slice_attr)
+        # reshape: reshape sampling_offsets to convert dimension c to npu_num
+        sampling_offsets_reshape_1_attr = {
+            "shape": ArrayAttr([num_points, npu_num, -1]),
+        }
+        sampling_offsets_reshape_1_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_reshape_{}".format(i))
+        TpuLang.insert_op("top.Reshape", inputs=[sampling_offsets_slice_out], outputs=[sampling_offsets_reshape_1_out], params=sampling_offsets_reshape_1_attr)
+        sampling_offsets_list.append(sampling_offsets_reshape_1_out)
+
+    # loop for num_levels*num_heads*2 times
+    offset_normalizer = np.stack([spatial_shapes_np[..., 1], spatial_shapes_np[..., 0]], -1).flatten()
+    sampling_locations_list = []
+    for i in range(num_levels):
+        for j in range(num_heads):
+            for k in range(2):
+                ik = i * 2 + k
+                ijk = i * num_heads * 2 + j * 2 + k
+                # calculate 2 *(reference_points_list[ik] + sampling_offsets_list[ijk] / offset_normalizer_list[ik]) - 1
+                # mulconst: sampling_offsets_list[ijk] * (1/offset_normalizer_list[ik])
+                sampling_locations_mulconst_0_attr = {
+                    "const_val": Attr(1.0 / offset_normalizer[ik], "float64"),
+                }
+                sampling_locations_mulconst_0_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_locations_mulconst_0_{}".format(ijk))
+                TpuLang.insert_op("top.MulConst", inputs=[sampling_offsets_list[ijk]], outputs=[sampling_locations_mulconst_0_out], params=sampling_locations_mulconst_0_attr)
+                # add: reference_points_list[ik] + sampling_locations_mulconst_0_out[ijk]
+                sampling_locations_add_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_locations_add_{}".format(ijk))
+                TpuLang.insert_op("top.Add", inputs=[reference_points_list[ik], sampling_locations_mulconst_0_out], outputs=[sampling_locations_add_out])
+                # mulconst: 2 * sampling_locations_add_out[ijk]
+                sampling_locations_mulconst_1_attr = {
+                    "const_val": Attr(2.0, "float64"),
+                }
+                sampling_locations_mulconst_1_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_locations_mulconst_1_{}".format(ijk))
+                TpuLang.insert_op("top.MulConst", inputs=[sampling_locations_add_out], outputs=[sampling_locations_mulconst_1_out], params=sampling_locations_mulconst_1_attr)
+                # addconst: 2 * sampling_locations_add_out[ijk] - 1
+                sampling_locations_addconst_attr = {
+                    "const_val": Attr(-1.0, "float64"),
+                }
+                sampling_locations_addconst_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_locations_addconst_{}".format(ijk))
+                TpuLang.insert_op("top.AddConst", inputs=[sampling_locations_mulconst_1_out], outputs=[sampling_locations_addconst_out], params=sampling_locations_addconst_attr)
+                sampling_locations_list.append(sampling_locations_addconst_out)
+    # concat: concat sampling_locations
+    sampling_locations_concat_attr = {
+        "axis": Attr(0, "int32"),
+    }
+    sampling_locations_concat_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_locations_concat")
+    TpuLang.insert_op("top.Concat", inputs=sampling_locations_list, outputs=[sampling_locations_concat_out], params=sampling_locations_concat_attr)
+    # reshape: reshape sampling_locations to [num_levels, num_heads, 2, num_points, align_up(num_query, npu_num)]
+    sampling_locations_reshape_attr = {
+        "shape": ArrayAttr([num_levels, num_heads, 2, num_points, -1]),
+    }
+    sampling_grids_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_locations_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_locations_concat_out], outputs=[sampling_grids_reshape_out], params=sampling_locations_reshape_attr)
+
+    # matmul with weight & bias: compute attention_weights
+    attention_weights_matmul_attr = {
+        "right_transpose": Attr(False, "bool"),
+        "left_transpose": Attr(False, "bool"),
+        "output_transpose": Attr(False, "bool"),
+        "hdim_is_batch": Attr(False, "bool"),
+        "keep_dims": Attr(True, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+    attention_weights_matmul_out = Tensor(dtype=o_dtype, name=out_name + "_attention_weights_matmul")
+    if len(attention_weights_bias.shape) == 1:
+        attention_weights_bias.shape = [1, 1, attention_weights_bias.shape[0]]
+        attention_weights_bias.buffer = attention_weights_bias.buffer.reshape(attention_weights_bias.shape)
+    TpuLang.insert_op("top.MatMul", inputs=[query_padding_out, attention_weights_weight, attention_weights_bias], outputs=[attention_weights_matmul_out], params=attention_weights_matmul_attr)
+    # permute: permute attention_weights to [1, num_heads*num_levels*num_points, align_up(num_query, npu_num)], order=[0, 2, 1]
+    attention_weights_permute_attr = {
+        "order": ArrayAttr([0, 2, 1]),
+    }
+    attention_weights_permute_out = Tensor(dtype=o_dtype, name=out_name + "_attention_weights_permute")
+    TpuLang.insert_op("top.Permute", inputs=[attention_weights_matmul_out], outputs=[attention_weights_permute_out], params=attention_weights_permute_attr)
+    # reshape: reshape attention_weights to [num_heads, num_levels*num_points, align_up(num_query, npu_num)]
+    attention_weights_reshape_attr = {
+        "shape": ArrayAttr([num_heads, num_levels*num_points, -1]),
+    }
+    attention_weights_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_attention_weights_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[attention_weights_permute_out], outputs=[attention_weights_reshape_out], params=attention_weights_reshape_attr)
+    # softmax: compute softmax of attention_weights at axis=-2
+    attention_weights_softmax_attr = {
+        "axis": Attr(-2, "int32"),
+    }
+    attention_weights_softmax_out = Tensor(dtype=o_dtype, name=out_name + "_attention_weights_softmax")
+    TpuLang.insert_op("top.Softmax", inputs=[attention_weights_reshape_out], outputs=[attention_weights_softmax_out], params=attention_weights_softmax_attr)
+    # loop for num_levels times
+    attention_weights_list = []
+    attention_weights_shape_len = 3
+    attention_weights_slice_offset = [0] * attention_weights_shape_len
+    attention_weights_slice_ends = [int64_max] * attention_weights_shape_len
+    attention_weights_slice_steps = [1] * attention_weights_shape_len
+    for i in range(num_levels):
+        # slice: split attention_weights
+        attention_weights_slice_offset[1] = i * num_points
+        attention_weights_slice_ends[1] = (i + 1) * num_points
+        attention_weights_slice_attr = {
+            "offset": ArrayAttr(attention_weights_slice_offset),
+            "ends": ArrayAttr(attention_weights_slice_ends),
+            "steps": ArrayAttr(attention_weights_slice_steps),
+            "axes": ArrayAttr([]),
+        }
+        attention_weights_slice_out = Tensor(dtype=o_dtype, name=out_name + "_attention_weights_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[attention_weights_softmax_out, None, None, None], outputs=[attention_weights_slice_out], params=attention_weights_slice_attr)
+        # reshape: reshape to [num_heads, 1, num_points, align_up(num_query, npu_num)]
+        attention_weights_reshape_attr = {
+            "shape": ArrayAttr([num_heads, 1, num_points, -1]),
+        }
+        attention_weights_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_attention_weights_reshape_{}".format(i))
+        TpuLang.insert_op("top.Reshape", inputs=[attention_weights_slice_out], outputs=[attention_weights_reshape_out], params=attention_weights_reshape_attr)
+        attention_weights_list.append(attention_weights_reshape_out)
+
+    # subconst: 1 - key_padding_mask, instead of where key_padding_mask == 0, set it to 1, otherwise set it to 0
+    key_padding_mask_subconst_attr = {
+        "const_val": Attr(1.0, "float64"),
+        "is_reverse": Attr(True, "bool"),
+    }
+    key_padding_mask_subconst_out = Tensor(dtype=o_dtype, name=out_name + "_key_padding_mask_subconst")
+    TpuLang.insert_op("top.SubConst", inputs=[key_padding_mask], outputs=[key_padding_mask_subconst_out], params=key_padding_mask_subconst_attr)
+
+    # reshape: key_padding_mask_subconst_out to [1, 1, num_value]
+    key_padding_mask_reshape_attr = {
+        "shape": ArrayAttr([1, 1, num_value]),
+    }
+    key_padding_mask_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_key_padding_mask_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[key_padding_mask_subconst_out], outputs=[key_padding_mask_reshape_out], params=key_padding_mask_reshape_attr)
+    # loop for num_levels times
+    value_shape_len = 3
+    value_slice_offset = [0] * value_shape_len
+    value_slice_ends = [int64_max] * value_shape_len
+    value_slice_ends[1] = 0
+    value_slice_steps = [1] * value_shape_len
+    key_padding_mask_shape_len = 3
+    key_padding_mask_slice_offset = [0] * key_padding_mask_shape_len
+    key_padding_mask_slice_ends = [int64_max] * key_padding_mask_shape_len
+    key_padding_mask_slice_ends[2] = 0
+    key_padding_mask_slice_steps = [1] * key_padding_mask_shape_len
+    sampling_grid_shape_len = 5
+    sampling_grid_slice_offset = [0] * sampling_grid_shape_len
+    sampling_grid_slice_ends = [int64_max] * sampling_grid_shape_len
+    sampling_grid_slice_steps = [1] * sampling_grid_shape_len
+    dim_per_head = embed_dims // num_heads
+    sampling_value_list = []
+    if len(value_proj_bias.shape) == 1:
+        value_proj_bias.shape = [1, 1, value_proj_bias.shape[0]]
+        value_proj_bias.buffer = value_proj_bias.buffer.reshape(value_proj_bias.shape)
+    for i, (H_, W_) in enumerate(spatial_shapes):
+        HW_ = H_ * W_
+        # slice: split value to merge matmul + permute
+        value_slice_ends[1] += HW_
+        value_slice_attr = {
+            "offset": ArrayAttr(value_slice_offset),
+            "ends": ArrayAttr(value_slice_ends),
+            "steps": ArrayAttr(value_slice_steps),
+            "axes": ArrayAttr([]),
+        }
+        value_slice_offset[1] += HW_
+        value_slice_out = Tensor(dtype=o_dtype, name=out_name + "_value_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[value, None, None, None], outputs=[value_slice_out], params=value_slice_attr)
+        # matmul with weight & bias: compute value_proj
+        value_proj_matmul_attr = {
+            "right_transpose": Attr(False, "bool"),
+            "left_transpose": Attr(False, "bool"),
+            "output_transpose": Attr(False, "bool"),
+            "hdim_is_batch": Attr(False, "bool"),
+            "keep_dims": Attr(True, "bool"),
+            "do_relu":  Attr(False, "bool"),
+            "relu_limit":  Attr(-1.0, "float64")
+        }
+        value_proj_matmul_out = Tensor(dtype=o_dtype, name=out_name + "_value_proj_matmul_{}".format(i))
+        TpuLang.insert_op("top.MatMul", inputs=[value_slice_out, value_proj_weight, value_proj_bias], outputs=[value_proj_matmul_out], params=value_proj_matmul_attr)
+        # permute: permute value_proj to [1, embed_dims, align_up(num_query, npu_num)], order=[0, 2, 1]
+        value_proj_permute_attr = {
+            "order": ArrayAttr([0, 2, 1]),
+        }
+        value_proj_permute_out = Tensor(dtype=o_dtype, name=out_name + "_value_proj_permute_{}".format(i))
+        TpuLang.insert_op("top.Permute", inputs=[value_proj_matmul_out], outputs=[value_proj_permute_out], params=value_proj_permute_attr)
+        # slice: split key_padding_mask
+        key_padding_mask_slice_ends[2] += HW_
+        key_padding_mask_slice_attr = {
+            "offset": ArrayAttr(key_padding_mask_slice_offset),
+            "ends": ArrayAttr(key_padding_mask_slice_ends),
+            "steps": ArrayAttr(key_padding_mask_slice_steps),
+            "axes": ArrayAttr([]),
+        }
+        key_padding_mask_slice_offset[2] += HW_
+        key_padding_mask_slice_out = Tensor(dtype=o_dtype, name=out_name + "_key_padding_mask_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[key_padding_mask_reshape_out, None, None, None], outputs=[key_padding_mask_slice_out], params=key_padding_mask_slice_attr)
+        # # tile: tile key_padding_mask to [1, embed_dims, num_value]
+        # key_padding_mask_tile_attr = {
+        #     "tile": ArrayAttr([1, embed_dims, 1]),
+        # }
+        # key_padding_mask_tile_out = Tensor(dtype=o_dtype, name=out_name + "_key_padding_mask_tile_{}".format(i))
+        # TpuLang.insert_op("top.Tile", inputs=[key_padding_mask_slice_out], outputs=[key_padding_mask_tile_out], params=key_padding_mask_tile_attr)
+        # # where
+        # value_l_where_attr = {
+        #     "x_const_val": Attr(0.0, "float64"),
+        #     "x_is_const": Attr(True, "bool"),
+        #     "y_const_val": Attr(0.0, "float64"),
+        #     "y_is_const": Attr(False, "bool"),
+        # }
+        # value_l_out = Tensor(dtype=o_dtype, name=out_name + "_value_l_where_{}".format(i))
+        # TpuLang.insert_op("top.Where", inputs=[key_padding_mask_tile_out, None, value_proj_permute_out], outputs=[value_l_out], params=value_l_where_attr)
+        # reshape: reshape value_l_where to [num_heads, dim_per_head, H_, W_]
+
+        # mul: key_padding_mask_slice_out * value_proj_permute_out instead of where
+        value_l_out = Tensor(dtype=o_dtype, name=out_name + "_key_padding_mask_mul_{}".format(i))
+        TpuLang.insert_op("top.Mul", inputs=[key_padding_mask_slice_out, value_proj_permute_out], outputs=[value_l_out])
+        value_l_reshape_attr = {
+            "shape": ArrayAttr([num_heads, dim_per_head, H_, W_]),
+        }
+        value_l_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_value_l_reshape_{}".format(i))
+        TpuLang.insert_op("top.Reshape", inputs=[value_l_out], outputs=[value_l_reshape_out], params=value_l_reshape_attr)
+        # slice: sampling_grids_reshape_out
+        sampling_grid_slice_offset[0] = i
+        sampling_grid_slice_ends[0] = i + 1
+        sampling_grid_slice_attr = {
+            "offset": ArrayAttr(sampling_grid_slice_offset),
+            "ends": ArrayAttr(sampling_grid_slice_ends),
+            "steps": ArrayAttr(sampling_grid_slice_steps),
+            "axes": ArrayAttr([]),
+        }
+        sampling_grids_slice_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_grids_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[sampling_grids_reshape_out, None, None, None], outputs=[sampling_grids_slice_out], params=sampling_grid_slice_attr)
+        # squeeze
+        sampling_grids_squeeze_attr = {
+            "axes": ArrayAttr([0]),
+        }
+        sampling_grids_squeeze_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_grids_squeeze_{}".format(i))
+        TpuLang.insert_op("top.Squeeze", inputs=[sampling_grids_slice_out], outputs=[sampling_grids_squeeze_out], params=sampling_grids_squeeze_attr)
+        # permute
+        sampling_grids_permute_attr = {
+            "order": ArrayAttr([0, 2, 3, 1]),
+        }
+        sampling_grids_permute_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_grids_permute_{}".format(i))
+        TpuLang.insert_op("top.Permute", inputs=[sampling_grids_squeeze_out], outputs=[sampling_grids_permute_out], params=sampling_grids_permute_attr)
+        # grid_sampler
+        sampling_grid_l_grid_sampler_attr = {
+            "mode": Attr(0, "int64"),
+            "padding_mode": Attr(0, "int64"),
+            "align_corners": Attr(False, 'bool'),
+        }
+        grid_sampler_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_grid_l_grid_sampler_{}".format(i))
+        TpuLang.insert_op("top.GridSampler", inputs=[value_l_reshape_out, sampling_grids_permute_out], outputs=[grid_sampler_out], params=sampling_grid_l_grid_sampler_attr)
+        sampling_value_list.append(grid_sampler_out)
+    sampling_value_l_reduce_out_buffer = None
+    for i in range(num_levels):
+        # mul
+        sampling_value_l_mul_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_value_l_mul_{}".format(i))
+        TpuLang.insert_op("top.Mul", inputs=[attention_weights_list[i], sampling_value_list[i]], outputs=[sampling_value_l_mul_out])
+        if sampling_value_l_reduce_out_buffer is None:
+            sampling_value_l_reduce_out_buffer = sampling_value_l_mul_out
+        else:
+            # add
+            sampling_value_l_reduce_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_value_l_reduce_{}".format(i))
+            TpuLang.insert_op("top.Add", inputs=[sampling_value_l_reduce_out_buffer, sampling_value_l_mul_out], outputs=[sampling_value_l_reduce_out])
+            sampling_value_l_reduce_out_buffer = sampling_value_l_reduce_out
+    # reduce_sum
+    sampling_value_l_reduce_all_attr = {
+        "axes": ArrayAttr([-2], "int64"),
+        "keepdims": Attr(False, "bool"),
+        "mode": Attr("ReduceSum", "string"),
+    }
+    sampling_value_l_reduce_all_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_value_l_reduce_all")
+    TpuLang.insert_op("top.Reduce", inputs=[sampling_value_l_reduce_out], outputs=[sampling_value_l_reduce_all_out], params=sampling_value_l_reduce_all_attr)
+    # reshape
+    sampling_value_l_reshape_attr = {
+        "shape": ArrayAttr([1, embed_dims, -1]),
+    }
+    sampling_value_l_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_sampling_value_l_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[sampling_value_l_reduce_all_out], outputs=[sampling_value_l_reshape_out], params=sampling_value_l_reshape_attr)
+    # permute
+    sampling_value_l_permute_attr = {
+        "order": ArrayAttr([0, 2, 1]),
+    }
+    output_padding = Tensor(dtype=o_dtype, name=out_name + "_sampling_value_l_permute")
+    TpuLang.insert_op("top.Permute", inputs=[sampling_value_l_reshape_out], outputs=[output_padding], params=sampling_value_l_permute_attr)
+    # slice: form align_up(num_query, npu_num) back to num_query
+    output_padding_shape_len = 3
+    output_padding_slice_offset = [0] * output_padding_shape_len
+    output_padding_slice_ends = [int64_max] * output_padding_shape_len
+    output_padding_slice_ends[1] = num_query
+    output_padding_slice_steps = [1] * output_padding_shape_len
+    output_padding_slice_attr = {
+        "offset": ArrayAttr(output_padding_slice_offset),
+        "ends": ArrayAttr(output_padding_slice_ends),
+        "steps": ArrayAttr(output_padding_slice_steps),
+        "axes": ArrayAttr([]),
+    }
+    output_padding_slice_out = Tensor(dtype=o_dtype, name=out_name + "_output_padding_slice")
+    TpuLang.insert_op("top.Slice", inputs=[output_padding, None, None, None], outputs=[output_padding_slice_out], params=output_padding_slice_attr)
+    # matmul with weight & bias: compute output_proj
+    output_proj_matmul_attr = {
+        "right_transpose": Attr(False, "bool"),
+        "left_transpose": Attr(False, "bool"),
+        "output_transpose": Attr(False, "bool"),
+        "hdim_is_batch": Attr(False, "bool"),
+        "keep_dims": Attr(True, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+    output_proj_matmul_out = Tensor(dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.MatMul", inputs=[output_padding_slice_out, output_proj_weight, output_proj_bias], outputs=[output_proj_matmul_out], params=output_proj_matmul_attr)
+    return output_proj_matmul_out
 
 @auto_name()
 @annotation_check

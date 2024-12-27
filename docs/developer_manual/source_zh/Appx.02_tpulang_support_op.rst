@@ -5086,7 +5086,7 @@ rope
 
 功能描述
 """""""""""
-对输入Tensor 进行预处理操作。
+对输入Tensor 进行旋转编码（RoPE）操作。
 该操作属于 **全局操作**
 
 参数说明
@@ -5095,15 +5095,15 @@ rope
 * weight0: Tensor, 表示输入操作Tensor。
 * weight1: Tensor, 表示输入操作Tensor。
 * is_permute_optimize：bool类型, 表示是否做permute下沉，进行permute下沉shape的检查。# unused
-* mul1_round_mode: String类型, 表示Rope中mul1的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
-* mul2_round_mode: String类型, 表示Rope中mul2的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
-* add_round_mode: String类型, 表示Rope中add的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
-* mul1_shift: int型，表示Rope中mul1的移位的位数。
-* mul2_shift: int型，表示Rope中mul2的移位的位数。
-* add_shift: int型，表示Rope中add的移位的位数。
-* mul1_saturation: bool 类型, 表示Rope中的mul1计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
-* mul2_saturation: bool 类型, 表示Rope中的mul2计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
-* add_saturation: bool 类型, 表示Rope中的add计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* mul1_round_mode: String类型, 表示RoPE中mul1的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
+* mul2_round_mode: String类型, 表示RoPE中mul2的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
+* add_round_mode: String类型, 表示RoPE中add的取整方法。默认值为"half_away_from_zero",范围是“half_away_from_zero”，“half_to_even”，“towards_zero”，“down”，“up”，“half_up”，“half_down”。
+* mul1_shift: int型，表示RoPE中mul1的移位的位数。
+* mul2_shift: int型，表示RoPE中mul2的移位的位数。
+* add_shift: int型，表示RoPE中add的移位的位数。
+* mul1_saturation: bool 类型, 表示RoPE中的mul1计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* mul2_saturation: bool 类型, 表示RoPE中的mul2计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* add_saturation: bool 类型, 表示RoPE中的add计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
 * out_name: output name, string类型，默认为None。
 
 返回值
@@ -5113,3 +5113,69 @@ rope
 处理器支持
 """""""""""
 * BM1684X：输入数据类型可以是FLOAT32,FLOAT16和INT类型。
+
+
+multi_scale_deformable_attention
+:::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def multi_scale_deformable_attention(
+        query: Tensor,
+        value: Tensor,
+        key_padding_mask: Tensor,
+        reference_points: Tensor,
+        sampling_offsets_weight: Tensor,
+        sampling_offsets_bias_ori: Tensor,
+        attention_weights_weight: Tensor,
+        attention_weights_bias_ori: Tensor,
+        value_proj_weight: Tensor,
+        value_proj_bias_ori: Tensor,
+        output_proj_weight: Tensor,
+        output_proj_bias_ori: Tensor,
+        spatial_shapes: List[List[int]],
+        embed_dims: int,
+        num_heads: int = 8,
+        num_levels: int = 4,
+        num_points: int = 4,
+        out_name: str = None):
+
+        #pass
+
+功能描述
+"""""""""""
+对输入进行多尺度可变形注意力机制，具体功能可参考https://github.com/open-mmlab/mmcv/blob/main/mmcv/ops/multi_scale_deform_attn.py:MultiScaleDeformableAttention:forward，该操作的实现方式与官方有所不同。
+目前只支持batch_size=1的情况。
+该操作属于 **本地操作** 。
+
+参数说明
+"""""""""""
+* query：Tensor类型，Transformer的查询张量，形状为 (1, num_query, embed_dims)。
+* value：Tensor类型，值投影张量，形状为 (1, num_key, embed_dims)。
+* key_padding_mask: Tensor类型，查询张量的mask，形状为 (1, num_key)。
+* reference_points: Tensor类型，归一化的参考点，形状为 (1, num_query, num_levels, 2)，所有元素的范围在 [0, 1] 之间，左上角为 (0,0)，右下角为 (1,1)，包括填充区域。
+* sampling_offsets_weight: Tensor类型，计算采样偏移量全连接层的权重，形状为 (embed_dims, num_heads\*num_levels\*num_points\*2)。
+* sampling_offsets_bias_ori: Tensor类型，计算采样偏移量全连接层的偏置，形状为 (num_heads\*num_levels\*num_points\*2)。
+* attention_weights_weight: Tensor类型，计算注意力权重全连接层的权重，形状为 (embed_dims, num_heads\*num_levels\*num_points)。
+* attention_weights_bias_ori: Tensor类型，计算注意力权重全连接层的偏置，形状为 (num_heads\*num_levels\*num_points)。
+* value_proj_weight: Tensor类型，计算值投影全连接层的权重，形状为 (embed_dims, embed_dims)。
+* value_proj_bias_ori: Tensor类型，计算值投影全连接层的偏置，形状为 (embed_dims)。
+* output_proj_weight: Tensor类型，计算输出投影全连接层的权重，形状为 (embed_dims, embed_dims)。
+* output_proj_bias_ori: Tensor类型，计算输出投影全连接层的偏置，形状为 (embed_dims)。
+* spatial_shapes: List[List[int]]类型，不同层级特征的空间形状，形状为 (num_levels, 2)，最后一个维度表示 (h, w)。
+* embed_dims: int类型，查询、键、值的hidden_size。
+* num_heads: int类型，注意力头数，默认值为8。
+* num_levels: int类型，多尺度注意力的层级数，默认值为4。
+* num_points: int类型，每个层级的采样点数，默认值为4。
+* out_name: string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型为query.dtype。
+
+处理器支持
+"""""""""""
+* BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
+* BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。

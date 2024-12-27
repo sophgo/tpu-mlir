@@ -201,6 +201,7 @@ class TPULANG_IR_TESTER(object):
             "SelfAttnBlock": (self.test_SelfAttnBlock,  Y, Y),
             "SwinT": (self.test_SwinT,                  N, N),
             "MobilenetBlock": (self.test_MobilenetBlock,Y, Y),
+            "MultiScaleDeformableAttention": (self.test_MultiScaleDeformableAttention, Y, Y),
             "VitL": (self.test_Vit_L,                   Y, Y),
             "VitL16": (self.test_Vit_L_f16,             Y, Y),
             "VitB": (self.test_Vit_B,                   Y, Y),
@@ -3671,6 +3672,73 @@ class TPULANG_IR_TESTER(object):
                 assert(os.system(deploy_cmd) == 0)
 
         _test_mobilenet_block([1, 1, 28, 28])
+
+    #######################################################################
+    # MultiScaleDeformableAttention
+    # ------------
+    def test_MultiScaleDeformableAttention(self, case_name):
+        """MultiScaleDeformableAttention"""
+
+        @tpulang(self.chip)
+        def _test_multi_scale_deformable_attention(
+            dtype="float32",
+            bs=1,
+            num_query=17821,
+            num_value=17821,
+            embed_dims=256,
+            num_heads=8,
+            num_levels=4,
+            num_points=4,
+            spatial_shapes=[[100, 134], [50, 67], [25, 34], [13, 17]],
+        ):
+            assert bs == 1
+            query_data = np.random.randn(bs, num_query, embed_dims).astype(dtype)
+            value_data = np.random.randn(bs, num_value, embed_dims).astype(dtype)
+            key_padding_mask_data = np.zeros((bs, num_query), dtype=dtype)
+            reference_points_data = np.random.randn(bs, num_query, num_points, 2).astype(dtype)
+            sampling_offsets_weight_data = np.random.randn(embed_dims, num_heads*num_levels*num_points*2).astype(dtype)
+            sampling_offsets_bias_data = np.random.randn(num_heads*num_levels*num_points*2).astype(dtype)
+            attention_weights_weight_data = np.random.randn(embed_dims, num_heads*num_levels*num_points).astype(dtype)
+            attention_weights_bias_data = np.random.randn(num_heads*num_levels*num_points).astype(dtype)
+            value_proj_weight_data = np.random.randn(embed_dims, embed_dims).astype(dtype)
+            value_proj_bias_data = np.random.randn(embed_dims).astype(dtype)
+            output_proj_weight_data = np.random.randn(embed_dims, embed_dims).astype(dtype)
+            output_proj_bias_data = np.random.randn(embed_dims).astype(dtype)
+            query = tpul.Tensor(dtype=dtype, shape=[bs, num_query, embed_dims], data=query_data)
+            value = tpul.Tensor(dtype=dtype, shape=[bs, num_value, embed_dims], data=value_data)
+            key_padding_mask = tpul.Tensor(dtype=dtype, shape=[bs, num_query], data=key_padding_mask_data)
+            reference_points = tpul.Tensor(dtype=dtype, shape=[bs, num_query, num_points, 2], data=reference_points_data)
+            sampling_offsets_weight = tpul.Tensor(dtype=dtype, shape=[embed_dims, num_heads*num_levels*num_points*2], data=sampling_offsets_weight_data, ttype="coeff")
+            sampling_offsets_bias = tpul.Tensor(dtype=dtype, shape=[num_heads*num_levels*num_points*2], data=sampling_offsets_bias_data, ttype="coeff")
+            attention_weights_weight = tpul.Tensor(dtype=dtype, shape=[embed_dims, num_heads*num_levels*num_points], data=attention_weights_weight_data, ttype="coeff")
+            attention_weights_bias = tpul.Tensor(dtype=dtype, shape=[num_heads*num_levels*num_points], data=attention_weights_bias_data, ttype="coeff")
+            value_proj_weight = tpul.Tensor(dtype=dtype, shape=[embed_dims, embed_dims], data=value_proj_weight_data, ttype="coeff")
+            value_proj_bias = tpul.Tensor(dtype=dtype, shape=[embed_dims], data=value_proj_bias_data, ttype="coeff")
+            output_proj_weight = tpul.Tensor(dtype=dtype, shape=[embed_dims, embed_dims], data=output_proj_weight_data, ttype="coeff")
+            output_proj_bias = tpul.Tensor(dtype=dtype, shape=[embed_dims], data=output_proj_bias_data, ttype="coeff")
+
+            output = tpul.multi_scale_deformable_attention(
+                query,
+                value,
+                key_padding_mask,
+                reference_points,
+                sampling_offsets_weight,
+                sampling_offsets_bias,
+                attention_weights_weight,
+                attention_weights_bias,
+                value_proj_weight,
+                value_proj_bias,
+                output_proj_weight,
+                output_proj_bias,
+                spatial_shapes,
+                embed_dims,
+                num_heads,
+                num_levels,
+                num_points,
+            )
+            self.compile_and_check(self.unique_name(case_name), [query, value, key_padding_mask, reference_points], [output])
+
+        _test_multi_scale_deformable_attention()
 
     #######################################################################
     # TopK
