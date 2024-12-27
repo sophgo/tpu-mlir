@@ -235,7 +235,8 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type, int6
       spec.addr = ginfo.out_addr;
     }
   } else {
-    spec.addr = module::getAddress(v);
+    // ensure spec.addr is never 0 to prevent the backend from skipping nodechip.
+    spec.addr = (module::getAddress(v) == 0) ? 1 : module::getAddress(v);
   }
   spec.dtype = getDataType(v);
   if (group_type == GROUP_NORMAL || group_type == GROUP_3D ||

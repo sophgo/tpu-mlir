@@ -135,7 +135,7 @@ ArrayAttr tpu::WhereOp::getIndexingMaps() {
   auto out_map = AffineMap::getMultiDimIdentityMap(num_dims, ctx);
   auto empty_map = AffineMap::get(num_dims, 0, ctx);
   for (int i = 0 ; i < num_operands - 1; i++) {
-    if (!isa<top::NoneOp>(getOperand(i).getDefiningOp())) {
+    if (getOperand(i).isa<BlockArgument>() || !isa<top::NoneOp>(getOperand(i).getDefiningOp())) {
       indexingMaps.push_back(out_map);
     } else {
       indexingMaps.push_back(empty_map);
