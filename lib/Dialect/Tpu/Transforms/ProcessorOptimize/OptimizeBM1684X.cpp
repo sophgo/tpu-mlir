@@ -4868,7 +4868,59 @@ private:
     return result;
   }
 };
+struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
 
+ WhereBnbwdFusePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::BatchNormBwdOp>(
+            context, "WhereBnbwdFusePattern", benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::BatchNormBwdOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto where_op =
+        dyn_cast_or_null<tpu::WhereOp>(op.getOperand(0).getDefiningOp());
+    if(!where_op)
+      return failure();
+    auto batchnormfwd_op =
+        dyn_cast_or_null<tpu::BatchNormTrainOp>(where_op.getOperand(0).getDefiningOp());
+    // auto input_shape = module::getShape(where_op.getOperand(0));
+    // if(input_shape.size() != 4 || input_shape[3] < 56)
+    //   return failure();
+    std::vector<Value> operands;
+    if(!batchnormfwd_op){
+      return failure();
+      operands.push_back(where_op.getOperand(0));
+    } else {
+      operands.push_back(module::getNoneOp(op));
+    }
+    operands.push_back(where_op.getOperand(1));
+    operands.push_back(op.getOperand(1));
+    operands.push_back(op.getOperand(2));
+    if(!batchnormfwd_op){
+      operands.push_back(module::getNoneOp(op));
+    } else {
+      operands.push_back(batchnormfwd_op.getOperand(4));
+    }
+    operands.push_back(op.getOperand(3));
+    operands.push_back(op.getOperand(4));
+    operands.push_back(module::getNoneOp(op));
+    std::vector<Type> new_types;
+    new_types.reserve(3);
+    for (int i = 0; i < 3; i++) {
+      new_types.push_back(op.getResult(i).getType());
+    }
+    auto whereBnbwdOp = rewriter.create<tpu::WhereBnbwdOp>(
+        op->getLoc(), new_types, operands, op->getAttrs());
+    whereBnbwdOp->setAttr("do_recompute", rewriter.getBoolAttr(batchnormfwd_op != NULL));
+    rewriter.replaceAllUsesWith(op->getResult(0),
+                                  whereBnbwdOp.getResult(0));
+    rewriter.replaceAllUsesWith(op->getResult(1),
+                                  whereBnbwdOp.getResult(1));
+    rewriter.replaceAllUsesWith(op->getResult(2),
+                                  whereBnbwdOp.getResult(2));
+    return success();
+  }
+};
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -4918,7 +4970,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 MoveReshapeInSubGraphPattern,
                 SwapDimMerge,
                 MatMulRequantIntFusion,
-                RemoveReshape
+                RemoveReshape,
+                WhereBnbwdFusePattern
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on
