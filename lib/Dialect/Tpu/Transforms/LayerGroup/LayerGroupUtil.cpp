@@ -560,7 +560,7 @@ get_group_max_secs(const LgInfo &lg_info,
 
       if (mode != RunMode::TPU_DYNAMIC &&
           (lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C
-            || (lg_info.type == GROUP_NORMAL && isa<tpu::BatchNormBwdOp>(op))) &&
+            || (lg_info.type == GROUP_NORMAL && (isa<tpu::BatchNormBwdOp>(op) || isa<tpu::WhereOp>(op)))) &&
           succeeded(lgOp.AllowDataSplit(1, lg_info.type))) {
         int64_t csecs = ceiling_func(c, Arch::NPU_NUM);
         max_csecs = std::min(max_csecs, csecs);
