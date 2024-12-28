@@ -19,6 +19,10 @@ void tpu::BatchNormBwdOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  // temp solution for bnbwd lg cycle calculate
+  if (input_spec->at(0).addr == 0) {
+    input_spec->at(0).addr = 1;
+  }
 
   batchnorm_backward_global_param_t param = {0};
   BM168x::call_global_func("backend_api_batchnorm_backward_global", &param,
