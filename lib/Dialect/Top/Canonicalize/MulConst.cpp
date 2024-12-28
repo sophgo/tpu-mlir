@@ -82,7 +82,7 @@ public:
   }
 };
 
-// merge into conv or matmul
+// conv/matmul -> (reshape) -> mulconst => conv/matmul -> (reshape)
 struct MergeMulConst : public OpRewriterPatternEx<MulConstOp> {
 public:
   MergeMulConst(MLIRContext *context)
@@ -92,6 +92,13 @@ public:
     double const_val = op.getConstVal().convertToDouble();
     bool do_relu = op.getDoRelu();
     auto formerOp = op.getInput().getDefiningOp();
+    auto firstFormerOp = formerOp;
+    while (isa<top::ReshapeOp>(formerOp)) {
+        if (!formerOp->getResult(0).hasOneUse()) {
+            return failure();
+        }
+        formerOp = formerOp->getOperand(0).getDefiningOp();
+    }
     if (!formerOp->getResult(0).hasOneUse()) {
       return failure();
     }
@@ -152,11 +159,13 @@ public:
                                  weight_type.getShape(), storage_type);
       formerOp->setOperand(i, new_weight);
     }
-    formerOp->setLoc(op.getLoc());
+    module::setLocSuffix(formerOp, "withMulConst");
+    firstFormerOp->setLoc(op.getLoc());
     if (do_relu) {
       formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
     }
     rewriter.replaceOp(op, {op.getInput()});
+
     return success();
   }
 };
