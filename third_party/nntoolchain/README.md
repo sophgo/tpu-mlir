@@ -42,13 +42,15 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
 #bm1690 sha256: 016af230fe5d2ebe52d990add9e0b97787587ff5
-# 
-# - ed25c61e2c7a482128ff63725effc01b263c0d0d
+# sd3 per revive: - ea23a009797ce4102c4995524131cb2868d9016f
+# debugger bug: - ed25c61e2c7a482128ff63725effc01b263c0d0d
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
 release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
+cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
+
 export EXTRA_CONFIG="-DDEBUG=ON -DUSING_FW_DEBUG=ON" && rebuild_test sgdnn
 cp build/firmware_core/libtpuv7_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 unset EXTRA_CONFIG && rebuild_firmware
