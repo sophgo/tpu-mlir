@@ -666,7 +666,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         op_name = command_list[-1].op_name
         num = 0
         if op_name == end_name:
-            for i in command_list[::-2]:
+            for i in command_list[::-1][1:]:
                 if i.op_name == end_name:
                     num += 1
         for _ in range(num):
