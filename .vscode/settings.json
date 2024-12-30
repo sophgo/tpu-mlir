@@ -4,6 +4,7 @@
         "*.txt": "makefile",
         "*.go": "go",
         "*.def": "cpp",
+        "*.pl": "cpp",
         "functional": "cpp",
         "memory": "cpp",
         "optional": "cpp",

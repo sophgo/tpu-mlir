@@ -25,7 +25,7 @@ void Attention::setup(float *input, float *keys, float *values,
                       float *queries_weight, float *queries_bias,
                       float *keys_weight, float *keys_bias,
                       float *values_weight, float *values_bias,
-                      float *out_weight, float *out_bias, float *musk,
+                      float *out_weight, float *out_bias, float *mask,
                       float *table, float *output, int64_t *quant_param,
                       int64_t batch, int64_t M_q, int64_t M_k, int64_t N_q,
                       int64_t N_k, int64_t d, float scale, bool add_result,
@@ -38,7 +38,7 @@ void Attention::setup(float *input, float *keys, float *values,
   add_result_ = add_result;
   dtype_ = dtype;
   p_table = table;
-  p_musk = musk;
+  p_mask = mask;
   if (keys == nullptr) {
     keys = input;
   }
@@ -94,14 +94,14 @@ void Attention::setup(float *input, float *keys, float *values,
               0, 0, 1, 0, 0, 0);
   std::vector<int64_t> lshape = {batch, M_q, M_k};
   // binary
-  if (musk != nullptr) {
+  if (mask != nullptr) {
     data_binary = std::make_shared<std::vector<float>>(num_elem);
     p_binary = data_binary->data();
     binary = new Binary();
     // std::vector<int64_t> lshape = {batch, M_q, M_k};
     std::vector<int64_t> rshape = {batch, 1, M_k};
     (*(Binary *)binary)
-        .hs(p_mat0, musk, lshape, rshape)
+        .hs(p_mat0, mask, lshape, rshape)
         .dst(p_binary, lshape)
         .algorithem(algorithm::binary_add)
         .setup();
@@ -168,17 +168,17 @@ void requant(float *data, int64_t num, int64_t mul = 1, int rshift = 0,
 }
 
 const float MAX_VAL = 127;
-void softmax_with_musk(float *output, float *input, float *exp_table,
-                       float *musk, float scale, int zp, int n, int c, int w) {
-  if (musk != nullptr) {
+void softmax_with_mask(float *output, float *input, float *exp_table,
+                       float *mask, float scale, int zp, int n, int c, int w) {
+  if (mask != nullptr) {
 #pragma omp parallel for schedule(static, omp_schedule(w))
     for (int i = 0; i < w; ++i) {
-      musk[i] = (float)(musk[i] != 0) * 255.f;
+      mask[i] = (float)(mask[i] != 0) * 255.f;
     }
 #pragma omp parallel for schedule(static, omp_schedule(w))
     for (int i = 0; i < n * c; ++i) {
       for (int j = 0; j < w; ++j) {
-        input[i * w + j] = to_int8(input[i * w + j] - musk[j]);
+        input[i * w + j] = to_int8(input[i * w + j] - mask[j]);
       }
     }
   }
@@ -239,7 +239,7 @@ void Attention::run() {
     requant(p_values, v_data->size(), v_mul, v_sft, v_zp);
     ((MatMul *)matmul0)->run();
     requant(p_mat0, data_0->size(), m0_mul, m0_sft, m0_zp);
-    softmax_with_musk(p_softmax, p_mat0, p_table, p_musk, scale_, s_zp, batch_,
+    softmax_with_mask(p_softmax, p_mat0, p_table, p_mask, scale_, s_zp, batch_,
                       M_q_, M_k_);
     ((MatMul *)matmul1)->run();
     requant(p_mat1, data_1->size(), m1_mul, m1_sft, m1_zp);

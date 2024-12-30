@@ -67,7 +67,7 @@ top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op,
   } else {
     operands_a.push_back(none_op);
   }
-  operands_a.push_back(op.getMusk());
+  operands_a.push_back(op.getMask());
   int64_t dim = module::getShape(weight_q)[1];
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(1)));

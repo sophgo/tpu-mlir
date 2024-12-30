@@ -2319,7 +2319,7 @@ class TORCH_IR_TESTER(object):
 
     def test_AttentionNew(self):
 
-        def _test_attention0(shape, d, head, has_musk=True):
+        def _test_attention0(shape, d, head, has_mask=True):
 
             class Model(nn.Module):
 
@@ -2333,7 +2333,7 @@ class TORCH_IR_TESTER(object):
                     self.v_b = torch.randn((1, 1, d*head))
                     self.o_w = torch.randn((d*head, shape[2])) / np.sqrt(d)
                     self.o_b = torch.randn((1, 1, shape[2]))
-                    self.musk = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 10000)
+                    self.mask = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 10000)
 
                 def forward(self, x):
                     q = torch.matmul(x, self.q_w) + self.q_b
@@ -2345,8 +2345,8 @@ class TORCH_IR_TESTER(object):
                     k = k.transpose(3,2)
                     m0 = torch.matmul(q, k)
                     m0 = m0 / np.sqrt(d)
-                    if has_musk:
-                        m0 = m0 + self.musk
+                    if has_mask:
+                        m0 = m0 + self.mask
                     m0 = torch.softmax(m0, 3)
                     v = torch.matmul(x, self.v_w) + self.v_b
                     v = v.reshape((shape[0], shape[1], head, d))

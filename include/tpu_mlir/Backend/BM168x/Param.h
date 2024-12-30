@@ -1516,7 +1516,7 @@ typedef struct attention_common_spec {
   int head;
   float scale;
   int hasbias;
-  int hasmusk;
+  int hasmask;
   int input_num;
   int dim;
   int quant_param[16];
@@ -2237,8 +2237,8 @@ typedef struct randn_like_spec {
 } randn_like_spec_t;
 
 typedef struct maxpooling_indices_bwd {
-    int kernels[2];
-    int strides[2];
-    int paddings[2];
+  int kernels[2];
+  int strides[2];
+  int paddings[2];
 } maxpooling_indices_bwd_spec_t;
 #endif

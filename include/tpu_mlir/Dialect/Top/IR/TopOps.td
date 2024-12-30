@@ -927,7 +927,7 @@ def Top_AttentionOp: Top_Op<"Attention"> {
     AnyTensorOrNone:$values_bias,
     AnyTensor:$out_weight,
     AnyTensorOrNone:$out_bias,
-    AnyTensorOrNone:$musk,
+    AnyTensorOrNone:$mask,
     F64Attr:$scale,
     I64Attr:$head,
     DefaultValuedAttr<I64Attr, "0">:$dim,

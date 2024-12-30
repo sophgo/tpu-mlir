@@ -1019,7 +1019,7 @@ class TPULANG_IR_TESTER(object):
             weight = self.coeff_tensor(shape, dtype=dtype, scale=1/np.sqrt(shape[0]))
             bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="float32", scale=0.2)
             return tpul.matmul(x, weight, bias, out_dtype=dtype)
-        def attention_block(x0, x1, x2, shape, d, head, musk, dtype="float32"):
+        def attention_block(x0, x1, x2, shape, d, head, mask, dtype="float32"):
             B = shape[0]
             S_q = shape[1]
             H_q = shape[2]
@@ -1042,7 +1042,7 @@ class TPULANG_IR_TESTER(object):
                 m0 = tpul.div(m0, np.sqrt(d))
             else:
                 m0 = tpul.mul(m0, 1/np.sqrt(d))
-            m0 = tpul.add(m0, musk) if musk is not None else m0
+            m0 = tpul.add(m0, mask) if mask is not None else m0
             m0 = tpul.softmax(m0, 3)
             m1 = tpul.matmul(m0, v, out_dtype=dtype)
             m1 = tpul.permute(m1, [0, 2, 1, 3])
@@ -1059,9 +1059,9 @@ class TPULANG_IR_TESTER(object):
             out = tpul.add(norm, mat1)
             return out
 
-        def transformer_block(x, shape, d, head, musk, dtype="float32"):
+        def transformer_block(x, shape, d, head, mask, dtype="float32"):
             norm = self.layer_norm_op(x, shape[2], 2)
-            self_atten = attention_block(norm, norm, norm, shape, d, head, musk, dtype=dtype)
+            self_atten = attention_block(norm, norm, norm, shape, d, head, mask, dtype=dtype)
             add = tpul.add(norm, self_atten)
             mlp = mlp_block(add, shape, dtype=dtype)
             return mlp
@@ -1085,12 +1085,12 @@ class TPULANG_IR_TESTER(object):
         def _test_model_def(in_shape, d, head, num, dtype='float32', is_quantized=True):
             x_data = rand_data(in_shape, dtype, -10, 10)
             x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
-            musk_num = np.random.randint(2, in_shape[1]+ 1)
-            musk_data = np.hstack((np.array([1] * musk_num), np.array([0] * (in_shape[1] - musk_num)))).astype(dtype)
-            musk = tpul.Tensor(dtype=dtype, shape=[in_shape[0], in_shape[1]], data=musk_data)
-            out0, out1 = bert(x, musk, in_shape, d, head, num, dtype=dtype)
+            mask_num = np.random.randint(2, in_shape[1]+ 1)
+            mask_data = np.hstack((np.array([1] * mask_num), np.array([0] * (in_shape[1] - mask_num)))).astype(dtype)
+            mask = tpul.Tensor(dtype=dtype, shape=[in_shape[0], in_shape[1]], data=mask_data)
+            out0, out1 = bert(x, mask, in_shape, d, head, num, dtype=dtype)
             case_unique_name = self.unique_name(case_name)
-            self.compile_and_check(case_unique_name, [x, musk], [out0, out1], is_quantized=is_quantized)
+            self.compile_and_check(case_unique_name, [x, mask], [out0, out1], is_quantized=is_quantized)
             return case_unique_name
 
         names = []
@@ -1110,7 +1110,7 @@ class TPULANG_IR_TESTER(object):
             mat = tpul.matmul_int(x, weight, bias, input_zp=0, right_zp=0, out_dtype='int32')
             return tpul.requant_int(mat, multi, shift, 0, 2, dtype, round_mode='half_away_from_zero')
 
-        def attention_block(x0, x1, x2, shape, d, head, musk=None, dtype="int8"):
+        def attention_block(x0, x1, x2, shape, d, head, mask=None, dtype="int8"):
             B = shape[0]
             S_q = shape[1]
             H_q = shape[2]
@@ -1132,7 +1132,7 @@ class TPULANG_IR_TESTER(object):
             m0 = tpul.requant_int(m0, 8158145, -30, 0, 2, dtype, round_mode='half_away_from_zero')
             dq0 = tpul.dequant_int_to_fp(m0, 0.875, 0)
             div0 = tpul.div(dq0, np.sqrt(d))
-            m0 = tpul.add(div0, musk) if musk is not None else div0
+            m0 = tpul.add(div0, mask) if mask is not None else div0
             m0 = tpul.softmax(m0, 3)
             rq0 = tpul.requant_fp_to_int(m0, 0.0078125, 0, 2, dtype)
             m1 = tpul.matmul_int(rq0, v, input_zp=0, right_zp=0, out_dtype='int32')
@@ -1204,7 +1204,7 @@ class TPULANG_IR_TESTER(object):
             mat = tpul.matmul_int(x, weight, bias, input_zp=0, right_zp=0, out_dtype='int32')
             return tpul.requant_int(mat, multi, shift, 0, 2, dtype, round_mode='half_away_from_zero', rq_axis=-1, fuse_rq_to_matmul=True)
 
-        def attention_block2(x0, x1, x2, shape, d, head, musk=None, dtype="int8"):
+        def attention_block2(x0, x1, x2, shape, d, head, mask=None, dtype="int8"):
             B = shape[0]
             S_q = shape[2]
             H_q = shape[3]
@@ -1289,7 +1289,7 @@ class TPULANG_IR_TESTER(object):
             weight = self.coeff_tensor(shape, dtype=dtype, scale=1/np.sqrt(shape[0]))
             bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="float32", scale=0.2)
             return tpul.matmul(x, weight, bias, out_dtype=dtype)
-        def attention_block(x0, x1, x2, shape, d, head, musk=None, dtype="float32"):
+        def attention_block(x0, x1, x2, shape, d, head, mask=None, dtype="float32"):
             B = shape[0]
             S_q = shape[1]
             H_q = shape[2]
@@ -1312,7 +1312,7 @@ class TPULANG_IR_TESTER(object):
                 m0 = tpul.div(m0, np.sqrt(d))
             else:
                 m0 = tpul.mul(m0, 1/np.sqrt(d))
-            m0 = tpul.add(m0, musk) if musk is not None else m0
+            m0 = tpul.add(m0, mask) if mask is not None else m0
             m0 = tpul.softmax(m0, 3)
             m1 = tpul.matmul(m0, v, out_dtype=dtype)
             m1 = tpul.permute(m1, [0, 2, 1, 3])
@@ -1416,7 +1416,7 @@ class TPULANG_IR_TESTER(object):
             weight = self.coeff_tensor(shape, dtype=dtype, scale=1/np.sqrt(shape[0]))
             bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="float32", scale=0.2)
             return tpul.matmul(x, weight, bias, out_dtype=dtype)
-        def attention_block(x0, shape, d, head, musk=None, musk1=None, dtype="float32"):
+        def attention_block(x0, shape, d, head, mask=None, mask1=None, dtype="float32"):
             B = shape[0]
             S = shape[1]
             H = shape[2]
@@ -1431,8 +1431,8 @@ class TPULANG_IR_TESTER(object):
             q = tpul.mul(q, 1/np.sqrt(d))
             k = tpul.permute(k, [0, 1, 3, 2])
             m0 = tpul.matmul(q, k, out_dtype=dtype)
-            m0 = tpul.add(m0, musk) if musk is not None else m0
-            m0 = tpul.add(m0, musk1) if musk1 is not None else m0
+            m0 = tpul.add(m0, mask) if mask is not None else m0
+            m0 = tpul.add(m0, mask1) if mask1 is not None else m0
             m0 = tpul.softmax(m0, 3)
             m1 = tpul.matmul(m0, v, out_dtype=dtype)
             m1 = tpul.permute(m1, [0, 2, 1, 3])
@@ -1475,9 +1475,9 @@ class TPULANG_IR_TESTER(object):
             reshape = tpul.reshape(norm, [shape[0], 8, 7, 8, 7, shape[2]])
             permute = tpul.permute(reshape, [0, 1, 3, 2, 4, 5])
             reshape2 = tpul.reshape(permute, [shape[0] * 64, 49, shape[2]])
-            musk = self.coeff_tensor([1, head, 49, 49], dtype=dtype, scale=1.0)
-            musk1 = None if has_slice else self.coeff_tensor([shape[0] * 64, 1, 49, 49], dtype=dtype, scale=1.0)
-            self_atten = attention_block(reshape2, [shape[0]*64, 49, shape[2]], d, head, musk, musk1, dtype=dtype)
+            mask = self.coeff_tensor([1, head, 49, 49], dtype=dtype, scale=1.0)
+            mask1 = None if has_slice else self.coeff_tensor([shape[0] * 64, 1, 49, 49], dtype=dtype, scale=1.0)
+            self_atten = attention_block(reshape2, [shape[0]*64, 49, shape[2]], d, head, mask, mask1, dtype=dtype)
             reshape3 = tpul.reshape(self_atten, [shape[0], 8, 8, 7, 7, shape[2]])
             permute2 = tpul.permute(reshape3, [0, 1, 3, 2, 4, 5])
             if has_slice:
