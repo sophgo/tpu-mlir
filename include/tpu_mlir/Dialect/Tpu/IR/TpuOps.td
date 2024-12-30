@@ -2784,7 +2784,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    AnyTensorOrNone:$paddingsT,
+    Optional<AnyTensorOrNone>:$paddingsT,
     // for cv18xx reflect mode
     AnyTensorOrNone:$left_select,
     AnyTensorOrNone:$right_select,
