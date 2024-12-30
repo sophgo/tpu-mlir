@@ -70,18 +70,38 @@ template <typename DataType> DataType *malloc(dim4 *shape);
 
 template <typename DataType> void assert(DataType condition);
 
-template <typename DataType>
-void read_npy(DataType *dst, const char *file_path);
-
-template <typename DataType>
-void read_npz(DataType *dst, const char *file_path, const char *tensor_name);
+template <typename DstType>
+void read_npy(DstType *dst, const char *file_path);
 
 template <typename DstType, typename FileType>
-void read_bin(DstType *dst, const char *file_path, FileType file_dtype);
+void read_npy(DstType *dst, const char *file_path, FileType *file_dtype);
+template <typename DstType, typename FileType>
+void read_npy(DstType *dst, const char *file_path) {
+  FileType *file_dtype = (FileType *)0;
+  read_npy(dst, file_path, file_dtype);
+}
 
+template <typename DstType>
+void read_npz(DstType *dst, const char *file_path, const char *tensor_name);
+
+template <typename DstType, typename FileType>
+void read_npz(DstType *dst, const char *file_path, const char *tensor_name,
+              FileType *file_dtype);
+template <typename DstType, typename FileType>
+void read_npz(DstType *dst, const char *file_path, const char *tensor_name) {
+  FileType *file_dtype = (FileType *)0;
+  read_npz(dst, file_path, tensor_name, file_dtype);
+}
+
+template <typename DstType>
+void read_bin(DstType *dst, const char *file_path);
+
+template <typename DstType, typename FileType>
+void read_bin(DstType *dst, const char *file_path, FileType *file_dtype);
 template <typename DstType, typename FileType>
 void read_bin(DstType *dst, const char *file_path) {
-  read_bin(dst, file_path, (FileType)0);
+  FileType *file_dtype = (FileType *)0;
+  read_bin(dst, file_path, file_dtype);
 }
 
 /*****************************************/
@@ -92,4 +112,8 @@ int max(int, int);
 
 float log(float x);
 float sqrt(float x);
+float floor(float x);
+float ceiling(float x);
+float trunc(float x);
+float round(float x);
 } // namespace ppl

@@ -110,7 +110,14 @@
         "slist": "cpp",
         "latch": "cpp",
         "scoped_allocator": "cpp",
-        "syncstream": "cpp"
+        "syncstream": "cpp",
+        "*.ipp": "cpp",
+        "__node_handle": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "stacktrace": "cpp",
+        "expected": "cpp",
+        "*.bak": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,

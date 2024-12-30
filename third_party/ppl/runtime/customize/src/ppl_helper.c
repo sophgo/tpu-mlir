@@ -23,7 +23,7 @@ void get_id_node(CMD_ID_NODE *pid_node) {
   tpu_enable_check_id_node();
 }
 
-char *__ppl_to_string(const __ppl_tensor_info *tensor) {
+char *__ppl_to_string(const __ppl_tensor_info_v2 *tensor) {
   static char buffer[512];
   snprintf(buffer, sizeof(buffer),
            "\n\tshape: {%d, %d, %d, %d}\n"

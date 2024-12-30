@@ -67,7 +67,7 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
                                     PatternRewriter &rewriter) const override {
     // return failure();
     std::vector<Operation *> op_need_del;
-    if (!module::isBM1684X() && !module::isBM1688()) {
+    if (!module::isBM1684X() && !module::isBM1688() && !module::isBM1690Family()) {
       return failure();
     }
     if (module::isHighPrecision()) {
@@ -351,7 +351,8 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
       return failure();
     }
     if ((module::isBM1684X() && (q_head / kv_head > 16)) ||
-        (module::isBM1688() && (q_head / kv_head > 8))) {
+        (module::isBM1688() && (q_head / kv_head > 8)) ||
+        (module::isBM1690Family() && (q_head / kv_head > 16))) {
       return failure();
     }
     if (add) {

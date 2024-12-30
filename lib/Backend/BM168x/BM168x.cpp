@@ -417,14 +417,16 @@ void BM168x::call_local_func(const char *symbolName, void *params,
 
 typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
                                         void *input, void *output,
-                                        const char *chip, void *pid_node);
+                                        const int core_num, const char *chip,
+                                        void *pid_node);
 void BM168x::call_ppl_global_func(const char *symbolName, void *params,
-                                  int param_size, void *input, void *output) {
+                                  int param_size, int core_num, void *input,
+                                  void *output) {
   std::string chip_str = get_ppl_chip();
 
   auto kernel_func =
       instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
-  kernel_func(params, param_size, input, output, chip_str.c_str(),
+  kernel_func(params, param_size, input, output, core_num, chip_str.c_str(),
               (*instance())->cmdid_node);
 }
 

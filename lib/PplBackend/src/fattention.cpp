@@ -39,10 +39,10 @@ using ATTENTION = std::function<int(
     unsigned long long v2, unsigned long long v3, unsigned long long v4,
     unsigned long long v5, int32_t v6, int32_t v7, int32_t v8, int32_t v9,
     int32_t v10, int32_t v11, float v12, int32_t v13, int32_t v14, int32_t v15,
-    int32_t v16, int32_t v17)>;
+    int32_t v16, int32_t v17, int32_t v18)>;
 
 void api_fattention_global(void *param, size_t param_size, void *input_spec,
-                           void *output_spec, const char *chip, void *cmdid) {
+                           void *output_spec,const int core_num, const char *chip, void *cmdid) {
   flash_attention_global_spec_t *_param =
       (flash_attention_global_spec_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
@@ -106,9 +106,9 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
                _param->common.batch, _param->common.mq, _param->common.mk,
                _param->common.dim, _param->common.q_head,
                _param->common.kv_head, _param->common.scale,
-               _param->common.hasmask, dmax, block_m, block_k, block_h);
+               _param->common.hasmask, core_num, dmax, block_m, block_k, block_h);
     CHECK_PPL_RET(ret);
-    if (ret == PplLocalAddrAssignErr) {
+    if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       block_m -= 2;
       block_k -= 2;
       continue;

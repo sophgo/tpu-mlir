@@ -157,7 +157,8 @@ public:
                               void *output);
   // call ppl backend function
   static void call_ppl_global_func(const char *symbolName, void *params,
-                                   int param_size, void *input, void *output);
+                                   int param_size, int core_num, void *input,
+                                   void *output);
   static void call_ppl_local_func(const char *symbolName, void *params,
                                   int param_size, void *info, void *input,
                                   void *output);
@@ -304,8 +305,7 @@ public:
   bmcpu_reshape dl_bmcpu_reshape;
   bmcpu_dtype dl_bmcpu_dtype;
 
-  template <typename FPtrTy>
-  FPtrTy CpuCastToFPtr(const char *symbolName) {
+  template <typename FPtrTy> FPtrTy CpuCastToFPtr(const char *symbolName) {
     assert(cpuopDL.isValid());
     auto fPtr = cpuopDL.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
@@ -384,7 +384,7 @@ public:
   virtual unsigned int get_inst_size(const char *engine_name) = 0;
 
 protected:
-  BM168x(TypeID typeID) : typeID(typeID){};
+  BM168x(TypeID typeID) : typeID(typeID) {};
   virtual ~BM168x() = 0;
   virtual void load_functions();
   virtual void start_env();

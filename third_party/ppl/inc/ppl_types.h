@@ -82,6 +82,19 @@ enum data_type_t {
   DT_UINT64,
 };
 
+enum all_reduce_opcode_t {
+  ALL_REDUCE_NOP = 0,
+  ALL_REDUCE_MUL = 1,
+  ALL_REDUCE_MAX = 2,
+  ALL_REDUCE_MIN = 3,
+  ALL_REDUCE_ADD = 4,
+};
+
+enum all_reduce_psum_t {
+  ALL_REDUCE_PSUM_WO = 0,
+  ALL_REDUCE_PSUM_WR = 1,
+};
+
 struct dim4 {
   int n, c, h, w;
   dim4();
@@ -143,6 +156,7 @@ public:
   template <typename dimT>
   explicit gtensor(dimT &_shape, tensor_mode_t mode, dtype *address = nullptr);
   template <typename dtype2> gtensor<dtype2> &view();
+
   template <typename dtype2, typename dimT> gtensor<dtype2> &view(dimT &_shape);
   template <typename dtype2, typename dimT>
   gtensor<dtype2> &view(dimT &_shape, dimT &_stride);

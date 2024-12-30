@@ -6,10 +6,10 @@ using namespace ppl;
 template <typename T>
 void flash_attention_gqa(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
                          int b, int qm, int kvm, int d, int q_head, int kv_head,
-                         float sqrt_d, int has_mask, const int dmax,
+                         float sqrt_d, int has_mask, const int g_core_num, const int dmax,
                          const int block_m, const int block_k,
                          const int block_h) {
-  ppl::set_core_num(1);
+  ppl::set_core_num(g_core_num);
   int head_rep = q_head / kv_head;
 
   int core_num = get_core_num();
@@ -245,9 +245,9 @@ __KERNEL__ void flash_attention_gqa_f16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
                                         fp16 *ptr_v, fp16 *ptr_mask, int b,
                                         int qm, int kvm, int d, int q_head,
                                         int kv_head, float sqrt_d, int has_mask,
-                                        const int dmax, const int block_m,
+                                        const int g_core_num, const int dmax, const int block_m,
                                         const int block_k, const int block_h) {
   flash_attention_gqa<fp16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
-                            d, q_head, kv_head, sqrt_d, has_mask, dmax, block_m,
+                            d, q_head, kv_head, sqrt_d, has_mask, g_core_num, dmax, block_m,
                             block_k, block_h);
 }

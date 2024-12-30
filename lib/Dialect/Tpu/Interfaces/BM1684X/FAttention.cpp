@@ -22,6 +22,7 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   flash_attention_global_spec_t param = {0};
   auto &common = param.common;
   // get_param(op, common);
+  // common.num_core = module::getCoreNum();
   common.batch = getBatch();
   common.q_head = getQHead();
   common.kv_head = getKvHead();
@@ -32,7 +33,7 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.hasmask = !module::isNone(getMask());
 
   BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
-                               input_spec->data(), output_spec->data());
+                               module::getCoreNum(), input_spec->data(), output_spec->data());
 }
 
 int64_t tpu::FAttentionOp::get_fw_type_bm1684x() { return FW_BMNET_FATTENTION; }
