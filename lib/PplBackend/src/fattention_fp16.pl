@@ -2,14 +2,14 @@
 #include "ppl_wrapper_func.h"
 using namespace ppl;
 
-// only support fp16/bf16
+// some of softmax using f32
 template <bool is_GQA>
-void flash_attention_fp16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k, fp16 *ptr_v,
-                          fp16 *ptr_mask, int b, int qm, int kvm, int d,
-                          int q_head, int kv_head, float sqrt_d, int has_mask,
-                          const int g_core_num, const int dmax,
-                          const int block_m, const int block_k,
-                          const int block_h) {
+void flash_attention_fp16_v1(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
+                             fp16 *ptr_v, fp16 *ptr_mask, int b, int qm,
+                             int kvm, int d, int q_head, int kv_head,
+                             float sqrt_d, int has_mask, const int g_core_num,
+                             const int dmax, const int block_m,
+                             const int block_k, const int block_h) {
   ppl::set_core_num(g_core_num);
   int head_rep = q_head / kv_head;
 
@@ -208,9 +208,9 @@ __KERNEL__ void flash_attention_gqa_f16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
                                         const int g_core_num, const int dmax,
                                         const int block_m, const int block_k,
                                         const int block_h) {
-  flash_attention_fp16<true>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
-                             d, q_head, kv_head, sqrt_d, has_mask, g_core_num,
-                             dmax, block_m, block_k, block_h);
+  flash_attention_fp16_v1<true>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
+                                kvm, d, q_head, kv_head, sqrt_d, has_mask,
+                                g_core_num, dmax, block_m, block_k, block_h);
 }
 
 __KERNEL__ void flash_attention_mha_f16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
@@ -220,7 +220,7 @@ __KERNEL__ void flash_attention_mha_f16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
                                         const int g_core_num, const int dmax,
                                         const int block_m, const int block_k,
                                         const int block_h) {
-  flash_attention_fp16<false>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
-                              kvm, d, q_head, kv_head, sqrt_d, has_mask,
-                              g_core_num, dmax, block_m, block_k, block_h);
+  flash_attention_fp16_v1<false>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
+                                 kvm, d, q_head, kv_head, sqrt_d, has_mask,
+                                 g_core_num, dmax, block_m, block_k, block_h);
 }

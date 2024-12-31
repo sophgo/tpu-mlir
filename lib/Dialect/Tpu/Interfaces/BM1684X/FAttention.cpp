@@ -31,6 +31,7 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.dim = getDim();
   common.scale = getScale().convertToDouble();
   common.hasmask = !module::isNone(getMask());
+  common.high_precision = module::isHighPrecision();
 
   BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
                                module::getCoreNum(), input_spec->data(),

@@ -71,9 +71,7 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
         !module::isBM1690Family()) {
       return failure();
     }
-    if (module::isHighPrecision()) {
-      return failure();
-    }
+
     auto out_type = module::getStorageType(op.getOutput());
     if (!out_type.isBF16() && !out_type.isF16()) {
       return failure();

@@ -1541,6 +1541,7 @@ typedef struct flash_attention_common_spec {
   int mk;
   float scale;
   int hasmask;
+  bool high_precision;
 } flash_attention_common_spec_t;
 
 typedef struct flash_attention_global_spec {

@@ -1,5 +1,6 @@
 #include "fattention_bf16.h"
 #include "fattention_fp16.h"
+#include "fattention_v2.h"
 #include "helper.h"
 #include "tpu_mlir/Backend/BM168x/Param.h"
 #include <assert.h>
@@ -12,25 +13,54 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-static int bm1688_mha_bf16_decode[3] = {32, 288, 8};
-static int bm1688_mha_bf16_encode[3] = {160, 96, 8};
-static int bm1688_mha_fp16_decode[3] = {32, 352, 8};
-static int bm1688_mha_fp16_encode[3] = {224, 96, 8};
+typedef struct {
+  int block[3]; // block_m,block_k,block_h
+} block_t;
 
-static int bm1688_gqa_bf16_decode[3] = {32, 352, 8};
-static int bm1688_gqa_bf16_encode[3] = {160, 96, 8};
-static int bm1688_gqa_fp16_decode[3] = {32, 352, 8};
-static int bm1688_gqa_fp16_encode[3] = {224, 96, 8};
+static block_t v1_configs[2][2][2][2] = {
+    {{
+         // bm1688 MHA
+         {{32, 288, 8}, {160, 96, 8}}, // bf16
+         {{32, 352, 8}, {224, 96, 8}}  // fp16
+     },
+     {
+         // bm1688 GQA
+         {{32, 160, 16}, {96, 64, 16}}, // bf16
+         {{32, 256, 16}, {160, 96, 16}} // fp16
+     }},
+    {{
+         // bm1684x MHA
+         {{64, 384, 16}, {320, 96, 16}}, // bf16
+         {{64, 512, 16}, {384, 128, 16}} // fp16
+     },
+     {
+         // bm1684x GQA
+         {{64, 512, 16}, {320, 96, 16}}, // bf16
+         {{64, 768, 16}, {384, 128, 16}} // fp16
+     }}};
 
-static int bm1684x_mha_bf16_decode[3] = {64, 384, 16};
-static int bm1684x_mha_bf16_encode[3] = {320, 96, 16};
-static int bm1684x_mha_fp16_decode[3] = {64, 512, 16};
-static int bm1684x_mha_fp16_encode[3] = {384, 128, 16};
-
-static int bm1684x_gqa_bf16_decode[3] = {64, 512, 16};
-static int bm1684x_gqa_bf16_encode[3] = {320, 96, 16};
-static int bm1684x_gqa_fp16_decode[3] = {64, 768, 16};
-static int bm1684x_gqa_fp16_encode[3] = {384, 128, 16};
+// v2
+static block_t v2_configs[2][2][2][2] = {
+    {{
+         // bm1688 MHA
+         {{32, 128, 8}, {160, 64, 8}}, // bf16
+         {{32, 128, 8}, {160, 64, 8}}  // fp16
+     },
+     {
+         // bm1688 GQA
+         {{32, 256, 16}, {96, 64, 16}}, // bf16
+         {{32, 256, 16}, {96, 64, 16}}  // fp16
+     }},
+    {{
+         // bm1684x MHA
+         {{64, 256, 16}, {160, 96, 16}}, // bf16
+         {{64, 256, 16}, {160, 96, 16}}  // fp16
+     },
+     {
+         // bm1684x GQA
+         {{64, 256, 16}, {160, 96, 16}}, // bf16
+         {{64, 256, 16}, {160, 96, 16}}  // fp16
+     }}};
 
 using ATTENTION = std::function<int(
     const char *chip, void *pid_node, unsigned long long v1,
@@ -38,6 +68,38 @@ using ATTENTION = std::function<int(
     unsigned long long v5, int32_t v6, int32_t v7, int32_t v8, int32_t v9,
     int32_t v10, int32_t v11, float v12, int32_t v13, int32_t v14, int32_t v15,
     int32_t v16, int32_t v17, int32_t v18)>;
+
+static ATTENTION get_attention_func(bool is_fp16, bool is_mha,
+                                    bool high_precision) {
+  if (is_mha && is_fp16) {
+    return high_precision ? flash_attention_mha_f16_high_precision
+                          : flash_attention_mha_f16;
+  }
+  if (is_mha && !is_fp16) {
+    return high_precision ? flash_attention_mha_bf16_high_precision
+                          : flash_attention_mha_bf16;
+  }
+  if (!is_mha && is_fp16) {
+    return high_precision ? flash_attention_gqa_f16_high_precision
+                          : flash_attention_gqa_f16;
+  }
+  if (!is_mha && !is_fp16) {
+    return high_precision ? flash_attention_gqa_bf16_high_precision
+                          : flash_attention_gqa_bf16;
+  }
+  // never go here
+  return nullptr;
+}
+
+static int *get_block_split(bool is_fp16, bool is_mha, bool is_decode,
+                            bool is_v2, const std::string &chip) {
+  int chip_idx = (chip == PPL_BM1688) ? 0 : 1; // 0 for bm1688, 1 for bm1684x
+  int mha_idx = is_mha ? 0 : 1;                // 0 for MHA, 1 for GQA
+  int f16_idx = is_fp16 ? 1 : 0;               // 0 for bf16, 1 for fp16
+  int dc_idx = is_decode ? 0 : 1;              // 0 for decode, 1 for encode
+  return is_v2 ? v2_configs[chip_idx][mha_idx][f16_idx][dc_idx].block
+               : v1_configs[chip_idx][mha_idx][f16_idx][dc_idx].block;
+}
 
 void api_fattention_global(void *param, size_t param_size, void *input_spec,
                            void *output_spec, const int core_num,
@@ -59,47 +121,16 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
   bool is_mha = _param->common.q_head == _param->common.kv_head;
   bool is_decode = _param->common.mq == 1;
   bool is_fp16 = in_spec[0].dtype == DTYPE_FP16;
-  int *split = nullptr;
-  ATTENTION func = nullptr;
-  if (chip_str == PPL_BM1688) {
-    if (is_mha) {
-      func = is_fp16 ? flash_attention_mha_f16 : flash_attention_mha_bf16;
-      if (is_decode) {
-        split = is_fp16 ? bm1688_mha_fp16_decode : bm1688_mha_bf16_decode;
-      } else {
-        split = is_fp16 ? bm1688_mha_fp16_encode : bm1688_mha_bf16_encode;
-      }
-    } else {
-      func = is_fp16 ? flash_attention_gqa_f16 : flash_attention_gqa_bf16;
-      if (is_decode) {
-        split = is_fp16 ? bm1688_gqa_fp16_decode : bm1688_gqa_bf16_decode;
-      } else {
-        split = is_fp16 ? bm1688_gqa_fp16_encode : bm1688_gqa_bf16_encode;
-      }
-    }
-  } else {
-    if (is_mha) {
-      func = is_fp16 ? flash_attention_mha_f16 : flash_attention_mha_bf16;
-      if (is_decode) {
-        split = is_fp16 ? bm1684x_mha_fp16_decode : bm1684x_mha_bf16_decode;
-      } else {
-        split = is_fp16 ? bm1684x_mha_fp16_encode : bm1684x_mha_bf16_encode;
-      }
-    } else {
-      func = is_fp16 ? flash_attention_gqa_f16 : flash_attention_gqa_bf16;
-      if (is_decode) {
-        split = is_fp16 ? bm1684x_gqa_fp16_decode : bm1684x_gqa_bf16_decode;
-      } else {
-        split = is_fp16 ? bm1684x_gqa_fp16_encode : bm1684x_gqa_bf16_encode;
-      }
-    }
-  }
-
+  bool is_v2 = _param->common.high_precision;
+  int *split = get_block_split(is_fp16, is_mha, is_decode, is_v2, chip_str);
+  ATTENTION func = get_attention_func(is_fp16, is_mha, is_v2);
   block_m = split[0];
   block_k = split[1];
   block_h = split[2];
 
   while (block_m > 0 && block_k > 0) {
+    printf("fattention block_m:%d, block_k:%d, block_h:%d\n", block_m, block_k,
+           block_h);
     ret = func(
         chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
         _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
@@ -108,11 +139,15 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
         _param->common.hasmask, core_num, dmax, block_m, block_k, block_h);
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
-      block_m -= 2;
-      block_k -= 2;
+      block_m -= 16;
+      block_k -= 16;
       continue;
     }
     break;
+  }
+  if (block_m <= 0 || block_k <= 0) {
+    printf("Error: block split failed!!!\n");
+    exit(-1);
   }
 }
 
