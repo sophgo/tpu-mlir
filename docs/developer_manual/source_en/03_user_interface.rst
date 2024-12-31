@@ -214,7 +214,7 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
      - The names of the output. Use the output of the model if not specified, otherwise output in the order of the specified names
    * - add_postprocess
      - N
-     - add postprocess op into bmodel, set the type of post handle op such as yolov3/yolov3_tiny/yolov5/yolov8/yolov11/ssd
+     - add postprocess op into bmodel, set the type of post handle op such as yolov3/yolov3_tiny/yolov5/yolov8/yolov11/ssd/yolov8_seg
    * - test_input
      - N
      - The input file for verification, which can be an jpg, npy or npz file. No verification will be carried out if it is not specified
