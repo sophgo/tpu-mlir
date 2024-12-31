@@ -1148,12 +1148,7 @@ public:
 
   void update_module_weights(ModuleOp &mOp) {
     std::string old_wfile_name = module::getWeightFileAttr().str();
-    std::string postfix = "weight.npz";
-    std::size_t pos = old_wfile_name.find(postfix);
-    if (pos == -1)
-      module::unreachable("weight file name error");
-    std::string new_wfile_name =
-        old_wfile_name.substr(0, pos) + "_trunc_" + postfix;
+    std::string new_wfile_name = "trunc_" + old_wfile_name;
     auto wFile = std::make_unique<mlir::TensorFile>(old_wfile_name, false);
     std::set<StringRef> npz_names;
     wFile->getAllNames(npz_names);
@@ -1225,7 +1220,9 @@ public:
       MultiSubnetTruncIOWorker().invoke();
       update_module_io_names(g_moduleOp);
     }
-    update_module_weights(g_moduleOp);
+    if (!this->weight_shared) {
+      update_module_weights(g_moduleOp);
+    }
   }
 };
 

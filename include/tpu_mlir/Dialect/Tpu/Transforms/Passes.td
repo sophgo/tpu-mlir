@@ -176,6 +176,8 @@ def TruncIO : Pass<"trunc-io", "ModuleOp"> {
            "new inputs">,
     Option<"outputs", "outputs", "std::string", /*default=*/"",
            "new outputs">,
+    Option<"weight_shared", "weight_shared", "bool", /*default=*/"false",
+           "whether to share weight">,
   ];
 }
 
