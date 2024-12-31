@@ -204,3 +204,31 @@ def npz_permute(args):
         npz_out[name] = d
 
     np.savez(args[0], **npz_out)
+
+def npz_print_diff(args):
+    if len(args) < 3:
+        print("Usage: {} print a.npz b.npz name".format(sys.argv[0]))
+        print("       print all different elements of tensor in a.npz and b.npz")
+        print("Usage: {} print a.npz b.npz name n".format(sys.argv[0]))
+        print("       print top-n different elements of tensor in a.npz and b.npz")
+        exit(-1)
+    npz_a = np.load(args[0])
+    npz_b = np.load(args[1])
+    name = args[2]
+    if name in npz_a.files and name in npz_b.files:
+        adata = npz_a[name].flatten()
+        bdata = npz_b[name].flatten()
+        elem_count = min(np.size(adata), np.size(bdata))
+        max_count = int(args[3]) if len(args) >= 4 else elem_count
+        count = 0
+        print(f"index     adata         bdata")
+        for i in range(elem_count):
+            if adata[i] != bdata[i]:
+                count += 1
+                print(f"{i}: {adata[i]}, {bdata[i]}")
+                if count > max_count:
+                    break
+        if count == 0:
+            print("No difference!")
+    else:
+        print(f"[ERROR] {name} is not a common tensor of {args[0]} and {args[1]}")

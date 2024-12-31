@@ -17,6 +17,7 @@ from numpy_helper.npz_cali_test import npz_cali_test
 
 npz_tool_func = {
     "compare": npz_compare,
+    "print_diff": npz_print_diff,
     "visualize_diff": npz_visualize_diff,
     'dump':npz_dump,
     "extract": npz_extract,
