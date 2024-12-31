@@ -213,7 +213,7 @@ model_transform.py
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后按照该指定名称的顺序做输出
    * - add_postprocess
      - 否
-     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5、yolov8、yolov11、ssd后处理
+     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5、yolov8、yolov11、ssd、yolov8_seg后处理
    * - test_input
      - 否
      - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会正确性验证
