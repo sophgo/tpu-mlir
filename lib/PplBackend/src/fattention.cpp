@@ -1,7 +1,5 @@
-#include "attention_GQA_mlir_bf16.h"
-#include "attention_GQA_mlir_fp16.h"
-#include "attention_MHA_mlir_bf16.h"
-#include "attention_MHA_mlir_fp16.h"
+#include "fattention_bf16.h"
+#include "fattention_fp16.h"
 #include "helper.h"
 #include "tpu_mlir/Backend/BM168x/Param.h"
 #include <assert.h>
@@ -42,7 +40,8 @@ using ATTENTION = std::function<int(
     int32_t v16, int32_t v17, int32_t v18)>;
 
 void api_fattention_global(void *param, size_t param_size, void *input_spec,
-                           void *output_spec,const int core_num, const char *chip, void *cmdid) {
+                           void *output_spec, const int core_num,
+                           const char *chip, void *cmdid) {
   flash_attention_global_spec_t *_param =
       (flash_attention_global_spec_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
@@ -101,12 +100,12 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
   block_h = split[2];
 
   while (block_m > 0 && block_k > 0) {
-    ret = func(chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr,
-               v_spec->addr, _param->common.hasmask ? mask_spec->addr : 0,
-               _param->common.batch, _param->common.mq, _param->common.mk,
-               _param->common.dim, _param->common.q_head,
-               _param->common.kv_head, _param->common.scale,
-               _param->common.hasmask, core_num, dmax, block_m, block_k, block_h);
+    ret = func(
+        chip, cmdid, out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
+        _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
+        _param->common.mq, _param->common.mk, _param->common.dim,
+        _param->common.q_head, _param->common.kv_head, _param->common.scale,
+        _param->common.hasmask, core_num, dmax, block_m, block_k, block_h);
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       block_m -= 2;
