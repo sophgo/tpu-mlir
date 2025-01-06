@@ -1412,13 +1412,15 @@ bool isCV18xx() {
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
-          chip == Chip::CV186X || chip == Chip::MARS3 || chip == Chip::SG2380);
+          chip == Chip::CV186X || chip == Chip::MARS3 || chip == Chip::SG2380 ||
+          chip == Chip::SGTPUV8);
 }
 bool isBM1690Family() { return (chip == Chip::BM1690); }
 bool isSG2380() { return (chip == Chip::SG2380); }
 bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
 bool isMARS3() { return (chip == Chip::MARS3); }
+bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 
 ModuleOp getModuleOp() { return m; }
 
@@ -1606,8 +1608,10 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
         });
 
         if (module::isDebugCmdEnable("dump_all_global_op_out")) {
-          func_op.walk([&](Operation* op) {
-            if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(op) && !isOpInGroup(op)) {
+          func_op.walk([&](Operation *op) {
+            if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(
+                    op) &&
+                !isOpInGroup(op)) {
               for (auto v : op->getResults()) {
                 outputs.push_back(v);
               }
@@ -1671,8 +1675,9 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
     }
   });
   if (module::isDebugCmdEnable("dump_all_global_op_out")) {
-    func.walk([&](Operation* op) {
-      if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(op) && !isOpInGroup(op)) {
+    func.walk([&](Operation *op) {
+      if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(op) &&
+          !isOpInGroup(op)) {
         for (auto v : op->getResults()) {
           outputs.push_back(v);
         }

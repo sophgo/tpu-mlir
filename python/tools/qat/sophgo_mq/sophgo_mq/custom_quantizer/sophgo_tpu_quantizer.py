@@ -36,6 +36,7 @@ def generate_random_string(length):
 @register_model_quantizer("CV181X")
 @register_model_quantizer("CV180X")
 @register_model_quantizer("CV186X")
+@register_model_quantizer("SGTPUV8")
 class SophgoTpuQuantizer(ModelQuantizer):
     """
     We quantize the input tensors and output tensors of all layers,

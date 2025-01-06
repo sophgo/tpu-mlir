@@ -396,6 +396,8 @@ class MODEL_RUN(object):
                     qtable = self.cali_table.replace("_cali_table", "_qtable")
                     if self.chip == 'mars3':
                         qtable = qtable + "_mars3"
+                    if self.chip == 'sgtpuv8':
+                        qtable = qtable + "_sgtpuv8"
                     cmd += [f"--quantize_table {qtable}"]
             if self.ini_content["model_path"].endswith(".tflite") or self.mode.endswith("_asym"):
                 cmd += ["--asymmetric"]

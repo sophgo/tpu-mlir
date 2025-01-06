@@ -3825,7 +3825,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3', 'cv186x', 'bm1690'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3', 'cv186x', 'bm1690', 'sgtpuv8'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")

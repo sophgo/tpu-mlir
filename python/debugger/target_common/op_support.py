@@ -112,6 +112,7 @@ class Target(Enum):
     BM1690 = "BM1690"
     SG2380 = "SG2380"
     MARS3 = "MARS3"
+    SGTPUV8 = "SGTPUV8"
 
 
 class Engine(Enum):

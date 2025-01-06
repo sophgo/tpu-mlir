@@ -73,7 +73,7 @@ class BModelContext:
 
 
 def get_target_context_cls(chip: str) -> Type[BModelContext]:
-    assert chip in {"BM1684X", "BM1684", "BM1688", "BM1690", "CV186X", "SG2380", "MARS3"}
+    assert chip in {"BM1684X", "BM1684", "BM1688", "BM1690", "CV186X", "SG2380", "MARS3", "SGTPUV8"}
 
     context = None
     if chip == "BM1684X":
@@ -99,6 +99,10 @@ def get_target_context_cls(chip: str) -> Type[BModelContext]:
     elif chip == "MARS3":
         from ..target_mars3.context import MARS3Context
         context = MARS3Context
+
+    elif chip == "SGTPUV8":
+        from ..target_sgtpuv8.context import SGTPUV8Context
+        context = SGTPUV8Context
 
     assert context is not None, f"target {chip} not found"
     return context
