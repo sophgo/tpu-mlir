@@ -29,7 +29,7 @@ class TIU:
         self.total_alg_ops_list = []
         self.uArach_rate_list = []
         self.total_uarch_ops_list = []
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type', 'File Line',
+        self.columns = ['Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type', 'File Line',
                         'Function Type', 'Function Name',
                         'Alg Cycle', 'Alg Ops','Asic Cycle', 'Start Cycle', 'End Cycle',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',

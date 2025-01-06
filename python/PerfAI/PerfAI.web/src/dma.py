@@ -11,6 +11,7 @@ import pandas as pd
 from decimal import Decimal
 import os
 import sys
+import glob, re
 
 from utils.utils import *
 
@@ -34,7 +35,7 @@ class DMA(): #GDMA/SDMA/CDMA
         self.total_burst_length = 0
         self.total_xact_cnt = 0
         self.frequency = 0
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type', 'File Line',
+        self.columns = ['Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name', 'Subnet Id', 'Subnet Type', 'File Line',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
                         'Asic Cycle', 'Stall Cycle', 'DDR Bandwidth(GB/s)','L2M Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
@@ -48,6 +49,12 @@ class DMA(): #GDMA/SDMA/CDMA
                         'mask_start_addr_h8', 'mask_start_addr_l32', 'mask_data_format', 'localmem_mask_h32',
                         'localmem_mask_l32',
                         'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'intr_en', 'Msg Id', 'Sd\Wt Count']
+        self.sys_cmd_id = '6';
+        self.sys_wait_id = ['4']
+        if self.dmaType == 'CDMA':
+            self.sys_cmd_id = '7'
+            self.sys_wait_id = ['4', '6']
+
     def dma_engine_type(self):
         if self.dmaType == 'CDMA':
             return '4'
@@ -58,12 +65,42 @@ class DMA(): #GDMA/SDMA/CDMA
             self.dmaType = 'TDMA'
             return '3'
 
+    # def process_file(self, layer_map):
+    #     engineId = self.dma_engine_type()
+    #     # file_name = f"{self.dirpath}/{self.dmaType.lower()}RegInfo_0.txt"
+    #     file_name = os.path.join(self.dirpath,f'{self.dmaType.lower()}RegInfo_0.txt')
+    #     if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
+    #         with open(file_name, "r") as f:
+    #             lines = f.readlines()
+    #             for line in lines:
+    #                 self.linecount += 1
+    #                 if "\t" in line:
+    #                     fields = line.split(': ')
+    #                     attr = fields[0][1:]
+    #                     val = fields[1][:-1]
+    #                     self.chipArgs[attr] = val
+    #                 if f'__{self.dmaType}_REG_INFO__' in line:
+    #                     break
+    #         self.frequency = int(self.chipArgs['DMA Frequency(MHz)'])
+    #         coreNum = int(self.chipArgs['Core Num'])
+    #         for coreId in range(int(coreNum)):
+    #             curDmaRegFile = f"{self.dirpath}/{self.dmaType.lower()}RegInfo" + '_' + str(coreId) + '.txt'
+    #             if os.path.exists(curDmaRegFile) and os.path.getsize(curDmaRegFile) != 0:
+    #                 self.actual_corenum += 1
+    #         dmaDf_list = [] #list of tiu dataframes
+    #         for coreId in range(self.actual_corenum):
+    #             dmaDf_list.append(self.process_data(coreId,engineId,layer_map))
+    #         return dmaDf_list
+    #     else:
+    #         self.dma_cycle_list.append(0)
+    #         return []
     def process_file(self, layer_map):
         engineId = self.dma_engine_type()
         # file_name = f"{self.dirpath}/{self.dmaType.lower()}RegInfo_0.txt"
-        file_name = os.path.join(self.dirpath,f'{self.dmaType.lower()}RegInfo_0.txt')
-        if os.path.exists(file_name) and os.path.getsize(file_name) > 0:
-            with open(file_name, "r") as f:
+        # file_name = os.path.join(self.dirpath,f'{self.dmaType.lower()}RegInfo_0.txt')
+        file_names = sorted(glob.glob(self.dirpath + f"{self.dmaType.lower()}RegInfo_*.txt"))
+        if file_names and os.path.exists(file_names[0]) and os.path.getsize(file_names[0]) > 0:
+            with open(file_names[0], "r") as f:
                 lines = f.readlines()
                 for line in lines:
                     self.linecount += 1
@@ -76,14 +113,25 @@ class DMA(): #GDMA/SDMA/CDMA
                         break
             self.frequency = int(self.chipArgs['DMA Frequency(MHz)'])
             coreNum = int(self.chipArgs['Core Num'])
-            for coreId in range(int(coreNum)):
-                curDmaRegFile = f"{self.dirpath}/{self.dmaType.lower()}RegInfo" + '_' + str(coreId) + '.txt'
-                if os.path.exists(curDmaRegFile) and os.path.getsize(curDmaRegFile) != 0:
-                    self.actual_corenum += 1
-            dmaDf_list = [] #list of tiu dataframes
-            for coreId in range(self.actual_corenum):
-                dmaDf_list.append(self.process_data(coreId,engineId,layer_map))
-            return dmaDf_list
+            if engineId != '4':
+                for coreId in range(int(coreNum)):
+                    curDmaRegFile = f"{self.dirpath}/{self.dmaType.lower()}RegInfo" + '_' + str(coreId) + '.txt'
+                    if os.path.exists(curDmaRegFile) and os.path.getsize(curDmaRegFile) != 0:
+                        self.actual_corenum += 1
+                dmaDf_list = [] #list of tiu dataframes
+                for coreId in range(self.actual_corenum):
+                    dmaDf_list.append(self.process_data(coreId,engineId,layer_map))
+                return dmaDf_list
+            else:
+                self.actual_corenum = 1
+                dmaDf_list = []
+                for f in file_names:
+                    port = eval(re.search(rf"{self.dmaType.lower()}RegInfo_(\d+)\.txt", f).group(1))
+                    data = self.process_data(port,engineId,layer_map)
+                    data.port = port
+                    dmaDf_list.append(data)
+                return dmaDf_list
+
         else:
             self.dma_cycle_list.append(0)
             return []
@@ -151,21 +199,26 @@ class DMA(): #GDMA/SDMA/CDMA
         totalInstRegList = []
         for i in range(len(new_reglist)):
             regDict = new_reglist[i]
-            if regDict['cmd_type'] == '6':
+            # dma_sys do not transfer data
+            if regDict['cmd_type'] == self.sys_cmd_id:
                 regDict['Data Type'] = 'None'
-            if int(regDict['cmd_type']) == 6: # dma_sys do not transfer data
                 regDict['Direction'] = '-'
+            transfer_bytes = 0
+            if regDict['DMA data size(B)'].isnumeric():
+                transfer_bytes = int(regDict['DMA data size(B)'])
             if regDict['Asic Cycle'].isnumeric():
                 DmaCycle += int(regDict['Asic Cycle'])
             if 'DDR' in regDict['Direction'] and regDict['DMA data size(B)'].isnumeric():
-                dmaDdrTotalDataSize += int(regDict['DMA data size(B)'])
-                dmaDdrCycle += float(regDict['Asic Cycle'])
-                dmaDdrBurstLength += int(regDict['gmem_bl_sum'])
-                dmaDdrXactCnt += int(regDict['gmem_xact_cnt'])
+                if self.dmaType != 'CDMA' or transfer_bytes:
+                    dmaDdrTotalDataSize += transfer_bytes
+                    dmaDdrCycle += float(regDict['Asic Cycle'])
+                    dmaDdrBurstLength += int(regDict['gmem_bl_sum'])
+                    dmaDdrXactCnt += int(regDict['gmem_xact_cnt'])
             elif 'L2' in regDict['Direction'] and regDict['DMA data size(B)'].isnumeric():
-                dmaL2TotalDataSize += int(regDict['DMA data size(B)'])
-                dmaL2Cycle += float(regDict['Asic Cycle'])
-            if regDict['cmd_type'] == '6' and regDict['cmd_special_function'] == '4':
+                if self.dmaType != 'CDMA' or transfer_bytes:
+                    dmaL2TotalDataSize += transfer_bytes
+                    dmaL2Cycle += float(regDict['Asic Cycle'])
+            if regDict['cmd_type'] == self.sys_cmd_id and regDict['cmd_special_function'] in self.sys_wait_id:
                 dmaWaitMsgTotalTime += eval(regDict['Asic Cycle'])
             if int(regDict['gmem_xact_cnt']) > 0:
                 regDict['AvgBurstLength'] = Decimal(

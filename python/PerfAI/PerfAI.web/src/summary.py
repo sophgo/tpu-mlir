@@ -68,7 +68,7 @@ class SummaryProcessor:
         if len(temp_timelist) >= len(self.total_time_list):
             self.total_time_list = temp_timelist
         dmaProcessor.dma_cycle_list.append(max(dmaProcessor.dma_cycle_list))
-        last_row = len(self.total_time_list) - 1
+        last_row = len(dmaProcessor.dma_cycle_list) - 1
         dmaProcessor.dma_cycle_list[last_row] = str(
             (Decimal(dmaProcessor.dma_cycle_list[last_row] / dmaProcessor.frequency)).quantize(Decimal("0.00"))) + 'us'
         dmaProcessor.dma_ddr_total_datasize_list.append(sum(dmaProcessor.dma_ddr_total_datasize_list))
@@ -157,6 +157,10 @@ class SummaryProcessor:
         self.data[0] = CoreIdList
         self.data[1] = ParallelismList
         self.data[2] = self.total_time_list
+        max_len = max([len(i)for i in self.data])
+        for i in self.data:
+            if len(i) < max_len:
+                i[1:1] = [0] * (max_len - len(i))
         summaryData = transpose(self.data).tolist()
         summaryDf = pd.DataFrame(summaryData, columns=self.columns, index=None)
         return summaryDf

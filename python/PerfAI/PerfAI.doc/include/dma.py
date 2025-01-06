@@ -36,7 +36,7 @@ class Dma(object):
         :param core_id: the id of current core
         :param writer: the writer of Excel to write
         """
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name',
+        self.columns = ['Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name',
                         'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
                         'Asic Cycle', 'Stall Cycle', 'DDR Bandwidth(GB/s)', 'L2M Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
                         'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
@@ -144,7 +144,7 @@ class Dma(object):
                 self.reg_list.append(reg_dict)
         self.height = len(self.reg_list)
 
-    def add_kpi_field(self):
+    def add_kpi_field(self, is_cdma=False):
         """
         Add some indicators which are convenient for performance analysis artificially.
         :return: None
@@ -152,22 +152,31 @@ class Dma(object):
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
             name_key = (int(reg_dict['cmd_type']))
-            if reg_dict['cmd_type'] == 6:
+            sys_cmd_id = 7 if is_cdma else 6
+            sys_wait_id = [4, 6] if is_cdma else [4]
+            transfer_bytes = 0
+            if reg_dict['cmd_type'] == sys_cmd_id:
                 reg_dict['Data Type'] = 'None'
                 # dma_sys do not transfer data
                 reg_dict['Direction'] = '-'
+                if reg_dict['cmd_special_function'] in sys_wait_id:
+                    self.wait_msg_total_time += reg_dict['Asic Cycle']
+            if isinstance(reg_dict['DMA data size(B)'], int) and reg_dict['DMA data size(B)'] > 0:
+                transfer_bytes = reg_dict['DMA data size(B)']
             self.dma_cycle += int(reg_dict['Asic Cycle'])
             self.stall_cycle += int(reg_dict['Stall Cycle'])
             if 'DDR' in reg_dict['Direction'] and isinstance(reg_dict['DMA data size(B)'], int):
-                self.ddr_total_datasize += reg_dict['DMA data size(B)']
-                self.ddr_total_cycle += reg_dict['Asic Cycle']
-                self.ddr_burst_length_sum += reg_dict['gmem_bl_sum']
-                self.ddr_xact_cnt += reg_dict['gmem_xact_cnt']
+                if not is_cdma or transfer_bytes:
+                    self.ddr_total_datasize += reg_dict['DMA data size(B)']
+                    self.ddr_total_cycle += reg_dict['Asic Cycle']
+                    self.ddr_burst_length_sum += reg_dict['gmem_bl_sum']
+                    self.ddr_xact_cnt += reg_dict['gmem_xact_cnt']
             elif 'L2' in reg_dict['Direction'] and isinstance(reg_dict['DMA data size(B)'], int):
-                self.l2_total_datasize += reg_dict['DMA data size(B)']
-                self.l2_total_cycle += reg_dict['Asic Cycle']
-            if reg_dict['cmd_type'] == 6 and reg_dict['cmd_special_function'] == 4:
-                self.wait_msg_total_time += reg_dict['Asic Cycle']
+                if not is_cdma or transfer_bytes:
+                    self.l2_total_datasize += reg_dict['DMA data size(B)']
+                    self.l2_total_cycle += reg_dict['Asic Cycle']
+            # if reg_dict['cmd_type'] == 6 and reg_dict['cmd_special_function'] == 4:
+            #     self.wait_msg_total_time += reg_dict['Asic Cycle']
             if reg_dict['gmem_xact_cnt'] > 0:
                 reg_dict['AvgBurstLength'] = get_ratio_float_2f(reg_dict['gmem_bl_sum'], reg_dict['gmem_xact_cnt'])
                 reg_dict['Non32ByteRatio'] = get_ratio_float_2f(reg_dict['gmem_n32Ba_sa_cnt'], reg_dict['gmem_xact_cnt'])
@@ -516,8 +525,9 @@ class Cdma(Dma):
                     elif reg_count == 0:
                         fields = row.split(': ')
                         attr = fields[0][1:]
-                        val = fields[1][:-1]
-                        self.chip_arch_dict[attr] = val
+                        if len(fields) > 1:
+                            val = fields[1][:-1]
+                            self.chip_arch_dict[attr] = val
                         idx = 0
                     else:
                         fields = row.split(': ')

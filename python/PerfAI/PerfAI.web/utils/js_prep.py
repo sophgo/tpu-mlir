@@ -55,7 +55,7 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
     ddrBw = pd.to_numeric(chipArchArgs['DDR Max BW(GB/s/Core)'])
     L2Bw = pd.to_numeric(chipArchArgs['L2 Max BW(GB/s)'])
     dependCmds = parse_cmdgroups(file_path)
-    time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name","uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+    time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "global_idx", "func_name","uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
     filter_cols = [time_header.index(c) for c in ["category", "func_type"]]
     # time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type',"uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
     # filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
@@ -64,12 +64,13 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
     if len(sdma_instances[0]) > 0:
         categories.append("TPU_SDMA")
     if len(cdma_instances) > 0:
-        categories.append("TPU_CDMA")
+        for inst in cdma_instances:
+            categories.append(f"TPU_CDMA_PORT{inst.port}")
     if tiu_layer_map or dma_layer_map:
         include_layer = True
         categories.append("TPU_LAYER")
         categories.append("TPU_GROUP_LAYER")
-        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type',"uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "global_idx", "func_name", 'layer_id','layer_name','subnet_id','subnet_type',"uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
         filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
     lmem_size = int(chipArchArgs['TPU Lmem Size(MiB)'])
     lane_num = int(chipArchArgs['NPU Num'])
@@ -94,9 +95,15 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
             if not sdmadf.empty:
                 prepare_data(include_layer, sdmadf, sdmaProcessor.frequency, idx, categories.index("TPU_SDMA"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
 
-        if idx < len(cdma_instances):
-            cdmadf = cdma_instances[idx]
-            prepare_data(include_layer, cdmadf, cdmaProcessor.frequency,idx, categories.index("TPU_CDMA"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
+        # if idx < len(cdma_instances):
+        if idx == 7:
+            for i in range(len(cdma_instances)):
+                cdmadf = cdma_instances[i]
+                prepare_data(include_layer, cdmadf, cdmaProcessor.frequency,idx, categories.index(f"TPU_CDMA_PORT{cdmadf.port}"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
+                # if i == 1:
+                #     prepare_data(include_layer, cdmadf, cdmaProcessor.frequency,idx, categories.index("TPU_CDMA"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
+                # else:
+                #     prepare_data(include_layer, cdmadf, cdmaProcessor.frequency,idx, categories.index("TPU_CDMA1"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
 
     cycle_data_dict = merge_layer_data(cycle_data_dict, categories)
     cycle_data_dict = merge_group_layer_data(cycle_data_dict, categories, file_line_dict)
@@ -139,7 +146,7 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
             js.write(f'window.{keyname} = [{js_content}]\n')
 
 def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycle_data_dict, lmem_op_dict, lane_size):
-    if data.empty:
+    if data is None or data.empty:
         return
     read_directions = ['DDR->LMEM'] + [f'DDR->LMEM{i}' for i in range(8)] + [f'L2M->LMEM{i}' for i in range(8)] + [f'L2M{i}->LMEM{i}' for i in range(8)]
     write_directions = ['LMEM->DDR'] + [f'LMEM{i}->DDR' for i in range(8)] + [f'LMEM{i}->L2M' for i in range(8)] + [f'LMEM{i}->L2M{i}' for i in range(8)]
@@ -168,6 +175,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             data['Function Type'][i] if 'Function Type' in data else '',
             height,
             cmd,
+            data['Global Idx'][i],
             data['Function Name'][i]
         ]
         if if_layer:

@@ -9,7 +9,7 @@
 from functools import partial, lru_cache
 
 import numpy as np
-from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, SYS_TR_ACC_reg
+from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, SYS_TR_ACC_reg, sCDMA_sys_reg as cdma_sys
 from .memmap import *
 from .decoder import Decoder
 from typing import List, Type
@@ -29,6 +29,7 @@ class BM1690Context(BModelContext):
 
     dma_sys = dma_sys
     tiu_sys = tiu_sys
+    cdma_sys = cdma_sys
 
     local_layout_to_stride = local_layout_to_stride
     valid_tag = {1: 0, 2: 1}  # {tag : corresponding index in self.base_addr}
@@ -118,7 +119,7 @@ class BM1690Context(BModelContext):
 
     @classmethod
     def is_sys(cls, cmd: BaseTpuCmd):
-        return isinstance(cmd.reg, (dma_sys, tiu_sys))
+        return isinstance(cmd.reg, (dma_sys, tiu_sys, cdma_sys))
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         assert self.using_cmodel, "2260 currently only support cmodel mode"

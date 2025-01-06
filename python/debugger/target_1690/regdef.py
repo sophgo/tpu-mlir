@@ -5652,6 +5652,510 @@ class DMA_tansfer_reg(atomic_reg):
 
     length: int = 768
 
+class CDMA_send_reg(atomic_reg):
+    OP_NAME = "CDMA_send"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("nchw_copy", ctypes.c_uint64, 1),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("reserved", ctypes.c_uint64, 1),
+        ("src_data_format", ctypes.c_uint64, 4),
+        ("src_start_addr_h13", ctypes.c_uint64, 13),
+        # ("src_start_addr_h13", ctypes.c_uint64, 13),
+        ("psum_op", ctypes.c_uint64, 3),
+        ("src_nstride", ctypes.c_uint64, 32),
+        ("src_cstride", ctypes.c_uint64, 32),
+        ("src_hstride", ctypes.c_uint64, 32),
+        ("src_nsize", ctypes.c_uint64, 16),
+        ("src_csize", ctypes.c_uint64, 16),
+        ("src_hsize", ctypes.c_uint64, 32),
+        ("src_wsize", ctypes.c_uint64, 32),
+        ("src_start_addr_l32", ctypes.c_uint64, 32),
+    ]
+
+    intr_en: int
+    stride_enable: int
+    nchw_copy: int
+    breakpoint: int
+    cmd_type: int
+    cmd_special_function: int
+    reserved: int
+    src_data_format: int
+    src_start_addr_h13: int
+    psum_op: int
+    src_nstride: int
+    src_cstride: int
+    src_hstride: int
+    src_nsize: int
+    src_csize: int
+    src_hsize: int
+    src_wsize: int
+    src_start_addr_l32: int
+
+    length: int = 256
+
+class CDMA_read_reg(atomic_reg):
+    OP_NAME = "CDMA_read"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("nchw_copy", ctypes.c_uint64, 1),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("reserved", ctypes.c_uint64, 1),
+        ("src_data_format", ctypes.c_uint64, 4),
+        ("src_start_addr_h13", ctypes.c_uint64, 13),
+        ("reserved", ctypes.c_uint64, 3),
+        ("dst_start_addr_h13", ctypes.c_uint64, 13),
+        ("reserved", ctypes.c_uint64, 19),
+        ("src_nstride", ctypes.c_uint64, 32),
+        ("src_cstride", ctypes.c_uint64, 32),
+        ("src_hstride", ctypes.c_uint64, 32),
+        ("dst_nstride", ctypes.c_uint64, 32),
+        ("dst_cstride", ctypes.c_uint64, 32),
+        ("dst_hstride", ctypes.c_uint64, 32),
+        ("src_nsize", ctypes.c_uint64, 16),
+        ("src_csize", ctypes.c_uint64, 16),
+        ("src_hsize", ctypes.c_uint64, 32),
+        ("src_wsize", ctypes.c_uint64, 32),
+        ("dst_nsize", ctypes.c_uint64, 16),
+        ("dst_csize", ctypes.c_uint64, 16),
+        ("dst_hsize", ctypes.c_uint64, 32),
+        ("dst_wsize", ctypes.c_uint64, 32),
+        ("src_start_addr_l32", ctypes.c_uint64, 32),
+        ("dst_start_addr_l32", ctypes.c_uint64, 32),
+    ]
+
+    intr_en: int
+    stride_enable: int
+    nchw_copy: int
+    breakpoint: int
+    cmd_type: int
+    cmd_special_function: int
+    reserved: int
+    src_data_format: int
+    src_start_addr_h13: int
+    reserved: int
+    dst_start_addr_h13: int
+    reserved: int
+    src_nstride: int
+    src_cstride: int
+    src_hstride: int
+    dst_nstride: int
+    dst_cstride: int
+    dst_hstride: int
+    src_nsize: int
+    src_csize: int
+    src_hsize: int
+    src_wsize: int
+    dst_nsize: int
+    dst_csize: int
+    dst_hsize: int
+    dst_wsize: int
+    src_start_addr_l32: int
+    dst_start_addr_l32: int
+
+    length: int = 512
+
+class CDMA_write_reg(atomic_reg):
+    OP_NAME = "CDMA_write"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("nchw_copy", ctypes.c_uint64, 1),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("fill_constant_en", ctypes.c_uint64, 1),
+        ("src_data_format", ctypes.c_uint64, 4),
+        ("src_start_addr_h13", ctypes.c_uint64, 13),
+        ("reserved", ctypes.c_uint64, 3),
+        ("dst_start_addr_h13", ctypes.c_uint64, 13),
+        ("reserved", ctypes.c_uint64, 19),
+        ("src_nstride", ctypes.c_uint64, 32),
+        ("src_cstride", ctypes.c_uint64, 32),
+        ("src_hstride", ctypes.c_uint64, 32),
+        ("dst_nstride", ctypes.c_uint64, 32),
+        ("dst_cstride", ctypes.c_uint64, 32),
+        ("dst_hstride", ctypes.c_uint64, 32),
+        ("src_nsize", ctypes.c_uint64, 16),
+        ("src_csize", ctypes.c_uint64, 16),
+        ("src_hsize", ctypes.c_uint64, 32),
+        ("src_wsize", ctypes.c_uint64, 32),
+        ("dst_nsize", ctypes.c_uint64, 16),
+        ("dst_csize", ctypes.c_uint64, 16),
+        ("dst_hsize", ctypes.c_uint64, 32),
+        ("dst_wsize", ctypes.c_uint64, 32),
+        ("src_start_addr_l32", ctypes.c_uint64, 32),
+        ("dst_start_addr_l32", ctypes.c_uint64, 32),
+    ]
+
+    intr_en: int
+    stride_enable: int
+    nchw_copy: int
+    breakpoint: int
+    cmd_type: int
+    cmd_special_function: int
+    fill_constant_en: int
+    src_data_format: int
+    src_start_addr_h13: int
+    reserved: int
+    dst_start_addr_h13: int
+    reserved: int
+    src_nstride: int
+    src_cstride: int
+    src_hstride: int
+    dst_nstride: int
+    dst_cstride: int
+    dst_hstride: int
+    src_nsize: int
+    src_csize: int
+    src_hsize: int
+    src_wsize: int
+    dst_nsize: int
+    dst_csize: int
+    dst_hsize: int
+    dst_wsize: int
+    src_start_addr_l32: int
+    dst_start_addr_l32: int
+
+    length: int = 512
+
+
+class CDMA_general_reg(atomic_reg):
+    OP_NAME = "CDMA_general"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("rcv_intr_en", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 1),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("reserved", ctypes.c_uint64, 1),
+        ("src_data_format", ctypes.c_uint64, 4),
+        ("src_start_addr_h13", ctypes.c_uint64, 13),
+        ("reserved", ctypes.c_uint64, 3), # 32bit
+        ("dst_start_addr_h13", ctypes.c_uint64, 13),
+        ("reserved", ctypes.c_uint64, 19),
+        ("cmd_length", ctypes.c_uint64, 32),
+        ("src_start_addr_l32", ctypes.c_uint64, 32), # constant_value
+        ("dst_start_addr_l32", ctypes.c_uint64, 32),
+        ("reserved", ctypes.c_uint64, 32),
+        ("reserved", ctypes.c_uint64, 32),
+        ("reserved", ctypes.c_uint64, 32),
+    ]
+
+    intr_en: int
+    rcv_intr_en: int
+    reserved: int
+    breakpoint: int
+    cmd_type: int
+    cmd_special_function: int
+    reserved: int
+    src_data_format: int
+    src_start_addr_h13: int
+    reserved: int
+    dst_start_addr_h13: int
+    reserved: int
+    cmd_length: int
+    src_start_addr_l32: int
+    dst_start_addr_l32: int
+    reserved: int
+    reserved: int
+    reserved: int
+
+    length: int = 256
+
+class CDMA_receive_reg(atomic_reg):
+    OP_NAME = "CDMA_receive"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 1),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("reserved", ctypes.c_uint64, 5),
+        ("dst_start_addr_h13", ctypes.c_uint64, 13),
+        ("reduce_op", ctypes.c_uint64, 3), # 32bit
+        ("dst_nstride", ctypes.c_uint64, 32),
+        ("dst_cstride", ctypes.c_uint64, 32),
+        ("dst_hstride", ctypes.c_uint64, 32),
+        ("dst_nsize", ctypes.c_uint64, 16),
+        ("dst_csize", ctypes.c_uint64, 16),
+        ("dst_hsize", ctypes.c_uint64, 32),
+        ("dst_wsize", ctypes.c_uint64, 32),
+        ("dst_start_addr_l32", ctypes.c_uint64, 32),
+    ]
+
+    intr_en: int
+    stride_enable: int
+    reserved: int
+    breakpoint: int
+    cmd_type: int
+    cmd_special_function: int
+    reserved: int
+    dst_start_addr_h13: int
+    reduce_op: int
+    dst_nstride: int
+    dst_cstride: int
+    dst_hstride: int
+    dst_nsize: int
+    dst_csize: int
+    dst_hsize: int
+    dst_wsize: int
+    dst_start_addr_l32: int
+
+    length: int = 256
+
+
+class CDMA_lossy_compress_reg(atomic_reg):
+    OP_NAME = "CDMA_lossy_compress"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("nchw_copy", ctypes.c_uint64, 1),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("reserved", ctypes.c_uint64, 1),
+        ("src_data_format", ctypes.c_uint64, 4),
+        ("src_start_addr_h13", ctypes.c_uint64, 13),
+        ("reduce_op", ctypes.c_uint64, 3), # 32bit
+        ("src_nstride", ctypes.c_uint64, 32),
+        ("src_cstride", ctypes.c_uint64, 32),
+        ("src_hstride", ctypes.c_uint64, 32),
+        ("src_nsize", ctypes.c_uint64, 16),
+        ("src_csize", ctypes.c_uint64, 16),
+        ("src_hsize", ctypes.c_uint64, 16),
+        ("reserved", ctypes.c_uint64, 16),
+        ("src_wsize", ctypes.c_uint64, 32),
+        ("src_start_addr_l32", ctypes.c_uint64, 32),
+    ]
+
+    intr_en: int
+    stride_enable: int
+    nchw_copy: int
+    breakpoint: int
+    cmd_type: int
+    cmd_special_function: int
+    reserved: int
+    src_data_format: int
+    src_start_addr_h13: int
+    reduce_op: int
+    src_nstride: int
+    src_cstride: int
+    src_hstride: int
+    src_nsize: int
+    src_csize: int
+    src_hsize: int
+    reserved: int
+    src_wsize: int
+    reserved: int
+    src_start_addr_l32: int
+
+    length: int = 256
+
+
+class CDMA_lossy_decompress_reg(atomic_reg):
+    OP_NAME = "CDMA_lossy_decompress"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("nchw_copy", ctypes.c_uint64, 1),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("reserved", ctypes.c_uint64, 1),
+        ("src_data_format", ctypes.c_uint64, 4),
+        ("src_start_addr_h13", ctypes.c_uint64, 13),
+        ("reduce_op", ctypes.c_uint64, 3), # 32bit
+        ("src_nstride", ctypes.c_uint64, 32),
+        ("src_cstride", ctypes.c_uint64, 32),
+        ("src_hstride", ctypes.c_uint64, 32),
+        ("src_nsize", ctypes.c_uint64, 16),
+        ("src_csize", ctypes.c_uint64, 16),
+        ("src_hsize", ctypes.c_uint64, 16),
+        ("reserved", ctypes.c_uint64, 16),
+        ("src_wsize", ctypes.c_uint64, 32),
+        ("src_start_addr_l32", ctypes.c_uint64, 32),
+    ]
+
+    intr_en: int
+    stride_enable: int
+    nchw_copy: int
+    breakpoint: int
+    cmd_type: int
+    cmd_special_function: int
+    reserved: int
+    src_data_format: int
+    src_start_addr_h13: int
+    reduce_op: int
+    src_nstride: int
+    src_cstride: int
+    src_hstride: int
+    src_nsize: int
+    src_csize: int
+    src_hsize: int
+    reserved: int
+    src_wsize: int
+    reserved: int
+    src_start_addr_l32: int
+
+    length: int = 256
+
+
+class sCDMA_sys_reg(atomic_reg):
+    OP_NAME = "sCDMA_sys"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 2),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_special_function", ctypes.c_uint64, 3),
+        ("reserved", ctypes.c_uint64, 21), # 32bit
+        ("constant_value_l32", ctypes.c_uint64, 32),
+        ("constant_value_h32", ctypes.c_uint64, 32),
+        ("reg_sel", ctypes.c_uint64, 4),
+        ("reserved", ctypes.c_uint64, 28),
+    ]
+
+    intr_en: int
+    stride_enable: int
+    reserved: int
+    cmd_type: int
+    cmd_special_function: int
+    reserved: int
+    constant_value_l32: int
+    constant_value_h32: int
+    reg_sel: int
+    reserved: int
+
+    length: int = 128
+
+class CDMA_tcp_send_reg(atomic_reg):
+    OP_NAME = "CDMA_tcp_send"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("own", ctypes.c_uint64, 1),
+        ("FD", ctypes.c_uint64, 1),
+        ("LD", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("buffer_length", ctypes.c_uint64, 16),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 7), # 32bit
+        ("frame_length", ctypes.c_uint64, 16),
+        ("reserved", ctypes.c_uint64, 16),
+        ("buffer_addr_l32", ctypes.c_uint64, 32),
+        ("buffer_addr_h13", ctypes.c_uint64, 8),
+        ("cmd_id", ctypes.c_uint64, 24),
+    ]
+
+    intr_en: int
+    own: int
+    FD: int
+    LD: int
+    cmd_type: int
+    buffer_length: int
+    breakpoint: int
+    reserved: int
+    frame_length: int
+    reserved: int
+    buffer_addr_l32: int
+    buffer_addr_h13: int
+    cmd_id: int
+
+    length: int = 128
+
+class CDMA_tcp_rcv_reg(atomic_reg):
+    OP_NAME = "CDMA_tcp_rcv"
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("own", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 2),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("buffer_length", ctypes.c_uint64, 16),
+        ("breakpoint", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 7), # 32bit
+        ("reserved", ctypes.c_uint64, 32),
+        ("buffer_addr_l32", ctypes.c_uint64, 32),
+        ("buffer_addr_h13", ctypes.c_uint64, 8),
+        ("cmd_id", ctypes.c_uint64, 24),
+    ]
+
+    intr_en: int
+    own: int
+    reserved: int
+    cmd_type: int
+    buffer_length: int
+    breakpoint: int
+    reserved: int
+    reserved: int
+    buffer_addr_l32: int
+    buffer_addr_h13: int
+    cmd_id: int
+
+    length: int = 128
+
+class CDMA_tcp_send_wb_reg(atomic_reg):
+    OP_NAME = "CDMA_tcp_send_wb"
+    _fields_ = [
+        ("DERR", ctypes.c_uint64, 1),
+        ("own", ctypes.c_uint64, 1),
+        ("FD", ctypes.c_uint64, 1),
+        ("LD", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 28), # 32bit
+        ("reserved", ctypes.c_uint64, 32),
+        ("reserved", ctypes.c_uint64, 32),
+        ("reserved", ctypes.c_uint64, 32),
+    ]
+
+    DERR: int
+    own: int
+    FD: int
+    LD: int
+    reserved: int
+    reserved: int
+    reserved: int
+    reserved: int
+
+    length: int = 128
+
+class CDMA_tcp_rcv_wb_reg(atomic_reg):
+    OP_NAME = "CDMA_tcp_rcv_wb"
+    _fields_ = [
+        ("reserved", ctypes.c_uint64, 1),
+        ("own", ctypes.c_uint64, 1),
+        ("FD", ctypes.c_uint64, 1),
+        ("LD", ctypes.c_uint64, 1),
+        ("MAC_filter_status", ctypes.c_uint64, 18),
+        ("reserved", ctypes.c_uint64, 10), # 32bit
+        ("packet_status", ctypes.c_uint64, 9),
+        ("error_summary", ctypes.c_uint64, 1),
+        ("packet_length", ctypes.c_uint64, 14),
+        ("reserved", ctypes.c_uint64, 8),
+        ("reserved", ctypes.c_uint64, 32),
+        ("reserved", ctypes.c_uint64, 32),
+    ]
+
+    reserved: int
+    own: int
+    FD: int
+    LD: int
+    MAC_filter_status: int
+    reserved: int
+    packet_status: int
+    error_summary: int
+    packet_length: int
+    reserved: int
+    reserved: int
+    reserved: int
+
+    length: int = 128
 
 
 op_class_dic: Dict[str, Type[atomic_reg]] = {
@@ -5705,4 +6209,16 @@ op_class_dic: Dict[str, Type[atomic_reg]] = {
     "DMA_lossy_decompress": DMA_lossy_decompress_reg,
     "DMA_randmask": DMA_randmask_reg,
     "DMA_tansfer": DMA_tansfer_reg,
+    "CDMA_send": CDMA_send_reg,
+    "CDMA_read": CDMA_read_reg,
+    "CDMA_write": CDMA_write_reg,
+    "CDMA_general": CDMA_general_reg,
+    "CDMA_receive": CDMA_receive_reg,
+    "CDMA_lossy_compress": CDMA_lossy_compress_reg,
+    "CDMA_lossy_decompress": CDMA_lossy_decompress_reg,
+    "sCDMA_sys": sCDMA_sys_reg,
+    "CDMA_tcp_send": CDMA_tcp_send_reg,
+    "CDMA_tcp_rcv": CDMA_tcp_rcv_reg,
+    # "CDMA_tcp_send_wb": CDMA_tcp_send_wb_reg,
+    # "CDMA_tcp_rcv_wb": CDMA_tcp_rcv_wb_reg,
 }

@@ -27,6 +27,8 @@ bd_sys_code = 15
 dma_sys_code = 6
 cdma_sys_code = 7
 profile_sys_num = 2
+profile_init_cmd_num = 2
+profile_nop_num = 1
 
 class DynRecordType(Enum):
     FUNC = 0
@@ -221,7 +223,7 @@ class CDMAProfileFormat(dictStructure):
         ("inst_id", ct.c_uint32, 24),           ("thread_id", ct.c_uint32, 1),
         ("reserved0", ct.c_uint32, 7),           ("_reserved0", ct.c_uint32),
         # H1
-        ("m0_data_aw_cntr", ct.c_uint32),   ("m0_data_w_cntr", ct.c_uint32),
+        ("m0_data_aw_cntr", ct.c_uint32),   ("m0_data_wr_cntr", ct.c_uint32),
         ("m0_data_ar_cntr", ct.c_uint32),   ("reserved1", ct.c_uint32),
         # H2
         ("m0_data_wr_valid_cntr", ct.c_uint32), ("m0_data_wr_stall_cntr", ct.c_uint32),
@@ -292,6 +294,14 @@ class ProfileFormat(dictStructure):
         ("extra_info", ct.c_uint32, 11), ("inst_id", ct.c_uint32)
     ]
 
+class BDCommandParser():
+    def __init__(self) -> None:
+        self.ctx = get_target_context("BM1690")
+
+    def parse(self, raw_data):
+        tmp = bytearray(raw_data)
+        return self.ctx.decoder.decode_tiu_cmds(tmp)
+
 class GDMACommandParser():
     _byte_len_ = 256
     def __init__(self) -> None:
@@ -301,14 +311,13 @@ class GDMACommandParser():
         tmp = bytearray(raw_data)
         return self.ctx.decoder.decode_dma_cmds(tmp)
 
-class BDCommandParser():
+class CDMACommandParser():
     def __init__(self) -> None:
         self.ctx = get_target_context("BM1690")
 
     def parse(self, raw_data):
         tmp = bytearray(raw_data)
-        return self.ctx.decoder.decode_tiu_cmds(tmp)
-
+        return self.ctx.decoder.decode_cdma_cmds(tmp)
 
 DMA_ARCH = {
     "Chip Arch": "sg2260",
@@ -345,13 +354,10 @@ def get_src_dst_type(v):
         return "LMEM", "LMEM"
 
 def mem_type(v):
+    if v in range(30):
+        return "DDR"
     if v == TagType.TAG_LMEM:
         return "LMEM"
-    if v == TagType.TAG_USERS \
-            or v == TagType.TAG_WEIGHT \
-            or v == TagType.TAG_ACTIVATION \
-            or v == TagType.TAG_GLOBAL:
-        return "DDR"
     if v == TagType.TAG_L2M:
         return "L2M"
     raise ValueError(f"Unknow dma mem_type: {v}")
@@ -375,26 +381,43 @@ def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
     dma_info["src_data_format"] = dtype
     dma_info["cmd_type"] = reg_info.des_tsk_typ
     dma_info["cmd_special_function"] = reg_info.des_tsk_eu_typ
-    dma_info["Function Type"], dma_info["Function Name"] = getDmaFunctionName(
+    parser = getDmaFunctionName
+    if engine_id == 4:
+        parser = getCdmaFunctionName
+    dma_info["Function Type"], dma_info["Function Name"] = parser(
         reg_info.des_tsk_typ, reg_info.des_tsk_eu_typ, dma_info["Direction"])
     dma_info["Start Cycle"] = monitor_info.inst_start_time
     dma_info["End Cycle"] = monitor_info.inst_end_time
-    dma_info["Cmd Id"] = monitor_info.inst_id + 1
+    dma_info["Cmd Id"] = monitor_info.inst_id
     dma_info["Data Type"] = data_type.name
-    dma_info["Asic Cycle"] = monitor_info.inst_end_time - \
-        monitor_info.inst_start_time + 1
-    dma_info["Stall Cycle"] = monitor_info.gif_wr_rd_stall_cntr
-    dma_info["gmem_xfer_bytes(B)"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
-    dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
-                                       dma_info["Asic Cycle"], 4)
-    dma_info["gmem_dma_data_size(B)"] = dma_info["gmem_xfer_bytes(B)"]
-    dma_info["lmem_xfer_bytes"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
-    dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"], 4)
+    dma_info["Asic Cycle"] = monitor_info.inst_end_time - monitor_info.inst_start_time + 1
+    if engine_id != 4:
+        dma_info["Cmd Id"] += 1
+        dma_info["Stall Cycle"] = monitor_info.gif_wr_rd_stall_cntr
+        dma_info["gmem_xfer_bytes(B)"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
+        dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
+                                        dma_info["Asic Cycle"], 4)
+        dma_info["gmem_dma_data_size(B)"] = dma_info["gmem_xfer_bytes(B)"]
+        dma_info["lmem_xfer_bytes"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
+        dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"], 4)
 
-    dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
+        dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
 
-    dma_info["DMA data size(B)"] = max(dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
-    dma_info["DDR Bandwidth(GB/s)"] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
+        dma_info["DMA data size(B)"] = max(dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
+        dma_info["DDR Bandwidth(GB/s)"] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
+        dma_info["lmem_xact_cnt"] = monitor_info.gif_wr_valid_cntr + monitor_info.gif_rd_valid_cntr
+        dma_info["gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
+    else:
+        # pcie <-> cdma + mac <-> cdma
+        # dma_info["Stall Cycle"] = monitor_info.m0_data_wr_stall_cntr + monitor_info.m0_data_rd_stall_cntr \
+        #                          + monitor_info.ari_data_stall_cntr + monitor_info.ati_data_stall_cntr
+        dma_info["Stall Cycle"] = 0
+        dma_info["DMA data size(B)"] = monitor_info.m0_data_ar_cntr + monitor_info.m0_data_aw_cntr
+        dma_info["DDR Bandwidth(GB/s)"] =  round(dma_info["DMA data size(B)"] / dma_info["Asic Cycle"], 4)
+        # dma_info["lmem_xact_cnt"] = 1
+        dma_info["gmem_xact_cnt"] = monitor_info.ari_data_valid_cntr + monitor_info.ati_data_valid_cntr \
+                                    + monitor_info.m0_data_rd_valid_cntr + monitor_info.m0_data_wr_valid_cntr
+        dma_info["Direction"] = "DDR->DDR"
     # not implemented
     dma_info["gmem_bl_sum"] = 0
     dma_info["gmem_avg_burst_length"] = 0
@@ -404,8 +427,6 @@ def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
     # no need
     # dma_info["lmem_xact_cnt"] = monitor_info.axi_d0_ar_cntr + monitor_info.axi_d0_aw_cntr
     # dma_info["gmem_xact_cnt"] = dma_info["gmem_xfer_bytes(B)"] // BYTE_PER_BEAT
-    dma_info["lmem_xact_cnt"] = monitor_info.gif_wr_valid_cntr + monitor_info.gif_rd_valid_cntr
-    dma_info["gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
     dma_info["lmem_msk_wr_cnt"] = 0
     dma_info["gmem_msk_wr_cnt"] = 0
     dma_info["lmem_n32Ba_sa_cnt"] = 0
@@ -424,8 +445,6 @@ def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
     return dma_info, None
 
 def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
-    is_sys = reg_info.name == 'sDMA_sys'
-    _reg_info = reg_info
     reg_info = reg_info.reg
     dma_info = dict()
     # step1 : get registor information from command
@@ -441,47 +460,55 @@ def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
         dma_info[trans_key] = value
     dma_info["mask_start_addr_h8"] = dma_info.get("mask_start_addr_h8", 0)
     dma_info["mask_start_addr_l32"] = dma_info.get("mask_start_addr_l32", 0)
-    if is_sys:
-        dma_info["dst_start_addr"] = 0
-        dma_info["src_start_addr"] = 0
-        dma_info["src_start_addr_h13"] = 0
-        dma_info["dst_start_addr_h13"] = 0
-    else:
-        dma_info["dst_start_addr"] = (
-            int(dma_info["dst_start_addr_h13"]) << 32) + int(dma_info["dst_start_addr_l32"])
-        dma_info["src_start_addr"] = (
-            int(dma_info["src_start_addr_h13"]) << 32) + int(dma_info["src_start_addr_l32"])
-
+    src_h13 = dma_info.get("src_start_addr_h13", 0)
+    dst_h13 = dma_info.get("dst_start_addr_h13", 0)
+    src_l32 = dma_info.get("src_start_addr_l32", 0)
+    dst_l32 = dma_info.get("dst_start_addr_l32", 0)
+    dma_info["dst_start_addr"] = (int(dst_h13) << 32) + int(dst_l32)
+    dma_info["src_start_addr"] = (int(src_h13) << 32) + int(src_l32)
     # step2: get custom information
-    src_type = mem_type(dma_info['src_start_addr_h13'] >> 8)
-    dst_type = mem_type(dma_info['dst_start_addr_h13'] >> 8)
+    src_type = mem_type(src_h13 >> 8)
+    dst_type = mem_type(dst_h13 >> 8)
     # src_type = mem_type(dma_info['src_start_addr'], core_id)
     # dst_type = mem_type(dma_info['dst_start_addr'], core_id)
-    data_type = DATATYPE(reg_info.src_data_format)
+    data_type = None
+    if 'src_data_format' in reg_info:
+        data_type = DATATYPE(reg_info.src_data_format)
 
+    parser = getCdmaFunctionName if engine_id == 4 else getDmaFunctionName
     dma_info["Engine Id"] = engine_id
     dma_info["Direction"] = "{}->{}".format(src_type, dst_type)
     dma_info["from_addr"] = src_type
     dma_info["to_addr"] = dst_type
-    dma_info["Function Type"], dma_info["Function Name"] = getDmaFunctionName(
+    dma_info["Function Type"], dma_info["Function Name"] = parser(
         reg_info.cmd_type, reg_info.cmd_special_function, dma_info["Direction"])
     dma_info["Start Cycle"] = monitor_info.inst_start_time
     dma_info["End Cycle"] = monitor_info.inst_end_time
-    dma_info["Cmd Id"] = monitor_info.inst_id + 1
-    dma_info["Data Type"] = data_type.name
-    dma_info["Asic Cycle"] = monitor_info.inst_end_time - \
-        monitor_info.inst_start_time + 1
-    dma_info["Stall Cycle"] = monitor_info.gif_wr_rd_stall_cntr
-    # print(monitor_info.axi_d0_w_cntr, monitor_info.axi_d0_ar_cntr, monitor_info.axi_d0_aw_cntr)
-    dma_info["gmem_xfer_bytes(B)"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
-    dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
-                                       dma_info["Asic Cycle"], 4)
-    dma_info["gmem_dma_data_size(B)"] = dma_info["gmem_xfer_bytes(B)"]
-    dma_info["lmem_xfer_bytes"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
-    dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"], 4)
+    dma_info["Cmd Id"] = monitor_info.inst_id
+    dma_info["Data Type"] = data_type.name if data_type else data_type
+    dma_info["Asic Cycle"] = monitor_info.inst_end_time - monitor_info.inst_start_time + 1
+    if engine_id != 4:
+        dma_info["Cmd Id"] += 1 # cdma pmu cmd_id start from 1, others from 0
+        dma_info["Stall Cycle"] = monitor_info.gif_wr_rd_stall_cntr
+        dma_info["gmem_xfer_bytes(B)"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
+        dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
+                                        dma_info["Asic Cycle"], 4)
+        dma_info["gmem_dma_data_size(B)"] = dma_info["gmem_xfer_bytes(B)"]
+        dma_info["lmem_xfer_bytes"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
+        dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"], 4)
 
-    dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
-    dma_info["DMA data size(B)"] = max(dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
+        dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
+        dma_info["DMA data size(B)"] = max(dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
+        dma_info["lmem_xact_cnt"] = monitor_info.gif_wr_valid_cntr + monitor_info.gif_rd_valid_cntr
+        dma_info["gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
+    else:
+        dma_info["Stall Cycle"] = 0
+        dma_info["lmem_bandwidth"] = 0
+        dma_info["DMA data size(B)"] = monitor_info.m0_data_ar_cntr + monitor_info.m0_data_aw_cntr
+        dma_info["gmem_bandwidth"] =  round(dma_info["DMA data size(B)"] / dma_info["Asic Cycle"], 4)
+        # dma_info["lmem_xact_cnt"] = 1
+        dma_info["gmem_xact_cnt"] = monitor_info.ari_data_valid_cntr + monitor_info.ati_data_valid_cntr \
+                                    + monitor_info.m0_data_rd_valid_cntr + monitor_info.m0_data_wr_valid_cntr
     if "DDR" in dma_info["Direction"]:
         dma_info["DDR Bandwidth(GB/s)"] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
         dma_info['L2M Bandwidth(GB/s)'] = 0
@@ -502,8 +529,6 @@ def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
     # no need
     # dma_info["lmem_xact_cnt"] = monitor_info.axi_d0_ar_cntr + monitor_info.axi_d0_aw_cntr
     # dma_info["gmem_xact_cnt"] = dma_info["gmem_xfer_bytes(B)"] // BYTE_PER_BEAT
-    dma_info["lmem_xact_cnt"] = monitor_info.gif_wr_valid_cntr + monitor_info.gif_rd_valid_cntr
-    dma_info["gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
     dma_info["lmem_msk_wr_cnt"] = 0
     dma_info["gmem_msk_wr_cnt"] = 0
     dma_info["lmem_n32Ba_sa_cnt"] = 0
@@ -675,7 +700,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
         (1, 0): 'DMA_matrix', (1, 1): 'matrix transpose',
         (2, 0): 'DMA_masked_select', (2, 1): 'ncw mode',
         (3, 0): 'DMA_general', (3, 1): 'broadcast',
-        (4, 0): 'DMA_cw transpose', (4, 1): 'DMA transpose',
+        (4, 0): 'DMA_cw transpose',(4, 1): 'DMA_cw transpose',(4, 5): 'DMA_cw transpose',
         (5, 0): 'DMA_nonzero',
         (6, 0): 'DMA_sys', (6, 1): 'nop', (6, 2): 'sys_tr_wr', (6, 3): 'sys_send', (6, 4): 'sys_wait',
         (7, 0): 'DMA_gather',
@@ -702,7 +727,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
 
     return functionType, functinName
 
-def getCdmaFunctionName(cmd_type, cmd_special_function):
+def getCdmaFunctionName(cmd_type, cmd_special_function, no_use):
     cdmaFunctionNameDict = {
         # DMA_send
         0: "send",
@@ -717,8 +742,8 @@ def getCdmaFunctionName(cmd_type, cmd_special_function):
         3: "general",
         (3, 0): 'general',
         # DMA_receive_tensor
-        4: "recevive_tensor",
-        (4, 0): 'recevive_tensor',
+        4: "recevive",
+        (4, 0): 'recevive',
         # DMA_lossy_compress
         5: "lossy_compress",
         (5, 0): 'lossy_compress',
@@ -727,7 +752,7 @@ def getCdmaFunctionName(cmd_type, cmd_special_function):
         (6, 0): 'lossy_decompress',
         # DMA_sys
         7: 'sys',
-        (7, 0): 'chain_end', (7, 1): 'nop', (7, 2): 'sys_tr_wr', (7, 3): 'sys_msg_tx_send',
+        (7, 0): 'end', (7, 1): 'nop', (7, 2): 'sys_tr_wr', (7, 3): 'sys_msg_tx_send',
         (7, 4): 'sys_msg_tx_wait', (7, 5): 'sys_msg_rx_send', (7, 6): 'sys_msg_rx_wait',
         # DMA_tcp_send
         8: "tcp_send",

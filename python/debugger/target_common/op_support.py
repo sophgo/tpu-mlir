@@ -629,6 +629,8 @@ class BaseTpuCmd(BaseCmd):
             key = (self.subnet_id, self.cmd_id, None, self.core_id)
         elif isinstance(self, Dma):
             key = (self.subnet_id, None, self.cmd_id, self.core_id)
+        elif isinstance(self, Cdma):
+            key = (self.subnet_id, None, self.cmd_id, self.core_id)
         else:
             raise NotImplementedError()
         return key
@@ -646,6 +648,10 @@ class Tiu:
 
 
 class Dma:
+    # Mixin for detect cmd type
+    pass
+
+class Cdma:
     # Mixin for detect cmd type
     pass
 

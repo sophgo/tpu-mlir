@@ -16,7 +16,7 @@ import numpy as np
 import ctypes
 
 from .regdef import op_class_dic
-from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys
+from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, sCDMA_sys_reg as cdma_sys
 from ..target_common import (
     atomic_reg,
     CMDType,
@@ -24,7 +24,7 @@ from ..target_common import (
     BaseTpuCmd,
     HeadDef,
 )
-from .opdef import tiu_index, tiu_cls, dma_index, dma_cls, TiuCmd, DmaCmd
+from .opdef import tiu_index, tiu_cls, dma_index, dma_cls, cdma_index, TiuCmd, DmaCmd
 
 
 if TYPE_CHECKING:
@@ -107,6 +107,26 @@ class DmaHead(HeadDef):
     def __hash__(self):
         return hash((bool(self.cmd_short), self.cmd_type, self.cmd_sp_func))
 
+class CDmaHead(HeadDef):
+    _fields_ = [
+        ("intr_en", ctypes.c_uint64, 1),
+        ("stride_enable", ctypes.c_uint64, 1),
+        ("nchw_copy", ctypes.c_uint64, 1),
+        ("reserved", ctypes.c_uint64, 1),
+        ("cmd_type", ctypes.c_uint64, 4),
+        ("cmd_sp_func", ctypes.c_uint64, 3),
+    ]
+    intr_en: int
+    stride_enable: int
+    nchw_copy: int
+    cmd_short: int
+    reserved: int
+    cmd_type: int
+    cmd_sp_func: int
+
+    def __hash__(self):
+        return hash((False, self.cmd_type, self.cmd_sp_func))
+
 
 TiuHeads: List[ctypes.Structure] = [TiuHead, SYS_TR_ACC_HEAD]
 
@@ -152,6 +172,32 @@ class Decoder(DecoderBase):
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
         op_info = dma_index.get(head, None)
+
+        assert op_info is not None, (
+            f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
+            f" Potential head identified as {head}"
+        )
+        # get op struct
+        op_clazz = op_class_dic[op_info.name]
+
+        reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
+        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
+        cmd = op_info(
+            reg,
+            buf=buf,
+            cmd_id=cmd_id,
+            subnet_id=subnet_id,
+            core_id=core_id,
+            param_fn=param_fn,
+        )
+        return cmd
+
+    def decode_cdma_cmd(
+        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
+        assert cmd_id is not None, "1688 must assign cmd_id manully"
+        head = CDmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
+        op_info = cdma_index.get(head, None)
 
         assert op_info is not None, (
             f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
@@ -221,6 +267,35 @@ class Decoder(DecoderBase):
             offset += cmd.reg.length // 8
             res.append(cmd)
             if self.buf_is_end(reg_buf[offset:], cmd, tiu_sys):
+                break
+        return res
+
+    def decode_cdma_cmds(
+        self,
+        reg_buf: bytes,
+        *,
+        core_id=0,
+        subnet_id=0,
+    ) -> List[atomic_reg]:
+        offset = 0
+        res = []
+        cmd_id = 1
+        while offset < len(reg_buf):
+            cmd = self.decode_cdma_cmd(
+                reg_buf,
+                offset=offset,
+                core_id=core_id,
+                subnet_id=subnet_id,
+                cmd_id=cmd_id,
+            )
+
+            cmd_id += 1
+            offset += cmd.reg.length // 8
+            res.append(cmd)
+            # reached sys_end already
+            if isinstance(cmd.reg, cdma_sys) and cmd.reg.cmd_special_function == 0:
+                break
+            if self.buf_is_end(reg_buf[offset:], cmd, cdma_sys):
                 break
         return res
 

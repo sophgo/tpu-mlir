@@ -11,7 +11,7 @@
 # @Time    : 2023/8/7 11:26
 # @Author  : chongqing.zeng@sophgo.com
 # @Project: PerfAI
-import os
+import os, glob, re
 import pandas as pd
 from tqdm import tqdm
 
@@ -83,6 +83,7 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
     tiu_instance_map, gdma_instance_map = dict(), dict()
     tiu_layer_map, gdma_layer_map = get_engine_layer(g_info)
     chip_arch_act = None
+    file_names = sorted(glob.glob(cdma_reg_file + '_*.txt'))
     for core_id in tqdm(range(act_core_num)):
         # tiu
         cur_tiu_reg_file = tiu_reg_file + '_' + str(core_id) + '.txt'
@@ -111,22 +112,40 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
         sdma_instance.add_kpi_field()
         sdma_instance.write()
         # cdma
-        cdma_instance = Cdma(core_id, writer, 'CDMA')
-        if act_core_num:
-            cur_cdma_reg_file = cdma_reg_file + '_' + str(core_id) + '.txt'
-            if os.path.exists(cur_cdma_reg_file) and os.path.getsize(cur_cdma_reg_file):
-                tmp_chip_arch = cdma_instance.load(cur_cdma_reg_file)
-                chip_arch_act = chip_arch_act if chip_arch_act else tmp_chip_arch
-                cdma_instance.add_kpi_field()
-                cdma_instance.write()
-            reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list + cdma_instance.reg_list
-        else:
+        if chip_arch['Chip Arch'] == 'sg2260' :
             reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list
+            cdma_instance = None
+            if  act_core_num and core_id == 7 and file_names:
+                for f in file_names:
+                    port = eval(re.search(rf"{cdma_reg_file}_(\d+)\.txt", f).group(1))
+                    cdma_instance = Cdma(port, writer, 'CDMA')
+                    if os.path.exists(f) and os.path.getsize(f):
+                        tmp_chip_arch = cdma_instance.load(f)
+                        chip_arch_act = chip_arch_act if chip_arch_act else tmp_chip_arch
+                        cdma_instance.add_kpi_field(True)
+                        cdma_instance.write()
+                    reg_list += cdma_instance.reg_list
+                    cdma_instances.append(cdma_instance)
+            else:
+                cdma_instance = Cdma(core_id, writer, 'CDMA')
+                cdma_instances.append(cdma_instance)
+        else:
+            cdma_instance = Cdma(core_id, writer, 'CDMA')
+            if act_core_num:
+                cur_cdma_reg_file = cdma_reg_file + '_' + str(core_id) + '.txt'
+                if os.path.exists(cur_cdma_reg_file) and os.path.getsize(cur_cdma_reg_file):
+                    tmp_chip_arch = cdma_instance.load(cur_cdma_reg_file)
+                    chip_arch_act = chip_arch_act if chip_arch_act else tmp_chip_arch
+                    cdma_instance.add_kpi_field(True)
+                    cdma_instance.write()
+                reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list + cdma_instance.reg_list
+            else:
+                reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list
+            cdma_instances.append(cdma_instance)
         instr_cols = get_instr_cols(tiu_instance.columns, gdma_instance.columns)
         tiu_instances.append(tiu_instance)
         gdma_instances.append(gdma_instance)
         sdma_instances.append(sdma_instance)
-        cdma_instances.append(cdma_instance)
 
     if act_core_num:
         # instr world
@@ -218,7 +237,7 @@ def generate_divided_details(input_fold, g_info, core_num=8):
             if os.path.exists(cur_cdma_reg_file) and os.path.getsize(cur_cdma_reg_file):
                 tmp_chip_arch = cdma_instance.load(cur_cdma_reg_file)
                 chip_arch_act = chip_arch_act if chip_arch_act else tmp_chip_arch
-                cdma_instance.add_kpi_field()
+                cdma_instance.add_kpi_field(True)
                 cdma_instance.write()
             reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list + cdma_instance.reg_list
         else:

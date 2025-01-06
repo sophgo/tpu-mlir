@@ -35,6 +35,10 @@ class BlockType(Enum):
     BMLIB_EXTRA = 10
     MONITOR_SDMA = 11
     MONITOR_CDMA = 12
+    BLOCK_DES_BDC = 13
+    BLOCK_DES_GDMA = 14
+    BLOCK_DES_SDMA = 15
+    BLOCK_DES_CDMA = 16
 
 class DynExtraType(Enum):
     STRING=0

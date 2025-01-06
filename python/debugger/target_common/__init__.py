@@ -47,6 +47,7 @@ from .op_support import (
     CpuCmd,
     Tiu,
     Dma,
+    Cdma,
     CMDType,
     DynIrCmd,
     RegIndex,

@@ -42,7 +42,7 @@ class Tiu(object):
         :param writer: the writer of Excel to write
         """
         self.writer = writer
-        self.columns = ['Engine Id', 'Core Id', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
+        self.columns = ['Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
                         'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Avg Cycle Last 200', 'Alg Ops',
                         'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
                         'Initial Cycle Ratio', 'Data Type', 'Sim Power(W)', 'des_cmd_id_dep',
