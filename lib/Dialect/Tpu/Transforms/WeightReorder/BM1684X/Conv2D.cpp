@@ -566,8 +566,11 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
       op->setOperand(2, newBiasOp);
     }
   } else {
+    // Allow 3IC optimize by default
     int use_3ic_optimize = 0;
-    if (false) { // Shut down 3ic optimization temporarily for fp16/bfp16
+    if (module::isBM1684X() || module::isBM1688()) {
+      // mars3's f16 backend need further repaired, because CMDs such as tpu_bdc_arithmetic_sequence_distribute are not supported on mars3.
+      // bm1690 is well supported now, but 3ic-opt is not opened here by default.
       if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
           attr.kw > 1) {
         use_3ic_optimize = 3; // merge kh and kw to ic
@@ -582,6 +585,10 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
       if (use_3ic_optimize) {
         // Now only support broadcast using BDC when it is a local layer.
         use_3ic_optimize |= 0x10;
+      }
+      if (use_3ic_optimize && !op.getInput().hasOneUse()) {
+        // broadcast input using BDC to a buffer
+        use_3ic_optimize |= 0x30;
       }
     }
 
