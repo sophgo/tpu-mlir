@@ -1,0 +1,25 @@
+#!/bin/bash
+
+RED='\033[0;31m'
+NC='\033[0m'
+
+# get current commit message
+commit_msg=$(cat .git/COMMIT_EDITMSG)
+
+# extract content before Change-Id
+body_content=$(echo "$commit_msg" | sed -n '1,/Change-Id:/p' | head -n -1)
+
+# get content after first line as body
+subject=$(echo "$body_content" | head -n 1)
+body=$(echo "$body_content" | tail -n +3 | grep -v '^$' | tr -d '[:space:]')
+
+# check body is empty
+if [ -z "$body" ]; then
+    echo -e "${RED}ERROR${NC}: A detailed commit message is required."
+    echo "Your commit message must explain why this change is necessary and how it was implemented."
+    echo "  Use 'git commit --amend' to add or edit the body of your commit message."
+    exit 1
+fi
+
+echo "Success: commit message body check ok"
+exit 0
