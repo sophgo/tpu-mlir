@@ -13,15 +13,16 @@ If you do not meet the above system environment, you need to use Docker, downloa
 .. code-block:: shell
    :linenos:
 
-   $ docker pull sophgo/tpuc_dev:v3.2
+   $ docker pull sophgo/tpuc_dev:v3.3
 
 If the pulling fails, you can download the required image file from the official website development materials https://developer.sophgo.com/site/index/material/86/all.html, or use the following command to download and load the image:
 
 .. code-block:: shell
    :linenos:
 
-   $ wget https://sophon-file.sophon.cn/sophon-prod-s3/drive/24/06/14/12/sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
-   $ docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/01/13/15/sophgo-tpuc_dev_v3.3.tar.gz
+   $ tar -xzvf sophgo-tpuc_dev_v3.3.tar.gz # get xxx.tar file
+   $ docker load -i xxx.tar
 
 
 If you are using docker for the first time, you can execute the following commands to install and configure it (only for the first time):
@@ -47,7 +48,7 @@ If you download the image file, make sure the image file is in the current direc
 .. code-block:: shell
 
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.3
 
 where ``myname`` is the name of the container, which can be customized; ``$PWD`` is the current directory, synchronized with the container's ``/workspace`` directory.
 
