@@ -16,8 +16,11 @@ import re
 import shutil
 import textwrap
 import functools
+from pydantic import Field
 
 _DEPTH = 0
+
+BASE_DIAGNOSITIC_NAME = f"diagnostic"
 
 
 class PropertyCheck(BaseModel):
@@ -38,6 +41,8 @@ class TaskDep:
         self._DEPTH = 0
         self.gen_file_map = {}
 
+        self.task_map = {}
+
     def check(
         that,
         *,
@@ -51,6 +56,7 @@ class TaskDep:
             if gen_files:
                 for file in gen_files:
                     that.gen_file_map.setdefault(file, []).append(func.__name__)
+            that.task_map[func.__name__] = func
 
             def inner(self, target_file: str, *args, **kwargs):
                 recorder = CommandRecorder(target_file, read=True)
@@ -79,6 +85,9 @@ class TaskDep:
                     ret = False
                     that._DEPTH += 1
                     for task in depend_tasks:
+                        if isinstance(task, str):
+                            task = that.task_map[task]
+
                         try:
                             task(self, target_file, *args, **kwargs)
                             ret = True
@@ -102,7 +111,7 @@ class TaskDep:
                                         )
                                 raise FileNotFoundError(f"{file} not found")
 
-                            if _file_modified(cont):
+                            if _file_modified(cont) and not that.ignore:
                                 raise ValueError(
                                     f"{file} is modified, {cont.last_modify}, got {os.path.getmtime(cont.path)}"
                                 )
@@ -139,11 +148,7 @@ class TaskDep:
                 if that.ignore or force:
                     should_run = True
 
-                if (
-                    depend_tasks is None
-                    and gen_files is None
-                    and properties is None
-                ):
+                if depend_tasks is None and gen_files is None and properties is None:
                     should_run = True
 
                 if should_run:
@@ -174,6 +179,7 @@ class TaskDep:
                     except SkipTask:
                         ret = None
                         logger.debug(f"skip some tasks in {func.__name__}")
+
                     that._DEPTH -= 1
                     return ret
                 else:
@@ -182,6 +188,7 @@ class TaskDep:
                     )
                     if that._DEPTH > 0 and that.in_check:
                         raise SkipTask()
+
             setattr(inner, "__doc__", func.__doc__)
             return inner
 
@@ -205,6 +212,7 @@ class DebugFile(BaseModel):
     origin_mlir: Optional[FileFlag] = None
     top_mlir: Optional[FileFlag] = None
     tpu_mlir: Optional[FileFlag] = None
+    tpu_opt_mlir: Optional[FileFlag] = None
     final_mlir: Optional[FileFlag] = None
     bmodel: Optional[FileFlag] = None
 
@@ -212,7 +220,7 @@ class DebugFile(BaseModel):
     context_dir: Optional[FileFlag] = None
 
     # middle file
-    tensor_location: Optional[FileFlag]
+    tensor_location: Optional[FileFlag] = None
     layer_group_cache: Optional[FileFlag] = None
     bmodel_failed_summary: Optional[FileFlag] = None
 
@@ -239,12 +247,18 @@ class DebugFile(BaseModel):
     tpu_output: Optional[FileFlag] = None
     bmodel_output: Optional[FileFlag] = None
 
+    # mlir2onnx output
+    top_onnx: Optional[FileFlag] = None
+    tpu_onnx: Optional[FileFlag] = None
+    tpu_opt_onnx: Optional[FileFlag] = None
+
 
 class DebugProperty(BaseModel):
-    chip: str
+    chip: Optional[str] = None
     deploy_pwd: Optional[str] = None
     compare_all: Optional[bool] = None
     cache_mode: Optional[str] = None
+    prefix: Optional[str] = None
 
 
 class DebugCommand(BaseModel):
@@ -256,9 +270,9 @@ class DebugCommand(BaseModel):
 
 class RefFile(BaseModel):
     version: str
-    commands: DebugCommand
-    files: DebugFile
-    properties: DebugProperty
+    commands: DebugCommand = Field(default_factory=DebugCommand)
+    files: DebugFile = Field(default_factory=DebugFile)
+    properties: DebugProperty = Field(default_factory=DebugProperty)
 
 
 class DebugData(BaseModel):
@@ -469,6 +483,7 @@ def _all_file_no_change(*files: FileFlag):
             )
             != file.last_modify
         ):
+
             return False
 
     return True
@@ -528,6 +543,60 @@ class DebugBase:
             )
         else:
             logger.error(f"final_mlir {target.files.final_mlir.path} not exists")
+
+    @check()
+    def task_mlirs(self, target_file: str):
+        import shutil
+
+        recorder = CommandRecorder(target_file, read=True)
+        target = RefFile(**recorder.dic)
+
+        top_mlir = target.files.top_mlir
+        tpu_mlir = target.files.tpu_mlir
+        tpu_opt_mlir = target.files.tpu_opt_mlir
+        final_mlir = target.files.final_mlir
+
+        if top_mlir is None:
+            raise RuntimeError("top_mlir not found")
+
+        base_dir = os.path.join(
+            os.path.dirname(top_mlir.path), BASE_DIAGNOSITIC_NAME, "mlirs"
+        )
+        os.makedirs(base_dir, exist_ok=True)
+        for file in [top_mlir, tpu_mlir, tpu_opt_mlir, final_mlir]:
+            if file and os.path.exists(file.path):
+                shutil.copy2(
+                    file.path, os.path.join(base_dir, os.path.basename(file.path))
+                )
+        logger.info(f"mlir files are saved in {base_dir}")
+
+    @check()
+    def task_mlir2onnx(self, target_file: str):
+        from utils.mlir_shell import mlir2onnx
+
+        recorder = CommandRecorder(target_file, read=True)
+        target = RefFile(**recorder.dic)
+
+        top_mlir = target.files.top_mlir
+        tpu_mlir = target.files.tpu_mlir
+        tpu_opt_mlir = target.files.tpu_opt_mlir
+
+        if tpu_mlir is None:
+            raise RuntimeError("tpu_mlir not found")
+
+        base_dir = os.path.join(
+            os.path.dirname(tpu_mlir.path), BASE_DIAGNOSITIC_NAME, "vis_onnx"
+        )
+        os.makedirs(base_dir, exist_ok=True)
+
+        if top_mlir:
+            mlir2onnx(top_mlir.path, os.path.join(base_dir, f"top.onnx"))
+
+        if tpu_mlir:
+            mlir2onnx(tpu_mlir.path, os.path.join(base_dir, f"tpu.onnx"))
+
+        if tpu_opt_mlir:
+            mlir2onnx(tpu_opt_mlir.path, os.path.join(base_dir, f"tpu_opt.onnx"))
 
     @check()
     def task_tpu2graph(self, target_file: str):
@@ -597,7 +666,7 @@ class DebugBase:
             raise RuntimeError("can't find deploy command cwd")
 
         getstatusoutput_v2(
-            target.commands.deploy_cmd,
+            target.commands.deploy_cmd.replace("--debug", "") + " --debug",
             shell=True,
             check=True,
             print_output=True,
@@ -802,6 +871,7 @@ class DebugMetric(DebugBase):
         """prepare soc infer cache data"""
         target_recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**target_recorder.dic)
+
         if target.files.context_dir and target.files.tpu_output:
             ret, output = getstatusoutput_v2(
                 f"bmodel_checker.py {target.files.context_dir.path} {target.files.tpu_output.path} --no_interactive --cache_mode generate --quiet",
@@ -812,40 +882,50 @@ class DebugMetric(DebugBase):
             if ret != 0:
                 raise RuntimeError(f"bmodel_checker failed: {output}")
 
+    @check(depend_tasks=[task_tpu_output])
     def task_bmodel_checker(self, target_file: str):
         target_recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**target_recorder.dic)
-        if target.files.context_dir and target.files.tpu_output:
-            from tools.bmodel_checker import main
-            from debugger.tdb_support import CACHE_MODE_VERSION
-            import platform
+        if target.files.context_dir is None:
+            raise RuntimeError("context_dir not found")
 
-            argv = [
-                target.files.context_dir.path,
-                target.files.tpu_output.path,
-            ]
+        if target.files.tpu_output is None:
+            raise RuntimeError(
+                "tpu_output not found, you should run `redeploy` command to generate debug files"
+            )
 
-            if platform.machine() != "x86_64":
-                if target.properties.cache_mode is None:
-                    raise RuntimeError("cache data not found, you should try to run bmodel_checker_cache command to generate cache data")
-                if CACHE_MODE_VERSION != target.properties.cache_mode:
-                    raise RuntimeError(
-                        f"cache_mode mismatch: {CACHE_MODE_VERSION} != {target.properties.cache_mode}, you should try to re-run bmodel_checker_cache command to generate cache data"
-                    )
-                argv.extend(
-                    [
-                        "--cache_mode",
-                        "offline",
-                    ]
+        from tools.bmodel_checker import main
+        from debugger.tdb_support import CACHE_MODE_VERSION
+        import platform
+
+        argv = [
+            target.files.context_dir.path,
+            target.files.tpu_output.path,
+        ]
+
+        if platform.machine() != "x86_64":
+            if target.properties.cache_mode is None:
+                raise RuntimeError(
+                    "cache data not found, you should try to run bmodel_checker_cache command to generate cache data"
                 )
-            main(argv)
+            if CACHE_MODE_VERSION != target.properties.cache_mode:
+                raise RuntimeError(
+                    f"cache_mode mismatch: {CACHE_MODE_VERSION} != {target.properties.cache_mode}, you should try to re-run bmodel_checker_cache command to generate cache data"
+                )
+            argv.extend(
+                [
+                    "--cache_mode",
+                    "offline",
+                ]
+            )
+        main(argv)
 
     @check()
     def task_npz_bmodel_compare(self, target_file: str, reference_file: str):
         """compare bmodel inference npz result of target and reference"""
         target_recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**target_recorder.dic)
-        reference = RefFile(**CommandRecorder(reference_file, read=True).dic)
+        reference = RefFile(**CommandRecorder(reference_file, read=True)._dic)
 
         save_file = os.path.join(
             os.path.dirname(target.files.bmodel_inference.path), "history_compare.log"
@@ -889,7 +969,7 @@ class DebugMetric(DebugBase):
             self.task_final2graph(target_file)
 
         record = CommandRecorder(target_file, read=True)
-        target = RefFile(**record.dic)
+        target = RefFile(**record._dic)
         if _all_file_no_change(target.files.tpu_addressed_svg):
             logger.info(f"see address graph in {target.files.tpu_addressed_svg.path}")
             logger.info(f"see lowered graph in {target.files.tpu_lowered_svg.path}")
@@ -905,6 +985,12 @@ class DebugPerformance(DebugBase):
         command = target.commands.final
 
         left, right = command.split(" -o ")
+        lg_dir = Path(target.files.final_mlir.path).parent.joinpath(
+            BASE_DIAGNOSITIC_NAME, "logs"
+        )
+        lg_dir.mkdir(exist_ok=True)
+        lg_file = lg_dir.joinpath("lg.log")
+        logger.info(f"will write log to {lg_file.absolute()}")
         command = [
             left,
             "-debug-only",
@@ -913,18 +999,20 @@ class DebugPerformance(DebugBase):
             target.files.final_mlir.path.replace(".mlir", "_debug.mlir"),
         ]
 
-        time_start = time.time()
         command = " ".join(command)
-        ret, output = getstatusoutput_v2(
-            command,
-            shell=True,
-            check=True,
-            cwd=os.path.dirname(target.files.final_mlir.path),
-        )
-        time_end = time.time()
-        lg_file = Path(target.files.final_mlir.path).parent.joinpath("lg.log")
-        lg_file.write_text(f"{output}\n\nTime cost: {time_end - time_start:.2f}s")
-        logger.info(f"write log to {lg_file.absolute()}")
+        time_start = time.time()
+        with open(lg_file.absolute(), "w") as f:
+            ret, _ = getstatusoutput_v2(
+                command,
+                shell=True,
+                check=True,
+                redirect_output=f,
+                redirect_error=f,
+                cwd=os.path.dirname(target.files.final_mlir.path),
+            )
+            time_end = time.time()
+            f.write(f"\n\nTime cost: {time_end - time_start:.2f}s")
+
         recorder.add_file(lg_log=str(lg_file.absolute()))
         recorder.dump()
 
@@ -990,9 +1078,7 @@ class DebugPerformance(DebugBase):
         else:
             raise Exception("bmprofile_dir or simulation_dir not exists")
 
-        output_dir = os.path.join(
-            target.files.bmodel.path.replace(".bmodel", ".profile_rich")
-        )
+        output_dir = os.path.join(os.path.dirname(raw_dir), "profile_rich")
 
         perfweb_dir = os.path.join(output_dir, "PerfWeb")
         if os.path.exists(perfweb_dir):
@@ -1015,21 +1101,19 @@ class DebugPerformance(DebugBase):
 
         recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
-
-        output_dir = os.path.join(
-            target.files.bmodel.path.replace(".bmodel", ".profile_rich"),
-        )
-        os.makedirs(output_dir, exist_ok=True)
-        perfdoc_dir = os.path.join(output_dir, "PerfDoc")
-        if os.path.exists(perfdoc_dir):
-            shutil.rmtree(perfdoc_dir)
-        raw_dir = None
         if _all_file_no_change(target.files.bmprofile_dir):
             raw_dir = target.files.bmprofile_dir.path
         elif _all_file_no_change(target.files.simulation_dir):
             raw_dir = target.files.simulation_dir.path
         else:
             raise Exception("bmprofile_dir or simulation_dir not exists or is modified")
+
+        output_dir = os.path.join(os.path.dirname(raw_dir), "profile_rich")
+
+        os.makedirs(output_dir, exist_ok=True)
+        perfdoc_dir = os.path.join(output_dir, "PerfDoc")
+        if os.path.exists(perfdoc_dir):
+            shutil.rmtree(perfdoc_dir)
 
         if target.properties.chip.upper() in ["BM1688", "CV186X", "BM1690"]:
             bmprofile_parse_perfAI(
@@ -1051,7 +1135,7 @@ class DebugPerformance(DebugBase):
 
         recorder.dump()
 
-    @check(depend_tasks=[task_perfdoc, task_perfweb])
+    @check(depend_tasks=[task_perfdoc, task_perfweb, "task_mlir2onnx", "task_mlirs"])
     def task_profile_rich(self, target_file: str):
         """"""
 
@@ -1343,7 +1427,7 @@ class DebugPerformance(DebugBase):
                 return ret_style
 
         target_ret = {}
-        target = RefFile(**CommandRecorder(target_file, read=True).dic)
+        target = RefFile(**CommandRecorder(target_file, read=True)._dic)
         # target.files.
 
         target_ret.update(self.task_parse_lglog2table(target_file))

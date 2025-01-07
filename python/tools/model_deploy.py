@@ -142,7 +142,10 @@ class DeployTool:
         if self.trunc_final:
             self.compare_all = True
 
-        self.file_recorder_cache_path = f"{self.bmodel_path}.ref_files.json"
+        self.context_dir = os.path.splitext(self.bmodel_path)[0]
+        os.makedirs(self.context_dir, exist_ok=True)
+        self.file_recorder_cache_path = os.path.join(self.context_dir, f"ref_files.json")
+
         self.file_recorder = CommandRecorder(self.file_recorder_cache_path)
         self.file_recorder.clear()
         self.file_recorder.update_file(
@@ -150,6 +153,11 @@ class DeployTool:
         )
         self.file_recorder.add_file(
             tpuc_opt=shutil.which("tpuc-opt"),
+        )
+        self.file_recorder.add_property(prefix=self.prefix)
+        self.file_recorder.add_command(deploy_cmd=" ".join(sys.argv))
+        self.file_recorder.add_property(
+            chip=self.chip, compare_all=self.compare_all
         )
         self.file_recorder.dump()
 
@@ -367,23 +375,19 @@ class DeployTool:
             return patterns
         finally:
             if self.chip != "cpu":
-                context_dir = os.path.splitext(self.bmodel_path)[0]
                 self.file_recorder.add_file(
                     bmodel=self.bmodel_path,
                     tensor_location=f"{self.bmodel_path}.json",
                     final_mlir=self.final_mlir,
                     tpu_mlir=self.tpu_mlir,
+                    tpu_opt_mlir=self.tpu_opt_mlir,
                     tpu_output=self.tpu_npz,
                     bmodel_output=self.model_npz,
-                    context_dir=context_dir,
+                    context_dir=self.context_dir,
                     layer_group_cache=f"{self.prefix}.layer_group_cache.json",
                 )
                 self.file_recorder.add_command(**command_mem)
-                self.file_recorder.add_command(deploy_cmd=" ".join(sys.argv))
-                self.file_recorder.add_property(
-                    chip=self.chip, compare_all=self.compare_all
-                )
-                self.file_recorder.dump(os.path.join(context_dir, "ref_files.json"))
+                self.file_recorder.dump()
 
     def revise_MaskRCNN_tpu_ref(self):
         if self.enable_maskrcnn:

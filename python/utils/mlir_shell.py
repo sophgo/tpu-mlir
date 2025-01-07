@@ -86,7 +86,7 @@ def getstatusoutput_v2(
         #         print(f"Mode: {handler.mode}")
         #         print(f"Encoding: {handler.encoding}")
 
-        getstatusoutput_v2_split_log(
+        return getstatusoutput_v2_split_log(
             cmd,
             cwd=cwd,
             env=env,
@@ -96,13 +96,14 @@ def getstatusoutput_v2(
             **kwargs,
         )
     else:
-        getstatusoutput_v2_without_split_log(
+        return getstatusoutput_v2_without_split_log(
             cmd,
             cwd=cwd,
             env=env,
             timeout=timeout,
             check=check,
             shell=shell,
+
             print_output=print_output,
             **kwargs,
         )
@@ -115,6 +116,8 @@ def getstatusoutput_v2_without_split_log(
     timeout=None,
     check=False,
     shell=False,
+    redirect_output=None,
+    redirect_error=None,
     print_output=False,
     **kwargs,
 ) -> Tuple[int, str]:
@@ -136,9 +139,18 @@ def getstatusoutput_v2_without_split_log(
     logger = logging.root
     ex = None
 
-    temp_logf = tempfile.NamedTemporaryFile("w+", delete=False)
+    if redirect_output:
+        temp_output = redirect_output
+    else:
+        temp_output = tempfile.NamedTemporaryFile("w+", delete=False)
+
+    if redirect_error:
+        temp_error = redirect_error
+    else:
+        temp_error = tempfile.NamedTemporaryFile("w+", delete=False)
+
     logger.debug(f"running command: {cmd}")
-    logger.debug(f"you can review middle output in {temp_logf.name}")
+    logger.debug(f"you can review middle output in {temp_output.name}")
     # if env
     try:
         cmd_str = cmd if shell else " ".join(cmd)
@@ -150,8 +162,9 @@ def getstatusoutput_v2_without_split_log(
         run(
             cmd,
             shell=shell,
-            stdout=temp_logf,
-            stderr=temp_logf,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE if print_output else temp_output,
+            stderr=subprocess.PIPE if print_output else temp_error,
             timeout=timeout,
             check=True,
             # universal_newlines=True,
@@ -160,16 +173,17 @@ def getstatusoutput_v2_without_split_log(
             **kwargs,
         )
         exitcode = 0
-        temp_logf.seek(0)
-        shutil.copyfileobj(temp_logf, logf)
+        if redirect_output is None:
+            temp_output.seek(0)
+            shutil.copyfileobj(temp_output, logf)
 
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Success]\n")
 
     except (CalledProcessError, TimeoutExpired) as e:
-        temp_logf.seek(0)
+        temp_output.seek(0)
         logf.write(
-            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
+            textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! ")
         )
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Failed in Command]\n")
@@ -191,11 +205,11 @@ def getstatusoutput_v2_without_split_log(
         logf.write(traceback.format_exc())
         logf.write(f"======traceback info end======\n")
     except Exception as e:
-        temp_logf.seek(0)
-
-        logf.write(
-            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
-        )
+        if redirect_output is None:
+            temp_output.seek(0)
+            logf.write(
+                textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! ")
+            )
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Failed Outside Command]\n")
         ex = e
@@ -207,17 +221,20 @@ def getstatusoutput_v2_without_split_log(
         logf.write(f"======traceback info end======\n")
         traceback.print_exc()
 
-    temp_logf.seek(0)
-    output = temp_logf.read()
-    temp_logf.close()
+    output = ""
+    if redirect_output is None:
+        temp_output.seek(0)
+        output = temp_output.read()
+        temp_output.close()
 
     if print_output:
         logger.info(output)
 
     try:
-        os.remove(temp_logf.name)
+        if redirect_output is None:
+            os.remove(temp_output.name)
     except Exception as e:
-        logger.error(f"remove temp log file {temp_logf.name} failed: {e}")
+        logger.error(f"remove temp log file {temp_output.name} failed: {e}")
 
     if check and ex:
         raise RuntimeError(f"{output}\n[Failed] {cmd}")
