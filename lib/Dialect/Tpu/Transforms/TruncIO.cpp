@@ -291,6 +291,10 @@ static void register_blk_out(Operation *blk_op, upd_info_t &upd_info,
   }
 }
 
+static unsigned get_op_file_line(Operation* op) {
+  return op->getLoc().dyn_cast<FileLineColLoc>().getLine();
+}
+
 class GroupDataFlowAnalysis {
 public:
   static Operation *analyze_from_tp(Operation *blk_op) {
@@ -427,6 +431,33 @@ public:
       }
     }
     return nullptr;
+  }
+
+  static Vector<Operation*> analyze_from_tp_for_more(Operation *func_op) {
+    Vector<Operation*> end_ops;
+    auto funcOp = dyn_cast<func::FuncOp>(func_op);
+    auto &ops = funcOp.getFunctionBody().front().getOperations();
+    for (auto &op : ops) {
+      if (is_aux_op(&op)) {
+        continue;
+      }
+      if (is_special_blk_op(&op)) {
+        Operation *may_be_end_op = BlkDataFlowAnalysis::analyze_from_tp(&op);
+        if (may_be_end_op) {
+          end_ops.push_back(may_be_end_op);
+        }
+      } else {
+        for (auto v : op.getResults()) {
+          if (module::isNone(v))
+            continue;
+          if (g_roster.is_expected_output(v)) {
+            end_ops.push_back(&op);
+            break;
+          }
+        }
+      }
+    }
+    return end_ops;
   }
 
   static void analyze_from_bt(SetVector<PValue> &live_values,
@@ -901,7 +932,8 @@ class MultiSubnetTruncIOWorker {
   Map<int, Map<int, id_pair_t>> subnet_io_maps;
 
 public:
-  void invoke() {
+  void invoke(int trunc_mode) {
+    assert(trunc_mode == 0);
     auto mainFuncOp = module::getMainFuncOp(g_moduleOp);
     analyze_call_data_flow(mainFuncOp);
     bool found = false;
@@ -1097,21 +1129,34 @@ private:
 
 class TruncIOWorker {
 public:
-  void invoke() {
+  void invoke(int trunc_mode) {
     upd_info_t sn_upd_info;
     SetVector<PValue> live_values;
     Map<Operation *, upd_info_t> blk_upd_infos;
     auto mainFuncOp = module::getMainFuncOp(g_moduleOp);
     auto main_func_op = mainFuncOp.getOperation();
-    Operation *may_be_end_op =
-        FuncDataFlowAnalysis::analyze_from_tp(main_func_op);
-    if (may_be_end_op == nullptr)
-      return;
-    for (auto v : may_be_end_op->getResults()) {
-      if (module::isNone(v))
-        continue;
-      live_values.insert(v.Value::getImpl());
-      register_blk_out(main_func_op, sn_upd_info, v);
+    Vector<Operation*> end_ops;
+    if (trunc_mode == 0) {
+      Operation *may_be_end_op =
+          FuncDataFlowAnalysis::analyze_from_tp(main_func_op);
+      if (may_be_end_op == nullptr)
+        return;
+      end_ops.push_back(may_be_end_op);
+    } else if (trunc_mode == 1) {
+      end_ops =
+          FuncDataFlowAnalysis::analyze_from_tp_for_more(main_func_op);
+      if (end_ops.empty())
+        return;
+    } else {
+      llvm_unreachable("unknown trunc_mode");
+    }
+    for (auto end_op : end_ops) {
+      for (auto v : end_op->getResults()) {
+        if (module::isNone(v))
+          continue;
+        live_values.insert(v.Value::getImpl());
+        register_blk_out(main_func_op, sn_upd_info, v);
+      }
     }
     FuncDataFlowAnalysis::analyze_from_bt(live_values, sn_upd_info,
                                           blk_upd_infos);
@@ -1214,10 +1259,10 @@ public:
       return;
     if (!module::isSubnetDividedState()) {
       g_moduleOp = mOp;
-      TruncIOWorker().invoke();
+      TruncIOWorker().invoke(this->trunc_mode);
     } else {
       g_moduleOp = module::getAllModules()->at(0);
-      MultiSubnetTruncIOWorker().invoke();
+      MultiSubnetTruncIOWorker().invoke(this->trunc_mode);
       update_module_io_names(g_moduleOp);
     }
     if (!this->weight_shared) {

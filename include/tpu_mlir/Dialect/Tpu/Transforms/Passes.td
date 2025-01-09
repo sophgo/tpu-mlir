@@ -173,11 +173,15 @@ def TruncIO : Pass<"trunc-io", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
   let options = [
     Option<"inputs", "inputs", "std::string", /*default=*/"",
-           "new inputs">,
+           "new input names">,
     Option<"outputs", "outputs", "std::string", /*default=*/"",
-           "new outputs">,
+           "new output names">,
     Option<"weight_shared", "weight_shared", "bool", /*default=*/"false",
            "whether to share weight">,
+    Option<"trunc_mode", "trunc_mode", "int", /*default=*/"0",
+           "determine how many END_OPs under consideration, optional values is: 0, 1."
+           "0 -> only one END_OP (default)"
+           "1 -> one or more END_OPs">,
   ];
 }
 
