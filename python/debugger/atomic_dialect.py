@@ -221,7 +221,7 @@ class Block(Node):
                 self.core_operations: List[MsgCore] = []
                 while msgcore_id < msgcore_nums:
                     for core_id, core_cmds in enumerate(self.cores_cmds):
-                        if core_cmds.msgcores and msgcore_id <= len(core_cmds.msgcores):
+                        if core_cmds.msgcores and msgcore_id < len(core_cmds.msgcores):
                             self.core_operations.append(core_cmds.msgcores[msgcore_id])
                     msgcore_id += 1
 
