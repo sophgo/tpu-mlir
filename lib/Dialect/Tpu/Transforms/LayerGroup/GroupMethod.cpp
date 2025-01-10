@@ -246,7 +246,7 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
   for (int idx = left; idx <= right; ++idx) {
     lg_info.group_ops.push_back(base_group[idx]);
   }
-  lg_info.update_group_io(opt_);
+  lg_info.update_group_io(options_.opt);
   set_group_type(lg_info);
   lg_info.base_group_idx = base_group_idx;
   lg_info.cache_key = key;
@@ -254,16 +254,19 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
   lg_info.end_idx = right;
 }
 
-GroupMethod::GroupMethod(int64_t opt) {
+GroupMethod::GroupMethod(const LgOptions &options) {
+  options_ = options;
+  MAX_COST = llvm::maxIntN(64);
+
   if (module::isCV18xx()) {
-    Cv18xxCycleCalculator *cyc_ptr = new Cv18xxCycleCalculator();
+    Cv18xxCycleCalculator *cyc_ptr =
+        new Cv18xxCycleCalculator(options_.num_core);
     cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
   } else {
-    Bm168xCycleCalculator *cyc_ptr = new Bm168xCycleCalculator();
+    Bm168xCycleCalculator *cyc_ptr =
+        new Bm168xCycleCalculator(options_.num_core);
     cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
   }
-  MAX_COST = llvm::maxIntN(64);
-  opt_ = opt;
 }
 
 int64_t GroupMethod::get_max_cluster_size(int64_t layer_num) {
@@ -451,7 +454,8 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   PROFILE_LOG("is_layer_group_valid", true);
   bool status;
   status = group_one_layer_proc(lg_info, calc_cost, group_cost);
-  if (status && LgPass::OPTIONS.group_by_cores == false) {
+  // if (status && options_.group_by_cores == false) {
+  if (status) {
     PROFILE_LOG("is_layer_group_valid", false);
     lg_info.is_valid = VALID;
     lg_info.group_cost = *group_cost;
@@ -475,7 +479,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
 
   shape_secs_t shape_secs;
   std::vector<std::pair<Value, int64_t>> value_size;
-  if (!init_group_data_secs(lg_info, shape_secs, value_size)) {
+  if (!init_group_data_secs(lg_info, shape_secs, value_size, options_)) {
     PROFILE_LOG("is_layer_group_valid", false);
     lg_info.is_valid = NOT_VALID;
     lg_info.group_cost = MAX_COST;
@@ -510,7 +514,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     return false;
   }
 
-  auto time_step = std::make_shared<BasicTimeStep>();
+  auto time_step = std::make_shared<BasicTimeStep>(options_);
   status = time_step->assignTimeStep(lg_info, shape_secs, true);
   if (status == false) {
     PROFILE_LOG("is_layer_group_valid", false);
@@ -526,7 +530,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     return false;
   }
 
-  auto lmem_allocator = std::make_shared<LmemAllocator>();
+  auto lmem_allocator = std::make_shared<LmemAllocator>(options_);
   status =
       lmem_allocator->assignLmemAddrWithSecs(lg_info, time_step, shape_secs);
   if (status == false) {
@@ -984,9 +988,9 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
   }
   bool valid = true;
   shape_secs_t shape_secs[2];
-  BasicTimeStepPtr time_steps[2] = {std::make_shared<BasicTimeStep>(),
-                                    std::make_shared<BasicTimeStep>()};
-  auto lmem_allocator = std::make_shared<LmemAllocator>();
+  BasicTimeStepPtr time_steps[2] = {std::make_shared<BasicTimeStep>(options_),
+                                    std::make_shared<BasicTimeStep>(options_)};
+  auto lmem_allocator = std::make_shared<LmemAllocator>(options_);
   int64_t group_costs[2] = {0, 0};
   // bool pre_cost_judge = true;
 
@@ -1040,9 +1044,9 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
   }
   bool valid = true;
   shape_secs_t shape_secs[2];
-  BasicTimeStepPtr time_steps[2] = {std::make_shared<BasicTimeStep>(),
-                                    std::make_shared<BasicTimeStep>()};
-  auto lmem_allocator = std::make_shared<LmemAllocator>();
+  BasicTimeStepPtr time_steps[2] = {std::make_shared<BasicTimeStep>(options_),
+                                    std::make_shared<BasicTimeStep>(options_)};
+  auto lmem_allocator = std::make_shared<LmemAllocator>(options_);
   int64_t group_costs[2] = {0, 0};
   bool pre_cost_judge = true;
   for (size_t i = 0; i < 2; ++i) {
@@ -1056,7 +1060,8 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
     }
 
     std::vector<std::pair<Value, int64_t>> value_size;
-    if (!init_group_data_secs(*groups[i], shape_secs[i], value_size)) {
+    if (!init_group_data_secs(*groups[i], shape_secs[i], value_size,
+                              options_)) {
       valid = false;
       break;
     }
@@ -1064,7 +1069,8 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
       valid = false;
       break;
     }
-    if (!update_data_split(time_steps[i], *groups[i], shape_secs[i])) {
+    if (!update_data_split(time_steps[i], *groups[i], shape_secs[i]),
+        options_) {
       valid = false;
       break;
     }
@@ -1076,7 +1082,7 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
         continue;
       }
       if (!stripe_mine_max_slice(*groups[i], shape_secs[i],
-                                 time_steps[i]->get_tensor_infos())) {
+                                 time_steps[i]->get_tensor_infos(), options_)) {
         valid = false;
         break;
       }
@@ -1365,7 +1371,7 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   runmode_ = getRunMode(subnet_ops[0]);
   // auto func_name = pass_ir->func.getName();
 
-  if (getenv("LOAD_TPU_GROUP") || LgPass::OPTIONS.opt == 4) {
+  if (getenv("LOAD_TPU_GROUP") || options_.opt == 4) {
     if (is_lg_results_exists()) {
       load_lg_results(lg_infos, subnet_ops);
       if (getenv("RESEARCH_SHAPE_SECS")) {
@@ -1375,7 +1381,7 @@ void GroupMethod::process(LgPassIR *pass_ir) {
       llvm_unreachable("file not exist's, ues opt=1/2/3 to generate");
     }
   } else {
-    switch (LgPass::OPTIONS.opt) {
+    switch (options_.opt) {
     case 1:
       simple_layer_group(lg_infos, subnet_ops);
       dump_lg_results(lg_infos);
@@ -1420,8 +1426,7 @@ void GroupMethod::get_final_groups(
           llvm_unreachable("group_cost is not valid");
         }
       }
-      if (lg_info.group_ops.size() > 1 ||
-          false == LgPass::OPTIONS.group_by_cores) {
+      if (lg_info.group_ops.size() > 1 || false == options_.group_by_cores) {
         lg_infos.push_back(lg_info);
       }
       DEBUG_WITH_TYPE("lg_results", {
@@ -1476,7 +1481,7 @@ bool GroupMethod::is_lg_results_exists() {
   return ret;
 }
 void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
-  if (!LgPass::OPTIONS.lgcache) {
+  if (!options_.lgcache) {
     return;
   }
 
@@ -1490,7 +1495,7 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
   json::OStream J(OS, 2);
   J.objectBegin();
 
-  J.attribute("opt", LgPass::OPTIONS.opt);
+  J.attribute("opt", options_.opt);
   // Write GroupLayer array
   J.attributeBegin("GroupLayer");
   J.arrayBegin();
@@ -1575,7 +1580,7 @@ void GroupMethod::load_lg_results(
   }
 
   auto &root = *jsonOrErr;
-  int opt = LgPass::OPTIONS.opt;
+  int opt = options_.opt;
   // Load group layers
   if (auto *rootObj = root.getAsObject()) {
     if (auto opt_ = rootObj->getInteger("opt")) {
@@ -1706,7 +1711,7 @@ class LayerGroupSearchPass : public LgPass {
 public:
   LayerGroupSearchPass(const LgOptions &options) { options_ = options; }
   virtual bool run(LgPassIR *pass_ir) override {
-    auto group_method = GroupMethod(options_.opt);
+    auto group_method = GroupMethod(options_);
     group_method.process(pass_ir);
     return true;
   }
@@ -1714,9 +1719,6 @@ public:
   virtual std::string brief() override {
     return "Searching the optimal layer groups";
   }
-
-private:
-  LgOptions options_;
 };
 
 std::unique_ptr<LgPass> CreateLayerGroupSearchPass(const LgOptions &options) {

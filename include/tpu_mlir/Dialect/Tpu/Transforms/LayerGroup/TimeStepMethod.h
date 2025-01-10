@@ -28,12 +28,15 @@ namespace tpu {
 class TimeStepMethod {
 
 public:
-  TimeStepMethod() {
+  TimeStepMethod(const LgOptions &options) {
+    options_ = options;
     if (module::isCV18xx()) {
-      Cv18xxCycleCalculator *cyc_ptr = new Cv18xxCycleCalculator();
+      Cv18xxCycleCalculator *cyc_ptr =
+          new Cv18xxCycleCalculator(options.num_core);
       cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
     } else {
-      Bm168xCycleCalculator *cyc_ptr = new Bm168xCycleCalculator();
+      Bm168xCycleCalculator *cyc_ptr =
+          new Bm168xCycleCalculator(options.num_core);
       cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
     }
   }
@@ -75,10 +78,11 @@ public:
   //                             int64_t hidx, int64_t hslice);
 
 private:
+  LgOptions options_;
   std::shared_ptr<CycleCalculator> cycle_calculator_;
 };
 
-std::unique_ptr<LgPass> CreateTimeStepAssignmentPass();
+std::unique_ptr<LgPass> CreateTimeStepAssignmentPass(const LgOptions &options);
 
 } // namespace tpu
 } // namespace tpu_mlir

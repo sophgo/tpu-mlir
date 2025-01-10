@@ -28,15 +28,17 @@ shape_secs_t
 get_group_max_secs(const LgInfo &lg_info,
                    std::vector<std::pair<Operation *, int>> &vec_op_hsecs);
 bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                          std::vector<std::pair<Value, int64_t>> &value_size);
+                          std::vector<std::pair<Value, int64_t>> &value_size,
+                          const LgOptions &options);
 bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
                            std::vector<std::pair<Value, int64_t>> &value_size,
                            Operation *&fail_op,
-                           std::shared_ptr<dot_graph> dot_graph_log);
+                           std::shared_ptr<dot_graph> dot_graph_log,
+                           const LgOptions &options);
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
                          int speical_pattern = 0);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
-                       shape_secs_t &shape_secs);
+                       shape_secs_t &shape_secs, const LgOptions &options);
 int64_t get_split_max_secs(BasicTimeStepPtr time_step);
 void update_multi_core_secs(const shape_secs_t max_shape_secs,
                             shape_secs_t &shape_secs);
@@ -60,7 +62,7 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
                               bool is_group_in);
 bool stripe_mine_max_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos);
+                           TensorInfo &tensor_infos, const LgOptions &options);
 
 void get_max_slice_nchdw(const slice_info_t &slice_info, int64_t &max_nslice,
                          int64_t &max_cslice, int64_t &max_hslice,
@@ -72,14 +74,15 @@ get_max_slice_nchdw_and_idx(const slice_info_t &slice_info, int64_t &max_nslice,
                             int64_t &max_dslice, int64_t &max_wslice);
 
 void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs);
+                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs,
+                    const LgOptions &options);
 
 int64_t get_buffer_size(Value v, tensor_info_t &ti, group_type_t group_type,
                         Operation *owner_op = nullptr);
 
 bool stripe_mine_idx_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos);
+                           TensorInfo &tensor_infos, const LgOptions &options);
 
 void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
                                 int64_t hidx, int64_t hslice, int64_t didx,
@@ -128,7 +131,7 @@ sortOpsByOtherOpsOrder(const std::vector<Operation *> &exp_ops,
 std::vector<std::vector<Operation *>> seg_grp_ops_by_global_op(
     const std::vector<Operation *> &grp_ops,
     const std::vector<Operation *> &break_ops,
-    std::vector<Operation *> &excluded_ops,
+    std::vector<Operation *> &excluded_ops, const LgOptions &options,
     std::map<Operation *, bool> *break_op_reside = nullptr);
 void findReshapeAtEdge(std::vector<Operation *> &ops,
                        std::vector<Operation *> &del_ops);
@@ -137,7 +140,7 @@ void find_all_pre_ops(Operation *op, std::vector<Operation *> &glayer_pre_ops,
 void find_all_next_ops(Operation *op, std::vector<Operation *> &glayer_next_ops,
                        std::vector<Operation *> *grp_ops = nullptr);
 std::shared_ptr<ilp_LgInfo>
-CreateIlpLgInfo(std::vector<Operation *> ops,
+CreateIlpLgInfo(std::vector<Operation *> ops, const LgOptions &options,
                 solver_strategy_type_t cur_strategy = STRATEGY_NORMAL);
 void GetAllParallelNodes(
     const std::vector<Operation *> &ops,

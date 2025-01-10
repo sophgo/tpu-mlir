@@ -24,14 +24,17 @@ namespace tpu {
 
 class GroupOps {
 public:
-  GroupOps(::mlir::func::FuncOp func, int64_t opt);
+  GroupOps(::mlir::func::FuncOp func, LgOptions &options);
+  GroupOps(SmallVector<Operation *> &ops, LgOptions &options);
   ~GroupOps() { delete lg_pass_ir_; }
-  void process(int64_t opt);
+  void process();
   ::mlir::func::FuncOp func_;
 
 protected:
+  // init
+  void init(LgOptions &options, MLIRContext *ctx);
   // create groups
-  void buildGroups(int64_t opt);
+  void buildGroups();
   //  void assign_timestep();
   //  bool assign_lmem_addr();
   // nnvlc
@@ -89,6 +92,7 @@ protected:
   Operation *none_op_;
   Block *body_;
   int64_t MAX_ID_;
+  LgOptions options_;
 
   // used for group overlap
   IntValueIntMap self_up_overlap_ops_;

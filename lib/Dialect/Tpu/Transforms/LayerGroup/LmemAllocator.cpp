@@ -176,13 +176,14 @@ static inline int64_t increase_csecs(int64_t csecs, int64_t max_csecs) {
 static inline void update_shape_secs(const LgInfo &lg_info,
                                      shape_secs_t &shape_secs,
                                      int64_t &dhw_secs,
-                                     const shape_secs_t &max_shape_secs) {
+                                     const shape_secs_t &max_shape_secs,
+                                     const LgOptions &options) {
   if (shape_secs.nsecs < max_shape_secs.nsecs) {
     shape_secs.nsecs = increase_nsecs(shape_secs.nsecs, max_shape_secs.nsecs);
   } else if (shape_secs.csecs < max_shape_secs.csecs) {
     shape_secs.csecs = increase_csecs(shape_secs.csecs, max_shape_secs.csecs);
   } else {
-    assign_dhwsecs(lg_info, shape_secs, ++dhw_secs, max_shape_secs);
+    assign_dhwsecs(lg_info, shape_secs, ++dhw_secs, max_shape_secs, options);
   }
 }
 
@@ -985,7 +986,7 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   std::vector<std::pair<Operation *, int>> vec_op_hsecs;
   max_shape_secs_ = get_group_max_secs(lg_info, vec_op_hsecs);
   if (!allow_bank_conflict) {
-    update_data_split(time_step, lg_info, shape_secs);
+    update_data_split(time_step, lg_info, shape_secs, options_);
     DEBUG_WITH_TYPE("shape_secs", {
       llvm::dbgs() << "; action = shape_secs"
                    << "; step = update_data_split"
@@ -1162,7 +1163,8 @@ void LmemAllocator::sc_method_quick_search(const LgInfo &lg_info,
       });
       break;
     } else if (ret > SECS_TIMESTEP_INVALID) {
-      update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs_);
+      update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs_,
+                        options_);
     }
     if (++try_num >= MAX_TRY_NUM) {
       break;
@@ -1381,10 +1383,11 @@ void aggressive_slice_for_multicore(LmemAllocator &lmem_allocator,
 /// The pass for local memory allocation
 class LocalMemoryAllocationPass : public LgPass {
 public:
+  LocalMemoryAllocationPass(const LgOptions &options) { options_ = options; }
   virtual bool run(LgPassIR *pass_ir) override {
     for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
       if (pass_ir->lg_infos[i].group_ops.size() > 1) {
-        auto lmem_allocator = LmemAllocator();
+        auto lmem_allocator = LmemAllocator(options_);
         auto shape_secs = pass_ir->shape_secs[i];
         auto ret = lmem_allocator.assignLmemAddrWithSecs(
             pass_ir->lg_infos[i], pass_ir->time_steps[i],
@@ -1411,8 +1414,9 @@ public:
   }
 };
 
-std::unique_ptr<LgPass> CreateLocalMemoryAllocationPass() {
-  return std::unique_ptr<LgPass>(new LocalMemoryAllocationPass());
+std::unique_ptr<LgPass>
+CreateLocalMemoryAllocationPass(const LgOptions &options) {
+  return std::unique_ptr<LgPass>(new LocalMemoryAllocationPass(options));
 }
 
 } // namespace tpu

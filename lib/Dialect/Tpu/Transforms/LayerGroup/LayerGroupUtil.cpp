@@ -143,10 +143,11 @@ void find_op_tree_by_root2(Operation *op, std::vector<Operation *> &op_tree,
 }
 
 static std::vector<std::vector<Operation *>>
-process_in_value_have_mulit_user(const std::vector<Operation *> &ops) {
+process_in_value_have_mulit_user(const std::vector<Operation *> &ops,
+                                 const LgOptions &options) {
   LgInfo lgInfo;
   lgInfo.group_ops.assign(ops.begin(), ops.end());
-  lgInfo.update_group_io(LgPass::OPTIONS.opt);
+  lgInfo.update_group_io(options.opt);
   std::vector<Value> multi_user_values;
   for (auto in : lgInfo.group_ins) {
     if (valueHasMultiGroupUser(in, ops)) {
@@ -221,7 +222,8 @@ static void find_op_in_same_block(Operation *op,
 
 static std::vector<std::vector<Operation *>>
 ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops,
-                                  std::vector<Operation *> &single_ops) {
+                                  std::vector<Operation *> &single_ops,
+                                  const LgOptions &options) {
   std::vector<std::vector<Operation *>> new_grps;
   if (ops.size() < 2) {
     single_ops.insert(single_ops.end(), ops.begin(), ops.end());
@@ -229,7 +231,7 @@ ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops,
   }
   LgInfo sub_group;
   sub_group.group_ops.assign(ops.begin(), ops.end());
-  sub_group.update_group_io(LgPass::OPTIONS.opt);
+  sub_group.update_group_io(options.opt);
 
   int in_idx = 0;
   std::map<Operation *, int> op_block_id;
@@ -295,6 +297,7 @@ std::vector<std::vector<Operation *>>
 seg_grp_ops_by_global_op(const std::vector<Operation *> &grp_ops,
                          const std::vector<Operation *> &break_ops,
                          std::vector<Operation *> &excluded_ops,
+                         const LgOptions &options,
                          std::map<Operation *, bool> *break_op_reside) {
   std::vector<std::vector<Operation *>> new_grps, new_grps2;
   std::vector<Operation *> left_ops;
@@ -342,12 +345,13 @@ seg_grp_ops_by_global_op(const std::vector<Operation *> &grp_ops,
     }
   }
   std::vector<Operation *> single_ops;
-  auto tmpGrps = ConvertDisconnectedBlocksToGroups(left_ops, single_ops);
+  auto tmpGrps =
+      ConvertDisconnectedBlocksToGroups(left_ops, single_ops, options);
   new_grps.insert(new_grps.end(), tmpGrps.begin(), tmpGrps.end());
 
   for (auto grp : new_grps) {
     if (grp.size() > 1) {
-      for (auto grp2 : process_in_value_have_mulit_user(grp)) {
+      for (auto grp2 : process_in_value_have_mulit_user(grp, options)) {
         if (grp2.size() > 1) {
           new_grps2.push_back(grp2);
         }
@@ -422,12 +426,12 @@ void find_all_next_ops(Operation *op, std::vector<Operation *> &glayer_next_ops,
 }
 
 std::shared_ptr<ilp_LgInfo>
-CreateIlpLgInfo(std::vector<Operation *> ops,
+CreateIlpLgInfo(std::vector<Operation *> ops, const LgOptions &options,
                 solver_strategy_type_t cur_strategy) {
   auto ilp_lgInfo = std::make_shared<ilp_LgInfo>();
   ilp_lgInfo->_cur_strategy = cur_strategy;
   ilp_lgInfo->_lgInfo.group_ops.assign(ops.begin(), ops.end());
-  ilp_lgInfo->_lgInfo.update_group_io(LgPass::OPTIONS.opt);
+  ilp_lgInfo->_lgInfo.update_group_io(options.opt);
   // set_group_type(ilp_lgInfo->_lgInfo);
   llvm::errs() << "add_group_id:" << ilp_lgInfo->_lgInfo.group_id << "\n";
   return ilp_lgInfo;
@@ -651,9 +655,9 @@ void update_multi_core_secs(const shape_secs_t max_shape_secs,
 }
 
 bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                          std::vector<std::pair<Value, int64_t>> &value_size) {
-  if (lg_info.group_ops.size() == 1 &&
-      false == LgPass::OPTIONS.group_by_cores) {
+                          std::vector<std::pair<Value, int64_t>> &value_size,
+                          const LgOptions &options) {
+  if (lg_info.group_ops.size() == 1 && false == options.group_by_cores) {
     return true;
   }
 
@@ -732,11 +736,11 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
 bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
                            std::vector<std::pair<Value, int64_t>> &value_size,
                            Operation *&fail_op,
-                           std::shared_ptr<dot_graph> dot_graph_log) {
+                           std::shared_ptr<dot_graph> dot_graph_log,
+                           const LgOptions &options) {
   fail_op = nullptr;
   auto lg_info = ilp_lg_info._lgInfo;
-  if (lg_info.group_ops.size() == 1 &&
-      false == LgPass::OPTIONS.group_by_cores) {
+  if (lg_info.group_ops.size() == 1 && false == options.group_by_cores) {
     return true;
   }
   std::vector<std::pair<Operation *, int>> vec_op_hwsecs;
@@ -976,7 +980,8 @@ static void force_group_by_cores(shape_secs_t &shape_secs,
 }
 
 void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs) {
+                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs,
+                    const LgOptions &options) {
   shape_secs.dsecs = 1;
   shape_secs.hsecs = dhw_secs;
   shape_secs.wsecs = 1;
@@ -1050,14 +1055,14 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
       shape_secs.hsecs = max_shape_secs.hsecs;
     }
   }
-  if (LgPass::OPTIONS.group_by_cores) {
+  if (options.group_by_cores) {
     force_group_by_cores(shape_secs, max_shape_secs);
   }
   dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
 }
 
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
-                       shape_secs_t &shape_secs) {
+                       shape_secs_t &shape_secs, const LgOptions &options) {
   shape_secs.nsecs = 1;
   shape_secs.hsecs = 1;
   shape_secs.dsecs = 1;
@@ -1070,7 +1075,8 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
   for (int64_t nsec = 1; nsec <= max_shape_secs.nsecs; ++nsec) {
     shape_secs.nsecs = nsec;
     tensor_infos.clear();
-    if (stripe_mine_max_slice(lg_info, shape_secs, tensor_infos) == false) {
+    if (stripe_mine_max_slice(lg_info, shape_secs, tensor_infos, options) ==
+        false) {
       return false;
     }
     time_step->update_all_mem_buffer_size(lg_info);
@@ -1092,7 +1098,7 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     int64_t dhw_secs = ceiling_func(cdhw_secs, shape_secs.csecs);
     if (dhw_secs > 1) {
       if (shape_secs.nsecs == max_shape_secs.nsecs) {
-        assign_dhwsecs(lg_info, shape_secs, dhw_secs, max_shape_secs);
+        assign_dhwsecs(lg_info, shape_secs, dhw_secs, max_shape_secs, options);
       } else {
         continue;
       }
@@ -1830,9 +1836,8 @@ static bool backward_update_slice(
 
 bool stripe_mine_max_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos) {
-  if (lg_info.group_ops.size() == 1 &&
-      false == LgPass::OPTIONS.group_by_cores) {
+                           TensorInfo &tensor_infos, const LgOptions &options) {
+  if (lg_info.group_ops.size() == 1 && false == options.group_by_cores) {
     return true;
   }
   tensor_infos.clear();
@@ -1894,9 +1899,8 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
 
 bool stripe_mine_idx_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos) {
-  if (lg_info.group_ops.size() == 1 &&
-      false == LgPass::OPTIONS.group_by_cores) {
+                           TensorInfo &tensor_infos, const LgOptions &options) {
+  if (lg_info.group_ops.size() == 1 && false == options.group_by_cores) {
     return true;
   }
   tensor_infos.clear();

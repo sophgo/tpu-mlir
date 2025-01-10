@@ -14,7 +14,7 @@
 namespace tpu_mlir {
 namespace tpu {
 
-std::unique_ptr<LgPass> CreateTimeStepCombinePass();
+std::unique_ptr<LgPass> CreateTimeStepCombinePass(const LgOptions &options);
 
 } // namespace tpu
 } // namespace tpu_mlir

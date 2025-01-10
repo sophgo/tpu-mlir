@@ -130,11 +130,13 @@ bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
                              const LgInfo &lg_info,
                              const shape_secs_t &shape_secs, bool gen_idx) {
   if (gen_idx) {
-    if (stripe_mine_idx_slice(lg_info, shape_secs, tensor_infos) == false) {
+    if (stripe_mine_idx_slice(lg_info, shape_secs, tensor_infos, options_) ==
+        false) {
       return false;
     }
   } else {
-    if (stripe_mine_max_slice(lg_info, shape_secs, tensor_infos) == false) {
+    if (stripe_mine_max_slice(lg_info, shape_secs, tensor_infos, options_) ==
+        false) {
       return false;
     }
   }
@@ -400,13 +402,15 @@ TimeStepMethod::get_best_ts(BasicTimeStep *time_step, const LgInfo &lg_info,
 
 class TimeStepAssignmentPass : public LgPass {
 public:
+  TimeStepAssignmentPass(const LgOptions &options) { options_ = options; }
   virtual bool run(LgPassIR *pass_ir) override {
     pass_ir->time_steps.clear();
     for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
-      auto time_step = std::make_shared<BasicTimeStep>();
+      auto time_step = std::make_shared<BasicTimeStep>(options_);
       shape_secs_t shape_secs;
       std::vector<std::pair<Value, int64_t>> value_size;
-      if (!init_group_data_secs(pass_ir->lg_infos[i], shape_secs, value_size)) {
+      if (!init_group_data_secs(pass_ir->lg_infos[i], shape_secs, value_size,
+                                options_)) {
         return false;
       }
       bool ret =
@@ -427,8 +431,8 @@ public:
   }
 };
 
-std::unique_ptr<LgPass> CreateTimeStepAssignmentPass() {
-  return std::unique_ptr<LgPass>(new TimeStepAssignmentPass());
+std::unique_ptr<LgPass> CreateTimeStepAssignmentPass(const LgOptions &options) {
+  return std::unique_ptr<LgPass>(new TimeStepAssignmentPass(options));
 }
 
 } // namespace tpu

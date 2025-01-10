@@ -95,7 +95,8 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
   }
 }
 
-SmallVector<Operation *> createTempCoreParallelOp(Operation *_op) {
+SmallVector<Operation *> createTempCoreParallelOp(Operation *_op,
+                                                  int num_core) {
   SmallVector<Operation *> computeOps;
   if (!isa<IndexingMapsInterface>(_op)) {
     return computeOps;
@@ -108,7 +109,6 @@ SmallVector<Operation *> createTempCoreParallelOp(Operation *_op) {
 
   auto op = dyn_cast<IndexingMapsInterface>(_op);
   // int offset = 0;
-  int num_core = module::getCoreNum();
 
   LLVM_DEBUG({
     llvm::errs() << "IndexingMap" << '\n';
@@ -299,10 +299,9 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
   bool consider_multi_core_bw = false;
-  auto num_core = module::getCoreNum();
-  if (num_core == 2) {
+  if (num_core_ == 2) {
     consider_multi_core_bw = true;
-    loop_num = loop_num / num_core + (loop_num % num_core > 0);
+    loop_num = loop_num / num_core_ + (loop_num % num_core_ > 0);
     DEBUG_WITH_TYPE("cycle_calc", {
       llvm::dbgs() << "; action = cycle_calc"
                    << "; step = multi_core_refactor"
@@ -310,8 +309,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
     });
   }
 
-  if (num_core == 8) {
-    loop_num = loop_num / num_core + (loop_num % num_core > 0);
+  if (num_core_ == 8) {
+    loop_num = loop_num / num_core_ + (loop_num % num_core_ > 0);
     DEBUG_WITH_TYPE("cycle_calc", {
       llvm::dbgs() << "; action = cycle_calc"
                    << "; step = multi_core_refactor"
@@ -521,7 +520,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
 }
 
 int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
-  auto splitedOps = createTempCoreParallelOp(op);
+  auto splitedOps = createTempCoreParallelOp(op, num_core_);
   // SmallVector<Operation *> splitedOps;
 
   if (auto inplaceOp = dyn_cast<InplaceInterface>(op)) {

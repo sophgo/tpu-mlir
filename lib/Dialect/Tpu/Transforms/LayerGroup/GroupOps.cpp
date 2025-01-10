@@ -29,22 +29,21 @@ get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func) {
     } else {
       if (isa<ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
-          if (!v.getType().isa<NoneType>()) {
-            auto width = module::getStorageType(v).getIntOrFloatBitWidth() / 8;
-            output_bytes +=
-                v.getType().cast<RankedTensorType>().getNumElements() * width;
+          if (!isa<NoneType>(v.getType())) {
+            auto width = module::getDtypeSize(v);
+            auto num_elts = module::getNumElements(v);
+            output_bytes += num_elts * width;
           }
         }
       }
       for (auto v : op->getOperands()) {
-        if (v.getType().isa<NoneType>()) {
+        if (isa<NoneType>(v.getType())) {
           continue;
         }
         if (!isa<tpu::ReshapeOp>(op)) {
-          auto width = module::getStorageType(v).getIntOrFloatBitWidth() / 8;
-          auto bytes_num =
-              v.getType().cast<RankedTensorType>().getNumElements() * width;
-          total_bytes += bytes_num;
+          auto width = module::getDtypeSize(v);
+          auto num_elts = module::getNumElements(v);
+          total_bytes += num_elts * width;
           // file << module::getName(v).str()<<std::endl;
         }
       }
@@ -56,31 +55,47 @@ get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func) {
                << total_bytes << "\n";
 }
 
-GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
+void GroupOps::init(LgOptions &options, MLIRContext *ctx) {
+  options_ = options;
+  ctx_ = ctx;
   MAX_ID_ = llvm::maxIntN(64);
-  func_ = func;
-  ctx_ = func.getContext();
   lg_pass_ir_ = new LgPassIR();
+  // lg_pass_ir_->func = std::nullptr;
   version = 0; // 0:old version, 1:new backend api
-  get_ddr_access_statistic_before_layergroup(func);
-  lg_pass_ir_->func = func;
+}
 
+static void collect_ops(SmallVector<Operation *> &ops, LgPassIR *ir) {
+  for (auto op : ops) {
+    ir->subnet_ops.insert(op);
+    for (auto v : op->getOperands()) {
+      if (isa<NoneType>(v.getType())) {
+        continue;
+      }
+      ir->subnet_values.insert(v);
+    }
+    for (auto v : op->getResults()) {
+      ir->subnet_values.insert(v);
+    }
+  }
+}
+
+static void collect_ops(FuncOp func, LgPassIR *ir) {
   auto runmode = getRunMode(func);
   std::vector<std::pair<std::string, std::string>> edges;
 
-  func.walk([&](Operation *op) {
+  func.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
       // do nothing
     } else {
-      lg_pass_ir_->subnet_ops.insert(op);
+      ir->subnet_ops.insert(op);
 
       if (runmode == RunMode::TPU_STATIC && !isa<ReturnOp>(op)) {
         auto end = module::getName(op);
         for (auto v : op->getOperands()) {
-          if (v.getType().isa<NoneType>()) {
+          if (isa<NoneType>(v.getType())) {
             continue;
           }
-          if (v.isa<BlockArgument>()) {
+          if (isa<BlockArgument>(v)) {
             continue;
           }
           if (v.getDefiningOp() && isa<top::WeightOp>(v.getDefiningOp())) {
@@ -95,24 +110,25 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
       }
 
       for (auto v : op->getOperands()) {
-        if (v.getType().isa<NoneType>()) {
+        if (isa<NoneType>(v.getType())) {
           continue;
         }
-        lg_pass_ir_->subnet_values.insert(v);
+        ir->subnet_values.insert(v);
       }
       for (auto v : op->getResults()) {
         bool is_used = false;
         for (auto dst_op : v.getUsers()) {
-          if (lg_pass_ir_->subnet_ops.contains(dst_op)) {
+          if (ir->subnet_ops.contains(dst_op)) {
             is_used = true;
             break;
           }
         }
         if (!is_used) {
-          lg_pass_ir_->subnet_values.insert(v);
+          ir->subnet_values.insert(v);
         }
       }
     }
+    return WalkResult::advance();
   });
 
   // ==== do topo sort to build better ordered op list ====
@@ -124,19 +140,19 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
 
     // // 2. validation and detection
     // bool doReorder = true;
-    // if (lg_pass_ir_->subnet_ops.size() != (top_order.size() + 1)) {
+    // if (ir->subnet_ops.size() != (top_order.size() + 1)) {
     //   doReorder = false;
     // } else {
 
     //   int oriCost = 0;
     //   int time = 0;
     //   std::unordered_map<std::string, int> oriOrder;
-    //   for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
+    //   for (auto it : llvm::enumerate(ir->subnet_ops)) {
     //     if (!isa<ReturnOp>(it.value())) {
     //       oriOrder[module::getName(it.value()).str()] = it.index();
     //     }
     //   }
-    //   for (auto it : llvm::enumerate(lg_pass_ir_->subnet_ops)) {
+    //   for (auto it : llvm::enumerate(ir->subnet_ops)) {
     //     if (!isa<ReturnOp>(it.value())) {
     //       oriCost +=
     //           it.index() -
@@ -154,21 +170,21 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     // doReorder = false;
     // // 3. do it
     // if (doReorder) {
-    //   // adjust lg_pass_ir_->subnet_ops
-    //   std::vector<Operation *> vector(lg_pass_ir_->subnet_ops.size());
-    //   for (auto op : lg_pass_ir_->subnet_ops) {
+    //   // adjust ir->subnet_ops
+    //   std::vector<Operation *> vector(ir->subnet_ops.size());
+    //   for (auto op : ir->subnet_ops) {
     //     if (!isa<ReturnOp>(op)) {
     //       vector[top_order[module::getName(op).str()]] = op;
     //     } else {
-    //       vector[lg_pass_ir_->subnet_ops.size() - 1] = op;
+    //       vector[ir->subnet_ops.size() - 1] = op;
     //     }
     //   }
 
     //   // adjust mlir context to avoid "does not dominate this use" problem
-    //   lg_pass_ir_->subnet_ops.clear();
+    //   ir->subnet_ops.clear();
     //   for (auto it : llvm::enumerate(vector)) {
     //     auto op = it.value();
-    //     lg_pass_ir_->subnet_ops.insert(op);
+    //     ir->subnet_ops.insert(op);
     //     if (it.index() >= 1) {
     //       op->moveAfter(vector[it.index() - 1]);
     //       DEBUG_WITH_TYPE("topo_reorder_mlir", {
@@ -202,47 +218,57 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     //     }
     //   }
 
-    //   auto &lastOp = func_.getBody().back().back();
+    //   auto &lastOp = func.getBody().back().back();
     //   if (!isa<ReturnOp>(lastOp)) {
     //     vector.back()->moveAfter(&lastOp);
     //   }
     // }
   }
+}
 
-  if (opt != 3) {
+GroupOps::GroupOps(SmallVector<Operation *> &ops, LgOptions &options) {
+  init(options, ops[0]->getContext());
+  collect_ops(ops, lg_pass_ir_);
+}
+
+GroupOps::GroupOps(::mlir::func::FuncOp func, LgOptions &options) {
+  init(options, func.getContext());
+  collect_ops(func, lg_pass_ir_);
+  func_ = func;
+
+  get_ddr_access_statistic_before_layergroup(func);
+
+  if (options_.opt != 3) {
     return;
   }
 
   Operation *dot_root_op = nullptr;
   std::vector<Operation *> global_layers, tmp_ops, excluded_ops, ops_bk;
   for (auto itr : lg_pass_ir_->subnet_ops) {
+    auto op_name = module::getName(itr).str();
     if (!dot_root_op &&
-        module::isDebugCmdEnable("dot_root_op_name-" +
-                                 module::getName(itr).str() + ",")) {
-      llvm::errs() << "GroupOps find dot_root_op_name:"
-                   << module::getName(itr).str() << "\n";
+        module::isDebugCmdEnable("dot_root_op_name-" + op_name + ",")) {
+      llvm::errs() << "GroupOps find dot_root_op_name:" << op_name << "\n";
       dot_root_op = itr;
     }
-    if (module::isDebugCmdEnable("user_defined_global_op-" +
-                                 module::getName(itr).str())) {
+    if (module::isDebugCmdEnable("user_defined_global_op-" + op_name)) {
       global_layers.push_back(itr);
     }
     tmp_ops.push_back(itr);
   }
 
+  auto module_name = module::getName(module::getModuleOp()).str();
   if (module::isDebugCmdEnable("dot_root_op_name") && dot_root_op) {
     std::vector<Operation *> op_tree, exclude_ops, break_ops;
     find_op_tree_by_root2(dot_root_op, op_tree, tmp_ops, exclude_ops, break_ops,
                           0, 8);
     auto dot_graph_log_subnet = createSubnetGraph(op_tree);
-    dot_graph_log_subnet->export_dot(
-        "svg_initial_" + module::getName(module::getModuleOp()).str(), true);
+    dot_graph_log_subnet->export_dot("svg_initial_" + module_name, true);
   }
 
   if (module::isDebugCmdEnable("export_full_svg")) {
     auto dot_graph_log_subnet = createSubnetGraph(tmp_ops);
-    dot_graph_log_subnet->export_dot(
-        "svg_initial_" + module::getName(module::getModuleOp()).str(), true);
+    dot_graph_log_subnet->export_dot("svg_initial_" + module_name, true);
   }
 
   func.walk([&](Operation *op) {
@@ -262,8 +288,8 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     return WalkResult::advance();
   });
 
-  for (auto grp_ops :
-       seg_grp_ops_by_global_op(tmp_ops, global_layers, excluded_ops)) {
+  for (auto grp_ops : seg_grp_ops_by_global_op(tmp_ops, global_layers,
+                                               excluded_ops, options_)) {
     if (grp_is_valid(grp_ops)) {
       llvm::errs() << "call findSpecialGroup, grp_ops.size:" << grp_ops.size()
                    << "\n";
@@ -272,28 +298,24 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
   }
 }
 
-void GroupOps::process(int64_t opt) {
-  buildGroups(opt);
-  if (opt == 3) {
+void GroupOps::process() {
+  buildGroups();
+  if (options_.opt == 3) {
     buildMlir_for_opt3();
   } else {
     buildMlir();
-    if (module::isBM1688() &&
-        (LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ACTIVATION ||
-         LgPass::OPTIONS.nnvlc_mode == NnvlcMode::ALL)) {
+    if (module::isBM1688() && (options_.nnvlc_mode == NnvlcMode::ACTIVATION ||
+                               options_.nnvlc_mode == NnvlcMode::ALL)) {
       buildNnvlcActivation();
     }
   }
 }
 
-void GroupOps::buildGroups(int64_t opt) {
-  LgOptions options;
-  options.dyn_compile = false;
-  options.opt = opt;
+void GroupOps::buildGroups() {
   auto pm = std::make_shared<LgPassManager>();
   auto inner_optimizer = std::make_unique<InternalLgOptimizer>();
-  inner_optimizer->manage_passes(pm, options);
-  inner_optimizer->manage_post_passes(pm, options);
+  inner_optimizer->manage_passes(pm, options_);
+  inner_optimizer->manage_post_passes(pm, options_);
   pm->run(lg_pass_ir_);
 }
 
@@ -321,17 +343,20 @@ void GroupOps::buildMlir() {
       UpdateGroupOverlapInfo(groups_[idx++], i);
     }
   }
+
   // update Conv use_3ic_optimze info
-  func_.walk([&](tpu::Conv2DOp op) {
-    int use_3ic = op.getUse_3icOptimize();
-    Operation *pre_op = op.getInput().getDefiningOp();
-    if (use_3ic > 0 && pre_op && !isa<tpu::LoadOp>(pre_op)) {
-      // broadcast input using BDC rather than GDMA
-      if (!module::isBM1684Family())
-        use_3ic |= 0x10;
-      op.setUse_3icOptimize(use_3ic);
+  for (auto op : lg_pass_ir_->subnet_ops) {
+    if (auto conv_op = dyn_cast<tpu::Conv2DOp>(op)) {
+      int use_3ic = conv_op.getUse_3icOptimize();
+      Operation *pre_op = conv_op.getInput().getDefiningOp();
+      if (use_3ic > 0 && pre_op && !isa<tpu::LoadOp>(pre_op)) {
+        // broadcast input using BDC rather than GDMA
+        if (!module::isBM1684Family())
+          use_3ic |= 0x10;
+        conv_op.setUse_3icOptimize(use_3ic);
+      }
     }
-  });
+  }
 
   DEBUG_WITH_TYPE("dominate_bug", { module::getModuleOp().dump(); });
 }

@@ -21,6 +21,17 @@
 namespace tpu_mlir {
 namespace tpu {
 
+enum class NnvlcMode { NONE = 0, WEIGHT = 1, ACTIVATION = 2, ALL = 3 };
+
+typedef struct {
+  bool dyn_compile;
+  int64_t opt;
+  bool group_by_cores;
+  NnvlcMode nnvlc_mode;
+  bool lgcache;
+  int64_t num_core;
+} LgOptions;
+
 typedef struct {
   int64_t nstep;
   int64_t cstep;
@@ -485,11 +496,13 @@ struct ilp_LgInfo {
   }
 
   void base_solver(LgPassIR *pass_ir,
-                   std::shared_ptr<CycleCalculator> cycle_calculator_);
+                   std::shared_ptr<CycleCalculator> cycle_calculator_,
+                   const LgOptions &options);
   std::shared_ptr<ilp_LgInfo>
   high_solver(LgPassIR *pass_ir,
-              std::shared_ptr<CycleCalculator> cycle_calculator_);
-  bool binary_search_group(bool move_right,
+              std::shared_ptr<CycleCalculator> cycle_calculator_,
+              const LgOptions &options);
+  bool binary_search_group(bool move_right, const LgOptions &options,
                            std::shared_ptr<dot_graph> dot_graph_log = nullptr);
   std::vector<Operation *> GetParallelNodes(Operation *op);
   void save_result(LgPassIR *pass_ir);

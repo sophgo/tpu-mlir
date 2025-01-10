@@ -333,13 +333,14 @@ static inline int64_t increase_csecs2(int64_t csecs, int64_t max_csecs) {
 static inline void update_shape_secs2(const LgInfo &lg_info,
                                       shape_secs_t &shape_secs,
                                       int64_t &dhw_secs,
-                                      const shape_secs_t &max_shape_secs) {
+                                      const shape_secs_t &max_shape_secs,
+                                      const LgOptions &options) {
   if (shape_secs.nsecs < max_shape_secs.nsecs) {
     shape_secs.nsecs = increase_nsecs2(shape_secs.nsecs, max_shape_secs.nsecs);
   } else if (shape_secs.csecs < max_shape_secs.csecs) {
     shape_secs.csecs = increase_csecs2(shape_secs.csecs, max_shape_secs.csecs);
   } else {
-    assign_dhwsecs(lg_info, shape_secs, ++dhw_secs, max_shape_secs);
+    assign_dhwsecs(lg_info, shape_secs, ++dhw_secs, max_shape_secs, options);
   }
 }
 
@@ -600,7 +601,7 @@ void GroupMethod::cut_this_group_is_better(
       } else {
         auto left_sub_group =
             CreateIlpLgInfo(sortOpsByOtherOpsOrder(reduced_ops, left_sub_ops),
-                            STRATEGY_SEARCH_CONV_CUT);
+                            options_, STRATEGY_SEARCH_CONV_CUT);
         if (original_group.p_special_grp) {
           left_sub_group->p_special_grp = original_group.p_special_grp;
           if (!original_group.p_special_grp->convert_to_other_type(
@@ -613,7 +614,7 @@ void GroupMethod::cut_this_group_is_better(
           }
           left_sub_group->_lgInfo.type = GROUP_MM_OPT3;
         }
-        left_sub_group->base_solver(pass_ir, cycle_calculator_);
+        left_sub_group->base_solver(pass_ir, cycle_calculator_, options_);
         if (left_sub_group->group_cycle > 0) { // Make sure the group succeeds
           left_sub_group_cost = left_sub_group->group_cycle;
         }
@@ -629,7 +630,7 @@ void GroupMethod::cut_this_group_is_better(
       } else {
         auto right_sub_group =
             CreateIlpLgInfo(sortOpsByOtherOpsOrder(reduced_ops, right_sub_ops),
-                            STRATEGY_SEARCH_CONV_CUT);
+                            options_, STRATEGY_SEARCH_CONV_CUT);
         if (original_group.p_special_grp) {
           right_sub_group->p_special_grp = original_group.p_special_grp;
           if (!original_group.p_special_grp->convert_to_other_type(
@@ -642,7 +643,7 @@ void GroupMethod::cut_this_group_is_better(
           }
           right_sub_group->_lgInfo.type = GROUP_MM_OPT3;
         }
-        right_sub_group->base_solver(pass_ir, cycle_calculator_);
+        right_sub_group->base_solver(pass_ir, cycle_calculator_, options_);
         if (right_sub_group->group_cycle > 0) {
           right_sub_group_cost = right_sub_group->group_cycle;
         }
@@ -689,15 +690,15 @@ void GroupMethod::cut_this_group_is_better(
         right_sub_ops.end());
 
     if (left_sub_ops.size() > 1) {
-      auto left_sub_group =
-          CreateIlpLgInfo(sortOpsByOtherOpsOrder(reduced_ops, left_sub_ops));
-      left_sub_group->base_solver(pass_ir, cycle_calculator_);
+      auto left_sub_group = CreateIlpLgInfo(
+          sortOpsByOtherOpsOrder(reduced_ops, left_sub_ops), options_);
+      left_sub_group->base_solver(pass_ir, cycle_calculator_, options_);
       original_group.sub_ilp_LgInfos.push_back(left_sub_group);
     }
     if (right_sub_ops.size() > 1) {
-      auto right_sub_group =
-          CreateIlpLgInfo(sortOpsByOtherOpsOrder(reduced_ops, right_sub_ops));
-      right_sub_group->base_solver(pass_ir, cycle_calculator_);
+      auto right_sub_group = CreateIlpLgInfo(
+          sortOpsByOtherOpsOrder(reduced_ops, right_sub_ops), options_);
+      right_sub_group->base_solver(pass_ir, cycle_calculator_, options_);
       original_group.sub_ilp_LgInfos.push_back(right_sub_group);
     }
     original_group.group_success = false;
@@ -1292,8 +1293,7 @@ getTensorLmemBytes(Operation *op, Value &value, TensorInfo &tensor_infos,
     if (map_value_to_cut_dims.find(value) != map_value_to_cut_dims.end()) {
       auto dims = map_value_to_cut_dims[value];
       c_idx = ncdhw_idx[dims[1]];
-      h_idx =
-          ncdhw_idx[dims[3]]; // mlp的第2个matmul的右矩阵使用h索引作为c行索引
+      h_idx = ncdhw_idx[dims[3]]; // mlp的第2个matmul的右矩阵使用h索引作为c行索引
       llvm::errs() << "new c_idx:" << c_idx << ", h_idx:" << h_idx << "\n";
     }
   }
@@ -2042,7 +2042,8 @@ bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
 static bool
 ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group,
                      int &fail_process_mode, Operation *&fail_op,
-                     std::shared_ptr<CycleCalculator> cycle_calculator_) {
+                     std::shared_ptr<CycleCalculator> cycle_calculator_,
+                     const LgOptions &options) {
   auto &ops = sub_group._lgInfo.group_ops;
   auto tmp_dot_graph_log = createSubnetGraph(ops);
   for (auto [index, op] : llvm::enumerate(ops)) {
@@ -2089,7 +2090,7 @@ ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group,
     std::sort(vec_op_hwsecs.begin(), vec_op_hwsecs.end(),
               pair_op_int_Sort_by_int);
     if (!init_group_data_secs2(sub_group, shape_secs, value_size, fail_op,
-                               tmp_dot_graph_log)) {
+                               tmp_dot_graph_log, options)) {
       sub_group.is_fail_op_in_grp = false;
       if (!fail_op) {
         fail_op = vec_op_hwsecs[0].first;
@@ -2353,17 +2354,19 @@ void ilp_LgInfo::save_result(LgPassIR *pass_ir) {
 
 std::shared_ptr<ilp_LgInfo>
 ilp_LgInfo::high_solver(LgPassIR *pass_ir,
-                        std::shared_ptr<CycleCalculator> cycle_calculator_) {
+                        std::shared_ptr<CycleCalculator> cycle_calculator_,
+                        const LgOptions &options) {
   auto ops_ori = _lgInfo.group_ops;
   _cur_strategy = STRATEGY_GROUP_CUT_FIRST;
   LAYER_GROUP_LOG_DEBUG_BLOCK(
       { llvm::errs() << "ilp_debug: STRATEGY_GROUP_CUT_FIRST test\n"; });
-  base_solver(pass_ir, cycle_calculator_);
+  base_solver(pass_ir, cycle_calculator_, options);
   if (module::isDebugCmdEnable("enable_high_solver")) {
     LAYER_GROUP_LOG_DEBUG_BLOCK(
         { llvm::errs() << "ilp_debug: STRATEGY_SLICE_CUT_FIRST test\n"; });
-    auto ilp_cloned = CreateIlpLgInfo(ops_ori, STRATEGY_SLICE_CUT_FIRST);
-    ilp_cloned->base_solver(pass_ir, cycle_calculator_);
+    auto ilp_cloned =
+        CreateIlpLgInfo(ops_ori, options, STRATEGY_SLICE_CUT_FIRST);
+    ilp_cloned->base_solver(pass_ir, cycle_calculator_, options);
     if (group_cycle > ilp_cloned->group_cycle) {
       LAYER_GROUP_LOG_DEBUG_BLOCK({
         llvm::errs() << "ilp_debug:strategy STRATEGY_SLICE_CUT_FIRST better, "
@@ -2382,18 +2385,19 @@ ilp_LgInfo::high_solver(LgPassIR *pass_ir,
   return nullptr;
 }
 
-void ilp_LgInfo::base_solver(
-    LgPassIR *pass_ir, std::shared_ptr<CycleCalculator> cycle_calculator_) {
+void ilp_LgInfo::base_solver(LgPassIR *pass_ir,
+                             std::shared_ptr<CycleCalculator> cycle_calculator_,
+                             const LgOptions &options) {
   auto &ops = _lgInfo.group_ops;
   ilp_func_trace tmp_trace(__func__);
   int fail_process_mode = 0;
   Operation *fail_op = nullptr;
-  _lgInfo.update_group_io(LgPass::OPTIONS.opt);
+  _lgInfo.update_group_io(options.opt);
   std::map<Operation *, bool> break_op_reside;
   std::map<Operation *, bool> *break_op_reside_ptr = &break_op_reside;
   std::vector<Operation *> break_ops, excluded_ops;
   auto ret = ilp_for_single_group(pass_ir, *this, fail_process_mode, fail_op,
-                                  cycle_calculator_);
+                                  cycle_calculator_, options);
   if (!ret) {
     if (_cur_strategy == STRATEGY_SEARCH_CONV_CUT) {
       return; //搜索模式下不再嵌套group
@@ -2429,12 +2433,12 @@ void ilp_LgInfo::base_solver(
 
   if (break_ops.size() > 0) {
     for (auto [i, grp] : llvm::enumerate(seg_grp_ops_by_global_op(
-             ops, break_ops, excluded_ops, break_op_reside_ptr))) {
+             ops, break_ops, excluded_ops, options, break_op_reside_ptr))) {
       if (grp.size() > 1) {
         ilp_func_trace tmp_trace(
             llvm::formatv("ilp_debug: process_sub_group, i:{0}", i).str());
         auto sub_ops = sortOpsByOtherOpsOrder(_lgInfo.group_ops, grp);
-        auto tmpLgInfo = CreateIlpLgInfo(sub_ops);
+        auto tmpLgInfo = CreateIlpLgInfo(sub_ops, options);
         if (p_special_grp) {
           tmpLgInfo->p_special_grp = p_special_grp;
           if (!p_special_grp->convert_to_other_type(sub_ops,
@@ -2450,7 +2454,7 @@ void ilp_LgInfo::base_solver(
           }
           tmpLgInfo->_lgInfo.type = GROUP_MM_OPT3;
         }
-        tmpLgInfo->base_solver(pass_ir, cycle_calculator_);
+        tmpLgInfo->base_solver(pass_ir, cycle_calculator_, options);
         group_cycle += tmpLgInfo->group_cycle;
         sub_ilp_LgInfos.push_back(tmpLgInfo);
       } else {
@@ -2469,7 +2473,7 @@ void ilp_LgInfo::base_solver(
   }
 }
 
-bool ilp_LgInfo::binary_search_group(bool move_right,
+bool ilp_LgInfo::binary_search_group(bool move_right, const LgOptions &options,
                                      std::shared_ptr<dot_graph> dot_graph_log) {
   if (middle_ptr == -1) {
     group_ops_all.assign(_lgInfo.group_ops.begin(), _lgInfo.group_ops.end());
@@ -2537,7 +2541,7 @@ bool ilp_LgInfo::binary_search_group(bool move_right,
     }
     i++;
   }
-  _lgInfo.update_group_io(LgPass::OPTIONS.opt);
+  _lgInfo.update_group_io(options.opt);
   // set_group_type(_lgInfo);
   _lgInfo.type = GROUP_NORMAL;
   pre_middle_ptr = middle_ptr;
@@ -2630,7 +2634,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
 
   pass_ir->dot_graph_log_subnet = createSubnetGraph(subnet_ops);
   //------------------------part0: pre
-  // processing----------------------------------------------------
+  //processing----------------------------------------------------
   init_ilp_base_groups(pass_ir);
   pass_ir->dot_graph_log_subnet->add_node_label(
       "global_info",
@@ -2641,7 +2645,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   }
 
   //------------------------part1:
-  // processing----------------------------------------------------
+  //processing----------------------------------------------------
   std::vector<std::shared_ptr<ilp_LgInfo>> base_groups2;
   bool specify_group = false;
   for (int64_t i = 0, grp_num = pass_ir->tmp_base_groups.size(); i < grp_num;
@@ -2649,8 +2653,8 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
     if (module::isDebugCmdEnable("save_mlir_file_for_group_id" +
                                  std::to_string(i))) {
       ilp_func_trace tmp_trace(llvm::formatv("high_solver, i:{0}", i).str());
-      auto best_lgInfo =
-          pass_ir->tmp_base_groups[i]->high_solver(pass_ir, cycle_calculator_);
+      auto best_lgInfo = pass_ir->tmp_base_groups[i]->high_solver(
+          pass_ir, cycle_calculator_, options_);
       base_groups2.push_back(best_lgInfo ? best_lgInfo
                                          : pass_ir->tmp_base_groups[i]);
       specify_group = true;
@@ -2661,8 +2665,8 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
     for (int64_t i = 0, grp_num = pass_ir->tmp_base_groups.size(); i < grp_num;
          i++) {
       ilp_func_trace tmp_trace(llvm::formatv("high_solver, i:{0}", i).str());
-      auto best_lgInfo =
-          pass_ir->tmp_base_groups[i]->high_solver(pass_ir, cycle_calculator_);
+      auto best_lgInfo = pass_ir->tmp_base_groups[i]->high_solver(
+          pass_ir, cycle_calculator_, options_);
       base_groups2.push_back(best_lgInfo ? best_lgInfo
                                          : pass_ir->tmp_base_groups[i]);
     }

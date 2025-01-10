@@ -1044,14 +1044,14 @@ void GroupOps::SearchGroup(std::vector<dag_subnet> &dag_subnets,
               continue;
             }
             dag.matched = true;
-            auto lgInfo = CreateIlpLgInfo(tmp_grp_ptr->ops);
+            auto lgInfo = CreateIlpLgInfo(tmp_grp_ptr->ops, options_);
             lgInfo->p_special_grp = tmp_grp_ptr;
             lgInfo->_lgInfo.type = GROUP_MM_OPT3;
             lg_pass_ir_->tmp_base_groups.push_back(lgInfo);
 
             std::vector<Operation *> excluded_ops;
             for (auto grp_ops2 : seg_grp_ops_by_global_op(
-                     dag.ops, tmp_grp_ptr->ops, excluded_ops)) {
+                     dag.ops, tmp_grp_ptr->ops, excluded_ops, options_)) {
               if (grp_is_valid(grp_ops2)) {
                 dag_subnet tmp_dag;
                 tmp_dag.ops.assign(grp_ops2.begin(), grp_ops2.end());
@@ -1103,8 +1103,8 @@ void GroupOps::findSpecialGroup(std::vector<Operation *> &subnet_ops) {
     for (auto op : subnet_ops) {
       if (module::isDebugCmdEnable("-" + module::getName(op).str())) {
         tmp_ops.push_back(op);
-        for (auto grp_ops2 :
-             seg_grp_ops_by_global_op(subnet_ops, tmp_ops, excluded_ops)) {
+        for (auto grp_ops2 : seg_grp_ops_by_global_op(subnet_ops, tmp_ops,
+                                                      excluded_ops, options_)) {
           if (grp_is_valid(grp_ops2)) {
             dag_subnet tmp_dag;
             tmp_dag.ops.assign(grp_ops2.begin(), grp_ops2.end());
@@ -1133,11 +1133,12 @@ void GroupOps::findSpecialGroup(std::vector<Operation *> &subnet_ops) {
         }
       }
       excluded_ops.clear();
-      for (auto ops2 :
-           seg_grp_ops_by_global_op(dag.ops, global_layers, excluded_ops)) {
+      for (auto ops2 : seg_grp_ops_by_global_op(dag.ops, global_layers,
+                                                excluded_ops, options_)) {
         if (grp_is_valid(ops2)) {
           llvm::errs() << "normal group, ops2.size:" << ops2.size() << "\n";
-          lg_pass_ir_->tmp_base_groups.push_back(CreateIlpLgInfo(ops2));
+          lg_pass_ir_->tmp_base_groups.push_back(
+              CreateIlpLgInfo(ops2, options_));
         }
       }
     }

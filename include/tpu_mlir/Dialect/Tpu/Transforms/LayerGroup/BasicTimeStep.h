@@ -28,6 +28,7 @@ class TimeStepMethod;
 class BasicTimeStep {
 public:
   BasicTimeStep();
+  BasicTimeStep(const LgOptions &options);
   virtual ~BasicTimeStep() {}
   void clear();
 
@@ -154,6 +155,8 @@ protected:
   ValueSet self_down_overlap_ops_;
   std::map<int64_t, std::vector<Value>> other_up_overlap_ops_;
   std::map<int64_t, std::vector<Value>> other_down_overlap_ops_;
+
+  LgOptions options_;
 };
 
 using BasicTimeStepPtr = std::shared_ptr<BasicTimeStep>;

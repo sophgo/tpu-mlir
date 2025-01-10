@@ -65,10 +65,12 @@ public:
       return;
     }
     // init global options
-    LgPass::OPTIONS.opt = opt;
-    LgPass::OPTIONS.group_by_cores = force_group_by_cores(group_by_cores);
-    LgPass::OPTIONS.nnvlc_mode = force_nnvlc_mode(compress_mode);
-    LgPass::OPTIONS.lgcache = force_lgcache(lgcache);
+    LgOptions options;
+    options.opt = opt;
+    options.group_by_cores = force_group_by_cores(group_by_cores);
+    options.nnvlc_mode = force_nnvlc_mode(compress_mode);
+    options.lgcache = force_lgcache(lgcache);
+    options.num_core = module::getCoreNum();
     // group pass by modules
     auto modules = module::getAllModules();
     for (auto s : *modules) {
@@ -76,8 +78,8 @@ public:
         if (f.getName() == "main") {
           continue;
         }
-        GroupOps gOps(f, opt);
-        gOps.process(opt);
+        GroupOps gOps(f, options);
+        gOps.process();
       }
     }
   }

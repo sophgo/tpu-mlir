@@ -17,8 +17,16 @@ using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
 
 BasicTimeStep::BasicTimeStep() {
+  // options_ = options;
   swpipl_ = std::make_shared<SoftwarePipeline>();
-  timestep_method_ = std::make_shared<TimeStepMethod>();
+  // timestep_method_ = std::make_shared<TimeStepMethod>(options);
+  this->clear();
+}
+
+BasicTimeStep::BasicTimeStep(const LgOptions &options) {
+  options_ = options;
+  swpipl_ = std::make_shared<SoftwarePipeline>();
+  timestep_method_ = std::make_shared<TimeStepMethod>(options);
   this->clear();
 }
 

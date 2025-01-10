@@ -14,7 +14,8 @@
 namespace tpu_mlir {
 namespace tpu {
 
-std::unique_ptr<LgPass> CreateGroupDataMoveOverlapPass();
+std::unique_ptr<LgPass>
+CreateGroupDataMoveOverlapPass(const LgOptions &options);
 
 } // namespace tpu
 } // namespace tpu_mlir

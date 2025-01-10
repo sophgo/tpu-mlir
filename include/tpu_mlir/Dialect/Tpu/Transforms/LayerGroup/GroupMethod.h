@@ -38,7 +38,7 @@ typedef struct {
 
 class GroupMethod {
 public:
-  GroupMethod(int64_t opt);
+  GroupMethod(const LgOptions &options);
   void process(LgPassIR *pass_ir);
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
                           const llvm::SetVector<Operation *> &subnet_ops);
@@ -108,6 +108,7 @@ public:
   void set_layer_group_cache(LgInfo lg_info);
 
 protected:
+  LgOptions options_;
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;
   std::shared_ptr<CycleCalculator> cycle_calculator_;
@@ -117,7 +118,6 @@ protected:
       lg_cache_;
   int64_t group_cost_;
   int64_t MAX_COST;
-  int64_t opt_;
   RunMode runmode_;
 };
 

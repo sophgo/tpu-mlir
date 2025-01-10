@@ -247,6 +247,7 @@ public:
   bool IsSameWith(const std::shared_ptr<ILPTimeStep> other);
   bool is_value_stored(Value value, int ts_idx);
   // protected:
+  LgOptions options_;
   LgInfo _group_info;
   std::unique_ptr<MPSolver> solver;
   std::vector<TimestepRow2> timestep_table_;

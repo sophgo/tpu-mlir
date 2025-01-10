@@ -690,7 +690,7 @@ static void layer_group_overlap(std::vector<BasicTimeStepPtr> &time_steps,
 /// The pass of layer group overlap
 class GroupDataMoveOverlapPass : public LgPass {
 public:
-  GroupDataMoveOverlapPass() {}
+  GroupDataMoveOverlapPass(const LgOptions &options) { options_ = options; }
   virtual bool run(LgPassIR *pass_ir) override {
     layer_group_overlap(pass_ir->time_steps, pass_ir->lg_infos,
                         pass_ir->shape_secs);
@@ -702,8 +702,9 @@ public:
   }
 };
 
-std::unique_ptr<LgPass> CreateGroupDataMoveOverlapPass() {
-  return std::unique_ptr<LgPass>(new GroupDataMoveOverlapPass());
+std::unique_ptr<LgPass>
+CreateGroupDataMoveOverlapPass(const LgOptions &options) {
+  return std::unique_ptr<LgPass>(new GroupDataMoveOverlapPass(options));
 }
 
 } // namespace tpu

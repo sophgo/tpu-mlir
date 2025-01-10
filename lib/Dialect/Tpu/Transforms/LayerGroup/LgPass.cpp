@@ -13,12 +13,14 @@
 namespace tpu_mlir {
 namespace tpu {
 
-LgOptions LgPass::OPTIONS = {
-    /*dyn_compile*/ false,
-    /*opt*/ 0,
-    /*group_by_cores*/ false,
-    /*nnvlc_mode*/ NnvlcMode::NONE,
-};
+// LgOptions LgPass::OPTIONS = {
+//     .dyn_compile = false,
+//     .opt = 0,
+//     .group_by_cores = false,
+//     .nnvlc_mode = NnvlcMode::NONE,
+//     .lgcache = false,
+//     .num_core = 0,
+// };
 
 void LgPassIR::clear() {
   lg_infos.clear();
