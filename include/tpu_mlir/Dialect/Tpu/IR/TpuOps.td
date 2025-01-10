@@ -1049,7 +1049,8 @@ def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_PackRawOp: Tpu_Op<"PackRaw"> {
+def Tpu_PackRawOp: Tpu_Op<"PackRaw", [
+  DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "Preprocess for raw image.";
   let description = [{
     1.Op Introduction
