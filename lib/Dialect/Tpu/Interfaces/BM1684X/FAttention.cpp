@@ -33,7 +33,8 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.hasmask = !module::isNone(getMask());
 
   BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
-                               module::getCoreNum(), input_spec->data(), output_spec->data());
+                               module::getCoreNum(), input_spec->data(),
+                               output_spec->data());
 }
 
 int64_t tpu::FAttentionOp::get_fw_type_bm1684x() { return FW_BMNET_FATTENTION; }

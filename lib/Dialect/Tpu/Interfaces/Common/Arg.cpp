@@ -109,7 +109,8 @@ LogicalResult tpu::ArgOp::inference(InferenceParameter &p) {
   if (getKeepdims()) {
     output_shape.push_back(1);
   }
-  output_shape.insert(output_shape.end(), input_shape.begin() + axis + 1, input_shape.end());
+  output_shape.insert(output_shape.end(), input_shape.begin() + axis + 1,
+                      input_shape.end());
   module::setShape(getIndices(), output_shape);
   if (!module::isNone(getValues())) {
     module::setShape(getValues(), output_shape);

@@ -1571,18 +1571,21 @@ protected:
   }
 };
 
-// A tensor's requantOp should be close with the tensor's producer (eq. MatMulOP)
+// A tensor's requantOp should be close with the tensor's producer (eq.
+// MatMulOP)
 class ForwardRequantInt : public OpRewriterPatternEx<top::RequantIntOp> {
 public:
   ForwardRequantInt(mlir::MLIRContext *context, int benefit)
       : OpRewriterPatternEx<top::RequantIntOp>(context, "ForwardRequantInt",
-                                         benefit) {}
+                                               benefit) {}
+
 protected:
   LogicalResult
   matchAndRewriteImpl(top::RequantIntOp requantIntOp,
                       mlir::PatternRewriter &rewriter) const override {
     auto formerOp = requantIntOp.getInput().getDefiningOp();
-    if (!isa<top::PermuteOp>(formerOp) && !isa<top::ReshapeOp>(formerOp) || !formerOp->hasOneUse()) {
+    if (!isa<top::PermuteOp>(formerOp) && !isa<top::ReshapeOp>(formerOp) ||
+        !formerOp->hasOneUse()) {
       return failure();
     }
     auto axis = requantIntOp.getRqAxis();
@@ -1593,12 +1596,14 @@ protected:
       auto permute_ishape = module::getShape(permuteOp.getInput());
       auto permute_order = module::getI64Array(permuteOp.getOrder());
       int32_t new_rq_axis = permute_order->at(axis);
-      // Now, requantOp with rq_axis=-1 is only valid when it would be fused into a MatMulOp
-      if (new_rq_axis == -1 || new_rq_axis == module::getShape(requantIntOp.getInput()).size() - 1) {
-        Operation* former_op = permuteOp.getInput().getDefiningOp();
-        while(true) {
+      // Now, requantOp with rq_axis=-1 is only valid when it would be fused
+      // into a MatMulOp
+      if (new_rq_axis == -1 ||
+          new_rq_axis == module::getShape(requantIntOp.getInput()).size() - 1) {
+        Operation *former_op = permuteOp.getInput().getDefiningOp();
+        while (true) {
           if (isa<top::MatMulOp>(former_op))
-            break;  // valid case
+            break; // valid case
           if (isa<top::PermuteOp, top::ReshapeOp>(former_op)) {
             former_op = former_op->getOperands()[0].getDefiningOp();
             if (former_op->hasOneUse())
@@ -1608,20 +1613,21 @@ protected:
         }
       }
       auto newRequantIntOp = rewriter.create<top::RequantIntOp>(
-            NameLoc::get(rewriter.getStringAttr(module::getName(permuteOp.getInput()).str() + "_requanted")),
-            module::getTypeLike(requantIntOp.getOutput(), permute_ishape),
-            permuteOp.getInput(),
-            requantIntOp->getAttrs());
-      if (new_rq_axis == -1 || new_rq_axis == module::getShape(requantIntOp.getInput()).size() - 1) {
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(permuteOp.getInput()).str() + "_requanted")),
+          module::getTypeLike(requantIntOp.getOutput(), permute_ishape),
+          permuteOp.getInput(), requantIntOp->getAttrs());
+      if (new_rq_axis == -1 ||
+          new_rq_axis == module::getShape(requantIntOp.getInput()).size() - 1) {
         newRequantIntOp->setAttr("fuse_rq", rewriter.getBoolAttr(true));
       }
-      newRequantIntOp->setAttr("rq_axis", rewriter.getSI32IntegerAttr(new_rq_axis));
+      newRequantIntOp->setAttr("rq_axis",
+                               rewriter.getSI32IntegerAttr(new_rq_axis));
       auto newPermuteOp = rewriter.create<top::PermuteOp>(
-            requantIntOp.getLoc(),
-            requantIntOp.getOutput().getType(),
-            newRequantIntOp.getOutput(),
-            permuteOp->getAttrs());
-      rewriter.replaceAllUsesWith(requantIntOp.getOutput(), newPermuteOp.getOutput());
+          requantIntOp.getLoc(), requantIntOp.getOutput().getType(),
+          newRequantIntOp.getOutput(), permuteOp->getAttrs());
+      rewriter.replaceAllUsesWith(requantIntOp.getOutput(),
+                                  newPermuteOp.getOutput());
       rewriter.eraseOp(requantIntOp);
       rewriter.eraseOp(permuteOp);
       return success();
@@ -1634,10 +1640,10 @@ protected:
         }
       }
       auto newRequantIntOp = rewriter.create<top::RequantIntOp>(
-            NameLoc::get(rewriter.getStringAttr(module::getName(reshapeOp.getInput()).str() + "_requanted")),
-            module::getTypeLike(requantIntOp.getOutput(), reshape_ishape),
-            reshapeOp.getInput(),
-            requantIntOp->getAttrs());
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(reshapeOp.getInput()).str() + "_requanted")),
+          module::getTypeLike(requantIntOp.getOutput(), reshape_ishape),
+          reshapeOp.getInput(), requantIntOp->getAttrs());
 
       // requantInt has differnt logic for rq_axis = -1 and rq_axis != -1
       auto raw_shift = module::getI64Array(requantIntOp.getRshift());
@@ -1647,11 +1653,10 @@ protected:
       newRequantIntOp->setAttr("rshift", rewriter.getI64ArrayAttr(*raw_shift));
 
       auto newReshapeOp = rewriter.create<top::ReshapeOp>(
-            requantIntOp.getLoc(),
-            requantIntOp.getOutput().getType(),
-            newRequantIntOp.getOutput(),
-            reshapeOp->getAttrs());
-      rewriter.replaceAllUsesWith(requantIntOp.getOutput(), newReshapeOp.getOutput());
+          requantIntOp.getLoc(), requantIntOp.getOutput().getType(),
+          newRequantIntOp.getOutput(), reshapeOp->getAttrs());
+      rewriter.replaceAllUsesWith(requantIntOp.getOutput(),
+                                  newReshapeOp.getOutput());
       rewriter.eraseOp(requantIntOp);
       rewriter.eraseOp(reshapeOp);
       return success();
@@ -2631,7 +2636,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,
                 ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd,
                 ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
-                ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt>(patterns->getContext(), 8);
+                ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt>(
+      patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir

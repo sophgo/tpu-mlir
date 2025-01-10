@@ -11,9 +11,9 @@
 #include "tpu_mlir/Support/LutFunc.h"
 
 static void normlize_f32(const float *input_data, float *output_data,
-                         float *mean, float *rstd,
-                         const float *weight_data, const float *bias_data,
-                         const int inner_dim, const float eps_) {
+                         float *mean, float *rstd, const float *weight_data,
+                         const float *bias_data, const int inner_dim,
+                         const float eps_) {
   float mean_data = 0;
   float rstd_data = 0;
   for (int j = 0; j < inner_dim; ++j) {
@@ -45,10 +45,10 @@ static void normlize_f32(const float *input_data, float *output_data,
 }
 
 static void normlize_bf16(const float *input_data, float *output_data,
-                          float* mean, float* rstd,
-                          const float *weight_data, const float *bias_data,
-                          float *table, float *mantissa_table,
-                          const int inner_dim, const float eps_) {
+                          float *mean, float *rstd, const float *weight_data,
+                          const float *bias_data, float *table,
+                          float *mantissa_table, const int inner_dim,
+                          const float eps_) {
 
   float mean_data = BF16(0);
   float rstd_data = BF16(0);
@@ -122,16 +122,15 @@ LogicalResult tpu::LayerNormTrainOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
-    float* mean_i = mean_data + i;
-    float* rstd_i = rstd_data + i;
+    float *mean_i = mean_data + i;
+    float *rstd_i = rstd_data + i;
     if (is_bf16) {
       normlize_bf16(input_data + i * inner_dim, output_data + i * inner_dim,
-                    mean_i, rstd_i, weight_data, bias_data, table,
-                    mtable, inner_dim, eps_);
+                    mean_i, rstd_i, weight_data, bias_data, table, mtable,
+                    inner_dim, eps_);
     } else {
       normlize_f32(input_data + i * inner_dim, output_data + i * inner_dim,
-                   mean_i, rstd_i, weight_data, bias_data, inner_dim,
-                   eps_);
+                   mean_i, rstd_i, weight_data, bias_data, inner_dim, eps_);
     }
   }
   return success();

@@ -59,8 +59,8 @@ void top::FlattenOp::shape_inference() {
   std::vector<NamedAttribute> attrs;
   attrs.emplace_back(
       builder.getNamedAttr("shape", builder.getI64ArrayAttr(shape)));
-  attrs.emplace_back(
-      builder.getNamedAttr("flatten_start_dim", builder.getI64IntegerAttr(start_dim)));
+  attrs.emplace_back(builder.getNamedAttr(
+      "flatten_start_dim", builder.getI64IntegerAttr(start_dim)));
   auto new_op = builder.create<top::ReshapeOp>(
       getLoc(), out.getType(), ArrayRef<Value>{getInput()}, attrs);
   out.replaceAllUsesWith(new_op.getOutput());

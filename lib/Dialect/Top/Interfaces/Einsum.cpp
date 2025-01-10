@@ -104,14 +104,15 @@ void top::EinsumOp::shape_inference() {
         getOutput(),
         {lhs_shape[0], lhs_shape[1], lhs_shape[3], lhs_shape[4], rhs_shape[1]});
   } else if (mode == "ab,cbdef->cadef") {
-    module::setShapeOrVerify(getOutput(),
-                             {rhs_shape[0], lhs_shape[0], rhs_shape[2], rhs_shape[3], rhs_shape[4]});
+    module::setShapeOrVerify(
+        getOutput(),
+        {rhs_shape[0], lhs_shape[0], rhs_shape[2], rhs_shape[3], rhs_shape[4]});
   } else if (mode == "abcd,cebd->abce" || mode == "abcd,ecbd->abec") {
-    module::setShapeOrVerify(getOutput(),
-                             {lhs_shape[0], lhs_shape[1], rhs_shape[0], rhs_shape[1]});
+    module::setShapeOrVerify(
+        getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[0], rhs_shape[1]});
   } else if (mode == "abcd,cdbe->abce") {
-    module::setShapeOrVerify(getOutput(),
-                             {lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[3]});
+    module::setShapeOrVerify(
+        getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[3]});
   } else {
     llvm_unreachable("Not support now.");
   }

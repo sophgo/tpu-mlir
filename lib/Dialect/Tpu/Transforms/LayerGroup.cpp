@@ -10,8 +10,8 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 using namespace llvm;
 
@@ -99,12 +99,13 @@ public:
         if (f.getName() != "subfunc_0") {
           continue;
         }
-        std::vector<Operation*> exclude_ops, exclude_ops2;
+        std::vector<Operation *> exclude_ops, exclude_ops2;
         f.walk([&](Operation *op) {
           if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
             // do nothing
           } else {
-            if (std::find(exclude_ops.begin(), exclude_ops.end(), op) == exclude_ops.end()) {
+            if (std::find(exclude_ops.begin(), exclude_ops.end(), op) ==
+                exclude_ops.end()) {
               if (isa<tpu::GroupOp>(op)) {
                 auto nextOp = *(op->getUsers().begin());
                 if (isa<tpu::SliceMergeOp>(nextOp)) {
@@ -120,8 +121,11 @@ public:
                     continue;
                   }
                   if (!v.getDefiningOp() || isa<ReturnOp>(op)) {
-                    auto width = module::getStorageType(v).getIntOrFloatBitWidth()/8;
-                    total_bytes += v.getType().cast<RankedTensorType>().getNumElements()*width;
+                    auto width =
+                        module::getStorageType(v).getIntOrFloatBitWidth() / 8;
+                    total_bytes +=
+                        v.getType().cast<RankedTensorType>().getNumElements() *
+                        width;
                   }
                 }
               }
@@ -129,7 +133,8 @@ public:
 
             if (module::isOpInGroup(op)) {
               auto parent = op->getParentOp();
-              if (std::find(exclude_ops2.begin(), exclude_ops2.end(), parent) == exclude_ops2.end()) {
+              if (std::find(exclude_ops2.begin(), exclude_ops2.end(), parent) ==
+                  exclude_ops2.end()) {
                 auto nextOp = *(parent->getUsers().begin());
                 if (isa<tpu::SliceMergeOp>(nextOp)) {
                   for (auto v : nextOp->getOperands()) {
@@ -138,15 +143,21 @@ public:
                     }
                   }
                 }
-                if (!isa<tpu::ReshapeOp, tpu::LoadOp, tpu::StoreOp, tpu::MoveOp>(op)) {
+                if (!isa<tpu::ReshapeOp, tpu::LoadOp, tpu::StoreOp,
+                         tpu::MoveOp>(op)) {
                   for (auto v : op->getOperands()) {
                     if (v.getType().isa<NoneType>()) {
                       continue;
                     }
                     if (module::isOpInGroup(v.getDefiningOp())) {
                       if (!isa<tpu::LoadOp>(v.getDefiningOp())) {
-                        auto width = module::getStorageType(v).getIntOrFloatBitWidth()/8;
-                        total_bytes2 += v.getType().cast<RankedTensorType>().getNumElements()*width;
+                        auto width =
+                            module::getStorageType(v).getIntOrFloatBitWidth() /
+                            8;
+                        total_bytes2 += v.getType()
+                                            .cast<RankedTensorType>()
+                                            .getNumElements() *
+                                        width;
                       }
                     }
                   }
@@ -158,7 +169,8 @@ public:
       }
     }
     // file.close();
-    llvm::outs() <<"NetStatisticPass total_bytes: "<<total_bytes<<", total_bytes2: "<<total_bytes2<<"\n";
+    llvm::outs() << "NetStatisticPass total_bytes: " << total_bytes
+                 << ", total_bytes2: " << total_bytes2 << "\n";
   }
 };
 

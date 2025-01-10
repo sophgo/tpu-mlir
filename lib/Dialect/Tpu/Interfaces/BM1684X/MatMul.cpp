@@ -256,8 +256,10 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                           local_sec_info_t &sec_info) {
   auto p = parseParam();
   auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step, d_step, w_step, c_step);
-  auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step, d_step, w_step, c_step);
+  auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step,
+                                           d_step, w_step, c_step);
+  auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step,
+                                             d_step, w_step, c_step);
   const auto &gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
 
   batch_matmul_local_spec_t param{0};
@@ -297,7 +299,8 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   }
 
   if (module::isDebugCmdEnable("codegen_debug")) {
-    llvm::errs() <<"n_step:"<<n_step<<", c_step:"<<c_step<<", h_step:"<<h_step<<"\n";
+    llvm::errs() << "n_step:" << n_step << ", c_step:" << c_step
+                 << ", h_step:" << h_step << "\n";
     sec_info.print();
   }
 

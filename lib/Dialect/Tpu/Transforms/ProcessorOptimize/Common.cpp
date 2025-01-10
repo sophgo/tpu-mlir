@@ -126,7 +126,7 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
     auto loc = NameLoc::get(
         rewriter.getStringAttr(module::getName(nextOp).str() + "_" +
                                module::getName(op.getOperation()).str()));
-    nextOp->setLoc(loc);    
+    nextOp->setLoc(loc);
   });
 
   // replace all uses of next to perm
@@ -148,7 +148,7 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
     op->moveAfter(nextOp);
     auto loc = NameLoc::get(rewriter.getStringAttr(
         module::getName(op.getOperation()).str() + "_" + oldNextOpName));
-    op->setLoc(loc);    
+    op->setLoc(loc);
   });
   // nextOp->dump();
   // op.dump();

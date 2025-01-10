@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <fstream>
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include <chrono>
+#include <fstream>
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/InternalOptimizer.h"
 #include "tpu_mlir/Support/TopoSorter.h"
@@ -18,8 +18,8 @@
 using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
 
-
-static void get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func) {
+static void
+get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func) {
   int64_t total_bytes = 0;
   int64_t output_bytes = 0;
   std::ofstream file("group_before.txt", std::ios::ate | std::ios::out);
@@ -30,8 +30,9 @@ static void get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func
       if (isa<ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
           if (!v.getType().isa<NoneType>()) {
-            auto width = module::getStorageType(v).getIntOrFloatBitWidth()/8;
-            output_bytes += v.getType().cast<RankedTensorType>().getNumElements()*width;
+            auto width = module::getStorageType(v).getIntOrFloatBitWidth() / 8;
+            output_bytes +=
+                v.getType().cast<RankedTensorType>().getNumElements() * width;
           }
         }
       }
@@ -40,8 +41,9 @@ static void get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func
           continue;
         }
         if (!isa<tpu::ReshapeOp>(op)) {
-          auto width = module::getStorageType(v).getIntOrFloatBitWidth()/8;
-          auto bytes_num = v.getType().cast<RankedTensorType>().getNumElements()*width;
+          auto width = module::getStorageType(v).getIntOrFloatBitWidth() / 8;
+          auto bytes_num =
+              v.getType().cast<RankedTensorType>().getNumElements() * width;
           total_bytes += bytes_num;
           // file << module::getName(v).str()<<std::endl;
         }
@@ -49,7 +51,9 @@ static void get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func
     }
   });
   file.close();
-  llvm::errs() <<"output_bytes: "<<output_bytes<<", before group, NetStatisticPass total_bytes: "<<total_bytes<<"\n";
+  llvm::errs() << "output_bytes: " << output_bytes
+               << ", before group, NetStatisticPass total_bytes: "
+               << total_bytes << "\n";
 }
 
 GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
@@ -57,7 +61,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
   func_ = func;
   ctx_ = func.getContext();
   lg_pass_ir_ = new LgPassIR();
-  version = 0; //0:old version, 1:new backend api
+  version = 0; // 0:old version, 1:new backend api
   get_ddr_access_statistic_before_layergroup(func);
   lg_pass_ir_->func = func;
 
@@ -178,7 +182,8 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     //       DEBUG_WITH_TYPE("topo_reorder_mlir", {
     //         llvm::dbgs() << "; action = topo"
     //                      << "; before_op = " << module::getName(op)
-    //                      << "; op = " << module::getName(vector[it.index() + 1])
+    //                      << "; op = " << module::getName(vector[it.index() +
+    //                      1])
     //                      << "\n";
     //       });
     //     }
@@ -208,35 +213,43 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     return;
   }
 
-  Operation* dot_root_op = nullptr;
-  std::vector<Operation*> global_layers, tmp_ops, excluded_ops, ops_bk;
-  for (auto itr: lg_pass_ir_->subnet_ops) {
-    if (!dot_root_op && module::isDebugCmdEnable("dot_root_op_name-" + module::getName(itr).str() + ",")) {
-      llvm::errs() <<"GroupOps find dot_root_op_name:" << module::getName(itr).str()<<"\n";
+  Operation *dot_root_op = nullptr;
+  std::vector<Operation *> global_layers, tmp_ops, excluded_ops, ops_bk;
+  for (auto itr : lg_pass_ir_->subnet_ops) {
+    if (!dot_root_op &&
+        module::isDebugCmdEnable("dot_root_op_name-" +
+                                 module::getName(itr).str() + ",")) {
+      llvm::errs() << "GroupOps find dot_root_op_name:"
+                   << module::getName(itr).str() << "\n";
       dot_root_op = itr;
     }
-    if (module::isDebugCmdEnable("user_defined_global_op-" + module::getName(itr).str())) {
+    if (module::isDebugCmdEnable("user_defined_global_op-" +
+                                 module::getName(itr).str())) {
       global_layers.push_back(itr);
     }
     tmp_ops.push_back(itr);
   }
 
   if (module::isDebugCmdEnable("dot_root_op_name") && dot_root_op) {
-    std::vector<Operation*> op_tree, exclude_ops, break_ops;
-    find_op_tree_by_root2(dot_root_op, op_tree, tmp_ops, exclude_ops, break_ops, 0, 8);
+    std::vector<Operation *> op_tree, exclude_ops, break_ops;
+    find_op_tree_by_root2(dot_root_op, op_tree, tmp_ops, exclude_ops, break_ops,
+                          0, 8);
     auto dot_graph_log_subnet = createSubnetGraph(op_tree);
-    dot_graph_log_subnet->export_dot("svg_initial_" + module::getName(module::getModuleOp()).str(), true);
+    dot_graph_log_subnet->export_dot(
+        "svg_initial_" + module::getName(module::getModuleOp()).str(), true);
   }
 
   if (module::isDebugCmdEnable("export_full_svg")) {
     auto dot_graph_log_subnet = createSubnetGraph(tmp_ops);
-    dot_graph_log_subnet->export_dot("svg_initial_" + module::getName(module::getModuleOp()).str(), true);
+    dot_graph_log_subnet->export_dot(
+        "svg_initial_" + module::getName(module::getModuleOp()).str(), true);
   }
 
   func.walk([&](Operation *op) {
     if (isa<ReturnOp>(op)) {
       lg_pass_ir_->returnOp = op;
-    } else if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp, tpu::SoftmaxOp>(op) &&
+    } else if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp,
+                    tpu::SoftmaxOp>(op) &&
                !module::isInMatMulGrpOp(op) && !isLgSupport(op)) {
       if (is_value_weight(op->getResult(0))) {
         tmp_ops.erase(std::remove(tmp_ops.begin(), tmp_ops.end(), op),
@@ -249,9 +262,11 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, int64_t opt) {
     return WalkResult::advance();
   });
 
-  for (auto grp_ops: seg_grp_ops_by_global_op(tmp_ops, global_layers, excluded_ops)) {
+  for (auto grp_ops :
+       seg_grp_ops_by_global_op(tmp_ops, global_layers, excluded_ops)) {
     if (grp_is_valid(grp_ops)) {
-      llvm::errs()<<"call findSpecialGroup, grp_ops.size:"<<grp_ops.size()<<"\n";
+      llvm::errs() << "call findSpecialGroup, grp_ops.size:" << grp_ops.size()
+                   << "\n";
       findSpecialGroup(grp_ops);
     }
   }
@@ -319,7 +334,6 @@ void GroupOps::buildMlir() {
   });
 
   DEBUG_WITH_TYPE("dominate_bug", { module::getModuleOp().dump(); });
-
 }
 
 void GroupOps::buildGroupOp(const LgInfo &lg_info,
@@ -636,8 +650,6 @@ void GroupOps::UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos,
                          out_buffer_value.size, group_type,
                          imm_buffer_value.addr, imm_buffer_value.size));
 }
-
-
 
 LayerGroupAttr
 GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id, int64_t out_addr,

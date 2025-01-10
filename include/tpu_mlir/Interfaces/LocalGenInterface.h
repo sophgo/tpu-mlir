@@ -70,7 +70,8 @@ typedef struct local_sec_info {
   int32_t d_idx;
 
   void print() {
-    llvm::errs() << llvm::format("group_type:%d, n_idx: %d, n_slice:%d, out_n_slice:%d, d_idx:%d, d_slice:%d, \
+    llvm::errs() << llvm::format(
+        "group_type:%d, n_idx: %d, n_slice:%d, out_n_slice:%d, d_idx:%d, d_slice:%d, \
             >>>>>>>>is_h_split:%d, h_idx:%d, h_slice:%d, out_h_idx:%d, out_h_slice:%d, \
             >>>>>>>>is_w_split:%d, w_idx:%d, w_slice:%d, out_w_idx:%d, out_w_slice:%d, \
             >>>>>>>>is_c_split:%d, c_idx:%d, c_slice:%d\n",

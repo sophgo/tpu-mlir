@@ -427,7 +427,6 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
         operands.push_back(rhs);
       }
 
-
       if (mode == "abcd,abed->abce") {
         // rhs(abed)^T
         attrs.clear();
@@ -442,8 +441,8 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
             rewriter.create<PermuteOp>(loc, newType, ValueRange{rhs}, attrs);
         operands.push_back(transOp);
         newType =
-          RankedTensorType::get({lshape[0], lshape[1], lshape[2], rshape[2]},
-                                module::getElementType(rhs));
+            RankedTensorType::get({lshape[0], lshape[1], lshape[2], rshape[2]},
+                                  module::getElementType(rhs));
       }
       operands.push_back(none);
       auto loc = NameLoc::get(rewriter.getStringAttr(name));

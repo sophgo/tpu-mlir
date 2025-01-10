@@ -313,7 +313,7 @@ void TimeStepMethod::get_timestep_cycle_slack(
 }
 
 int64_t TimeStepMethod::get_next_ts(bool &is_valid, int64_t cur_ts,
-                                  TIMESTEP_LD_ST ld_st, int64_t range_end) {
+                                    TIMESTEP_LD_ST ld_st, int64_t range_end) {
   int64_t next_ts = 0;
   if (is_timestep_load(ld_st)) {
     next_ts = cur_ts - 1;

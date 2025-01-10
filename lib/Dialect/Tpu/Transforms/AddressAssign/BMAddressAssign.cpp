@@ -78,7 +78,6 @@ static int64_t getIOLimit(ModuleOp m) {
   return limit;
 }
 
-
 std::set<ValueInfo> _8ChannelAssign(std::map<ValueInfo, TensorLive> &liveRange,
                                     bool reuse_addr) {
   if (!module::isBM1690Family())
@@ -1013,11 +1012,10 @@ void BMAddressAssign::updateLiveRangeofBMOps(
   if (isa<top::InputOp>(op)) {
     // liveRange.emplace_back(TensorLive(out, 0, 0xFFFFFFFF));
     // updateOperandsLiveRange(op, endPosition);
-    if(module::getTrain()){
+    if (module::getTrain()) {
       liveRange[v].start = 0;
       liveRange[v].end = 0x0FFFFFFF;
-      liveRange[v].tensor_size =
-          getTensorGmemSize(op, v.index, alignment);
+      liveRange[v].tensor_size = getTensorGmemSize(op, v.index, alignment);
     }
     common_ops.emplace_back(v);
     if (op->use_empty()) {

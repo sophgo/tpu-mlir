@@ -56,41 +56,41 @@ void ConvbwdLowering::LoweringBF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
-void ConvbwdLowering::LoweringF16(PatternRewriter &rewriter, top::ConvbwdOp op) const {
+void ConvbwdLowering::LoweringF16(PatternRewriter &rewriter,
+                                  top::ConvbwdOp op) const {
   // lowering_common_f16<tpu::ConvbwdOp>(rewriter, op);
   std::vector<Value> operands;
-  std::vector<Type>  new_types;
+  std::vector<Type> new_types;
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  for (auto in: op.getOperands())
-  {
-     operands.push_back(in);
+  for (auto in : op.getOperands()) {
+    operands.push_back(in);
   }
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   builder.setInsertionPoint(op);
   auto NoneOp_0 = builder.create<top::NoneOp>(builder.getUnknownLoc(),
-                                            builder.getNoneType());
+                                              builder.getNoneType());
   operands.push_back(NoneOp_0);
   auto grad_input_enable = op->getAttr("grad_input_enable").cast<BoolAttr>();
   if (grad_input_enable.getValue()) {
     new_types.push_back(getQuantF16Type(op.getResult(0)));
-  }else{
+  } else {
     new_types.push_back(builder.getNoneType());
   }
   auto grad_weight_enable = op->getAttr("grad_weight_enable").cast<BoolAttr>();
   if (grad_weight_enable.getValue()) {
     new_types.push_back(getQuantFloatType(op.getResult(1)));
-  }else{
+  } else {
     new_types.push_back(builder.getNoneType());
   }
 
   auto grad_bias_enable = op->getAttr("grad_bias_enable").cast<BoolAttr>();
   if (grad_bias_enable.getValue()) {
     new_types.push_back(getQuantF16Type(op.getResult(2)));
-  }else{
+  } else {
     new_types.push_back(builder.getNoneType());
   }
   rewriter.replaceOpWithNewOp<tpu::ConvbwdOp>(op, new_types, operands, attrs);

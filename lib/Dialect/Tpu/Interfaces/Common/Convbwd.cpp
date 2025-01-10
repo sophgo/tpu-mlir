@@ -42,43 +42,35 @@ convbwd_attr_t tpu::ConvbwdOp::parseParam() {
   return p;
 }
 
-LogicalResult tpu::ConvbwdOp::init(InferenceParameter &p) {
+LogicalResult tpu::ConvbwdOp::init(InferenceParameter &p) { return success(); }
 
-  return success();
-}
+void tpu::ConvbwdOp::deinit(InferenceParameter &p) {}
 
-void tpu::ConvbwdOp::deinit(InferenceParameter &p) {
+#define DIV_UP(x, y) (((x) + (y)-1) / (y))
 
-}
-
-#define DIV_UP(x, y) (((x) + (y) - 1) / (y))
-
-static void weight_reorder_i32(float *src, int oc, int ic, int kh, int kw)
-{
-    auto ptr_src = std::make_unique<float[]>(oc * DIV_UP(ic, 32) * kh * kw * 32);
-    float* src_data = ptr_src.get();
-    memcpy(src_data, src, oc * ic * kh * kw * sizeof(float));
-    // clean src data
-    memset(src, 0, 1 * oc * DIV_UP(ic, 32) * kh * kw * 32 * sizeof(float));
-    // copy src_data to src with 32ic layout
-    for (int i = 0; i < oc; i++)
-    {
-        for (int j = 0; j < ic; j++)
-        {
-            // 32ic
-            int ic32 = j / 32;
-            int ic32_offset = j % 32;
-            for (int k = 0; k < kh; k++)
-            {
-                for (int l = 0; l < kw; l++)
-                {
-                    auto src_data_idx = i * ic * kh * kw + j * kh * kw + k * kw + l;
-                    auto src_idx = i * DIV_UP(ic, 32) * kh * kw * 32 + ic32 * kh * kw * 32 + k * kw * 32 + l * 32 + ic32_offset;
-                    src[src_idx] = src_data[src_data_idx];
-                }
-              }
+static void weight_reorder_i32(float *src, int oc, int ic, int kh, int kw) {
+  auto ptr_src = std::make_unique<float[]>(oc * DIV_UP(ic, 32) * kh * kw * 32);
+  float *src_data = ptr_src.get();
+  memcpy(src_data, src, oc * ic * kh * kw * sizeof(float));
+  // clean src data
+  memset(src, 0, 1 * oc * DIV_UP(ic, 32) * kh * kw * 32 * sizeof(float));
+  // copy src_data to src with 32ic layout
+  for (int i = 0; i < oc; i++) {
+    for (int j = 0; j < ic; j++) {
+      // 32ic
+      int ic32 = j / 32;
+      int ic32_offset = j % 32;
+      for (int k = 0; k < kh; k++) {
+        for (int l = 0; l < kw; l++) {
+          auto src_data_idx = i * ic * kh * kw + j * kh * kw + k * kw + l;
+          auto src_idx = i * DIV_UP(ic, 32) * kh * kw * 32 +
+                         ic32 * kh * kw * 32 + k * kw * 32 + l * 32 +
+                         ic32_offset;
+          src[src_idx] = src_data[src_data_idx];
         }
+      }
     }
+  }
 }
 
 LogicalResult tpu::ConvbwdOp::inference(InferenceParameter &p) {
@@ -92,7 +84,8 @@ LogicalResult tpu::ConvbwdOp::inference(InferenceParameter &p) {
   auto cal_grad_input = getGradInputEnable();
   auto cal_grad_weight = getGradWeightEnable();
   auto cal_grad_bias = getGradBiasEnable();
-  // auto is_half = module::getStorageType(getInput()).isBF16() || module::getStorageType(getInput()).isF16();
+  // auto is_half = module::getStorageType(getInput()).isBF16() ||
+  // module::getStorageType(getInput()).isF16();
   tpu_mlir::ConvBwd conv_bwd;
   conv_bwd.setup(input, kernel, gradout, gradinput, gradweight, gradbias,
                  attr.n, attr.ic, attr.oc, attr.ih, attr.iw, attr.kh, attr.kw,
@@ -110,11 +103,11 @@ mlir::Type tpu::ConvbwdOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
   auto opd = op->getOperand(opd_idx);
   auto in_op = opd.getDefiningOp();
-  if(in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)){
+  if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
     return do_nothing(mode);
   }
   auto stype = module::getStorageType(opd);
-  if(stype.isF16()){
+  if (stype.isF16()) {
     return do_nothing(mode);
   }
   mode = TypeCastMode::DO_CAST;
@@ -128,6 +121,4 @@ uint32_t tpu::ConvbwdOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 
 int64_t tpu::ConvbwdOp::get_fw_type_bm1684() { return -1; }
 
-
 bool tpu::ConvbwdOp::support_multi_core() { return true; }
-

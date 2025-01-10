@@ -34,19 +34,20 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   // for matmul second right matrix
 
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  if (group_type == GROUP_MM_OPT3 && module::IsRightMat(getOutput())){
-    if (module::IsSecondMatInMlp(getOutput())){
+  if (group_type == GROUP_MM_OPT3 && module::IsRightMat(getOutput())) {
+    if (module::IsSecondMatInMlp(getOutput())) {
       gi = getGroupInfo(n_step, 1, d_step, w_step, h_step);
-      llvm::errs() <<"IsSecondMatInMlp\n";
+      llvm::errs() << "IsSecondMatInMlp\n";
     }
   }
 
   auto mm_op = dyn_cast_or_null<tpu::MatMulOp>(*getOutput().user_begin());
   if (mm_op && mm_op.getHdimIsBatch()) {
-    auto grp_param = getOperation()->getAttr(LocalGenInterface::kLayerGroupAttrName)
-                      .cast<tpu::LayerGroupAttr>();
+    auto grp_param = getOperation()
+                         ->getAttr(LocalGenInterface::kLayerGroupAttrName)
+                         .cast<tpu::LayerGroupAttr>();
     if (grp_param.getGroupType() == GROUP_MM_OPT3) {
-      llvm::errs() <<"loadOp hdim_is_batch\n";
+      llvm::errs() << "loadOp hdim_is_batch\n";
       auto shape = getOutput().getType().cast<RankedTensorType>().getShape();
       assert(shape.size() == 4);
       auto n_idx = grp_param.getNIdx();
@@ -298,14 +299,22 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                         gi.h_idx * W * fmt_bytes +
                                         gi.w_idx * fmt_bytes + src_offset_c;
             if (module::isDebugCmdEnable("codegen_debug")) {
-              llvm::errs() <<"loadOp, gi.n_idx:"<<gi.n_idx<<", gi.c_idx:"<<gi.c_idx<<", gi.d_idx:"<<gi.d_idx
-                          <<", gi.h_idx:"<<gi.h_idx<<", gi.w_idx:"<<gi.w_idx
-                          <<", d:"<<d<<", C:"<<C<<", D:"<<D<<", H:"<<H<<", W:"<<W
-                          <<", gi.out_addr:"<<gi.out_addr<<", cur_local_offset:"<<cur_local_offset
-                          <<", g_addr:"<<g_addr<<", cur_global_offset:"<<cur_global_offset
-                          <<", gi.n_slice:"<<gi.n_slice<<", cur_cslice:"<<cur_cslice
-                          <<", real_hslice:"<<real_hslice<<", real_wslice:"<<real_wslice
-                          <<", c_num_local:"<<c_num_local<<", c_stride:"<<c_stride<<"\n";
+              llvm::errs() << "loadOp, gi.n_idx:" << gi.n_idx
+                           << ", gi.c_idx:" << gi.c_idx
+                           << ", gi.d_idx:" << gi.d_idx
+                           << ", gi.h_idx:" << gi.h_idx
+                           << ", gi.w_idx:" << gi.w_idx << ", d:" << d
+                           << ", C:" << C << ", D:" << D << ", H:" << H
+                           << ", W:" << W << ", gi.out_addr:" << gi.out_addr
+                           << ", cur_local_offset:" << cur_local_offset
+                           << ", g_addr:" << g_addr
+                           << ", cur_global_offset:" << cur_global_offset
+                           << ", gi.n_slice:" << gi.n_slice
+                           << ", cur_cslice:" << cur_cslice
+                           << ", real_hslice:" << real_hslice
+                           << ", real_wslice:" << real_wslice
+                           << ", c_num_local:" << c_num_local
+                           << ", c_stride:" << c_stride << "\n";
             }
             BM168x::instance()->dl_tensor_stride_move_gen_cmd(
                 gi.out_addr + cur_local_offset, real_npu_idx,

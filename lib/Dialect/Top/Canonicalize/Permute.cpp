@@ -637,14 +637,15 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
     rewriter.setInsertionPoint(matmul_h_op);
     attrs.clear();
     attrs.push_back(
-        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0,1,3,2})));
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 1, 3, 2})));
     auto permute_h_right_type = RankedTensorType::get(
-        {batch * h, head_n, head_sz, w}, module::getElementType(new_reshape_h_op.getOutput()));
+        {batch * h, head_n, head_sz, w},
+        module::getElementType(new_reshape_h_op.getOutput()));
     auto permute_h_right_loc =
         NameLoc::get(rewriter.getStringAttr(name.str() + "_permute_right_h"));
-    auto new_permute_h_right_op = rewriter.create<PermuteOp>(
-        permute_h_right_loc, permute_h_right_type, ValueRange{new_weight_h},
-        attrs);
+    auto new_permute_h_right_op =
+        rewriter.create<PermuteOp>(permute_h_right_loc, permute_h_right_type,
+                                   ValueRange{new_weight_h}, attrs);
     h_permute_op.replaceAllUsesWith(new_permute_h_right_op.getOperation());
     rewriter.eraseOp(h_permute_op);
     matmul_h_op->setOperand(1, new_permute_h_right_op);
@@ -723,14 +724,15 @@ struct TopDecomposedRelPosEmb : public OpRewriterPatternEx<PermuteOp> {
     rewriter.setInsertionPoint(matmul_w_op);
     attrs.clear();
     attrs.push_back(
-        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0,1,3,2})));
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 1, 3, 2})));
     auto permute_w_right_type = RankedTensorType::get(
-        {batch, w * head_n, head_sz, h}, module::getElementType(new_reshape_w_op.getOutput()));
+        {batch, w * head_n, head_sz, h},
+        module::getElementType(new_reshape_w_op.getOutput()));
     auto permute_w_right_loc =
         NameLoc::get(rewriter.getStringAttr(name.str() + "_permute_right_w"));
-    auto new_permute_w_right_op = rewriter.create<PermuteOp>(
-        permute_w_right_loc, permute_w_right_type, ValueRange{new_weight_w},
-        attrs);
+    auto new_permute_w_right_op =
+        rewriter.create<PermuteOp>(permute_w_right_loc, permute_w_right_type,
+                                   ValueRange{new_weight_w}, attrs);
     w_permute_op.replaceAllUsesWith(new_permute_w_right_op.getOperation());
     rewriter.eraseOp(w_permute_op);
     matmul_w_op->setOperand(1, new_permute_w_right_op);
@@ -853,13 +855,12 @@ struct TopMoveSoftmaxAfterPermute : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
   TopMoveSoftmaxAfterPermute(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<PermuteOp>(context, "TopMoveSoftmaxAfterPermute") {
-  }
+      : OpRewriterPatternEx<PermuteOp>(context, "TopMoveSoftmaxAfterPermute") {}
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
-    // permute{0, 3, 1, 2}->softmax->permute{0, 3, 2, 1} => permute{0, 2, 1, 3}->softmax
-    // for yolov8_p2
+    // permute{0, 3, 1, 2}->softmax->permute{0, 3, 2, 1} => permute{0, 2, 1,
+    // 3}->softmax for yolov8_p2
     auto in_shape = module::getShape(op.getInput());
     auto out_shape = module::getShape(op.getOutput());
     if ((in_shape.size() != 4) || (out_shape.size() != 4)) {

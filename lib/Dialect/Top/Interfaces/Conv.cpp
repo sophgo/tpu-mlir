@@ -88,7 +88,6 @@ conv_attr_t top::ConvOp::parseParam() {
   return p;
 }
 
-
 conv_attr_t top::ConvOp::dynparseParam() {
   auto input_shape = module::getShape(getInput());
   auto filter_shape = module::getShape(getFilter());
@@ -100,21 +99,22 @@ conv_attr_t top::ConvOp::dynparseParam() {
   auto filter_spacial_shape = llvm::ArrayRef(&filter_shape[2], spacial_rank);
   auto pads = module::getI64Array(getPads());
   auto strides = module::getI64Array(getStrides());
-  auto dilation = module::getI64Array(getDilations(), getKernelShape().size(), 1);
+  auto dilation =
+      module::getI64Array(getDilations(), getKernelShape().size(), 1);
   std::vector<int64_t> new_pads(pads->begin(), pads->end());
   bool flag = input_shape.size() == filter_shape.size() ? 1 : 0;
   for (int i = 0; i < spacial_rank; i++) {
-      auto out_dim =
+    auto out_dim =
         (input_spacial_shape[i] + pads->at(i) + pads->at(i + spacial_rank) -
-        dilation->at(i) * (filter_spacial_shape[i] - 1) - 1) /
-        strides->at(i) +
+         dilation->at(i) * (filter_spacial_shape[i] - 1) - 1) /
+            strides->at(i) +
         1;
-    if(!flag) {
-      out_dim =
-        (input_spacial_shape[i] + pads->at(i) + pads->at(i + spacial_rank + 1) -
-        dilation->at(i) * (filter_spacial_shape[i] - 1) - 1) /
-        strides->at(i) +
-        1;
+    if (!flag) {
+      out_dim = (input_spacial_shape[i] + pads->at(i) +
+                 pads->at(i + spacial_rank + 1) -
+                 dilation->at(i) * (filter_spacial_shape[i] - 1) - 1) /
+                    strides->at(i) +
+                1;
     }
     out_shape.push_back(out_dim);
   }

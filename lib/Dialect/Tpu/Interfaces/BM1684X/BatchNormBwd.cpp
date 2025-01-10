@@ -55,17 +55,19 @@ int64_t tpu::BatchNormBwdOp::getBufferSize_bm1684x(
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-    int tile = BM168x::eu_num(sizeof(float));
-    int64_t in_slice_fp32_size = in_nslice * ceiling_func(in_cslice, BM168x::NPU_NUM) *
-          align_up( ceiling_func (in_hslice * in_wslice, tile) * tile, tile) * sizeof(float);
-    auto stype = module::getStorageType(getInput());
-    int64_t buffer_size = in_slice_fp32_size;
-    if( !stype.isF32() ) {
-      int64_t channel_fp32_size = ceiling_func(in_cslice, BM168x::NPU_NUM) *
-            align_up( 1, tile) * sizeof(float);
-      buffer_size = in_slice_fp32_size * 3 + channel_fp32_size * 5;
-    }
-    return buffer_size;
+  int tile = BM168x::eu_num(sizeof(float));
+  int64_t in_slice_fp32_size =
+      in_nslice * ceiling_func(in_cslice, BM168x::NPU_NUM) *
+      align_up(ceiling_func(in_hslice * in_wslice, tile) * tile, tile) *
+      sizeof(float);
+  auto stype = module::getStorageType(getInput());
+  int64_t buffer_size = in_slice_fp32_size;
+  if (!stype.isF32()) {
+    int64_t channel_fp32_size = ceiling_func(in_cslice, BM168x::NPU_NUM) *
+                                align_up(1, tile) * sizeof(float);
+    buffer_size = in_slice_fp32_size * 3 + channel_fp32_size * 5;
+  }
+  return buffer_size;
 }
 
 int64_t tpu::BatchNormBwdOp::getBufferSize_bm1684(
@@ -94,13 +96,13 @@ void tpu::BatchNormBwdOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto &common = param.common;
   common.has_bias_grad = !module::isNone(getBiasGrad());
   common.has_weight_grad = !module::isNone(getWeightGrad());
-  BM168x::call_local_func("backend_api_batchnorm_backward_local", &param, sizeof(param),
-                          &sec_info, input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_batchnorm_backward_local", &param,
+                          sizeof(param), &sec_info, input_spec->data(),
+                          output_spec->data());
 }
 
-void tpu::BatchNormBwdOp::codegen_local_bm1684(int64_t n_step,
-                                                   int64_t h_step,
-                                                   local_sec_info_t &sec_info) {
+void tpu::BatchNormBwdOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                               local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
 }
 

@@ -128,13 +128,13 @@ ArrayAttr tpu::WhereOp::getIndexingMaps() {
   auto num_dims = out_shape.size();
   auto num_operands = getNumOperands();
   // shape < 4 not support
-  if ( num_dims < 4) {
+  if (num_dims < 4) {
     return Builder(ctx).getAffineMapArrayAttr({});
   }
   SmallVector<AffineMap> indexingMaps;
   auto out_map = AffineMap::getMultiDimIdentityMap(num_dims, ctx);
   auto empty_map = AffineMap::get(num_dims, 0, ctx);
-  for (int i = 0 ; i < num_operands - 1; i++) {
+  for (int i = 0; i < num_operands - 1; i++) {
     if (!isa<top::NoneOp>(getOperand(i).getDefiningOp())) {
       indexingMaps.push_back(out_map);
     } else {

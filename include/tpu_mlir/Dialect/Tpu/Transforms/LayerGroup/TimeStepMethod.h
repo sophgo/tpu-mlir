@@ -56,7 +56,7 @@ public:
                            std::vector<std::list<GdmaElt>> &tensor_timesteps,
                            std::vector<int64_t> &timestep_cycle_slack);
   int64_t get_next_ts(bool &is_valid, int64_t cur_ts, TIMESTEP_LD_ST ld_st,
-                    int64_t range_end);
+                      int64_t range_end);
   int64_t get_best_ts(BasicTimeStep *time_step, const LgInfo &lg_info,
                       int64_t cur_ts, ValueIntMap &tensor_to_cycle,
                       ValueIntMap &tensor_to_bufsize,

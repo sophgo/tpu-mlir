@@ -22,8 +22,8 @@ LogicalResult top::ConstantFillOp::inference(InferenceParameter &p) {
     const auto shape = weight.read<float>();
     std::vector<int64_t> shape_(shape->begin(), shape->end());
     int idx = 0;
-    for(auto a : shape_) {
-      if(a == -1)
+    for (auto a : shape_) {
+      if (a == -1)
         shape_[idx] = (int64_t)1;
       idx += 1;
     }

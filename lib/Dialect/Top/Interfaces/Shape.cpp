@@ -33,8 +33,8 @@ LogicalResult top::ShapeOp::inference(InferenceParameter &p) {
   if (getEnd().has_value()) {
     removeEndAttr();
   }
-  if(start < 0 && end - start == 1){
-  start = start + input_dims;
+  if (start < 0 && end - start == 1) {
+    start = start + input_dims;
     end = start + 1;
   }
   if (start != 0 || end != input_dims) {

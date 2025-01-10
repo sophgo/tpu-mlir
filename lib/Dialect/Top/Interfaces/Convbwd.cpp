@@ -36,7 +36,8 @@ convbwd_attr_t top::ConvbwdOp::parseParam() {
 
 int64_t top::ConvbwdOp::getFLOPs() {
   auto attr = parseParam();
-  int64_t flops_per_instance = 2 * attr.oc * attr.ic * attr.kh * attr.kw * attr.oh * attr.ow;
+  int64_t flops_per_instance =
+      2 * attr.oc * attr.ic * attr.kh * attr.kw * attr.oh * attr.ow;
   int64_t total_flops = flops_per_instance * attr.n;
   return total_flops;
 }

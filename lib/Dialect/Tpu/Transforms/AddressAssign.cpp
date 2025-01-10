@@ -115,7 +115,8 @@ class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
   AddressAssignPass() {}
   void runOnOperation() override {
-    if (!module::isState(module::State::TPU_DIVIDED) && !module::isState(module::State::TPU_ADDRESSED)) {
+    if (!module::isState(module::State::TPU_DIVIDED) &&
+        !module::isState(module::State::TPU_ADDRESSED)) {
       llvm_unreachable("module should be divided or addressed");
     }
     module::removeUnusedOp();

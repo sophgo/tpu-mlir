@@ -569,8 +569,10 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
     // Allow 3IC optimize by default
     int use_3ic_optimize = 0;
     if (module::isBM1684X() || module::isBM1688()) {
-      // mars3's f16 backend need further repaired, because CMDs such as tpu_bdc_arithmetic_sequence_distribute are not supported on mars3.
-      // bm1690 is well supported now, but 3ic-opt is not opened here by default.
+      // mars3's f16 backend need further repaired, because CMDs such as
+      // tpu_bdc_arithmetic_sequence_distribute are not supported on mars3.
+      // bm1690 is well supported now, but 3ic-opt is not opened here by
+      // default.
       if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
           attr.kw > 1) {
         use_3ic_optimize = 3; // merge kh and kw to ic

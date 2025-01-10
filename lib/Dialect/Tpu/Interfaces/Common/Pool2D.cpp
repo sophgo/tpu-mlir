@@ -57,7 +57,8 @@ LogicalResult tpu::Pool2DOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
   auto attr = parseParam();
   // for dynamic tpu-inference.
-  std::vector<int64_t> new_pads{attr.pad_h, attr.pad_w, attr.pad_h_after, attr.pad_w_after};
+  std::vector<int64_t> new_pads{attr.pad_h, attr.pad_w, attr.pad_h_after,
+                                attr.pad_w_after};
   if (getCeilMode().has_value() && getCeilMode().value()) {
     auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
     auto kernel_shape = module::getI64Array(getKernelShape());

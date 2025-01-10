@@ -34,16 +34,20 @@ void tpu::LoadToL2MOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   return;
 }
 
-void tpu::LoadToL2MOp::codegen_only_for_LoadToL2MOp(std::pair<int, int>& core_num_idx) {
+void tpu::LoadToL2MOp::codegen_only_for_LoadToL2MOp(
+    std::pair<int, int> &core_num_idx) {
   auto op = getOperation();
   auto dst_addr = module::getAddress(op->getOperand(1));
   auto src_addr = module::getAddress(op->getOperand(0));
-  llvm::errs() <<"LoadToL2MOp src_addr:"<<src_addr<<" dst_addr:"<<dst_addr<<" for "<<module::getName(op).str()<<"\n";
+  llvm::errs() << "LoadToL2MOp src_addr:" << src_addr
+               << " dst_addr:" << dst_addr << " for "
+               << module::getName(op).str() << "\n";
   assert((BM1690::COEFF_START_ADDR && src_addr >= BM1690::COEFF_START_ADDR) ||
-      (BM1690::CTX_START_ADDR && src_addr >= BM1690::CTX_START_ADDR));
+         (BM1690::CTX_START_ADDR && src_addr >= BM1690::CTX_START_ADDR));
   int total_size = module::getNumElements(getOutput());
   int num_per_core = ceiling_func(total_size, core_num_idx.first);
-  auto move_size = std::min(num_per_core, (int)(total_size - num_per_core*core_num_idx.second));
+  auto move_size = std::min(
+      num_per_core, (int)(total_size - num_per_core * core_num_idx.second));
   if (move_size < 1) {
     return;
   }
@@ -57,13 +61,10 @@ void tpu::LoadToL2MOp::codegen_only_for_LoadToL2MOp(std::pair<int, int>& core_nu
     slice_h = ceiling_func(move_size, 65535);
   }
   BM1690::instance().dl_sdma_tensor_general_move_gen_cmd(
-      src_addr + num_per_core*core_num_idx.second*fmt_bytes,
-      1, slice_c, slice_h, 1,
-      slice_c*slice_h, slice_h, 1, 1,
-      gdma_format,
-      dst_addr + num_per_core*core_num_idx.second*fmt_bytes,
-      1, slice_c, slice_h, 1,
-      slice_c*slice_h, slice_h, 1, 1,
+      src_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
+      slice_h, 1, slice_c * slice_h, slice_h, 1, 1, gdma_format,
+      dst_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
+      slice_h, 1, slice_c * slice_h, slice_h, 1, 1,
       0,  // transpose
       -1, // port
       pid_node);

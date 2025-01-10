@@ -150,8 +150,10 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
     spec.common.round_mode = ROUND_INF;
 
-    auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step, d_step, w_step, c_step);
-    auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step, d_step, w_step, c_step);
+    auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step,
+                                             d_step, w_step, c_step);
+    auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step,
+                                               d_step, w_step, c_step);
     BM168x::call_local_func("backend_api_cast_local", &spec, sizeof(spec),
                             &sec_info, input_spec->data(), output_spec->data());
   } else {
