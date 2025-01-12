@@ -296,7 +296,10 @@ class TORCH_IR_TESTER(object):
 
     def generate_random(self, shape, dtype='float32', min=-10, max=10):
         scale = max - min
-        return (np.random.rand(*shape) * scale + min).astype(dtype)
+        data = np.random.rand(*shape) * scale + min
+        if dtype == 'bool':
+            data = data.astype('int')
+        return data.astype(dtype)
 
     def create_random_input(self, shapes, descs: List[Desc]):
         if len(descs) == 0:
@@ -1173,7 +1176,7 @@ class TORCH_IR_TESTER(object):
                 return y
 
         self.trace_and_test([(1, 32, 128, 128), (1, 1, 128, 128)], Model(),
-                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
+                                [self.Desc('float', -10, 10), self.Desc('bool', 0, 2)])
 
     #######################################################################
     # MatMul
@@ -1981,7 +1984,7 @@ class TORCH_IR_TESTER(object):
                     return x
 
             self.trace_and_test([in_shape, mask_shape], Model(),
-                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
+                                [self.Desc('float', -10, 10), self.Desc('bool', 0, 2)])
 
         dims = [3, 4, 5]
         shape = [1, 3, 128, 300, 2]
