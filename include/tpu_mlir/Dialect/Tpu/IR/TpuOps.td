@@ -483,6 +483,14 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     weight_is_coeff: whether the weights (filters) are coefficients.;
     coeff_merged: whether the coefficients have been merged.;
     use_3ic_optimize: whether to use 3-input channel optimization.;
+      This Options call `use_3ic_optimize` is useful for speed up convolution computation:
+      use_3ic_optimize & 0x3 == 1  means merge kh to ic
+      use_3ic_optimize & 0x3 == 2  means merge kw to ic
+      use_3ic_optimize & 0x3 == 3  means merge kh and kw to ic
+      use_3ic_optimize & 0x10 != 0 means using tiu to do channel broadcast instead of gdma
+      use_3ic_optimize & 0x20 != 0 means input bcast addr use buffer (e.g. current op is used by more than one ops)
+      use_3ic_optimize & 0x20 != 0 means using tiu to do channel broadcast instead of gdma and input bcast addr use buffer
+                                         (e.g. current op is used by more than one ops)
     kernel_zp: the zero-point for the kernel.It is used in quantized models to adjust the range of the weights.;
     use_winograd: This attribute indicates whether to use the Winograd algorithm for convolution.;
     multiplier: This parameter is used for scaling the output values.;

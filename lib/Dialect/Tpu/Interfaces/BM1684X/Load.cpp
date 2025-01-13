@@ -214,6 +214,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
         use_3ic == 1
             ? kernel->at(0)
             : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
+    assert(real_cslice * to_ic <= Arch::NPU_NUM);
     for (int64_t i = 0; i < real_cslice; ++i) {
       BM168x::instance()->dl_tensor_broadcast_move_gen_cmd(
           g_addr + g_offset + i * W * H * fmt_bytes, 0, gi.out_addr, i * to_ic,

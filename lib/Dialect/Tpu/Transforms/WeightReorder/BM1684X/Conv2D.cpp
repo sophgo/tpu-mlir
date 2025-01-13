@@ -156,17 +156,14 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
 
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
-  // Note that input tensor should be broadcast loaded per ic,
-  //  so one should satisfy the load instruction limit: dst_C + dst_local_idx <=
-  //  NPU_NUM
-  const int64_t limit = std::min(IC_PARALLEL, Arch::NPU_NUM);
+
   int use_3ic_optimize = 0;
-  if (attr.ic * attr.kh * attr.kw <= limit && attr.kh > 1 && attr.kw > 1) {
+  if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 && attr.kw > 1) {
     use_3ic_optimize = 3; // merge kh and kw to ic
-  } else if (attr.ic * attr.kw <= limit && attr.kw > 1 &&
-             (attr.kh < attr.kw || attr.ic * attr.kh > limit)) {
+  } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
+             (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
     use_3ic_optimize = 2; // merge kw to ic
-  } else if (attr.ic * attr.kh <= limit && attr.kh > 1) {
+  } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
     use_3ic_optimize = 1; // merge kh to ic
   } else {
     use_3ic_optimize = 0;
@@ -175,14 +172,12 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   int weight_size = align_up(gic, IC_PARALLEL) * output_c * kh * kw * 1;
   auto data_i8 = std::make_shared<std::vector<int8_t>>(weight_size);
 
-  //  auto pre_op = op.getInput().getDefiningOp();
-  //  if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
-  //    // broadcast input using BDC rather than GDMA
-  //    use_3ic_optimize |= 0x10;
-  //  }
-  if (use_3ic_optimize && !op.getInput().hasOneUse()) {
-    // broadcast input using BDC to a buffer
-    use_3ic_optimize |= 0x30;
+  // broadcast input using BDC to a buffer
+  if (use_3ic_optimize) {
+    if (!op.getInput().hasOneUse() || IC_PARALLEL > Arch::NPU_NUM) {
+      // broadcast input using BDC to a buffer
+      use_3ic_optimize |= 0x30;
+    }
   }
   if (groups != 1 && !attr.is_dw) {
     use_3ic_optimize = 0;
