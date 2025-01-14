@@ -568,104 +568,60 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         else:
             self.collect_infer_data_from_mlir(operand, actual)
 
-    def _collect_infer_data_from_one_ref(
-        self,
-        operand: TLValue,
-        ref: Dict[str, np.ndarray],
-        idx: int,
-        actual: np.ndarray,
-        desired: np.ndarray,
-    ):
-        if operand.name not in ref and self.dump_mode != DumpMode.COMB_ALL:
-            return False
-        _slice = operand.slice
-        if _slice == "[...]":
-            slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
-            sliced_shape = tuple(int(i) for i in slice_list)
-            slices = [slice(None, None) for _ in slice_list]
-        else:
-            slice_list = _slice[1:-1].split(",")
-            sliced_shape = tuple(
-                [
-                    int(slice.split(":")[1]) - int(slice.split(":")[0])
-                    for slice in slice_list
-                ]
-            )
-            slices = [
-                slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
-                for s in slice_list
-            ]
-        if desired is None:
-            desired = self.format_data(operand, None)
-        actual = actual.reshape(desired.shape)
-
-        if operand.layout in (
-            "continuous_group3d",
-            "eu_align_group3d",
-            "compact_group3d",
-            "eu_align_xn_group3d",
-            "compact_xn_group3d",
-        ):
-            d, n, c, h, w = 0, 1, 2, 3, 4
-            actual = actual.transpose((n, c, d, h, w))
-
-        reshape = operand.reshape
-
-        origin_shape = operand.shape
-        if reshape:
-            reshape = eval(reshape[1:-1].replace("x", ","))
-        else:
-            reshape = sliced_shape
-
-        tmp = self.ref_data_from_inference.get(operand.name, None)
-        if tmp is None:
-            tmp = np.zeros(origin_shape)
-
-        try:
-            if len(tmp.shape) == 4 and len(tmp.shape) != len(sliced_shape):
-                tmp = tmp.reshape(tmp.shape[0], tmp.shape[1], 1, tmp.shape[2], tmp.shape[3])
-            if len(tmp.shape) != len(sliced_shape):
-                unsqeeze_shape = []
-                left_index = 0
-                right_index = 0
-                while len(unsqeeze_shape) < len(sliced_shape):
-                    if left_index >= len(tmp.shape):
-                        unsqeeze_shape.append(1)
-                        right_index += 1
-                    elif (
-                        tmp.shape[left_index] > 1 and sliced_shape[right_index] > 1
-                    ):
-                        unsqeeze_shape.append(tmp.shape[left_index])
-                        left_index += 1
-                        right_index += 1
-                    elif tmp.shape[left_index] == sliced_shape[right_index]:
-                        unsqeeze_shape.append(tmp.shape[left_index])
-                        left_index += 1
-                        right_index += 1
-                    else:
-                        unsqeeze_shape.append(1)
-                        right_index += 1
-                tmp = tmp.reshape(unsqeeze_shape)
-            tmp[tuple(slices)] = actual
-            self.ref_data_from_inference[operand.name] = tmp.reshape(
-                origin_shape
-            )
-        except:
-            print(f"{operand.name} store failed")
-            print(operand)
-            print(tmp.shape)
-            print(actual.shape)
-
-            return True
-        return True
-
     def collect_infer_data_from_ref(self, operand: TLValue, actual, desired):
         for idx, ref in enumerate(self.ref_data):
-            if self._collect_infer_data_from_one_ref(operand, ref,idx, actual, desired):
-                return
+            if operand.name not in ref:
+                continue
+            _slice = operand.slice
+            if _slice == "[...]":
+                slice_list = operand.memory_type[1:-1].replace("x", ",").split(",")[:-1]
+                sliced_shape = tuple(int(i) for i in slice_list)
+                slices = [slice(None, None) for _ in slice_list]
+            else:
+                slice_list = _slice[1:-1].split(",")
+                sliced_shape = tuple(
+                    [
+                        int(slice.split(":")[1]) - int(slice.split(":")[0])
+                        for slice in slice_list
+                    ]
+                )
+                slices = [
+                    slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
+                    for s in slice_list
+                ]
+            actual = actual.reshape(desired.shape)
 
-        if self.dump_mode == DumpMode.COMB_ALL:
-            self._collect_infer_data_from_one_ref(operand, {}, 0, actual, desired)
+            if operand.layout in (
+                "continuous_group3d",
+                "eu_align_group3d",
+                "compact_group3d",
+                "eu_align_xn_group3d",
+                "compact_xn_group3d",
+            ):
+                d, n, c, h, w = 0, 1, 2, 3, 4
+                actual = actual.transpose((n, c, d, h, w))
+
+            reshape = operand.reshape
+            origin_shape = ref[operand.name].shape
+            if reshape:
+                reshape = eval(reshape[1:-1].replace("x", ","))
+            else:
+                reshape = sliced_shape
+
+            if operand.name not in self.ref_data_from_inference:
+                tmp = np.zeros(reshape)
+                tmp[tuple(slices)] = actual
+                self.ref_data_from_inference[operand.name] = tmp.reshape(
+                    origin_shape
+                )
+            else:
+                tmp = self.ref_data_from_inference[operand.name]
+                tmp = tmp.reshape(reshape)
+                tmp[tuple(slices)] = actual
+                self.ref_data_from_inference[operand.name] = tmp.reshape(
+                    origin_shape
+                )
+            return
 
     def cal_desired_shape(self, sliced_shape: Tuple[int], layout: str):
         if layout in (
@@ -804,7 +760,6 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL} or self.dump_mode == DumpMode.TPULANG:
             self.collect_infer_data(value, actual, desired)
-
 
         if self.skip_check:  # CModel mode or Pcie mode
             value_res = ComparedResult(value_view, None, msg="ignore")

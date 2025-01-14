@@ -315,6 +315,7 @@ class Memory(DeviceMemory):
                 data.ctypes.data_as(ctypes.c_void_p),
             )
             assert s2d_ret == 0
+            return True
         else:
             raise NotImplementedError(f"Not support setting {m_type} memory data.")
 
