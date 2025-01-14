@@ -415,7 +415,7 @@ class BMProfileGenerator:
                     alg_ops = m.command.alg_ops
                     arch_ops = m.command.arch_ops
                     height = alg_ops/arch_ops if arch_ops and arch_ops>0 else 1
-                    info += "<br>ops_ratio={}".format(height)
+                    info += "<br>uarch_rate={}".format(height)
 
                 if m.static:
                     n = m.static
