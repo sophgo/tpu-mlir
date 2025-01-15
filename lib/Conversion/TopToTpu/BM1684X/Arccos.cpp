@@ -29,7 +29,7 @@ void ArccosLowering::LoweringINT8(PatternRewriter &rewriter, top::ArccosOp op,
   // this op not suitable for int8 quant cuz slight deviation in the former op
   // would result in great difference in arccos
   set_arccos_attr(rewriter, op);
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::ActiveOp>(rewriter, op);
@@ -44,7 +44,7 @@ void ArccosLowering::LoweringINT4(PatternRewriter &rewriter, top::ArccosOp op,
 void ArccosLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::ArccosOp op) const {
   set_arccos_attr(rewriter, op);
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::ActiveOp>(rewriter, op);

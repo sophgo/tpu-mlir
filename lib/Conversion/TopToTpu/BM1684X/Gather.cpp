@@ -51,7 +51,7 @@ void GatherLowering::LoweringF32(PatternRewriter &rewriter,
 
 void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
                                   bool asymmetric) const {
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     LoweringBF16(rewriter, op);
   } else {
     LoweringF16(rewriter, op);

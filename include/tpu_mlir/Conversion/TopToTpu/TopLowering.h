@@ -249,7 +249,7 @@ static module::Mode getOpQuantMode(Operation *op) {
   if (iter != LoweringConfig::quantize_map.end()) {
     real_mode = iter->second;
   }
-  if ((module::isCV18xx() || module::isMARS3()) &&
+  if ((module::isCV18xx() || module::isMARS3() || module::isSGTPUV8()) &&
       real_mode == module::Mode::F16) {
     return module::Mode::BF16;
   }

@@ -21,7 +21,7 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   interp_global_param_t param = {0};
   param.if_getting_buffer_size = false;
   if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
-      module::isMARS3()) {
+      module::isMARS3() || module::isSGTPUV8()) {
     param.spec.buffer_addr = module::getAddress(getBuffer());
   } else {
     param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;

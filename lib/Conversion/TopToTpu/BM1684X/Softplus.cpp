@@ -37,7 +37,7 @@ void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void SoftplusLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::SoftplusOp op) const {
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     auto op_ = op.getOperation();
     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::SOFT_PLUS));

@@ -69,7 +69,7 @@ void ReverseLowering::LoweringF32(PatternRewriter &rewriter,
 
 void ReverseLowering::LoweringINT8(PatternRewriter &rewriter, top::ReverseOp op,
                                    bool asymmetric) const {
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     auto new_type = getQuantInt8Type(op.getOutput());
     LoweringReverse(rewriter, op, new_type);
   } else
@@ -81,7 +81,7 @@ void ReverseLowering::LoweringINT4(PatternRewriter &rewriter, top::ReverseOp op,
 }
 void ReverseLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::ReverseOp op) const {
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     auto new_type = getQuantFloatType<mlir::BFloat16Type>(op.getOutput());
     LoweringReverse(rewriter, op, new_type);
   } else

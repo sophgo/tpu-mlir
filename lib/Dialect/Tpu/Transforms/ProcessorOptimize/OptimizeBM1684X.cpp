@@ -3708,7 +3708,8 @@ public:
       auto requant =
           dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
-      if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+      if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+          module::isSGTPUV8()) {
         for (int i = 0; i < shape[1]; ++i) {
           multiplier_v.push_back(data->data()[i * 2]);
           rshift_v.push_back(-(data->data()[i * 2 + 1] & 0xffff));
@@ -4052,7 +4053,8 @@ public:
                                     PatternRewriter &rewriter) const override {
     /* ReduceL2(1x4x256x256,axes[2,3],keep_dims=false)->ReduceL2(1x4x256x256)+ReduceL2(1x4x256)
      */
-    if (!(module::isBM1688() || module::isSG2380() || module::isMARS3())) {
+    if (!(module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+          module::isSGTPUV8())) {
       return failure();
     }
     auto mode = op.getMode();
@@ -4602,7 +4604,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::SwapDimInnerOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!(module::isMARS3())) {
+    if (!(module::isMARS3() || module::isSGTPUV8())) {
       return failure();
     }
 

@@ -127,7 +127,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
 }
 
 static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
-  if (module::isMARS3())
+  if (module::isMARS3() || module::isSGTPUV8())
     return false;
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,

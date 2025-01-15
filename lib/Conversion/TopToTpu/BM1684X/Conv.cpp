@@ -56,7 +56,7 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   if (module::isWeight(op.getFilter()) == false) {
-    if (module::isMARS3())
+    if (module::isMARS3() || module::isSGTPUV8())
       LoweringBF16(rewriter, op);
     else
       LoweringF32(rewriter, op);
@@ -220,7 +220,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     auto output_type = getQuantInt8Type(op.getOutput(), asymmetric);
     std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
-    if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+    if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+        module::isSGTPUV8()) {
       quant_w_size = 2;
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
@@ -440,7 +441,8 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     auto output_type = getQuantInt4Type(op.getOutput(), asymmetric);
     std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
-    if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+    if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+        module::isSGTPUV8()) {
       quant_w_size = 2;
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
@@ -527,7 +529,8 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       // requant
       std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
-      if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+      if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+          module::isSGTPUV8()) {
         quant_w_size = 2;
         quant.resize(p.oc * quant_w_size, 0);
         for (size_t i = 0; i < p.oc; ++i) {
@@ -896,7 +899,8 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
     std::vector<int64_t> quant_shape(module::getShape(op.getInput()).size(),
                                      1l);
     quant_shape[1] = quant_size;
-    if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+    if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+        module::isSGTPUV8()) {
       quant.resize(quant_size * 2, 0);
       for (int i = 0; i < quant_size; ++i) {
         quant[i * 2] = multiplier[i];

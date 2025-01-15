@@ -188,7 +188,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
 }
 
 static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
-  if (module::isMARS3())
+  if (module::isMARS3() || module::isSGTPUV8())
     return false;
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
@@ -1293,7 +1293,8 @@ getTensorLmemBytes(Operation *op, Value &value, TensorInfo &tensor_infos,
     if (map_value_to_cut_dims.find(value) != map_value_to_cut_dims.end()) {
       auto dims = map_value_to_cut_dims[value];
       c_idx = ncdhw_idx[dims[1]];
-      h_idx = ncdhw_idx[dims[3]]; // mlp的第2个matmul的右矩阵使用h索引作为c行索引
+      h_idx =
+          ncdhw_idx[dims[3]]; // mlp的第2个matmul的右矩阵使用h索引作为c行索引
       llvm::errs() << "new c_idx:" << c_idx << ", h_idx:" << h_idx << "\n";
     }
   }
@@ -2634,7 +2635,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
 
   pass_ir->dot_graph_log_subnet = createSubnetGraph(subnet_ops);
   //------------------------part0: pre
-  //processing----------------------------------------------------
+  // processing----------------------------------------------------
   init_ilp_base_groups(pass_ir);
   pass_ir->dot_graph_log_subnet->add_node_label(
       "global_info",
@@ -2645,7 +2646,7 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   }
 
   //------------------------part1:
-  //processing----------------------------------------------------
+  // processing----------------------------------------------------
   std::vector<std::shared_ptr<ilp_LgInfo>> base_groups2;
   bool specify_group = false;
   for (int64_t i = 0, grp_num = pass_ir->tmp_base_groups.size(); i < grp_num;

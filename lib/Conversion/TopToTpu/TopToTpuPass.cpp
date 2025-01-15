@@ -1243,7 +1243,7 @@ void ConvertTopToTpu::runOnOperation() {
       });
     }
   }
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     mainFunc_.walk([&](Operation *op) {
       if (isa<top::WeightOp, top::NoneOp, top::InputOp, ModuleOp, FuncOp,
               ReturnOp>(op)) {

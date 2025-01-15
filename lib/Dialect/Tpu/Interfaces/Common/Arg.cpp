@@ -122,7 +122,7 @@ mlir::Type tpu::ArgOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
   if (module::isCV18xx()) {
     return type_verify_case_same(op, opd_idx, mode);
-  } else if (module::isMARS3()) {
+  } else if (module::isMARS3() || module::isSGTPUV8()) {
     return type_verify_case_type(op, opd_idx,
                                  Builder(op).getIntegerType(16, false), mode);
   } else {

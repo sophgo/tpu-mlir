@@ -85,13 +85,13 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
   model_gen->AddChip(chip);
   model_gen->AddNumDevice(num_device);
   if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family() ||
-      module::isMARS3()) {
+      module::isMARS3() || module::isSGTPUV8()) {
     std::string kernel_name;
     if (module::isBM1684X())
       kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
     else if (module::isBM1688())
       kernel_name = backend::BM1688::LIB_KERNEL_NAME.str();
-    else if (module::isMARS3())
+    else if (module::isMARS3() || module::isSGTPUV8())
       kernel_name = backend::MARS3::LIB_KERNEL_NAME.str();
     else
       kernel_name = backend::BM1690::LIB_KERNEL_NAME.str();

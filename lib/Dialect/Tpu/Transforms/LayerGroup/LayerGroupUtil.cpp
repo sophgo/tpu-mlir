@@ -1023,7 +1023,8 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
     }
   } else {
     // split depth and height
-    if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+    if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+        module::isSGTPUV8()) {
       float d_len = 0.f, h_len = 0.f;
       for (auto out : group_out_tensors) {
         int64_t n, c, d, h, w;
@@ -2273,7 +2274,7 @@ bool is_eu_align_bm168x(Value opd) {
     } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
       return false;
     } else if (module::isBM1688() || module::isBM1690Family() ||
-               module::isSG2380() || module::isMARS3()) {
+               module::isSG2380() || module::isMARS3() || module::isSGTPUV8()) {
       if (isa<tpu::RequantIntAxisOp>(op)) {
         if ((opd == op->getOperand(1))) {
           return false;
@@ -2320,7 +2321,7 @@ bool is_value_weight(Value opd) {
       return true;
     }
   } else if (module::isBM1688() || module::isBM1690Family() ||
-             module::isSG2380() || module::isMARS3()) {
+             module::isSG2380() || module::isMARS3() || module::isSGTPUV8()) {
     if (isa<tpu::RequantIntAxisOp>(op)) {
       if ((opd == op->getOperand(1))) {
         return true;
