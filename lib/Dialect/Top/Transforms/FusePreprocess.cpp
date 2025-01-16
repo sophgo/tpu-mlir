@@ -88,7 +88,10 @@ public:
       // preprocessOp.
       auto name = module::getName(inputOp.getOutput()).str();
       auto input_loc = NameLoc::get(builder.getStringAttr(name + "_raw"));
-      auto channel_order = inputOp.getPixelFormat().value().str();
+      module::getNCHW(inputOp.getResult(), n, c, h, w, false);
+      std::string channel_order = "nchw";
+      if (!(c > 4))
+        channel_order = inputOp.getPixelFormat().value().str();
       auto color = std::get<0>(attributes_map[pixel_format]);
       auto layout = std::get<1>(attributes_map[pixel_format]);
       inputOp.getResult().setLoc(input_loc);
@@ -98,7 +101,7 @@ public:
       inputOp.setCustomizationFormat(pixel_format);
 
       // if input need preprocess, set the real shape of function's args.
-      module::getNCHW(inputOp.getResult(), n, c, h, w, false);
+      // module::getNCHW(inputOp.getResult(), n, c, h, w, false);
       std::vector<int64_t> arg_shape{n, c, h, w};
       std::vector<int64_t> input_shape{n, c, h, w};
       if (inputOp.getDoPreprocess()) {

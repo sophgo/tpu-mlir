@@ -818,7 +818,7 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
                 op_info.offset, op_info.dtype, op_info.idx);
     if (auto castOp = llvm::dyn_cast<top::InputOp>(inputOp)) {
       // fuse preprocess and aligned_input
-      if (castOp.getCustomizationFormat()) {
+      if (castOp.getDoPreprocess() && castOp.getCustomizationFormat()) {
         auto scale = module::getF64Array(castOp.getScaleAttr());
         auto mean = module::getF64Array(castOp.getMeanAttr());
         op_info.customization_format =
