@@ -1472,9 +1472,7 @@ protected:
     // matrix, can lead to performance degradation.This adjustment is primarily
     // made concerning the CLIP model.Further improvements will be considered
     // later
-    if ((module::isBM1688() || module::isMARS3() || module::isSGTPUV8() ||
-         module::isSG2380()) &&
-        !(kh < 29 && kw < 29)) {
+    if (kh >= 16 && kw >= 16) {
       return failure();
     }
     if (module::isSG2380() && module::getMode() == module::Mode::F32) {
