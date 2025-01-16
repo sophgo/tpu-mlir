@@ -26,6 +26,10 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbmtpulv60_kernel_module.a
               nntoolchain/lib/libbm1690_kernel_module.so
               nntoolchain/lib/libbm1690_kernel_module.a
+              nntoolchain/lib/libmars3_kernel_module.so
+              nntoolchain/lib/libmars3_kernel_module.a
+              nntoolchain/lib/libsgtpuv8_kernel_module.so
+              nntoolchain/lib/libsgtpuv8_kernel_module.a
               nntoolchain/lib/liblibtorch_plugin.so
               nntoolchain/lib/libmodel_combine.so
               nntoolchain/lib/libtpuv7_rt.so

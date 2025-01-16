@@ -25,6 +25,8 @@ namespace backend {
 #define BUFFER_SIZE (4 * 1024 * 1024)
 class SGTPUV8 : public BM1684X {
 public:
+  static constexpr llvm::StringRef LIB_KERNEL_NAME =
+      "libsgtpuv8_kernel_module.so";
   static bool classof(const BM168x *bm168x) {
     return bm168x->getTypeID() == TypeID::get<SGTPUV8>();
   }
