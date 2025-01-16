@@ -76,7 +76,7 @@ def bmprofile_parse_perfAI(
             print("Generate web...")
             subprocess.run(
                 [
-                    f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.web/run_web.py {os.path.abspath(target_dir)} \
+                    f"python  $TPUC_ROOT/python/PerfAI/PerfAI.web/run_web.py {os.path.abspath(target_dir)} \
                 --layerinfo_dir {input_dir} --name PerfAI_web"
                 ],
                 shell=True,
@@ -88,7 +88,7 @@ def bmprofile_parse_perfAI(
             print("Generate doc...")
             subprocess.run(
                 [
-                    f"python  $PROJECT_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(target_dir)} \
+                    f"python  $TPUC_ROOT/python/PerfAI/PerfAI.doc/run_doc.py {os.path.abspath(target_dir)} \
                     --layerinfo_dir {input_dir} {core_num} --style {style}"
                 ],
                 shell=True,
