@@ -905,7 +905,7 @@ class BMProfileParser:
         # assert gdma is always first
         if len(static_gdma) > 0 and len(static_bd) > 0: # use static info
             for gdma_node in static_gdma:
-                if gdma_node.pmu_info is None:
+                if not hasattr(gdma_node, "pmu_info") or gdma_node.pmu_info is None:
                     continue
                 gdma_start = int(gdma_node.pmu_info.inst_end_time * global_data.gdma_period/global_data.tiu_period)
                 bd_id = gdma_node.bd_id
