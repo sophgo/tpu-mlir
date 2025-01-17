@@ -20,8 +20,8 @@ typedef struct {
 static block_t v1_configs[2][2][2][2] = {
     {{
          // bm1688 MHA
-         {{32, 288, 8}, {160, 96, 8}}, // bf16
-         {{32, 352, 8}, {224, 96, 8}}  // fp16
+         {{32, 320, 8}, {192, 128, 8}}, // bf16
+         {{32, 512, 8}, {256, 256, 8}}  // fp16
      },
      {
          // bm1688 GQA
@@ -30,21 +30,21 @@ static block_t v1_configs[2][2][2][2] = {
      }},
     {{
          // bm1684x MHA
-         {{64, 384, 16}, {320, 96, 16}}, // bf16
-         {{64, 512, 16}, {384, 128, 16}} // fp16
+         {{64, 1024, 8}, {512, 512, 8}}, // bf16
+         {{64, 1024, 8}, {512, 512, 8}}  // fp16
      },
      {
          // bm1684x GQA
-         {{64, 512, 16}, {320, 96, 16}}, // bf16
-         {{64, 768, 16}, {384, 128, 16}} // fp16
+         {{64, 512, 16}, {352, 128, 16}}, // bf16
+         {{64, 896, 16}, {448, 192, 16}}  // fp16
      }}};
 
 // v2
 static block_t v2_configs[2][2][2][2] = {
     {{
          // bm1688 MHA
-         {{32, 128, 8}, {160, 64, 8}}, // bf16
-         {{32, 128, 8}, {160, 64, 8}}  // fp16
+         {{32, 320, 8}, {192, 256, 8}}, // bf16
+         {{32, 320, 8}, {192, 256, 8}}  // fp16
      },
      {
          // bm1688 GQA
@@ -53,13 +53,13 @@ static block_t v2_configs[2][2][2][2] = {
      }},
     {{
          // bm1684x MHA
-         {{64, 256, 16}, {160, 96, 16}}, // bf16
-         {{64, 256, 16}, {160, 96, 16}}  // fp16
+         {{64, 384, 16}, {256, 320, 8}}, // bf16
+         {{64, 384, 16}, {256, 320, 8}}  // fp16
      },
      {
          // bm1684x GQA
-         {{64, 256, 16}, {160, 96, 16}}, // bf16
-         {{64, 256, 16}, {160, 96, 16}}  // fp16
+         {{64, 512, 16}, {256, 128, 16}}, // bf16
+         {{64, 512, 16}, {256, 128, 16}}  // fp16
      }}};
 
 using ATTENTION = std::function<int(
@@ -139,7 +139,10 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
         _param->common.hasmask, core_num, dmax, block_m, block_k, block_h);
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
-      block_m -= 16;
+      printf("block is not suitable, have another try !!!\n");
+      if (!is_decode) {
+        block_m -= 16;
+      }
       block_k -= 16;
       continue;
     }
@@ -149,6 +152,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
     printf("Error: block split failed!!!\n");
     exit(-1);
   }
+  printf("fattention success!!\n");
 }
 
 #ifdef __cplusplus
