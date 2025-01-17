@@ -30,8 +30,8 @@ static block_t v1_configs[2][2][2][2] = {
      }},
     {{
          // bm1684x MHA
-         {{64, 1024, 8}, {512, 512, 8}}, // bf16
-         {{64, 1024, 8}, {512, 512, 8}}  // fp16
+         {{64, 1024, 8}, {384, 384, 8}}, // bf16
+         {{64, 1024, 8}, {384, 384, 8}}  // fp16
      },
      {
          // bm1684x GQA
@@ -138,7 +138,8 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
         _param->common.q_head, _param->common.kv_head, _param->common.scale,
         _param->common.hasmask, core_num, dmax, block_m, block_k, block_h);
     CHECK_PPL_RET(ret);
-    if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
+    if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr ||
+        ret == -1) {
       printf("block is not suitable, have another try !!!\n");
       if (!is_decode) {
         block_m -= 16;
