@@ -813,7 +813,8 @@ class Func(Node):
                         for opd in op.op_type.unique_opds:
                             counter[opd] += 1
                         for opd_id in op.opd_ids:
-                            counter.pop(opd_id)
+                            if opd_id in counter:
+                                counter.pop(opd_id)
             less = counter.most_common(1)
 
     def align_input(self):
