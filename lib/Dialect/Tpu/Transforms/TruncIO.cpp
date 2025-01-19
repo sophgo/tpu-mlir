@@ -469,7 +469,22 @@ public:
       if (def_op) {
         if (is_aux_op(def_op))
           continue;
-        if (g_roster.is_expected_input(v)) {
+        if (auto fused_loc = v.getLoc().dyn_cast<FusedLoc>()) {
+          auto locs = fused_loc.getLocations();
+          bool match = false;
+          for (auto loc : locs) {
+            if (auto name_loc = loc.dyn_cast<NameLoc>()) {
+              if (g_roster.is_expected_input(name_loc.getName().str())) {
+                match = true;
+                break;
+              }
+            }
+          }
+          if (match) {
+            sn_upd_info.new_ins.insert(v.getImpl());
+            continue;
+          }
+        } else if (g_roster.is_expected_input(v)) {
           sn_upd_info.new_ins.insert(v.getImpl());
           continue;
         }
@@ -507,10 +522,20 @@ static bool need_update(Operation *blk_op, const upd_info_t &blk_upd_info) {
   return false;
 }
 
+static Location get_real_location(Value v) {
+  if (auto fused_loc = v.getLoc().dyn_cast<FusedLoc>()) {
+    const int index = v.cast<OpResult>().getResultNumber();
+    const auto locs = fused_loc.getLocations();
+    return locs[index];
+  } else {
+    return v.getLoc();
+  }
+}
+
 static Value create_new_arg(FuncOp &funcOp, Value v,
                             bool b_assign_addr = false) {
   auto &block = funcOp.getFunctionBody().front();
-  auto arg = block.addArgument(v.getType(), v.getLoc());
+  auto arg = block.addArgument(v.getType(), get_real_location(v));
   if (b_assign_addr) {
     MyGmemAllocator::get()->assign_addr(arg);
   }
