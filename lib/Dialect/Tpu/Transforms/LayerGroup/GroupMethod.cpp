@@ -1582,6 +1582,10 @@ void GroupMethod::load_lg_results(
   auto &root = *jsonOrErr;
   int opt = options_.opt;
   // Load group layers
+
+  std::vector<std::vector<Operation *>> base_groups;
+  get_base_groups(base_groups, subnet_ops);
+
   if (auto *rootObj = root.getAsObject()) {
     if (auto opt_ = rootObj->getInteger("opt")) {
       opt = *opt_;
@@ -1619,6 +1623,12 @@ void GroupMethod::load_lg_results(
                 }
               }
             }
+          } else {
+            // assuming the base_group partition did not change when locs are
+            // not assigned in cache
+            get_layer_group(lg_info, base_groups[lg_info.base_group_idx],
+                            lg_info.start_idx, lg_info.end_idx,
+                            lg_info.base_group_idx);
           }
           // Get shape_secs if available
           if (auto shapeArray = groupObj_->getArray("shape_secs")) {
@@ -1683,25 +1693,23 @@ void GroupMethod::load_lg_results(
   for (auto &lg_info : lg_infos) {
     int64_t cost = 0;
     lg_info.use_cache = true;
-    if (lg_info.group_cost > 0) {
-      DEBUG_WITH_TYPE("lg_index", {
-        llvm::dbgs() << "; action = lg_index"
-                     << "; start_idx = " << lg_info.start_idx
-                     << "; end_idx = " << lg_info.end_idx
-                     << "; group_idx = " << lg_info.base_group_idx << "\n";
-      });
-      if (!is_layer_group_valid(lg_info, true, &cost)) {
-        llvm_unreachable("group_cost is not valid");
-      }
-      DEBUG_WITH_TYPE("lg_cost", {
-        llvm::dbgs() << "; action = lg_cost"
-                     << "; step = group_layer"
-                     << "; start_idx = " << lg_info.start_idx
-                     << "; end_idx = " << lg_info.end_idx
-                     << "; group_idx = " << lg_info.base_group_idx
-                     << "; group_cost = " << lg_info.group_cost << "\n";
-      });
+    DEBUG_WITH_TYPE("lg_index", {
+      llvm::dbgs() << "; action = lg_index"
+                   << "; start_idx = " << lg_info.start_idx
+                   << "; end_idx = " << lg_info.end_idx
+                   << "; group_idx = " << lg_info.base_group_idx << "\n";
+    });
+    if (!is_layer_group_valid(lg_info, true, &cost)) {
+      llvm_unreachable("group_cost is not valid");
     }
+    DEBUG_WITH_TYPE("lg_cost", {
+      llvm::dbgs() << "; action = lg_cost"
+                   << "; step = group_layer"
+                   << "; start_idx = " << lg_info.start_idx
+                   << "; end_idx = " << lg_info.end_idx
+                   << "; group_idx = " << lg_info.base_group_idx
+                   << "; group_cost = " << lg_info.group_cost << "\n";
+    });
   }
   llvm::outs() << "load lg results\n";
 }

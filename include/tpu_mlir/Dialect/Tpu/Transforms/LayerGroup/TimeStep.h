@@ -74,7 +74,7 @@ public:
   void show_timestep();
   void clear();
 
-  void gen_all_mem_buffer();
+  void gen_all_mem_buffer_ts();
 
 protected:
   LgOptions options_;

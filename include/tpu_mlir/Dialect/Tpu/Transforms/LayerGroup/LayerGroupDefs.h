@@ -98,6 +98,20 @@ typedef struct mem_buffer_key {
     }
     return false;
   }
+
+  std::string lmem_type_str() {
+    switch (type) {
+    case LMEM_WEIGHT:
+      return "LMEM_WEIGHT";
+    case LMEM_ACTIVATION:
+      return "LMEM_ACTIVATION";
+    case LMEM_OPERATION:
+      return "LMEM_OPERATION";
+    case LMEM_ANY:
+      return "LMEM_ANY";
+    }
+    return "LMEM_UNKNOWN";
+  }
 } mem_buffer_key_t;
 
 typedef struct mem_buffer_value {
@@ -154,6 +168,22 @@ struct tensor_info_t {
   }
   void add_slice_info(Operation *next_op, slice_info_t slice_info) {
     slice_infos[next_op] = slice_info;
+  }
+
+  const std::string mode_str() const {
+    switch (mode) {
+    case TIMESTEP_LOAD:
+      return "TIMESTEP_LOAD";
+    case TIMESTEP_STORE:
+      return "TIMESTEP_STORE";
+    case TIMESTEP_MOVE:
+      return "TIMESTEP_MOVE";
+    case TIMESTEP_LD_G2L2:
+      return "TIMESTEP_LD_G2L2";
+    case TIMESTEP_LDST_UNKNOWN:
+      return "TIMESTEP_LDST_UNKNOWN";
+    }
+    return "TIMESTEP_UNKNOWN";
   }
 };
 

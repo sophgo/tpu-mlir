@@ -24,10 +24,18 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
 
   Operation *op;
   tensor_info_t tensor_info;
+  // in nearest algorithm, each op calculation will be assigned to a timestep
   for (size_t i = 0; i < group_ops.size(); ++i) {
     op = group_ops[i];
-    // layer: 0
+    // timestep: 0
+    // load current layer's input from lmem
+    // current layer will have tpu_field in next timestep
+    DEBUG_WITH_TYPE("timestep_assign", {
+      llvm::dbgs() << "; action = layer_nearest_timestep_assignment"
+                   << "; ts = " << i << "\n";
+    });
     if (i == 0) {
+      // stage 0, only have load timestep
       gdma_field.clear();
       have_load_tensor = false;
       for (auto in : op->getOperands()) {
@@ -52,12 +60,17 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
 
     tpu_field.clear();
     gdma_field.clear();
+
+    // stage 1, in pipeline, all calculate, load, store ops are in the same
+    // timestep
     for (auto out : get_output_values(op)) {
       tensor_in_lmem.insert(out);
     }
+    // stage 1.1: add current gdma and tpu timestep
     tpu_field.push_back(op);
 
     // layer: [1, N-1)
+    // stage 1.1: pre load next layer's input in current timestep
     if (i != group_ops.size() - 1) {
       auto next_op = group_ops[i + 1];
       for (auto next_in : next_op->getOperands()) {
@@ -76,6 +89,8 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
       }
     }
 
+    // layer: [1, N-1)
+    // stage 1.2: store current layer's output to lmem
     if (i > 0) {
       auto pre_op = group_ops[i - 1];
       for (auto pre_out : get_output_values(pre_op)) {
@@ -88,10 +103,15 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
       }
     }
 
+    // add current gdma and tpu timestep
+    // stage 1 finally add
     if (!(tpu_field.empty() && gdma_field.empty())) {
       time_step->add_tpu0_gdma0_ts_field(tpu_field, gdma_field);
     }
 
+    // last layer
+    // store last layer's output to lmem in a new timestep
+    // stage 2: last layer will only have gdma_field
     if (i == group_ops.size() - 1) {
       gdma_field.clear();
       for (auto out : get_output_values(op)) {
@@ -102,11 +122,18 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
       time_step->add_gdma0_ts_field(gdma_field);
     }
   }
-
+  DEBUG_WITH_TYPE("timestep_assign", {
+    llvm::dbgs() << "============= nearest algorithm =============\n";
+    time_step->show_timestep_table();
+  });
   // use software pipeline
   if (group_ops.size() > 1) {
     time_step->software_pipeline();
   }
+  DEBUG_WITH_TYPE("timestep_assign", {
+    llvm::dbgs() << "============= software pipeline =============\n";
+    time_step->show_timestep_table();
+  });
 }
 
 bool is_tensor_accessed_by_npu(Value v, BasicTimeStep *time_step, int64_t ts) {
@@ -239,6 +266,10 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
   ValueIntMap tensor_to_bufsize;
   std::vector<std::list<GdmaElt>> tensor_timesteps;
 
+  DEBUG_WITH_TYPE("timestep_assign", {
+    llvm::dbgs() << "============= memory aware algorithm =============\n";
+  });
+
 // remove it after pid_node is extracted
 #pragma omp critical(get_cycle)
   get_timestep_cycle_slack(time_step, lg_info, tensor_to_cycle,
@@ -275,6 +306,11 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
     }
     time_step->update_gdma0_ts_field(ts, new_tensor_timestep);
   }
+  time_step->show_timestep_table();
+
+  DEBUG_WITH_TYPE("timestep_assign", {
+    llvm::dbgs() << "=======================================\n";
+  });
 }
 
 void TimeStepMethod::get_timestep_cycle_slack(

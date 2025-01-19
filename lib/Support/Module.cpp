@@ -868,6 +868,13 @@ bool isOpInGroupParallel(Operation *Op) {
   return false;
 }
 
+bool isValueBlockArgument(Value v) {
+  if (auto blockArg = dyn_cast<BlockArgument>(v)) {
+    return true;
+  }
+  return false;
+}
+
 // op in [CoreBegin, CoreEnd]
 bool isOpInCoreMatch(Operation *op) {
   while (!op->use_empty()) {
