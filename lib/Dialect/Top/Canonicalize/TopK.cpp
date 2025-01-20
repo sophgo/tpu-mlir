@@ -23,7 +23,8 @@ struct TopKWithSlice : public OpRewriterPatternEx<TopKOp> {
       : OpRewriterPatternEx<TopKOp>(context, "TopKWithSlice") {}
   LogicalResult matchAndRewriteImpl(TopKOp op,
                                     PatternRewriter &rewriter) const override {
-
+    if (module::isDynamic())
+      return failure();
     if (op.getIndices().hasOneUse() && op.getValues().hasOneUse()) {
       return compare_slice(op, rewriter);
     } else if (op.getIndices().hasOneUse() && op.getValues().use_empty()) {
