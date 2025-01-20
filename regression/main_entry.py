@@ -97,6 +97,11 @@ class MAIN_ENTRY(object):
         self.time_cost = []
         self.logger = logging.getLogger()
 
+    def extend_time_cost_list(self, test_type: str, duration: int):
+        cur_time_cost = f"{test_type}: {duration} seconds"
+        print(cur_time_cost)
+        self.time_cost.append(cur_time_cost)
+
     def add_result(self, test_name: str, status: bool, time: int = 0, error_cases: list = []):
         self.results.append({
             "name": test_name,
@@ -227,7 +232,7 @@ class MAIN_ENTRY(object):
             ret = self._run_script_test(source)
             if not ret and self.is_basic:
                 break
-        self.time_cost.append(f"run_script: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list("run_script", int(t.elapsed_time()))
         return SUCCESS if ret else FAILURE
 
     def run_cuda_test(self):
@@ -236,7 +241,7 @@ class MAIN_ENTRY(object):
         # run scripts under $REGRESSION_OUT/script_test
         print("======= cuda test ======")
         ret = self._run_script_test("test_cuda")
-        self.time_cost.append(f"run_cuda: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list("run_cuda", int(t.elapsed_time()))
         return SUCCESS if ret else FAILURE
 
     def run_op_test(self, op_test_types):
@@ -249,7 +254,8 @@ class MAIN_ENTRY(object):
                 # basic test stops once a test failed
                 if not ret and self.is_basic:
                     return FAILURE
-            self.time_cost.append(f"run_{op_source}: {int(t.elapsed_time())} seconds")
+            self.extend_time_cost_list(f"run_{op_source}", int(t.elapsed_time()))
+
         return SUCCESS if ret else FAILURE
 
     def run_op0_test(self):
@@ -316,7 +322,7 @@ class MAIN_ENTRY(object):
                     for result in finished_list:
                         if result["status"] != Status.PASSED:
                             return 1
-            self.time_cost.append(f"run models for {chip}: {int(t.elapsed_time())} seconds")
+            self.extend_time_cost_list(f"run models for {chip}", int(t.elapsed_time()))
 
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)
@@ -327,7 +333,7 @@ class MAIN_ENTRY(object):
         # run scripts under $REGRESSION_OUT/script_test
         print("======= MaskRCNN test ======")
         ret = self._run_script_test("test_MaskRCNN")
-        self.time_cost.append(f"run_MaskRCNN: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list(f"run_MaskRCNN", int(t.elapsed_time()))
         return SUCCESS if ret else FAILURE
 
     def run_tdb_test(self):
@@ -336,7 +342,8 @@ class MAIN_ENTRY(object):
         # run scripts under $REGRESSION_OUT/script_test
         print("======= TDB test ======")
         ret = self._run_script_test("test_tdb")
-        self.time_cost.append(f"run_TDB: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list(f"run_TDB", int(t.elapsed_time()))
+
         return SUCCESS if ret else FAILURE
 
     def run_all(self, test_set):
@@ -394,7 +401,7 @@ if __name__ == "__main__":
             except:
                 print("Failed to open error log file:{}".format(log_file))
 
-    print("============ Time Consum ============")
+    print("============ Time Consum Summary ============")
     for time in main_entry.time_cost:
         print(time)
 
