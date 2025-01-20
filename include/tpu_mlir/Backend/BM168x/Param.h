@@ -2238,7 +2238,7 @@ typedef struct {
   int length;
 } LogicalAnd_param_t;
 
-#define MAX_NUM_CHN (8)
+#define MAX_NUM_CHN (20)
 typedef struct {
   int32_t num_of_chn;
   double std[MAX_NUM_CHN];

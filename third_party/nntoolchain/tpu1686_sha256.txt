@@ -13,33 +13,25 @@ Date:   Wed Jul 29 15:31:55 2026 +0800
     
     Change-Id: I4cdbf568bae3501e5eba768a7faaf8ca21709c3d
 === bm1684x ===
-commit b853c35aa6bbc6aa37676607bae9c94429694664
-Author: yifan.chen <yifan.chen@sophgo.com>
-Date:   Wed Jul 29 15:31:55 2026 +0800
+commit 20075eaca1446f319b874d3051e3395059b355a1
+Author: xu.yang <xu.yang@sophgo.com>
+Date:   Fri Jun 26 11:50:08 2026 +0800
 
-    fix: handle non-integer offset in bm1684x2 requant mode==1
+    Revert "fix: softmax_f16 branch"
     
-    - mode==1 perlayer path on BM1684X2/SG2262 now checks offset integrality;
-      non-integer offset falls back to fp32 arithmetic (cast to FP32, fp_mul_C,
-      fp_add_C, cast to top) so the fractional part participates in final rounding
-    - global layer allocates FP32 buffer for mode==1 + non-integer offset on
-      BM1684X2/SG2262, enabling the local-layer fallback
+    This reverts commit 1553c4f02a8dc2153c81c2c83091dcad5f472d51.
     
-    Change-Id: I4cdbf568bae3501e5eba768a7faaf8ca21709c3d
+    Change-Id: I9574bf4367eb66a08b5639122572364097c6288b
 === bm1688 ===
-commit b853c35aa6bbc6aa37676607bae9c94429694664
-Author: yifan.chen <yifan.chen@sophgo.com>
-Date:   Wed Jul 29 15:31:55 2026 +0800
+commit 20075eaca1446f319b874d3051e3395059b355a1
+Author: xu.yang <xu.yang@sophgo.com>
+Date:   Fri Jun 26 11:50:08 2026 +0800
 
-    fix: handle non-integer offset in bm1684x2 requant mode==1
+    Revert "fix: softmax_f16 branch"
     
-    - mode==1 perlayer path on BM1684X2/SG2262 now checks offset integrality;
-      non-integer offset falls back to fp32 arithmetic (cast to FP32, fp_mul_C,
-      fp_add_C, cast to top) so the fractional part participates in final rounding
-    - global layer allocates FP32 buffer for mode==1 + non-integer offset on
-      BM1684X2/SG2262, enabling the local-layer fallback
+    This reverts commit 1553c4f02a8dc2153c81c2c83091dcad5f472d51.
     
-    Change-Id: I4cdbf568bae3501e5eba768a7faaf8ca21709c3d
+    Change-Id: I9574bf4367eb66a08b5639122572364097c6288b
 === cv184x ===
 commit b853c35aa6bbc6aa37676607bae9c94429694664
 Author: yifan.chen <yifan.chen@sophgo.com>
@@ -54,3 +46,23 @@ Date:   Wed Jul 29 15:31:55 2026 +0800
       BM1684X2/SG2262, enabling the local-layer fallback
     
     Change-Id: I4cdbf568bae3501e5eba768a7faaf8ca21709c3d
+=======
+commit f36ef1a39a77b508ea1b9e101271f91093a3f092
+Author: xu.yang <xu.yang@sophgo.com>
+Date:   Thu Jan 16 17:04:52 2025 +0800
+
+    fix: mean std scale add more channel info for hik
+    
+    according to hik's demand, change mean_std op's channel support num to 20
+    
+    Change-Id: I23673c6bc26b40faf67addd3beb893ed62b09c72
+=== bm1688 ===
+commit 20075eaca1446f319b874d3051e3395059b355a1
+Author: xu.yang <xu.yang@sophgo.com>
+Date:   Fri Jun 26 11:50:08 2026 +0800
+
+    Revert "fix: softmax_f16 branch"
+    
+    This reverts commit 1553c4f02a8dc2153c81c2c83091dcad5f472d51.
+    
+    Change-Id: I9574bf4367eb66a08b5639122572364097c6288b
