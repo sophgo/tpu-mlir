@@ -7,7 +7,7 @@
 
 算能致力于成为全球领先的通用算力提供商。算能专注于深度学习、RISC-V 处理器等算力产品的研发和推广应用，以自研产品为核心打造了覆盖“云、边、端”的全场景应用矩阵 ，为城市大脑、智算中心、智慧安防、智慧交通、安全生产、工业质检、智能终端等应用提供算力产品及整体解决方案 。公司在北京、上海、深圳、青岛、厦门等国内 10 多个城市及美国、新加坡等国家设有研发中心。
 
-目前该工程直接支持的深度学习框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
+目前该工程直接支持的深度学习框架包括PyTorch、ONNX、TFLite 和 Caffe，其他框架模型需要转成ONNX。
 
 # 预编译的 TPU-MLIR Python 包
 
@@ -54,7 +54,6 @@ pip install tpu_mlir
 
 ``` shell
 docker pull sophgo/tpuc_dev:latest
-
 ```
 
 * 如果docker拉取失败，可通过以下方式进行下载：
@@ -85,7 +84,7 @@ source ./envsetup.sh
 ```
 # 使用方法
 
-以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
+以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至 SGTPUV8 TPU平台运行。
 
 该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>。
 
@@ -154,35 +153,6 @@ model_transform.py \
 转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
 
 
-## MLIR转F16模型
-
-将mlir文件转换成f16的bmodel，操作方法如下：
-
-``` shell
-model_deploy.py \
-  --mlir yolov5s.mlir \
-  --quantize F16 \
-  --processor bm1684x \
-  --test_input yolov5s_in_f32.npz \
-  --test_reference yolov5s_top_outputs.npz \
-  --model yolov5s_1684x_f16.bmodel
-```
-
-model_deploy.py的主要参数说明如下（完整参数信息请查看开发参考手册）：
-
-| **参数名**           | 必选？ | **说明**                       |
-| ------------------- | ----- | ----------------------------- |
-| mlir                | 是    | 指定mlir文件                                              |
-| quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8         |
-| processor           | 是    | 指定模型将要用到的平台     |
-| calibration_table   | 否    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
-| tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
-| correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
-| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
-| debug | 否 | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
-| model               | 是    | 指定输出的model文件路径                                  |
-| dynamic             | 否    | 动态编译，支持动态shape                           |
-
 ## MLIR转INT8模型
 
 转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
@@ -206,18 +176,32 @@ model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize INT8 \
   --calibration_table yolov5s_cali_table \
-  --processor bm1684x \
+  --processor sgtpuv8 \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \
-  --model yolov5s_1684x_int8.bmodel
+  --model yolov5s_sgtpuv8_int8.bmodel
 ```
 
 
+model_deploy.py的主要参数说明如下（完整参数信息请查看开发参考手册）：
+
+| **参数名**           | 必选？ | **说明**                       |
+| ------------------- | ----- | ----------------------------- |
+| mlir                | 是    | 指定mlir文件                                              |
+| quantize            | 是    | 指定默认量化类型，支持 INT8         |
+| processor           | 是    | 指定模型将要用到的平台     |
+| calibration_table   | 是    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
+| tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
+| correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
+| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
+| debug | 否 | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
+| model               | 是    | 指定输出的model文件路径                                  |
+| dynamic             | 否    | 动态编译，支持动态shape                           |
 
 ## 效果对比
 
-本工程有用python写好的yolov5用例，源码路径`python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。以下用该代码分别来验证onnx/f32/int8的执行结果。
+本工程有用python写好的yolov5用例，源码路径`python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。以下用该代码分别来验证onnx/int8的执行结果。
 
 onnx模型的执行方式如下，得到`dog_onnx.jpg`：
 
@@ -228,29 +212,18 @@ detect_yolov5.py \
   --output dog_onnx.jpg
 ```
 
-
-f16 bmodel的执行方式如下，得到`dog_f16.jpg`：
-
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_f16.bmodel \
-  --output dog_f16.jpg
-```
-
-
 int8 **对称**bmodel的执行方式如下，得到dog_int8_sym.jpg：
 
 ``` shell
 detect_yolov5.py \
   --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8.bmodel \
+  --model yolov5s_sgtpuv8_int8.bmodel \
   --output dog_int8.jpg
 ```
 
-三张图片对比如下：
+两张图片对比如下：
 
-![](./docs/quick_start/assets/yolov5s.png)
+![](./docs/quick_start/assets/yolov5s2.png)
 
 
 
@@ -263,7 +236,7 @@ detect_yolov5.py \
 ``` shell
 model_runner.py \
   --input resnet18_in_f32.npz \
-  --model resnet18_1684x_f32.bmodel \
+  --model resnet18_sgtpuv8_int8.bmodel \
   --output resnet18_output.npz
 ```
 
@@ -284,7 +257,7 @@ model_runner.py \
 例如, 获取`bmodel`的基本信息：
 
 ``` shell
-model_tool --info resnet18_1684x_f32.bmodel
+model_tool --info resnet18_sgtpuv8_int8.bmodel
 ```
 
 

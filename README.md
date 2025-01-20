@@ -2,7 +2,7 @@
 
 # TPU-MLIR
 
-For Chinese version: [README](https://github.com/sophgo/tpu-mlir/blob/master/README_cn.md).
+For Chinese version: [README](https://github.com/sophgo/tpu-mlir/blob/sgtpuv8/README_cn.md).
 
 TPU-MLIR is an open-source machine-learning compiler based on MLIR for TPU. This project provides a complete toolchain, which can convert pre-trained neural networks from different frameworks into binary files `bmodel` that can be efficiently operated on TPUs.
 
@@ -85,7 +85,7 @@ source ./envsetup.sh
 ```
 # Usage
 
-Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the BM1684X TPU platform.
+Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the SGTPUV8 platform.
 
 The model comes from the official website of yolov5: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>.
 
@@ -157,35 +157,6 @@ Main arguments of `model_transform.py` (for complete information please check th
 After converting to mlir file, a `${model_name}_in_f32.npz` file containing preprocessed input will be generated.
 
 
-## MLIR to F16 bmodel
-
-Convert the mlir file to the F16 bmodel by the following command:
-
-``` shell
-model_deploy.py \
-  --mlir yolov5s.mlir \
-  --quantize F16 \
-  --processor bm1684x \
-  --test_input yolov5s_in_f32.npz \
-  --test_reference yolov5s_top_outputs.npz \
-  --model yolov5s_1684x_f16.bmodel
-```
-
-Main arguments of `model_deploy.py` (for complete information please check the technical reference manual):
-
-| **Argument**           | Required？ | **Description**                       |
-| ------------------- | :-: | ----------------------------- |
-| mlir                | Yes    | Mlir file                                             |
-| quantize            | Yes    | Quantization type (F32/BF16/F16/INT8)                     |
-| processor           | Yes    | The platform that the model will use.      |
-| calibration_table   | No    | The quantization table path. Required when it is INT8 quantization                 |
-| tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
-| correctnetss        | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
-| excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma |
-| debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
-| model               | Yes    | Name of output model file (including path)                                  |
-| dynamic             | No     | dynamic codegen for to support dynamic shape                                |
-
 ## MLIR to INT8 bmodel
 
 Before converting to the INT8 model, you need to run calibration to get the calibration table. The number of input data is about 100 to 1000 according to the situation.
@@ -210,12 +181,27 @@ model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize INT8 \
   --calibration_table yolov5s_cali_table \
-  --processor bm1684x \
+  --processor sgtpuv8 \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \
-  --model yolov5s_1684x_int8.bmodel
+  --model yolov5s_sgtpuv8_int8.bmodel
 ```
+
+Main arguments of `model_deploy.py` (for complete information please check the technical reference manual):
+
+| **Argument**           | Required？ | **Description**                       |
+| ------------------- | :-: | ----------------------------- |
+| mlir                | Yes    | Mlir file                                             |
+| quantize            | Yes    | Quantization type (INT8)                     |
+| processor           | Yes    | The platform that the model will use.      |
+| calibration_table   | Yes    | The quantization table path. Required when it is INT8 quantization                 |
+| tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
+| correctnetss        | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
+| excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma |
+| debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
+| model               | Yes    | Name of output model file (including path)                                  |
+| dynamic             | No     | dynamic codegen for to support dynamic shape                                |
 
 ## Results Comparison
 
@@ -224,7 +210,7 @@ This project has a yolov5 sample written in python (path:  `python/samples/detec
   2. model inference to get output
   3. post-process the output
 
-The following code is used to verify the output of onnx/f32/int8 model respectively:
+The following code is used to verify the output of onnx/int8 model respectively:
 
 * ONNX model:
 
@@ -236,28 +222,19 @@ detect_yolov5.py \
 ```
 
 
-* F16 bmodel:
-
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_f16.bmodel \
-  --output dog_f16.jpg
-```
-
 * INT8 **symmetric quantized** bmodel:
 
 ``` shell
 detect_yolov5.py \
   --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8.bmodel \
+  --model yolov5s_sgtpuv8_int8.bmodel \
   --output dog_int8.jpg
 ```
 
 
 Outputs of different models are compared below:
 
-![](./docs/quick_start/assets/yolov5s.png)
+![](./docs/quick_start/assets/yolov5s2.png)
 
 
 
@@ -270,7 +247,7 @@ Supports bmodel/mlir/pytorch/onnx/tflite/caffe.
 ``` shell
 model_runner.py \
   --input resnet18_in_f32.npz \
-  --model resnet18_1684x_f32.bmodel \
+  --model resnet18_sgtpuv8_int8.bmodel \
   --output resnet18_output.npz
 ```
 
@@ -291,7 +268,7 @@ The `bmodel` file can be viewed and edited by `model_tool`:
 For example, to get basic information of `bmodel`:
 
 ``` shell
-model_tool --info resnet18_1684x_f32.bmodel
+model_tool --info resnet18_sgtpuv8_int8.bmodel
 ```
 
 
