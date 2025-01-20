@@ -33,12 +33,14 @@ protected:
   void deallocLmem();
   void reshape();
   void g2g_tile_N();
+  void g2g_tile_N_loop();
   void g2g_tile_W();
 
 protected:
   typedef enum {
     TILE_N,
     TILE_W,
+    TILE_N_LOOP,
   } tile_mode_t;
   typedef struct {
     int pos_c;
@@ -49,7 +51,7 @@ protected:
   gaddr_t ga_output;
   cvk_fmt_t fmt;
   int fmt_bytes;
-  int n, c, h, w, factor;
+  int n, c, h, w, factor, loop;
   cvk_tg_stride_t src_gstride;
   cvk_tl_t *tl_mem[4];
   cvk_tl_t tl_ifmap;
