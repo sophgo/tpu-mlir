@@ -18,6 +18,7 @@ import math
 import numpy as np
 import pymlir
 import torch
+import warnings
 pymlir.set_mem_mode("force_value_mem")
 from ctypes import *
 from tqdm import tqdm
@@ -943,7 +944,6 @@ class ActivationCalibrator(BaseKldCalibrator):
             #     new_num_bins = 40000000
             #     half_increased_bins = new_num_bins - old_num_bins
             if new_num_bins > 8000000:
-                import warnings
                 warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
                 hist, hist_edges = self.histogram(arr, new_th, self.histogram_bin_num)
                 return (hist, hist_edges, min(old_min, new_min), max(old_max, new_max), new_th)
@@ -997,6 +997,20 @@ class ActivationCalibrator(BaseKldCalibrator):
             if "fused" in op:
                 fused_ops = op.split('["')[1].split('"]')[0].split(', ')
                 tensor_list.extend([fused_op.strip('"') for fused_op in fused_ops])
+                has_next = False
+                for fused_op in fused_ops:
+                    fused_op = fused_op.strip('"')
+                    if self.parser.get_next_op_by_op_name(fused_op):
+                        has_next = True
+                        break
+                if has_next:
+                    for fused_op in fused_ops:
+                        fused_op = fused_op.strip('"')
+                        if not self.parser.get_next_op_by_op_name(fused_op):
+                            try:
+                                tensor_list.remove(fused_op)
+                            except ValueError:
+                                warnings.warn(f"无法从 tensor_list 中移除 '{fused_op}'，因为它不存在。")
             else:
                 tensor_list.append(op)
         return tensor_list
@@ -1044,7 +1058,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             if out not in all_tensors and out not in self.tensor_list:
                 continue
             abs_value = None
-            activation=self.module.get_tensor(out).copy()
+            activation = self.module.get_tensor(out).copy()
             if activation is None:
                 continue
             self.size[out] = activation.size
@@ -1407,7 +1421,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             if out not in all_tensors and out not in self._tensor_list:
                 continue
             abs_value = None
-            activation=self.module.get_tensor(out).copy()
+            activation = self.module.get_tensor(out).copy()
             if activation is None:
                 continue
             self._size[out] = activation.size
