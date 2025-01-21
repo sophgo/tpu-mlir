@@ -57,7 +57,8 @@ void PreprocessLowering::LoweringINT8(PatternRewriter &rewriter,
     channel_order.push_back(1);
     channel_order.push_back(0);
   } else {
-    llvm_unreachable("raw format not support current type");
+    lowering_common_int8<tpu::PreprocessOp>(rewriter, op, asymmetric);
+    return;
   }
   std::vector<NamedAttribute> attrs;
   attrs.emplace_back(rewriter.getNamedAttr(
@@ -105,7 +106,8 @@ void PreprocessLowering::LoweringBF16(PatternRewriter &rewriter,
     channel_order.push_back(1);
     channel_order.push_back(0);
   } else {
-    llvm_unreachable("raw format not support current type");
+    lowering_common_bf16<tpu::PreprocessOp>(rewriter, op);
+    return;
   }
   std::vector<NamedAttribute> attrs;
   attrs.emplace_back(rewriter.getNamedAttr(
