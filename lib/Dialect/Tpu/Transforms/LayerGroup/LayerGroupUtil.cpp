@@ -2122,7 +2122,7 @@ bool check_split_matmul(Operation *op) {
 
   // case 4
   if (matmulOp.getHdimIsBatch() && a_s.size() == 4 && a_s[0] == b_s[0] &&
-      a_s[1] == b_s[3] && a_s[2] == b_s[2] && a_s[3] == b_s[1]) {
+      a_s[2] == b_s[2] && a_s[3] == b_s[1]) {
     return true;
   }
   // other cases

@@ -212,6 +212,7 @@ class TPULANG_IR_TESTER(object):
             "ConcattoRope":(self.test_ConcattoRope,     Y, N),
             #### error case ####
             "ErrorCase": (self.test_ErrorCase,          Y, Y),
+            "AttenQuantError": (self.test_AttenQuantError,  Y, Y),
         }
         # currently tpulang only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"] # no need "bf16" for now
@@ -4518,11 +4519,76 @@ class TPULANG_IR_TESTER(object):
                         add_saturation = True
                         )
 
+    def test_AttenQuantError(self, case_name):
+        def matmul_weight(x, shape, multi, shift, dtype='int8'):
+            weight = self.coeff_tensor(shape, dtype)
+            b_data = np.random.randint(-32768, 32767, size=[1, 1, shape[-1]]).astype('int32')
+            bias = self.coeff_tensor(shape = [1, 1, shape[-1]], dtype="int32", data=b_data)
+            mat = tpul.matmul_int(x, weight, bias, input_zp=0, right_zp=0, out_dtype='int32')
+            return tpul.requant_int(mat, [multi]*shape[1], [-shift]*shape[1], 0, 2, dtype, round_mode='half_away_from_zero',rq_axis=-1,fuse_rq_to_matmul=True)
 
+        def rope( x, weight_shape, mul1_shift: int, mul2_shift: int, add_shift: int,
+                  dtype="int8", out_name: str = None):
 
+            weight0 = self.coeff_tensor(list(weight_shape), dtype)
+            weight1 = self.coeff_tensor(list(weight_shape), dtype)
+            return tpul.rope(x, weight0, weight1,
+                        is_permute_optimize=True,
+                        mul1_round_mode = 'half_up',
+                        mul2_round_mode = 'half_up',
+                        add_round_mode = 'half_up',
+                        mul1_shift = mul1_shift,
+                        mul2_shift = mul2_shift,
+                        add_shift = add_shift,
+                        mul1_saturation = True,
+                        mul2_saturation = True,
+                        add_saturation = True,
+                        out_name=out_name
+                        )
 
+        def attention_block(x0, x1, x2, shape, d, head, mask=None, dtype="int8"):
+            B = shape[0]
+            S_q = shape[1]
+            H_q = shape[2]
+            S_k = shape[1]
+            H_k = shape[2]
+            S_v = shape[1]
+            H_v = shape[2]
+            q = matmul_weight(x0, [H_q, d * head], 8377, -28, dtype)
+            q = tpul.reshape(q, [B, S_q, head, d])
+            q = rope(q, [1, S_q, 1, d], -7, -6, 0, dtype)
+            q = tpul.permute(q, [0, 2, 1, 3])
+            q = tpul.dequant_int_to_fp(q, 0.875, 0)
+            q = tpul.mul(q, 1.0/np.sqrt(d))
+            q = tpul.requant_fp_to_int(q, 0.0078125, 0, 2, dtype)
+            k = matmul_weight(x1, [H_k, d * head], 8377, -28, dtype)
+            k = tpul.reshape(k, [B, S_k, head, d])
+            k = rope(k, [1, S_q, 1, d], -7, -6, 0, dtype)
+            k = tpul.permute(k, [0, 2, 1, 3])
+            k = tpul.permute(k, [0, 1, 3, 2])
+            v = matmul_weight(x2, [H_v, d * head], 8377, -28, dtype)
+            v = tpul.reshape(v, [B, S_v, head, d])
+            v = tpul.permute(v, [0, 2, 1, 3])
+            m0 = tpul.matmul_int(q, k, input_zp=0, right_zp=0, out_dtype='int32')
+            m0 = tpul.requant_int(m0, 8377, -24, 0, 2, dtype, round_mode='half_away_from_zero')
+            dq0 = tpul.dequant_int_to_fp(m0, 0.875, 0)
+            m0 = tpul.softmax(dq0, 3)
+            rq0 = tpul.requant_fp_to_int(m0, 0.0078125, 0, 2, dtype)
+            m1 = tpul.matmul_int(rq0, v, input_zp=0, right_zp=0, out_dtype='int32')
+            m1 = tpul.requant_int(m1, 8377, -18, 0, 2, dtype, round_mode='half_away_from_zero')
+            m1 = tpul.permute(m1, [0, 2, 1, 3])
+            m1 = tpul.reshape(m1, [B, S_q, -1])
+            out = matmul_weight(m1, [d*head, H_q], 8377, -28, dtype=dtype)
+            return out
 
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, d, head, dtype='int8', is_quantized=True):
+            x_data = rand_data(in_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            out = attention_block(x, x, x, in_shape, d, head, dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
+        _test_model_def([1, 256, 256], 64, 4)
 
     def test_ErrorCase(self, case_name):
 
@@ -4568,9 +4634,52 @@ class TPULANG_IR_TESTER(object):
             dequant = tpul.dequant_int_to_fp(perm, 1.0, 0)
             self.compile_and_check(self.unique_name(case_name), [x], [dequant], is_quantized=True)
 
+        @tpulang(self.chip)
+        def _test_matmul_requant_axis():
+            xshape = [1, 1, 900, 256]
+            x_data = rand_data(xshape, "int8")
+            input = tpul.Tensor(dtype="int8", shape=xshape, data=x_data)
+            x = tpul.add_shift(input, 0, 4, "int16")
+            c0 = self.coeff_tensor(xshape, "int8")
+            x0 = tpul.add_shift(x, c0, -4, "int8")
+            c1 = self.coeff_tensor(xshape, "int8")
+            x1 = tpul.add_shift(x, c1, -4, "int8")
+
+            w0 = self.coeff_tensor([256, 256], "int8")
+            b0 = self.coeff_tensor([256], "int32")
+            mat0 = tpul.matmul_int(x0, w0, b0, input_zp=0, right_zp=0, out_dtype="int32")
+            mul0 = [15594, 16751, 19479, 19023, 15523, 23037, 17253, 17615, 17084, 17234, 15819, 17962, 16171, 17997, 16462, 16886, 15833, 19966, 19982, 17329, 18336, 17282, 17995, 16593, 14828, 16078, 16502, 14806, 15506, 14984, 14373, 14942, 17745, 15931, 13716, 17077, 15943, 14200, 18808, 18173, 15106, 15511, 17064, 16127, 15770, 17595, 19118, 15555, 15087, 17904, 13956, 16408, 17206, 15064, 14409, 16718, 21044, 13037, 15246, 15958, 14135, 21436, 17968, 15261, 19346, 20571, 18836, 16712, 15651, 16632, 14534, 18082, 13867, 15945, 12988, 15307, 18787, 19963, 16366, 17946, 19154, 15973, 16923, 17388, 16879, 17756, 18452, 17353, 15367, 16538, 16973, 17905, 19780, 15024, 22737, 16581, 19795, 14639, 18294, 15677, 16383, 16763, 19174, 17725, 16881, 22362, 17309, 21401, 25313, 20069, 18909, 16586, 17321, 19957, 16214, 14943, 20860, 20376, 16623, 17341, 16687, 18262, 17718, 18585, 14998, 20565, 16313, 17111, 21256, 17777, 17540, 13984, 16131, 14120, 16363, 15895, 13915, 14105, 15397, 16172, 13658, 17526, 15988, 13941, 14775, 17004, 17938, 18409, 17184, 16957, 14610, 14476, 17569, 15597, 15030, 14044, 16091, 15441, 16258, 18253, 24540, 22977, 20796, 16414, 24142, 22106, 22586, 22927, 22210, 21558, 19169, 22821, 24682, 19194, 25472, 19613, 21664, 22986, 20524, 22526, 21655, 22731, 24472, 20351, 26789, 20811, 21316, 27838, 21342, 22862, 15814, 20980, 16164, 15470, 14731, 16334, 16244, 16156, 16861, 14169, 14021, 14867, 16840, 12926, 18492, 16753, 14834, 15524, 14811, 16216, 16642, 16256, 15674, 15881, 16901, 17143, 17176, 16242, 14691, 15576, 16130, 15730, 15214, 16290, 18540, 18346, 14566, 17165, 15642, 18956, 14557, 17028, 13783, 15995, 16944, 16314, 16564, 15626, 15876, 18282, 16807, 19427, 16569, 15296, 17733, 16804, 15147, 17694, 16723, 16319, 18279, 15733, 15671, 17359, 15174, 18622]
+            requant0 = tpul.requant_int(mat0, mul0, [28]*256, 0, 2, round_mode="half_up", out_dtype="int8", rq_axis=-1, fuse_rq_to_matmul=True)
+            w1 = self.coeff_tensor([256, 256], "int8")
+            b1 = self.coeff_tensor([256], "int32")
+            mat1 = tpul.matmul_int(x1, w1, b1, input_zp=0, right_zp=0, out_dtype="int32")
+            mul1 = [10073, 8189, 7419, 7562, 7775, 8668, 8172, 8080, 9963, 9613, 8168, 8830, 8369, 7257, 9036, 8614, 7939, 7975, 9387, 8070, 9178, 9760, 8367, 8831, 8694, 8550, 8126, 9868, 7343, 8601, 7500, 8511, 6721, 7345, 7618, 6912, 6933, 7806, 7206, 7455, 7651, 6402, 6930, 6791, 7682, 7088, 7806, 8293, 7283, 10648, 6907, 8821, 7660, 6964, 6891, 7263, 8492, 7149, 7329, 7758, 7021, 9422, 7673, 7014, 7575, 9480, 9142, 8438, 9433, 7721, 7330, 9441, 8565, 7881, 7777, 9081, 8940, 8931, 8112, 10069, 9662, 9242, 8126, 8013, 8117, 10599, 8992, 7548, 9325, 8991, 8401, 7019, 8039, 8994, 8915, 7700, 9783, 8381, 9088, 9617, 8354, 8346, 9118, 7791, 8576, 8602, 10044, 8056, 8310, 7880, 8353, 9527, 8124, 10164, 6728, 7159, 8178, 8098, 8621, 7922, 8079, 9503, 7536, 9957, 8698, 8447, 8252, 8153, 7654, 7883, 7044, 7235, 7616, 7883, 8631, 6605, 7176, 10628, 8219, 7425, 7946, 8169, 8970, 8398, 7356, 6897, 8223, 9371, 8190, 11653, 7148, 8550, 8493, 6971, 7348, 7519, 10002, 8329, 8844, 9293, 13307, 12589, 15602, 9153, 14203, 13010, 9583, 16779, 13620, 10632, 12332, 13809, 9247, 10537, 9551, 11679, 8393, 11882, 13565, 13678, 11907, 12073, 12440, 12791, 12448, 13667, 11684, 12344, 12009, 10934, 9895, 15126, 7839, 7939, 8459, 6976, 8472, 7390, 7555, 7336, 7641, 8402, 7717, 7951, 9920, 8676, 6902, 8234, 7190, 7589, 8430, 8103, 6917, 6875, 7411, 7872, 9257, 7748, 8001, 8681, 7717, 8426, 6957, 9697, 7805, 7761, 7288, 7813, 8115, 8176, 8233, 8440, 7351, 8058, 7407, 8191, 7304, 7343, 7702, 7970, 6996, 7260, 7583, 6683, 9725, 7831, 8716, 8318, 7806, 7050, 8125, 8625, 8656, 7304, 7141, 8647]
+            requant1 = tpul.requant_int(mat1, mul1, [27]*256, 0, 2, round_mode="half_up", out_dtype="int8", rq_axis=-1, fuse_rq_to_matmul=True)
+
+            cast0 = tpul.dequant_int_to_fp(requant0, 0.0625, 0, "float16")
+            add0 = tpul.mul(cast0, 0.1767578125)
+            cast0 = tpul.requant_fp_to_int(add0, 0.0078125, 0, 0, "int8")
+            reshape1 = tpul.reshape(requant1, [1,900,8,32])
+            reshape0 = tpul.reshape(cast0, [1,900,8,32])
+            permute1 = tpul.permute(reshape1, [0,2,3,1])
+            permute0 = tpul.permute(reshape0, [0,2,1,3])
+
+            mat2 = tpul.matmul_int(permute0, permute1, input_zp=0, right_zp=0, out_dtype="int32")
+            requant2 = tpul.requant_int(mat2, 1, -12, 0, 2, round_mode="half_up", out_dtype="int8")
+            cast2 = tpul.dequant_int_to_fp(requant2, 0.0625, 0, "float16")
+            softmax2 = tpul.softmax(cast2, 3)
+            w2 = self.coeff_tensor([1, 8, 900, 32], "float16")
+            mat2 = tpul.matmul(softmax2, w2, out_dtype="float16")
+            requant3 = tpul.requant_fp_to_int(mat2, 0.00625, 0, 0, "int8")
+            permute3 = tpul.permute(requant3, [0,2,1,3])
+            reshape3 = tpul.reshape(permute3, [1,900,1,256])
+
+            self.compile_and_check(self.unique_name(case_name), [input], [reshape3], is_quantized=True)
+
         _test_concat_conv()
         _test_conv_requant_axis()
         _test_conv_requant_axis2()
+        _test_matmul_requant_axis()
 
     def test_model_combine(self, inputs, output="bm_combine"):
         from tools.bmodel_combine import combine
