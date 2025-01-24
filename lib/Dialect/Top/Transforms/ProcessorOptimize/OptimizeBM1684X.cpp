@@ -2517,8 +2517,14 @@ protected:
     auto gather_shape = module::getShape(gather_op.getInput());
     auto op_weight =
         dyn_cast<top::WeightOp>((op.getOperands()[1]).getDefiningOp());
+    if (!op_weight){
+      return failure();
+    }
     auto gather_weight =
         dyn_cast<top::WeightOp>((gather_op.getOperands()[1]).getDefiningOp());
+    if (!gather_weight){
+      return failure();
+    }
     std::vector<int> unsample_ratio = {0, 0};
     if (op.getAxis() == gather_shape.size() - 1 ||
         op.getAxis() == gather_shape.size() - 2) {
