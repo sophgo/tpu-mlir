@@ -590,7 +590,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
 
     /////////////// this branch is speical for stride > 15
     if (strideh_gt_15 || stridew_gt_15) {
-      if (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0) {
+      if (module::isMARS3() && (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0)) {
         const int cell_num_h = kh / cell_h;
         const int cell_num_w = kw / cell_w;
         const int cell_num_hw = cell_num_h * cell_num_w;
@@ -877,7 +877,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
   std::vector<int64_t> filter_shape = {1, output_c, gic, kh * kw};
   if (out_type.isF32()) {
     if (strideh_gt_15 || stridew_gt_15) {
-      if (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0) {
+      if (module::isMARS3() && (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0)) {
         int cell_h = kh, cell_w = kw;
 
         if (strideh_gt_15) {
