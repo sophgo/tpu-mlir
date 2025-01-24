@@ -1,12 +1,12 @@
-weight_only
-========================
+LLMC Guidance
+========================================
 
-TPU-MLIR weight_only quantization
+TPU-MLIR weight-only quantization
 -------------------------------------------------------
 
 TPU-MLIR supports weight-only quantization for large models, utilizing the RTN (round to nearest) quantization algorithm with a quantization granularity of per-channel or per-group. The specific quantization configurations are as follows:
 
-.. list-table:: weight_only quantization parameters
+.. list-table:: weight-only quantization parameters
    :widths: 25 25 25 25
    :header-rows: 1
 
@@ -275,7 +275,7 @@ Below are detailed explanations of some important parameters:
 
 To align with `TPU-MLIR`, the configuration of weight quantization related parameters is as follows:
 
-.. list-table:: weight_only quantization parameters
+.. list-table:: weight-only quantization parameters
    :widths: 25 25 25 25
    :header-rows: 1
 

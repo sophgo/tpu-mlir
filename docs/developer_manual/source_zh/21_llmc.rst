@@ -1,12 +1,12 @@
-weight_only
+LLMC使用指南
 ========================
 
-TPU-MLIR weight_only 量化
--------------------------------
+TPU-MLIR weight-only 量化
+--------------------------
 
-TPU-MLIR中支持对大模型进行weight_only仅权重量化,采用的量化算法是RTN(round to nearest)算法,量化粒度为per-channel或者per-group。具体的量化配置如下:
+TPU-MLIR中支持对大模型进行weight-only仅权重量化,采用的量化算法是RTN(round to nearest)算法,量化粒度为per-channel或者per-group。具体的量化配置如下:
 
-.. list-table:: weight_only量化参数
+.. list-table:: weight-only量化参数
    :widths: 25 25 25 25
    :header-rows: 1
 
@@ -274,7 +274,7 @@ config文件参数说明
 
 为了与`TPU-MLIR`对齐,weight量化相关参数配置如下:
 
-.. list-table:: weight_only量化参数
+.. list-table:: weight-only量化参数
    :widths: 25 25 25 25
    :header-rows: 1
 
