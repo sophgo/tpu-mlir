@@ -4576,15 +4576,15 @@ public:
     auto new_convbwd_op = rewriter.create<tpu::ConvbwdOp>(
         op.getLoc(), new_types, operands, op->getAttrs());
     if (module_fp16) {
-      auto op_name = module::getName(op.getResult(1));
-      auto cast_loc = NameLoc::get(
-          rewriter.getStringAttr(op_name.str() + "cast_grad_weight"));
-      auto cast_type =
-          RankedTensorType::get(gradweight_shape, rewriter.getF16Type());
-      auto cast_op = rewriter.create<tpu::CastOp>(
-          cast_loc, cast_type, ValueRange{new_convbwd_op.getResult(1)});
+      // auto op_name = module::getName(op.getResult(1));
+      // auto cast_loc = NameLoc::get(
+      //     rewriter.getStringAttr(op_name.str() + "cast_grad_weight"));
+      // auto cast_type =
+      //     RankedTensorType::get(gradweight_shape, rewriter.getF16Type());
+      // auto cast_op = rewriter.create<tpu::CastOp>(
+      //     cast_loc, cast_type, ValueRange{new_convbwd_op.getResult(1)});
       rewriter.replaceAllUsesWith(op.getResult(0), new_convbwd_op.getResult(0));
-      rewriter.replaceAllUsesWith(op.getResult(1), cast_op.getResult());
+      rewriter.replaceAllUsesWith(op.getResult(1), new_convbwd_op.getResult(1));
       rewriter.replaceAllUsesWith(op.getResult(2), new_convbwd_op.getResult(2));
       rewriter.eraseOp(op);
     } else {

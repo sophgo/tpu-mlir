@@ -1337,6 +1337,38 @@ public:
 };
 } // namespace bm168x
 
+class ConvBwdGlobalBuffer : public OpRewriterPatternEx<tpu::ConvbwdOp> {
+public:
+  ConvBwdGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ConvbwdOp>(context, "ConvBwdOpGlobalBuffer") {}
+  LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp ConvBwdOp,
+                                    PatternRewriter &rewriter) const override {
+    if (!module::isBM1690Family()) {
+      return failure();
+    }
+    auto conv_input  = module::getI64Array(ConvBwdOp.getInputShape());
+    auto conv_output = module::getI64Array(ConvBwdOp.getGradOutShape());
+    int conv_output_need_store = conv_output->at(2) >= 56 ? 1 : 0;
+    int buffer_size0  = 1;
+    for (int i = 0; i < conv_output->size(); i++) {
+      buffer_size0 *= conv_output->at(i);
+    }
+    int buffer_size1 = 1;
+    for (int i = 0; i < conv_input->size(); i++) {
+      buffer_size1 *= conv_input->at(i);
+    }
+    int buffer_size = buffer_size0 * conv_output_need_store;
+    buffer_size     = (align_up(((buffer_size + 63) / 64) * 64, 4096) + buffer_size1) * 2;
+    auto type = module::getStorageType(ConvBwdOp.getInput());
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(ConvBwdOp, buffer_type, tpu::BufferType::L2);
+    ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 2, buffer);
+    return success();
+  }
+  bool shouldPrint(tpu::ConvbwdOp ConvBwdOp) const override { return false; }
+};
+
 class MaskRCNNRPNGetBboxesGlobalBuffer
     : public OpRewritePattern<tpu::MaskRCNNRPNGetBboxesOp> {
 public:
