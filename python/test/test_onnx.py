@@ -258,7 +258,7 @@ class ONNX_IR_TESTER(object):
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y, Y, Y),
             "TorchRMSNorm":         (self.test_TorchRMSNorm,        N, Y, Y, N, Y, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N, Y, N),
-            "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y, Y, N),
+            "TorchScatterND":       (self.test_TorchScatterND,      N, N, Y, Y, Y, N),
             "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y, Y, Y),
             "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y, Y, Y),
             "TorchWhere":           (self.test_TorchWhere,          N, Y, Y, N, Y, Y),

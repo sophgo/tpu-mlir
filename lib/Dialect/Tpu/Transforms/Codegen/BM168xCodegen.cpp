@@ -131,7 +131,28 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   auto io_addr = module::getIOAddr(s);
   auto io_size = module::getIOSize(s);
   auto dynamic_coeff_offset = module::getDynamicOffset(s);
+  auto addr_mode = module::getAddrMode();
+  typedef struct cmd_check_param {
+  int64_t neuron_base_addr;
+  int64_t neuron_size;
+  int64_t coeff_base_addr;
+  int64_t coeff_size;
+  int64_t io_addr;
+  int64_t io_size;
+  int     addr_mode;
+}cmd_check_param_t;
 
+  cmd_check_param_t check_param = {
+    neuron_addr,
+    neuron_size,
+    coeff_addr,
+    coeff_size,
+    io_addr,
+    io_size,
+    (int)addr_mode
+  };
+
+  bm168x->dl_set_cmd_check_param((void*)&check_param);
   auto &builder = model_gen->Builder();
   // if tensor not in device 0, will be hidden
   auto input_tensor = CreateTensorVector(inputs, cascade.device_id);

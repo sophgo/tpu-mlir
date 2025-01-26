@@ -622,6 +622,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(get_local_memaddr_by_node);
   CAST_FUNCTION(set_cmd_buffer_ptr);
   CAST_FUNCTION(set_cmd_id_prefix);
+  CAST_FUNCTION(set_cmd_check_param);
   CAST_FUNCTION(enable_profile);
   CAST_FUNCTION(allow_atomic_cmodel_assert);
   CAST_FUNCTION(forbid_atomic_cmodel_assert);

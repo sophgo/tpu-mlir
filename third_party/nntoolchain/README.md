@@ -12,11 +12,17 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690/SG2380/MARS3/SGTPUV8 2025-01-15
+## TPU1684X/1688/BM1690/SG2380/MARS3/SGTPUV8 2025-01-26
 ``` bash
 
 #bm1684x sha256: 37b161dbfb68ff72f571a57b60bb97346534cf8e
 # - yolov5s requant: 5fd5cfea836a56e91faf59ae669b1865959019a4
+# gdma addr check:
+# + 36797dff9adf94b2339dffe553e620b8afc6f72f
+# + 11c4353534b33523262614d0100d4ca2f8c926d0
+# + 666bb6e66239bdd0212b9e613921144b8436dc89
+# + ad356acf6b0e09cf88ebe18d1cb76120ee7dd3c8
+# + 68b8b0846063637ba15908dba5588ca37582db61
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -30,6 +36,12 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 #bm1688 sha256: 37b161dbfb68ff72f571a57b60bb97346534cf8e
 # + wenet encoder bugfix: dbefb769208c913e080a5635b9a81396b2990ee2
 # + LSTM fix: 5bdae3eb7bed685263d5f38677e922e1e56a59c7
+# gdma addr check:
+# + 36797dff9adf94b2339dffe553e620b8afc6f72f
+# + 11c4353534b33523262614d0100d4ca2f8c926d0
+# + 666bb6e66239bdd0212b9e613921144b8436dc89
+# + ad356acf6b0e09cf88ebe18d1cb76120ee7dd3c8
+# + 68b8b0846063637ba15908dba5588ca37582db61
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -43,6 +55,12 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 #bm1690 sha256: 37b161dbfb68ff72f571a57b60bb97346534cf8e
 # + bntrain opt: 8450554110d490b33ee1c0144a9027ad553ce311
 # + where+bnbwd: 7dcf41c419f2db8a5dc2a5aa2fdd96a14bdbbd8e
+# gdma addr check:
+# + 36797dff9adf94b2339dffe553e620b8afc6f72f
+# + 11c4353534b33523262614d0100d4ca2f8c926d0
+# + 666bb6e66239bdd0212b9e613921144b8436dc89
+# + ad356acf6b0e09cf88ebe18d1cb76120ee7dd3c8
+# + 68b8b0846063637ba15908dba5588ca37582db61
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -54,7 +72,7 @@ unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#sg2380 sha256: 49392455a59efbf73fa1bcdb2e82dbf55c6d398c
+#sg2380 sha256: 68b8b0846063637ba15908dba5588ca37582db61
 cd TPU1686
 source  scripts/envsetup.sh sg2380
 debug: rebuild_backend_lib_cmodel
@@ -62,7 +80,7 @@ release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#mars3 sha256:  cd3898ba7118e5588ca02a289b9f661fed259b67
+#mars3 sha256:  68b8b0846063637ba15908dba5588ca37582db61
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
@@ -73,7 +91,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libmars3_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libmars3_kernel_module.a
 
-#SGTPUV8 sha256: cd3898ba7118e5588ca02a289b9f661fed259b67
+#SGTPUV8 sha256: 68b8b0846063637ba15908dba5588ca37582db61
 cd TPU1686
 source  scripts/envsetup.sh sgtpuv8
 debug: rebuild_backend_lib_cmodel

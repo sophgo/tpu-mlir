@@ -35,6 +35,7 @@ typedef void (*forbid_atomic_cmodel_assert)();
 typedef void (*enable_profile)(bool enable, FILE *fp);
 typedef unsigned long long (*tpu_global_mem_get_start_addr)();
 typedef unsigned long long (*tpu_l2_sram_get_start_addr)();
+typedef void (*set_cmd_check_param)(void *check_param_ptr);
 
 typedef void (*tensor_stride_move_gen_cmd)(
     int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
@@ -281,6 +282,7 @@ public:
   get_local_memaddr_by_node dl_get_local_memaddr_by_node;
   set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
   set_cmd_id_prefix dl_set_cmd_id_prefix;
+  set_cmd_check_param dl_set_cmd_check_param;
   tpu_global_mem_get_start_addr dl_tpu_global_mem_get_start_addr;
   tpu_l2_sram_get_start_addr dl_tpu_l2_sram_get_start_addr;
   allow_atomic_cmodel_assert dl_allow_atomic_cmodel_assert;
