@@ -161,7 +161,9 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 
   bool need_all_reduce = false;
   if (!module::isNone(getBuffer())) {
-    need_all_reduce = true;
+    if (!isa<tpu::OutBufferOp>(getBuffer().getDefiningOp())) {
+      need_all_reduce = true;
+    }
     g_addr = module::getAddress(buffer);
     llvm::errs() << "  will store to l2m, addr:" << g_addr << "\n";
   }

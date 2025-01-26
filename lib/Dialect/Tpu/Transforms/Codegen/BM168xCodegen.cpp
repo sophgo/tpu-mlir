@@ -894,28 +894,25 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   }
 }
 
-void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
-                                   std::pair<int, int> &core_num_idx) {
-  llvm::errs() << "codegen_for_group2 start\n";
+void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int, int>& core_num_idx) {
+  llvm::errs() <<"codegen_for_group2 start\n";
   auto first_op_name = module::getName(gOp.getResult(0)).str();
-  if (module::isDebugCmdEnable("skip_group_codegen_with_first_name_" +
-                               first_op_name)) {
+  if (module::isDebugCmdEnable("skip_group_codegen_with_first_name_" + first_op_name)) {
     return;
   }
 
   bool valid_softmax_group = true, first_mm = true;
   for (Operation &op : gOp.getBody().front().getOperations()) {
-    if (!isa<tpu::SoftmaxOp, tpu::MatMulOp, StoreOp, LoadOp, YieldOp,
-             SliceMergeOp, LoadToL2MOp>(op)) {
+    if (!isa<tpu::SoftmaxOp, tpu::MatMulOp, StoreOp, LoadOp, YieldOp, SliceMergeOp, LoadToL2MOp>(op)) {
       valid_softmax_group = false;
       break;
     }
     if (isa<tpu::MatMulOp>(op)) {
-      if (!first_mm && op.getAttr(LocalGenInterface::kLayerGroupAttrName)
-                               .cast<tpu::LayerGroupAttr>()
-                               .getHSlice()
-                               .size() == 1) {
-        valid_softmax_group = false;
+      if (!first_mm) {
+        if (op.getAttr(LocalGenInterface::kLayerGroupAttrName).cast<tpu::LayerGroupAttr>().getHSlice().size() == 1) {
+          valid_softmax_group = false;
+        }
+        break;
       }
       first_mm = false;
     }
@@ -932,15 +929,15 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
   int tmp_syncall_num = 0;
 
   std::map<int, std::vector<std::vector<int>>> map_core_slice_ncdhw;
-  for (auto id : run_core_id) {
+  for(auto id: run_core_id) {
     map_core_slice_ncdhw[id] = std::vector<std::vector<int>>();
   }
 
   auto core_slice_ncdhw = *module::getI64Array(gOp.getCoreSliceNcdhw());
-  assert(core_slice_ncdhw.size() % (6 * run_core_id.size()) == 0);
-  int slice_num_per_core = core_slice_ncdhw.size() / (6 * run_core_id.size());
+  assert(core_slice_ncdhw.size() % (6*run_core_id.size()) == 0);
+  int slice_num_per_core = core_slice_ncdhw.size() / (6*run_core_id.size());
   int offset = 0;
-  for (auto id : run_core_id) {
+  for(auto id: run_core_id) {
     for (int j = 0; j < slice_num_per_core; j++) {
       std::vector<int> nchwd_idx;
       for (int k = 0; k < 5; k++) {
@@ -953,14 +950,14 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
 
   bool first_core = true;
   if (valid_softmax_group) {
-    llvm::errs() << "valid_softmax_group\n";
-    std::vector<Operation *> tmp_ops;
-    std::vector<std::vector<Operation *>> new_pipeline_ops;
-    bool first_mm = true;
+    llvm::errs() <<"valid_softmax_group\n";
+    std::vector<Operation*> tmp_ops;
+    std::vector<std::vector<Operation*>> new_pipeline_ops;
+    bool first_mm = true, second_mm_ts_finish = true;
     int his_timestep_idx = -1, timestep_idx;
-    Operation *mm_storeOp = nullptr;
+    Operation* mm_storeOp = nullptr;
     for (Operation &op : gOp.getBody().front().getOperations()) {
-      if (isa<YieldOp>(op)) {
+      if (isa<YieldOp,SliceMergeOp>(op)) {
         continue;
       }
       if (isa<MoveOp>(op)) {
@@ -970,22 +967,20 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
       } else {
         assert(op.hasAttr(LocalGenInterface::kLayerGroupAttrName));
         auto g_param = op.getAttr(LocalGenInterface::kLayerGroupAttrName)
-                           .cast<tpu::LayerGroupAttr>();
+                          .cast<tpu::LayerGroupAttr>();
         timestep_idx = g_param.getId();
       }
       if (isa<tpu::MatMulOp>(op)) {
         if (first_mm) {
           first_mm = false;
         } else {
+          second_mm_ts_finish = false;
           mm_storeOp = *(op.getUsers().begin());
-          // A stream has multiple slices, 2 in a group,
-          // and only the second one needs column segmentation to clone matmul
-          // op
+          //A stream has multiple slices, 2 in a group,
+          //and only the second one needs column segmentation to clone matmul op
           first_mm = true;
           int h_slice_size = op.getAttr(LocalGenInterface::kLayerGroupAttrName)
-                                 .cast<tpu::LayerGroupAttr>()
-                                 .getHSlice()
-                                 .size();
+                              .cast<tpu::LayerGroupAttr>().getHSlice().size();
           for (int i = 0; i < h_slice_size; i++) {
             if (i < h_slice_size - 1) {
               tmp_ops.push_back(op.getOperand(1).getDefiningOp());
@@ -1000,34 +995,39 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
           continue;
         }
       }
-      tmp_ops.push_back(&op);
       if (timestep_idx != his_timestep_idx && his_timestep_idx != -1) {
-        new_pipeline_ops.push_back(tmp_ops);
+        if (!second_mm_ts_finish) {
+          auto& it = new_pipeline_ops.back();
+          it.insert(it.end(), tmp_ops.begin(), tmp_ops.end());
+          second_mm_ts_finish = true;
+        } else {
+          new_pipeline_ops.push_back(tmp_ops);
+        }
         tmp_ops.clear();
       }
+      tmp_ops.push_back(&op);
       his_timestep_idx = timestep_idx;
     }
 
     for (auto [timestep_idx, op2] : llvm::enumerate(new_pipeline_ops)) {
-      for (auto op3 : op2) {
-        llvm::errs() << "timestep_idx:" << timestep_idx << show_op_info(op3)
-                     << "\n";
+      for (auto op3: op2) {
+        llvm::errs() <<"timestep_idx:"<<timestep_idx<<show_op_info(op3)<<"\n";
       }
     }
-    for (auto id : run_core_id) {
-      llvm::errs() << " codegen for run_core_id:" << id << "\n";
-      core_num_idx.second--;
+    for (auto id: run_core_id) {
+      llvm::errs() <<" codegen for run_core_id:"<<id<<"\n";
+      core_num_idx.second++;
       bool async_status = false;
       int timestep_idx_his = -1;
       if (useMuliCore) {
         multi_core->useCore(id);
-        llvm::errs() << "useCore:" << id << "\n";
+        llvm::errs() <<"useCore:"<<id<<"\n";
         multi_core->syncAll();
-        llvm::errs() << "first syncAll\n";
+        llvm::errs() <<"first syncAll\n";
       }
-      std::vector<Operation *> vec_loadToL2mOp;
+      std::vector<Operation*> vec_loadToL2mOp;
       for (auto [timestep_idx, op2] : llvm::enumerate(new_pipeline_ops)) {
-        for (auto op : op2) {
+        for (auto op: op2) {
           if (isa<YieldOp, SliceMergeOp>(op)) {
             continue;
           }
@@ -1035,16 +1035,16 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
           std::vector<int> ncdhw_steps;
           if (!isa<LoadToL2MOp>(op)) {
             auto g_param = op->getAttr(LocalGenInterface::kLayerGroupAttrName)
-                               .cast<tpu::LayerGroupAttr>();
+                              .cast<tpu::LayerGroupAttr>();
             ncdhw_steps = map_core_slice_ncdhw[id][g_param.getSliceIdx()];
           }
           if (timestep_idx != timestep_idx_his) {
             if (async_status) {
               bm168x->merge_sync_id();
-              llvm::errs() << "merge_sync_id\n";
+              llvm::errs() <<"merge_sync_id\n";
             }
             if (timestep_idx_his != -1) {
-              for (auto it2 : vec_loadToL2mOp) {
+              for (auto it2:vec_loadToL2mOp) {
                 auto castOp = dyn_cast<tpu::LoadToL2MOp>(*it2);
                 castOp.codegen_only_for_LoadToL2MOp(core_num_idx);
               }
@@ -1053,16 +1053,16 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
                   tmp_syncall_num++;
                 }
                 multi_core->syncAll();
-                llvm::errs() << "syncAll for loadToL2mOp\n";
+                llvm::errs() <<"syncAll for loadToL2mOp\n";
                 vec_loadToL2mOp.clear();
               }
             }
             bm168x->divide_sync_id();
-            llvm::errs() << "divide_sync_id\n";
+            llvm::errs() <<"divide_sync_id\n";
             timestep_idx_his = timestep_idx;
             async_status = true;
           }
-          llvm::errs() << " codegen, for " << show_op_info(op) << "\n";
+          llvm::errs() <<" codegen, for "<<show_op_info(op)<<"\n";
           if (isa<LoadToL2MOp>(op)) {
             vec_loadToL2mOp.push_back(op);
             continue;
@@ -1071,70 +1071,69 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
           if (isa<LoadOp, StoreOp>(op)) {
             pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
           }
-          BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
-                                                   gen_op_id(op).c_str());
+          BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
           auto lgOp = cast<LocalGenInterfaceDecorator>(op);
-          lgOp.assign_sec_info(ncdhw_steps[0], ncdhw_steps[1], ncdhw_steps[3],
-                               ncdhw_steps[2], ncdhw_steps[4], group_type,
-                               sec_info);
+          lgOp.assign_sec_info(ncdhw_steps[0], ncdhw_steps[1],
+                                ncdhw_steps[3], ncdhw_steps[2],
+                                ncdhw_steps[4], group_type, sec_info);
           lgOp.codegen_local_bm168x(ncdhw_steps[0], ncdhw_steps[1],
-                                    ncdhw_steps[3], ncdhw_steps[2],
-                                    ncdhw_steps[4], group_type, sec_info);
+                                ncdhw_steps[3], ncdhw_steps[2],
+                                ncdhw_steps[4], group_type, sec_info);
         }
       }
       if (syncall_num > 0) {
         for (int i = 0; i < syncall_num - tmp_syncall_num; i++) {
           multi_core->syncAll();
-          llvm::errs() << "extra syncAll, for core:" << id << "\n";
+          llvm::errs() <<"extra syncAll, for core:"<<id<<"\n";
         }
       } else {
         syncall_num = tmp_syncall_num;
       }
       bm168x->merge_sync_id();
-      llvm::errs() << "merge_sync_id\n";
+      llvm::errs() <<"merge_sync_id\n";
       if (useMuliCore) {
         multi_core->syncAll();
-        llvm::errs() << "last syncAll\n";
+        llvm::errs() <<"last syncAll\n";
       }
       first_core = false;
     }
     return;
   }
 
-  for (auto id : run_core_id) {
-    llvm::errs() << " codegen for run_core_id:" << id << "\n";
-    core_num_idx.second--;
+  for (auto id: run_core_id) {
+    llvm::errs() <<" codegen for run_core_id:"<<id<<"\n";
+    core_num_idx.second++;
     bool async_status = false;
     int timestep_idx_his = -1;
     if (useMuliCore) {
       multi_core->useCore(id);
-      llvm::errs() << "useCore:" << id << "\n";
+      llvm::errs() <<"useCore:"<<id<<"\n";
       multi_core->syncAll();
-      llvm::errs() << "first syncAll\n";
+      llvm::errs() <<"first syncAll\n";
     }
-    std::vector<Operation *> vec_loadToL2mOp;
+    std::vector<Operation*> vec_loadToL2mOp;
     for (Operation &op : gOp.getBody().front().getOperations()) {
       if (isa<SliceMergeOp>(op)) {
         continue;
       }
       if (isa<YieldOp>(op)) {
         bm168x->merge_sync_id();
-        llvm::errs() << "merge_sync_id\n";
-        for (auto v : op.getOperands()) {
+        llvm::errs() <<"merge_sync_id\n";
+        for (auto v: op.getOperands()) {
           auto storeOp = v.getDefiningOp();
           if (isa<SliceMergeOp>(storeOp)) {
             storeOp = storeOp->getOperand(0).getDefiningOp();
           }
           if (!module::isNone(dyn_cast<StoreOp>(storeOp).getBuffer())) {
             multi_core->syncAll();
-            llvm::errs() << "syncAll store_to_l2m_op\n";
+            llvm::errs() <<"syncAll store_to_l2m_op\n";
             codegen_for_store_to_l2m_op(storeOp, core_num_idx);
           }
         }
         continue;
       }
 
-      std::vector<int> ncdhw_steps = {0, 0, 0, 0, 0};
+      std::vector<int> ncdhw_steps = {0,0,0,0,0};
       int timestep_idx = -1, slice_idx = -1;
       bool can_merge = false;
       if (isa<MoveOp>(op)) {
@@ -1144,7 +1143,7 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
       } else {
         assert(op.hasAttr(LocalGenInterface::kLayerGroupAttrName));
         auto g_param = op.getAttr(LocalGenInterface::kLayerGroupAttrName)
-                           .cast<tpu::LayerGroupAttr>();
+                          .cast<tpu::LayerGroupAttr>();
         timestep_idx = g_param.getId();
         slice_idx = g_param.getSliceIdx();
         ncdhw_steps = map_core_slice_ncdhw[id][slice_idx];
@@ -1155,10 +1154,10 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
       if (timestep_idx != timestep_idx_his) {
         if (async_status && !can_merge) {
           bm168x->merge_sync_id();
-          llvm::errs() << "merge_sync_id\n";
+          llvm::errs() <<"merge_sync_id\n";
         }
         if (timestep_idx_his != -1) {
-          for (auto it2 : vec_loadToL2mOp) {
+          for (auto it2:vec_loadToL2mOp) {
             auto castOp = dyn_cast<tpu::LoadToL2MOp>(*it2);
             castOp.codegen_only_for_LoadToL2MOp(core_num_idx);
           }
@@ -1167,21 +1166,21 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
               tmp_syncall_num++;
             }
             multi_core->syncAll();
-            llvm::errs() << "syncAll for loadToL2mOp\n";
+            llvm::errs() <<"syncAll for loadToL2mOp\n";
             vec_loadToL2mOp.clear();
           }
         }
         if (!can_merge) {
           bm168x->divide_sync_id();
-          llvm::errs() << "divide_sync_id\n";
+          llvm::errs() <<"divide_sync_id\n";
         }
 
         timestep_idx_his = timestep_idx;
         async_status = true;
       }
 
-      llvm::errs() << " codegen, for " << module::getName(&op).str()
-                   << ", type:" << op.getName() << "\n";
+      llvm::errs() <<" codegen, for "<<module::getName(&op).str()
+                   <<", type:"<<op.getName()<<"\n";
       if (isa<LoadToL2MOp>(op)) {
         vec_loadToL2mOp.push_back(&op);
         continue;
@@ -1195,9 +1194,9 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
                                                gen_op_id(&op).c_str());
       if (!isa<MoveOp>(op)) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
-        lgOp.assign_sec_info(ncdhw_steps[0], ncdhw_steps[1], ncdhw_steps[3],
-                             ncdhw_steps[2], ncdhw_steps[4], group_type,
-                             sec_info);
+        lgOp.assign_sec_info(ncdhw_steps[0], ncdhw_steps[1],
+                              ncdhw_steps[3], ncdhw_steps[2],
+                              ncdhw_steps[4], group_type, sec_info);
       }
       // profile_ctx.log_local_layer(&op, ncdhw_steps[0], ncdhw_steps[3]);
       if (isa<MoveOp>(op)) {
@@ -1210,21 +1209,21 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int &syncall_num,
       } else {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
         lgOp.codegen_local_bm168x(ncdhw_steps[0], ncdhw_steps[1],
-                                  ncdhw_steps[3], ncdhw_steps[2],
-                                  ncdhw_steps[4], group_type, sec_info);
+                              ncdhw_steps[3], ncdhw_steps[2],
+                              ncdhw_steps[4], group_type, sec_info);
       }
     }
     if (syncall_num > 0) {
       for (int i = 0; i < syncall_num - tmp_syncall_num; i++) {
         multi_core->syncAll();
-        llvm::errs() << "extra syncAll, for core:" << id << "\n";
+        llvm::errs() <<"extra syncAll, for core:"<<id<<"\n";
       }
     } else {
       syncall_num = tmp_syncall_num;
     }
     if (useMuliCore) {
       multi_core->syncAll();
-      llvm::errs() << "last syncAll\n";
+      llvm::errs() <<"last syncAll\n";
     }
     first_core = false;
   }
@@ -1318,22 +1317,23 @@ void codegenGroupParallelOp(
   multi_core->useCore(0); // reset the command buffer to 0
 }
 
-void BMCodegen::codegen_for_store_to_l2m_op(Operation *store_to_l2m_op,
-                                            std::pair<int, int> &core_num_idx) {
+
+void BMCodegen::codegen_for_store_to_l2m_op(Operation* store_to_l2m_op, std::pair<int, int>& core_num_idx) {
+  if (module::getChip() != module::Chip::BM1690) {
+    return;
+  }
   auto src_addr = module::getAddress(store_to_l2m_op->getOperand(1));
   auto res = store_to_l2m_op->getResult(0);
   auto user = *(res.getUsers().begin());
   auto dst_addr = module::getAddress(res);
   if (isa<tpu::SliceMergeOp>(user)) {
-    dst_addr = module::getAddress(user->getResult(0)); // fix me !!!!
+    dst_addr = module::getAddress(user->getResult(0)); //fix me !!!!
   }
-  llvm::errs() << "store_to_l2m_op src_addr:" << src_addr
-               << " dst_addr:" << dst_addr
-               << " tmp_op:" << module::getName(store_to_l2m_op).str() << "\n";
+  llvm::errs() <<"store_to_l2m_op src_addr:"<<src_addr<<" dst_addr:"<<dst_addr
+              <<" tmp_op:"<<module::getName(store_to_l2m_op).str()<<"\n";
   int total_size = module::getNumElements(res);
   int num_per_core = ceiling_func(total_size, core_num_idx.first);
-  auto move_size = std::min(
-      num_per_core, (int)(total_size - num_per_core * core_num_idx.second));
+  auto move_size = std::min(num_per_core, (int)(total_size - num_per_core*core_num_idx.second));
   auto data_type = BM1690::getDataType(res);
   auto fmt_bytes = BM1690::getFmtBytes(data_type);
   auto gdma_format = BM1690::getGdmaFormat(data_type);
@@ -1344,10 +1344,13 @@ void BMCodegen::codegen_for_store_to_l2m_op(Operation *store_to_l2m_op,
     slice_h = ceiling_func(move_size, 65535);
   }
   BM1690::instance().dl_sdma_tensor_general_move_gen_cmd(
-      src_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
-      slice_h, 1, slice_c * slice_h, slice_h, 1, 1, gdma_format,
-      dst_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
-      slice_h, 1, slice_c * slice_h, slice_h, 1, 1,
+      src_addr + num_per_core*core_num_idx.second*fmt_bytes,
+      1, slice_c, slice_h, 1,
+      slice_c*slice_h, slice_h, 1, 1,
+      gdma_format,
+      dst_addr + num_per_core*core_num_idx.second*fmt_bytes,
+      1, slice_c, slice_h, 1,
+      slice_c*slice_h, slice_h, 1, 1,
       0,  // transpose
       -1, // port
       pid_node);
@@ -1417,7 +1420,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
       llvm::errs() << "max_syncall_idx:" << max_syncall_idx
                    << " max_syncall_num:" << max_syncall_num << "\n";
       idx = 0;
-      auto core_num_idx = std::make_pair(used_core_num, used_core_num);
+      auto core_num_idx = std::make_pair(used_core_num, -1);
       for (auto opd : sliceMergeOp->getOperands()) {
         if (auto castOp = dyn_cast<GroupOp>(opd.getDefiningOp())) {
           // bool l2mop_codegen = idx++ == max_syncall_idx?true:false;
@@ -1473,7 +1476,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
             }
           }
           int syncall_num = 0;
-          auto core_num_idx = std::make_pair(used_core_num, used_core_num);
+          auto core_num_idx = std::make_pair(used_core_num, -1);
           codegen_for_group2(castOp, syncall_num, core_num_idx);
           if (used_core_num > 1) { // consume all the MSG send/wait.
             for (int core_id = used_core_num; core_id < core_num; core_id++) {

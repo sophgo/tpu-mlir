@@ -242,60 +242,39 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, LgOptions &options) {
     return;
   }
 
-  Operation *dot_root_op = nullptr;
-  std::vector<Operation *> global_layers, tmp_ops, excluded_ops, ops_bk;
-  for (auto itr : lg_pass_ir_->subnet_ops) {
-    auto op_name = module::getName(itr).str();
-    if (!dot_root_op &&
-        module::isDebugCmdEnable("dot_root_op_name-" + op_name + ",")) {
-      llvm::errs() << "GroupOps find dot_root_op_name:" << op_name << "\n";
+  Operation* dot_root_op = nullptr;
+  std::vector<Operation*> global_layers, tmp_ops, excluded_ops, ops_bk;
+  for (auto itr: lg_pass_ir_->subnet_ops) {
+    if (!dot_root_op && module::isDebugCmdEnable("dot_root_op_name-" + module::getName(itr).str() + ",")) {
+      llvm::errs() <<"GroupOps find dot_root_op_name:" << module::getName(itr).str()<<"\n";
       dot_root_op = itr;
     }
-    if (module::isDebugCmdEnable("user_defined_global_op-" + op_name)) {
+    if (module::isDebugCmdEnable("user_defined_global_op-" + module::getName(itr).str())) {
       global_layers.push_back(itr);
     }
     tmp_ops.push_back(itr);
   }
 
-  auto module_name = module::getName(module::getModuleOp()).str();
   if (module::isDebugCmdEnable("dot_root_op_name") && dot_root_op) {
-    std::vector<Operation *> op_tree, exclude_ops, break_ops;
-    find_op_tree_by_root2(dot_root_op, op_tree, tmp_ops, exclude_ops, break_ops,
-                          0, 8);
+    std::vector<Operation*> op_tree, exclude_ops, break_ops;
+    find_op_tree_by_root2(dot_root_op, op_tree, tmp_ops, exclude_ops, break_ops, 0, 8);
     auto dot_graph_log_subnet = createSubnetGraph(op_tree);
-    dot_graph_log_subnet->export_dot("svg_initial_" + module_name, true);
+    dot_graph_log_subnet->export_dot("svg_initial_" + module::getName(module::getModuleOp()).str(), true);
   }
 
   if (module::isDebugCmdEnable("export_full_svg")) {
     auto dot_graph_log_subnet = createSubnetGraph(tmp_ops);
-    dot_graph_log_subnet->export_dot("svg_initial_" + module_name, true);
+    dot_graph_log_subnet->export_dot("svg_initial_" + module::getName(module::getModuleOp()).str(), true);
   }
 
   func.walk([&](Operation *op) {
     if (isa<ReturnOp>(op)) {
       lg_pass_ir_->returnOp = op;
-    } else if (!isa<FuncOp, top::NoneOp, top::WeightOp, top::InputOp,
-                    tpu::SoftmaxOp>(op) &&
-               !module::isInMatMulGrpOp(op) && !isLgSupport(op)) {
-      if (is_value_weight(op->getResult(0))) {
-        tmp_ops.erase(std::remove(tmp_ops.begin(), tmp_ops.end(), op),
-                      tmp_ops.end());
-        return WalkResult::skip();
-      }
-      global_layers.push_back(op);
-      llvm::errs() << "find global_layer: " << show_op_info(op) << "\n";
     }
     return WalkResult::advance();
   });
 
-  for (auto grp_ops : seg_grp_ops_by_global_op(tmp_ops, global_layers,
-                                               excluded_ops, options_)) {
-    if (grp_is_valid(grp_ops)) {
-      llvm::errs() << "call findSpecialGroup, grp_ops.size:" << grp_ops.size()
-                   << "\n";
-      findSpecialGroup(grp_ops);
-    }
-  }
+  findSpecialGroup(lg_pass_ir_->subnet_ops);
 }
 
 void GroupOps::process() {

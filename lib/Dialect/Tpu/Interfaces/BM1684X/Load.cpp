@@ -36,33 +36,8 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   if (group_type == GROUP_MM_OPT3 && module::IsRightMat(getOutput())) {
     if (module::IsSecondMatInMlp(getOutput())) {
-      gi = getGroupInfo(n_step, 1, d_step, w_step, h_step);
+      gi = getGroupInfo(n_step, 0, d_step, w_step, h_step);
       llvm::errs() << "IsSecondMatInMlp\n";
-    }
-  }
-
-  auto mm_op = dyn_cast_or_null<tpu::MatMulOp>(*getOutput().user_begin());
-  if (mm_op && mm_op.getHdimIsBatch()) {
-    auto grp_param = getOperation()
-                         ->getAttr(LocalGenInterface::kLayerGroupAttrName)
-                         .cast<tpu::LayerGroupAttr>();
-    if (grp_param.getGroupType() == GROUP_MM_OPT3) {
-      llvm::errs() << "loadOp hdim_is_batch\n";
-      auto shape = getOutput().getType().cast<RankedTensorType>().getShape();
-      assert(shape.size() == 4);
-      auto n_idx = grp_param.getNIdx();
-      if (n_idx.size() > shape[0]) {
-        assert(n_idx.size() % shape[0] == 0);
-        gi.h_idx = n_idx[n_step];
-        gi.h_slice = gi.n_slice;
-        gi.n_idx = n_step / (n_idx.size() / shape[0]);
-        gi.n_slice = 1;
-      } else {
-        gi.h_idx = 0;
-        gi.h_slice = shape[2];
-      }
-      gi.w_idx = 0;
-      gi.w_slice = shape[3];
     }
   }
 

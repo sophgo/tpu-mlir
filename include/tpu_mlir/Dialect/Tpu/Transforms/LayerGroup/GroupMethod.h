@@ -97,9 +97,15 @@ public:
       std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void cut_this_group_is_better(
       ilp_LgInfo &original_group, LgPassIR *pass_ir,
-      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
+      std::vector<Operation *>& processed_ops,
+      bool is_cut_op_is_global = true);
   void
   try_cut_some_group(LgPassIR *pass_ir,
+                     std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
+                     bool is_cut_op_is_global);
+  void
+  try_modify_mlp_group_sub_sum(LgPassIR *pass_ir,
                      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void init_ilp_base_groups(LgPassIR *pass_ir);
   void get_layer_group(LgInfo &lg_info,

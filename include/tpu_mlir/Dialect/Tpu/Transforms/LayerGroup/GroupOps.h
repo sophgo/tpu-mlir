@@ -62,10 +62,9 @@ protected:
              std::vector<std::vector<int64_t>> opd_h_slice_offset = {});
   //  bool need_none(group_lmem_t &group_lmem);
   void CreateLmemMoveOp(int64_t ts, ts_move_info &move_info);
-  void CreateLoadOp2(int64_t ts, ts_var_t &ts_var, int64_t pipe_id,
-                     const std::vector<Operation *> &ops,
-                     std::vector<int64_t> ncdhw_idx, const LgInfo &lgInfo,
-                     bool can_merge);
+  void CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
+                     const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
+                     const LgInfo& lgInfo, bool can_merge, std::map<Value, Value, value_compare>& map_old_v_to_new_v_in_group_in);
   void CreateLoadToL2mOp(int64_t ts, l2m_value_info &it, int64_t pipe_id,
                          l2mem_alloc_Ptr l2mem_alloc_ptr);
   Value CreateStoreOp2(Value &output, tensor_info_t &ti, int64_t ts,
@@ -78,7 +77,7 @@ protected:
                         bool can_merge);
   void SearchGroup(std::vector<dag_subnet> &dag_subnets,
                    std::shared_ptr<speical_layer_group_base> grp_ptr);
-  void findSpecialGroup(std::vector<Operation *> &subnet_ops);
+  void findSpecialGroup(llvm::SetVector<Operation*>& subnet_ops);
 
 protected:
   std::shared_ptr<GroupMethod> group_method_;
@@ -111,6 +110,7 @@ protected:
   std::vector<std::vector<Value>> will_store_value;
   std::vector<Operation *> tmp_local_layer_group;
   std::vector<Operation *> all_local_layer_nodes;
+  std::vector<Operation*> need_del_ops;
   // bool branch_parallel = false;
 };
 

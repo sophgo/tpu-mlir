@@ -262,6 +262,7 @@ typedef struct shape_secs {
   int64_t wsecs;
   int64_t csecs;
 
+  int64_t shape_0;
   int64_t n;
   int64_t c;
   int64_t h;
@@ -270,7 +271,7 @@ typedef struct shape_secs {
   int64_t h_slice_num;
 
   shape_secs() {
-    nsecs = hsecs = dsecs = wsecs = csecs = 1;
+    nsecs = hsecs = dsecs = wsecs = csecs = shape_0 = 1;
     c_slice_num = h_slice_num = n_slice_num = n = c = h = -1;
   }
   int64_t get_sec_num(bool only_nc = false) {
@@ -414,21 +415,25 @@ struct LgInfo {
     }
     llvm::dbgs() << "LgInfo Begin {"
                  << "\n";
-    llvm::dbgs() << "ins"
-                 << "\n";
-    for (auto op : group_ins) {
-      op.dump();
-    }
+    // llvm::dbgs() << "ins"
+    //              << "\n";
+    // for (auto op : group_ins) {
+    //   op.dump();
+    // }
     llvm::dbgs() << "ops"
                  << "\n";
-    for (auto op : group_ops) {
-      op->dump();
+    for (auto [index, op] : llvm::enumerate(group_ops)) {
+      // op->dump();
+      if (op) {
+        auto name = module::getName(op).str();
+        llvm::dbgs()<< llvm::formatv("idx:{0} op: {1}, type: {2}\n", index, name, op->getName()).str();
+      }
     }
-    llvm::dbgs() << "outs"
-                 << "\n";
-    for (auto op : group_outs) {
-      op.dump();
-    }
+    // llvm::dbgs() << "outs"
+    //              << "\n";
+    // for (auto op : group_outs) {
+    //   op.dump();
+    // }
     llvm::dbgs() << "} LgInfo End;"
                  << "\n";
   }
@@ -448,7 +453,7 @@ struct LgInfo {
   shape_secs_t shape_secs; /**cached */
   // layer group type
   group_type_t type;
-  int64_t group_id = 0;
+  int64_t group_id = -1;
 
   group_valid_type_t is_valid = NOT_CHECK;
   int64_t cache_key = -1;      /**indicate if lg_info is load by cached */
@@ -478,6 +483,7 @@ class l2mem_alloc;
 class ILPTimeStep;
 class speical_layer_group_base;
 struct ilp_LgInfo {
+  LgOptions options_;
   solver_strategy_type_t _cur_strategy = STRATEGY_NORMAL;
   LgInfo _lgInfo;
   std::vector<Operation *> global_layers;
@@ -526,12 +532,10 @@ struct ilp_LgInfo {
   }
 
   void base_solver(LgPassIR *pass_ir,
-                   std::shared_ptr<CycleCalculator> cycle_calculator_,
-                   const LgOptions &options);
+                   std::shared_ptr<CycleCalculator> cycle_calculator_);
   std::shared_ptr<ilp_LgInfo>
   high_solver(LgPassIR *pass_ir,
-              std::shared_ptr<CycleCalculator> cycle_calculator_,
-              const LgOptions &options);
+              std::shared_ptr<CycleCalculator> cycle_calculator_);
   bool binary_search_group(bool move_right, const LgOptions &options,
                            std::shared_ptr<dot_graph> dot_graph_log = nullptr);
   std::vector<Operation *> GetParallelNodes(Operation *op);
@@ -566,23 +570,26 @@ public:
   bool update_shape_secs_for_ilp_group(shape_secs_t &shape_secs,
                                        const shape_secs_t &max_shape_secs);
   void fill_slice_info(ilp_LgInfo &ilp_lg_info);
-  bool inc_slice_num(int &test_slice_n, int &try_c_slice_num,
-                     int &try_h_slice_num, int max_n_slice_num,
-                     int max_c_slice_num, int max_h_slice_num,
-                     bool inc_c_slice = true, bool cut_c_first = true);
-  bool inc_n_slice_num(int &n_slice_num, int max_n_slice_num, bool cut_c_first);
+  bool inc_slice_num(Operation *op, int &test_slice_n, int &try_c_slice_num,
+                     int &try_h_slice_num, int max_n_slice_num, int max_c_slice_num,
+                     int max_h_slice_num, int old_target_secs, bool inc_c_slice = true);
+  bool inc_n_slice_num(int& n_slice_num, int max_n_slice_num);
+  bool is_cut_h(Operation* op);
+  bool check_group_valid();
   int get_secs(Operation *op, int slice_n, int c_slice_num, int h_slice_num);
   int get_slice_max_n(int n, int slice_num);
   int get_best_n_slice_num(int n, int slice_num);
-  void fill_n_slice(Value in, int n, int n_slice_num, slice_info_t &si);
-  bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation *&failed_op,
+  virtual bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation *&failed_op,
                             int64_t core_num);
 
-  std::vector<Operation *> ops;
-  std::vector<Operation *> h_cut_ops;
+  Operation* main_mm_op = nullptr;
+  std::vector<Operation*> need_del_ops;
+  std::vector<Operation*> ops;
+  std::vector<Operation*> h_cut_ops;
   std::map<int, int> map_n_slice_num_to_max_n;
   bool col_cut = true;
   bool find_softmax = false;
+  bool hdim_is_batch = false;
   std::map<Value, std::vector<int>, value_compare> map_value_to_cut_dims;
 };
 

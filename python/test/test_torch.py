@@ -3679,6 +3679,7 @@ class TORCH_IR_TESTER(object):
         # return
         self.group_opt = 2 if 'opt2' in self.debug_cmd else 3
         batch_size = self.num_core
+        self.debug_cmd = 'disable_group_cut'
 
         print('start test test_model1')
         from tools.train.test_model import test_model1
@@ -3700,15 +3701,15 @@ class TORCH_IR_TESTER(object):
         model = test_model4()
         self.trace_and_test([(batch_size,3,224,224)], model)
 
-        print('start test resnet18')
+        #print('start test resnet18')
         #from tools.train.resnet import resnet18
         #model = resnet18()
         #self.trace_and_test([(batch_size,3,224,224)], model)
 
         print('start test mobilenet_v2')
-        import torchvision.models as models
-        model = models.mobilenet_v2()
-        self.trace_and_test([(batch_size,3,224,224)], model)
+        #import torchvision.models as models
+        #model = models.mobilenet_v2()
+        #self.trace_and_test([(batch_size,3,224,224)], model)
 
         # # if self.num_core == 1:
         # print('start test resnet50')

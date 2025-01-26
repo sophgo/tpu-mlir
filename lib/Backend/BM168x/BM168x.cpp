@@ -263,10 +263,10 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type,
     } else {
       spec.dims = 4;
       if (module::IsHdimIsBatch(v)) {
-        spec.shape[0] = 1;
-        spec.shape[1] = ginfo.c_slice;
-        spec.shape[2] = ginfo.n_slice;
-        spec.shape[3] = ginfo.h_slice;
+          spec.shape[0] = ginfo.n_slice;
+          spec.shape[1] = ginfo.c_slice;
+          spec.shape[2] = ginfo.h_slice;
+          spec.shape[3] = ginfo.w_slice;
       } else {
         spec.shape[0] = ginfo.n_slice;
         spec.shape[1] = ginfo.c_slice;

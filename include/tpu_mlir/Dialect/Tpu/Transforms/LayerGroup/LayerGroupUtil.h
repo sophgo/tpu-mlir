@@ -35,6 +35,7 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
                            Operation *&fail_op,
                            std::shared_ptr<dot_graph> dot_graph_log,
                            const LgOptions &options);
+void get_op_cut_sec_num(ilp_LgInfo &ilp_lg_info, std::vector<std::pair<Operation *, int>>& vec_op_cut_secs);
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
                          int speical_pattern = 0);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
@@ -133,6 +134,8 @@ std::vector<std::vector<Operation *>> seg_grp_ops_by_global_op(
     const std::vector<Operation *> &break_ops,
     std::vector<Operation *> &excluded_ops, const LgOptions &options,
     std::map<Operation *, bool> *break_op_reside = nullptr);
+std::vector<std::vector<Operation*>> seg_network_by_group_ops(const std::vector<Operation*>& network_ops,
+                         const std::vector<Operation*>& group_ops);
 void findReshapeAtEdge(std::vector<Operation *> &ops,
                        std::vector<Operation *> &del_ops);
 void find_all_pre_ops(Operation *op, std::vector<Operation *> &glayer_pre_ops,

@@ -53,6 +53,7 @@ struct LgPassIR {
   std::vector<TensorInfo> lg_tensor_infos_;
   std::vector<l2mem_alloc_Ptr> lg_l2mem_alloc_ptr;
   std::vector<int> group_cycles;
+  std::map<Value, Value, value_compare> map_old_v_to_new_v_in_group_in;
 
   /**
    * @brief shape split sections of layer groups
