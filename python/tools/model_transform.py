@@ -394,7 +394,7 @@ if __name__ == '__main__':
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--add_postprocess", default="", type=str.lower,
-                        choices=['','yolov3','yolov5','yolov7','yolov8','yolov8_seg','yolov11','yolov11_seg','ssd','bnr'], help="add postprocess for model")
+                        choices=['','yolov3','yolov5','yolov7','yolov8','yolov8_seg','yolov11','yolov11_seg','ssd','bnr', 'mmap2rgbmap'], help="add postprocess for model")
     parser.add_argument("--onnx_sim", default="", type=str, choices=['', 'skip_fuse_bn'],
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')

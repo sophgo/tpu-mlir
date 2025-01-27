@@ -4831,6 +4831,17 @@ def Top_DepackRawOp: Top_Op<"DepackRaw"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_Mmap2RgbmapOp: Top_Op<"Mmap2Rgbmap"> {
+  let summary = "isp mmap2rgbmap.";
+  let description = [{
+    isp mmap2rgbmap.
+  }];
+  let arguments = (
+    ins AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_RetinaFaceDetectionOp : Top_Op<"RetinaFaceDetection"> {
   let summary = "RetinaFaceDetection operator";
   let description = [{

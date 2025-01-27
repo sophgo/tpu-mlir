@@ -120,6 +120,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       DeconvLowering,
       DeformConv2DLowering,
       DepackRawLowering,
+      Mmap2RgbmapLowering,
       Depth2SpaceLowering,
       DivLowering,
       EluLowering,

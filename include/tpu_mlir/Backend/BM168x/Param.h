@@ -1991,6 +1991,11 @@ typedef struct depack_raw_spec {
   int channel_order[4];
   int start_point[2];
 } depack_raw_spec_t;
+
+typedef struct mmap2rgbmap_spec {
+  int reserved;
+} mmap2rgbmap_spec_t;
+
 #ifdef __cplusplus
 }
 

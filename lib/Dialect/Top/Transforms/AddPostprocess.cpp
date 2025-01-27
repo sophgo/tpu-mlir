@@ -66,6 +66,8 @@ public:
       insertSsdOp(builder);
     } else if (post_type == "bnr") {
       insertDepackRawOp(builder);
+    } else if (post_type == "mmap2rgbmap") {
+        insertMmap2RgbmapOp(builder);
     }
     module::updateModuleTypes();
     module::setPostprocess(post_type);
@@ -78,6 +80,7 @@ protected:
   void insertYolosegOp(OpBuilder &builder);
   void insertSsdOp(OpBuilder &builder);
   void insertDepackRawOp(OpBuilder &builder);
+  void insertMmap2RgbmapOp(OpBuilder &builder);
 
 protected:
   std::vector<int64_t> in_shape;
@@ -1047,6 +1050,20 @@ void AddPostprocessPass::insertDepackRawOp(OpBuilder &builder) {
   auto new_type = RankedTensorType::get({batch, 1, oh, ow},
                                         builder.getIntegerType(8, false));
   auto post_op = builder.create<top::DepackRawOp>(loc, new_type, opd, attrs);
+  terminator->setOperand(0, post_op.getOutput());
+}
+
+void AddPostprocessPass::insertMmap2RgbmapOp(OpBuilder &builder) {
+  auto operands = terminator->getOperands();
+  auto opd = operands[0];
+  auto shape = module::getShape(opd);
+  int oh = shape[2];
+  int ow = shape[3] * 6;
+
+  auto loc = NameLoc::get(builder.getStringAttr("mmap2rgbmap"));
+  auto new_type = RankedTensorType::get({batch, 1, oh, ow},
+                                        builder.getIntegerType(8, false));
+  auto post_op = builder.create<top::Mmap2RgbmapOp>(loc, new_type, opd);
   terminator->setOperand(0, post_op.getOutput());
 }
 

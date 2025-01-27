@@ -1258,6 +1258,17 @@ def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_Mmap2RgbmapOp: Tpu_Op<"Mmap2Rgbmap"> {
+  let summary = "Postprocess for isp mmap2rgbmap.";
+  let description = [{
+    Postprocess for isp mmap2rgbmap.
+  }];
+  let arguments = (
+    ins AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
