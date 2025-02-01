@@ -382,7 +382,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
       }
       module::setAddress(autoincOp.getOutput(), addr);
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
-      auto addr = module::getAddress(sliceOp.getInput());
+      auto addr = module::getAddress(module::getOriValue(sliceOp.getInput()));
       if (addr == 0) {
         continue;
       }
