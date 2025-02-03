@@ -1297,45 +1297,9 @@ public:
   bool shouldPrint(tpu::WhereOp WhereOp) const override { return false; }
 };
 
-class ConvbwdGlobalBuffer : public OpRewriterPatternEx<tpu::ConvbwdOp> {
-public:
-  ConvbwdGlobalBuffer(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ConvbwdOp>(context, "ConvbwdGlobalBuffer") {}
-  LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp ConvbwdOp,
-                                    PatternRewriter &rewriter) const override {
-    if (!module::isBM1690Family()) {
-      return failure();
-    }
-#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a)-1) / (b) + 1)
-    auto kernel_shape = module::getI64Array(ConvbwdOp.getKernelShape());
-    int _32oc_kernel_shape[4] = {0, 0, 0, 0};
-
-    // 32oc shape
-    _32oc_kernel_shape[0] = kernel_shape->at(1);
-    _32oc_kernel_shape[1] = kernel_shape->at(2) * kernel_shape->at(3);
-    _32oc_kernel_shape[2] = DIV_UP(kernel_shape->at(0), 32); // =0 ?
-    _32oc_kernel_shape[3] = 32;
-
-    int kernel_size = 1;
-    int dim = 4;
-    for (int i = 0; i < dim; i++) {
-      kernel_size *= _32oc_kernel_shape[i];
-    }
-    int64_t buffer_size = kernel_size;
-    if (buffer_size > 0) {
-      auto type = module::getStorageType(ConvbwdOp.getInput());
-      std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
-      auto buffer_type = RankedTensorType::get(buffer_shape, type);
-      auto buffer = tpu::BufferOp::create(ConvbwdOp, buffer_type);
-      ConvbwdOp.setOperand(ConvbwdOp.getNumOperands() - 1, buffer);
-      return success();
-    } else {
-      return failure();
-    }
-  }
-  bool shouldPrint(tpu::ConvbwdOp ConvbwdOp) const override { return false; }
-};
-} // namespace bm168x
+static inline size_t align_up(uint64_t size, uint64_t align) {
+  return (size + align - 1) & ~(align - 1);
+}
 
 class ConvBwdGlobalBuffer : public OpRewriterPatternEx<tpu::ConvbwdOp> {
 public:
@@ -1346,28 +1310,24 @@ public:
     if (!module::isBM1690Family()) {
       return failure();
     }
-    auto conv_input  = module::getI64Array(ConvBwdOp.getInputShape());
-    auto conv_output = module::getI64Array(ConvBwdOp.getGradOutShape());
-    int conv_output_need_store = conv_output->at(2) >= 56 ? 1 : 0;
-    int buffer_size0  = 1;
-    for (int i = 0; i < conv_output->size(); i++) {
-      buffer_size0 *= conv_output->at(i);
-    }
-    int buffer_size1 = 1;
-    for (int i = 0; i < conv_input->size(); i++) {
-      buffer_size1 *= conv_input->at(i);
-    }
-    int buffer_size = buffer_size0 * conv_output_need_store;
-    buffer_size     = (align_up(((buffer_size + 63) / 64) * 64, 4096) + buffer_size1) * 2;
+    auto kernel_shape = module::getI64Array(ConvBwdOp.getKernelShape());
+    int oc = kernel_shape->at(0);
+    int ic = kernel_shape->at(1);
+    int kh = kernel_shape->at(2);
+    int kw = kernel_shape->at(3);
+    int buffer_size0 = align_up(oc, 32) * ic * kh * kw * 2;
+    buffer_size0     = align_up(buffer_size0, 4096);
+    buffer_size0    += align_up(ic, 32) * oc * kh * kw * 2;
     auto type = module::getStorageType(ConvBwdOp.getInput());
-    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size0};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(ConvBwdOp, buffer_type, tpu::BufferType::L2);
-    ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 2, buffer);
+    ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 1, buffer);
     return success();
   }
   bool shouldPrint(tpu::ConvbwdOp ConvBwdOp) const override { return false; }
 };
+} // namespace
 
 class MaskRCNNRPNGetBboxesGlobalBuffer
     : public OpRewritePattern<tpu::MaskRCNNRPNGetBboxesOp> {
@@ -2074,7 +2034,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       CustomGlobalBuffer,
       WhereGlobalBuffer,
       MatMulGlobalBuffer,
-      ConvbwdGlobalBuffer,
+      ConvBwdGlobalBuffer,
       MaskRCNNRPNGetBboxesGlobalBuffer,
       MaskRCNNBboxPoolerGlobalBuffer,
       MaskRCNNGetBboxBGlobalBuffer,
