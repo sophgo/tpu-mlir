@@ -4564,9 +4564,9 @@ public:
           int64_t dw_h = ceiling_func(attr.ic, IC_PARALLEL) * attr.kh * attr.kw;
           gradweight_shape = {1, attr.oc, dw_h, IC_PARALLEL};
         }
-        auto f32_type =
-            RankedTensorType::get(gradweight_shape, rewriter.getF32Type());
-        new_types.push_back(f32_type);
+        auto f16_type =
+            RankedTensorType::get(gradweight_shape, rewriter.getF16Type());
+        new_types.push_back(f16_type);
       } else {
         auto out = op.getResult(i);
         new_types.push_back(out.getType());

@@ -82,7 +82,7 @@ void ConvbwdLowering::LoweringF16(PatternRewriter &rewriter,
   }
   auto grad_weight_enable = op->getAttr("grad_weight_enable").cast<BoolAttr>();
   if (grad_weight_enable.getValue()) {
-    new_types.push_back(getQuantFloatType(op.getResult(1)));
+    new_types.push_back(getQuantF16Type(op.getResult(1)));
   } else {
     new_types.push_back(builder.getNoneType());
   }
