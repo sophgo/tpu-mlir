@@ -30,7 +30,7 @@ jobs:
         cp install/docs/TPU-MLIR开发参考手册.pdf ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf
 
     - name: Upload to Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: my-artifact
         path: ./dist/
@@ -59,7 +59,7 @@ jobs:
       contents: write
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: my-artifact
         path: ./dist/
