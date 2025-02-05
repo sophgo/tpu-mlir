@@ -4357,9 +4357,165 @@ class TPULANG_IR_TESTER(object):
                         mul2_saturation = True,
                         add_saturation = True
                         )
+    '''
+    #[User-Guide]
+    [Q1] differences among modes
+        DynamicNormal:  one group of intergrated operators, the  coordinates of rois is 7len: [a,b,x0,y0,x1,y1,c]
+        DynamicFuse:    one signle fusion operator          the  coordinates of rois supports:
+                        5len: [batch_id,x0,y0,x1,y1]  or  7len: [a, b, x0, y0, x1, y1, c]
+                        [Warning]In case of a free customized batch_id position hard to be aligned, please just do not simply slice batch-id from 7len-rois.
+                        [Suggest]
+                                   slice 7len[2:6], then concat it with an auto-gen batch-id tensor
+                                   you can find examples at <python/transform/TpuLang.py> --<def roiExtractor>
 
+    [Q2] HyperParameters constraints
+        [CHECK-0] ensure sampling_ratio >0, to close dynamic bins
+        [CHECK-1] num_rois is same for 5len-rois and target_lvls
+        [CHECK-2] ensure each feature batch and channel is same
+        [CHECK-3] ensure elements in target_lvls smaller than num_levels: #features
+        [CHECK-4] ensure batch_id in 5len-rois smaller than input_n: batch_size
+        [CHECK-5] ensure valid coordinates for 5len-rois, x0 <= x1,  y0 <=y1
+        Or, reference to <lib/Support/GenericCpuFunc.cpp>---<RoiExtractorFunc::invoke()>
+
+    [Q3] how to inject your refernce data
+        you can use _test_RoiExtractor(...,  is_read_ref = 1), then change data_path at func <read_input_and_ref_data>
+        Note that function_torch_ref will utilize your input data to gen a torch_ref to compare with external output data which you offer
+    '''
     def test_RoiExtractor(self, case_name):
         """test_RoiExtractor"""
+        import torch
+        import numpy as np
+        import torch.nn as nn
+        from torchvision.ops import RoIAlign
+        #[Usage]: gen torch reference
+        class SingleROIExtractor(nn.Module):
+
+            def __init__(self, num_levels = 5, RoI_Num = 256, out_channels = 256, PH = 7, PW = 7, sampling_ratio = 2, list_spatial_scale = []):
+                super(SingleROIExtractor, self).__init__()
+                self.num_levels = num_levels
+                assert len(list_spatial_scale) == self.num_levels
+                self.output_size      = (PH, PW)
+                self.list_spatial_scale_div = [1.0/x for x in list_spatial_scale]
+                self.roi_layers    = nn.ModuleList([ RoIAlign(output_size=self.output_size, spatial_scale=self.list_spatial_scale_div[i], sampling_ratio=sampling_ratio) for i in range(self.num_levels )])
+                self.out_channels  = out_channels
+                self.RoI_Num = RoI_Num
+
+            def forward(self, feats, rois_hik, target_lvls):
+                '''
+                rois [RoI_Num,5]: batch,x0,y0,x1,y1
+                but hik gives [RoI_NUM,7] something like,  {a,b,x0,y0,x1,y1,c} , we just need x0,y0,x1,y1; as hik only inference-1 batch.
+                '''
+                rois_sophgo = rois_hik
+                if rois_hik.shape[1] ==7:
+                    rois_sophgo = torch.cat([torch.zeros(self.RoI_Num).reshape([self.RoI_Num, 1]), rois_hik[:,2:6]], axis=1).reshape([self.RoI_Num,5])
+                roi_feats = feats[0].new_zeros(
+                    rois_sophgo.size(0), self.out_channels, *self.output_size)
+
+                for i in range(self.num_levels):
+                    inds = target_lvls == i
+                    rois_ = rois_sophgo[inds, :]
+                    print("rois_",rois_.shape)
+                    roi_feats_t = self.roi_layers[i](feats[i], rois_)
+                    roi_feats[inds] = roi_feats_t
+                return roi_feats
+        #[Usage]: gen rois in 5len [batch_id,x0,y0,x1,y1] and 0<= x0 < x1 < IW, 0<= y0 < y1 < IH
+        def gen_rand_rois(N: int , H: int , W: int , roi_num: int) -> torch.Tensor:
+            batch_indice = torch.randint(0, N, (roi_num, ), dtype=torch.int32).float()
+            roi_xl = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+            roi_xh = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+            roi_yl = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+            roi_yh = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+            for i in range(roi_num):
+                if roi_xl[i] > roi_xh[i]:
+                    roi_xl[i], roi_xh[i] = roi_xh[i], roi_xl[i]
+                if roi_yl[i] > roi_yh[i]:
+                    roi_yl[i], roi_yh[i] = roi_yh[i], roi_yl[i]
+            batch_indice.unsqueeze_(1)
+            roi_xl.unsqueeze_(1)
+            roi_yl.unsqueeze_(1)
+            roi_xh.unsqueeze_(1)
+            roi_yh.unsqueeze_(1)
+            rois = torch.cat((batch_indice, roi_xl, roi_yl, roi_xh, roi_yh), 1)
+            return rois
+        #[Usage]: gen rois i  5len: [batch_id,x0,y0,x1,y1] or 7len: [0,batch_id,x0,y0,x1,y1,0]
+        def gen_rois(rois_shape, feats_shape):
+            rois = rand_data(rois_shape, "float32")
+            rois = np.ones(rois_shape)
+            rois = gen_rand_rois(1, feats_shape[0][-2], feats_shape[0][-1], rois_shape[0]).numpy().astype(np.float32)
+            if rois_shape[1] == 5:
+                assert rois.shape[1] == 5
+            elif rois_shape[1] == 7:
+                #{a,b,x0,y0,x1,y1,c} format
+                insert_zp = np.zeros(rois.shape[0]).reshape(rois.shape[0],1)
+                rois = np.concatenate((insert_zp,rois, insert_zp), axis = 1).astype(np.float32)
+                assert rois.shape[1] == 7
+            else: assert 0
+            return rois
+        #[Usage]: gen torch reference
+        def function_torch_ref(
+            target_lvls_torch: torch.Tensor,
+            rois_torch: torch.Tensor,
+            feat_torch: List[torch.Tensor],
+            num_layer: int,
+            rois_shape: List[int],
+            feats_shape: List[List[int]],
+            PH: int,
+            PW: int,
+            sampling_ratio: int,
+            list_spatial_scale: List[torch.Tensor]):
+            assert(sampling_ratio > 0)
+            HikModel = SingleROIExtractor(num_layer, rois_shape[0], feats_shape[0][1], PH, PW, sampling_ratio, list_spatial_scale)
+            Output   = HikModel(feat_torch, rois_torch, target_lvls_torch)
+            np.savez('ref_RoiExtractor.npz', ref=Output.detach().cpu().numpy())
+            return Output
+        #[Usage]: gen input features
+        def gen_feats(feats_shape):
+            feats = []
+            for i in range(len(feats_shape)):
+                feat = rand_data(feats_shape[i], "float32")
+                feats.append(feat)
+            return feats
+        #[Usage]: read data for input and output ref, if their external paths are given
+        def read_input_and_ref_data(rois_shape, lvls_shape, feats_shape):
+            assert(len(feats_shape) == 4)
+            #please customize your data path
+            data_file_prefix  = "/workspace/hik_data/inputs_hik/"
+            rois = np.fromfile(data_file_prefix + "input0_shape={761,7}_dataType=float_.bin", dtype=np.float32).reshape([rois_shape[0], 7])
+            target_lvls = np.fromfile(data_file_prefix + "input1_shape={761}_dataType=_int32.bin", dtype=np.int64).reshape(lvls_shape).astype(np.int32)
+            #{a,b,x0,y0,x1,y1,c} = > {0,x0,y0,x1,y1}
+            if rois.shape[1] == 7:
+                print("[Note] reorganize data format for Roi")
+                rois_len_5 = np.concatenate((np.zeros(rois.shape[0]).reshape(rois.shape[0], 1), rois[:, 2:6]), axis = 1).astype(np.float32)
+            else:
+                rois_len_5 = rois
+            assert(feats_shape[0][0] == 1) #only support 1-batch
+            feat0 = np.fromfile(data_file_prefix + "input2_shape={1,256,184,320}_dataType=float_.bin", dtype=np.float32).reshape(feats_shape[0])
+            feat1 = np.fromfile(data_file_prefix + "input3_shape={1,256,92,160}_dataType=float_.bin",  dtype=np.float32).reshape(feats_shape[1])
+            feat2 = np.fromfile(data_file_prefix + "input4_shape={1,256,46,80}_dataType=float_.bin",   dtype=np.float32).reshape(feats_shape[2])
+            feat3 = np.fromfile(data_file_prefix + "input5_shape={1,256,23,40}_dataType=float_.bin",   dtype=np.float32).reshape(feats_shape[3])
+
+            feats = [feat0, feat1, feat2, feat3]
+            output_ref = np.fromfile(data_file_prefix + "output0_shape={761,256,7,7}_dataType=float_.bin",   dtype=np.float32)
+            return rois, rois_len_5, target_lvls, feats,  output_ref
+        #[Usage]:ensure rois is  5len: [batch_id,x0,y0,x1,y1] for DynamicFuse, or 7len: [0,batch_id,x0,y0,x1,y1,0] for DynamicNormal
+        def revise_rois(rois, mode):
+            rois_len_7, rois_len_5 = None, None
+            insert_zp = np.zeros(rois.shape[0]).reshape(rois.shape[0],1)
+            if mode == "DynNormal":
+                rois_len_7 = rois
+                rois_len_5 = np.concatenate((insert_zp,rois[:, 2:6]), axis = 1).astype(np.float32)
+            elif mode == "DynFuse":
+                if rois.shape[1] == 5:
+                    rois_len_5 = rois
+                    rois_len_7 = np.concatenate((insert_zp,rois, insert_zp), axis = 1).astype(np.float32)
+                elif rois.shape[1] == 7:
+                    rois_len_7 = rois
+                    rois_len_5 = np.concatenate((insert_zp,rois[:, 2:6]), axis = 1).astype(np.float32)
+                else: assert 0
+            assert rois_len_7.shape[1] == 7
+            assert rois_len_5.shape[1] == 5
+            return rois_len_7, rois_len_5
+
         @tpulang(self.chip)
         def _test_RoiExtractor(rois_shape,
                                lvls_shape,
@@ -4369,29 +4525,72 @@ class TPULANG_IR_TESTER(object):
                                sampling_ratio: int,
                                list_spatial_scale: List[int],
                                num_layer: int,
-                               is_quantized=False):
-            rois = rand_data(rois_shape, "float32")
-            target_lvls = rand_data(lvls_shape, "int32", min=0, max=num_layer, int_satu=True)
-            feats = []
+                               mode: str,
+                               is_quantized: bool = False,
+                               is_read_ref:  bool = False):
+            assert len(feats_shape) == len(list_spatial_scale)
+            assert len(feats_shape) == num_layer
+            input_c = feats_shape[0][1]
+            for i in range(num_layer):
+                assert feats_shape[i][0] == 1, "[Error] only support 1-batch"
+                assert(feats_shape[i][1] == input_c)
+            assert mode in ["DynFuse", "DynNormal"]
+            if mode == "DynNormal":
+                assert rois_shape[1] == 7
+            elif mode == "DynFuse":
+                assert rois_shape[1] == 5 or rois_shape[1] == 7
+            # data randomly generatedly
+            rois        = gen_rois(rois_shape, feats_shape)
+            rois_len_7, rois_len_5   = revise_rois(rois, mode)
+            target_lvls = rand_data(lvls_shape, "int32", min=0, max=num_layer - 1, int_satu=True)
+            feats       = gen_feats(feats_shape)
+            output_ref_from_hik = None
+
+            # data from given path
+            if (is_read_ref):
+               rois_len_7, rois_len_5, target_lvls, feats,  output_ref_from_hik = read_input_and_ref_data(rois_shape, lvls_shape, feats_shape)
+
+            # prepare torch_ref input
+            target_lvls_torch = torch.tensor(target_lvls)
+            rois_torch_len_5  = torch.tensor(rois_len_5)
+            feat_torch        = [torch.tensor(x) for x in feats]
+
+            output_ref_from_torch = function_torch_ref(target_lvls_torch, rois_torch_len_5, feat_torch,
+                num_layer, rois_shape, feats_shape, PH, PW, sampling_ratio, list_spatial_scale)
+            if (output_ref_from_hik is not None):
+                MAE_ref_vs_hik = np.sum(np.abs(output_ref_from_torch.numpy().flatten() - output_ref_from_hik))
+                assert MAE_ref_vs_hik < 0.1, MAE_ref_vs_hik
+
+            rois        = tpul.Tensor(dtype="float32", shape = list(rois_shape), data = rois_len_5 if rois_shape[1] == 5 else rois_len_7)
+            target_lvls = tpul.Tensor(dtype="int32",   shape = list(lvls_shape), data = target_lvls)
+            feats_gen   = []
             for i in range(len(feats_shape)):
-                feat = rand_data(feats_shape[i], "float32")
-                x = tpul.Tensor(dtype="float32", shape=list(feats_shape[i]), data=feat)
-                feats.append(x)
-
-            rois = tpul.Tensor(dtype="float32", shape=list(rois_shape), data=rois)
-            target_lvls = tpul.Tensor(dtype="int32", shape=list(lvls_shape), data=target_lvls)
-
+                x = tpul.Tensor(dtype="float32", shape=list(feats_shape[i]), data=feats[i])
+                feats_gen.append(x)
+            feats       = feats_gen
             y = tpul.roiExtractor(rois=rois,
                                   target_lvls=target_lvls,
                                   feats=feats,
                                   PH=PH, PW=PW,
                                   sampling_ratio=sampling_ratio,
                                   list_spatial_scale=list_spatial_scale,
-                                  num_layer=num_layer)
+                                  num_layer=num_layer,
+                                  mode = mode)
             self.compile_and_check(self.unique_name(case_name), [rois, target_lvls] + feats,
                                    [y], is_quantized=is_quantized)
+            print("------RoiExtractor Utest End-------------------")
 
-        _test_RoiExtractor([761,7], [761], [[1,256,364,640], [1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32,64], 5)
+        # _test_RoiExtractor([761,5], [761], [[1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32], 4, "DynFuse")
+        # _test_RoiExtractor([761,7], [761], [[1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32], 4, "DynNormal")
+        # _test_RoiExtractor([1000,7], [1000], [[1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32], 4, "DynFuse")
+
+        #rois: [batch_id, x0, y0, x1, y1]
+        _test_RoiExtractor([761,5], [761], [[1,256,364,640], [1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32,64], 5, "DynFuse")
+        #rois: [a, b, x0, y0, x1, y1, c]
+        _test_RoiExtractor([761,7], [761], [[1,256,364,640], [1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32,64], 5, "DynFuse")
+        #rois: [a, b, x0, y0, x1, y1, c]
+        _test_RoiExtractor([761,7], [761], [[1,256,364,640], [1,256,184,320], [1,256,92,160], [1,256,46,80], [1,256,23,40]], 7, 7, 2, [4,8,16,32,64], 5, "DynNormal")
+
 
     #######################################################################
     # Error Case: some error case

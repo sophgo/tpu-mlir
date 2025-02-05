@@ -246,6 +246,18 @@ struct RoiAlignParam {
   roi_align_mode_t mode;
 };
 
+struct RoiExtractorParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int64_t num_levels;
+  int64_t pooled_h;
+  int64_t pooled_w;
+  int64_t sampling_ratio;
+  std::vector<double> spatial_scales;
+  bool aligned;
+  roi_align_mode_t mode;
+};
+
 class RoiAlignFunc {
 public:
   RoiAlignFunc(RoiAlignParam &param);
@@ -253,6 +265,15 @@ public:
 
 private:
   RoiAlignParam param_;
+};
+
+class RoiExtractorFunc {
+public:
+  RoiExtractorFunc(RoiExtractorParam &param);
+  void invoke();
+
+private:
+  RoiExtractorParam param_;
 };
 
 float my_mish_activate(float x_val);

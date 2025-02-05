@@ -4690,6 +4690,7 @@ roiExtractor
                          PW: int,
                          sampling_ratio: int,
                          list_spatial_scale: Union[int, List[int], Tuple[int]],
+                         mode:str=None,
                          out_name:str=None)
 
 功能描述
@@ -4706,6 +4707,11 @@ roiExtractor
 * PW：int类型，表示输出的width。
 * sampling_ratio：int类型，表示每层feature map的sample ratio。
 * list_spatial_scale：int，List[int]或Tuple[int]型，表示每层feature map对应的spatial scale。
+                      请注意，spatial scale遵循mmdetection风格，最初给定一个整数值，但其浮点倒数最終被用于RoIAlign。
+* mode: string类型, 表示Op执行模式, 目前支持DynNormal, DynFuse。
+        请注意，在DynFuse模式下，输入rois的坐标  支持2类风格,1)遵循mmdetection的风格，即5长度[batch_id, x0, y0, x1, y1]。
+                                                       2)自定义的7长度[a, b, x0, y0, x1, y1, c], 特別注意如果batch_id和a,b,c难以匹配, 建议另外重新生成batch_id。
+               在DynNormal模式下，输入rois的坐标风格是一种自定义的7长度[a, b, x0, y0, x1, y1, c]风格，以便应用客户独特的模型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值

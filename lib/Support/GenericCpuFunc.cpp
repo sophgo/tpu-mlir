@@ -1240,25 +1240,23 @@ static inline void preCalcForBilinearInterp(
   }
 }
 
-void RoiAlignFunc::invoke() {
-  assert(param_.inputs.size() == 2);
-  const float spatial_scale = param_.spatial_scale;
-  const int sampling_ratio = param_.sampling_ratio;
-  const int OH = param_.pooled_h;
-  const int OW = param_.pooled_w;
+static inline void _RoiAlign (
+  float* output,
+  const float* input,
+  const float* rois,
+  const float  spatial_scale,
+  const int    sampling_ratio,
+  const int    OH,
+  const int    OW,
+  const bool   aligned,
+  const roi_align_mode_t mode,
+  const std::vector<int64_t> input_shape,
+  const std::vector<int64_t> rois_shape,
+  const int dim_input,
+  const int dim_rois) {
   const int pooled_size = OH * OW;
-  const bool aligned = param_.aligned; // corresponse to new attr of opset16
-  const roi_align_mode_t mode = param_.mode;
-
-  const float *input = param_.inputs[0].ptr;
-  const float *rois = param_.inputs[1].ptr;
-  float *output = param_.output.ptr;
-
-  const auto input_shape = param_.inputs[0].shape;
-  const auto rois_shape = param_.inputs[1].shape;
-
-  assert(input_shape.size() == 4);
-  assert(rois_shape.size() == 2);
+  assert(dim_input == 4);
+  assert(dim_rois == 2);
   assert(rois_shape[1] == 5);
 
   const int IC = input_shape[1];
@@ -1309,6 +1307,130 @@ void RoiAlignFunc::invoke() {
           reducer.insert(x);
         }
         output[index_n_c + p] = reducer.reduce();
+      }
+    }
+  }
+}
+
+void RoiAlignFunc::invoke() {
+  assert(param_.inputs.size() == 2);
+  const float spatial_scale = param_.spatial_scale;
+  const int sampling_ratio = param_.sampling_ratio;
+  const int OH = param_.pooled_h;
+  const int OW = param_.pooled_w;
+  const bool aligned = param_.aligned; // corresponse to new attr of opset16
+  const roi_align_mode_t mode = param_.mode;
+
+  const float *input = param_.inputs[0].ptr;
+  const float *rois = param_.inputs[1].ptr;
+  float *output = param_.output.ptr;
+
+  const auto input_shape = param_.inputs[0].shape;
+  const auto rois_shape = param_.inputs[1].shape;
+  _RoiAlign(output,
+            input, rois,
+            spatial_scale, sampling_ratio, OH, OW, aligned, mode,
+            input_shape, rois_shape, input_shape.size(), rois_shape.size());
+}
+
+RoiExtractorFunc::RoiExtractorFunc(RoiExtractorParam &param) : param_(param) {}
+
+void RoiExtractorFunc::invoke() {
+  const int offset_feature = 2;
+  const int num_levels     = param_.num_levels;
+  assert(num_levels        <= MAX_ROI_ALIGN_NUM_LEVELS);
+  assert(param_.inputs.size() == param_.num_levels + 2);
+  std::vector<float> spatial_scales(num_levels);
+  for (int i = 0;   i < num_levels; i++) {
+    spatial_scales[i] = param_.spatial_scales[i];
+  }
+  const int sampling_ratio  = param_.sampling_ratio;
+  //[CHECK-0] ensure sampling_ratio >0, to close dynamic bins
+  assert(sampling_ratio > 0);
+  const int OH = param_.pooled_h;
+  const int OW = param_.pooled_w;
+  const bool aligned          = param_.aligned; // corresponse to new attr of opset16
+  const roi_align_mode_t mode = param_.mode;
+
+
+  auto _rois               = param_.inputs[0];
+  auto _target_lvls        = param_.inputs[1];
+
+  const float *rois        = _rois.ptr;
+  const float *target_lvls = _target_lvls.ptr;
+
+  const auto rois_shape        = _rois.shape;
+  const auto target_lvls_shape = _target_lvls.shape;
+  const int  total_roi_num     = target_lvls_shape[0];
+  //[CHECK-1] num_rois is same for 5len-rois and target_lvls
+  //[Note] roi_len  is mmmdetection style 5-len
+  assert(rois_shape[0]         == total_roi_num);
+  assert(rois_shape[1]         == 5);
+  assert(rois_shape.size()     == 2);
+  assert(_target_lvls.shape.size() == 1);
+  const int input_n            = param_.inputs[offset_feature].shape[0];
+  const int input_c            = param_.inputs[offset_feature].shape[1];
+  //[CHECK-2] ensure each feature batch and channel is same
+  for (int id_layer = 1; id_layer < num_levels; id_layer++) {
+    assert(input_n == param_.inputs[offset_feature + id_layer].shape[0]);
+    assert(input_c == param_.inputs[offset_feature + id_layer].shape[1]);
+  }
+  //[CHECK-3] ensure elements in target_lvls smaller than num_levels: #features
+  for (int i = 0; i < total_roi_num; i++) {
+    assert(target_lvls[i] < num_levels);
+    assert(target_lvls[i] >= 0);
+  }
+  //[CHECK-4] ensure batch_id in 5len-rois smaller than input_n: batch_size
+  for (int i = 0; i < total_roi_num; i++) {
+    assert(rois[5 * i] < input_n);
+    assert(rois[5 * i] >= 0);
+  }
+  //[CHECK-5] ensure valid coordinates for 5len-rois, x0 <= x1,  y0 <=y1
+  for (int i = 0; i < total_roi_num; i++) {
+    assert(rois[5 * i + 1] <= rois[5 * i + 3]);
+    assert(rois[5 * i + 2] <= rois[5 * i + 4]);
+  }
+
+  float *output = param_.output.ptr;
+  const int perRoiOutputSize = input_c * OH * OW;
+  std::fill(output, output + input_n * perRoiOutputSize , 0.0f);
+
+  for (int id_layer = 0; id_layer < num_levels; id_layer++) {
+    const auto feature_shape   = param_.inputs[offset_feature + id_layer].shape;
+
+    //inds = target_lvls == i
+    std::vector<bool> inds(total_roi_num);
+    std::fill(inds.begin(), inds.end() , 0);
+    std::transform(target_lvls, target_lvls + total_roi_num, inds.begin(),
+                   [id_layer](int lvl) { return int(lvl) == id_layer; });
+
+    //rois_ = ros[inds, :]
+    float* rois_gather = new float[total_roi_num  * rois_shape[1] ];
+    int idx_gather = 0;
+    for (int i = 0; i < total_roi_num; i++) {
+      if(inds[i]) {
+        memcpy(&rois_gather[5 * idx_gather], &rois[5 * i], 5 * sizeof(float));
+        idx_gather++;
+      }
+    }
+    if(idx_gather ==0 ) {
+      continue;
+    }
+    std::vector<int64_t>  shape_rois_gather(_rois.shape.size());
+    shape_rois_gather[0] = idx_gather;
+    shape_rois_gather[1] = rois_shape[1];
+    float* roi_feats = new float[idx_gather * input_c * OH * OW];
+    _RoiAlign(roi_feats,
+              param_.inputs[offset_feature + id_layer].ptr, rois_gather,
+              spatial_scales[id_layer], sampling_ratio, OH, OW, aligned, mode,
+              feature_shape, shape_rois_gather, feature_shape.size(), 2);
+    //output[inds] = roi_feats
+    int idx_scatter = 0;
+
+    for (int i = 0; i < total_roi_num; i++) {
+      if(inds[i]) {
+        memcpy(&output[perRoiOutputSize * i], &roi_feats[perRoiOutputSize * idx_scatter], perRoiOutputSize * sizeof(float));
+        idx_scatter++;
       }
     }
   }

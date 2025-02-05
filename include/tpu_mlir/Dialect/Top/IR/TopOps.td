@@ -3300,6 +3300,46 @@ def Top_RoiAlignOp: Top_Op<"RoiAlign"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_RoiExtractorOp: Top_Op<"RoiExtractor"> {
+  let summary = "RoiExtractor operator";
+  let description = [{
+    RoiExtractor consumes an input tensor X and region of interests
+    (rois) to apply pooling across each RoI.
+
+    Inputs:
+      `inputs`        : #num_levels of Input data tensor, each 4-D tensor.
+      `rois`          : RoIs (Regions of Interest) to pool over;
+                        rois is 2-D input of shape (num_rois, 4)
+                        given as [[x1, y1, x2, y2], ...]. .
+      `target_lvls` : 1-D tensor with each element denoting
+                        the index of the corresponding image in
+                        the batch.
+
+    Outputs:
+      `output`        : RoI pooled output, 4-D tensor.
+  }];
+
+  let arguments = (ins
+    // AnyTensor:$feature_0,
+    // AnyTensor:$feature_1,
+    // AnyTensor:$feature_2,
+    // AnyTensor:$feature_3,
+    AnyTensor:$rois,
+    AnyTensor:$target_lvls,
+    Variadic<AnyTensor>:$inputs,
+    RoiAlignModeAttr:$mode,
+    I64Attr:$num_levels,
+    I64Attr:$output_height,
+    I64Attr:$output_width,
+    I64Attr:$sampling_ratio,
+    F64ArrayAttr:$spatial_scales,
+    BoolAttr:$align_corners,
+    BoolAttr:$is_static
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_PreprocessOp: Top_Op<"Preprocess"> {
   let summary = "FusePreprcess, it's just a placeholder op.";
   let description = [{

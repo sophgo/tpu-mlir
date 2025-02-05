@@ -29,6 +29,7 @@ extern "C" {
 #define MAX_TPU_DIM 65535
 #define MAX_SHAPE_DIMS 8
 #define MAX_SPLIT_OUTPUT_NUM 8
+#define MAX_ROI_ALIGN_NUM_LEVELS 5
 
 #define SUBNET_MODE_TPU 0
 #define SUBNET_MODE_CPU 1
@@ -822,6 +823,18 @@ typedef struct roi_align_spec {
   int align_corners;
   int plat_sp;
 } roi_align_spec_t;
+
+typedef struct roi_extractor_spec {
+    int num_levels;
+    int pooled_height;
+    int pooled_width;
+    float spatial_scales[MAX_ROI_ALIGN_NUM_LEVELS];
+    int sampling_ratio;
+    int position_sensitive;
+    int align_corners;
+    int plat_sp;
+    int isStatic;
+} roi_extractor_spec_t;
 
 typedef struct {
   bool is_perchannel;

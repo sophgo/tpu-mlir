@@ -3781,6 +3781,7 @@ Definition
                          PW: int,
                          sampling_ratio: int,
                          list_spatial_scale: Union[int, List[int], Tuple[int]],
+                         mode:str=None,
                          out_name:str=None)
 
 Description
@@ -3795,7 +3796,12 @@ Parameters
 * PH: Int type, representing the height of the output.
 * PW: Int type, representing the width of the output.
 * sampling_ratio: Int type, representing the sample ratio for each level of the feature maps.
-* list_spatial_scale: List[int] or int, representing the spatial scale corresponding to each feature map level..
+* list_spatial_scale: List[int] or int, representing the spatial scale corresponding to each feature map level.
+        Please note that spatial scale follows mmdetection style, where one int value is initially given, and but its float reciprocal is adapted for roialign.
+* mode: string type, representing the implementation forms, now supporting two modes: DynNormal, or DynFuse.
+        Please note that in DynFuse mode, coordinates of rois can satisfy either mmdetection style, which is 5-length of [batch_id, x0, y0 x1, y1],
+                                          or customized style, which is 7-length of [a, b, x0, y0, x1, y1, c], please customize the position of batch_id.
+                         in DynNormal mode, a customized [a, b, x0, y0 x1, y1, c] coordinates style is adapted in case any customers desire to apply their models.
 * out_name: string type, representing the name of output tensor, default= `None`.
 
 Returns

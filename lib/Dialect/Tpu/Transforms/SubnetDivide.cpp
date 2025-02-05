@@ -475,6 +475,13 @@ public:
     } else if (isa<MaskRCNNRPNGetBboxesOp, MaskRCNNBboxPoolerOp,
                    MaskRCNNGetBboxBOp, MaskRCNNMaskPoolerOp>(op)) {
       return true;
+    } else if (isa<RoiExtractorOp>(op)) {
+      auto RoiExtractorOp = dyn_cast<tpu::RoiExtractorOp>(op);
+      if (RoiExtractorOp.getIsStatic()) {
+        return false;
+      } else {
+        return true;
+      }
     } else if (op->hasTrait<trait::ShapeProducer>()) {
       return true;
     } else if (op->hasTrait<trait::ShapeConsumer>()) {

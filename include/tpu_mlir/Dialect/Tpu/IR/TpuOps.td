@@ -3887,6 +3887,47 @@ def Tpu_RoiAlignOp: Tpu_Op<"RoiAlign"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_RoiExtractorOp: Tpu_Op<"RoiExtractor", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "RoiExtractor operator";
+  let description = [{
+    RoiExtractor consumes an input tensor X and region of interests
+    (rois) to apply pooling across each RoI.
+
+    Inputs:
+      `inputs`        : #num_levels of Input data tensor, each 4-D tensor.
+      `rois`          : RoIs (Regions of Interest) to pool over;
+                        rois is 2-D input of shape (num_rois, 4)
+                        given as [[x1, y1, x2, y2], ...]. .
+      `target_lvls` : 1-D tensor with each element denoting
+                        the index of the corresponding image in
+                        the batch.
+
+    Outputs:
+      `output`        : RoI pooled output, 4-D tensor.
+  }];
+
+  let arguments = (ins
+    // AnyRankedTensor:$feature_0,
+    // AnyRankedTensor:$feature_1,
+    // AnyRankedTensor:$feature_2,
+    // AnyRankedTensor:$feature_3,
+    AnyRankedTensor:$rois,
+    AnyRankedTensor:$target_lvls,
+    Variadic<AnyRankedTensor>:$inputs,
+    RoiAlignModeAttr:$mode,
+    I64Attr:$num_levels,
+    I64Attr:$output_height,
+    I64Attr:$output_width,
+    I64Attr:$sampling_ratio,
+    F64ArrayAttr:$spatial_scales,
+    BoolAttr:$align_corners,
+    BoolAttr:$is_static
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
   let summary = "YoloDetection operator";
   let description = [{

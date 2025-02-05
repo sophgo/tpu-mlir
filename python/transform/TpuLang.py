@@ -2976,6 +2976,13 @@ def roll(input:Tensor,
 
 
 ######### Vision Operator ############
+'''
+[User-Guide]
+please find DynamicFuse Example at branch <elif mode == "DynFuse":>, several tips to notice:
+for 7-len rois,
+1) rois only sliced at [2:6] for [x0,y0,x1,y1], thus please ensure your model interface is also sth like [a,b,x0,y0,x1,y1], where a,b,c are not concerned here
+2) to generate a [batch_id,x0,y0,x1,y1] for batch-1 case, a zero tensor concat with sliced rois[2:6]
+'''
 @auto_name()
 @annotation_check
 @assert_with_out_name
@@ -2987,6 +2994,7 @@ def roiExtractor(rois: Tensor,
                  sampling_ratio: int,
                  list_spatial_scale: Union[int, List[int], Tuple[int]],
                  num_layer: int,
+                 mode:str=None,
                  out_name:str=None):
     if isinstance(list_spatial_scale, Tuple): list_spatial_scale = list(list_spatial_scale)
     list_spatial_scale = [1.0 / x for x in list_spatial_scale]
@@ -2995,75 +3003,131 @@ def roiExtractor(rois: Tensor,
 
     roi_num = rois.shape[0]
     o_dtype = rois.dtype
+    assert mode in  ["DynFuse", "DynNormal", "StaticFuse"]
+    outFusion = None
+    if mode == "DynNormal":
 
-    pad = Tensor(dtype=o_dtype, shape=[roi_num, 1], data=np.zeros([roi_num, 1], dtype=np.float32))
+        pad = Tensor(dtype=o_dtype, shape=[roi_num, 1], data=np.zeros([roi_num, 1], dtype=np.float32))
 
-    Slice_attr = {
-        "offset": ArrayAttr([0, 2]),
-        "steps": ArrayAttr([1, 1]),
-        "ends": ArrayAttr([roi_num, 6]),
-        "axes": ArrayAttr([]),
-        "hasparamConvert_axes": ArrayAttr([1]),
-    }
-    Slice_out = Tensor(dtype=o_dtype, name=out_name+"_Slice")
-    TpuLang.insert_op("top.Slice", inputs=[rois, None, None, None], outputs=[Slice_out], params=Slice_attr)
-
-    Concat_attr = {
-        "axis": Attr(1, "int32")
-    }
-    Concat_out = Tensor(dtype=o_dtype, name=out_name+"_Concat")
-    TpuLang.insert_op("top.Concat", inputs=[pad, Slice_out], outputs=[Concat_out], params=Concat_attr)
-
-    layers = num_layer
-    out_shape = [roi_num, feats[0].shape[1], PH, PW]
-    roi_feats = Tensor(dtype=o_dtype, shape=list(out_shape), data=np.zeros(out_shape, dtype=np.float32))
-
-    ScatterND_outputs = [Tensor(dtype=o_dtype, name=out_name+"_ScatterND_{}".format(i)) for i in range(layers)]
-
-    for i in range(layers):
-        CompareConst_attr = {
-            "mode": Attr("Equal", "string"),
-            "const_val": Attr(float(i), "float64"),
-            "inversed": Attr(False, "bool")
+        Slice_attr = {
+            "offset": ArrayAttr([0, 2]),
+            "steps": ArrayAttr([1, 1]),
+            "ends": ArrayAttr([roi_num, 6]),
+            "axes": ArrayAttr([]),
+            "hasparamConvert_axes": ArrayAttr([1]),
         }
-        CompareConst_out = Tensor(dtype=o_dtype, name=out_name+"_CompareConst_{}".format(i))
-        TpuLang.insert_op("top.CompareConst", inputs=[target_lvls], outputs=[CompareConst_out], params=CompareConst_attr)
+        Slice_out = Tensor(dtype=o_dtype, name=out_name+"_Slice")
+        TpuLang.insert_op("top.Slice", inputs=[rois, None, None, None], outputs=[Slice_out], params=Slice_attr)
 
-        NonZero_attr = {
-            "order": Attr("ColMajor", "string"),
+        Concat_attr = {
+            "axis": Attr(1, "int32")
         }
-        NonZero_out = Tensor(dtype=o_dtype, name=out_name+"_NonZero_{}".format(i))
-        TpuLang.insert_op("top.NonZero", inputs=[CompareConst_out], outputs=[NonZero_out], params=NonZero_attr)
+        Concat_out = Tensor(dtype=o_dtype, name=out_name+"_Concat")
+        TpuLang.insert_op("top.Concat", inputs=[pad, Slice_out], outputs=[Concat_out], params=Concat_attr)
 
-        Gather_attr = {
-            "axis": Attr(0, "int32"),
-        }
-        Gather_out = Tensor(dtype=o_dtype, name=out_name+"_Gather_{}".format(i))
-        TpuLang.insert_op("top.Gather", inputs=[Concat_out, NonZero_out], outputs=[Gather_out], params=Gather_attr)
+        layers = num_layer
+        out_shape = [roi_num, feats[0].shape[1], PH, PW]
+        roi_feats = Tensor(dtype=o_dtype, shape=list(out_shape), data=np.zeros(out_shape, dtype=np.float32))
 
-        Squeeze_attr = {
-            "axes": ArrayAttr([1]),
-        }
-        Squeeze_out = Tensor(dtype=o_dtype, name=out_name+"_Squeeze_{}".format(i))
-        TpuLang.insert_op("top.Squeeze", inputs=[Gather_out], outputs=[Squeeze_out], params=Squeeze_attr)
+        ScatterND_outputs = [Tensor(dtype=o_dtype, name=out_name+"_ScatterND_{}".format(i)) for i in range(layers)]
 
-        RoiAlign_attr = {
+        for i in range(layers):
+            CompareConst_attr = {
+                "mode": Attr("Equal", "string"),
+                "const_val": Attr(float(i), "float64"),
+                "inversed": Attr(False, "bool")
+            }
+            CompareConst_out = Tensor(dtype=o_dtype, name=out_name+"_CompareConst_{}".format(i))
+            TpuLang.insert_op("top.CompareConst", inputs=[target_lvls], outputs=[CompareConst_out], params=CompareConst_attr)
+
+            NonZero_attr = {
+                "order": Attr("ColMajor", "string"),
+            }
+            NonZero_out = Tensor(dtype=o_dtype, name=out_name+"_NonZero_{}".format(i))
+            TpuLang.insert_op("top.NonZero", inputs=[CompareConst_out], outputs=[NonZero_out], params=NonZero_attr)
+
+            Gather_attr = {
+                "axis": Attr(0, "int32"),
+            }
+            Gather_out = Tensor(dtype=o_dtype, name=out_name+"_Gather_{}".format(i))
+            TpuLang.insert_op("top.Gather", inputs=[Concat_out, NonZero_out], outputs=[Gather_out], params=Gather_attr)
+
+            Squeeze_attr = {
+                "axes": ArrayAttr([1]),
+            }
+            Squeeze_out = Tensor(dtype=o_dtype, name=out_name+"_Squeeze_{}".format(i))
+            TpuLang.insert_op("top.Squeeze", inputs=[Gather_out], outputs=[Squeeze_out], params=Squeeze_attr)
+
+            RoiAlign_attr = {
+                "mode": Attr("Avg", "string"),
+                "output_height": Attr(PH, "int64"),
+                "output_width": Attr(PW, "int64"),
+                "sampling_ratio": Attr(sampling_ratio, "int64"),
+                "spatial_scale": Attr(list_spatial_scale[i], "float64"),
+                "align_corners": Attr(False, "bool"),
+            }
+            RoiAlign_out = Tensor(dtype=o_dtype, name=out_name+"_RoiAlign_{}".format(i))
+            TpuLang.insert_op("top.RoiAlign", inputs=[feats[i], Squeeze_out], outputs=[RoiAlign_out], params=RoiAlign_attr)
+
+            if i == 0:
+                TpuLang.insert_op("top.ScatterND", inputs=[roi_feats, NonZero_out, RoiAlign_out], outputs=[ScatterND_outputs[i]])
+            else:
+                TpuLang.insert_op("top.ScatterND", inputs=[ScatterND_outputs[i-1], NonZero_out, RoiAlign_out], outputs=[ScatterND_outputs[i]])
+
+        return ScatterND_outputs[-1]
+    elif mode == "DynFuse":
+        RoiExtractor_out = Tensor(dtype=o_dtype, name=out_name+"_RoiExtractor_{}".format(0))
+        assert(sampling_ratio > 0)
+        assert (num_layer <= 5 and num_layer>=1 )
+        assert (rois.shape[1] == 5 or rois.shape[1] == 7)
+        Slice_out = None
+        if(rois.shape[1] == 7):
+            #check coordinates of rois satisfied with [a, batch_id, x0, y0, x1, y1, b]
+            batch = feats[0].shape[0]
+            for i in range(num_layer):
+                assert batch == feats[i].shape[0]
+            valid_rois_batch_id = [j  for j in range(batch)]
+            for i in rois.buffer[:,1]:
+                assert i in valid_rois_batch_id
+            print("[DynFuse-RoiExtractor] valid_rois_batch_id checked")
+            assert batch == 1, "[Error] RoiExtractor support batch = 1"
+            pad = Tensor(dtype=o_dtype, shape=[roi_num, 1], data=np.zeros([roi_num, 1], dtype=np.float32))
+            Slice_attr = {
+                "offset": ArrayAttr([0, 2]),
+                "steps": ArrayAttr([1, 1]),
+                "ends": ArrayAttr([roi_num, 6]),
+                "axes": ArrayAttr([]),
+                "hasparamConvert_axes": ArrayAttr([1]),
+            }
+            Slice_out = Tensor(dtype=o_dtype, name=out_name+"_Slice")
+            TpuLang.insert_op("top.Slice", inputs=[rois, None, None, None], outputs=[Slice_out], params=Slice_attr)
+
+            Concat_attr = {
+                "axis": Attr(1, "int32")
+            }
+            Concat_out = Tensor(dtype=o_dtype, name=out_name+"_Concat")
+            TpuLang.insert_op("top.Concat", inputs=[pad, Slice_out], outputs=[Concat_out], params=Concat_attr)
+
+        RoiExtractor_attr = {
+            "num_levels": Attr(num_layer, "int64"),
             "mode": Attr("Avg", "string"),
             "output_height": Attr(PH, "int64"),
             "output_width": Attr(PW, "int64"),
             "sampling_ratio": Attr(sampling_ratio, "int64"),
-            "spatial_scale": Attr(list_spatial_scale[i], "float64"),
+            "spatial_scales": ArrayAttr(list_spatial_scale, "float64"),
             "align_corners": Attr(False, "bool"),
+            "is_static": Attr(False, "bool"),
         }
-        RoiAlign_out = Tensor(dtype=o_dtype, name=out_name+"_RoiAlign_{}".format(i))
-        TpuLang.insert_op("top.RoiAlign", inputs=[feats[i], Squeeze_out], outputs=[RoiAlign_out], params=RoiAlign_attr)
+        # inputs =  [feats[i] for i in range(num_layer)] + [rois, target_lvls]
+        rois_revise = rois if rois.shape[1] == 5  else Concat_out
+        assert rois_revise is not None
+        inputs =  [rois_revise, target_lvls] + [feats[i] for i in range(num_layer)]
+        TpuLang.insert_op("top.RoiExtractor", inputs=inputs, outputs=[RoiExtractor_out],params=RoiExtractor_attr)
+        return RoiExtractor_out
+    else:
+        assert 0
 
-        if i == 0:
-            TpuLang.insert_op("top.ScatterND", inputs=[roi_feats, NonZero_out, RoiAlign_out], outputs=[ScatterND_outputs[i]])
-        else:
-            TpuLang.insert_op("top.ScatterND", inputs=[ScatterND_outputs[i-1], NonZero_out, RoiAlign_out], outputs=[ScatterND_outputs[i]])
-
-    return ScatterND_outputs[-1]
+    return outFusion
 
 @auto_name()
 @annotation_check
