@@ -56,6 +56,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 # + bntrain opt: 8450554110d490b33ee1c0144a9027ad553ce311
 # + where+bnbwd: 7dcf41c419f2db8a5dc2a5aa2fdd96a14bdbbd8e
 # + convbwd opt: 183524def4a219d8ce8eecb69fdb130ed8da3399
+# + convbwd and bnbwd bugfix: 20b2525f5f634f884576ff14ec274eaf8290daf7
 # gdma addr check:
 # + 36797dff9adf94b2339dffe553e620b8afc6f72f
 # + 11c4353534b33523262614d0100d4ca2f8c926d0
