@@ -163,6 +163,8 @@ public:
       param.if_getting_buffer_size = true;
       uint64_t buffer_size = 0;
       param.buffer_size_ptr = &buffer_size;
+      // don't check instruction address when getting buffer size
+      BM168x::instance()->dl_set_cmd_check_param(nullptr, false);
       BM168x::call_global_func("backend_api_reduce_full_global", &param,
                                sizeof(param), input_spec->data(),
                                output_spec->data());
@@ -378,6 +380,8 @@ public:
       auto output_spec = BM168x::get_output_spec(permuteOp);
       BM168x::fix_shape(input_spec->at(0), attr.in_shape_fix);
       BM168x::fix_shape(output_spec->at(0), attr.out_shape_fix);
+      // don't check instruction address when getting buffer size
+      BM168x::instance()->dl_set_cmd_check_param(nullptr, false);
       BM168x::call_global_func("backend_api_transpose_global", &param,
                                sizeof(param), input_spec->data(),
                                output_spec->data());
@@ -481,6 +485,8 @@ public:
     param.buffer_size_ptr = &buffer_size;
     auto input_spec = BM168x::get_input_spec(interpOp);
     auto output_spec = BM168x::get_output_spec(interpOp);
+    // don't check instruction address when getting buffer size
+    BM168x::instance()->dl_set_cmd_check_param(nullptr, false);
     BM168x::call_global_func("backend_api_interp_global", &param, sizeof(param),
                              input_spec->data(), output_spec->data());
     // add buffer
@@ -547,6 +553,8 @@ public:
     }
     auto input_spec = BM168x::get_input_spec(matmulOp);
     auto output_spec = BM168x::get_output_spec(matmulOp);
+    // don't check instruction address when getting buffer size
+    BM168x::instance()->dl_set_cmd_check_param(nullptr, false);
     BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
                              sizeof(spec), input_spec->data(),
                              output_spec->data());
