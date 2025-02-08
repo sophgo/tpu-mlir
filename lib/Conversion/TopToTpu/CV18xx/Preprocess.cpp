@@ -12,24 +12,18 @@
 namespace tpu_mlir {
 namespace cv18xx {
 
-static double gen_low_table(double val) {
-  uint16_t val_l = f32_to_bf16(static_cast<float>(val), true);
-  double lut_low = ((int8_t *)(&val_l))[0];
-  return lut_low;
-}
-static double gen_high_table(double val) {
-  uint16_t val_h = f32_to_bf16(static_cast<float>(val), true);
-  double lut_high = ((int8_t *)(&val_h))[1];
-  return lut_high;
-}
-
 void PreprocessLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::PreprocessOp op,
                                       bool asymmetric) const {
-  Value low_table = create_lookup_table(op.getInput(), op.getOutput(),
-                                        asymmetric, activate_f(gen_low_table));
-  Value high_table = create_lookup_table(
-      op.getInput(), op.getOutput(), asymmetric, activate_f(gen_high_table));
+  std::vector<int8_t> low_table_data(256);
+  std::vector<int8_t> high_table_data(256);
+  for (int i = 0; i < 256; ++i) {
+    uint16_t val = f32_to_bf16(static_cast<float>(i), true);
+    high_table_data[i] = ((uint8_t *)(&val))[1];
+    low_table_data[i] = ((uint8_t *)(&val))[0];
+  }
+  Value low_table = create_lookup_table(op, low_table_data);
+  Value high_table = create_lookup_table(op, high_table_data);
   auto newType = getQuantBF16Type(op.getOutput());
   double threshold = 0;
   float white_level = 4095.;
@@ -75,10 +69,15 @@ void PreprocessLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void PreprocessLowering::LoweringBF16(PatternRewriter &rewriter,
                                       top::PreprocessOp op) const {
-  Value low_table = create_lookup_table(op.getInput(), op.getOutput(), 0,
-                                        activate_f(gen_low_table));
-  Value high_table = create_lookup_table(op.getInput(), op.getOutput(), 0,
-                                         activate_f(gen_high_table));
+  std::vector<int8_t> low_table_data(256);
+  std::vector<int8_t> high_table_data(256);
+  for (int i = 0; i < 256; ++i) {
+    uint16_t val = f32_to_bf16(static_cast<float>(i), true);
+    high_table_data[i] = ((uint8_t *)(&val))[1];
+    low_table_data[i] = ((uint8_t *)(&val))[0];
+  }
+  Value low_table = create_lookup_table(op, low_table_data);
+  Value high_table = create_lookup_table(op, high_table_data);
   auto newType = getQuantBF16Type(op.getOutput());
   double threshold = 0;
   float white_level = 4095.;

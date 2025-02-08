@@ -45,6 +45,7 @@ Value create_lookup_table(
 
 Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 Value create_lookup_table(Operation *owner, const std::vector<int> &table);
+Value create_lookup_table(Operation *owner, const std::vector<int8_t> &table);
 
 Value create_lookup_table_fp(Value in, Value out, activate_f &&func);
 
