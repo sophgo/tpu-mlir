@@ -136,7 +136,6 @@ float round_float_number(float number, tpu_mlir::RoundingMode rounding_mode) {
 }
 
 LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
-  printf("entering tpu::MeanStdScaleOp inference\n");
   auto std = module::getF64Array(getStd());
   auto scale = module::getF64Array(getScale());
   auto mean = module::getF64Array(getMean());
