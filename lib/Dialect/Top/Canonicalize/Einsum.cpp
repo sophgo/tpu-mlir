@@ -1189,6 +1189,52 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
           rewriter.create<ReduceOp>(loc, newType, mul_op.getOutput(), attrs);
       op.getOutput().replaceAllUsesWith(sumOp);
       rewriter.eraseOp(op);
+    } else if (mode == "abcde,abfge->abcdfg") {
+      // reshape(abcde) -> (ab,cd,e)
+      // reshape(abfge) -> (ab,fg,e)
+      // permute(ab,fg,e) -> (ab,e,fg)
+      // batch_matmul((ab,cd,e),(ab,e,fg)) -> (ab,cd,fg)
+      // reshape(ab,cd,fg) = (a,b,c,d,f,g)
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto lhs_loc = NameLoc::get(rewriter.getStringAttr(lname + "_reshape"));
+      auto lhs_new_type = RankedTensorType::get(
+          {lshape[0] * lshape[1], lshape[2] * lshape[3], lshape[4]},
+          module::getElementType(lhs));
+      auto lhsOp =
+          rewriter.create<ReshapeOp>(lhs_loc, lhs_new_type, ValueRange{lhs});
+
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      auto rhs_loc = NameLoc::get(rewriter.getStringAttr(rname + "_reshape"));
+      auto rhs_new_type = RankedTensorType::get(
+          {rshape[0] * rshape[1], rshape[2] * rshape[3], rshape[4]},
+          module::getElementType(rhs));
+      auto rhsOp =
+          rewriter.create<ReshapeOp>(rhs_loc, rhs_new_type, ValueRange{rhs});
+
+      rewriter.setInsertionPointAfter(rhsOp);
+      auto rhsOpPermute = RankedTensorType::get(
+          {rshape[0] * rshape[1], rshape[4], rshape[2] * rshape[3]},
+          module::getElementType(rhs));
+      auto rhsPermuteLoc =
+          NameLoc::get(rewriter.getStringAttr(rname + "_permute"));
+      attrs.push_back(
+          rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
+      auto RPermuteOp = rewriter.create<PermuteOp>(rhsPermuteLoc, rhsOpPermute,
+                                                   ValueRange{rhsOp}, attrs);
+      attrs.clear();
+
+      rewriter.setInsertionPointAfter(op);
+      auto mm_loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      auto mm_type = RankedTensorType::get(
+          {lshape[0] * lshape[1], lshape[2] * lshape[3], rshape[2] * rshape[3]},
+          module::getElementType(op));
+      operands.push_back(lhsOp);
+      operands.push_back(RPermuteOp);
+      operands.push_back(none);
+      auto matmulOp = rewriter.create<MatMulOp>(mm_loc, mm_type, operands);
+      auto reshapeOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp.getOutput()});
+      op.replaceAllUsesWith(reshapeOp.getOperation());
+      rewriter.eraseOp(op);
     } else {
       llvm_unreachable("Einsum not support this mode now");
     }

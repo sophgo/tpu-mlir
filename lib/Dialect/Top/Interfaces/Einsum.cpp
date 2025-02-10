@@ -113,6 +113,10 @@ void top::EinsumOp::shape_inference() {
   } else if (mode == "abcd,cdbe->abce") {
     module::setShapeOrVerify(
         getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[3]});
+  } else if (mode == "abcde,abfge->abcdfg") {
+    module::setShapeOrVerify(
+        getOutput(),
+        {lhs_shape[0], lhs_shape[1], lhs_shape[2], lhs_shape[3], rhs_shape[2], rhs_shape[3]});
   } else {
     llvm_unreachable("Not support now.");
   }
