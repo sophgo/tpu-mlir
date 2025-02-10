@@ -1307,9 +1307,9 @@ public:
       : OpRewriterPatternEx<tpu::ConvbwdOp>(context, "ConvBwdOpGlobalBuffer") {}
   LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp ConvBwdOp,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isBM1690Family()) {
-      return failure();
-    }
+    // if (!module::isBM1690Family()) {
+    //   return failure();
+    // }
     auto kernel_shape = module::getI64Array(ConvBwdOp.getKernelShape());
     int oc = kernel_shape->at(0);
     int ic = kernel_shape->at(1);
@@ -1321,8 +1321,13 @@ public:
     auto type = module::getStorageType(ConvBwdOp.getInput());
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size0};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
-    auto buffer = tpu::BufferOp::create(ConvBwdOp, buffer_type, tpu::BufferType::L2);
-    ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 1, buffer);
+    if(module::isBM1690Family()){
+      auto buffer = tpu::BufferOp::create(ConvBwdOp, buffer_type, tpu::BufferType::L2);
+      ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 1, buffer);
+    }else{
+      auto buffer = tpu::BufferOp::create(ConvBwdOp, buffer_type);
+      ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 1, buffer);
+    }
     return success();
   }
   bool shouldPrint(tpu::ConvbwdOp ConvBwdOp) const override { return false; }

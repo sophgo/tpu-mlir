@@ -28,11 +28,11 @@ void tpu::ConvbwdOp::codegen_global_bm1684x() {
   Convbwd_param_t spec;
   memset(&spec, 0, sizeof(spec));
   auto &common = spec.common;
-  // spec.use_multi_core = false;
-  // if (module::isBM1690Family()){
-  //   spec.use_multi_core = true;
-  // }
-  spec.use_multi_core = 1;
+  // multi-core backend requires L2 and sdma which only available for bm1690
+  spec.use_multi_core = 0;
+  if (module::isBM1690Family()) {
+    spec.use_multi_core = 1;
+  }
   common.groups = attr.groups;
   common.n = attr.n;
   common.ic = attr.ic;
