@@ -77,7 +77,7 @@ void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                         top::CompareConstOp op,
                                         bool asymmetric) const {
   if (op.getMode().str() == "And") {
-    if (module::isMARS3()) {
+    if (module::isMARS3() || module::isSGTPUV8()) {
       lowering_common_bf16<tpu::CompareConstOp>(rewriter, op);
     } else {
       lowering_common_f16<tpu::CompareConstOp>(rewriter, op);

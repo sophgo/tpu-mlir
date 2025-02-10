@@ -116,32 +116,22 @@ class PostProcess:
             ans3.extend(X[2])
         return ans1,ans2,ans3
 
-    def crop_mask2(self, masks, boxes):
-            n, h, w = masks.shape
-            x1, y1, x2, y2 = np.split(boxes[:, :, None], 4, 1)
-            r = np.arange(w, dtype=x1.dtype)[None, None, :]
-            c = np.arange(h, dtype=x1.dtype)[None, :, None]
-            return masks * ((r >= x1) * (r < x2) * (c >= y1) * (c < y2))
-
     def postprocess2(self, masks_uncrop, seg_out, im0_shape, ratio, pad_w, pad_h):
 
-        seg_out = seg_out[:-1]
-        masks_uncrop = masks_uncrop[:-1]
+        seg_out = seg_out[:-1, ...]
+        masks_uncrop = masks_uncrop[:-1,...]
         masks_uncrop = masks_uncrop.transpose(1, 2, 0)
         masks_uncrop = self.scale_mask(masks_uncrop, im0_shape[:2])
         masks_uncrop = masks_uncrop.transpose(2, 0, 1)
         boxes =  seg_out[:,:4]
-        downsampled_bboxes = boxes.copy()
 
         boxes[..., :4] -= [pad_w, pad_h, pad_w, pad_h]
         boxes[..., :4] /= min(ratio)
 
         boxes[..., [0, 2]] = boxes[:, [0, 2]].clip(0, im0_shape[:2][1])
         boxes[..., [1, 3]] = boxes[:, [1, 3]].clip(0, im0_shape[:2][0])
-
-        masks = self.crop_mask2(masks_uncrop, downsampled_bboxes)
-        masks = masks_uncrop
-
+        masks = self.crop_mask(masks_uncrop, boxes)
+        masks = np.greater(masks, 0.5)
         return masks, seg_out
 
 

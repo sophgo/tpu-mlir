@@ -401,10 +401,12 @@ class TdbCmdBackend(cmd.Cmd):
             from .target_1690.context import BM1690Context
             from .target_2380.context import SG2380Context
             from .target_mars3.context import MARS3Context
+            from .target_sgtpuv8.context import SGTPUV8Context
             if isinstance(self.context, BM1688Context) or isinstance(
                 self.context, BM1690Context) or isinstance(
                 self.context, SG2380Context) or isinstance(
-                self.context, MARS3Context):
+                self.context, MARS3Context) or isinstance(
+                self.context, SGTPUV8Context):
                 address = self.context.fix_addr(address)
             addr_offset_ddr = address - self.context.memmap[MType.G][0]
             # load constant data
@@ -531,7 +533,7 @@ class TdbCmdBackend(cmd.Cmd):
                 setattr(self, f"complete_{func_name}", plugin.complete_plugin)
                 setattr(self, f"help_{func_name}", partial(plugin.do_help, ""))
 
-    def get_plugin(self, name: Union[str, Type["TdbPlugin"]]) -> "TdbPlugin":
+    def get_plugin(self, name: Union[str, Type["TdbPlugin"]]) -> Optional["TdbPlugin"]:
         """
         if plugin not registed, return None for result.
 

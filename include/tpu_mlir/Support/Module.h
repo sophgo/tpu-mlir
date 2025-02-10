@@ -97,6 +97,8 @@ bool isSubnetDividedState();
 void setAddrMode(AddrMode mode);
 AddrMode getAddrMode();
 bool isAddrMode(AddrMode mode);
+void setHighPrecision(bool is_high);
+bool isHighPrecision();
 void setTopRunMode(TopRunMode mode);
 TopRunMode getTopRunMode();
 bool isDynamic();
@@ -191,11 +193,14 @@ f64_array_t getF64Array(ArrayAttr arrayAttr);
 f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
+bool IsSliceOpInOrOut(Value value);
+bool IsReshapeOpInOrOut(Value value);
 bool IsHdimIsBatch(Operation *Op);
 bool IsHdimIsBatch(Value value);
 bool isOpInCoreMatch(Operation *Op);
 bool isOpInCoreParallel(Operation *Op);
 bool isOpInGroupParallel(Operation *Op);
+bool isValueBlockArgument(Value v);
 bool isOpInDevParallel(Operation *Op);
 bool isOpInBlock(Operation *op);
 FuncOp getFuncOp(ModuleOp module, StringRef func_name);
@@ -224,6 +229,7 @@ bool isSG2380();
 bool isBM1688();
 bool isBM1684X();
 bool isMARS3();
+bool isSGTPUV8();
 
 //-----------------------------------------------------------------
 // Helper Functions for submodule
@@ -358,7 +364,8 @@ bool isOpSameCalc(Operation *op0, Operation *op1);
 bool isOpSameCalc(const std::vector<Operation *> &ops);
 
 bool isInMatMulGrpOp(Operation *op);
-bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h, int64_t &w);
+bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h,
+                      int64_t &w);
 //-----------------------------------------------------------------
 // Helper for op compare
 //-----------------------------------------------------------------

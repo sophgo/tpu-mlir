@@ -42,9 +42,15 @@ def BModel2MLIR(bmodel_net: BModel):
     from .target_1688.context import BM1688Context
     from .target_2380.context import SG2380Context
     from .target_mars3.context import MARS3Context
+    from .target_sgtpuv8.context import SGTPUV8Context
 
     with use_backend(bmodel_net.chip) as context:
-        if isinstance(context, BM1688Context) or isinstance(context, SG2380Context) or isinstance(context, MARS3Context):
+        if (
+            isinstance(context, BM1688Context)
+            or isinstance(context, SG2380Context)
+            or isinstance(context, MARS3Context)
+            or isinstance(context, SGTPUV8Context)
+        ):
             coeff = bmodel_net.net[0].parameter[0].coeff_mem
             if coeff and context.base_addr[0] != context.base_addr[1]:
                 context.base_addr[1] += len(coeff.data)
@@ -215,7 +221,7 @@ class Block(Node):
                 self.core_operations: List[MsgCore] = []
                 while msgcore_id < msgcore_nums:
                     for core_id, core_cmds in enumerate(self.cores_cmds):
-                        if core_cmds.msgcores and msgcore_id <= len(core_cmds.msgcores):
+                        if core_cmds.msgcores and msgcore_id < len(core_cmds.msgcores):
                             self.core_operations.append(core_cmds.msgcores[msgcore_id])
                     msgcore_id += 1
 

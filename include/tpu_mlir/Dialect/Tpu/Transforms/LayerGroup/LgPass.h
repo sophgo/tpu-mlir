@@ -15,16 +15,6 @@
 namespace tpu_mlir {
 namespace tpu {
 
-enum class NnvlcMode { NONE = 0, WEIGHT = 1, ACTIVATION = 2, ALL = 3 };
-
-typedef struct {
-  bool dyn_compile;
-  int64_t opt;
-  bool group_by_cores;
-  NnvlcMode nnvlc_mode;
-  bool lgcache;
-} LgOptions;
-
 // struct node_info;
 struct LgPassIR {
   LgPassIR() { returnOp = nullptr; };
@@ -63,6 +53,7 @@ struct LgPassIR {
   std::vector<TensorInfo> lg_tensor_infos_;
   std::vector<l2mem_alloc_Ptr> lg_l2mem_alloc_ptr;
   std::vector<int> group_cycles;
+  std::map<Value, Value, value_compare> map_old_v_to_new_v_in_group_in;
 
   /**
    * @brief shape split sections of layer groups
@@ -88,7 +79,9 @@ public:
   virtual bool run(LgPassIR *pass_ir) = 0;
   virtual std::string name() = 0;
   virtual std::string brief() { return ""; }
-  static LgOptions OPTIONS; // global options
+  // static LgOptions OPTIONS; // global options
+protected:
+  LgOptions options_;
 };
 
 /// Pass manager of layer group optimization

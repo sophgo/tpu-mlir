@@ -45,8 +45,8 @@ class GlobalProfileParser:
         ginfo.quant_type = attr['module.mode'].value.lower()
 
     def parse(self, filename):
-        json_file = filename + 'tensor_location.json'
-        mlir_file = filename + 'final.mlir'
+        json_file = os.path.join(filename, 'tensor_location.json')
+        mlir_file = os.path.join(filename, 'final.mlir')
         if not os.path.exists(json_file):
             logging.warning("'{}' does not exist, layer info is mssing.".format(json_file))
             return None

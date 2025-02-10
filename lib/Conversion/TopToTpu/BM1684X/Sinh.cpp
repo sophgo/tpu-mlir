@@ -41,7 +41,7 @@ void SinhLowering::LoweringINT4(PatternRewriter &rewriter, top::SinhOp op,
 void SinhLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SinhOp op) const {
   set_sinh_attr(rewriter, op);
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::ActiveOp>(rewriter, op);

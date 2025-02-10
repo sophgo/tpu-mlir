@@ -91,6 +91,11 @@ void BM168xEvaluator::allocate_resources() {
           memcpy(ptr, data->data(), data->size());
           return WalkResult::advance();
         }
+        if (auto xOp = dyn_cast<tpu::BufferOp>(op)) {
+          auto v = xOp.getOutput();
+          fixValueAddr(v);
+          return WalkResult::advance();
+        }
         if (auto gOp = dyn_cast<GroupOp>(op)) {
           num_subnet_ops.back()++;
           for (auto v : op->getResults()) {

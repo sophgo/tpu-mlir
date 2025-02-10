@@ -177,6 +177,7 @@ def collect_files():
     collect_copytree(os.path.join(cur_dir, "../target_1690"), soc_tool_dir)
     collect_copytree(os.path.join(cur_dir, "../target_2380"), soc_tool_dir)
     collect_copytree(os.path.join(cur_dir, "../target_mars3"), soc_tool_dir)
+    collect_copytree(os.path.join(cur_dir, "../target_sgtpuv8"), soc_tool_dir)
 
 
 # connect remote ssh server

@@ -13,7 +13,7 @@ import re
 import pandas as pd
 from itertools import combinations
 
-kv_pattern = re.compile(r";\s*([\w/.]+)\s*=\s*(['\"]?)([:\w\s/\-\".]+)\2")
+kv_pattern = re.compile(r";\s*([\w/.]+)\s*=\s*(['\"]?)([:,_\w\s/\-\".]+)\2")
 
 
 def comsume_in_main(func):
@@ -48,7 +48,7 @@ def parse_dic(line, filter=None):
     dic = {}
     for k, _, v in ret:
         try:
-            dic[k] = int(v)
+            dic[k] = int(v) if v.isdigit() else v.strip()
         except Exception:
             dic[k] = v.strip()
     return dic

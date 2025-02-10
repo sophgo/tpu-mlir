@@ -174,7 +174,7 @@ struct WhereTooLarge : public OpRewriterPatternEx<WhereOp> {
 
     auto user = *op.getOutput().getUsers().begin();
     if (isa<AddOp>(user) || isa<ReshapeOp>(user)) {
-      Operation* specificOp;
+      Operation *specificOp;
       if (isa<AddOp>(user)) {
         specificOp = dyn_cast<AddOp>(user);
       } else if (isa<ReshapeOp>(user)) {
@@ -182,7 +182,8 @@ struct WhereTooLarge : public OpRewriterPatternEx<WhereOp> {
       } else {
         return failure();
       }
-      if (specificOp->getResult(0).hasOneUse() && isa<SoftmaxOp>(*specificOp->getResult(0).getUsers().begin())) {
+      if (specificOp->getResult(0).hasOneUse() &&
+          isa<SoftmaxOp>(*specificOp->getResult(0).getUsers().begin())) {
         bool updated = false;
         if (op.getXIsConst()) {
           float val = op.getXConstVal().convertToDouble();

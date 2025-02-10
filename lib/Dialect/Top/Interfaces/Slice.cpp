@@ -23,6 +23,7 @@ void top::SliceOp::paramConvert() {
   auto ends_ori = module::getI64Array(getEnds());
   auto axes_ori = module::getI64Array(getAxes());
   auto input_shapes = module::getShape(getInput());
+  setHasparamConvertAxesAttr(builder.getI64ArrayAttr(*axes_ori));
 
   auto input_dims = input_shapes.size();
   auto slice_n = axes_ori->size();
@@ -47,7 +48,6 @@ void top::SliceOp::paramConvert() {
   setStepsAttr(builder.getI64ArrayAttr(*steps_v));
   setEndsAttr(builder.getI64ArrayAttr(*ends_v));
   setAxesAttr(builder.getI64ArrayAttr(std::nullopt));
-  setHasparamConvertAxesAttr(builder.getI64ArrayAttr(*axes_ori));
 }
 
 LogicalResult top::SliceOp::inference(InferenceParameter &p) {

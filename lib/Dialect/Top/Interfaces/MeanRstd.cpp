@@ -73,11 +73,11 @@ LogicalResult top::MeanRstdOp::inference(InferenceParameter &p) {
 void top::MeanRstdOp::shape_inference() {
   // auto input_shape        = module::getShape(getInput());
   auto running_mean_shape = module::getShape(getRunningMean());
-  auto running_var_shape  = module::getShape(getRunningVar());
-  auto weight_shape       = module::getShape(getWeight());
-  auto bias_shape         = module::getShape(getBias());
+  auto running_var_shape = module::getShape(getRunningVar());
+  auto weight_shape = module::getShape(getWeight());
+  auto bias_shape = module::getShape(getBias());
   long weight_new_shape[4] = {1, weight_shape[1], 1, 1};
-  long bias_new_shape[4]   = {1, bias_shape[1], 1, 1};
+  long bias_new_shape[4] = {1, bias_shape[1], 1, 1};
   module::setShapeOrVerify(getMean(), running_mean_shape);
   module::setShapeOrVerify(getRstd(), running_var_shape);
   module::setShapeOrVerify(getRunningMeanUpdate(), running_mean_shape);

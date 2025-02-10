@@ -24,7 +24,7 @@ Download the required image from DockerHub https://hub.docker.com/r/sophgo/tpuc_
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.2
+   $ docker pull sophgo/tpuc_dev:v3.3
 
 
 If the pulling fails, you can download the required image file from the official website development materials https://developer.sophgo.com/site/index/material/86/all.html, or use the following command to download and load the image:
@@ -32,9 +32,8 @@ If the pulling fails, you can download the required image file from the official
 .. code-block:: shell
    :linenos:
 
-   $ wget https://sophon-file.sophon.cn/sophon-prod-s3/drive/24/06/14/12/sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
-   $ docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
-
+   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/01/20/10/sophgo-tpuc_dev_v3.3.tar.gz
+   $ docker load -i sophgo-tpuc_dev_v3.3.tar.gz
 
 If you are using docker for the first time, you can execute the following commands to install and configure it (only for the first time):
 
@@ -56,7 +55,7 @@ Make sure the installation package is in the current directory, and then create 
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.3
   # "myname" is just an example, you can use any name you want
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
 

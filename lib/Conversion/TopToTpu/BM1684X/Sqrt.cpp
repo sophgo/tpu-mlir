@@ -22,7 +22,7 @@ static inline Operation *set_mode(top::SqrtOp op) {
 void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
                                top::SqrtOp op) const {
   auto op_ = set_mode(op);
-  if (module::isMARS3())
+  if (module::isMARS3() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
@@ -43,7 +43,7 @@ void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
 void SqrtLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SqrtOp op) const {
   auto op_ = set_mode(op);
-  if (module::isMARS3())
+  if (module::isMARS3() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
@@ -52,7 +52,7 @@ void SqrtLowering::LoweringBF16(PatternRewriter &rewriter,
 void SqrtLowering::LoweringF16(PatternRewriter &rewriter,
                                top::SqrtOp op) const {
   auto op_ = set_mode(op);
-  if (module::isMARS3())
+  if (module::isMARS3() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);

@@ -102,8 +102,10 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                          group_type_t group_type,
                                          local_sec_info_t &sec_info) {
   auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type);
-  auto output_spec = BM168x::get_output_spec(op, group_type);
+  auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step,
+                                           d_step, w_step, c_step);
+  auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step,
+                                             d_step, w_step, c_step);
   strideslice_local_spec_t spec = {0};
   const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
   spec.buffer_addr = gi.buffer_addr;
@@ -123,11 +125,22 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
   for (int i = 0; i < num_dims; i++) {
-    common.begin_index[i] =
-        offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
+    if (group_type == GROUP_MM_OPT3) {
+      common.begin_index[i] = offset->at(i) < 0
+                                  ? offset->at(i) + (*input_spec)[0].shape[i]
+                                  : offset->at(i);
+    } else {
+      common.begin_index[i] =
+          offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
+    }
     common.strides[i] = steps->at(i);
-    common.end_index[i] =
-        common.begin_index[i] + output_shape[i] * common.strides[i];
+    if (group_type == GROUP_MM_OPT3) {
+      common.end_index[i] = common.begin_index[i] +
+                            (*output_spec)[0].shape[i] * common.strides[i];
+    } else {
+      common.end_index[i] =
+          common.begin_index[i] + output_shape[i] * common.strides[i];
+    }
   }
 
   BM168x::call_local_func("backend_api_strideslice_local", &spec, sizeof(spec),

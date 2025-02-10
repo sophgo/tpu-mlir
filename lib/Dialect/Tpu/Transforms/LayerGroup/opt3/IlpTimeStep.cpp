@@ -16,10 +16,7 @@
 namespace tpu_mlir {
 namespace tpu {
 
-bool SortByOpCycleDiff(const std::pair<int, std::vector<Operation*>> &v1, const std::pair<int, std::vector<Operation*>> &v2)
-{
-    return v1.first > v2.first;//降序排列
-}
+
 
 bool SortByMemStruct(const std::pair<std::string, mem_struct> &v1, const std::pair<std::string, mem_struct> &v2)
 {
@@ -90,7 +87,7 @@ bool l2mem_alloc::alloc(int slice_idx, const std::string& name, Value value, int
     for (int i = 0; i < size; i++) {
       lmem_buf[free_addr+i] = true;
     }
-    fprintf(stderr, "%s\n", llvm::formatv("        alloc ok for {0}, free_addr:{1}", name, free_addr).str().c_str());
+    // fprintf(stderr, "%s\n", llvm::formatv("        alloc ok for {0}, free_addr:{1}", name, free_addr).str().c_str());
     mem_struct mem_s;
     mem_s.addr = free_addr;
     mem_s.size = size;
@@ -118,7 +115,7 @@ bool l2mem_alloc::free(int slice_idx, const std::string& name) {
   std::string key = convert_name_to_key(name, slice_idx);
   if (mem_dict.find(key) != mem_dict.end()) {
     auto mem_s = mem_dict[key];
-    fprintf(stderr, "      free %s, addr:%d, size:%d\n", key.c_str(), mem_s.addr, mem_s.size);
+    // fprintf(stderr, "      free %s, addr:%d, size:%d\n", key.c_str(), mem_s.addr, mem_s.size);
     for (int i = 0; i < mem_s.size; i++) {
       assert(lmem_buf[mem_s.addr + i]);
       lmem_buf[mem_s.addr + i] = false;
@@ -387,11 +384,13 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string& name, Value value, int
 }
 
 bool lmem_alloc::alloc_multi(int ts_idx, int op_idx, std::vector<mem_alloc_req_info>& vec_mem_req, int& lack_mem_szie, bool sort_by_size) {
-  fprintf(stderr, "    alloc_multi:\n");
-  for (auto it : vec_mem_req) {
-    fprintf(stderr, "      name:%s, size:%d\n", it.name.c_str(), it.size);
+  if (detail_log) {
+    fprintf(stderr, "    alloc_multi:\n");
+    for (auto it : vec_mem_req) {
+      fprintf(stderr, "      name:%s, size:%d\n", it.name.c_str(), it.size);
+    }
+    fprintf(stderr, "\n");
   }
-  fprintf(stderr, "\n");
 
   std::map<int, bool> alloc_ret;
   std::vector<int> order_idx, min_conflict_order_idx, ret_bank_id;
@@ -669,11 +668,13 @@ bool lmem_alloc::alloc_multi(int ts_idx, int op_idx, std::vector<mem_alloc_req_i
     ts_move_info tmp;
     for (auto i : min_conflict_order_idx) {
       if (i >= 0 && vec_mem_struct2[i].second.type != 3) {
-        tmp.move_value.push_back(vec_mem_struct2[i].second.value);
-        tmp.move_src_add.push_back(vec_mem_struct2[i].second.addr);
-        tmp.move_dest_add.push_back(new_vec_move_mem_new_addr[i]);
-        tmp.move_size.push_back(vec_mem_struct2[i].second.size);
-        tmp.slice_idx.push_back(vec_mem_struct2[i].second.slice_idx);
+        if (vec_mem_struct2[i].second.addr != new_vec_move_mem_new_addr[i]) {
+          tmp.move_value.push_back(vec_mem_struct2[i].second.value);
+          tmp.move_src_add.push_back(vec_mem_struct2[i].second.addr);
+          tmp.move_dest_add.push_back(new_vec_move_mem_new_addr[i]);
+          tmp.move_size.push_back(vec_mem_struct2[i].second.size);
+          tmp.slice_idx.push_back(vec_mem_struct2[i].second.slice_idx);
+        }
       }
     }
     tmp.combine_ts_op_idx = op_idx;
@@ -706,7 +707,9 @@ bool lmem_alloc::alloc_multi(int ts_idx, int op_idx, std::vector<mem_alloc_req_i
 }
 
 bool lmem_alloc::alloc2(int slice_idx, const std::string& name, Value value, int addr, int size) {
-  fprintf(stderr, "%s\n", llvm::formatv("      start alloc for {0}, size:{1}, slice_idx:{2}, addr:{3}", name, size, slice_idx, addr).str().c_str());
+  if (detail_log) {
+    fprintf(stderr, "%s\n", llvm::formatv("      start alloc for {0}, size:{1}, slice_idx:{2}, addr:{3}", name, size, slice_idx, addr).str().c_str());
+  }
   int bidx = addr / (total_size/16);
   int end_bidx = (addr + size - 1) / (total_size/16);
   std::vector<int> tmp_bank_id;
@@ -744,7 +747,9 @@ bool lmem_alloc::alloc2(int slice_idx, const std::string& name, Value value, int
 bool lmem_alloc::free(const std::string& key, std::vector<std::pair<int,int>>* vec_pre_ts_free_mem) {
   if (mem_dict.find(key) != mem_dict.end()) {
     auto mem_s = mem_dict[key];
-    fprintf(stderr, "      free %s, addr:%d, size:%d\n", key.c_str(), mem_s.addr, mem_s.size);
+    if (detail_log) {
+      fprintf(stderr, "      free %s, addr:%d, size:%d\n", key.c_str(), mem_s.addr, mem_s.size);
+    }
     for (int i = 0; i < mem_s.size; i++) {
       assert(lmem_buf[mem_s.addr + i]);
       lmem_buf[mem_s.addr + i] = false;
@@ -782,7 +787,6 @@ std::vector<int> lmem_alloc::get_bank(const std::string& name) {
 
 ILPTimeStep::ILPTimeStep(const LgInfo& group_info, std::shared_ptr<dot_graph> tmp_dot_graph_log, int sec_per_core)
   :_group_info(group_info), solver(MPSolver::CreateSolver("SCIP")), dot_graph_log(tmp_dot_graph_log) {
- // Create the mip solver with the SCIP backend.
   if (!solver) {
     llvm::errs() << "SCIP solver unavailable.\n";;
   }
@@ -807,6 +811,19 @@ ILPTimeStep::ILPTimeStep(const LgInfo& group_info, std::shared_ptr<dot_graph> tm
 
 ILPTimeStep::~ILPTimeStep()
 {
+}
+
+std::shared_ptr<ILPTimeStep> ILPTimeStep::clone() {
+  auto ilp_timeStep = std::make_shared<ILPTimeStep>(_group_info, dot_graph_log, slice_num);
+  ilp_timeStep->timestep_table_.assign(timestep_table_.begin(), timestep_table_.end());
+  ilp_timeStep->cycle_contrains.assign(cycle_contrains.begin(), cycle_contrains.end());
+  ilp_timeStep->mem_contrains.assign(mem_contrains.begin(), mem_contrains.end());
+  ilp_timeStep->mapILPVarInfo.insert(mapILPVarInfo.begin(), mapILPVarInfo.end());
+  ilp_timeStep->mapValueInfo.insert(mapValueInfo.begin(), mapValueInfo.end());
+  ilp_timeStep->mapConsInfo.insert(mapConsInfo.begin(), mapConsInfo.end());
+  ilp_timeStep->dam_tensor_size.insert(dam_tensor_size.begin(), dam_tensor_size.end());
+  ilp_timeStep->load_tensor_cycles.insert(load_tensor_cycles.begin(), load_tensor_cycles.end());
+  return ilp_timeStep;
 }
 
 void ILPTimeStep::addValueInfo(int slice_idx, Value value, std::string varName) {
@@ -1205,7 +1222,7 @@ void ILPTimeStep::showTimeStepInfo(int debug_cmd) {
   }
 }
 
-bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr<dot_graph> dot_graph_log) {
+bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, bool& merged, std::shared_ptr<dot_graph> dot_graph_log) {
   if (module::isDebugCmdEnable("disable_small_cycle_op_merge"))
     return true;
 
@@ -1243,7 +1260,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       if (!op) {
         continue;
       }
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "begin, ts_idx:"<<ts_idx<< ", op:"<<module::getName(op).str()
+      if (detail_log)
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "begin, ts_idx:"<<ts_idx<< ", op:"<<module::getName(op).str()
                    << ", type:"<<op->getName().getStringRef().str()<<"\n";});
       if (dma_cycle == -1) {
         if (isa<tpu::Conv2DOp>(op)) {
@@ -1327,6 +1345,7 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       dma_cycle = -1;
     }
   }
+  merged = map_merge_start_to_merge_len.size() > 0;
 
   std::string tmp_var;
   for(int merge_start = ts_count - 1; merge_start >= 0; merge_start--) {
@@ -1341,8 +1360,9 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
         int slice_idx = timestep_table_[merge_start - m].vec_op_infos[0].slice_idx;
         auto op = timestep_table_[merge_start - m].vec_op_infos[0].op;
         auto name = module::getName(op).str();
-        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "idx: "<<merge_start - m<< ", name: "<<name
-          << ", slice_idx: "<<slice_idx<<"\n";});
+        if (detail_log)
+          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "idx: "<<merge_start - m<< ", name: "<<name
+            << ", slice_idx: "<<slice_idx<<"\n";});
         for (auto in : get_input_values(op)) {
           if (mapConsInfo.find(in) != mapConsInfo.end()) {
             int64_t min_merge_start = llvm::maxIntN(64);
@@ -1446,7 +1466,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       for (auto it3: cycle_contrains[merge_start - m]) {
         int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
         if (mode2&TIMESTEP2_LOAD || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].store_load_mode == 1)) {
-          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "for loadVar, setVarExpectValue:"<<it3.second<<" to const_0\n";});
+          if (detail_log)
+            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "for loadVar, setVarExpectValue:"<<it3.second<<" to const_0\n";});
           auto op2 = timestep_table_[merge_start - m].vec_op_infos[0].op;
           dot_graph_log->add_node_label(module::getName(op2).str(),  "set loadVar:" + it3.second + " to 0\n");
           setVarExpectValue(it3.second, 0);
@@ -1467,7 +1488,8 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
       for (auto it3: cycle_contrains[merge_start - m]) {
         int64_t mode2 = mapILPVarInfo[it3.second].tensor_info.mode2;
         if (mode2&TIMESTEP2_STORE || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it3.second].store_load_mode == 0)) {
-          LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "for storeVar, setVarExpectValue:"<<it3.second<<" to const_0\n";});
+          if (detail_log)
+            LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "for storeVar, setVarExpectValue:"<<it3.second<<" to const_0\n";});
           auto op2 = timestep_table_[merge_start - m].vec_op_infos[0].op;
           dot_graph_log->add_node_label(module::getName(op2).str(),  "set storeVar:" + it3.second + " to 0\n");
           setVarExpectValue(it3.second, 0);
@@ -1519,15 +1541,12 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
 
     std::vector<std::pair<int, std::string>> new_mem;
     for (auto it2: mem_contrains[merge_start]) {
-      int64_t mode2 = mapILPVarInfo[it2.second].tensor_info.mode2;
-      if (mode2&TIMESTEP2_LOAD || (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it2.second].store_load_mode == 1)) {
+      if (isLoadVar(it2.second)) {
         new_mem.push_back(it2);
       }
     }
     for (auto it2: mem_contrains[merge_start - min_pos]) {
-      int64_t mode2 = mapILPVarInfo[it2.second].tensor_info.mode2;
-      if (mode2&TIMESTEP2_STORE ||
-          (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[it2.second].store_load_mode == 0)) {
+      if (isStoreVar(it2.second)) {
         new_mem.push_back(it2);
       }
     }
@@ -1544,6 +1563,28 @@ bool ILPTimeStep::merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr
   ts_count = timestep_table_new.size();
   LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() << "new ts_count:"<<ts_count<<"\n";});
   return true;
+}
+
+bool ILPTimeStep::isStoreVar(std::string var_name) {
+  if (mapILPVarInfo.find(var_name) != mapILPVarInfo.end()) {
+    int64_t mode2 = mapILPVarInfo[var_name].tensor_info.mode2;
+    if (mode2&TIMESTEP2_STORE ||
+        (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[var_name].store_load_mode == 0)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ILPTimeStep::isLoadVar(std::string var_name) {
+  if (mapILPVarInfo.find(var_name) != mapILPVarInfo.end()) {
+    int64_t mode2 = mapILPVarInfo[var_name].tensor_info.mode2;
+    if (mode2&TIMESTEP2_LOAD ||
+        (mode2&TIMESTEP2_STORE_AND_LOAD && mapILPVarInfo[var_name].store_load_mode == 1)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
@@ -1598,7 +1639,8 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
     }
     std::vector<std::pair<int, MPVariable*>> coeff_var_items;
     coeff_var_items.push_back(std::make_pair(1, objective_var[i].second));
-    LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  i:"<<i<<", op_name:"<<op_name<<", bdc_cycle:"<<(int)bdc_cycle<<"\n";});
+    if (detail_log)
+      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  i:"<<i<<", op_name:"<<op_name<<", bdc_cycle:"<<(int)bdc_cycle<<"\n";});
     for (auto it: cycle_contrains_new[i]) {
       coeff_var_items.push_back(std::make_pair(it.first, mapILPVarInfo[it.second].ilp_var));
     }
@@ -1652,7 +1694,8 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
       if (timestep_table_new[i].vec_op_infos.size() > 1) {
         op_name = "super_op_" + op_name;
       }
-      LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  ts:"<<i<<"  op_name:"<<op_name<<":\n";});
+      if (detail_log)
+        LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs() <<"  ts:"<<i<<"  op_name:"<<op_name<<":\n";});
       std::vector<std::pair<int, MPVariable*>> coeff_var_items;
       for (auto it: mem_contrains_new[i]) {
         coeff_var_items.push_back(std::make_pair(it.first, mapILPVarInfo[it.second].ilp_var));
@@ -1669,24 +1712,41 @@ bool ILPTimeStep::prepare(TensorInfo& tensor_infos) {
 }
 
 void ILPTimeStep::get_group_cycle_info(int& total_cycle, int& total_diff,
-    std::vector<std::pair<int, std::vector<Operation*>>>& ts_cycle_diff) {
+    std::vector<ts_cycle_info>& ts_cycle) {
   int i = 0, diff = 0;
   total_cycle = 0;
   total_diff = 0;
-  ts_cycle_diff.clear();
+  ts_cycle.clear();
   for (auto &itr: timestep_table_new) {
     std::vector<Operation*> tmp_ops;
     for (auto itr2: itr.vec_op_infos) {
       tmp_ops.push_back(itr2.op);
     }
-    int slice_idx = itr.vec_op_infos.size()? itr.vec_op_infos[0].slice_idx: 0;
-    int dma_cycle = 0, bdc_cycle = 0;
+    Operation* max_cycle_dma_op = nullptr;
+    bool max_cycle_is_load = true;
+    int dma_cycle = 0, bdc_cycle = 0, store_cycle = 0, load_cycle = 0;
+    float max_cycle_dma = 0;
     for (auto &itr2: itr.vec_ts_var) {
       if (itr2.var_value) {
         for (auto itr3: cycle_contrains_new[i]) {
           if (itr3.second == itr2.varName) {
-            if (slice_idx > 1 && map_reside_value_info.find(itr2.value) == map_reside_value_info.end()) {
-              dma_cycle += itr3.first;
+            llvm::errs() << "i:" <<i<< ", varName:" <<itr2.varName<< ", cycle:" <<itr3.first<<"\n";
+            dma_cycle += itr3.first;
+            if (isLoadVar(itr2.varName)) {
+              load_cycle += itr3.first;
+              if (itr3.first > max_cycle_dma) {
+                max_cycle_dma = itr3.first;
+                max_cycle_dma_op = *(itr2.value.getUsers().begin());
+                max_cycle_is_load = true;
+              }
+            }
+            if (isStoreVar(itr2.varName)) {
+              store_cycle += itr3.first;
+              if (itr3.first > max_cycle_dma) {
+                max_cycle_dma = itr3.first;
+                max_cycle_dma_op = itr2.value.getDefiningOp();
+                max_cycle_is_load = false;
+              }
             }
             break;
           }
@@ -1697,13 +1757,31 @@ void ILPTimeStep::get_group_cycle_info(int& total_cycle, int& total_diff,
     for (auto itr2: itr.vec_op_infos) {
       bdc_cycle += itr2.bdc_cycle;
     }
-    total_cycle += std::max(dma_cycle, bdc_cycle);
+
+    float max_dma_ratio = max_cycle_dma / dma_cycle;
+    ts_cycle_info cycle_info;
+    int cycle = std::max(dma_cycle, bdc_cycle);
+    cycle_info.cycle = cycle;
+    total_cycle += cycle;
     diff = std::abs(dma_cycle - bdc_cycle);
+    auto op_name = tmp_ops.size() > 0?show_op_info(tmp_ops[0]):"null op";
+    llvm::errs() << "i:" <<i<< ", dma_cycle:" <<dma_cycle<< ", bdc_cycle:" <<bdc_cycle<< ", diff:" <<diff
+                 << ", cycle:" <<cycle<< ", max_dma_ratio:" <<max_dma_ratio<< ", " <<op_name<<"\n";
+    cycle_info.cycle_diff = diff;
     total_diff += diff;
-    i++;
-    ts_cycle_diff.push_back(std::make_pair(diff, tmp_ops));
+    cycle_info.ts_idx = i++;
+    if (bdc_cycle > dma_cycle || max_dma_ratio < 0.5) {
+      cycle_info.cut_op = tmp_ops.size()?tmp_ops.front():nullptr;
+      cycle_info.mode = 0;
+    } else {
+      cycle_info.cut_op = max_cycle_dma_op;
+      cycle_info.mode = max_cycle_is_load?1:2;
+    }
+    cycle_info.load_cycle_is_bigger = load_cycle > store_cycle;
+    if (itr.vec_op_infos.size() && itr.vec_op_infos.back().slice_idx == 0) {
+      ts_cycle.push_back(cycle_info);
+    }
   }
-  std::sort(ts_cycle_diff.begin(), ts_cycle_diff.end(), SortByOpCycleDiff);
 }
 
 bool ILPTimeStep::is_value_stored(Value value, int ts_idx) {

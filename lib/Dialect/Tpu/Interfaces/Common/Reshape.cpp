@@ -31,11 +31,14 @@ LogicalResult tpu::ReshapeOp::inference(InferenceParameter &p) {
       shape_num *= shape->at(i);
     }
     int64_t start_dim = getFlattenStartDim();
-    if (module::isPlatform(module::Platform::ONNX) && (num != shape_num) && (start_dim != -1)) {
-      auto outer_dims = std::accumulate(in_shape.begin(), in_shape.begin() + start_dim,
-                                        1, std::multiplies<int64_t>());
-      auto inner_dims = std::accumulate(in_shape.begin() + start_dim, in_shape.end(), 1,
-                                        std::multiplies<int64_t>());
+    if (module::isPlatform(module::Platform::ONNX) && (num != shape_num) &&
+        (start_dim != -1)) {
+      auto outer_dims =
+          std::accumulate(in_shape.begin(), in_shape.begin() + start_dim, 1,
+                          std::multiplies<int64_t>());
+      auto inner_dims =
+          std::accumulate(in_shape.begin() + start_dim, in_shape.end(), 1,
+                          std::multiplies<int64_t>());
       shape->at(0) = outer_dims;
       shape->at(1) = inner_dims;
     }
@@ -84,7 +87,8 @@ LogicalResult tpu::ReshapeOp::AllowDataSplit(int64_t axis,
                                              group_type_t group_type) {
   // temp code for prevent not-inplace reshape
   // has to fix LmemAllocator in the future
-  if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+  if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+      module::isSGTPUV8()) {
     return failure();
   }
 

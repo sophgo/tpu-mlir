@@ -286,7 +286,7 @@ class AsicSummary(object):
             if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2', 'A2']:
                 if float(ws.cell(h, parallelismPos).value[:-1]) < 205:
                     ws.cell(h, parallelismPos).fill = DetailsStyle.yellow_light
-            elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
+            elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688', 'sgtpuv8']:
                 if float(ws.cell(h, parallelismPos).value[:-1]) < 105:
                     ws.cell(h, parallelismPos).fill = DetailsStyle.red_light
             else:
@@ -329,7 +329,7 @@ class AsicSummary(object):
         content_end_rows = chart_len
         if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2', 'A2']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<205%'
-        elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688']:
+        elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688', 'sgtpuv8']:
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<105%'
         else:
             print('Not support chip arch')

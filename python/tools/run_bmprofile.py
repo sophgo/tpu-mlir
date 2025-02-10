@@ -292,6 +292,19 @@ def recreate(dir):
     os.makedirs(dir, exist_ok=True)
 
 
+def get_base_name(bmodel: str):
+
+    dirname = os.path.dirname(os.path.abspath(bmodel))
+    basename = os.path.basename(bmodel)
+
+    if basename == "compilation.bmodel":
+        profile_base = dirname.rstrip("/")
+    else:
+        context_dir = os.path.join(dirname, os.path.splitext(basename)[0])
+        profile_base = context_dir.rstrip("/")
+    return os.path.join(os.path.dirname(profile_base), "diagnostic")
+
+
 def simulation(bmodel: str):
     """
     Here update the data by "git pull"
@@ -315,8 +328,10 @@ def simulation(bmodel: str):
     bmodel_ext0 = os.path.splitext(bmodel_base_name)[0]
     log_bmodel_shape(bmodel_abs_path)
     bmodel_binary_dir = os.path.join(base_root, f"{bmodel_ext0}.binary")
-    profile_raw_name = f"{bmodel_ext0}.perfai_profile_raw"
+
+    profile_raw_name = os.path.join(get_base_name(bmodel), f"perfai_profile_raw")
     shutil.rmtree(profile_raw_name, ignore_errors=True)
+
     profile_raw_dir = os.path.join(base_root, profile_raw_name)
 
     bmodel_ = dis.BModel(bmodel_abs_path)
@@ -366,7 +381,7 @@ def simulation(bmodel: str):
     return profile_raw_dir
 
 
-def bmprofile(path):
+def bmprofile(path: str):
     name = str(datetime.now()).replace(":", "_").replace(" ", "_")
     bmodel = dis.BModel(path)
     chip = bmodel.chip
@@ -377,14 +392,7 @@ def bmprofile(path):
     ret, log = subprocess.getstatusoutput(f"ssh {remote} mkdir {name}")
     ret, log = subprocess.getstatusoutput(f"scp {path} {remote}:{name}")
 
-    dirname = os.path.dirname(path)
     basename = os.path.basename(path)
-
-    if basename == "compilation.bmodel":
-        profile_base = dirname.rstrip("/")
-    else:
-        context_dir = os.path.join(dirname, os.path.splitext(basename)[0])
-        profile_base = context_dir.rstrip("/")
 
     ret, log = subprocess.getstatusoutput(
         f"""ssh {remote} 'export BMRUNTIME_ENABLE_PROFILE=1 ; cd {name} ; /opt/sophon/libsophon-current/bin/bmrt_test --bmodel {basename}' """
@@ -392,7 +400,7 @@ def bmprofile(path):
     if ret != 0:
         raise RuntimeError(f"bmrt_test failed: {log}")
 
-    profile_raw = f"{profile_base}.bm_profile_raw"
+    profile_raw = os.path.join(get_base_name(path), f"bm_profile_raw")
 
     try:
         shutil.rmtree(profile_raw)

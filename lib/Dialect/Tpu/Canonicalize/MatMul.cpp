@@ -29,7 +29,8 @@ struct MatMulWithBias : public OpRewriterPatternEx<tpu::MatMulOp> {
     if (!out_stype.isa<FloatType>()) {
       return failure();
     }
-    if ((module::isBM1688() || module::isMARS3() || module::isSG2380()) &&
+    if ((module::isBM1688() || module::isMARS3() || module::isSGTPUV8() ||
+         module::isSG2380()) &&
         !out_stype.isF32()) {
       // only f32 support
       return failure();
@@ -67,9 +68,11 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
                                     PatternRewriter &rewriter) const override {
     // return failure();
     std::vector<Operation *> op_need_del;
-    if (!module::isBM1684X() && !module::isBM1688()) {
+    if (!module::isBM1684X() && !module::isBM1688() &&
+        !module::isBM1690Family()) {
       return failure();
     }
+
     auto out_type = module::getStorageType(op.getOutput());
     if (!out_type.isBF16() && !out_type.isF16()) {
       return failure();
@@ -348,7 +351,8 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
       return failure();
     }
     if ((module::isBM1684X() && (q_head / kv_head > 16)) ||
-        (module::isBM1688() && (q_head / kv_head > 8))) {
+        (module::isBM1688() && (q_head / kv_head > 8)) ||
+        (module::isBM1690Family() && (q_head / kv_head > 16))) {
       return failure();
     }
     if (add) {

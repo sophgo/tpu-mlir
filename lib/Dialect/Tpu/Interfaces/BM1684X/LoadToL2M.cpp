@@ -35,6 +35,9 @@ void tpu::LoadToL2MOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 }
 
 void tpu::LoadToL2MOp::codegen_only_for_LoadToL2MOp(std::pair<int, int>& core_num_idx) {
+  if (module::getChip() != module::Chip::BM1690) {
+    return;
+  }
   auto op = getOperation();
   auto dst_addr = module::getAddress(op->getOperand(1));
   auto src_addr = module::getAddress(op->getOperand(0));

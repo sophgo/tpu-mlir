@@ -12,6 +12,7 @@ from bmprofile_parser import BMProfileParser
 from bmprofile_generator import BMProfileGenerator
 from bmprofile_layergroup import BMProfileLLayerGroup
 import subprocess
+import traceback
 import os
 
 
@@ -66,6 +67,8 @@ def bmprofile_parse_perfAI(
         target_dir = output_dir
     except Exception as e:
         target_dir = input_dir
+        if debug:
+            traceback.print_exc()
         print(f"parse {arch} profile failed, try run PerfAI directly")
 
     if not debug:

@@ -1,12 +1,8 @@
 Use Tensor Computing Processor for Postprocessing
 ==================================================
-Currently, TPU-MLIR supports integrating the post-processing of YOLO series and SSD network models into the model. The processors currently supporting this function include BM1684X, BM1688, CV186X and BM1690. This chapter will take the conversion of YOLOv5s to F16 model as an example to introduce how this function is used.
+Currently, TPU-MLIR supports integrating the post-processing of YOLO series and SSD network models into the model. The processors currently supporting this function include BM1684X, BM1688, CV186X and BM1690. This chapter will take the conversion of YOLOv5s and YOLOv8s_seg to F16 model as an example to introduce how this function is used.
 
 This chapter requires the tpu_mlir python package.
-
-
-Install tpu_mlir
-------------------
 
 Go to the Docker container and execute the following command to install tpu_mlir:
 
@@ -16,11 +12,15 @@ Go to the Docker container and execute the following command to install tpu_mlir
    # or
    $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
+.. include:: get_resource.rst
+
+
+Add detection post_process(YOLOv5s)
+-----------------------------------
 
 Prepare working directory
--------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. include:: get_resource.rst
 
 Create a ``model_yolov5s`` directory, and put both model files and image files into the ``model_yolov5s`` directory.
 
@@ -37,7 +37,7 @@ The operation is as follows:
 
 
 ONNX to MLIR
---------------------
+^^^^^^^^^^^^
 
 The model conversion command is as follows:
 
@@ -81,7 +81,7 @@ The coordinates are relative to the width and length of the model input, it's 64
 
 
 MLIR to Bmodel
---------------------
+^^^^^^^^^^^^^^
 
 To convert the MLIR file to an F16 bmodel, proceed as follows:
 
@@ -128,7 +128,7 @@ Here, [1, 1, 200, 7] is the maximum shape, and the actual output varies dependin
 
 
 Bmodel Verification
------------------------
+^^^^^^^^^^^^^^^^^^^
 
 In tpu_mlir package, there are yolov5 use cases written in python, using the ``detect_yolov5`` command to detect objects in images.
 This command corresponds to the source code path ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py``.
@@ -142,6 +142,126 @@ The command execution is as follows:
    $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_f16.bmodel \
+       --net_input_dims 640,640 \
+       --fuse_preprocess \
+       --fuse_postprocess \
+       --output dog_out.jpg
+
+Add segmentation post_processing(YOLOv8s_seg)
+------------------------------
+
+Prepare working directory
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Create a ``model_yolov8s_seg`` directory, export ONNX model file by the official model, and put image files into the ``model_yolov8s_seg`` directory.
+
+The operation is as follows:
+
+.. code-block:: shell
+   :linenos:
+
+   $ mkdir yolov8s_seg_onnx && cd yolov8s_seg_onnx
+   $ python -c "import torch; from ultralytics import YOLO; model = YOLO('yolov8s-seg.pt'); model.export(format='onnx')"
+   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
+   $ cp -rf tpu_mlir_resource/image .
+   $ mkdir workspace && cd workspace
+
+ONNX to MLIR
+^^^^^^^^^^^^
+
+The model conversion command is as follows:
+
+.. code-block:: shell
+
+   $ model_transform \
+       --model_name yolov8s_seg \
+       --model_def ../yolov8s-seg.onnx \
+       --input_shapes [[1,3,640,640]] \
+       --mean 0.0,0.0,0.0 \
+       --scale 0.0039216,0.0039216,0.0039216 \
+       --keep_aspect_ratio \
+       --pixel_format rgb \
+       --add_postprocess yolov8_seg \
+       --test_input ../image/dog.jpg \
+       --test_result yolov8s_seg_top_outputs.npz \
+       --mlir yolov8s_seg.mlir
+
+
+The generated ``yolov8s_seg.mlir`` file has several operators named ``yolo_seg_post*`` inserted at the end, which are used for post-processing operations such as coordinate transformation, NMS, and matrix multiplication.
+
+.. code-block:: text
+    :linenos:
+
+    %429 = "top.Sigmoid"(%428) {bias = 0.000000e+00 : f64, log = false, round_mode = "HalfAwayFromZero", scale = 1.000000e+00 : f64} : (tensor<8400x25600xf32>) -> tensor<8400x25600xf32> loc(#loc431)
+    %430 = "top.Reshape"(%429) {flatten_start_dim = -1 : i64} : (tensor<8400x25600xf32>) -> tensor<8400x160x160xf32> loc(#loc432)
+    %431 = "top.Slice"(%430, %0, %0, %0) {axes = [], ends = [100, 160, 160], hasparamConvert_axes = [], offset = [0, 0, 0], steps = [1, 1, 1]} : (tensor<8400x160x160xf32>, none, none, none) -> tensor<100x160x160xf32> loc(#loc433)
+    %432 = "top.Slice"(%425, %0, %0, %0) {axes = [], ends = [100, 6], hasparamConvert_axes = [], offset = [0, 0], steps = [1, 1]} : (tensor<8400x38xf32>, none, none, none) -> tensor<100x6xf32> loc(#loc434)
+    return %431, %432 : tensor<100x160x160xf32>, tensor<100x6xf32> loc(#loc)
+
+
+The model has 2 outputs,  which masks_uncrop_uncompare is the raw segmentation mask with a shape of ``100x160x160``, where 100 represents the maximum number of detection boxes, and 160x160 corresponds to the pixel size of the final feature map.
+
+The seg_out represents the detection boxes with a shape of ``100x6``, where 100 indicates the maximum number of detection boxes,
+and the 6 elements respectively represent ``[x_left, y_up, x_right, y_bottom, score, class_id]``.
+Currently, post-processing for segmentation models with multiple batches is not supported, so batch information is not included.
+The coordinates are relative to the width and length of the model input, it's 640x640 in this example, with the following values:
+
+.. code-block:: text
+
+   [-74.06776, 263.67566, 74.06777, 531.1172, 0.9523437, 16.]
+
+
+From the raw mask to the final mask output, a resize operation is required to scale it back to the original image size.
+Then, the excess parts of the mask are cropped based on the detection boxes in seg_out.
+Finally, threshold filtering is applied to the mask to obtain the full-resolution mask.
+The processing code can be referenced in the workflow of the source file located at ``{package/path/to/tpu_mlir}/python/samples/segment_yolo.py``.
+
+
+
+
+MLIR to Bmodel
+^^^^^^^^^^^^^^
+
+To convert the MLIR file to an F16 bmodel, proceed as follows:
+
+.. code-block:: shell
+
+   $ fp_forward.py yolov8s_seg.mlir \
+       --fpfwd_outputs yolo_seg_post_mulconst3 \
+       --chip bm1684x \
+       --fp_type F32 \
+       -o yolov8s_seg_qtable
+
+   $ model_deploy \
+       --mlir yolov8s_seg.mlir \
+       --quantize F16 \
+       --processor bm1684x \
+       --fuse_preprocess \
+       --quantize_table yolov8s_seg_qtable \
+       --model yolov8s_seg_1684x_f16.bmodel
+
+
+Here, the ``--fuse_preprocess`` parameter is added in order to integrate the preprocessing into the model as well.
+The yolov8s_seg_qtable is used because post-processing applies an offset operation to the boxes,
+multiplying their coordinates by a large integer.
+FP16 can introduce inaccuracies with such operations, leading to excessive masks and reduced post-processing performance.
+To address this, mixed precision with FP32 is used for these operations.
+
+Bmodel Verification
+^^^^^^^^^^^^^^^^^^^
+
+In tpu_mlir package, there are yolov8s_seg use cases written in python, using the ``segment_yolo`` command to detect objects in images.
+This command corresponds to the source code path ``{package/path/to/tpu_mlir}/python/samples/segment_yolo.py``.
+It is used for instance segmentation in images.
+By reading this code, you can understand how the final output result is transformed into masks and bounding boxes.
+
+The command execution is as follows:
+
+.. code-block:: shell
+
+   $ segment_yolo \
+       --input ../image/dog.jpg \
+       --model yolov8s_seg_1684x_f16.bmodel \
        --net_input_dims 640,640 \
        --fuse_preprocess \
        --fuse_postprocess \

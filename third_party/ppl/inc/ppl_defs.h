@@ -6,6 +6,7 @@
 #define __KERNEL__ __attribute__((deprecated("kernel")))
 #define __TEST__ __attribute__((deprecated("test")))
 #define __HOST__ __attribute__((deprecated("host")))
+#define __AUTOTUNE__ __attribute__((deprecated("autotune")))
 #define IS_UNSIGNED(dtype)                                              \
   (std::is_same_v<dtype, uint8>  || std::is_same_v<dtype, uint8 *> ||   \
    std::is_same_v<dtype, uint32> || std::is_same_v<dtype, uint32 *> ||  \

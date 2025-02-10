@@ -12,10 +12,10 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690/SG2380/MARS3 2024-12-19
+## TPU1684X/1688/BM1690/SG2380/MARS3/SGTPUV8 2025-01-15
 ``` bash
 
-#bm1684x sha256:  49392455a59efbf73fa1bcdb2e82dbf55c6d398c
+#bm1684x sha256: 599af862c3ed54a35bea45923bbad3ee8104f8f0
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 49392455a59efbf73fa1bcdb2e82dbf55c6d398c
+#bm1688 sha256: 599af862c3ed54a35bea45923bbad3ee8104f8f0
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: 016af230fe5d2ebe52d990add9e0b97787587ff5
+#bm1690 sha256: 599af862c3ed54a35bea45923bbad3ee8104f8f0
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -57,18 +57,31 @@ release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#mars3 sha256:  5474d4df3a35cf300a9e23f77e9c8ad9cfa70937
+#mars3 sha256:  cd3898ba7118e5588ca02a289b9f661fed259b67
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
 release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_mars3.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_mars3.so
 cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_mars3.so
+rebuild_firmware
+cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libmars3_kernel_module.so
+cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libmars3_kernel_module.a
+
+#SGTPUV8 sha256: cd3898ba7118e5588ca02a289b9f661fed259b67
+cd TPU1686
+source  scripts/envsetup.sh sgtpuv8
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
+cp build/backend_api/libbackend_sgtpuv8.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sgtpuv8.so
+cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sgtpuv8.so
+rebuild_firmware
+cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.so
+cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.a
 ```
 
-
-## tpu-runtime 2023-10-31
-build from tpu-runtime e42778db10b903b87f8f83637fdfc4b46e18ebd4
+## tpu-runtime 2025-1-17
+build from tpu-runtime f2bd5f7ba035b624f25fb7d8b6792b3d2180177b
 ``` bash
 pushd libsophon
 mkdir -p build && cd build

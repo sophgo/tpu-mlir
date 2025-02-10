@@ -64,7 +64,7 @@ LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
   }
 
   bool use_dq2 = false;
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     use_dq2 = (module::getQuantGroupSize() >= 32) &&
               (module::getQuantGroupSize() % 32 == 0) &&
               (op.getWeightBits() == 4);

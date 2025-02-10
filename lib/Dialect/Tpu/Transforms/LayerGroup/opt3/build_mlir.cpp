@@ -103,9 +103,6 @@ void GroupOps::CreateLmemMoveOp(int64_t ts, ts_move_info& move_info) {
   for (auto itr: move_info.move_value) {
     LOG(INFO) <<"need move value:"<<module::getName(itr).str();
     auto new_value = map_old_to_new_value[itr][move_info.slice_idx[i]];
-    if (map_l2m_out_to_load_in.find(itr) != map_l2m_out_to_load_in.end()){
-      new_value = map_l2m_out_to_load_in[itr];
-    }
     operands.push_back(new_value);
     i++;
   }
@@ -173,7 +170,11 @@ void GroupOps::CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id
   }
 
   std::vector<Value> operands;
-  operands.push_back(input);
+  if (map_old_grp_out_to_new_grp_out.find(input) != map_old_grp_out_to_new_grp_out.end()) {
+    operands.push_back(map_old_grp_out_to_new_grp_out[input]);
+  } else {
+    operands.push_back(input);
+  }
   operands.push_back(buffer_value);
   auto loadToL2mOp = builder.create<tpu::LoadToL2MOp>(NameLoc::get(builder.getStringAttr(name)),
                 input.getType(), operands, attrs);
@@ -183,7 +184,7 @@ void GroupOps::CreateLoadToL2mOp(int64_t ts, l2m_value_info& it, int64_t pipe_id
 
 void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
                             const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
-                            const LgInfo& lgInfo, bool can_merge) {
+                            const LgInfo& lgInfo, bool can_merge, std::map<Value, Value, value_compare>& map_old_v_to_new_v_in_group_in) {
   Value &input = ts_var.value;
   tensor_info_t& ti = ts_var.info;
   int64_t slice_idx = ts_var.slice_idx;
@@ -281,6 +282,13 @@ void GroupOps::CreateLoadOp2(int64_t ts, ts_var_t& ts_var, int64_t pipe_id,
     } else {
       operands.push_back(input);
     }
+  }
+  //for add op from mlp group part sum
+  if (map_old_v_to_new_v_in_group_in.find(input) != map_old_v_to_new_v_in_group_in.end()) {
+    input = map_old_v_to_new_v_in_group_in[input];
+    inputOp = input.getDefiningOp();
+    operands.clear();
+    operands.push_back(input);
   }
   auto loadOp =
       builder.create<tpu::LoadOp>(NameLoc::get(builder.getStringAttr(name)),
@@ -970,7 +978,7 @@ void GroupOps::buildMlir_for_opt3() {
             if (it.var_value == 1) {
               std::vector<int64_t> ncdhw_idx = ILP_time_step->ncdhw_steps.begin()->second[it.slice_idx];
               if (it.info.mode2 & TIMESTEP2_LOAD) {
-                CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info, can_merge);
+                CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info, can_merge, lg_pass_ir_->map_old_v_to_new_v_in_group_in);
               } else if (it.info.mode2 & TIMESTEP2_STORE) {
                 auto storeOp_out = CreateStoreOp2(it.value, it.info, ts_id, it.slice_idx,
                                    pipe_id, lg_info.type, can_merge, l2mem_alloc_ptr);
@@ -986,7 +994,7 @@ void GroupOps::buildMlir_for_opt3() {
                     map_group_out_to_yield_in[it.value] = storeOp_out;
                   }
                 } else {
-                  CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info, can_merge);
+                  CreateLoadOp2(ts_id, it, pipe_id, ops, ncdhw_idx, lg_info, can_merge, lg_pass_ir_->map_old_v_to_new_v_in_group_in);
                 }
               }
             }

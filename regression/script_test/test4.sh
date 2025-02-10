@@ -199,7 +199,7 @@ model_deploy.py \
   --chip bm1684x \
   --test_input ${REGRESSION_PATH}/image/dog.jpg \
   --test_reference yolov8s_seg_top_outputs.npz \
-  --except masks_uncrop,seg_out \
+  --except masks_uncrop_uncompare,seg_out \
   --fuse_preprocess \
   --debug \
   --model yolov8s_seg_f32.bmodel
@@ -225,7 +225,7 @@ model_deploy.py \
   --chip bm1684x \
   --test_input ${REGRESSION_PATH}/image/dog.jpg \
   --test_reference yolov8s_seg_top_outputs.npz \
-  --except masks_uncrop,seg_out \
+  --except masks_uncrop_uncompare,seg_out \
   --fuse_preprocess \
   --debug \
   --quantize_table yolov8s_seg_qtable \

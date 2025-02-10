@@ -18,12 +18,12 @@ typedef struct {
   int offset;
   bool unsigned_flag;
   bool default_stride;
-} __ppl_tensor_info;
+} __ppl_tensor_info_v2;
 
 void set_id_node(CMD_ID_NODE *pid_node);
 
 void get_id_node(CMD_ID_NODE *pid_node);
 
-char *__ppl_to_string(const __ppl_tensor_info *tensor);
+char *__ppl_to_string(const __ppl_tensor_info_v2 *tensor);
 
 #endif

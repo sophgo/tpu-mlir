@@ -338,8 +338,8 @@ static void merge_timesteps(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
                             std::vector<int64_t> &total_layer_cycle_v,
                             std::vector<int64_t> &total_gdma_cycle_v,
                             MemBuff &mem_buffer, bool &print_log,
-                            int64_t group_idx) {
-  auto lmem_allocator = LmemAllocator();
+                            int64_t group_idx, const LgOptions &options) {
+  auto lmem_allocator = LmemAllocator(options);
   MemBuff p_lmem = time_step->get_lmem_buffer();
   std::vector<TpuTsField> p_layers(ts_layers_v);
   std::vector<GdmaTsField> p_tensors(ts_tensors_v);
@@ -433,17 +433,15 @@ static void merge_timesteps(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
  * 2. Swap tensors for store and load if their profit is equal, to make load as
  * last as possible, and make store as soon as possible.
  */
-static void reassign_timestep_tensors(const LgInfo &lg_info,
-                                      BasicTimeStepPtr &time_step,
-                                      const shape_secs_t &shape_secs,
-                                      std::vector<TpuTsField> &ts_layers_v,
-                                      std::vector<GdmaTsField> &ts_tensors_v,
-                                      std::vector<int64_t> &total_layer_cycle_v,
-                                      std::vector<int64_t> &total_gdma_cycle_v,
-                                      MemBuff &mem_buffer, bool &print_log,
-                                      int64_t group_idx) {
+static void reassign_timestep_tensors(
+    const LgInfo &lg_info, BasicTimeStepPtr &time_step,
+    const shape_secs_t &shape_secs, std::vector<TpuTsField> &ts_layers_v,
+    std::vector<GdmaTsField> &ts_tensors_v,
+    std::vector<int64_t> &total_layer_cycle_v,
+    std::vector<int64_t> &total_gdma_cycle_v, MemBuff &mem_buffer,
+    bool &print_log, int64_t group_idx, const LgOptions &options) {
   // move tensor to other timestep if gdma_cycle > bdc_cycle
-  auto lmem_allocator = LmemAllocator();
+  auto lmem_allocator = LmemAllocator(options);
   int64_t ts = -1;
   GdmaElt sel_tensor;
   std::list<int64_t> sel_timesteps;
@@ -602,7 +600,8 @@ static void reassign_timestep_tensors(const LgInfo &lg_info,
 static void memory_aware_timestep_combine(const LgInfo &lg_info,
                                           BasicTimeStepPtr &time_step,
                                           const shape_secs_t &shape_secs,
-                                          int64_t group_idx) {
+                                          int64_t group_idx,
+                                          const LgOptions &options) {
   if (lg_info.group_ops.size() == 1) {
     return;
   }
@@ -629,29 +628,32 @@ static void memory_aware_timestep_combine(const LgInfo &lg_info,
     reassign_timestep_tensors(lg_info, time_step, shape_secs, ts_layers_v,
                               ts_tensors_v, total_layer_cycle_v,
                               total_gdma_cycle_v, mem_buffer, print_log,
-                              group_idx);
+                              group_idx, options);
   }
   merge_timesteps(lg_info, time_step, shape_secs, ts_layers_v, ts_tensors_v,
                   total_layer_cycle_v, total_gdma_cycle_v, mem_buffer,
-                  print_log, group_idx);
+                  print_log, group_idx, options);
 }
 
 static void timestep_combine(const std::vector<LgInfo> &lg_infos,
                              std::vector<BasicTimeStepPtr> &time_steps,
-                             const std::vector<shape_secs_t> &shape_secs) {
+                             const std::vector<shape_secs_t> &shape_secs,
+                             const LgOptions &options) {
   assert(lg_infos.size() == time_steps.size());
   assert(lg_infos.size() == shape_secs.size());
   for (size_t i = 0; i < lg_infos.size(); ++i) {
-    memory_aware_timestep_combine(lg_infos[i], time_steps[i], shape_secs[i], i);
+    memory_aware_timestep_combine(lg_infos[i], time_steps[i], shape_secs[i], i,
+                                  options);
   }
 }
 
 /// The pass for time step combine
 class TimeStepCombinePass : public LgPass {
 public:
+  TimeStepCombinePass(const LgOptions &options) { options_ = options; }
   virtual bool run(LgPassIR *pass_ir) override {
     timestep_combine(pass_ir->lg_infos, pass_ir->time_steps,
-                     pass_ir->shape_secs);
+                     pass_ir->shape_secs, options_);
     return true;
   }
   virtual std::string name() override { return "TimeStepCombinePass"; }
@@ -660,8 +662,8 @@ public:
   }
 };
 
-std::unique_ptr<LgPass> CreateTimeStepCombinePass() {
-  return std::unique_ptr<LgPass>(new TimeStepCombinePass());
+std::unique_ptr<LgPass> CreateTimeStepCombinePass(const LgOptions &options) {
+  return std::unique_ptr<LgPass>(new TimeStepCombinePass(options));
 }
 
 } // namespace tpu

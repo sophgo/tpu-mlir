@@ -32,7 +32,8 @@ void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,
 }
 
 void ErfLowering::LoweringBF16(PatternRewriter &rewriter, top::ErfOp op) const {
-  if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+  if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+      module::isSGTPUV8()) {
     auto op_ = op.getOperation();
     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::ERF));
@@ -43,7 +44,8 @@ void ErfLowering::LoweringBF16(PatternRewriter &rewriter, top::ErfOp op) const {
 }
 
 void ErfLowering::LoweringF16(PatternRewriter &rewriter, top::ErfOp op) const {
-  if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+  if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+      module::isSGTPUV8()) {
     auto op_ = op.getOperation();
     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::ERF));

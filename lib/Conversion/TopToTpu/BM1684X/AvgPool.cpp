@@ -120,16 +120,17 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void AvgPoolLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::AvgPoolOp poolOp) const {
-  auto op = poolOp.getOperation();
-  op->setAttr("pool_mode",
-              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
-  if (poolOp.getKernelShape().size() == 3) {
-    lowering_common_f16<tpu::Pool3DOp>(rewriter, op, 2);
-  } else if (poolOp.getKernelShape().size() == 2) {
-    lowering_common_f16<tpu::Pool2DOp>(rewriter, op);
-  } else {
-    lowering_common_f16<tpu::Pool1DOp>(rewriter, op);
-  }
+  // auto op = poolOp.getOperation();
+  // op->setAttr("pool_mode",
+  //             tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
+  // if (poolOp.getKernelShape().size() == 3) {
+  //   lowering_common_f16<tpu::Pool3DOp>(rewriter, op, 2);
+  // } else if (poolOp.getKernelShape().size() == 2) {
+  //   lowering_common_f16<tpu::Pool2DOp>(rewriter, op);
+  // } else {
+  //   lowering_common_f16<tpu::Pool1DOp>(rewriter, op);
+  // }
+  LoweringF32(rewriter, poolOp);
 }
 
 void AvgPoolLowering::LoweringF8(PatternRewriter &rewriter,

@@ -291,6 +291,10 @@ static void register_blk_out(Operation *blk_op, upd_info_t &upd_info,
   }
 }
 
+static unsigned get_op_file_line(Operation* op) {
+  return op->getLoc().dyn_cast<FileLineColLoc>().getLine();
+}
+
 class GroupDataFlowAnalysis {
 public:
   static Operation *analyze_from_tp(Operation *blk_op) {
@@ -429,6 +433,33 @@ public:
     return nullptr;
   }
 
+  static Vector<Operation*> analyze_from_tp_for_more(Operation *func_op) {
+    Vector<Operation*> end_ops;
+    auto funcOp = dyn_cast<func::FuncOp>(func_op);
+    auto &ops = funcOp.getFunctionBody().front().getOperations();
+    for (auto &op : ops) {
+      if (is_aux_op(&op)) {
+        continue;
+      }
+      if (is_special_blk_op(&op)) {
+        Operation *may_be_end_op = BlkDataFlowAnalysis::analyze_from_tp(&op);
+        if (may_be_end_op) {
+          end_ops.push_back(may_be_end_op);
+        }
+      } else {
+        for (auto v : op.getResults()) {
+          if (module::isNone(v))
+            continue;
+          if (g_roster.is_expected_output(v)) {
+            end_ops.push_back(&op);
+            break;
+          }
+        }
+      }
+    }
+    return end_ops;
+  }
+
   static void analyze_from_bt(SetVector<PValue> &live_values,
                               upd_info_t &sn_upd_info,
                               Map<Operation *, upd_info_t> &blk_upd_infos) {
@@ -438,7 +469,22 @@ public:
       if (def_op) {
         if (is_aux_op(def_op))
           continue;
-        if (g_roster.is_expected_input(v)) {
+        if (auto fused_loc = v.getLoc().dyn_cast<FusedLoc>()) {
+          auto locs = fused_loc.getLocations();
+          bool match = false;
+          for (auto loc : locs) {
+            if (auto name_loc = loc.dyn_cast<NameLoc>()) {
+              if (g_roster.is_expected_input(name_loc.getName().str())) {
+                match = true;
+                break;
+              }
+            }
+          }
+          if (match) {
+            sn_upd_info.new_ins.insert(v.getImpl());
+            continue;
+          }
+        } else if (g_roster.is_expected_input(v)) {
           sn_upd_info.new_ins.insert(v.getImpl());
           continue;
         }
@@ -476,10 +522,20 @@ static bool need_update(Operation *blk_op, const upd_info_t &blk_upd_info) {
   return false;
 }
 
+static Location get_real_location(Value v) {
+  if (auto fused_loc = v.getLoc().dyn_cast<FusedLoc>()) {
+    const int index = v.cast<OpResult>().getResultNumber();
+    const auto locs = fused_loc.getLocations();
+    return locs[index];
+  } else {
+    return v.getLoc();
+  }
+}
+
 static Value create_new_arg(FuncOp &funcOp, Value v,
                             bool b_assign_addr = false) {
   auto &block = funcOp.getFunctionBody().front();
-  auto arg = block.addArgument(v.getType(), v.getLoc());
+  auto arg = block.addArgument(v.getType(), get_real_location(v));
   if (b_assign_addr) {
     MyGmemAllocator::get()->assign_addr(arg);
   }
@@ -901,7 +957,8 @@ class MultiSubnetTruncIOWorker {
   Map<int, Map<int, id_pair_t>> subnet_io_maps;
 
 public:
-  void invoke() {
+  void invoke(int trunc_mode) {
+    assert(trunc_mode == 0);
     auto mainFuncOp = module::getMainFuncOp(g_moduleOp);
     analyze_call_data_flow(mainFuncOp);
     bool found = false;
@@ -1097,21 +1154,34 @@ private:
 
 class TruncIOWorker {
 public:
-  void invoke() {
+  void invoke(int trunc_mode) {
     upd_info_t sn_upd_info;
     SetVector<PValue> live_values;
     Map<Operation *, upd_info_t> blk_upd_infos;
     auto mainFuncOp = module::getMainFuncOp(g_moduleOp);
     auto main_func_op = mainFuncOp.getOperation();
-    Operation *may_be_end_op =
-        FuncDataFlowAnalysis::analyze_from_tp(main_func_op);
-    if (may_be_end_op == nullptr)
-      return;
-    for (auto v : may_be_end_op->getResults()) {
-      if (module::isNone(v))
-        continue;
-      live_values.insert(v.Value::getImpl());
-      register_blk_out(main_func_op, sn_upd_info, v);
+    Vector<Operation*> end_ops;
+    if (trunc_mode == 0) {
+      Operation *may_be_end_op =
+          FuncDataFlowAnalysis::analyze_from_tp(main_func_op);
+      if (may_be_end_op == nullptr)
+        return;
+      end_ops.push_back(may_be_end_op);
+    } else if (trunc_mode == 1) {
+      end_ops =
+          FuncDataFlowAnalysis::analyze_from_tp_for_more(main_func_op);
+      if (end_ops.empty())
+        return;
+    } else {
+      llvm_unreachable("unknown trunc_mode");
+    }
+    for (auto end_op : end_ops) {
+      for (auto v : end_op->getResults()) {
+        if (module::isNone(v))
+          continue;
+        live_values.insert(v.Value::getImpl());
+        register_blk_out(main_func_op, sn_upd_info, v);
+      }
     }
     FuncDataFlowAnalysis::analyze_from_bt(live_values, sn_upd_info,
                                           blk_upd_infos);
@@ -1148,12 +1218,7 @@ public:
 
   void update_module_weights(ModuleOp &mOp) {
     std::string old_wfile_name = module::getWeightFileAttr().str();
-    std::string postfix = "weight.npz";
-    std::size_t pos = old_wfile_name.find(postfix);
-    if (pos == -1)
-      module::unreachable("weight file name error");
-    std::string new_wfile_name =
-        old_wfile_name.substr(0, pos) + "_trunc_" + postfix;
+    std::string new_wfile_name = "trunc_" + old_wfile_name;
     auto wFile = std::make_unique<mlir::TensorFile>(old_wfile_name, false);
     std::set<StringRef> npz_names;
     wFile->getAllNames(npz_names);
@@ -1219,13 +1284,15 @@ public:
       return;
     if (!module::isSubnetDividedState()) {
       g_moduleOp = mOp;
-      TruncIOWorker().invoke();
+      TruncIOWorker().invoke(this->trunc_mode);
     } else {
       g_moduleOp = module::getAllModules()->at(0);
-      MultiSubnetTruncIOWorker().invoke();
+      MultiSubnetTruncIOWorker().invoke(this->trunc_mode);
       update_module_io_names(g_moduleOp);
     }
-    update_module_weights(g_moduleOp);
+    if (!this->weight_shared) {
+      update_module_weights(g_moduleOp);
+    }
   }
 };
 

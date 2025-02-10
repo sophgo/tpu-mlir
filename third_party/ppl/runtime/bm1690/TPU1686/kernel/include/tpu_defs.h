@@ -16,6 +16,12 @@ typedef unsigned int u32;
 #define TENSOR_H_DIM 2
 #define TENSOR_W_DIM 3
 
+#ifdef USING_CMODEL
+#define THREAD __thread
+#else
+#define THREAD
+#endif
+
 typedef enum {
     DT_INT8   = (0 << 1) | 1,
     DT_UINT8  = (0 << 1) | 0,
@@ -127,5 +133,12 @@ typedef union {
     float          f32;
     float20        f20;
 } scalar_t;
+
+typedef struct {
+    u32 engine_type;
+    u32 command_num;
+    u64 command_addr;
+    u64 command_bytes;
+} tpu_engine_command_info_t;
 
 #endif /* _OK_DEFS_ */

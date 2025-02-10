@@ -213,7 +213,7 @@ model_transform.py
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后按照该指定名称的顺序做输出
    * - add_postprocess
      - 否
-     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5、yolov8、yolov11、ssd后处理
+     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5、yolov8、yolov11、ssd、yolov8_seg后处理
    * - test_input
      - 否
      - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会正确性验证
@@ -533,9 +533,9 @@ model_deploy.py
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8/F8E4M3量化的时候需要校准表
-   * - ignore_f16_overflow
+   * - high_precision
      - 否
-     - 打开时则有F16溢出风险的算子依然按F16实现;否则默认会采用F32实现, 如LayerNorm
+     - 打开时一部分算子会固定用float32
    * - tolerance
      - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果余弦与欧式相似度的误差容忍度，默认为0.8,0.5

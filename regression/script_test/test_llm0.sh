@@ -74,6 +74,15 @@ model_deploy.py \
   --test_reference qwen_block_0_top_outputs.npz \
   --model qwen_block_0_bf16.bmodel
 
+model_deploy.py \
+  --mlir qwen_block_0.mlir \
+  --quantize BF16 \
+  --chip bm1684x \
+  --high_precision \
+  --test_input ${NNMODELS_PATH}/llm_models/qwen_block_0_input.npz \
+  --test_reference qwen_block_0_top_outputs.npz \
+  --model qwen_block_0_bf16_v2.bmodel
+
 # block cache
 # qwen_0.5b
 model_transform.py \
@@ -129,6 +138,15 @@ model_deploy.py \
   --test_input ${NNMODELS_PATH}/llm_models/qwen_block_cache_0_input.npz \
   --test_reference qwen_block_cache_0_top_outputs.npz \
   --model qwen_block_cache_0_bf16.bmodel
+
+model_deploy.py \
+  --mlir qwen_block_cache_0.mlir \
+  --quantize BF16 \
+  --chip bm1684x \
+  --high_precision \
+  --test_input ${NNMODELS_PATH}/llm_models/qwen_block_cache_0_input.npz \
+  --test_reference qwen_block_cache_0_top_outputs.npz \
+  --model qwen_block_cache_0_bf16_v2.bmodel
 
 # combine prefill and decode, the size should be same
 

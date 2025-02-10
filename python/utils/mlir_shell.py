@@ -60,10 +60,66 @@ def env2bashstr(env: dict, auto_pick=True):
 from io import StringIO
 
 
+def is_logger_configured(logger_name):
+    logger = logging.getLogger(logger_name)
+    return len(logger.handlers) > 0
+
+
 def getstatusoutput_v2(
-    cmd, cwd=None, env=None, timeout=None, check=False, shell=False,
+    cmd,
+    cwd=None,
+    env=None,
+    timeout=None,
+    check=False,
+    shell=False,
     print_output=False,
-    **kwargs
+    **kwargs,
+) -> Tuple[int, str]:
+    if is_logger_configured("logger_to_file") and is_logger_configured(
+        "logger_to_file.console"
+    ):
+        # for handler in logging.getLogger("logger_to_file").handlers:
+        #     if isinstance(handler, logging.FileHandler):
+        #         print(f"FileHandler found: {handler.baseFilename}")
+        #         print(f"Level: {handler.level}")
+        #         print(f"Formatter: {handler.formatter._fmt}")
+        #         print(f"Mode: {handler.mode}")
+        #         print(f"Encoding: {handler.encoding}")
+
+        return getstatusoutput_v2_split_log(
+            cmd,
+            cwd=cwd,
+            env=env,
+            timeout=timeout,
+            check=check,
+            shell=shell,
+            **kwargs,
+        )
+    else:
+        return getstatusoutput_v2_without_split_log(
+            cmd,
+            cwd=cwd,
+            env=env,
+            timeout=timeout,
+            check=check,
+            shell=shell,
+
+            print_output=print_output,
+            **kwargs,
+        )
+
+
+def getstatusoutput_v2_without_split_log(
+    cmd,
+    cwd=None,
+    env=None,
+    timeout=None,
+    check=False,
+    shell=False,
+    redirect_output=None,
+    redirect_error=None,
+    print_output=False,
+    **kwargs,
 ) -> Tuple[int, str]:
     """Return (exitcode, output) of executing cmd in a shell."""
     if env is None:
@@ -83,9 +139,18 @@ def getstatusoutput_v2(
     logger = logging.root
     ex = None
 
-    temp_logf = tempfile.NamedTemporaryFile("w+", delete=False)
+    if redirect_output:
+        temp_output = redirect_output
+    else:
+        temp_output = tempfile.NamedTemporaryFile("w+", delete=False)
+
+    if redirect_error:
+        temp_error = redirect_error
+    else:
+        temp_error = tempfile.NamedTemporaryFile("w+", delete=False)
+
     logger.debug(f"running command: {cmd}")
-    logger.debug(f"you can review middle output in {temp_logf.name}")
+    logger.debug(f"you can review middle output in {temp_output.name}")
     # if env
     try:
         cmd_str = cmd if shell else " ".join(cmd)
@@ -97,8 +162,9 @@ def getstatusoutput_v2(
         run(
             cmd,
             shell=shell,
-            stdout=temp_logf,
-            stderr=temp_logf,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE if print_output else temp_output,
+            stderr=subprocess.PIPE if print_output else temp_error,
             timeout=timeout,
             check=True,
             # universal_newlines=True,
@@ -107,16 +173,17 @@ def getstatusoutput_v2(
             **kwargs,
         )
         exitcode = 0
-        temp_logf.seek(0)
-        shutil.copyfileobj(temp_logf, logf)
+        if redirect_output is None:
+            temp_output.seek(0)
+            shutil.copyfileobj(temp_output, logf)
 
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Success]\n")
 
     except (CalledProcessError, TimeoutExpired) as e:
-        temp_logf.seek(0)
+        temp_output.seek(0)
         logf.write(
-            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
+            textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! ")
         )
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Failed in Command]\n")
@@ -138,11 +205,11 @@ def getstatusoutput_v2(
         logf.write(traceback.format_exc())
         logf.write(f"======traceback info end======\n")
     except Exception as e:
-        temp_logf.seek(0)
-
-        logf.write(
-            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
-        )
+        if redirect_output is None:
+            temp_output.seek(0)
+            logf.write(
+                textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! ")
+            )
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Failed Outside Command]\n")
         ex = e
@@ -154,17 +221,20 @@ def getstatusoutput_v2(
         logf.write(f"======traceback info end======\n")
         traceback.print_exc()
 
-    temp_logf.seek(0)
-    output = temp_logf.read()
-    temp_logf.close()
+    output = ""
+    if redirect_output is None:
+        temp_output.seek(0)
+        output = temp_output.read()
+        temp_output.close()
 
     if print_output:
         logger.info(output)
 
     try:
-        os.remove(temp_logf.name)
+        if redirect_output is None:
+            os.remove(temp_output.name)
     except Exception as e:
-        logger.error(f"remove temp log file {temp_logf.name} failed: {e}")
+        logger.error(f"remove temp log file {temp_output.name} failed: {e}")
 
     if check and ex:
         raise RuntimeError(f"{output}\n[Failed] {cmd}")
@@ -173,6 +243,115 @@ def getstatusoutput_v2(
         logger.error(f"[Failed] {cmd}")
     else:
         logger.debug(f"[Success]: {cmd}")
+    return exitcode, output
+
+
+def getstatusoutput_v2_split_log(
+    cmd,
+    cwd=None,
+    env=None,
+    timeout=None,
+    check=False,
+    shell=False,
+    **kwargs,
+) -> Tuple[int, str]:
+    """Return (exitcode, output) of executing cmd in a shell."""
+    if env is None:
+        env = os.environ.copy()
+    # kwargs = {}
+    if cwd is not None:
+        assert os.path.isdir(cwd), cwd
+        kwargs["cwd"] = cwd
+    if env is not None:
+        assert isinstance(env, dict)
+        if "PWD" in env:
+            env.pop("PWD")
+        kwargs["env"] = env
+
+    file_logger = logging.getLogger("logger_to_file")
+    console_logger = logging.getLogger("logger_to_file.console")
+    file_logger.setLevel(logging.DEBUG) # do not delete this
+    ex = None
+
+    temp_logf = tempfile.NamedTemporaryFile("w+", delete=False)
+
+    # if env
+    try:
+        cmd_str = cmd if shell else " ".join(cmd)
+        console_logger.info(f" cwd: {cwd}\n")
+        console_logger.info(f" -> Executing {cmd_str}\n")
+        file_logger.debug(f"========Command Output Start=========\n")
+        run(
+            cmd,
+            shell=shell,
+            stdout=temp_logf,
+            stderr=temp_logf,
+            timeout=timeout,
+            check=True,
+            # universal_newlines=True,
+            bufsize=0,
+            text=True,
+            **kwargs,
+        )
+        exitcode = 0
+        temp_logf.seek(0)
+        file_logger.debug(temp_logf.read())
+        file_logger.debug(f"========Command Output End=========\n")
+        console_logger.info(f" -> [Success]\n")
+
+    except (CalledProcessError, TimeoutExpired) as e:
+        temp_logf.seek(0)
+        file_logger.debug(
+            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!!")
+        )
+        file_logger.debug(f"========Command Output End=========\n")
+        console_logger.info(f" -> [Failed in Command]\n")
+        ex = e
+        if isinstance(e, TimeoutExpired):
+            exitcode = 110
+        else:
+            exitcode = e.returncode
+        file_logger.debug(f"# cwd\n")
+        file_logger.debug(f"cd {cwd}\n\n")
+
+        file_logger.debug(f"# Environments: \n")
+        file_logger.debug(textwrap.indent(json.dumps(env, indent=2), "# ") + "\n")
+        file_logger.debug(env2bashstr(env, auto_pick=False))
+
+        file_logger.debug("# command: \n")
+        cmd_opt = " ".join(cmd) if isinstance(cmd, list) else cmd
+        file_logger.debug(f"{cmd_opt}\n")
+        console_logger.info(traceback.format_exc())
+        console_logger.info(f"======traceback info end======\n")
+    except Exception as e:
+        temp_logf.seek(0)
+        file_logger.debug(
+            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
+        )
+        file_logger.debug(f"========Command Output End=========\n")
+        console_logger.info(f" -> [Failed Outside Command]\n")
+        ex = e
+        exitcode = -256
+        file_logger.debug(f"cmd={cmd}\n")
+        file_logger.debug(f"cwd={cwd}\n")
+        file_logger.debug(f"env={env}\n")
+        console_logger.info(traceback.format_exc())
+        console_logger.info(f"======traceback info end======\n")
+    temp_logf.seek(0)
+    output = temp_logf.read()
+    temp_logf.close()
+    try:
+        os.remove(temp_logf.name)
+    except Exception as e:
+        console_logger.error(f"remove temp log file {temp_logf.name} failed: {e}")
+
+    if check and ex:
+        raise RuntimeError(f"{output}\n[Failed] {cmd}")
+    elif ex:
+        console_logger.error(output)
+        console_logger.error(f"[Failed] {cmd}")
+    else:
+        console_logger.debug(f"[Success]: {cmd}")
     return exitcode, output
 
 
@@ -286,7 +465,7 @@ def lowering_options(mode: str,
                      customization_format: str = None,
                      fuse_preprocess: bool = False,
                      aligned_input: bool = False,
-                     ignore_f16_overflow: bool = False,
+                     high_precision: bool = False,
                      do_winograd: bool = False,
                      q_group_size: int = 0,
                      addr_mode: str = "auto",
@@ -294,8 +473,8 @@ def lowering_options(mode: str,
                      gelu_mode: str = "normal"):
     mode = mode.upper()
     options = [
-        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={}\"".format(
-            chip.lower(), mode, num_device, num_core, addr_mode)
+        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={} high_precision={}\"".format(
+            chip.lower(), mode, num_device, num_core, addr_mode, high_precision)
     ]
 
     # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
@@ -311,9 +490,8 @@ def lowering_options(mode: str,
         options.extend([fuse_pre_param])
     qw = "qtable={} weightFileName={}".format(quantize_table, weight_name) if quantize_table else ""
     lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={}" \
-                  " ignore_f16_overflow={} q_group_size={} matmul_perchannel={} gelu_mode={}\"".format(
-        qw, asymmetric, do_winograd,
-        ignore_f16_overflow, q_group_size, matmul_perchannel, gelu_mode)
+                  " q_group_size={} matmul_perchannel={} gelu_mode={}\"".format(
+        qw, asymmetric, do_winograd, q_group_size, matmul_perchannel, gelu_mode)
     options.extend([
         lower_param,
         "--canonicalize",
@@ -333,7 +511,7 @@ def mlir_lowering(top_mlir: str,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False,
-                  ignore_f16_overflow: bool = False,
+                  high_precision: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0,
                   count_patterns: bool = False,
@@ -359,7 +537,7 @@ def mlir_lowering(top_mlir: str,
                                 customization_format,
                                 fuse_preprocess,
                                 aligned_input,
-                                ignore_f16_overflow,
+                                high_precision,
                                 do_winograd,
                                 q_group_size,
                                 addr_mode,
@@ -634,7 +812,7 @@ def origin_mlir_txt_to_bmodel(
     customization_format: str = None,
     fuse_preprocess: bool = False,
     aligned_input: bool = False,
-    ignore_f16_overflow: bool = False,
+    high_precision: bool = False,
     do_winograd: bool = False,
     q_group_size: int = 0,
     dynamic: bool = False,
@@ -674,7 +852,7 @@ def origin_mlir_txt_to_bmodel(
                                     customization_format,
                                     fuse_preprocess,
                                     aligned_input,
-                                    ignore_f16_overflow,
+                                    high_precision,
                                     do_winograd,
                                     q_group_size,
                                     addr_mode,

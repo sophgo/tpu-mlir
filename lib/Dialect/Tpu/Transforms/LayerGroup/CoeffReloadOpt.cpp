@@ -38,7 +38,7 @@ void coeff_reload_open(BasicTimeStepPtr &time_step, TensorInfo &tensor_infos) {
     Bm168xCycleCalculator *cyc_ptr = new Bm168xCycleCalculator();
     cycle_calculator.reset(cyc_ptr);
   }
-  time_step->gen_all_mem_buffer();
+  time_step->gen_all_mem_buffer_ts();
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
     int64_t slack = 0;
     tensor_to_coeff_cost.clear();

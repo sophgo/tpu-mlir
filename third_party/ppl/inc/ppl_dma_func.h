@@ -228,16 +228,20 @@ template <typename DataType>
 void move_cross_lane(tensor<DataType> &dst, tensor<DataType> &src);
 
 template <typename DataType0, typename DataType1>
-unsigned int mask_select(gtensor<DataType0> &dst, tensor<DataType0> &src, tensor<DataType1> &mask);
+unsigned int mask_select(gtensor<DataType0> &dst, tensor<DataType0> &src,
+                         tensor<DataType1> &mask);
 
 template <typename DataType0, typename DataType1>
-unsigned int mask_select(gtensor<DataType0> &dst, tensor<DataType0> &src, gtensor<DataType1> &mask);
+unsigned int mask_select(gtensor<DataType0> &dst, tensor<DataType0> &src,
+                         gtensor<DataType1> &mask);
 
 template <typename DataType0, typename DataType1>
-unsigned int mask_select(gtensor<DataType0> &dst, gtensor<DataType0> &src, tensor<DataType1> &mask);
+unsigned int mask_select(gtensor<DataType0> &dst, gtensor<DataType0> &src,
+                         tensor<DataType1> &mask);
 
 template <typename DataType0, typename DataType1>
-unsigned int mask_select(gtensor<DataType0> &dst, gtensor<DataType0> &src, gtensor<DataType1> &mask);
+unsigned int mask_select(gtensor<DataType0> &dst, gtensor<DataType0> &src,
+                         gtensor<DataType1> &mask);
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
@@ -254,18 +258,14 @@ void reverse(gtensor<DataType> &dst, tensor<DataType> &src, int dim);
 template <typename DataType>
 void reverse(gtensor<DataType> &dst, gtensor<DataType> &src, int dim);
 
-template <typename DataType>
-void vload(int dst_v_idx, gtensor<DataType> &src);
+template <typename DataType> void vload(int dst_v_idx, gtensor<DataType> &src);
 
-template <typename DataType>
-void vstore(gtensor<DataType> &dst, int v_idx);
+template <typename DataType> void vstore(gtensor<DataType> &dst, int v_idx);
 
-template <typename DataType>
-void move_tv(tensor<DataType> &dst, int v_idx);
+template <typename DataType> void move_tv(tensor<DataType> &dst, int v_idx);
 void move_tv(int smem_offset, int v_idx);
 
-template <typename DataType>
-void move_distv(tensor<DataType> &dst, int v_idx);
+template <typename DataType> void move_distv(tensor<DataType> &dst, int v_idx);
 
 template <typename DataType>
 void move_vv(tensor<DataType> &dst, int v_idx0, int v_idx1);
@@ -274,12 +274,18 @@ void move_vv(int smem_offset, int v_idx0, int v_idx1);
 template <typename DataType>
 void move_distvv(tensor<DataType> &dst, int v_idx0, int v_idx1);
 
-template <typename DataType>
-void move_vt(int dst_v_idx, tensor<DataType> &src);
+template <typename DataType> void move_vt(int dst_v_idx, tensor<DataType> &src);
 void move_vt(int dst_v_idx, int smem_offset);
 
 template <typename DataType>
 void move_vcoll(int dst_v_idx, tensor<DataType> &src);
+
+template <typename DataType>
+void move_vcoll(int dst_v_idx, tensor<DataType> &src);
+
+template <typename DataType1, typename DataType2>
+void reduce(gtensor<DataType1> &dst, DataType2 &src, all_reduce_psum_t psum,
+            all_reduce_opcode_t opcode);
 
 } // namespace dma
 } // namespace ppl

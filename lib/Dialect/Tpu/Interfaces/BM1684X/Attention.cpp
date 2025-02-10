@@ -18,7 +18,7 @@ using namespace tpu_mlir::backend;
 //   spec.hasbias &= module::isNone(op.getOutBias()) ? 0 : 0x01<<3;
 //   spec.head = op.getHead();
 //   spec.scale = op.getScale().convertToDouble();
-//   spec.hasmusk = !module::isNone(op.getMusk());
+//   spec.hasmask = !module::isNone(op.getMask());
 // }
 
 // =========================================
@@ -37,7 +37,7 @@ void tpu::AttentionOp::codegen_global_bm1684x() {
   common.dim = getDim();
   common.weight_reshape = true;
   common.scale = getScale().convertToDouble();
-  common.hasmusk = !module::isNone(getMusk());
+  common.hasmask = !module::isNone(getMask());
   common.input_num =
       module::isNone(getKeys()) ? 1 : (module::isNone(getValues()) ? 2 : 3);
   auto quant_param = module::getI64Array(getQuantParam());
@@ -147,7 +147,7 @@ void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.dim = getDim();
   common.weight_reshape = true;
   common.scale = getScale().convertToDouble();
-  common.hasmusk = !module::isNone(getMusk());
+  common.hasmask = !module::isNone(getMask());
   common.input_num =
       module::isNone(getKeys()) ? 1 : (module::isNone(getValues()) ? 2 : 3);
   auto quant_param = module::getI64Array(getQuantParam());

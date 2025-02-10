@@ -14,7 +14,7 @@
 namespace tpu_mlir {
 namespace tpu {
 
-std::unique_ptr<LgPass> CreateGroupPostTransformPass();
+std::unique_ptr<LgPass> CreateGroupPostTransformPass(const LgOptions &options);
 
 } // namespace tpu
 } // namespace tpu_mlir

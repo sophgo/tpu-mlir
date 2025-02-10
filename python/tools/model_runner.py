@@ -76,6 +76,8 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
             pyruntime = "pyruntime_" + "tpuv7"
         elif chip == "MARS3":
             lib_so = 'libcmodel_mars3.so'
+        elif chip == "SGTPUV8":
+            lib_so = 'libcmodel_sgtpuv8.so'
         elif chip == "SG2380":
             lib_so = 'libcmodel_sg2380.so'
         assert (os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)))

@@ -4149,3 +4149,71 @@ Returns a Tensor with the type of odtype.
 Processor support
 """"""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/UINT8/INT8, the output data type can be INT8/FLOAT16.
+
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+multi_scale_deformable_attention
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+    .. code-block:: python
+
+      def multi_scale_deformable_attention(
+        query: Tensor,
+        value: Tensor,
+        key_padding_mask: Tensor,
+        reference_points: Tensor,
+        sampling_offsets_weight: Tensor,
+        sampling_offsets_bias_ori: Tensor,
+        attention_weights_weight: Tensor,
+        attention_weights_bias_ori: Tensor,
+        value_proj_weight: Tensor,
+        value_proj_bias_ori: Tensor,
+        output_proj_weight: Tensor,
+        output_proj_bias_ori: Tensor,
+        spatial_shapes: List[List[int]],
+        embed_dims: int,
+        num_heads: int = 8,
+        num_levels: int = 4,
+        num_points: int = 4,
+        out_name: str = None):
+
+        #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Perform multi-scale deformable attention on the input, and the specific function can refer to https://github.com/open-mmlab/mmcv/blob/main/mmcv/ops/multi_scale_deform_attn.py:MultiScaleDeformableAttention:forward, the implementation of this operation is different from the official one.
+This operation is considered a **global operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* query: Tensor type, query of Transformer with shape (1, num_query, embed_dims).
+* value: Tensor type, the value tensor with shape (1, num_key, embed_dims).
+* key_padding_mask: Tensor type, the mask of the query tensor with shape (1, num_key).
+* reference_points: Tensor type, normalized reference points with shape (1, num_query, num_levels, 2), all elements are in the range [0, 1], the upper left corner is (0,0), and the lower right corner is (1,1), including the padding area.
+* sampling_offsets_weight: Tensor type, the weight of the fully connected layer for calculating the sampling offset with shape (embed_dims, num_heads\*num_levels\*num_points\*2).
+* sampling_offsets_bias_ori: Tensor type, the bias of the fully connected layer for calculating the sampling offset with shape (num_heads\*num_levels\*num_points\*2).
+* attention_weights_weight: Tensor type, the weight of the fully connected layer for calculating the attention weight with shape (embed_dims, num_heads\*num_levels\*num_points).
+* attention_weights_bias_ori: Tensor type, the bias of the fully connected layer for calculating the attention weight with shape (num_heads\*num_levels\*num_points).
+* value_proj_weight: Tensor type, the weight of the fully connected layer for calculating the value projection with shape (embed_dims, embed_dims).
+* value_proj_bias_ori: Tensor type, the bias of the fully connected layer for calculating the value projection with shape (embed_dims).
+* output_proj_weight: Tensor type, the weight of the fully connected layer for calculating the output projection with shape (embed_dims, embed_dims).
+* output_proj_bias_ori: Tensor type, the bias of the fully connected layer for calculating the output projection with shape (embed_dims).
+* spatial_shapes: List[List[int]] type, the spatial shape of different level features with shape (num_levels, 2), the last dimension represents (h, w).
+* embed_dims: int type, hidden_size of query, key, and value.
+* num_heads: int type, the number of attention heads, default is 8.
+* num_levels: int type, the number of levels of multi-scale attention, default is 4.
+* num_points: int type, the number of sampling points at each level, default is 4.
+* out_name: string type or None, the name of the output Tensor, and the name will be automatically generated internally if it is None.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as query.dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688: The input data type can be FLOAT32/FLOAT16.

@@ -95,6 +95,15 @@ typedef struct cons_info {
   std::vector<std::string> load_var_names;
 } cons_info;
 
+typedef struct ts_cycle_info {
+  int ts_idx = -1;
+  int cycle = 0;
+  int cycle_diff = 0;
+  int mode = 0; //0:del cur op; 1:del next op; 2: del pre op
+  bool load_cycle_is_bigger = true;
+  Operation* cut_op = nullptr;
+} ts_cycle_info;
+
 typedef struct mem_alloc_req_info {
   int slice_idx;
   int size;
@@ -187,9 +196,7 @@ class ILPTimeStep {
 public:
   ILPTimeStep(const LgInfo& group_info, std::shared_ptr<dot_graph> tmp_dot_graph_log, int sec_per_core = 1);
   virtual ~ILPTimeStep();
-
-  // static ILPTimeStep& combine_mult_ilp_timestep(
-  //   const std::vector<ILPTimeStep&> other_ilp_timesteps) {};
+  std::shared_ptr<ILPTimeStep> clone();
 
   void addBinaryVar(int ts_idx, int slice_idx, int mode, std::string varName, Value value, tensor_info_t& info, int64_t lmem_bytes);
   void addTimestepGdmaCycle(int ts_idx, int cycle, std::string varName);
@@ -200,14 +207,9 @@ public:
   bool run(Operation*& fail_op);
   bool mem_alloc(mem_alloc_status& alloc_status, std::vector<std::pair<Value, int64_t>>& value_size,
                 TensorInfo& tensor_infos, Operation*& fail_op, int& nonOp_insert_mode);
-  void add_tpu_ts_field(int ts_idx, Operation* op);
-  void add_gdma_ts_field(int ts_idx, const GdmaElt &field);
-  // void timestep_assignment_by_ilp(BasicTimeStep *time_step, TensorInfo &tensor_infos);
-  int get_tensor_load_pos(const tensor_info_t& tensor_info, std::string& var_name);
-  void get_group_cycle_info(int& total_cycle, int& total_diff,
-    std::vector<std::pair<int, std::vector<Operation*>>>& ts_cycle_diff);
+  void get_group_cycle_info(int& total_cycle, int& total_diff, std::vector<ts_cycle_info>& ts_cycle);
 
-  bool merge_small_cycle_op(TensorInfo& tensor_infos, std::shared_ptr<dot_graph> dot_graph_log);
+  bool merge_small_cycle_op(TensorInfo& tensor_infos, bool& merged, std::shared_ptr<dot_graph> dot_graph_log);
   bool prepare(TensorInfo& tensor_infos);
   void addTensorSize(Value value, int slice_idx, int lmem_size);
   void addTensorCycle(Value value, int slice_idx, int cycle);
@@ -224,6 +226,8 @@ public:
                     std::string info_for_tips = "", bool test = true);
   bool IsSameWith(const std::shared_ptr<ILPTimeStep> other);
   bool is_value_stored(Value value, int ts_idx);
+  bool isStoreVar(std::string var_name);
+  bool isLoadVar(std::string var_name);
 // protected:
   LgInfo _group_info;
   std::unique_ptr<MPSolver> solver;
@@ -263,7 +267,6 @@ public:
   int m_constraint_idx = 0;
   bool detail_log = false;
 };
-
 using ILPTimeStepPtr = std::shared_ptr<ILPTimeStep>;
 
 } // namespace tpu

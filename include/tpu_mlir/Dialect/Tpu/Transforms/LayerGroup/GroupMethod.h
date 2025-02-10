@@ -38,7 +38,7 @@ typedef struct {
 
 class GroupMethod {
 public:
-  GroupMethod(int64_t opt);
+  GroupMethod(const LgOptions &options);
   void process(LgPassIR *pass_ir);
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
                           const llvm::SetVector<Operation *> &subnet_ops);
@@ -55,7 +55,8 @@ public:
 
   int64_t get_max_cluster_size(int64_t layer_num);
   void get_group_clusters(std::vector<std::pair<int64_t, int64_t>> &clusters,
-                          const std::vector<Operation *> &base_group, int group_idx);
+                          const std::vector<Operation *> &base_group,
+                          int group_idx);
 
   bool is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                             int64_t *group_cost);
@@ -96,25 +97,33 @@ public:
       std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void cut_this_group_is_better(
       ilp_LgInfo &original_group, LgPassIR *pass_ir,
-      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
+      std::vector<Operation *>& processed_ops,
+      bool is_cut_op_is_global = true);
   void
   try_cut_some_group(LgPassIR *pass_ir,
+                     std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
+                     bool is_cut_op_is_global);
+  void
+  try_modify_mlp_group_sub_sum(LgPassIR *pass_ir,
                      std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void init_ilp_base_groups(LgPassIR *pass_ir);
   void get_layer_group(LgInfo &lg_info,
-                            const std::vector<Operation *> &base_group,
-                            int64_t left, int64_t right, int64_t base_group_idx);
+                       const std::vector<Operation *> &base_group, int64_t left,
+                       int64_t right, int64_t base_group_idx);
   void set_layer_group_cache(LgInfo lg_info);
 
 protected:
+  LgOptions options_;
   BasicTimeStepPtr time_step_;
   std::shared_ptr<LmemAllocator> lmem_allocator_;
   std::shared_ptr<CycleCalculator> cycle_calculator_;
   std::vector<std::vector<int64_t>> cut_results_;
-  std::unordered_map<int64_t, std::unordered_map<int64_t, std::shared_ptr<LgInfo>>> lg_cache_;
+  std::unordered_map<int64_t,
+                     std::unordered_map<int64_t, std::shared_ptr<LgInfo>>>
+      lg_cache_;
   int64_t group_cost_;
   int64_t MAX_COST;
-  int64_t opt_;
   RunMode runmode_;
 };
 

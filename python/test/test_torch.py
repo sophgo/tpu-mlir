@@ -14,6 +14,7 @@ from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import clean_kmp_files
 from utils.timer import Timer
+from utils.regression_logger import run_in_log_wrapper
 import os
 
 import torch
@@ -42,7 +43,8 @@ class TORCH_IR_TESTER(object):
                  num_core : int = 1,
                  debug_cmd: str = '',
                  cuda: bool = False,
-                 dynamic: bool = False):
+                 dynamic: bool = False,
+                 concise_log: bool = False):
         Y, N = True, False
         self.quant_input = quant_input
         self.quant_output = quant_output
@@ -51,6 +53,7 @@ class TORCH_IR_TESTER(object):
         self.group_opt = 2
         self.test_cuda = cuda
         self.dynamic = dynamic
+        self.concise_log = concise_log # use when run regression/main_entry.py
         # yapf: disable
         self.test_cases = {
             ##################################
@@ -230,6 +233,7 @@ class TORCH_IR_TESTER(object):
             self.min = min
             self.max = max
 
+    @run_in_log_wrapper
     def test_single(self, case: str):
         np.random.seed(0)
         torch.manual_seed(7)
@@ -292,7 +296,10 @@ class TORCH_IR_TESTER(object):
 
     def generate_random(self, shape, dtype='float32', min=-10, max=10):
         scale = max - min
-        return (np.random.rand(*shape) * scale + min).astype(dtype)
+        data = np.random.rand(*shape) * scale + min
+        if dtype == 'bool':
+            data = data.astype('int')
+        return data.astype(dtype)
 
     def create_random_input(self, shapes, descs: List[Desc]):
         if len(descs) == 0:
@@ -1169,7 +1176,7 @@ class TORCH_IR_TESTER(object):
                 return y
 
         self.trace_and_test([(1, 32, 128, 128), (1, 1, 128, 128)], Model(),
-                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
+                                [self.Desc('float', -10, 10), self.Desc('bool', 0, 2)])
 
     #######################################################################
     # MatMul
@@ -1977,7 +1984,7 @@ class TORCH_IR_TESTER(object):
                     return x
 
             self.trace_and_test([in_shape, mask_shape], Model(),
-                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
+                                [self.Desc('float', -10, 10), self.Desc('bool', 0, 2)])
 
         dims = [3, 4, 5]
         shape = [1, 3, 128, 300, 2]
@@ -2315,7 +2322,7 @@ class TORCH_IR_TESTER(object):
 
     def test_AttentionNew(self):
 
-        def _test_attention0(shape, d, head, has_musk=True):
+        def _test_attention0(shape, d, head, has_mask=True):
 
             class Model(nn.Module):
 
@@ -2329,7 +2336,7 @@ class TORCH_IR_TESTER(object):
                     self.v_b = torch.randn((1, 1, d*head))
                     self.o_w = torch.randn((d*head, shape[2])) / np.sqrt(d)
                     self.o_b = torch.randn((1, 1, shape[2]))
-                    self.musk = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 10000)
+                    self.mask = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 10000)
 
                 def forward(self, x):
                     q = torch.matmul(x, self.q_w) + self.q_b
@@ -2341,8 +2348,8 @@ class TORCH_IR_TESTER(object):
                     k = k.transpose(3,2)
                     m0 = torch.matmul(q, k)
                     m0 = m0 / np.sqrt(d)
-                    if has_musk:
-                        m0 = m0 + self.musk
+                    if has_mask:
+                        m0 = m0 + self.mask
                     m0 = torch.softmax(m0, 3)
                     v = torch.matmul(x, self.v_w) + self.v_b
                     v = v.reshape((shape[0], shape[1], head, d))
@@ -3672,6 +3679,7 @@ class TORCH_IR_TESTER(object):
         # return
         self.group_opt = 2 if 'opt2' in self.debug_cmd else 3
         batch_size = self.num_core
+        self.debug_cmd = 'disable_group_cut'
 
         print('start test test_model1')
         from tools.train.test_model import test_model1
@@ -3693,15 +3701,15 @@ class TORCH_IR_TESTER(object):
         model = test_model4()
         self.trace_and_test([(batch_size,3,224,224)], model)
 
-        print('start test resnet18')
+        #print('start test resnet18')
         #from tools.train.resnet import resnet18
         #model = resnet18()
         #self.trace_and_test([(batch_size,3,224,224)], model)
 
         print('start test mobilenet_v2')
-        import torchvision.models as models
-        model = models.mobilenet_v2()
-        self.trace_and_test([(batch_size,3,224,224)], model)
+        #import torchvision.models as models
+        #model = models.mobilenet_v2()
+        #self.trace_and_test([(batch_size,3,224,224)], model)
 
         # # if self.num_core == 1:
         # print('start test resnet50')
@@ -3749,6 +3757,8 @@ class TORCH_IR_TESTER(object):
         # # self.trace_and_test([(1, 8, 256)], mod)
         # self.trace_and_test([(1, 1024, 768)], mod)
 
+        # mod = Attention(d_model=16, n_head=2)
+        # self.trace_and_test([(2, 16, 16)], mod)
         # from tools.train.gpt2 import Attention2
         # mod = Attention2()
         # self.trace_and_test([(1, 64, 2, 96), (1, 64, 2, 96), (1, 64, 2, 96)], mod) #ok
@@ -3819,7 +3829,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3', 'cv186x', 'bm1690'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3', 'cv186x', 'bm1690', 'sgtpuv8'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")
@@ -3833,11 +3843,12 @@ if __name__ == "__main__":
     parser.add_argument("--dynamic", action="store_true", help='dynamic mode in model deployment')
     parser.add_argument("--debug_cmd", default="", type=str, help="debug_cmd")
     parser.add_argument("--cuda", action="store_true", help="test cuda inference")
+    parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
     args = parser.parse_args()
     tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread,
                              args.quant_input, args.quant_output, args.debug, args.num_core,
-                             args.debug_cmd, args.cuda, args.dynamic)
+                             args.debug_cmd, args.cuda, args.dynamic, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

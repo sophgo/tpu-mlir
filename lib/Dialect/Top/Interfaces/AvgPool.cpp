@@ -220,10 +220,11 @@ void top::AvgPoolOp::shape_inference() {
   // for AutoPad
   std::vector<int64_t> new_pads(pads->begin(), pads->end());
   if (getAutoPad().has_value()) {
-    if (module::isDynamic()){
+    if (module::isDynamic()) {
       auto auto_pad_mode = getAutoPad().value();
       if (auto_pad_mode == "SAME_UPPER" || auto_pad_mode == "SAME_LOWER")
-        llvm_unreachable("Auto_pad is a DEPRECATED attribute. It's not support in BM1688 backend.");
+        llvm_unreachable("Auto_pad is a DEPRECATED attribute. It's not support "
+                         "in BM1688 backend.");
     }
     set_auto_pad(getAutoPad().value(), input_shape, *kernel_shape, *strides,
                  new_pads);
@@ -242,7 +243,7 @@ void top::AvgPoolOp::shape_inference() {
       }
     }
   }
-  if (!module::isDynamic()){
+  if (!module::isDynamic()) {
     removeCeilModeAttr();
     auto builder = OpBuilder(getContext());
     setPadsAttr(builder.getI64ArrayAttr(new_pads));

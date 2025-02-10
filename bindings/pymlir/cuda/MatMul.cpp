@@ -15,23 +15,30 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   if (!module::isUniformQuantized(op.getOutput())) {
     UNREACHABLE_OP("Not Implemented", op);
   }
-  if (p.batch > 1) {
-    UNREACHABLE_OP("Not Implemented", op);
-  }
   auto num_out = module::getNumElements(op.getOutput());
   auto out_stype = module::getStorageType(op.getOutput());
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
+  auto batch_elem_left = module::getNumElements(op.getInput())/p.batch;
+  auto batch_elem_right = module::getNumElements(op.getInput())/p.batch;
+  auto batch_elem_out = module::getNumElements(op.getOutput())/p.batch;
   auto in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
   auto right_f32 = newCudaData(op.getRight(), cuda::DT_F32);
   auto out_f32 = cuda_malloc(num_out * sizeof(float));
-  cuda::mmF32(in_f32.get(), right_f32.get(), out_f32.get(), p.M, p.K, p.N);
+  for (size_t b=0; b<p.batch;b++) {
+    auto cur_in = (float*)in_f32.get() + b*batch_elem_left;
+    auto cur_right = (float*)right_f32.get() + b*batch_elem_right;
+    auto cur_out = (float*)out_f32.get() + b*batch_elem_out;
+    cuda::mmF32(cur_in, cur_right, cur_out, p.M, p.K, p.N);
+  }
   in_f32.reset();
   right_f32.reset();
   // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
   // 2. + bias
   if (p.with_bias) {
     auto bias = newCudaData(op.getBias(), cuda::DT_F32);
+    if (p.batch != 1)
+      UNREACHABLE_OP("Not support bias in batchmatmul", op);
     cudnnTensorDescriptor_t outf32_desc, bias_desc;
     cudnnCreateTensorDescriptor(&outf32_desc);
     cudnnSetTensor4dDescriptor(outf32_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,

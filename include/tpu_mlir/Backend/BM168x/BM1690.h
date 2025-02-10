@@ -35,7 +35,8 @@ typedef void (*tensor_stride_move_reduce_gen_cmd)(
     uint32_t src_C_stride, uint32_t src_H_stride, uint32_t src_W_stride,
     uint32_t dst_N_stride, uint32_t dst_C_stride, uint32_t dst_H_stride,
     uint32_t dst_W_stride, int src_format, int direction, int transpose,
-    int reduce_psum_op, int reduce_opcode, int thread_id, CMD_ID_NODE *pid_node);
+    int reduce_psum_op, int reduce_opcode, int thread_id,
+    CMD_ID_NODE *pid_node);
 
 namespace tpu_mlir {
 namespace backend {

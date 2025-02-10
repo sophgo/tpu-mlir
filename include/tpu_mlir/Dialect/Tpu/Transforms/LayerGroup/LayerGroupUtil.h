@@ -28,13 +28,18 @@ shape_secs_t
 get_group_max_secs(const LgInfo &lg_info,
                    std::vector<std::pair<Operation *, int>> &vec_op_hsecs);
 bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                          std::vector<std::pair<Value, int64_t>>& value_size);
+                          std::vector<std::pair<Value, int64_t>> &value_size,
+                          const LgOptions &options);
 bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
-                          std::vector<std::pair<Value, int64_t>> &value_size, Operation*& fail_op,
-                          std::shared_ptr<dot_graph> dot_graph_log);
-void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos, int speical_pattern = 0);
+                           std::vector<std::pair<Value, int64_t>> &value_size,
+                           Operation *&fail_op,
+                           std::shared_ptr<dot_graph> dot_graph_log,
+                           const LgOptions &options);
+void get_op_cut_sec_num(ilp_LgInfo &ilp_lg_info, std::vector<std::pair<Operation *, int>>& vec_op_cut_secs);
+void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
+                         int speical_pattern = 0);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
-                       shape_secs_t &shape_secs);
+                       shape_secs_t &shape_secs, const LgOptions &options);
 int64_t get_split_max_secs(BasicTimeStepPtr time_step);
 void update_multi_core_secs(const shape_secs_t max_shape_secs,
                             shape_secs_t &shape_secs);
@@ -58,7 +63,7 @@ bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
                               bool is_group_in);
 bool stripe_mine_max_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos);
+                           TensorInfo &tensor_infos, const LgOptions &options);
 
 void get_max_slice_nchdw(const slice_info_t &slice_info, int64_t &max_nslice,
                          int64_t &max_cslice, int64_t &max_hslice,
@@ -70,14 +75,15 @@ get_max_slice_nchdw_and_idx(const slice_info_t &slice_info, int64_t &max_nslice,
                             int64_t &max_dslice, int64_t &max_wslice);
 
 void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs);
+                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs,
+                    const LgOptions &options);
 
 int64_t get_buffer_size(Value v, tensor_info_t &ti, group_type_t group_type,
                         Operation *owner_op = nullptr);
 
 bool stripe_mine_idx_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos);
+                           TensorInfo &tensor_infos, const LgOptions &options);
 
 void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
                                 int64_t hidx, int64_t hslice, int64_t didx,
@@ -107,45 +113,66 @@ bool strip_back_judge2(Value v, const LgInfo &lg_info,
                        const std::multiset<Operation *> &op_set,
                        const std::set<Value, value_compare> &out_tensor_set);
 bool stripe_mine_idx_slice2(ilp_LgInfo &ilp_lg_info,
-                           const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos, Operation*& fail_op);
+                            const shape_secs_t &shape_secs,
+                            TensorInfo &tensor_infos, Operation *&fail_op);
 class CycleCalculator;
-bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info,
-                           TensorInfo &tensor_infos, std::shared_ptr<CycleCalculator> cycle_calculator_, ILPTimeStep& ilp_timeStep,
-                           const std::vector<int64_t>& ncdhw_idx, int ts_offset,
-                           std::vector<op_var_pos_info>& op_var_bound, Operation*& failOp, int& failMode,
-                           std::map<std::string, std::string>& node_labels, int64_t &load_bytes_for_next_ts,
-                           bool l2m_en = true, int max_ahead_or_delay_ts = 4);
+bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
+                           std::shared_ptr<CycleCalculator> cycle_calculator_,
+                           ILPTimeStep &ilp_timeStep,
+                           const std::vector<int64_t> &ncdhw_idx, int ts_offset,
+                           std::vector<op_var_pos_info> &op_var_bound,
+                           Operation *&failOp, int &failMode,
+                           std::map<std::string, std::string> &node_labels,
+                           int64_t &load_bytes_for_next_ts, bool l2m_en = true,
+                           int max_ahead_or_delay_ts = 4);
 bool isLgSupport(Operation *op);
-std::vector<Operation*> sortOpsByOtherOpsOrder(const std::vector<Operation*>& exp_ops, const std::vector<Operation*>& ops);
-std::vector<std::vector<Operation*>> seg_grp_ops_by_global_op(const std::vector<Operation*>& grp_ops,
-    const std::vector<Operation*>& break_ops, std::vector<Operation*>& excluded_ops, std::map<Operation*, bool>* break_op_reside = nullptr);
-void find_all_pre_ops(Operation * op, std::vector<Operation*>& glayer_pre_ops, std::vector<Operation*>* grp_ops = nullptr);
-void find_all_next_ops(Operation * op, std::vector<Operation*>& glayer_next_ops, std::vector<Operation*>* grp_ops = nullptr);
-std::shared_ptr<ilp_LgInfo> CreateIlpLgInfo(std::vector<Operation*> ops, solver_strategy_type_t cur_strategy = STRATEGY_NORMAL);
-void GetAllParallelNodes(const std::vector<Operation*>& ops,
-                        std::map<Operation*, std::vector<Operation*>>& map_parallel_node,
-                        std::vector<Operation*>* grp_ops = nullptr);
+std::vector<Operation *>
+sortOpsByOtherOpsOrder(const std::vector<Operation *> &exp_ops,
+                       const std::vector<Operation *> &ops);
+std::vector<std::vector<Operation *>> seg_grp_ops_by_global_op(
+    const std::vector<Operation *> &grp_ops,
+    const std::vector<Operation *> &break_ops,
+    std::vector<Operation *> &excluded_ops, const LgOptions &options,
+    std::map<Operation *, bool> *break_op_reside = nullptr);
+std::vector<std::vector<Operation*>> seg_network_by_group_ops(const std::vector<Operation*>& network_ops,
+                         const std::vector<Operation*>& group_ops);
+void findReshapeAtEdge(std::vector<Operation *> &ops,
+                       std::vector<Operation *> &del_ops);
+void find_all_pre_ops(Operation *op, std::vector<Operation *> &glayer_pre_ops,
+                      std::vector<Operation *> *grp_ops = nullptr);
+void find_all_next_ops(Operation *op, std::vector<Operation *> &glayer_next_ops,
+                       std::vector<Operation *> *grp_ops = nullptr);
+std::shared_ptr<ilp_LgInfo>
+CreateIlpLgInfo(std::vector<Operation *> ops, const LgOptions &options,
+                solver_strategy_type_t cur_strategy = STRATEGY_NORMAL);
+void GetAllParallelNodes(
+    const std::vector<Operation *> &ops,
+    std::map<Operation *, std::vector<Operation *>> &map_parallel_node,
+    std::vector<Operation *> *grp_ops = nullptr);
 
 bool opHasMultiGroupUser(Operation *op, const std::vector<Operation *> &ops);
 bool valueHasMultiGroupUser(Value value,
                             const std::vector<Operation *> &grp_ops);
 int get_user_count_in_group(Value opd);
-bool isCheckOpInOtherOps(std::vector<Operation*>& check_ops, std::vector<Operation*>& other_ops);
+bool isCheckOpInOtherOps(std::vector<Operation *> &check_ops,
+                         std::vector<Operation *> &other_ops);
 std::string replaceChars_for_dot(std::string str);
-std::string show_op_info(Operation* op);
+std::string show_op_info(Operation *op);
 std::string shape_str(int64_t n, int64_t c, int64_t d, int64_t h, int64_t w);
 std::string shape_str(std::vector<int64_t> ncdhw);
 void show_group(const LgInfo *sub_group);
-bool grp_is_valid(std::vector<Operation*>& group_ops);
-bool isPreOpHaveAComputeOp(Operation * op);
+bool grp_is_valid(std::vector<Operation *> &group_ops);
+bool isPreOpHaveAComputeOp(Operation *op);
 int64_t align(int64_t input, int64_t align_size);
 int64_t align_64(int64_t input);
-std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation*>& ops);
-void slice_distributor(std::vector<slice_pair_t> &slice_pairs, int64_t vec_length, int64_t secs);
+std::shared_ptr<dot_graph> createSubnetGraph(std::vector<Operation *> &ops);
+void slice_distributor(std::vector<slice_pair_t> &slice_pairs,
+                       int64_t vec_length, int64_t secs);
 void find_op_tree_by_root2(Operation *op, std::vector<Operation *> &op_tree,
-                        const std::vector<Operation *> &ops, const std::vector<Operation *> &exclude_ops,
-                        const std::vector<Operation *> &break_ops, int cur_depth = 0, int max_depth = -1);
+                           const std::vector<Operation *> &ops,
+                           const std::vector<Operation *> &exclude_ops,
+                           const std::vector<Operation *> &break_ops,
+                           int cur_depth = 0, int max_depth = -1);
 struct dot_graph {
   dot_graph() { add_node_into_graph("global_info"); }
   ~dot_graph() {}
@@ -176,7 +203,7 @@ struct dot_graph {
   void add_node_label(std::string node_name, std::string node_label) {
     node_name = replaceChars_for_dot(node_name);
     if (main_graph_nodes.find(node_name) != main_graph_nodes.end()) {
-      auto& tmp = main_graph_nodes[node_name];
+      auto &tmp = main_graph_nodes[node_name];
       if (std::find(tmp.begin(), tmp.end(), node_label) == tmp.end()) {
         tmp.push_back(node_label);
       }

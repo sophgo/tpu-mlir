@@ -51,7 +51,7 @@ typedef struct {
 
 class BasicTimeStep {
 public:
-  BasicTimeStep();
+  BasicTimeStep(const LgOptions &options);
   virtual ~BasicTimeStep() {}
 
   void add_tpu0_ts_field(const TpuTsField &field);
@@ -74,9 +74,10 @@ public:
   void show_timestep();
   void clear();
 
-  void gen_all_mem_buffer();
+  void gen_all_mem_buffer_ts();
 
 protected:
+  LgOptions options_;
   std::shared_ptr<SoftwarePipeline> swpipl;
   std::vector<TimestepRow> timestep_table;
   int swpipl_stage_num;

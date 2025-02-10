@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::GroupNormTrainOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 2;
@@ -43,12 +43,12 @@ LogicalResult top::GroupNormTrainOp::inference(InferenceParameter &p) {
   float *mean_arr = p.outputs[1];
   float *rstd_arr = p.outputs[2];
 
-  #pragma omp parallel for
+#pragma omp parallel for
   for (int i = 0; i < outer_dim; ++i) {
     mean_arr[i] = 0.0f;
     rstd_arr[i] = 0.0f;
   }
-  #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
+#pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
     float mean = 0.0f;
     float rstd = 0.0f;
@@ -74,7 +74,7 @@ LogicalResult top::GroupNormTrainOp::inference(InferenceParameter &p) {
 
   inner_dim /= channel_per_group;
   int num_iter = module::getNumElements(getOutput()) / channel;
-  #pragma omp parallel for schedule(static, omp_schedule(num_iter))
+#pragma omp parallel for schedule(static, omp_schedule(num_iter))
   for (int i = 0; i < num_iter; ++i) {
     const int p = i / inner_dim;
     const int q = i % inner_dim;

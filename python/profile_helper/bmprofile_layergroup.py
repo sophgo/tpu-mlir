@@ -291,8 +291,6 @@ class BMProfileLLayerGroup:
         b = parse_profile_log(self.log_file)
         real = pd.DataFrame.from_records(a)
         est = pd.DataFrame.from_records(b)
-        breakpoint()
-        
         full = est.merge(real, on='group_index', how='outer')
 
         full['Max-Time(us)'] = full[['c0-Time(us)', 'c1-Time(us)']].apply(max, axis=1)

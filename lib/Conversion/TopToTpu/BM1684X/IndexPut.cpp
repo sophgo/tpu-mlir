@@ -68,7 +68,7 @@ void IndexPutLowering::LoweringF32(PatternRewriter &rewriter,
 
 void IndexPutLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::IndexPutOp op, bool asymmetric) const {
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     LoweringBF16(rewriter, op);
   } else {
     LoweringF16(rewriter, op);

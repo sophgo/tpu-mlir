@@ -37,9 +37,9 @@ void MaxPoolWithMaskLowering::LoweringBF16(PatternRewriter &rewriter,
 void MaxPoolWithMaskLowering::LoweringF16(PatternRewriter &rewriter,
                                           top::MaxPoolWithMaskOp op) const {
   std::vector<Value> operands;
-  std::vector<Type>  new_types;
+  std::vector<Type> new_types;
   std::vector<NamedAttribute> attrs;
-  for (auto &attr: op->getAttrs()) {
+  for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
   operands.push_back(op->getOperand(0));
@@ -52,12 +52,13 @@ void MaxPoolWithMaskLowering::LoweringF16(PatternRewriter &rewriter,
   //   auto out = op.getResult(i);
   //   new_types.push_back(getQuantF16Type(out));
   // }
-  new_types.push_back( getQuantF16Type(op.getResult(0)) );
-  
+  new_types.push_back(getQuantF16Type(op.getResult(0)));
+
   auto shape = module::getShape(op.getResult(1));
   auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
   new_types.push_back(new_type);
-  rewriter.replaceOpWithNewOp<tpu::MaxPoolWithMaskOp>(op, new_types, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::MaxPoolWithMaskOp>(op, new_types, operands,
+                                                      attrs);
 }
 
 void MaxPoolWithMaskLowering::LoweringF8(PatternRewriter &rewriter,

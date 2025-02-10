@@ -23,7 +23,7 @@ void TriluLowering::LoweringINT4(PatternRewriter &rewriter, top::TriluOp op,
 void TriluLowering::LoweringINT8(PatternRewriter &rewriter, top::TriluOp op,
                                  bool asymmetric) const {
   // nodechip fix8b to be implemented,
-  if (module::isMARS3())
+  if (module::isMARS3() || module::isSGTPUV8())
     lowering_common_int8<tpu::TriluOp>(rewriter, op, asymmetric);
   else
     LoweringF32(rewriter, op);
@@ -31,7 +31,7 @@ void TriluLowering::LoweringINT8(PatternRewriter &rewriter, top::TriluOp op,
 
 void TriluLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::TriluOp op) const {
-  if (module::isMARS3())
+  if (module::isMARS3() || module::isSGTPUV8())
     lowering_common_bf16<tpu::TriluOp>(rewriter, op);
   else
     LoweringF32(rewriter, op);

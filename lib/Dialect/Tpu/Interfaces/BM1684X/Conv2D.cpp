@@ -165,7 +165,8 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int ic_per_npu = ceiling_func(p.ic / p.groups, BM168x::NPU_NUM);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
   int use_3ic_optimize = getUse_3icOptimize();
-  if ((module::isBM1688() || module::isMARS3()) && getCoeffMerged()) {
+  if ((module::isBM1688() || module::isMARS3() || module::isSGTPUV8()) &&
+      getCoeffMerged()) {
     if (module::getStorageType(getInput()).isIntOrIndex() && p.kernel_zp != 0)
       return int32_size * 2;
     if (p.groups > 1) {
@@ -197,27 +198,31 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     sz += oc_per_npu * p.kh * p.kw;
   }
 
+  int use_3ic = (use_3ic_optimize & 0x3);
+  int dw_out_size = 0;
+  int kernel_len = 0;
+  if (use_3ic == 1) { // merge kh to ic
+    dw_out_size = out_hslice * in_wslice;
+    kernel_len = p.kh;
+  } else if (use_3ic == 2) { // merge kw to ic
+    dw_out_size = in_hslice * out_wslice;
+    kernel_len = p.kw;
+  } else if (use_3ic == 3) { // merge kh and kw to ic
+    dw_out_size = out_hslice * out_wslice;
+    kernel_len = p.kh * p.kw;
+  }
   if (use_3ic_optimize & 0x20) {
     // used for broadcast input
-    sz += in_lmem_bytes;
+    sz += align_up(in_hslice * in_wslice, eu_num) * in_nslice * ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) * in_type_len;
   }
-  int use_3ic = (use_3ic_optimize & 0x3);
-  if (use_3ic == 1) { // merge kh to ic
-    sz += align_up(out_hslice * in_wslice, eu_num) * in_nslice * in_type_len;
-    sz += 64 * 2;
-    sz += p.kh * in_type_len;
-  } else if (use_3ic == 2) { // merge kw to ic
-    sz += align_up(in_hslice * out_wslice, eu_num) * in_nslice * in_type_len;
-    sz += 64 * 2;
-    sz += p.kw * in_type_len;
-  } else if (use_3ic == 3) { // merge kh and kw to ic
-    sz += align_up(out_hslice * out_wslice, eu_num) * in_nslice * in_type_len;
-    sz += 64 * 2;
-    sz += p.kh * p.kw * in_type_len;
+  if (use_3ic_optimize) {
+    sz += align_up(dw_out_size, eu_num) * ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) * in_nslice * in_type_len; // depthwise_oaddr
+    sz += BM168x::EU_BYTES * ceiling_func(kernel_len, Arch::NPU_NUM) * 2; // serial_addr / param_addr
+    sz += kernel_len * ceiling_func(kernel_len, Arch::NPU_NUM) * in_type_len; // depthwise_waddr
   }
   auto Filter_type = BM168x::getDataType(getFilter());
   auto Filter_type_len = BM168x::getFmtBytes(Filter_type);
-  if (!module::isTrain() && !module::isWeight(getFilter())) {
+  if (!module::isWeight(getFilter())) {
     if (Filter_type == DTYPE_FP16 || Filter_type == DTYPE_BFP16 ||
         Filter_type == DTYPE_INT8 || Filter_type == DTYPE_UINT8 ||
         Filter_type == DTYPE_F8E4M3 || Filter_type == DTYPE_F8E5M2) {

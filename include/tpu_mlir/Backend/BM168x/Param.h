@@ -1516,7 +1516,7 @@ typedef struct attention_common_spec {
   int head;
   float scale;
   int hasbias;
-  int hasmusk;
+  int hasmask;
   int input_num;
   int dim;
   int quant_param[16];
@@ -1541,6 +1541,7 @@ typedef struct flash_attention_common_spec {
   int mk;
   float scale;
   int hasmask;
+  bool high_precision;
 } flash_attention_common_spec_t;
 
 typedef struct flash_attention_global_spec {
@@ -2009,6 +2010,17 @@ typedef struct batchnorm_backward_local_param {
   batchnorm_backward_common_param_t common;
   unsigned int buffer_addr;
 } batchnorm_backward_local_spec_t;
+typedef struct where_batchnorm_backward_common_param {
+  bool    has_weight_grad;
+  bool    has_bias_grad;
+} where_batchnorm_backward_common_param_t;
+
+typedef struct where_batchnorm_backward_param {
+    where_batchnorm_backward_common_param_t  common;
+    unsigned int buffer_addr;
+    int32_t reserve;
+    int do_recompute;
+} where_batchnorm_backward_param_t;
 
 typedef struct layernorm_train_param {
   int axis;
@@ -2237,8 +2249,8 @@ typedef struct randn_like_spec {
 } randn_like_spec_t;
 
 typedef struct maxpooling_indices_bwd {
-    int kernels[2];
-    int strides[2];
-    int paddings[2];
+  int kernels[2];
+  int strides[2];
+  int paddings[2];
 } maxpooling_indices_bwd_spec_t;
 #endif

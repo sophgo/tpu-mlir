@@ -97,7 +97,7 @@ class DeployTool:
         self.opt = args.opt
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide
-        self.ignore_f16_overflow = args.ignore_f16_overflow
+        self.high_precision = args.high_precision
         self.num_device = args.num_device
         self.num_core = args.num_core
         self.group_by_cores = args.group_by_cores
@@ -142,7 +142,10 @@ class DeployTool:
         if self.trunc_final:
             self.compare_all = True
 
-        self.file_recorder_cache_path = f"{self.bmodel_path}.ref_files.json"
+        self.context_dir = os.path.splitext(self.bmodel_path)[0]
+        os.makedirs(self.context_dir, exist_ok=True)
+        self.file_recorder_cache_path = os.path.join(self.context_dir, f"ref_files.json")
+
         self.file_recorder = CommandRecorder(self.file_recorder_cache_path)
         self.file_recorder.clear()
         self.file_recorder.update_file(
@@ -150,6 +153,11 @@ class DeployTool:
         )
         self.file_recorder.add_file(
             tpuc_opt=shutil.which("tpuc-opt"),
+        )
+        self.file_recorder.add_property(prefix=self.prefix)
+        self.file_recorder.add_command(deploy_cmd=" ".join(sys.argv))
+        self.file_recorder.add_property(
+            chip=self.chip, compare_all=self.compare_all
         )
         self.file_recorder.dump()
 
@@ -202,7 +210,7 @@ class DeployTool:
                 self.customization_format,
                 self.fuse_preprocess,
                 self.aligned_input,
-                self.ignore_f16_overflow,
+                self.high_precision,
                 self.do_winograd,
                 self.q_group_size,
                 True if self.patterns_count else False,
@@ -367,23 +375,19 @@ class DeployTool:
             return patterns
         finally:
             if self.chip != "cpu":
-                context_dir = os.path.splitext(self.bmodel_path)[0]
                 self.file_recorder.add_file(
                     bmodel=self.bmodel_path,
                     tensor_location=f"{self.bmodel_path}.json",
                     final_mlir=self.final_mlir,
                     tpu_mlir=self.tpu_mlir,
+                    tpu_opt_mlir=self.tpu_opt_mlir,
                     tpu_output=self.tpu_npz,
                     bmodel_output=self.model_npz,
-                    context_dir=context_dir,
+                    context_dir=self.context_dir,
                     layer_group_cache=f"{self.prefix}.layer_group_cache.json",
                 )
                 self.file_recorder.add_command(**command_mem)
-                self.file_recorder.add_command(deploy_cmd=" ".join(sys.argv))
-                self.file_recorder.add_property(
-                    chip=self.chip, compare_all=self.compare_all
-                )
-                self.file_recorder.dump(os.path.join(context_dir, "ref_files.json"))
+                self.file_recorder.dump()
 
     def revise_MaskRCNN_tpu_ref(self):
         if self.enable_maskrcnn:
@@ -419,7 +423,7 @@ if __name__ == '__main__':
     # ========== Basic Options ===========
     parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
-                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sg2380',
+                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
@@ -446,6 +450,8 @@ if __name__ == '__main__':
                         help="choose index to strip cast, such as 1,3 means first & third input`s cast")
     parser.add_argument("--quant_output_list", default="", type=str,
                         help="choose index to strip cast, such as 1,3 means first & third output`s cast")
+    parser.add_argument("--high_precision", action='store_true',
+                        help="some ops will force to be fp32")
     parser.add_argument("--ignore_f16_overflow", action='store_true',
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
     # ========== Validation Options ==============
@@ -532,6 +538,7 @@ if __name__ == '__main__':
     # yapf: enable
     args = parser.parse_args()
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
+    deprecated_option(args.ignore_f16_overflow, "DEPRECATED, please use --high_precision")
     if args.quant_output_bf16:
         if args.quantize == "BF16":
             RuntimeError("quantize is BF16, please use --quant_output instead")

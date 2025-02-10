@@ -16,6 +16,11 @@ test_custom_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
 sys.path.append(test_custom_dir)
 
+regression_out_path = os.path.join(os.getenv("REGRESSION_PATH"), "regression_out")
+assert regression_out_path
+regression_log_path = os.path.join(regression_out_path, "../regression_op_log")
+os.makedirs(regression_log_path, exist_ok=True)
+
 from utils.timer import Timer
 from chip import *
 from run_model import MODEL_RUN
@@ -51,11 +56,12 @@ def timeit(func):
 
 class MAIN_ENTRY(object):
 
-    def __init__(self, test_type, disable_thread: bool):
+    def __init__(self, test_type, disable_thread: bool, concise_log=False):
         self.test_type = test_type
         self.disable_thread = disable_thread
         self.current_dir = os.getcwd()
         self.is_basic = test_type == "basic"
+        self.concise_log = concise_log
         # yapf: disable
         self.op0_test_types = {
             # op_source: (tester, test_all_func, chips)
@@ -91,6 +97,11 @@ class MAIN_ENTRY(object):
         self.time_cost = []
         self.logger = logging.getLogger()
 
+    def extend_time_cost_list(self, test_type: str, duration: int):
+        cur_time_cost = f"{test_type}: {duration} seconds"
+        print(cur_time_cost)
+        self.time_cost.append(cur_time_cost)
+
     def add_result(self, test_name: str, status: bool, time: int = 0, error_cases: list = []):
         self.results.append({
             "name": test_name,
@@ -102,16 +113,26 @@ class MAIN_ENTRY(object):
     def run_regression_net(self, model_name, chip, num_core, finished_list):
         case_name = f"{model_name}_{chip}_num_core_{num_core}"
         # set the file for saving output stream
-        log_filename = case_name + ".log"
+        fake_cmd = f"======= python run_model.py {model_name} --chip {chip} --mode {self.test_type} --num_core {num_core} ====="
 
-        file_handler = logging.FileHandler(filename=log_filename, mode="w")
+        file_handler = logging.FileHandler(filename=case_name + ".log", mode="w")
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(file_handler)
+        file_handler.setFormatter(logging.Formatter("%(message)s"))
+        if self.concise_log:
+            file_logger = logging.getLogger("logger_to_file")
+            file_logger.addHandler(file_handler)
+            file_logger.propagate = False
+            console_logger = logging.getLogger("logger_to_file.console")
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(logging.Formatter("%(message)s"))
+            console_logger.addHandler(console_handler)
+            console_logger.setLevel(logging.INFO)
 
-        print(
-            f"======= run_models.py {model_name} {chip} {self.test_type} num_core: {num_core} ====="
-        )
+            console_logger.info(fake_cmd)
+        else:
+            self.logger.addHandler(file_handler)
+            self.logger.info(fake_cmd)
+
         t = Timer()
         target_dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
         os.makedirs(target_dir, exist_ok=True)
@@ -129,10 +150,16 @@ class MAIN_ENTRY(object):
             "error_cases": [],
             "time":int(t.elapsed_time())
         })
+        if self.concise_log:
+            file_logger.removeHandler(file_handler)
+            console_logger.removeHandler(console_handler)
+            file_handler.close()
+            console_handler.close()
+        else:
+            self.logger.removeHandler(file_handler)
+            file_handler.close()
         os.chdir(self.current_dir)
         shutil.rmtree(target_dir)
-        self.logger.removeHandler(file_handler)
-        file_handler.close()
         return ret == 0
 
     def _run_op_test(self, op_source, tester, test_all_func, chip):
@@ -142,9 +169,9 @@ class MAIN_ENTRY(object):
         os.makedirs(case_name, exist_ok=True)
         os.chdir(case_name)
         if op_source == "tflite":
-            tester = tester(chip=chip)
+            tester = tester(chip=chip, concise_log=self.concise_log)
         else:
-            tester = tester(chip=chip, simple=self.is_basic)
+            tester = tester(chip=chip, simple=self.is_basic, concise_log=self.concise_log)
         error_cases = test_all_func(tester)
         self.add_result(case_name, not error_cases, int(t.elapsed_time()), error_cases)
         os.chdir(self.current_dir)
@@ -156,8 +183,19 @@ class MAIN_ENTRY(object):
         case_name = f"test_script_{source}"
         file_handler = logging.FileHandler(filename=case_name + ".log", mode="w")
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter('%(message)s'))
-        self.logger.addHandler(file_handler)
+        file_handler.setFormatter(logging.Formatter("%(message)s"))
+        if self.concise_log:
+            file_logger = logging.getLogger("logger_to_file")
+            file_logger.addHandler(file_handler)
+            file_logger.propagate = False
+            console_logger = logging.getLogger("logger_to_file.console")
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(logging.Formatter("%(message)s"))
+            console_logger.addHandler(console_handler)
+            console_logger.setLevel(logging.INFO)
+        else:
+            self.logger.addHandler(file_handler)
+
         t = Timer()
         os.makedirs(case_name, exist_ok=True)
         os.chdir(case_name)
@@ -167,8 +205,14 @@ class MAIN_ENTRY(object):
             _os_system_log(os.path.expandvars("$REGRESSION_PATH/script_test/{}.sh".format(source)))
         except:
             success = False
-        self.logger.removeHandler(file_handler)
-        file_handler.close()
+        if self.concise_log:
+            file_logger.removeHandler(file_handler)
+            console_logger.removeHandler(console_handler)
+            file_handler.close()
+            console_handler.close()
+        else:
+            self.logger.removeHandler(file_handler)
+            file_handler.close()
         self.add_result(case_name, success, int(t.elapsed_time()))
         os.chdir(self.current_dir)
         shutil.rmtree(case_name) # too large
@@ -188,7 +232,7 @@ class MAIN_ENTRY(object):
             ret = self._run_script_test(source)
             if not ret and self.is_basic:
                 break
-        self.time_cost.append(f"run_script: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list("run_script", int(t.elapsed_time()))
         return SUCCESS if ret else FAILURE
 
     def run_cuda_test(self):
@@ -197,7 +241,7 @@ class MAIN_ENTRY(object):
         # run scripts under $REGRESSION_OUT/script_test
         print("======= cuda test ======")
         ret = self._run_script_test("test_cuda")
-        self.time_cost.append(f"run_cuda: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list("run_cuda", int(t.elapsed_time()))
         return SUCCESS if ret else FAILURE
 
     def run_op_test(self, op_test_types):
@@ -210,7 +254,8 @@ class MAIN_ENTRY(object):
                 # basic test stops once a test failed
                 if not ret and self.is_basic:
                     return FAILURE
-            self.time_cost.append(f"run_{op_source}: {int(t.elapsed_time())} seconds")
+            self.extend_time_cost_list(f"run_{op_source}", int(t.elapsed_time()))
+
         return SUCCESS if ret else FAILURE
 
     def run_op0_test(self):
@@ -277,7 +322,7 @@ class MAIN_ENTRY(object):
                     for result in finished_list:
                         if result["status"] != Status.PASSED:
                             return 1
-            self.time_cost.append(f"run models for {chip}: {int(t.elapsed_time())} seconds")
+            self.extend_time_cost_list(f"run models for {chip}", int(t.elapsed_time()))
 
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)
@@ -288,16 +333,17 @@ class MAIN_ENTRY(object):
         # run scripts under $REGRESSION_OUT/script_test
         print("======= MaskRCNN test ======")
         ret = self._run_script_test("test_MaskRCNN")
-        self.time_cost.append(f"run_MaskRCNN: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list(f"run_MaskRCNN", int(t.elapsed_time()))
         return SUCCESS if ret else FAILURE
-    
+
     def run_tdb_test(self):
         # return exit status
         t = Timer()
         # run scripts under $REGRESSION_OUT/script_test
         print("======= TDB test ======")
         ret = self._run_script_test("test_tdb")
-        self.time_cost.append(f"run_TDB: {int(t.elapsed_time())} seconds")
+        self.extend_time_cost_list(f"run_TDB", int(t.elapsed_time()))
+
         return SUCCESS if ret else FAILURE
 
     def run_all(self, test_set):
@@ -321,6 +367,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
+    parser.add_argument("--concise_log", action="store_true", help='do test with concise log')
     # yapf: enable
     args = parser.parse_args()
 
@@ -333,7 +380,7 @@ if __name__ == "__main__":
                         level=logging.DEBUG,
                         format='%(message)s')
 
-    main_entry = MAIN_ENTRY(args.test_type, args.disable_thread)
+    main_entry = MAIN_ENTRY(args.test_type, args.disable_thread, args.concise_log)
 
     exit_status = main_entry.run_all(args.test_set)
 
@@ -354,7 +401,7 @@ if __name__ == "__main__":
             except:
                 print("Failed to open error log file:{}".format(log_file))
 
-    print("============ Time Consum ============")
+    print("============ Time Consum Summary ============")
     for time in main_entry.time_cost:
         print(time)
 

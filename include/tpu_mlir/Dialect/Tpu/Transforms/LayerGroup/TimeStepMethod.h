@@ -28,12 +28,15 @@ namespace tpu {
 class TimeStepMethod {
 
 public:
-  TimeStepMethod() {
+  TimeStepMethod(const LgOptions &options) {
+    options_ = options;
     if (module::isCV18xx()) {
-      Cv18xxCycleCalculator *cyc_ptr = new Cv18xxCycleCalculator();
+      Cv18xxCycleCalculator *cyc_ptr =
+          new Cv18xxCycleCalculator(options.num_core);
       cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
     } else {
-      Bm168xCycleCalculator *cyc_ptr = new Bm168xCycleCalculator();
+      Bm168xCycleCalculator *cyc_ptr =
+          new Bm168xCycleCalculator(options.num_core);
       cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
     }
   }
@@ -56,7 +59,7 @@ public:
                            std::vector<std::list<GdmaElt>> &tensor_timesteps,
                            std::vector<int64_t> &timestep_cycle_slack);
   int64_t get_next_ts(bool &is_valid, int64_t cur_ts, TIMESTEP_LD_ST ld_st,
-                    int64_t range_end);
+                      int64_t range_end);
   int64_t get_best_ts(BasicTimeStep *time_step, const LgInfo &lg_info,
                       int64_t cur_ts, ValueIntMap &tensor_to_cycle,
                       ValueIntMap &tensor_to_bufsize,
@@ -75,10 +78,11 @@ public:
   //                             int64_t hidx, int64_t hslice);
 
 private:
+  LgOptions options_;
   std::shared_ptr<CycleCalculator> cycle_calculator_;
 };
 
-std::unique_ptr<LgPass> CreateTimeStepAssignmentPass();
+std::unique_ptr<LgPass> CreateTimeStepAssignmentPass(const LgOptions &options);
 
 } // namespace tpu
 } // namespace tpu_mlir

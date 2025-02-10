@@ -60,7 +60,7 @@ ParamsTable = {
                                  default_weight_quantize=E4M3FakeQuantize,
                                  default_act_quantize=LearnableFakeQuantize,
                                  default_weight_observer=MinMaxObserver,
-                                 default_act_observer=EMAMinMaxObserver),    
+                                 default_act_observer=EMAMinMaxObserver),
     'BM1684X':                dict(qtype='affine',
                                  w_qscheme=QuantizeScheme(symmetry=True, per_channel=True, pot_scale=False, bit=8),
                                  a_qscheme=QuantizeScheme(symmetry=True, per_channel=False, pot_scale=False, bit=8),
@@ -117,6 +117,13 @@ ParamsTable = {
                                  default_act_quantize=LearnableFakeQuantize,
                                  default_weight_observer=MinMaxObserver,
                                  default_act_observer=EMAMinMaxObserver),
+    'SGTPUV8':                dict(qtype='affine',
+                                 w_qscheme=QuantizeScheme(symmetry=True, per_channel=True, pot_scale=False, bit=8, symmetric_range=True),
+                                 a_qscheme=QuantizeScheme(symmetry=True, per_channel=False, pot_scale=False, bit=8),
+                                 default_weight_quantize=LearnableFakeQuantize,
+                                 default_act_quantize=LearnableFakeQuantize,
+                                 default_weight_observer=MinMaxObserver,
+                                 default_act_observer=EMAMinMaxObserver),
     'Academic':               dict(qtype='affine',
                                  w_qscheme=QuantizeScheme(symmetry=True, per_channel=True, pot_scale=False, bit=8),
                                  a_qscheme=QuantizeScheme(symmetry=True, per_channel=False, pot_scale=False, bit=8),
@@ -151,7 +158,7 @@ FakeQuantizeDict = {
     'QDropFakeQuantize':     QDropFakeQuantize,      # BRECQ & QDrop                # noqa: E241
     'E4M3FakeQuantize':      E4M3FakeQuantize,
     'E5M2FakeQuantize':      E5M2FakeQuantize,
-    'GPTQFakeQuantize':      GPTQFakeQuantize, 
+    'GPTQFakeQuantize':      GPTQFakeQuantize,
     'FP4FakeQuantize':       FP4FakeQuantize,
     'GPTQFP4FakeQuantize':   GPTQFP4FakeQuantize,
     'FP4GROUPFakeQuantize':  FP4GROUPFakeQuantize,
@@ -226,6 +233,8 @@ def get_qconfig_by_platform(quant_dict:Dict,extra_qparams: Dict):
         chip_params,w_observer,a_observer,w_fakequantize,a_fakequantize=chipparams(chip,extra_qparams,FakeQuantizeDict_Chip)
     elif chip=="BM1690":
         chip_params,w_observer,a_observer,w_fakequantize,a_fakequantize=chipparams(chip,extra_qparams,FakeQuantizeDict_Chip)
+    elif chip=="SGTPUV8":
+        chip_params,w_observer,a_observer,w_fakequantize,a_fakequantize=chipparams(chip,extra_qparams,FakeQuantizeDict_Chip)
     elif chip=="Academic":
         chip_params,w_observer,a_observer,w_fakequantize,a_fakequantize=chipparams(chip,extra_qparams,FakeQuantizeDict)
     else:
@@ -290,7 +299,7 @@ def get_qconfig_by_platform(quant_dict:Dict,extra_qparams: Dict):
                                                             w_observer.__name__, str(w_qscheme)))
     else:
         logger.info("The quantmode is currently not supported")
-    
+
     qconfig = {'': QConfig(activation=a_qconfig, weight=w_qconfig)}
 
     # qconfig["object_type"] = {torch.nn.Linear:createQConfigForSophgo_weight()} #int8 qat, Sophgo_TPU use sym per-layer
@@ -316,7 +325,7 @@ def get_qconfig_by_platform(quant_dict:Dict,extra_qparams: Dict):
     #         qconfig["object_type"].update(object_type)
     #     else:
     #         qconfig["object_type"] = object_type
-            
+
     module_name = extra_qparams.get('module_name', None)
     if module_name:
         if "module_name" not in qconfig:
@@ -411,9 +420,9 @@ def get_qconfig_by_platform(quant_dict:Dict,extra_qparams: Dict):
             'symmetry': True,
             'per_channel': False,
             'pot_scale': False
-        }    
-        f16_qconfig = createQConfig(w_fakequantize=w_fakequantize, a_fakequantize=a_fakequantize, 
-                                    w_qscheme=w_qscheme, a_qscheme=a_qscheme)    
+        }
+        f16_qconfig = createQConfig(w_fakequantize=w_fakequantize, a_fakequantize=a_fakequantize,
+                                    w_qscheme=w_qscheme, a_qscheme=a_qscheme)
         for name in f16_cfg:
             print('insert F16 FakeQuantize::', name)
             qconfig["module_name"][name] = f16_qconfig
@@ -453,14 +462,14 @@ def createQConfigForSophgo_weight(chip, bit_num = 4, w_fakequantize = 'FixedFake
     w_observer = ObserverDict[w_observer]
     w_fakequantize = FakeQuantizeDict[w_fakequantize]
     sym_range = False
-    if chip in ['MARS3', 'CV183X', 'CV182X', 'CV181X', 'CV180X', 'CV186X']:
+    if chip in ['MARS3', 'CV183X', 'CV182X', 'CV181X', 'CV180X', 'CV186X', 'SGTPUV8']:
         sym_range = True
     w_qscheme = QuantizeScheme(symmetry=True, per_channel=False, pot_scale=False, bit=bit_num, symmetric_range = sym_range) #Sophgo_TPU use sym per-layer
     w_qscheme.kwargs.update(w_observer_extra_args)
     w_qconfig = w_fakequantize.with_args(observer=w_observer, **w_fakeq_params, **w_qscheme.to_observer_params())
     return QConfig(activation=torch.nn.Identity, weight=w_qconfig) #activation use global quant conifg
 
-def createQConfig(w_fakequantize = 'LearnableFakeQuantize', a_fakequantize = 'LearnableFakeQuantize', 
+def createQConfig(w_fakequantize = 'LearnableFakeQuantize', a_fakequantize = 'LearnableFakeQuantize',
                 w_observer = 'MinMaxObserver', a_observer = 'EMAMinMaxObserver', w_qscheme = {}, a_qscheme = {},
                 w_fakeq_params = {}, a_fakeq_params = {}, w_observer_extra_args = {}, a_observer_extra_args = {}):
     w_observer = ObserverDict[w_observer]
@@ -483,7 +492,7 @@ def createQConfig(w_fakequantize = 'LearnableFakeQuantize', a_fakequantize = 'Le
     a_qconfig = a_fakequantize.with_args(observer=a_observer, **a_fakeq_params, **a_qscheme.to_observer_params())
     return QConfig(activation=a_qconfig, weight=w_qconfig)
 
-def createQConfigForInt4SophgoLiner(w_fakequantize = 'LearnableFakeQuantize', a_fakequantize = 'LearnableFakeQuantize', 
+def createQConfigForInt4SophgoLiner(w_fakequantize = 'LearnableFakeQuantize', a_fakequantize = 'LearnableFakeQuantize',
                 w_observer = 'MinMaxObserver', a_observer = 'EMAMinMaxObserver', w_qscheme = {}, a_qscheme = {},
                 w_fakeq_params = {}, a_fakeq_params = {}, w_observer_extra_args = {}, a_observer_extra_args = {}):
     w_observer = ObserverDict[w_observer]

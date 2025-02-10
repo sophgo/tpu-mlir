@@ -495,6 +495,11 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
         attr.ic >= (1 << 12) || attr.oc >= (1 << 12)) {
       return failure();
     }
+  } else {
+    auto attr = parseParam();
+    if (module::isMARS3() && (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15)) {
+      return failure();
+    }
   }
   return success();
 }

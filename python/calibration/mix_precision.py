@@ -1125,7 +1125,7 @@ class MixPrecSearcher:
         result = []
         nxt_op=self.parser.get_next_op_by_op_name(op)
         for node in nxt_op:
-            if self.parser.get_op_type_by_op_name(node) in ['top.Relu', 'top.PRelu']:
+            if self.parser.get_op_type_by_op_name(node) in ['top.Relu', 'top.PRelu', 'top.LeakyRelu']:
                 nxt_nxt_op=self.parser.get_next_op_by_op_name(node)
                 for _node in nxt_nxt_op:
                     if self.parser.get_op_type_by_op_name(_node) == 'top.Conv':

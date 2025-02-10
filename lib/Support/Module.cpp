@@ -53,6 +53,7 @@ struct Attr {
   static constexpr llvm::StringRef TOP_RUN_MODE = "module.top_run_mode";
   static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET =
       "module.dynamic_coeff_offset";
+  static constexpr llvm::StringRef HIGH_PRECISION = "module.high_precision";
 };
 
 static ModuleOp m = nullptr;
@@ -801,6 +802,34 @@ bool IsHdimIsBatch(Value value) {
   return false;
 }
 
+bool IsSliceOpInOrOut(Value value) {
+  auto op = value.getDefiningOp();
+  if (op && isa<tpu::SliceOp>(op)) {
+    return true;
+  }
+
+  for (auto user : value.getUsers()) {
+    if (isa<tpu::SliceOp>(user)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsReshapeOpInOrOut(Value value) {
+  auto op = value.getDefiningOp();
+  if (op && isa<tpu::ReshapeOp>(op)) {
+    return true;
+  }
+
+  for (auto user : value.getUsers()) {
+    if (isa<tpu::ReshapeOp>(user)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool isOpInGroup(Operation *Op, int64_t *group_type) {
   if (Op == nullptr) {
     return false;
@@ -834,6 +863,13 @@ bool isOpInGroupParallel(Operation *Op) {
   }
   auto parent = Op->getParentOp();
   if (isa_and_nonnull<tpu::GroupParallelOp>(parent)) {
+    return true;
+  }
+  return false;
+}
+
+bool isValueBlockArgument(Value v) {
+  if (auto blockArg = dyn_cast<BlockArgument>(v)) {
     return true;
   }
   return false;
@@ -1263,6 +1299,17 @@ AddrMode getAddrMode() {
 
 bool isAddrMode(AddrMode mode) { return mode == getAddrMode(); }
 
+void setHighPrecision(bool is_high) {
+  m->setAttr(Attr::HIGH_PRECISION, BoolAttr::get(ctx, is_high));
+}
+
+bool isHighPrecision() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::HIGH_PRECISION)) {
+    return m->getAttrOfType<BoolAttr>(Attr::HIGH_PRECISION).getValue();
+  }
+  return false;
+}
+
 void setTopRunMode(TopRunMode mode) {
   auto s = stringifyTopRunMode(mode);
   m->setAttr(Attr::TOP_RUN_MODE, StringAttr::get(ctx, s));
@@ -1372,13 +1419,15 @@ bool isCV18xx() {
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
-          chip == Chip::CV186X || chip == Chip::MARS3 || chip == Chip::SG2380);
+          chip == Chip::CV186X || chip == Chip::MARS3 || chip == Chip::SG2380 ||
+          chip == Chip::SGTPUV8);
 }
 bool isBM1690Family() { return (chip == Chip::BM1690); }
 bool isSG2380() { return (chip == Chip::SG2380); }
 bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
 bool isMARS3() { return (chip == Chip::MARS3); }
+bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 
 ModuleOp getModuleOp() { return m; }
 
@@ -1559,13 +1608,23 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
         outputs.push_back(return_op.getOperand(result.getResultNumber()));
 
         func_op.walk([&](tpu::OutBufferOp op) {
-          // llvm::errs() <<"ModuleOp dump
-          // OutBufferOp:"<<getName(op->getResult(0)).str()<<" as outputs\n";
           bool need_dump = op.getNeedDump();
           if (need_dump) {
             outputs.push_back(op->getResult(0));
           }
         });
+
+        if (module::isDebugCmdEnable("dump_all_global_op_out")) {
+          func_op.walk([&](Operation *op) {
+            if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(
+                    op) &&
+                !isOpInGroup(op)) {
+              for (auto v : op->getResults()) {
+                outputs.push_back(v);
+              }
+            }
+          });
+        }
       } else {
         outputs.push_back(out);
       }
@@ -1622,6 +1681,16 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
       outputs.push_back(op->getResult(0));
     }
   });
+  if (module::isDebugCmdEnable("dump_all_global_op_out")) {
+    func.walk([&](Operation *op) {
+      if (!isa<top::NoneOp, top::WeightOp, tpu::BufferOp, tpu::GroupOp>(op) &&
+          !isOpInGroup(op)) {
+        for (auto v : op->getResults()) {
+          outputs.push_back(v);
+        }
+      }
+    });
+  }
 }
 
 void getScaleAndZeroPoint(double rmin, double rmax, double &scale,
@@ -2093,17 +2162,22 @@ bool IsRightMat(Value v) {
   return false;
 }
 
-bool IsSecondMatInMlp(Value v){
+bool IsSecondMatInMlp(Value v) {
   for (auto user : v.getUsers()) {
-    if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(user)) {
-      for (auto use : MatMulOp.getOutput().getUsers()) {
-        if (auto MatMulOp = dyn_cast_or_null<tpu::MatMulOp>(use)){
+    if (isa<tpu::MatMulOp>(user)) {
+      Operation *prev_op = user->getPrevNode();
+      while (prev_op) {
+        if (isa<tpu::SoftmaxOp>(prev_op)) {
           return false;
         }
+        if (isOpInGroup(prev_op) && isa<tpu::MatMulOp>(prev_op)) {
+          return true;
+        }
+        prev_op = prev_op->getPrevNode();
       }
     }
   }
-  return true;
+  return false;
 }
 
 bool isOpSameCalc(Operation *op0, Operation *op1) {
@@ -2164,29 +2238,30 @@ bool isInMatMulGrpOp(Operation *op) {
 }
 
 bool areAttributesEqual(mlir::Operation *op1, mlir::Operation *op2) {
-    auto attrs1 = op1->getAttrs();
-    auto attrs2 = op2->getAttrs();
+  auto attrs1 = op1->getAttrs();
+  auto attrs2 = op2->getAttrs();
 
-    if (attrs1.size() != attrs2.size()) {
-        return false;
-    }
+  if (attrs1.size() != attrs2.size()) {
+    return false;
+  }
 
-    llvm::DenseMap<mlir::StringRef, mlir::Attribute> attrsMap;
-    for (const auto &attr : attrs2) {
-        attrsMap[attr.getName()] = attr.getValue();
-    }
+  llvm::DenseMap<mlir::StringRef, mlir::Attribute> attrsMap;
+  for (const auto &attr : attrs2) {
+    attrsMap[attr.getName()] = attr.getValue();
+  }
 
-    for (const auto &attr : attrs1) {
-        auto it = attrsMap.find(attr.getName());
-        if (it == attrsMap.end() || it->second != attr.getValue()) {
-            return false;
-        }
+  for (const auto &attr : attrs1) {
+    auto it = attrsMap.find(attr.getName());
+    if (it == attrsMap.end() || it->second != attr.getValue()) {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
-bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h, int64_t &w) {
-  bool can_change =false;
+bool ChangeValueShape(Value value, int64_t &n, int64_t &c, int64_t &h,
+                      int64_t &w) {
+  bool can_change = false;
   auto op = value.getDefiningOp();
   if (op && isa<tpu::BatchNormBwdOp>(op)) {
     can_change = true;

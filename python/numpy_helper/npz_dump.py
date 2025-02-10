@@ -24,7 +24,8 @@ def npz_dump(args):
   npzfile = np.load(args[0])
 
   if len(args) == 1 or args[1] == "--list":
-    print("\n".join(npzfile.files))
+    file_info = "\n".join([f"{file_name}\t{npzfile[file_name].shape}\t{npzfile[file_name].dtype}" for file_name in npzfile.files])
+    print(file_info)
     exit(0)
 
   if args[1] in npzfile.files:

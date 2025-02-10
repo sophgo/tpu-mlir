@@ -143,9 +143,10 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
   auto replace_pow = [&rewriter](top::PowOp &op, double n) -> Value {
     auto name = module::getName(op.getOutput());
     // auto type = op.getOutput().getType();
-    // if(module::isMARS3())
-    auto type = module::isMARS3() ? getQuantBF16Type(op->getResult(0))
-                                  : op.getOutput().getType();
+    // if(module::isMARS3() || module::isSGTPUV8())
+    auto type = module::isMARS3() || module::isSGTPUV8()
+                    ? getQuantBF16Type(op->getResult(0))
+                    : op.getOutput().getType();
     rewriter.setInsertionPointAfter(op);
     auto log_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_log"));
     std::vector<NamedAttribute> attrs;

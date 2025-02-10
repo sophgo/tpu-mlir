@@ -156,17 +156,14 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
 
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
-  // Note that input tensor should be broadcast loaded per ic,
-  //  so one should satisfy the load instruction limit: dst_C + dst_local_idx <=
-  //  NPU_NUM
-  const int64_t limit = std::min(IC_PARALLEL, Arch::NPU_NUM);
+
   int use_3ic_optimize = 0;
-  if (attr.ic * attr.kh * attr.kw <= limit && attr.kh > 1 && attr.kw > 1) {
+  if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 && attr.kw > 1) {
     use_3ic_optimize = 3; // merge kh and kw to ic
-  } else if (attr.ic * attr.kw <= limit && attr.kw > 1 &&
-             (attr.kh < attr.kw || attr.ic * attr.kh > limit)) {
+  } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
+             (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
     use_3ic_optimize = 2; // merge kw to ic
-  } else if (attr.ic * attr.kh <= limit && attr.kh > 1) {
+  } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
     use_3ic_optimize = 1; // merge kh to ic
   } else {
     use_3ic_optimize = 0;
@@ -175,14 +172,12 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   int weight_size = align_up(gic, IC_PARALLEL) * output_c * kh * kw * 1;
   auto data_i8 = std::make_shared<std::vector<int8_t>>(weight_size);
 
-  //  auto pre_op = op.getInput().getDefiningOp();
-  //  if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
-  //    // broadcast input using BDC rather than GDMA
-  //    use_3ic_optimize |= 0x10;
-  //  }
-  if (use_3ic_optimize && !op.getInput().hasOneUse()) {
-    // broadcast input using BDC to a buffer
-    use_3ic_optimize |= 0x30;
+  // broadcast input using BDC to a buffer
+  if (use_3ic_optimize) {
+    if (!op.getInput().hasOneUse() || IC_PARALLEL > Arch::NPU_NUM) {
+      // broadcast input using BDC to a buffer
+      use_3ic_optimize |= 0x30;
+    }
   }
   if (groups != 1 && !attr.is_dw) {
     use_3ic_optimize = 0;
@@ -286,7 +281,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
     int64_t quant_w_size = 0;
     bool align = true;
     if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
-        module::isMARS3()) {
+        module::isMARS3() || module::isSGTPUV8()) {
       align = false;
       quant_w_size = 2;
       for (int i = 0; i < attr.oc; i++) {
@@ -352,7 +347,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   int64_t filter_align = BM168x::EU_BYTES;
   if (attr.is_dw) {
     if (!module::isBM1688() && !module::isBM1690Family() &&
-        !module::isSG2380() && !module::isMARS3()) {
+        !module::isSG2380() && !module::isMARS3() && !module::isSGTPUV8()) {
       filter_align = 1;
     }
   }
@@ -505,7 +500,6 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
   int groups = attr.groups;
   int gic = input_c / groups;
 
-  int npu_num = BM168x::NPU_NUM;
   const int IC_PARALLEL = BM168x::ic_num(2);
   // int weight_size = align_up(output_c, npu_num) * gic * kh * kw;
   // auto data_f32 = std::make_shared<std::vector<float>>(weight_size);
@@ -566,8 +560,13 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
       op->setOperand(2, newBiasOp);
     }
   } else {
+    // Allow 3IC optimize by default
     int use_3ic_optimize = 0;
-    if (false) { // Shut down 3ic optimization temporarily for fp16/bfp16
+    if (module::isBM1684X() || module::isBM1688()) {
+      // mars3's f16 backend need further repaired, because CMDs such as
+      // tpu_bdc_arithmetic_sequence_distribute are not supported on mars3.
+      // bm1690 is well supported now, but 3ic-opt is not opened here by
+      // default.
       if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
           attr.kw > 1) {
         use_3ic_optimize = 3; // merge kh and kw to ic
@@ -583,96 +582,57 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
         // Now only support broadcast using BDC when it is a local layer.
         use_3ic_optimize |= 0x10;
       }
+      if (use_3ic_optimize && !op.getInput().hasOneUse()) {
+        // broadcast input using BDC to a buffer
+        use_3ic_optimize |= 0x30;
+      }
     }
 
     /////////////// this branch is speical for stride > 15
     if (strideh_gt_15 || stridew_gt_15) {
-      std::vector<int> cell_h;
-      std::vector<int> cell_w;
-      std::vector<int> cell_h_sum;
-      std::vector<int> cell_w_sum;
-      int cell_num_h = 1;
-      int cell_num_w = 1;
-      int max_cell_h = kh;
-      int max_cell_w = kw;
-      // split kernel
-      if (strideh_gt_15) {
-        cell_num_h = ceiling_func(kh, 15);
-        max_cell_h = ceiling_func(kh, cell_num_h);
-        int cur_h = 0;
-        int sum_h = 0;
-        for (int i = 0; i < cell_num_h; i++) {
-          cur_h = kh / cell_num_h + ((i < kh % cell_num_h) ? 1 : 0);
-          cell_h.push_back(cur_h);
-          cell_h_sum.push_back(sum_h);
-          sum_h += cur_h;
+      if (module::isMARS3() && (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0)) {
+        const int cell_num_h = kh / cell_h;
+        const int cell_num_w = kw / cell_w;
+        const int cell_num_hw = cell_num_h * cell_num_w;
+        const int max_acc_ratio = IC_PARALLEL / gic;
+        int acc_ratio_h = max_acc_ratio;
+        for (; acc_ratio_h > 0; --acc_ratio_h) {
+          if (cell_num_h % acc_ratio_h == 0) {
+            break;
+          }
         }
-      } else {
-        cell_h.push_back(max_cell_h);
-        cell_h_sum.push_back(0);
-      }
-      if (stridew_gt_15) {
-        cell_num_w = ceiling_func(kw, 15);
-        max_cell_w = ceiling_func(kw, cell_num_w);
-        int cur_w = 0;
-        int sum_w = 0;
-        for (int i = 0; i < cell_num_w; i++) {
-          cur_w = kw / cell_num_w + ((i < kw % cell_num_w) ? 1 : 0);
-          cell_w.push_back(cur_w);
-          cell_w_sum.push_back(sum_w);
-          sum_w += cur_w;
+        int acc_ratio_w = max_acc_ratio / acc_ratio_h;
+        for (; acc_ratio_w > 0; --acc_ratio_w) {
+          if (cell_num_w % acc_ratio_w == 0) {
+            break;
+          }
         }
-      } else {
-        cell_w.push_back(max_cell_w);
-        cell_w_sum.push_back(0);
-      }
-      int oc_per_groups = output_c / groups;
-      int weight_size_per_group =
-          ((oc_per_groups < npu_num) ? oc_per_groups
-                                     : align_up(oc_per_groups, npu_num)) *
-          align_up(gic, IC_PARALLEL) * cell_num_h * max_cell_h * cell_num_w *
-          max_cell_w;
-      weight_size = groups * weight_size_per_group;
-      data_bf16->resize(weight_size, 0);
-      // Must be initialized to 0. It is to avoid memory increase when bmodel
-      // combine.
-      int ocloops = ceiling_func(oc_per_groups, npu_num);
-      for (int group_idx = 0; group_idx < groups; group_idx++) {
-        for (int oc = 0; oc < oc_per_groups; oc++) {
-          for (int ic_idx = 0; ic_idx < ceiling_func(gic, IC_PARALLEL);
-               ic_idx++) {
-            for (int ic_inner = 0; ic_inner < IC_PARALLEL; ic_inner++) {
-              for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
-                for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
-                  for (int cell_w_idx = 0; cell_w_idx < cell_num_w;
-                       cell_w_idx++) {
-                    for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
-                      if (ic_idx * IC_PARALLEL + ic_inner >= gic)
-                        continue;
+        const int loop_count_h = cell_num_h / acc_ratio_h;
+        const int loop_count_w = cell_num_w / acc_ratio_w;
+        const int loop_count = loop_count_h * loop_count_w;
+        const int new_gic = acc_ratio_h * acc_ratio_w * gic;
+        const int mid_size = loop_count * output_c * new_gic * cell_h * cell_w;
+        auto data_mid = std::make_shared<std::vector<uint16_t>>(mid_size);
+        data_mid->resize(mid_size, 0);
+        // (oc_idx, ic_idx, cell_h_idx, ih, cell_w_idx, iw) -> (lp_idx, oc_idx, aw_idx, ah_idx, ic_idx, ih, iw)
+        for (int oc_idx = 0; oc_idx < output_c; oc_idx++) {
+          for (int ic_idx = 0; ic_idx < gic; ic_idx++) {
+            for (int lp_idx = 0; lp_idx < loop_count; lp_idx++) {
+              for (int ah_idx = 0; ah_idx < acc_ratio_h; ah_idx++) {
+                for (int aw_idx = 0; aw_idx < acc_ratio_w; aw_idx++) {
+                  for (int ih = 0; ih < cell_h; ih++) {
+                    for (int iw = 0; iw < cell_w; iw++) {
+                      const int cell_h_idx = (lp_idx % loop_count_h) * acc_ratio_h + ah_idx;
+                      const int cell_w_idx = (lp_idx / loop_count_h) * acc_ratio_w + aw_idx;
                       int orig_offset =
-                          group_idx * oc_per_groups * gic * kh * kw +
-                          oc * gic * kh * kw +
-                          (ic_idx * IC_PARALLEL + ic_inner) * kh * kw +
-                          cell_h_sum[cell_h_idx] * kw + ih * kw +
-                          cell_w_sum[cell_w_idx] + iw;
+                          (oc_idx * gic + ic_idx) * cell_num_hw * cell_h * cell_w +
+                          (cell_h_idx * cell_h + ih) * kw +
+                          cell_w_idx * cell_w + iw;
                       int trans_offset =
-                          groups * (oc % npu_num) * ocloops *
-                              align_up(gic, IC_PARALLEL) * cell_num_h *
-                              max_cell_h * cell_num_w * max_cell_w + // npu idx
-                          group_idx * ocloops * align_up(gic, IC_PARALLEL) *
-                              cell_num_h * max_cell_h * cell_num_w *
-                              max_cell_w + // group idx
-                          (cell_h_idx * cell_num_w + cell_w_idx) * ocloops *
-                              max_cell_h * max_cell_w *
-                              align_up(gic, IC_PARALLEL) + // cell idx
-                          (oc / npu_num) * cell_h[cell_h_idx] *
-                              cell_w[cell_w_idx] *
-                              align_up(gic, IC_PARALLEL) + // oc offset
-                          ic_idx * IC_PARALLEL * cell_h[cell_h_idx] *
-                              cell_w[cell_w_idx] + // ic idx
-                          (ih * cell_w[cell_w_idx] + iw) * IC_PARALLEL +
-                          ic_inner;
-                      data_bf16->at(trans_offset) = filter_u16->at(orig_offset);
+                          (lp_idx * output_c + oc_idx) * new_gic * cell_h * cell_w +
+                          ((aw_idx * acc_ratio_h + ah_idx) * gic + ic_idx) * cell_h * cell_w +
+                          ih * cell_w + iw;
+                      data_mid->at(trans_offset) = filter_u16->at(orig_offset);
                     }
                   }
                 }
@@ -680,12 +640,138 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
             }
           }
         }
+        // (lp_idx, oc_idx, old_ic_idx, ih, iw) -> (lp_idx, oc_idx, ic_idx, ih, iw, ic_inner)
+        const int ic_per_prl = ceiling_func(new_gic, IC_PARALLEL);
+        const int weight_size = loop_count * output_c * ic_per_prl * cell_h * cell_w * IC_PARALLEL;
+        data_bf16->resize(weight_size, 0);
+        for (int lpoc_idx = 0; lpoc_idx < loop_count * output_c; lpoc_idx++) {
+          for (int ic_idx = 0; ic_idx < ic_per_prl; ic_idx++) {
+            for (int ic_inner = 0; ic_inner < IC_PARALLEL; ic_inner++) {
+              for (int ih = 0; ih < cell_h; ih++) {
+                for (int iw = 0; iw < cell_w; iw++) {
+                  if (ic_idx * IC_PARALLEL + ic_inner >= new_gic)
+                    continue;
+                  int orig_offset =
+                      lpoc_idx * new_gic * cell_h * cell_w +
+                      (ic_idx * IC_PARALLEL + ic_inner) * cell_h * cell_w +
+                      ih * cell_w + iw;
+                  int trans_offset =
+                      lpoc_idx * ic_per_prl * cell_h * cell_w * IC_PARALLEL +
+                      ic_idx * cell_h * cell_w * IC_PARALLEL +
+                      (ih * cell_w + iw) * IC_PARALLEL +
+                      ic_inner;
+                  data_bf16->at(trans_offset) = data_mid->at(orig_offset);
+                }
+              }
+            }
+          }
+        }
+        filter_shape[0] = 1;
+        filter_shape[1] = loop_count * output_c;
+        filter_shape[2] = 1;
+        filter_shape[3] = ic_per_prl * IC_PARALLEL * cell_h * cell_w;
+      } else {
+        std::vector<int> cell_h;
+        std::vector<int> cell_w;
+        std::vector<int> cell_h_sum;
+        std::vector<int> cell_w_sum;
+        int cell_num_h = 1;
+        int cell_num_w = 1;
+        int max_cell_h = kh;
+        int max_cell_w = kw;
+        // split kernel
+        if (strideh_gt_15) {
+          cell_num_h = ceiling_func(kh, 15);
+          max_cell_h = ceiling_func(kh, cell_num_h);
+          int cur_h = 0;
+          int sum_h = 0;
+          for (int i = 0; i < cell_num_h; i++) {
+            cur_h = kh / cell_num_h + ((i < kh % cell_num_h) ? 1 : 0);
+            cell_h.push_back(cur_h);
+            cell_h_sum.push_back(sum_h);
+            sum_h += cur_h;
+          }
+        } else {
+          cell_h.push_back(max_cell_h);
+          cell_h_sum.push_back(0);
+        }
+        if (stridew_gt_15) {
+          cell_num_w = ceiling_func(kw, 15);
+          max_cell_w = ceiling_func(kw, cell_num_w);
+          int cur_w = 0;
+          int sum_w = 0;
+          for (int i = 0; i < cell_num_w; i++) {
+            cur_w = kw / cell_num_w + ((i < kw % cell_num_w) ? 1 : 0);
+            cell_w.push_back(cur_w);
+            cell_w_sum.push_back(sum_w);
+            sum_w += cur_w;
+          }
+        } else {
+          cell_w.push_back(max_cell_w);
+          cell_w_sum.push_back(0);
+        }
+        int npu_num = BM168x::NPU_NUM;
+        int oc_per_groups = output_c / groups;
+        int weight_size_per_group =
+            ((oc_per_groups < npu_num) ? oc_per_groups
+                                      : align_up(oc_per_groups, npu_num)) *
+            align_up(gic, IC_PARALLEL) * cell_num_h * max_cell_h * cell_num_w *
+            max_cell_w;
+        weight_size = groups * weight_size_per_group;
+        data_bf16->resize(weight_size, 0);
+        // Must be initialized to 0. It is to avoid memory increase when bmodel
+        // combine.
+        int ocloops = ceiling_func(oc_per_groups, npu_num);
+        for (int group_idx = 0; group_idx < groups; group_idx++) {
+          for (int oc = 0; oc < oc_per_groups; oc++) {
+            for (int ic_idx = 0; ic_idx < ceiling_func(gic, IC_PARALLEL);
+                ic_idx++) {
+              for (int ic_inner = 0; ic_inner < IC_PARALLEL; ic_inner++) {
+                for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
+                  for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
+                    for (int cell_w_idx = 0; cell_w_idx < cell_num_w;
+                        cell_w_idx++) {
+                      for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
+                        if (ic_idx * IC_PARALLEL + ic_inner >= gic)
+                          continue;
+                        int orig_offset =
+                            group_idx * oc_per_groups * gic * kh * kw +
+                            oc * gic * kh * kw +
+                            (ic_idx * IC_PARALLEL + ic_inner) * kh * kw +
+                            cell_h_sum[cell_h_idx] * kw + ih * kw +
+                            cell_w_sum[cell_w_idx] + iw;
+                        int trans_offset =
+                            groups * (oc % npu_num) * ocloops *
+                                align_up(gic, IC_PARALLEL) * cell_num_h *
+                                max_cell_h * cell_num_w * max_cell_w + // npu idx
+                            group_idx * ocloops * align_up(gic, IC_PARALLEL) *
+                                cell_num_h * max_cell_h * cell_num_w *
+                                max_cell_w + // group idx
+                            (cell_h_idx * cell_num_w + cell_w_idx) * ocloops *
+                                max_cell_h * max_cell_w *
+                                align_up(gic, IC_PARALLEL) + // cell idx
+                            (oc / npu_num) * cell_h[cell_h_idx] *
+                                cell_w[cell_w_idx] *
+                                align_up(gic, IC_PARALLEL) + // oc offset
+                            ic_idx * IC_PARALLEL * cell_h[cell_h_idx] *
+                                cell_w[cell_w_idx] + // ic idx
+                            (ih * cell_w[cell_w_idx] + iw) * IC_PARALLEL +
+                            ic_inner;
+                        data_bf16->at(trans_offset) = filter_u16->at(orig_offset);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        filter_shape[0] = 1;
+        filter_shape[1] = (oc_per_groups < npu_num) ? oc_per_groups : npu_num;
+        filter_shape[2] = 1;
+        filter_shape[3] = groups * ocloops * align_up(gic, IC_PARALLEL) *
+                          cell_num_h * max_cell_h * cell_num_w * max_cell_w;
       }
-      filter_shape[0] = 1;
-      filter_shape[1] = (oc_per_groups < npu_num) ? oc_per_groups : npu_num;
-      filter_shape[2] = 1;
-      filter_shape[3] = groups * ocloops * align_up(gic, IC_PARALLEL) *
-                        cell_num_h * max_cell_h * cell_num_w * max_cell_w;
       if (filter_shape[3] > MAX_TPU_DIM) {
         if (attr.is_dw) {
           filter_shape[2] = ceiling_func(attr.oc, (int64_t)IC_PARALLEL);
@@ -765,7 +851,6 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
   bool stridew_gt_15 = stride_w > 15;
   int cell_h = kh, cell_w = kw;
   int npu_num = BM168x::NPU_NUM;
-  const int IC_PARALLEL = BM168x::ic_num(4);
   int weight_size = align_up(output_c, npu_num) * gic * kh * kw;
   auto data_f32 = std::make_shared<std::vector<float>>(weight_size);
   auto out_type = module::getStorageType(op.getOutput());
@@ -792,102 +877,156 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
   std::vector<int64_t> filter_shape = {1, output_c, gic, kh * kw};
   if (out_type.isF32()) {
     if (strideh_gt_15 || stridew_gt_15) {
-      std::vector<int> cell_h;
-      std::vector<int> cell_w;
-      std::vector<int> cell_h_sum;
-      std::vector<int> cell_w_sum;
-      int cell_num_h = 1;
-      int cell_num_w = 1;
-      int max_cell_h = kh;
-      int max_cell_w = kw;
+      if (module::isMARS3() && (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0)) {
+        int cell_h = kh, cell_w = kw;
 
-      if (strideh_gt_15) {
-        cell_num_h = ceiling_func(kh, 15);
-        max_cell_h = ceiling_func(kh, cell_num_h);
-        int cur_h = 0;
-        int sum_h = 0;
-        for (int i = 0; i < cell_num_h; i++) {
-          cur_h = kh / cell_num_h + ((i < kh % cell_num_h) ? 1 : 0);
-          cell_h.push_back(cur_h);
-          cell_h_sum.push_back(sum_h);
-          sum_h += cur_h;
+        if (strideh_gt_15) {
+          for (int i = 15; i > 1; i--) {
+            if (kh % i == 0) {
+              cell_h = i;
+              break;
+            }
+          }
         }
-      } else {
-        cell_h.push_back(max_cell_h);
-        cell_h_sum.push_back(0);
-      }
 
-      if (stridew_gt_15) {
-        cell_num_w = ceiling_func(kw, 15);
-        max_cell_w = ceiling_func(kw, cell_num_w);
-        int cur_w = 0;
-        int sum_w = 0;
-        for (int i = 0; i < cell_num_w; i++) {
-          cur_w = kw / cell_num_w + ((i < kw % cell_num_w) ? 1 : 0);
-          cell_w.push_back(cur_w);
-          cell_w_sum.push_back(sum_w);
-          sum_w += cur_w;
+        if (stridew_gt_15) {
+          for (int i = 15; i > 1; i--) {
+            if (kw % i == 0) {
+              cell_w = i;
+              break;
+            }
+          }
         }
-      } else {
-        cell_w.push_back(max_cell_w);
-        cell_w_sum.push_back(0);
-      }
 
-      int oc_per_groups = output_c / groups;
-      int weight_size_per_group =
-          ((oc_per_groups < npu_num) ? oc_per_groups
-                                     : align_up(oc_per_groups, npu_num)) *
-          gic * cell_num_h * max_cell_h * cell_num_w * max_cell_w;
-      size_t weight_size = groups * weight_size_per_group;
-      auto data_f32 = std::make_shared<std::vector<float>>(weight_size);
-      int ocloops = ceiling_func(oc_per_groups, npu_num);
-      for (int group_idx = 0; group_idx < groups; group_idx++) {
-        for (int oc = 0; oc < oc_per_groups; oc++) {
-          for (int ic = 0; ic < gic; ic++) {
-            for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
-              for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
-                for (int cell_w_idx = 0; cell_w_idx < cell_num_w;
-                     cell_w_idx++) {
-                  for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
-                    int orig_offset =
-                        group_idx * oc_per_groups * gic * kh * kw +
-                        oc * gic * kh * kw + ic * kh * kw +
-                        cell_h_sum[cell_h_idx] * kw + ih * kw +
-                        cell_w_sum[cell_w_idx] + iw;
-                    int trans_offset =
-                        groups * (oc % npu_num) * ocloops * gic * cell_num_h *
-                            max_cell_h * cell_num_w * max_cell_w + // npu idx
-                        group_idx * ocloops * gic * cell_num_h * max_cell_h *
-                            cell_num_w * max_cell_w + // group idx
-                        (cell_h_idx * cell_num_w + cell_w_idx) * ocloops *
-                            max_cell_h * max_cell_w * gic + // cell idx
-                        (oc / npu_num) * cell_h[cell_h_idx] *
-                            cell_w[cell_w_idx] * gic + // oc offset
-                        ic * cell_h[cell_h_idx] * cell_w[cell_w_idx] +
-                        ih * cell_w[cell_w_idx] + iw;
-                    data_f32->at(trans_offset) = filter_f32->at(orig_offset);
+        const int cell_num_h = kh / cell_h;
+        const int cell_num_w = kw / cell_w;
+        const int cell_num_hw = cell_num_h * cell_num_w;
+        int acc_ratio_h = 1, acc_ratio_w =  1;
+
+        const int loop_count_h = cell_num_h / acc_ratio_h;
+        const int loop_count_w = cell_num_w / acc_ratio_w;
+        const int loop_count = loop_count_h * loop_count_w;
+        const int new_gic = acc_ratio_h * acc_ratio_w * gic;
+        const int weight_size = loop_count * output_c * new_gic * cell_h * cell_w;
+        data_f32->resize(weight_size, 0);
+        // (oc_idx, ic_idx, cell_h_idx, ih, cell_w_idx, iw) -> (lp_idx, oc_idx, aw_idx, ah_idx, ic_idx, ih, iw)
+        for (int oc_idx = 0; oc_idx < output_c; oc_idx++) {
+          for (int ic_idx = 0; ic_idx < gic; ic_idx++) {
+            for (int lp_idx = 0; lp_idx < loop_count; lp_idx++) {
+              for (int ah_idx = 0; ah_idx < acc_ratio_h; ah_idx++) {
+                for (int aw_idx = 0; aw_idx < acc_ratio_w; aw_idx++) {
+                  for (int ih = 0; ih < cell_h; ih++) {
+                    for (int iw = 0; iw < cell_w; iw++) {
+                      const int cell_h_idx = (lp_idx % loop_count_h) * acc_ratio_h + ah_idx;
+                      const int cell_w_idx = (lp_idx / loop_count_h) * acc_ratio_w + aw_idx;
+                      int orig_offset =
+                          (oc_idx * gic + ic_idx) * cell_num_hw * cell_h * cell_w +
+                          (cell_h_idx * cell_h + ih) * kw +
+                          cell_w_idx * cell_w + iw;
+                      int trans_offset =
+                          (lp_idx * output_c + oc_idx) * new_gic * cell_h * cell_w +
+                          ((aw_idx * acc_ratio_h + ah_idx) * gic + ic_idx) * cell_h * cell_w +
+                          ih * cell_w + iw;
+                      data_f32->at(trans_offset) = filter_f32->at(orig_offset);
+                    }
                   }
                 }
               }
             }
           }
         }
-      }
+        filter_shape[0] = 1;
+        filter_shape[1] = loop_count * output_c;
+        filter_shape[2] = 1;
+        filter_shape[3] = attr.ic * cell_h * cell_w;
+      } else {
+              std::vector<int> cell_h;
+        std::vector<int> cell_w;
+        std::vector<int> cell_h_sum;
+        std::vector<int> cell_w_sum;
+        int cell_num_h = 1;
+        int cell_num_w = 1;
+        int max_cell_h = kh;
+        int max_cell_w = kw;
 
-      filter_shape[0] = 1;
-      filter_shape[1] = (oc_per_groups < npu_num) ? oc_per_groups : npu_num;
-      filter_shape[2] = 1;
-      filter_shape[3] = groups * ocloops * gic * cell_num_h * max_cell_h *
-                        cell_num_w * max_cell_w;
-
-      if (filter_shape[3] > MAX_TPU_DIM) {
-        if (attr.is_dw) {
-          filter_shape[2] = ceiling_func(attr.oc, (int64_t)IC_PARALLEL);
-          filter_shape[3] /= filter_shape[2];
+        if (strideh_gt_15) {
+          cell_num_h = ceiling_func(kh, 15);
+          max_cell_h = ceiling_func(kh, cell_num_h);
+          int cur_h = 0;
+          int sum_h = 0;
+          for (int i = 0; i < cell_num_h; i++) {
+            cur_h = kh / cell_num_h + ((i < kh % cell_num_h) ? 1 : 0);
+            cell_h.push_back(cur_h);
+            cell_h_sum.push_back(sum_h);
+            sum_h += cur_h;
+          }
         } else {
-          filter_shape[2] = IC_PARALLEL;
-          filter_shape[3] /= IC_PARALLEL;
+          cell_h.push_back(max_cell_h);
+          cell_h_sum.push_back(0);
         }
+
+        if (stridew_gt_15) {
+          cell_num_w = ceiling_func(kw, 15);
+          max_cell_w = ceiling_func(kw, cell_num_w);
+          int cur_w = 0;
+          int sum_w = 0;
+          for (int i = 0; i < cell_num_w; i++) {
+            cur_w = kw / cell_num_w + ((i < kw % cell_num_w) ? 1 : 0);
+            cell_w.push_back(cur_w);
+            cell_w_sum.push_back(sum_w);
+            sum_w += cur_w;
+          }
+        } else {
+          cell_w.push_back(max_cell_w);
+          cell_w_sum.push_back(0);
+        }
+
+        int oc_per_groups = output_c / groups;
+        int weight_size_per_group =
+            ((oc_per_groups < npu_num) ? oc_per_groups
+                                      : align_up(oc_per_groups, npu_num)) *
+            gic * cell_num_h * max_cell_h * cell_num_w * max_cell_w;
+        size_t weight_size = groups * weight_size_per_group;
+        auto data_f32 = std::make_shared<std::vector<float>>(weight_size);
+        int ocloops = ceiling_func(oc_per_groups, npu_num);
+        for (int group_idx = 0; group_idx < groups; group_idx++) {
+          for (int oc = 0; oc < oc_per_groups; oc++) {
+            for (int ic = 0; ic < gic; ic++) {
+              for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
+                for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
+                  for (int cell_w_idx = 0; cell_w_idx < cell_num_w;
+                      cell_w_idx++) {
+                    for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
+                      int orig_offset =
+                          group_idx * oc_per_groups * gic * kh * kw +
+                          oc * gic * kh * kw + ic * kh * kw +
+                          cell_h_sum[cell_h_idx] * kw + ih * kw +
+                          cell_w_sum[cell_w_idx] + iw;
+                      int trans_offset =
+                          groups * (oc % npu_num) * ocloops * gic * cell_num_h *
+                              max_cell_h * cell_num_w * max_cell_w + // npu idx
+                          group_idx * ocloops * gic * cell_num_h * max_cell_h *
+                              cell_num_w * max_cell_w + // group idx
+                          (cell_h_idx * cell_num_w + cell_w_idx) * ocloops *
+                              max_cell_h * max_cell_w * gic + // cell idx
+                          (oc / npu_num) * cell_h[cell_h_idx] *
+                              cell_w[cell_w_idx] * gic + // oc offset
+                          ic * cell_h[cell_h_idx] * cell_w[cell_w_idx] +
+                          ih * cell_w[cell_w_idx] + iw;
+                      data_f32->at(trans_offset) = filter_f32->at(orig_offset);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        filter_shape[0] = 1;
+        filter_shape[1] = (oc_per_groups < npu_num) ? oc_per_groups : npu_num;
+        filter_shape[2] = 1;
+        filter_shape[3] = groups * ocloops * gic * cell_num_h * max_cell_h *
+                          cell_num_w * max_cell_w;
       }
       auto new_type = RankedTensorType::get(filter_shape, out_type);
       op.getFilter().setType(new_type);

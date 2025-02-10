@@ -213,7 +213,7 @@ static int ppl_jit_call(const char *file_name, const char *func_name,
     std::filesystem::create_directory(path);
     cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
         << inc_path << " " << path << " " << chip << " " << args
-        << " > nul 2>nul";
+        << " > /dev/null 2>&1";
     auto ret = system(cmd.str().c_str());
     ret >>= 8;
     switch (ret) {
@@ -231,6 +231,7 @@ static int ppl_jit_call(const char *file_name, const char *func_name,
       return ret;
     }
     default: {
+      cmd.clear();
       cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
           << inc_path << " " << path << " " << chip << " " << args;
       fs::remove_all(path);

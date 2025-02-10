@@ -28,6 +28,7 @@ class TimeStepMethod;
 class BasicTimeStep {
 public:
   BasicTimeStep();
+  BasicTimeStep(const LgOptions &options);
   virtual ~BasicTimeStep() {}
   void clear();
 
@@ -38,6 +39,7 @@ public:
   void add_tpu0_gdma0_ts_field(const TpuTsField &tpu_field,
                                const GdmaTsField &gdma_field);
   void update_gdma0_ts_field(int64_t ts, const GdmaTsField &field);
+  void show_timestep_table();
   std::vector<TimestepRow> &get_timestep_table() { return timestep_table_; }
   size_t get_timestep_num() { return timestep_table_.size(); }
 
@@ -78,12 +80,12 @@ public:
   }
 
   TensorInfo &get_tensor_infos();
-
+  std::string get_tensor_mode_str(Value v);
   // setter
   void set_lmem_addr(const mem_buffer_key_t &buffer_key, int64_t lmem_addr);
   void set_lmem_occupy(int64_t occupy) { lmem_occupy_ = occupy; }
 
-  void gen_all_mem_buffer();
+  void gen_all_mem_buffer_ts();
   void update_all_mem_buffer_size(const LgInfo &lg_info);
   void gen_hold_coeff();
   bool is_tensor_hold_in_lmem(Value v);
@@ -154,6 +156,8 @@ protected:
   ValueSet self_down_overlap_ops_;
   std::map<int64_t, std::vector<Value>> other_up_overlap_ops_;
   std::map<int64_t, std::vector<Value>> other_down_overlap_ops_;
+
+  LgOptions options_;
 };
 
 using BasicTimeStepPtr = std::shared_ptr<BasicTimeStep>;

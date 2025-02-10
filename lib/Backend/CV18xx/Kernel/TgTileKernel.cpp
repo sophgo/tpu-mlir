@@ -33,6 +33,21 @@ void TgTileKernel::g2g_tile_N() {
                                shape, dst_stride, fmt);
 }
 
+void TgTileKernel::g2g_tile_N_loop() {
+  for (int i = 0; i < loop; ++i) {
+    auto shape = CV18xx::tg_shape_t4(factor, n * c, h, w);
+    auto src_stride = CV18xx::tg_default_stride(shape, fmt);
+    auto dst_stride = src_stride;
+    src_stride.n = 0;
+    uint32_t in_offset = src_stride.n * i;
+    uint32_t out_offset = src_stride.n * i * factor;
+    CV18xx::tdma_g2g_tensor_copy(ga_input + in_offset, shape, src_stride, fmt,
+                                 ga_output + out_offset, shape, dst_stride,
+                                 fmt);
+  }
+}
+
+#define MAX_H_STRIDE 0x10000
 void TgTileKernel::init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output,
                         int n, int c, int h, int w, int axis, int factor,
                         cvk_fmt_t fmt) {
@@ -52,10 +67,19 @@ void TgTileKernel::init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output,
     mode = TILE_N;
     break;
   case 1:
-    this->n = 1;
-    this->c = n;
-    this->h = 1;
-    this->w = c * h * w;
+    if ((c * h * w * this->fmt_bytes) >= MAX_H_STRIDE) {
+      mode = TILE_N_LOOP;
+      this->loop = n;
+      this->n = 1;
+      this->c = c;
+      this->h = h;
+      this->w = w;
+    } else {
+      this->n = 1;
+      this->c = n;
+      this->h = 1;
+      this->w = c * h * w;
+    }
     break;
   case 2:
     this->n = 1;
@@ -77,7 +101,7 @@ void TgTileKernel::init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output,
 }
 
 void TgTileKernel::selectTilePolicy() {
-  if (mode == TILE_N) {
+  if (mode == TILE_N || mode == TILE_N_LOOP) {
     return;
   }
   // tile c
@@ -160,6 +184,10 @@ void TgTileKernel::schedule() {
   // no tiling, just g2g
   if (mode == TILE_N) {
     g2g_tile_N();
+    return;
+  }
+  if (mode == TILE_N_LOOP) {
+    g2g_tile_N_loop();
     return;
   }
   if (tiles.empty()) {

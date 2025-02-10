@@ -94,7 +94,8 @@ int64_t SoftwarePipeline::software_pipeline_schedule(
 
   // delete the last row of time step table
   timestep_table.erase(last_row_iter);
-  // move the last tensor timestep to the first
+
+  // 1. (try) move the last tensor timestep to the first
   bool move_valid;
   // consider time step 1, it is the second row of the table
   auto second_row_iter = timestep_table.begin() + 1;
@@ -103,6 +104,8 @@ int64_t SoftwarePipeline::software_pipeline_schedule(
   for (uint32_t i = 0; i < last_tensor_timestep.size(); ++i) {
     move_valid = true;
     auto v = last_tensor_timestep[i].first;
+    // if v is used by tpu op (is opds or results of tpu op) in the second row
+    // it cannot be moved from last to second row (move_valid = false)
     for (auto op : second_row_iter->tpu0_ts_field) {
       auto opds = op->getOperands();
       auto results = get_output_values(op);
@@ -128,12 +131,18 @@ int64_t SoftwarePipeline::software_pipeline_schedule(
     timestep_table[0].gdma0_ts_field = rest_last_tensors_;
   }
 
-  // move the first tensor timestep to the last
+  // 2. (try) move the first tensor timestep to the last
   last_row_iter = timestep_table.end() - 1;
+  // consider time step n-1, it is the (n-1)th row of the table
   GdmaTsField rest_first_tensors_;
   for (uint32_t i = 0; i < first_tensor_timestep.size(); ++i) {
     move_valid = true;
     auto v = first_tensor_timestep[i].first;
+
+    // if v is used by tpu op (is opds or results of tpu op) in the "new" last
+    // row it cannot be moved from first to the "new" last row (move_valid =
+    // false) note: the "new" last row is the last row before the "real" last
+    // row which is deleted
     for (auto op : last_row_iter->tpu0_ts_field) {
       auto opds = op->getOperands();
       if (std::find(opds.begin(), opds.end(), v) != opds.end()) {

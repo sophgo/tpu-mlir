@@ -24,7 +24,8 @@ namespace tpu {
 
 class CycleCalculator {
 public:
-  CycleCalculator(){};
+  CycleCalculator() : num_core_(module::getCoreNum()){};
+  CycleCalculator(int num_core) : num_core_(num_core){};
   virtual ~CycleCalculator(){};
   virtual int64_t getGlobalLayerCycle(Operation *op) = 0;
   int64_t getGroupCycle(BasicTimeStepPtr &time_step, shape_secs_t &shape_secs,
@@ -44,11 +45,13 @@ public:
 protected:
   void set_local_sec_info(local_sec_info_t &sec_info, Operation *op,
                           TensorInfo &tensor_infos, group_type_t group_type);
+  int num_core_;
 };
 
 class Bm168xCycleCalculator : public CycleCalculator {
 public:
   Bm168xCycleCalculator() {}
+  Bm168xCycleCalculator(int num_core) : CycleCalculator(num_core) {}
   ~Bm168xCycleCalculator() {}
   int64_t getGlobalLayerCycle(Operation *op) override;
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
@@ -68,6 +71,7 @@ public:
 class Cv18xxCycleCalculator : public CycleCalculator {
 public:
   Cv18xxCycleCalculator() {}
+  Cv18xxCycleCalculator(int num_core) : CycleCalculator(num_core) {}
   ~Cv18xxCycleCalculator() {}
   int64_t getGlobalLayerCycle(Operation *op) override;
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,

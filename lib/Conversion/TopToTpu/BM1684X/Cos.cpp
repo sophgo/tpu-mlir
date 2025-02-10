@@ -39,7 +39,7 @@ void CosLowering::LoweringINT4(PatternRewriter &rewriter, top::CosOp op,
 
 void CosLowering::LoweringBF16(PatternRewriter &rewriter, top::CosOp op) const {
   set_cos_attr(rewriter, op);
-  if (module::isMARS3()) {
+  if (module::isMARS3() || module::isSGTPUV8()) {
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
   } else {
     lowering_common_f32<tpu::ActiveOp>(rewriter, op);

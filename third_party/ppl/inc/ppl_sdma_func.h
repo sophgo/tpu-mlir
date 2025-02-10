@@ -5,6 +5,13 @@
 namespace ppl {
 namespace sdma {
 
+template <typename DataType0, typename DataType1>
+void fill(gtensor<DataType0> &dst, DataType1 C);
+
+template <typename DataType0> void zero(gtensor<DataType0> &dst) {
+  fill(dst, 0);
+}
+
 template <typename DataType>
 void move(gtensor<DataType> &dst, gtensor<DataType> &src, int port_id);
 
@@ -28,5 +35,10 @@ void transpose(gtensor<DataType> &dst, gtensor<DataType> &src,
     return transpose_nc(dst, src);
   }
 }
+
+template <typename DataType1, typename DataType2>
+void reduce(gtensor<DataType1> &dst, DataType2 &src, all_reduce_psum_t psum,
+            all_reduce_opcode_t opcode);
+            
 } // namespace sdma
 } // namespace ppl

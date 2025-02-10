@@ -21,7 +21,7 @@ void LoweringArg(PatternRewriter &rewriter, top::ArgOp op, Type type) {
       RankedTensorType::get(shape, rewriter.getI32Type()); // indices : Int32
   new_types.push_back(new_type);
   if (!module::isNone(op.getValues())) {
-    if (module::isMARS3()) {
+    if (module::isMARS3() || module::isSGTPUV8()) {
       const auto shape_value = module::getShape(op.getValues());
       const auto new_type_value = RankedTensorType::get(
           shape_value, rewriter.getI16Type()); // value : Int16

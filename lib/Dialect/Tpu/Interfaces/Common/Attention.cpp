@@ -101,7 +101,7 @@ mlir::Type tpu::AttentionOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     auto out = getResult();
     auto stype = module::getStorageType(out);
     if (stype.isInteger(32)) {
-      auto ftype = RankedTensorType::get(module::getShape(getMusk()),
+      auto ftype = RankedTensorType::get(module::getShape(getMask()),
                                          Builder(getOperation()).getI32Type());
       return type_verify_case_type(getOperation(), opd_idx, ftype, mode);
     } else {

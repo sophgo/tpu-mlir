@@ -209,8 +209,10 @@ STORE_MODE_T BM168x::getStoreMode(Value v) {
   return stmode;
 }
 
-tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type, int64_t n_step,
-                                    int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
+tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type,
+                                    int64_t n_step, int64_t c_step,
+                                    int64_t h_step, int64_t d_step,
+                                    int64_t w_step) {
   tensor_spec_t spec;
   group_info_t ginfo = {0};
   memset(&spec, 0, sizeof(spec));
@@ -225,13 +227,16 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type, int6
       llvm::errs() << "value_to_spec, v:" << module::getName(v).str()
                    << ", idx:" << idx
                    << ", vec_input_move_addr[idx]:" << spec.addr << "\n";
-      if (group_type == GROUP_MM_OPT3 && !isa<tpu::LoadToL2MOp>(pre_op->getOperand(idx).getDefiningOp())) {
-        ginfo = LocalGenInterface::getGroupInfo(pre_op->getOperand(idx), n_step, h_step, d_step, w_step, c_step);
+      if (group_type == GROUP_MM_OPT3 &&
+          !isa<tpu::LoadToL2MOp>(pre_op->getOperand(idx).getDefiningOp())) {
+        ginfo = LocalGenInterface::getGroupInfo(pre_op->getOperand(idx), n_step,
+                                                h_step, d_step, w_step, c_step);
       }
     } else if (isa<tpu::LoadToL2MOp>(pre_op)) {
       spec.addr = module::getAddress(pre_op->getOperand(1));
     } else {
-      ginfo = LocalGenInterface::getGroupInfo(v, n_step, h_step, d_step, w_step, c_step);
+      ginfo = LocalGenInterface::getGroupInfo(v, n_step, h_step, d_step, w_step,
+                                              c_step);
       spec.addr = ginfo.out_addr;
     }
   } else {
@@ -245,18 +250,30 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type, int6
       spec.shape[i] = shape[i];
     }
   } else if (group_type == GROUP_MM_OPT3) {
+    if (module::IsSliceOpInOrOut(v)) {
+      spec.dims = shape.size();
+      for (int i = 0; i < spec.dims; i++) {
+        spec.shape[i] = 1;
+      }
+      spec.shape[spec.dims - 2] = ginfo.c_slice;
+      spec.shape[spec.dims - 1] = ginfo.h_slice;
+      if (spec.dims >= 3) {
+        spec.shape[0] = ginfo.n_slice;
+      }
+    } else {
       spec.dims = 4;
       if (module::IsHdimIsBatch(v)) {
-        spec.shape[0] = 1;
-        spec.shape[1] = ginfo.c_slice;
-        spec.shape[2] = ginfo.n_slice;
-        spec.shape[3] = ginfo.h_slice;
+          spec.shape[0] = ginfo.n_slice;
+          spec.shape[1] = ginfo.c_slice;
+          spec.shape[2] = ginfo.h_slice;
+          spec.shape[3] = ginfo.w_slice;
       } else {
         spec.shape[0] = ginfo.n_slice;
         spec.shape[1] = ginfo.c_slice;
         spec.shape[2] = ginfo.h_slice;
         spec.shape[3] = 1;
       }
+    }
   } else if (group_type == GROUP_SMALL_C) {
     int64_t n, c, h, w;
     module::getNCHW(v, n, c, h, w, group_type);
@@ -271,25 +288,31 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type, int6
 }
 std::shared_ptr<std::vector<tensor_spec_t>>
 BM168x::get_input_spec(Operation *op, group_type_t group_type, int64_t n_step,
-                      int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
-  return get_spec(op->getOperands(), group_type, n_step, h_step, d_step, w_step, c_step);
+                       int64_t c_step, int64_t h_step, int64_t d_step,
+                       int64_t w_step) {
+  return get_spec(op->getOperands(), group_type, n_step, h_step, d_step, w_step,
+                  c_step);
 }
 
 std::shared_ptr<std::vector<tensor_spec_t>>
 BM168x::get_output_spec(Operation *op, group_type_t group_type, int64_t n_step,
-                      int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
-  return get_spec(op->getResults(), group_type, n_step, h_step, d_step, w_step, c_step);
+                        int64_t c_step, int64_t h_step, int64_t d_step,
+                        int64_t w_step) {
+  return get_spec(op->getResults(), group_type, n_step, h_step, d_step, w_step,
+                  c_step);
 }
 
 std::shared_ptr<std::vector<tensor_spec_t>>
 BM168x::get_spec(ValueRange values, group_type_t group_type, int64_t n_step,
-                int64_t c_step, int64_t h_step, int64_t d_step, int64_t w_step) {
+                 int64_t c_step, int64_t h_step, int64_t d_step,
+                 int64_t w_step) {
   auto specs = std::make_shared<std::vector<tensor_spec_t>>();
   for (auto v : values) {
     if (module::isNone(v)) {
       continue;
     }
-    specs->push_back(value_to_spec(v, group_type, n_step, h_step, d_step, w_step, c_step));
+    specs->push_back(
+        value_to_spec(v, group_type, n_step, h_step, d_step, w_step, c_step));
   }
   return std::move(specs);
 }
@@ -405,14 +428,16 @@ void BM168x::call_local_func(const char *symbolName, void *params,
 
 typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
                                         void *input, void *output,
-                                        const char *chip, void *pid_node);
+                                        const int core_num, const char *chip,
+                                        void *pid_node);
 void BM168x::call_ppl_global_func(const char *symbolName, void *params,
-                                  int param_size, void *input, void *output) {
+                                  int param_size, int core_num, void *input,
+                                  void *output) {
   std::string chip_str = get_ppl_chip();
 
   auto kernel_func =
       instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
-  kernel_func(params, param_size, input, output, chip_str.c_str(),
+  kernel_func(params, param_size, input, output, core_num, chip_str.c_str(),
               (*instance())->cmdid_node);
 }
 

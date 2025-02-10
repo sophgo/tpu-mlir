@@ -54,6 +54,49 @@ public:
                                          "StripInputQuantTpuCastPattern"),
         quant_input_idx(quant_input_idx) {}
 
+  template <typename TyOp>
+  bool handleTyOp(tpu::CastOp &op, const std::vector<int64_t> &quant_input_idx,
+                  PatternRewriter &rewriter) const {
+    if (auto tyOp = op.getInput().template getDefiningOp<TyOp>()) {
+      if (!tyOp.getResult().hasOneUse()) {
+        return false;
+      }
+      auto inputOp = tyOp.getInput().template getDefiningOp<top::InputOp>();
+      if (!inputOp) {
+        return false;
+      }
+      int idx = module::getIdx(inputOp.getOperand());
+      for (int i = 0; i < quant_input_idx.size(); i++) {
+        if (quant_input_idx[i] == idx + 1)
+          break;
+        if (i == quant_input_idx.size() - 1)
+          return false;
+      }
+      if (!inputOp.getOutput().hasOneUse()) {
+        return false;
+      }
+      auto new_ele_type = module::getElementType(op.getResult());
+      auto input_new_type =
+          RankedTensorType::get(inputOp.getResult()
+                                    .getType()
+                                    .template cast<RankedTensorType>()
+                                    .getShape(),
+                                new_ele_type);
+      inputOp.getResult().setType(input_new_type);
+      auto ty_new_type =
+          RankedTensorType::get(tyOp.getResult()
+                                    .getType()
+                                    .template cast<RankedTensorType>()
+                                    .getShape(),
+                                new_ele_type);
+      tyOp.getResult().setType(ty_new_type);
+      rewriter.replaceOp(op, tyOp.getResult());
+      return true;
+    }
+
+    return false;
+  }
+
   LogicalResult matchAndRewriteImpl(tpu::CastOp op,
                                     PatternRewriter &rewriter) const override {
     if (auto inputOp = op.getInput().getDefiningOp<top::InputOp>()) {
@@ -85,51 +128,15 @@ public:
     }
 
     // input -> reshape -> cast -> any op
-    if (auto reshapeOp = op.getInput().getDefiningOp<tpu::ReshapeOp>()) {
-      if (!reshapeOp.getResult().hasOneUse()) {
-        return failure();
-      }
-      auto inputOp = reshapeOp.getInput().getDefiningOp<top::InputOp>();
-      if (!inputOp) {
-        return failure();
-      }
-      if (!inputOp.getOutput().hasOneUse()) {
-        return failure();
-      }
-      auto new_ele_type = module::getElementType(op.getResult());
-      auto input_new_type = RankedTensorType::get(
-          inputOp.getResult().getType().cast<RankedTensorType>().getShape(),
-          new_ele_type);
-      inputOp.getResult().setType(input_new_type);
-      auto reshape_new_type = RankedTensorType::get(
-          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(),
-          new_ele_type);
-      reshapeOp.getResult().setType(reshape_new_type);
-      rewriter.replaceOp(op, reshapeOp.getResult());
+    if (handleTyOp<tpu::ReshapeOp>(op, quant_input_idx, rewriter)) {
       return success();
     }
 
     // for case input -> unsqueeze -> cast
-    if (auto unsqueezeOp = op.getInput().getDefiningOp<tpu::UnsqueezeOp>()) {
-      auto inputOp = unsqueezeOp.getInput().getDefiningOp<top::InputOp>();
-      if (!inputOp) {
-        return failure();
-      }
-      if (!inputOp.getOutput().hasOneUse()) {
-        return failure();
-      }
-      auto new_ele_type = module::getElementType(op.getResult());
-      auto input_new_type = RankedTensorType::get(
-          inputOp.getResult().getType().cast<RankedTensorType>().getShape(),
-          new_ele_type);
-      inputOp.getResult().setType(input_new_type);
-      auto unsqueeze_new_type = RankedTensorType::get(
-          unsqueezeOp.getResult().getType().cast<RankedTensorType>().getShape(),
-          new_ele_type);
-      unsqueezeOp.getResult().setType(unsqueeze_new_type);
-      rewriter.replaceOp(op, unsqueezeOp.getResult());
+    if (handleTyOp<tpu::UnsqueezeOp>(op, quant_input_idx, rewriter)) {
       return success();
     }
+
     return failure();
   };
   bool shouldPrint(tpu::CastOp op) const override { return false; }

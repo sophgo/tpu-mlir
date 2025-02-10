@@ -49,6 +49,7 @@ public:
           module::AddrMode::BASIC);
     }
     module::setAddrMode(mode);
+    module::setHighPrecision(high_precision);
     backend::Arch::init(0);
     // for cv18xx , input only support fp32
     if (module::isCV18xx()) {

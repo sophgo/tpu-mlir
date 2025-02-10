@@ -13,11 +13,11 @@ import torch
 from torch import nn
 import numpy as np
 import inspect
-from torch import nn
 import shutil
 from typing import List, Union, Dict
-import sys
 import argparse
+import onnx
+
 
 sh_template = r"""
 
@@ -201,6 +201,9 @@ def shape_list_to_str(shape_list: List[List[int]]) -> List[str]:
     for shape in shape_list:
         shape_str = ",".join([str(i) for i in shape])
         res.append(f"[{shape_str}]")
+    if any(dim == 0 for dim in shape):
+      shapes = ",".join(shape_str for shape_str in res)
+      assert False, f"Input shapes [{shapes}] contains 0. Please use '--input_shapes' set a valid input shapes."
     return res
 
 
@@ -311,8 +314,6 @@ def generate_onnx(
     fake_npz: bool = False,
     input_shapes=None,
 ):
-    import onnx
-
     os.makedirs(workspace_root, exist_ok=True)
 
     model = onnx.load(model_path)

@@ -30,5 +30,6 @@ TPU-MLIR Technical Reference Manual
    18_ppl
    19_final_mlir
    20_maskrcnn
+   21_llmc
    Appx.01_nntc2mlir.rst
    Appx.02_tpulang_support_op

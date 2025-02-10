@@ -24,7 +24,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.2
+   $ docker pull sophgo/tpuc_dev:v3.3
 
 
 若下载失败，可从官网开发资料 https://developer.sophgo.com/site/index/material/86/all.html 下载所需镜像文件，或使用下方命令下载镜像：
@@ -32,8 +32,8 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 .. code-block:: shell
    :linenos:
 
-   $ wget https://sophon-file.sophon.cn/sophon-prod-s3/drive/24/06/14/12/sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
-   $ docker load -i sophgo-tpuc_dev-v3.2_191a433358ad.tar.gz
+   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/01/20/10/sophgo-tpuc_dev_v3.3.tar.gz
+   $ docker load -i sophgo-tpuc_dev_v3.3.tar.gz
 
 
 如果是首次使用Docker, 可执行下述命令进行安装和配置(仅首次执行):
@@ -57,7 +57,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.2
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.3
   # myname只是举个名字的例子, 请指定成自己想要的容器的名字
   # 使用 --privileged 参数以获取root权限，如果不需要root权限，请删除该参数
 

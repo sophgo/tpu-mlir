@@ -96,6 +96,9 @@ def main(argv=None):
         args=args,
     )
     plugin: DataCheck = tdb.get_plugin(DataCheck)
+    if plugin is None:
+        tdb.message("plugin data check is None, exit")
+        exit(1)
     if args.fail_fast:
         plugin.break_when_fail = True
     plugin.set_tol(cosine_similarity_tol=cos_t, euclidean_similarity_tol=euc_t)

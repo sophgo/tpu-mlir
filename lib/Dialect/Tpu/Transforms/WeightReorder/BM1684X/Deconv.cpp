@@ -93,13 +93,13 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
     auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
     auto filter_u16 = filterOp.read<uint16_t>();
     // do kernel_rotate first
-    if (module::isMARS3()) {
+    if (module::isMARS3() || module::isSGTPUV8()) {
       std::vector<uint16_t> newFilter(filter_u16->size(), 0);
       for (uint32_t i = 0; i < attr.oc * (attr.ic / attr.g); ++i) {
         int swap_count = 0;
         for (uint32_t j = 0; j < attr.kh; ++j) {
           for (uint32_t k = 0; k < attr.kw; ++k) {
-            if(swap_count <= ((attr.kh * attr.kw) / 2)){
+            if (swap_count <= ((attr.kh * attr.kw) / 2)) {
               newFilter.at(i * attr.kh * attr.kw + j * attr.kw + k) =
                   filter_u16->at(i * attr.kh * attr.kw +
                                  (attr.kh - 1 - j) * attr.kw +

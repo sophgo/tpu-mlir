@@ -44,13 +44,13 @@ double log_approximation(double x) {
 
 void sigmoid_fp32(tensor<fp32> &local_output, tensor<fp32> &local_input,
                   dim4 *shape) {
-  auto local_input_exp = tensor<fp32>(shape);
+  auto local_input_exp = tensor<fp32>(*shape);
   tiu::fexp(local_input_exp, local_input);
 
-  auto local_input_exp_reciprocal = tensor<fp32>(shape);
+  auto local_input_exp_reciprocal = tensor<fp32>(*shape);
   tiu::fdiv(local_input_exp_reciprocal, 1, local_input_exp, 3);
 
-  auto local_output_pre = tensor<fp32>(shape);
+  auto local_output_pre = tensor<fp32>(*shape);
   tiu::fadd(local_output_pre, local_input_exp_reciprocal, 1);
 
   tiu::fdiv(local_output, 1, local_output_pre, 3);

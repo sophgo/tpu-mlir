@@ -12,8 +12,9 @@ typedef void (*tpu_kernel_func_t)(const void *);
 void tpu_register_kernel_func(const char *name, tpu_kernel_func_t func);
 void tpu_dump_registered_kernel_funcs();
 #define TPUKERNEL_FUNC_REGISTER(func)                              \
+void func##_wrapper(const void *arg) { func(arg); }                \
 __attribute__((constructor)) void tpu_kernel_register_##func() {   \
-    tpu_register_kernel_func(#func, func);                         \
+    tpu_register_kernel_func(#func, func##_wrapper);               \
 }
 
 #if defined(USING_CMODEL)
@@ -86,20 +87,14 @@ do {                                             \
 #ifndef MAX
 #define MAX(x, y) (((x)) > ((y)) ? (x) : (y))
 #endif
-#ifndef ALIGN_MASK
-#define ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
-#endif
 #ifndef ALIGN
-#define ALIGN(x, a) ALIGN_MASK(x, (__typeof__(x))(a) - 1)
-#endif
-#ifndef ALIGN_MASK_DOWN
-#define ALIGN_MASK_DOWN(x, mask) ((x) & ~(mask))
+#define ALIGN(x, a) (((x) + (a) - 1) / (a) * (a))
 #endif
 #ifndef ALIGN_DOWN
-#define ALIGN_DOWN(x, a) ALIGN_MASK_DOWN(x, (__typeof__(x))(a)-1)
+#define ALIGN_DOWN(x, a) ((x) / (a) * (a))
 #endif
 #ifndef DIV_UP
-#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
+#define DIV_UP(a, b) (((a) + (b) - 1) / (b))
 #endif
 #ifndef NPU_NUM
 #define NPU_NUM tpu_npu_num()
@@ -149,7 +144,7 @@ do {                                             \
 #endif
 
 #ifndef ALIGN_BYTES
-#define ALIGN_BYTES (EU_NUM*sizeof(float))
+#define ALIGN_BYTES (EU_NUM * sizeof(float))
 #endif
 /*
  * Example:
@@ -160,7 +155,7 @@ do {                                             \
 #define FP_NEG_ONE(dtype) \
     (dtype == DT_FP32 ? 0xbf800000 : (dtype == DT_FP16 ? 0xbc00 : 0xbf80))
 #define FP_MAX(dtype) \
-    (dtype == DT_FP32 ? 0x7f7fffff : (dtype == DT_FP16 ? 0x7bff : 0x7f7f))
+    (dtype == DT_FP8E4M3 ? 0x7e : (dtype == DT_FP8E5M2? 0x7b : (dtype == DT_FP32 ? 0x7f7fffff : (dtype == DT_FP16 ? 0x7bff : 0x7f7f))))
 #define FP_NEG_MAX(dtype) \
     (dtype == DT_FP8E4M3 ? 0xfe : (dtype == DT_FP8E5M2? 0xfb : (dtype == DT_FP32 ? 0xff7fffff : (dtype == DT_FP16 ? 0xfbff : 0xff7f))))
 void tpu_set_id_node(void *node);
@@ -230,17 +225,47 @@ typedef enum {
 ////////////////////////////////////////////////////////////////////////////////
 void tpu_initialize();
 
+void tpu_nop();
+
 void tpu_poll();
+
+void tpu_poll_descriptor();
+
+void tpu_poll_empty();
 
 void tpu_hau_poll();
 
 void tpu_cdma_initialize();
 
+void tpu_vsdma_initialize();
+
 void tpu_cdma_port_initialize(int port);
+
+void tpu_vsdma_port_initialize(int port);
+
+void tpu_set_cdma_defered_barrier_msg_id(int);
+
+bool tpu_is_cdma_busy();
 
 void tpu_cdma_poll();
 
 void tpu_cdma_port_poll(int port);
+
+void tpu_vsdma_poll();
+
+void tpu_vsdma_port_poll(int port);
+
+int tpu_cdma_get_port(int self, int peer, int direction);
+
+int tpu_cdma_get_used_port_num();
+
+int *tpu_cdma_get_used_ports();
+
+void tpu_sr_setup();
+
+void tpu_enable_pmu();
+
+void tpu_disable_pmu();
 
 void tpu_parallel_start();
 
@@ -248,11 +273,15 @@ void tpu_parallel_end();
 
 bool tpu_is_parallel_state();
 
+bool tpu_is_descriptor_mode();
+
 int tpu_npu_num();
 
 int tpu_bank_num();
 
 int tpu_eu_num(data_type_t dtype);
+
+int tpu_get_ic_parallel(data_type_t dtype);
 
 int tpu_local_mem_size_per_npu();
 
@@ -274,8 +303,6 @@ void *tpu_local_mem_addr_unified(local_addr_t addr);
 
 void *tpu_l2_sram_addr(l2_sram_addr_t addr);
 
-int sfu_taylor_exp_len(data_type_t dtype);
-
 // atomic cmd limits
 
 int tpu_gdma_shape_limit(int dim);
@@ -293,7 +320,11 @@ int tpu_bank_index(local_addr_t addr);
 
 int tpu_channle_num_per_npu(int start_idx, int num_channels);
 
-int tpu_aligned_feature_size(int h, int w, data_type_t dtype);
+u64 tpu_aligned_feature_size(int h, int w, data_type_t dtype);
+
+int tpu_conv_kernel_size_per_oc(int ic, const dim2* ker, data_type_t dtype);
+
+int tpu_conv_kernel_size(int oc, int ic, const dim2* ker, data_type_t dtype);
 
 void tpu_aligned_stride(
     dim4        *stride,
@@ -460,6 +491,15 @@ void tpu_gdma_cpy_nc_trans_L2L(
     const dim4   *dst_stride,
     const dim4   *src_stride,
     data_type_t   dtype);
+
+void tpu_gdma_general_cpy_L2L(
+    local_addr_t dst_addr,
+    local_addr_t src_addr,
+    const dim4 *dst_shape,
+    const dim4 *src_shape,
+    const dim4 *dst_stride,
+    const dim4 *src_stride,
+    data_type_t dtype);
 
 void tpu_gdma_cpy_nc_trans_S2S(
     system_addr_t  dst_addr,
@@ -843,6 +883,10 @@ void tpu_gdma_compress_normal_L2S(
 
 int tpu_gdma_compress_normal_max_bytes(const dim4* shape, data_type_t dtype, bool zero_guard);
 
+dim4 tpu_gdma_compress_RACU_racu_stride(const dim4* shape, data_type_t dtype, bool zero_guard);
+
+dim4 tpu_gdma_compress_RACU_meta_stride(const dim4* shape, data_type_t dtype);
+
 void tpu_gdma_decompress_normal_S2L(
     local_addr_t dst_addr,
     global_addr_t src_addr,
@@ -1008,10 +1052,10 @@ void tpu_gdma_random_mask_S2L(
     data_type_t dtype);
 
 void tpu_gdma_random_mask_set_seed(const int seed);
-void tpu_set_bd_random_gen_seed(int seed);
+void tpu_bd_set_random_gen_seed(u64 seed);
 void tpu_bd_rand_seed_gen();
 void tpu_set_gdma_id(int gdma_id);
-void tpu_set_bdid(int bdc_id);
+void tpu_set_bd_id(int bdc_id);
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -2305,6 +2349,22 @@ void tpu_bdc_fp_conv2d_with_rescale(
     bool              do_rescale,
     bool              scale_const);
 
+void tpu_bdc_fp_conv_bw(
+    local_addr_t      output_addr,
+    local_addr_t      input_addr,
+    local_addr_t      gradout_addr,
+    const dim4       *input_shape,
+    const dim4       *input_stride,
+    const dim4       *output_shape,
+    const dim2       *kernel,
+    const padding_t  *padding,
+    const dim2       *stride,
+    const dim2       *dilation,
+    data_type_t       output_dtype,
+    data_type_t       input_dtype,
+    bool              result_add
+);
+
 void tpu_bdc_fp_conv2d_rescale_C(
     local_addr_t      output_addr,
     local_addr_t      input_addr,
@@ -2363,6 +2423,25 @@ void tpu_bdc_fp_conv2d_for_deconv2d(
     data_type_t       input_dtype,
     bool              has_bias,
     bool              result_add);
+
+void tpu_bdc_fp_conv2d_with_ins(
+    local_addr_t      output_addr,
+    local_addr_t      input_addr,
+    local_addr_t      weight_addr,
+    local_addr_t      bias_addr,
+    const dim4       *input_shape,
+    const dim4       *input_stride,
+    int               output_c,
+    const dim2       *kernel,
+    const dim2       *insert,
+    const padding_t  *padding,
+    const dim2       *dilation,
+    data_type_t       output_dtype,
+    data_type_t       input_dtype,
+    bool              has_bias,
+    bool              result_add,
+    int               ins_h,
+    int               ins_w);
 
 void tpu_bdc_fp_depthwise_for_deconv2d(
     local_addr_t      output_addr,
@@ -2471,6 +2550,19 @@ void tpu_bdc_fp_avg_pool2d(
     const dim2       *stride,
     const dim2       *dilation,
     data_type_t       dtype,
+    scalar_t          scale);
+
+void tpu_bdc_fp_avg_pool2d_ex(
+    local_addr_t      output_addr,
+    local_addr_t      input_addr,
+    const dim4       *input_shape,
+    const dim2       *kernel,
+    const padding_t  *padding,
+    const dim2       *stride,
+    const dim2       *dilation,
+    const dim2       *ins,
+    data_type_t       in_dtype,
+    data_type_t       out_dtype,
     scalar_t          scale);
 
 void tpu_bdc_fp_ins_depthwise(
@@ -2902,6 +2994,28 @@ void tpu_bdc_depthwise2d_requant_C_sym_C(
     bool              sym_range,
     rounding_mode_t   rounding_mode);
 
+void tpu_bdc_int_max_pool2d(
+    local_addr_t      output_addr,
+    local_addr_t      input_addr,
+    const dim4       *input_shape,
+    const dim2       *kernel,
+    const padding_t  *padding,
+    const dim2       *stride,
+    const dim2       *dilation,
+    data_type_t       dtype,
+    scalar_t          pad_val);
+
+void tpu_bdc_int_min_pool2d(
+    local_addr_t      output_addr,
+    local_addr_t      input_addr,
+    const dim4       *input_shape,
+    const dim2       *kernel,
+    const padding_t  *padding,
+    const dim2       *stride,
+    const dim2       *dilation,
+    data_type_t       dtype,
+    scalar_t          pad_val);
+
 void tpu_bdc_int8_max_pool2d(
     local_addr_t      output_addr,
     local_addr_t      input_addr,
@@ -3178,6 +3292,15 @@ void tpu_bdc_fp32_pc_dequant(
     const dim4      *shape,
     data_type_t      src_dtype,
     rounding_mode_t  rounding_mode);
+
+void tpu_bdc_f16_group_dequant(
+    local_addr_t     dst_addr,
+    local_addr_t     src_addr,
+    local_addr_t     quant_addr,
+    const dim4      *shape,
+    data_type_t      src_dtype,
+    data_type_t      dst_dtype,
+    int              group);
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -4254,6 +4377,8 @@ void tpu_bdc_npu_bcast(
     const dim4   *shape,
     data_type_t   dtype);
 
+void tpu_debug_cmd(u64 *p_cmd, int length, int command_type);
+
 void tpu_bdc_set_C(
     local_addr_t  dst_addr,
     scalar_t      C,
@@ -4480,6 +4605,15 @@ void tpu_bdc_fp_expm1(
     const dim4   *shape,
     data_type_t   dtype);
 
+void tpu_bdc_fp_exp_for_neg_arg(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
 // Deprecated. Pleause the new interface `tpu_bdc_fp_log`
 void tpu_bdc_fp32_log(
     local_addr_t  dst_addr,
@@ -4568,12 +4702,28 @@ void tpu_bdc_fp32_arcsin(
     local_addr_t  coeff_addr,
     const dim4   *shape);
 
+void tpu_bdc_fp_arcsin(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work_addr,
+    local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
 void tpu_bdc_fp32_arccos(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
     local_addr_t  work_addr,
     local_addr_t  coeff_addr,
     const dim4   *shape);
+
+void tpu_bdc_fp_arccos(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work_addr,
+    local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
 
 void tpu_bdc_fp32_arcsinh(
     local_addr_t  dst_addr,
@@ -4595,6 +4745,14 @@ void tpu_bdc_fp32_arctanh(
     local_addr_t  work_addr,
     local_addr_t  coeff_addr,
     const dim4   *shape);
+
+void tpu_bdc_fp_arctanh(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work_addr,
+    local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -4645,17 +4803,39 @@ void tpu_bdc_arithmetic_sequence_bcast(
     int           step,
     int           num);
 
+void tpu_bdc_arithmetic_sequence_bcast_with_dtype(
+    local_addr_t  dst_addr,
+    int           npu_num,
+    int           start,
+    int           step,
+    int           num,
+    data_type_t   dtype);
+
 void tpu_bdc_arithmetic_sequence_distribute(
     local_addr_t  dst_addr,
     int           start,
     int           step,
     int           num);
 
+void tpu_bdc_arithmetic_sequence_distribute_with_dtype(
+    local_addr_t  dst_addr,
+    int           start,
+    int           step,
+    int           num,
+    data_type_t   dtype);
+
 void tpu_bdc_arithmetic_sequence_distribute_aligned(
     local_addr_t  dst_addr,
     int           start,
     int           step,
     int           num);
+
+void tpu_bdc_arithmetic_sequence_distribute_aligned_with_dtype(
+    local_addr_t  dst_addr,
+    int           start,
+    int           step,
+    int           num,
+    data_type_t   dtype);
 
 void tpu_bdc_generate_arithmetic_sequence(
     local_addr_t dst_addr,
@@ -4669,6 +4849,15 @@ void tpu_bdc_arithmetic_sequence_general(
     int           start,
     int           step,
     int           num);
+
+void tpu_bdc_arithmetic_sequence_general_with_dtype(
+    local_addr_t  dst_addr,
+    local_addr_t  buffer_addr, // size = sizeof(dtype)
+    int           npu_num,
+    int           start,
+    int           step,
+    int           num,
+    data_type_t   dtype);
 
 //Deprecated. Please use the new interface `tpu_bdc_load_fp_exp_coeff`.
 void tpu_bdc_load_fp32_exp_coeff(local_addr_t coeff_addr);
@@ -4699,6 +4888,12 @@ void tpu_bdc_load_fp_exp_coeff(local_addr_t coeff_addr, data_type_t dtype);
 void tpu_bdc_load_fp_erf_coeff(local_addr_t coeff_addr, data_type_t dtype);
 
 void tpu_bdc_load_fp_log_coeff(local_addr_t coeff_addr, data_type_t dtype);
+
+void tpu_bdc_load_fp_arcsin_coeff(local_addr_t coeff_addr, data_type_t dtype);
+
+void tpu_bdc_load_div_lut(local_addr_t table_addr);
+
+int sfu_taylor_exp_len(data_type_t dtype);
 
 int sfu_taylor_log_len(data_type_t dtype);
 
@@ -4891,6 +5086,17 @@ void tpu_bdc_fp32_elu(
     float         alpha,
     const dim4   *shape);
 
+void tpu_bdc_fp_elu(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    local_addr_t  table_addr,
+    float         alpha,
+    const dim4   *shape,
+    data_type_t   dtype);
+
 void tpu_bdc_fp32_sigmoid(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
@@ -4909,6 +5115,15 @@ void tpu_bdc_fp_sigmoid(
     local_addr_t  table_addr,
     const dim4   *shape,
     data_type_t   dtype);
+
+void tpu_bdc_bf16_sigmoid_fast(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    local_addr_t  table_addr,
+    const dim4   *shape);
 
 void tpu_bdc_fp_hsigmoid(
     local_addr_t  dst_addr,
@@ -4942,6 +5157,15 @@ void tpu_bdc_fp32_sinh(
     local_addr_t  table_addr,
     const dim4   *shape);
 
+void tpu_bdc_fp_sinh(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
 void tpu_bdc_fp32_cosh(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
@@ -4951,6 +5175,15 @@ void tpu_bdc_fp32_cosh(
     local_addr_t  table_addr,
     const dim4   *shape);
 
+void tpu_bdc_fp_cosh(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
 void tpu_bdc_fp32_tanh(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
@@ -4959,6 +5192,15 @@ void tpu_bdc_fp32_tanh(
     local_addr_t  coeff_addr,
     local_addr_t  table_addr,
     const dim4   *shape);
+
+void tpu_bdc_fp_tanh(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
 
 void tpu_bdc_fp32_softplus(
     local_addr_t  dst_addr,
@@ -4970,6 +5212,17 @@ void tpu_bdc_fp32_softplus(
     local_addr_t  exp_table_addr,
     const dim4   *shape,
     float         beta);
+
+void tpu_bdc_fp_softplus(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  exp_coeff_addr,
+    local_addr_t  log_coeff_addr,
+    const dim4   *shape,
+    float         beta,
+    data_type_t   dtype);
 
 void tpu_bdc_fp32_softsign(
     local_addr_t  dst_addr,
@@ -5023,6 +5276,7 @@ void tpu_bdc_fp_erfc(
     data_type_t   dtype);
 
 //Deprecated. Please use the new interface tpu_bdc_fp_gelu.
+// 0.5 * x * (1.0 + tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
 void tpu_bdc_fp32_gelu(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
@@ -5035,6 +5289,7 @@ void tpu_bdc_fp32_gelu(
     local_addr_t  exp_table_addr,
     const dim4   *shape);
 
+// 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0)))
 void tpu_bdc_fp_gelu(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
@@ -5047,11 +5302,54 @@ void tpu_bdc_fp_gelu(
     const dim4   *shape,
     data_type_t   dtype);
 
+// 0.5 * x * (1.0 + tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
 void tpu_bdc_fp32_gelu_fast(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
     local_addr_t  work0_addr,
     local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    local_addr_t  table_addr,  // NO_USE
+    const dim4   *shape);
+
+// 0.5 * x * (1.0 + tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
+void tpu_bdc_fp_gelu_fast(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    local_addr_t  table_addr,  // NO_USE
+    const dim4   *shape,
+    data_type_t   dtype);
+
+// x * sigmoid(1.702 * x)
+void tpu_bdc_fp32_gelu_fast2(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    local_addr_t  table_addr,
+    const dim4   *shape);
+
+// x * sigmoid(1.702 * x)
+void tpu_bdc_fp_gelu_fast2(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    local_addr_t  table_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
+void tpu_bdc_bf16_gelu_fast2(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  work2_addr,
     local_addr_t  coeff_addr,
     local_addr_t  table_addr,
     const dim4   *shape);
@@ -5102,6 +5400,16 @@ void tpu_bdc_fp32_selu(
     local_addr_t  coeff_addr,
     local_addr_t  table_addr,
     const dim4   *shape);
+
+void tpu_bdc_fp_log_sigmoid(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    local_addr_t  coeff_addr,
+    local_addr_t  ln_coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
 
 void tpu_bdc_fp32_log_sigmoid(
     local_addr_t  dst_addr,
@@ -5256,6 +5564,8 @@ void *tpu_kernel_memset(void *dst, int c, size_t n);
 
 void tpu_print_local_mem_data(local_addr_t local_offset, int start_idx, const dim4* shape, const dim4* stride, data_type_t dtype);
 
+void tpu_dump_global_layer_data(const char* filename, global_addr_t addr, const int* shape, int dims, data_type_t dtype);
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // SYNCHRONIZATION FUNCTIONS
@@ -5269,21 +5579,35 @@ int tpu_workitem_num();
 int tpu_workitem_index();
 int tpu_group_num();
 int tpu_group_index();
+int tpu_start_physical_core_id();
+int tpu_tpuv7_env();
+
+// query engine status
+int tpu_bdc_busy();
+int tpu_gdma_busy();
+int tpu_sdma_busy();
+int tpu_hau_sort_busy();
+int tpu_gdma_cmd_overflow();
+int tpu_sdma_cmd_overflow();
+int tpu_hau_sort_cmd_overflow();
 
 // high level sync func
 void tpu_sync_core();
 void tpu_sync_all();
+void tpu_sync_all_with_msg_id(int);
 void tpu_sync_all_bdc();
 void tpu_sync_all_gdma();
 void tpu_sync_all_sdma();
 void tpu_sync_all_hau();
 void tpu_sync_core_innner();
+int tpu_core_barrier(int msg_id, int core_num);
 
 // make sure internal state initialized as zero value for next running
 void tpu_sync_finish();
 
 // low level sync interfaces
 int tpu_next_msg_id();
+int tpu_get_base_msg_id();
 void tpu_set_base_msg_id(int base_msg_id);
 void tpu_core_context_setup(int core_idx, int core_num, int core_msg_id);
 
@@ -5300,6 +5624,7 @@ void tpu_vsdma_wait_msg(int msg_id, int send_cnt, int port_id);
 void tpu_cdma_send_msg(int port, int msg_id, int wait_cnt);
 void tpu_cdma_wait_msg(int port, int msg_id, int send_cnt);
 void tpu_cdma_tx_send_msg(int port, int msg_id, int wait_cnt);
+void tpu_cdma_nop(int port);
 void tpu_cdma_tx_wait_msg(int port, int msg_id, int send_cnt);
 void tpu_cdma_rx_send_msg(int port, int msg_id, int wait_cnt);
 void tpu_cdma_rx_wait_msg(int port, int msg_id, int send_cnt);
@@ -5312,11 +5637,23 @@ int tpu_physical_core_num();
 // chip id in one pod
 int tpu_chip_id();
 int tpu_chip_num();
+int tpu_rank();
+int* tpu_chip_map();
+int tpu_use_ring();
+void tpu_sccl_init(int chip_num, int rank, int* chip_map, int use_ring);
 
 int tpu_get_local_msg_id();
 int tpu_get_global_msg_id();
 int tpu_get_ccl_msg_id();
-int tpu_get_core_sync_msg_id();
+int tpu_get_schedule_msg_id();
+
+// descriptor mode interface
+void tpu_run_commands(const tpu_engine_command_info_t* commands, u32 engine_num);
+u32 tpu_engine_num();
+
+// low-level interface for inner use
+void tpu_reset_base_addr();
+void tpu_set_base_addr(const int *base_idx, const u64 *base_addr, int num);
 
 #ifdef __cplusplus
 }

@@ -534,15 +534,9 @@ private:
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_pack_raw"));
     auto type = RankedTensorType::get({n, c, h, w}, qtype);
     auto none_op = module::getNoneOp(opd.getDefiningOp());
-    if (!module::isCV18xx()) {
-      auto newOp = rewriter.create<tpu::PackRawOp>(
-          loc, type, ArrayRef<Value>{opd, none_op, none_op}, attrs);
-      return newOp.getOutput();
-    } else {
-      auto newOp = rewriter.create<tpu::PackRawOp>(loc, type,
-                                                   ArrayRef<Value>{opd}, attrs);
-      return newOp.getOutput();
-    }
+    auto newOp = rewriter.create<tpu::PackRawOp>(
+        loc, type, ArrayRef<Value>{opd, none_op, none_op}, attrs);
+    return newOp.getOutput();
   };
 };
 

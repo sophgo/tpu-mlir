@@ -1274,9 +1274,11 @@ public:
 };
 
 /**
- * permute \
- *          => Add => Add -> permute
- * permute /
+ * Optimize for permute fuse in sam-vit-base encoder
+ *
+ * permute -> (reshape) -> \
+ *                          Add => Add -> permute
+ * permute -> (reshape) -> /
  */
 class MovePermuteAfterAdd : public OpRewriterPatternEx<tpu::AddOp> {
 public:
@@ -1286,8 +1288,25 @@ public:
                                         benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::AddOp op,
                                     PatternRewriter &rewriter) const override {
-    auto l_permute_op = op.getOperand(0).getDefiningOp<tpu::PermuteOp>();
-    auto r_permute_op = op.getOperand(1).getDefiningOp<tpu::PermuteOp>();
+    auto l_op = op.getOperand(0).getDefiningOp();
+    auto r_op = op.getOperand(1).getDefiningOp();
+
+    if (isa<tpu::ReshapeOp>(l_op) && isa<tpu::ReshapeOp>(r_op)) {
+      auto l_reshape_op = cast<tpu::ReshapeOp>(l_op);
+      auto r_reshape_op = cast<tpu::ReshapeOp>(r_op);
+      if (!isa<tpu::PermuteOp>(l_reshape_op.getInput().getDefiningOp()) ||
+          !isa<tpu::PermuteOp>(r_reshape_op.getInput().getDefiningOp())) {
+        return failure();
+      }
+      if (!MoveReshapeAfterAdd(l_reshape_op, r_reshape_op, op, rewriter)) {
+        return failure();
+      }
+      l_op = op.getOperand(0).getDefiningOp();
+      r_op = op.getOperand(1).getDefiningOp();
+    }
+
+    auto l_permute_op = dyn_cast<tpu::PermuteOp>(l_op);
+    auto r_permute_op = dyn_cast<tpu::PermuteOp>(r_op);
     if (!l_permute_op || !r_permute_op)
       return failure();
     auto l_in_shape = module::getShape(l_permute_op.getInput()).vec();
@@ -1327,51 +1346,29 @@ public:
                                   new_permute_op);
     return success();
   }
-};
 
-/**
- * reshape \
- *          => Add => Add -> reshape
- * reshape /
- *
- * NOTE: may have performance problem, for example:
- *  reshape(* -> 1,64,1,1) \
- *                          => Add(1,64,1,1) => Add(1,1,1,64) -> reshape
- *  reshape(* -> 1,64,1,1) /
- *
- * Optimized pattern can not make full use of lanes.
- *
- */
-class MoveReshapeAfterAdd : public OpRewriterPatternEx<tpu::AddOp> {
-public:
-  // using OpRewriterPatternEx::OpRewriterPatternEx;
-  MoveReshapeAfterAdd(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::AddOp>(context, "MoveReshapeAfterAdd",
-                                        benifit) {}
-  LogicalResult matchAndRewriteImpl(tpu::AddOp op,
-                                    PatternRewriter &rewriter) const override {
-    auto l_reshape_op = op.getOperand(0).getDefiningOp<tpu::ReshapeOp>();
-    auto r_reshape_op = op.getOperand(1).getDefiningOp<tpu::ReshapeOp>();
-    if (!l_reshape_op || !r_reshape_op)
-      return failure();
+private:
+  bool MoveReshapeAfterAdd(tpu::ReshapeOp &l_reshape_op,
+                           tpu::ReshapeOp &r_reshape_op, tpu::AddOp &add_op,
+                           PatternRewriter &rewriter) const {
     if (l_reshape_op.getOutput().hasOneUse() == false ||
         r_reshape_op.getOutput().hasOneUse() == false) {
-      return failure();
+      return false;
     }
     auto l_in_shape = module::getShape(l_reshape_op.getInput()).vec();
     auto r_in_shape = module::getShape(r_reshape_op.getInput()).vec();
     if (l_in_shape != r_in_shape)
-      return failure();
+      return false;
     auto l_out_shape = module::getShape(l_reshape_op.getOutput()).vec();
     auto r_out_shape = module::getShape(r_reshape_op.getOutput()).vec();
     if (l_out_shape != r_out_shape)
-      return failure();
-    auto loc = op.getLoc();
-    op.setOperand(0, l_reshape_op.getInput());
-    op.setOperand(1, r_reshape_op.getInput());
-    auto output = op.getOutput();
+      return false;
+    auto loc = add_op.getLoc();
+    add_op.setOperand(0, l_reshape_op.getInput());
+    add_op.setOperand(1, r_reshape_op.getInput());
+    auto output = add_op.getOutput();
     module::setShape(output, l_in_shape);
-    module::setLocSuffix(op, "before_reshape");
+    module::setLocSuffix(add_op, "before_reshape");
 
     rewriter.setInsertionPointAfterValue(output);
     auto reshape_type = module::getTypeLike(output, l_out_shape);
@@ -1381,7 +1378,7 @@ public:
                                   new_reshape_op);
     rewriter.eraseOp(l_reshape_op);
     rewriter.eraseOp(r_reshape_op);
-    return success();
+    return true;
   }
 };
 
@@ -3711,7 +3708,8 @@ public:
       auto requant =
           dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
-      if (module::isBM1688() || module::isSG2380() || module::isMARS3()) {
+      if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+          module::isSGTPUV8()) {
         for (int i = 0; i < shape[1]; ++i) {
           multiplier_v.push_back(data->data()[i * 2]);
           rshift_v.push_back(-(data->data()[i * 2 + 1] & 0xffff));
@@ -4055,7 +4053,8 @@ public:
                                     PatternRewriter &rewriter) const override {
     /* ReduceL2(1x4x256x256,axes[2,3],keep_dims=false)->ReduceL2(1x4x256x256)+ReduceL2(1x4x256)
      */
-    if (!(module::isBM1688() || module::isSG2380() || module::isMARS3())) {
+    if (!(module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+          module::isSGTPUV8())) {
       return failure();
     }
     auto mode = op.getMode();
@@ -4401,12 +4400,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isBM1684X()) {
-      return failure();
-    }
-    auto in_size = module::getNumElements(matMulOp.getInput());
-    if (in_size >
-        BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 8) * BM168x::NPU_NUM) {
+    if (!module::isBM1684X() && !module::isBM1688()) {
       return failure();
     }
     bool f_fuse_rq = matMulOp.getFuseRq();
@@ -4430,12 +4424,30 @@ public:
     bool l_fuse_rq = prevMatMulOp.getFuseRq();
     if (!l_fuse_rq)
       return failure();
+    auto in_size = module::getNumElements(prevMatMulOp.getInput());
+    auto out_size = module::getNumElements(matMulOp.getOutput()) *
+                    4; // stored as INT32 before sumed together and requantized.
     auto w_shape = module::getShape(matMulOp.getRight());
     auto dim = w_shape.size();
     auto w_size = module::getNumElements(matMulOp.getRight());
+    auto ceilDiv = [](int64_t a, int64_t b) -> int64_t {
+      return (a + b - 1) / b;
+    };
+    // at tpu.Add(BinaryShift) timestep, min_Lmem = 3 x outsize + insize.
+    if (BM168x::LMEM_BANKS <
+        ceilDiv(3 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) +
+            ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES)) {
+      return failure();
+    }
     // get split number
-    auto max_weight_size =
-        BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 4) * BM168x::NPU_NUM;
+    // at tpu.matmul timestep, min_Lmem = 2 x outsize + insize + bias,lut size +
+    // 2 * weightsize
+    auto max_weight_banks =
+        BM168x::LMEM_BANKS -
+        ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) -
+        ceilDiv(2 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) - 1;
+    auto max_weight_size = (int64_t)(max_weight_banks / 2) *
+                           BM168x::LMEM_BANK_BYTES * BM168x::NPU_NUM;
     int split_num = 1;
     while (w_size > max_weight_size) {
       split_num *= 2;
@@ -4457,7 +4469,8 @@ public:
   }
 };
 
-class SplitMixedQuantizedMLPPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+class SplitMixedQuantizedMLPPattern
+    : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
   SplitMixedQuantizedMLPPattern(mlir::MLIRContext *context, int benefit)
       : OpRewriterPatternEx<tpu::MatMulOp>(
@@ -4521,7 +4534,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::ConvbwdOp op,
                                     PatternRewriter &rewriter) const override {
-    if(! module::isBM1690Family())
+    if (!module::isBM1690Family())
       return failure();
     auto attr = op.parseParam();
     auto grad_weight_enable = op.getGradWeightEnable();
@@ -4551,26 +4564,30 @@ public:
           int64_t dw_h = ceiling_func(attr.ic, IC_PARALLEL) * attr.kh * attr.kw;
           gradweight_shape = {1, attr.oc, dw_h, IC_PARALLEL};
         }
-        auto f32_type =
-            RankedTensorType::get(gradweight_shape, rewriter.getF32Type());
-        new_types.push_back(f32_type);
+        auto f16_type =
+            RankedTensorType::get(gradweight_shape, rewriter.getF16Type());
+        new_types.push_back(f16_type);
       } else {
         auto out = op.getResult(i);
         new_types.push_back(out.getType());
       }
     }
     auto module_fp16 = module::getMode() == module::Mode::F16;
-    auto new_convbwd_op = rewriter.create<tpu::ConvbwdOp>(op.getLoc(), new_types, operands, op->getAttrs());
-    if(module_fp16){
-      auto op_name  = module::getName(op.getResult(1));
-      auto cast_loc = NameLoc::get(rewriter.getStringAttr( op_name.str() + "cast_grad_weight"));
-      auto cast_type = RankedTensorType::get(gradweight_shape, rewriter.getF16Type());
-      auto cast_op = rewriter.create<tpu::CastOp>(cast_loc, cast_type, ValueRange{new_convbwd_op.getResult(1)});
+    auto new_convbwd_op = rewriter.create<tpu::ConvbwdOp>(
+        op.getLoc(), new_types, operands, op->getAttrs());
+    if (module_fp16) {
+      // auto op_name = module::getName(op.getResult(1));
+      // auto cast_loc = NameLoc::get(
+      //     rewriter.getStringAttr(op_name.str() + "cast_grad_weight"));
+      // auto cast_type =
+      //     RankedTensorType::get(gradweight_shape, rewriter.getF16Type());
+      // auto cast_op = rewriter.create<tpu::CastOp>(
+      //     cast_loc, cast_type, ValueRange{new_convbwd_op.getResult(1)});
       rewriter.replaceAllUsesWith(op.getResult(0), new_convbwd_op.getResult(0));
-      rewriter.replaceAllUsesWith(op.getResult(1), cast_op.getResult());
+      rewriter.replaceAllUsesWith(op.getResult(1), new_convbwd_op.getResult(1));
       rewriter.replaceAllUsesWith(op.getResult(2), new_convbwd_op.getResult(2));
       rewriter.eraseOp(op);
-    }else{
+    } else {
       rewriter.replaceOp(op, new_convbwd_op.getResults());
     }
     // update func result type
@@ -4587,7 +4604,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::SwapDimInnerOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!(module::isMARS3())) {
+    if (!(module::isMARS3() || module::isSGTPUV8())) {
       return failure();
     }
 
@@ -4851,8 +4868,59 @@ private:
     return result;
   }
 };
+struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
 
+ WhereBnbwdFusePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::BatchNormBwdOp>(
+            context, "WhereBnbwdFusePattern", benifit) {}
 
+  LogicalResult matchAndRewriteImpl(tpu::BatchNormBwdOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto where_op =
+        dyn_cast_or_null<tpu::WhereOp>(op.getOperand(0).getDefiningOp());
+    if(!where_op)
+      return failure();
+    auto batchnormfwd_op =
+        dyn_cast_or_null<tpu::BatchNormTrainOp>(where_op.getOperand(0).getDefiningOp());
+    // auto input_shape = module::getShape(where_op.getOperand(0));
+    // if(input_shape.size() != 4 || input_shape[3] < 56)
+    //   return failure();
+    std::vector<Value> operands;
+    if(!batchnormfwd_op){
+      return failure();
+      operands.push_back(where_op.getOperand(0));
+    } else {
+      operands.push_back(module::getNoneOp(op));
+    }
+    operands.push_back(where_op.getOperand(1));
+    operands.push_back(op.getOperand(1));
+    operands.push_back(op.getOperand(2));
+    if(!batchnormfwd_op){
+      operands.push_back(module::getNoneOp(op));
+    } else {
+      operands.push_back(batchnormfwd_op.getOperand(4));
+    }
+    operands.push_back(op.getOperand(3));
+    operands.push_back(op.getOperand(4));
+    operands.push_back(module::getNoneOp(op));
+    std::vector<Type> new_types;
+    new_types.reserve(3);
+    for (int i = 0; i < 3; i++) {
+      new_types.push_back(op.getResult(i).getType());
+    }
+    auto whereBnbwdOp = rewriter.create<tpu::WhereBnbwdOp>(
+        op->getLoc(), new_types, operands, op->getAttrs());
+    whereBnbwdOp->setAttr("do_recompute", rewriter.getBoolAttr(batchnormfwd_op != NULL));
+    rewriter.replaceAllUsesWith(op->getResult(0),
+                                  whereBnbwdOp.getResult(0));
+    rewriter.replaceAllUsesWith(op->getResult(1),
+                                  whereBnbwdOp.getResult(1));
+    rewriter.replaceAllUsesWith(op->getResult(2),
+                                  whereBnbwdOp.getResult(2));
+    return success();
+  }
+};
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -4865,7 +4933,6 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 MatMulLeftReusePattern,
                 GroupConv2NormalConv,
                 MovePermuteAfterAdd,
-                MoveReshapeAfterAdd,
                 TpuReshapeReorderPattern,
                 PermuteAddWeightReorderPattern,
                 PermuteRopeWeightReorderPattern,
@@ -4903,7 +4970,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 MoveReshapeInSubGraphPattern,
                 SwapDimMerge,
                 MatMulRequantIntFusion,
-                RemoveReshape
+                RemoveReshape,
+                WhereBnbwdFusePattern
                 // ConvMergePattern
                 >(ctx, 8);
   // clang-format on

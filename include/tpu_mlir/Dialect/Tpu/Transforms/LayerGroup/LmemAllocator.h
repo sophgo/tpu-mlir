@@ -46,7 +46,7 @@ typedef enum {
 
 class LmemAllocator {
 public:
-  LmemAllocator() {}
+  LmemAllocator(const LgOptions &options) { options_ = options; }
   bool assignLmemAddrWithSecs(const LgInfo &lg_info,
                               BasicTimeStepPtr &time_step,
                               shape_secs_t &shape_secs,
@@ -87,6 +87,7 @@ public:
       bool allow_bank_conflict = false);
 
 protected:
+  LgOptions options_;
   bool consider_inplace_;
   shape_secs_t max_shape_secs_;
   int64_t min_total_secs_;
@@ -122,7 +123,8 @@ protected:
   shape_secs_t min_shape_secs_;
 };
 
-std::unique_ptr<LgPass> CreateLocalMemoryAllocationPass();
+std::unique_ptr<LgPass>
+CreateLocalMemoryAllocationPass(const LgOptions &options);
 
 } // namespace tpu
 } // namespace tpu_mlir

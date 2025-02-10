@@ -170,25 +170,40 @@ class CommandRecorder:
     def __init__(self, cache_fn, read=False):
         if read and not os.path.exists(cache_fn):
             raise FileNotFoundError(f"cache file {cache_fn} not found")
-        self.dic = {"version": version}
+        self._dic = {"version": version}
         self.cache_fn = cache_fn
+        self.base_dir = os.path.abspath(os.path.dirname(cache_fn))
         if os.path.exists(cache_fn):
-            self.dic.update(json.loads(Path(cache_fn).read_text()))
+            self._dic.update(json.loads(Path(cache_fn).read_text()))
 
         self.cache_rev = {}
         try:
-            for type, val in self.dic.get("files", {}).items():
+            for type, val in self._dic.get("files", {}).items():
                 self.cache_rev[val["path"]] = val["last_modify"]
         except KeyError:
             logger.error(f"cache file {cache_fn} is invalid")
             os.remove(cache_fn)
 
     def clear(self):
-        self.dic = {"version": version}
+        self._dic = {"version": version}
+
+    @property
+    def dic(self):
+        dic = self._dic.copy()
+        files = {}
+        for file_name, file_info in dic.get("files", {}).items():
+            file = os.path.realpath(os.path.join(self.base_dir, file_info["path"]))
+            if os.path.exists(file):
+                files[file_name] = {
+                    "path": file,
+                    "last_modify": file_info["last_modify"],
+                }
+        dic["files"] = files
+        return dic
 
     def add_property(self, **kwargs):
         for key, value in kwargs.items():
-            ret = self.dic.setdefault("properties", {})
+            ret = self._dic.setdefault("properties", {})
             ret[key] = value
 
     def add_file(self, **kwargs):
@@ -196,18 +211,20 @@ class CommandRecorder:
             if not isinstance(file_path, str):
                 continue
             if os.path.exists(file_path):
-                ret = self.dic.setdefault("files", {})
+                ret = self._dic.setdefault("files", {})
+                rel_path = os.path.relpath(file_path, self.base_dir)
                 if os.path.isdir(file_path):
-                    Path(file_path).joinpath(".modify").write_text("1")
+                    modify_file = Path(file_path).joinpath(".modify")
+                    if not modify_file.exists():
+                        modify_file.write_text("1")
                     ret[name] = {
-                        "path": os.path.abspath(file_path),
-                        "last_modify": os.path.getmtime(
-                            Path(file_path).joinpath(".modify")
-                        ),
+                        "path": rel_path,
+                        "last_modify": os.path.getmtime(modify_file),
                     }
+                    
                 else:
                     ret[name] = {
-                        "path": os.path.abspath(file_path),
+                        "path": rel_path,
                         "last_modify": os.path.getmtime(file_path),
                     }
 
@@ -216,13 +233,26 @@ class CommandRecorder:
 
     def add_command(self, **kwargs):
         for stage, command in kwargs.items():
-            self.dic.setdefault("commands", {})[stage] = command
+            self._dic.setdefault("commands", {})[stage] = command
 
     def update_file(self, file_path):
         try:
             load_from = CommandRecorder(file_path)
 
-            self.dic.update(load_from.dic)
+            ref_dir = os.path.dirname(file_path)
+            for file_name, file_info in load_from._dic.get("files", {}).items():
+                self.add_file(**{file_name: os.path.join(ref_dir, file_info["path"])})
+                
+            for k, v in load_from._dic.items():
+                if k == "files":
+                    continue
+                if isinstance(v, dict) and k in self._dic:
+                    self._dic[k].update(v)
+                elif isinstance(v, dict):
+                    self._dic[k] = v.copy()
+                else:
+                    self._dic[k] = v
+
         except Exception:
             logger.error(f"cache file {file_path} is invalid")
 
@@ -238,7 +268,7 @@ class CommandRecorder:
         if fn is None:
             fn = self.cache_fn
         with open(fn, "w") as w:
-            json.dump(self.dic, w, indent=2, ensure_ascii=False)
+            json.dump(self._dic, w, indent=2, ensure_ascii=False)
 
     def check(self):
         return self.all_file_no_change(*self.cache_rev.keys())

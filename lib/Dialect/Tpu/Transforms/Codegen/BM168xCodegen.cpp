@@ -14,6 +14,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Backend/BM168x/MARS3.h"
+#include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/MemoryBuffer.h>
@@ -85,7 +86,7 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
   model_gen->AddChip(chip);
   model_gen->AddNumDevice(num_device);
   if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family() ||
-      module::isMARS3()) {
+      module::isMARS3() || module::isSGTPUV8()) {
     std::string kernel_name;
     if (module::isBM1684X())
       kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
@@ -93,6 +94,8 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
       kernel_name = backend::BM1688::LIB_KERNEL_NAME.str();
     else if (module::isMARS3())
       kernel_name = backend::MARS3::LIB_KERNEL_NAME.str();
+    else if (module::isSGTPUV8())
+      kernel_name = backend::SGTPUV8::LIB_KERNEL_NAME.str();
     else
       kernel_name = backend::BM1690::LIB_KERNEL_NAME.str();
     std::string root_path = getenv("TPUC_ROOT");
@@ -905,8 +908,11 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
       break;
     }
     if (isa<tpu::MatMulOp>(op)) {
-      if (!first_mm && op.getAttr(LocalGenInterface::kLayerGroupAttrName).cast<tpu::LayerGroupAttr>().getHSlice().size() == 1) {
-        valid_softmax_group = false;
+      if (!first_mm) {
+        if (op.getAttr(LocalGenInterface::kLayerGroupAttrName).cast<tpu::LayerGroupAttr>().getHSlice().size() == 1) {
+          valid_softmax_group = false;
+        }
+        break;
       }
       first_mm = false;
     }
@@ -947,11 +953,11 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
     llvm::errs() <<"valid_softmax_group\n";
     std::vector<Operation*> tmp_ops;
     std::vector<std::vector<Operation*>> new_pipeline_ops;
-    bool first_mm = true;
+    bool first_mm = true, second_mm_ts_finish = true;
     int his_timestep_idx = -1, timestep_idx;
     Operation* mm_storeOp = nullptr;
     for (Operation &op : gOp.getBody().front().getOperations()) {
-      if (isa<YieldOp>(op)) {
+      if (isa<YieldOp,SliceMergeOp>(op)) {
         continue;
       }
       if (isa<MoveOp>(op)) {
@@ -968,6 +974,7 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
         if (first_mm) {
           first_mm = false;
         } else {
+          second_mm_ts_finish = false;
           mm_storeOp = *(op.getUsers().begin());
           //A stream has multiple slices, 2 in a group,
           //and only the second one needs column segmentation to clone matmul op
@@ -988,11 +995,17 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
           continue;
         }
       }
-      tmp_ops.push_back(&op);
       if (timestep_idx != his_timestep_idx && his_timestep_idx != -1) {
-        new_pipeline_ops.push_back(tmp_ops);
+        if (!second_mm_ts_finish) {
+          auto& it = new_pipeline_ops.back();
+          it.insert(it.end(), tmp_ops.begin(), tmp_ops.end());
+          second_mm_ts_finish = true;
+        } else {
+          new_pipeline_ops.push_back(tmp_ops);
+        }
         tmp_ops.clear();
       }
+      tmp_ops.push_back(&op);
       his_timestep_idx = timestep_idx;
     }
 
@@ -1003,7 +1016,7 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
     }
     for (auto id: run_core_id) {
       llvm::errs() <<" codegen for run_core_id:"<<id<<"\n";
-      core_num_idx.second--;
+      core_num_idx.second++;
       bool async_status = false;
       int timestep_idx_his = -1;
       if (useMuliCore) {
@@ -1089,7 +1102,7 @@ void BMCodegen::codegen_for_group2(GroupOp gOp, int& syncall_num, std::pair<int,
 
   for (auto id: run_core_id) {
     llvm::errs() <<" codegen for run_core_id:"<<id<<"\n";
-    core_num_idx.second--;
+    core_num_idx.second++;
     bool async_status = false;
     int timestep_idx_his = -1;
     if (useMuliCore) {
@@ -1306,6 +1319,9 @@ void codegenGroupParallelOp(
 
 
 void BMCodegen::codegen_for_store_to_l2m_op(Operation* store_to_l2m_op, std::pair<int, int>& core_num_idx) {
+  if (module::getChip() != module::Chip::BM1690) {
+    return;
+  }
   auto src_addr = module::getAddress(store_to_l2m_op->getOperand(1));
   auto res = store_to_l2m_op->getResult(0);
   auto user = *(res.getUsers().begin());
@@ -1404,7 +1420,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
       llvm::errs() << "max_syncall_idx:" << max_syncall_idx
                    << " max_syncall_num:" << max_syncall_num << "\n";
       idx = 0;
-      auto core_num_idx = std::make_pair(used_core_num, used_core_num);
+      auto core_num_idx = std::make_pair(used_core_num, -1);
       for (auto opd : sliceMergeOp->getOperands()) {
         if (auto castOp = dyn_cast<GroupOp>(opd.getDefiningOp())) {
           // bool l2mop_codegen = idx++ == max_syncall_idx?true:false;
@@ -1460,7 +1476,7 @@ void BMCodegen::codegen(FuncOp funcOp) {
             }
           }
           int syncall_num = 0;
-          auto core_num_idx = std::make_pair(used_core_num, used_core_num);
+          auto core_num_idx = std::make_pair(used_core_num, -1);
           codegen_for_group2(castOp, syncall_num, core_num_idx);
           if (used_core_num > 1) { // consume all the MSG send/wait.
             for (int core_id = used_core_num; core_id < core_num; core_id++) {

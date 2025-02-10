@@ -38,24 +38,10 @@ pool_attr_t tpu::Pool2DOp::parseParam() {
   p.sh = stride->at(0);
   p.sw = stride->at(1);
   auto pad = module::getI64Array(getPads());
-  // for dynamic case.
-  std::vector<int64_t> new_pads(pad->begin(), pad->end());
-  if (getCeilMode().has_value() && getCeilMode().value()) {
-    auto kernel_shape = module::getI64Array(getKernelShape());
-    auto kernel_len = kernel_shape->size();
-    for (uint32_t i = 0; i < kernel_len; i++) {
-      auto remain_pixel =
-          (ishape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) %
-          stride->at(i);
-      if (remain_pixel > 0) {
-        new_pads[i + kernel_len] += (stride->at(i) - remain_pixel);
-      }
-    }
-  }
-  p.pad_h = new_pads.at(0);
-  p.pad_w = new_pads.at(1);
-  p.pad_h_after = new_pads.at(2);
-  p.pad_w_after = new_pads.at(3);
+  p.pad_h = pad->at(0);
+  p.pad_w = pad->at(1);
+  p.pad_h_after = pad->at(2);
+  p.pad_w_after = pad->at(3);
   p.pad_value = getPadValue();
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
@@ -70,7 +56,27 @@ pool_attr_t tpu::Pool2DOp::parseParam() {
 LogicalResult tpu::Pool2DOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
   auto attr = parseParam();
-
+  // for dynamic tpu-inference.
+  std::vector<int64_t> new_pads{attr.pad_h, attr.pad_w, attr.pad_h_after,
+                                attr.pad_w_after};
+  if (getCeilMode().has_value() && getCeilMode().value()) {
+    auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
+    auto kernel_shape = module::getI64Array(getKernelShape());
+    auto kernel_len = kernel_shape->size();
+    auto stride = module::getI64Array(getStrides());
+    for (uint32_t i = 0; i < kernel_len; i++) {
+      auto remain_pixel =
+          (ishape[i + 2] + 2 * new_pads[i] - kernel_shape->at(i)) %
+          stride->at(i);
+      if (remain_pixel > 0) {
+        new_pads[i + kernel_len] += (stride->at(i) - remain_pixel);
+      }
+    }
+  }
+  attr.pad_h = new_pads[0];
+  attr.pad_w = new_pads[1];
+  attr.pad_h_after = new_pads[2];
+  attr.pad_w_after = new_pads[3];
   int izp = 0;
   auto dtype = module::getElementType(getInput());
   bool is_avg_pooling = getPoolMode() == tpu::PoolMode::Avg;

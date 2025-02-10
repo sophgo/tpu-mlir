@@ -659,6 +659,18 @@ class BMProfileParserPerfAI(BMProfileParser):
             f.seek(offset)
             raw_data = f.read()
             command_list = command_parser.parse(raw_data)
+        # Compatible code
+        end_name = "dma.sys.chain_end"
+        if engine_type == self.archlib.EngineType.BD:
+            end_name = "system.end"
+        op_name = command_list[-1].op_name
+        num = 0
+        if op_name == end_name:
+            for i in command_list[::-1][1:]:
+                if i.op_name == end_name:
+                    num += 1
+        for _ in range(num):
+            command_list.pop()
         return command_list
 
     def __get_gdma_info(self, monitor_info, reg_info, core_id, engine_id=1):

@@ -44,4 +44,8 @@ LogicalResult tpu::PackRawOp::inference(InferenceParameter &p) {
   return success();
 }
 
+mlir::Type tpu::PackRawOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  return do_nothing(mode);
+}
+
 bool tpu::PackRawOp::support_multi_core() { return false; }

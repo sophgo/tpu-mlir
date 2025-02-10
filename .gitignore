@@ -10,6 +10,7 @@ work_dir/
 __pycache__
 python/transform/tflite
 python/debugger/soc_tools/tmp_cache
+regression_op_log/
 regression_out/
 tags
 .vscode/

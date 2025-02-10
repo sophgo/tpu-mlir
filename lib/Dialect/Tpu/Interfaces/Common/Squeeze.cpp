@@ -36,7 +36,8 @@ LogicalResult tpu::SqueezeOp::inference(InferenceParameter &p) {
         out_shape.push_back(in_shape[i]);
       }
     } else {
-      if ((std::find(axes_.begin(), axes_.end(), i) == axes_.end()) || (in_shape[i] != 1)) {
+      if ((std::find(axes_.begin(), axes_.end(), i) == axes_.end()) ||
+          (in_shape[i] != 1)) {
         out_shape.push_back(in_shape[i]);
       } else {
         assert(in_shape[i]);

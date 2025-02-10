@@ -954,7 +954,8 @@ void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter,
   // auto runningVarType = runningVar.getType().cast<RankedTensorType>();
   // Value eps = rewriter.create<arith::ConstantOp>(
   //     loc,
-  //     FloatAttr::get(rewriter.getF32Type(), op.getEpsilon().convertToDouble()));
+  //     FloatAttr::get(rewriter.getF32Type(),
+  //     op.getEpsilon().convertToDouble()));
 
   // auto inputRank = inputType.getRank();
   // if (inputRank < 2)
@@ -983,14 +984,17 @@ void BatchNormTrainLoweringToLinalg::Lowering(PatternRewriter &rewriter,
   //     rewriter
   //         .create<linalg::GenericOp>(
   //             loc, input.getType(),
-  //             ValueRange{input, weight, bias, runningMean, runningVar}, input,
+  //             ValueRange{input, weight, bias, runningMean, runningVar},
+  //             input,
   //             /*indexingMaps=*/indexingMaps,
   //             /*iteratorTypes=*/iteratorTypes,
   //             [&](OpBuilder &b, Location loc, ValueRange args) {
   //               Value input = args[0], weight = args[1], bias = args[2],
   //                     mean = args[3], var = args[4];
-  //               Value result = createLinalgPayloadCalculationForNormOpsWithVar(
-  //                   b, loc, var.getType(), input, mean, var, eps, weight, bias);
+  //               Value result =
+  //               createLinalgPayloadCalculationForNormOpsWithVar(
+  //                   b, loc, var.getType(), input, mean, var, eps, weight,
+  //                   bias);
   //               b.create<linalg::YieldOp>(loc, result);
   //             })
   //         .getResult(0);

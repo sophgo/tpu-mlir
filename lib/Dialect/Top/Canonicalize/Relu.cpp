@@ -41,7 +41,7 @@ struct TopFuseRelu : public OpRewriterPatternEx<ReluOp> {
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
     bool if_multi_output = formerOp->getNumResults() > 1;
-    if(if_multi_output){
+    if (if_multi_output) {
       std::vector<Location> locs;
       locs.push_back(op.getLoc());
       for (int i = 1; i < formerOp->getNumResults(); i++) {
@@ -51,7 +51,7 @@ struct TopFuseRelu : public OpRewriterPatternEx<ReluOp> {
       }
       auto new_loc = FusedLoc::get(module::getCtx(), locs);
       formerOp->setLoc(new_loc);
-    }else{
+    } else {
       formerOp->setLoc(op.getLoc());
     }
     // remove the relu Op
