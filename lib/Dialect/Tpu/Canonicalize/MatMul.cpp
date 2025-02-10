@@ -393,9 +393,51 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
   }
 };
 
+struct MatMulFuseRequant : public OpRewriterPatternEx<tpu::MatMulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  MatMulFuseRequant(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulFuseRequant") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto out = op.getOutput();
+    if (!out.hasOneUse()) {
+      return failure();
+    }
+    auto nextOp = *op.getOutput().user_begin();
+    if (!isa<tpu::RequantIntOp>(nextOp))
+      return failure();
+
+    auto requantOp = dyn_cast<tpu::RequantIntOp>(nextOp);
+    auto quant_mode = requantOp.getQuantMode();
+    if (quant_mode == tpu::RequantMode::TFLite_LShift ||
+        quant_mode == tpu::RequantMode::TFLite)
+      return failure();
+
+    rewriter.setInsertionPoint(op);
+    std::vector<mlir::Value> operands(op.getOperands().begin(),
+                                      op.getOperands().end());
+    auto newOp = rewriter.create<tpu::MatMulOp>(requantOp->getLoc(),
+                                                requantOp.getOutput().getType(),
+                                                operands, op->getAttrs());
+
+    newOp.setMultipliersAttr(
+        rewriter.getI64ArrayAttr(requantOp.getMultiplier()));
+    newOp.setRshiftsAttr(rewriter.getI64ArrayAttr(requantOp.getRshift()));
+    newOp.setQuantModeAttr(requantOp.getQuantModeAttr());
+
+    auto round_mode = requantOp.getRoundModeAttr().getValue();
+    newOp.setRoundMode(round_mode);
+    rewriter.replaceOp(requantOp, newOp.getResult());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void tpu::MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                 MLIRContext *context) {
-  results.insert<MatMulWithBias, MatMul2FAttention>(context);
+  results.insert<MatMulWithBias, MatMul2FAttention, MatMulFuseRequant>(context);
 }
 
 } // namespace tpu
