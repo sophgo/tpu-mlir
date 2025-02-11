@@ -332,6 +332,13 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
 
 void BMAddressAssign::assignAfter(ModuleOp &m,
                                   std::vector<ValueInfo> &inplace_ops) {
+
+  // Update ModuleTypes first to assure tensor address can be got on func level
+  // then assignAfter can fix SplitOp IO addresses correctly
+  // especially for the case: static subnet->dynamic subnet->static subnet(with
+  // CoreParallel/SplitOp)
+  module::updateModuleTypes();
+
   // step 0: assign inplace ops
   std::reverse(inplace_ops.begin(), inplace_ops.end());
   for (auto v_info : inplace_ops) {
@@ -750,6 +757,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   assignAfter(m, inplace_ops);
 
   module::updateModuleTypes();
+
   // update io address by io_alone
   if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
     updateAddressByAddrMode(m, start_addr, addr);

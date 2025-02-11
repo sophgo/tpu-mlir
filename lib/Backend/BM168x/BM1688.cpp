@@ -21,18 +21,21 @@ void BM1688::load_functions() {
 }
 
 void BM1688::before_codegen() {
-  BM1684X::before_codegen();
-  useCode0 = true;
+  // Note: keep useCore(0) at last
+  for (int i = multiCode.size() - 1; i >= 0; i--) {
+    useCore(i);
+    BM168x::before_codegen();
+    dl_backend_api_clear_tpu_inst_data();
+  }
 }
 
 void BM1688::after_codegen(int64_t flops) {
   BM168x::after_codegen(flops);
-  for (int i = 0, n = multiCode.size(); i < n; i++) {
+  // Note: keep useCore(0) at last
+  for (int i = multiCode.size() - 1; i >= 0; i--) {
     useCore(i);
     dl_store_cmd_end();
   }
-  useCore(0); // Reset buffer swapping.
-  useCode0 = false;
 }
 
 void BM1688::setCoreNum(int core) {

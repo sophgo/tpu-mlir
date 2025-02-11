@@ -136,7 +136,6 @@ protected:
   };
   virtual void load_functions() override;
   virtual ~BM1688(){};
-  bool useCode0 = true;
   std::vector<std::shared_ptr<BM168x::Code>> multiCode;
 };
 
