@@ -34,6 +34,29 @@
     case EnvErr:                                                               \
       printf("Env error, please check env path!!!\n");                         \
       exit(ret);                                                               \
+    case PplShapeInferErr:                                                     \
+      printf("Shape infer failed, please check tensor shape!!!\n");            \
+      exit(ret);                                                               \
+    case PplSetMemRefShapeErr:                                                 \
+      printf("Set memRef shape failed, please check tesnor shape!!!\n");       \
+      exit(ret);                                                               \
+    case ToPplErr:                                                             \
+      printf("LLVM fe to ppl fe error, please check the error info!!!\n");     \
+      exit(ret);                                                               \
+    case PplTensorConvErr:                                                     \
+      printf("Tensor conversion error, please check the error info!!!\n");     \
+      exit(ret);                                                               \
+    case PplDynBlockErr:                                                       \
+      printf("Dynamic block error, please check the error info!!!\n");         \
+      exit(ret);                                                               \
+    case CacheOpenKernelSoErr:                                                 \
+      printf("Can not open the kernel so from cache, please check cache "      \
+             "path!!!\n");                                                     \
+      exit(ret);                                                               \
+    case CacheGetKernelFunErr:                                                 \
+      printf(                                                                  \
+          "Can not get the kernel from cache, please check cache path!!!\n");  \
+      exit(ret);                                                               \
     default:                                                                   \
       break;                                                                   \
     }                                                                          \

@@ -1,3 +1,10 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+//===----------------------------------------------------------------------===//
+
+
 #include "ppl_dma_func.h"
 #include "ppl_func.h"
 #include "ppl_tiu_func.h"

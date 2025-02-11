@@ -33,7 +33,22 @@ enum PplErrorCode_t {
   ToPplErr = 0x1D,
   PplTensorConvErr = 0x1E,
   PplDynBlockErr = 0x1F,
+  CacheOpenKernelSoErr = 0x20,
+  CacheGetKernelFunErr = 0x21,
 };
+
+static int execCompileCommand(const std::string &command, std::string &output) {
+  char buffer[256];
+  FILE *pipe = popen(command.c_str(), "r");
+  if (!pipe)
+    return -1;
+
+  while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+    output += buffer;
+  }
+
+  return pclose(pipe);
+}
 
 namespace fs = std::filesystem;
 
@@ -91,10 +106,12 @@ public:
     return;
   }
 
-private:
+protected:
   using KVPair = std::pair<Key, Value>;
+
   explicit LRUCache(std::string dir, std::size_t MaxSize)
       : dir(std::move(dir)), MaxSize(MaxSize) {}
+
   std::vector<KVPair>::iterator findByKey(Key K) {
     return std::find_if(LRU.begin(), LRU.end(),
                         [K](const KVPair &P) { return P.first == K; });
@@ -106,42 +123,91 @@ private:
   std::vector<KVPair> LRU;
 };
 
-static int ppl_jit_call(const char *file_name, const char *func_name,
-                        const char *args, void *st, const char *chip,
-                        void *pid_node) {
-  static std::map<std::size_t, std::size_t> state;
-  auto convertToKey = [](const std::string &str) {
-    try {
-      std::size_t pos;
-      unsigned long long converted = std::stoull(str, &pos);
-      if (pos < str.length()) {
-        return false;
-      }
+class PplJitCache : public LRUCache {
+public:
+  PplJitCache(const std::string &cache_dir, std::size_t max_items)
+      : LRUCache(cache_dir, max_items), cache_dir(cache_dir) {
+    initFlags();
+    initializeCache();
+  }
 
-      return converted <= std::numeric_limits<std::size_t>::max();
-    } catch (const std::invalid_argument &e) {
-      std::cerr << "Invalid argument: " << e.what() << std::endl;
-    } catch (const std::out_of_range &e) {
-      std::cerr << "Out of range: " << e.what() << std::endl;
+  PplJitCache(const PplJitCache &) = delete;
+  PplJitCache &operator=(const PplJitCache &) = delete;
+
+  int jitCompile(const std::string &file_name, const std::string &func_name,
+                 const std::string &args, const std::string &chip,
+                 std::size_t key) {
+    auto v = take(key);
+    if (!v && !state.count(key)) {
+      int ret = runJitCompile(file_name, func_name, args, chip, key);
+      if (ret == 0) {
+        generateFlag(key, ret);
+        auto val =
+            std::make_tuple(cache_dir + std::to_string(key) + "/", nullptr,
+                            std::unordered_map<std::string, NODE_FUNC>());
+        put(key, val);
+#ifdef DDEBUG
+        printf("[compile jit success]\n");
+#endif
+      } else
+        generateFlag(key, ret);
+      return ret;
     }
-    return false;
-  };
+    return 0;
+  }
 
-  auto gen_flag = [&](const std::string &cache_path, std::size_t key,
-                      std::size_t flag) {
-    std::string filePath = cache_path + "flag.txt";
-    std::ofstream file(filePath, std::ios::app);
-    file << key << " " << flag << std::endl;
-    state[key] = flag;
-    file.close();
-  };
+  int isCompiled(std::size_t key) const { return state.at(key); }
 
-  auto init_flag = [&](const std::string &cache_path) {
-    std::string filePath = cache_path + "flag.txt";
-    std::ifstream file(filePath);
+  int loadAndExecute(std::optional<Value> &v, std::size_t key,
+                     const std::string &func_name, void *st, void *pid_node) {
+    if (!std::get<1>(*v)) {
+      auto kernel_so_name =
+          std::get<0>(*v) + std::string("lib/lib") + func_name + ".so";
+      auto handle = dlopen(kernel_so_name.c_str(), RTLD_NOW);
+      if (!handle) {
+        printf("open ppl kernel so failed! %s\n", dlerror());
+        return CacheOpenKernelSoErr;
+      }
+      auto set_id = (NODE_FUNC)dlsym(handle, "set_id_node");
+      set_id(pid_node);
+      auto kernel_func = (KERNEL_FUNC)dlsym(handle, func_name.c_str());
+      if (!kernel_func) {
+        printf("get ppl kernel func failed! %s\n", dlerror());
+        dlclose(handle);
+        return CacheGetKernelFunErr;
+      }
+      kernel_func(st);
+      auto get_id = (NODE_FUNC)dlsym(handle, "get_id_node");
+      get_id(pid_node);
+      auto [path, ignored1, _] = (*v);
+      std::unordered_map<std::string, NODE_FUNC> symbolMap = {
+          {std::string(func_name), kernel_func},
+          {"set_id_node", set_id},
+          {"get_id_node", get_id}};
+      auto val = std::make_tuple(path, handle, std::move(symbolMap));
+      update(key, val);
+    } else {
+      auto iter = std::get<2>(*v).find("set_id_node");
+      iter->second(pid_node);
+      iter = std::get<2>(*v).find(func_name);
+      iter->second(st);
+      iter = std::get<2>(*v).find("get_id_node");
+      iter->second(pid_node);
+    }
+#ifdef DDEBUG
+    printf("[run success]\n");
+#endif
+    return 0;
+  }
+
+private:
+  std::string cache_dir;
+  std::map<std::size_t, int> state;
+
+  void initFlags() {
+    std::ifstream file(cache_dir + "flag.txt");
     std::string line;
     std::size_t key, flag;
-
     while (std::getline(file, line)) {
       std::istringstream iss(line);
       if (!(iss >> key >> flag)) {
@@ -149,76 +215,48 @@ static int ppl_jit_call(const char *file_name, const char *func_name,
       }
       state[key] = flag;
     }
-
     file.close();
-    return;
-  };
-
-  std::string work_dir;
-  if (auto env = getenv("PPL_WORK_PATH")) {
-    work_dir = std::string(env);
-  } else {
-    work_dir = std::string(getenv("PWD"));
-  }
-  std::string ppl_root = getenv("PPL_PROJECT_ROOT");
-  std::string cache_dir;
-  if (auto env = getenv("PPL_CACHE_PATH"); env)
-    cache_dir = std::string(env);
-
-  if (cache_dir.empty()) {
-    cache_dir = getenv("HOME") + std::string("/.ppl/cache/");
-  } else {
-    std::filesystem::path p(cache_dir);
-    if (p.has_filename() && p.filename().string() != "/") {
-      cache_dir += std::string("/");
-    }
   }
 
-  if (!fs::exists(cache_dir))
-    fs::create_directories(cache_dir);
-  std::size_t cache_items = MaxCacheRetained;
-
-  if (auto item = getenv("CACHE_ITEMS"); item) {
-    if (convertToKey(std::string(item))) {
-      cache_items = static_cast<std::size_t>(std::stoull(std::string(item)));
-    }
+  void generateFlag(std::size_t key, std::size_t flag) {
+    std::ofstream file(cache_dir + "flag.txt", std::ios::app);
+    file << key << " " << flag << std::endl;
+    state[key] = flag;
   }
-  LRUCache &cache = LRUCache::getInstance(cache_dir, cache_items);
-  // construct the cached item by search the directory
-  if (cache.empty()) {
+
+  void initializeCache() {
     for (const auto &entry : fs::directory_iterator(cache_dir)) {
       if (fs::is_directory(entry.status())) {
         auto filename = entry.path().filename();
-        if (convertToKey(filename.string())) {
+        try {
+          std::size_t key = std::stoull(filename.string());
           auto val =
-              std::make_tuple(entry.path().string() + std::string("/"), nullptr,
+              std::make_tuple(entry.path().string() + "/", nullptr,
                               std::unordered_map<std::string, NODE_FUNC>());
-          cache.put(static_cast<std::size_t>(std::stoull(filename.string())),
-                    val);
+          put(key, val);
+        } catch (...) {
+          continue;
         }
       }
     }
   }
 
-  init_flag(cache_dir + "/");
-  std::string str = std::string(chip) + std::string(file_name) +
-                    std::string(func_name) + std::string(args);
-  std::size_t key = std::hash<std::string>{}(str);
-  auto v = cache.take(key);
-  if (!v && !state.count(key)) {
-    std::string inc_path = ppl_root + "/inc";
+  int runJitCompile(const std::string &file_name, const std::string &func_name,
+                    const std::string &args, const std::string &chip,
+                    std::size_t key) {
+    std::string inc_path = std::string(getenv("PPL_PROJECT_ROOT")) + "/inc";
+    std::string path = cache_dir + std::to_string(key) + "/";
+    fs::create_directory(path);
+
     std::stringstream cmd;
-    auto path = cache_dir + std::to_string(key) + "/";
-    v = {path, nullptr, {}};
-    std::filesystem::create_directory(path);
     cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
         << inc_path << " " << path << " " << chip << " " << args
-        << " > /dev/null 2>&1";
-    auto ret = system(cmd.str().c_str());
+        << " > /dev/null 2>&1\n";
+    std::string output;
+    int ret = system(cmd.str().c_str());
     ret >>= 8;
     switch (ret) {
     case 0: {
-      gen_flag(cache_dir + "/", key, true);
 #ifdef DDEBUG
       printf("[compile jit success]\n");
 #endif
@@ -227,64 +265,55 @@ static int ppl_jit_call(const char *file_name, const char *func_name,
     case PplL2AddrAssignErr:
     case PplLocalAddrAssignErr: {
       fs::remove_all(path);
-      gen_flag(cache_dir + "/", key, false);
-      return ret;
+      break;
     }
     default: {
-      cmd.clear();
+      fs::remove_all(path);
+      cmd.str("");
       cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
           << inc_path << " " << path << " " << chip << " " << args;
-      fs::remove_all(path);
-      gen_flag(cache_dir + "/", key, false);
-      return system(cmd.str().c_str());
+      system(cmd.str().c_str());
+      break;
     }
     }
-    cache.put(key, *v);
+    return ret;
+  }
+};
+
+static int ppl_jit_call(const char *file_name, const char *func_name,
+                        const char *args, void *st, const char *chip,
+                        void *pid_node) {
+  std::string work_dir =
+      getenv("PPL_WORK_PATH") ? getenv("PPL_WORK_PATH") : getenv("PWD");
+  std::string cache_dir = getenv("PPL_CACHE_PATH")
+                              ? getenv("PPL_CACHE_PATH")
+                              : std::string(getenv("HOME")) + "/.ppl/cache/";
+  if (!cache_dir.empty() && cache_dir.back() != '/') {
+    cache_dir += "/";
+  }
+  if (!fs::exists(cache_dir)) {
+    fs::create_directories(cache_dir);
   }
 
-  if (!state[key])
-    return -1;
+  std::size_t cache_items =
+      getenv("CACHE_ITEMS")
+          ? static_cast<std::size_t>(std::stoull(getenv("CACHE_ITEMS")))
+          : MaxCacheRetained;
 
-  if (!std::get<1>(*v)) {
-    auto kernel_so_name = std::get<0>(*v) + std::string("lib/lib") +
-                          std::string(func_name) + std::string(".so");
-    auto handle = dlopen(kernel_so_name.c_str(), RTLD_NOW);
-    if (!handle) {
-      printf("open ppl kernel so failed! %s\n", dlerror());
-      return -2;
-    }
-    auto set_id = (NODE_FUNC)dlsym(handle, "set_id_node");
-    set_id(pid_node);
-    auto kernel_func = (KERNEL_FUNC)dlsym(handle, func_name);
-    if (!kernel_func) {
-      printf("get ppl kernel func failed! %s\n", dlerror());
-      dlclose(handle);
-      return -2;
-    }
-    kernel_func(st);
-    auto get_id = (NODE_FUNC)dlsym(handle, "get_id_node");
-    get_id(pid_node);
-    auto [path, ignored1, _] = (*v);
-    std::unordered_map<std::string, NODE_FUNC> symbolMap = {
-        {std::string(func_name), kernel_func},
-        {"set_id_node", set_id},
-        {"get_id_node", get_id}};
-    auto val = std::make_tuple(path, handle, std::move(symbolMap));
-    cache.update(key, val);
-  } else {
-    auto iter = std::get<2>(*v).find("set_id_node");
-    iter->second(pid_node);
-    iter = std::get<2>(*v).find(std::string(func_name));
-    iter->second(st);
-    iter = std::get<2>(*v).find("get_id_node");
-    iter->second(pid_node);
+  static PplJitCache cache(cache_dir, cache_items);
+
+  std::string str = std::string(chip) + file_name + func_name + args;
+  std::size_t key = std::hash<std::string>{}(str);
+
+  auto ret = cache.jitCompile(file_name, func_name, args, chip, key);
+  if (ret != 0)
+    return ret;
+  auto v = cache.take(key); // state
+  if (!v) {
+    return cache.isCompiled(key);
   }
 
-#ifdef DDEBUG
-  printf("[run success]\n");
-#endif
-
-  return 0;
+  return cache.loadAndExecute(v, key, func_name, st, pid_node);
 }
 
 #endif

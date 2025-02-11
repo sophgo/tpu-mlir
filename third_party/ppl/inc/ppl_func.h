@@ -1,3 +1,10 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+//===----------------------------------------------------------------------===//
+
+
 #pragma once
 #include "ppl_types.h"
 #include "ppl_utils.h"

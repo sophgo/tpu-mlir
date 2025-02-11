@@ -23,7 +23,25 @@ void get_id_node(CMD_ID_NODE *pid_node) {
   tpu_enable_check_id_node();
 }
 
-char *__ppl_to_string(const __ppl_tensor_info_v2 *tensor) {
+char *__ppl_to_string(const void *tensor) {
+  const char *base = (const char *)tensor;
+  // shape
+  const dim4 *shape = (const dim4 *)(base + 0);
+  // stride
+  const dim4 *stride =
+      (const dim4 *)(base + sizeof(dim4));
+  // addr
+  const global_addr_t *addr =
+      (const global_addr_t *)(base +
+                              2 * sizeof(dim4));
+  // mode
+  const int *mode = (const int *)(base + 2 * sizeof(dim4) +
+                                  sizeof(global_addr_t) + sizeof(data_type_t));
+  // unsigned_flag
+  const bool *unsigned_flag =
+      (const bool *)(base + 2 * sizeof(dim4) + sizeof(global_addr_t) +
+                     sizeof(data_type_t) + 4 * sizeof(int));
+
   static char buffer[512];
   snprintf(buffer, sizeof(buffer),
            "\n\tshape: {%d, %d, %d, %d}\n"
@@ -31,8 +49,8 @@ char *__ppl_to_string(const __ppl_tensor_info_v2 *tensor) {
            "\taddr: %llu\n"
            "\tmode: %d\n"
            "\tunsigned_flag: %d\n",
-           tensor->shape.n, tensor->shape.c, tensor->shape.h, tensor->shape.w,
-           tensor->stride.n, tensor->stride.c, tensor->stride.h,
-           tensor->stride.w, tensor->addr, tensor->mode, tensor->unsigned_flag);
+           shape->n, shape->c, shape->h, shape->w,
+           stride->n, stride->c, stride->h, stride->w,
+           *addr, *mode, *unsigned_flag);
   return buffer;
 }

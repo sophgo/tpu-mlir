@@ -1,3 +1,10 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+//===----------------------------------------------------------------------===//
+
+
 #pragma once
 
 #define LANE_NUM ppl::lane_num()
@@ -50,5 +57,14 @@ void fence();
 void lane_mask(int mask, bool long_valid);
 
 void vset(int ew, int lmul, int v_len);
+
+template <typename DataType> int get_eu_num() {
+  if constexpr (std::is_same_v<DataType, int4>) {
+    return 2 * EU_BYTES;
+  } else {
+    return EU_BYTES / sizeof(DataType);
+  }
+}
+
 
 } // namespace ppl

@@ -9,10 +9,11 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#if defined(__bm1684x__) || defined(__bm1688__)
+#if defined(__bm1684x__) || defined(__bm1688__) || defined(__mars3__) ||       \
+    defined(__bm1684xe__)
 #include "bmlib_runtime.h"
 #include "common_util.h"
-#elif defined(__bm1690__)
+#elif defined(__bm1690__) || defined(__sg2262__)
 #include <tpu_fp16.h>
 #else
 #include <tpu_fp16.h>
@@ -275,7 +276,8 @@ void rand_data(std::string dir, std::string func_name, int idx, char *data,
             min_val, max_val, dtype);
 }
 
-#if defined(__bm1684x__) || defined(__bm1688__)
+#if defined(__bm1684x__) || defined(__bm1688__) || defined(__mars3__) ||       \
+    defined(__bm1684xe__)
 bool MallocWrap(bm_handle_t &bm_handle, bm_device_mem_t *dev_mem,
                 unsigned long long *host_mem, size_t size) {
   bm_status_t status = bm_malloc_device_byte(bm_handle, dev_mem, size);

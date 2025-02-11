@@ -1,3 +1,10 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+//===----------------------------------------------------------------------===//
+
+
 #pragma once
 #include "ppl_dma_func.h"
 #include "ppl_func.h"
@@ -24,7 +31,8 @@ template <typename T> auto getSignMask() {
   }
 }
 
-double log_approximation(double x) {
+template<typename T>
+double log_approximation(T x) {
     if (x <= 0) {
         return -1;
     }
@@ -42,15 +50,16 @@ double log_approximation(double x) {
     return 2 * sum;
 }
 
-void sigmoid_fp32(tensor<fp32> &local_output, tensor<fp32> &local_input,
+template<typename T>
+void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input,
                   dim4 *shape) {
-  auto local_input_exp = tensor<fp32>(*shape);
+  auto local_input_exp = tensor<T>(*shape);
   tiu::fexp(local_input_exp, local_input);
 
-  auto local_input_exp_reciprocal = tensor<fp32>(*shape);
+  auto local_input_exp_reciprocal = tensor<T>(*shape);
   tiu::fdiv(local_input_exp_reciprocal, 1, local_input_exp, 3);
 
-  auto local_output_pre = tensor<fp32>(*shape);
+  auto local_output_pre = tensor<T>(*shape);
   tiu::fadd(local_output_pre, local_input_exp_reciprocal, 1);
 
   tiu::fdiv(local_output, 1, local_output_pre, 3);
@@ -466,17 +475,18 @@ void flog(tensor<DataType> &out, tensor<DataType> &in, dim4 *block_shape,
   }
 }
 
-void mish_f32(tensor<fp32> &out, tensor<fp32> &in, dim4 *shape,
+template<typename T>
+void mish_f32(tensor<T> &out, tensor<T> &in, dim4 *shape,
               dim4 *real_shape) {
-  auto t_exp = tensor<fp32>(shape);
-  auto t_fill_max = tensor<fp32>(shape);
-  auto t_sel_max = tensor<fp32>(shape);
-  auto t_fill_min = tensor<fp32>(shape);
-  auto t_sel_min = tensor<fp32>(shape);
-  auto t_add_sqr = tensor<fp32>(shape);
-  auto t_add_c = tensor<fp32>(shape);
-  auto t_div = tensor<fp32>(shape);
-  auto t_mul_c = tensor<fp32>(shape);
+  auto t_exp = tensor<T>(shape);
+  auto t_fill_max = tensor<T>(shape);
+  auto t_sel_max = tensor<T>(shape);
+  auto t_fill_min = tensor<T>(shape);
+  auto t_sel_min = tensor<T>(shape);
+  auto t_add_sqr = tensor<T>(shape);
+  auto t_add_c = tensor<T>(shape);
+  auto t_div = tensor<T>(shape);
+  auto t_mul_c = tensor<T>(shape);
 
   float float_sqrt_max = 1.84467e+19f; // SQRT(FLT_MAX)
   float float_sqrt_min = 1.08420e-19f; // SQRT(FLT_MIN)
@@ -495,27 +505,30 @@ void mish_f32(tensor<fp32> &out, tensor<fp32> &in, dim4 *shape,
   tiu::fadd(out, in, t_mul_c);
 }
 
-void pow_f32(tensor<fp32> &out, tensor<fp32> &in1, tensor<fp32> &in2,
+template<typename T>
+void pow_f32(tensor<T> &out, tensor<T> &in1, tensor<T> &in2,
              dim4 *shape, dim4 *real_shape) {
-  auto t_log = tensor<fp32>(shape);
-  auto t_mul = tensor<fp32>(shape);
+  auto t_log = tensor<T>(shape);
+  auto t_mul = tensor<T>(shape);
   flog(t_log, in1, shape, real_shape);
   tiu::fmul(t_mul, t_log, in2);
   exp_no_overflow(out, t_mul, shape, real_shape);
 }
 
-void pow_f32(tensor<fp32> &out, tensor<fp32> &in1, float in2, dim4 *shape,
+template<typename T>
+void pow_f32(tensor<T> &out, tensor<T> &in1, float in2, dim4 *shape,
              dim4 *real_shape) {
-  auto t_log = tensor<fp32>(shape);
-  auto t_mul = tensor<fp32>(shape);
+  auto t_log = tensor<T>(shape);
+  auto t_mul = tensor<T>(shape);
   flog(t_log, in1, shape, real_shape);
   tiu::fmul(t_mul, t_log, in2);
   exp_no_overflow(out, t_mul, shape, real_shape);
 }
 
-void pow_f32(tensor<fp32> &out, float in1, tensor<fp32> &in2, dim4 *shape,
+template<typename T>
+void pow_f32(tensor<T> &out, float in1, tensor<T> &in2, dim4 *shape,
              dim4 *real_shape) {
-  auto t_mul = tensor<fp32>(shape);
+  auto t_mul = tensor<T>(shape);
   float x = log_approximation(in1);
   tiu::fmul(t_mul, in2, x);
   exp_no_overflow(out, t_mul, shape, real_shape);
@@ -529,14 +542,15 @@ void flogx(tensor<T> &out, tensor<T> &in, float x, dim4 *block_shape,
   tiu::fmul(out, tmp, 1 / log(x));
 }
 
-void softplus_f32(tensor<fp32> &out, tensor<fp32> &in, float beta, dim4 *shape,
+template <typename T>
+void softplus_f32(tensor<T> &out, tensor<T> &in, float beta, dim4 *shape,
                   dim4 *real_shape) {
-  auto zero = getSignMask<fp32>();
-  auto t_mul = make_tensor<fp32>(shape, real_shape);
-  auto t_exp = make_tensor<fp32>(shape, real_shape);
-  auto t_add = make_tensor<fp32>(shape, real_shape);
-  auto t_log = make_tensor<fp32>(shape, real_shape);
-  auto t_sel = make_tensor<fp32>(shape, real_shape);
+  auto zero = getSignMask<T>();
+  auto t_mul = make_tensor<T>(shape, real_shape);
+  auto t_exp = make_tensor<T>(shape, real_shape);
+  auto t_add = make_tensor<T>(shape, real_shape);
+  auto t_log = make_tensor<T>(shape, real_shape);
+  auto t_sel = make_tensor<T>(shape, real_shape);
 
   float threshold = 20.0;
   if (beta != 1.f) {

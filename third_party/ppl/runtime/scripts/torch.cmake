@@ -71,8 +71,7 @@ link_directories(${RUNTIME_TOP}/lib)
 
 if(${CHIP} STREQUAL "bm1690")
   include_directories(${RUNTIME_TOP}/include)
-elseif(${CHIP} STREQUAL "bm1684x"
-      OR ${CHIP} STREQUAL "bm1688")
+elseif(${CHIP} STREQUAL "bm1684x" OR ${CHIP} STREQUAL "bm1688")
   include_directories(${RUNTIME_TOP}/include)
   include_directories(${RUNTIME_TOP}/src)
 else()
