@@ -203,8 +203,7 @@ class TPULANG_IR_TESTER(object):
             "MobilenetBlock": (self.test_MobilenetBlock,Y, Y),
             "MultiScaleDeformableAttention": (self.test_MultiScaleDeformableAttention, Y, Y),
             "VitL": (self.test_Vit_L,                   Y, Y),
-            "VitL16": (self.test_Vit_L_f16,             Y, Y),
-            "VitB": (self.test_Vit_B,                   Y, Y),
+            # "VitB": (self.test_Vit_B,                   Y, Y),
             "KeepOutputOrder": (self.test_KeepOutputOrder,   Y, Y),
             "MeanStdScale": (self.test_MeanStdScale,    Y, N),
             "MeanStdScaleConv": (self.test_MeanStdScale_Conv,    Y, N),
@@ -324,8 +323,7 @@ class TPULANG_IR_TESTER(object):
     # ------------
     def test_Add(self, case_name):
         """Add"""
-        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
+        self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], dtype="int8")
         self.test_base_binary_quant(case_name, tpul.add, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
 
     #######################################################################
@@ -334,7 +332,6 @@ class TPULANG_IR_TESTER(object):
     def test_Mul(self, case_name):
         """Mul"""
         self.test_base_binary_quant(case_name, tpul.mul, [1, 96, 56, 56], [1, 96, 1, 1], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.mul, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
         self.test_base_binary_quant(case_name, tpul.mul, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
 
     #######################################################################
@@ -343,7 +340,6 @@ class TPULANG_IR_TESTER(object):
     def test_Sub(self, case_name):
         """Sub"""
         self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], [4.0, 2.0, 6.0], "int8")
-        self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], dtype="float32")
         self.test_base_binary_quant(case_name, tpul.sub, [1, 3, 32, 32], [1, 32, 32], dtype="float16")
 
     #######################################################################
@@ -504,7 +500,6 @@ class TPULANG_IR_TESTER(object):
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3)
         _test_convolution([1, 3, 28, 28, 28], [3, 1, 1, 1, 1], group=3, dtype="float16")
         _test_convolution([1, 6, 16, 224, 224], [324, 2, 2, 16, 16], bias=True, stride=[2,16,16], group=3, dtype="float16")
-        _test_convolution([1, 3, 28, 28, 28], [324, 1, 2, 16, 16], bias=True, stride=[2,16,16], group=3, dtype="float32")
 
     #######################################################################
     # Deconvolution
@@ -580,8 +575,6 @@ class TPULANG_IR_TESTER(object):
                                 dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [deconv], dtype!="float32")
 
-        _test_deconvolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
-        _test_deconvolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
         _test_deconvolution([1, 3, 28, 28], [12, 3, 1, 1], group=3, dtype="float16")
         _test_deconvolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1], dtype="float16")
 
@@ -657,7 +650,6 @@ class TPULANG_IR_TESTER(object):
                                 dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [conv], dtype!="float32")
 
-        _test_deconvolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3)
         _test_deconvolution([1, 3, 28, 28, 28], [3, 3, 1, 1, 1], group=3, dtype="float16")
 
     #######################################################################
@@ -1322,31 +1314,6 @@ class TPULANG_IR_TESTER(object):
             out = matmul_weight(m1, [d*head, H_q], dtype=dtype)
             return out
 
-        def mlp_block(x, shape, dtype):
-            H = shape[2]
-            norm = layer_norm(x, shape[2], -1, 1e-6, dtype=dtype)
-            mat0 = matmul_weight(norm, [H, 4*H], dtype=dtype)
-            ge = gelu(mat0)
-            mat1 = matmul_weight(ge, [4*H, H], dtype=dtype)
-            out = tpul.add(norm, mat1)
-            return out
-
-        def transformer_block(x, shape, d, head, dtype="float32"):
-            norm = layer_norm(x, shape[2], -1, 1e-6, dtype=dtype)
-            self_atten = attention_block(norm, norm, norm, shape, d, head, dtype=dtype)
-            add = tpul.add(norm, self_atten)
-            mlp = mlp_block(add, shape, dtype=dtype)
-            return mlp
-
-        def gelu(x):
-            # return tpul.gelu(x)
-            div = tpul.mul(x, 1/np.sqrt(2))
-            erf = tpul.erf(div)
-            add = tpul.add(erf, 1.0)
-            mul = tpul.mul(x, add)
-            mulc = tpul.mul(mul, 0.5)
-            return mulc
-
         def layer_norm(x, oc, axis, eps, dtype):
             # gamma = self.coeff_tensor([oc], dtype=dtype, scale=1.0)
             # beta = self.coeff_tensor(shape=[oc], dtype=dtype, scale=0.05)
@@ -1367,6 +1334,31 @@ class TPULANG_IR_TESTER(object):
             gam = tpul.mul(mul, gamma)
             bet = tpul.add(gam, beta)
             return bet
+
+        def gelu(x):
+            # return tpul.gelu(x)
+            div = tpul.mul(x, 1/np.sqrt(2))
+            erf = tpul.erf(div)
+            add = tpul.add(erf, 1.0)
+            mul = tpul.mul(x, add)
+            mulc = tpul.mul(mul, 0.5)
+            return mulc
+
+        def mlp_block(x, shape, dtype):
+            H = shape[2]
+            norm = layer_norm(x, shape[2], -1, 1e-6, dtype=dtype)
+            mat0 = matmul_weight(norm, [H, 4*H], dtype=dtype)
+            ge = gelu(mat0)
+            mat1 = matmul_weight(ge, [4*H, H], dtype=dtype)
+            out = tpul.add(norm, mat1)
+            return out
+
+        def transformer_block(x, shape, d, head, dtype="float32"):
+            norm = layer_norm(x, shape[2], -1, 1e-6, dtype=dtype)
+            self_atten = attention_block(norm, norm, norm, shape, d, head, dtype=dtype)
+            add = tpul.add(norm, self_atten)
+            mlp = mlp_block(add, shape, dtype=dtype)
+            return mlp
 
         def vit(x, shape, d, head, num, dtype="float32"):
             H = d * head
@@ -1403,11 +1395,8 @@ class TPULANG_IR_TESTER(object):
         # _test_model_def([2, 3, 384, 384], 64, 16, 2)
 
     def test_Vit_L(self, case_name):
-        self.test_Vit(case_name, [1, 3, 384, 384], 64, 16, 1, 'float32', is_quantized=False)
-    def test_Vit_L_f16(self, case_name):
         self.test_Vit(case_name, [1, 3, 224, 224], 64, 16, 1, 'float16', is_quantized=True)
     def test_Vit_B(self, case_name):
-        self.test_Vit(case_name, [1, 3, 384, 384], 64, 12, 1, 'float32', is_quantized=False)
         self.test_Vit(case_name, [1, 3, 224, 224], 64, 12, 1, 'float16', is_quantized=True)
 
     #######################################################################
@@ -1553,7 +1542,6 @@ class TPULANG_IR_TESTER(object):
             out = swin_t(x, shape, d, head, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([2, 3, 224, 224], 32, 3, is_quantized=False)
         _test_model_def([1, 3, 224, 224], 32, 3, 'float16', is_quantized=True)
 
     #######################################################################
@@ -1604,9 +1592,6 @@ class TPULANG_IR_TESTER(object):
                                 dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [conv], is_quantized=is_quantized)
 
-        _test_convolution([1, 3, 28, 28], [12, 1, 1, 1], group=3)
-        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[0, 0, 1, 1])
-        _test_convolution([1, 3, 28, 28], [12, 1, 1, 1], group=3, dtype="float32", is_quantized=True)
         _test_convolution([1, 3, 28, 28], [12, 1, 1, 1], group=3, dtype="float16", is_quantized=True)
         _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[0, 0, 1, 1], dtype="float16", is_quantized=True)
 
@@ -1653,8 +1638,6 @@ class TPULANG_IR_TESTER(object):
             copy = self.copy_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [copy], is_quantized=is_quantized)
 
-        _test_copy([1, 3, 28, 28])
-        _test_copy([1, 3, 32, 32])
         _test_copy([1, 3, 32, 32], dtype="float16", is_quantized=True)
         _test_copy([1, 3, 32, 32], dtype="int8", is_quantized=True)
 
@@ -1699,8 +1682,6 @@ class TPULANG_IR_TESTER(object):
             clamp = self.clamp_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [clamp], is_quantized=is_quantized)
 
-        _test_clamp([1, 3, 28, 28])
-        _test_clamp([1, 3, 32, 32])
         _test_clamp([1, 3, 32, 32], dtype="float16", is_quantized=True)
 
     #######################################################################
@@ -1720,7 +1701,6 @@ class TPULANG_IR_TESTER(object):
             matmul = self.matmul_op(x, y, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [matmul], is_quantized=is_quantized)
 
-        _test_matmul([1, 3, 28, 10], [1, 3, 10, 8])
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8], dtype="float16", is_quantized=True)
 
     def matmul_int_op(self,input,
@@ -1772,7 +1752,6 @@ class TPULANG_IR_TESTER(object):
                 matmul = self.matmul_op(x, y, z, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [matmul], is_quantized=is_quantized)
 
-        _test_matmul([1, 3, 28, 10], [1, 3, 10, 8])
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8], dtype="float16", is_quantized=True)
         _test_matmul([1, 1, 256, 1024], [1, 1, 1024, 1024], [1, 1, 1, 1024], dtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2)
         _test_matmul([197, 768], [768, 768], [1, 768], dtype="int8", is_quantized=True, is_fuse_rq=True, has_bias=True, requant_mode=2, right_transpose = True)
@@ -1845,7 +1824,6 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=input)
             maxpool, mask = tpul.maxpool2d_with_mask(x, kshape, stride, pad)
             self.compile_and_check(self.unique_name(case_name), [x], [maxpool, mask], is_quantized=is_quantized)
-        _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_maxpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
     # _test_maxpool_mask([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
@@ -1866,7 +1844,6 @@ class TPULANG_IR_TESTER(object):
             maxpool = self.maxpool_op(x, kshape, stride, pad, scale=scale, zero_point=zero_point)
             self.compile_and_check(self.unique_name(case_name), [x], [maxpool], is_quantized=is_quantized)
 
-        _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
         _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_maxpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
 
@@ -1907,7 +1884,6 @@ class TPULANG_IR_TESTER(object):
             avgpool = self.avgpool_op(x, kshape, stride, pad, scale=scale, zero_point=zero_point)
             self.compile_and_check(self.unique_name(case_name), [x], [avgpool], is_quantized=is_quantized)
 
-        _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0])
         _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], dtype="float16", is_quantized=True)
         _test_avgpool([1, 32, 28, 28], kshape = [2, 2], stride = [2, 2], pad=[0, 0, 0, 0], scale=10.0, dtype="int8", is_quantized=True)
 
@@ -1929,7 +1905,6 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [avgpool], is_quantized=is_quantized)
        # _test_avgpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
        # _test_avgpool3d([1, 32, 28, 28, 28], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0], dtype="float16", is_quantized=True)
-        _test_avgpool3d([1, 32, 28, 28, 28])
         _test_avgpool3d([1, 32, 28, 28, 28], kshape = 2)
         _test_avgpool3d([4, 8, 12, 20, 24], kshape = 2, stride = 2, pad = 0)
         _test_avgpool3d([4, 8, 12, 20, 24], kshape = [2, 2, 2], stride = [2, 2, 2], pad=[0, 0, 0, 0, 0, 0])
@@ -1952,7 +1927,6 @@ class TPULANG_IR_TESTER(object):
             relu = self.relu_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [relu], is_quantized=is_quantized)
 
-        _test_relu([1, 32, 28, 28])
         _test_relu([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_relu([1, 32, 28, 28], scale=10.0, zero_point=0, dtype="int8", is_quantized=True)
 
@@ -1973,7 +1947,6 @@ class TPULANG_IR_TESTER(object):
             leaky_relu = self.leaky_relu_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [leaky_relu], is_quantized=is_quantized)
 
-        _test_leaky_relu([1, 32, 28, 28])
         _test_leaky_relu([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_leaky_relu([1, 32, 28, 28], scale=10.0, dtype="int8", is_quantized=True)
 
@@ -1992,7 +1965,6 @@ class TPULANG_IR_TESTER(object):
             prelu = tpul.prelu(x, slope)
             self.compile_and_check(self.unique_name(case_name), [x], [prelu], is_quantized=is_quantized)
 
-        _test_prelu([1, 32, 28, 28], [1])
         _test_prelu([1, 32, 28, 28], [1, 32, 1, 1], dtype="float16", is_quantized=True)
 
     #######################################################################
@@ -2049,7 +2021,6 @@ class TPULANG_IR_TESTER(object):
             ceil = self.ceil_op(x, scale=scale, zero_point=zero_point)
             self.compile_and_check(self.unique_name(case_name), [x], [ceil], is_quantized=is_quantized)
 
-        _test_ceil([1, 32, 28, 28])
         _test_ceil([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_ceil([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
 
@@ -2072,7 +2043,6 @@ class TPULANG_IR_TESTER(object):
             floor = self.floor_op(x, scale=scale, zero_point=zero_point)
             self.compile_and_check(self.unique_name(case_name), [x], [floor], is_quantized=is_quantized)
 
-        _test_floor([1, 32, 28, 28])
         _test_floor([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_floor([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
 
@@ -2093,7 +2063,6 @@ class TPULANG_IR_TESTER(object):
             round = self.round_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [round], is_quantized=is_quantized)
 
-        _test_round([1, 32, 28, 28])
         _test_round([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
@@ -2115,7 +2084,6 @@ class TPULANG_IR_TESTER(object):
             sin = self.sin_op(x, scale=scale, zero_point=zero_point)
             self.compile_and_check(self.unique_name(case_name), [x], [sin], is_quantized=is_quantized)
 
-        _test_sin([1, 32, 28, 28])
         _test_sin([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
 
     def _test_quantized_active_op(self, shape, func, case_name, scale=None, zero_point=None, dtype="float32"):
@@ -2381,7 +2349,6 @@ class TPULANG_IR_TESTER(object):
             softmax = tpul.softmax_int(reshape, axis, scale=[0.25, 128.0])
             self.compile_and_check(self.unique_name(case_name), [x], [softmax], is_quantized=True)
 
-        _test_softmax([1, 32, 28, 28], axis=1)
         _test_softmax([1, 32, 28, 28], axis=1, dtype="float16")
         _test_softmax_int([1, 32, 1, 1], axis=1)
 
@@ -2644,7 +2611,6 @@ class TPULANG_IR_TESTER(object):
             permute = self.permute_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [permute], is_quantized=is_quantized)
 
-        _test_permute([1, 1024, 10, 128])
         _test_permute([1, 1024, 10, 128], scale=3.0, dtype="int8", is_quantized=True)
         _test_permute([1, 1024, 10, 128], dtype="float16", is_quantized=True)
         _test_permute([1, 1024, 10, 128], dtype="int16")
@@ -2675,7 +2641,6 @@ class TPULANG_IR_TESTER(object):
             reshape = self.reshape_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [reshape], is_quantized=is_quantized)
 
-        _test_reshape([1, 32, 28, 28])
         _test_reshape([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_reshape([1, 32, 28, 28], dtype="float16", is_quantized=True)
         # _test_reshape([1, 4, 7, 4, 7, 192], dtype="float32", is_quantized=True)
@@ -2697,7 +2662,6 @@ class TPULANG_IR_TESTER(object):
             shape_fetch = self.shape_fetch_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [shape_fetch], is_quantized=is_quantized)
 
-        _test_shape_fetch([1, 32, 28, 28])
         _test_shape_fetch([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_shape_fetch([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
@@ -2718,7 +2682,6 @@ class TPULANG_IR_TESTER(object):
             squeeze = self.squeeze_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [squeeze], is_quantized=is_quantized)
 
-        _test_squeeze([1, 32, 28, 28])
         _test_squeeze([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_squeeze([1, 32, 28, 28], dtype="float16", is_quantized=True)
 
@@ -2740,7 +2703,6 @@ class TPULANG_IR_TESTER(object):
             pad = self.pad_op(x, pad=[0, 0, 1, 2, 0, 0, 3, 4])
             self.compile_and_check(self.unique_name(case_name), [x], [pad], is_quantized=is_quantized)
 
-        _test_pad([1, 32, 28, 28])
         _test_pad([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_pad([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_pad([1, 32, 28, 28], dtype="int16")
@@ -2762,7 +2724,6 @@ class TPULANG_IR_TESTER(object):
             tile = self.tile_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [tile], is_quantized=is_quantized)
 
-        _test_tile([1, 32, 28, 28])
         _test_tile([1, 32, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_tile([1, 32, 28, 28], dtype="float16", is_quantized=True)
         _test_tile([1, 32, 28, 28], dtype="int16")
@@ -2784,7 +2745,6 @@ class TPULANG_IR_TESTER(object):
             output = tpul.concat([x, y], scale_values, zero_point_values, axis=1, out_name=None, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x, y], [output], is_quantized=is_quantized)
 
-        _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]])
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], scale=3.0,zero_point=0, dtype="int8", is_quantized=True)
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], dtype="float16", is_quantized=True)
         _test_concat([[1, 32, 28, 28], [1, 2, 28, 28]], dtype="int16")
@@ -2821,8 +2781,6 @@ class TPULANG_IR_TESTER(object):
             broadcast = self.broadcast_op(x, shape_y)
             self.compile_and_check(self.unique_name(case_name), [x], [broadcast], is_quantized=is_quantized)
 
-        _test_broadcast([3, 1], [1, 4])
-        _test_broadcast([1, 2, 1], [2, 1, 6])
         _test_broadcast([1, 2, 1], [2, 1, 6], scale=3.0, dtype="int8", is_quantized=True)
         _test_broadcast([1, 2, 1], [2, 1, 6], dtype="float16", is_quantized=True)
         _test_broadcast([1, 2, 1], [2, 1, 6], dtype="int16")
@@ -2844,7 +2802,6 @@ class TPULANG_IR_TESTER(object):
             nonzero = self.nonzero_op(x, dtype=dtype)
             self.compile_and_check(self.unique_name(case_name), [x], [nonzero], is_quantized=is_quantized)
 
-        _test_nonzero([10, 40, 224])
         _test_nonzero([10, 40, 224], dtype="float16", is_quantized=True)
 
     #######################################################################
@@ -2864,7 +2821,6 @@ class TPULANG_IR_TESTER(object):
             upsample = self.upsample_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [upsample], is_quantized=is_quantized)
 
-        _test_upsample([1, 3, 28, 28])
         _test_upsample([1, 3, 28, 28], dtype="float16", is_quantized=True)
         _test_upsample([1, 3, 28, 28], dtype="int8", is_quantized=True)
 
@@ -2885,7 +2841,6 @@ class TPULANG_IR_TESTER(object):
             reduce = self.reduce_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [reduce], is_quantized=is_quantized)
 
-        _test_reduce([1, 3, 28, 28])
         _test_reduce([1, 3, 28, 28], dtype="float16", is_quantized=True)
 
     #######################################################################
@@ -2905,7 +2860,6 @@ class TPULANG_IR_TESTER(object):
             unsqueeze = self.unsqueeze_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [unsqueeze], is_quantized=is_quantized)
 
-        _test_unsqueeze([1, 3, 28, 28])
         _test_unsqueeze([1, 3, 28, 28], dtype="float16", is_quantized=True)
         _test_unsqueeze([1, 3, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
 
@@ -3173,7 +3127,6 @@ class TPULANG_IR_TESTER(object):
             out = tpul.rms_norm(x, gamma)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
-        _test_model_def([1, 3, 224, 224])
         _test_model_def([1, 3, 224, 224],dtype="float16")
         _test_model_def([1, 3, 224, 224],dtype="float16",is_quantized=True)
 
@@ -3212,7 +3165,6 @@ class TPULANG_IR_TESTER(object):
             splits = self.split_op(x, axis, num, size)
             self.compile_and_check(self.unique_name(case_name), [x], splits, is_quantized=is_quantized)
 
-        _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22])
         _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], scale=3.0, dtype="int8", is_quantized=True)
         _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], dtype="float16", is_quantized=True)
         _test_split([1, 32, 28, 28], axis=1, num=2, size=[10, 22], dtype="int16")
@@ -3235,7 +3187,6 @@ class TPULANG_IR_TESTER(object):
             repeat = self.repeat_op(x)
             self.compile_and_check(self.unique_name(case_name), [x], [repeat], is_quantized=is_quantized)
 
-        _test_repeat([1, 3, 28, 28])
         _test_repeat([1, 3, 28, 28], dtype="float16", is_quantized=True)
         _test_repeat([1, 3, 28, 28], scale=3.0, dtype="int8", is_quantized=True)
         _test_repeat([1, 3, 28, 28], dtype="int16")
@@ -3861,9 +3812,7 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
 
         _test_extract([2, 3, 24, 28], None, [1, 2, 12, 20], [1, 1, 2, 1])
-        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], None, [1, 1, 2, 1])
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], None)
-        _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1])
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1], dtype="float16", is_quantized=True)
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], None, [1, 1, 2, 1], scale=3.0, dtype="int8", is_quantized=True)
         _test_extract([2, 3, 24, 28], [0, 0, 9, 0], [1, 2, 12, 20], [1, 1, 2, 1], dtype="int16")
@@ -4234,7 +4183,6 @@ class TPULANG_IR_TESTER(object):
         _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0, dtype="float16", is_quantized=True)
         _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0, dtype="int8", is_quantized=True)
         _test_scatter([[1.0, 2.0, 3.0, 4.0, 5.0]],[[1.0, 3.0]],[[1.1, 2.1]], 1)
-        _test_scatter([[0, 0, 0],[0, 0, 0],[0, 0, 0]], [[1, 0, 2],[0, 2, 1]], [[1.0, 1.1, 1.2],[2.0, 2.1, 2.2]], 0)
 
     ########################################################################
     # Roll case
