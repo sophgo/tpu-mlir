@@ -305,9 +305,9 @@ class MAIN_ENTRY(object):
                                                 args=(model, chip, num_core, finished_list))
                     processes.append(p)
                     if len(processes) == process_number:
-                        collect_process(processes, error_cases, 1200)
+                        collect_process(processes, error_cases, 2000)
                         processes = []
-                collect_process(processes, error_cases, 1200)
+                collect_process(processes, error_cases, 2000)
                 processes = []
                 for error in error_cases:
                     if error not in finished_list:
