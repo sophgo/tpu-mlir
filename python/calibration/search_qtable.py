@@ -80,18 +80,29 @@ class SearchQtable:
                 f.write("# sample number: {}\n###\n".format(calibrator.num_samples))
                 f.write("# op_name    threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
-                    if 'use_torch_observer_for_cali' in calibrator.debug_cmd:
-                        qmin, qmax = -128, 127
-                        scale = thresholds_map_scale[op_name]
-                        zp = thresholds_map_zp[op_name]
-                        threshold = float(scale * max(-(qmin-zp), qmax-zp))
-                        min_value = float(scale * (qmin - zp))
-                        max_value = float(scale * (qmax - zp))
-                    else:
-                        threshold = thresholds_map[op_name]
-                        min_value, max_value, _ = calibrator.activations_statistics[op_name]
-                    thresholds_map_list.append(threshold)
-                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value, max_value))
+                    outputs = self.parser.get_outputs_by_op_name(op_name)
+                    for out in outputs:
+                        if out not in thresholds_map:
+                            continue
+                        else:
+                            if 'use_torch_observer_for_cali' in calibrator.debug_cmd:
+                                qmin, qmax = -128, 127
+                                scale = thresholds_map_scale[op_name]
+                                zp = thresholds_map_zp[op_name]
+                                threshold = float(scale * max(-(qmin-zp), qmax-zp))
+                                min_value = float(scale * (qmin - zp))
+                                max_value = float(scale * (qmax - zp))
+                            else:
+                                if out in thresholds_map:
+                                    threshold = thresholds_map[out]
+                                else:
+                                    threshold = 1.0
+                                if out in calibrator.activations_statistics:
+                                    min_value, max_value, _ = calibrator.activations_statistics[out]
+                                else:
+                                    min_value, max_value = -1,1
+                            thresholds_map_list.append(threshold)
+                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value, max_value))
             if calibrator.args.tune_num <= 0:
                 return
 
@@ -104,6 +115,7 @@ class SearchQtable:
             tuned_threshold_list = []
             layer_name_list = []
             cali_table += "_tune"
+            op_layers = calibrator.get_no_fused_tensors(op_layers)
             with open(cali_table, 'w') as f:
                 f.write("# mlir version: {}\n".format(pymlir.__version__))
                 f.write("# mlir: {}\n".format(self.args.mlir_file))
@@ -123,9 +135,12 @@ class SearchQtable:
                     min_value, max_value, _ = calibrator.activations_statistics[op_name]
                     f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value, max_value))
             for op_name in all_op_names:
-                if thresholds_map[op_name] <= 1e-5 or np.isnan(thresholds_map[op_name]):
-                    thresholds_map[op_name] = 1e-5
-                tmp_th_dict[op_name] = [thresholds_map_absmax[op_name], thresholds_map[op_name]]
+                if op_name not in thresholds_map:
+                    pass
+                else:
+                    if thresholds_map[op_name] <= 1e-5 or np.isnan(thresholds_map[op_name]):
+                        thresholds_map[op_name] = 1e-5
+                    tmp_th_dict[op_name] = [thresholds_map_absmax[op_name], thresholds_map[op_name]]
             layer_th_dicts[method_name] = tmp_th_dict
         return layer_th_dicts
 

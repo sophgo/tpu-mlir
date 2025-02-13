@@ -113,6 +113,7 @@ class SensitiveLayer:
             tuned_threshold_list = []
             layer_name_list = []
             cali_table += "_tune"
+            op_layers = calibrator.get_no_fused_tensors(op_layers)
             with open(cali_table, 'w') as f:
                 f.write("# genetated time: {}\n".format(datetime.datetime.now()))
                 f.write("# histogram number: {}\n".format(calibrator.histogram_bin_num))

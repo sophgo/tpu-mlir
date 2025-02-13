@@ -1849,6 +1849,7 @@ class ActivationCalibrator(BaseKldCalibrator):
 
         # step 5: dump threshold table after tuning
         tuned_threshold_list = []
+        op_layers = self.get_no_fused_tensors(op_layers)
         with open(self.args.calibration_table, 'w') as f:
             f.write("# mlir version: {}\n".format(pymlir.__version__))
             f.write("# mlir: {}\n".format(self.args.mlir_file))
