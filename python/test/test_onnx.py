@@ -47,6 +47,7 @@ class ONNX_IR_TESTER(object):
             # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y, Y, Y),
+            "AddConst":     (self.test_AddConst,      N, N, N, N, N, N),
             "Add_5dim_bc":  (self.test_Add_5dim_bc,   N, Y, Y, N, N, Y),
             "And":          (self.test_And,           N, Y, Y, N, Y, Y),
             "AddBcast":     (self.test_AddBcast,      N, N, N, N, Y, N), # bm1684x has random error caused by 2.27 commit
@@ -3969,6 +3970,17 @@ class ONNX_IR_TESTER(object):
                 graph_def = helper.make_graph([add_def, add2_def], "{}_{}".format(case_name, i),
                                               [a, b, c], [add2_out])
             self.onnx_and_test(graph_def)
+
+    def test_AddConst(self, case_name):
+        shape = [1, 3, 27, 27]
+        graph_txt = """
+            %s (float%s input, float[1] constant = {1}) => (float%s output)
+            {
+                output = Add(input, constant)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
 
     def test_Add_5dim_bc(self, case_name):
         shape_A = [25,196,12,14,1]
