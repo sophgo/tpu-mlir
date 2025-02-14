@@ -200,8 +200,6 @@ public:
             if (min == 0 && max == 0) {
               continue;
             }
-            if (op->hasAttr("output_asym"))
-              std::cout << "haha" << std::endl;
             auto quant_type = quant::CalibratedQuantizedType::get(
                 type.getElementType(), min, max);
             auto new_type = RankedTensorType::get(type.getShape(), quant_type);
