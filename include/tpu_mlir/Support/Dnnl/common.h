@@ -54,6 +54,10 @@ inline memory::format_tag get_tag(const ::memory::dims &x) {
     return memory::format_tag::abcde;
   case 6:
     return memory::format_tag::abcdef;
+  case 7:
+    return memory::format_tag::abcdefg;
+  case 8:
+    return memory::format_tag::abcdefgh;
   default:
     dnnl::error::wrap_c_api(
         dnnl_invalid_arguments,
