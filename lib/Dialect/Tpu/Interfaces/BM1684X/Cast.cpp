@@ -196,6 +196,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(getInput());
       param.output_dtype = BM168x::getDataType(getOutput());
+      param.margins = sec_info.hw_margins_opdA;
       BM168x::call_local_func("backend_api_dequant_float_local", &param,
                               sizeof(param));
     }

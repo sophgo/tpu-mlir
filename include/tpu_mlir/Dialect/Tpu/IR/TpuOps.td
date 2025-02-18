@@ -938,7 +938,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
 
 def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "Binary with shift operator";
@@ -983,7 +983,7 @@ def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
 def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
     InOutSameShape, SupportElementwise,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "Binary Const with shift operator";
@@ -2305,7 +2305,7 @@ def Tpu_ShapeReverseOp:Tpu_Op<"ShapeReverse", [
 def Tpu_CastOp:Tpu_Op<"Cast", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Cast operation";

@@ -66,6 +66,9 @@ typedef struct local_sec_info {
   int32_t c_idx;
   int32_t c_slice;
 
+  uint32_t hw_margins_opdA;
+  uint32_t hw_margins_opdB;
+
   int32_t n_idx;
   int32_t d_idx;
 
@@ -86,6 +89,9 @@ typedef struct local_sec_info {
 #endif
 
 mlir::LogicalResult BroadCastBinaryLocalGenSupport(mlir::Operation *op);
+
+void setHWMargins(uint32_t &hw_margins, const group_info_t &in_gi,
+                  const group_info_t &gi);
 
 } // namespace tpu_mlir
 
