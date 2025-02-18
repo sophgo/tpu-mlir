@@ -45,23 +45,27 @@ def generate_random_img(shapes, output_file):
     print(f"Image saved to {output_file}.")
 
 
-def run_from_mlir(args):
-    module_parsered = MlirParser(args.mlir)
+def run_from_mlir(
+    mlir: str,
+    ranges: list = [],
+    input_types: list = [],
+    img: bool = False,
+    output: str = "input.npz"):
+    module_parsered = MlirParser(mlir)
     mlir_shapes = module_parsered.get_input_shapes()
-    mlir_types = args.input_types if args.input_types else module_parsered.get_input_types()
+    mlir_types = input_types if input_types else module_parsered.get_input_types()
     input_num = module_parsered.get_input_num()
     tensor_names = []
     for i in range(input_num):
         tensor_names.append(module_parsered.inputs[i].name)
-    if args.img:
-        generate_random_img(mlir_shapes, args.output)
+    if img:
+        generate_random_img(mlir_shapes, output)
         return
-    ranges = args.ranges
     if len(ranges) == 0:
         for i in range(input_num):
             ranges.append([-1.0, 1.0])
 
-    create_and_save_tensors_to_npz(tensor_names, mlir_shapes, mlir_types, ranges, args.output)
+    create_and_save_tensors_to_npz(tensor_names, mlir_shapes, mlir_types, ranges, output)
 
 
 if __name__ == "__main__":
@@ -78,5 +82,5 @@ if __name__ == "__main__":
         help="list of input types, like:f32,si32. if not set, it will be read from mlir")
     parser.add_argument("--img", action='store_true', help="generate fake image for CV tasks")
     parser.add_argument("--output", type=str, default='input.npz', help="output npz/img file")
-    arg = parser.parse_args()
-    run_from_mlir(arg)
+    args = parser.parse_args()
+    run_from_mlir(args.mlir, args.ranges, args.input_types, args.img, args.output)

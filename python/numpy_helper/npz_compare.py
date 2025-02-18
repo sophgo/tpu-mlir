@@ -317,13 +317,17 @@ def npz_compare(args_list, log_level="normal"):
     if log_level != "quiet":
         print("Target    {}".format(f1))
         print("Reference {}".format(f2))
+
+        # if sum(stats.count.values()) == 0:
+        #     print("npz compare FAILED. Nothing was compared.", flush=True)
+        #     sys.exit(-1)
+
         if stats.failed == 0:
             print("npz compare PASSED.", flush=True)
             return stats
         else:
             print("npz compare FAILED.", flush=True)
             sys.exit(-1)
-
 
 if __name__ == "__main__":
     npz_compare(sys.argv)

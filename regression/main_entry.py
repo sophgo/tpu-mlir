@@ -12,6 +12,8 @@ import shutil
 
 test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python', 'test'))
 sys.path.append(test_dir)
+train_test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python', 'tools', 'train', 'test'))
+sys.path.append(train_test_dir)
 test_custom_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
 sys.path.append(test_custom_dir)
@@ -28,6 +30,7 @@ import test_tpulang
 import test_torch
 import test_tflite
 import test_onnx
+import test_fx
 import test_custom_tpulang
 import argparse
 import logging
@@ -69,6 +72,7 @@ class MAIN_ENTRY(object):
             "onnx_fp8": (test_onnx.ONNX_IR_TESTER,  test_onnx.test_fp8,  ["bm1690"]),
             "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684", "bm1684x", "bm1688", "cv183x", "mars3"]),
             "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x", "bm1688"]),
+            "fx":       (test_fx.FX_IR_TESTER,           test_fx.test_all, ["bm1690"]),
         }
         self.op1_test_types = {
             # op_source: (tester, test_all_func, chips)
@@ -168,7 +172,7 @@ class MAIN_ENTRY(object):
         t = Timer()
         os.makedirs(case_name, exist_ok=True)
         os.chdir(case_name)
-        if op_source == "tflite":
+        if op_source == "tflite" or op_source == "fx":
             tester = tester(chip=chip, concise_log=self.concise_log)
         else:
             tester = tester(chip=chip, simple=self.is_basic, concise_log=self.concise_log)

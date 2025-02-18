@@ -6,46 +6,61 @@
 #
 # ==============================================================================
 import torch
-from compile.FxGraphConvertor import fx2mlir
+from tools.train.FxGraphConverter import fx2mlir
 from torch.fx._symbolic_trace import symbolic_trace
 import argparse
 import numpy as np
-import math
+from utils.timer import Timer
+from utils.auto_remove import file_mark, file_clean, clean_kmp_files
+import sys
 import os
 import torch.nn as nn
 from torch.fx.passes.fake_tensor_prop import FakeTensorProp
 import torch.nn.functional as F
+from utils.regression_logger import run_in_log_wrapper
 
 class FX_IR_TESTER(object):
     ID = 0
     CURRENT_CASE = ""
-    def __init__(self,
-                args):
-
-        self.test_cases = {"Convolution":self.test_Conv,
-                            "Convbackward":self.test_Conv_backward,
-                            "bnbwd":self.test_bn_backward,
-                            "maxpoolwithmask":self.test_maxpoolwithmask,
-                            "batchnorm":self.test_batchnorm,
-                            "maxpoolwithmask_bwd":self.test_maxpoolwithmask_bwd,
-                            "maxpoolwithmask_full": self.test_maxpoolwithmask_full,
-                            "batchnormbwd":self.test_batchnormbwd,
-                            "batchnormfwd":self.test_batchnornfwd,
-                            "where_batchnormbwd":self.test_where_batchnormbwd,
-                            "opt3_mlp_group":self.test_opt3_mlp_group,
-                            }
-        self.args = args
+    def __init__(
+        self, chip: str,
+        concise_log: bool = False,
+        disable_thread: bool = False,
+        disable_cmp: bool = False):
+        Y, N = True, False
+        # yapf: disable
+        self.test_cases = {
+            #########################################
+            # FX Test Case, Alphabetically
+            #########################################
+            # case: (test, bm1684x_support, bm1688_support, bm1690_support)
+            "Convolution":              (self.test_Conv,                    N, N, Y),
+            "Convbackward":             (self.test_Conv_backward,           N, N, Y),
+            "batchnormbwd":             (self.test_batchnormbwd,            N, N, N),
+            "batchnormfwd":             (self.test_batchnormfwd,            N, N, Y),
+            "maxpoolwithmask":          (self.test_maxpoolwithmask,         N, N, N),
+            "maxpoolwithmask_bwd":      (self.test_maxpoolwithmask_bwd,     N, N, N),
+            "maxpoolwithmask_full":     (self.test_maxpoolwithmask_full,    N, N, Y),
+            "where_batchnormbwd":       (self.test_where_batchnormbwd,      N, N, N),
+        }
+        # yapf: enable
+        self.chip = chip
+        self.concise_log = concise_log
+        self.multithread = not disable_thread
+        self.cmp = not disable_cmp
 
     def convert_module_fx(
         self,
         submodule_name: str,
         module: torch.fx.GraphModule,
-        args,
-        bwd_graph:bool,
-        input_data:dict,
-        ref_data:dict
     ):
-        c = fx2mlir(submodule_name, self.args, False, [])
+        c = fx2mlir(
+            submodule_name=submodule_name,
+            chip=self.chip,
+            model=submodule_name,
+            bwd_graph=False,
+            para_shape=[],
+            cmp=self.cmp)
         return c.convert(module)
 
     def generate_random(self, shape, dtype='float32', min=-1, max=1):
@@ -62,6 +77,7 @@ class FX_IR_TESTER(object):
                     self.generate_random(shapes[i], descs[i].dtype, descs[i].min, descs[i].max))
         return [torch.from_numpy(inp) for inp in inputs]
 
+    @run_in_log_wrapper
     def test_single(self, case: str):
         np.random.seed(0)
         torch.manual_seed(7)
@@ -71,11 +87,22 @@ class FX_IR_TESTER(object):
         if case in self.test_cases:
             os.makedirs(case, exist_ok=True)
             os.chdir(case)
-            func= self.test_cases[case]
+            func, _, _, _ = self.test_cases[case]
             func()
             print("====== TEST {} Success ======".format(case))
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
+
+    def check_support(self, case):
+        _, bm1684x_support, bm1688_support, bm1690_support = self.test_cases[
+            case]
+        if self.chip == "bm1684x" and bm1684x_support:
+            return True
+        if self.chip == "bm1688" and bm1688_support:
+            return True
+        if self.chip == "bm1690" and bm1690_support:
+            return True
+        return False
 
     def trace_and_test(self,in_shapes, torch_model: nn.Module, descs = [], use_cos: bool = False, input_info = None):
         model_name = "{}_{}".format(self.CURRENT_CASE, FX_IR_TESTER.ID)
@@ -96,7 +123,9 @@ class FX_IR_TESTER(object):
         for i in range(len(res)):
             output_ref[str(i)] = res[i].detach().numpy()
         np.savez('output_ref.npz', **output_ref)
-        self.convert_module_fx(model_name,fx_module,self.args,False,input_ref,output_ref)
+        self.convert_module_fx(
+            submodule_name=model_name,
+            module=fx_module)
 
     def test_Conv_backward(self):
         class Model(torch.nn.Module):
@@ -120,17 +149,6 @@ class FX_IR_TESTER(object):
                 return res
 
         self.trace_and_test([[1,3,16,16],[3,3,3,3]], Model())
-
-    def test_bn_backward(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super(Model, self).__init__()
-
-            def forward(self, x,y,z,w,a,b,c):
-                out0,out1,out2 = torch.ops.aten.native_batch_norm_backward(x, y, z, w,a,b,c, False, 1e-5, [True, True, True])
-                return [out0,out1,out2]
-
-        self.trace_and_test([[8,3,16,16],[8,3,16,16],[3],[3],[3],[3],[3]], Model())
 
     def test_maxpoolwithmask(self):
         class Model(torch.nn.Module):
@@ -190,19 +208,6 @@ class FX_IR_TESTER(object):
 
         self.trace_and_test([[8,1,112,112],[8,1,56,56], [8,1,56,56]], Model())
 
-    # def test_maxpoolwithmask_full(self):
-    #     class Model(torch.nn.Module):
-    #         def __init__(self):
-    #             super(Model, self).__init__()
-
-    #         def forward(self, x,y, index):
-    #             y += 1
-    #             out0 = torch.ops.aten.max_pool2d_with_indices_backward(y,x,[3,3],[2,2],[1,1],[1,1],False, index)
-    #             out0 += 1
-    #             return [out0]
-
-    #     self.trace_and_test([[8,64,112,112],[8,64,56,56], [8,64,56,56]], Model())
-
 
     def test_maxpoolwithmask_full(self):
         class Model(torch.nn.Module):
@@ -219,8 +224,7 @@ class FX_IR_TESTER(object):
                 out0 += 1
                 return [out0, getitem_6, getitem_5]
         self.trace_and_test([[8,64,112,112],[8,64,56,56], [8,64,56,56]], Model())
-        # self.trace_and_test([[8,64,112,112],[8,64,56,56], [8,64,56,56]], Model())
-        # self.trace_and_test([[8,64,112,112],[8,64,56,56], [8,64,56,56]], Model())
+
     # batchnormbwd
     def test_batchnormbwd(self):
         class Model(torch.nn.Module):
@@ -258,7 +262,8 @@ class FX_IR_TESTER(object):
         w = 14
         self.trace_and_test([[8,c,h,w],[8,c,h,w],[c],[c],[c],[c],[c],[8,c,h,w],[8,c,h,w]], Model())
 
-    def test_batchnornfwd(self):
+
+    def test_batchnormfwd(self):
         class Model(torch.nn.Module):
 
             def __init__(self, config:list|None = None):
@@ -278,65 +283,78 @@ class FX_IR_TESTER(object):
         for c, h, w in [(2048, 7, 7)]:
             self.trace_and_test([[n, c, h, w], [c], [c], [c], [c]], Model())
 
-    def test_opt3_mlp_group(self):
 
-        class Conv1D(nn.Module):
-            def __init__(self, nx, nf):
-                super().__init__()
-                self.nf = nf
-                w = torch.empty(nx, nf)
-                # nn.init.normal_(w, std=0.02)
-                nn.init.kaiming_uniform_(w, a=math.sqrt(5))
-                self.weight = nn.Parameter(w)
-                self.bias = nn.Parameter(torch.zeros(nf))
-                fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
-                bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-                nn.init.uniform_(self.bias, -bound, bound)
+def test_one_case_in_all(tester: FX_IR_TESTER, case, error_cases, success_cases):
+    t = Timer()
+    try:
+        tester.test_single(case)
+    except:
+        error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
+        return
+    success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
 
-            def forward(self, x):
-                size_out = x.size()[:-1] + (self.nf,)
-                x = torch.addmm(self.bias, x.view(-1, x.size(-1)), self.weight)
-                x = x.view(*size_out)
-                return x
-
-        class FeedForward(nn.Module):
-            def __init__(self, d_model=768, nx=768*4):
-                super().__init__()
-                self.c_fc    = nn.Linear(d_model, nx)
-                self.c_proj  = nn.Linear(nx, d_model)
-                # self.c_fc    = Conv1D(d_model, nx)
-                # self.c_proj  = Conv1D(nx, d_model)
-                self.act     = F.relu
-
-            def forward(self, x,w1,b1,w2,b2):
-                # x = torch.ops.aten.addmm.default(x, w1, b1);  arg1_1 = t = None
-                # view_1 = torch.ops.aten.view.default(addmm, [1, 4096, 3072]);  addmm = None
-                # relu = torch.ops.aten.relu.default(view_1);  view_1 = None
-                # t_1 = torch.ops.aten.t.default(arg2_1);  arg2_1 = None
-                # addmm_1 = torch.ops.aten.addmm.default(arg3_1, view_2, t_1);  arg3_1 = None
-                # view_3 = torch.ops.aten.view.default(addmm_1, [8, 4096, 768]);  addmm_1 = None
-                return
-
-
-
-        self.trace_and_test([[4096,768]],FeedForward(d_model=768))
-
-
+def test_all(tester: FX_IR_TESTER):
+    if tester.multithread:
+        import multiprocessing
+        from utils.misc import collect_process
+        process_number = multiprocessing.cpu_count() // 2 + 1
+        processes = []
+        error_cases = multiprocessing.Manager().list()
+        success_cases = multiprocessing.Manager().list()
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                print("====== test_fx.py --case {} --chip {} TEST START PROCESSING ======".format(
+                    case, tester.chip))
+                p = multiprocessing.Process(target=test_one_case_in_all,
+                                            name=case,
+                                            args=(tester, case, error_cases, success_cases))
+                processes.append(p)
+            if len(processes) == process_number:
+                collect_process(processes, error_cases)
+                processes = []
+        collect_process(processes, error_cases)
+        processes = []
+    else:
+        error_cases = []
+        success_cases = []
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                test_one_case_in_all(tester, case, error_cases, success_cases)
+    print("Success: {}".format(success_cases))
+    print("Failure: {}".format(error_cases))
+    if error_cases:
+        print("====== test_fx.py --chip {} TEST Failed ======".format(tester.chip))
+        # exit(1)
+    else:
+        print("====== test_fx.py --chip {} TEST Success ======".format(tester.chip))
+        for k in error_cases:
+            case_name = k.split(":")[0]
+            print("{} --chip {} --case {} failed".format(sys.argv[0], tester.chip, case_name))
+    clean_kmp_files()
+    return error_cases
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--chip", default="bm1690", choices=['bm1684x', 'bm1690','sg2260'],
-                        help="chip name")
-    parser.add_argument("--cmp", action='store_true',
-                        help="enable cmp")
-    parser.add_argument("--fp", default="",help="fp")
-    parser.add_argument("--case", default="",help="test case")
-    parser.add_argument("--model", default="resnet50",help="model name")
-    parser.add_argument("--debug", default="",help="debug")
-    parser.add_argument("--batch", default=1,help="batch")
+    parser.add_argument("--show_all", action="store_true", help='show all cases')
+    parser.add_argument("--chip", default="bm1690", choices=['bm1684x', 'bm1688', 'bm1690'], help="chip name")
+    parser.add_argument("--case", default="all", help="test case")
+    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
+    parser.add_argument("--disable_cmp", action="store_true", help='do data compare')
+    parser.add_argument("--concise_log", action="store_true", help="use concise log")
+    parser.add_argument("--debug", default="", help="debug")
     args = parser.parse_args()
-    tester = FX_IR_TESTER(args)
-    dir = "torch_test_{}".format(args.chip)
+    tester = FX_IR_TESTER(args.chip, args.concise_log, args.disable_thread, args.disable_cmp)
+    if args.show_all:
+        print("====== Show All Cases ============")
+        for case in tester.test_cases:
+            print(case)
+        exit(0)
+    dir = "fx_test_{}".format(args.chip)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
-    tester.test_single(args.case)
+    if args.case == "" or args.case == "all":
+        test_all(tester)
+    else:
+        tester.test_single(args.case)
+    if args.debug == False:
+        file_clean()

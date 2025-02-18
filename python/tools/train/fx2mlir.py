@@ -884,17 +884,17 @@ class fx2mlir(object):
 	                                 loc=self.get_loc(node.name+'_transposed_input'),
 	                                 ip=self.insert_point).output
 	            # kernel_shape_ = list(node.args[1].meta['val'].size())
-	            grad_weight_kernel_shape = list(node.args[0].meta['val'].size())
-	            grad_weight_kernel_shape = grad_weight_kernel_shape[2:]
-	            grad_weight_shape = shape1
-	            grad_weight_shape[0],grad_weight_shape[1] = grad_weight_shape[1],grad_weight_shape[0]
-	            if pads[0]>0 and strides[0]>1:
-	                new_strides = [1,1]
-	                new_pads = copy.deepcopy(pads)
-	                input_shape = list(node.args[1].meta['val'].size())
-	                pad_cal = grad_weight_shape[2]-(pads[0]+input_shape[2]-strides[0]*(grad_weight_kernel_shape[0]-1))
-	                new_pads[2],new_pads[3] = pad_cal,pad_cal
-	                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
+                grad_weight_kernel_shape = list(node.args[0].meta['val'].size())
+                grad_weight_kernel_shape = grad_weight_kernel_shape[2:]
+                grad_weight_shape = shape1
+                grad_weight_shape[0],grad_weight_shape[1] = grad_weight_shape[1],grad_weight_shape[0]
+                if pads[0]>0 and strides[0]>1:
+                    new_strides = [1,1]
+                    new_pads = copy.deepcopy(pads)
+                    input_shape = list(node.args[1].meta['val'].size())
+                    pad_cal = grad_weight_shape[2]-(pads[0]+input_shape[2]-strides[0]*(grad_weight_kernel_shape[0]-1))
+                    new_pads[2],new_pads[3] = pad_cal,pad_cal
+                    grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
 	                                    transposed_input,
 	                                    transposed_gradout,
 	                                    bias_op,
@@ -925,10 +925,10 @@ class fx2mlir(object):
 	                                    do_relu=False,
 	                                    loc=self.get_loc(node.name+'_grad_weight'),
 	                                    ip=self.insert_point).output
-	            temp_shape = shape1
-	            temp_shape[0],temp_shape[1] = temp_shape[1],temp_shape[0]
-	            # shape = list(node.args[1].meta['val'].size())
-	            transposed_grad_weight = top.TransposeOp(*self.get_tensor_type([temp_shape], dtype),
+                temp_shape = shape1
+                temp_shape[0],temp_shape[1] = temp_shape[1],temp_shape[0]
+                # shape = list(node.args[1].meta['val'].size())
+                transposed_grad_weight = top.TransposeOp(*self.get_tensor_type([temp_shape], dtype),
 	                                grad_weight,
 	                                0,
 	                                1,

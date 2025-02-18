@@ -9,13 +9,9 @@ from functorch.compile import make_boxed_func
 from torch._functorch import compilers
 from mlir.ir import *
 import mlir.dialects.top as top
-# import mlir.dialects.train as train
-# from torch.cuda.amp import autocast, GradScaler
-#from apex import amp
 from tools.train.partition import partition
 from tools.train.TpuMlirModule import TpuMlirModule
-# from tools.train.fx2mlir import fx2mlir
-from tools.train.FxGraphConvertor import fx2mlir
+from python.tools.train.FxGraphConverter import fx2mlir
 from tools.train.fx_pass import fx_pass_for_bmm_expand
 
 # TPUC_ROOT = os.environ.get('TPUC_ROOT')
@@ -114,10 +110,13 @@ def _get_disc_decomp():
 def convert_module_fx(
     submodule_name: str,
     module: torch.fx.GraphModule,
-    args:Namespace,
-    bwd_graph:bool
+    chip: str,
+    model: str,
+    bwd_graph: bool,
+    batch: int = 1,
+    cmp: bool = True
 ) -> TpuMlirModule:
-    c = fx2mlir(submodule_name, args, bwd_graph)
+    c = fx2mlir(submodule_name=submodule_name, chip=chip, model=model, bwd_graph=bwd_graph, batch=batch, cmp=cmp)
     return c.convert(module)
 
 def save_fxgraph_dot(name, module):
@@ -210,7 +209,7 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         #             setattr(partitioned_module, name, tpu_mlir_mod)
         # else:
         #     partitioned_module = convert_module_fx(f'{time_str}_main_mod', partitioned_module, args, bwd_graph)
-        partitioned_module = convert_module_fx(f'{time_str}_main_mod', fx_g, args, bwd_graph)
+        partitioned_module = convert_module_fx(f'{time_str}_main_mod', fx_g, args.chip, args.model, bwd_graph)
 
     return make_boxed_func(partitioned_module.forward)
 
