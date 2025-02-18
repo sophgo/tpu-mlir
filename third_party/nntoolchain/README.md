@@ -27,8 +27,18 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 73e76e98154adee661fa7855322690d2ec70f163
+#bm1684xe sha256: 2f2ec773c54cd5114481aa941ec242e8ca6a584b
+cd TPU1686
+source scripts/envsetup.sh bm1684xe
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
+cp build/backend_api/libbackend_bm1684xe.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_1684xe.so
+cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_1684xe.so
+rebuild_firmware
+cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684xe_kernel_module.so
+cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684xe_kernel_module.a
 
+#bm1688 sha256: 0f5b440a3552d1c49fa469d15ffcccf0168befb1
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel

@@ -107,6 +107,7 @@ class CpuLayerType(Enum):
 
 class Target(Enum):
     BM1684X = "BM1684X"
+    BM1684XE = "BM1684XE"
     BM1684 = "BM1684"
     BM1688 = "BM1688"
     BM1690 = "BM1690"

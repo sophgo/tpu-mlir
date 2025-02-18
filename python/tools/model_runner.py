@@ -80,6 +80,8 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
             lib_so = 'libcmodel_sgtpuv8.so'
         elif chip == "SG2380":
             lib_so = 'libcmodel_sg2380.so'
+        elif chip == 'BM1684XE':
+            lib_so = 'libcmodel_1684xe.so'
         assert (os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)))
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(
             lib_so)
@@ -88,6 +90,8 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
         lib_so = 'libcmodel_custom_1684x.so'
         if chip == 'BM1688':
             lib_so = 'libcmodel_custom_1688.so'
+        elif chip == "BM1684XE":
+            lib_so = 'libcmodel_custom_1684xe.so'
         # elif chip == 'BM1684':
         #     lib_so = 'libcmodel_custom_1684.so'
         # elif chip == "BM1690":

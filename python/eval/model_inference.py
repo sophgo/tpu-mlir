@@ -109,6 +109,8 @@ class bmodel_inference(common_inference):
             lib_so = 'libcmodel_1684x.so'
             if chip == 'BM1688' or chip == 'CV186X':
                 lib_so = 'libcmodel_1688.so'
+            elif chip == 'BM1684XE':
+                lib_so = 'libcmodel_1684xe.so'
             elif chip == 'BM1684':
                 lib_so = 'libcmodel_1684.so'
             elif chip == "BM1690":

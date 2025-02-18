@@ -46,7 +46,7 @@ def ProcessorAssign : Pass<"processor-assign", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
   let options = [
     Option<"chip", "chip", "std::string", /*default=*/"",
-           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1688/bm1690/mars3/sgtpuv8">,
+           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1684xe/bm1688/bm1690/mars3/sgtpuv8">,
     Option<"mode", "mode", "std::string", /*default=*/"",
            "default quantization mode: INT8/BF16/F16/F32/F8/F8E4M3/F8E5M2">,
     Option<"num_device", "num_device", "int64_t", /*default=*/"1",

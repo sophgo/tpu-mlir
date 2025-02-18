@@ -30,6 +30,7 @@ def generate_random_string(length):
 @register_model_quantizer("BM1688")
 @register_model_quantizer("BM1690")
 @register_model_quantizer("BM1684X")
+@register_model_quantizer("BM1684XE")
 @register_model_quantizer("CV183X")
 @register_model_quantizer("MARS3")
 @register_model_quantizer("CV182X")

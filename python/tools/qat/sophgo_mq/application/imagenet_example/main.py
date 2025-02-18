@@ -89,7 +89,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'multi node data parallel training')
 parser.add_argument('--model_path', type=str, default=None)
 parser.add_argument('--output_path', type=str, default=None)
-parser.add_argument('--chip', type=str, choices=['BM1688', 'BM1684X', 'BM1690', 'academic', 'MARS3', 'CV183X', 'CV182X', 'CV181X', 'CV180X', 'CV186X', 'SG2380', 'SGTPUV8'], default='BM1690')
+parser.add_argument('--chip', type=str, choices=['BM1688', 'BM1684X', 'BM1684XE', 'BM1690', 'academic', 'MARS3', 'CV183X', 'CV182X', 'CV181X', 'CV180X', 'CV186X', 'SG2380', 'SGTPUV8'], default='BM1690')
 parser.add_argument('--quantmode', type=str, choices=['weight_activation', 'weight_only'], default='weight_activation')
 parser.add_argument('--optim', type=str, default='sgd')
 parser.add_argument('--not-quant', action='store_true')
