@@ -113,6 +113,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConcatLowering,
       ConstantFillLowering,
       ConvLowering,
+      CorrelationLowering,
       CosLowering,
       CoshLowering,
       CustomLowering,

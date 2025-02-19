@@ -2743,6 +2743,38 @@ def Tpu_CoreParallelOp:Tpu_BaseOp<"CoreParallel"> {
   let regions = (region SizedRegion<1>:$body);
 }
 
+def Tpu_CorrelationOp: Tpu_Op<"Correlation"> {
+  let summary = "Custom operator correlation";
+
+  let description = [{
+  Multiply the sliced left_feature and right_feature based on max_disp;
+  then perform a reduce operation;
+  and finally concatenate the results.
+
+  2.Math formula
+  for i in range(max_disp):
+    if i > 0:
+        output[:, i, :, i:] = (left_feature[:, :, :, i:] * right_feature[:, :, :, :-i]).mean(dim=1)
+    else:
+        output[:, i, :, :] = (left_feature * right_feature).mean(dim=1)
+
+  3.activation and weight
+  input(act.): input tensor;
+
+  4.attribute
+  max_disp: The number of slicing iterations, which is also the size of the output dimension C.
+  num_groups: The number of batch groups.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    DefaultValuedAttr<I64Attr, "0">:$max_disp,
+    DefaultValuedAttr<I64Attr, "1">:$num_groups
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_SplitOp:Tpu_BaseOp<"Split"> {
   let summary = "split tensor to continues pieces";
   let description = [{

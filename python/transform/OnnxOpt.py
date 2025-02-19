@@ -5,6 +5,8 @@ import copy
 import numpy as np
 import onnxruntime as rt
 from transform.OnnxOpOptionalAttrs import OnnxOpOptionalAttrGetter
+from onnxruntime_extensions import onnx_op, PyOp, PyOrtFunction
+import torch
 
 onnx_attr_translator = {
     "axis": lambda x: int(x),
@@ -218,6 +220,7 @@ class ConstantFolding(object):
         sess_options = rt.SessionOptions()
         sess_options.graph_optimization_level = rt.GraphOptimizationLevel(0)
         sess_options.log_severity_level = 3
+        coustom_flag = False
         try:
             try:
                 sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
@@ -237,6 +240,9 @@ class ConstantFolding(object):
                                   convert_attribute=True)
                         sess = rt.InferenceSession(model_path, sess_options=sess_options,
                                                    providers=["CPUExecutionProvider"])
+                elif "is not a registered function/op" in str(E):
+                    coustom_flag = True
+                    sess = PyOrtFunction.from_model(model)
                 else:
                     raise E
         except ValueError:
@@ -257,6 +263,10 @@ class ConstantFolding(object):
         else:
             inputs.update(self.generate_specific_rand_input(input_shapes))
 
+        if coustom_flag:
+            input_tensors = [torch.tensor(inputs[name]).numpy() for name in input_names]
+            output_tensors = sess(*input_tensors)
+            return OrderedDict(zip(sess.output_names, output_tensors))
 
         outputs = [x.name for x in sess.get_outputs()]
         run_options = rt.RunOptions()
@@ -1102,6 +1112,31 @@ def TorchHardSwishPattern2(patterns: list):
     patterns.append(
         ReformInfo(name="hardswish", src_nodes=[add, clip, mul, div], dst_nodes=[hard_swish]))
 
+###====================== Register your custom operators here ======================###
+
+############ correlation ############
+@onnx_op(op_type="tpu_mlir::Correlation",
+                            inputs=[PyOp.dt_float,  # 0: left_features,
+                                    PyOp.dt_float,  # 1: right_features
+                                    ],
+                            outputs=[PyOp.dt_float],
+                            attrs={
+                                "max_disp": PyOp.dt_int64,
+                                "num_groups": PyOp.dt_int64
+                            }
+                            )
+def correlation(left_features, right_features, max_disp, num_groups):
+    # the user custom op implementation here:
+    b, c, h, w = left_features.shape
+    left_features = left_features.reshape(num_groups, c // num_groups, h, w)
+    right_features = right_features.reshape(num_groups, c // num_groups, h, w)
+    cost_volume = np.zeros((num_groups, max_disp, h, w), dtype=left_features.dtype)
+    for i in range(max_disp):
+        if i > 0:
+            cost_volume[:, i, :, i:] = (left_features[:, :, :, i:] * right_features[:, :, :, :-i]).mean(axis=1)
+        else:
+            cost_volume[:, i, :, :] = (left_features * right_features).mean(axis=1)
+    return cost_volume
 
 def remove_tensor_from_input(model):
     tensor_names = [x.name for x in model.graph.initializer]

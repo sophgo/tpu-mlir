@@ -439,6 +439,11 @@ typedef struct conv_local_param {
   conv_local_spec_t spec;
 } conv_local_param_t;
 
+typedef struct correlation_global_param {
+  uint32_t max_disp;
+  uint32_t num_groups;
+} correlation_global_param_t;
+
 typedef struct {
   uint64_t input_global_addr;
   uint64_t weight_global_addr;

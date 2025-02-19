@@ -189,6 +189,7 @@ class OnnxConverter(BaseConverter):
             "Constant": lambda node: self.convert_constant_op(node),
             "ConstantOfShape": lambda node: self.convert_constantofshape_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
+            "Correlation": lambda node: self.convert_correlation_op(node),
             "Cos": lambda node: self.convert_cos_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
@@ -966,6 +967,22 @@ class OnnxConverter(BaseConverter):
                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                             ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_correlation_op(self, onnx_node):
+        assert (onnx_node.op_type == "Correlation")
+        l_op = self.getOperand(onnx_node.inputs[0])
+        r_op = self.getOperand(onnx_node.inputs[1])
+        max_disp = onnx_node.attrs.get('max_disp', 0)
+        num_groups = onnx_node.attrs.get('num_groups', 1)
+        new_op = top.CorrelationOp(self.unranked_type,
+                                   [l_op, r_op],
+                                   max_disp=max_disp,
+                                   num_groups=num_groups,
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
+                                   ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
 
     def convert_depth2space_op(self, onnx_node):
         assert (onnx_node.op_type == "DepthToSpace")

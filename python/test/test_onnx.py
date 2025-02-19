@@ -11,6 +11,7 @@ import numpy as np
 import onnx
 from onnx import helper
 from onnx import TensorProto
+from onnx import OperatorSetIdProto
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
@@ -24,6 +25,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import onnxruntime
+from transform.OnnxOpt import *
 
 
 class ONNX_IR_TESTER(object):
@@ -343,6 +345,11 @@ class ONNX_IR_TESTER(object):
             "DynamicUnsqueeze": (self.test_DynamicUnsqueeze,N, Y, N, N, N, N),
             "DynamicRelu":      (self.test_DynamicRelu,     N, Y, N, N, N, N),
             "DynamicReduce":   (self.test_DynamicReduce,    N, Y, N, N, N, N),
+            #########################################
+            # custom op test case, Alphabetically
+            #########################################
+            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
+            "Correlation":   (self.test_Correlation,    N, Y, N, N, N, N),
             ## only for test
             "user_define_net":   (self.user_define_net,    Y, Y, Y, Y, Y, N)
         }
@@ -460,6 +467,10 @@ class ONNX_IR_TESTER(object):
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
         model_def.opset_import[0].version = version
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
         input_npz = "{}_in_fp32.npz".format(model_name)
         input_shapes = []
         file_mark(input_npz)
@@ -679,7 +690,12 @@ class ONNX_IR_TESTER(object):
                 f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
 
     def simple_onnx_inference(self, input_data, onnx_file):
-        ort_session = onnxruntime.InferenceSession(onnx_file)
+        try:
+            ort_session = onnxruntime.InferenceSession(onnx_file)
+        except Exception as E:
+            if "is not a registered function/op" in str(E):
+                sess = PyOrtFunction.from_model(onnx_file)
+                ort_session = sess.ort_session
         return ort_session.run(None, input_data)
 
     def square_rooted(self, x):
@@ -7122,6 +7138,42 @@ class ONNX_IR_TESTER(object):
             for axis in [1]:
                 for keepdim in [True, False]:
                     _test_arg(f, axis, keepdim)
+
+    def test_Correlation(self, case_name):
+        class Coustom(torch.autograd.Function):
+            @staticmethod
+            def forward(ctx, left_features, right_features, max_disp, num_groups):
+                b, c, h, w = left_features.shape
+                left_features = left_features.reshape(num_groups, c // num_groups, h, w)
+                right_features = right_features.reshape(num_groups, c // num_groups, h, w)
+                cost_volume = torch.zeros((num_groups, max_disp, h, w), dtype=left_features.dtype)
+                for i in range(max_disp):
+                    if i > 0:
+                        cost_volume[:, i, :, i:] = (left_features[:, :, :, i:] * right_features[:, :, :, :-i]).mean(axis=1)
+                    else:
+                        cost_volume[:, i, :, :] = (left_features * right_features).mean(axis=1)
+                return cost_volume.contiguous()
+
+            @staticmethod
+            def symbolic(g, left_features, right_features, max_disp, num_groups):
+                return g.op("tpu_mlir::Correlation", left_features, right_features, max_disp_i=max_disp, num_groups_i=num_groups) 
+        class Model(nn.Module):
+
+            def __init__(self, max_disp, num_groups):
+                super(Model, self).__init__()
+                self.max_disp = max_disp
+                self.num_groups = num_groups
+
+            def forward(self, left_features, right_features):
+                out = Coustom.apply(left_features, right_features, self.max_disp, self.num_groups)
+                return out
+
+        left = torch.randn(1, 96, 104, 160).float()
+        right = torch.randn(1, 96, 104, 160).float()
+        max_disp = 48
+        num_groups = 1
+
+        self.torch_and_test((left, right), Model(max_disp, num_groups), case_name)
 
     def user_define_net(self, case_name):
         """user_define_net"""

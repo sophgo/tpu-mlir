@@ -17,6 +17,7 @@ import struct
 import shutil
 from utils.misc import str2bool
 from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
+from transform.OnnxOpt import *
 
 
 def show_fake_cmd(in_npz: str, model: str, out_npz: str, dump_all_tensors=False, use_cuda=False):
@@ -394,8 +395,13 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     output_keys = []
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
-    session = onnxruntime.InferenceSession(
-        onnx_file, providers=['CPUExecutionProvider'])
+    try:
+        session = onnxruntime.InferenceSession(
+            onnx_file, providers=['CPUExecutionProvider'])
+    except Exception as E:
+            if "is not a registered function/op" in str(E):
+                sess = PyOrtFunction.from_model(onnx_file)
+                session = sess.ort_session
     inodes = session.get_inputs()
     only_one = len(inputs) == 1
     if only_one:
