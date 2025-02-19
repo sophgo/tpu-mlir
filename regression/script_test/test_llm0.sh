@@ -43,15 +43,6 @@ npz_tool.py compare \
   qwen_block_0_tpu_outputs.npz \
   --tolerance 0.98,0.90 -v
 
-# dynamic
-model_deploy.py \
-  --mlir qwen_block_0.mlir \
-  --quantize W4BF16 \
-  --q_group_size 64 \
-  --chip bm1684x \
-  --dynamic \
-  --model qwen_block_0_dynamic.bmodel
-
 model_runner.py \
   --input ${NNMODELS_PATH}/llm_models/qwen_block_0_input.npz \
   --model qwen_block_0.bmodel \
@@ -61,6 +52,35 @@ npz_tool.py compare \
   qwen_block_0_model_outputs.npz \
   qwen_block_0_tpu_outputs.npz \
   --tolerance 0.98,0.90 -v
+
+# convert
+
+model_convert.py \
+  --model_name qwen_block_0 \
+  --model_def ${NNMODELS_PATH}/llm_models/qwen_block_0.onnx \
+  --quantize W4BF16 \
+  --q_group_size 64 \
+  --chip bm1684x \
+  --model qwen_block_0_v2.bmodel
+
+model_runner.py \
+  --input ${NNMODELS_PATH}/llm_models/qwen_block_0_input.npz \
+  --model qwen_block_0_v2.bmodel \
+  --output qwen_block_0_v2_model_outputs.npz
+
+npz_tool.py compare \
+  qwen_block_0_model_outputs.npz \
+  qwen_block_0_v2_model_outputs.npz \
+  --tolerance 0.99,0.99 -v
+
+# dynamic
+model_deploy.py \
+  --mlir qwen_block_0.mlir \
+  --quantize W4BF16 \
+  --q_group_size 64 \
+  --chip bm1684x \
+  --dynamic \
+  --model qwen_block_0_dynamic.bmodel
 
 # parallel
 model_deploy.py \

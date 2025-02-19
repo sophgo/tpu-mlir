@@ -919,6 +919,50 @@ def origin_mlir_txt_to_bmodel(
     return get_matched_patterns(log_file)
 
 
+def origin_mlir_to_bmodel(
+    origin_mlir: str,
+    bmodel_name: str,
+    mode: str,
+    chip: str,
+    num_device: int = 1,
+    num_core: int = 1,
+    high_precision: bool = False,
+    q_group_size: int = 0,
+    addr_mode: str = "auto",
+    quant_input: bool = False,
+    quant_output: bool = False,
+    quant_input_list: str = "",
+    quant_output_list: str = "",
+    quant_output_bf16: bool = False,
+    dynamic: bool = False,
+):
+    options = []
+    new_options = top_opt_options()
+    options.extend(new_options)
+    new_options = lowering_options(mode=mode,
+                                   chip=chip,
+                                   num_device=num_device,
+                                   num_core=num_core,
+                                   high_precision=high_precision,
+                                   q_group_size=q_group_size,
+                                   addr_mode=addr_mode)
+    options.extend(new_options)
+    new_options = tpu_opt_options(quant_input=quant_input,
+                                  quant_output=quant_output,
+                                  quant_input_list=quant_input_list,
+                                  quant_output_list=quant_output_list,
+                                  quant_output_bf16=quant_output_bf16)
+    options.extend(new_options)
+    new_options = tpu_ada_options(dynamic=dynamic)
+    options.extend(new_options)
+    new_options = codegen_options(model=bmodel_name)
+    options.extend(new_options)
+    cmd = ["tpuc-opt", origin_mlir]
+    cmd.extend(options)
+    cmd.extend(["-o /dev/null"])
+    _os_system(cmd)
+
+
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True, fuzzy_match=False, log_level="normal"):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
     if excepts:

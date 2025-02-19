@@ -112,13 +112,14 @@ class OnnxConverter(BaseConverter):
                  test_input,
                  preprocess_args: dict = {},
                  static_shape=True,
-                 onnx_sim="",
+                 onnx_sim_param="",
                  dynamic_shape_input_names=[],
                  shape_influencing_input_names=[],
                  dynamic=False,
                  dump_final_opt=True,
                  op_custom_shape: dict = {},
-                 replace_topk_indices=False):
+                 replace_topk_indices=False,
+                 do_onnx_sim=True):
         super().__init__()
 
         self.dynamic_shape_input_names = dynamic_shape_input_names
@@ -144,7 +145,8 @@ class OnnxConverter(BaseConverter):
             None, np.float32, np.uint8, np.int8, np.int16, np.int16, np.int32, np.int64, None,
             np.bool_, np.float16, np.float64, np.uint32, np.uint64, None, None, None
         ]
-        self.onnx_sim = onnx_sim
+        self.do_onnx_sim = do_onnx_sim
+        self.onnx_sim_param = onnx_sim_param
         self.origin_output_names = output_names.copy()
         self.load_onnx_model(onnx_file, input_shapes, output_names, static_shape, dump_final_opt)
         self.init_MLIRImporter()
@@ -432,6 +434,8 @@ class OnnxConverter(BaseConverter):
         return self.run_mode == "DYNAMIC"
 
     def model_simplify(self, input_shapes=[]):
+        if not self.do_onnx_sim:
+            return
         # Do constantFolding before onnxsim to avoid onnxsim bug (such as run yolox)
         try:
             self.model = ConstantFolding(self.model, self.test_input, self.dynamic_shape_input_names).run()
@@ -439,8 +443,8 @@ class OnnxConverter(BaseConverter):
             logger.warning("ConstantFolding failed.")
         logger.info("ConstantFolding finished")
         try:
-            onnx_sim = self.onnx_sim.split(',')
-            skip_fuse_bn = "skip_fuse_bn" in onnx_sim
+            onnx_sim_param = self.onnx_sim_param.split(',')
+            skip_fuse_bn = "skip_fuse_bn" in onnx_sim_param
             logger.info(f'skip_fuse_bn:{skip_fuse_bn}')
             self.model, _ = onnxsim.simplify(self.model,
                                              skip_fuse_bn=skip_fuse_bn,

@@ -36,7 +36,6 @@ class ModelTransformer(object):
         self.ref_npz = self.model_name + '_ref_outputs.npz'
         self.file_recorder = None
 
-
     def set_mlir_file(self, mlir_file: str):
         self.mlir_file = mlir_file
         self.file_recorder = CommandRecorder(f"{self.model_name}.ref_files.json")
@@ -55,6 +54,12 @@ class ModelTransformer(object):
         trimmed_arr = repeated_arr[:batch_size]
         return trimmed_arr
 
+    def model_mlir(self):
+        mlir_origin = self.model_name + "_origion.mlir"
+        self.converter.generate_mlir(mlir_origin)
+        file_mark(mlir_origin)
+        return mlir_origin
+
     def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}):
         self.set_mlir_file(mlir_file)
         mlir_origin = self.mlir_file.replace('.mlir', '_origin.mlir', 1)
@@ -63,12 +68,14 @@ class ModelTransformer(object):
             self.converter.generate_mlir(mlir_origin)
         else:
             mlir_origin = self.model_def # skip frontend conversion if model_def is origin.mlir
+
         patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False)
         if patterns_count:
             for k, v in patterns_count.items():
                 assert k in patterns and v == patterns[k], \
                 "The number of times {} was applied does not meet the requirements. Expected {}, got {}" \
                 .format(k, v, patterns.get(k))
+
 
         logger.info("Mlir file generated:{}".format(self.mlir_file))
 
@@ -165,7 +172,8 @@ class OnnxTransformer(ModelTransformer):
                  shape_influencing_input_names: list = [],
                  dump_final_opt=True,
                  op_custom_shape: dict = {},
-                 replace_topk_indices=False):
+                 replace_topk_indices=False,
+                 do_onnx_sim=True):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name,
@@ -175,13 +183,14 @@ class OnnxTransformer(ModelTransformer):
                                        test_input,
                                        preprocessor,
                                        static_shape,
-                                       onnx_sim=onnx_sim,
+                                       onnx_sim_param=onnx_sim,
                                        dynamic_shape_input_names=dynamic_shape_input_names,
                                        dynamic=dynamic,
                                        shape_influencing_input_names=shape_influencing_input_names,
                                        dump_final_opt=dump_final_opt,
                                        op_custom_shape=op_custom_shape,
-                                       replace_topk_indices=replace_topk_indices)
+                                       replace_topk_indices=replace_topk_indices,
+                                       do_onnx_sim=do_onnx_sim)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference
@@ -336,7 +345,8 @@ def get_model_transform(args):
                                shape_influencing_input_names=args.shape_influencing_input_names,
                                dump_final_opt=args.dump_final_opt,
                                op_custom_shape=args.op_custom_shape,
-                               replace_topk_indices=args.replace_topk_indices)
+                               replace_topk_indices=args.replace_topk_indices,
+                               do_onnx_sim=args.do_onnx_sim)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                 args.output_names, preprocessor.to_dict(),
@@ -397,6 +407,7 @@ if __name__ == '__main__':
                         choices=['','yolov3','yolov5','yolov7','yolov8','yolov8_seg','yolov11','yolov11_seg','ssd','bnr', 'mmap2rgbmap'], help="add postprocess for model")
     parser.add_argument("--onnx_sim", default="", type=str, choices=['', 'skip_fuse_bn'],
                         help="pass options of onnx-sim, sep by quote without space")
+    parser.add_argument("--do_onnx_sim", default=True, type=bool, help="whether do onnx sim for onnx")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--dump_final_opt", default=True, help='save final_opt onnx file')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
@@ -419,8 +430,6 @@ if __name__ == '__main__':
     # ========== Replace Topk Options ==============
     parser.add_argument("--replace_topk_indices", default=False, type=str2bool, help="replace topk indices with the correct onnx topk indices")
 
-
-
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args, unknown_args = parser.parse_known_args()
@@ -438,6 +447,7 @@ if __name__ == '__main__':
         import json
         args.op_custom_shape = json.loads(args.op_custom_shape)
         print("op_custom_shape:", args.op_custom_shape)
+
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
     if (not args.not_inference) and args.test_input:
