@@ -11,7 +11,7 @@
 import abc
 import numpy as np
 import argparse
-
+from tools.deploy_qat import FakeQuantNodelProcessor
 from transform.BaseConverter import BaseConverter
 from utils.mlir_shell import *
 from utils.mlir_parser import *
@@ -448,11 +448,19 @@ if __name__ == '__main__':
         args.op_custom_shape = json.loads(args.op_custom_shape)
         print("op_custom_shape:", args.op_custom_shape)
 
+    qat_tool = FakeQuantNodelProcessor(args.model_def, args.model_name)
+    if qat_tool.fakequant_model:
+        qat_tool.process_model()
+        args.model_def = args.model_def.replace('.onnx', '_qat.onnx')
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
     if (not args.not_inference) and args.test_input:
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
+    if qat_tool.fakequant_model:
+        node_name_mapping = tool.converter.node_name_mapping
+        qat_tool.align_final_opt(node_name_mapping,args.onnx_sim)
+        qat_tool.compare_npz_name_mapping(args.test_result)
     tool.file_recorder.dump()
     if not args.debug:
         tool.cleanup()
