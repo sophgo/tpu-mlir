@@ -907,9 +907,175 @@ struct TopMoveSoftmaxAfterPermute : public OpRewriterPatternEx<PermuteOp> {
   }
 };
 
+// Permute(0, 2, 1) + Conv1D(kw=1) + Conv1D(kw=1) + Permute(0, 2, 1) => MatMul + MatMul
+// [b,w,c1] -> [b,c1,w] -> [b,c2,w] -> [b,c3,w] -> [b,w,c3] => [b,w,c1] -> [b,w,c2] -> [b,w,c3]
+struct PermuteAndConv1DtoMatMul : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  PermuteAndConv1DtoMatMul(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "PermuteAndConv1DtoMatMul") {}
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto checkPermuteOrder = [](PermuteOp permute, std::vector<int64_t> order) {
+      // check permute params
+      // permute op's order should match with `order`
+      auto permute_order = module::getI64Array(permute.getOrder());
+      if (permute_order->size() != order.size()) {
+        return false;
+      }
+      for (size_t i = 0; i < order.size(); ++i) {
+        if (permute_order->at(i) != order[i]) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    auto checkConv1dParams = [](ConvOp conv) {
+      // check conv params
+      // conv has only one user
+      // conv kernel shape is [1]
+      // kw = 1, group = 1, pads = [0, 0], strides = [1], dilations = [1]
+      if (!conv->hasOneUse()) {
+        return false;
+      }
+      auto kernel = module::getI64Array(conv.getKernelShape());
+      if (kernel->size() != 1) {
+        return false;
+      }
+      if (kernel->at(0) != 1) {
+        return false;
+      }
+      auto group = conv.getGroup();
+      if (group != 1) {
+        return false;
+      }
+      auto pads_v = module::getI64Array(conv.getPads());
+      if (pads_v->at(0) != 0 || pads_v->at(1) != 0) {
+        return false;
+      }
+      auto strides_v = module::getI64Array(conv.getStrides());
+      if (strides_v->at(0) != 1) {
+        return false;
+      }
+      auto dilations = conv.getDilations();
+      if (dilations.has_value()) {
+        auto dilations_v = module::getI64Array(dilations.value());
+        if (dilations_v->at(0) != 1) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    // pattern match
+    // Permute1
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+    // check Permute1 order
+    if (!checkPermuteOrder(op, {0, 2, 1})) {
+      return failure();
+    }
+    // Conv1
+    auto conv1 = dyn_cast_or_null<ConvOp>(*op.getResult().user_begin());
+    if (!conv1) {
+      return failure();
+    }
+    // check conv params
+    if (!checkConv1dParams(conv1)) {
+      return failure();
+    }
+    // Conv2
+    auto conv2 = dyn_cast_or_null<ConvOp>(*conv1.getResult().user_begin());
+    if (!conv2) {
+      return failure();
+    }
+    // check conv params
+    if (!checkConv1dParams(conv2)) {
+      return failure();
+    }
+    // Permute2
+    auto permute2 = dyn_cast_or_null<PermuteOp>(*conv2.getResult().user_begin());
+    if (!permute2) {
+      return failure();
+    }
+    // check Permute2 order
+    if (!checkPermuteOrder(permute2, {0, 2, 1})) {
+      return failure();
+    }
+
+    // rewrite
+    // MatMul1
+    // create MatMul1 weight
+    auto conv1_weight_op = dyn_cast<WeightOp>(conv1.getFilter().getDefiningOp());
+    auto storage_type = module::getStorageType(conv1.getFilter());
+    auto conv1_weight_data = conv1_weight_op.read<float>();
+    auto conv1_weight_shape = module::getShape(conv1_weight_op.getOutput());
+    auto matmul1_weight
+        = std::make_shared<std::vector<float>>(conv1_weight_data->size(), 0);
+    auto conv1_weight_2d_shape = std::vector<int64_t>{
+        conv1_weight_shape[0], conv1_weight_shape[1]};
+    function_permute(conv1_weight_data->data(), matmul1_weight->data(),
+                     conv1_weight_2d_shape, {1, 0});
+    auto matmul1_weight_shape = std::vector<int64_t>{
+      conv1_weight_shape[1], conv1_weight_shape[0]};
+    rewriter.setInsertionPointAfter(conv1);
+    auto weight1 = WeightOp::create_float(conv1, "reorder", *matmul1_weight,
+                                          matmul1_weight_shape, storage_type);
+    // create MatMul1
+    std::vector<NamedAttribute> attrs;
+    // MatMul1's type need to redefine
+    // [b, w, ic] -> Permute(0, 2, 1) -> [b, ic, w] -> Conv1D -> [b, oc, w]
+    // [b, w, ic] -> MatMul([ic, oc]) -> [b, w, oc]
+    auto conv1_shape = module::getShape(conv1.getOutput());
+    auto matmul1_type = RankedTensorType::get(
+        {conv1_shape[0], conv1_shape[2], conv1_shape[1]},
+        module::getElementType(conv1.getOutput()));
+    rewriter.setInsertionPointAfter(weight1.getDefiningOp());
+    auto conv1_name = module::getName(conv1.getOutput()).str();
+    auto matmul1_op = rewriter.create<MatMulOp>(
+        NameLoc::get(rewriter.getStringAttr(conv1_name + "_permute")), matmul1_type,
+        ValueRange{op.getOperand(), weight1, conv1.getBias()}, attrs);
+
+    // MatMul2
+    // create MatMul2 weight
+    auto conv2_weight_op = dyn_cast<WeightOp>(conv2.getFilter().getDefiningOp());
+    auto conv2_weight_data = conv2_weight_op.read<float>();
+    auto conv2_weight_shape = module::getShape(conv2_weight_op.getOutput());
+    auto matmul2_weight
+        = std::make_shared<std::vector<float>>(conv2_weight_data->size(), 0);
+    auto conv2_weight_2d_shape = std::vector<int64_t>{
+        conv2_weight_shape[0], conv2_weight_shape[1]};
+    function_permute(conv2_weight_data->data(), matmul2_weight->data(),
+                     conv2_weight_2d_shape, {1, 0});
+    auto matmul2_weight_shape = std::vector<int64_t>{
+      conv2_weight_shape[1], conv2_weight_shape[0]};
+    rewriter.setInsertionPointAfter(conv2);
+    auto weight2 = WeightOp::create_float(conv2, "reorder", *matmul2_weight,
+                                          matmul2_weight_shape, storage_type);
+    // create MatMul2
+    rewriter.setInsertionPointAfter(weight2.getDefiningOp());
+    auto conv2_name = module::getName(conv2.getOutput()).str();
+    auto matmul2_op = rewriter.create<MatMulOp>(
+        permute2.getLoc(), permute2.getOutput().getType(),
+        ValueRange{matmul1_op, weight2, conv2.getBias()}, attrs);
+
+    // erase ops
+    permute2.getOutput().replaceAllUsesWith(matmul2_op.getOutput());
+    rewriter.eraseOp(permute2);
+    rewriter.eraseOp(conv2);
+    rewriter.eraseOp(conv1);
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
                  PermuteFuse, NonZeroPermutePattern, TopDecomposedRelPosEmb,
-                 TopPermuteEliminate, TopMoveSoftmaxAfterPermute>(context);
+                 TopPermuteEliminate, TopMoveSoftmaxAfterPermute,
+                 PermuteAndConv1DtoMatMul>(context);
 }

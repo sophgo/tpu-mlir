@@ -294,6 +294,7 @@ class ONNX_IR_TESTER(object):
             "PixelNorm":        (self.test_PixelNorm,       N, Y, Y, N, Y, Y),
             "PixelNorm2":       (self.test_PixelNorm2,      N, Y, Y, N, Y, Y),
             "PenaltySample":    (self.test_PenaltySample,   N, N, Y, N, N, N),
+            "PermuteAndConv1DtoMatMul": (self.test_PermuteAndConv1DtoMatMul, Y, Y, Y, Y, Y, Y),
             "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y, Y, Y),
             "PermuteFuse":      (self.test_PermuteFuse,     N, Y, Y, Y, Y, Y),
             "PermutePad":       (self.test_PermutePad,      N, Y, Y, N, Y, Y),
@@ -6388,6 +6389,24 @@ class ONNX_IR_TESTER(object):
         temperature = torch.tensor([0.98]).float()
         penalty = torch.tensor([0.98]).float()
         self.torch_and_test((m_logits, input_ids, top_p, temperature, penalty), Model(), case_name)
+
+    def test_PermuteAndConv1DtoMatMul(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.conv1 = nn.Conv1d(1024, 82, 1)
+                self.conv2 = nn.Conv1d(82, 18507, 1)
+
+            def forward(self, x):
+                y1 = x.transpose(1, 2)
+                y2 = self.conv1(y1)
+                y2 = self.conv2(y2)
+                return y2.transpose(1, 2)
+
+        x = torch.randn(1, 160, 1024).float()
+        self.torch_and_test(x, Model(), case_name)
 
     def test_PermuteBinary(self, case_name):
 
