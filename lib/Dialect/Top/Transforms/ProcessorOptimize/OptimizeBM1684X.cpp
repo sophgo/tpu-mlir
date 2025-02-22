@@ -1454,8 +1454,11 @@ protected:
 
     auto filterShape = filterType.getShape();
     auto outputShape = outputType.getShape();
+    auto inputShape = inputType.getShape();
 
     const int n = outputShape[0];
+    const int ih = inputShape[2];
+    const int iw = inputShape[3];
     const int oc = outputShape[1];
     const int oh = outputShape[2];
     const int ow = outputShape[3];
@@ -1466,14 +1469,16 @@ protected:
           strides->at(1) == kw)) {
       return failure();
     }
+    if (ih % kh != 0 || iw % kw != 0) {
+      return failure();
+    }
     // When kh >= 29 and kw >= 29, the last dimension of the reordered kernel
     // becomes quite large. Using it as the right matrix in matrix
     // multiplication, particularly when performing a transpose on the right
     // matrix, can lead to performance degradation.This adjustment is primarily
     // made concerning the CLIP model.Further improvements will be considered
     // later
-    if ((module::isBM1688() || module::isSGTPUV8() ||
-         module::isSG2380()) &&
+    if ((module::isBM1688() || module::isSGTPUV8() || module::isSG2380()) &&
         !(kh < 29 && kw < 29)) {
       return failure();
     }
@@ -1561,13 +1566,9 @@ protected:
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
         RankedTensorType::get({n, oc, oh * ow}, outputType.getElementType()),
         ValueRange{matmulOp}, attrs);
-    // 6. reshape the output
-    auto reshapeOp_5 = rewriter.create<top::ReshapeOp>(
-        NameLoc::get(
-            rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
-        RankedTensorType::get({n, oc, oh, ow}, outputType.getElementType()),
-        ValueRange{perMuteOp_2});
-    rewriter.replaceOp(convOp, ArrayRef<Value>{reshapeOp_5});
+    // 6. reshape the output, keep the name as output
+    rewriter.replaceOpWithNewOp<top::ReshapeOp>(
+        convOp, convOp.getOutput().getType(), ValueRange{perMuteOp_2});
     return success();
   }
 };
@@ -2519,12 +2520,12 @@ protected:
     auto gather_shape = module::getShape(gather_op.getInput());
     auto op_weight =
         dyn_cast<top::WeightOp>((op.getOperands()[1]).getDefiningOp());
-    if (!op_weight){
+    if (!op_weight) {
       return failure();
     }
     auto gather_weight =
         dyn_cast<top::WeightOp>((gather_op.getOperands()[1]).getDefiningOp());
-    if (!gather_weight){
+    if (!gather_weight) {
       return failure();
     }
     std::vector<int> unsample_ratio = {0, 0};

@@ -191,7 +191,8 @@ class TORCH_IR_TESTER(object):
             ## only for test, only run test_single
             "user_define_net":   (self.user_define_net,    N, N, N, N, N),
             ## Canonicalization
-            "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N, Y)
+            "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N, Y),
+            "Conv2Img2Col": (self.test_Conv2Img2Col, N, Y, Y, N, Y),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -609,6 +610,30 @@ class TORCH_IR_TESTER(object):
         test["case1"](nn.Conv2d, (4, 8, 28, 28))
         test["case2"](F.conv2d, (1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same")
         test["case2"](F.conv2d, (2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1)
+
+    def test_Conv2Img2Col(self):
+        """Convert Conv to img2col"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                filter_shape = (128, 3, 14, 14)
+                self.filter = torch.randn(filter_shape)
+                self.bias = torch.randn(128)
+
+            def forward(self, x):
+                y = F.conv2d(x,
+                             self.filter,
+                             bias=self.bias,
+                             padding=0,
+                             stride=14,
+                             dilation=1,
+                             groups=1)
+                return y
+
+        self.trace_and_test([(1, 3, 384, 384)], Model())
+        self.trace_and_test([(1, 3, 378, 378)], Model())
 
     def test_ConvGroup(self):
         test = self._test_Conv()
@@ -2506,11 +2531,11 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     m = torch.matmul(x, self.w)# + self.b
                     for i in range(num):
-                      s = m[:, :, i * size : (i+1) * size]
-                      if i == 0:
-                        y = s
-                      else:
-                        y *= s
+                        s = m[:, :, i * size : (i+1) * size]
+                        if i == 0:
+                            y = s
+                        else:
+                            y *= s
                     return y
 
             self.trace_and_test([shape], Model(), [self.Desc('float32', -1, 1)])
