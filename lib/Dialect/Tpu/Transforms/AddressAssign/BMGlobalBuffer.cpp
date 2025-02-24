@@ -478,24 +478,37 @@ public:
     if (!module::isNone(interpOp.getBuffer())) {
       return failure();
     }
-
-    interp_global_param_t param = {0};
-    param.if_getting_buffer_size = true;
-    uint64_t buffer_size = 0;
-    param.buffer_size_ptr = &buffer_size;
-    auto input_spec = BM168x::get_input_spec(interpOp);
-    auto output_spec = BM168x::get_output_spec(interpOp);
-    // don't check instruction address when getting buffer size
-    BM168x::instance()->dl_set_cmd_check_param(nullptr, false);
-    BM168x::call_global_func("backend_api_interp_global", &param, sizeof(param),
-                             input_spec->data(), output_spec->data());
-    // add buffer
-    if (buffer_size > 0) {
+    int64_t n, c, oh, ow;
+    module::getNCHW(interpOp.getOutput(), n, c, oh, ow, false);
+    if ((oh * ow < 520 * 520) && (module::isBM1684X() || module::isBM1688())) {
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
+      int64_t buffer_size = 16 * 16 * 1024 * 64; // 4 banks
       auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
       auto buffer = tpu::BufferOp::create(interpOp, buffer_type);
       interpOp.setOperand(2, buffer);
-      return success();
+      auto ppl_flag = interpOp.getPplFlag();
+      ppl_flag = true;
+      interpOp->setAttr("ppl_flag", rewriter.getBoolAttr(true));
+    } else {
+      interp_global_param_t param = {0};
+      param.if_getting_buffer_size = true;
+      uint64_t buffer_size = 0;
+      param.buffer_size_ptr = &buffer_size;
+      auto input_spec = BM168x::get_input_spec(interpOp);
+      auto output_spec = BM168x::get_output_spec(interpOp);
+      // don't check instruction address when getting buffer size
+      BM168x::instance()->dl_set_cmd_check_param(nullptr, false);
+      BM168x::call_global_func("backend_api_interp_global", &param,
+                               sizeof(param), input_spec->data(),
+                               output_spec->data());
+      // add buffer
+      if (buffer_size > 0) {
+        auto type = ::mlir::Builder(getContext()).getIntegerType(8);
+        auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
+        auto buffer = tpu::BufferOp::create(interpOp, buffer_type);
+        interpOp.setOperand(2, buffer);
+        return success();
+      }
     }
 
     return failure();

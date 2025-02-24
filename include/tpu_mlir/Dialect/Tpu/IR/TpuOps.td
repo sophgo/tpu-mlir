@@ -4036,6 +4036,7 @@ def Tpu_InterpOp: Tpu_Op<"Interp",[DeclareOpInterfaceMethods<TypeInterface>]> {
     F64Attr:$scale_w,
     Tpu_ResizeModeAttr:$mode,
     Tpu_ResizeCoordModeAttr:$coord_mode,
+    DefaultValuedAttr<BoolAttr, "false">:$ppl_flag,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);

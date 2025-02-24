@@ -18,6 +18,7 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  auto ppl_flag = getPplFlag();
   interp_global_param_t param = {0};
   param.if_getting_buffer_size = false;
   if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
@@ -73,8 +74,17 @@ void tpu::InterpOp::codegen_global_bm1684x() {
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-  BM168x::call_global_func("backend_api_interp_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+
+  if (ppl_flag && (getMode() == tpu::ResizeMode::linear) &&
+      common.align_corners) {
+    param.spec.buffer_addr = module::getAddress(getBuffer());
+    BM168x::call_ppl_global_func("api_interp_global", &param, sizeof(param),
+                                 module::getCoreNum(), input_spec->data(),
+                                 output_spec->data());
+  } else {
+    BM168x::call_global_func("backend_api_interp_global", &param, sizeof(param),
+                             input_spec->data(), output_spec->data());
+  }
 }
 #if 0
 // =========================================

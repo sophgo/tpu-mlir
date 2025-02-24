@@ -1895,7 +1895,11 @@ class ONNX_IR_TESTER(object):
     def test_Resize(self, case_name):
         case0 = [[1, 16, 32, 32], [1, 16, 64, 64], [1, 1, 2, 2], [4], 'nearest', 'asymmetric']
         case1 = [[2, 3, 224], [2, 3, 448], [1, 1, 2], [3], 'linear', 'half_pixel']
-        cases = (case0, case1) if self.chip in ['bm1684x', 'bm1688', 'sg2380'] else (case0, )
+        case2 = [[1, 1, 23, 38], [1, 1, 46, 76], [1, 1, 2, 2], [4], 'linear', 'align_corners']
+        case3 = [[1, 1, 296, 296], [1, 1, 518, 518], [1, 1, 518/296, 518/296], [4], 'linear', 'align_corners']
+        case4 = [[1, 1, 160, 160], [1, 1, 2048, 2048], [1, 1, 2048/160, 2048/160], [4], 'linear', 'align_corners']
+        cases = (case0, case1, case2, case3, case4) if self.chip in ['bm1684x', 'bm1688', 'sg2380'] else (case0, )
+
         for idx, case in enumerate(cases):
             input_shape, output_shape, scales, dim, mode, coor_mode = case
             graph_txt = """
