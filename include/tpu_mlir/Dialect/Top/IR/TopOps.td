@@ -197,7 +197,16 @@ def Top_InputOp: Top_BaseOp<"Input", [
 def Top_TupleOp: Top_BaseOp<"Tuple"> {
   let summary = "Tuple operator";
   let description = [{
+    1.Op Introduction
     gen by torch prim::TupleConstruct, y = (a, b)
+
+    2.Math formula
+    ```math
+        output = TupleOp(input1, input2)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
   }];
 
   let arguments = (ins
@@ -210,7 +219,16 @@ def Top_TupleOp: Top_BaseOp<"Tuple"> {
 def Top_UnTupleOp: Top_BaseOp<"UnTuple"> {
   let summary = "UnTuple operator";
   let description = [{
+    1.Op Introduction
     gen by torch prim::TupleUnpack, a, b = y
+
+    2.Math formula
+    ```math
+        output1, output2 = UnTupleOp(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
   }];
 
   let arguments = (ins
@@ -1473,11 +1491,26 @@ def Top_EinsumOp: Top_Op<"Einsum", [SupportFuseRelu]> {
 def Top_PadOp:Top_Op<"Pad"> {
   let summary = "Pad operation";
   let description = [{
+    1.Op Introduction
     This operation pads a tensor according to the paddings you specify.
     paddings is an integer tensor with shape [2, n], where n is the rank of tensor.
     For each dimension D of input, paddings[0, D] indicates how many values to add
     before the contents of tensor in that dimension, and paddings[1, D] indicates
     how many values to add after the contents of tensor in that dimension.
+
+    2.Math formula
+    ```math
+        output = input(padding, val, mode)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    paddingsT(act.):  the padding values for each dimension.;
+
+    4.attribute
+    paddings: defines how much padding to add before and after the contents of the input tensor for each dimension. ;
+    val: the value to be used for padding the input tensor. ;
+    mode: the padding mode include constant(Pads with a constant value); reflect(Pads with a reflection of the tensor values); replicate(Pads by replicating the edge values of the tensor).;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1495,7 +1528,19 @@ def Top_PermuteOp: Top_Op<"Permute"> {
   let summary = "Permute operator";
 
   let description = [{
-      Perform permute on input.
+    1.Op Introduction
+    Perform permute on input.
+
+    2.Math formula
+    ```math
+        output(...dim2, dim1, dim0) = PermuteOp(input(dim0, dim1, dim2...order))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    order: An array of integers specifying the permutation order of the input tensor's dimensions.;
   }];
 
   let arguments = (
@@ -1514,7 +1559,20 @@ def Top_TransposeOp: Top_Op<"Transpose"> {
   let summary = "Transpose operator";
 
   let description = [{
-      Transpose on input.
+    1.Op Introduction
+    Transpose on input.
+
+    2.Math formula
+    ```math
+        output(dim1, dim0) = TransposeOp(input(dim0, dim1))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    dim0: the first dimension of input tensor.;
+    dim1: the second dimension of input tensor.;
   }];
 
   let arguments = (
@@ -1529,7 +1587,19 @@ def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
   let summary = "ShuffleChannel operator";
 
   let description = [{
-      Perform ShuffleChannel on input.
+    1.Op Introduction
+    Perform ShuffleChannel on input.
+
+    2.Math formula
+    ```math
+        output(N, C, H, W) = input(N, Shuffle(C), H, W)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    group: An integer specifying the number of groups to divide the channels into.;
   }];
 
   let arguments = (
@@ -1544,7 +1614,19 @@ def Top_ReluOp: Top_Op<"Relu", [SupportPermuteMove]> {
   let summary = "Relu operator";
 
   let description = [{
-     ReLU with a scalar maximum value. if limit is zero, do not use upper limit.
+    1.Op Introduction
+    ReLU with a scalar maximum value. if limit is zero, do not use upper limit.
+
+    2.Math formula
+    ```math
+        output = ReluOp(input) -> (0, 1)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
   }];
 
   let arguments = (
@@ -1560,8 +1642,17 @@ def Top_ReluOp: Top_Op<"Relu", [SupportPermuteMove]> {
 def Top_ListOp: Top_Op<"List"> {
   let summary = "List operator";
   let description = [{
+    1.Op Introduction
     gen by torch prim::ListConstruct, y = [a, b]
     output shape is [1]
+
+    2.Math formula
+    ```math
+        output = [input1, input2, ..., inputN]
+    ```
+
+    3.activation and weight
+    input(act.): Variadic input tensor.;
   }];
 
   let arguments = (ins
@@ -1575,11 +1666,23 @@ def Top_ListOp: Top_Op<"List"> {
 def Top_ReshapeOp:Top_Op<"Reshape"> {
   let summary = "Reshape operation";
   let description = [{
+    1.Op Introduction
     Returns a tensor with the same type/values as the input, with a new shape
     specified by the shape argument. Reshape may operate on tensors of any rank.
     No data conversion happens during a reshape operation.
-    0: keep dim from input
-    -1: left dim from input
+
+    2.Math formula
+    ```math
+        output = ReshapeOp(input, shape)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    shapeT(act.): an optional input tensor that specifies the desired shape for the output tensor.;
+
+    4.attribute
+    shape: 0: keep dim from input; -1: left dim from input.;
+    flatten_start_dim: the starting dimension from which to begin flattening the input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1595,9 +1698,19 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
 def Top_ViewOp:Top_Op<"View"> {
   let summary = "View operation";
   let description = [{
-    gen by torch aten::view
+    1.Op Introduction
+    gen by torch aten::view, the view operation allows for changing the shape of the tensor without altering its data.
     0: keep dim from input
     -1: left dim from input
+
+    2.Math formula
+    ```math
+        output = ViewOp(input, shape)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    shape(w.): 0: keep dim from input; -1: left dim from input.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1609,7 +1722,21 @@ def Top_ViewOp:Top_Op<"View"> {
 def Top_FlattenOp:Top_Op<"Flatten"> {
   let summary = "Flatten operation";
   let description = [{
-    gen by torch aten::flatten or onnx
+    1.Op Introduction
+    gen by torch aten::flatten or onnx, the flatten operation collapses the specified dimensions of the tensor into a single dimension,
+    effectively reducing the number of dimensions of the tensor.
+
+    2.Math formula
+    ```math
+        output = FlattenOp(input, start_dim, end_dim)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    start_dim: the first dimension to flatten.;
+    end_dim: the last dimension to flatten.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1622,7 +1749,19 @@ def Top_FlattenOp:Top_Op<"Flatten"> {
 def Top_ReverseOp:Top_Op<"Reverse"> {
   let summary = "Reverse operation";
   let description = [{
+    1.Op Introduction
     Reverse on input.
+
+    2.Math formula
+    ```math
+        output = ReverseOp(input, axis)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    axis: the dimension of reverse;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1634,8 +1773,24 @@ def Top_ReverseOp:Top_Op<"Reverse"> {
 def Top_SigmoidOp : Top_Op<"Sigmoid", [SupportPermuteMove]> {
   let summary = " Exp operator,  scale * Sigmoid + bias";
   let description = [{
-     Y = scale * Sigmoid(x) + bias
-     if log --> Y = Log(scale * Sigmoid(x) + bias)
+    1.Op Introduction
+    Y = scale * Sigmoid(x) + bias
+    if log --> Y = Log(scale * Sigmoid(x) + bias)
+
+    2.Math formula
+    ```math
+        output = scale * Sigmoid(input) + bias
+
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    scale: a scaling factor applied to the attention scores before they are passed through the softmax function.;
+    bias: added to the result of the matrix multiplication. ;
+    log: whether the output should be computed using the logarithm of the scaled sigmoid function. ;
+    round_mode: how values are rounded during the conversion from higher precision to lower precision.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1651,9 +1806,18 @@ def Top_SigmoidOp : Top_Op<"Sigmoid", [SupportPermuteMove]> {
 def Top_SignOp : Top_Op<"Sign"> {
   let summary = " Sign Operator";
   let description = [{
-     Calculate the sign of the given input tensor element-wise.
-     If input > 0, output 1. if input < 0, output -1. if input == 0,
-     output 0.
+    1.Op Introduction
+    Calculate the sign of the given input tensor element-wise.
+    If input > 0, output 1. if input < 0, output -1. if input == 0,
+    output 0.
+
+    2.Math formula
+    ```math
+        output = SignOp(input) -> 0/1
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (
     ins AnyTensor:$input
@@ -1665,7 +1829,16 @@ def Top_SignOp : Top_Op<"Sign"> {
 def Top_SoftsignOp: Top_Op<"Softsign"> {
   let summary = " Softsign Operator";
   let description = [{
-     Y = x / (1 + |x|)
+    1.Op Introduction
+    The Softsign operation is an activation function that provides a smooth approximation of the sign function.
+
+    2.Math formula
+    ```math
+        output = input / (1 + |input|)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (
     ins AnyTensor:$input
@@ -1677,7 +1850,19 @@ def Top_SoftsignOp: Top_Op<"Softsign"> {
 def Top_SizeOp: Top_Op<"Size"> {
   let summary = "Size operator";
   let description = [{
-    gen by torch aten::size
+    1.Op Introduction
+    gen by torch aten::size. The Size operation retrieves the size (or shape) of the given input tensor.
+
+    2.Math formula
+    ```math
+        output = SizeOp(input) ->[dim0, dim1, dim2..., dimN]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    axis: the dimension of reverse;
   }];
 
   let arguments = (ins
@@ -1691,7 +1876,18 @@ def Top_SizeOp: Top_Op<"Size"> {
 def Top_ArangeOp: Top_Op<"Arange"> {
   let summary = "Arange operator";
   let description = [{
-    gen by torch aten::arange
+    1.Op Introduction
+    gen by torch aten::arange.
+
+    2.Math formula
+    ```math
+        output = [x | x = start + n * step, n is an integer, and start ≤ x < end]
+    ```
+
+    3.activation and weight
+    start(act.): The starting value of the sequence. This can be a tensor or None. If None, it defaults to 0.;
+    end(act.): The exclusive upper limit of the sequence.;
+    step(act.): The increment between each value in the sequence. This can be a tensor or None. If None, it defaults to 1.;
   }];
 
   let arguments = (ins
@@ -1706,7 +1902,17 @@ def Top_ArangeOp: Top_Op<"Arange"> {
 def Top_RandnLikeOp: Top_Op<"RandnLike"> {
   let summary = "randn_like operator, y = randn_like(x)";
   let description = [{
+    1.Op Introduction
     create a tensor with the same shape as input, and fill with value from normal distribution
+
+    2.Math formula
+    ```math
+        output = randn(shape(input))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    randn_data(w.): the characteristics of the normal distribution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1721,7 +1927,19 @@ def Top_RandnLikeOp: Top_Op<"RandnLike"> {
 def Top_RangeOp: Top_Op<"Range"> {
   let summary = "Range operator";
   let description = [{
-    onnx range op
+    1.Op Introduction
+    onnx range op.
+    generates a sequence of evenly spaced values within a specified range.
+
+    2.Math formula
+    ```math
+        output = [x | x = start + n * delta, n is an integer, and start ≤ x < limit]
+    ```
+
+    3.activation and weight
+    start(act.): The starting value of the sequence. This can be a tensor or None. If None, it defaults to 0.;
+    limit(w.): The exclusive upper limit of the sequence.;
+    delta(w.): The increment between each value;
   }];
 
   let arguments = (ins
@@ -1736,7 +1954,20 @@ def Top_RangeOp: Top_Op<"Range"> {
 def Top_ConstantFillOp: Top_Op<"ConstantFill"> {
   let summary = "constant fill operator";
   let description = [{
+    1.Op Introduction
     fill the constant value
+
+    2.Math formula
+    ```math
+        output = value * ones(shape(input))
+    ```
+    where, ones(shape(input)) generates a tensor of the same shape as the input tensor, filled with ones.
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    value: the constant value that will fill the output tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1751,7 +1982,17 @@ def Top_ConstantFillOp: Top_Op<"ConstantFill"> {
 def Top_SiLUOp : Top_Op<"SiLU"> {
   let summary = " SiLU operator,  y = x * Sigmoid(x)";
   let description = [{
-     Y = x * Sigmoid(x)
+    1.Op Introduction
+    An activation function.
+    Smooth nonlinear transformation is provided to avoid the gradient disappearance problem of ReLU.;
+
+    2.Math formula
+    ```math
+        output = input * Sigmoid(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (
     ins AnyTensor:$input
@@ -1763,7 +2004,21 @@ def Top_SiLUOp : Top_Op<"SiLU"> {
 def Top_GELUOp : Top_Op<"GELU"> {
   let summary = " GELU operator,  0.5x * (1.0 + tf.erf(x / tf.sqrt(2.0)))";
   let description = [{
-     Y = 0.5x * (1.0 + tf.erf(x / tf.sqrt(2.0)))
+    1.Op Introduction
+    An activation function based on Gaussian error function.;
+
+    2.Math formula
+    ```math
+        Y = 0.5*input * (1.0 + tf.erf(input / tf.sqrt(2.0)))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    round_mode: how values are rounded during the conversion from higher precision to lower precision.;
+    approx_mode: include two mode. normal: This mode uses the exact mathematical form of the GELU function.
+                 approximate: This mode uses an approximation to speed up computation.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -1778,7 +2033,21 @@ def Top_SplitOp: Top_Op<"Split"> {
   let summary = "Split operator";
 
   let description = [{
+    1.Op Introduction
     Split input tensor into a list of tensors.
+
+    2.Math formula
+    ```math
+        output = input[i * split_size: (i + 1) * split_size] for i = 0, 1, ... num - 1
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    axis: the dimension of split;
+    num: the number of equal parts to split the input tensor into along the specified axis.;
+    split_size: the exact sizes of each split along the specified axis.;
   }];
 
   let arguments = (
@@ -1795,7 +2064,26 @@ def Top_SliceOp: Top_Op<"Slice"> {
   let summary = "Slice operator";
 
   let description = [{
+    1.Op Introduction
     Slice Operation on input.
+
+    2.Math formula
+    ```math
+            output[i] = input[offset[j] : ends[j] : steps[j]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    offsetT(w.): the starting indices for each slice along the specified axes.;
+    endsT(w.): the ending indices for each slice along the specified axes.;
+    stepsT(w.): the step sizes for each slice along the specified axes.;
+
+    4.attribute
+    offset: An array of the starting indices for slicing along each axis.;
+    steps: An array of the step sizes for slicing along each axis.;
+    ends: An array of the ending indices for slicing along each axis.;
+    axes: An array of the axes along which to perform the slicing operation.;
+    hasparamConvert_axes: whether parameter conversion is needed for the specified axes.;
   }];
 
   let arguments = (
@@ -1820,7 +2108,26 @@ def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
   let summary = "Strided Slice operator";
 
   let description = [{
+    1.Op Introduction
     Strided Slice Operation on input.
+
+    2.Math formula
+    ```math
+            output[i] = input[starts[j] + i * strides[j]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    starts(w.): the starting indices for each dimension of the input tensor.;
+    ends(w.): the ending indices for each dimension of the input tensor.;
+    strides(w.):  the stride values for each dimension, determining the step size between indices in the slicing operation.;
+
+    4.attribute
+    begin_mask: If set, the start index for that dimension is considered as 0.;
+    end_mask: If set, the end index for that dimension is considered as the size of the dimension.;
+    ellipsis_mask: whether allowing for the selection of all dimensions in between specified slices.;
+    new_axis_mask: which dimensions should be added as new axes in the output tensor.;
+    shrink_axis_mask: which dimensions should be removed from the output tensor.;
   }];
 
   let arguments = (ins
@@ -1842,7 +2149,20 @@ def Top_SliceAxisOp: Top_Op<"SliceAxis"> {
   let summary = "Slice operator on one axis";
 
   let description = [{
+    1.Op Introduction
     Slice Operation on input.
+
+    2.Math formula
+    ```math
+            output[i] = input[starts[j] + i * strides[j]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    axis(w.): the dimension of the input tensor.;
+    start(w.): the ending indices for slicing along each axis.;
+    step: the step sizes for slicing along each axis.;
+    end: the ending indices for slicing along each axis.;
   }];
 
   let arguments = (ins
@@ -1859,7 +2179,22 @@ def Top_SliceAxisOp: Top_Op<"SliceAxis"> {
 def Top_SoftmaxOp:Top_Op<"Softmax"> {
   let summary = "Softmax operation";
   let description = [{
+    1.Op Introduction
     Integrates some operations related to softmax.
+
+    2.Math formula
+    ```math
+            \text{output}[i] = \frac{e^{\text{input}[i]}}{\sum_{j} e^{\text{input}[j]}}
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
+    log: when set to true, indicates that the output should be computed in log space.;
+    beta: scaling factor.;
+    round_mode: how values are rounded during the conversion from higher precision to lower precision.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1874,7 +2209,16 @@ def Top_SoftmaxOp:Top_Op<"Softmax"> {
 def Top_SoftplusOp:Top_Op<"Softplus"> {
   let summary = "Softplus operation";
   let description = [{
-    y = ln(exp(x) + 1)
+    1.Op Introduction
+    a smooth approximation of the ReLU (Rectified Linear Unit) activation function.
+
+    2.Math formula
+    ```math
+            output = ln(exp(input) + 1)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -1885,7 +2229,16 @@ def Top_SoftplusOp:Top_Op<"Softplus"> {
 def Top_FloorOp:Top_Op<"Floor"> {
   let summary = "Floor operation";
   let description = [{
-    y = floor(x)
+    1.Op Introduction
+    the Floor function rounds down each element of the input tensor to the nearest integer less than or equal to that element.
+
+    2.Math formula
+    ```math
+            output = floor(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -1896,7 +2249,23 @@ def Top_FloorOp:Top_Op<"Floor"> {
 def Top_TopKOp:Top_Op<"TopK"> {
   let summary = "TopK operation";
   let description = [{
+    1.Op Introduction
     Integrates some operations related to topk.
+
+    2.Math formula
+    ```math
+            output_values, output_indices = TopK(input, K, axis, largest, sorted)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
+    K: how many of the largest (or smallest, depending on the largest attribute) values will be returned. defaults is -1;
+    largest: whether to retrieve the largest or smallest values.;
+    sorted: whether the output values should be sorted in descending order (if largest is true) or ascending order (if largest is false).;
+    kT: provide a specific tensor for K values. This allows for dynamic specification of K.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1917,7 +2286,24 @@ def Top_TopKOp:Top_Op<"TopK"> {
 def Top_TriluOp:Top_Op<"Trilu"> {
   let summary = "Trilu operation";
   let description = [{
-     Returns the upper or lower triangular part of input.
+    1.Op Introduction
+    Returns the upper or lower triangular part of input.
+
+    2.Math formula
+    ```math
+            output = Triu(input, diagonal) if upper = 1
+            output = Tril(input, diagonal) if upper = 0
+    ```
+    where, Triu() return the upper triangular part of the input tensor.
+           Tril() return the lower triangular part of the input tensor.
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    upper: whether to extract the upper or lower triangular part of the input tensor.;
+    diagonal: 0 refers to the main diagonal, positive values indicate diagonals above the main diagonal,
+              and negative values indicate diagonals below the main diagonal.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1930,8 +2316,20 @@ def Top_TriluOp:Top_Op<"Trilu"> {
 def Top_NonZeroOp:Top_Op<"NonZero"> {
   let summary = "NonZero operation";
   let description = [{
+    1.Op Introduction
     Returns the indices of the elements that are non-zero
     (in row-major order - by dimension).
+
+    2.Math formula
+    ```math
+            output = input[i1, i2, i3,...in] != 0
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    order: the order in which the non-zero indices should be returned.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1945,10 +2343,24 @@ def Top_NonZeroOp:Top_Op<"NonZero"> {
 def Top_LeakyReluOp : Top_Op<"LeakyRelu"> {
   let summary = "LeakyRelu operation";
   let description = [{
+    1.Op Introduction
     LeakyRelu takes input data (Tensor<T>) and an argument alpha,
     and produces one output data (Tensor<T>)
     where the function f(x) = alpha * x for x < 0, f(x) = x for x >= 0,
     is applied to the data tensor elementwise.
+
+    2.Math formula
+    ```math
+            output = alpha * input, if input < 0
+            output = input, if input >= 0
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    alpha: a scalar factor.;
+    round_mode: how values are rounded during the conversion from higher precision to lower precision.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1961,7 +2373,22 @@ def Top_LeakyReluOp : Top_Op<"LeakyRelu"> {
 def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
   let summary = "Upsample operation";
   let description = [{
+    1.Op Introduction
     Perform nearest upsample on input.
+
+    2.Math formula
+    ```math
+            output[i, j] = Upsample(input[i / scale_h, j / scale_w])
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    scale_h: the scaling factor for the height (number of rows) of the input tensor.;
+    scale_w: the scaling factor for the width (number of columns) of the input tensor.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1977,7 +2404,21 @@ def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
 def Top_MaxUnpoolOp : Top_Op<"MaxUnpool"> {
   let summary = "MaxUnpool operation";
   let description = [{
+    1.Op Introduction
     Perform  MaxUnpool on input.
+
+    2.Math formula
+    ```math
+            output[i, j] = Upsample(input[i / scale_h, j / scale_w])
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    mask(act.): the positions of the maximum values that were retained during the max pooling operation.;
+
+    4.attributes
+    scale_h: the scaling factor for the height (number of rows) of the input tensor.;
+    scale_w: the scaling factor for the width (number of columns) of the input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -1992,7 +2433,16 @@ def Top_LogOp: Top_Op<"Log"> {
   let summary = "Log operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the natural log of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = ln(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2006,7 +2456,16 @@ def Top_LogBOp: Top_Op<"LogB"> {
   let summary = "LogB operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the log of the given input tensor to the base B, element-wise.
+
+    2.Math formula
+    ```math
+            output = ln(input) / ln(B)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2021,7 +2480,22 @@ def Top_LRNOp: Top_Op<"LRN"> {
   let summary = "Local Response Normalization";
 
   let description = [{
+    1.Op Introduction
     It normalizes over local input regions. The local region is defined across the channels.
+
+    2.Math formula
+    ```math
+            output[i, j, k] = \frac{input[i, j, k]}{(bias + \alpha \sum_{c=\max(0,k-\text{size})}^{\min(N-1,k+\text{size})} input[i, j, c]^2)^{\beta}}
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    size: how many neighboring channels are considered during the normalization process.;
+    alpha: a scaling factor;
+    beta: a scaling factor;
+    bias: A floating-point value added to the normalization denominator to prevent division by zero.;
   }];
 
   let arguments = (ins
@@ -2039,7 +2513,16 @@ def Top_ExpOp: Top_Op<"Exp"> {
   let summary = "Exp operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the exponent of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = exp(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2053,7 +2536,20 @@ def Top_ExpandOp: Top_Op<"Expand"> {
   let summary = "Expand operator";
 
   let description = [{
+    1.Op Introduction
     Broadcast the input tensor following the given shape and the broadcast rule.
+
+    2.Math formula
+    ```math
+            output[i1, i2, i3,...in] = input[j1, j2, j3,...jn]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    shape: An array of the target shape to which the input tensor will be expanded.;
+    shapeT: An optional tensor that can be used to specify the shape dynamically.;
   }];
 
   let arguments = (ins
@@ -2070,7 +2566,16 @@ def Top_CosOp: Top_Op<"Cos"> {
   let summary = "Cos operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the Cos of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = cos(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2084,7 +2589,16 @@ def Top_CoshOp: Top_Op<"Cosh"> {
   let summary = "Cosh operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the Cosh of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = cosh(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2098,7 +2612,16 @@ def Top_SinOp: Top_Op<"Sin"> {
   let summary = "Sin operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the Sin of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = sin(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2112,7 +2635,16 @@ def Top_SinhOp: Top_Op<"Sinh"> {
   let summary = "Sinh operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the Sinh of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = sinh(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2126,7 +2658,16 @@ def Top_ArctanhOp: Top_Op<"Arctanh">{
   let summary = "Arctanh operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the Arctanh of the given input tensor.
+
+    2.Math formula
+    ```math
+            output = Arctanh(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2154,7 +2695,16 @@ def Top_ArccosOp: Top_Op<"Arccos">{
   let summary = "Arccos operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the Arccos of the given input tensor.
+
+    2.Math formula
+    ```math
+            output = Arccos(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2168,7 +2718,16 @@ def Top_TanOp: Top_Op<"Tan"> {
   let summary = "Tan operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the tan of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = Tan(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2182,7 +2741,16 @@ def Top_TanhOp: Top_Op<"Tanh"> {
   let summary = "Tanh operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the tanh of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output = Tan(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2197,7 +2765,16 @@ def Top_MishOp: Top_Op<"Mish"> {
   let summary = "Mish operator";
 
   let description = [{
+    1.Op Introduction
     Calculates the mish of the given input tensor, element-wise.
+
+    2.Math formula
+    ```math
+            output[i] = input[i] x tanh(softplus(input[i]))
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -2211,7 +2788,24 @@ def Top_DivOp: Top_Op<"Div", [ScalarProducer, ScalarConsumer]> {
   let summary = "Div operator";
 
   let description = [{
+    1.Op Introduction
     Performs element-wise binary division.
+
+    2.Math formula
+    ```math
+            output[i] = \frac{inputs[i]}{divisor}
+            if is_reverse == True;
+            output[i] = \frac{divisor}{inputs[i]}
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    is_reverse: whether the subtraction operation is performed in reverse order.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    is_scalar: whether the addition operation is performed with scalar values or tensor.;
   }];
 
   let arguments = (ins
@@ -2230,7 +2824,20 @@ def Top_SqueezeOp: Top_Op<"Squeeze", [ScalarProducer]> {
   let summary = "Squeeze operator";
 
   let description = [{
+    1.Op Introduction
     The operator squeeze the input shapes by given axis.
+
+    2.Math formula
+    ```math
+            output = squeeze(input, axes)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    axes: the dimensions (axes) of the input tensor that should be squeezed (removed).;
+    is_scalar: whether the addition operation is performed with scalar values or tensor.;
   }];
 
   let arguments = (ins
@@ -2247,7 +2854,19 @@ def Top_UnsqueezeOp: Top_Op<"Unsqueeze", [ScalarConsumer]> {
   let summary = "Unsqueeze operator";
 
   let description = [{
+    1.Op Introduction
     The operator unsqueeze the input shapes by given axis.
+
+    2.Math formula
+    ```math
+            output = unsqueeze(input, axes)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    axes: the dimensions (axes) of the input tensor that should be squeezed (removed).;
   }];
 
   let arguments = (ins
@@ -2264,7 +2883,23 @@ def Top_ClipOp: Top_Op<"Clip"> {
   let summary = "Clip operator";
 
   let description = [{
+    1.Op Introduction
     The operator limits the given input to a certain range.
+
+    2.Math formula
+    ```math
+            output[i] = min      if input[i] < min;
+                        input[i] if input[i] >= min && input[i] <= max;
+                        max      if input[i] > max;
+
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    min: the minimum value that the elements of the input tensor can take.;
+    max: the maximum value that the elements of the input tensor can take.;
   }];
 
   let arguments = (ins
@@ -2281,7 +2916,26 @@ def Top_Yuv2rgbFormulaOp: Top_Op<"Yuv2rgbFormula"> {
   let summary = "Yuv2rgb formula operator";
 
   let description = [{
+    1.Op Introduction
     Yuv2rgb formula Operator.
+
+    2.Math formula
+    ```math
+            (R) = (Y + 1.402 x (V - 128))
+            (G) = (Y - 0.344136 x (U - 128) - 0.714136 x (V - 128))
+            (B) = (Y + 1.772 x (U - 128))
+
+    ```
+
+    3.activation and weight
+    YUV(act.): input tensor.;
+
+    4.attributes
+    src_format: the source format of the input YUV data.;
+    dst_format: the desired destination format for the output RGB data.;
+    image_format: how the YUV data should be processed and how the output RGB data should be structured.;
+    formula_mode: the mode of the conversion formula used for the YUV to RGB transformation. ;
+    round_mode: how values are rounded during the conversion from higher precision to lower precision.;
   }];
 
   let arguments = (ins
@@ -2300,7 +2954,35 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
   let summary = "Deconvolution operator";
 
   let description = [{
+    1.Op Introduction
     Perform Deconvolution operation.
+
+    2.Math formula
+    The height and width of the output tensor can be calculated using the following formulas:
+    ```math
+            H_{out} = H_{in - 1} x stride[0] - 2 x pads[0] + H_k + output_padding[0]
+            W_{out} = W_{in - 1} x stride[1] - 2 x pads[1] + W_k + output_padding[1]
+    ```
+    The output tensor is computed as:
+    ```math
+            output(N, C_out, H_out, W_out) = \sum(c_in) {\sum(h_k) {\sum(w_k){input(n, c_in, h_in, w_in) x filter(c_out, c_in, h_k, w_k)}}}
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    filter(w.): the learnable weights of the convolution 2d operation.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    kernel_shape: the size of the convolution kernel (filter) as an array. ;
+    strides: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    group: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
+    dilations: controls the spacing between the kernel points;
+    output_padding: The value can be provided as a single integer or a tuple, allowing for different padding values for height and width.;
+    dynweight_reorderd: whether the weights (filters) should be reordered dynamically.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
   }];
 
   let arguments = (ins
@@ -2330,8 +3012,23 @@ def Top_ScaleOp: Top_Op<"Scale", [SupportFuseRelu]> {
   let summary = "Scale operator";
 
   let description = [{
+    1.Op Introduction
     Y = X * S + B,
     where the shape of X/Y is [n, c, h, w] and the shape of S/B is [1, c, 1, 1].
+
+    2.Math formula
+    ```math
+            output = input x scale + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    scale(w.): scalar;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
   }];
 
   let arguments = (ins
@@ -2351,7 +3048,37 @@ def Top_GRUOp: Top_Op<"GRU"> {
   let summary = "GRU operator";
 
   let description = [{
+    1.Op Introduction
     Perform RNN GRU operation.
+
+    2.Math formula
+    ```math
+        update gate(z_t):
+            z_t = Sigma(W_z · x_t + U_z ·h_(t-1) + b_z)
+        reset gate(r_t):
+            r_t = Sigma(W_r · x_t + U_r ·h_(t-1) + b_r)
+        Candidate Activation(h_t):
+            h_t = tanh(W_h · x_t + r_t \odot (U_h · h_(t-1)) + b_h)
+        final output:
+            output = (1 - z_t) \odot h_(t-1) + z_t \odot h_t
+    ```
+    where, x_t is the input at time step (t), h_(t-1) is the hidden state from the previous time step.
+           W_z, W_r, W_h are the weight matrices for the input.
+           U_z, U_r, U_h are the weight matrices for the hidden state.
+           b_z, b_r, b_h are the bias vectors.
+
+    3.activation and weight
+    input(act.): input tensor.;
+    filter(w.): the learnable weights of the convolution 2d operation.;
+    recurrence(w.): the previous hidden state influences the current hidden state.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+    initial_h(w.): the initial hidden state, which can be provided to start the GRU computation.;
+
+    4.attributes
+    hidden_size: the number of units in the GRU cell,;
+    bidirectional: whether the GRU should be bidirectional;
+    linear_before_reset: whether to apply a linear transformation to the input before applying the reset gate.;
+    batch_first: the input and output tensors are provided in the shape (batch_size, seq_length, input_size).;
   }];
 
   let arguments = (ins
@@ -2379,7 +3106,38 @@ def Top_LSTMOp: Top_Op<"LSTM"> {
   let summary = "LSTM operator";
 
   let description = [{
+    1.Op Introduction
     Perform RNN LSTM operation.
+
+    2.Math formula
+    ```math
+        forget gate(f_t):
+            f_t = Sigma(W_f · x_t + U_f · h_(t-1) + b_f)
+        input gate(i_t):
+            i_t = Sigma(W_i · x_t + U_i · h_(t-1) + b_i)
+        Candidate cell state(C_t):
+            C_t = tanh(W_C · x_t + U_C · h_(t-1) + b_C)
+        cell state update(c_t):
+            c_t = f_t \odot c_(t-1) + i_t \odot C_t
+        output gate(o_t):
+            o_t = Sigma(W_o · x_t + U_o · h_(t-1) + b_o)
+        hidden state output(h_t):
+            h_t = o_t \odot tanh(c_t)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    filter(w.): the learnable weights of the convolution 2d operation.;
+    recurrence(w.): the previous hidden state influences the current hidden state.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+    initial_h(w.): the initial hidden state, which can be provided to start the LSTM computation.;
+    initial_c(w.): the initial cell state, which can be provided to start the LSTM computation.;
+    cont(w.): control weights or additional context that may be provided to influence the LSTM's behavior.;
+
+    4.attributes
+    hidden_size: the number of units in the LSTM cell, ;
+    bidirectional: A boolean indicating whether the LSTM should be bidirectional;
+    batch_first: the input and output tensors are provided in the shape (batch_size, seq_length, input_size).;
   }];
 
   let arguments = (ins
@@ -2407,7 +3165,21 @@ def Top_LSTMOp: Top_Op<"LSTM"> {
 def Top_NmsOp : Top_Op<"Nms"> {
   let summary = " NMS operator";
   let description = [{
-      onnx nms
+    1.Op Introduction
+    onnx nms
+    used to eliminate redundant overlapping bounding boxes by selecting only the most relevant ones based on their confidence scores.
+
+    2.Math formula
+    ```math
+        IOU(a, b) = Area(a \cap b) / Area(a \cup b)
+    ```
+
+    3.activation and weight
+    input(act.): Variadic input tensor.;
+
+    4.attributes
+    center_point_box: whether the bounding boxes are defined by their center points.;
+    max_output_size: the maximum number of boxes to be output after NMS.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>: $inputs,
@@ -2422,7 +3194,25 @@ def Top_MatchTemplateOp: Top_Op<"MatchTemplate"> {
   let summary = "opencv MatchTemplate operator";
 
   let description = [{
+    1.Op Introduction
     Perform opencv MatchTemplate operation.
+
+    2.Math formula
+    ```math
+            R(x, y) = \sum_{i=0}^{T_w-1} \sum_{j=0}^{T_h-1} I(x+i, y+j) \cdot T(i, j)
+    ```
+    where:
+    R(x, y) is the result of the match at position(x, y).
+    I is the input image.
+    T is the template image.
+    T_w and T_h are the width and height of the template.
+
+    3.activation and weight
+    input(act.): input tensor.;
+    match(w.): the template image that will be matched against the input image.;
+
+    4.attributes
+    mode: the method of template matching to be used (e.g., correlation, squared difference, etc.).;
   }];
 
   let arguments = (ins
@@ -2437,7 +3227,23 @@ def Top_MatchTemplateOp: Top_Op<"MatchTemplate"> {
 def Top_GatherOp: Top_Op<"Gather", [ScalarProducer]> {
   let summary = "Gather operator";
   let description = [{
+    1.Op Introduction
     Perform Gather operation on the given axis.
+
+    2.Math formula
+    ```math
+            output = input[indices]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    indices(w.): the indices of the elements to be gathered from the input tensor. ;
+
+    4.attributes
+    keepdims: whether to retain the dimensions of the input tensor in the output.
+               If true, will have the same number of dimensions as the input tensor.;
+    axis: the dimension of the input tensor.;
+    is_scalar: whether the addition operation is performed with scalar values or tensor.;
   }];
 
   let arguments = (ins
@@ -2455,7 +3261,20 @@ def Top_GatherOp: Top_Op<"Gather", [ScalarProducer]> {
 def Top_GatherElementsOp: Top_Op<"GatherElements"> {
   let summary = "GatherElements operator";
   let description = [{
+    1.Op Introduction
     Perform GatherElements operation on the given axis.
+
+    2.Math formula
+    ```math
+            output[i_1, i_2, i_3,...i_k] = input[i_1, i_2, i_3,..., indices[i_k]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    indices(w.): the indices of the elements to be gathered from the input tensor. ;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
   }];
 
   let arguments = (ins
@@ -2471,7 +3290,21 @@ def Top_GatherElementsOp: Top_Op<"GatherElements"> {
 def Top_TileOp: Top_Op<"Tile"> {
   let summary = "Tile operator";
   let description = [{
+    1.Op Introduction
     Perform Tile operation on the given tensor.
+
+    2.Math formula
+    ```math
+            output[i_1, i_2, i_3,...i_k] = input[i_1 mod d_1, i_2 mod d_2, i_3 mod d_3,..., i_k mod d_k]
+    ```
+    where d_j represents the corresponding dimension size of the input tensor after tiling.
+
+    3.activation and weight
+    input(act.): input tensor.;
+    tileT(w.): how many times to replicate the input tensor along each dimension.;
+
+    4.attributes
+    tile: the number of times to replicate the input tensor along each dimension.;
   }];
 
   let arguments = (ins
@@ -2487,7 +3320,18 @@ def Top_TileOp: Top_Op<"Tile"> {
 def Top_RepeatOp: Top_Op<"Repeat"> {
   let summary = "Repeat operator";
   let description = [{
-    Perform aten::repeat operation on the given tensor
+    1.Op Introduction
+    Perform aten::repeat operation on the given tensor.
+
+    2.Math formula
+    ```math
+            output[i_1, i_2, i_3,...i_k] = input[i_1 / r_1, i_2 / r_2, i_3 / r_3,..., i_k mod r_k]
+    ```
+    where r_j represents the corresponding value from the repeats tensor for dimension ( j ).
+
+    3.activation and weight
+    input(act.): input tensor.;
+    repeats(w.): the number of times to repeat the input tensor along each dimension.;
   }];
 
   let arguments = (ins
@@ -2502,7 +3346,16 @@ def Top_RepeatOp: Top_Op<"Repeat"> {
 def Top_AbsOp : Top_Op<"Abs"> {
   let summary = " Abs operator";
   let description = [{
-     y = abs(x)
+    1.Op Introduction
+    computes the absolute value of each element in the input tensor.
+
+    2.Math formula
+    ```math
+            output = abs(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -2514,7 +3367,16 @@ def Top_AbsOp : Top_Op<"Abs"> {
 def Top_ModOp : Top_Op<"Mod"> {
   let summary = " Mod operator";
   let description = [{
-     f(x, y) = Mod(x, y)
+    1.Op Introduction
+    a mathematical operation that calculates the remainder of the division of two numbers (or tensors) element-wise.
+
+    2.Math formula
+    ```math
+            f(x, y) = Mod(x, y)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs
@@ -2526,8 +3388,18 @@ def Top_ModOp : Top_Op<"Mod"> {
 def Top_PReluOp : Top_Op<"PRelu"> {
   let summary = "PRelu operator";
   let description = [{
-     f(x) = slope * x   for x < 0
-     f(x) = x           for x >= 0
+    1.Op Introduction
+    Parametric Rectified Linear Unit is an activation function.
+
+    2.Math formula
+    ```math
+            f(x) = slope * x   for x < 0
+            f(x) = x           for x >= 0
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    slope(w.): the activation function for negative input values.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2540,7 +3412,24 @@ def Top_PReluOp : Top_Op<"PRelu"> {
 def Top_InterpOp : Top_Op<"Interp"> {
   let summary = "Interp operation";
   let description = [{
-     Perform linear upsample on input
+    1.Op Introduction
+    Perform linear upsample on input.
+
+    2.Math formula
+    ```math
+            H' = H x scale_h
+            W' = W x scale_w
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    target_shape(w.): the desired shape of the output tensor after interpolation.;
+
+    4.attributes
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    coord_mode: whether the coordinates are normalized (ranging from 0 to 1) or absolute (based on pixel indices).;
+    scale_h: the scaling factor for the height (number of rows) of the input tensor.;
+    scale_w: the scaling factor for the width (number of columns) of the input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2557,7 +3446,21 @@ def Top_InterpOp : Top_Op<"Interp"> {
 def Top_MeshGridOp : Top_Op<"MeshGrid"> {
   let summary = "MeshGrid operation";
   let description = [{
-     torch mesh grid operation
+    1.Op Introduction
+    torch mesh grid operation
+
+    2.Math formula
+    ```math
+            X[i] = x[i mod m] for i = 0, 1, ..., m · n-1
+            Y[i] = y[j // m] for j = 0, 1, ..., m · n-1
+    ```
+    where X, Y will have shape (m, n);
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    is_reverse: whether the subtraction operation is performed in reverse order.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
@@ -2572,19 +3475,24 @@ def GridSamplerPadModeAttr: AnyStrAttrOf<["zeros","border","reflection"]>;
 def Top_GridSamplerOp : Top_Op<"GridSampler"> {
   let summary = "GridSampler operation";
   let description = [{
-     Given an input and a flow-field grid, computes the output
-     using input values and pixel locations from grid.
+    1.Op Introduction
+    Given an input and a flow-field grid, computes the output
+    using input values and pixel locations from grid.
 
-      Attributes:
-        `mode`              : required, interpolation mode to calculate output values, Int attribute [0, 1]
-                                representing 'bilinear' | 'nearest' respectively.
-        `padding_mode`      : required, padding mode for outside grid values, Int attribute [0, 1, 2],
-                                representing 'zero' | 'boundary' | 'reflection' respectively.
-        `align_corners`     : required, Geometrically, we consider the pixels of the input as
-                                squares rather than points. If set to True, the extrema (-1 and 1) are
-                                considered as referring to the center points of the input's corner pixels.
-                                If set to False, they are instead considered as referring to the corner
-                                points of the input's corner pixels, making the sampling more resolution agnostic.
+    2.Math formula
+    ```math
+            output[N, C, H', W'] = input[C, grid[N, H', W', 1], grid[N, H', W', 0]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grid(w.): The flow-field grid tensor that defines the pixel locations for sampling.;
+
+    4.attributes
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    padding_mode: padding mode for outside grid values, Int attribute [0, 1, 2],
+                                representing 'zero' | 'boundary' | 'reflection't.;
+    align_corners: whether to align the corners of the input and output tensors.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2600,7 +3508,33 @@ def Top_GridSamplerOp : Top_Op<"GridSampler"> {
 def Top_ReduceOp : Top_Op<"Reduce", [ScalarProducer]>{
   let summary = "Reduce operation";
   let description = [{
+    1.Op Introduction
     Computes the mean/max/prod/sum of the input tensor's element along the provided axes.
+
+    2.Math formula
+    ```math
+            1.Sum
+                output[i_1, i_2, i_3,..., i_k] = \sum{j in A}input[i_1, i_2,..., j, ..., i_n]
+                where ( A ) is the set of axes to reduce.
+            2.Mean
+                output[i_1, i_2, i_3,..., i_k] = 1 / count (\sum{j in A}input[i_1, i_2,..., j, ..., i_n])
+                where count is the number of elements being summed along the axes ( A ).
+            3.Max
+                output[i_1, i_2, i_3,..., i_k] = max{j in A}input[i_1, i_2,..., j, ..., i_n]
+            4.Product
+                output[i_1, i_2, i_3,..., i_k] = \prod_{j=1}^m(input[i_1, i_2,..., i_k, j])
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grid(w.): The flow-field grid tensor that defines the pixel locations for sampling.;
+
+    4.attributes
+    axes: the dimensions (axes) of the input tensor that should be squeezed (removed).;
+    keepdims: whether to retain the dimensions of the input tensor in the output.
+               If true, will have the same number of dimensions as the input tensor.;
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    is_scalar: whether the addition operation is performed with scalar values or tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2616,7 +3550,27 @@ def Top_ReduceOp : Top_Op<"Reduce", [ScalarProducer]>{
 def Top_ArgOp : Top_Op<"Arg"> {
   let summary = "Arg operation";
   let description = [{
+    1.Op Introduction
     Computes the indices of the min/max/ of the input tensor's element along the provided axis.
+
+    2.Math formula
+    ```math
+        maximum operation:
+            output_max[i_1, i_2, i_3,..., i_k] = arg max{j}(input[i_1, i_2,..., i_k, j])
+        minimum operation:
+            output_min[i_1, i_2, i_3,..., i_k] = arg min{j}(input[i_1, i_2,..., i_k, j])
+    ```
+    where, ( j ) represents the index along the specified axis.
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
+    keepdims: whether to retain the dimensions of the input tensor in the output.
+               If true, will have the same number of dimensions as the input tensor.;
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    select_last_index: select the last index of the minimum or maximum value when multiple  along the specified axis.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2635,7 +3589,19 @@ def Top_ArgOp : Top_Op<"Arg"> {
 def Top_PowOp : Top_Op<"Pow"> {
   let summary = "Pow operation";
   let description = [{
-    output = input ^ n
+    1.Op Introduction
+    computes the element-wise power of an input tensor raised to a specified exponent.
+
+    2.Math formula
+    ```math
+            output = input ^ n
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    exponent: the power to which each element of the input tensor will be raised.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2648,7 +3614,19 @@ def Top_PowOp : Top_Op<"Pow"> {
 def Top_Pow2Op : Top_Op<"Pow2"> {
   let summary = "Pow2 operation";
   let description = [{
-    output = n ^ input
+    1.Op Introduction
+    computes the result of raising a constant value ( n ) to the power of each element in the input tensor.
+
+    2.Math formula
+    ```math
+            output = n ^ input
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
   }];
   let arguments = (ins
     F64Attr: $const_val,
@@ -2661,7 +3639,16 @@ def Top_Pow2Op : Top_Op<"Pow2"> {
 def Top_Pow3Op : Top_Op<"Pow3"> {
   let summary = "Pow3 operation";
   let description = [{
-    output = x1 ^ x2
+    1.Op Introduction
+    computes the element-wise power of two input tensors.
+
+    2.Math formula
+    ```math
+            output = input1 ^ input2
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs
@@ -3473,20 +4460,20 @@ def Top_ScaleLutOp: Top_Op<"ScaleLut"> {
   let summary = "Scale by lut operator";
 
   let description = [{
+    1.Op Introduction
     Performs scale on input, y = input * scale + bias.
 
-    Inputs:
-      `input`           : required, the input activation tensor.
+    2.Math formula
+    ```math
+            output = input * scale + bias
+    ```
+    3.activation and weight
+    input(act.): input tensor;
 
-    Attributes:
-      `scale`   : each channel scale
-      `bias`    : each channel bias
-      `sign`    : if output is signed
-
-
-    Result:
-      `output`          : result tensor.
-
+    4.attributes
+    scale: each channel scale.;
+    bias: each channel bias.;
+    sign: if output is signed.;
   }];
 
   let arguments = (
@@ -3503,20 +4490,20 @@ def Top_SwapChannelOp: Top_Op<"SwapChannel"> {
   let summary = "swap channel operator, normally RGB <=> BGR";
 
   let description = [{
+    1.Op Introduction
     Swap Channel on input.
 
-    Inputs:
-      `input`           : required, the input activation tensor.
+    2.Math formula
+    ```math
+            output(h, w, c) = input(h, w, channel_order)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
 
-    Attributes:
-      `channel_order`   : required, channel swap order
-      `quant`           : required, a QuantParam struct attributes.
-      `name`            : required, name for calibration, comparing, or debug.
-
-
-    Result:
-      `output`          : result tensor.
-
+    4.attributes
+    channel_order: channel swap order.;
+    quant: a QuantParam struct attributes.;
+    name: name for calibration, comparing, or debug.;
   }];
 
   let arguments = (
@@ -3531,6 +4518,18 @@ def Top_SwapDimInnerOp: Top_Op<"SwapDimInner"> {
   let summary = "if offset is not 0, split there and swap first part and second part of it";
 
   let description = [{
+    1.Op Introduction
+    a dimension-swapping operation based on a specified offset.
+
+    2.Math formula
+    ```math
+            output = SwapDimInner(input, offset)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    offset: the position at which the input tensor is split.;
   }];
 
   let arguments = (
@@ -3545,25 +4544,24 @@ def Top_SwapDimInnerOp: Top_Op<"SwapDimInner"> {
 def Top_ScatterElementsOp: Top_Op<"ScatterElements"> {
   let summary = "ScatterElements op";
   let description = [{
-    ScatterElements takes three inputs data, updates, and indices
-    of the same rank r >= 1 and an optional attribute axis that
-    identifies an axis of data (by default, the outer-most axis,
-    that is axis 0). The output of the operation is produced by
-    creating a copy of the input data, and then updating its
-    value to values specified by updates at specific index
-    positions specified by indices. Its output shape is the
-    same as the shape of data.
+    1.Op Introduction
+    ScatterElements takes three inputs data, updates, and indices of the same rank r >= 1 and an optional attribute axis that
+    identifies an axis of data (by default, the outer-most axis, that is axis 0). The output of the operation is produced by
+    creating a copy of the input data, and then updating its value to values specified by updates at specific index
+    positions specified by indices. Its output shape is the same as the shape of data.
 
-    Inputs:
-      `input`       : Tensor of rank r >= 1.
-      `indices`     : Tensor of int32/int64 indices, of r >= 1 (same rank
-                      as input). All index values are expected to be within
-                      bounds [-s, s-1] along axis of size s. It is an error
-                      if any of the index values are out of bounds..
-      `updates`     : Tensor of rank r >=1 (same rank and shape as indices).
+    2.Math formula
+    ```math
+            output = ScatterElements(input[axis], updates, indices)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+    indices(w.): Tensor of int32/int64 indices, of r >= 1 (same rank as input).
+             All index values are expected to be within bounds [-s, s-1] along axis of size s.
+    updates(w.): Tensor of rank r >=1 (same rank and shape as indices).
 
-    Outputs:
-      `output`      : Tensor of rank r >= 1 (same rank as input).
+    4.attributes
+    axis: the dimension of the input tensor.;
   }];
 
   let arguments = (ins
@@ -3581,17 +4579,23 @@ def Top_ScatterElementsOp: Top_Op<"ScatterElements"> {
 def Top_ScatterNDOp: Top_Op<"ScatterND"> {
   let summary = "ScatterND operator";
   let description = [{
+    1.Op Introduction
     The output of the operation is produced by creating a copy of the input data,
     and then updating its value to values specified by updates at
     specific index positions specified by indices.
 
-    Inputs:
-      `input_data`           : Tensor of rank r >= 1.
-      `indices`      : Tensor of rank q >= 1.
-      `updates`     : Tensor of rank q + r - indices_shape[-1] - 1.
-      `reduction`   : Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).
-    Outputs:
-      `output`       : Tensor of rank r >= 1.
+    2.Math formula
+    ```math
+            output = ScatterND(input_data[indices], updates, reduction)
+    ```
+
+    3.activation and weight
+    input_data(act.): input tensor;
+    indices(w.): Tensor of rank q >= 1.;
+    updates(w.): Tensor of rank q + r - indices_shape[-1] - 1.;
+
+    4.attributes
+    reduction: Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).;
   }];
 
   let arguments = (ins
@@ -3607,20 +4611,38 @@ def Top_ScatterNDOp: Top_Op<"ScatterND"> {
 def Top_RoiAlignOp: Top_Op<"RoiAlign"> {
   let summary = "RoiAlign operator";
   let description = [{
+    1.Op Introduction
     RoiAlign consumes an input tensor X and region of interests
     (rois) to apply pooling across each RoI.
 
-    Inputs:
-      `input`         : Input data tensor, 4-D tensor.
-      `rois`          : RoIs (Regions of Interest) to pool over;
-                        rois is 2-D input of shape (num_rois, 4)
-                        given as [[x1, y1, x2, y2], ...]. .
-      `batch_indices` : 1-D tensor with each element denoting
-                        the index of the corresponding image in
-                        the batch.
+    2.Math formula
+    ```math
+        1.ROI coordinate scaling[x1, y1, x2, y2]
+            x_scaled = x x spatial_scale
+            y_scaled = y x spatial_scale
+        2.Delineation of grid sub-areas
+            bin_height = (y2_scaled - y1_scaled) / output_height
+            bin_width  = (x2_scaled - x1_scaled) / output_width
+        3.align_corners -> true
+            x_grid = x1_scaled + (i + 0.5) x bin_width
+            y_grid = y1_scaled + (j + 0.5) x bin_height
+        output = RoiAlign(input, rois, output_height, output_width, sampling_ratio, spatial_scale, align_corners)
+    ```
 
-    Outputs:
-      `output`        : RoI pooled output, 4-D tensor.
+    3.activation and weight
+    input(act.): input tensor(4D);
+    rois(w.): RoIs (Regions of Interest) to pool over.;
+          rois is 2-D input of shape (num_rois, 4) given as [[x1, y1, x2, y2], ...].;
+
+    4.attributes
+    mode: the type of comparison to be performed between the two input tensors.
+          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
+    output_height: the height of the output feature maps.;
+    output_width: the width of the output feature maps.;
+    sampling_ratio: the number of sampling points in each direction (height and width).;
+    spatial_scale: a scaling factor that maps the input coordinates (RoIs) to the input feature map's scale.;
+    align_corners: whether to align the corners of the input and output tensors.;
+    batch_indices: 1-D tensor with each element denoting the index of the corresponding image in the batch.
   }];
 
   let arguments = (ins
@@ -3640,20 +4662,40 @@ def Top_RoiAlignOp: Top_Op<"RoiAlign"> {
 def Top_RoiExtractorOp: Top_Op<"RoiExtractor"> {
   let summary = "RoiExtractor operator";
   let description = [{
+    1.Op Introduction
     RoiExtractor consumes an input tensor X and region of interests
     (rois) to apply pooling across each RoI.
 
-    Inputs:
-      `inputs`        : #num_levels of Input data tensor, each 4-D tensor.
-      `rois`          : RoIs (Regions of Interest) to pool over;
-                        rois is 2-D input of shape (num_rois, 4)
-                        given as [[x1, y1, x2, y2], ...]. .
-      `target_lvls` : 1-D tensor with each element denoting
-                        the index of the corresponding image in
-                        the batch.
+    2.Math formula
+    ```math
+        1.ROI coordinate scaling[x1, y1, x2, y2]
+            x_scaled = x x spatial_scale
+            y_scaled = y x spatial_scale
+        2.Delineation of grid sub-areas
+            bin_height = (y2_scaled - y1_scaled) / output_height
+            bin_width  = (x2_scaled - x1_scaled) / output_width
+        3.align_corners -> true
+            x_grid = x1_scaled + (i + 0.5) x bin_width
+            y_grid = y1_scaled + (j + 0.5) x bin_height
+        output_i = RoiAlign(input, rois_i, output_height, output_width, sampling_ratio, spatial_scale, align_corners)
+    ```
 
-    Outputs:
-      `output`        : RoI pooled output, 4-D tensor.
+    3.activation and weight
+    inputs(act.): input tensor;
+    rois(w.): RoIs (Regions of Interest) to pool over.;
+          rois is 2-D input of shape (num_rois, 4) given as [[x1, y1, x2, y2], ...].;
+    target_lvls(w.): 1-D tensor with each element denoting the index of the corresponding image in the batch.;
+
+    4.attributes
+    mode: the type of comparison to be performed between the two input tensors.
+          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
+    num_levels: The number of levels in the feature pyramid.;
+    output_height: the height of the output feature maps.;
+    output_width: the width of the output feature maps.;
+    sampling_ratio: the number of sampling points in each direction (height and width).;
+    spatial_scale: a scaling factor that maps the input coordinates (RoIs) to the input feature map's scale.;
+    align_corners: whether to align the corners of the input and output tensors.;
+    is_static: whether the operation has a static shape.;
   }];
 
   let arguments = (ins
@@ -3680,7 +4722,25 @@ def Top_RoiExtractorOp: Top_Op<"RoiExtractor"> {
 def Top_PreprocessOp: Top_Op<"Preprocess"> {
   let summary = "FusePreprcess, it's just a placeholder op.";
   let description = [{
+    1.Op Introduction
     It may be divided to permute + slice + scale/scale_lut ops.
+
+    2.Math formula
+    ```math
+            output = Scale(Slice(Permute(input,channel_order), resize_dims), scale) - mean.
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    quant_mode: the mode or method used for quantization during the requantization operation.;
+    customization_format: custom format for the input data.;
+    channel_order: The order of color channels in the input tensor.;
+    resize_dims: resize the input tensor' dimensions.;
+    scale: each channel scale.;
+    mean: mean values to subtract from each channel for normalization.;
+    sign: if output is signed.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -3698,7 +4758,28 @@ def Top_PreprocessOp: Top_Op<"Preprocess"> {
 def Top_MeanStdScaleOp: Top_Op<"MeanStdScale"> {
   let summary = "MeanStdScale, it's for preprocess.";
   let description = [{
+    1.Op Introduction
     for preprocess, do multiplier&rshift quantize.
+
+    2.Math formula
+    ```math
+            output = (input - mean) / std * scale + zero_points
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    quant_mode: the mode or method used for quantization during the requantization operation.;
+    customization_format: custom format for the input data.;
+    channel_order: The order of color channels in the input tensor.;
+    scale: each channel scale.;
+    mean: mean values to subtract from each channel for normalization.;
+    sign: if output is signed.;
+    std: standard deviation values for each channel.;
+    zero_points: zero point values for each channel.;
+    resize_dims: resize the input tensor' dimensions.;
+    rounding_mode: The rounding method to use during quantization.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -3719,9 +4800,25 @@ def Top_MeanStdScaleOp: Top_Op<"MeanStdScale"> {
 def Top_DepackRawOp: Top_Op<"DepackRaw"> {
   let summary = "Postprocess for raw image.";
   let description = [{
+    1.Op Introduction
     postprocess raw image from 4 channels to mixed pixel pattern,
     remove padding first if padded before,
     then for each channel depack to 2 * 2 image block.
+
+    2.Math formula
+    ```math
+            output = Depack(RemovePadding(input, padding_h, padding_w), channel_order)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    padding_h: The height of the padding.;
+    padding_w: The width of the padding.;
+    white_level: The maximum intensity value for white in the image data.;
+    black_level: The minimum intensity value for black in the image data.;
+    channel_order: The order of color channels in the input tensor.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -3737,16 +4834,21 @@ def Top_DepackRawOp: Top_Op<"DepackRaw"> {
 def Top_RetinaFaceDetectionOp : Top_Op<"RetinaFaceDetection"> {
   let summary = "RetinaFaceDetection operator";
   let description = [{
+    1.Op Introduction
     Perform retinaface detection on feature map
 
-    Inputs:
-      `inputs`                  : required, input tensors
-      `nms_threshold`           : required, nms threshold
-      `confidence_threshold`    : required, classification confidence threshold
-      `keep_topk`               : required, after nms, keep bbox num
+    2.Math formula
+    ```math
+            output = NMS(Filter(Detect(inputs), confidence_threshold), nms_threshold, keep_topk)
+    ```
 
-    Result:
-      `output`          : result tensor.
+    3.activation and weight
+    inputs(act.): input tensor;
+
+    4.attributes
+    nms_threshold: nms threshold.;
+    confidence_threshold: classification confidence threshold.;
+    keep_topk: after nms, keep bbox num.;
   }];
   let arguments = (
     ins Variadic<AnyTensor>:$inputs,
@@ -3760,10 +4862,23 @@ def Top_RetinaFaceDetectionOp : Top_Op<"RetinaFaceDetection"> {
 def Top_EluOp : Top_Op<"Elu"> {
   let summary = "Elu operation";
   let description = [{
+    1.Op Introduction
     Elu takes input data (Tensor<T>) and an argument alpha,
     and produces one output data (Tensor<T>)
     where the function f(x) = alpha * (e^x - 1) for x <= 0, f(x) = x for x > 0,
     is applied to the data tensor elementwise.
+
+    2.Math formula
+    ```math
+            output[i] = alpha * (e ^ input - 1) if input[i] < 0 && input[i] == 0
+                        input[i]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    alpha: scalar.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -3775,10 +4890,15 @@ def Top_EluOp : Top_Op<"Elu"> {
 def Top_YieldOp : Top_BaseOp<"Yield", [Terminator, HasParent<"IfOp, LoopOp">]> {
   let summary = "Yield operation";
   let description = [{
+    1.Op Introduction
     The `top.Yield` operation represents a return operation within an subgraph.
     The operation takes variable number of operands and produces no results.
-
     This operation is not part of the standard and was added to assist tpu-mlr.
+
+    2.Math formula
+    ```math
+            output = Yield(operands)
+    ```
   }];
 
   let arguments = (ins Variadic<AnyTensor>:$operands);
@@ -3788,7 +4908,17 @@ def Top_IfOp : Top_Op<"If"> {
   let summary = "if operation";
   let hasVerifier = 1;
   let description = [{
+    1.Op Introduction
     If conditional
+
+    2.Math formula
+    ```math
+            output = then_branch if cond is true
+                     else_branch if cond is false
+    ```
+
+    3.activation and weight
+    cond(act.): which branch of execution to follow.;
   }];
   let arguments = (ins AnyTensor:$cond);
   let results = (outs Variadic<AnyTensor>:$output);
@@ -3980,8 +5110,21 @@ def Top_LoopOp : Top_Op<"Loop"> {
 def Top_ShapeOp : Top_Op<"Shape"> {
   let summary = "Shape operation";
   let description = [{
-    Takes a tensor as input and outputs an 1D int tensor containing the shape
-     of the input tensor.
+    1.Op Introduction
+    Takes a tensor as input and outputs an 1D int tensor containing the shape of the input tensor.
+
+    2.Math formula
+    ```math
+            output = shape(input[d1, d2,...,dn])
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    start(w.): the ending indices for slicing along each axis.;
+    step: the step sizes for slicing along each axis.;
+    end: the ending indices for slicing along each axis.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -4500,7 +5643,64 @@ def Top_MaskRCNNRPNGetBboxesOp: Top_Op<"MaskRCNN_RPNGetBboxes"> {
   let summary = "RPN_get_bboxes gen by PPL";
 
   let description = [{
-    MaskRCNN_RPN_get_bboxes, the sub-block with 1st NMS between RPN_head and 1st ROIAlign
+    1.Op Introduction
+    MaskRCNN_RPN_get_bboxes, the sub-block with 1st NMS between RPN_head and 1st ROIAlign.
+
+    2.Math formula
+    ```math
+        1.Score Filtering
+            valid_indices_i = cls_scores_i > conf_threshold (for each level i)
+        2.Bounding Box Adjustment
+            adjusted_bboxes_i = anchors_i + bbox_preds_i * delta2bbox_std_i + delta2bbox_mean_i
+        3.IoU Calculation
+            iou = calculate_iou(adjusted_bboxes_i, ground_truth_boxes)
+        4.NMS Application
+            final_bboxes = nms(adjusted_bboxes_i[valid_indices_i], iou_threshold)
+        5.final output
+            output = concatenate(final_bboxes)
+    ```
+    3.activation and weight
+    cls_scores_0: the class scores0 for each anchor;
+    cls_scores_1: the class scores1 for each anchor;
+    cls_scores_2: the class scores2 for each anchor;
+    cls_scores_3: the class scores3 for each anchor;
+    cls_scores_4: the class scores4 for each anchor;
+    bbox_preds_0: the bounding box0 predictions;
+    bbox_preds_1: the bounding box1 predictions;
+    bbox_preds_2: the bounding box2 predictions;
+    bbox_preds_3: the bounding box3 predictions;
+    bbox_preds_4: the bounding box4 predictions;
+    max_shape: the maximum dimensions of the output bounding boxes.;
+    mlvl_anchors_0: the multi-level anchors0 used for generating bounding box proposals.;
+    mlvl_anchors_1: the multi-level anchors1 used for generating bounding box proposals.;
+    mlvl_anchors_2: the multi-level anchors2 used for generating bounding box proposals.;
+    mlvl_anchors_3: the multi-level anchors3 used for generating bounding box proposals.;
+    mlvl_anchors_4: the multi-level anchors4 used for generating bounding box proposals.;
+
+    4.attribute
+    delta2bbox_mean_0: the means used to normalize the bounding box0 deltas for the corresponding feature levels.;
+    delta2bbox_mean_1: the means used to normalize the bounding box1 deltas for the corresponding feature levels.;
+    delta2bbox_mean_2: the means used to normalize the bounding box2 deltas for the corresponding feature levels.;
+    delta2bbox_mean_3: the means used to normalize the bounding box3 deltas for the corresponding feature levels.;
+    delta2bbox_std_0: the standard deviations used to normalize the bounding box0 deltas for the corresponding feature levels.;
+    delta2bbox_std_1: the standard deviations used to normalize the bounding box1 deltas for the corresponding feature levels.;
+    delta2bbox_std_2: the standard deviations used to normalize the bounding box2 deltas for the corresponding feature levels.;
+    delta2bbox_std_3: the standard deviations used to normalize the bounding box3 deltas for the corresponding feature levels.;
+    delta2bbox_max_scalar_c: a scalar value;
+    iou_threshold: filtering out low-quality proposals during NMS.;
+    conf_threshold: a confidence score threshold.;
+    MAX_LENGTH_STATIC_STRECHED: the maximum length for the output list of bounding boxes after processing.;
+    NUM_INDEXES: the number of indexes.;
+    NUM_CLASSES: the number of classes.;
+    CHANNEL_RPN_BBOXES: the number of channels for the bounding box predictions.;
+    CHANNEL_RPN_SCORES: the number of channels used for the class score predictions.;
+    NMS_PRE: the number of proposals to be considered before NMS.;
+    HARDWARE_FACTOR_TOPK: how many top proposals to keep.;
+    NMS_MAX_LENGTH: the maximum number of boxes after NMS.;
+    TOPK_ONNX_NMS: the number of top proposals when using ONNX format for NMS.;
+    H_RPN_DYN_MAX: the maximum height for the dynamic RPN output.;
+    W_RPN_DYN_MAX: the maximum width for the dynamic RPN output.;
+    MAX_PER_IMG: the maximum number of proposals to be generated per image.;
   }];
 
   let arguments = (ins
