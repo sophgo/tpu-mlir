@@ -2672,7 +2672,16 @@ def Top_Pow3Op : Top_Op<"Pow3"> {
 def Top_SqrtOp : Top_Op<"Sqrt"> {
   let summary = "Sqrt operation";
   let description = [{
+    1.Op Introduction
     Computes the square root of the input tensor's element.
+
+    2.Math formula
+    ```math
+            output = Sqrt(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -2683,7 +2692,24 @@ def Top_SqrtOp : Top_Op<"Sqrt"> {
 def Top_WhereOp : Top_Op<"Where"> {
   let summary = "Where operation";
   let description = [{
+    1.Op Introduction
     Return elements, either from X or Y, depending on condition.
+
+    2.Math formula
+    ```math
+            output = tbrn if condition else fbrn
+    ```
+
+    3.activation and weight
+    cond(act.): a tensor that serves as the condition for selecting elements from the true branch (tbrn) or the false branch (fbrn).;
+    tbrn(w.): the tensor that will be selected when the condition is true.;
+    fbrn(w.): the tensor that will be selected when the condition is false.;
+
+    4.attributes
+    x_is_const: the tensor for the true branch (tbrn) is a constant.;
+    y_is_const: the tensor for the false branch (fbrn) is a constant.;
+    x_const_val: the constant value to be used for the true branch if tbrn is not provided or is constant.;
+    y_const_val: the constant value to be used for the false branch if fbrn is not provided or is constant.;
   }];
   let arguments = (ins
     AnyTensor:$cond,
@@ -2701,7 +2727,26 @@ def Top_WhereOp : Top_Op<"Where"> {
 def Top_MaskedFillOp : Top_Op<"MaskedFill"> {
   let summary = "MaskedFill operation";
   let description = [{
+    1.Op Introduction
     Return elements, either from X or Const, depending on condition.
+
+    2.Math formula
+    ```math
+                     brn                if inversed and cond=0
+            output = brn + const_val    if inversed and cond!=0
+                     brn + const_val    if !inversed and cond!=0
+                     brn                if !inversed and cond=0
+    ```
+        If inversed is true, the operation fills the elements of brn where cond is zero with const_val, while leaving other elements unchanged.
+        If inversed is false, the operation fills the elements of brn where cond is non-zero with const_val, while leaving other elements unchanged.
+
+    3.activation and weight
+    cond(act.): a tensor that serves as the condition for selecting elements from the true branch (tbrn) or the false branch (fbrn).;
+    brn(w.): the input tensor from which elements will be selected based on the condition provided by the cond tensor.;
+
+    4.attributes
+    inversed: whether the mask should be inverted.;
+    const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
   }];
   let arguments = (ins
     AnyTensor:$cond,
@@ -2716,8 +2761,23 @@ def Top_MaskedFillOp : Top_Op<"MaskedFill"> {
 def Top_CompareOp : Top_Op<"Compare", [SupportConstant]> {
   let summary = "Compare operation";
   let description = [{
+    1.Op Introduction
     Returns the tensor resulted from performing the compare
-    operation elementwise on the input tensors A and B
+    operation elementwise on the input tensors A and B.
+
+    2.Math formula
+    ```math
+            output[i] = 1 if lhs[i] mode rhs[i] is true
+                        0 otherwise
+    ```
+
+    3.activation and weight
+    lhs(act.): the first input tensor used as the left operand in the element-wise comparison.;
+    rhs(act.): the second input tensor used as the right operand in the element-wise comparison.;
+
+    4.attributes
+    mode: the type of comparison to be performed between the two input tensors.
+          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
   }];
   let arguments = (ins
     AnyTensor:$lhs,
@@ -2731,8 +2791,25 @@ def Top_CompareOp : Top_Op<"Compare", [SupportConstant]> {
 def Top_CompareConstOp : Top_Op<"CompareConst", [ScalarProducer, ScalarConsumer]> {
   let summary = "CompareConst operation";
   let description = [{
+    1.Op Introduction
     Returns the tensor resulted from performing the compare
-    operation elementwise on the input tensors A and Const
+    operation elementwise on the input tensors A and Const.
+
+    2.Math formula
+    ```math
+            output[i] = 1 if input[i] mode const_val is true
+                        0 otherwise
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    mode: the type of comparison to be performed between the two input tensors.
+          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
+    const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    inversed: whether the mask should be inverted.;
+    is_scalar: whether the addition operation is performed with scalar values or tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2748,7 +2825,16 @@ def Top_CompareConstOp : Top_Op<"CompareConst", [ScalarProducer, ScalarConsumer]
 def Top_ErfOp : Top_Op<"Erf"> {
   let summary = "Erf operation";
   let description = [{
+    1.Op Introduction
     Computes the error function of the given input tensor element-wise.
+
+    2.Math formula
+    ```math
+            output = Erf(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -2759,7 +2845,21 @@ def Top_ErfOp : Top_Op<"Erf"> {
 def Top_HardSigmoidOp : Top_Op<"HardSigmoid"> {
   let summary = "HardSigmoid operation";
   let description = [{
-    hardsigmoid(x; alpha, beta) := min(max(alpha*x + beta, 0), 1)
+    1.Op Introduction
+    a piecewise linear function to the input tensor element-wise.
+    hardsigmoid(x; alpha, beta) := min(max(alpha*x + beta, 0), 1).
+
+    2.Math formula
+    ```math
+            output[i] = min(max(alpha * input[i] + beta, 0), 1)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    alpha: scalar;
+    beta: scalar;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2772,7 +2872,16 @@ def Top_HardSigmoidOp : Top_Op<"HardSigmoid"> {
 def Top_HardSwishOp : Top_Op<"HardSwish"> {
   let summary = "HardSwish operation";
   let description = [{
+    1.Op Introduction
     hardswish(x) := x * hardsigmoid(x; 1/6, 0.5)
+
+    2.Math formula
+    ```math
+            output[i] = input[i] * min(max(1/6 * input[i] + 0.5, 0), 1)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -2783,7 +2892,20 @@ def Top_HardSwishOp : Top_Op<"HardSwish"> {
 def Top_SwishOp : Top_Op<"Swish"> {
   let summary = "Swish operation";
   let description = [{
+    1.Op Introduction
     hardswish(x) := x * sigmoid(x * beta)
+
+    2.Math formula
+    ```math
+            output[i] = input[i] * sigmoid(input[i] * beta)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    beta: scalar;
+    round_mode: how values are rounded during the conversion from higher precision to lower precision.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2796,7 +2918,30 @@ def Top_SwishOp : Top_Op<"Swish"> {
 def Top_PriorBoxOp : Top_Op<"PriorBox"> {
   let summary = "PriorBox operation";
   let description = [{
+    1.Op Introduction
     Intended for use with MultiBox detection method to generate prior.
+
+    2.Math formula
+    ```math
+            output[i] = input(x, y, w, h) i in [0, num_priors]
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor;
+
+    4.attributes
+    min_size: the minimum size of the prior boxes.;
+    max_size: the maximum size of the prior boxes.;
+    aspect_ratios: A list of aspect ratios for the generated prior boxes.;
+    variance: adjust the predicted boxes during the training process.;
+    clip: whether the prior boxes should be clipped to the image boundaries.;
+    step_h: The vertical step size for generating prior boxes.;
+    step_w: The horizontal step size for generating prior boxes.;
+    img_h: The height of the input image.;
+    img_w: The width of the input image.;
+    offset: A value used to offset the prior boxes from their calculated positions.;
+    num_priors: The number of prior boxes to be generated for each location in the feature map.;
+    use_default_aspect_ratio: whether to use a default aspect ratio (1.0);
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
@@ -2820,7 +2965,36 @@ def Top_PriorBoxOp : Top_Op<"PriorBox"> {
 def Top_DetectionOutputOp : Top_Op<"DetectionOutput"> {
   let summary = "DetectionOutput operation";
   let description = [{
-    Intended for use with MultiBox detection method to generate prior.
+    1.Op Introduction
+    takes the predicted bounding boxes, class scores, and other relevant information to produce the final detection results.
+
+    2.Math formula
+    ```math
+        1.Raw Detection Output
+            raw_output = {(b_i, c_i) | i = 1, 2,...,N}
+            b_i is the bounding box coordinates, c_i is the i-th confidence score.
+        2.Apply Confidence threshold
+            filtered_output = {(b_i, c_i) | c_i >= confidence_threshold}
+        3.Non-Maximum Suppression(NMS)
+            nms_output = NMS(filtered_output, nms_threshold)
+        4.Top K detections
+            output = top_k(nms_output, top_k)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor;
+
+    4.attributes
+    num_classes: total number of classes, including the background class.;
+    background_label_id: background class, differentiate between detected objects and the background.;
+    nms_threshold: The threshold used for Non-Maximum Suppression (NMS).;
+    top_k: The maximum number of predictions to be considered for each image.;
+    code_type: the encoding type for the bounding box coordinates.;
+    keep_top_k: The number of top scoring detections to keep after applying NMS.;
+    confidence_threshold: The minimum confidence score required for a detection to be considered valid.;
+    share_location: whether the bounding box locations are shared across different classes.;
+    variance_encoded_in_target: whether the variance for bounding box predictions is encoded in the target.;
+    eta: adjusts the confidence scores during NMS.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
@@ -2841,7 +3015,36 @@ def Top_DetectionOutputOp : Top_Op<"DetectionOutput"> {
 def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
   let summary = "YoloDetection operator";
   let description = [{
-    Perform yolo detection on feature map
+    1.Op Introduction
+    Perform yolo detection on feature map.
+
+    2.Math formula
+    ```math
+        1.Feature Map output
+            raw_predictions = {(b_i, c_i, p_i) | i = 1, 2,...,N}
+            b_i is the bounding box coordinates, c_i is the i-th class score, p_i is the i-th obj score.
+        2.Apply Objectness Threshold
+            filtered_predictions = {(b_i, c_i, p_i) | p_i >= obj_threshold}
+        3.Non-Maximum Suppression(NMS)
+            nms_output = NMS(filtered_predictions, nms_threshold)
+        4.Top K Detections
+            output = top_k(nms_output, keep_topk)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor;
+
+    4.attributes
+    net_input_h: The height of the input image.;
+    net_input_w: The width of the input image;
+    nms_threshold: The threshold used for Non-Maximum Suppression (NMS).;
+    obj_threshold: The minimum confidence score required for an object detection to be considered valid.;
+    keep_topk: The maximum number of detections to keep after applying NMS.;
+    anchors: A list of anchor box dimensions.;
+    version: The version of the YOLO model being used.;
+    class_num: The number of classes that the YOLO model can predict.;
+    num_boxes: The number of bounding boxes that the model predicts for each grid cell in the feature map.;
+    agnostic_nms: whether to use class-agnostic NMS.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
@@ -2863,7 +3066,22 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
 def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear"> {
   let summary = "Linear quantize operation";
   let description = [{
+    1.Op Introduction
     QuantizeLinear(x) := saturate ((x / y_scale) + y_zero_point)
+
+    2.Math formula
+    ```math
+        output[i] = saturate((input[i] / y_scale[j]) + y_zero_point[j])
+    ```
+    i indexes the elements of the input tensor, and j corresponds to the specific dimension or channel.
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    y_scale: Each element to a specific output channel or dimension, determining how much to scale the input values.;
+    y_zero_point: an array of zero points used in the quantization process.;
+    axis: the dimension of the input tensor.;
   }];
 
   let arguments = (ins
@@ -2879,7 +3097,27 @@ def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear"> {
 def Top_LayerNormOp : Top_Op<"LayerNorm"> {
   let summary = "LayerNorm operation";
   let description = [{
+    1.Op Introduction
     layer normalization
+
+    2.Math formula
+    ```math
+        1.Normalization
+            mean = 1 / H \sum{j=1, H} input[j]
+            var = 1 / H \sum{j=1, H} (input[j] - mean) ^ 2
+        2.Layer Normalized Output
+            output[i] = weight * (input[i] - mean) / sprt(var + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    normalized_shape: the shape of the input tensor that will be normalized.;
+    axis: the dimension of the input tensor.;
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2898,10 +3136,24 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
 def Top_IndexPutOp : Top_Op<"IndexPut"> {
   let summary = "Index_put_ operation";
   let description = [{
-    if accumulate
-      input[indices] += values
-    else
-      input[indices] = values
+    1.Op Introduction
+    update specific elements of an input tensor at given indices with new values.
+
+    2.Math formula
+    ```math
+        if accumulate
+            input[indices] += values
+        else
+            input[indices] = values
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    indices(w.): the indices of the elements in the input tensor that should be updated.;
+    values(w.): the new values that will replace the existing values in the input tensor at the specified indices.;
+
+    4.attributes
+    accumulate: whether the operation should accumulate values at the specified indices or replace them.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2917,7 +3169,21 @@ def Top_IndexPutOp : Top_Op<"IndexPut"> {
 def Top_InstanceNormOp : Top_Op<"InstanceNorm"> {
   let summary = "Instance Norm operation";
   let description = [{
-    instance normalization
+    1.Op Introduction
+    instance normalization.
+
+    2.Math formula
+    ```math
+        output[i] = weight * (input[i] - mean) / sprt(var + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2933,7 +3199,24 @@ def Top_InstanceNormOp : Top_Op<"InstanceNorm"> {
 def Top_GroupNormOp : Top_Op<"GroupNorm"> {
   let summary = "GroupNorm operation";
   let description = [{
+    1.Op Introduction
     group normalization
+
+    2.Math formula
+    ```math
+            mean_g = 1 / ((C / num_groups) * H * W) \sum{i=1, C/num_groups} \sum{j=1, H} \sum{k=1, W} input_{n,c,j,k}
+            var_g = 1 / ((C / num_groups) * H * W) \sum{i=1, C/num_groups} \sum{j=1, H} \sum{k=1, W} (input_{n,c,j,k} - mean_g) ^ 2
+            output_{n,c,j,k} = weight * (input_{n,c,j,k} - mean_g) / sqrt(var_g + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    num_groups: the number of groups to divide the input channels into for normalization.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2951,7 +3234,22 @@ def Top_GroupNormOp : Top_Op<"GroupNorm"> {
 def Top_PixelNormOp : Top_Op<"PixelNorm"> {
   let summary = "PixelNorm operation";
   let description = [{
+    1.Op Introduction
     pixel normalization (normalize along c-axis)
+
+    2.Math formula
+    ```math
+            norm_{n, i, j} = sqrt(1 /C \sum{c=1, C}input_{n, c, i, j} ^ 2) + eps
+            output_{n, c, i, j} = weight * input_{n, c, i, j} / norm_{n, i, j} + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -2968,20 +3266,29 @@ def Top_ProposalOp: Top_Op<"Proposal"> {
   let summary = "Proposal operator";
 
   let description = [{
-    Inputs:
-      `inputs`                : required, the input activation tensor.
+    1.Op Introduction
+    generate candidate bounding boxes primarily in object detection tasks.
 
-    Attributes:
-      `net_input_h`           : required, net input height
-      `net_input_w`           : required, net input width
-      `feat_stride`           : required, anchor box stride size
-      `anchor_base_size`      : required, anchor box base size
-      `rpn_obj_threshold`     : required, obj threshold
-      `rpn_nms_threshold`     : required, nms threshold for generate proposal boxes
-      `rpn_nms_post_top_n`    : required, keep num boxes after nms
+    2.Math formula
+    ```math
+        1.anchor box generation and regression
+            a_i = (x + \delta(x), y + \delta(y), w * e ^ \delta(w), e ^ \delta(h))
+        2.obj score
+            s_i = sigmoid(output_ModelPredict(a_i))
+        3.Final select output
+            output = NMS(s_i)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
 
-    Result:
-      `output`                : result tensor.
+    4.attributes
+    net_input_h: net input height.;
+    net_input_w: net input width.;
+    feat_stride: anchor box stride size.;
+    anchor_base_size: anchor box base size.;
+    rpn_obj_threshold: obj threshold.;
+    rpn_nms_threshold: nms threshold for generate proposal boxes.;
+    rpn_nms_post_top_n: keep num boxes after nms.;
   }];
 
   let arguments = (
@@ -3003,18 +3310,20 @@ def Top_ROIPoolingOp : Top_Op<"ROIPooling">  {
   let summary = "ROIPooling operator";
 
   let description = [{
+    1.Op Introduction
     Max pooling on ROI.
 
-    Inputs:
-      `inputs`          : required, the input activation tensor.
+    2.Math formula
+    ```math
+            output(pooled_h, pooled_w) = max_pooling(input(h, w) in ROI(spatial_scale))
+    ```
+    3.activation and weight
+    input(act.): input tensor;
 
-    Attributes:
-      `pooled_h`        : required, pooled output height.
-      `pooled_w`        : required, pooled output width
-      `spatial_scale`   : required, spatial_scale
-
-    Result:
-      `output`          : result tensor.
+    4.attribute
+    pooled_h: pooled output height.;
+    pooled_w: pooled output width.;
+    spatial_scale: adjust the ROI coordinates.;
   }];
 
   let arguments = (
@@ -3031,7 +3340,20 @@ def Top_ROIPoolingOp : Top_Op<"ROIPooling">  {
 def Top_DequantizeLinearOp : Top_Op<"DequantizeLinear"> {
   let summary = "Linear dequantize operation";
   let description = [{
+    1.Op Introduction
     DequantizeLinear(x) := (x - x_zero_point) * x_scale
+
+    2.Math formula
+    ```math
+            output = (input - x_zero_point) * x_scale
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attribute
+    x_scale: convert the quantized values back original;
+    x_zero_point: adjust the zero point of quantized values, represents4 that corresponds to the original value of zero.;
+    axis: the dimension of the input tensor.;
   }];
 
   let arguments = (ins
@@ -3048,18 +3370,22 @@ def Top_FrcnDetectionOp : Top_Op<"FrcnDetection"> {
   let summary = "Faster rcnn detection operator";
 
   let description = [{
+    1.Op Introduction
+    outputs the detected classes and their corresponding bounding boxes,
+    filtering results based on specified thresholds.
 
-    Inputs:
-      `inputs`          : required, input tensors.
+    2.Math formula
+    ```math
+            output = FrcnDetection(inputs, class_num, obj_threshold, nms_threshold, keep_topk)
+    ```
+    3.activation and weight
+    inputs(act.): input tensor;
 
-    Attributes:
-      `class_num`       : required, detection class num.
-      `obj_threshold`   : required, object threshold.
-      `nms_threshold`   : required, nms threshold.
-      `keep_topk`       : required, keep top k.
-
-    Result:
-      `output`          : result tensor.
+    4.attributes
+    class_num: detection class num.;
+    obj_threshold: object threshold.;
+    nms_threshold: nms threshold.;
+    keep_topk: keep top k.;
   }];
 
   let arguments = (
@@ -3090,19 +3416,21 @@ def Top_CscOp: Top_Op<"Csc"> {
   let summary = "Color space convert for model's inputs";
 
   let description = [{
+    1.Op Introduction
     Performs csc operation on inputs.
 
-    Inputs:
-      `input`          : required, input tensors.
+    2.Math formula
+    ```math
+            output = Csc(input, pixel_format, y_align, w_align, channel_align)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
 
-    Attributes:
-      `pixel_format`    : required, pixel format type.
-      `y_align`         : width alignment of channel y.
-      `w_align`         : width alignment of channel uv.
-      `channel_align`   : alignment of channel.
-
-    Result:
-      `output`          : result tensor.
+    4.attribute
+    pixel_format: required, pixel format type.;
+    y_align: width alignment of channel y.;
+    w_align: width alignment of channel uv.;
+    channel_align: alignment of channel.;
   }];
 
   let arguments = (
@@ -3121,7 +3449,16 @@ def Top_LutOp: Top_Op<"Lut">{
   let summary = "Lut operator";
 
   let description = [{
+    1.Op Introduction
     lookup table in index [0-255], y[i] = table(x[i])
+
+    2.Math formula
+    ```math
+            output[i] = table(input[i])
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+    table(w.): map input values to corresponding output values.;
   }];
 
   let arguments = (ins

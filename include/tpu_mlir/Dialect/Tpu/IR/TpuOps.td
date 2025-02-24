@@ -1705,7 +1705,19 @@ def Tpu_LutOp: Tpu_Op<"Lut", [
   let summary = "Lut operator";
 
   let description = [{
+    1.Op Introduction
     lookup table in index [0-255], y[i] = table(x[i])
+
+    2.Math formula
+    ```math
+            output[i] = table(input[i])
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+    table(w.): map input values to corresponding output values.;
+
+    4.attributes
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -3441,7 +3453,25 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Where operator";
   let description = [{
+    1.Op Introduction
     Return elements, either from X or Y, depending on condition.
+
+    2.Math formula
+    ```math
+            output = tbrn if condition else fbrn
+    ```
+
+    3.activation and weight
+    cond(act.): a tensor that serves as the condition for selecting elements from the true branch (tbrn) or the false branch (fbrn).;
+    tbrn(w.): the tensor that will be selected when the condition is true.;
+    fbrn(w.): the tensor that will be selected when the condition is false.;
+    buffer(w.): temporary storage of intermediate results or states during the LSTM computation.;
+
+    4.attributes
+    x_is_const: the tensor for the true branch (tbrn) is a constant.;
+    y_is_const: the tensor for the false branch (fbrn) is a constant.;
+    x_const_val: the constant value to be used for the true branch if tbrn is not provided or is constant.;
+    y_const_val: the constant value to be used for the false branch if fbrn is not provided or is constant.;
   }];
   let arguments = (ins
     AnyRankedTensor:$cond,
@@ -3461,7 +3491,26 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "MaskedFill operator";
   let description = [{
-    Return elements, either from X or Y, depending on condition.
+    1.Op Introduction
+    Return elements, either from X or Const, depending on condition.
+
+    2.Math formula
+    ```math
+                     brn                if inversed and cond=0
+            output = brn + const_val    if inversed and cond!=0
+                     brn + const_val    if !inversed and cond!=0
+                     brn                if !inversed and cond=0
+    ```
+        If inversed is true, the operation fills the elements of brn where cond is zero with const_val, while leaving other elements unchanged.
+        If inversed is false, the operation fills the elements of brn where cond is non-zero with const_val, while leaving other elements unchanged.
+
+    3.activation and weight
+    cond(act.): a tensor that serves as the condition for selecting elements from the true branch (tbrn) or the false branch (fbrn).;
+    brn(w.): the input tensor from which elements will be selected based on the condition provided by the cond tensor.;
+
+    4.attributes
+    inversed: whether the mask should be inverted.;
+    const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
   }];
   let arguments = (ins
     AnyRankedTensor:$cond,
@@ -3479,8 +3528,23 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Compare operator";
   let description = [{
+    1.Op Introduction
     Returns the tensor resulted from performing the compare
-    operation elementwise on the input tensors A and B
+    operation elementwise on the input tensors A and B.
+
+    2.Math formula
+    ```math
+            output[i] = 1 if lhs[i] mode rhs[i] is true
+                        0 otherwise
+    ```
+
+    3.activation and weight
+    lhs(act.): the first input tensor used as the left operand in the element-wise comparison.;
+    rhs(act.): the second input tensor used as the right operand in the element-wise comparison.;
+
+    4.attributes
+    mode: the type of comparison to be performed between the two input tensors.
+          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
   }];
   let arguments = (ins
     AnyRankedTensor:$lhs,
@@ -3497,8 +3561,24 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "CompareConst operator";
   let description = [{
+    1.Op Introduction
     Returns the tensor resulted from performing the compare
-    operation elementwise on the input tensors A and Const
+    operation elementwise on the input tensors A and Const.
+
+    2.Math formula
+    ```math
+            output[i] = 1 if input[i] mode const_val is true
+                        0 otherwise
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    mode: the type of comparison to be performed between the two input tensors.
+          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
+    const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    inversed: whether the mask should be inverted.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3516,7 +3596,30 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
   ]> {
   let summary = "LayerNorm operation";
   let description = [{
+    1.Op Introduction
     layer normalization
+
+    2.Math formula
+    ```math
+        1.Normalization
+            mean = 1 / H \sum{j=1, H} input[j]
+            var = 1 / H \sum{j=1, H} (input[j] - mean) ^ 2
+        2.Layer Normalized Output
+            output[i] = weight * (input[i] - mean) / sprt(var + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+    // cv18xx
+    table(w.): store a lookup table that may assist in optimizing the matching process.;
+    mantissa_table(w.): stores a table of mantissa values used in calculations to improve precision or to handle specific numerical representations.;
+
+    4.attributes
+    normalized_shape: the shape of the input tensor that will be normalized.;
+    axis: the dimension of the input tensor.;
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3537,7 +3640,27 @@ def Tpu_IndexPutOp : Tpu_Op<"IndexPut", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "IndexPut operation";
   let description = [{
+    1.Op Introduction
     aten::index_put_
+    update specific elements of an input tensor at given indices with new values.
+
+    2.Math formula
+    ```math
+        if accumulate
+            input[indices] += values
+        else
+            input[indices] = values
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    indices(w.): the indices of the elements in the input tensor that should be updated.;
+    values(w.): the new values that will replace the existing values in the input tensor at the specified indices.;
+    //for accumulate is True
+    buffer(w.): temporary storage of intermediate results or states during the LSTM computation.;
+
+    4.attributes
+    accumulate: whether the operation should accumulate values at the specified indices or replace them.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3557,7 +3680,24 @@ def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
   ]> {
   let summary = "InstanceNorm operation";
   let description = [{
-    instance normalization
+    1.Op Introduction
+    instance normalization.
+
+    2.Math formula
+    ```math
+        output[i] = weight * (input[i] - mean) / sprt(var + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+    // cv18xx
+    table(w.): store a lookup table that may assist in optimizing the matching process.;
+    mantissa_table(w.): stores a table of mantissa values used in calculations to improve precision or to handle specific numerical representations.;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3579,7 +3719,27 @@ def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
   ]> {
   let summary = "GroupNorm operation";
   let description = [{
+    1.Op Introduction
     group normalization
+
+    2.Math formula
+    ```math
+            mean_g = 1 / ((C / num_groups) * H * W) \sum{i=1, C/num_groups} \sum{j=1, H} \sum{k=1, W} input_{n,c,j,k}
+            var_g = 1 / ((C / num_groups) * H * W) \sum{i=1, C/num_groups} \sum{j=1, H} \sum{k=1, W} (input_{n,c,j,k} - mean_g) ^ 2
+            output_{n,c,j,k} = weight * (input_{n,c,j,k} - mean_g) / sqrt(var_g + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+    // cv18xx
+    table(w.): store a lookup table that may assist in optimizing the matching process.;
+    mantissa_table(w.): stores a table of mantissa values used in calculations to improve precision or to handle specific numerical representations.;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    num_groups: the number of groups to divide the input channels into for normalization.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3636,7 +3796,26 @@ def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
   ]> {
   let summary = "PixelNorm operation";
   let description = [{
+    1.Op Introduction
     pixel normalization (normalize along c-axis)
+
+    2.Math formula
+    ```math
+            norm_{n, i, j} = sqrt(1 /C \sum{c=1, C}input_{n, c, i, j} ^ 2) + eps
+            output_{n, c, i, j} = weight * input_{n, c, i, j} / norm_{n, i, j} + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    weight(w.): weight tensor;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+    // cv18xx
+    table(w.): store a lookup table that may assist in optimizing the matching process.;
+    mantissa_table(w.): stores a table of mantissa values used in calculations to improve precision or to handle specific numerical representations.;
+
+    4.attributes
+
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3681,19 +3860,24 @@ def Tpu_CopyOp: Tpu_Op<"Copy"> {
 def Tpu_CscOp : Tpu_Op<"Csc"> {
   let summary = "Color space convert for model's inputs";
   let description = [{
-    Inputs:
-      `input`           : required, the input activation memref.
+    1.Op Introduction
+    Performs csc operation on inputs.
 
-    Attributes:
+    2.Math formula
+    ```math
+            output = Csc(input, pixel_format, y_align, w_align, channel_align)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
 
-      `y_align`         : width alignment of channel y.
-      `w_align`         : width alignment of channel uv.
-      `channel_align`   : alignment of channel.
-      `pixel_type`      : required, 1--i420 2--nv12 3--nv21
-
-
-    Result:
-      `output`          : result tensor.
+    4.attribute
+    channel_order: the order of the color channels in the output tensor.(e.g., RGB, BGR).;
+    pixel_format: required, pixel format type.;
+    aligned:  whether the pixel data should be aligned.;
+    pixel_type: the type of pixel data.;
+    y_align: width alignment of channel y.;
+    w_align: width alignment of channel uv.;
+    channel_align: alignment of channel.;
   }];
   let arguments = (
     ins AnyRankedTensor:$input,
@@ -3715,18 +3899,28 @@ def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
   let summary = "scale lut operator.";
 
   let description = [{
-    Inputs:
-      `input`          : required, the variadic activation memref.
-      `table`          : required, the lookup table
-      `sign`           : if output is signed
-
-    Result:
-      `output`          : result tensor.
+    1.Op Introduction
+    Performs scale on input, y = input * scale + bias.
 
     Interfaces or Traits:
       `NoSideEffect`
       `TpuOpCommonInterface`    : support common TPU TG Op interface.
       `TpuTGOpCodegenInterface` : support generate TPU instuctions.
+
+
+    2.Math formula
+    ```math
+            output = input * scale + bias
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+    table(w.): store a lookup table that may assist in optimizing the matching process.;
+
+    4.attributes
+    scale: each channel scale.;
+    bias: each channel bias.;
+    sign: if output is signed.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (
@@ -3746,19 +3940,23 @@ def TPU_SwapChannelOp: Tpu_Op<"SwapChannel" ,[
   let summary = "SwapChannel operator.";
 
   let description = [{
-    Inputs:
-      `input`           : required, the input activation memref.
-
-    Attributes:
-      `channel_order`   : required, channel swap order
-
-    Result:
-      `output`          : result tensor.
+    1.Op Introduction
+    Swap Channel on input.
 
     Interfaces or Traits:
       `NoSideEffect`
       `TpuOpCommonInterface`    : support common TPU TG Op interface.
       `TpuTGOpCodegenInterface` : support generate TPU instuctions.
+
+    2.Math formula
+    ```math
+            output(h, w, c) = input(h, w, channel_order)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    channel_order: channel swap order.;
   }];
 
   let arguments = (
@@ -3775,6 +3973,19 @@ def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
   let summary = "SwapDimInner operator.";
 
   let description = [{
+    1.Op Introduction
+    a dimension-swapping operation based on a specified offset.
+
+    2.Math formula
+    ```math
+            output = SwapDimInner(input, offset)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    offset: the position at which the input tensor is split.;
+
   }];
 
   let arguments = (
@@ -3790,25 +4001,26 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
   DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "ScatterElements op";
   let description = [{
-    ScatterElements takes three inputs data, updates, and indices
-    of the same rank r >= 1 and an optional attribute axis that
-    identifies an axis of data (by default, the outer-most axis,
-    that is axis 0). The output of the operation is produced by
-    creating a copy of the input data, and then updating its
-    value to values specified by updates at specific index
-    positions specified by indices. Its output shape is the
-    same as the shape of data.
+    1.Op Introduction
+    ScatterElements takes three inputs data, updates, and indices of the same rank r >= 1 and an optional attribute axis that
+    identifies an axis of data (by default, the outer-most axis, that is axis 0). The output of the operation is produced by
+    creating a copy of the input data, and then updating its value to values specified by updates at specific index
+    positions specified by indices. Its output shape is the same as the shape of data.
 
-    Inputs:
-      `input`       : Tensor of rank r >= 1.
-      `indices`     : Tensor of int32/int64 indices, of r >= 1 (same rank
-                      as input). All index values are expected to be within
-                      bounds [-s, s-1] along axis of size s. It is an error
-                      if any of the index values are out of bounds..
-      `updates`     : Tensor of rank r >=1 (same rank and shape as indices).
+    2.Math formula
+    ```math
+            output = ScatterElements(input[axis], updates, indices)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+    indices(w.): Tensor of int32/int64 indices, of r >= 1 (same rank as input).
+             All index values are expected to be within bounds [-s, s-1] along axis of size s.
+    updates(w.): Tensor of rank r >=1 (same rank and shape as indices).
+    indices_coeff(w.): a scaling or modifying factor for the indices.;
+    buffer(w.): temporary storage of intermediate results or states during the LSTM computation.;
 
-    Outputs:
-      `output`      : Tensor of rank r >= 1 (same rank as input).
+    4.attributes
+    axis: the dimension of the input tensor.;
   }];
 
   let arguments = (ins
@@ -3829,18 +4041,24 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
   DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "ScatterND operator";
   let description = [{
+    1.Op Introduction
     The output of the operation is produced by creating a copy of the input data,
     and then updating its value to values specified by updates at
     specific index positions specified by indices.
 
-    Inputs:
-      `input_data`           : Tensor of rank r >= 1.
-      `indices`      : Tensor of rank q >= 1.
-      `updates`     : Tensor of rank q + r - indices_shape[-1] - 1.
-      `reduction`   : Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).
+    2.Math formula
+    ```math
+            output = ScatterND(input_data[indices], updates, reduction)
+    ```
 
-    Outputs:
-      `output`       : Tensor of rank r >= 1.
+    3.activated and weight
+    input_data(act.): input tensor;
+    indices(w.): Tensor of rank q >= 1.;
+    updates(w.): Tensor of rank q + r - indices_shape[-1] - 1.;
+    buffer(w.): temporary storage of intermediate results or states during the LSTM computation.;
+
+    4.attributes
+    reduction: Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).;
   }];
 
   let arguments = (ins
@@ -3857,20 +4075,37 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
 def Tpu_RoiAlignOp: Tpu_Op<"RoiAlign"> {
   let summary = "RoiAlign operator";
   let description = [{
+    1.Op Introduction
     RoiAlign consumes an input tensor X and region of interests
     (rois) to apply pooling across each RoI.
 
-    Inputs:
-      `input`         : Input data tensor, 4-D tensor.
-      `rois`          : RoIs (Regions of Interest) to pool over;
-                        rois is 2-D input of shape (num_rois, 4)
-                        given as [[x1, y1, x2, y2], ...]. .
-      `batch_indices` : 1-D tensor with each element denoting
-                        the index of the corresponding image in
-                        the batch.
+    2.Math formula
+    ```math
+        1.ROI coordinate scaling[x1, y1, x2, y2]
+            x_scaled = x x spatial_scale
+            y_scaled = y x spatial_scale
+        2.Delineation of grid sub-areas
+            bin_height = (y2_scaled - y1_scaled) / output_height
+            bin_width  = (x2_scaled - x1_scaled) / output_width
+        3.align_corners -> true
+            x_grid = x1_scaled + (i + 0.5) x bin_width
+            y_grid = y1_scaled + (j + 0.5) x bin_height
+        output = RoiAlign(input, rois, output_height, output_width, sampling_ratio, spatial_scale, align_corners)
+    ```
 
-    Outputs:
-      `output`        : RoI pooled output, 4-D tensor.
+    3.activated and weight
+    input(act.): input tensor(4D);
+    rois: RoIs (Regions of Interest) to pool over;
+          rois is 2-D input of shape (num_rois, 4) given as [[x1, y1, x2, y2], ...].
+
+    4.attributes
+    mode: the type of comparison to be performed between the two input tensors.
+          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
+    output_height: the height of the output feature maps.;
+    output_width: the width of the output feature maps.;
+    sampling_ratio: the number of sampling points in each direction (height and width).;
+    spatial_scale: a scaling factor that maps the input coordinates (RoIs) to the input feature map's scale.;
+    align_corners: whether to align the corners of the input and output tensors.;
   }];
 
   let arguments = (ins
@@ -3931,7 +4166,37 @@ def Tpu_RoiExtractorOp: Tpu_Op<"RoiExtractor", [
 def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
   let summary = "YoloDetection operator";
   let description = [{
-    Perform yolo detection on feature map
+    1.Op Introduction
+    Perform yolo detection on feature map.
+
+    2.Math formula
+    ```math
+        1.Feature Map output
+            raw_predictions = {(b_i, c_i, p_i) | i = 1, 2,...,N}
+            b_i is the bounding box coordinates, c_i is the i-th class score, p_i is the i-th obj score.
+        2.Apply Objectness Threshold
+            filtered_predictions = {(b_i, c_i, p_i) | p_i >= obj_threshold}
+        3.Non-Maximum Suppression(NMS)
+            nms_output = NMS(filtered_predictions, nms_threshold)
+        4.Top K Detections
+            output = top_k(nms_output, keep_topk)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor;
+    buffer(w.): temporary storage of intermediate results or states during the LSTM computation.;
+
+    4.attributes
+    net_input_h: The height of the input image.;
+    net_input_w: The width of the input image;
+    nms_threshold: The threshold used for Non-Maximum Suppression (NMS).;
+    obj_threshold: The minimum confidence score required for an object detection to be considered valid.;
+    keep_topk: The maximum number of detections to keep after applying NMS.;
+    anchors: A list of anchor box dimensions.;
+    version: The version of the YOLO model being used.;
+    class_num: The number of classes that the YOLO model can predict.;
+    num_boxes: The number of bounding boxes that the model predicts for each grid cell in the feature map.;
+    agnostic_nms: whether to use class-agnostic NMS.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -3954,7 +4219,38 @@ def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
 def Tpu_DetectionOutputOp : Tpu_Op<"DetectionOutput"> {
   let summary = "DetectionOutput operation";
   let description = [{
+    1.Op Introduction
     Intended for use with MultiBox detection method to generate prior.
+
+    2.Math formula
+    ```math
+        1.Raw Detection Output
+            raw_output = {(b_i, c_i) | i = 1, 2,...,N}
+            b_i is the bounding box coordinates, c_i is the i-th confidence score.
+        2.Apply Confidence threshold
+            filtered_output = {(b_i, c_i) | c_i >= confidence_threshold}
+        3.Non-Maximum Suppression(NMS)
+            nms_output = NMS(filtered_output, nms_threshold)
+        4.Top K detections
+            output = top_k(nms_output, top_k)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor;
+    buffer(w.): temporary storage of intermediate results or states during the LSTM computation.;
+
+    4.attributes
+    num_classes: total number of classes, including the background class.;
+    background_label_id: background class, differentiate between detected objects and the background.;
+    nms_threshold: The threshold used for Non-Maximum Suppression (NMS).;
+    top_k: The maximum number of predictions to be considered for each image.;
+    code_type: the encoding type for the bounding box coordinates.;
+    keep_top_k: The number of top scoring detections to keep after applying NMS.;
+    confidence_threshold: The minimum confidence score required for a detection to be considered valid.;
+    share_location: whether the bounding box locations are shared across different classes.;
+    variance_encoded_in_target: whether the variance for bounding box predictions is encoded in the target.;
+    eta: adjusts the confidence scores during NMS.;
+    onnx_nms: configuration for ONNX compatibility (default is 1).;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
@@ -4758,7 +5054,90 @@ def Tpu_MaskRCNNRPNGetBboxesOp: Tpu_Op<"MaskRCNN_RPNGetBboxes", [
   let summary = "RPN_get_bboxes gen by PPL";
 
   let description = [{
-    MaskRCNN_RPN_get_bboxes, the sub-block with 1st NMS between RPN_head and 1st ROIAlign
+    1.Op Introduction
+    MaskRCNN_RPN_get_bboxes, the sub-block with 1st NMS between RPN_head and 1st ROIAlign.
+
+    2.Math formula
+    ```math
+        1.Score Filtering
+            valid_indices_i = cls_scores_i > conf_threshold (for each level i)
+        2.Bounding Box Adjustment
+            adjusted_bboxes_i = anchors_i + bbox_preds_i * delta2bbox_std_i + delta2bbox_mean_i
+        3.IoU Calculation
+            iou = calculate_iou(adjusted_bboxes_i, ground_truth_boxes)
+        4.NMS Application
+            final_bboxes = nms(adjusted_bboxes_i[valid_indices_i], iou_threshold)
+        5.final output
+            output = concatenate(final_bboxes)
+    ```
+    3.activation and weight
+    cls_scores_0: the class scores0 for each anchor;
+    cls_scores_1(act.): the class scores1 for each anchor;
+    cls_scores_2: the class scores2 for each anchor;
+    cls_scores_3: the class scores3 for each anchor;
+    cls_scores_4: the class scores4 for each anchor;
+    bbox_preds_0: the bounding box0 predictions;
+    bbox_preds_1: the bounding box1 predictions;
+    bbox_preds_2: the bounding box2 predictions;
+    bbox_preds_3: the bounding box3 predictions;
+    bbox_preds_4: the bounding box4 predictions;
+    max_shape: the maximum dimensions of the output bounding boxes.;
+    mlvl_anchors_0: the multi-level anchors0 used for generating bounding box proposals.;
+    mlvl_anchors_1: the multi-level anchors1 used for generating bounding box proposals.;
+    mlvl_anchors_2: the multi-level anchors2 used for generating bounding box proposals.;
+    mlvl_anchors_3: the multi-level anchors3 used for generating bounding box proposals.;
+    mlvl_anchors_4: the multi-level anchors4 used for generating bounding box proposals.;
+    batch_mlvl_scores: the class scores for all anchors across multiple feature levels in a batch.;
+    batch_mlvl_anchors: the multi-level anchors generated for the entire batch.;
+    batch_mlvl_rpn_bbox_pred: the bounding box predictions for each anchor across multiple levels in the batch.;
+    batch_mlvl_proposals: the proposed bounding boxes generated for the entire batch after processing;
+    batch_mlvl_ids: the ids associated with the proposals for each anchor across the batch.;
+    glb_buffer_tmp_scores_stretched: the stretched class scores for processing before NMS.;
+    glb_buffer_ranked_scores: The buffer stores the ranked class scores after sorting the top proposals.;
+    glb_buffer_rank_inds_int32: the indices of the ranked scores in 32-bit integer format;
+    glb_buffer_rank_inds_u32: stores the indices in 32-bit unsigned integer format.;
+    glb_topk_inds: This buffer holds the indices of the top K proposals after the ranking process.;
+    glb_buffer_gather_1: gathering specific data from the ranked scores or proposals.;
+    glb_buffer_gather_2: Similar to glb_buffer_gather_1;
+    glb_buffer_rpn_bbox_permuted: the permuted bounding box predictions.;
+    glb_buffer_nonzero: non-zero entries from the scores or proposals.;
+    result_valid_ind: the valid indices of the resulting proposals after processing.;
+    glb_buffer_gather_boxes: gather the final bounding boxes from the proposals after NMS.;
+    glb_buffer_gather_scores: holds the final scores associated with the gathered bounding boxes.;
+    keep_3nch: maintain a specific format or structure for the gathered results(three-channel format).;
+    keep_u32_1h: manage the format or structure of the output in a specific way.;
+    glb_buffer_boxes: the final bounding boxes ready for output after all processing steps.;
+    glb_buffer_scores: the final class scores corresponding to the output bounding boxes.;
+    glb_buffer_nms: This buffer is used during the Non-Maximum Suppression process to manage overlapping proposals.;
+    gather_mlvl_proposals: gather proposals from multiple levels for final processing.;
+    gather_mlvl_scores: gather scores from multiple levels for the final proposal selection.;
+    gather_mlvl_ids: gather ids from multiple levels to track proposals across the batch.;
+    glb_buffer_result_list: the final list of results.;
+
+    4.attribute
+    delta2bbox_mean_0: the means used to normalize the bounding box0 deltas for the corresponding feature levels.;
+    delta2bbox_mean_1: the means used to normalize the bounding box1 deltas for the corresponding feature levels.;
+    delta2bbox_mean_2: the means used to normalize the bounding box2 deltas for the corresponding feature levels.;
+    delta2bbox_mean_3: the means used to normalize the bounding box3 deltas for the corresponding feature levels.;
+    delta2bbox_std_0: the standard deviations used to normalize the bounding box0 deltas for the corresponding feature levels.;
+    delta2bbox_std_1: the standard deviations used to normalize the bounding box1 deltas for the corresponding feature levels.;
+    delta2bbox_std_2: the standard deviations used to normalize the bounding box2 deltas for the corresponding feature levels.;
+    delta2bbox_std_3: the standard deviations used to normalize the bounding box3 deltas for the corresponding feature levels.;
+    delta2bbox_max_scalar_c: a scalar value;
+    iou_threshold: filtering out low-quality proposals during NMS.;
+    conf_threshold: a confidence score threshold.;
+    MAX_LENGTH_STATIC_STRECHED: the maximum length for the output list of bounding boxes after processing.;
+    NUM_INDEXES: the number of indexes.;
+    NUM_CLASSES: the number of classes.;
+    CHANNEL_RPN_BBOXES: the number of channels for the bounding box predictions.;
+    CHANNEL_RPN_SCORES: the number of channels used for the class score predictions.;
+    NMS_PRE: the number of proposals to be considered before NMS.;
+    HARDWARE_FACTOR_TOPK: how many top proposals to keep.;
+    NMS_MAX_LENGTH: the maximum number of boxes after NMS.;
+    TOPK_ONNX_NMS: the number of top proposals when using ONNX format for NMS.;
+    H_RPN_DYN_MAX: the maximum height for the dynamic RPN output.;
+    W_RPN_DYN_MAX: the maximum width for the dynamic RPN output.;
+    MAX_PER_IMG: the maximum number of proposals to be generated per image.;
   }];
 
   let arguments = (ins
