@@ -38,11 +38,11 @@ setup(
     extras_require={
         "all": [
             # torch
-            "torch==2.0.1",
-            "torchvision==0.15.2",
+            "torch==2.1.0",
+            "torchvision==0.16.0",
             # onnx
-            "onnx==1.14.0",
-            "onnxruntime==1.15.1",
+            "onnx==1.14.1",
+            "onnxruntime==1.16.3",
             "onnxsim==0.4.17",
             # caffe
             "six==1.16.0",
@@ -54,12 +54,12 @@ setup(
             "paddle2onnx==1.0.8",
         ],
         "torch": [
-            "torch==2.0.1",
-            "torchvision==0.15.2"
+            "torch==2.1.0",
+            "torchvision==0.16.0"
         ],
         "onnx": [
-            "onnx==1.14.0",
-            "onnxruntime==1.15.1",
+            "onnx==1.14.1",
+            "onnxruntime==1.16.3",
             "onnxsim==0.4.17"
         ],
         "caffe": [
