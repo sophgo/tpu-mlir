@@ -471,8 +471,8 @@ def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
     dst_type = mem_type(dst_h13 >> 8)
     # src_type = mem_type(dma_info['src_start_addr'], core_id)
     # dst_type = mem_type(dma_info['dst_start_addr'], core_id)
-    data_type = None
-    if 'src_data_format' in reg_info:
+    data_type = ''
+    if  hasattr(reg_info, 'src_data_format'):
         data_type = DATATYPE(reg_info.src_data_format)
 
     parser = getCdmaFunctionName if engine_id == 4 else getDmaFunctionName

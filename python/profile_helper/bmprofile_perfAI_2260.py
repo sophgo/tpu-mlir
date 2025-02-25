@@ -469,11 +469,6 @@ class BMProfileParserPerfAI(BMProfileParser):
         _monitor = get_sections(monitor)
         _cmd = get_sections(cmd)
 
-        # print("+++++++++++++")
-        # print("cmd", [c[0] for c in _cmd], [[i.inst_id for i in c[1]] for c in _cmd])
-        # print("pmu", [m[0] for m in _monitor], [[i.inst_id for i in c[1]] for c in _monitor])
-        # print("pmu", [str(m[0]) for m in _monitor])
-
         # compatible code for tpu-train: pmu miss sys pair reason unknow
         # force align TODO remove this
         if len(_cmd) == len(_monitor):
@@ -492,6 +487,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                     _monitor[-1] = (max_len,  _monitor[-1][1])
         pairs = self.__match_sections(_monitor, _cmd)
         # des cmd
+        _des_cmd = []
         if des_cmd:
             _des_cmd = get_sections(des_cmd)
             idx, rest_monitor = [], []
@@ -502,6 +498,14 @@ class BMProfileParserPerfAI(BMProfileParser):
             des_pairs = self.__match_sections(rest_monitor, _des_cmd)
             for i, p in enumerate(des_pairs):
                 pairs[idx[i]] = p
+        # print("+++++++++++++")
+        # print("cmd", [c[0] for c in _cmd], [[i.inst_id for i in c[1]] for c in _cmd])
+        # print("des_cmd", [c[0] for c in _des_cmd], [[get_cmd_id(i) for i in c[1]] for c in _des_cmd])
+        # print("pmu", [m[0] for m in _monitor], [[i.inst_id for i in c[1]] for c in _monitor])
+        # for m in _monitor[:9]:
+        #     for i in m[1]:
+        #         print(i.inst_id, i.inst_start_time, i.inst_end_time, i.thread_id if hasattr(i, "thread_id") else '')
+        # print("pmu", [str(m[0]) for m in _monitor])
         return pairs
 
 
@@ -555,7 +559,8 @@ class BMProfileParserPerfAI(BMProfileParser):
         for i, m in enumerate(monitor):
             # if pre and m.inst_id < pre.inst_id and pre.thread_id == 1:
             # compatiable code for cdma pmu receive thread_id == 0
-            if pre and m.inst_id < pre.inst_id and (pre.thread_id == 1 or pre.inst_id - m.inst_id == 1):
+            if pre and m.inst_id < pre.inst_id and (pre.thread_id == 1 \
+                                                    or (pre.inst_id - m.inst_id == 1 and m.inst_id)):
                 monitor[i], monitor[i-1] = monitor[i-1], monitor[i]
             pre = m
 
