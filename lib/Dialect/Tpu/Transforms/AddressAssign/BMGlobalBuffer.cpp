@@ -1187,7 +1187,7 @@ public:
           RankedTensorType::get(buffer_shape, rewriter.getI8Type());
       OpBuilder builder(op->getContext());
       builder.setInsertionPoint(op);
-      auto loc = module::getLocLike(op, "buffer");
+      auto loc = module::getLocLike(op->getResult(1), "buffer");
       auto buf_op = builder.create<tpu::BufferOp>(loc, buffer_type);
       op.setOperand(op.getNumOperands() - 1, buf_op);
       return success();
@@ -1324,15 +1324,16 @@ public:
     int kh = kernel_shape->at(2);
     int kw = kernel_shape->at(3);
     int buffer_size0 = align_up(oc, 32) * ic * kh * kw * 2;
-    buffer_size0     = align_up(buffer_size0, 4096);
-    buffer_size0    += align_up(ic, 32) * oc * kh * kw * 2;
+    buffer_size0 = align_up(buffer_size0, 4096);
+    buffer_size0 += align_up(ic, 32) * oc * kh * kw * 2;
     auto type = module::getStorageType(ConvBwdOp.getInput());
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size0};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
-    if(module::isBM1690Family()){
-      auto buffer = tpu::BufferOp::create(ConvBwdOp, buffer_type, tpu::BufferType::L2);
+    if (module::isBM1690Family()) {
+      auto buffer =
+          tpu::BufferOp::create(ConvBwdOp, buffer_type, tpu::BufferType::L2);
       ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 1, buffer);
-    }else{
+    } else {
       auto buffer = tpu::BufferOp::create(ConvBwdOp, buffer_type);
       ConvBwdOp.setOperand(ConvBwdOp.getNumOperands() - 1, buffer);
     }
@@ -1340,7 +1341,7 @@ public:
   }
   bool shouldPrint(tpu::ConvbwdOp ConvBwdOp) const override { return false; }
 };
-} // namespace
+} // namespace bm168x
 
 class MaskRCNNRPNGetBboxesGlobalBuffer
     : public OpRewritePattern<tpu::MaskRCNNRPNGetBboxesOp> {
