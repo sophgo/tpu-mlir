@@ -987,7 +987,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
                                       : align_up(oc_per_groups, npu_num)) *
             gic * cell_num_h * max_cell_h * cell_num_w * max_cell_w;
         size_t weight_size = groups * weight_size_per_group;
-        auto data_f32 = std::make_shared<std::vector<float>>(weight_size);
+        data_f32->resize(weight_size);
         int ocloops = ceiling_func(oc_per_groups, npu_num);
         for (int group_idx = 0; group_idx < groups; group_idx++) {
           for (int oc = 0; oc < oc_per_groups; oc++) {
