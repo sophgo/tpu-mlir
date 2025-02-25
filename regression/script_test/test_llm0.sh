@@ -4,6 +4,10 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+check_fattention() {
+    grep -q "tpu.FAttention" "$1" || { echo "Error: no fattention!!!" >&2; exit 1; }
+}
+
 # ===------------------------------------------------------------===
 # Qwen
 # ===------------------------------------------------------------===
@@ -26,6 +30,8 @@ model_deploy.py \
   --chip bm1684x \
   --debug \
   --model qwen_block_0.bmodel
+
+check_fattention qwen_block_0_bm1684x_w4bf16_final.mlir
 
 model_runner.py \
   --input ${NNMODELS_PATH}/llm_models/qwen_block_0_input.npz \
@@ -104,6 +110,8 @@ model_deploy.py \
   --test_reference qwen_block_cache_0_top_outputs.npz \
   --tolerance 0.98,0.90 \
   --model qwen_block_cache_0.bmodel
+
+check_fattention qwen_block_cache_0_bm1684x_w4bf16_final.mlir
 
 model_deploy.py \
   --mlir qwen_block_cache_0.mlir \

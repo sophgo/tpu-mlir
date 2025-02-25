@@ -4,6 +4,9 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+check_fattention() {
+    grep -q "tpu.FAttention" "$1" || { echo "Error: no fattention!!!" >&2; exit 1; }
+}
 
 # ===------------------------------------------------------------===
 # Llama2
@@ -33,6 +36,8 @@ model_deploy.py \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_bm1684x_static.bmodel
 
+check_fattention llama2_block_cache_0_bm1684x_w4f16_final.mlir
+
 model_deploy.py \
   --mlir llama2_block_cache_0.mlir \
   --quantize W4F16 \
@@ -45,6 +50,8 @@ model_deploy.py \
   --test_reference llama2_block_cache_0_top_outputs.npz \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_bm1688_1core_static.bmodel
+
+check_fattention llama2_block_cache_0_bm1688_w4f16_final.mlir
 
 model_deploy.py \
   --mlir llama2_block_cache_0.mlir \
@@ -140,6 +147,8 @@ model_deploy.py \
   --debug \
   --model chatglm3_block_0.bmodel
 
+check_fattention chatglm3_block_0_bm1684x_w4f16_final.mlir
+
 model_runner.py \
   --input ${NNMODELS_PATH}/llm_models/chatglm3_block_0_input.npz \
   --model chatglm3_block_0_bm1684x_w4f16_tpu.mlir \
@@ -180,6 +189,8 @@ model_deploy.py \
   --test_reference chatglm3_block_cache_0_top_outputs.npz \
   --tolerance 0.98,0.90 \
   --model chatglm3_block_cache_0_static.bmodel
+
+check_fattention chatglm3_block_cache_0_bm1684x_w8f16_final.mlir
 
 model_deploy.py \
   --mlir chatglm3_block_cache_0.mlir \
