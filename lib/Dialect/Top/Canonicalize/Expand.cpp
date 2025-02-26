@@ -21,7 +21,8 @@ struct ConvertExpand : public OpRewriterPatternEx<ExpandOp> {
 
   LogicalResult matchAndRewriteImpl(ExpandOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!op.getShapeT()) {
+
+    if (!op.getShapeT() || !module::isActive(op.getShapeT())) {
       auto output_shape = module::getShape(op.getOutput());
       auto input_shape = module::getShape(op.getInput());
       auto output_dims = output_shape.size();
