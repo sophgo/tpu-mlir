@@ -47,11 +47,11 @@ class BMProfileParserPerfAI(BMProfileParser):
         self.is_dyn = False
         self.cdma_cord_id = None
 
-    def parse_cdma_cmd(self, file_list):
+    def parse_cdma_cmd(self, file_list, mix_mode):
         print("Parsing...")
         self.cdma_pairs = [[] for _ in range(self.archlib.CDMA_NUM)]
         for infile in file_list:
-            idx = eval(re.search(r'cdma_(\d+)\.profile', infile).group(1))
+            idx = eval(re.search(r'cdma\d*_(\d+)\.profile', infile).group(1))
             # if len(self.cdma_cmd[idx]) == 0:
             #     continue
             blocks = parse_data_blocks(infile)
@@ -67,8 +67,8 @@ class BMProfileParserPerfAI(BMProfileParser):
                 item_list, item_func = blocks_factory.get(
                     block.type.value, (0, lambda x, y: 0))
                 item_func(item_list, block.content)
-            self.cdma_pairs[idx] = self.make_pairs(self.cdma_cmd[idx], monitor_cdma[0],
-                                                   self.archlib.cdma_sys_code, des_cdma, is_cdma=True)
+            self.cdma_pairs[idx] = self.make_pairs(self.cdma_cmd[idx], monitor_cdma[0], self.archlib.cdma_sys_code,
+                                                   des_cdma, is_cdma=True, mix_mode=mix_mode)
 
     def parse_cmd(self, file_list):
         self.bdc_parser = self.archlib.BDCommandParser()
@@ -128,7 +128,12 @@ class BMProfileParserPerfAI(BMProfileParser):
             self.parse_cmd(dyn_cmd)
         self.cdma_cord_id = max(len(self.bd_pairs), len(self.gdma_pairs), len(self.sdma_pairs)) - 1
         if cdma_cmd:
-            self.parse_cdma_cmd(cdma_cmd)
+            self.parse_cdma_cmd(cdma_cmd, self.is_dyn)
+
+        self.omit_sys(self.bd_pairs, self.archlib.bd_sys_code)
+        self.omit_sys(self.gdma_pairs, self.archlib.dma_sys_code)
+        self.omit_sys(self.sdma_pairs, self.archlib.dma_sys_code)
+        self.omit_sys(self.cdma_pairs, self.archlib.cdma_sys_code)
         # else:
         #     logging.fatal("can't find cmd data.".format(in_dir))
         #     exit(-1)
@@ -367,10 +372,12 @@ class BMProfileParserPerfAI(BMProfileParser):
             # TODO tpuv7-runtime/model-runtime/runtime/src/sgruntime_bmodel.cpp:576
                                                     self.archlib.EngineType.VSDMA,
                                                     core_num, self.gdma_parser)
-
-            bd_pair, _ = self.make_pairs(bd_cmd, item.monitor_bd[core_num], self.archlib.bd_sys_code)
-            gdma_pair, _ = self.make_pairs(gdma_cmd, item.monitor_gdma[core_num], self.archlib.dma_sys_code)
-            sdma_pair, _ = self.make_pairs(sdma_cmd, item.monitor_sdma[core_num], self.archlib.dma_sys_code)
+            bd_pair = self.make_pairs([], item.monitor_bd[core_num],
+                                      self.archlib.bd_sys_code, bd_cmd, mix_mode=False)
+            gdma_pair = self.make_pairs([], item.monitor_gdma[core_num],
+                                        self.archlib.dma_sys_code, gdma_cmd, mix_mode=False)
+            sdma_pair = self.make_pairs([], item.monitor_sdma[core_num],
+                                        self.archlib.dma_sys_code, sdma_cmd, mix_mode=False)
 
             if core_num <= len(self.bd_pairs):
                 if item.monitor_bd[core_num]:
@@ -499,7 +506,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             for i, p in enumerate(des_pairs):
                 pairs[idx[i]] = p
         # print("+++++++++++++")
-        # print("cmd", [c[0] for c in _cmd], [[i.inst_id for i in c[1]] for c in _cmd])
+        # print("cmd", [c[0] for c in _cmd], [[get_cmd_id(i) for i in c[1]] for c in _cmd])
         # print("des_cmd", [c[0] for c in _des_cmd], [[get_cmd_id(i) for i in c[1]] for c in _des_cmd])
         # print("pmu", [m[0] for m in _monitor], [[i.inst_id for i in c[1]] for c in _monitor])
         # for m in _monitor[:9]:
@@ -509,7 +516,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         return pairs
 
 
-    def __make_pairs(self, cmd, monitor, sys_code, des_cmd=None):
+    def __make_pairs(self, cmd, monitor, sys_code, des_cmd, mix_mode):
         pairs = []
         if cmd == [] and des_cmd is None:
             for m in monitor:
@@ -522,8 +529,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             if p_monitor is None:
                 continue
             if p_cmd is None:
-                # TODO get cmd from des comand and dyn command here
-                if des_cmd is not None: # mix mode for tpudnn, otherwise bmodel
+                if mix_mode: # mix mode for tpudnn, otherwise bmodel
                     for m in p_monitor:
                         pairs.append({"monitor": m, "cmd": None})
                 continue
@@ -596,10 +602,18 @@ class BMProfileParserPerfAI(BMProfileParser):
                     j1.inst_start_time = j1.inst_start_time - delta_cycle
                     j1.inst_end_time = j1.inst_end_time - delta_cycle
 
-    def __omit_end_sys(self, pairs, sys_code):
+    def omit_sys(self, pairs, sys_code):
+        for p in pairs:
+            self.__omit_sys(p, sys_code, end=True)
+            self.__omit_sys(p, sys_code, end=False) # omit sys at begin
+
+    def __omit_sys(self, pairs, sys_code, end):
         extra_sys = []
         part = []
-        for i in range(len(pairs))[::-1]:
+        idxs = range(len(pairs))
+        if end:
+            idxs = idxs[::-1]
+        for i in idxs:
             if pairs[i]["cmd"] is None:
                 if self.is_dyn:
                     break
@@ -611,34 +625,35 @@ class BMProfileParserPerfAI(BMProfileParser):
                 break
             else:
                 part.append(i)
-            if pairs[i]["monitor"].inst_id == 0:
+            if end and pairs[i]["monitor"].inst_id == 0:
                 extra_sys.extend(part)
                 part = []
+        if not end:
+            extra_sys.extend(part)
+            extra_sys = extra_sys[::-1]
         for i in extra_sys:
-            if len(pairs) > 2:
                 pairs.pop(i)
 
-    def __compatiable_make_pairs(self, cmd, monitor, sys_code, des_cmd=None):
+    def __compatiable_make_pairs(self, cmd, monitor, sys_code, des_cmd, mix_mode):
         pairs = []
         if len(cmd) == len(monitor):
             for c, m in zip(cmd, monitor):
                 pairs.append({"monitor": m, "cmd": c})
         else:
-            pairs = self.__make_pairs(cmd, monitor, sys_code, des_cmd)
+            pairs = self.__make_pairs(cmd, monitor, sys_code, des_cmd, mix_mode)
         return pairs
 
 
-    def make_pairs(self, cmd, monitor, sys_code, des_cmd=None, is_cdma=False):
+    def make_pairs(self, cmd, monitor, sys_code, des_cmd=None, is_cdma=False, mix_mode=True):
         offset = self.archlib.profile_init_cmd_num
         if is_cdma:
             self.__rm_tx_wait_points(monitor)
             # tmp compatiable code cause pio mode pmu inst_id is not correct
-            pairs = self.__compatiable_make_pairs(cmd[offset:], monitor, sys_code, des_cmd) # todo support des
+            pairs = self.__compatiable_make_pairs(cmd[offset:], monitor, sys_code, des_cmd, mix_mode) # todo support des
             return pairs
         else:
             self.__rm_sync_points(monitor, sys_code == self.archlib.bd_sys_code)
-        pairs = self.__make_pairs(cmd[offset:], monitor, sys_code, des_cmd)
-        self.__omit_end_sys(pairs, sys_code)
+        pairs = self.__make_pairs(cmd[offset:], monitor, sys_code, des_cmd, mix_mode)
         return pairs
 
     def __read_dyn_command_data(self, item):

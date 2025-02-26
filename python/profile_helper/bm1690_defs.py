@@ -82,14 +82,16 @@ class DATATYPE(Enum):
     TF32 = 9
 
     def prec(self):
-        if self.value == 0:
+        if self.value == 0 or self.value == 7:
             return 1
-        if self.value == 1 or self.value == 3 or self.value == 5:
+        elif self.value == 1 or self.value == 3 or self.value == 5:
             return 2
-        if self.value == 2 or self.value == 4:
+        elif self.value == 2 or self.value == 4 or self.value == 9:
             return 4
-        if self.value == 6:
+        elif self.value == 6:
             return 0.5
+        elif self.value == 8:
+            return 2.5
 
 
 # CORE_OFFSET_BIT = 28
