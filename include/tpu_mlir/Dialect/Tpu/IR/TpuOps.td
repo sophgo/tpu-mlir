@@ -534,6 +534,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     DefaultValuedAttr<I64Attr, "1">:$group,
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$inserts,
+    OptionalAttr<BoolAttr>:$do_kernel_rotate,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     //new param
@@ -3204,6 +3205,8 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
     paddings: defines how much padding to add before and after the contents of the input tensor for each dimension. ;
     val: the value to be used for padding the input tensor. ;
     mode: the padding mode include constant(Pads with a constant value); reflect(Pads with a reflection of the tensor values); replicate(Pads by replicating the edge values of the tensor).;
+    with_insert_zero : When with_insert_zero is true, it means that the PadOp first performs the insert zero operation, and then conducts the Padding expansion. In this case, the mode can only be PaddingMode::constant. When with_insert_zero is false, the insert zero operation is not performed.
+    inserts : When with_insert_zero is true, the number of zeros inserted between points in the h and w dimensions.
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3214,7 +3217,10 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
     AnyTensorOrNone:$buffer,
     I64ArrayAttr:$paddings,
     DefaultValuedAttr<F64Attr, "0.0">:$val,
-    DefaultValuedAttr<Tpu_PaddingModeAttr, "tpu::PaddingMode::constant">:$mode
+    DefaultValuedAttr<Tpu_PaddingModeAttr, "tpu::PaddingMode::constant">:$mode,
+
+    DefaultValuedAttr<BoolAttr, "false">:$with_insert_zero,
+    OptionalAttr<I64ArrayAttr>:$insert_zeros
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{

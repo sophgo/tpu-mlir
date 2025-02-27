@@ -94,17 +94,21 @@ deconv_attr_t top::DeconvOp::parseParam() {
 deconv_attr_t top::DeconvOp::dynparseParam() {
   auto input_shape = module::getShape(getInput());
   auto filter_shape = module::getShape(getFilter());
-  ASSERT_THIS(input_shape.size() == filter_shape.size());
-  ASSERT_THIS(input_shape.size() > 2);
-  int spacial_rank = input_shape.size() - 2;
+  std::vector<int64_t> in_shape{input_shape.begin(), input_shape.end()};
+
+  ASSERT_THIS(in_shape.size() > 2);
+  int spacial_rank = in_shape.size() - 2;
   if (spacial_rank != getKernelShape().size()) {
     // have 1d to 2d
+    in_shape.push_back(1);
+    spacial_rank = in_shape.size() - 2;
     ASSERT_THIS(module::isUnranked(getOutput()) == false);
     // return;
   }
+  ASSERT_THIS(in_shape.size() == filter_shape.size());
   ASSERT_THIS(getPads().size() == spacial_rank * 2);
   std::vector<int64_t> out_shape;
-  out_shape.push_back(input_shape[0]); // batch size
+  out_shape.push_back(in_shape[0]); // batch size
   bool dyn_weight_reorderd = getDynweightReorderd();
 
   if (module::isWeight(getOperand(1)) || module::isTrain() ||
@@ -117,7 +121,7 @@ deconv_attr_t top::DeconvOp::dynparseParam() {
     out_shape.push_back(filter_shape[1] * getGroup());
   }
 
-  auto input_spacial_shape = llvm::ArrayRef(&input_shape[2], spacial_rank);
+  auto input_spacial_shape = llvm::ArrayRef(&in_shape[2], spacial_rank);
   auto filter_spacial_shape = llvm::ArrayRef(&filter_shape[2], spacial_rank);
   auto pads = module::getI64Array(getPads());
   auto strides = module::getI64Array(getStrides());

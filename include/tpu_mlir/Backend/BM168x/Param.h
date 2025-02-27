@@ -1047,6 +1047,8 @@ typedef struct {
   int type;
   float constant;
   bool is_dynamic;
+  bool with_insert_zero;
+  int insert_zeros[2];
 } pad_param_t;
 
 typedef struct {

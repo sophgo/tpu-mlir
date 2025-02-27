@@ -459,12 +459,34 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   return success();
 }
 
+template <typename T>
+static void filter_rotate(tpu::Conv2DOp &op) {
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
+  auto filter = filterOp.read<T>();
+  auto attr = op.parseParam();
+  std::vector<T> newFilter(filter->size(), 0);
+  for (uint32_t i = 0; i < attr.oc * (attr.ic / attr.groups); ++i) {
+    for (uint32_t j = 0; j < attr.kh; ++j) {
+      for (uint32_t k = 0; k < attr.kw; ++k) {
+        newFilter.at(i * attr.kh * attr.kw + (attr.kh - 1 - j) * attr.kw +
+        (attr.kw - 1 - k)) =  filter->at(i * attr.kh * attr.kw + j * attr.kw + k);
+      }
+    }
+  }
+  filterOp.update(newFilter, newFilter.size());
+}
+
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8) ||
       op.getCoeffMerged())
     return failure();
+  // do kernel_rotate first
+  auto do_kernel_rotate = op.getDoKernelRotate();
+  if (do_kernel_rotate.has_value() && do_kernel_rotate.value()) {
+    filter_rotate<uint8_t>(op);
+  }
   return reorder_8bit(op, rewriter, module::getStorageType(op.getFilter()));
 }
 
@@ -809,6 +831,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();
+  // do kernel_rotate first
+  auto do_kernel_rotate = op.getDoKernelRotate();
+  if (do_kernel_rotate.has_value() && do_kernel_rotate.value()) {
+    filter_rotate<uint16_t>(op);
+  }
   if (module::isWeight(op.getFilter()) == false) {
     return dynamic_weight_reorder_bm1684x(op, rewriter);
   }
@@ -820,6 +847,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float16Type>::matchAndRewriteImpl(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF16())
     return failure();
+  // do kernel_rotate first
+  auto do_kernel_rotate = op.getDoKernelRotate();
+  if (do_kernel_rotate.has_value() && do_kernel_rotate.value()) {
+    filter_rotate<uint16_t>(op);
+  }
   if (module::isWeight(op.getFilter()) == false) {
     return dynamic_weight_reorder_bm1684x(op, rewriter);
   }
@@ -832,13 +864,17 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
   if (!module::getStorageType(op.getFilter()).isF32()) {
     return failure();
   }
+  // do kernel_rotate first
+  auto do_kernel_rotate = op.getDoKernelRotate();
+  if (do_kernel_rotate.has_value() && do_kernel_rotate.value()) {
+    filter_rotate<float>(op);
+  }
   if (module::isWeight(op.getFilter()) == false) {
     return dynamic_weight_reorder_bm1684x(op, rewriter);
   }
   auto attr = op.parseParam();
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();
-  [[maybe_unused]] auto filter_type = module::getStorageType(op.getFilter());
   int input_c = attr.ic;
   int output_c = attr.oc;
   int kh = attr.kh;

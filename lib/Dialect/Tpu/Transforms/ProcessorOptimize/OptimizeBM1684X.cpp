@@ -4921,6 +4921,7 @@ struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
     return success();
   }
 };
+
 // conv => reshape(in0)+reshape(in1)+matmul(right_transpose=true)+reshape(out)
 // matmul extend do_relu from conv
 // condition: kh, kw = ih, iw and pad_shape is [0,0,0,0]
@@ -5093,6 +5094,123 @@ struct ConvToMatMulPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
   }
 };
 
+class DeconvPadPattern
+    : public OpRewriterPatternEx<tpu::DeconvOp> {
+public:
+  // using OpRewriterPatternEx::OpRewriterPatternEx;
+  DeconvPadPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::DeconvOp>(
+            context, "DeconvPadPattern", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::DeconvOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto in_shape = module::getShape(op.getInput());
+    int dims = in_shape.size() - 2;
+    int conv_padding_h_top = 0, conv_padding_w_left = 0;
+    int conv_padding_h_bottom = 0, conv_padding_w_right = 0;
+    int conv_insert_zero_x = 0, conv_insert_zero_y = 0;
+    deconv_attr_t attrs = op.parseParam();
+    conv_padding_h_top = attrs.kh - 1 - attrs.pad_h;
+    conv_padding_w_left = attrs.kw - 1 - attrs.pad_w;
+    conv_padding_h_bottom = attrs.kh - 1 - attrs.pad_h_after;
+    conv_padding_w_right = attrs.kw - 1 - attrs.pad_w_after;
+    auto output_shape_pad = llvm::SmallVector<int64_t>(in_shape);
+    llvm::SmallVector<int64_t> pad_paddings(in_shape.size() * 2, 0);
+    std::vector<int64_t> insert_zeros;
+    if(dims == 3) {
+      // to do convtranspose3d
+      return failure();
+    } else if (dims == 2) {  // for convtranspose2d
+      if(conv_padding_h_top > 15 || conv_padding_h_bottom > 15 ||
+         conv_padding_w_left > 15 || conv_padding_w_right > 15) {
+        attrs.oh = attrs.ih + conv_padding_h_top + conv_padding_h_bottom;
+        attrs.ow = attrs.iw + conv_padding_w_left + conv_padding_w_right;
+        if(attrs.sh > 1) {
+          conv_insert_zero_y = attrs.sh - 1;
+          attrs.oh = attrs.oh + conv_insert_zero_y * (attrs.ih - 1);
+        }
+        if(attrs.sw > 1) {
+          conv_insert_zero_x = attrs.sw - 1;
+          attrs.ow = attrs.ow + conv_insert_zero_x * (attrs.iw - 1);
+        }
+        output_shape_pad[2] = attrs.oh;
+        output_shape_pad[3] = attrs.ow;
+        pad_paddings[2] = conv_padding_h_top;
+        pad_paddings[3] = conv_padding_w_left;
+        pad_paddings[6] = conv_padding_h_bottom;
+        pad_paddings[7] = conv_padding_w_right;
+        insert_zeros.emplace_back(conv_insert_zero_y);
+        insert_zeros.emplace_back(conv_insert_zero_x);
+      } else {
+        return failure();
+      }
+    } else if (dims == 1) {  // convtranspose1d
+      if(conv_padding_h_top > 15 || conv_padding_h_bottom > 15) {
+        attrs.oh = attrs.ih + conv_padding_h_top + conv_padding_h_bottom;
+        if(attrs.sh > 1) {
+          conv_insert_zero_y = attrs.sh - 1;
+          attrs.oh = attrs.oh + conv_insert_zero_y * (attrs.ih - 1);
+        }
+        output_shape_pad[2] = attrs.oh;
+        pad_paddings[2] = conv_padding_h_top;
+        pad_paddings[5] = conv_padding_h_bottom;
+        insert_zeros.emplace_back(conv_insert_zero_y);
+      } else {
+        return failure();
+      }
+    } else {
+      return failure();
+    }
+    auto output_name = module::getName(op.getInput());
+    auto input_ele_type = module::getElementType(op.getInput());
+    std::string name_pad = output_name.str() + "_pad";
+    auto loc_pad = NameLoc::get(rewriter.getStringAttr(name_pad));
+    std::vector<Value> operands_pad;
+    operands_pad.push_back(op.getInput());
+    operands_pad.push_back(module::getNoneOp(op));
+    operands_pad.push_back(module::getNoneOp(op));
+    operands_pad.push_back(module::getNoneOp(op));
+    operands_pad.push_back(module::getNoneOp(op));
+    std::vector<NamedAttribute> attrs_pad;
+    attrs_pad.push_back(rewriter.getNamedAttr(
+      "paddings", rewriter.getI64ArrayAttr(pad_paddings)));
+    attrs_pad.push_back(rewriter.getNamedAttr(
+      "mode",
+      tpu::PaddingModeAttr::get(getContext(), tpu::PaddingMode::constant)));
+    attrs_pad.push_back(
+      rewriter.getNamedAttr("with_insert_zero", rewriter.getBoolAttr(true)));
+    attrs_pad.push_back(rewriter.getNamedAttr("insert_zeros",
+      rewriter.getI64ArrayAttr(insert_zeros)));
+    auto op_pad = rewriter.create<tpu::PadOp>(
+      loc_pad, RankedTensorType::get(output_shape_pad, input_ele_type),
+      operands_pad, attrs_pad);
+    std::vector<NamedAttribute> conv_attrs;
+    int size = op->getAttrs().size();
+    std::cout << size;
+    conv_attrs.push_back(rewriter.getNamedAttr("kernel_shape",op.getKernelShapeAttr()));
+    conv_attrs.emplace_back(rewriter.getNamedAttr("strides",rewriter.getI64ArrayAttr({1, 1})));
+    conv_attrs.emplace_back(rewriter.getNamedAttr("pads",rewriter.getI64ArrayAttr({0, 0, 0, 0})));
+    conv_attrs.push_back(rewriter.getNamedAttr("group",op.getGroupAttr()));
+    conv_attrs.push_back(rewriter.getNamedAttr("dilations",op.getDilationsAttr()));
+    conv_attrs.emplace_back(rewriter.getNamedAttr("inserts",rewriter.getI64ArrayAttr({0, 0})));
+    conv_attrs.emplace_back(rewriter.getNamedAttr("do_kernel_rotate",rewriter.getBoolAttr(true)));
+    //conv_attrs.emplace_back(rewriter.getNamedAttr("output_padding",rewriter.getI64ArrayAttr({0, 0})));
+    conv_attrs.push_back(rewriter.getNamedAttr("do_relu",op.getDoReluAttr()));
+    conv_attrs.push_back(rewriter.getNamedAttr("relu_limit",op.getReluLimitAttr()));
+    bool with_bias = !module::isNone(op.getBias());
+    conv_attrs.push_back(
+          rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+    conv_attrs.push_back(rewriter.getNamedAttr("quant_mode",op.getQuantModeAttr()));
+
+    auto s_op = rewriter.create<tpu::Conv2DOp>(
+        op->getLoc(), op.getOutput().getType(),
+        ValueRange{op_pad, op.getFilter(), op.getBias()}, conv_attrs);
+
+    op.replaceAllUsesWith(s_op.getOutput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -5143,8 +5261,9 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 SwapDimMerge,
                 MatMulRequantIntFusion,
                 RemoveReshape,
-                WhereBnbwdFusePattern
+                WhereBnbwdFusePattern,
                 // ConvMergePattern
+                DeconvPadPattern
                 >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
