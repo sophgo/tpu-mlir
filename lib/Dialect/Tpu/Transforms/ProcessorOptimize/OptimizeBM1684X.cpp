@@ -4916,6 +4916,8 @@ struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
     rewriter.replaceAllUsesWith(op->getResult(0), whereBnbwdOp.getResult(0));
     rewriter.replaceAllUsesWith(op->getResult(1), whereBnbwdOp.getResult(1));
     rewriter.replaceAllUsesWith(op->getResult(2), whereBnbwdOp.getResult(2));
+    rewriter.eraseOp(op);
+    rewriter.eraseOp(where_op);
     return success();
   }
 };
