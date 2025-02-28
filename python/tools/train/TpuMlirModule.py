@@ -32,6 +32,7 @@ from torch.cuda.amp import autocast, GradScaler
 # tpu_dev = "privateuseone:0"
 tpu_dev = "cpu"
 device = torch.device(tpu_dev)
+from . import config
 
 # td.config.log_level = logging.DEBUG
 # td.config.verbose = True
@@ -63,27 +64,25 @@ def get_np_type_from_torch_type2(type):
 
 class TpuMlirModule(torch.nn.Module):
     def __init__(
-        self, args, model_file, in_tensor_name_to_idx_dict, output_changed_shapes, output_tensor_names = None, output_dtypes = None, output_shapes = [], return_none_count = 0
+        self, model_file, in_tensor_name_to_idx_dict, output_tensor_names = None, output_dtypes = None, output_shapes = [], return_none_count = 0
     ):
         super(TpuMlirModule, self).__init__()
         self._register_state_dict_hook(TpuMlirModule._on_state_dict)
-        self.args = args
         output_shapes = [[1] if i == [] else i for i in output_shapes]
         self.output_dtypes = output_dtypes
         self.output_shapes = output_shapes
         self.model_file = model_file
         self.initialized = False
         self.return_none_count = return_none_count
-        self.output_changed_shapes = output_changed_shapes
         self.in_tensor_name_to_idx_dict = in_tensor_name_to_idx_dict
         self.output_tensor_names = output_tensor_names
         self.output_tensor_names = None
-        if model_file and 'skip_runtime_call' not in self.args.debug:
+        if model_file and 'skip_runtime_call' not in config.debug_cmd:
             self._initialize()
 
     def _initialize(self):
-        print('_initialize for', self.args.chip)
-        # if self.args.chip == 'bm1690':
+        print('_initialize for', config.chip)
+        # if config.chip == 'bm1690':
         #     os.system('ln -sf $TPUC_ROOT/lib/libtpuv7_emulator.so $TPUC_ROOT/lib/libcmodel.so')
         # else:
         #     os.system('ln -sf $TPUC_ROOT/lib/libcmodel_1684x.so $TPUC_ROOT/lib/libcmodel.so')
@@ -130,9 +129,8 @@ class TpuMlirModule(torch.nn.Module):
 
     def forward(self, *inputs):
         print(f'>>>runtime call bmodel:{self.model_file}:')
-
         tpu_outputs: List[torch.Tensor] = []
-        if 'skip_runtime_call' in self.args.debug:
+        if 'skip_runtime_call' in config.debug_cmd:
             if self.output_dtypes is not None:
                 for shape, dtype in zip(self.output_shapes, self.output_dtypes):
                     output = np.random.rand(*shape).astype(get_np_type_from_torch_type2(dtype))
@@ -140,6 +138,7 @@ class TpuMlirModule(torch.nn.Module):
             if self.return_none_count > 0:
                 tpu_outputs.extend([None for i in range(self.return_none_count)])
             return tuple(tpu_outputs)
+
         print('input info:')
         new_inputs = []
         for net_input in self.net.inputs:
@@ -187,9 +186,9 @@ class TpuMlirModule(torch.nn.Module):
                     with open('model_runtime.txt', 'a') as f:
                         f.write(f'Model run time: {elapsed_time} seconds\n')
             with torch.autograd.profiler.record_function("TpuMlirModule:ProcessOutputs"):
-                # create output tensors
                 dyn_idx = 0
                 for i in self.net.outputs:
+                    #Filter out the tensor output due to debugging
                     if self.output_tensor_names is not None and i.name not in self.output_tensor_names:
                         print('skip:', i.name)
                         continue
@@ -201,13 +200,11 @@ class TpuMlirModule(torch.nn.Module):
                                 *dyn_output_shapes[dyn_idx])
                             dyn_idx += 1
                     tmp = torch.from_numpy(output)
-                    if i.name in self.output_changed_shapes:
-                        tmp = tmp.reshape(self.output_changed_shapes[i.name])
-                        print(f'{i.name} reshape from {i.data.shape} to {self.output_changed_shapes[i.name]}')
                     if tmp.shape == torch.Size([1]):
                         tmp = tmp[0]
                     tpu_outputs.append(tmp)
                 if self.output_dtypes is not None:
+                    #Converts the data type output by bmodel to the type required by pytorch
                     for output, dtype in zip(tpu_outputs, self.output_dtypes):
                         if dtype == torch.int64:
                             output = output.int()

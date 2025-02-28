@@ -34,18 +34,19 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
     auto moveOp = dyn_cast<tpu::MoveOp>(op);
     auto vec_move_dest_addr = *module::getI64Array(moveOp.getMoveDestAdd());
     int idx = v.cast<OpResult>().getResultNumber();
+    llvm::errs() << "getGroupInfo, idx:" << idx
+                << ", first moveOp:" << module::getName(op).str() << "\n";
     op = moveOp->getOperand(idx).getDefiningOp();
     auto v2 = moveOp->getOperand(idx);
     assert(op);
     while (isa<tpu::MoveOp>(op)) {
-      // llvm::errs() <<"getGroupInfo11, idx:"<<idx<<"\n";
       idx = v2.cast<OpResult>().getResultNumber();
-      op = op->getOperand(idx).getDefiningOp();
+      llvm::errs() << "getGroupInfo, idx:" << idx
+                  << ", op:" << module::getName(op).str() << "\n";
       v2 = op->getOperand(idx);
+      op = v2.getDefiningOp();
       assert(op);
     }
-    llvm::errs() << "getGroupInfo, idx:" << idx
-                 << ", op:" << module::getName(op).str() << "\n";
     group_info_t ginfo =
         getGroupInfo(op, n_step, h_step, d_step, w_step, c_step);
     ginfo.out_addr = vec_move_dest_addr[idx];

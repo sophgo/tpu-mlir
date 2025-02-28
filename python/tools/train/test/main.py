@@ -60,7 +60,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--chip", default="bm1690", choices=['bm1684x', 'bm1690','sg2260'],
                         help="chip name")
-    parser.add_argument("--debug", default="",
+    parser.add_argument("--debug", default="const_name,print_ori_fx_graph", #dump_bmodel_input,save_fx_graph_dot
                         help="debug")
     parser.add_argument("--cmp", action='store_true',
                         help="enable cmp")
@@ -70,13 +70,14 @@ if __name__ == '__main__':
                         help='skip_module_num')
     parser.add_argument("--exit_at", default=-1, type=int,
                         help='exit_at')
-    parser.add_argument("--num_core", default=1, type=int,
+    parser.add_argument("--num_core", default=8, type=int,
                         help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--opt", default=3, type=int,
                         help='layer group opt')
-    parser.add_argument("--fp", default="",help="fp")
+    parser.add_argument("--fp", default="fp16",choices=['fp16', 'bf16'], help="fp type")
     parser.add_argument("--rank",type=int,default=64,help="The dimension of the LoRA update matrices.")
     parser.add_argument("--model", default="",help="model name")
+    parser.add_argument("--test_input", default="../fwd_bmodel_inputs.npz,../bwd_bmodel_inputs.npz",help="test input") #
     args = parser.parse_args()
     tpu_mlir_jit.args = args
     # enable_dynamo_debug_info()
@@ -303,6 +304,28 @@ if __name__ == '__main__':
         num_classes = 80
         phi = 's'
         mod = YoloBody(anchors_mask, num_classes, phi)
+        net_d = copy.deepcopy(mod)
+        net_d.to(device)
+        net_d.train()
+        input_d = input.to(device)
+        optimizer = torch.optim.SGD(net_d.parameters(), lr=0.01)
+        optimizer.zero_grad()
+        model_opt = torch.compile(net_d, backend=aot_backend)
+        loss_d = model_opt(input_d)
+        loss_d[0].sum().backward()
+        optimizer.step()
+    elif args.model == "yolo_module":
+        from nets.CSPdarknet import C3, Conv, CSPDarknet
+        # chan = 128
+        # input = torch.randn((args.num_core,chan,224,224))
+        # mod = C3(chan, chan)
+
+        # input = torch.randn((args.num_core,64,224,224))
+        # mod = Conv(64, 6, 2, 2)
+
+        input = torch.randn((args.num_core,3,224,224))
+        mod = CSPDarknet(64, 3, 's', False)
+
         net_d = copy.deepcopy(mod)
         net_d.to(device)
         net_d.train()

@@ -80,6 +80,18 @@ void show_group(const LgInfo *sub_group) {
   }
 }
 
+void PrintOps(std::string ops_name, const std::vector<Operation*>& ops) {
+  std::string tmpStr = "";
+  for (auto op : ops) {
+    tmpStr = tmpStr + " + " + show_op_info(op);
+  }
+  if (ops.size()) {
+    tmpStr = tmpStr.substr(3);
+  }
+  LAYER_GROUP_LOG_DEBUG_BLOCK(
+      { llvm::errs() << "ops_name:" << ops_name<< ",ops:" << tmpStr << "\n"; });
+}
+
 bool isLgSupport(Operation *op) {
   bool res = false;
   if (isa<top::WeightOp, top::InputOp>(op)) {
@@ -229,6 +241,8 @@ static void find_op_in_same_block(Operation *op,
     }
   }
 }
+
+
 
 static std::vector<std::vector<Operation *>>
 ConvertDisconnectedBlocksToGroups(std::vector<Operation *> ops,
@@ -852,9 +866,6 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
                 tpu::MaxOp, tpu::ConcatOp>(op)) ||
           module::isWeight(ins[i])) {
         bool eu_align = is_eu_align(ins[i]);
-        if (module::isTrain()) {
-          eu_align = !is_value_weight(ins[i]);
-        }
         int w_size =
             Arch::get_weight_lmem_bytes(ins[i], lg_info.type, eu_align);
         // llvm::errs() << "  w_size:" << w_size<< "\n";
@@ -985,7 +996,7 @@ void get_op_cut_sec_num(ilp_LgInfo &ilp_lg_info, std::vector<std::pair<Operation
       total_size += buffer_size;
       int64_t non_weight_size = Arch::LMEM_BYTES;
       for (size_t i = 1; i < ins.size(); ++i) {
-        if (is_value_weight(ins[i])) {
+        if (is_value_dont_split(ins[i])) {
           int w_size = Arch::get_weight_lmem_bytes(ins[i], lg_info.type);
           non_weight_size -= w_size;
         } else {
@@ -1048,11 +1059,7 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
   for (auto &iter : tensor_infos) {
     auto v = iter.first;
     iter.second.use_3ic_opt = use_3ic(v);
-    if (module::isTrain()) {
-      iter.second.eu_align = !is_value_weight(v);
-    } else {
-      iter.second.eu_align = is_eu_align(v);
-    }
+    iter.second.eu_align = is_eu_align(v);
     iter.second.need_bcast = need_bcast(v);
   }
 
@@ -2451,15 +2458,9 @@ bool is_eu_align(Value opd) {
   }
 }
 
-bool is_value_weight(Value opd) {
+bool is_value_dont_split(Value opd) {
   if (isa<NoneType>(opd.getType())) {
     return false;
-  }
-  if (opd.getDefiningOp() && isa<top::WeightOp>(opd.getDefiningOp())) {
-    if (isa<tpu::MatMulOp>(*opd.user_begin())) {
-      return false;
-    }
-    return true;
   }
 
   auto op = *opd.user_begin();
@@ -2559,15 +2560,15 @@ std::vector<Value> get_output_values(Operation *op) {
 static std::string format_op_in_out_info(Operation *op) {
   std::string tmpStr = " ";
   int64_t n, c, d, h, w;
-  for (auto [index, in] : llvm::enumerate(get_input_values(op))) {
-    if (is_value_weight(in)) {
-      module::getNCDHW(in, n, c, d, h, w, GROUP_NORMAL);
-      tmpStr = tmpStr + llvm::formatv(" in{0}:[{1},{2},{3},{4},{5}]", index, n,
-                                      c, d, h, w)
-                            .str();
-    }
-  }
-  tmpStr = tmpStr + ", ";
+  // for (auto [index, in] : llvm::enumerate(get_input_values(op))) {
+  //   if (is_value_weight(in)) {
+  //     module::getNCDHW(in, n, c, d, h, w, GROUP_NORMAL);
+  //     tmpStr = tmpStr + llvm::formatv(" in{0}:[{1},{2},{3},{4},{5}]", index, n,
+  //                                     c, d, h, w)
+  //                           .str();
+  //   }
+  // }
+  // tmpStr = tmpStr + ", ";
   auto outs = get_output_values(op);
   module::getNCDHW(outs[0], n, c, d, h, w, GROUP_NORMAL);
   tmpStr = tmpStr + llvm::formatv(" out:[{1},{2},{3},{4},{5}], num:{6}", index,

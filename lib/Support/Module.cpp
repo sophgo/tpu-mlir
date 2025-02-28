@@ -1027,6 +1027,9 @@ bool isDynamicShape(Value v) {
 }
 
 void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
+  if (v.getType().isa<NoneType>()) {
+    return;
+  }
   if (isUnranked(v) || isDynamicShape(v)) {
     auto newType = RankedTensorType::get(shape, getElementType(v));
     v.setType(newType);

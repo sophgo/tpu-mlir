@@ -115,21 +115,6 @@ class FxMIIRImporter(object):
         #     dtypes = dtypes[0]
         return dtypes
 
-    def nodeIsBelongToChanStyle(self, node):
-        ChanStyleOp = [torch.ops.aten._native_batch_norm_legit_functional]
-        if node.target in ChanStyleOp:
-            return True
-        elif node.target == operator.getitem and node.args[0].target in ChanStyleOp:
-            return True
-        else:
-            for user in node.users:
-                if user.target in ChanStyleOp:
-                    return True
-                elif hasattr(node.meta['val'], 'size') and len(node.meta['val'].size())==1 and 'convolution' in user.name: #conv bias
-                    return True
-                # user.target in [torch.ops.aten.convolution]
-        return False
-
     def get_output_shapes(self, node, exclude_num = 0):
         shapes = []
         if isinstance(node.meta['val'], (tuple,list)):
@@ -137,10 +122,6 @@ class FxMIIRImporter(object):
         else:
             shapes.append(list(node.meta['val'].size()))
 
-        if self.nodeIsBelongToChanStyle(node):
-            # shapes = [[1,i[0],1,1] if len(i) == 1 else i for i in shapes]
-            shapes = [i for i in shapes]
-        # shapes = [[1] if i is not None and i == [] else i for i in shapes]
         for _ in range(exclude_num):
             shapes.pop()
         return shapes
@@ -253,7 +234,7 @@ class FxMIIRImporter(object):
                     result_var=result_var_name,
                     result_types=result_types,
                     output=output_args_txt)
-        print(f'main_func:\n{main_func}\nmain_func end')
+        # print(f'main_func:\n{main_func}\nmain_func end')
         self.mlir_module = Module.parse(main_func, self.ctx)
         self.func = self.mlir_module.body.operations[0]
         self.entry_block = self.func.regions[0].blocks[0]

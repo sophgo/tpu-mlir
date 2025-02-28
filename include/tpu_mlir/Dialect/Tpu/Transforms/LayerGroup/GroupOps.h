@@ -88,7 +88,7 @@ protected:
 
   mlir::MLIRContext *ctx_;
   Operation *current_op_;
-  Operation *none_op_;
+  Operation *none_op_ = nullptr;
   Block *body_;
   int64_t MAX_ID_;
   LgOptions options_;

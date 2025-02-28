@@ -438,7 +438,6 @@ void GroupOps::buildMlir_for_opt3() {
   groups_.clear();
   int64_t group_num = lg_infos.size();
   auto builder = OpBuilder(ctx_);
-  // none_op_ = module::getNoneOp(lg_infos[0].group_ops[0]);
 
   bool print_node_topo_change = module::isDebugCmdEnable("print_node_topo_change");
   std::vector<node_info> nodes;
@@ -475,16 +474,21 @@ void GroupOps::buildMlir_for_opt3() {
         nodes.push_back(node_info(op));
       }
     }
-    if (isa<top::NoneOp>(op)) {
-      none_op_ = op;
-    }
   });
   Operation* retrunOp = nullptr;
   func_.walk([&](Operation *op) {
-    if (isa<ReturnOp>(op)) {
+    if (!retrunOp && isa<ReturnOp>(op)) {
       retrunOp = op;
     }
+    if (!none_op_ && isa<top::NoneOp>(op)) {
+      LOG(INFO) <<"find NoneOp";
+      none_op_ = op;
+    }
   });
+
+  if (!none_op_) {
+    none_op_ = module::getNoneOp(lg_infos[0].group_ops[0]);
+  }
 
   //获取node的前后驱node
   LOG(INFO) <<"get pre&next nodes, nodes.size: "<<nodes.size();

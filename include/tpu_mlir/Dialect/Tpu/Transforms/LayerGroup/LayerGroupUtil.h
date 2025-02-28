@@ -100,7 +100,7 @@ void generate_fake_global_addr(Operation *op);
 void delete_fake_global_addr(Operation *op);
 
 bool is_eu_align(Value opd);
-bool is_value_weight(Value opd);
+bool is_value_dont_split(Value opd);
 
 bool need_bcast(Value opd);
 
@@ -161,6 +161,7 @@ std::string show_op_info(Operation *op);
 std::string shape_str(int64_t n, int64_t c, int64_t d, int64_t h, int64_t w);
 std::string shape_str(std::vector<int64_t> ncdhw);
 void show_group(const LgInfo *sub_group);
+void PrintOps(std::string ops_name, const std::vector<Operation*>& ops);
 bool grp_is_valid(std::vector<Operation *> &group_ops);
 bool isPreOpHaveAComputeOp(Operation *op);
 int64_t align(int64_t input, int64_t align_size);

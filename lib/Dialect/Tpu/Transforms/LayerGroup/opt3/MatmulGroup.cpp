@@ -1507,7 +1507,7 @@ void GroupOps::findSpecialGroup(llvm::SetVector<Operation*>& subnet_ops) {
       std::vector<Operation*> global_layers;
       for (auto op: dag.ops) {
         if (!isa<ReturnOp, FuncOp, top::NoneOp, top::WeightOp, top::InputOp>(op) &&
-               !is_value_weight(op->getResult(0)) && !isLgSupport(op)) {
+               !isLgSupport(op)) {
           global_layers.push_back(op);
         }
       }

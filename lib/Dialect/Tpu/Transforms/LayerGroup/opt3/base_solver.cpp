@@ -1,4 +1,4 @@
-//===----------------------------------------------------------------------===//
+
 //
 // Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
 //
@@ -1250,7 +1250,7 @@ backward_update_slice2(ilp_LgInfo &ilp_lg_info, const shape_secs_t &shape_secs,
     if (pre_op && isa<top::NoneOp>(pre_op)) {
       continue;
     }
-    if (is_value_weight(in)) {
+    if (is_value_dont_split(in)) {
       module::getNCDHW(in, n, c, d, h, w, lg_info.type);
       si.n.emplace_back(std::pair(0, n));
       si.c.emplace_back(std::pair(0, c));
@@ -1511,7 +1511,7 @@ static int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
     }
     in_lmem_bytes +=
         getTensorLmemBytes(op, ins[i], tensor_infos, ncdhw_idx, ilp_lg_info,
-                           is_value_weight(ins[i]) ? false : true);
+                           is_eu_align(ins[i]));
   }
 
   int64_t out0_lmem_bytes =
@@ -1601,21 +1601,11 @@ static bool failProcess_insertNonOp(ilp_LgInfo &ilp_lg_info, Operation *fail_op,
   }
   if (std::find(failed_ops.begin(), failed_ops.end(), fail_op) !=
       failed_ops.end()) {
-    auto it = std::find(backup_ops.begin(), backup_ops.end(), fail_op);
-    if (it != backup_ops.end()) {
-      auto front_nonOp = it - 1;
-      if (front_nonOp > backup_ops.begin()) {
-        backup_ops.erase(front_nonOp);
-      }
-      auto behind_nonOp = it + 1;
-      if (behind_nonOp < backup_ops.end()) {
-        backup_ops.erase(behind_nonOp);
-      }
-    }
     ops.assign(backup_ops.begin(), backup_ops.end());
     ilp_lg_info.is_fail_op_in_grp = false;
     return false;
   } else {
+    backup_ops.assign(ops.begin(), ops.end());
     failed_ops.push_back(fail_op);
     auto it = std::find(ops.begin(), ops.end(), fail_op);
     if (it != ops.end()) {
@@ -1626,7 +1616,6 @@ static bool failProcess_insertNonOp(ilp_LgInfo &ilp_lg_info, Operation *fail_op,
         ops.insert(++it, nullptr);
       }
     }
-    backup_ops.assign(ops.begin(), ops.end());
     inc_secs = false;
   }
   return true;
@@ -1770,8 +1759,8 @@ bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
         //the external parameter is changed to any value, as long as it cannot be found in ops
         inOp = (Operation*)0x1111;
       }
-      bool is_weight = is_value_weight(in);
-      int64_t lmem_bytes = getTensorLmemBytes(op, in, tensor_infos, ncdhw_idx, ilp_lg_info, is_weight?false:true);
+      bool is_not_split = is_value_dont_split(in);
+      int64_t lmem_bytes = getTensorLmemBytes(op, in, tensor_infos, ncdhw_idx, ilp_lg_info, is_eu_align(in));
       if (ilp_lg_info.p_special_grp && ilp_lg_info.p_special_grp->name() == "attention_group"
         && ilp_lg_info.shape_secs.h_slice_num > 1 && isa<tpu::MatMulOp>(op) && ilp_lg_info.p_special_grp->ops.back() == op) {
         llvm::errs() << "inc res lmem_bytes for attention_grp\n";
@@ -1796,7 +1785,7 @@ bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
             dma_cycle /= 4;
           }
         } else {
-          if (l2m_en && is_weight) {
+          if (l2m_en && is_not_split) {
             dma_cycle /= 4;
           }
         }
@@ -1809,7 +1798,7 @@ bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
             continue;
           }
           std::string var_name;
-          if (is_weight) {
+          if (is_not_split) {
             var_name =
                 llvm::formatv(
                     "x_weight_{0}_use_by_{1}_at_pos{2}_load_{3}bytes_{4}cycle_at_ts{5}_{6}",
@@ -1840,7 +1829,7 @@ bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
             load_to_l2m = true;
           }
         } else {
-          if (is_weight) {
+          if (is_not_split) {
             load_to_l2m = true;
           }
         }
@@ -2137,7 +2126,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
   for (auto [index, op] : llvm::enumerate(ops)) {
     if (op) {
       tmp_dot_graph_log->add_node_label(module::getName(op).str(),
-          "grp_ts" + std::to_string(index + 1) +"*");
+          "grp_ts" + std::to_string(index) +"*");
     }
   }
 
@@ -2390,7 +2379,10 @@ std::shared_ptr<ilp_LgInfo> ilp_LgInfo::high_solver(LgPassIR *pass_ir, std::shar
   _cur_strategy = STRATEGY_GROUP_CUT_FIRST;
   LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: STRATEGY_GROUP_CUT_FIRST test\n";});
   base_solver(pass_ir, cycle_calculator_);
-  if (module::isDebugCmdEnable("enable_high_solver")) {
+
+  //if (module::isDebugCmdEnable("opt3_o2")) { }
+
+  if (module::isDebugCmdEnable("opt3_o3")) {
     LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::errs()<<"ilp_debug: STRATEGY_SLICE_CUT_FIRST test\n";});
     auto ilp_cloned = CreateIlpLgInfo(ops_ori, options_, STRATEGY_SLICE_CUT_FIRST);
     ilp_cloned->base_solver(pass_ir, cycle_calculator_);
@@ -2650,10 +2642,14 @@ void GroupMethod::ilp_layer_group(LgPassIR *pass_ir) {
   }
 
   auto base_groups3 = expandAllNestedLgInfo(base_groups2);
-  try_cut_some_group(pass_ir, *base_groups3, true); //优先大的group，放到后面去处理
+  if (module::isDebugCmdEnable("opt3_o3")) {
+    try_cut_some_group(pass_ir, *base_groups3, true);
+  }
 
   auto base_groups4 = expandAllNestedLgInfo(*base_groups3);
-  try_cut_some_group(pass_ir, *base_groups4, false);
+  if (module::isDebugCmdEnable("opt3_o2")) {
+    try_cut_some_group(pass_ir, *base_groups4, false);
+  }
   //try_modify_mlp_group_sub_sum(pass_ir, *base_groups4, cycle_calculator_);
   auto base_groups5 = expandAllNestedLgInfo(*base_groups4);
   for (int64_t i = 0, grp_num = base_groups5->size(); i < grp_num; i++) {

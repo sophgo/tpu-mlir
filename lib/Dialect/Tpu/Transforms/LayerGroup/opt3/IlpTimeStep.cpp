@@ -1730,7 +1730,9 @@ void ILPTimeStep::get_group_cycle_info(int& total_cycle, int& total_diff,
       if (itr2.var_value) {
         for (auto itr3: cycle_contrains_new[i]) {
           if (itr3.second == itr2.varName) {
-            llvm::errs() << "i:" <<i<< ", varName:" <<itr2.varName<< ", cycle:" <<itr3.first<<"\n";
+            if (detail_log) {
+              llvm::errs() << "i:" <<i<< ", varName:" <<itr2.varName<< ", cycle:" <<itr3.first<<"\n";
+            }
             dma_cycle += itr3.first;
             if (isLoadVar(itr2.varName)) {
               load_cycle += itr3.first;
@@ -1765,8 +1767,10 @@ void ILPTimeStep::get_group_cycle_info(int& total_cycle, int& total_diff,
     total_cycle += cycle;
     diff = std::abs(dma_cycle - bdc_cycle);
     auto op_name = tmp_ops.size() > 0?show_op_info(tmp_ops[0]):"null op";
-    llvm::errs() << "i:" <<i<< ", dma_cycle:" <<dma_cycle<< ", bdc_cycle:" <<bdc_cycle<< ", diff:" <<diff
-                 << ", cycle:" <<cycle<< ", max_dma_ratio:" <<max_dma_ratio<< ", " <<op_name<<"\n";
+    if (detail_log) {
+      llvm::errs() << "i:" <<i<< ", dma_cycle:" <<dma_cycle<< ", bdc_cycle:" <<bdc_cycle<< ", diff:" <<diff
+                  << ", cycle:" <<cycle<< ", max_dma_ratio:" <<max_dma_ratio<< ", " <<op_name<<"\n";
+    }
     cycle_info.cycle_diff = diff;
     total_diff += diff;
     cycle_info.ts_idx = i++;

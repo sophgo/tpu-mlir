@@ -194,6 +194,7 @@ def npz_compare(args_list, log_level="normal"):
         min_cos, min_euc = 1, 1
         for name in npz1.files:
             max_cos, max_euc = 0.0, 0.0
+            matched_name2 = ''
             for name2 in npz2.files:
                 d1 = npz1.get(name)
                 d2 = npz2.get(name2)
@@ -202,15 +203,17 @@ def npz_compare(args_list, log_level="normal"):
                     result = tc.compare(
                         d1, d2, args.verbose, int8_tensor_close, args.per_axis_compare
                     )
+                    matched_name2 = name2
                     if result[1] == "EQUAL":
                         if log_level == "normal":
-                            print(f"find EQUAL for {name}")
+                            print(f"find EQUAL for {name} and {name2}")
+                        max_cos = max_euc = 1.0
                         break
                     elif result[3]["cosine"] > max_cos:
                         max_cos = result[3]["cosine"]
                         max_euc = result[3]["euclid"]
             if log_level == "normal":
-                print(f"find max_cos:{max_cos}, max_euc:{max_euc} for {name}")
+                print(f"find max_cos:{max_cos}, max_euc:{max_euc} for {name} and {matched_name2}")
             if min_cos > max_cos:
                 min_cos = max_cos
             if min_euc > max_euc:

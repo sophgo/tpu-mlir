@@ -18,6 +18,7 @@ import torch.nn as nn
 from torch.fx.passes.fake_tensor_prop import FakeTensorProp
 import torch.nn.functional as F
 from utils.regression_logger import run_in_log_wrapper
+from tools.train import config
 
 class FX_IR_TESTER(object):
     ID = 0
@@ -57,9 +58,7 @@ class FX_IR_TESTER(object):
         c = fx2mlir(
             submodule_name=submodule_name,
             chip=self.chip,
-            model=submodule_name,
             bwd_graph=False,
-            para_shape=[],
             cmp=self.cmp)
         return c.convert(module)
 
@@ -130,6 +129,7 @@ class FX_IR_TESTER(object):
         for i in range(len(res)):
             output_ref[str(i)] = res[i].detach().numpy()
         np.savez('output_ref.npz', **output_ref)
+        config.unit_test = True
         self.convert_module_fx(
             submodule_name=model_name,
             module=fx_module)
