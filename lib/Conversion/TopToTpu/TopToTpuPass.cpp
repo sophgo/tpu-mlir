@@ -1242,6 +1242,25 @@ void ConvertTopToTpu::runOnOperation() {
         }
       });
     }
+    mainFunc_.walk([&](Operation *op) {
+      auto users = op->getUsers();
+      auto users_len = std::distance(users.begin(), users.end());
+      if (isa<top::MatMulOp>(op) && users_len == 1) {
+        for (auto user : users) {
+          if (isa<top::AddOp>(user)) {
+            auto name = module::getName(user).str();
+            if (LoweringConfig::quantize_map.find(name) != LoweringConfig::quantize_map.end() &&
+                (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
+                 LoweringConfig::quantize_map[name] == module::Mode::BF16
+                  )) {
+                  mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+                  op->setAttr("output_int16", tmp);
+                  break;
+                }
+          }
+        }
+      }
+    });
   }
   if (module::isMARS3() || module::isSGTPUV8()) {
     mainFunc_.walk([&](Operation *op) {

@@ -28,6 +28,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   bool fuse_rq = false;
   bool use_perchannel = false;
 
+  bool output_int16 = op->hasAttr("output_int16");
+  double i16_out_scale = 0, i16_out_zp = 0;
   auto per_channel_quant_attr = op->getAttr("matmulPerchannelQuant");
   if (per_channel_quant_attr) {
     if (per_channel_quant_attr.isa<mlir::BoolAttr>()) {
@@ -96,6 +98,11 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp,
                                  input_asymmetric || asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
+    if (output_int16) {
+      out_scale = out_scale * 255 / 65535;
+      out_zp = 0;
+      i16_out_scale = out_scale;
+    }
     bool right_transpose = op.getRightTranspose();
     if (p.batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
       LoweringF32(rewriter, op);
@@ -278,6 +285,11 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getRight(), w_scale, w_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
+    if (output_int16) {
+      out_scale = out_scale * 255 / 65535;
+      out_zp = 0;
+      i16_out_scale = out_scale;
+    }
     float scale_f = in_scale * w_scale / out_scale;
     get_scale_and_shift(scale_f, scale, shift, 32);
     shifts.push_back(shift);
@@ -301,27 +313,67 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       operands[2] = new_bias;
     }
   }
-  attrs.push_back(
-      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shifts)));
-  attrs.push_back(
-      rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scales)));
+  if (output_int16) {
+    for (auto &attr : op->getAttrs()) {
+      attrs.push_back(attr);
+    }
+    if (!fuse_rq) {
+      auto noneOp_multi = module::getNoneOp(op);
+      operands.push_back(noneOp_multi);
+    }
+    // buffer
+    operands.push_back(module::getNoneOp(op));
+    auto i32Type = RankedTensorType::get(module::getShape(op.getOutput()),
+                                         rewriter.getI32Type());
+    auto matmul_int32_name =
+        module::getName(op.getOperation()).str() + "_int32";
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(matmul_int32_name));
+    auto matmul_int32_out =
+        rewriter.create<tpu::MatMulOp>(name_loc, i32Type, operands, attrs);
+    if (fuse_rq) {
+      matmul_int32_out.setFuseRqAttr(rewriter.getBoolAttr(true));
+    }
+    auto ctx = op.getOutput().getContext();
+    OpBuilder builder(ctx);
 
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  if (!fuse_rq) {
-    auto noneOp_multi = module::getNoneOp(op);
-    operands.push_back(noneOp_multi);
-  }
-  // buffer
-  operands.push_back(module::getNoneOp(op));
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  auto newmm =
-      rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
-  if (fuse_rq) {
-    newmm.setFuseRqAttr(rewriter.getBoolAttr(true));
-  }
+    std::string requant_name = "to_int16_for_" + module::getName(op.getOperation()).str();
+    auto requant_name_loc = NameLoc::get(builder.getStringAttr(requant_name));
+    Type newType = getQuantIntType(op.getOutput(), i16_out_scale, i16_out_zp, 16);
+    auto newValue = do_requant(requant_name_loc, matmul_int32_out, newType, true,
+        scales[0], -shifts[0], tpu::RequantMode::MultiplierShift);
+    for (auto op2 : op->getUsers()) {
+      std::string str = module::getName(op2).str();
+      for (uint32_t idx = 0; idx < op2->getNumOperands(); idx++) {
+        if (op.getOutput() == op2->getOperand(idx)) {
+          llvm::errs() << "setOperand, idx:" << idx << ",name:" << str
+                        << "\n";
+          op2->setOperand(idx, newValue);
+        }
+      }
+    }
+    rewriter.replaceOp(op, matmul_int32_out);
+  } else {
+    attrs.push_back(
+        rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shifts)));
+    attrs.push_back(
+        rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scales)));
 
+    for (auto &attr : op->getAttrs()) {
+      attrs.push_back(attr);
+    }
+    if (!fuse_rq) {
+      auto noneOp_multi = module::getNoneOp(op);
+      operands.push_back(noneOp_multi);
+    }
+    // buffer
+    operands.push_back(module::getNoneOp(op));
+    auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+    auto newmm =
+        rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+    if (fuse_rq) {
+      newmm.setFuseRqAttr(rewriter.getBoolAttr(true));
+    }
+  }
   // trick for Img2Col
   eliminateInvalidOp(righIsReshapeOp, rightReshapeOp);
   eliminateInvalidOp(biasIsReshapeOp, biasReshapeOp);
