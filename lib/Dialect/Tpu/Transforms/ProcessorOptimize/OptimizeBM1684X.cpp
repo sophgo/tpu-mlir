@@ -3509,7 +3509,7 @@ public:
             ax = -2;
           }
         }
-        if (ax > 0 && i >= ax) {
+        if (ax > -1 && i >= ax) {
           inner_size *= in_shape[i];
         }
       }
@@ -5094,13 +5094,12 @@ struct ConvToMatMulPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
   }
 };
 
-class DeconvPadPattern
-    : public OpRewriterPatternEx<tpu::DeconvOp> {
+class DeconvPadPattern : public OpRewriterPatternEx<tpu::DeconvOp> {
 public:
   // using OpRewriterPatternEx::OpRewriterPatternEx;
   DeconvPadPattern(mlir::MLIRContext *context, int benifit)
-      : OpRewriterPatternEx<tpu::DeconvOp>(
-            context, "DeconvPadPattern", benifit) {}
+      : OpRewriterPatternEx<tpu::DeconvOp>(context, "DeconvPadPattern",
+                                           benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::DeconvOp op,
                                     PatternRewriter &rewriter) const override {
     auto in_shape = module::getShape(op.getInput());
@@ -5116,19 +5115,19 @@ public:
     auto output_shape_pad = llvm::SmallVector<int64_t>(in_shape);
     llvm::SmallVector<int64_t> pad_paddings(in_shape.size() * 2, 0);
     std::vector<int64_t> insert_zeros;
-    if(dims == 3) {
+    if (dims == 3) {
       // to do convtranspose3d
       return failure();
-    } else if (dims == 2) {  // for convtranspose2d
-      if(conv_padding_h_top > 15 || conv_padding_h_bottom > 15 ||
-         conv_padding_w_left > 15 || conv_padding_w_right > 15) {
+    } else if (dims == 2) { // for convtranspose2d
+      if (conv_padding_h_top > 15 || conv_padding_h_bottom > 15 ||
+          conv_padding_w_left > 15 || conv_padding_w_right > 15) {
         attrs.oh = attrs.ih + conv_padding_h_top + conv_padding_h_bottom;
         attrs.ow = attrs.iw + conv_padding_w_left + conv_padding_w_right;
-        if(attrs.sh > 1) {
+        if (attrs.sh > 1) {
           conv_insert_zero_y = attrs.sh - 1;
           attrs.oh = attrs.oh + conv_insert_zero_y * (attrs.ih - 1);
         }
-        if(attrs.sw > 1) {
+        if (attrs.sw > 1) {
           conv_insert_zero_x = attrs.sw - 1;
           attrs.ow = attrs.ow + conv_insert_zero_x * (attrs.iw - 1);
         }
@@ -5143,10 +5142,10 @@ public:
       } else {
         return failure();
       }
-    } else if (dims == 1) {  // convtranspose1d
-      if(conv_padding_h_top > 15 || conv_padding_h_bottom > 15) {
+    } else if (dims == 1) { // convtranspose1d
+      if (conv_padding_h_top > 15 || conv_padding_h_bottom > 15) {
         attrs.oh = attrs.ih + conv_padding_h_top + conv_padding_h_bottom;
-        if(attrs.sh > 1) {
+        if (attrs.sh > 1) {
           conv_insert_zero_y = attrs.sh - 1;
           attrs.oh = attrs.oh + conv_insert_zero_y * (attrs.ih - 1);
         }
@@ -5172,34 +5171,43 @@ public:
     operands_pad.push_back(module::getNoneOp(op));
     std::vector<NamedAttribute> attrs_pad;
     attrs_pad.push_back(rewriter.getNamedAttr(
-      "paddings", rewriter.getI64ArrayAttr(pad_paddings)));
+        "paddings", rewriter.getI64ArrayAttr(pad_paddings)));
     attrs_pad.push_back(rewriter.getNamedAttr(
-      "mode",
-      tpu::PaddingModeAttr::get(getContext(), tpu::PaddingMode::constant)));
+        "mode",
+        tpu::PaddingModeAttr::get(getContext(), tpu::PaddingMode::constant)));
     attrs_pad.push_back(
-      rewriter.getNamedAttr("with_insert_zero", rewriter.getBoolAttr(true)));
-    attrs_pad.push_back(rewriter.getNamedAttr("insert_zeros",
-      rewriter.getI64ArrayAttr(insert_zeros)));
+        rewriter.getNamedAttr("with_insert_zero", rewriter.getBoolAttr(true)));
+    attrs_pad.push_back(rewriter.getNamedAttr(
+        "insert_zeros", rewriter.getI64ArrayAttr(insert_zeros)));
     auto op_pad = rewriter.create<tpu::PadOp>(
-      loc_pad, RankedTensorType::get(output_shape_pad, input_ele_type),
-      operands_pad, attrs_pad);
+        loc_pad, RankedTensorType::get(output_shape_pad, input_ele_type),
+        operands_pad, attrs_pad);
     std::vector<NamedAttribute> conv_attrs;
     int size = op->getAttrs().size();
     std::cout << size;
-    conv_attrs.push_back(rewriter.getNamedAttr("kernel_shape",op.getKernelShapeAttr()));
-    conv_attrs.emplace_back(rewriter.getNamedAttr("strides",rewriter.getI64ArrayAttr({1, 1})));
-    conv_attrs.emplace_back(rewriter.getNamedAttr("pads",rewriter.getI64ArrayAttr({0, 0, 0, 0})));
-    conv_attrs.push_back(rewriter.getNamedAttr("group",op.getGroupAttr()));
-    conv_attrs.push_back(rewriter.getNamedAttr("dilations",op.getDilationsAttr()));
-    conv_attrs.emplace_back(rewriter.getNamedAttr("inserts",rewriter.getI64ArrayAttr({0, 0})));
-    conv_attrs.emplace_back(rewriter.getNamedAttr("do_kernel_rotate",rewriter.getBoolAttr(true)));
-    //conv_attrs.emplace_back(rewriter.getNamedAttr("output_padding",rewriter.getI64ArrayAttr({0, 0})));
-    conv_attrs.push_back(rewriter.getNamedAttr("do_relu",op.getDoReluAttr()));
-    conv_attrs.push_back(rewriter.getNamedAttr("relu_limit",op.getReluLimitAttr()));
+    conv_attrs.push_back(
+        rewriter.getNamedAttr("kernel_shape", op.getKernelShapeAttr()));
+    conv_attrs.emplace_back(
+        rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1})));
+    conv_attrs.emplace_back(
+        rewriter.getNamedAttr("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
+    conv_attrs.push_back(rewriter.getNamedAttr("group", op.getGroupAttr()));
+    conv_attrs.push_back(
+        rewriter.getNamedAttr("dilations", op.getDilationsAttr()));
+    conv_attrs.emplace_back(
+        rewriter.getNamedAttr("inserts", rewriter.getI64ArrayAttr({0, 0})));
+    conv_attrs.emplace_back(
+        rewriter.getNamedAttr("do_kernel_rotate", rewriter.getBoolAttr(true)));
+    // conv_attrs.emplace_back(rewriter.getNamedAttr("output_padding",rewriter.getI64ArrayAttr({0,
+    // 0})));
+    conv_attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+    conv_attrs.push_back(
+        rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
     bool with_bias = !module::isNone(op.getBias());
     conv_attrs.push_back(
-          rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-    conv_attrs.push_back(rewriter.getNamedAttr("quant_mode",op.getQuantModeAttr()));
+        rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+    conv_attrs.push_back(
+        rewriter.getNamedAttr("quant_mode", op.getQuantModeAttr()));
 
     auto s_op = rewriter.create<tpu::Conv2DOp>(
         op->getLoc(), op.getOutput().getType(),

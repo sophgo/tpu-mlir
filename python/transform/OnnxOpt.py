@@ -94,7 +94,7 @@ class ConstantFolding(object):
             if elem_type == np.bool_ :  # for mask
                 inputs.update({key: np.random.randint(0, 2, shape, dtype=elem_type)})
             elif elem_type == np.int64:
-                inputs.update({key: np.random.randint(1, 10, size=shape, dtype=elem_type)})
+                inputs.update({key: np.random.randint(1, 2, size=shape, dtype=elem_type)})
             elif len(shape) == 0: # for idx
                 inputs.update({key: np.array(0, dtype=elem_type)})
             else:
