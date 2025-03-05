@@ -69,13 +69,51 @@ void broadcast_tensor_reshape(const mlir::Value &expect, mlir::Value input) {
   // insert 1 at the begin of input if dim of input is not same with expect
   if (module::isWeight(input) && module::getNumElements(input) > 1 &&
       module::getShape(input).size() != module::getShape(expect).size()) {
-    llvm::SmallVector<int64_t> shape(
-        module::getShape(expect).size() - module::getShape(input).size(), 1);
-    for (auto iter : module::getShape(input)) {
-      shape.push_back(iter);
+    auto expect_shape = module::getShape(expect);
+    auto input_shape = module::getShape(input);
+    llvm::SmallVector<int64_t> shape(module::getShape(expect).size(), 1);
+    for (int expect_index = (int)expect_shape.size() - 1,
+             input_index = (int)input_shape.size() - 1;
+         expect_index >= 0; expect_index--) {
+      if (input_index >= 0) {
+        if (expect_shape[expect_index] == input_shape[input_index]) {
+          shape[expect_index] = expect_shape[expect_index];
+          input_index--;
+        } else {
+          if (input_shape[input_index] == 1) {
+            shape[expect_index] = 1;
+            input_index--;
+          } else {
+            shape[expect_index] = 1;
+          }
+        }
+      } else {
+        shape[expect_index] = 1;
+      }
     }
+    int64_t real_input_product =
+        std::accumulate(input_shape.begin() + 1, input_shape.end(),
+                        input_shape[0], std::multiplies<int64_t>());
+    int64_t bcast_input_product = std::accumulate(
+        shape.begin() + 1, shape.end(), shape[0], std::multiplies<int64_t>());
+    if (real_input_product != bcast_input_product) {
+      shape.clear();
+      shape.resize(expect_shape.size() - input_shape.size(), 1);
+      for (auto iter : module::getShape(input)) {
+        shape.push_back(iter);
+      }
+    }
+
+    real_input_product =
+        std::accumulate(input_shape.begin() + 1, input_shape.end(),
+                        input_shape[0], std::multiplies<int64_t>());
+    bcast_input_product = std::accumulate(shape.begin() + 1, shape.end(),
+                                          shape[0], std::multiplies<int64_t>());
+    assert(real_input_product == bcast_input_product);
+    assert(shape.size() == module::getShape(expect).size());
     auto newType = RankedTensorType::get(shape, module::getElementType(input));
     input.setType(newType);
   }
 }
+
 }; // namespace tpu_mlir
