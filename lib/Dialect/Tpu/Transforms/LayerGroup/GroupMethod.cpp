@@ -395,6 +395,7 @@ static bool group_cslice_check(const LgInfo &lg_info) {
 bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
   auto res = true;
   if (runmode_ == RunMode::TPU_DYNAMIC && lg_info.group_ops.size() > 1) {
+    // return false;
     // Condition 1
     // Dynamic Backend will choose the first op's batch as the whole group's
     // batch Need make sure dynamic group's ops have the same batch

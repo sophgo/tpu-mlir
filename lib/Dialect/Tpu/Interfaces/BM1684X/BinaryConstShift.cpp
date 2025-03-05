@@ -126,7 +126,7 @@ int64_t tpu::BinaryConstShiftOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.is_saturate = getSaturation();
   param.a_is_coeff = false;
   param.b_is_coeff = false;
-  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::BinaryConstShiftOp::get_fw_type_bm1684x() {
