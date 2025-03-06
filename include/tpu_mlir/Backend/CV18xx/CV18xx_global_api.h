@@ -439,5 +439,9 @@ void cvi_backend_tg_bnr_preprocess_kernel(
     uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output,
     gaddr_t ga_table_high, gaddr_t ga_table_low, int n, int c, int h, int w,
     int start_h, int start_w, int channel_order[4], cvk_fmt_t fmt);
+
+void cvi_backend_tg_mmap2rgbmap_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                       gaddr_t ga_output, int n, int c, int h,
+                                       int w, int ow, cvk_fmt_t fmt);
 } // namespace backend
 } // namespace tpu_mlir
