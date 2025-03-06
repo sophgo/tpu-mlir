@@ -18,9 +18,13 @@ extern "C" {
 // -------------------------------------------------------------------
 // Chip Definition for PPL
 // -------------------------------------------------------------------
-#define PPL_BM1684X "bm1684x"
-#define PPL_BM1688 "bm1688"
-#define PPL_BM1690 "bm1690"
+#define PPL_BM1684X  "bm1684x"
+#define PPL_BM1688   "bm1688"
+#define PPL_BM1690   "bm1690"
+#define PPL_SG2262   "sg2262"
+#define PPL_SG2380   "sg2380"
+#define PPL_MARS3    "mars3"
+#define PPL_BM1684XE "bm1684xe"
 
 // -------------------------------------------------------------------
 // Constant Definition

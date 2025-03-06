@@ -41,7 +41,7 @@ void api_softmax_global(void *param, size_t param_size, void *input_spec,
   }
 
   int lane_num = 64;
-  std::string chip_str(chip);
+  std::string chip_str = get_chip_str();
   if (chip_str == PPL_BM1688) {
     // TODO fix
     lane_num = 32;
@@ -72,11 +72,11 @@ void api_softmax_global(void *param, size_t param_size, void *input_spec,
   auto call_kernel = [&]() {
     if (iner == 1) {
       printf("------------------  w_dim  -------------------\n");
-      return softmax_w_dim(chip, cmdid, out_spec->addr, in_spec->addr, n, c, h,
+      return softmax_w_dim(out_spec->addr, in_spec->addr, n, c, h,
                            w, block_c, block_w);
     } else {
       printf("------------------  h_dim  -------------------\n");
-      return softmax_h_dim(chip, cmdid, out_spec->addr, in_spec->addr, n, c, h,
+      return softmax_h_dim(out_spec->addr, in_spec->addr, n, c, h,
                            w, block_c, block_h, block_w);
     }
   };

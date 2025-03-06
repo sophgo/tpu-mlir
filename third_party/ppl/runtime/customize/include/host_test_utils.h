@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __HOST_TEST_UTILS_H__
+#define __HOST_TEST_UTILS_H__
 #include "cnpy.h"
 #include "common.h"
 #include "tpu_defs.h"
@@ -276,6 +277,55 @@ void rand_data(std::string dir, std::string func_name, int idx, char *data,
             min_val, max_val, dtype);
 }
 
+void rand_data(char *data, size_t data_size, dim4 &shape, float min_val,
+               float max_val, int dtype) {
+  std::random_device rd;
+  std::mt19937 e(rd());
+  std::uniform_real_distribution<float> u(min_val, max_val);
+  dim4 stride = {shape.c * shape.h * shape.w, shape.h * shape.w, shape.w, 1};
+  for (int n = 0; n < shape.n; ++n) {
+    for (int c = 0; c < shape.c; ++c) {
+      for (int h = 0; h < shape.h; ++h) {
+        for (int w = 0; w < shape.w; ++w) {
+          int index = n * stride.n + c * stride.c + h * stride.h + w * stride.w;
+          if (dtype == DT_FP32) {
+            float value = static_cast<float>(u(e));
+            reinterpret_cast<float *>(data)[index] = value;
+          } else if (dtype == DT_INT8) {
+            char value = static_cast<char>(u(e));
+            reinterpret_cast<char *>(data)[index] = value;
+          } else if (dtype == DT_UINT8) {
+            unsigned char value = static_cast<unsigned char>(u(e));
+            reinterpret_cast<unsigned char *>(data)[index] = value;
+          } else if (dtype == DT_INT32) {
+            int value = static_cast<int>(u(e));
+            reinterpret_cast<int *>(data)[index] = value;
+          } else if (dtype == DT_UINT32) {
+            unsigned int value = static_cast<unsigned int>(u(e));
+            reinterpret_cast<unsigned int *>(data)[index] = value;
+          } else if (dtype == DT_UINT16) {
+            unsigned short value = static_cast<unsigned short>(u(e));
+            reinterpret_cast<unsigned short *>(data)[index] = value;
+          } else if (dtype == DT_INT16) {
+            short value = static_cast<short>(u(e));
+            reinterpret_cast<short *>(data)[index] = value;
+          } else if (dtype == DT_FP16) {
+            float rand_value = u(e);
+            fp16 value = fp32_to_fp16(*(fp32 *)&rand_value);
+            reinterpret_cast<fp16 *>(data)[index] = value;
+          } else if (dtype == DT_BFP16) {
+            float rand_value = u(e);
+            bf16 value = fp32_to_bf16(*(fp32 *)&rand_value);
+            reinterpret_cast<bf16 *>(data)[index] = value;
+          } else {
+            printf("dtype not supported:%d\n", dtype);
+            assert(0);
+          }
+        }
+      }
+    }
+  }
+}
 #if defined(__bm1684x__) || defined(__bm1688__) || defined(__mars3__) ||       \
     defined(__bm1684xe__)
 bool MallocWrap(bm_handle_t &bm_handle, bm_device_mem_t *dev_mem,
@@ -326,4 +376,164 @@ inline void MemcpyD2S(bm_handle_t &bm_handle, bm_device_mem_t *dev_mem,
                                size, offset);
 #endif
 }
+
+#include "kernel_module_data.h"
+bm_handle_t handle;
+#if defined(__bm1688__)
+tpu_kernel_module_t tpu_module[2];
+#else
+tpu_kernel_module_t tpu_module;
+#endif
+
+struct mem_t {
+  u64 dev_mem;
+  char *host_mem;
+  bm_device_mem_t dev_mem_data;
+  dim4 shape;
+  int dtype;
+  size_t data_size;
+};
+
+static mem_t alloc_rand_mem(dim4 &shape, int dtype, float min, float max) {
+  mem_t mem;
+  size_t size = static_cast<size_t>(shape.n) * shape.c * shape.h * shape.w *
+                DtypeSize(dtype);
+  char *data = new char[size];
+  memset(data, 0x00, size);
+  mem.host_mem = data;
+  mem.data_size = size;
+  mem.dtype = dtype;
+  mem.shape = shape;
+  MallocWrap(handle, &mem.dev_mem_data, (u64 *)&mem.host_mem, size);
+  rand_data(data, size, shape, min, max, dtype);
+  MemcpyS2D(handle, &mem.dev_mem_data, mem.host_mem, size);
+  mem.dev_mem = bm_mem_get_device_addr(mem.dev_mem_data);
+  return mem;
+}
+
+void D2S(mem_t &mem) {
+  MemcpyD2S(handle, &mem.dev_mem_data, mem.host_mem, mem.data_size);
+}
+
+int init_device() {
+  bm_status_t ret = BM_SUCCESS;
+  int devid = 0;
+  const char *devid_env = getenv("PPL_DEVID");
+  if (devid_env) {
+    devid = atoi(devid_env);
+  }
+  ret = bm_dev_request(&handle, devid);
+  if (ret != BM_SUCCESS) {
+    printf("init device failed\n");
+    return -1;
+  }
+  printf("init device success\n");
+  const unsigned int *p = kernel_module_data;
+  size_t length = sizeof(kernel_module_data);
+#if defined(__bm1688__)
+  for (int i = 0; i < 2; ++i) {
+    tpu_module[i] = tpu_kernel_load_module(handle, (const char *)p, length);
+    if (!tpu_module[i]) {
+      printf("load module failed\n");
+      return -1;
+    }
+  }
+#else
+  tpu_module = tpu_kernel_load_module(handle, (const char *)p, length);
+  if (!tpu_module) {
+    printf("load module failed\n");
+    return -1;
+  }
+#endif
+  printf("load module success!\n");
+  return 0;
+}
+
+void release_device() {
+#if defined(__bm1688__)
+  tpu_kernel_free_module(handle, tpu_module[0]);
+  tpu_kernel_free_module(handle, tpu_module[1]);
+#else
+  tpu_kernel_free_module(handle, tpu_module);
+#endif
+  bm_dev_free(handle);
+}
+
+void free_mem(mem_t &mem) { FreeWrap(handle, &mem.dev_mem_data, mem.host_mem); }
+#elif defined(__bm1690__) || defined(__sg2262__)
+tpuRtStream_t stream;
+tpuRtKernelModule_t tpu_module;
+
+struct mem_t {
+  u64 dev_mem;
+  char *host_mem;
+  dim4 shape;
+  int dtype;
+  size_t data_size;
+};
+
+static mem_t alloc_rand_mem(dim4 &shape, int dtype, float min, float max) {
+  mem_t mem;
+  size_t size = static_cast<size_t>(shape.n) * shape.c * shape.h * shape.w *
+                DtypeSize(dtype);
+  char *data = new char[size];
+  memset(data, 0x00, size);
+  mem.host_mem = data;
+  mem.dev_mem = 0;
+  mem.data_size = size;
+  mem.dtype = dtype;
+  mem.shape = shape;
+  tpuRtMalloc((void **)(&mem.dev_mem), size, 0);
+  rand_data(data, size, shape, min, max, dtype);
+  tpuRtMemcpyS2D((void *)mem.dev_mem, mem.host_mem, size);
+  return mem;
+}
+
+void D2S(mem_t &mem) {
+  tpuRtMemcpyD2S(mem.host_mem, (void *)mem.dev_mem, mem.data_size);
+}
+
+int init_device() {
+  int devid = 0;
+  const char *devid_env = getenv("PPL_DEVID");
+  if (devid_env) {
+    devid = atoi(devid_env);
+  }
+  tpuRtStatus_t ret;
+  ret = tpuRtInit();
+  if (ret != tpuRtSuccess) {
+    printf("init device failed\n");
+    return -1;
+  }
+  printf("init device success\n");
+  tpuRtSetDevice(devid);
+  tpuRtStreamCreate(&stream);
+  auto kernel_dir = getenv("PPL_KERNEL_PATH");
+  if (!kernel_dir) {
+    printf("Please set env PPL_KERNEL_PATH to libkernel.so path\n");
+    return -1;
+  }
+  tpu_module = tpuRtKernelLoadModuleFile(kernel_dir, stream);
+  if (NULL == tpu_module) {
+    printf("load module failed\n");
+    return -2;
+  }
+  printf("load module success!\n");
+  return 0;
+}
+
+void release_device() {
+  tpuRtKernelUnloadModule(tpu_module, stream);
+  tpuRtStreamSynchronize(stream);
+  ;
+  tpuRtStreamDestroy(stream);
+}
+
+void free_mem(mem_t &mem) {
+  tpuRtFree((void **)&mem.dev_mem, 0);
+  delete[] mem.host_mem;
+}
+
+#endif
+
 #endif

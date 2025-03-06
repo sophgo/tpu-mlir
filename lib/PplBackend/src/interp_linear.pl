@@ -250,7 +250,7 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
 
 
     dim4 w_stride;
-    get_stride(&w_stride, &real_index_real_shape, TPU_COMPACT, get_eu_num<int16>());
+    get_stride<int16>(&w_stride, &real_index_real_shape, TPU_COMPACT);
     w_stride.w = 2;
     int index_dif = (int)floor(count * block_h * scale_h);
     if(!align_corners){

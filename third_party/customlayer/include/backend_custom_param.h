@@ -12,6 +12,10 @@ typedef struct {
 
 typedef struct {
   float b_val;
+} addconst_param_t;
+
+typedef struct {
+  float b_val;
 } ceiladd_param_t;
 
 typedef struct {

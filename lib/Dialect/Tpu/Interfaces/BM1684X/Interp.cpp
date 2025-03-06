@@ -79,8 +79,7 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   if (ppl_flag && mode_flag) {
     param.spec.buffer_addr = module::getAddress(getBuffer());
     BM168x::call_ppl_global_func("api_interp_global", &param, sizeof(param),
-                                 module::getCoreNum(), input_spec->data(),
-                                 output_spec->data());
+                                 input_spec->data(), output_spec->data());
   } else {
     BM168x::call_global_func("backend_api_interp_global", &param, sizeof(param),
                              input_spec->data(), output_spec->data());

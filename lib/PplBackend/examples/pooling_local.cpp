@@ -14,15 +14,14 @@ extern "C" {
 #endif
 
 void api_avgpool_local(void *param, size_t param_size, void *slice_info,
-                       void *input_spec, void *output_spec, const char *chip,
-                       void *cmdid) {
+                       void *input_spec, void *output_spec) {
   pooling_local_spec_t *_param = (pooling_local_spec_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
   tensor_spec_t *out_spec = (tensor_spec_t *)output_spec;
 
   int lane_num = 64;
   int eu_bytes = 64;
-  std::string chip_str(chip);
+  std::string chip_str = get_chip_str();
   if (chip_str == PPL_BM1688) {
     lane_num = 32;
     eu_bytes = 32;
@@ -48,7 +47,7 @@ void api_avgpool_local(void *param, size_t param_size, void *slice_info,
   const int block_ih = in_spec->shape[2];
 
   auto ret =
-      avg_pool_2d_local(chip, cmdid, output_addr, input_addr, kh, kw, stride_h,
+      avg_pool_2d_local(output_addr, input_addr, kh, kw, stride_h,
                         stride_w, pad_h_t, pad_h_b, pad_w_l, pad_w_r, block_n,
                         block_c, block_oh, block_iw, block_ow, block_ih);
 

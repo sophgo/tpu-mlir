@@ -60,8 +60,30 @@ void Arch::init(uint64_t freq) {
     } else if (chip == module::Chip::SG2380) {
       inst = &SG2380::instance();
     } else {
-      llvm_unreachable("unsupport chip");
+      llvm_unreachable("unsupport chip\n");
     }
+    // for ppl
+    std::string chip_str;
+    switch (chip) {
+    case module::Chip::BM1684X:
+      chip_str = PPL_BM1684X;
+      break;
+    case module::Chip::BM1688:
+    case module::Chip::CV186X:
+      chip_str = PPL_BM1688;
+      break;
+    case module::Chip::BM1690:
+      chip_str = PPL_BM1690;
+      break;
+    case module::Chip::MARS3:
+      chip_str = PPL_MARS3;
+      break;
+    default:
+      // llvm::errs() << "ppl unsupport this chip\n";
+      break;
+    }
+    setenv("CHIP", chip_str.c_str(), 1);
+    setenv("CORE_NUM", std::to_string(module::getCoreNum()).c_str(), 1);
   }
 }
 

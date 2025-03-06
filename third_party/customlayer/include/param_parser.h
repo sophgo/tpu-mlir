@@ -8,6 +8,12 @@ static absadd_param_t absadd_parse_param(const void* param) {
     return absadd_param;
 }
 
+static addconst_param_t addconst_parse_param(const void* param) {
+    addconst_param_t addconst_param = {0};
+    addconst_param.b_val = ((custom_param_t *)param)[0].float_t;
+    return addconst_param;
+}
+
 static ceiladd_param_t ceiladd_parse_param(const void* param) {
     ceiladd_param_t ceiladd_param = {0};
     ceiladd_param.b_val = ((custom_param_t *)param)[0].float_t;

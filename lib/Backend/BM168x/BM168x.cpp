@@ -398,26 +398,6 @@ void BM168x::call_global_func(const char *symbolName, void *params,
   func(params, param_size, input, output, (*instance())->cmdid_node);
 }
 
-static std::string get_ppl_chip() {
-  std::string chip_str;
-  auto chip = module::getChip();
-  switch (chip) {
-  case module::Chip::BM1684X:
-    chip_str = PPL_BM1684X;
-    break;
-  case module::Chip::BM1688:
-  case module::Chip::CV186X:
-    chip_str = PPL_BM1688;
-    break;
-  case module::Chip::BM1690:
-    chip_str = PPL_BM1690;
-    break;
-  default:
-    llvm_unreachable("chip not supported\n");
-  }
-  return chip_str;
-}
-
 typedef int (*local_backend_api_t)(void *params, int param_size, void *input,
                                    void *info, void *output, void *pid_node);
 void BM168x::call_local_func(const char *symbolName, void *params,
@@ -427,13 +407,11 @@ void BM168x::call_local_func(const char *symbolName, void *params,
   func(params, param_size, info, input, output, (*instance())->bdc_node);
 }
 
+typedef int (*ppl_set_node)(void *cmdid_node);
 typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
-                                        void *input, void *output,
-                                        const int core_num, const char *chip,
-                                        void *pid_node);
+                                        void *input, void *output);
 void BM168x::call_ppl_global_func(const char *symbolName, void *params,
-                                  int param_size, int core_num, void *input,
-                                  void *output) {
+                                  int param_size, void *input, void *output) {
   static int lock_fd = []() {
     int fd = open("/tmp/ppl_global_func.lock", O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
@@ -445,12 +423,12 @@ void BM168x::call_ppl_global_func(const char *symbolName, void *params,
     throw std::runtime_error("Failed to acquire file lock");
   }
   try {
-    std::string chip_str = get_ppl_chip();
-
+    auto set_node_chip =
+        instance()->PplCastToFPtr<ppl_set_node>("ppl_set_node");
+    set_node_chip((*instance())->cmdid_node);
     auto kernel_func =
         instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
-    kernel_func(params, param_size, input, output, core_num, chip_str.c_str(),
-                (*instance())->cmdid_node);
+    kernel_func(params, param_size, input, output);
     if (flock(lock_fd, LOCK_UN) != 0) {
       throw std::runtime_error("Failed to release file lock");
     }
@@ -461,15 +439,14 @@ void BM168x::call_ppl_global_func(const char *symbolName, void *params,
 }
 
 typedef int (*ppl_local_backend_api_t)(void *params, int param_size,
-                                       void *input, void *info, void *output,
-                                       const char *chip, void *pid_node);
+                                       void *input, void *info, void *output);
 void BM168x::call_ppl_local_func(const char *symbolName, void *params,
                                  int param_size, void *info, void *input,
                                  void *output) {
-  std::string chip_str = get_ppl_chip();
+  auto set_node_chip = instance()->PplCastToFPtr<ppl_set_node>("ppl_set_node");
   auto func = instance()->PplCastToFPtr<ppl_local_backend_api_t>(symbolName);
-  func(params, param_size, info, input, output, chip_str.c_str(),
-       (*instance())->bdc_node);
+  set_node_chip((*instance())->cmdid_node);
+  func(params, param_size, info, input, output);
 }
 
 typedef bool (*force_dynamic_run_func_t)(void *params, int param_size);

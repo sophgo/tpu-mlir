@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 void api_conv_global(void *param, size_t param_size, void *input_spec,
-                     void *output_spec, const char *chip, void *cmdid) {
+                     void *output_spec) {
   conv_global_spec_t *_param = (conv_global_spec_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
   tensor_spec_t *out_spec = (tensor_spec_t *)output_spec;
@@ -25,7 +25,7 @@ void api_conv_global(void *param, size_t param_size, void *input_spec,
   int lane_num = 64;
   int eu_bytes = 64;
   int nic = 32;
-  std::string chip_str(chip);
+  std::string chip_str = get_chip_str();
   if (chip_str == PPL_BM1688) {
     // TODO fix
     lane_num = 32;

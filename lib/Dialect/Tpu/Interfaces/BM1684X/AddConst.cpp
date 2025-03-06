@@ -53,8 +53,8 @@ void tpu::AddConstOp::codegen_global_bm1684x() {
                              output_spec->data());
   } else {
     BM168x::call_ppl_global_func("api_add_const_fp_global", &param,
-                                 sizeof(param), module::getCoreNum(),
-                                 input_spec->data(), output_spec->data());
+                                 sizeof(param), input_spec->data(),
+                                 output_spec->data());
   }
 #else
   BM168x::call_global_func("backend_api_constbinary_global", &param,

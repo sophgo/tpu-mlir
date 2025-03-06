@@ -117,7 +117,11 @@
         "hash_set": "cpp",
         "stacktrace": "cpp",
         "expected": "cpp",
-        "*.bak": "cpp"
+        "*.bak": "cpp",
+        "tpu_impl_custom_ops.h": "c",
+        "tpu_utils.h": "c",
+        "param_parser.h": "c",
+        "assert.h": "c"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,

@@ -127,17 +127,76 @@ TpuLang自定义算子添加
 
   其中，in_idx和in_slice分别表示指向该层输入张量切片的索引和大小的指针，out_idx和out_slice表示该层输出张量切片的索引索引和大小。若不提供该函数，则in_idx指向的数值与out_idx相同，in_slice指向的数值与out_slice相同。
 
-4. 基于tpu-kernel编写后端算子
+4. 编写后端算子
 
-  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include/tpu_impl_custom_ops.h 头文件中，声明 global layer 与 local layer 的自定义算子函数 void tpu_impl_{op_name}_global 和 void tpu_impl_{op_name}_local (可选) ， 并在 ./src 下添加 tpu_impl_{op_name}.c 文件，在其中调用tpu-kernel接口实现相应的函数。
+  后端算子可基于tpu-kernel编写（4.1）， 也可基于ppl编写（4.2）
 
-5. 编写算子调用接口
+4.1 基于tpu-kernel编写后端算子
+
+  假定当前处于 $TPUC_ROOT/customlayer 路径下：
+
+  a. 在./include/tpu_impl_custom_ops.h 头文件中，声明 global layer 与 local layer 的自定义算子函数
+
+  .. code-block:: c
+
+    void tpu_impl_{op_name}_global // 必选
+
+    void tpu_impl_{op_name}_local  // 可选
+
+  b. 在 ./src 下添加 tpu_impl_{op_name}.c 文件，在其中调用tpu-kernel接口实现自定义算子kenel函数。
+
+  c. 在 ./src 下添加 interface_{op_name}.c 文件，在其中实现自定义算子调用接口:
+
+  .. code-block:: c
+
+    void api_{op_name}_global // 必选，用于调用 void tpu_impl_{op_name}_global
+
+    void api_{op_name}_local  // 可选，用于调用 void tpu_impl_{op_name}_local
+
+4.2 基于ppl编写后端算子
+
+  假定当前处于 $TPUC_ROOT/customlayer 路径下:
+
+  a. 在./PplBackend/src下导入{op_name}.pl（ppl kernel定义与实现）
+
+  b. 在./PplBackend/src下导入{op_name}_tile.cpp（切分函数，指定dtype对应的后端实现）
+
+  .. code-block:: c
+
+    // kernelFunc定义和函数名{op_name}.pl中保持一致
+    using KernelFunc = int (*)(global_addr_t, global_addr_t,
+                              float, int, int, int, int, int, bool);
+
+    int {op_name}_tiling/{op_name}(...) { // 必选
+      KernelFunc func;
+      if (dtype == SG_DTYPE_FP32) {
+        func = {op_name}_f32;
+      } else if (dtype == SG_DTYPE_FP16) {
+        func = {op_name}_f16;
+      } else if (dtype == SG_DTYPE_BFP16) {
+        func = {op_name}_bf16;
+      ....
+      } else {
+        assert(0 && "unsupported dtype");
+      }
+      // 切分函数（可选）
+    ...
+    }
+
+  c. 在./PplBackend/src下导入{op_name}_api.c（接口函数）
+
+  .. code-block:: c
+
+    extern int {op_name}_tiling/{op_name} (...); // 必选
+
+    void api_addconst_global/local(..., onst void *param) { // 必选
+      PARSE_PARAM({op_name}, {op_name}_param, param);
+      {op_name}_tiling/{op_name}(...);
+    }
+
+1. 编写算子通用接口
 
   在 ./src 目录下添加自定义算子函数的调用接口:
-
-    void api_{op_name}_global （必选，用于调用 void tpu_impl_{op_name}_global）
-
-    api_{op_name}_local (可选，用于调用 void tpu_impl_{op_name}_local)
 
     int64_t api_{op_name}_global_bfsz (可选，计算global layer需要的缓存大小)
 
@@ -154,13 +213,22 @@ TpuLang自定义算子添加
 
   .. code-block:: shell
 
-    register_custom_op({op_name})
+    register_custom_op({op_name})     // 4.1 基于tpu-kernel编写后端算子
+
+    // OR
+
+    register_custom_ppl_op({op_name}) // 4.2 基于ppl编写后端算子
+
 
   假如自定义算子存在local layer，则需要注册一下:
 
   .. code-block:: shell
 
-    register_custom_local_op({op_name})
+    register_custom_local_op({op_name})       // 4.1 基于tpu-kernel编写后端算子
+
+    // OR
+
+    register_custom_ppl_local_op({op_name})   // 4.2 基于ppl编写后端算子
 
   假如自定义算子global layer需要缓存，则需要注册一下:
 
@@ -896,4 +964,3 @@ TpuLang示例
 
   调用TpuLang接口构建自定义AP算子的流程与TPU自定义算子基本一致，区别在定义“TpuLang.custom”对象时，
   “op_name”参数要以“ap.”开头字段作为区分，例如“ap.topk”
-

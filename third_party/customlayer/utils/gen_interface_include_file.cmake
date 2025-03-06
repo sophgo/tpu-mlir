@@ -18,7 +18,7 @@ foreach(op_name ${REGSTERED_GLOBAL_BFSZ_NAMES})
         "    const void *param\);\n"
     )
 endforeach()
-foreach(op_name ${REGSTERED_OP_NAMES})
+foreach(op_name ${REGSTERED_OP_NAMES} ${REGSTERED_PPL_OP_NAMES})
     file(APPEND ${API_INCLUDE_FILE}
         "void api_" ${op_name} "_global\(\n"
         "    const global_tensor_spec_t *input,\n"
@@ -40,7 +40,7 @@ foreach(op_name ${REGSTERED_LOCAL_BFSZ_NAMES})
         "    const void *param\);\n"
     )
 endforeach()
-foreach(op_name ${REGSTERED_LOCAL_OP_NAMES})
+foreach(op_name ${REGSTERED_LOCAL_OP_NAMES} ${REGSTERED_PPL_LOCAL_OP_NAMES})
     file(APPEND ${API_INCLUDE_FILE}
         "void api_" ${op_name} "_local\(\n"
         "    const local_sec_info_t *sec_info,\n"
@@ -54,7 +54,7 @@ if (NOT "$ENV{CUSTOM_LAYER_DEV_MODE}" STREQUAL "backend")
         "// type infer function\n"
         "\n"
     )
-    foreach(op_name ${REGSTERED_OP_NAMES})
+    foreach(op_name ${REGSTERED_OP_NAMES} ${REGSTERED_PPL_OP_NAMES})
         file(APPEND ${API_INCLUDE_FILE}
             "void type_infer_" ${op_name} "\(\n"
             "    const global_tensor_spec_t *input,\n"
@@ -66,7 +66,7 @@ if (NOT "$ENV{CUSTOM_LAYER_DEV_MODE}" STREQUAL "backend")
         "// slice infer function\n"
         "\n"
     )
-    foreach(op_name ${REGSTERED_OP_NAMES})
+    foreach(op_name ${REGSTERED_OP_NAMES} ${REGSTERED_PPL_OP_NAMES})
         file(APPEND ${API_INCLUDE_FILE}
             "void slice_infer_" ${op_name} "\(\n"
             "    const local_sec_info_t* sec_info,\n"

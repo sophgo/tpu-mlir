@@ -19,7 +19,7 @@ void arange_broadcast(tensor<DataType> &dst, int start, int step, int num);
 
 template <typename DataType>
 void broadcast(tensor<DataType> &dst, tensor<DataType> &src,
-               int num = LANE_NUM);
+               int num = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>

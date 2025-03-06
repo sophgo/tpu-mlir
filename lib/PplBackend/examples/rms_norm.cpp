@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 void api_rms_norm_global(void *param, size_t param_size, void *input_spec,
-                         void *output_spec, const char *chip, void *cmdid) {
+                         void *output_spec) {
   rms_norm_global_spec_t *_param = (rms_norm_global_spec_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
   tensor_spec_t *out_spec = (tensor_spec_t *)output_spec;
@@ -44,21 +44,21 @@ void api_rms_norm_global(void *param, size_t param_size, void *input_spec,
   int w_secs = 1;
   int n = 1, c = outer, h = 1, w = chns;
   int block_w = align_up(chns / w_secs, w_align);
-
+  std::string chip = get_chip_str();
   auto call_kernel = [&]() {
     if (in_spec[0].dtype == DTYPE_FP16) {
       printf("------------------  DTYPE_FP16  -------------------\n");
-      return rms_norm_fp16(chip, cmdid, out_spec->addr, in_spec->addr,
+      return rms_norm_fp16(out_spec->addr, in_spec->addr,
                            has_weight ? weight_spec->addr : 0, exp, has_weight,
                            n, c, h, w, block_w);
     } else if (in_spec[0].dtype == DTYPE_BFP16) {
       printf("------------------  DTYPE_BFP16  -------------------\n");
-      return rms_norm_bf16(chip, cmdid, out_spec->addr, in_spec->addr,
+      return rms_norm_bf16(out_spec->addr, in_spec->addr,
                            has_weight ? weight_spec->addr : 0, exp, has_weight,
                            n, c, h, w, block_w);
     } else if (in_spec[0].dtype == DTYPE_FP32) {
       printf("------------------  DTYPE_FP32  -------------------\n");
-      return rms_norm_fp32(chip, cmdid, out_spec->addr, in_spec->addr,
+      return rms_norm_fp32(out_spec->addr, in_spec->addr,
                            has_weight ? weight_spec->addr : 0, exp, has_weight,
                            n, c, h, w, block_w);
     } else {

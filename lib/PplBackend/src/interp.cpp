@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 using INTERP =
-    std::function<int(const char *chip, void *pid_node, unsigned long long v1,
+    std::function<int(unsigned long long v1,
                       unsigned long long v2, unsigned long long v3, int32_t v11,
                       int32_t v12, int32_t v13, float v14, int32_t v15,
                       int32_t v16, int32_t v17, int32_t v18, int32_t v19)>;
@@ -36,12 +36,12 @@ static INTERP get_interp_func(bool is_fp16, bool is_bf16, bool linear_mode) {
 }
 
 void api_interp_global(void *param, size_t param_size, void *input_spec,
-                       void *output_spec, const int core_num, const char *chip,
-                       void *cmdid) {
+                       void *output_spec) {
 
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
   tensor_spec_t *out_spec = (tensor_spec_t *)output_spec;
   interp_global_param_t *_param = (interp_global_param_t *)param;
+  const int core_num = get_core_num();
 
   auto N = in_spec->shape[0];
   auto C = in_spec->shape[1];
@@ -64,7 +64,7 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
     linear_mode = false;
   }
 
-  std::string chip_str(chip);
+  std::string chip_str = get_chip_str();
   if (chip_str == PPL_BM1688) {
     npu_size = 128 * 1024;
     npu_num = 32;
@@ -81,7 +81,7 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
 
   while (block_h > 0) {
     printf("block_h:%d\n", block_h);
-    ret = func(chip, cmdid, out_spec->addr, in_spec[0].addr,
+    ret = func(out_spec->addr, in_spec[0].addr,
                _param->spec.buffer_addr, core_num, N, C, H_in, W_in, H_out,
                W_out, block_h, _param->spec.common.align_corners);
     CHECK_PPL_RET(ret);

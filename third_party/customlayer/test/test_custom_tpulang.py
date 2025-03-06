@@ -47,6 +47,8 @@ class CUSTOM_TPULANG_TESTER(object):
             #########################################
             # case: (test, bm1684x_support, bm1688_support)
             "AbsAdd":          (self.test_AbsAdd,       Y, Y),
+            "AddConst":        (self.test_AddConst,     Y, Y),
+            # "AddConstLocal":   (self.test_AddConstLocal,Y, Y),
             "CeilAdd":         (self.test_CeilAdd,      Y, Y),
             "Crop":            (self.test_Crop,         Y, Y),
             "SimpleBlock":     (self.test_SimpleBlock,  Y, Y),
@@ -137,7 +139,7 @@ class CUSTOM_TPULANG_TESTER(object):
     def test_AbsAdd(self):
         # 1. prepare the input
         dtype = "float32"
-        input_shape = [2, 2, 2, 2]
+        input_shape = [1, 32, 1, 1024]
         x_data = rand_data(input_shape, dtype)
         x = tpul.Tensor(name="in", dtype=dtype, shape=input_shape, data=x_data)
         ins = [x]
@@ -151,6 +153,44 @@ class CUSTOM_TPULANG_TESTER(object):
 
         ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
         self.compile_and_check("absadd", ins, outs, ref_data)
+
+    def test_AddConst(self):
+        # 1. prepare the input
+        dtype = "float32"
+        input_shape = [4, 256, 64, 512]
+        x_data = rand_data(input_shape, dtype)
+        x = tpul.Tensor(name="in", dtype=dtype, shape=input_shape, data=x_data)
+        ins = [x]
+        # 2. build model
+        b = 1.2
+        outs = my_tpulang_layer.addConst.tpulang(inputs=[x], b=float(b), dtype=dtype)
+        # 3. save the origin output for comparison
+        out_data = my_tpulang_layer.addConst.native(x_data, b)
+        # There are two outputs because in non-f32 quant mode, the result will be
+        # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
+
+        ref_data = {outs[0].name: out_data, f"{outs[0].name}_f32": out_data}
+        self.compile_and_check("addconst", ins, outs, ref_data)
+
+    def test_AddConstLocal(self):
+        def add_const_op(x, b, dtype="float32"):
+            return my_tpulang_layer.addConst.tpulang([x], b, dtype)[0]
+
+        def model_def(x):
+            x = add_const_op(x, 1.2)
+            out = add_const_op(x, 1.2)
+            return out
+
+        def compile_model(dynamic: bool):
+            shape = [4, 32, 64, 48]
+            x_data = np.random.random(shape).astype(np.float32)  * -2
+            x = tpul.Tensor(dtype='float32', shape=shape, data=x_data)
+            y = model_def(x)
+            postfix = "dyn" if dynamic else "static"
+            tpul.compile_f32("model_def_{}_{}".format("addconst_local", postfix),
+                             [x], [y], dynamic=dynamic)
+        compile_model(self.dynamic)
+
 
     def test_CeilAdd(self):
         # 1. prepare the input
@@ -274,11 +314,13 @@ class CUSTOM_TPULANG_TESTER(object):
             return conv
 
         def abs_add_op(x, b, dtype="float32"):
-            return my_tpulang_layer.absAdd.tpulang([x], b, dtype)[0]
+            return my_tpulang_layer.addConst.tpulang([x], b, dtype)[0]
+            # return my_tpulang_layer.absAdd.tpulang([x], b, dtype)[0]
 
         def model_def(x, flag: int):
-            if flag & 0b1:
-                x = abs_add_op(x, 1.2)
+            # if flag & 0b1:
+            x = abs_add_op(x, 1.2)
+            x = abs_add_op(x, 1.2)
             conv1 = conv_op(x, [4, 32, 3, 3], [1, 1], [1, 1, 1, 1])
             relu1 = tpul.relu(conv1)
             conv2 = conv_op(relu1, [4, 4, 3, 3], [2, 2], [2, 2, 2, 2])

@@ -4,7 +4,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 #include "ppl_defs.h"
 #include "ppl_tpu.h"
@@ -23,15 +22,16 @@ template <typename U, typename V> auto MAX(U a, V b) {
   return (((a)) > ((b)) ? (a) : (b));
 }
 
-template<typename T>
-void swap(T &a, T &b) {
+template <typename T> void swap(T &a, T &b) {
   T tmp = a;
   a = b;
   b = tmp;
 }
 
-void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode, int eu_num = 0,
+template <typename T>
+void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode,
                 int start_idx = 0) {
+  int eu_num = get_eu_num<T>();
   if (mode == TPU_ALIGN) {
     stride->h = shape->w;
     stride->c = shape->h * stride->h;
@@ -58,17 +58,15 @@ void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode, int eu_num = 0,
     stride->w = 1;
   }
 }
-
-template<typename T>
-void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode, int start_idx = 0) {
-  int eu_num = get_eu_num<T>();
-  get_stride(stride, shape, mode, eu_num, start_idx);
-}
-
 template <typename U, typename V>
 void aligned_stride_4d(dim4 *aligned_stride, dim4 *shape, U start_idx,
                        V eu_size) {
-  get_stride(aligned_stride, shape, TPU_ALIGN, EU_BYTES / eu_size, start_idx);
+  int eu_num = EU_BYTES / eu_size;
+  aligned_stride->h = shape->w;
+  aligned_stride->c = shape->h * aligned_stride->h;
+  aligned_stride->c = align(aligned_stride->c, eu_num);
+  aligned_stride->n = div_up(start_idx + shape->c, NPU_NUM) * aligned_stride->c;
+  aligned_stride->w = 1;
 }
 
 template <typename T> data_type_t convert_dtype() {
@@ -105,7 +103,7 @@ template <typename T> data_type_t convert_dtype() {
   }
 }
 
-int dim4_index(const dim4 *d, int index) {
+template <typename T> int dim4_index(const dim4 *d, T index) {
   if (index < 0 && index >= -4)
     index = index + 4;
   if (index == 0)
@@ -128,7 +126,8 @@ tensor<dtype> &make_tensor(dimT &block_shape, dimT &real_shape,
 }
 
 template <typename dtype>
-gtensor<dtype> &make_l2tensor(dim4 &block_shape, tensor_mode_t mode, dim4 &real_shape) {
+gtensor<dtype> &make_l2tensor(dim4 &block_shape, tensor_mode_t mode,
+                              dim4 &real_shape) {
   gtensor<dtype> new_tensor(block_shape, mode);
   return new_tensor.view(real_shape);
 }

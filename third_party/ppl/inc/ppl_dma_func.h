@@ -53,11 +53,11 @@ void store_transpose(gtensor<DataType> &dst, tensor<DataType> &src,
 
 template <typename DataType>
 void load_broadcast(tensor<DataType> &dst, gtensor<DataType> &src,
-                    int num = LANE_NUM);
+                    int num = 0);
 
 template <typename DataType>
 void broadcast(tensor<DataType> &dst, tensor<DataType> &src,
-               int num = LANE_NUM);
+               int num = 0);
 
 template <typename DataType>
 void move(tensor<DataType> &dst, tensor<DataType> &src);

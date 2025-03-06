@@ -26,6 +26,21 @@ class absAdd:
             out_dtypes=[dtype])
         return outs
 
+class addConst:
+    @staticmethod
+    def native(data, b):
+        return data + b
+    @staticmethod
+    def tpulang(inputs, b, dtype="float32"):
+        params = {"b": b}
+        outs = tpul.custom(
+            tensors_in=inputs,
+            # op_name should be consistent with the backend
+            op_name="addconst",
+            params=params,
+            out_dtypes=[dtype])
+        return outs
+
 class ceilAdd:
     @staticmethod
     def native(data, b):

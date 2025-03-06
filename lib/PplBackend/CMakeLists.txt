@@ -41,6 +41,8 @@ include_directories(include)
 # compile cpp
 aux_source_directory(src TILING_SRC)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/host PL_SRC)
-add_library(ppl_host SHARED ${TILING_SRC} ${PL_SRC})
+set(ADDITIONAL_SRC ${CUS_TOP}/src/ppl_jit.cpp
+                   ${CUS_TOP}/src/host_utils.cpp)
+add_library(ppl_host SHARED ${TILING_SRC} ${PL_SRC} ${ADDITIONAL_SRC})
 
 install(TARGETS ppl_host DESTINATION lib)

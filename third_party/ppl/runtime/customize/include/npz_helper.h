@@ -1,5 +1,7 @@
-#pragma once
-#include "host_test_utils.h"
+#ifndef __NPZ_HELPER_H__
+#define __NPZ_HELPER_H__
+#include "tpu_defs.h"
+#include "cnpy.h"
 
 void load_npy(std::string file_path, char *data, int dtype, int file_dtype) {
   cnpy::NpyArray nparray = cnpy::npy_load(file_path);
@@ -127,3 +129,29 @@ void npz_save(std::string file_path, std::string file_name, std::string ext,
   cnpy::npz_save_all(out_path.str(), npz);
   printf("save %s success\n", out_path.str().c_str());
 }
+
+void npz_add(cnpy::npz_t &npz, const char *key, mem_t &mem) {
+  npz_add(npz, key, mem.host_mem, &mem.shape, mem.dtype);
+}
+
+void npz_save(cnpy::npz_t &npz, const char *ext) {
+  const char *data_env = getenv("PPL_DATA_PATH");
+  if (!data_env) {
+    printf("Please set env PPL_DATA_PATH to data dir");
+    assert(0);
+  }
+  std::string data_dir(data_env);
+  const char *file_name_env = getenv("PPL_FILE_NAME");
+  if (!file_name_env) {
+    printf("Please set env PPL_FILE_NAME to pl file name");
+    assert(0);
+  }
+  std::string file_name(file_name_env);
+  npz_save(data_dir, file_name, ext, npz);
+}
+
+void npz_save_input(cnpy::npz_t &npz) { npz_save(npz, "_input"); }
+
+void npz_save_output(cnpy::npz_t &npz) { npz_save(npz, "_tar"); }
+
+#endif

@@ -170,18 +170,28 @@ typedef struct inst_profile {
   int gdma_direction;
   int src_format;
   int dst_format;
-  double power;
+  double op_dyn_energy; //nJ
+  double sram_rw_energy; // nJ
   double compute_ability;
   bool b_gdma_use_l2;
 } INST_PROFILE;
 
+#ifndef CONFIG_MAX_CDMA_NUM
+#define CONFIG_MAX_CDMA_NUM 1
+#endif
+
+#ifndef CONFIG_MAX_TPU_CORE_NUM
+#define CONFIG_MAX_TPU_CORE_NUM 1
+#endif
+
 typedef struct cmd_id_node {
   unsigned int bd_cmd_id;
   unsigned int gdma_cmd_id;
+  unsigned int hau_cmd_id;
   bool in_parallel_state;
 #if defined(SG_STAS_GEN) || defined(SG_TV_GEN)
-  unsigned int cycle_count;
-  unsigned int cur_op_cycle;
+  long long cycle_count;
+  long long cur_op_cycle;
 #endif
 #ifdef SG_STAS_GEN
   char cmd_name[16];
@@ -189,6 +199,9 @@ typedef struct cmd_id_node {
   gdma_cmd_node_info_t gdma_cmd_info;
   INST_PROFILE inst_profile;
 #endif
+  unsigned int sdma_cmd_id;
+  unsigned int cdma_cmd_id[CONFIG_MAX_CDMA_NUM];
+  unsigned int vsdma_cmd_id[CONFIG_MAX_TPU_CORE_NUM];
 } CMD_ID_NODE;
 
 #ifdef SG_STAS_GEN

@@ -122,17 +122,76 @@ Add TpuLang Custom Operator
   where respectively `in_idx` and `in_slice` are pointers to index and size of slice of input tensor while `out_idx` and `out_slice` are index and size of slice of output tensor. Not provided this plugin, the default is that when fusing with other operators, `out_idx` is equal to the value that `in_idx` is pointing to and `out_slice` is equal to the value that `in_slice` is pointing to.
 
 
-4. Develop backend operators based on TPU-Kernel
+4. Develop backend operators
 
-  Assuming the current path is $TPUC_ROOT/customlayer, add the ./include/tpu_impl_custom_ops.h header file in the ./include directory to declare the custom operator functions for the global layer and local layer (void tpu_impl_{op_name}_global and void tpu_impl_{op_name}_local, respectively). Then, add the tpu_impl_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
+  We can develop backend operators based on TPU-Kernel(4.1) or based on ppl(4.2)
 
-5. Define the operator's parameter structure and write the operator's interface
+4.1 Based on TPU-Kernel
+
+  Assuming the current path is $TPUC_ROOT/customlayer
+
+  a. Declare the custom operator functions for the global layer and local layer in ./include/tpu_impl_custom_ops.h
+
+  .. code-block:: c
+
+    void tpu_impl_{op_name}_global // Required
+
+    void tpu_impl_{op_name}_local  // Optional
+
+  b. Add the tpu_impl_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
+
+  c. Add the interface_{op_name}.c file in the ./src directory and implement the backend api.
+
+  .. code-block:: c
+
+    void api_{op_name}_global // Required. Calling void tpu_impl_{op_name}_global
+
+    void api_{op_name}_local  // Optional. Calling void tpu_impl_{op_name}_local
+
+4.1 Based on ppl
+
+  Assuming the current path is $TPUC_ROOT/customlayer
+
+  a. Add the {op_name}.pl file in the ./PplBackend/src directory, where .pl is an implementation of the kernerl function using ppl syntax.
+
+  b. Add the {op_name}_tile.cpp file in the ./PplBackend/src directory and implement the tiling func and specifies the kernel implementation corresponding to the dtype.
+
+  .. code-block:: c
+
+    // The kernelFunc definition is the same as the function name {op_name}.pl
+    using KernelFunc = int (*)(global_addr_t, global_addr_t,
+                              float, int, int, int, int, int, bool);
+
+    int {op_name}_tiling/{op_name}(...) { // Required.
+      KernelFunc func;
+      if (dtype == SG_DTYPE_FP32) {
+        func = {op_name}_f32;
+      } else if (dtype == SG_DTYPE_FP16) {
+        func = {op_name}_f16;
+      } else if (dtype == SG_DTYPE_BFP16) {
+        func = {op_name}_bf16;
+      ....
+      } else {
+        assert(0 && "unsupported dtype");
+      }
+      // Optional. Tiling func
+    ...
+    }
+
+  c. Add the {op_name}_api.c file in the ./PplBackend/src directory and implement the backend api.
+
+  .. code-block:: c
+
+    extern int {op_name}_tiling/{op_name} (...);            // Required.
+
+    void api_addconst_global/local(..., onst void *param) { // Required.
+      PARSE_PARAM({op_name}, {op_name}_param, param);
+      {op_name}_tiling/{op_name}(...);
+    }
+
+5. Define the operator's parameter structure and write the operator's general interface
 
   Add the interface_{op_name}.c file in the ./src directory and implement the corresponding interfaces:
-
-    void api_{op_name}_global (Required. Calling void tpu_impl_{op_name}_global)
-
-    void api_{op_name}_local (Optional. Calling void tpu_impl_{op_name}_local)
 
     int64_t api_{op_name}_global_bfsz (Optional. Calculate global buffer size)
 
@@ -148,13 +207,21 @@ Add TpuLang Custom Operator
 
   .. code-block:: shell
 
-    register_custom_op({op_name})
+    register_custom_op({op_name})     // 4.1 Based on TPU-Kernel
+
+    // OR
+
+    register_custom_ppl_op({op_name}) // 4.2 Based on ppl
 
   Once local layer could be implemented, register it:
 
   .. code-block:: shell
 
-    register_custom_local_op({op_name})
+    register_custom_local_op({op_name})     // 4.1 Based on TPU-Kernel
+
+    // OR
+
+    register_custom_ppl_local_op({op_name}) // 4.2 Based on ppl
 
   Once global layer needs buffer, register it:
 

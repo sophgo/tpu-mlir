@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.5)
 project(TPUKernelSamples LANGUAGES C CXX)
 
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+function(parse_list INPUT OUTPUT CHAR)
+  string(REGEX REPLACE ":" "${CHAR}" TMP_LIST "${INPUT}")
+  set(${OUTPUT} ${TMP_LIST} PARENT_SCOPE)
+endfunction()
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--no-undefined")
@@ -22,6 +26,9 @@ if(NOT DEFINED CHIP)
 else()
   message(NOTICE "CHIP: ${CHIP}")
 endif()
+# Add chip arch defination
+add_definitions(-D__${CHIP}__)
+
 
 if(DEFINED DEV_MODE)
   message(NOTICE "DEV_MODE: ${DEV_MODE}")
@@ -66,6 +73,12 @@ else()
   endif()
 endif()
 
+# deal extra flags
+parse_list("${EXTRA_IDIRS}" EXTRA_IDIRS ";")
+parse_list("${EXTRA_LDIRS}" EXTRA_LDIRS ";")
+parse_list("${EXTRA_LDFLAGS}" EXTRA_LDFLAGS ";")
+parse_list("${EXTRA_CFLAGS}" EXTRA_CFLAGS " ")
+
 set(TPUKERNEL_TOP ${PPL_TOP}/runtime/${CHIP}/TPU1686)
 set(KERNEL_TOP ${PPL_TOP}/runtime/kernel)
 set(CUS_TOP ${PPL_TOP}/runtime/customize)
@@ -94,9 +107,6 @@ else()
   message(FATAL_ERROR "Unknown chip type:${CHIP}")
 endif()
 
-# Add chip arch defination
-# add_definitions(-D__$ENV{CHIP_ARCH}__)
-
 set(KERNEL_HEADER "${CMAKE_BINARY_DIR}/kernel_module_data.h")
 add_custom_command(
     OUTPUT ${KERNEL_HEADER}
@@ -112,32 +122,39 @@ add_library(host STATIC ${HOST_SRC_FILES})
 install(TARGETS host DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 add_dependencies(host gen_kernel_module_data_target)
 
+message(NOTICE "EXTRA_LDFLAGS: ${EXTRA_LDFLAGS}")
+message(NOTICE "EXTRA_IDIRS: ${EXTRA_IDIRS}")
+message(NOTICE "EXTRA_CFLAGS: ${EXTRA_CFLAGS}")
+message(NOTICE "EXTRA_LDIRS: ${EXTRA_LDIRS}")
 find_package(ZLIB REQUIRED)
 aux_source_directory(src APP_SRC_FILES)
-foreach(app_src IN LISTS APP_SRC_FILES)
-  get_filename_component(app ${app_src} NAME_WE)
-  message(STATUS "add executable: " ${app})
-  add_executable(${app} ${app_src} ${CUS_TOP}/src/cnpy.cpp)
-  if(${CHIP} STREQUAL "bm1690" OR ${CHIP} STREQUAL "sg2262")
-    target_link_libraries(${app} PRIVATE host tpuv7_rt cdm_daemon_emulator pthread ${ZLIB_LIBRARIES})
-  elseif(${CHIP} STREQUAL "bm1684x"
-      OR ${CHIP} STREQUAL "bm1684xe"
-      OR ${CHIP} STREQUAL "bm1688"
-      OR ${CHIP} STREQUAL "mars3")
-    target_link_libraries(${app} PRIVATE host bmlib pthread ${ZLIB_LIBRARIES})
-  endif()
-  add_dependencies(${app} gen_kernel_module_data_target)
+add_executable(main ${APP_SRC_FILES}
+                    ${CUS_TOP}/src/cnpy.cpp
+                    ${CUS_TOP}/src/host_utils.cpp)
+target_include_directories(main PRIVATE ${EXTRA_IDIRS})
+target_link_directories(main PRIVATE ${EXTRA_LDIRS})
+target_link_libraries(main PRIVATE ${EXTRA_LDFLAGS})
+target_compile_options(main PRIVATE ${EXTRA_CFLAGS})
+if(${CHIP} STREQUAL "bm1690" OR ${CHIP} STREQUAL "sg2262")
+  target_link_libraries(main PRIVATE host tpuv7_rt cdm_daemon_emulator pthread ${ZLIB_LIBRARIES})
+elseif(${CHIP} STREQUAL "bm1684x"
+    OR ${CHIP} STREQUAL "bm1684xe"
+    OR ${CHIP} STREQUAL "bm1688"
+    OR ${CHIP} STREQUAL "mars3")
+  target_link_libraries(main PRIVATE host bmlib pthread ${ZLIB_LIBRARIES})
+endif()
+add_dependencies(main gen_kernel_module_data_target)
 
-  if(${app} STREQUAL "autotune_test")
-    set_target_properties(${app} PROPERTIES OUTPUT_NAME autotune_test)
-  else()
-    set_target_properties(${app} PROPERTIES OUTPUT_NAME test_case)
-  endif()
-  install(TARGETS ${app} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
-endforeach()
+if(main STREQUAL "autotune_test")
+  set_target_properties(main PROPERTIES OUTPUT_NAME autotune_test)
+else()
+  set_target_properties(main PROPERTIES OUTPUT_NAME test_case)
+endif()
+install(TARGETS main DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
 aux_source_directory(device KERNEL_SRC_FILES)
 add_library(firmware SHARED ${KERNEL_SRC_FILES} ${CUS_TOP}/src/ppl_helper.c)
+target_compile_options(firmware PRIVATE ${EXTRA_PLFLAGS})
 target_include_directories(firmware PRIVATE
 	include
 	${PPL_TOP}/include

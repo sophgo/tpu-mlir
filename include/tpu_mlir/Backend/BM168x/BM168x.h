@@ -158,8 +158,7 @@ public:
                               void *output);
   // call ppl backend function
   static void call_ppl_global_func(const char *symbolName, void *params,
-                                   int param_size, int core_num, void *input,
-                                   void *output);
+                                   int param_size, void *input, void *output);
   static void call_ppl_local_func(const char *symbolName, void *params,
                                   int param_size, void *info, void *input,
                                   void *output);

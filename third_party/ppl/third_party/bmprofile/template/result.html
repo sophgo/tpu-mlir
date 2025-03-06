@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="echarts.min.js"></script>
+</head>
+
+<body>
+    <h1 id="page-caption" style="margin: 2em 0 2em 0; text-align: center;">BMProfile Result</h1>
+    <div id="time-container"></div>
+    <div id="config-container">
+        <div class="config-item"><input type="checkbox" id="show_data_table" value="显示数据表" />显示数据表</div>
+        <div class="config-item config-localmem"><input type="checkbox" id="show_localmem" value="显示localmem" />显示localmem</div>
+        <div class="config-item config-globalmem"><input type="checkbox" id="show_globalmem" value="显示globalmem" />显示globalmem</div>
+    </div>
+    <div id="data-list"></div>
+    <hr>
+    <div id="lmem-container" class="mem-container" style="display: none;"></div>
+    <hr>
+    <div id="gmem-container" class="mem-container" style="display: none;"></div>
+    <hr>
+    <div id="summary-table"></div>
+    <style>
+        #config-container {
+            margin-left: 0;
+            margin-top: 1em;
+        }
+
+        .config-item {
+            display: inline-block;
+            padding-left: 2em;
+        }
+
+        body {
+            text-align: center;
+        }
+
+        .mem-container {
+            height: 500px;
+            width: 90%;
+            padding-left: 2%;
+        }
+
+        td,
+        th {
+            padding: 0;
+        }
+
+        .data-table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            empty-cells: show;
+            border: 1px solid #cbcbcb;
+            width: 80%;
+            margin-left: 10%;
+        }
+
+        .data-table caption {
+            color: #000;
+            font: bold, arial, sans-serif;
+            font-size: larger;
+            padding: 0.5em 0;
+            text-align: center;
+        }
+
+        .data-table thead td.asc:after {
+            content: "↑"
+        }
+
+        .data-table thead td.desc::after {
+            content: "↓"
+        }
+
+        .filter-label::after {
+            content: ": "
+        }
+
+        .filter-block {
+            display: inline;
+            margin-right: 1em;
+        }
+
+        .data-table thead td:hover {
+            cursor: pointer;
+        }
+
+        .data-table td,
+        .data-table th {
+            border-left: 1px solid #cbcbcb;
+            border-top: 1px solid #cbcbcb;
+            font-size: inherit;
+            margin: 0;
+            overflow: visible;
+            padding: .5em 1em;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: aliceblue;
+        }
+
+        .data-table thead {
+            background-color: #e0e0e0;
+            color: #000;
+            text-align: left;
+            vertical-align: bottom;
+        }
+
+        .data-table td {
+            background-color: transparent;
+        }
+
+        .data-table-odd td {
+            background-color: #f2f2f2;
+        }
+
+        hr {
+            margin: 1em 0 1em 0;
+            color: gray;
+        }
+    </style>
+    <script>
+        var all_charts = []
+        var filtered_data = []
+        function set_chart_time_range(begin_usec, end_usec, source) {
+            for (let c of all_charts) {
+                if(c===source) continue
+                if (c.set_time_range) c.set_time_range(begin_usec, end_usec)
+            }
+        }
+    </script>
+    <script type="text/javascript" src="profile_data.js"></script>
+    <script>
+        function sortData(data, is_asc) {
+            index = []
+            for (let i = 0; i < data.length; i++) {
+                index.push(i)
+            }
+            for (let i = data.length; i > 0; i--) {
+                let is_swaped = false
+                for (let j = 0; j < i - 1; j++) {
+                    if ((data[j] > data[j + 1] && is_asc) || (data[j] < data[j + 1] && !is_asc)) {
+                        is_swaped = true
+                        let tmp = data[j + 1]
+                        data[j + 1] = data[j]
+                        data[j] = tmp
+                        tmp = index[j + 1]
+                        index[j + 1] = index[j]
+                        index[j] = tmp
+                    }
+                }
+                if (!is_swaped) break;
+            }
+            return index
+        }
+        function sortDataByColumn(data, col, is_asc) {
+            let key_data = []
+            for (let i = 0; i < data.length; i++) {
+                key_data.push(data[i][col])
+            }
+            let index = sortData(key_data, is_asc)
+
+            let new_data = []
+            for (let i = 0; i < index.length; i++) {
+                new_data.push(data[index[i]])
+            }
+            return new_data
+        }
+        function sortTableByColumn(e, data, usec_cols) {
+            let col_head = e.target;
+            let index = parseInt(col_head.className.split("-")[1])
+            let is_asc = !(col_head.classList.contains("asc") || col_head.classList.length == 1)
+            let all_heads = col_head.parentNode.children
+            for (let h of all_heads) {
+                h.classList.remove("asc")
+                h.classList.remove("desc")
+            }
+            col_head.classList.add(is_asc ? "asc" : "desc")
+            let row_elems = col_head.parentNode.parentNode.parentNode.lastChild.children
+            if (typeof (data) === "undefined") {
+                data = []
+                for (let r = 0; r < row_elems.length; r++) {
+                    let row_data = []
+                    let col_elems = row_elems[r].children
+                    for (let c = 0; c < col_elems.length; c++) {
+                        let value = col_elems[c].innerText
+                        if (all_heads[c].getAttribute("type") == "number") {
+                            value = Number(value)
+                        }
+                        row_data.push(value)
+                    }
+                    data.push(row_data)
+                }
+            }
+            sorted_data = sortDataByColumn(data, index, is_asc)
+            if (typeof (usec_cols) == "undefined") {
+                usec_cols = []
+            }
+            for (let r = 0; r < row_elems.length; r++) {
+                let row_data = sorted_data[r]
+                if (usec_cols.length > 0) {
+                    row_elems[r].onclick = (e) => {
+                        set_chart_time_range(row_data[usec_cols[0]], row_data[usec_cols[1]])
+                    }
+                }
+                let col_elems = row_elems[r].children
+                for (let c = 0; c < col_elems.length; c++) {
+                    if (usec_cols.indexOf(c) >= 0) {
+                        col_elems[c].innerHTML = usec_str(row_data[c])
+                    } else {
+                        col_elems[c].innerHTML = row_data[c]
+                    }
+                }
+            }
+        }
+        function showDataTable(id, header, data, caption) {
+            let node = document.getElementById(id)
+            if (!node) return;
+            let table = document.createElement("table")
+            table.id = `table-${id}`
+            table.className = "data-table"
+            if (caption) {
+                let capNode = table.createCaption()
+                capNode.innerText = caption
+            }
+            let head = table.createTHead()
+            let row = document.createElement("tr")
+            head.appendChild(row)
+            for (let i = 0; i < header.length; i++) {
+                let col = document.createElement("td")
+                col.innerText = header[i]
+                col.className = `header-${i}`
+                if (data.length > 0) {
+                    col.setAttribute("type", typeof (data[0][i]))
+                }
+                col.onclick = sortTableByColumn
+                row.appendChild(col)
+            }
+            let body = table.createTBody()
+            for (let r = 0; r < data.length; r++) {
+                let row_data = data[r]
+                let row_body = document.createElement("tr")
+                body.appendChild(row_body)
+                for (let c = 0; c < row_data.length; c++) {
+                    let col_body = document.createElement("td")
+                    col_body.innerText = row_data[c]
+                    row_body.appendChild(col_body)
+                }
+            }
+            node.appendChild(table)
+        }
+        if (typeof (summary_header) !== "undefined") {
+            showDataTable("summary-table", summary_header, summary_data, summary_caption)
+        }
+    </script>
+    <script type="text/javascript">
+        function usec_str(u) {
+            if (u < 1000) {
+                return `${u.toFixed(3)}us`
+            } else if (u < 1000000) {
+                return `${(u / 1000).toFixed(3)}ms`
+            } else { //if(u<1000000000) {
+                return `${(u / 1000000).toFixed(3)}s`
+            }
+        }
+        function renderItem(params, api) {
+            if (!api.value || !api.value.length) return false
+            let categoryIndex = api.value(0);
+            let start = api.coord([api.value(1), categoryIndex]);
+            let end = api.coord([api.value(2), categoryIndex]);
+            let height_value = api.value(4)
+            if (height_value < 0) {
+                height_value = 1
+            }
+            let ratio = 0.6
+            let bottom_height = api.size([0, 1])[1] * ratio;
+            let r = 2
+            let min_width = 5
+            let min_height = 5
+            let h = min_height + (bottom_height - min_height) * height_value
+            let w = Math.max(end[0] - start[0], min_width)
+            let x = start[0]
+            let y = start[1] + bottom_height / 2 - h
+            let points = [[x + r, y], [x + w - r, y], [x + w, y + r], [x + w, y + h - r], [x + w - r, y + h], [x + r, y + h], [x, y + h - r], [x, y + r]];
+            params.context.rendered = true;
+
+            let tip = api.value(3) + '\n' + usec_str(api.value(2) - api.value(1))
+            var tipRect = echarts.format.getTextRect(tip);
+            if (tipRect.width > w) {
+                tip = ""
+            }
+            let textY = y + 1
+            let textColor = "white"
+            if (tipRect.height > h) {
+                textY = y - tipRect.height - 2
+                textColor = "black"
+            }
+            let textRect = echarts.graphic.clipRectByRect({
+                x: x,
+                y: textY,
+                width: w,
+                height: tipRect.height,
+            }, params.coordSys);
+            let item = {
+                type: 'group',
+                children: [
+                    {
+                        type: 'polygon',
+                        shape: {
+                            points: echarts.graphic.clipPointsByRect(points, {
+                                x: params.coordSys.x,
+                                y: params.coordSys.y,
+                                width: params.coordSys.width,
+                                height: params.coordSys.height
+                            })
+                        },
+                        style: api.style({})
+                    }, {
+                        type: "rect",
+                        shape: textRect,
+                        style: api.style({
+                            fill: "transparent",
+                            stroke: "transparent",
+                            text: tip,
+                            textFill: textColor
+                        })
+                    }
+                ]
+            }
+            return item
+        }
+        function calcColorIndex(data, max_len) {
+            let index = data
+            if (typeof (data) === "string") {
+                index = 0
+                for (let i = 0; i < data.length; i++) {
+                    index += data.codePointAt(i)
+                }
+            }
+            return index % max_len
+        }
+        let colors = []
+        for (let r = 0; r < 250; r += 50) {
+            for (let g = 0; g < 250; g += 50) {
+                for (let b = 0; b < 250; b += 50) {
+                    colors.push(`rgb(${r},${g},${b})`)
+                }
+            }
+        }
+        function showTimeChart(chart, header, raw_data, categories, color_col, title) {
+            let data = []
+            let category_time = []
+            let category_count = []
+            for (let i = 0; i < categories.length; i++) {
+                category_time.push(0)
+                category_count.push(0)
+            }
+            let startTime = raw_data.length > 0 ? raw_data[0][1] : 0;
+            for (let i = 0; i < raw_data.length; i++) {
+                if(startTime>raw_data[i][1]) startTime = raw_data[i][1];
+                category_time[raw_data[i][0]] += raw_data[i][2] - raw_data[i][1];
+                category_count[raw_data[i][0]] += 1;
+                data.push({
+                    name: `${raw_data[i][3]}`,
+                    value: raw_data[i],
+                    itemStyle: {
+                        normal: {
+                            color: colors[calcColorIndex(raw_data[i][color_col], colors.length)],
+                            // borderColor: "#FFFFFF",
+                        }
+                    }
+                })
+            }
+            let new_categories = [];
+            for (let i = 0; i < categories.length; i++) {
+                new_categories.push(categories[i] +
+                    "\ncount=" + category_count[i] +
+                    "\ntotal=" + usec_str(category_time[i])
+                )
+            }
+            let option = {
+                tooltip: {
+                    alwaysShowContent: true,
+                    position: function (pos, params, el, elRect, size) {
+                        var obj = { top: pos[1] - 30 };
+                        if (pos[0] + size.contentSize[0] > size.viewSize[0]) {
+                            obj['left'] = size.viewSize[0] - size.contentSize[0];
+                        } else {
+                            obj['left'] = pos[0];
+                        }
+                        return obj;
+                    },
+                    formatter: function (params) {
+                        if (!params.value || !params.value.length || params.value.length != header.length) return ""
+                        let tip = params.marker + params.name + ': ' + usec_str(params.value[2] - params.value[1])
+                        tip += `<br>begin: ${usec_str(params.value[1])}`
+                        tip += `<br>end: ${usec_str(params.value[2])}`
+                        for (let i = 5; i < header.length; i++) {
+                            if (params.value[i] === "") continue
+                            tip += `<br>${header[i]}: ${params.value[i]}`
+                        }
+                        return tip;
+                    },
+                    axisPointer: {
+                        show: true,
+                        type: 'cross',
+                        lineStyle: {
+                            type: 'dashed',
+                            width: 1
+                        },
+                        label: {
+                            show: true,
+                            formatter: function (param) {
+                                if (param.axisDimension == 'x') {
+                                    return usec_str(param.value)
+                                }
+                                return param.value
+                            }
+                        }
+                    }
+                },
+                title: {
+                    text: title ? title : "Time Chart",
+                    left: 'center'
+                },
+                dataZoom: [{
+                    type: 'slider',
+                    filterMode: 'weakFilter',
+                    showDataShadow: false,
+                    height: 10,
+                    borderColor: 'transparent',
+                    backgroundColor: '#e2e2e2',
+                    handleIcon: 'M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7v-1.2h6.6z M13.3,22H6.7v-1.2h6.6z M13.3,19.6H6.7v-1.2h6.6z', // jshint ignore:line
+                    handleSize: 20,
+                    handleStyle: {
+                        shadowBlur: 6,
+                        shadowOffsetX: 1,
+                        shadowOffsetY: 2,
+                        shadowColor: '#aaa'
+                    },
+                    bottom: 40,
+                    realtime: true,
+                    labelFormatter: ''
+                }, {
+                    type: 'inside',
+                    realtime: true,
+                    filterMode: 'weakFilter'
+                }],
+                grid: {
+                    height: 500,
+                },
+                xAxis: {
+                    min: startTime,
+                    scale: true,
+                    axisLabel: {
+                        formatter: function (val) {
+                            return (val / 1000) + ' ms';
+                        }
+                    }
+                },
+                yAxis: {
+                    data: new_categories
+                },
+                toolbox: {
+                    right: '10%',
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 'none'
+                        },
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+
+                series: [{
+                    type: 'custom',
+                    renderItem: renderItem,
+                    itemStyle: {
+                        opacity: 0.8
+                    },
+                    encode: {
+                        x: [1, 2],
+                        y: 0
+                    },
+                    data: data
+                }]
+            };
+
+            if (option && typeof option === "object") {
+                chart.setOption(option, true);
+            }
+            return chart
+        }
+        function select_by_column(data, col_idx, value) {
+            let new_data = []
+            for (let i = 0; i < data.length; i++) {
+                if (data[i][col_idx] == value) {
+                    new_data.push(data[i])
+                }
+            }
+        }
+        function createSelector(labelText, options, onChanged) {
+            let node = document.createElement("div")
+            node.className = "filter-block"
+            let label = document.createElement("label")
+            label.innerText = labelText
+            label.className = "filter-label"
+            node.appendChild(label)
+            let select = document.createElement("select")
+            select.className = "filter-select"
+            for (let o of options) {
+                option = document.createElement("option")
+                option.value = o
+                option.innerText = "" + o
+                select.appendChild(option)
+            }
+            select.onchange = (e) => {
+                let node = e.target
+                let filter_blocks = node.parentNode.parentNode.children
+                let value_map = {}
+                for (let i = 0; i < filter_blocks.length; i++) {
+                    if (filter_blocks[i].className != "filter-block") continue
+                    let labelNode = filter_blocks[i].children[0]
+                    let valueNode = filter_blocks[i].children[1]
+                    if (valueNode.value == "--") continue
+                    value_map[labelNode.innerText] = valueNode.value
+                }
+                if (onChanged)
+                    onChanged(value_map)
+            }
+            node.appendChild(select)
+            return node
+        }
+        function uniqueColumnData(data, colIndex) {
+            let col_data = []
+            for (let i = 0; i < data.length; i++) {
+                if (col_data.includes(data[i][colIndex])) continue;
+                col_data.push(data[i][colIndex])
+            }
+            return col_data
+        }
+
+        function showDataInChart(elem_id, header, data, categories, filter_cols, color_col) {
+            filtered_data = data
+            var dom = document.getElementById(elem_id);
+            let chartHandle = null
+            if (dom.childNodes.length == 0) {
+                chartNode = document.createElement("div")
+                chartNode.style = "height:650px;width:100%";
+                dom.appendChild(chartNode)
+                filterBlock = document.createElement("div")
+                filterBlock.style = "text-align: center";
+                dom.appendChild(filterBlock)
+                chartHandle = echarts.init(chartNode);
+                filter_data = data
+                for (let col of filter_cols) {
+                    let col_data = uniqueColumnData(data, col)
+                    col_data.sort()
+                    col_data.unshift("--")
+                    filterBlock.appendChild(createSelector(header[col], col_data, (value_map) => {
+                        if (data.length == 0) return
+                        let colIndex_value = {}
+                        for (let key in value_map) {
+                            let index = header.indexOf(key)
+                            let value = value_map[key]
+                            if (typeof (data[0][index]) === "number") {
+                                value = Number(value)
+                            }
+                            colIndex_value[index] = value_map[key]
+                        }
+                        if (Object.keys(value_map).length > 0) {
+                            filtered_data = []
+                            for (let i = 0; i < data.length; i++) {
+                                let need = true
+                                for (let colIndex in colIndex_value) {
+                                    if (data[i][colIndex] != colIndex_value[colIndex]) {
+                                        need = false
+                                        break
+                                    }
+                                }
+                                if (!need) continue;
+                                filtered_data.push(data[i])
+                            }
+                        } else {
+                            filtered_data = data
+                        }
+                        showTimeChart(chartHandle, header, filtered_data, categories, color_col)
+                        if (document.getElementById("show_data_table").checked) {
+                            showFilterDataTable("data-list", time_header, filtered_data, "Detail Data ", categories)
+                        }
+                    }));
+                }
+                showTimeChart(chartHandle, header, data, categories, color_col)
+            }
+            if (chartHandle) {
+                chartHandle.set_time_range = function (begin_usec, end_usec) {
+                    chartHandle.dispatchAction({
+                        type: 'dataZoom',
+                        dataZoomIndex: 1,
+                        start: null,
+                        end: null,
+                        startValue: begin_usec,
+                        endValue: end_usec,
+                    })
+                }
+                // the following code will slow the chart
+                // chartHandle.on("datazoom", (params) => {
+                //     let option = chartHandle.getOption()
+                //     let {startValue, endValue} = option.dataZoom[1]
+                //     set_chart_time_range(startValue, endValue, chartHandle)
+                // })
+                chartHandle.on("click", (params) => {
+                    let val = params.value
+                    if (params.seriesIndex == 0) {
+                        let range = val[2] - val[1]
+                        let begin_usec = val[1]-range*0
+                        let end_usec = val[2]+range*0
+                        set_chart_time_range(begin_usec, end_usec)
+                    }
+                })
+            }
+            return chartHandle
+        }
+        if (typeof (time_data) !== "undefined") {
+            all_charts.push(showDataInChart("time-container", time_header, time_data, categories, filter_cols, 3))
+        }
+    </script>
+    <script type="text/javascript">
+
+        let YLABEL_LEFT = 10
+        let YLABEL_WIDTH = 200
+
+        function clipRectByRect(params, rect) {
+            let srcRect = {
+                x: rect[0],
+                y: rect[1],
+                width: rect[2],
+                height: rect[3],
+            }
+            return echarts.graphic.clipRectByRect(srcRect, params.coordSys);
+        }
+
+        function getMemColor(mem_addr) {
+            let r = ((mem_addr & 0xFF) * 211) % 255
+            let g = ((mem_addr & 0xFF00) * 211) % 255
+            let b = ((mem_addr & 0xFF0000) * 211) % 255
+            return `rgb(${r}, ${g}, ${b})`
+        }
+
+        function addrToText(addr) {
+            addr = Math.round(addr)
+            return `0x${addr.toString(16).toUpperCase()}`
+        }
+        function sizeToText(size) {
+            if (size < 1024) {
+                return `${size}B`;
+            } else if (size < 1024 * 1024) {
+                return `${(size / 1024).toFixed(2)}KB`
+            } else if (size < 1024 * 1024 * 1024) {
+                return `${(size / 1024 / 1024).toFixed(2)}MB`
+            } else {
+                return `${(size / 1024 / 1024 / 1024).toFixed(2)}GB`
+            }
+            return `${size}B`;
+        }
+        function memPartitionRender(params, api) {
+            let axisLabel = {
+                type: 'group',
+                // position: [YLABEL_LEFT, y],
+                children: []
+            };
+            var x = YLABEL_LEFT
+            var w = YLABEL_WIDTH * 2
+            var y = api.coord([0, api.value(0)])[1]
+            var h = api.coord([0, api.value(1)])[1] - y
+            clipRect = clipRectByRect(params, [x, y, w, h])
+            clipRect && (clipRect.x = YLABEL_LEFT);
+            if (clipRect) {
+                axisLabel.children.push({
+                    type: 'rect',
+                    shape: clipRect,
+                    style: api.style()
+                })
+                clipRect.height = Math.max(20, clipRect.height)
+                if (clipRect.height > 18) {
+                    let size = api.value(3)
+                    axisLabel.children.push({
+                        type: 'text',
+                        style: {
+                            x: clipRect.x,
+                            y: clipRect.y + 20,
+                            text: ` ${api.value(4)}: ${sizeToText(size)}`,
+                            textVerticalAlign: 'bottom',
+                            textAlign: 'left',
+                            textFill: '#fff',
+                            fontSize: 15,
+                        }
+                    })
+                }
+                if (clipRect.height > 36) {
+                    let start_addr = api.value(2)
+                    let size = api.value(3)
+                    let end_addr = start_addr + size
+                    let addr_text = ` ${addrToText(start_addr)}~${addrToText(end_addr)}`
+                    axisLabel.children.push({
+                        type: 'text',
+                        style: {
+                            x: clipRect.x,
+                            y: clipRect.y + 36,
+                            text: addr_text,
+                            textVerticalAlign: 'bottom',
+                            textAlign: 'left',
+                            textFill: '#fff',
+                            fontSize: 11,
+                        }
+                    })
+                }
+            }
+            return axisLabel
+        }
+        function memRecordRender(params, api) {
+            var left_top = api.coord([api.value(0), api.value(2)])
+            var right_botom = api.coord([api.value(1), api.value(3)])
+            let axisLabel = {
+                type: 'group',
+                // position: left_top,
+                children: []
+            };
+            let x = left_top[0]
+            let y = left_top[1]
+            let w = Math.max(5, right_botom[0] - left_top[0])
+            let h = Math.max(5, right_botom[1] - left_top[1])
+            let clipRect = clipRectByRect(params, [x, y, w, h])
+            axisLabel.children.push({
+                type: 'rect',
+                shape: clipRect,
+                style: api.style()
+            })
+
+            let text_y = clipRect?clipRect.y+5: 5;
+            function push_text(container, text, text_y, clipRect){
+                let textRect = echarts.format.getTextRect(text);
+                let text_x = clipRect ? clipRect.x : 0;
+                if (clipRect && clipRect.height+clipRect.y>=text_y+textRect.height && clipRect.width >= textRect.width) {
+                    text_y = text_y + textRect.height;
+                } else {
+                    text = ""
+                }
+                container.push({
+                    type: 'text',
+                    style: {
+                        x: text_x,
+                        y: text_y,
+                        text: text,
+                        textVerticalAlign: 'bottom',
+                        textAlign: 'left',
+                        textFill: '#fff',
+                    }
+                })
+                return text_y
+            }
+
+            let text = ""
+            text = " " + api.value(7).split(",")[0] + ": " + (api.value(4) ? "WRITE" : "READ")
+            text_y = push_text(axisLabel.children, text, text_y, clipRect)
+
+            let start_addr = api.value(5)
+            let size = api.value(6)
+            let end_addr = start_addr + size
+            text = ` ${addrToText(start_addr)}~${addrToText(end_addr)} (${sizeToText(size)})`
+            text_y = push_text(axisLabel.children, text, text_y, clipRect)
+
+            let full_desc = api.value(7)
+            text = full_desc.slice(full_desc.indexOf(",") + 1)
+            text_y = push_text(axisLabel.children, text, text_y, clipRect)
+
+            return axisLabel
+        }
+
+        function statDataDensity(data, range_begin_idx, range_end_idx, value_begin_idx, value_end_idx) {
+            let all_edges = []
+            let all_values = []
+            for (let d of data) {
+                if (all_edges.indexOf(d[range_begin_idx]) == -1) {
+                    all_edges.push(d[range_begin_idx])
+                    all_values.push(0)
+                }
+                if (all_edges.indexOf(d[range_end_idx]) == -1) {
+                    all_edges.push(d[range_end_idx])
+                    all_values.push(0)
+                }
+            }
+            all_edges = all_edges.sort((a,b)=>a-b)
+            for (let d of data) {
+                let begin = d[range_begin_idx]
+                let end = d[range_end_idx]
+                let value = d[value_end_idx] - d[value_begin_idx]
+                for (let i = 0; i < all_edges.length; i++) {
+                    let edge = all_edges[i]
+                    if (edge >= begin && edge < end) {
+                        all_values[i] += value;
+                    }
+                }
+            }
+            edge_value = []
+            for (let i = 0; i < all_edges.length; i++) {
+                edge_value.push([all_edges[i], all_values[i]])
+            }
+            return edge_value
+        }
+
+        function recordInPartition(record, partition) {
+            if (!partition) return false;
+            for (let p of partition) {
+                if (record[4] == 0) return true;
+                if (record[3] >= p[0] && record[3] <= p[0] + p[1]) {
+                    return true;
+                }
+            }
+            return false
+        }
+        function showMemChart(id, partition, op_record, title, begin_usec, end_usec) {
+            let dom = document.getElementById(id);
+            if (!partition) {
+                partition = []
+            }
+            if (op_record && op_record.length > 0) {
+                for (let op of op_record) {
+                    if (!recordInPartition(op, partition)) {
+                        partition.push([op[3], op[4], op[op.length - 1]])
+                    }
+                }
+            }
+            if (!partition || !op_record || partition.length == 0 || op_record.length == 0) {
+                dom.style = "display: none";
+                return null;
+            }
+            dom.style = "display: block";
+            let myChart = echarts.init(dom);
+            let mem_end = 0
+            let mem_start = 0
+            if (partition.length > 0) {
+                mem_end = partition[0][0] + partition[0][1];
+                mem_start = partition[0][0]
+                for (let p of partition) {
+                    if (p[0] < mem_start) mem_start = p[0];
+                    if (p[1] + p[0] > mem_end) mem_end = p[1] + p[0];
+                }
+            } else {
+                mem_end = op_record[0][3] + op_record[0][4]
+                mem_start = op_record[0][3]
+                for (let p of op_record) {
+                    if (p[3] < mem_start) mem_start = p[3];
+                    if (p[3] + p[4] > mem_end) mem_end = p[3] + p[4];
+                }
+            }
+            let partition_data = []
+            for (let p of partition) {
+                partition_data.push({
+                    name: p[2],
+                    value: [mem_end - p[0], mem_end - (p[0] + p[1]), p[0], p[1], p[2]],
+                    itemStyle: {
+                        normal: {
+                            color: getMemColor(p[0]),
+                            borderColor: "#FFFFFF",
+                        }
+                    }
+                })
+            }
+
+            let record_data = []
+            //begin end addr size type(0:R, 1:W) desc
+            let write_data = []
+            let read_data = []
+            let all_data = []
+            for (let op of op_record) {
+                let item_data = [op[0], op[1], mem_end - op[3], mem_end - (op[3] + op[4]), op[2], op[3], op[4], op[5]]
+                record_data.push({
+                    name: op[op.length - 1],
+                    value: item_data,
+                    itemStyle: {
+                        normal: {
+                            opacity: 0.6,
+                            color: op[2] ? "red" : "green",
+                            borderColor: "#FFFFFF",
+                            borderWidth: 1,
+                        }
+                    }
+                })
+                all_data.push(item_data);
+                if (item_data[4] == 0) {
+                    read_data.push(item_data)
+                } else {
+                    write_data.push(item_data)
+                }
+            }
+            let mem_used_stat = statDataDensity(all_data, 3, 2, 0, 1)
+            let used_stat = []
+            if (mem_used_stat.length > 0) {
+                used_stat.push([0, mem_used_stat[0][0]])
+                for (let i = 0; i < mem_used_stat.length - 1; i++) {
+                    used_stat.push([-mem_used_stat[i][1], mem_used_stat[i][0]])
+                    used_stat.push([-mem_used_stat[i][1], mem_used_stat[i + 1][0]])
+                }
+                if (mem_used_stat.length > 0) {
+                    used_stat.push([0, mem_used_stat[mem_used_stat.length - 1][0]])
+                }
+            }
+            let write_stat = statDataDensity(write_data, 0, 1, 3, 2)
+            let read_stat = statDataDensity(read_data, 0, 1, 3, 2)
+            let all_stat = statDataDensity(all_data, 0, 1, 3, 2)
+            let option = {
+                tooltip: {
+                    alwaysShowContent: true,
+                    formatter: (params) => {
+                        let tip = params.marker + params.name
+                        let val = params.value
+                        if (val.length == 5) {
+                            let start_addr = val[2]
+                            let size = val[3]
+                            let end_addr = start_addr + size
+                            let addr_text = `${addrToText(start_addr)}~${addrToText(end_addr)}`
+                            let size_text = sizeToText(size)
+                            tip += ": " + size_text + "<br>" + addr_text
+                        } else if(val.length==8){
+                            let all_params = params.name.split(", ")
+                            tip = params.marker + all_params[0]
+                            let start_addr = val[5]
+                            let size = val[6]
+                            let end_addr = start_addr + size
+                            let addr_text = `${addrToText(start_addr)}~${addrToText(end_addr)}`
+                            let size_text = sizeToText(size)
+                            tip += "<br>size=" + size_text + "<br>" + addr_text
+                            for(i=1; i<all_params.length; i++){
+                                tip += "<br>"+all_params[i];
+                            }
+                        } else {
+                            let start_addr = val[0]
+                            let size = val[1]
+                            let end_addr = start_addr + size
+                            let addr_text = `${addrToText(start_addr)}~${addrToText(end_addr)}`
+                            let size_text = sizeToText(size)
+                            tip += "<br>size=" + size_text + "<br>" + addr_text
+                        }
+                        return tip;
+                    },
+                    axisPointer: {
+                        show: true,
+                        type: 'cross',
+                        lineStyle: {
+                            type: 'dashed',
+                            width: 1
+                        },
+                        label: {
+                            show: true,
+                            formatter: function (param) {
+                                if (param.axisDimension == 'x') {
+                                    return (param.value / 1000).toFixed(3) + "ms"
+                                }
+                                return addrToText(Math.round(mem_end - param.value))
+                            }
+                        }
+                    }
+                },
+                toolbox: {
+                    left: 'right',
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 0,
+                        },
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                title: {
+                    text: title,
+                    left: "center",
+                },
+                dataZoom: [{
+                    type: "slider",
+                    xAxisIndex: [0, 1],
+                    filterMode: 'weakFilter',
+                    handleIcon: 'M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+                    handleSize: '80%',
+                    height: "3%",
+                    top: "15%",
+                }, {
+                    type: "inside",
+                    id: "insideX",
+                    filterMode: "weakFilter",
+                    zoomOnMouseWheel: true,
+                    moveOnMouseMove: true,
+                }, {
+                    type: "slider",
+                    yAxisIndex: [0, 2],
+                    zoomLock: false,
+                    filterMode: 'weakFilter',
+                    handleIcon: 'M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+                    handleSize: '80%',
+                    labelFormatter: (val) => { return addrToText(Math.round(mem_end - val)); },
+                }, {
+                    filterMode: 'weakFilter',
+                    type: "inside",
+                    id: "insideY",
+                    yAxisIndex: [0, 2],
+                    zoomOnMouseWheel: false,
+                    moveOnMouseMove: true,
+                    moveOnMouseWheel: false,
+                }],
+
+                grid: [{
+                    show: true,
+                    height: "80%",
+                    top: "18%",
+                    left: YLABEL_LEFT + YLABEL_WIDTH,
+                    right: 40,
+                    backgroundColor: "#FFF",
+                    borderWidth: 0,
+                }, {
+                    show: true,
+                    height: "10%",
+                    top: "5%",
+                    left: YLABEL_LEFT + YLABEL_WIDTH,
+                    right: 40,
+                }, {
+                    show: true,
+                    height: "80%",
+                    top: "18%",
+                    left: YLABEL_LEFT,
+                    width: YLABEL_WIDTH,
+                }],
+                xAxis: [{
+                    scale: true,
+                    axisLabel: {
+                        formatter: function (val) {
+                            return (val / 1000) + ' ms';
+                        }
+                    },
+                    position: "top",
+                    gridIndex: 0,
+                }, {
+                    show: false,
+                    scale: true,
+                    gridIndex: 1,
+                }, {
+                    show: false,
+                    gridIndex: 2,
+                    position: "bottom",
+                    scale: true,
+                }],
+                yAxis: [{
+                    axisTick: { show: false },
+                    splitLine: { show: false },
+                    axisLine: { show: true },
+                    axisLabel: {
+                        formatter: (val) => {
+                            return addrToText(mem_end - val)
+                        },
+                        show: true
+                    },
+                    min: 0,
+                    max: mem_end - mem_start,
+                    width: YLABEL_WIDTH,
+                    gridIndex: 0,
+                }, {
+                    name: "大小",
+                    type: "value",
+                    axisLabel: {
+                        formatter: function (val) {
+                            return sizeToText(val)
+                        }
+                    },
+                    gridIndex: 1,
+                }, {
+                    show: false,
+                    min: 0,
+                    max: mem_end - mem_start,
+                    width: YLABEL_WIDTH,
+                    gridIndex: 2,
+                }],
+                series: [{
+                    type: "custom",
+                    renderItem: memPartitionRender,
+                    encode: {
+                        x: -1,
+                        y: [0, 1],
+                    },
+                    data: partition_data,
+                    itemStyle: {
+                        opacity: 0.6
+                    },
+                    gridIndex: 0,
+                }, {
+                    type: "custom",
+                    renderItem: memRecordRender,
+                    encode: {
+                        x: [0, 1],
+                        y: [2, 3],
+                    },
+                    data: record_data,
+                    itemStyle: {
+                        opacity: 0.8
+                    },
+                    gridIndex: 0,
+                }, {
+                    id: "write_stat",
+                    type: "line",
+                    smooth: true,
+                    symbolSize: 5,
+                    data: write_stat,
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: "red",
+                    }
+                }, {
+                    id: "read_stat",
+                    type: "line",
+                    smooth: true,
+                    symbolSize: 5,
+                    data: read_stat,
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: "green",
+                    }
+                }, {
+                    id: "all_stat",
+                    type: "line",
+                    smooth: true,
+                    symbolSize: 5,
+                    data: all_stat,
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: "#222222",
+                    }
+                }, {
+                    id: "mem_used_time",
+                    type: "line",
+                    data: used_stat,
+                    xAxisIndex: 2,
+                    symbolSize: 0,
+                    yAxisIndex: 2,
+                    itemStyle: {
+                        color: "orange",
+                        opacity: 0.5,
+                    },
+                    lineStyle: {
+                        width: 2,
+                    },
+                    zlevel: -1,
+                    z: -1,
+                }],
+            }
+            if (typeof (begin_usec) != "undefined") {
+                option.dataZoom[0].startValue = begin_usec
+                option.dataZoom[1].startValue = begin_usec
+            }
+            if (typeof (end_usec) != "undefined") {
+                option.dataZoom[0].endValue = end_usec
+                option.dataZoom[1].endValue = end_usec
+            }
+            myChart.setOption(option)
+            myChart.set_time_range = function (begin_usec, end_usec) {
+                myChart.dispatchAction({
+                    type: 'dataZoom',
+                    dataZoomIndex: 1,
+                    start: null,
+                    end: null,
+                    startValue: begin_usec,
+                    endValue: end_usec,
+                })
+            }
+            // myChart.on("datazoom", (params) => {
+            //     let option = myChart.getOption()
+            //     let { startValue, endValue } = option.dataZoom[1]
+            //     set_chart_time_range(startValue, endValue, myChart)
+            // })
+            myChart.on("click", (params) => {
+                let val = params.value
+                if (params.seriesIndex == 0) {
+                    let range = val[0] - val[1];
+                    let scale_range = 1.2 * range;
+                    let pad = (scale_range - range) / 2;
+                    myChart.dispatchAction({
+                        type: 'dataZoom',
+                        dataZoomIndex: 3,
+                        start: null,
+                        end: null,
+                        startValue: val[1] - pad,
+                        endValue: val[0] + pad,
+                    })
+                } else if (params.seriesIndex == 1) {
+                    let vrange = val[2] - val[3];
+                    myChart.dispatchAction({
+                        type: 'dataZoom',
+                        dataZoomIndex: 3,
+                        start: null,
+                        end: null,
+                        startValue: val[2] - 8 * vrange,
+                        endValue: val[3] + 2 * vrange,
+                    })
+                    let hrange = val[1] - val[0];
+                    let begin_usec = val[0] - hrange
+                    let end_usec = val[1] + hrange
+                    set_chart_time_range(begin_usec, end_usec)
+                }
+            })
+            return myChart
+        }
+
+        function createShowFunc(container_id, partition, op_record, title) {
+            return function (e) {
+                if (e.target.checked) {
+                    let zoomOption = all_charts[0].getOption().dataZoom[1]
+                    let chart = showMemChart(container_id, partition, op_record, title, zoomOption.startValue, zoomOption.endValue)
+                    if (chart) {
+                        all_charts.push(chart)
+                    }
+                } else {
+                    new_charts = []
+                    for (let c of all_charts) {
+                        if (c._dom.id == container_id) {
+                            c.clear()
+                            c._dom.style = "display:none"
+                        } else {
+                            new_charts.push(c)
+                        }
+                    }
+                    all_charts = new_charts
+                }
+            }
+        }
+        function showFilterDataTable(id, header, data, caption, categories, current_category) {
+            let max_show = 1000
+            let category_idx = 0
+            let node = document.getElementById(id)
+            if (!node) return;
+            if (typeof (current_category) == "undefined") {
+                current_category = 0
+                let filter = document.querySelector("#table_filter")
+                if (filter) current_category = filter.selectedIndex
+            }
+            node.innerHTML = ""
+            node.style = "display:block"
+            let table = document.createElement("table")
+            table.id = `table-${id}`
+            table.className = "data-table"
+
+            let capNode = table.createCaption()
+            capNode.innerText = caption
+            if (categories.length > 0) {
+                let select_node = document.createElement("div")
+                select_node.className = "filter-block"
+                let label = document.createElement("label")
+                label.innerText = `(top${max_show}) :`
+                label.className = "filter-label"
+                select_node.appendChild(label)
+                let select = document.createElement("select")
+                select.className = "filter-select"
+                select.id = "table_filter"
+                for (let i = 0; i < categories.length; i++) {
+                    option = document.createElement("option")
+                    option.value = i
+                    option.innerText = "" + categories[i]
+                    select.appendChild(option)
+                }
+                select.selectedIndex = current_category
+                select_node.append(select)
+                select.onchange = (e) => {
+                    let value = e.target.value
+                    showFilterDataTable(id, header, data, caption, categories, value)
+                }
+                capNode.appendChild(select_node)
+            }
+
+            let usec_cols = [1, 2, header.length - 1]
+            let new_data = []
+            for (let d of data) {
+                if (d[category_idx] == current_category) {
+                    let item = []
+                    for (let i = 0; i < header.length - 1; i++) {
+                        item.push(d[i])
+                    }
+                    item.push(d[usec_cols[1]] - d[usec_cols[0]]);
+                    new_data.push(item)
+                }
+            }
+            let head = table.createTHead()
+            let row = document.createElement("tr")
+            head.appendChild(row)
+            for (let i = 0; i < header.length; i++) {
+                let col = document.createElement("td")
+                col.innerText = header[i]
+                col.className = `header-${i}`
+                if (data.length > 0) {
+                    col.setAttribute("type", typeof (data[0][i]))
+                }
+                col.onclick = (e) => {
+                    let states = e.target.className.split("-")
+                    let col_idx = parseInt(states[1])
+                    let is_asc = states[0] === "asc"
+                    sortTableByColumn(e, new_data, usec_cols)
+                }
+                row.appendChild(col)
+            }
+            let body = table.createTBody()
+            let show_len = max_show > new_data.length ? new_data.length : max_show;
+            for (let r = 0; r < show_len; r++) {
+                let row_data = new_data[r]
+                let row_body = document.createElement("tr")
+                row_body.onclick = (e) => {
+                    let range = row_data[2] - row_data[1]
+                    set_chart_time_range(row_data[1]-range*0.25, row_data[2]+range*0.25)
+                }
+                body.appendChild(row_body)
+                for (let c = 0; c < row_data.length; c++) {
+                    let col_body = document.createElement("td")
+                    if (usec_cols.indexOf(c) >= 0) {
+                        col_body.innerHTML = usec_str(row_data[c])
+                    } else {
+                        col_body.innerHTML = row_data[c]
+                    }
+                    row_body.appendChild(col_body)
+                }
+            }
+            node.appendChild(table)
+        }
+        if (typeof (page_caption) !== "undefined") {
+            document.querySelector("#page-caption").innerText = page_caption
+        }
+
+        if (lmem_op_record.length==0){
+            document.querySelector(".config-localmem").style = "display:none"
+        }
+        if(gmem_op_record.length==0){
+            document.querySelector(".config-globalmem").style = "display:none"
+        }
+        document.querySelector("#show_localmem").onchange = createShowFunc("lmem-container", lmem_partition, lmem_op_record, "LOCAL MEM")
+        document.querySelector("#show_globalmem").onchange = createShowFunc("gmem-container", gmem_partition, gmem_op_record, "GLOBAL MEM")
+        document.querySelector("#show_data_table").onchange = function (e) {
+            let container_id = "data-list"
+            if (e.target.checked) {
+                showFilterDataTable(container_id, time_header, filtered_data, "Detail Data ", categories, categories.length>3?3:0)
+            } else {
+                document.getElementById(container_id).style = "display:none"
+            }
+        }
+
+    </script>
+</body>
+
+</html>

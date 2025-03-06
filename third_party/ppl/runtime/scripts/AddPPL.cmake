@@ -1,6 +1,8 @@
 set(PPL_INCLUDE "")
 set(PPL_DEF "")
 set(PPL_NO_GEN_DIR "")
+set(PPL_MODE "0")
+set(PPL_CHIP "bm1684x")
 
 function(add_ppl_include name)
 	set(PPL_INCLUDE "${PPL_INCLUDE}-I ${name} " PARENT_SCOPE)
@@ -14,56 +16,43 @@ function(set_ppl_no_gen_dir)
 	set(PPL_NO_GEN_DIR "--no-gen-dir" PARENT_SCOPE)
 endfunction()
 
-function(ppl_gen input chip output opt_level)
+function(set_ppl_mode name)
+	set(PPL_MODE "${name}" PARENT_SCOPE)
+endfunction()
+
+function(set_ppl_chip name)
+	set(PPL_CHIP "${name}" PARENT_SCOPE)
+endfunction()
+
+function(ppl_gen input output opt_level)
   message(NOTICE "run ppl_gen:")
   message(NOTICE "${PPL_INCLUDE}")
 
 # Check the environment variables
-  if(NOT EXISTS ${output})
-    file(MAKE_DIRECTORY ${output})
-  endif()
+if(NOT EXISTS ${output})
+  file(MAKE_DIRECTORY ${output})
+endif()
 
-  if(NOT DEFINED ENV{PPL_PROJECT_ROOT})
-    message(FATAL_ERROR "PPL_PROJECT_ROOT is not defined. Please source envsetup.sh firstly.")
-  endif()
-  if(NOT DEFINED chip)
-    set(chip bm1684x)
-  message(NOTICE "CHIP is not defined, it's set to bm1684x by default.")
-  endif()
-  set(working_dir ${CMAKE_CURRENT_SOURCE_DIR}/build)
-  if(NOT EXISTS ${working_dir})
-    file(MAKE_DIRECTORY ${working_dir})
-  endif()
-  message(STATUS "CHIP: ${chip}")
-  message(STATUS "LANGUAGE: c++")
-	add_definitions(-D__${chip}__)
-
-# Organize include search paths
-  # set(inc_path $ENV{PPL_PROJECT_ROOT}/inc)
-
-  # foreach(arg IN LISTS ARGN)
-  #   if(arg MATCHES "^-D([^=]+)=(.*)$")
-  #     set(key ${CMAKE_MATCH_1})
-  #     set(value ${CMAKE_MATCH_2})
-
-  #     string(FIND "${key}" "CORENUM" position)
-  #     if(NOT position EQUAL -1)
-  #       list(APPEND corenums "-D${key}=${value}")
-  #     endif()
-  #   else()
-  #     list(APPEND inc_path "--I" "${arg}")
-  #   endif()
-  # endforeach()
-  # message(STATUS "INC_PATH: ${inc_path};")
+if(NOT DEFINED ENV{PPL_PROJECT_ROOT})
+  message(FATAL_ERROR "PPL_PROJECT_ROOT is not defined. Please source envsetup.sh firstly.")
+endif()
+set(working_dir ${CMAKE_CURRENT_SOURCE_DIR}/build)
+if(NOT EXISTS ${working_dir})
+  file(MAKE_DIRECTORY ${working_dir})
+endif()
+message(STATUS "CHIP: ${PPL_CHIP}")
+message(STATUS "LANGUAGE: c++")
+message(STATUS "INPUT:${input}")
+message(STATUS "OUTPUT:${output}")
+#	add_definitions(-D__${PPL_CHIP}__)
 
 # Execute commands
   set(ppl_compile_cmd
       "ppl-compile"
       "${input}"
-      "--function=*"
 			"${PPL_INCLUDE}"
-      "${inc_path}"
-      "-chip" "${CHIP}"
+      "-chip" "${PPL_CHIP}"
+      "--mode" "${PPL_MODE}"
       "-O2"
       "-o"
       "${output}"

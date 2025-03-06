@@ -48,6 +48,10 @@ int get_absadd_local_bfsz(
     const int *shape,
     data_type_t dtype);
 
+int get_addconst_local_bfsz(
+    const int *shape,
+    data_type_t dtype);
+
 int get_ceiladd_local_bfsz(
     const int *shape,
     data_type_t dtype);
