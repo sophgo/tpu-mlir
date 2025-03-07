@@ -18,7 +18,6 @@ import math
 import numpy as np
 import pymlir
 import torch
-pymlir.set_mem_mode("force_value_mem")
 from ctypes import *
 from tqdm import tqdm
 import datetime
@@ -30,6 +29,9 @@ from utils.misc import *
 from math import *
 from collections import Counter
 from scipy import spatial
+from .utils import *
+
+pymlir.set_mem_mode("force_value_mem")
 
 sub_blocks = {
     "eva_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze',
@@ -115,33 +117,11 @@ sub_blocks = {
 }
 # "detr_pattern": ['top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Add']
 
-FLOAT_MAP = {
-    "bm1684x": "F16",
-    "bm1684": "F32",
-    "cv183x": "BF16",
-    "cv182x": "BF16",
-    "cv181x": "BF16",
-    "cv180x": "BF16",
-    "bm1688": "F16",
-    "cv186x": "F16",
-    "bm1690": "F16",
-    "mars3":  "BF16"
-}
-
-chip_support_mix_fp_type = {
-    "bm1684x": ["F16", "F32"],
-    "bm1688": ["F16", "F32"],
-    "cv186x": ["F16", "F32"],
-    "bm1684": ["F32"],
-    "cv183x": ["BF16"],
-    "cv182x": ["BF16"],
-    "cv181x": ["BF16"],
-    "cv180x": ["BF16"],
-    "mars3":  ["BF16"]
-}
+N_mode = ['top.Relu', 'top.MaxPool', 'top.Conv', 'top.MatMul', 'top.PRelu', 'top.AvgPool', 'top.Add', 'top.Sigmoid', 'top.Deconv']
+H_mode = ['top.Conv', 'top.MatMul', 'top.AvgPool', 'top.Deconv', 'top.MaxPool']
 
 class MatchPattern:
-    def __init__(self, args, quantize_ops=None):
+    def __init__(self, args):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -150,10 +130,16 @@ class MatchPattern:
         self.module.load(args.mlir_file)
         self.parser = MlirParser(args.mlir_file)
         self.cali_method = args.cali_method
-        if quantize_ops is not None:
-            self.quantize_ops = ['top.' + op for op in quantize_ops]
+
+        if self.args.part_quantize == 'N_mode':
+            self.quantize_ops = N_mode
+        elif self.args.part_quantize == 'H_mode':
+            self.quantize_ops = H_mode
+        elif self.args.part_quantize == 'custom_mode':
+            self.quantize_ops = ['top.' + op for op in self.args.custom_operator]
         else:
-            self.quantize_ops = []
+            pass
+
         if '/' in self.cali_table_name:
             last_index = self.cali_table_name.rfind('/')
             self.quantize_table = self.cali_table_name[:last_index + 1] + "qtable"
@@ -269,7 +255,7 @@ class MatchPattern:
                     else:
                         fp_layer_list.append(all_tensors[i])
             self.gen_qtable(fp_layer_list, flag)
-        if flag == 0 and self.args.part_quantize is not None:
+        if flag == 0 and self.args.part_quantize:
             for j in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[j])
                 if op_type in self.quantize_ops:

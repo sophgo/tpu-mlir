@@ -17,7 +17,6 @@ import copy
 import math
 import numpy as np
 import pymlir
-pymlir.set_mem_mode("force_value_mem")
 from ctypes import *
 from tqdm import tqdm
 import datetime
@@ -26,9 +25,9 @@ from utils.mlir_parser import *
 from utils.log_setting import setup_logger
 from utils.misc import *
 from math import *
+from .utils import *
 
-from calibration.transformer_pattern import FLOAT_MAP
-from calibration.transformer_pattern import chip_support_mix_fp_type
+pymlir.set_mem_mode("force_value_mem")
 
 
 class ShapeOps:
