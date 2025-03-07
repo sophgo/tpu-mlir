@@ -37,7 +37,16 @@ int64_t tpu::TriluOp::getBufferSize_bm1684x(
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-  return 0;
+
+  int64_t idx_dtype_size;
+  if (module::isMARS3() || module::isSGTPUV8()) {
+    idx_dtype_size = sizeof(int16_t);
+  } else {
+    idx_dtype_size = sizeof(int32_t);
+  }
+
+  int64_t max_H_W = in_hslice > in_wslice ? in_hslice : in_wslice;
+  return in_nslice * in_cslice * max_H_W * (max_H_W + 1) * idx_dtype_size;
 }
 
 void tpu::TriluOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
