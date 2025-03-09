@@ -1354,7 +1354,29 @@ public:
   }
   bool shouldPrint(tpu::ConvbwdOp ConvBwdOp) const override { return false; }
 };
-} // namespace bm168x
+
+class BatchNormTrainBuffer : public OpRewriterPatternEx<tpu::BatchNormTrainOp> {
+public:
+  BatchNormTrainBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::BatchNormTrainOp>(context, "BatchNormTrainL2Buffer") {}
+  LogicalResult matchAndRewriteImpl(tpu::BatchNormTrainOp batchNormTrainOp,
+                                    PatternRewriter &rewriter) const override {
+    if (!module::isBM1690Family()) {
+      return failure();
+    }
+    int buffer_size = Arch::NPU_NUM * 4 * 2;
+    auto type = module::getStorageType(batchNormTrainOp.getInput());
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    if(module::isBM1690Family()){
+      auto buffer = tpu::BufferOp::create(batchNormTrainOp, buffer_type, tpu::BufferType::L2);
+      batchNormTrainOp.setOperand(batchNormTrainOp.getNumOperands() - 1, buffer);
+    }
+    return success();
+  }
+  bool shouldPrint(tpu::BatchNormTrainOp batchNormTrainOp) const override { return false; }
+};
+} // namespace
 
 class MaskRCNNRPNGetBboxesGlobalBuffer
     : public OpRewritePattern<tpu::MaskRCNNRPNGetBboxesOp> {
@@ -2062,6 +2084,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       WhereGlobalBuffer,
       MatMulGlobalBuffer,
       ConvBwdGlobalBuffer,
+      BatchNormTrainBuffer,
       MaskRCNNRPNGetBboxesGlobalBuffer,
       MaskRCNNBboxPoolerGlobalBuffer,
       MaskRCNNGetBboxBGlobalBuffer,

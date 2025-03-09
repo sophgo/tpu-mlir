@@ -16,7 +16,7 @@ static void LoweringBatchNorm(PatternRewriter &rewriter,
                               top::BatchNormTrainOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
-  opds.reserve(6);
+  opds.reserve(5);
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
@@ -34,6 +34,9 @@ static void LoweringBatchNorm(PatternRewriter &rewriter,
     }
   }
 
+  // l2 buffer for running mean and var
+  auto noneOp = module::getNoneOp(op);
+  opds.emplace_back(noneOp);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

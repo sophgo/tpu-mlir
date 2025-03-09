@@ -5376,6 +5376,7 @@ def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain"> {
     AnyTensor:$var,
     AnyTensorOrNone:$gamma,
     AnyTensorOrNone:$beta,
+    AnyTensorOrNone:$running_status_buffer, // split h for multicore; running_mean and var
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
     DefaultValuedAttr<F64Attr, "0.1">:$momentum
