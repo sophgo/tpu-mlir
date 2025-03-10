@@ -2638,14 +2638,15 @@ namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
-  patterns->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,
-                ConvertMatMul2Attention, ReshapeReorderPattern,
-                ConvertMultiInputAdd, WhereBroadcastToTile,
-                ConvertConv2DToImg2Col, SplitMatMulPattern, ConvertScaleOp,
-                ConcatToSwapDimInner, ConcatWithReduceSum2SliceWithAdd,
-                ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
-                ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt>(
-      patterns->getContext(), 8);
+  patterns
+      ->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,
+            ConvertMatMul2Attention, ReshapeReorderPattern,
+            ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col,
+            SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner,
+            //  ConcatWithReduceSum2SliceWithAdd,
+            ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
+            ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt>(
+          patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir
