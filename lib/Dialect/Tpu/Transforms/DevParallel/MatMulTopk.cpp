@@ -107,6 +107,10 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter, tpu::DevBeginOp op,
     } else {
       operands.push_back(mm.getBias());
     }
+    if (!a16_mm) {
+      operands.push_back(module::getNoneOp(mm));
+      operands.push_back(module::getNoneOp(mm));
+    }
     auto new_loc = module::getLocLike(mm.getOutput(), suffix);
     std::vector<int64_t> new_shape = outputShape;
     new_shape[new_shape.size() - 1] = length;
