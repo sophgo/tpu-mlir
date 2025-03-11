@@ -585,6 +585,8 @@ void sliceFAttentionMergeSplit(PatternRewriter &rewriter, tpu::DevBeginOp op,
         createReshapeOp(rewriter, next_op, cur_out, cur_device);
         muls = std::vector<Operation *>(next_op->user_begin(),
                                         next_op->user_end());
+      } else if (next_ops.size() == 2 && isa<tpu::MulOp>(next_ops[0])) {
+        muls = next_ops;
       }
       pos_ids.push_back(cur_out);
     }
