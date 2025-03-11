@@ -149,7 +149,7 @@ def collect_files():
     cur_dir=os.path.dirname(__file__)
     soc_tool_dir = os.path.join(cur_dir, "debugger")
     add_to_clean(soc_tool_dir)
-    os.makedirs(os.path.join(soc_tool_dir, "lib"), mode=755, exist_ok=True)
+    os.makedirs(os.path.join(soc_tool_dir, "lib"), exist_ok=True)
     utils_dir=os.path.join(cur_dir, "../../utils")
     thirdparty_lib_dir=os.path.join(cur_dir, "../../../third_party")
     shutil.copy(os.path.join(cur_dir, "../disassembler.py"), soc_tool_dir)

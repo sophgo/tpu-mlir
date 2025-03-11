@@ -829,7 +829,7 @@ class TPUInfo:
                 self.dump_lib_info()
                 cur_dir = os.path.dirname(__file__)
                 tmp_cache_dir = os.path.join(cur_dir, "../soc_tools/tmp_cache")
-                os.makedirs(tmp_cache_dir, mode=755, exist_ok=True)
+                os.makedirs(tmp_cache_dir, exist_ok=True)
                 self.copy_cache_file(os.path.join(tmp_cache_dir,"memmap_config.json"))
             else:
                 cur_dir = os.path.dirname(__file__)

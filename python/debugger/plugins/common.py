@@ -597,14 +597,10 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         return [i for i in cand if i.startswith(text)]
 
     def dump_current(self):
-        if self.tdb.context.using_cmodel:
-            filename = f"info_dump_{self.tdb.cmd_point}_cmodel.npz"
-        else:
-            filename = f"info_dump_{self.tdb.cmd_point}_device.npz"
-
         datas = {}
         try:
             cmd = self.tdb.get_cmd()
+
             datas[f"i_cmd"] = str(cmd)
             if cmd.cmd_type == CMDType.cpu:
                 data = self.tdb.memory.get_cpu_data(cmd.cmd_id)
@@ -637,8 +633,16 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         except StopIteration:
             self.tdb.message("no cmd pre.")
 
+        total_len = len(str(len(self.tdb.cmditer)))
+        current_index = str(self.tdb.cmd_point)
+        current_len = len(current_index)
+        prefix="" if total_len - current_len ==0 else "0"*(total_len - current_len)
+        if self.tdb.context.using_cmodel:
+            filename = f"info_dump_{prefix+current_index}_{cmd.cmd_type.name}_{cmd.cmd_id}_cmodel.npz"
+        else:
+            filename = f"info_dump_{prefix+current_index}_{cmd.cmd_type.name}_{cmd.cmd_id}_device.npz"
         np.savez(filename, **datas)
-        self.tdb.message(f"dump in {filename}")
+        self.tdb.message(f" dump in {filename}")
 
     def do_dump_current(self, args):
         self.dump_current()
