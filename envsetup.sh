@@ -1,5 +1,5 @@
 #!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 export PROJECT_ROOT=$DIR
 export BUILD_PATH=${BUILD_PATH:-$PROJECT_ROOT/build}
@@ -48,28 +48,31 @@ export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
-export OMP_NUM_THREADS=4
+# using 75% cores
+if [ -z "${OMP_NUM_THREADS+x}" ]; then
+    export OMP_NUM_THREADS=$(($(nproc) * 3 / 4))
+fi
 export FORBID_GEN_RISCV_CODE=1
 # CCache configuration
 export CCACHE_REMOTE_STORAGE=redis://10.132.3.118:6379
 
-function use_cmodel(){
+function use_cmodel() {
     export USING_CMODEL=True
     export LD_LIBRARY_PATH=$CMODEL_LD_LIBRARY_PATH
 }
-function use_chip(){
+function use_chip() {
     export USING_CMODEL=False
     export LD_LIBRARY_PATH=$CHIP_LD_LIBRARY_PATH
 }
-function use_chip_cmodel(){
+function use_chip_cmodel() {
     export USING_CMODEL=False
 }
-function use_8ch(){
+function use_8ch() {
     export CMODEL_GLOBAL_MEM_SIZE=137438953472
     export USING_8CH=1
     sysctl vm.overcommit_memory=1
 }
-function use_32ch(){
+function use_32ch() {
     unset CMODEL_GLOBAL_MEM_SIZE
     unset USING_8CH
     sysctl vm.overcommit_memory=0
@@ -78,7 +81,7 @@ function use_32ch(){
 # only used to build libatomic_exec_aarch64.so for soc_infer
 export CROSS_TOOLCHAINS=$PROJECT_ROOT/../bm_prebuilt_toolchains
 export LIBSOPHON_ROOT=$PROJECT_ROOT/../libsophon
-function rebuild_atomic_exec_alone(){
+function rebuild_atomic_exec_alone() {
     export ATOMIC_EXEC_ALONE=1
     if [ $(uname -a | grep -q "x86_64") ]; then
         export USE_CROSS_TOOLCHAINS=1
@@ -107,6 +110,3 @@ if [ -d "$TARGET_DIR" ]; then
     echo "Install git hooks from $SOURCE_DIR to $TARGET_DIR"
     cp -pu "$SOURCE_DIR/"* "$TARGET_DIR/"
 fi
-
-
-
