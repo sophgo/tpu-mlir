@@ -80,7 +80,7 @@ if __name__ == '__main__':
                         help="The number of TPU cores used for parallel computation.")
     # ========== Compiler Options ==============
     parser.add_argument("--dump_final_opt", default=False, help='save final_opt onnx file')
-    parser.add_argument("--do_onnx_sim", default=True, type=bool, help="whether do onnx sim for onnx")
+    parser.add_argument("--do_onnx_sim", default=False, type=bool, help="whether do onnx sim for onnx")
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'],

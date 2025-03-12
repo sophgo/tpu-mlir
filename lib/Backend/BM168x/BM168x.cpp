@@ -6,10 +6,11 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
+#include "dlfcn.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-#include "dlfcn.h"
+#include <fcntl.h>
+#include <sys/file.h>
 
 using namespace tpu_mlir::backend;
 
@@ -263,10 +264,10 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type,
     } else {
       spec.dims = 4;
       if (module::IsHdimIsBatch(v)) {
-          spec.shape[0] = ginfo.n_slice;
-          spec.shape[1] = ginfo.c_slice;
-          spec.shape[2] = ginfo.h_slice;
-          spec.shape[3] = ginfo.w_slice;
+        spec.shape[0] = ginfo.n_slice;
+        spec.shape[1] = ginfo.c_slice;
+        spec.shape[2] = ginfo.h_slice;
+        spec.shape[3] = ginfo.w_slice;
       } else {
         spec.shape[0] = ginfo.n_slice;
         spec.shape[1] = ginfo.c_slice;
@@ -433,12 +434,30 @@ typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
 void BM168x::call_ppl_global_func(const char *symbolName, void *params,
                                   int param_size, int core_num, void *input,
                                   void *output) {
-  std::string chip_str = get_ppl_chip();
+  static int lock_fd = []() {
+    int fd = open("/tmp/ppl_global_func.lock", O_CREAT | O_RDWR, 0666);
+    if (fd == -1) {
+      throw std::runtime_error("Failed to open lock file");
+    }
+    return fd;
+  }();
+  if (flock(lock_fd, LOCK_EX) != 0) {
+    throw std::runtime_error("Failed to acquire file lock");
+  }
+  try {
+    std::string chip_str = get_ppl_chip();
 
-  auto kernel_func =
-      instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
-  kernel_func(params, param_size, input, output, core_num, chip_str.c_str(),
-              (*instance())->cmdid_node);
+    auto kernel_func =
+        instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
+    kernel_func(params, param_size, input, output, core_num, chip_str.c_str(),
+                (*instance())->cmdid_node);
+    if (flock(lock_fd, LOCK_UN) != 0) {
+      throw std::runtime_error("Failed to release file lock");
+    }
+  } catch (...) {
+    flock(lock_fd, LOCK_UN);
+    throw;
+  }
 }
 
 typedef int (*ppl_local_backend_api_t)(void *params, int param_size,
