@@ -110,8 +110,6 @@ LogicalResult tpu::Deconv3DOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else {
-    llvm_unreachable("unsupport dtype");
   }
   return success();
 }
