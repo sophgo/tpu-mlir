@@ -59,7 +59,8 @@ if __name__ == '__main__':
     parser.add_argument('--quantize_method_list', type=parse_method_list, default='MSE', help='threshold method for search qtable')
     parser.add_argument('--benchmark_method', type=str, default='cos', choices=['cos', 'snr'], help='method for search optimal threshold')
     parser.add_argument('--kurtosis_analysis', help='kurtosis analysis', action="store_true")
-    parser.add_argument('--part_quantize', help='only quantize conv and matmul', action="store_true")
+    parser.add_argument('--part_quantize', 
+                    help='quantize specific operators (default: conv and matmul). Pass operator names to add to the default list.', nargs='*')
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
     parser.add_argument('-o', '--calibration_table', type=str, help='output threshold table')
     parser.add_argument('--quantize_table', help='output search qtable')
@@ -77,6 +78,14 @@ if __name__ == '__main__':
         selector.dump("./selected_image_list.txt")
         if tune_ds is not None:
             tune_ds.dump("./selected_tune_image_list.txt")
+
+    if args.part_quantize is not None: 
+        if len(args.part_quantize) == 0:
+            quantize_ops = ['Conv', 'MatMul']
+        else:
+            quantize_ops = ['Conv', 'MatMul'] + args.part_quantize
+    else:
+        quantize_ops = None
 
     log_level = "DEBUG" if args.debug_log else "INFO"
 
@@ -117,5 +126,5 @@ if __name__ == '__main__':
             elif args.search == 'False':
                 calibrator = ActivationCalibrator(args, selector, tune_ds)
                 calibrator.run()
-        match_pattern = MatchPattern(args)
+        match_pattern = MatchPattern(args, quantize_ops)
         match_pattern.run()

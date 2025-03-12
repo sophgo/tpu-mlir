@@ -141,7 +141,7 @@ chip_support_mix_fp_type = {
 }
 
 class MatchPattern:
-    def __init__(self, args):
+    def __init__(self, args, quantize_ops=None):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -150,6 +150,10 @@ class MatchPattern:
         self.module.load(args.mlir_file)
         self.parser = MlirParser(args.mlir_file)
         self.cali_method = args.cali_method
+        if quantize_ops is not None:
+            self.quantize_ops = ['top.' + op for op in quantize_ops]
+        else:
+            self.quantize_ops = []
         if '/' in self.cali_table_name:
             last_index = self.cali_table_name.rfind('/')
             self.quantize_table = self.cali_table_name[:last_index + 1] + "qtable"
@@ -265,10 +269,10 @@ class MatchPattern:
                     else:
                         fp_layer_list.append(all_tensors[i])
             self.gen_qtable(fp_layer_list, flag)
-        if flag == 0 and self.args.part_quantize:
+        if flag == 0 and self.args.part_quantize is not None:
             for j in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[j])
-                if op_type == 'top.Conv' or op_type == 'top.MatMul':
+                if op_type in self.quantize_ops:
                     pass
                 else:
                     fp_layer_list_part_quantize.append(all_tensors[j])
