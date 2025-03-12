@@ -132,7 +132,7 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
              ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp, WhereOp,
-             BatchNormBwdOp, LutOp>(op)) {
+             BatchNormBwdOp, LutOp, BinaryConstShiftOp, BinaryShiftOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
