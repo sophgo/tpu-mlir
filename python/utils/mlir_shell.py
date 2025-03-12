@@ -918,6 +918,11 @@ def origin_mlir_txt_to_bmodel(
         pymlir.run_pass_pipeline(mlir_txt, options)
     return get_matched_patterns(log_file)
 
+def get_final_mlir_name(bmodel:str):
+    old_suffix = ".bmodel"
+    new_suffix = "_final.mlir"
+    filename = bmodel[:-len(old_suffix)] + new_suffix
+    return filename
 
 def origin_mlir_to_bmodel(
     origin_mlir: str,
@@ -935,7 +940,10 @@ def origin_mlir_to_bmodel(
     quant_output_list: str = "",
     quant_output_bf16: bool = False,
     dynamic: bool = False,
+    debug: bool = False,
 ):
+    if not bmodel_name.endswith(".bmodel"):
+        raise RuntimeError(f"bmodel_name should endswith .bmodel:{bmodel_name}")
     options = []
     new_options = top_opt_options()
     options.extend(new_options)
@@ -955,15 +963,36 @@ def origin_mlir_to_bmodel(
     options.extend(new_options)
     new_options = tpu_ada_options(dynamic=dynamic)
     options.extend(new_options)
-    new_options = codegen_options(model=bmodel_name)
-    options.extend(new_options)
-    cmd = ["tpuc-opt", origin_mlir]
-    cmd.extend(options)
-    cmd.extend(["-o /dev/null"])
-    _os_system(cmd)
+    if not debug:
+        # no final mlir
+        new_options = codegen_options(model=bmodel_name)
+        options.extend(new_options)
+        cmd = ["tpuc-opt", origin_mlir]
+        cmd.extend(options)
+        cmd.extend(["-o /dev/null"])
+        _os_system(cmd)
+    else:
+        # final mlir
+        final_mlir = get_final_mlir_name(bmodel_name)
+        cmd = ["tpuc-opt", origin_mlir]
+        cmd.extend(options)
+        cmd.extend([f"-o {final_mlir}"])
+        _os_system(cmd)
+        # bmodel
+        cmd = ["tpuc-opt", final_mlir]
+        new_options = codegen_options(model=bmodel_name)
+        cmd.extend(new_options)
+        cmd.extend(["-o /dev/null"])
+        _os_system(cmd)
 
 
-def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True, fuzzy_match=False, log_level="normal"):
+def f32_blobs_compare(a_npz: str,
+                      b_npz: str,
+                      tolerance: str,
+                      excepts=None,
+                      show_detail=True,
+                      fuzzy_match=False,
+                      log_level="normal"):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
     if excepts:
         cmd.extend(["--except", excepts])

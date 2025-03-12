@@ -24,7 +24,8 @@ def get_model_transform(args):
         tool = OnnxTransformer(model_name=args.model_name,
                                model_def=args.model_def,
                                input_shapes=args.input_shapes,
-                               do_onnx_sim=args.do_onnx_sim)
+                               do_onnx_sim=args.do_onnx_sim,
+                               dump_final_opt=args.dump_final_opt)
     elif args.model_def.endswith('.pt'):
         tool = TorchTransformer(model_name=args.model_name,
                                 model_def=args.model_def,
@@ -78,7 +79,8 @@ if __name__ == '__main__':
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
     # ========== Compiler Options ==============
-    parser.add_argument("--do_onnx_sim", default=False, type=bool, help="whether do onnx sim for onnx")
+    parser.add_argument("--dump_final_opt", default=False, help='save final_opt onnx file')
+    parser.add_argument("--do_onnx_sim", default=True, type=bool, help="whether do onnx sim for onnx")
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse'],
@@ -103,6 +105,7 @@ if __name__ == '__main__':
                           quant_input_list=args.quant_input_list,
                           quant_output_list=args.quant_output_list,
                           quant_output_bf16=args.quant_output_bf16,
-                          dynamic=args.dynamic)
+                          dynamic=args.dynamic,
+                          debug=args.debug)
     if not args.debug:
         tool.cleanup()
