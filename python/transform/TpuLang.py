@@ -92,13 +92,15 @@ def compile(
         mlir_inference=True,
         bmodel_inference=True,
         log_level: str = 'normal',
-        embed_debug_info=False):
+        embed_debug_info=False,
+        addr_mode = 'auto'):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
             f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
     if log_level != 'quiet':
         logger.info("TPU-MLIR {}".format(pymlir.__version__))
+    assert addr_mode in ['auto', 'io_reloc']
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -123,7 +125,8 @@ def compile(
                                      chip=TpuLang.chip,
                                      asymmetric=asymmetric,
                                      ctm_format=ctm_format,
-                                     fuse=fuse)
+                                     fuse=fuse,
+                                     addr_mode=addr_mode)
         bmodel_generate_and_inference(model_name=name,
                                       quant_mode="int8",
                                       inference=bmodel_inference,
@@ -142,7 +145,8 @@ def compile(
                                   fuse_preprocess=fuse,
                                   dynamic=dynamic,
                                   opt=opt,
-                                  embed_debug_info=embed_debug_info)
+                                  embed_debug_info=embed_debug_info,
+                                  addr_mode=addr_mode)
 
 
 def compile_f32(name: str,
@@ -159,11 +163,13 @@ def compile_f32(name: str,
                 top_mlir_inference=True,
                 tpu_mlir_inference=True,
                 log_level: str = 'normal',
-                embed_debug_info=False):
+                embed_debug_info=False,
+                addr_mode='auto'):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
     assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
+    assert addr_mode in ['auto', 'io_reloc']
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -188,7 +194,8 @@ def compile_f32(name: str,
                                          inference=tpu_mlir_inference,
                                          cmp=tpu_mlir_compare,
                                          log_level=log_level,
-                                         chip=TpuLang.chip)
+                                         chip=TpuLang.chip,
+                                         addr_mode=addr_mode)
             bmodel_generate_and_inference(model_name=name,
                                           quant_mode=m,
                                           inference=bmodel_inference,
@@ -205,7 +212,8 @@ def compile_f32(name: str,
                                       chip=TpuLang.chip,
                                       dynamic=dynamic,
                                       opt=opt,
-                                      embed_debug_info=embed_debug_info)
+                                      embed_debug_info=embed_debug_info,
+                                      addr_mode=addr_mode)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level: str = 'normal'):
@@ -246,12 +254,13 @@ def model_top_inference(model_name, cmp=False, log_level: str = 'normal'):
 
 def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, asymmetric: bool = False, \
                                  inference: bool = True, cmp: bool = False, ctm_format = "BGR_PLANAR", \
-                                 fuse=False,log_level : str = 'normal'):
+                                 fuse=False,log_level : str = 'normal', addr_mode:str = 'auto'):
     top_mlir = "{}.mlir".format(model_name)
     tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
 
     mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, \
-                  customization_format=ctm_format, fuse_preprocess=fuse, log_level=log_level)
+                  customization_format=ctm_format, fuse_preprocess=fuse, addr_mode=addr_mode, \
+                  log_level=log_level)
     if inference:
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
@@ -4776,6 +4785,7 @@ def roiExtractor(rois: Tensor,
 @assert_with_out_name
 def topk(input: Tensor, axis: int, k: int, out_name: str = None):
     dims = len(input.shape)
+    assert input.dtype in ["float32", "int32"]
     assert k > 0, f"k:{k} is not valid"
     attr = {
         "axis": Attr(axis),
@@ -5463,6 +5473,7 @@ def mean_std_scale(input: Tensor,
         round_mode = "HALF_TO_EVEN"
 
     assert len(std) == len(mean) == input.shape[1]
+    assert input.shape[1] <= 9
     assert len(input.shape) == 4 or len(input.shape) == 5
 
     h = input.shape[2]
