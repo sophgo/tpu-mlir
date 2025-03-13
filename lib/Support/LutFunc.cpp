@@ -111,6 +111,40 @@ Value create_lookup_table_fp(Value in, Value out, activate_f &&func) {
   }
 }
 
+Value create_lookup_table_fp32(Value in, activate_f &&func) {
+  auto qtype = module::getUniformQuantizedType(in);
+  OpBuilder builder(in.getDefiningOp()->getContext());
+  auto table_type = RankedTensorType::get({1, 1, 1, 256}, builder.getF32Type());
+  int sign = module::isSign(in);
+  int min = -sign * 128;
+  int max = min + 256;
+
+  std::vector<float> table(256, 0);
+  for (int i = min; i < max; i++) {
+    int index = i < 0 ? 256 + i : i;
+    table[index] = func(dequant(i, qtype));
+  }
+  return top::WeightOp::create(in.getDefiningOp(), "table", table,
+                                table_type);
+}
+
+Value create_lookup_table_fp16(Value in, activate_f &&func) {
+  auto qtype = module::getUniformQuantizedType(in);
+  OpBuilder builder(in.getDefiningOp()->getContext());
+  auto table_type = RankedTensorType::get({1, 1, 1, 256}, builder.getF16Type());
+  int sign = module::isSign(in);
+  int min = -sign * 128;
+  int max = min + 256;
+
+  std::vector<uint16_t> table(256, 0);
+  for (int i = min; i < max; i++) {
+    int index = i < 0 ? 256 + i : i;
+    table[index] = f32_to_f16(F16(func(dequant(i, qtype))));
+  }
+  return top::WeightOp::create(in.getDefiningOp(), "table", table,
+                                table_type);
+}
+
 Value create_lookup_table(Operation *owner, const std::vector<float> &table) {
   OpBuilder builder(owner->getContext());
   auto table_type = RankedTensorType::get({1, 1, 1, 256}, builder.getF32Type());

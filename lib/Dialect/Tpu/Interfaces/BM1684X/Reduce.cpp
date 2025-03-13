@@ -8,7 +8,62 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 using namespace tpu_mlir::backend;
+
+int64_t tpu::ReduceOp::getBufferSize_bm1684x(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
+  int64_t buffer_size = 0;
+  switch (BM168x::get_reduce_type(getMode())) {
+  case SG_REDUCE_MEAN:
+  case SG_REDUCE_SUM:
+  case SG_REDUCE_MAX:
+    int64_t npu_num = BM168x::NPU_NUM;
+    int64_t dtype_size = BM168x::getFmtBytes(BM168x::getDataType(getInput()));
+    int64_t eu_num = Arch::eu_num(dtype_size);
+    auto axes = module::getI64Array(getAxes());
+    assert(axes->size() == 1);
+    if (axes->at(0) == 3) {
+      // NOTE: NOW,  INT8 uses 3-stage reduce-w optimize, while FP16/FP32 uses 2-stage reduce-w.
+      // INT8 reduce ==> in_wslice -> npu_num -> 2 -> 1
+      // FP16/FP32 reduce ==> in_wslice -> npu_num -> 1
+      buffer_size += 2 * ceiling_func(in_cslice, npu_num) * in_hslice * eu_num * dtype_size;
+    }
+    return buffer_size;
+  }
+  llvm_unreachable("unimplemented local reduceOp.");
+}
+
+void tpu::ReduceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                          int64_t h_step, int64_t d_step,
+                                          int64_t w_step,
+                                          group_type_t group_type,
+                                          local_sec_info_t &sec_info) {
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+
+  auto axes = module::getI64Array(getAxes());
+  assert(axes->size() == 1);
+  assert(axes->at(0) == 2 || axes->at(0) == 3);
+  auto shape = module::getShape(getInput());
+  assert(shape.size() == 4);
+
+  reduce_full_local_param_t param = {0};
+  param.spec.common.axis_num = 1;
+  param.spec.common.axis[0] = axes->at(0);
+  param.spec.common.method = BM168x::get_reduce_type(getMode());
+  param.spec.common.input_scale = 1.0f;
+  param.spec.common.output_scale = 1.0f;
+  param.spec.common.keep_dims = getKeepdims() ? 1 : 0;
+  param.spec.buffer_addr = gi.buffer_addr;
+  BM168x::call_local_func("backend_api_reduce_full_local", &param, sizeof(param),
+                           &sec_info, input_spec->data(), output_spec->data());
+}
 
 void tpu::ReduceOp::codegen_global_bm1684x() {
   auto op = getOperation();

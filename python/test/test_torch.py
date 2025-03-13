@@ -1417,7 +1417,7 @@ class TORCH_IR_TESTER(object):
 
         # _test_reduce(torch.sum, (2, 3, 64, 64))
         _test_reduce(torch.sum, (1, 3, 64, 64), 1, True)
-        _test_reduce(torch.sum, (2, 3, 64, 64), [0, 1, 2])
+        _test_reduce(torch.sum, (2, 3, 64, 64), [0, 1, 2, 3]) # take care of cv18xx reduce-w
         # _test_reduce(torch.mean, (2, 3, 64, 64))
         _test_reduce(torch.mean, (1, 3, 64, 64), 1, True)
         _test_reduce(torch.mean, (2, 3, 64, 64), [1, 2])

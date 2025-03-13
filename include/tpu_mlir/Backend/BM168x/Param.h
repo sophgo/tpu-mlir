@@ -1185,6 +1185,17 @@ typedef struct reduce_full_global_param {
   uint64_t *buffer_size_ptr;
 } reduce_full_global_param_t;
 
+typedef struct reduce_full_local_spec {
+  reduce_full_common_spec_t common;
+  int depth;
+  bool reduce_depth;
+  unsigned int buffer_addr;
+} reduce_full_local_spec_t;
+
+typedef struct reduce_full_local_param {
+  reduce_full_local_spec_t spec;
+} reduce_full_local_param_t;
+
 typedef struct {
   uint64_t input_addr;
   uint64_t slope_addr;

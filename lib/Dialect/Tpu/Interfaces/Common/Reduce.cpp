@@ -216,3 +216,38 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::ReduceOp::support_multi_core() { return false; }
+
+LogicalResult tpu::ReduceOp::AllowDataSplit(int64_t axis,
+                                            group_type_t group_type) {
+  auto axes = module::getI64Array(getAxes());
+  for (auto axis_val : *axes) {
+    if (axis == axis_val) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+LogicalResult tpu::ReduceOp::LocalGenSupport() {
+
+  if (module::isCV18xx() || module::isBM1684Family()) {
+    return failure();
+  }
+  auto axes = module::getI64Array(getAxes());
+  if (module::getShape(getInput()).size() != 4) {
+    return failure();
+  }
+  // Note: support other REDUCE-MODE may need to change getBufferSize().
+  if (module::getStorageType(getInput()) != module::getStorageType(getOutput())) {
+    return failure();
+  }
+  if (axes->size() != 1 ||
+      axes->at(0) != 2 && axes->at(0) != 3) {
+    return failure();
+  }
+  if (getMode() != "ReduceMean" && getMode() != "ReduceSum" &&
+      getMode() != "ReduceMax") {
+    return failure();
+  }
+  return success();
+}

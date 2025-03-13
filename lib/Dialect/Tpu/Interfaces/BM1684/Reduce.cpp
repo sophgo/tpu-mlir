@@ -11,6 +11,18 @@
 
 using namespace tpu_mlir::backend;
 
+int64_t tpu::ReduceOp::getBufferSize_bm1684(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+  llvm_unreachable("Not supported now");
+  return 0;
+}
+
+void tpu::ReduceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                         local_sec_info_t &sec_info){
+  llvm_unreachable("unimplemented local reduceOp.");
+}
+
 void tpu::ReduceOp::codegen_global_bm1684() {
   int i_dims = module::getShape(getInput()).size();
   auto in_addr = module::getAddress(getInput());

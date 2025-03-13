@@ -4043,7 +4043,8 @@ def Tpu_InterpOp: Tpu_Op<"Interp",[DeclareOpInterfaceMethods<TypeInterface>]> {
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
+def Tpu_ReduceOp: Tpu_Op<"Reduce", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>]> {
   let summary = "Reduce operator";
   let description = [{
       Computes the mean/max/prod/sum of the input tensor's element along the provided axes.
