@@ -20,7 +20,7 @@ using INTERP =
     std::function<int(const char *chip, void *pid_node, unsigned long long v1,
                       unsigned long long v2, unsigned long long v3, int32_t v11,
                       int32_t v12, int32_t v13, float v14, int32_t v15,
-                      int32_t v16, int32_t v17, int32_t v18)>;
+                      int32_t v16, int32_t v17, int32_t v18, int32_t v19)>;
 
 void api_interp_global(void *param, size_t param_size, void *input_spec,
                        void *output_spec, const int core_num, const char *chip,
@@ -38,41 +38,47 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
   auto W_out = out_spec->shape[3];
 
   // tpu_local_mem_size_per_npu = 262144bit = 256KB
-  // tpu_bank_num() = 16;
-  // int bank_size = tpu_local_mem_size_per_npu() / tpu_bank_num(); //16KB
-  int bank_size = 0;
-  int dtype_size = 0;
+  int npu_size = 0;
+  int npu_num = 0;
+  int dtype_size = 4;
   auto block_h = 0;
   int ret = 0;
   INTERP func = nullptr;
   bool is_fp16 = in_spec[0].dtype == DTYPE_FP16;
   bool is_bf16 = in_spec[0].dtype == DTYPE_BFP16;
   func = is_fp16 ? interp_fp16 : is_bf16 ? interp_bf16 : interp_fp32;
-  // dtype_size = is_fp16 ? 2 : 4;
-  dtype_size = (is_fp16 || is_bf16) ? 2 : 4;
   std::string chip_str(chip);
   if (chip_str == PPL_BM1688) {
-    bank_size = 8 * 1024;
+    npu_size = 128 * 1024;
+    npu_num = 32;
   } else if (chip_str == PPL_BM1684X) {
-    bank_size = 16 * 1024;
+    npu_size = 256 * 1024;
+    npu_num = 64;
   }
-  int output_per_c_size = H_out * W_out * dtype_size;
-  if (output_per_c_size < bank_size) {
+  block_h = static_cast<int>(std::floor(
+      npu_size / dtype_size / (W_in + W_out * 16 / npu_num + W_out * 6)));
+  if (H_out < block_h) {
     block_h = H_out;
-  } else {
-    block_h = static_cast<int>(std::floor(bank_size / W_out / dtype_size));
   }
 
   while (block_h > 0) {
+    printf("block_h:%d\n", block_h);
     ret = func(chip, cmdid, out_spec->addr, in_spec[0].addr,
                _param->spec.buffer_addr, core_num, N, C, H_in, W_in, H_out,
-               W_out, block_h);
+               W_out, block_h, _param->spec.common.align_corners);
     CHECK_PPL_RET(ret);
-    if (ret == PplLocalAddrAssignErr) {
-      return;
+    if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
+      printf("block is not suitable, have another try !!!\n");
+      block_h -= 1;
+      continue;
     }
     break;
   }
+  if (block_h <= 0) {
+    printf("Error: block split failed!!!\n");
+    exit(-1);
+  }
+  printf("interp success!!\n");
 }
 
 #ifdef __cplusplus

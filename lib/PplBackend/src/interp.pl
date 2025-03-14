@@ -11,7 +11,7 @@ using namespace ppl;
 #define DTYPE fp32
 template <typename T>
 
-void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h) {
+void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
 
   ppl::set_core_num(g_core_num);
   int core_num = ppl::get_core_num();
@@ -30,10 +30,15 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
   int step  = 1;
   int W_end = W_out;
   int H_end = H_out;
-  double scale_h =static_cast<double>(H_in-1) / (H_out-1);
-  double scale_w =static_cast<double>(W_in-1) / (W_out-1);
+  double scale_h =static_cast<double>(H_in) / (H_out);
+  double scale_w =static_cast<double>(W_in) / (W_out);
+  if(align_corners){
+    scale_h =static_cast<double>(H_in-1) / (H_out-1);
+    scale_w =static_cast<double>(W_in-1) / (W_out-1);
+  }
 
   double scalar_c = 1;
+  double const_c = 0.5;
   double scalar_min = 0;
   double scalar_h_max = H_in-1;
   double scalar_w_max = W_in-1;
@@ -44,7 +49,15 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
   tiu::arange_broadcast(shape_H, start, step, H_num);
   auto shape_H_fp32 = tensor<fp32>(shape_local_H);
   tiu::cast(shape_H_fp32,shape_H);
-  tiu::fmul(shape_H_fp32,shape_H_fp32,scale_h);
+  if(align_corners){
+    tiu::fmul(shape_H_fp32,shape_H_fp32,scale_h);
+  }else{
+    tiu::fadd(shape_H_fp32,shape_H_fp32,const_c);
+    tiu::fmul(shape_H_fp32,shape_H_fp32,scale_h);
+    tiu::fsub(shape_H_fp32,shape_H_fp32,const_c);
+    tiu::fmax(shape_H_fp32, shape_H_fp32, scalar_min);
+    tiu::fmin(shape_H_fp32, shape_H_fp32, scalar_h_max);
+  }
   auto hi = tensor<fp32>(shape_local_H);
   auto hi_1 = tensor<fp32>(shape_local_H);
   tiu::floor(hi, shape_H_fp32);
@@ -65,7 +78,15 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
   tiu::arange_broadcast(shape_W, start, step, W_num);
   auto shape_W_fp32 = tensor<fp32>(shape_local_W);
   tiu::cast(shape_W_fp32,shape_W);
-  tiu::fmul(shape_W_fp32,shape_W_fp32,scale_w);
+  if(align_corners){
+    tiu::fmul(shape_W_fp32,shape_W_fp32,scale_w);
+  }else{
+    tiu::fadd(shape_W_fp32,shape_W_fp32,const_c);
+    tiu::fmul(shape_W_fp32,shape_W_fp32,scale_w);
+    tiu::fsub(shape_W_fp32,shape_W_fp32,const_c);
+    tiu::fmax(shape_W_fp32, shape_W_fp32, scalar_min);
+    tiu::fmin(shape_W_fp32, shape_W_fp32, scalar_w_max);
+  }
   auto wi = tensor<fp32>(shape_local_W);
   auto wi_1 = tensor<fp32>(shape_local_W);
   tiu::floor(wi, shape_W_fp32);
@@ -364,14 +385,14 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
   }
 }
 
-__KERNEL__ void interp_bf16(bf16 *ptr_output, bf16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h) {
-            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h);
+__KERNEL__ void interp_bf16(bf16 *ptr_output, bf16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
+            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
 }
 
-__KERNEL__ void interp_fp16(fp16 *ptr_output, fp16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h) {
-            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h);
+__KERNEL__ void interp_fp16(fp16 *ptr_output, fp16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
+            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
 }
 
-__KERNEL__ void interp_fp32(fp32 *ptr_output, fp32 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h) {
-            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h);
+__KERNEL__ void interp_fp32(fp32 *ptr_output, fp32 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
+            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
 }
