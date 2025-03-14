@@ -29,6 +29,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CustomLowering,
       CscLowering,
       DeconvLowering,
+      Mmap2RgbmapLowering,
       Depth2SpaceLowering,
       DetectionOutputLowering,
       EluLowering,

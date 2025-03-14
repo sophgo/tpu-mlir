@@ -209,9 +209,9 @@ void TgMMap2RGBMapKernel::schedule() {
 
 void cvi_backend_tg_mmap2rgbmap_kernel(uint32_t layer_id, gaddr_t ga_input,
                                        gaddr_t ga_output, int n, int c, int h,
-                                       int w, int ow, cvk_fmt_t fmt) {
+                                       int w, int block_size, cvk_fmt_t fmt) {
   TgMMap2RGBMapKernel kernel;
-  kernel.init(layer_id, ga_input, ga_output, n, c, h, w, ow, fmt);
+  kernel.init(layer_id, ga_input, ga_output, n, c, h, w, block_size, fmt);
   kernel.selectTilePolicy();
   kernel.schedule();
 }
