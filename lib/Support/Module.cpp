@@ -493,6 +493,9 @@ void getContinousStride(int *stride, int *shape) {
 
 i32_array_t getI32Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<int32_t>>();
+  if (!arrayAttr) {
+    return data;
+  }
   for (auto en : llvm::enumerate(arrayAttr)) {
     auto attr = en.value().dyn_cast<IntegerAttr>();
     if (attr) {
@@ -517,6 +520,9 @@ i32_array_t getI32Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
 
 i64_array_t getI64Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<int64_t>>();
+  if (!arrayAttr) {
+    return data;
+  }
   for (auto en : llvm::enumerate(arrayAttr)) {
     auto attr = en.value().dyn_cast<IntegerAttr>();
     if (attr) {
@@ -541,6 +547,9 @@ i64_array_t getI64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
 
 f64_array_t getF64Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<double>>();
+  if (!arrayAttr) {
+    return data;
+  }
   for (auto en : llvm::enumerate(arrayAttr)) {
     auto attr = en.value().dyn_cast<FloatAttr>();
     data->push_back(attr.getValueAsDouble());
