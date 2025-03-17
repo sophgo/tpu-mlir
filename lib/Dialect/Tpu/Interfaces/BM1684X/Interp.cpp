@@ -74,9 +74,9 @@ void tpu::InterpOp::codegen_global_bm1684x() {
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-
-  if (ppl_flag && (getMode() == tpu::ResizeMode::linear) &&
-      common.align_corners) {
+  int mode_flag = (common.platform_sp == ONNX_NEAREST) ||
+                  (common.platform_sp == PYTORCH_SUPPORT);
+  if (ppl_flag && mode_flag) {
     param.spec.buffer_addr = module::getAddress(getBuffer());
     BM168x::call_ppl_global_func("api_interp_global", &param, sizeof(param),
                                  module::getCoreNum(), input_spec->data(),

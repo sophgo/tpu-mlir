@@ -478,10 +478,12 @@ public:
     if (!module::isNone(interpOp.getBuffer())) {
       return failure();
     }
+    auto input_shape = module::getShape(interpOp.getInput());
+    int input_dim = input_shape.size();
     int64_t n, c, ih, iw, oh, ow;
     module::getNCHW(interpOp.getInput(), n, c, ih, iw, false);
     module::getNCHW(interpOp.getOutput(), n, c, oh, ow, false);
-    if ((oh * ow < 520 * 520) && (ih <= oh) && (iw <= ow) &&
+    if ((oh * ow < 520 * 520) && (ih <= oh) && (iw <= ow) && (input_dim == 4) &&
         (module::isBM1684X() || module::isBM1688())) {
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
       int64_t buffer_size = 16 * 16 * 1024 * 64; // 4 banks
