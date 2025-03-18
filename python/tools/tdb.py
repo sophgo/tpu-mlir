@@ -218,6 +218,11 @@ def parse_args(args=None):
         action="store_true",
         help="to keep all intermediate files for debug",
     )
+    parser.add_argument(
+        "--do",
+        type=str,
+        help="do something directly, such as 'run'",
+    )
 
     return parser.parse_args(args)
 

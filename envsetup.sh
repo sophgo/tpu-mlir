@@ -83,8 +83,10 @@ export CROSS_TOOLCHAINS=$PROJECT_ROOT/../bm_prebuilt_toolchains
 export LIBSOPHON_ROOT=$PROJECT_ROOT/../libsophon
 function rebuild_atomic_exec_alone() {
     export ATOMIC_EXEC_ALONE=1
-    if [ $(uname -a | grep -q "x86_64") ]; then
-        export USE_CROSS_TOOLCHAINS=1
+    if [ -z "$USE_CROSS_TOOLCHAINS" ]; then
+        if [ $(uname -a | grep -q "x86_64") ]; then
+            export USE_CROSS_TOOLCHAINS=1
+        fi
     fi
 
     pushd $PROJECT_ROOT/tools/chiprunner/

@@ -371,7 +371,7 @@ public:
           u64 tag_offset = tag > 0 ? addr_from_offset(0, tag)
                                    : addr_from_offset(0, NEURON_TAG);
 
-          fix_addr = index_addr & ((1ull << 35) - 1) + tag_offset;
+          fix_addr = (index_addr & ((1ull << 35) - 1)) + tag_offset;
           fix_addr |= (1ull << 39);
           if (fix_addr != index_addr) {
             cmd[20] = fix_addr & 0xffffffff;
@@ -481,6 +481,6 @@ int main(int argc, char **argv) {
   runner.memcpy_l2s(new_data);
 
   free(new_data); // 释放动态分配的内存
-  printf("");
+  printf("\n");
   return 0;
 }

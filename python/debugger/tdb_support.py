@@ -239,6 +239,9 @@ class TdbCmdBackend(cmd.Cmd):
             args = args.__dict__
         args = dict(args)
         assert args is not None
+        default_cmds = args.get("do", "")
+        if default_cmds:
+            self.cmdqueue = [ s.strip() for s in default_cmds.split(";") ]
         self.bmodel_file = bmodel_file
         self.bmodel_dir = os.path.dirname(bmodel_file)
         self.final_mlir_fn = final_mlir_fn

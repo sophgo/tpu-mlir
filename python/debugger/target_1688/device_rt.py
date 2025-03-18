@@ -492,16 +492,16 @@ class Memory(DeviceMemory):
             lane_mask = np.unpackbits(
                 np.uint64([lane_mask]).view(np.uint8), bitorder="little"
             )
-            _c = (NPU_OFFSET + c + 63) // 64
-            index = np.zeros(_c * 64, bool)
+            _c = div_up(NPU_OFFSET + c, info.NPU_NUM)
+            index = np.zeros(_c * info.NPU_NUM, bool)
             index[NPU_OFFSET : NPU_OFFSET + c] = True
-            index = index.reshape(_c, 64)
-            index[:, lane_mask == 0] = False
+            index = index.reshape(_c, info.NPU_NUM)
+            index[:,( lane_mask == 0)[:info.NPU_NUM]] = False
             return index.flatten()
 
         def get_dma4bank_data():
             n, c, h, w = memref.shape
-            shape = (4, n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            shape = (4, n, div_up(NPU_OFFSET + c, info.NPU_NUM), info.NPU_NUM, h, w)
             n_s, c_s, h_s, w_s = memref.stride
             stride = (info.BANK_SIZE, n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, memref.layout.args[0])
