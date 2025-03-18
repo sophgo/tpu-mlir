@@ -276,7 +276,8 @@ class Dma(object):
             cell.fill = DetailsStyle.content_pattern
             cell.font = DetailsStyle.title_header_font
         # set content style
-        content_end_cols = 19
+        offset = 1 # cause introduce global_id
+        content_end_cols = 19 + offset
         for w in range(1, content_end_cols + 1):
             for h in range(7, len(df) + 2):
                 # set key content border style
@@ -284,14 +285,15 @@ class Dma(object):
                 ws.cell(h, w).border = DetailsStyle.border
                 ws.cell(h, w).alignment = DetailsStyle.right_align
                 ws.cell(h, w).font = DetailsStyle.title_font
-        stall_cycle_pos = 12
-        ddr_bandwidth_pos = 13
-        l2m_bandwidth_pos = 14
-        tsk_typ_pos = 42
-        dma_cycle_pos = 11
-        avg_burst_length_pos = 16
-        direction_pos = 15
-        data_type_pos = 17
+
+        stall_cycle_pos = 12 + offset
+        ddr_bandwidth_pos = 13 + offset
+        l2m_bandwidth_pos = 14 + offset
+        tsk_typ_pos = 42 + offset
+        dma_cycle_pos = 11 + offset
+        avg_burst_length_pos = 16 + offset
+        direction_pos = 15 + offset
+        data_type_pos = 17 + offset
         for h in range(5, len(df)):
             ddr_max_bd, l2_max_bd, ddr_max_bl, l2_max_bl = float(chip_arch['DDR Max BW(GB/s/Core)']),\
             float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst']), int(chip_arch['L2 Max Burst'])

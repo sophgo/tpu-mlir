@@ -411,13 +411,14 @@ class Tiu(object):
             cell.fill = detail_style.content_pattern
             cell.font = detail_style.title_header_font
         # set content style
-        content_end_cols = 19
+        offset = 1 # cause introduce global_id
+        content_end_cols = 19 + offset
         content_start_rows = 8 + perf_df_len
-        initial_cycle_pos = 17
-        uArch_ratio_pos = 15
-        bank_conflict_pos = 16
-        fp32_pos = 18
-        avg_cycle_last_200_pos = 12
+        initial_cycle_pos = 17 + offset
+        uArch_ratio_pos = 15 + offset
+        bank_conflict_pos = 16 + offset
+        fp32_pos = 18 + offset
+        avg_cycle_last_200_pos = 12 + offset
         for h in range(content_start_rows + 2, len(df) + 2):
             for w in range(1, content_end_cols + 1):
                 # set key content border style

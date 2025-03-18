@@ -81,10 +81,11 @@ class BMProfileParserPerfAI(BMProfileParser):
                 f.write("__CHIP_ARCH_ARGS__\n")
                 f.write("".join(f"\t{key}: {value}\n" for key,
                         value in self.archlib.DMA_ARCH.items()))
-                for j in gdma:
+                for gidx, j in enumerate(gdma, start=1):
                     reg_info = gdma_cmd[j.inst_id]
                     dma_info: dict = self.__get_gdma_info(j, reg_info)
                     dma_info["Core Id"] = idx
+                    dma_info["Global Idx"] = gidx
                     f.write("__TDMA_REG_INFO__\n")
                     f.write(
                         "".join(f"\t{key}: {value}\n" for key, value in dma_info.items()))
@@ -93,10 +94,11 @@ class BMProfileParserPerfAI(BMProfileParser):
                 f.write("__CHIP_ARCH_ARGS__\n")
                 f.write("".join(f"\t{key}: {value}\n" for key,
                         value in self.archlib.TIU_ARCH.items()))
-                for j in bd:
+                for gidx, j in enumerate(bd, start=1):
                     reg_info = bd_cmd[j.inst_id]
                     tiu_info0, tiu_info1 = self.__get_tiu_info(j, reg_info)
                     tiu_info0["Core Id"] = idx
+                    tiu_info1["Global Idx"] = gidx
                     f.write("__TIU_REG_INFO__\n")
                     f.write(
                         "".join(f"\t{key}: {value}\n" for key, value in tiu_info0.items()))

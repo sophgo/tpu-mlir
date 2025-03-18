@@ -55,7 +55,7 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
     ddrBw = pd.to_numeric(chipArchArgs['DDR Max BW(GB/s/Core)'])
     L2Bw = pd.to_numeric(chipArchArgs['L2 Max BW(GB/s)'])
     dependCmds = parse_cmdgroups(file_path)
-    time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "global_idx", "func_name","uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+    time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", "global_idx", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
     filter_cols = [time_header.index(c) for c in ["category", "func_type"]]
     # time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type',"uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
     # filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
@@ -70,7 +70,7 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
         include_layer = True
         categories.append("TPU_LAYER")
         categories.append("TPU_GROUP_LAYER")
-        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "global_idx", "func_name", 'layer_id','layer_name','subnet_id','subnet_type',"uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type', "global_idx", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
         filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
     lmem_size = int(chipArchArgs['TPU Lmem Size(MiB)'])
     lane_num = int(chipArchArgs['NPU Num'])
@@ -175,7 +175,6 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             data['Function Type'][i] if 'Function Type' in data else '',
             height,
             cmd,
-            data['Global Idx'][i],
             data['Function Name'][i]
         ]
         if if_layer:
@@ -187,6 +186,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
                 data['File Line'][i],
         ])
         tmp.extend([
+            data['Global Idx'][i],
             data['uArch Rate'][i] if 'uArch Rate' in data else f"DDR:{data['DDR Bandwidth(GB/s)'][i]},L2M:{data['L2M Bandwidth(GB/s)'][i]}",
             data['Data Type'][i],
             f"Direction:{data['Direction'][i]}" if 'Direction' in data else f"Bank Conflict Ratio:{data['Bank Conflict Ratio'][i]}",
