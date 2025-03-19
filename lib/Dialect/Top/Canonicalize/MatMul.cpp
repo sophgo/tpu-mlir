@@ -507,6 +507,10 @@ struct MatMulWithSlice : public OpRewriterPatternEx<MatMulOp> {
       auto offset =
           module::getI64Array(slice_op.getOffsetAttr())->at(s_shape.size() - 1);
       auto size = module::getShape(slice_op.getOutput())[s_shape.size() - 1];
+      auto input_size = shape[s_shape.size() - 1];
+      if (offset < 0) {
+        offset += input_size;
+      }
       operands.push_back(get_weight(op.getRight(), offset, offset + size, -1,
                                     rewriter.getF32Type(),
                                     "_offset" + std::to_string(offset)));
