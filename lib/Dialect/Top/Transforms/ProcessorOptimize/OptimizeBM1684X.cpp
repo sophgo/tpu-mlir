@@ -1706,50 +1706,57 @@ protected:
       if (isa<top::ReshapeOp>(nextOp)) {
         std::vector<Operation *> users = {nextOp->user_begin(),
                                           nextOp->user_end()};
-        if (users.size() == 2 && isa<top::SliceOp>(users[0]) &&
-            isa<top::SliceOp>(users[1])) {
+        // check all users are SliceOp
+        for (auto user : users) {
+          if (!isa<top::SliceOp>(*user))
+            return failure();
+        }
+        if (users.size() == 2) {
+          // what does this mean?
+          if (users[0]->user_begin() == users[0]->user_end() ||
+              users[1]->user_begin() == users[1]->user_end()) {
+            return failure();
+          }
           if (!isa<top::ConcatOp>(*users[0]->user_begin())) {
             std::swap(users[0], users[1]);
           }
           if (isa<top::ConcatOp>(*users[0]->user_begin()) &
-              isa<top::ReshapeOp>(*users[1]->user_begin()))
+              isa<top::ReshapeOp>(*users[1]->user_begin())) {
             return failure();
+          }
         }
         // fix bug for internv1 while slicing matmul col not at first dim
         // equivalently case0 : reshape(1x2400x6144->1x2400x8x6x128) +
         // slice(1x2400x8x4x128) : invalid case1 :
         // reshape(64x49x288->64x49x3x3x32) + slice(64x49x1x3x32) : valid
-        if (users.size() == 3 && isa<top::SliceOp>(users[0]) &&
-            isa<top::SliceOp>(users[1]) && isa<top::SliceOp>(users[2])) {
-          // not strict judgement, find the first diff axis of matmul col;
-          // slice.axes may be empty, judge slice axis by shape
-          // real slice.axes size is 1 mostly
-          auto reshape_input_shape = module::getShape(nextOp->getOperands()[0]);
-          for (auto user : users) {
-            auto slice_op = dyn_cast<top::SliceOp>(*user);
-            auto slice_input_shape = module::getShape(slice_op.getInput());
-            auto slice_output_shape = module::getShape(slice_op.getOutput());
-            int slice_input_dim = slice_input_shape.size();
-            int last_diff_axis = slice_input_dim - 1;
-            int reshape_outer_size = 0;
-            for (; reshape_input_shape[reshape_outer_size] ==
-                   slice_input_shape[reshape_outer_size];
-                 reshape_outer_size++) {
-            }
-            for (; last_diff_axis >= reshape_outer_size; last_diff_axis--) {
-              if (slice_input_shape[last_diff_axis] !=
-                      slice_output_shape[last_diff_axis] &&
-                  std::max((last_diff_axis == reshape_outer_size)
-                               ? 1
-                               : slice_input_shape[last_diff_axis - 1],
-                           (last_diff_axis == reshape_outer_size)
-                               ? 1
-                               : slice_output_shape[last_diff_axis - 1]) > 1)
-                break;
-            }
-            if (last_diff_axis >= reshape_outer_size)
-              return failure();
+        // not strict judgement, find the first diff axis of matmul col;
+        // slice.axes may be empty, judge slice axis by shape
+        // real slice.axes size is 1 mostly
+        auto reshape_input_shape = module::getShape(nextOp->getOperands()[0]);
+        for (auto user : users) {
+          auto slice_op = dyn_cast<top::SliceOp>(*user);
+          auto slice_input_shape = module::getShape(slice_op.getInput());
+          auto slice_output_shape = module::getShape(slice_op.getOutput());
+          int slice_input_dim = slice_input_shape.size();
+          int last_diff_axis = slice_input_dim - 1;
+          int reshape_outer_size = 0;
+          for (; reshape_input_shape[reshape_outer_size] ==
+                 slice_input_shape[reshape_outer_size];
+               reshape_outer_size++) {
           }
+          for (; last_diff_axis >= reshape_outer_size; last_diff_axis--) {
+            if (slice_input_shape[last_diff_axis] !=
+                    slice_output_shape[last_diff_axis] &&
+                std::max((last_diff_axis == reshape_outer_size)
+                             ? 1
+                             : slice_input_shape[last_diff_axis - 1],
+                         (last_diff_axis == reshape_outer_size)
+                             ? 1
+                             : slice_output_shape[last_diff_axis - 1]) > 1)
+              break;
+          }
+          if (last_diff_axis >= reshape_outer_size)
+            return failure();
         }
       }
     }

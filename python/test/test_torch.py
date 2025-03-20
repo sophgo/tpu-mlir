@@ -193,6 +193,7 @@ class TORCH_IR_TESTER(object):
             ## Canonicalization
             "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N, Y),
             "Conv2Img2Col": (self.test_Conv2Img2Col, N, Y, Y, N, Y),
+            "SplitMatMul": (self.test_SplitMatMul, N, Y, Y, N, Y),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -1265,6 +1266,44 @@ class TORCH_IR_TESTER(object):
                 return a + b
 
         self.trace_and_test([(32, 32), (32, 64)], Model())
+
+    #######################################################################
+    # test SplitMatMulPattern for top::MatMul
+    # ------------
+    def test_SplitMatMul(self):
+
+        class Model1(torch.nn.Module):
+
+            def __init__(self):
+                super(Model1, self).__init__()
+                self.filter = torch.randn(32, 128)
+                self.bias = torch.randn(1, 128)
+
+            def forward(self, x):
+                a = torch.matmul(x, self.filter) + self.bias
+                b = torch.reshape(a, (-1, 8, 16))
+                c = b[:,:,8:]
+                d = b[:,:,:8]
+                e = c + d
+                return e
+
+        class Model2(torch.nn.Module):
+
+            def __init__(self):
+                super(Model2, self).__init__()
+                self.filter = torch.randn(32, 128)
+                self.bias = torch.randn(1, 128)
+
+            def forward(self, x):
+                a = torch.matmul(x, self.filter) + self.bias
+                b = torch.reshape(a, (-1, 16, 8))
+                c = b[:,8:,:]
+                d = b[:,:8,:]
+                e = c + d
+                return e
+
+        self.trace_and_test([(16, 32)], Model1())
+        self.trace_and_test([(16, 32)], Model2())
 
     #######################################################################
     # ConstantFill
