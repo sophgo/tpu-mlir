@@ -563,6 +563,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     conv_attr_t parseParam();
     void assign_fw_param(void *param);
