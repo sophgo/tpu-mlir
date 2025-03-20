@@ -80,7 +80,7 @@ void show_group(const LgInfo *sub_group) {
   }
 }
 
-void PrintOps(std::string ops_name, const std::vector<Operation*>& ops) {
+void PrintOps(std::string ops_name, const std::vector<Operation *> &ops) {
   std::string tmpStr = "";
   for (auto op : ops) {
     tmpStr = tmpStr + " + " + show_op_info(op);
@@ -88,8 +88,9 @@ void PrintOps(std::string ops_name, const std::vector<Operation*>& ops) {
   if (ops.size()) {
     tmpStr = tmpStr.substr(3);
   }
-  LAYER_GROUP_LOG_DEBUG_BLOCK(
-      { llvm::errs() << "ops_name:" << ops_name<< ",ops:" << tmpStr << "\n"; });
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::errs() << "ops_name:" << ops_name << ",ops:" << tmpStr << "\n";
+  });
 }
 
 bool isLgSupport(Operation *op) {
@@ -1435,7 +1436,7 @@ void slice_distributor(std::vector<slice_pair_t> &slice_pairs,
                        int64_t vec_length, int64_t secs) {
   slice_pairs.clear();
   int64_t per_sec_base = vec_length / secs; // 每个分片的基本大小
-  int64_t extra = vec_length % secs; // 需要额外分配一个单位的分片数量
+  int64_t extra = vec_length % secs;        // 需要额外分配一个单位的分片数量
 
   int64_t start_idx = 0; // 当前分片的起始索引
   for (int64_t i = 0; i < secs; ++i) {
@@ -2459,9 +2460,15 @@ bool is_eu_align_bm168x(Value opd) {
     return false;
   }
 
+  if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op)) {
+    if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
+      return false;
+    }
+  }
+
   if (module::isWeight(opd) || module::isTrain()) {
-    if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp,
-            tpu::LayerNormOp, tpu::PixelNormOp, tpu::InstanceNormOp>(op)) {
+    if (isa<tpu::GroupNormOp, tpu::LayerNormOp, tpu::PixelNormOp,
+            tpu::InstanceNormOp>(op)) {
       if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
         return false;
       }

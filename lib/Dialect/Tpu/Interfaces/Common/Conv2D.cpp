@@ -422,6 +422,9 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t c_step,
 }
 
 mlir::Type tpu::Conv2DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  if (opd_idx == 2 && !module::isBM1690Family()) {
+    return module::getElementType(getOperand(opd_idx));
+  }
   return type_verify_case_i32(getOperation(), opd_idx, mode);
 }
 

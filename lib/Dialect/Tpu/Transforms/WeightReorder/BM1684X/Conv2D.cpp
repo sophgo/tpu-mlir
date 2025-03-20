@@ -64,31 +64,49 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
     op.setOperand(1, new_reshape_op);
   }
 
-  if (attr.has_bias && dyn_cast<top::WeightOp>(op.getBias().getDefiningOp())) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
-    auto data_fp32 = biasOp.read<float>();
-    auto count = data_fp32->size();
-    auto data_u16 = std::make_shared<std::vector<uint16_t>>(count);
+  if (attr.has_bias) {
+    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
 
-    bool isF16 = filter_type.isF16();
-    for (uint32_t i = 0; i < count; i++) {
-      data_u16->at(i) =
-          isF16 ? f32_to_f16(data_fp32->at(i)) : f32_to_bf16(data_fp32->at(i));
+    if (dyn_cast<top::WeightOp>(op.getBias().getDefiningOp())) {
+      auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+      auto data_fp32 = biasOp.read<float>();
+      auto count = data_fp32->size();
+      if (module::isBM1690Family()) {
+        auto data_u16 = std::make_shared<std::vector<uint16_t>>(count);
+
+        bool isF16 = filter_type.isF16();
+        for (uint32_t i = 0; i < count; i++) {
+          data_u16->at(i) = isF16 ? f32_to_f16(data_fp32->at(i))
+                                  : f32_to_bf16(data_fp32->at(i));
+        }
+        auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
+        auto newBiasOp =
+            top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
+        op->setOperand(2, newBiasOp);
+      } else {
+        auto new_bias_type =
+            RankedTensorType::get(bias_shape, module::getElementType(biasOp));
+        auto newBiasOp =
+            top::WeightOp::create(op, "reordered", *data_fp32, new_bias_type);
+        op->setOperand(2, newBiasOp);
+      }
+    } else if (dyn_cast<top::InputOp>(op.getBias().getDefiningOp())) {
+      auto new_bias_type = RankedTensorType::get(
+          bias_shape, module::isBM1690Family()
+                          ? filter_type
+                          : module::getElementType(op.getBias()));
+      op.getBias().setType(new_bias_type);
+    } else {
+      auto bias_value = op.getBias();
+      rewriter.setInsertionPointAfterValue(bias_value);
+      auto reshape_loc = module::getLocLike(bias_value, "reshaped");
+      auto reshape_type = RankedTensorType::get(bias_shape, module::getElementType(bias_value));
+      auto reshape_op =
+        rewriter.create<tpu::ReshapeOp>(reshape_loc, reshape_type, ValueRange{bias_value});
+      op.setOperand(2, reshape_op.getOutput());
     }
-
-    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
-    auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
-    op.getBias().setType(new_bias_type);
-
-    auto newBiasOp =
-        top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
-    op->setOperand(2, newBiasOp);
-  } else if (attr.has_bias &&
-             dyn_cast<top::InputOp>(op.getBias().getDefiningOp())) {
-    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
-    auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
-    op.getBias().setType(new_bias_type);
   }
+
   return success();
 }
 
@@ -158,7 +176,8 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
                                        attr.kw};
 
   int use_3ic_optimize = 0;
-  if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 && attr.kw > 1) {
+  if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
+      attr.kw > 1) {
     use_3ic_optimize = 3; // merge kh and kw to ic
   } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
              (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
@@ -459,8 +478,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   return success();
 }
 
-template <typename T>
-static void filter_rotate(tpu::Conv2DOp &op) {
+template <typename T> static void filter_rotate(tpu::Conv2DOp &op) {
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter = filterOp.read<T>();
   auto attr = op.parseParam();
@@ -469,7 +487,8 @@ static void filter_rotate(tpu::Conv2DOp &op) {
     for (uint32_t j = 0; j < attr.kh; ++j) {
       for (uint32_t k = 0; k < attr.kw; ++k) {
         newFilter.at(i * attr.kh * attr.kw + (attr.kh - 1 - j) * attr.kw +
-        (attr.kw - 1 - k)) =  filter->at(i * attr.kh * attr.kw + j * attr.kw + k);
+                     (attr.kw - 1 - k)) =
+            filter->at(i * attr.kh * attr.kw + j * attr.kw + k);
       }
     }
   }
@@ -612,7 +631,10 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
 
     /////////////// this branch is speical for stride > 15
     if (strideh_gt_15 || stridew_gt_15) {
-      if (module::isMARS3() && (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0)) {
+      if (module::isMARS3() &&
+          (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 &&
+           attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 &&
+           attr.pwr == 0)) {
         const int cell_num_h = kh / cell_h;
         const int cell_num_w = kw / cell_w;
         const int cell_num_hw = cell_num_h * cell_num_w;
@@ -636,7 +658,8 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
         const int mid_size = loop_count * output_c * new_gic * cell_h * cell_w;
         auto data_mid = std::make_shared<std::vector<uint16_t>>(mid_size);
         data_mid->resize(mid_size, 0);
-        // (oc_idx, ic_idx, cell_h_idx, ih, cell_w_idx, iw) -> (lp_idx, oc_idx, aw_idx, ah_idx, ic_idx, ih, iw)
+        // (oc_idx, ic_idx, cell_h_idx, ih, cell_w_idx, iw) -> (lp_idx, oc_idx,
+        // aw_idx, ah_idx, ic_idx, ih, iw)
         for (int oc_idx = 0; oc_idx < output_c; oc_idx++) {
           for (int ic_idx = 0; ic_idx < gic; ic_idx++) {
             for (int lp_idx = 0; lp_idx < loop_count; lp_idx++) {
@@ -644,15 +667,19 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
                 for (int aw_idx = 0; aw_idx < acc_ratio_w; aw_idx++) {
                   for (int ih = 0; ih < cell_h; ih++) {
                     for (int iw = 0; iw < cell_w; iw++) {
-                      const int cell_h_idx = (lp_idx % loop_count_h) * acc_ratio_h + ah_idx;
-                      const int cell_w_idx = (lp_idx / loop_count_h) * acc_ratio_w + aw_idx;
-                      int orig_offset =
-                          (oc_idx * gic + ic_idx) * cell_num_hw * cell_h * cell_w +
-                          (cell_h_idx * cell_h + ih) * kw +
-                          cell_w_idx * cell_w + iw;
+                      const int cell_h_idx =
+                          (lp_idx % loop_count_h) * acc_ratio_h + ah_idx;
+                      const int cell_w_idx =
+                          (lp_idx / loop_count_h) * acc_ratio_w + aw_idx;
+                      int orig_offset = (oc_idx * gic + ic_idx) * cell_num_hw *
+                                            cell_h * cell_w +
+                                        (cell_h_idx * cell_h + ih) * kw +
+                                        cell_w_idx * cell_w + iw;
                       int trans_offset =
-                          (lp_idx * output_c + oc_idx) * new_gic * cell_h * cell_w +
-                          ((aw_idx * acc_ratio_h + ah_idx) * gic + ic_idx) * cell_h * cell_w +
+                          (lp_idx * output_c + oc_idx) * new_gic * cell_h *
+                              cell_w +
+                          ((aw_idx * acc_ratio_h + ah_idx) * gic + ic_idx) *
+                              cell_h * cell_w +
                           ih * cell_w + iw;
                       data_mid->at(trans_offset) = filter_u16->at(orig_offset);
                     }
@@ -662,9 +689,11 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
             }
           }
         }
-        // (lp_idx, oc_idx, old_ic_idx, ih, iw) -> (lp_idx, oc_idx, ic_idx, ih, iw, ic_inner)
+        // (lp_idx, oc_idx, old_ic_idx, ih, iw) -> (lp_idx, oc_idx, ic_idx, ih,
+        // iw, ic_inner)
         const int ic_per_prl = ceiling_func(new_gic, IC_PARALLEL);
-        const int weight_size = loop_count * output_c * ic_per_prl * cell_h * cell_w * IC_PARALLEL;
+        const int weight_size =
+            loop_count * output_c * ic_per_prl * cell_h * cell_w * IC_PARALLEL;
         data_bf16->resize(weight_size, 0);
         for (int lpoc_idx = 0; lpoc_idx < loop_count * output_c; lpoc_idx++) {
           for (int ic_idx = 0; ic_idx < ic_per_prl; ic_idx++) {
@@ -680,8 +709,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
                   int trans_offset =
                       lpoc_idx * ic_per_prl * cell_h * cell_w * IC_PARALLEL +
                       ic_idx * cell_h * cell_w * IC_PARALLEL +
-                      (ih * cell_w + iw) * IC_PARALLEL +
-                      ic_inner;
+                      (ih * cell_w + iw) * IC_PARALLEL + ic_inner;
                   data_bf16->at(trans_offset) = data_mid->at(orig_offset);
                 }
               }
@@ -736,7 +764,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
         int oc_per_groups = output_c / groups;
         int weight_size_per_group =
             ((oc_per_groups < npu_num) ? oc_per_groups
-                                      : align_up(oc_per_groups, npu_num)) *
+                                       : align_up(oc_per_groups, npu_num)) *
             align_up(gic, IC_PARALLEL) * cell_num_h * max_cell_h * cell_num_w *
             max_cell_w;
         weight_size = groups * weight_size_per_group;
@@ -747,12 +775,13 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
         for (int group_idx = 0; group_idx < groups; group_idx++) {
           for (int oc = 0; oc < oc_per_groups; oc++) {
             for (int ic_idx = 0; ic_idx < ceiling_func(gic, IC_PARALLEL);
-                ic_idx++) {
+                 ic_idx++) {
               for (int ic_inner = 0; ic_inner < IC_PARALLEL; ic_inner++) {
-                for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
+                for (int cell_h_idx = 0; cell_h_idx < cell_num_h;
+                     cell_h_idx++) {
                   for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
                     for (int cell_w_idx = 0; cell_w_idx < cell_num_w;
-                        cell_w_idx++) {
+                         cell_w_idx++) {
                       for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
                         if (ic_idx * IC_PARALLEL + ic_inner >= gic)
                           continue;
@@ -765,7 +794,8 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
                         int trans_offset =
                             groups * (oc % npu_num) * ocloops *
                                 align_up(gic, IC_PARALLEL) * cell_num_h *
-                                max_cell_h * cell_num_w * max_cell_w + // npu idx
+                                max_cell_h * cell_num_w *
+                                max_cell_w + // npu idx
                             group_idx * ocloops * align_up(gic, IC_PARALLEL) *
                                 cell_num_h * max_cell_h * cell_num_w *
                                 max_cell_w + // group idx
@@ -779,7 +809,8 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
                                 cell_w[cell_w_idx] + // ic idx
                             (ih * cell_w[cell_w_idx] + iw) * IC_PARALLEL +
                             ic_inner;
-                        data_bf16->at(trans_offset) = filter_u16->at(orig_offset);
+                        data_bf16->at(trans_offset) =
+                            filter_u16->at(orig_offset);
                       }
                     }
                   }
@@ -913,7 +944,10 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
   std::vector<int64_t> filter_shape = {1, output_c, gic, kh * kw};
   if (out_type.isF32()) {
     if (strideh_gt_15 || stridew_gt_15) {
-      if (module::isMARS3() && (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 && attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 && attr.pwr == 0)) {
+      if (module::isMARS3() &&
+          (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 &&
+           attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 &&
+           attr.pwr == 0)) {
         int cell_h = kh, cell_w = kw;
 
         if (strideh_gt_15) {
@@ -937,15 +971,17 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
         const int cell_num_h = kh / cell_h;
         const int cell_num_w = kw / cell_w;
         const int cell_num_hw = cell_num_h * cell_num_w;
-        int acc_ratio_h = 1, acc_ratio_w =  1;
+        int acc_ratio_h = 1, acc_ratio_w = 1;
 
         const int loop_count_h = cell_num_h / acc_ratio_h;
         const int loop_count_w = cell_num_w / acc_ratio_w;
         const int loop_count = loop_count_h * loop_count_w;
         const int new_gic = acc_ratio_h * acc_ratio_w * gic;
-        const int weight_size = loop_count * output_c * new_gic * cell_h * cell_w;
+        const int weight_size =
+            loop_count * output_c * new_gic * cell_h * cell_w;
         data_f32->resize(weight_size, 0);
-        // (oc_idx, ic_idx, cell_h_idx, ih, cell_w_idx, iw) -> (lp_idx, oc_idx, aw_idx, ah_idx, ic_idx, ih, iw)
+        // (oc_idx, ic_idx, cell_h_idx, ih, cell_w_idx, iw) -> (lp_idx, oc_idx,
+        // aw_idx, ah_idx, ic_idx, ih, iw)
         for (int oc_idx = 0; oc_idx < output_c; oc_idx++) {
           for (int ic_idx = 0; ic_idx < gic; ic_idx++) {
             for (int lp_idx = 0; lp_idx < loop_count; lp_idx++) {
@@ -953,15 +989,19 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
                 for (int aw_idx = 0; aw_idx < acc_ratio_w; aw_idx++) {
                   for (int ih = 0; ih < cell_h; ih++) {
                     for (int iw = 0; iw < cell_w; iw++) {
-                      const int cell_h_idx = (lp_idx % loop_count_h) * acc_ratio_h + ah_idx;
-                      const int cell_w_idx = (lp_idx / loop_count_h) * acc_ratio_w + aw_idx;
-                      int orig_offset =
-                          (oc_idx * gic + ic_idx) * cell_num_hw * cell_h * cell_w +
-                          (cell_h_idx * cell_h + ih) * kw +
-                          cell_w_idx * cell_w + iw;
+                      const int cell_h_idx =
+                          (lp_idx % loop_count_h) * acc_ratio_h + ah_idx;
+                      const int cell_w_idx =
+                          (lp_idx / loop_count_h) * acc_ratio_w + aw_idx;
+                      int orig_offset = (oc_idx * gic + ic_idx) * cell_num_hw *
+                                            cell_h * cell_w +
+                                        (cell_h_idx * cell_h + ih) * kw +
+                                        cell_w_idx * cell_w + iw;
                       int trans_offset =
-                          (lp_idx * output_c + oc_idx) * new_gic * cell_h * cell_w +
-                          ((aw_idx * acc_ratio_h + ah_idx) * gic + ic_idx) * cell_h * cell_w +
+                          (lp_idx * output_c + oc_idx) * new_gic * cell_h *
+                              cell_w +
+                          ((aw_idx * acc_ratio_h + ah_idx) * gic + ic_idx) *
+                              cell_h * cell_w +
                           ih * cell_w + iw;
                       data_f32->at(trans_offset) = filter_f32->at(orig_offset);
                     }
@@ -976,7 +1016,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
         filter_shape[2] = 1;
         filter_shape[3] = attr.ic * cell_h * cell_w;
       } else {
-              std::vector<int> cell_h;
+        std::vector<int> cell_h;
         std::vector<int> cell_w;
         std::vector<int> cell_h_sum;
         std::vector<int> cell_w_sum;
@@ -1020,7 +1060,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
         int oc_per_groups = output_c / groups;
         int weight_size_per_group =
             ((oc_per_groups < npu_num) ? oc_per_groups
-                                      : align_up(oc_per_groups, npu_num)) *
+                                       : align_up(oc_per_groups, npu_num)) *
             gic * cell_num_h * max_cell_h * cell_num_w * max_cell_w;
         size_t weight_size = groups * weight_size_per_group;
         data_f32->resize(weight_size);
@@ -1031,7 +1071,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
               for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
                 for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
                   for (int cell_w_idx = 0; cell_w_idx < cell_num_w;
-                      cell_w_idx++) {
+                       cell_w_idx++) {
                     for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
                       int orig_offset =
                           group_idx * oc_per_groups * gic * kh * kw +
