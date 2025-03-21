@@ -932,6 +932,22 @@ bool isOpInBlock(Operation *op) {
   return true;
 }
 
+bool isOpBlockReturnOp(Operation *op) {
+  if (op == nullptr) {
+    return false;
+  }
+  auto block = op->getBlock();
+  if (block == nullptr) {
+    return false;
+  }
+  for (auto in : block->getTerminator()->getOperands()) {
+    if (module::isSameOp(in.getDefiningOp(), op)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 FuncOp getFuncOp(ModuleOp mod, StringRef func_name) {
   for (auto func : mod.getOps<FuncOp>()) {
     if (func.getName() == func_name) {

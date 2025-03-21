@@ -205,6 +205,7 @@ bool isOpInGroupParallel(Operation *Op);
 bool isValueBlockArgument(Value v);
 bool isOpInDevParallel(Operation *Op);
 bool isOpInBlock(Operation *op);
+bool isOpBlockReturnOp(Operation *op);
 FuncOp getFuncOp(ModuleOp module, StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
 llvm::StringRef getName(Operation *op, int index = 0);

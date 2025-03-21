@@ -31,17 +31,33 @@ LogicalResult FuseSameOp::matchAndRewriteImpl(Operation *op,
         continue;
       }
       if (module::isSameOp(*first, *it)) {
+        NameLoc loc_name;
         if ((*first)->isBeforeInBlock(*it)) {
+          bool is_rename = module::isOpBlockReturnOp(*it);
+          if (is_rename) {
+            loc_name = module::getLoc(it->getResult(0));
+          }
           (*it)->replaceAllUsesWith(*first);
           rewriter.eraseOp(*it);
+          if (is_rename) {
+            module::setLoc(first->getResult(0), loc_name);
+          }
         } else {
+          bool is_rename = module::isOpBlockReturnOp(*first);
+          if (is_rename) {
+            loc_name = module::getLoc(first->getResult(0));
+          }
           (*first)->replaceAllUsesWith(*it);
           rewriter.eraseOp(*first);
+          if (is_rename) {
+            module::setLoc(it->getResult(0), loc_name);
+          }
         }
-        return success();
       }
+      return success();
     }
   }
+  // }
   return failure();
 }
 
