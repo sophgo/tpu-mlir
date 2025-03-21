@@ -1,6 +1,5 @@
 #include "helper.h"
-#include "softmax_h_dim.h"
-#include "softmax_w_dim.h"
+#include "softmax.h"
 
 #include "tpu_mlir/Backend/BM168x/Param.h"
 
@@ -17,7 +16,7 @@ extern "C" {
 #endif
 
 void api_softmax_global(void *param, size_t param_size, void *input_spec,
-                        void *output_spec, const char *chip, void *cmdid) {
+                        void *output_spec) {
   softmax_global_param_t *_param = (softmax_global_param_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input_spec;
   tensor_spec_t *out_spec = (tensor_spec_t *)output_spec;

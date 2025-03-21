@@ -1,3 +1,6 @@
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/file.h>
 #include <ppl_jit.h>
 #include "host_def.h"
 
@@ -26,6 +29,27 @@ static int execCompileCommand(const std::string &command, std::string &output) {
 }
 
 namespace fs = std::filesystem;
+const std::string RESULT_FILE = "compiled";
+
+int acquireLock(const fs::path& targetFolder) {
+    fs::path lockPath = targetFolder / "lockfile";
+    int fd = open(lockPath.c_str(), O_CREAT | O_RDWR, 0666);
+    if (fd == -1) {
+        throw std::runtime_error("Procecss " + std::to_string(getpid()) +
+                                 ": Failed to open: " + lockPath.string());
+    }
+    if (flock(fd, LOCK_EX) == -1) {
+        close(fd);
+        throw std::runtime_error("Procecss " + std::to_string(getpid()) +
+                                 ": File lock failure: " + lockPath.string());
+    }
+    return fd;
+}
+
+void releaseLock(int fd) {
+    flock(fd, LOCK_UN);
+    close(fd);
+}
 
 typedef void (*KERNEL_FUNC)(void *);
 typedef void (*NODE_FUNC)(void *);
@@ -71,7 +95,14 @@ public:
     }
 
     std::rotate(LRU.begin(), Existing, Existing + 1);
-    return std::optional<Value>(LRU.begin()->second);
+    auto v = LRU.begin()->second;
+    if (!std::get<1>(v)) {
+      if (!fs::exists(fs::path(std::get<0>(v)) / RESULT_FILE)) {
+        LRU.erase(LRU.begin());
+        return std::nullopt;
+      }
+    }
+    return std::optional<Value>(v);
   }
 
   void update(const Key &K, Value V) {
@@ -195,7 +226,8 @@ private:
 
   void generateFlag(std::size_t key, std::size_t flag) {
     std::ofstream file(cache_dir + "flag.txt", std::ios::app);
-    file << key << " " << flag << std::endl;
+    std::string data = std::to_string(key) + " " + std::to_string(flag) + "\n";
+    file << data;
     state[key] = flag;
   }
 
@@ -222,35 +254,54 @@ private:
     std::string inc_path = std::string(getenv("PPL_PROJECT_ROOT")) + "/inc";
     std::string path = cache_dir + std::to_string(key) + "/";
     fs::create_directory(path);
-
-    std::stringstream cmd;
-    cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
-        << inc_path << " " << path << " " << chip << " " << args
-        << " > /dev/null 2>&1\n";
-    std::string output;
-    int ret = system(cmd.str().c_str());
-    ret >>= 8;
-    switch (ret) {
-    case 0: {
-#ifdef DDEBUG
-      printf("[compile jit success]\n");
-#endif
-      break;
+    fs::path result_file = fs::path(path) / RESULT_FILE;
+    int ret = 0;
+    if (fs::exists(result_file)) {
+        return ret;
     }
-    case PplL2AddrAssignErr:
-    case PplLocalAddrAssignErr: {
-      fs::remove_all(path);
-      break;
-    }
-    default: {
-      fs::remove_all(path);
-      cmd.str("");
+    // file lock
+    int lockFd = -1;
+    lockFd = acquireLock(fs::path(path));
+    if (!fs::exists(result_file)) {
+      // compile
+      std::stringstream cmd;
       cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
-          << inc_path << " " << path << " " << chip << " " << args;
-      system(cmd.str().c_str());
-      break;
+          << inc_path << " " << path << " " << chip << " " << args
+          << "\n";
+          // << " > /dev/null 2>&1\n";
+      std::string output;
+      ret = system(cmd.str().c_str());
+      ret >>= 8;
+      switch (ret) {
+      case 0: {
+      #ifdef DDEBUG
+        printf("[compile jit success]\n");
+      #endif
+        std::ofstream ofs(result_file);
+        if (!ofs) {
+          throw std::runtime_error(
+            "Procecss " + std::to_string(getpid()) +
+            ": Creat flag file failed: " + result_file.string());
+          ofs.close();
+        }
+        break;
+      }
+      case PplL2AddrAssignErr:
+      case PplLocalAddrAssignErr: {
+        fs::remove_all(path);
+        break;
+      }
+      default: {
+        cmd.str("");
+        cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
+            << inc_path << " " << path << " " << chip << " " << args;
+        system(cmd.str().c_str());
+        fs::remove_all(path);
+        break;
+      }
+      }
     }
-    }
+    releaseLock(lockFd);
     return ret;
   }
 };
