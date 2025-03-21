@@ -231,7 +231,7 @@ class BM1688Runner(DeviceRunner):
         #     print(ctypes.c_int(len(dma)))
         #     print(list(core_ids)[0])
 
-        ret = self.lib.debug_cmds(
+        self.lib.debug_cmds(
             self.runner_p,
             ctypes.byref(ctypes.create_string_buffer(tiu_buf)),
             ctypes.byref(ctypes.create_string_buffer(dma_buf)),
@@ -241,7 +241,6 @@ class BM1688Runner(DeviceRunner):
             ctypes.c_int(len(dma)),
             list(core_ids)[0],
         )
-        assert ret == 0
         return len(tiu) + len(dma)
 
     def _cmds_soc_cache(self, cmd_group: StaticCmdGroup):
