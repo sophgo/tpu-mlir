@@ -5102,6 +5102,8 @@ public:
                                            benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::DeconvOp op,
                                     PatternRewriter &rewriter) const override {
+    if (module::isMARS3())
+      return failure();
     auto in_shape = module::getShape(op.getInput());
     int dims = in_shape.size() - 2;
     int conv_padding_h_top = 0, conv_padding_w_left = 0;
