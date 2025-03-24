@@ -19,7 +19,7 @@ typedef void (*cmodel_nodechip_runtime_exit)(int node_idx);
 typedef void *(*create_cmd_id_node)();
 typedef void (*destroy_cmd_id_node)(void *pid_node);
 typedef void (*set_cmd_id_cycle)(void *pid_node, int val);
-typedef int (*get_cmd_id_cycle)(void *pid_node);
+typedef int64_t (*get_cmd_id_cycle)(void *pid_node);
 typedef void (*reset_cmd_id)(void *pid_node);
 typedef void (*allow_store_cmd)();
 typedef void (*forbid_store_cmd)();
