@@ -309,17 +309,17 @@ void GroupMethod::get_base_dfs_topo_groups(
   }
 }
 
-static inline int64_t increase_nsecs2(int64_t nsecs, int64_t batch_size) {
-  if (nsecs == batch_size) {
+static inline int64_t increase_nsecs2(int64_t nsecs, int64_t max_nsecs) {
+  if (nsecs == max_nsecs) {
     return -1;
   }
-  int64_t nslice = batch_size / nsecs + (batch_size % nsecs > 0);
+  int64_t nslice = max_nsecs / nsecs + (max_nsecs % nsecs > 0);
   int64_t new_nslice = nslice;
   int64_t next_nsecs = nsecs;
   do {
     next_nsecs++;
-    new_nslice = batch_size / next_nsecs + (batch_size % next_nsecs > 0);
-  } while (new_nslice >= nslice && next_nsecs < batch_size);
+    new_nslice = max_nsecs / next_nsecs + (max_nsecs % next_nsecs > 0);
+  } while (new_nslice >= nslice && next_nsecs < max_nsecs);
 
   return next_nsecs;
 }

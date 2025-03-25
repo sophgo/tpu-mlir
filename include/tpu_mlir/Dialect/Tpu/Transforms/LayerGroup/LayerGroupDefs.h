@@ -154,16 +154,16 @@ struct tensor_info_t {
   // init
   tensor_info_t()
       : mode(TIMESTEP_LOAD), stage(0), use_3ic_opt(0), eu_align(false),
-        mode2(0), need_bcast(false) {}
+        mode2(0), need_bcast(false), hold_in_lmem(true) {}
   tensor_info_t(TIMESTEP_LD_ST mode)
       : mode(mode), stage(0), use_3ic_opt(0), eu_align(false), mode2(0),
-        need_bcast(false) {}
+        need_bcast(false), hold_in_lmem(true) {}
   tensor_info_t(slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
-        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false) {}
+        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false), hold_in_lmem(true) {}
   tensor_info_t(Operation *next_op, slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
-        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false) {
+        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false), hold_in_lmem(true) {
     slice_infos[next_op] = slice_info;
   }
   void add_slice_info(Operation *next_op, slice_info_t slice_info) {

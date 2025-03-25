@@ -132,7 +132,7 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
              ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp, WhereOp,
-             BatchNormBwdOp>(op)) {
+             BatchNormBwdOp, LutOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -558,7 +558,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   PROFILE_LOG("is_layer_group_valid", false);
   lg_info.is_valid = VALID;
   lg_info.shape_secs = shape_secs;
-  lg_info.group_cost = *group_cost;
+  lg_info.group_cost = group_cost ? *group_cost : -1;
   set_layer_group_cache(lg_info);
   return status;
 }

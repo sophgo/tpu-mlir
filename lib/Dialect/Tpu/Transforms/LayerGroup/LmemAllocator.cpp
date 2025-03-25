@@ -132,17 +132,17 @@ get_buffer_key_pointers(std::list<MemBufSortStd> &membuf_list) {
   return pointers;
 }
 
-static inline int64_t increase_nsecs(int64_t nsecs, int64_t batch_size) {
-  if (nsecs == batch_size) {
+static inline int64_t increase_nsecs(int64_t nsecs, int64_t max_nsecs) {
+  if (nsecs == max_nsecs) {
     return -1;
   }
-  int64_t nslice = batch_size / nsecs + (batch_size % nsecs > 0);
+  int64_t nslice = max_nsecs / nsecs + (max_nsecs % nsecs > 0);
   int64_t new_nslice = nslice;
   int64_t next_nsecs = nsecs;
   do {
     next_nsecs++;
-    new_nslice = batch_size / next_nsecs + (batch_size % next_nsecs > 0);
-  } while (new_nslice >= nslice && next_nsecs < batch_size);
+    new_nslice = max_nsecs / next_nsecs + (max_nsecs % next_nsecs > 0);
+  } while (new_nslice >= nslice && next_nsecs < max_nsecs);
   DEBUG_WITH_TYPE("better_slice", {
     // log to monitor when to find next_nslices with better slice
     if (new_nslice < nslice) {
@@ -1322,6 +1322,8 @@ void LmemAllocator::sc_method_quick_search(const LgInfo &lg_info,
     } else if (ret > SECS_TIMESTEP_INVALID) {
       update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs_,
                         options_);
+    } else {
+      break;
     }
     if (++try_num >= MAX_TRY_NUM) {
       break;
