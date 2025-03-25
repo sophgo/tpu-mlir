@@ -36,6 +36,20 @@ model_deploy.py \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_bm1684x_static.bmodel
 
+model_deploy.py \
+  --mlir llama2_block_cache_0.mlir \
+  --quantize W4F16 \
+  --q_group_size 64 \
+  --q_symmetric \
+  --chip bm1684x \
+  --quant_input \
+  --quant_output \
+  --addr_mode io_alone \
+  --tolerance 0.93,0.59 \
+  --model llama2_block_cache_0_bm1684x_static.bmodel \
+  --test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
+  --test_reference llama2_block_cache_0_top_outputs.npz
+
 check_fattention llama2_block_cache_0_bm1684x_w4f16_final.mlir
 
 model_deploy.py \
@@ -66,6 +80,22 @@ model_deploy.py \
   --test_reference llama2_block_cache_0_top_outputs.npz \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_W4F16_bm1688_2core_static.bmodel
+
+model_deploy.py \
+  --mlir llama2_block_cache_0.mlir \
+  --quantize W4F16 \
+  --q_group_size 64 \
+  --q_symmetric \
+  --chip bm1688 \
+  --num_core 2 \
+  --quant_input \
+  --quant_output \
+  --addr_mode io_alone \
+  --tolerance 0.93,0.59 \
+  --model llama2_block_cache_0_W4F16_bm1688_2core_static.bmodel \
+--test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
+--test_reference llama2_block_cache_0_top_outputs.npz
+
 
 model_deploy.py \
   --mlir llama2_block_cache_0.mlir \

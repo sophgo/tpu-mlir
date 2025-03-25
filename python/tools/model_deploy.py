@@ -114,6 +114,7 @@ class DeployTool:
         self.addr_mode = args.addr_mode
         self.cuda = args.cuda
         self.q_group_size = args.q_group_size if self.quantize in ["w4f16", "w4bf16"] else 0
+        self.q_symmetric = args.q_symmetric
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -213,6 +214,7 @@ class DeployTool:
                 self.high_precision,
                 self.do_winograd,
                 self.q_group_size,
+                self.q_symmetric,
                 True if self.patterns_count else False,
                 addr_mode=self.addr_mode,
                 mute=self.mute,
@@ -440,6 +442,8 @@ if __name__ == '__main__':
                         help="do INT8 asymmetric quantization")
     parser.add_argument("--q_group_size", default=64, type=int,
                         help="group size for per-group quant, only used in W4A16 quant mode")
+    parser.add_argument("--q_symmetric", action='store_true',
+                        help="do symmetric W4A16 quant, only works for per-group quant")
     parser.add_argument("--quant_input", action="store_true",
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",

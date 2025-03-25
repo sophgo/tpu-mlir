@@ -468,6 +468,7 @@ def lowering_options(mode: str,
                      high_precision: bool = False,
                      do_winograd: bool = False,
                      q_group_size: int = 0,
+                     q_symmetric: bool = False,
                      addr_mode: str = "auto",
                      matmul_perchannel: bool = False,
                      gelu_mode: str = "normal"):
@@ -490,8 +491,8 @@ def lowering_options(mode: str,
         options.extend([fuse_pre_param])
     qw = "qtable={} weightFileName={}".format(quantize_table, weight_name) if quantize_table else ""
     lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={}" \
-                  " q_group_size={} matmul_perchannel={} gelu_mode={}\"".format(
-        qw, asymmetric, do_winograd, q_group_size, matmul_perchannel, gelu_mode)
+                  " q_group_size={} q_symmetric={} matmul_perchannel={} gelu_mode={}\"".format(
+        qw, asymmetric, do_winograd, q_group_size, q_symmetric, matmul_perchannel, gelu_mode)
     options.extend([
         lower_param,
         "--canonicalize",
@@ -514,6 +515,7 @@ def mlir_lowering(top_mlir: str,
                   high_precision: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0,
+                  q_symmetric: bool = False,
                   count_patterns: bool = False,
                   addr_mode: str = "auto",
                   mute: bool = False,
@@ -540,6 +542,7 @@ def mlir_lowering(top_mlir: str,
                                 high_precision,
                                 do_winograd,
                                 q_group_size,
+                                q_symmetric,
                                 addr_mode,
                                 matmul_perchannel,
                                 gelu_mode)
@@ -815,6 +818,7 @@ def origin_mlir_txt_to_bmodel(
     high_precision: bool = False,
     do_winograd: bool = False,
     q_group_size: int = 0,
+    q_symmetric: bool = False,
     dynamic: bool = False,
     quant_input: bool = False,
     quant_output: bool = False,
@@ -855,6 +859,7 @@ def origin_mlir_txt_to_bmodel(
                                     high_precision,
                                     do_winograd,
                                     q_group_size,
+                                    q_symmetric,
                                     addr_mode,
                                     matmul_perchannel,
                                     gelu_mode)
@@ -933,6 +938,7 @@ def origin_mlir_to_bmodel(
     num_core: int = 1,
     high_precision: bool = False,
     q_group_size: int = 0,
+    q_symmetric: bool = False,
     addr_mode: str = "auto",
     quant_input: bool = False,
     quant_output: bool = False,
@@ -953,6 +959,7 @@ def origin_mlir_to_bmodel(
                                    num_core=num_core,
                                    high_precision=high_precision,
                                    q_group_size=q_group_size,
+                                   q_symmetric=q_symmetric,
                                    addr_mode=addr_mode)
     options.extend(new_options)
     new_options = tpu_opt_options(quant_input=quant_input,

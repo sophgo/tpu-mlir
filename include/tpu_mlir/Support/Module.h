@@ -121,7 +121,8 @@ void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
 int getQuantGroupSize();
-void setQuantGroupSize(int q_group_size);
+bool isQuantSymmetric();
+void setGroupQuantInfo(int q_group_size, bool q_symmetric);
 llvm::StringRef getPostprocess();
 void setPostprocess(StringRef post);
 

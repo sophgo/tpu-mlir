@@ -578,6 +578,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - q_group_size
      - N
      - Group size for per-group quant, only used in W4A16 quant mode
+   * - q_symmetric
+     - N
+     - Do symmetric W4A16 quant
    * - compress_mode
      - N
      - Specify the compression mode of the model: "none", "weight", "activation", "all". Supported on BM1688. Default is "none", no compression

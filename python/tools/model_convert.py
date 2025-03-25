@@ -61,6 +61,8 @@ if __name__ == '__main__':
                         help="set default qauntization type")
     parser.add_argument("--q_group_size", default=64, type=int,
                         help="group size for per-group quant, only used in W4A16 quant mode")
+    parser.add_argument("--q_symmetric", action='store_true',
+                        help="do symmetric W4A16 quant, only works for per-group quant")
     parser.add_argument("--quant_input", action="store_true",
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",
@@ -99,6 +101,7 @@ if __name__ == '__main__':
                           num_core=args.num_core,
                           high_precision=args.high_precision,
                           q_group_size=args.q_group_size,
+                          q_symmetric=args.q_symmetric,
                           addr_mode=args.addr_mode,
                           quant_input=args.quant_input,
                           quant_output=args.quant_output,

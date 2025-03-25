@@ -50,6 +50,7 @@ struct Attr {
   static constexpr llvm::StringRef TRAIN = "module.train";
   static constexpr llvm::StringRef ADDR_MODE = "module.addr_mode";
   static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
+  static constexpr llvm::StringRef QUANT_SYMMETRIC = "module.q_symmetric";
   static constexpr llvm::StringRef TOP_RUN_MODE = "module.top_run_mode";
   static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET =
       "module.dynamic_coeff_offset";
@@ -1280,9 +1281,17 @@ int getQuantGroupSize() {
   return 0;
 }
 
-void setQuantGroupSize(int q_group_size) {
+bool isQuantSymmetric() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::QUANT_SYMMETRIC)) {
+    return m->getAttrOfType<BoolAttr>(Attr::QUANT_SYMMETRIC).getValue();
+  }
+  return false;
+}
+
+void setGroupQuantInfo(int q_group_size, bool q_symmetric) {
   auto intType = IntegerType::get(ctx, 64);
   m->setAttr(Attr::QUANT_GROUP_SIZE, IntegerAttr::get(intType, q_group_size));
+  m->setAttr(Attr::QUANT_SYMMETRIC, BoolAttr::get(ctx, q_symmetric));
 }
 
 bool isTrain() {

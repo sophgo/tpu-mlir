@@ -75,7 +75,7 @@ void computePerChannelParam(
  ***/
 void computePerGroupParam(
     const std::shared_ptr<std::vector<float>> &weight_data, int row, int col,
-    int q_group_size, std::shared_ptr<std::vector<float>> &scale,
+    int q_group_size, bool q_symmetric, std::shared_ptr<std::vector<float>> &scale,
     std::shared_ptr<std::vector<uint8_t>> &zp) {
   assert(col % q_group_size == 0 && "invalid q_group_size");
   int num_groups = row * col / q_group_size;
@@ -87,15 +87,20 @@ void computePerGroupParam(
   for (int i = 0; i < num_groups; i++) {
     float *p_weight = weight_data->data() + i * q_group_size;
     findMinMax(p_weight, q_group_size, &min_val, &max_val);
-    scale->at(i) = std::max(max_val - min_val, (float)1e-5) / max_int;
-    zp->at(i) = (uint8_t)std::clamp(-(int)std::round(min_val / scale->at(i)),
-                                    min_int, max_int);
+    if (q_symmetric) {
+      scale->at(i) = 2 * std::abs(max_val) / max_int;
+    } else {
+      scale->at(i) =
+          std::max(max_val - min_val, (float)1e-5) / (max_int - min_int);
+      zp->at(i) = (uint8_t)std::clamp(-(int)std::round(min_val / scale->at(i)),
+                                      min_int, max_int);
+    }
   }
 }
 
 void computePerGroupParam(
     const std::shared_ptr<std::vector<float>> &weight_data, int row, int col,
-    int q_group_size, std::shared_ptr<std::vector<float>> &scale,
+    int q_group_size, bool q_symmetric, std::shared_ptr<std::vector<float>> &scale,
     std::shared_ptr<std::vector<float>> &zp) {
   assert(col % q_group_size == 0 && "invalid q_group_size");
   int num_groups = row * col / q_group_size;
@@ -107,9 +112,13 @@ void computePerGroupParam(
   for (int i = 0; i < num_groups; i++) {
     float *p_weight = weight_data->data() + i * q_group_size;
     findMinMax(p_weight, q_group_size, &min_val, &max_val);
-    scale->at(i) = std::max(max_val - min_val, (float)1e-5) / max_int;
-    zp->at(i) =
-        std::clamp(-(int)std::round(min_val / scale->at(i)), min_int, max_int);
+    if (q_symmetric) {
+      scale->at(i) = 2 * std::abs(max_val) / max_int;
+    } else {
+      scale->at(i) = std::max(max_val - min_val, (float)1e-5) / (max_int - min_int);
+      zp->at(i) = std::clamp(-(int)std::round(min_val / scale->at(i)), min_int,
+                             max_int);
+    }
   }
 }
 
@@ -274,11 +283,12 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
     auto bitwidth = op.getWeightBits();
 
     int q_group_size = bitwidth == 4 ? module::getQuantGroupSize() : 0;
+    bool q_symmetric = q_group_size != 0 ? module::isQuantSymmetric() : false;
     int64_t quant_param_size = !q_group_size ? row : (row * col / q_group_size);
 
     auto scale = std::make_shared<std::vector<float>>(quant_param_size, 0);
-    auto zp_int8 = std::make_shared<std::vector<uint8_t>>(quant_param_size, 0);
-    auto zp_fp = std::make_shared<std::vector<float>>(quant_param_size, 0);
+    auto zp_int8 = std::make_shared<std::vector<uint8_t>>(quant_param_size, q_symmetric ? 8 : 0);
+    auto zp_fp = std::make_shared<std::vector<float>>(quant_param_size, q_symmetric ? 8 : 0);
 
     if (!q_group_size) {
       if (module::isSG2380())
@@ -290,10 +300,10 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
     } else {
       op.setQGroupSize(q_group_size);
       if (module::isSG2380() || use_dq2)
-        computePerGroupParam(trans_weight, row, col, q_group_size, scale,
+        computePerGroupParam(trans_weight, row, col, q_group_size, q_symmetric, scale,
                              zp_fp);
       else
-        computePerGroupParam(trans_weight, row, col, q_group_size, scale,
+        computePerGroupParam(trans_weight, row, col, q_group_size, q_symmetric, scale,
                              zp_int8);
     }
 
