@@ -84,7 +84,7 @@ class TORCH_IR_TESTER(object):
             "Ceil":             (self.test_Ceil,              N, Y, N, N, Y),
             "ChannelShuffle":   (self.test_ChannelShuffle,    N, Y, Y, Y, Y),
             "Chunk":            (self.test_Chunk,             N, Y, Y, Y, Y),
-            "Clamp":            (self.test_Clamp,             Y, Y, Y, N, Y),
+            "Clamp":            (self.test_Clamp,             Y, Y, Y, Y, Y),
             "Compare":          (self.test_Compare,           Y, Y, Y, N, Y),
             "Concat":           (self.test_Concat,            N, Y, Y, Y, Y),
             "ConstantLike":     (self.test_ConstantLike,      N, Y, Y, Y, Y),
