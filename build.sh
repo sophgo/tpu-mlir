@@ -59,6 +59,8 @@ cmake -G Ninja \
 cpu_num=$(cat /proc/stat | grep cpu[0-9] -c)
 cmake --build $BUILD_PATH --target install -j${cpu_num}
 
+cmake --build $BUILD_PATH --target passes_json_files builder_python install_passes_files
+
 # build ppl code
 rm -rf lib/PplBackend/build
 bash lib/PplBackend/build.sh

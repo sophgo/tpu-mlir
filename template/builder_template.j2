@@ -1,0 +1,400 @@
+import json
+try:
+    from loguru import logger
+except ImportError:
+    from logging import root as logger
+
+import os
+import sys
+import argparse
+from typing import List, Dict, Any, Optional, Union, Set
+from enum import Enum
+from pydantic import BaseModel, Field, validator, ValidationError
+import textwrap
+
+
+class PassOption(BaseModel):
+    """Model for Pass options"""
+
+    name: str
+    argument: str
+    type: str
+    description: str
+    default_value: str = ""
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class Pass(BaseModel):
+    """Model for Pass"""
+
+    name: str
+    argument: str
+    summary: str
+    description: str = ""
+    options: List[PassOption] = []
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+
+# Predefined Pass constants
+PASSES_DATA = {
+    {% for method in pass_methods %}
+    "{{ method.argument_name }}": Pass(
+        name="{{ method.pass_name }}",
+        argument="{{ method.argument_name }}",
+        summary="{{ method.summary | replace('"', '\\"') | replace('\n', ' ') }}",
+        description="{{ method.description | replace('"', '\\"') | replace('\n', ' ') }}",
+        options=[
+            {% for opt in method.options %}
+            PassOption(
+                name="{{ opt.name }}",
+                argument="{{ opt.argument }}",
+                type="{{ opt.type }}",
+                description="{{ opt.description }}",
+                default_value="{{ opt.default_value.strip('"') }}",
+            ),
+            {% endfor %}
+        ],
+    ),
+    {% endfor %}
+}
+
+
+class TpucCommandBuilder:
+    """
+    TPU-MLIR command builder, used to generate tpuc-opt commands.
+    Based on built-in pass and option information, and uses pydantic for parameter validation.
+    """
+
+    def __init__(self):
+        self.commands = []
+        self.passes = PASSES_DATA
+        self.last_pass = None
+        self.input_file = None
+
+    def add_input_file(self, input_file: str) -> "TpucCommandBuilder":
+        """Add input file"""
+        self.commands = ["tpuc-opt", input_file]
+        self.input_file = input_file
+        return self
+
+    def _validate_option_type(self, option: PassOption, value: Any) -> Any:
+        """Validate option value type and convert to appropriate representation"""
+        if option.type == "bool":
+            if isinstance(value, bool):
+                return str(value).lower()
+            elif isinstance(value, str):
+                if value.lower() in ("true", "yes", "1"):
+                    return "true"
+                elif value.lower() in ("false", "no", "0"):
+                    return "false"
+                else:
+                    raise ValueError(
+                        f"Option {option.argument} requires a boolean value, but received '{value}'"
+                    )
+            else:
+                raise ValueError(
+                    f"Option {option.argument} requires a boolean value, but received {type(value).__name__}"
+                )
+
+        elif (
+            option.type == "int"
+            or option.type.startswith("int")
+            or option.type.startswith("uint")
+        ):
+            if isinstance(value, (int, float)) or (
+                isinstance(value, str) and value.isdigit()
+            ):
+                return str(int(value))
+            else:
+                raise ValueError(
+                    f"Option {option.argument} requires an integer, but received {type(value).__name__}: {value}"
+                )
+
+        elif option.type == "std::string" or option.type == "string":
+            if value is None:
+                return ""
+            return str(value)
+
+        # For other types, return string representation directly
+        return str(value)
+
+    def add_pass(self, pass_name: str, **options) -> "TpucCommandBuilder":
+        """Add pass and its options, and validate the validity of options"""
+        if pass_name not in self.passes:
+            raise ValueError(
+                f"Unknown pass: {pass_name}, available passes: {', '.join(self.passes.keys())}"
+            )
+        if not self.input_file:
+            raise ValueError("Input file not set")
+
+        pass_info = self.passes[pass_name]
+        argument = pass_info.argument
+        self.last_pass = argument
+
+        # Build pass option string
+        pass_str = f"--{argument}"
+
+        # Process options
+        if options:
+            option_strs = []
+
+            # Get valid options for this pass
+            valid_options = {opt.argument: opt for opt in pass_info.options}
+
+            # Validate provided options
+            for key, value in options.items():
+                if key in valid_options:
+                    # Validate and convert option value
+                    try:
+                        validated_value = self._validate_option_type(
+                            valid_options[key], value
+                        )
+                        option_strs.append(f"{key}={validated_value}")
+                    except ValueError as e:
+                        raise ValueError(f"Failed to validate option {key} for pass {pass_name}: {e}")
+                else:
+                    # Warn about unknown options
+                    print(
+                        f"Warning: Pass {pass_name} has no defined option '{key}'. Valid options: {', '.join(valid_options.keys())}"
+                    )
+                    # Still add it, in case it's an option not defined in JSON
+                    option_strs.append(f"{key}={value}")
+
+            if option_strs:
+                pass_str += f"=\"{' '.join(option_strs)}\""
+
+        self.commands.append(pass_str)
+        return self
+
+    def add_output_file(self, output_file: str) -> "TpucCommandBuilder":
+        """Add output file"""
+        self.commands.extend(["-o", output_file])
+        return self
+
+    def infer_output_file(self, output_dir: str) -> "TpucCommandBuilder":
+        """Infer output file"""
+        base_name = os.path.splitext(os.path.basename(self.input_file))[0]
+        if self.last_pass:
+            self.commands.extend(["-o", os.path.join(output_dir, f"{base_name}_{self.last_pass}.mlir")])
+        else:
+            raise ValueError("Cannot infer output file because no pass has been executed")
+        return self
+
+    def add_raw_option(self, option: str) -> "TpucCommandBuilder":
+        """Add raw option string"""
+        self.commands.append(option)
+        return self
+
+    def build(self) -> str:
+        """Build complete command string"""
+        return " ".join(self.commands)
+
+    def execute(self, log_level: str = "normal") -> None:
+        """Execute command"""
+        try:
+            from utils.mlir_shell import _os_system
+
+            _os_system(self.commands, log_level=log_level)
+        except ImportError:
+            print("Warning: Unable to import utils.mlir_shell, will use os.system to execute command")
+            import os
+
+            cmd_str = " ".join(self.commands)
+            print(f"Executing command: {cmd_str}")
+            os.system(cmd_str)
+
+    def list_passes(self, filter_str: str = None) -> None:
+        """List all available passes and their descriptions"""
+        print(f"Available passes ({len(self.passes)}):")
+        print("=" * 80)
+
+        for name, pass_info in sorted(self.passes.items()):
+            if (
+                filter_str
+                and filter_str.lower() not in name.lower()
+                and filter_str.lower() not in pass_info.argument.lower()
+            ):
+                continue
+
+            print(f"{name} (--{pass_info.argument}):")
+            print(f"  Summary: {pass_info.summary}")
+            if pass_info.options:
+                print("  Options:")
+                for opt in pass_info.options:
+                    default_str = (
+                        f" [Default: {opt.default_value}]" if opt.default_value else ""
+                    )
+                    print(
+                        f"    - {opt.argument} ({opt.type}){default_str}: {opt.description}"
+                    )
+            print()
+
+    def get_pass_info(self, pass_name: str) -> str:
+        """Get detailed information for a specific pass"""
+        if pass_name not in self.passes:
+            return f"Error: Unknown pass '{pass_name}'"
+
+        pass_info = self.passes[pass_name]
+        result = [
+            f"Pass: {pass_name} (--{pass_info.argument})",
+            f"Summary: {pass_info.summary}",
+            f"Description: {pass_info.description or 'No description'}",
+        ]
+
+        if pass_info.options:
+            result.append("Options:")
+            for opt in pass_info.options:
+                default_str = (
+                    f" [Default: {opt.default_value}]" if opt.default_value else ""
+                )
+                result.append(
+                    f"  - {opt.argument} ({opt.type}){default_str}: {opt.description}"
+                )
+        else:
+            result.append("Options: None")
+
+        return "\n".join(result)
+
+    # Convenient methods for commonly used passes
+    {% for pass_method in pass_methods %}
+    def {{ pass_method.method_name }}(self{% if pass_method.has_options %}, **options{% endif %}) -> "TpucCommandBuilder":
+        """Add {{ pass_method.pass_argument }} pass
+
+        {% if pass_method.summary %}{{ pass_method.summary }}{% endif %}
+        {% if pass_method.description %}
+        {{ pass_method.description }}
+        {% endif %}
+        {% if pass_method.options %}
+
+        Options:
+        {% for opt in pass_method.options %}
+        - {{ opt.argument }} ({{ opt.type }}){% if opt.default_value %} [Default: {{ opt.default_value }}]{% endif %}: {{ opt.description }}
+        {% endfor %}
+        {% endif %}
+        """
+        return self.add_pass("{{ pass_method.argument_name }}"{% if pass_method.has_options %}, **options{% endif %})
+
+    {% endfor %}
+    def canonicalize(self) -> "TpucCommandBuilder":
+        """Add canonicalize pass"""
+        return self.add_raw_option("--canonicalize")
+
+    def __repr__(self):
+        return self.build()
+
+
+def build_cli():
+    """Create command line interface"""
+    parser = argparse.ArgumentParser(description="TPU-MLIR Command Builder CLI")
+    subparsers = parser.add_subparsers(dest="command", help="Subcommands")
+
+    # List all passes
+    list_passes_parser = subparsers.add_parser(
+        "list-passes", help="List all available passes"
+    )
+    list_passes_parser.add_argument("--filter", type=str, help="Filter string")
+
+    # List all options
+    list_options_parser = subparsers.add_parser(
+        "list-options", help="List all available options"
+    )
+    list_options_parser.add_argument("--filter", type=str, help="Filter string")
+
+    # Get information for a specific pass
+    info_parser = subparsers.add_parser("info", help="Get detailed information for a specific pass")
+    info_parser.add_argument("pass_name", type=str, help="Pass name")
+
+    # Example command
+    example_parser = subparsers.add_parser("example", help="Show example usage")
+
+    args = parser.parse_args()
+
+    builder = TpucCommandBuilder()
+
+    if args.command == "list-passes":
+        builder.list_passes(args.filter)
+    elif args.command == "list-options":
+        builder.list_options(args.filter)
+    elif args.command == "info":
+        print(builder.get_pass_info(args.pass_name))
+    elif args.command == "example":
+        example_usage()
+    else:
+        parser.print_help()
+
+
+def example_usage():
+    """Show example usage"""
+    example = """
+# Example Usage
+
+## 1. Create command builder instance
+```python
+from tpuc_command_builder import TpucCommandBuilder
+builder = TpucCommandBuilder()
+```
+
+## 2. Convert from top model to tpu model
+```python
+cmd = (builder
+    .add_input_file("model.mlir")
+    .shape_infer()
+    .canonicalize()
+    .processor_assign(chip="bm1684x", mode="INT8", num_device=1, num_core=1)
+    .processor_optimize()
+    .convert_top_to_tpu(asymmetric=False, doWinograd=False)
+    .canonicalize()
+    .weight_fold()
+    .add_output_file("model_tpu.mlir")
+    .build()
+)
+print(cmd)
+```
+
+## 3. Generate final model
+```python
+builder = TpucCommandBuilder()
+cmd = (builder
+    .add_input_file("model_tpu.mlir")
+    .strip_i_o_quant(quant_input=False, quant_output=False)
+    .processor_optimize()
+    .layer_group(opt=2)
+    .address_assign(merge_weight=False)
+    .codegen(model_file="model.bmodel", embed_debug_info=False)
+    .add_output_file("/dev/null")
+    .build()
+)
+print(cmd)
+```
+
+## 4. Execute command
+```python
+builder = TpucCommandBuilder()
+(builder
+    .add_input_file("model.mlir")
+    .shape_infer()
+    .add_output_file("model_shape.mlir")
+    .execute()
+)
+```
+
+## 5. Get pass information
+```python
+builder = TpucCommandBuilder()
+info = builder.get_pass_info("ShapeInfer")
+print(info)
+```
+"""
+    print(textwrap.dedent(example))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        build_cli()
+    else:
+        example_usage()

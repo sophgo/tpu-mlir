@@ -223,3 +223,71 @@ if(TPUMLIR_INCLUDE_TESTS)
   add_subdirectory(unittests)
   add_subdirectory(test)
 endif()
+
+#-------------------------------------------------------------------------------
+# Generate Passes JSON and Builder Python files
+#-------------------------------------------------------------------------------
+
+# Create passes_json directory if it doesn't exist
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/passes_json)
+file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/)
+
+# Find all Passes.td files
+file(GLOB_RECURSE PASSES_TD_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/tpu_mlir/**/Passes.td")
+
+# Generate Passes JSON files
+foreach(TD_FILE ${PASSES_TD_FILES})
+  get_filename_component(PARENT_DIR ${TD_FILE} DIRECTORY)
+  get_filename_component(GRANDPARENT_DIR ${PARENT_DIR} DIRECTORY)
+  get_filename_component(PARENT_NAME ${PARENT_DIR} NAME)
+  get_filename_component(GRANDPARENT_NAME ${GRANDPARENT_DIR} NAME)
+
+  set(OUTPUT_JSON_FILE "${CMAKE_BINARY_DIR}/passes_json/${GRANDPARENT_NAME}_${PARENT_NAME}_passes.json")
+
+  add_custom_command(
+    OUTPUT ${OUTPUT_JSON_FILE}
+    DEPENDS ${TD_FILE}
+    COMMAND llvm-tblgen --dump-json -o ${OUTPUT_JSON_FILE} ${TD_FILE} -I ${CMAKE_CURRENT_SOURCE_DIR}/include -I ${CMAKE_INSTALL_PREFIX}/include -I /usr/local/include
+    COMMENT "Generating JSON for ${TD_FILE}"
+    VERBATIM
+  )
+
+  list(APPEND ALL_PASSES_JSON_FILES ${OUTPUT_JSON_FILE})
+endforeach()
+
+# Add custom target for all JSON files
+add_custom_target(passes_json_files ALL DEPENDS ${ALL_PASSES_JSON_FILES})
+
+# Generate builder Python file from JSON files
+# set(BUILDER_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/template/builder_template.j2")
+set(BUILDER_OUTPUT "${CMAKE_INSTALL_PREFIX}/python/utils/tpuc_cmd_builder.py")
+
+add_custom_command(
+  OUTPUT ${BUILDER_OUTPUT}
+  DEPENDS passes_json_files
+  COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/template/tpuc_cmd_builder_gen.py --output ${BUILDER_OUTPUT} --passes_dir ${CMAKE_BINARY_DIR}/passes_json
+  COMMENT "Generating builder Python file"
+  VERBATIM
+)
+
+add_custom_target(builder_python ALL DEPENDS ${BUILDER_OUTPUT})
+
+# Make the Python generation dependent on JSON files
+add_dependencies(builder_python passes_json_files)
+
+# Install generated files to install directory
+install(DIRECTORY ${CMAKE_BINARY_DIR}/passes_json/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/passes_json
+        FILES_MATCHING
+        PATTERN "*.json"
+        PATTERN "*.py"
+        PATTERN "*.j2"
+        PATTERN "__pycache__" EXCLUDE)
+
+# Create a install target for passes_json files
+add_custom_target(install_passes_files
+  DEPENDS passes_json_files builder_python
+  COMMAND ${CMAKE_COMMAND} -DCOMPONENT=passes_json -P ${CMAKE_BINARY_DIR}/cmake_install.cmake
+  COMMENT "Installing passes_json files to ${CMAKE_INSTALL_PREFIX}/passes_json"
+  VERBATIM)
+
