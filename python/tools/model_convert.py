@@ -25,7 +25,7 @@ def get_model_transform(args):
                                model_def=args.model_def,
                                input_shapes=args.input_shapes,
                                do_onnx_sim=args.do_onnx_sim,
-                               dump_final_opt=args.dump_final_opt)
+                               dump_final_opt=args.debug)
     elif args.model_def.endswith('.pt'):
         tool = TorchTransformer(model_name=args.model_name,
                                 model_def=args.model_def,
@@ -81,7 +81,6 @@ if __name__ == '__main__':
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
     # ========== Compiler Options ==============
-    parser.add_argument("--dump_final_opt", default=False, help='save final_opt onnx file')
     parser.add_argument("--do_onnx_sim", default=False, type=bool, help="whether do onnx sim for onnx")
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,

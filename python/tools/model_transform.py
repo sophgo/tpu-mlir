@@ -343,7 +343,7 @@ def get_model_transform(args):
                                dynamic_shape_input_names=args.dynamic_shape_input_names,
                                dynamic=args.dynamic,
                                shape_influencing_input_names=args.shape_influencing_input_names,
-                               dump_final_opt=args.dump_final_opt,
+                               dump_final_opt=args.debug,
                                op_custom_shape=args.op_custom_shape,
                                replace_topk_indices=args.replace_topk_indices,
                                do_onnx_sim=args.do_onnx_sim)
@@ -409,7 +409,6 @@ if __name__ == '__main__':
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--do_onnx_sim", default=True, type=bool, help="whether do onnx sim for onnx")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
-    parser.add_argument("--dump_final_opt", default=True, help='save final_opt onnx file')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
