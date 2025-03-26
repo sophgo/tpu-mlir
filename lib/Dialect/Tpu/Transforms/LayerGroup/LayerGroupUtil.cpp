@@ -1932,15 +1932,25 @@ static bool backward_update_slice(
         // Whether backend func can accept input tensor with margins. (NOTE: LUT
         // has no backend support.)
         auto tpukernel_allow_HWmargins = [&lg_info](Operation *op) -> bool {
-          return isa<tpu::Conv2DOp, tpu::AddOp, tpu::BinaryShiftOp,
-                     tpu::BinaryConstShiftOp, tpu::CastOp>(op);
+          if (isa<tpu::Conv2DOp>(op) &&
+              op->getAttrOfType<IntegerAttr>("group").getInt() > 1) {
+            // Note: backend function is incomplete, feel free to complete it
+            // Realizing this functionality could lead to significant rewards.
+            return false;
+          }
+          if (module::getChip() == module::Chip::BM1684) {
+            return isa<tpu::Conv2DOp>(op);
+          } else {
+            return isa<tpu::Conv2DOp, tpu::AddOp, tpu::BinaryShiftOp,
+                      tpu::BinaryConstShiftOp>(op);
+          }
         };
 
         if (!isa_intermediate_op(pre_op)) {
           return false;
         }
         for (auto user : pre_op->getUsers()) {
-          if (!(tpukernel_allow_HWmargins(user) || isa<tpu::LutOp>(user))) {
+          if (!(tpukernel_allow_HWmargins(user) || isa<tpu::LutOp, tpu::CastOp>(user))) {
             return false;
           }
         }
@@ -1988,7 +1998,7 @@ static bool backward_update_slice(
           tensor_infos[in] = tensor_info_t(si_both);
 
           for (auto user : pre_op->getUsers()) {
-            if (isa<tpu::LutOp>(user)) {
+            if (isa<tpu::LutOp, tpu::CastOp>(user)) {
               // For now, LutOp has no backend support for HW-margins, so
               // HW-margins must insteadly be passed to && processed by its
               // child Operator.
