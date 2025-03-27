@@ -45,7 +45,7 @@ struct Unpack2Split : public OpRewriterPatternEx<top::UnpackOp> {
       auto newType = RankedTensorType::get(oshape, etype);
       auto out = splitOp.getResult(i);
       std::vector<NamedAttribute> attrs = {};
-      auto new_name = module::getName(out).str() + "_reshape";
+      auto new_name = module::getName(out).str() + "_r_reshape";
       auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
       auto newOp = rewriter.create<top::ReshapeOp>(name_loc, newType,
                                                    ValueRange{out}, attrs);

@@ -271,7 +271,7 @@ struct Permute5dSplit : public OpRewriterPatternEx<PermuteOp> {
     assert(new_shape1 == output_shape);
     // create permute0
     rewriter.setInsertionPointAfterValue(input);
-    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_expand0"));
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_r_expand0"));
     std::vector<Value> operands;
     std::vector<NamedAttribute> attrs;
     operands.emplace_back(input);
@@ -376,7 +376,7 @@ struct PermuteFuse : public OpRewriterPatternEx<PermuteOp> {
         rewriter.eraseOp(permute_op);
     } else {
       std::string in_name =
-          module::getName(permute_op.getInput()).str() + "_Reshape";
+          module::getName(permute_op.getInput()).str() + "_r_Reshape";
       auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
       rewriter.setInsertionPoint(op);
       auto rs_op = rewriter.create<ReshapeOp>(
@@ -897,7 +897,7 @@ struct TopMoveSoftmaxAfterPermute : public OpRewriterPatternEx<PermuteOp> {
     module::setShape(in_sm_op, out_shape);
 
     in_permute_op->setLoc(NameLoc::get(rewriter.getStringAttr(
-        module::getName(in_permute_op.getOperation()).str() + "_reordered")));
+        module::getName(in_permute_op.getOperation()).str() + "_r_reordered")));
 
     in_sm_op->setLoc(op.getLoc());
 
@@ -1036,7 +1036,7 @@ struct PermuteAndConv1DtoMatMul : public OpRewriterPatternEx<PermuteOp> {
     rewriter.setInsertionPointAfter(weight1.getDefiningOp());
     auto conv1_name = module::getName(conv1.getOutput()).str();
     auto matmul1_op = rewriter.create<MatMulOp>(
-        NameLoc::get(rewriter.getStringAttr(conv1_name + "_permute")), matmul1_type,
+        NameLoc::get(rewriter.getStringAttr(conv1_name + "_r_permute")), matmul1_type,
         ValueRange{op.getOperand(), weight1, conv1.getBias()}, attrs);
 
     // MatMul2

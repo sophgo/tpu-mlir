@@ -459,7 +459,7 @@ if __name__ == '__main__':
     if qat_tool.fakequant_model:
         node_name_mapping = tool.converter.node_name_mapping
         qat_tool.align_final_opt(node_name_mapping,args.onnx_sim)
-        qat_tool.compare_npz_name_mapping(args.test_result)
+        qat_tool.align_canonicalize(args.mlir,args.test_result)
     tool.file_recorder.dump()
     if not args.debug:
         tool.cleanup()

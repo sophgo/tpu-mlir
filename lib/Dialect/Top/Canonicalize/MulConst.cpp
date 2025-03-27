@@ -159,7 +159,10 @@ public:
           weight_type.getElementType());
       formerOp->setOperand(i, new_weight);
     }
-    module::setLocSuffix(formerOp, "withMulConst");
+
+    std::string mul_name = module::getName(op.getOperation()).str() + "_r_MulOrConv";
+    auto new_loc = NameLoc::get(rewriter.getStringAttr(mul_name));
+    formerOp->setLoc(new_loc);
     firstFormerOp->setLoc(op.getLoc());
     if (do_relu) {
       formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));

@@ -65,8 +65,7 @@ struct TopArgReducefull : public OpRewriterPatternEx<ArgOp> {
       op.getValues().setType(new_type);
       if (no_values) {
         std::vector<Location> locs_v = {op.getIndices().getLoc()};
-        std::string out_values_name =
-            module::getName(op.getIndices()).str() + "_values";
+        std::string out_values_name = module::getName(reop.getOutput()).str() + "_r_values";
         auto values_loc = NameLoc::get(rewriter.getStringAttr(out_values_name));
         locs_v.push_back(values_loc);
         module::setLoc(op.getValues(), values_loc);
@@ -137,7 +136,7 @@ struct TopTransposeArg : public OpRewriterPatternEx<ArgOp> {
     auto out_indices_type = module::getStorageType(op.getIndices());
     auto new_indices_type = RankedTensorType::get(out_shape, out_indices_type);
     std::string out_indices_name =
-        module::getName(op.getIndices()).str() + "_Reshape";
+        module::getName(op.getIndices()).str() + "_r_Reshape";
     auto indices_loc = NameLoc::get(rewriter.getStringAttr(out_indices_name));
     rewriter.setInsertionPointAfter(op);
     auto rs_indices_op = rewriter.create<ReshapeOp>(
@@ -150,7 +149,7 @@ struct TopTransposeArg : public OpRewriterPatternEx<ArgOp> {
       auto out_values_type = module::getStorageType(op.getValues());
       auto new_values_type = RankedTensorType::get(out_shape, out_values_type);
       std::string out_values_name =
-          module::getName(op.getValues()).str() + "_Reshape";
+          module::getName(op.getValues()).str() + "_r_Reshape";
       auto values_loc = NameLoc::get(rewriter.getStringAttr(out_values_name));
       rewriter.setInsertionPointAfter(op);
       auto rs_values_op = rewriter.create<ReshapeOp>(

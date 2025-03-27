@@ -30,14 +30,14 @@ struct TopKWithSlice : public OpRewriterPatternEx<TopKOp> {
     } else if (op.getIndices().hasOneUse() && op.getValues().use_empty()) {
       if (auto slice_indices_op =
               dyn_cast_or_null<SliceOp>(*op.getIndices().getUsers().begin())) {
-        return which_axes(op, slice_indices_op, rewriter);
+        return which_axes(op, slice_indices_op, NULL, rewriter);
       } else {
         return failure();
       }
     } else if (op.getValues().hasOneUse() && op.getIndices().use_empty()) {
       if (auto slice_values_op =
               dyn_cast_or_null<SliceOp>(*op.getValues().getUsers().begin())) {
-        return which_axes(op, slice_values_op, rewriter);
+        return which_axes(op, NULL, slice_values_op, rewriter);
       } else {
         return failure();
       }
@@ -47,8 +47,9 @@ struct TopKWithSlice : public OpRewriterPatternEx<TopKOp> {
   }
 
 private:
-  LogicalResult slice2k(TopKOp op, SliceOp slice_op, PatternRewriter &rewriter,
-                        int64_t axis) const {
+  LogicalResult slice2k(TopKOp op, SliceOp slice_indice_op, SliceOp slice_value_op,
+                        PatternRewriter &rewriter, int64_t axis) const {
+    SliceOp slice_op = slice_indice_op?slice_indice_op:slice_value_op;
     auto slice_shape = module::getShape(slice_op);
     auto offset = module::getI64Array(slice_op.getOffset());
     auto steps = module::getI64Array(slice_op.getSteps());
@@ -91,15 +92,23 @@ private:
     op->setAttr("K", rewriter.getI64IntegerAttr(K));
 
     std::vector<Location> locs = {};
-    std::string indices_name =
-        module::getName(op.getIndices()).str() + "_Slice";
-    std::string values_name = module::getName(op.getValues()).str() + "_Slice";
 
-    auto indices_loc = NameLoc::get(rewriter.getStringAttr(indices_name));
-    auto values_loc = NameLoc::get(rewriter.getStringAttr(values_name));
-    locs.push_back(indices_loc);
-    locs.push_back(values_loc);
-
+    if (slice_indice_op) {
+      std::string slice_indice_op_name = module::getName(slice_indice_op.getOperation()).str() + "_r_TopK";
+      auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_indice_op_name));
+      locs.push_back(slice_loc);
+    } else{
+      auto indices_loc = NameLoc::get(rewriter.getStringAttr(module::getName(op.getResult(0)).str()));
+      locs.push_back(indices_loc);
+    }
+    if (slice_value_op) {
+      std::string slice_value_op_name = module::getName(slice_value_op.getOperation()).str() + "_r_TopK";
+      auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_value_op_name));
+      locs.push_back(slice_loc);
+    } else{
+      auto values_loc = NameLoc::get(rewriter.getStringAttr(module::getName(op.getResult(1)).str()));
+      locs.push_back(values_loc);
+    }
     auto fused_loc = FusedLoc::get(getContext(), locs);
     op->setLoc(fused_loc);
 
@@ -116,18 +125,15 @@ private:
       auto slice_values_op =
           dyn_cast_or_null<SliceOp>(*op.getValues().getUsers().begin());
       rewriter.setInsertionPointAfter(op);
-      if (slice_indices_op && slice_values_op) {
+      if (slice_indices_op) {
         rewriter.replaceOpWithNewOp<ReverseOp>(
             slice_indices_op, slice_indices_op.getResult().getType(),
             slice_indices_op.getInput(), attrs);
+      }
+      if (slice_values_op) {
         rewriter.replaceOpWithNewOp<ReverseOp>(
             slice_values_op, slice_values_op.getResult().getType(),
             slice_values_op.getInput(), attrs);
-
-      } else {
-        rewriter.replaceOpWithNewOp<ReverseOp>(slice_op,
-                                               slice_op.getResult().getType(),
-                                               slice_op.getInput(), attrs);
       }
       return success();
     } else {
@@ -135,8 +141,9 @@ private:
     }
   }
 
-  LogicalResult which_axes(TopKOp op, SliceOp slice_op,
+  LogicalResult which_axes(TopKOp op, SliceOp slice_indice_op, SliceOp slice_value_op,
                            PatternRewriter &rewriter) const {
+    SliceOp slice_op = slice_indice_op?slice_indice_op:slice_value_op;
     if (!slice_op.getHasparamConvertAxesAttr().empty()) {
       auto axes = module::getI64Array(slice_op.getHasparamConvertAxesAttr());
 
@@ -144,7 +151,7 @@ private:
         return failure();
       } else {
         auto axis = axes->at(0);
-        return slice2k(op, slice_op, rewriter, axis);
+        return slice2k(op, slice_indice_op,slice_value_op, rewriter, axis);
       }
     } else {
       auto axes = module::getI64Array(slice_op.getAxes());
@@ -152,7 +159,7 @@ private:
         return failure();
       } else {
         auto axis = axes->at(0);
-        return slice2k(op, slice_op, rewriter, axis);
+        return slice2k(op, slice_indice_op,slice_value_op, rewriter, axis);
       }
     }
   }
@@ -178,16 +185,18 @@ private:
             (slice_indices_op.getOffsetT() == slice_values_op.getOffsetT()) &
             (slice_indices_op.getStepsT() == slice_values_op.getStepsT()) &
             (slice_indices_op.getEndsT() == slice_values_op.getEndsT())) {
-          return which_axes(op, slice_indices_op, rewriter);
+
+          auto slice_ret = which_axes(op, slice_indices_op, slice_values_op, rewriter);
+          return slice_ret;
         } else {
           return failure();
         }
         // once slice
       } else {
         if (slice_indices_op) {
-          return which_axes(op, slice_indices_op, rewriter);
+          return which_axes(op, slice_indices_op, slice_values_op, rewriter);
         } else {
-          return which_axes(op, slice_values_op, rewriter);
+          return which_axes(op, slice_indices_op, slice_values_op, rewriter);
         }
       }
       // no slice

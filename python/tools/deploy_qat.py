@@ -395,10 +395,10 @@ class FakeQuantNodelProcessor:
             for entry in self.cali_table.values():
                 line = ' '.join(map(str, entry))
                 f.write(line + '\n')
-            f.write('#weight_scale\n')
-            for entry in self.weight_table.values():
-                line = ' '.join(map(str, entry))
-                f.write(line + '\n')
+            # f.write('#weight_scale\n')
+            # for entry in self.weight_table.values():
+            #     line = ' '.join(map(str, entry))
+            #     f.write(line + '\n')
 
         print("导出qtable")
         with open(self.qtable_name, 'w') as f:
@@ -430,6 +430,7 @@ class FakeQuantNodelProcessor:
         return output_to_next_outputs, output_to_inputs
 
     def align_final_opt(self, node_name_mapping,onnx_sim=""):
+        self.opt_node_mapping = node_name_mapping
         # get onnx simplify activation name
         simplify_file = "{}_opt.onnx".format(self.input_model_name)
         simplify_model = None
@@ -495,21 +496,86 @@ class FakeQuantNodelProcessor:
                     # doesnt insert fakequant node by fuse mode, exsample conv + relu; avagepool + flatten
                     if ori_name in self.cali_table:
                         sim_node_mapping[ori_name] = sim_name
-                        self.cali_table[ori_name][0] = sim_name
-                        self.q_table[ori_name][0] = sim_name
+                        self.creat_new_qat_item(ori_name,sim_name)
 
         print("simplify onnx cant compare activation name list:",not_find_dict)
         print("simplify onnx rename pair:",sim_node_mapping)
         print("final opt onnx rename pair:",node_name_mapping)
+        self.sim_node_mapping = sim_node_mapping
         # created by onnx_opt: example, hardsigmoid + mul = hardswish
         for qat_act_name in node_name_mapping:
             finalopt_name = node_name_mapping[qat_act_name]
             if qat_act_name in self.cali_table:
-                self.cali_table[qat_act_name][0] = finalopt_name
-                self.q_table[qat_act_name][0] = finalopt_name
+                self.creat_new_qat_item(qat_act_name,finalopt_name)
 
         # self.export_tables()
 
+
+
+    def creat_new_qat_item(self, oir_name, new_name):
+        self.cali_table[new_name] = copy.deepcopy(self.cali_table[oir_name])
+        self.cali_table[new_name][0] = new_name
+        self.q_table[new_name] = copy.deepcopy(self.q_table[oir_name])
+        self.q_table[new_name][0] = new_name
+
+
+    def align_canonicalize(self, mlir_file, test_result):
+        self.act_list = self.extract_activation_names_mlir(mlir_file)
+        keys_qat = set(self.cali_table.keys())
+        keys_mlir = set(self.act_list)
+        unpair_keys = keys_mlir - keys_qat
+        complete_match = True
+        for key in unpair_keys:
+            if "_r_" in key:
+                before_canonicalize = key[:key.index("_r_")]
+                if before_canonicalize in keys_qat:
+                    self.creat_new_qat_item(before_canonicalize,key)
+                else:
+                    complete_match = False
+            else:
+                complete_match = False
+        if complete_match:
+            print("successfully get all mlir op_name by align_canonicalize.")
+        else:
+            _,_,not_match = self.compare_npz_name_mapping(test_result)
+            keys_qat_after_align = set(self.cali_table.keys())
+            unpair_keys = keys_mlir - keys_qat_after_align
+            if unpair_keys:
+                print("remain this op name cant find in QAT calitable:",unpair_keys)
+                print("QAT calitable cont compare to mlir, please run run_calitable to get the available calitable!!")
+            else:
+                print("successfully get all mlir op_name.")
+        self.export_tables()
+
+
+    def extract_activation_names_mlir(self,mlir_path):
+        import re
+        with open(mlir_path, 'r') as file:
+            mlir_code = file.read()
+        loc_dict = {}
+        loc_pattern = re.compile(
+            r'#loc(?P<id>\d+)\s*=\s*loc\((?P<content>.*?)\)',
+            re.MULTILINE
+        )
+        loc_matches = loc_pattern.findall(mlir_code)
+        loc_dict = {f"#loc{num}": name for num, name in loc_matches}
+
+        op_pattern = re.compile(
+        r'^\s*((?:%\w+\s*,\s*)*%[\w\.]+)\s*=\s*"([^"]+)"\(([^)]*)\)'
+        r'.*?loc\((?P<loc>[^\)]+)\)',
+        re.MULTILINE | re.DOTALL
+        )
+        op_matches = op_pattern.findall(mlir_code)
+        act_list = []
+        for _, _type, inputs, loc in op_matches:
+            if inputs.strip():
+                if loc_dict[loc].startswith('fused['):
+                    nested_locs = [f"{x.strip()}" for x in re.findall(r'#loc\d+', loc_dict[loc])]
+                    for node in nested_locs:
+                        act_list.append(loc_dict[node].strip('"'))
+                else:
+                    act_list.append(loc_dict[loc].strip('"'))
+        return act_list
 
     def compare_npz_name_mapping(self, test_result):
         data_a_name = f"{self.input_model_name}_ref_outputs.npz"
@@ -536,7 +602,6 @@ class FakeQuantNodelProcessor:
         keys_b = set(data_b.keys())
         remaining_keys_a = keys_a - keys_b
         unique_keys_b = keys_b - keys_a
-
         paired_keys = {}
         double_match = []
         not_match = copy.deepcopy(unique_keys_b)
@@ -558,9 +623,6 @@ class FakeQuantNodelProcessor:
         for qat_act_name in paired_keys:
             mlir_name = paired_keys[qat_act_name]
             if qat_act_name in self.cali_table and qat_act_name not in double_match:
-                self.cali_table[qat_act_name][0] = mlir_name
-                self.q_table[qat_act_name][0] = mlir_name
-
-        self.export_tables()
-
+                if mlir_name not in self.cali_table:
+                    self.creat_new_qat_item(qat_act_name,mlir_name)
         return paired_keys,double_match,not_match

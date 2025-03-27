@@ -53,7 +53,7 @@ struct MaskedFillBroadcast : public OpRewriterPatternEx<MaskedFillOp> {
         auto tile_input_shape = module::getShape(tile_input);
         auto input_op_name = module::getName(tile_input);
         auto tile_loc =
-            NameLoc::get(rewriter.getStringAttr(input_op_name.str() + "_tile"));
+            NameLoc::get(rewriter.getStringAttr(input_op_name.str() + "_r_tile"));
         auto stype = module::getStorageType(tile_input);
         auto tile_output_shape = std::vector<int64_t>(tile_input_shape);
         tile_output_shape[i] =

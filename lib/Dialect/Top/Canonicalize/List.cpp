@@ -31,7 +31,7 @@ struct TopListReplace : public OpRewriterPatternEx<ListOp> {
       std::vector<int64_t> in_shape = {in_ele};
       std::string in_name = module::getName(in_op).str();
       auto reshape_loc =
-          NameLoc::get(rewriter.getStringAttr(in_name + "_reshape"));
+          NameLoc::get(rewriter.getStringAttr(in_name + "_r_reshape"));
       auto reshape_type =
           RankedTensorType::get(in_shape, module::getElementType(in_op));
       std::vector<NamedAttribute> reshape_attrs;
@@ -46,7 +46,7 @@ struct TopListReplace : public OpRewriterPatternEx<ListOp> {
     std::vector<int64_t> out_shape = {out_ele};
     auto concat_type = RankedTensorType::get(
         out_shape, module::getElementType(op.getInputs()[0]));
-    auto concat_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_concat"));
+    auto concat_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_r_concat"));
     auto concat_op = rewriter.create<top::ConcatOp>(
         concat_loc, concat_type, concat_operands, concat_attrs);
 

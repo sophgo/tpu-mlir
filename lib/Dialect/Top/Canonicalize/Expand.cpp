@@ -41,7 +41,7 @@ struct ConvertExpand : public OpRewriterPatternEx<ExpandOp> {
           input_shape_ex.push_back(s);
         }
         auto newType = RankedTensorType::get(input_shape_ex, elt_type);
-        auto loc = NameLoc::get(rewriter.getStringAttr(name + "_reshape"));
+        auto loc = NameLoc::get(rewriter.getStringAttr(name + "_r_reshape"));
         new_op = rewriter.create<ReshapeOp>(loc, newType, ValueRange{new_op});
         out_shape = input_shape_ex;
       }

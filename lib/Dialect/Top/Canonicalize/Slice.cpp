@@ -56,7 +56,7 @@ struct SplitSlicePattern : public OpRewriterPatternEx<SliceOp> {
     rewriter.setInsertionPointAfterValue(opd);
     for (const auto user : users) {
       const std::string name_slice =
-          module::getName(user->getOperand(0)).str() + "_slice";
+          module::getName(user->getOperand(0)).str() + "_r_slice";
       const auto &loc_slice = NameLoc::get(rewriter.getStringAttr(name_slice));
       std::vector<NamedAttribute> attrs;
       attrs.push_back(rewriter.getNamedAttr("offset", offset));

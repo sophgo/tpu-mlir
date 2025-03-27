@@ -109,7 +109,7 @@ struct SplitReshape2ReshapeSplit : public OpRewriterPatternEx<SplitOp> {
     rewriter.setInsertionPointAfterValue(input);
 
     std::string name = module::getName(input).str();
-    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_reshape"));
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_r_reshape"));
     std::vector<NamedAttribute> attrs;
     std::vector<int64_t> shape;
     for (auto v : last_RO_shape) {

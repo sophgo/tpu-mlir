@@ -126,7 +126,7 @@ struct ReshapeInstanceNormPattern : public OpRewriterPatternEx<ReshapeOp> {
     auto gn_out_type =
         RankedTensorType::get(ishape, module::getElementType(input));
     auto loc = NameLoc::get(
-        rewriter.getStringAttr(module::getName(input).str() + "_GroupNorm"));
+        rewriter.getStringAttr(module::getName(next_op.getResult()).str() + "_r_GroupNorm"));
 
     auto groupnorm_filter_broadcast =
         [](const std::vector<int64_t> &filter_shape, const void *filter_orig,
@@ -327,8 +327,7 @@ struct InValidReshapeMergePattern : public OpRewriterPatternEx<ReshapeOp> {
 
 //  Do:
 //     A                                          A + Reshape
-//       + Add + Reshape + LayerNorm/Matmul -->>              + Add +
-//       LayerNorm/Matmul
+//       + Add + Reshape + LayerNorm/Matmul -->>              + Add + LayerNorm/Matmul
 //     B                                          B + Reshape
 // swint
 struct TopAddReshapeSwap : public OpRewriterPatternEx<ReshapeOp> {
@@ -380,7 +379,7 @@ struct TopAddReshapeSwap : public OpRewriterPatternEx<ReshapeOp> {
 
     std::vector<Value> operands;
     for (auto add_in : add_op.getInputs()) {
-      std::string in_name = module::getName(add_in).str() + "_reshape";
+      std::string in_name = module::getName(add_in).str() + "_r_reshape";
       auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
       rewriter.setInsertionPoint(add_op);
       auto reshape_op = rewriter.create<ReshapeOp>(
@@ -443,7 +442,7 @@ struct TopReshapeFuse2 : public OpRewriterPatternEx<ReshapeOp> {
     int32_t index = 0;
     for (auto nextOp : pre_op.getResult().getUsers()) {
       std::string in_name =
-          module::getName(in).str() + "_" + std::to_string(index++);
+          module::getName(in).str() + "_r_" + std::to_string(index++);
       auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
       rewriter.setInsertionPoint(pre_op);
       auto reshape_op = rewriter.create<ReshapeOp>(

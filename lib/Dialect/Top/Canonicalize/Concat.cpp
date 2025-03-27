@@ -190,7 +190,7 @@ struct ConcatToDepth2SpacePattern : public OpRewriterPatternEx<ConcatOp> {
       use_op->setOperand(1, new_filter_op);
       // change name of new op to avoid wrong comparison
       concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
-          module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
+          module::getName(concat_op.getOperation()).str() + "_r_Depth2Space")));
     }
     replaceOpWithDepth2SpaceOp(rewriter, concat_op, ValueRange(from), bh, bw,
                                false, true, true, true, false);

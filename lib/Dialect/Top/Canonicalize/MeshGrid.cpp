@@ -44,7 +44,7 @@ struct MeshGrid2Mul : public OpRewriterPatternEx<MeshGridOp> {
       attrs_reshape.push_back(
           rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(r_shape)));
       std::string out_name = module::getName(op.getOutputs()[idx]).data();
-      std::string name_r = out_name + "_reshape_" + std::to_string(i);
+      std::string name_r = out_name + "_r_reshape_" + std::to_string(i);
       auto name_loc_r = NameLoc::get(rewriter.getStringAttr(name_r));
       auto reshape = rewriter.create<ReshapeOp>(
           name_loc_r, type_r, ValueRange{input}, attrs_reshape);

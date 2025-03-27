@@ -163,7 +163,7 @@ public:
       attrs.push_back(attr);
     }
     auto new_loc =
-        NameLoc::get(rewriter.getStringAttr(op_name + "_cast_output_f32"));
+        NameLoc::get(rewriter.getStringAttr(op_name + "_r_cast_output_f32"));
     auto cast_deconv_op = rewriter.create<top::DeconvOp>(
         new_loc, f32_output_type, operands, attrs);
     attrs.clear();
@@ -172,7 +172,7 @@ public:
     operands.push_back(f32_output_op);
     attrs.push_back(rewriter.getNamedAttr(
         "round_mode", rewriter.getStringAttr("HalfAwayFromZero")));
-    auto cast_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_cast_f16"));
+    auto cast_loc = NameLoc::get(rewriter.getStringAttr(op_name));
     auto cast_output_op = rewriter.create<top::CastOp>(
         cast_loc, f16_output_type, operands, attrs);
     rewriter.replaceAllUsesWith(op, cast_output_op->getResult(0));

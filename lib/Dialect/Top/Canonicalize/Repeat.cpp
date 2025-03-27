@@ -30,7 +30,7 @@ struct TopRepeatToTile : public OpRewriterPatternEx<RepeatOp> {
     if (in_shape.size() < out_shape.size()) {
       std::vector<NamedAttribute> attrs;
       auto newType = RankedTensorType::get(in_shape_, stype);
-      auto new_name = module::getName(op.getOperation()).str() + "_reshape";
+      auto new_name = module::getName(op.getOperation()).str() + "_r_reshape";
       auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
       last_op = rewriter.create<ReshapeOp>(name_loc, newType,
                                            ValueRange{last_op}, attrs);

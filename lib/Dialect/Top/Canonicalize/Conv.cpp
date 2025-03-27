@@ -70,7 +70,7 @@ struct Conv3dTo2d : public OpRewriterPatternEx<ConvOp> {
     std::vector<int64_t> in_shape = {p.n, p.ic * p.id, p.ih, p.iw};
     auto newType = RankedTensorType::get(in_shape, module::getElementType(in));
     std::string in_name =
-        module::getName(in).str() + "_To4Dim" + std::to_string(callCount);
+        module::getName(in).str() + "_r_To4Dim" + std::to_string(callCount);
     auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
     rewriter.setInsertionPoint(op);
     auto rs1_op = rewriter.create<ReshapeOp>(loc, newType, ValueRange{in});
@@ -78,7 +78,7 @@ struct Conv3dTo2d : public OpRewriterPatternEx<ConvOp> {
     // out reshape to 5dim
     auto outType = out.getType();
     std::string out_name =
-        module::getName(in).str() + "_To5Dim" + std::to_string(callCount);
+        module::getName(out).str() + "_r_To5Dim" + std::to_string(callCount);
     loc = NameLoc::get(rewriter.getStringAttr(out_name));
     rewriter.setInsertionPointAfter(op);
     auto rs2_op = rewriter.create<ReshapeOp>(loc, outType, ValueRange{out});

@@ -248,7 +248,7 @@ struct ReduceDiscontinuousPattern : public OpRewriterPatternEx<ReduceOp> {
       op->setAttr("axes", rewriter.getI64ArrayAttr(axes));
     } else {
       std::string name = module::getName(op.getResult()).str();
-      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_0"));
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_r_0"));
       auto oshape = ishape.vec();
       for (int j = axes.size() - 1; j >= 0; j--) {
         oshape.erase(oshape.begin() + axes[j]);
