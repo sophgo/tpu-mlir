@@ -4623,6 +4623,122 @@ def deformable_attention(value: Tensor,
 @auto_name()
 @annotation_check
 @assert_with_out_name
+def merger_matmul(
+    input: Tensor,
+    matmul_weight: Tensor,
+    split_hws: List[Tuple[int]] = None,
+    out_name: str = None
+):
+    # first step
+    # reorder matmul_weight to convolution kernel
+    # [4*in_channels, out_channels] -> [2, 2, in_channels, out_channels] -> [out_channels, in_channels, 2, 2]
+    b, c, h_2, w_2 = input.shape
+    in_channels_4, out_channels = matmul_weight.shape
+    assert h_2 % 2 == 0 and w_2 % 2 == 0, "The input height and width must be divisible by 2."
+    assert in_channels_4 % 4 == 0, "The matmul_weight's input channels must be divisible by 4."
+    in_channels = in_channels_4 // 4
+    assert c == in_channels, "The input channels must be equal to matmul_weight's input channels."
+    o_dtype = input.dtype
+    int64_max = np.iinfo(np.int64).max
+    # reshape: reshape matmul_weight to [2, 2, in_channels, out_channels]
+    matmul_weight_reshape_attr = {
+        "shape": ArrayAttr([2, 2, in_channels, out_channels]),
+    }
+    matmul_weight_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_matmul_weight_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[matmul_weight], outputs=[matmul_weight_reshape_out], params=matmul_weight_reshape_attr)
+    # permute: permute matmul_weight to [out_channels, in_channels, 2, 2]
+    matmul_weight_permute_attr = {
+        "order": ArrayAttr([3, 2, 0, 1]),
+    }
+    conv_kernel = Tensor(dtype=o_dtype, name=out_name + "_conv_kernel")
+    TpuLang.insert_op("top.Permute", inputs=[matmul_weight_reshape_out], outputs=[conv_kernel], params=matmul_weight_permute_attr)
+    # second step
+    # do convolution
+    # [b, in_channels, h, w] -> [b, out_channels, h/2, w/2]
+    # conv2d: conv2d with stride=(2, 2), kernel_size=(2, 2), bias=False
+    conv_attr = {
+        "kernel_shape": ArrayAttr([2, 2]),
+        "strides": ArrayAttr([2, 2]),
+        "dilations": ArrayAttr([1, 1]),
+        "pads": ArrayAttr([0, 0, 0, 0]),
+        "do_relu": Attr(False, "bool"),
+    }
+    bias = None
+    inputs = [input, conv_kernel, bias]
+    conv_out = Tensor(dtype=o_dtype, name=out_name + "_conv")
+    TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[conv_out], params=conv_attr)
+    h = h_2 // 2
+    w = w_2 // 2
+    # third step
+    # reorder as merger
+    if split_hws is not None:
+        # check split_hws data
+        split_hws_sum = sum([split_h * split_w for split_h, split_w in split_hws])
+        assert split_hws_sum == b, "The sum of split_hws must be equal to out_channels."
+        # Process splits based on split_hws
+        x_list = []
+        last_split_index = 0
+        split_slice_offset = [0] * 4
+        split_slice_ends = [int64_max] * 4
+        split_slice_steps = [1] * 4
+        i = 0
+        for i, (split_h, split_w) in enumerate(split_hws):
+            # slice: split conv_out
+            # [b, out_channels, h/2, w/2] -> [split_h*split_w, out_channels, h/2, w/2]
+            split_slice_offset[0] = last_split_index
+            split_slice_ends[0] = split_h * split_w + last_split_index
+            split_slice_attr = {
+                "offset": ArrayAttr(split_slice_offset),
+                "ends": ArrayAttr(split_slice_ends),
+                "steps": ArrayAttr(split_slice_steps),
+                "axes": ArrayAttr([]),
+            }
+            split_slice_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_{}".format(i))
+            TpuLang.insert_op("top.Slice", inputs=[conv_out, None, None, None], outputs=[split_slice_out], params=split_slice_attr)
+            # reshape: reshape to [split_h, split_w, out_channels, h/2, w/2]
+            split_slice_reshape_attr = {
+                "shape": ArrayAttr([split_h, split_w, out_channels, h, w]),
+            }
+            split_slice_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_reshape_{}".format(i))
+            TpuLang.insert_op("top.Reshape", inputs=[split_slice_out], outputs=[split_slice_reshape_out], params=split_slice_reshape_attr)
+            # permute: permute to [split_h, h, split_w, w, out_channels]
+            split_slice_permute_attr = {
+                "order": ArrayAttr([0, 3, 1, 4, 2]),
+            }
+            split_slice_permute_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_permute_{}".format(i))
+            TpuLang.insert_op("top.Permute", inputs=[split_slice_reshape_out], outputs=[split_slice_permute_out], params=split_slice_permute_attr)
+            # reshape: reshape to [(split_h*h*split_w*w), out_channels]
+            split_slice_reshape_1_attr = {
+                "shape": ArrayAttr([-1, out_channels]),
+            }
+            split_slice_reshape_1_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_reshape_1_{}".format(i))
+            TpuLang.insert_op("top.Reshape", inputs=[split_slice_permute_out], outputs=[split_slice_reshape_1_out], params=split_slice_reshape_1_attr)
+            x_list.append(split_slice_reshape_1_out)
+            last_split_index += split_h * split_w
+        # concat: concat x_list
+        concat_attr = {
+            "axis": Attr(0, "int32"),
+        }
+        merger_matmul_out = Tensor(dtype=o_dtype, name=out_name)
+        TpuLang.insert_op("top.Concat", inputs=x_list, outputs=[merger_matmul_out], params=concat_attr)
+    else:
+        # Flatten spatial dimensions into rows
+        # [b, out_channels, h/2, w/2] -> [b*h/2*w/2, out_channels]
+        conv_out_permute_attr = {
+            "order": ArrayAttr([0, 2, 3, 1]),
+        }
+        conv_out_permute_out = Tensor(dtype=o_dtype, name=out_name + "_conv_out_permute")
+        TpuLang.insert_op("top.Permute", inputs=[conv_out], outputs=[conv_out_permute_out], params=conv_out_permute_attr)
+        conv_out_reshape_attr = {
+            "shape": ArrayAttr([b*h*w, -1]),
+        }
+        merger_matmul_out = Tensor(dtype=o_dtype, name=out_name)
+        TpuLang.insert_op("top.Reshape", inputs=[conv_out_permute_out], outputs=[merger_matmul_out], params=conv_out_reshape_attr)
+    return merger_matmul_out
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
 def roll(input: Tensor,
          shifts: Union[int, List[int], Tuple[int]],
          dims: Union[int, List[int], Tuple[int]] = None,

@@ -5394,32 +5394,31 @@ multi_scale_deformable_attention
     .. code-block:: python
 
       def multi_scale_deformable_attention(
-        query: Tensor,
-        value: Tensor,
-        key_padding_mask: Tensor,
-        reference_points: Tensor,
-        sampling_offsets_weight: Tensor,
-        sampling_offsets_bias_ori: Tensor,
-        attention_weights_weight: Tensor,
-        attention_weights_bias_ori: Tensor,
-        value_proj_weight: Tensor,
-        value_proj_bias_ori: Tensor,
-        output_proj_weight: Tensor,
-        output_proj_bias_ori: Tensor,
-        spatial_shapes: List[List[int]],
-        embed_dims: int,
-        num_heads: int = 8,
-        num_levels: int = 4,
-        num_points: int = 4,
-        out_name: str = None):
-
+          query: Tensor,
+          value: Tensor,
+          key_padding_mask: Tensor,
+          reference_points: Tensor,
+          sampling_offsets_weight: Tensor,
+          sampling_offsets_bias_ori: Tensor,
+          attention_weights_weight: Tensor,
+          attention_weights_bias_ori: Tensor,
+          value_proj_weight: Tensor,
+          value_proj_bias_ori: Tensor,
+          output_proj_weight: Tensor,
+          output_proj_bias_ori: Tensor,
+          spatial_shapes: List[List[int]],
+          embed_dims: int,
+          num_heads: int = 8,
+          num_levels: int = 4,
+          num_points: int = 4,
+          out_name: str = None):
         #pass
 
 功能描述
 """"""""""""""""""""""""""""""""""""""""""""""
 对输入进行多尺度可变形注意力机制，具体功能可参考https://github.com/open-mmlab/mmcv/blob/main/mmcv/ops/multi_scale_deform_attn.py:MultiScaleDeformableAttention:forward，该操作的实现方式与官方有所不同。
 目前只支持batch_size=1的情况。
-该操作属于 **本地操作** 。
+该操作属于 **全局操作** 。
 
 参数说明
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -5451,8 +5450,6 @@ multi_scale_deformable_attention
 * BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
 * BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
 
-Transform Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 a16matmul
 :::::::::::::::::::::::::::::::::::::::::::::::::
@@ -5504,9 +5501,6 @@ a16matmul
 * BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
 * BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
 
-
-Transform Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 qwen2_block
 :::::::::::::::::::::::::::::::::::::::::::::::::
@@ -5621,9 +5615,6 @@ qwen2在prefill阶段的一个block layer。
 * BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
 
 
-Transform Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 qwen2_block_cache
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -5737,5 +5728,41 @@ qwen2在decode阶段的一个block layer。
 
 处理器支持
 """"""""""""""""""""""""""""""""""""""""""""""
+* BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
+* BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
+
+
+merger_matmul
+:::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def merger_matmul(
+          input: Tensor,
+          matmul_weight: Tensor,
+          split_hws: List[Tuple[int]] = None,
+          out_name: str = None):
+        #pass
+
+功能描述
+"""""""""""
+对输入Tensor进行重排，然后进行矩阵乘运算。
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* input：Tensor类型，表示输入操作数。
+* matmul_weight: Tensor类型，表示矩阵乘的权重。
+* split_hws: List[Tuple[int]]类型，可选，表示batch的分割方式。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型为input.dtype。
+
+处理器支持
+"""""""""""
 * BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
 * BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。

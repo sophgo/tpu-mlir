@@ -5450,25 +5450,24 @@ The interface definition
     .. code-block:: python
 
       def multi_scale_deformable_attention(
-        query: Tensor,
-        value: Tensor,
-        key_padding_mask: Tensor,
-        reference_points: Tensor,
-        sampling_offsets_weight: Tensor,
-        sampling_offsets_bias_ori: Tensor,
-        attention_weights_weight: Tensor,
-        attention_weights_bias_ori: Tensor,
-        value_proj_weight: Tensor,
-        value_proj_bias_ori: Tensor,
-        output_proj_weight: Tensor,
-        output_proj_bias_ori: Tensor,
-        spatial_shapes: List[List[int]],
-        embed_dims: int,
-        num_heads: int = 8,
-        num_levels: int = 4,
-        num_points: int = 4,
-        out_name: str = None):
-
+            query: Tensor,
+            value: Tensor,
+            key_padding_mask: Tensor,
+            reference_points: Tensor,
+            sampling_offsets_weight: Tensor,
+            sampling_offsets_bias_ori: Tensor,
+            attention_weights_weight: Tensor,
+            attention_weights_bias_ori: Tensor,
+            value_proj_weight: Tensor,
+            value_proj_bias_ori: Tensor,
+            output_proj_weight: Tensor,
+            output_proj_bias_ori: Tensor,
+            spatial_shapes: List[List[int]],
+            embed_dims: int,
+            num_heads: int = 8,
+            num_levels: int = 4,
+            num_points: int = 4,
+            out_name: str = None):
         #pass
 
 Description of the function
@@ -5506,9 +5505,6 @@ Processor support
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 
-
-Transform Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 a16matmul
 :::::::::::::::::::::::::::::::::::::::::::::::::
@@ -5560,9 +5556,6 @@ Processor support
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 
-
-Transform Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 qwen2_block
 :::::::::::::::::::::::::::::::::::::::::::::::::
@@ -5677,9 +5670,6 @@ Processor support
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 
 
-Transform Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 qwen2_block_cache
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -5793,5 +5783,41 @@ Returns 3 Tensors: the activation output, the key cache, and the value cache, al
 
 Processor support
 """""""""""""""""""""""""""""""""
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+
+
+merger_matmul
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+    .. code-block:: python
+
+      def merger_matmul(
+            input: Tensor,
+            matmul_weight: Tensor,
+            split_hws: List[Tuple[int]] = None,
+            out_name: str = None):
+        #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Rearranges the input Tensor and performs matrix multiplication.
+This operation is considered a **global operation**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* input: Tensor type, representing the input operand.
+* matmul_weight: Tensor type, representing the weight for matrix multiplication.
+* split_hws: List[Tuple[int]] type, optional, representing the batch split method.
+* out_name: string type or None, the name of the output Tensor, and the name will be automatically generated internally if it is None.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same data type as input.dtype.
+
+Processor support
+""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.

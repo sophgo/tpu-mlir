@@ -223,6 +223,7 @@ class TPULANG_IR_TESTER(object):
             "ResnetQuant": (self.test_ResnetQuant, Y, Y),
             "SelfAttnBlock": (self.test_SelfAttnBlock, Y, Y),
             "SwinT": (self.test_SwinT, N, N),
+            "MergerMatMul": (self.test_MergerMatMul, Y, Y),
             "MobilenetBlock": (self.test_MobilenetBlock, Y, Y),
             "MultiScaleDeformableAttention": (self.test_MultiScaleDeformableAttention, Y, Y),
             "VitL": (self.test_Vit_L, Y, Y),
@@ -4699,6 +4700,25 @@ class TPULANG_IR_TESTER(object):
                 assert (os.system(deploy_cmd) == 0)
 
         _test_resnet_block([1, 64, 112, 112])
+
+    #######################################################################
+    # MergerMatMul
+    # ------------
+    def test_MergerMatMul(self, case_name):
+        """MergerMatMul"""
+
+        @tpulang(self.chip)
+        def _test_merger_matmul(shape_input: List[int], shape_matmul_weight: List[int], split_hws=None, dtype="float32"):
+            input_data = rand_data(shape_input, dtype)
+            matmul_weight_data = rand_data(shape_matmul_weight, dtype)
+            input = tpul.Tensor(dtype=dtype, shape=shape_input, data=input_data)
+            matmul_weight = tpul.Tensor(dtype=dtype, shape=shape_matmul_weight, data=matmul_weight_data, ttype="coeff")
+            out = tpul.merger_matmul(input, matmul_weight, split_hws)
+            self.compile_and_check(self.unique_name(case_name), [input], [out])
+
+        _test_merger_matmul([5, 1536, 32, 32], [6144, 3584], dtype="float16")
+        _test_merger_matmul([5, 1536, 32, 32], [6144, 3584], split_hws=[(1, 1), (2, 2)], dtype="float16")
+        _test_merger_matmul([5, 1536, 32, 32], [6144, 3584], split_hws=[(2, 2), (1, 1)], dtype="float16")
 
     #######################################################################
     # Mobilenet like model case
