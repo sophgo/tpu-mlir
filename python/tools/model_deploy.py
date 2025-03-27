@@ -482,7 +482,7 @@ if __name__ == '__main__':
     # ========== Basic Options ===========
     parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
-                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'cv184x', 'sgtpuv8', 'sg2380',
+                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'bm1690e', 'cv184x', 'sgtpuv8', 'sg2380',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'sg2262', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,

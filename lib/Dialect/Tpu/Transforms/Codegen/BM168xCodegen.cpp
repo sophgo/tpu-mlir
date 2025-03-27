@@ -12,6 +12,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
+#include "tpu_mlir/Backend/BM168x/BM1690E.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
 #include "tpu_mlir/Backend/CV18xx/CV184X.h"
@@ -96,6 +97,8 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
       kernel_name = backend::CV184X::LIB_KERNEL_NAME.str();
     else if (module::isSGTPUV8())
       kernel_name = backend::SGTPUV8::LIB_KERNEL_NAME.str();
+    else if (module::isBM1690E())
+      kernel_name = backend::BM1690E::LIB_KERNEL_NAME.str();
     else
       kernel_name = backend::BM1690::LIB_KERNEL_NAME.str();
     std::string root_path = getenv("TPUC_ROOT");
@@ -1433,40 +1436,78 @@ void codegenGroupParallelOp(
 
 void BMCodegen::codegen_for_store_to_l2m_op(Operation *store_to_l2m_op,
                                             std::pair<int, int> &core_num_idx) {
-  if (module::getChip() != module::Chip::BM1690) {
+  if (module::getChip() != module::Chip::BM1690 &&
+      module::getChip() != module::Chip::BM1690E) {
     return;
   }
-  auto src_addr = module::getAddress(store_to_l2m_op->getOperand(1));
-  auto res = store_to_l2m_op->getResult(0);
-  auto user = *(res.getUsers().begin());
-  auto dst_addr = module::getAddress(res);
-  if (isa<tpu::SliceMergeOp>(user)) {
-    dst_addr = module::getAddress(user->getResult(0)); // fix me !!!!
+
+  if (module::getChip() == module::Chip::BM1690) {
+    auto src_addr = module::getAddress(store_to_l2m_op->getOperand(1));
+    auto res = store_to_l2m_op->getResult(0);
+    auto user = *(res.getUsers().begin());
+    auto dst_addr = module::getAddress(res);
+    if (isa<tpu::SliceMergeOp>(user)) {
+      dst_addr = module::getAddress(user->getResult(0)); // fix me !!!!
+    }
+    llvm::errs() << "store_to_l2m_op src_addr:" << src_addr
+                 << " dst_addr:" << dst_addr
+                 << " tmp_op:" << module::getName(store_to_l2m_op).str()
+                 << "\n";
+    int total_size = module::getNumElements(res);
+    int num_per_core = ceiling_func(total_size, core_num_idx.first);
+    auto move_size = std::min(
+        num_per_core, (int)(total_size - num_per_core * core_num_idx.second));
+    auto data_type = BM1690::getDataType(res);
+    auto fmt_bytes = BM1690::getFmtBytes(data_type);
+    auto gdma_format = BM1690::getGdmaFormat(data_type);
+    auto pid_node = (CMD_ID_NODE *)BM1690::instance()->cmdid_node;
+    int slice_c = move_size, slice_h = 1;
+    if (slice_c > 65535) {
+      slice_c = 65535;
+      slice_h = ceiling_func(move_size, 65535);
+    }
+    BM1690::instance().dl_sdma_tensor_general_move_gen_cmd(
+        src_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
+        slice_h, 1, slice_c * slice_h, slice_h, 1, 1, gdma_format,
+        dst_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
+        slice_h, 1, slice_c * slice_h, slice_h, 1, 1,
+        0,  // transpose
+        -1, // port
+        pid_node);
+  } else {
+    auto src_addr = module::getAddress(store_to_l2m_op->getOperand(1));
+    auto res = store_to_l2m_op->getResult(0);
+    auto user = *(res.getUsers().begin());
+    auto dst_addr = module::getAddress(res);
+    if (isa<tpu::SliceMergeOp>(user)) {
+      dst_addr = module::getAddress(user->getResult(0)); // fix me !!!!
+    }
+    llvm::errs() << "store_to_l2m_op src_addr:" << src_addr
+                 << " dst_addr:" << dst_addr
+                 << " tmp_op:" << module::getName(store_to_l2m_op).str()
+                 << "\n";
+    int total_size = module::getNumElements(res);
+    int num_per_core = ceiling_func(total_size, core_num_idx.first);
+    auto move_size = std::min(
+        num_per_core, (int)(total_size - num_per_core * core_num_idx.second));
+    auto data_type = BM1690E::getDataType(res);
+    auto fmt_bytes = BM1690E::getFmtBytes(data_type);
+    auto gdma_format = BM1690E::getGdmaFormat(data_type);
+    auto pid_node = (CMD_ID_NODE *)BM1690E::instance()->cmdid_node;
+    int slice_c = move_size, slice_h = 1;
+    if (slice_c > 65535) {
+      slice_c = 65535;
+      slice_h = ceiling_func(move_size, 65535);
+    }
+    BM1690E::instance().dl_sdma_tensor_general_move_gen_cmd(
+        src_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
+        slice_h, 1, slice_c * slice_h, slice_h, 1, 1, gdma_format,
+        dst_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
+        slice_h, 1, slice_c * slice_h, slice_h, 1, 1,
+        0,  // transpose
+        -1, // port
+        pid_node);
   }
-  llvm::errs() << "store_to_l2m_op src_addr:" << src_addr
-               << " dst_addr:" << dst_addr
-               << " tmp_op:" << module::getName(store_to_l2m_op).str() << "\n";
-  int total_size = module::getNumElements(res);
-  int num_per_core = ceiling_func(total_size, core_num_idx.first);
-  auto move_size = std::min(
-      num_per_core, (int)(total_size - num_per_core * core_num_idx.second));
-  auto data_type = BM1690::getDataType(res);
-  auto fmt_bytes = BM1690::getFmtBytes(data_type);
-  auto gdma_format = BM1690::getGdmaFormat(data_type);
-  auto pid_node = (CMD_ID_NODE *)BM1690::instance()->cmdid_node;
-  int slice_c = move_size, slice_h = 1;
-  if (slice_c > 65535) {
-    slice_c = 65535;
-    slice_h = ceiling_func(move_size, 65535);
-  }
-  BM1690::instance().dl_sdma_tensor_general_move_gen_cmd(
-      src_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
-      slice_h, 1, slice_c * slice_h, slice_h, 1, 1, gdma_format,
-      dst_addr + num_per_core * core_num_idx.second * fmt_bytes, 1, slice_c,
-      slice_h, 1, slice_c * slice_h, slice_h, 1, 1,
-      0,  // transpose
-      -1, // port
-      pid_node);
 }
 
 void reset_bm1688_gdma_bw(BM168x *bm168x, float bw) {

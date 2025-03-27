@@ -1106,7 +1106,8 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
                   info.gdma_cmd_mem_size += cmd_group->binary_gdma()->size();
                 }
               }
-              if (model()->chip()->str() == "BM1690") {
+              if (model()->chip()->str() == "BM1690" ||
+                  model()->chip()->str() == "BM1690E") {
                 auto core_cmd = subnet->core_commands()->Get(core_idx);
                 if (core_cmd->hau_commands()) {
                   for (unsigned int j = 0; j < core_cmd->hau_commands()->size();

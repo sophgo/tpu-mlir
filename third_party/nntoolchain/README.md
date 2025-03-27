@@ -48,6 +48,17 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
+#bm1690e sha256: d3b569e09e068a31182d686e4df8a251ac13f546
+cd TPU1686
+source  scripts/envsetup.sh sg2260e
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
+cp build/backend_api/libbackend_sg2260e.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690e.so
+export EXTRA_CONFIG="-DDEBUG=OFF -DUSING_FW_DEBUG=OFF" && rebuild_test sgdnn
+cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690e.a
+unset EXTRA_CONFIG && rebuild_firmware
+cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690e_kernel_module.a
+
 #cv184x sha256: b6e89c5840d22e66fbfe71d70acffb0043606c10
 cd TPU1686
 source  scripts/envsetup.sh mars3
@@ -102,9 +113,9 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 # libbmcpu.so/libusercpu.so are deprecated
 ```
 
-## tpuv7-runtime 2025-09-20
+## tpuv7-runtime 2025-11-18
 
-build from tpuv7-runtime 43871bf2cafb6e0ef07431325db9eba18a037b7f
+build from tpuv7-runtime ff61f7ed6bc0d15ea77f0c0f746acabd6cec8255
 
 ```bash
 mkdir -p build/emulator
@@ -119,3 +130,4 @@ popd
 cp model-runtime/runtime/include/tpuv7_modelrt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 cp cdmlib/host/cdm_runtime/include/tpuv7_rt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 ```
+

@@ -575,8 +575,8 @@ static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer,
                                  std::string arch) {
   uint32_t len = 96; // default: common gdma instrution size
 
-  if ("BM1688" == arch || "BM1690" == arch || "CV184X" == arch ||
-      "SGTPUV8" == arch || "SG2380" == arch) {
+  if ("BM1688" == arch || "BM1690" == arch || "BM1690E" == arch ||
+      "CV184X" == arch || "SGTPUV8" == arch || "SG2380" == arch) {
     uint32_t cmd_head[2] = {0};
     memcpy(cmd_head, gdma_buffer + start_offset, sizeof(cmd_head));
     uint32_t tsk_type = cmd_head[1] & 0xf;

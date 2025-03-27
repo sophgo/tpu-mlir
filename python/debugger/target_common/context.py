@@ -74,7 +74,7 @@ class BModelContext:
 
 def get_target_context_cls(chip: str) -> Type[BModelContext]:
     assert chip in {
-        "BM1684X", "BM1684", "BM1688", "BM1690", "CV186X", "SG2380", "CV184X", "SGTPUV8"
+        "BM1684X", "BM1684", "BM1688", "BM1690", "BM1690E", "CV186X", "SG2380", "CV184X", "SGTPUV8"
     }
 
     context = None
@@ -94,6 +94,10 @@ def get_target_context_cls(chip: str) -> Type[BModelContext]:
         from ..target_1690.context import BM1690Context
 
         context = BM1690Context
+    elif chip == "BM1690E":
+        from ..target_1690e.context import BM1690EContext
+        context = BM1690EContext
+
     elif chip == "SG2380":
         from ..target_2380.context import SG2380Context
 
@@ -111,7 +115,9 @@ def get_target_context_cls(chip: str) -> Type[BModelContext]:
 
 
 def get_target_context(chip: str) -> BModelContext:
-    assert chip in {"BM1684X", "BM1684", "BM1688", "BM1690", "CV186X", "SG2380", "CV184X"}
+    assert chip in {
+        "BM1684X", "BM1684", "BM1688", "BM1690", "BM1690E", "CV186X", "SG2380", "CV184X"
+    }
     context_cls = get_target_context_cls(chip)
     return context_cls()
 

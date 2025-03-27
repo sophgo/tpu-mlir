@@ -42,6 +42,7 @@ def Module_Chip: I32EnumAttr<"Chip", "module chip",[
       I32EnumAttrCase<"CV186X",  1003, "cv186x">,
       I32EnumAttrCase<"BM1690",  1004, "bm1690">,
       I32EnumAttrCase<"CV184X",  1005, "cv184x">,
+      I32EnumAttrCase<"BM1690E", 1009, "bm1690e">,
       I32EnumAttrCase<"SG2380",  1006, "sg2380">,
       I32EnumAttrCase<"SGTPUV8",  1007, "sgtpuv8">,
       I32EnumAttrCase<"CV180x",  2000, "cv180x">,

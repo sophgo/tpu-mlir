@@ -9,6 +9,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
+#include "tpu_mlir/Backend/BM168x/BM1690E.h"
 #include "tpu_mlir/Backend/BM168x/SG2380.h"
 #include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
 #include "tpu_mlir/Backend/CV18xx/CV184X.h"
@@ -58,6 +59,8 @@ void Arch::init(uint64_t freq) {
       inst = &BM1690::instance();
     } else if (chip == module::Chip::CV184X) {
       inst = &CV184X::instance(A2_1::value);
+    } else if (chip == module::Chip::BM1690E) {
+      inst = &BM1690E::instance();
     } else if (chip == module::Chip::SGTPUV8) {
       inst = &SGTPUV8::instance(A2_1::value);
     } else if (chip == module::Chip::SG2380) {
