@@ -2139,6 +2139,13 @@ struct PermuteFuseAddSoftmax : public OpRewriterPatternEx<tpu::PermuteOp> {
     }
     // Define Param
     auto ori_shape = module::getShape(out);
+    auto mask_shape = module::getShape(add_op->getOperand(1));
+    auto mask_name = module::getName(add_op->getOperand(1)).str();
+    auto add_name = module::getName(add_op.getOutput());
+    if (mask_shape[1] != 1) {
+      return failure();
+    }
+
     // MulConstOp
     if (mul_const_op) {
       module::setShape(mul_const_op->getOperand(0), ori_shape);
@@ -2163,12 +2170,6 @@ struct PermuteFuseAddSoftmax : public OpRewriterPatternEx<tpu::PermuteOp> {
 
     // AddOp
     rewriter.setInsertionPoint(add_op);
-    auto mask_shape = module::getShape(add_op->getOperand(1));
-    auto mask_name = module::getName(add_op->getOperand(1)).str();
-    auto add_name = module::getName(add_op.getOutput());
-    if (mask_shape[1] != 1) {
-      return failure();
-    }
     auto new_mask_type = RankedTensorType::get(
         {mask_shape[0], mask_shape[2], mask_shape[1], mask_shape[3]},
         module::getElementType(out));
