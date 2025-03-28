@@ -59,7 +59,7 @@ release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#mars3 sha256:  73e76e98154adee661fa7855322690d2ec70f163
+#mars3 sha256: 25853bbd61af9338b584ab655cafaf5566be7528
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
