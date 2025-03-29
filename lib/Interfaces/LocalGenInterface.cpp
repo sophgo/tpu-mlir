@@ -265,23 +265,6 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
   return success();
 }
 
-// for inception structures in LayerGroup
-void setHWMargins(uint32_t &hw_margins, const group_info_t &in_gi,
-                  const group_info_t &gi) {
-  int top_borders = in_gi.h_slice > gi.h_slice ? gi.h_idx - in_gi.h_idx : 0;
-  int bottom_borders =
-      in_gi.h_slice > gi.h_slice
-          ? (in_gi.h_idx + in_gi.h_slice) - (gi.h_idx + gi.h_slice)
-          : 0;
-  int left_borders = in_gi.w_slice > gi.w_slice ? gi.w_idx - in_gi.w_idx : 0;
-  int right_borders =
-      in_gi.w_slice > gi.w_slice
-          ? (in_gi.w_idx + in_gi.w_slice) - (gi.w_idx + gi.w_slice)
-          : 0;
-  hw_margins = top_borders << 24 | bottom_borders << 16 | left_borders << 8 |
-               right_borders;
-}
-
 } // namespace tpu_mlir
 
 #include "tpu_mlir/Interfaces/LocalGenInterface.cpp.inc"
