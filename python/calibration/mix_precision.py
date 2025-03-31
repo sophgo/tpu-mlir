@@ -9,6 +9,7 @@
 # ==============================================================================
 
 import pymlir
+pymlir.set_mem_mode("force_value_mem")
 import numpy as np
 import os
 import math
@@ -28,14 +29,37 @@ from plotly.subplots import make_subplots
 from utils.net_dot_log import net_dot_log
 from utils.log_setting import logger
 import importlib.util
-from .utils import *
-
-pymlir.set_mem_mode("force_value_mem")
 
 SKIP_OPERATION = [
     'top.Input', 'top.Reshape', 'top.Softmax', 'top.Weight', 'top.MaxPool', 'top.Slice', 'top.Tile',
     'top.Permute', 'top.Upsample'
 ]
+
+FLOAT_MAP = {
+    "bm1684x": "F16",
+    "bm1684": "F32",
+    "cv183x": "BF16",
+    "cv182x": "BF16",
+    "cv181x": "BF16",
+    "cv180x": "BF16",
+    "bm1688": "F16",
+    "cv186x": "F16",
+    "bm1690": "F16",
+    "mars3": "BF16"
+}
+
+chip_support_mix_fp_type = {
+    "bm1684x": ["F16", "F32"],
+    "bm1688": ["F16", "F32"],
+    "cv186x": ["F16", "F32"],
+    "bm1684": ["F32"],
+    "cv183x": ["BF16"],
+    "cv182x": ["BF16"],
+    "cv181x": ["BF16"],
+    "cv180x": ["BF16"],
+    "mars3": ["BF16"]
+}
+
 
 def find_all_pre_layers(all_pre_layers, op_name, parser, exist_ref_layers=None):
     pre_layers = parser.get_pre_op_by_op_name(op_name)
@@ -326,19 +350,32 @@ class MixPrecSearcher:
         return cos / sum(layers_rate)
 
     def _snr_loss(self, preds, gt_preds, layers_rate):
-        snr, i = 0, 0
+        snr,i=0,0
         for name1, name2 in zip(gt_preds, preds):
             a = gt_preds[name1]
             b = preds[name2]
             if a.dtype != b.dtype or a.shape != b.shape:
                 raise RuntimeError("Calc loss fail:{} vs {}".format(name1, name2))
-            a = a.flatten()
-            b = b.flatten()
-            noise_power = np.power(b-a,2).sum(axis=-1)
-            signal_power = np.power(a,2).sum(axis=-1)
-            snr = layers_rate[i] * (noise_power) / (signal_power + 1e-7)
-            i += 1
+            a=a.flatten()
+            b=b.flatten()
+            noise_power=np.power(b-a,2).sum(axis=-1)
+            signal_power=np.power(a,2).sum(axis=-1)
+            snr=layers_rate[i]*(noise_power)/(signal_power+1e-7)
+            i+=1
         return snr / sum(layers_rate)
+
+    # def _snr_loss(self, preds, gt_preds, layers_rate):
+    #     snr = 0
+    #     epsilon = 1e-15
+    #     for name1, name2 in zip(gt_preds, preds):
+    #         a = gt_preds[name1]
+    #         b = preds[name2]
+    #         if a.dtype != b.dtype or a.shape != b.shape:
+    #             raise RuntimeError("Calc loss fail:{} vs {}".format(name1, name2))
+    #         b = np.clip(b, epsilon, 1. - epsilon)
+    #         ce = -np.sum(a * np.log(b))
+    #         snr += ce / a.shape[0]
+    #     return snr / sum(layers_rate)
 
     def _loss(self, preds, gt_preds, layers_rate=None, type='cos'):
         assert type == 'cos' or type == 'sqnr' or type=='snr'
@@ -604,43 +641,6 @@ class MixPrecSearcher:
                 outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
         outputs_cos = outputs_cos / self.num_sample
         return outputs_cos
-
-    def run_model_new(self, model, float_type, global_compare_layers, layers_rate, predictions_gt, sample_num=1, loss_method = ['cos', 'snr']):
-        outputs_cos = 0
-        outputs_snr = 0
-        if float_type:
-            self.disable_print()
-            self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
-        else:
-            self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
-        num = 1 if sample_num == -1 else self.num_sample
-        for idx in range(num):
-            data = []
-            for name in list(self.ref_activations[idx].keys()):
-                data.append(self.ref_activations[idx][name][0])
-            outputs = model.infer(data, global_compare_layers)
-            if self.post_process_path:
-                module_path = self.post_process_path
-                module_name = self.post_process_name
-                spec = importlib.util.spec_from_file_location(module_name, module_path)
-                modulevar = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(modulevar)
-                outputs = modulevar.PostProcess(outputs)
-            if float_type:
-                predictions_gt.append(outputs)
-            else:
-                if 'snr' in loss_method:
-                    outputs_snr += self._loss(outputs, predictions_gt[idx], layers_rate, type='snr')
-                if 'cos' in loss_method:
-                    outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
-        outputs_cos = 1 - outputs_cos / num
-        outputs_snr = outputs_snr / num
-        if 'cos' in loss_method and 'snr' in loss_method:
-            return outputs_cos, outputs_snr
-        elif 'cos' in loss_method:
-            return outputs_cos
-        else:
-            return outputs_snr
 
     def run_model_loss_snr(self, model, float_type, global_compare_layers, layers_rate, predictions_gt):
         outputs_cos = 0

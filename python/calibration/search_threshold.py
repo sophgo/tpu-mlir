@@ -12,6 +12,7 @@ import sys
 import time
 import datetime
 import pymlir
+pymlir.set_mem_mode("force_value_mem")
 import numpy as np
 import copy
 import logging
@@ -24,10 +25,16 @@ from utils.net_dot_log import net_dot_log
 from utils.log_setting import logger, setup_logger
 from utils.mlir_parser import MlirParser
 from utils.misc import parse_debug_cmd
-from .utils import *
 
-pymlir.set_mem_mode("force_value_mem")
+def is_fuseop(op_name):
+    return re.match(r'^fused\[".*?"\]$', op_name)
 
+def split_fuseop(op_name):
+    if is_fuseop(op_name):
+        new_ops = re.findall(r'"([^"]+)"', op_name)
+        return new_ops[0]
+    else:
+        return op_name
 class SearchThreshold:
     def __init__(self, args, selector, tune_ds):
         self.args = args

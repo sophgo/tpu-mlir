@@ -19,6 +19,7 @@ import numpy as np
 import pymlir
 import torch
 import warnings
+pymlir.set_mem_mode("force_value_mem")
 from ctypes import *
 from tqdm import tqdm
 import datetime
@@ -30,9 +31,6 @@ from utils.misc import *
 from math import *
 from scipy import spatial
 from calibration.data_selector import DataSelector
-from .utils import *
-
-pymlir.set_mem_mode("force_value_mem")
 
 cur_dir_path = os.path.join(os.path.dirname(__file__))
 calibration_math_path = os.path.join("/".join(cur_dir_path.split("/")[:-2]), "lib/calibration_math.so")
@@ -115,8 +113,19 @@ class CalibrationTable:
 def is_npz(image):
     return True if image.split('.')[-1] == 'npz' else False
 
+
 def is_npy(image):
     return True if image.split('.')[-1] == 'npy' else False
+
+def is_fuseop(op_name):
+    return re.match(r'^fused\[".*?"\]$', op_name)
+
+def split_fuseop(op_name):
+    if is_fuseop(op_name):
+        new_ops = re.findall(r'"([^"]+)"', op_name)
+        return new_ops[0]
+    else:
+        return op_name
 
 def fuseop_list_append(op_name,fuseop_list):
     if is_fuseop(op_name):
@@ -133,6 +142,7 @@ def import_quant_bias(value, threshold):
     value[value < -128] = -128
     value /= scale
     return value
+
 
 def sort_distr(array, length):
     def first_k(a, k):

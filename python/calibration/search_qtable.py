@@ -12,12 +12,11 @@ import sys
 import time
 import datetime
 import pymlir
+pymlir.set_mem_mode("force_value_mem")
 import numpy as np
 import copy
 import logging
-import collections
 from utils.mlir_parser import *
-from sklearn.cluster import KMeans
 from calibration.mix_precision import MixQuantModel
 from calibration.mix_precision import MixPrecSearcher
 from calibration.kld_calibrator import CalibrationTable, ActivationCalibrator, SimpleTuner
@@ -26,10 +25,16 @@ from utils.net_dot_log import net_dot_log
 from utils.log_setting import logger, setup_logger
 from utils.mlir_parser import MlirParser
 from utils.misc import parse_debug_cmd
-from .utils import *
 
-pymlir.set_mem_mode("force_value_mem")
+def is_fuseop(op_name):
+    return re.match(r'^fused\[".*?"\]$', op_name)
 
+def split_fuseop(op_name):
+    if is_fuseop(op_name):
+        new_ops = re.findall(r'"([^"]+)"', op_name)
+        return new_ops[0]
+    else:
+        return op_name
 class SearchQtable:
     def __init__(self, args, selector, tune_ds):
         self.args = args
@@ -160,30 +165,6 @@ class SearchQtable:
         self.mix_prec.logger.print_info("layer name check pass !")
         return layer_names
 
-    def search_layer_type_no_need_quant(self, layer_names, float_outputs_cos, global_compare_layers, layers_rate, predictions_gt):
-        op_types = set()
-        for layer_name in layer_names:
-            op_type = self.parser.get_op_type_by_op_name(layer_name)
-            op_types.add(op_type)
-
-        sensitive_op_type = []
-        layer_op_map = {layer_name: self.parser.get_op_type_by_op_name(layer_name) for layer_name in layer_names}
-        for op_type in op_types:
-            fp_list = []
-            for layer_name in layer_names:
-                if layer_op_map[layer_name] == op_type:
-                    pass
-                else:
-                    fp_list.append(layer_name)
-            mix_table = self.mix_prec._gen_mix_table(fp_list)
-            mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
-            similarity = 1 - self.mix_prec.run_model_new(mix_model, False, global_compare_layers, layers_rate, predictions_gt, -1, ['cos'])
-            self.mix_prec.logger.print_info(f"op_type : {op_type}, similarity : {similarity}")
-            if similarity < float_outputs_cos * 0.999:
-                sensitive_op_type.append(op_type)
-        self.mix_prec.logger.print_info(f"sensitive_op_type : {sensitive_op_type}, please pay attention to these types of operations")
-        return sensitive_op_type
-
     def set_layer_new_th(self, model, layer_name, value):
         op = model.parser.get_op_by_op_name(layer_name)
         threshold = float(value)
@@ -192,20 +173,9 @@ class SearchQtable:
         self.cali_table.update_to(new_cali_table_name, layer_name, threshold)
         return new_cali_table_name
 
-    def compare_loss(self, layer_name, loss_dict, outputs_cos, outputs_snr):
-        existing_cos = loss_dict[layer_name][0]
-        existing_snr = loss_dict[layer_name][1]
-
-        if outputs_cos < existing_cos:
-            existing_cos = outputs_cos
-        if outputs_snr < existing_snr:
-            existing_snr = outputs_snr
-
-        loss_dict[layer_name] = [existing_cos, existing_snr]
 
     def search_sensitve_layer(self, layer_names, quantize_method_list, float_model, int8_model, layer_th_dicts, global_compare_layers, layers_rate, predictions_gt):
         num_quantize_method = len(quantize_method_list)
-        loss_dict = collections.defaultdict(list)
         fp_layer_list = []
         for op_name in layer_names:
             fp_layer_list.append(op_name)
@@ -228,11 +198,7 @@ class SearchQtable:
                     last_tried_method = method
                     self.mix_prec.logger.print_info("adjust layer {} th, with method {}, and threshlod {}".format(layer_name, method, new_th))
                     mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
-                    if not self.args.cluster:
-                        outputs_cos = 1 - self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                    else:
-                        outputs_cos, outputs_snr = self.mix_prec.run_model_new(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                        loss_dict[layer_name].extend([outputs_cos, outputs_snr])
+                    outputs_cos = 1 - self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
                     self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
                 elif modified_layers[layer_name][0] < num_quantize_method:
                     method_idx = modified_layers[layer_name][0]
@@ -247,11 +213,7 @@ class SearchQtable:
                     self.mix_prec.logger.print_info("adjust layer {} th, with method {}, and threshlod {}".format(layer_name, method, new_th))
                     modified_layers[layer_name][0] += 1
                     mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
-                    if not self.args.cluster:
-                        outputs_cos = 1 - self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                    else:
-                        outputs_cos, outputs_snr = self.mix_prec.run_model_new(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                        self.compare_loss(layer_name, loss_dict, outputs_cos, outputs_snr)
+                    outputs_cos = 1 - self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
                     self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
                 elif modified_layers[layer_name][0] == num_quantize_method:
                     if outputs_cos < modified_layers[layer_name][1]:
@@ -267,7 +229,7 @@ class SearchQtable:
                     ret = True
 
             fp_layer_list.append(layer_name)
-        return sensitive_layer_analysis_dict, new_cali_table_name, loss_dict
+        return sensitive_layer_analysis_dict, new_cali_table_name
 
     def analysis_sensitive_layers(self, sensitive_layer_analysis_dict, pr):
         num = 0
@@ -304,48 +266,6 @@ class SearchQtable:
         self.mix_prec.logger.print_info("set_fp_layer_list = {}".format(set_fp_layer_list))
         return set_fp_layer_list
 
-    def cluster(self, loss_dict, num_cluster):
-        layer_names = list(loss_dict.keys())
-        X = np.array([losses for losses in loss_dict.values()])
-
-        kmeans = KMeans(n_clusters=num_cluster, random_state=42)
-        labels = kmeans.fit_predict(X)
-
-        result = {name: label for name, label in zip(layer_names, labels)}
-
-        centroids = kmeans.cluster_centers_
-        target_cluster = np.argmax(centroids[:, 0])
-        selected_layers = [name for name, label in result.items() if label == target_cluster] 
-
-        self.mix_prec.logger.print_info("selected_layers = {}".format(selected_layers))
-        return selected_layers
-
-    def adjust_qtable(self, outputs_cos, layer_names_quant, sensitive_layer_analysis_dict, new_cali_table_name, global_compare_layers, layers_rate, predictions_gt):
-        if outputs_cos < self.args.expected_cos and (len(layer_names_quant) // 5) > self.args.max_float_layers:
-            base_float_layers = self.args.max_float_layers
-            self.args.max_float_layers = len(layer_names_quant) // 5
-            set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, False)
-            mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
-            mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
-            outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-            self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(self.args.max_float_layers,outputs_cos))
-            if outputs_cos > self.args.expected_cos:
-                lower_bound = base_float_layers
-                upper_bound = len(layer_names_quant) // 5
-
-                while lower_bound <= upper_bound:
-                    self.args.max_float_layers = (lower_bound + upper_bound) // 2
-                    set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, False)
-                    mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
-                    mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
-                    outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                    self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(self.args.max_float_layers,outputs_cos))
-
-                    if outputs_cos > self.args.expected_cos:
-                        upper_bound = self.args.max_float_layers - 1
-                    else:
-                        lower_bound = self.args.max_float_layers + 1
-        
 
     def print_log_info(self, layer_cos_list, fp_layer_list, all_int8_cos, outputs_cos, t0):
         self.mix_prec.logger.print_info('>>>run result:')
@@ -384,10 +304,9 @@ class SearchQtable:
         with open(self.cali_table_name, 'w') as file:
             file.write(data)
 
-        #setp2: float_model and int8_model inference
+        #setp2: float_model and int8_model0 inference
         float_model = MixQuantModel(self.fp32_mlir, self.chip)
         int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name)
-        float_outputs_cos = 1.0
         layer_cos_list, predictions_gt = [], []
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate, predictions_gt)
@@ -408,34 +327,53 @@ class SearchQtable:
         layer_names = self.check_layer_names(all_op_names, int8_model, layer_th_dicts, quantize_method_list)
         self.mix_prec.logger.print_info("all layer number: {}".format(len(layer_names)))
         layer_names_quant = [layer for layer in layer_names if layer not in float_ops]
-        self.mix_prec.logger.print_info("all layer number no float: {}".format(len(layer_names_quant)))
-        sensitive_op_type = self.search_layer_type_no_need_quant(layer_names_quant, float_outputs_cos, global_compare_layers, layers_rate, predictions_gt)
-        layer_names =  [layer for layer in layer_names_quant if self.parser.get_op_type_by_op_name(layer) in sensitive_op_type]
+        layer_names = layer_names_quant
+        self.mix_prec.logger.print_info("all layer number no float: {}".format(len(layer_names)))
+        if self.args.transformer == 'True':
+            no_ops = ['top.Reshape','top.LayerNorm','top.Unsqueeze','top.Gather','top.Slice','top.MulConst','top.Concat']
+            layer_names =  [layer for layer in layer_names_quant if self.parser.get_op_type_by_op_name(layer) not in no_ops]
         self.mix_prec.logger.print_info("transformer model: {}, all search layer number: {}".format(self.args.transformer, len(layer_names)))
         self.mix_prec.logger.print_info("Global metrics layer is : {}".format(global_compare_layers))
 
         #step4: search sensitive layer
-        sensitive_layer_analysis_dict, new_cali_table_name, loss_dict = self.search_sensitve_layer(layer_names, quantize_method_list, float_model, int8_model, layer_th_dicts, global_compare_layers, layers_rate, predictions_gt)
+        sensitive_layer_analysis_dict, new_cali_table_name = self.search_sensitve_layer(layer_names, quantize_method_list, float_model, int8_model, layer_th_dicts, global_compare_layers, layers_rate, predictions_gt)
 
         #step5: analysis sensitive layers
         self.mix_prec.enable_print()
-        if self.args.cluster:
-            selected_fp_layers = self.cluster(loss_dict, 2)
-            mix_table = self.mix_prec._gen_mix_table(selected_fp_layers)
-        else:
-            set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, True)
-            mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
+        set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, True)
 
         #step6: generate final mix model and print info
         self.mix_prec.dot_log.gen_dot_graph()
+        mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
         mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
         outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
         self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(self.args.max_float_layers,outputs_cos))
-        
-        if not self.args.cluster:
-            self.adjust_qtable(outputs_cos, layer_names_quant, sensitive_layer_analysis_dict, new_cali_table_name, global_compare_layers, layers_rate, predictions_gt)
-            self.print_log_info(layer_cos_list, set_fp_layer_list, all_int8_cos, outputs_cos, t0)
-        else:
-            self.print_log_info(layer_cos_list, selected_fp_layers, all_int8_cos, outputs_cos, t0)
+
+        if outputs_cos < self.args.expected_cos and (len(layer_names_quant) // 8) > self.args.max_float_layers:
+            base_float_layers = self.args.max_float_layers
+            self.args.max_float_layers = len(layer_names_quant) // 8
+            set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, False)
+            mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
+            mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
+            outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
+            self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(self.args.max_float_layers,outputs_cos))
+            if outputs_cos > self.args.expected_cos:
+                lower_bound = base_float_layers
+                upper_bound = len(layer_names_quant) // 8
+
+                while lower_bound <= upper_bound:
+                    self.args.max_float_layers = (lower_bound + upper_bound) // 2
+                    set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, False)
+                    mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
+                    mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
+                    outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
+                    self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(self.args.max_float_layers,outputs_cos))
+
+                    if outputs_cos > self.args.expected_cos:
+                        upper_bound = self.args.max_float_layers - 1
+                    else:
+                        lower_bound = self.args.max_float_layers + 1
+
+        self.print_log_info(layer_cos_list, set_fp_layer_list, all_int8_cos, outputs_cos, t0)
         print("success search qtable")
         return 'success'
