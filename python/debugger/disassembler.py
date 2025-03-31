@@ -627,8 +627,8 @@ bmodel_header_type = np.dtype(
         ("magic", np.uint32),
         ("header_size", np.uint32),
         ("flatbuffers_size", np.uint32),
-        ("binary_size", np.uint32),
-        ("reserved", np.uint32, 12),
+        ("binary_size", np.uint64),
+        ("reserved", np.uint32, 11),
     ]
 )
 

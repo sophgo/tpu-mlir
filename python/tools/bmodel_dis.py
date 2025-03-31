@@ -72,6 +72,7 @@ def BModel2Bin(bmodel_file):
 
     fname = FName()
     bmodel = dis.BModel(bmodel_file)
+    file_map = set()
     for subnet in BModelCMDIter(bmodel):
         fname.core_id = 0
         fname.subnet_id = subnet.id
@@ -85,10 +86,14 @@ def BModel2Bin(bmodel_file):
         for fname.core_id, _cmds in enumerate(subnet.core_commands):
             for fname.gid, cmds in enumerate(_cmds.gdma_tiu_commands):
                 fname.length, fname.suffix = cmds.tiu_num, ".tiu"
-                with open(str(fname), "wb") as f:
+                flag = "ab" if str(fname) in file_map else "wb"
+                file_map.add(str(fname))
+                with open(str(fname), flag) as f:
                     f.write(bytes(cmds.tiu_cmd))
                 fname.length, fname.suffix = cmds.dma_num, ".gdma"
-                with open(str(fname), "wb") as f:
+                flag = "ab" if str(fname) in file_map else "wb"
+                file_map.add(str(fname))
+                with open(str(fname), flag) as f:
                     f.write(bytes(cmds.dma_cmd))
             for fname.gid, cmds in enumerate(_cmds.sdma_commands):
                 # cmds contains system-end.
