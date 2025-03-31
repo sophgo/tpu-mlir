@@ -416,8 +416,13 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
       ;
     size_t offset_bytes = 0;
     if (axis != 4) {
-      offset_bytes =
-          p.offset_4[axis] * module::getDtypeSize(sliceOp.getOutput());
+      if (p.offset_4[axis] >= 0) {
+        offset_bytes =
+            p.offset_4[axis] * module::getDtypeSize(sliceOp.getOutput());
+      } else {
+        offset_bytes = (p.offset_4[axis] + p.is_4[axis]) *
+                       module::getDtypeSize(sliceOp.getOutput());
+      }
       for (int i = axis + 1; i < 4; ++i) {
         offset_bytes *= p.is_4[i];
       }

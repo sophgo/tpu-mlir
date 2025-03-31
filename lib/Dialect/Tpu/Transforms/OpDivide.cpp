@@ -606,6 +606,9 @@ public:
       newOp.setPadsAttr(builder.getI64ArrayAttr(new_pads));
       s.op = newOp.getOperation();
     } else if (auto cast_op = llvm::dyn_cast_or_null<tpu::Pool2DOp>(op)) {
+      for (auto &attr : op->getAttrs()) {
+        attrs.emplace_back(attr);
+      }
       auto in = adjust_input(builder, op, cast_op.getInput(), s);
       operands.push_back(in);
       std::string name = op_name + "_tod_" + std::to_string(slice_idx);
