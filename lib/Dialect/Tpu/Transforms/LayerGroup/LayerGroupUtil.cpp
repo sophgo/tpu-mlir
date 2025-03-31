@@ -1950,7 +1950,8 @@ static bool backward_update_slice(
           return false;
         }
         for (auto user : pre_op->getUsers()) {
-          if (!(tpukernel_allow_HWmargins(user) || isa<tpu::LutOp, tpu::CastOp>(user))) {
+          if (!(tpukernel_allow_HWmargins(user) || isa<tpu::LutOp, tpu::CastOp>(user))
+              || module::isF8Modes()) {
             return false;
           }
         }
