@@ -23,7 +23,7 @@ from tqdm import tqdm
 import datetime
 from utils.preprocess import preprocess
 from utils.mlir_parser import *
-from utils.log_setting import setup_logger
+from utils.log_setting import logger, setup_logger
 from utils.misc import *
 #import graphviz as gz
 from math import *
@@ -113,7 +113,23 @@ sub_blocks = {
                    'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Conv', 'top.Reshape', 'top.Permute',
                    'top.Reshape', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Add', 'top.Permute',
                    'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Concat', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
-                   'top.MatMul', 'top.Add']
+                   'top.MatMul', 'top.Add'],
+    "yolo_block":['top.MaxPool', 'top.MaxPool', 'top.MaxPool', 'top.Concat'],
+    "yolo_block_12":['top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul', 'top.Concat']
+
+}
+yolo_post_blocks = {
+    "yolov5":['top.MulConst', 'top.Add', 'top.MulConst', 'top.MulConst', 'top.Mul', 'top.Mul', 'top.Concat', 'top.Reshape'],
+    "yolov7":['top.MulConst', 'top.Add', 'top.Mul', 'top.Mul', 'top.Concat', 'top.Reshape'],
+    "yolov6_8_9_11_12":['top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul', 'top.Concat'],
+    "yolov10":['top.Sub', 'top.Add', 'top.Concat', 'top.Mul', 'top.Concat', 'top.Permute', 'top.Slice', 'top.Slice',
+               'top.Reduce', 'top.TopK', 'top.Unsqueeze', 'top.Tile', 'top.Tile', 'top.GatherElements', 'top.GatherElements',
+               'top.Reshape', 'top.Reshape', 'top.TopK', 'top.MulConst', 'top.Floor', 'top.Unsqueeze', 'top.Mod', 'top.Unsqueeze',
+               'top.Gather', 'top.Concat'],
+    "yolov10":['top.Sub', 'top.Add', 'top.Concat', 'top.Mul', 'top.Concat', 'top.Permute', 'top.Slice', 'top.Slice',
+               'top.Reduce', 'top.TopK', 'top.Unsqueeze', 'top.Tile', 'top.Tile', 'top.GatherElements', 'top.GatherElements',
+               'top.Reshape', 'top.Reshape', 'top.TopK', 'top.MulConst', 'top.Floor', 'top.Unsqueeze', 'top.Mod', 'top.Unsqueeze',
+               'top.Gather', 'top.Concat'],
 }
 # "detr_pattern": ['top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Add']
 
@@ -130,6 +146,8 @@ class MatchPattern:
         self.module.load(args.mlir_file)
         self.parser = MlirParser(args.mlir_file)
         self.cali_method = args.cali_method
+        self.log_level = "DEBUG" if args.debug_log else "INFO"
+        self.logger = logger('Match_Pattern', log_level=self.log_level)
 
         if self.args.part_quantize == 'N_mode':
             self.quantize_ops = N_mode
@@ -150,11 +168,11 @@ class MatchPattern:
         else:
             self.mix_mode = args.fp_type
             if args.fp_type not in chip_support_mix_fp_type[self.chip]:
-                print(f'parameter error, fp_type:{args.fp_type} not support by {self.chip}')
+                self.logger.print_info(f'parameter error, fp_type:{args.fp_type} not support by {self.chip}')
                 exit(1)
 
     def gen_qtable(self, fp_layer_list, flag):
-        print(f'The qtable has been generated in: {self.quantize_table} !!!')
+        self.logger.print_info(f'The qtable has been generated in: {self.quantize_table} !!!')
         with open(self.quantize_table, "w") as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
@@ -186,9 +204,54 @@ class MatchPattern:
                 count = type_tensors_str.count(sub_str)
                 flag = 1
                 model_block_name = name
-                #print(f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
+                self.logger.print_info(f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
                 break
         if flag == 1:
+            if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
+                from collections import Counter
+                def find_sublist(main_list, sub_list):
+                    sub_len = len(sub_list)
+                    if sub_len == 0:
+                        return []
+                    sub_counter = Counter(sub_list)
+                    matches = []
+                    for i in range(len(main_list) - sub_len + 1):
+                        window = main_list[i:i+sub_len]
+                        window_counter = Counter(window)
+                        if window_counter == sub_counter:
+                            end_idx = i + sub_len
+                            matches.append((i, end_idx))
+                    return matches
+
+                for name, yolo_post_block in yolo_post_blocks.items():
+                    matches = find_sublist(type_tensors, yolo_post_block)
+                    if matches:
+                        match_count = len(matches)
+                        self.logger.print_info(f"The [{name}] post-processing pattern matches this model. Block count: {match_count}")
+                        self.logger.print_info(f"The [{name}] post-processing pattern is: {yolo_post_block}")
+                        for idx, (start, end) in enumerate(matches, 1):
+                            fp_layer_list.extend(all_tensors[start:end])
+                            for next_op in self.parser.get_next_op_by_op_name(all_tensors[end-1]):
+                                if next_op:
+                                    next_op_type = self.parser.get_op_type_by_op_name(next_op)
+                                    # v5 && v7
+                                    if next_op_type == 'top.Concat' and next_op not in fp_layer_list:
+                                        fp_layer_list.append(next_op)
+                        break
+                split_fuse_fp_layer_list = []
+                for item in fp_layer_list:
+                    if item.startswith('fused['):
+                        match = re.search(r'fused\["(.*?)"\]', item)
+                        if match:
+                            fused_paths = [p.strip('"') for p in match.group(1).split(', ')]
+                            split_fuse_fp_layer_list.extend(fused_paths)
+                        else:
+                            split_fuse_fp_layer_list.append(item)
+                    else:
+                        split_fuse_fp_layer_list.append(item)
+                self.gen_qtable(split_fuse_fp_layer_list, flag)
+                return
+
             for i in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
                 if op_type == 'top.LayerNorm':
