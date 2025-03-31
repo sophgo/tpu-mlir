@@ -31,12 +31,8 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
   int W_end = W_out;
   int H_end = H_out;
 
-  double scale_h =static_cast<double>(H_in) / (H_out);
-  double scale_w =static_cast<double>(W_in) / (W_out);
-  if(align_corners){
-    scale_h =static_cast<double>(H_in-1) / (H_out-1);
-    scale_w =static_cast<double>(W_in-1) / (W_out-1);
-  }
+  double scale_h =static_cast<double>(H_in - align_corners) / (H_out - align_corners);
+  double scale_w =static_cast<double>(W_in - align_corners) / (W_out - align_corners);
 
   double scalar_c = 1;
   double const_c = 0.5;
@@ -210,6 +206,9 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
     get_stride<int16>(&w_stride, &real_index_real_shape, TPU_COMPACT);
     w_stride.w = 2;
     int index_dif = (int)floor(count * block_h * scale_h);
+    if(count){
+      index_dif = (int)floor(count * block_h * scale_h - 1);
+    }
     dim4 real_index_stride_shape = {1, cur_index, 1, 1};
     dim4 offset = {0,0,0,1};
     auto index1_int16 = index1_uint16.view<int16>(real_index_real_shape);
@@ -220,7 +219,10 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
     for (auto idx_c = 0; idx_c < C; idx_c += block_c){
       int c = min(block_c, C - idx_c);
       int idx_h =  floor(idx_index / W_out * scale_h);
-      int input_block_h = block_h+1;
+      if(count){
+        idx_h =  floor(idx_index / W_out * scale_h - 1);
+      }
+      int input_block_h = (int)(block_h * scale_h + 5);
       int cur_h = min(input_block_h, H_in - idx_h);
       dim4 real_input_block_shape = {N, block_c, input_block_h, W_in};
       dim4 real_input_real_shape = {N, c, cur_h, W_in};

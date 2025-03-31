@@ -483,7 +483,7 @@ public:
     int64_t n, c, ih, iw, oh, ow;
     module::getNCHW(interpOp.getInput(), n, c, ih, iw, false);
     module::getNCHW(interpOp.getOutput(), n, c, oh, ow, false);
-    if ((oh * ow < 520 * 520) && (ih <= oh) && (iw <= ow) && (input_dim == 4) &&
+    if ((oh * ow < 520 * 520) && (input_dim == 4) &&
         (module::isBM1684X() || module::isBM1688())) {
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
       int64_t buffer_size = 16 * 16 * 1024 * 64; // 4 banks
