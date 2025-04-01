@@ -1,6 +1,5 @@
+#include "interp.h"
 #include "helper.h"
-#include "interp_linear.h"
-#include "interp_nearest.h"
 #include "tpu_mlir/Backend/BM168x/Param.h"
 #include <algorithm> // for std::clamp
 #include <assert.h>
@@ -23,18 +22,6 @@ using INTERP =
                       int32_t v12, int32_t v13, float v14, int32_t v15,
                       int32_t v16, int32_t v17, int32_t v18, int32_t v19)>;
 
-static INTERP get_interp_func(bool is_fp16, bool is_bf16, bool linear_mode) {
-  if (linear_mode) {
-    return is_fp16   ? interp_linear_fp16
-           : is_bf16 ? interp_linear_bf16
-                     : interp_linear_fp32;
-  } else {
-    return is_fp16   ? interp_nearest_fp16
-           : is_bf16 ? interp_nearest_bf16
-                     : interp_nearest_fp32;
-  }
-}
-
 void api_interp_global(void *param, size_t param_size, void *input_spec,
                        void *output_spec) {
 
@@ -56,14 +43,10 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
   int dtype_size = 4;
   auto block_h = 0;
   int ret = 0;
-
+  INTERP func = nullptr;
   bool is_fp16 = in_spec[0].dtype == DTYPE_FP16;
   bool is_bf16 = in_spec[0].dtype == DTYPE_BFP16;
-  bool linear_mode = true;
-  if (_param->spec.common.platform_sp == ONNX_NEAREST) {
-    linear_mode = false;
-  }
-
+  func = is_fp16 ? interp_fp16 : is_bf16 ? interp_bf16 : interp_fp32;
   std::string chip_str = get_chip_str();
   if (chip_str == PPL_BM1688) {
     npu_size = 128 * 1024;
@@ -77,7 +60,6 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
   if (H_out < block_h) {
     block_h = H_out;
   }
-  INTERP func = get_interp_func(is_fp16, is_bf16, linear_mode);
 
   while (block_h > 0) {
     printf("block_h:%d\n", block_h);

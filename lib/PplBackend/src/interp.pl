@@ -253,14 +253,6 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
     get_stride<int16>(&w_stride, &real_index_real_shape, TPU_COMPACT);
     w_stride.w = 2;
     int index_dif = (int)floor(count * block_h * scale_h);
-    if(!align_corners){
-      index_dif = (int)floor((count * block_h + const_c) * scale_h - const_c);
-      if(index_dif < 0){
-        index_dif = 0;
-      }
-
-
-    }
     dim4 real_index_stride_shape = {1, cur_index, 1, 1};
     dim4 offset = {0,0,0,1};
     auto index1_int16 = index1_uint16.view<int16>(real_index_real_shape);
@@ -303,12 +295,6 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
     for (auto idx_c = 0; idx_c < C; idx_c += block_c){
       int c = min(block_c, C - idx_c);
       int idx_h =  floor(idx_index / W_out * scale_h);
-      if(!align_corners){
-        idx_h = floor((idx_index / W_out + const_c) * scale_h - const_c);
-        if(idx_h < 0){
-          idx_h = 0;
-        }
-      }
       int input_block_h = block_h+1;
       int cur_h = min(input_block_h, H_in - idx_h);
       dim4 real_input_block_shape = {N, block_c, input_block_h, W_in};
@@ -399,14 +385,14 @@ void interp_(T *ptr_output, T *ptr_input, DTYPE *ptr_index, const int g_core_num
   }
 }
 
-__KERNEL__ void interp_linear_bf16(bf16 *ptr_output, bf16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
-            interp_<bf16>(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
+__KERNEL__ void interp_bf16(bf16 *ptr_output, bf16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
+            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
 }
 
-__KERNEL__ void interp_linear_fp16(fp16 *ptr_output, fp16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
-            interp_<fp16>(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
+__KERNEL__ void interp_fp16(fp16 *ptr_output, fp16 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
+            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
 }
 
-__KERNEL__ void interp_linear_fp32(fp32 *ptr_output, fp32 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
-            interp_<fp32>(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
+__KERNEL__ void interp_fp32(fp32 *ptr_output, fp32 *ptr_input, DTYPE *ptr_index, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int align_corners) {
+            interp_(ptr_output, ptr_input, ptr_index,  g_core_num, N,  C,  H_in,  W_in,  H_out,  W_out,  block_h, align_corners);
 }
