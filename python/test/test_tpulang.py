@@ -216,6 +216,7 @@ class TPULANG_IR_TESTER(object):
             #### model ####
             "AttenQuantBlock": (self.test_AttenQuant, Y, Y),
             "Bert": (self.test_Bert, Y, Y),
+            # "DeformableAttention": (self.test_DeformableAttention, Y, Y),
             "HModel": (self.test_Model, Y, Y),
             "Resnet50": (self.test_Resnet50, N, Y),  # temp disable
             "ResnetBlock": (self.test_ResnetBlock, Y, Y),
@@ -5153,6 +5154,36 @@ class TPULANG_IR_TESTER(object):
         # _test_sort_by_key([28, 4], 0)
         _test_sort_by_key([4, 11], 1)
 
+    def test_DeformableAttention(self, case_name):
+        """"DeformableAttention"""
+
+        @tpulang(self.chip)
+        def _test_deformable_attention(bs=1,
+                                       num_keys=79947,
+                                       num_queries=79947,
+                                       num_heads=8,
+                                       embed_dims=32,
+                                       num_levels=5,
+                                       num_points=4,
+                                       value_spatial_shapes=[[200, 300], [100, 150], [50, 75], [25, 38], [13, 19]],
+                                       dtype="float32"):
+            value_data = rand_data([bs, num_keys, num_heads, embed_dims], dtype)
+            value = tpul.Tensor(dtype=dtype, shape=[bs, num_keys, num_heads, embed_dims], data=value_data)
+            sampling_locations_data = rand_data([bs, num_queries, num_heads, num_levels, num_points, 2], dtype)
+            sampling_locations = tpul.Tensor(dtype=dtype, shape=[bs, num_queries, num_heads, num_levels, num_points, 2], data=sampling_locations_data)
+            attention_weights_data = rand_data([bs, num_queries, num_heads, num_levels, num_points], dtype)
+            attention_weights = tpul.Tensor(dtype=dtype, shape=[bs, num_queries, num_heads, num_levels, num_points], data=attention_weights_data)
+            y = tpul.deformable_attention(value, sampling_locations, attention_weights, value_spatial_shapes)
+            self.compile_and_check(self.unique_name(case_name), [value, sampling_locations, attention_weights], [y])
+
+        # value_spatial_shapes = [[200, 300], [100, 150], [50, 75], [25, 38], [13, 19]]
+        # _test_deformable_attention(dtype="float32")
+        _test_deformable_attention(dtype="float16",
+                                   num_keys=19560,
+                                   num_queries=19560,
+                                   num_levels=4,
+                                   value_spatial_shapes=[[92, 160], [46, 80], [23, 40], [12, 20]])
+
     def test_SelfAttnBlock(self, case_name):
 
         class SelfAttnBlock():
@@ -5909,7 +5940,8 @@ class TPULANG_IR_TESTER(object):
                                   sampling_ratio=sampling_ratio,
                                   list_spatial_scale=list_spatial_scale,
                                   num_layer=num_layer,
-                                  mode=mode)
+                                  mode=mode,
+                                  max_roi_num=target_lvls.shape[0])
             self.compile_and_check(self.unique_name(case_name), [rois, target_lvls] + feats, [y],
                                    is_quantized=is_quantized)
             print("------RoiExtractor Utest End-------------------")
@@ -5922,10 +5954,10 @@ class TPULANG_IR_TESTER(object):
         _test_RoiExtractor([761, 5], [761], [[1, 256, 364, 640], [1, 256, 184, 320],
                                              [1, 256, 92, 160], [1, 256, 46, 80], [1, 256, 23, 40]],
                            7, 7, 2, [4, 8, 16, 32, 64], 5, "DynFuse")
-        #rois: [a, b, x0, y0, x1, y1, c]
-        _test_RoiExtractor([761, 7], [761], [[1, 256, 364, 640], [1, 256, 184, 320],
-                                             [1, 256, 92, 160], [1, 256, 46, 80], [1, 256, 23, 40]],
-                           7, 7, 2, [4, 8, 16, 32, 64], 5, "DynFuse")
+        # #rois: [a, b, x0, y0, x1, y1, c]
+        # _test_RoiExtractor([761, 7], [761], [[1, 256, 364, 640], [1, 256, 184, 320],
+        #                                      [1, 256, 92, 160], [1, 256, 46, 80], [1, 256, 23, 40]],
+        #                    7, 7, 2, [4, 8, 16, 32, 64], 5, "DynFuse")
         #rois: [a, b, x0, y0, x1, y1, c]
         _test_RoiExtractor([761, 7], [761], [[1, 256, 364, 640], [1, 256, 184, 320],
                                              [1, 256, 92, 160], [1, 256, 46, 80], [1, 256, 23, 40]],

@@ -4456,6 +4456,169 @@ def multi_scale_deformable_attention(
                       params=output_proj_matmul_attr)
     return output_proj_matmul_out
 
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def deformable_attention(value: Tensor,
+                         sampling_locations: Tensor,
+                         attention_weights: Tensor,
+                         value_spatial_shapes: List[List[int]],
+                         out_name:str=None):
+    # value: [bs, num_keys, num_heads, embed_dims//num_heads]
+    # sampling_locations: [bs, num_queries, num_heads, num_levels, num_points, 2]
+    # attention_weights: [bs, num_queries, num_heads, num_levels, num_points]
+    # value_spatial_shapes: [num_levels, 2], last dimension 2 represents (height, width)
+    assert value.dtype in ["float32", "float16"]
+    assert sampling_locations.dtype in ["float32", "float16"]
+    assert attention_weights.dtype in ["float32", "float16"]
+    assert value.dtype == sampling_locations.dtype == attention_weights.dtype
+    assert len(value.shape) == 4
+    assert len(sampling_locations.shape) == 6
+    assert len(attention_weights.shape) == 5
+    assert value.shape[0] == sampling_locations.shape[0] == attention_weights.shape[0]
+    assert sampling_locations.shape[1] == attention_weights.shape[1]
+    assert value.shape[2] == sampling_locations.shape[2] == attention_weights.shape[2]
+    assert sampling_locations.shape[3] == attention_weights.shape[3]
+    assert sampling_locations.shape[4] == attention_weights.shape[4]
+    assert sampling_locations.shape[5] == 2
+    assert len(value_spatial_shapes) == sampling_locations.shape[3]
+
+    if out_name is None:
+        out_name = generate_name("deformable_attention")
+    o_dtype = value.dtype
+    int64_max = np.iinfo(np.int64).max
+    bs, _, num_heads, embed_dims = value.shape
+    _, num_queries, _, num_levels, num_points, _ = sampling_locations.shape
+    value_shape_len = len(value.shape)
+    value_offset = [0] * value_shape_len
+    value_ends = [int64_max] * value_shape_len
+    value_ends[1] = 0
+    value_steps = [1] * value_shape_len
+    addconst_shape_len = len(sampling_locations.shape)
+    addconst_offset = [0] * addconst_shape_len
+    addconst_ends = [int64_max] * addconst_shape_len
+    addconst_ends[3] = 0
+    addconst_steps = [1] * addconst_shape_len
+    concat_inputs_list = []
+    mulconst_attr = {
+        "const_val": Attr(2, 'float64'),
+    }
+    mulconst_out = Tensor(dtype=o_dtype, name=out_name + "_mulconst")
+    TpuLang.insert_op("top.MulConst", inputs=[sampling_locations], outputs=[mulconst_out], params=mulconst_attr)
+    addconst_attr = {
+        "const_val": Attr(-1, 'float64'),
+    }
+    addconst_out = Tensor(dtype=o_dtype, name=out_name + "_addconst")
+    TpuLang.insert_op("top.AddConst", inputs=[mulconst_out], outputs=[addconst_out], params=addconst_attr)
+    for i, (H_, W_) in enumerate(value_spatial_shapes):
+        HW_ = H_ * W_
+        value_ends[1] += HW_
+        value_slice_attr = {
+            "offset": ArrayAttr(value_offset),
+            "ends": ArrayAttr(value_ends),
+            "steps": ArrayAttr(value_steps),
+            "axes": ArrayAttr([]),
+        }
+        value_offset[1] += HW_
+        value_slice_out = Tensor(dtype=o_dtype, name=out_name + "_value_split_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[value, None, None, None], outputs=[value_slice_out], params=value_slice_attr)
+        print(f"Sucess: value_slice_{i}")
+        reshape0_attr = {
+            "shape": ArrayAttr([bs, HW_, -1])
+        }
+        reshape0_out = Tensor(dtype=o_dtype, name=out_name + "_reshape0_{}".format(i))
+        TpuLang.insert_op("top.Reshape", inputs=[value_slice_out], outputs=[reshape0_out], params=reshape0_attr)
+        permute0_attr = {
+            "order": ArrayAttr([0, 2, 1])
+        }
+        permute0_out = Tensor(dtype=o_dtype, name=out_name + "_permute_{}".format(i))
+        TpuLang.insert_op("top.Permute", inputs=[reshape0_out], outputs=[permute0_out], params=permute0_attr)
+        reshape1_attr = {
+            "shape": ArrayAttr([bs*num_heads, embed_dims, H_, W_])
+        }
+        reshape1_out = Tensor(dtype=o_dtype, name=out_name + "_reshape1_{}".format(i))
+        TpuLang.insert_op("top.Reshape", inputs=[permute0_out], outputs=[reshape1_out], params=reshape1_attr)
+        addconst_ends[3] += 1
+        addconst_slice_attr = {
+            "offset": ArrayAttr(addconst_offset),
+            "ends": ArrayAttr(addconst_ends),
+            "steps": ArrayAttr(addconst_steps),
+            "axes": ArrayAttr([]),
+        }
+        addconst_offset[3] += 1
+        addconst_slice_out = Tensor(dtype=o_dtype, name=out_name + "_addconst_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[addconst_out, None, None, None], outputs=[addconst_slice_out], params=addconst_slice_attr)
+        squeeze_attr = {
+            "axes": ArrayAttr([3])
+        }
+        squeeze_out = Tensor(dtype=o_dtype, name=out_name + "_squeeze_{}".format(i))
+        TpuLang.insert_op("top.Squeeze", inputs=[addconst_slice_out], outputs=[squeeze_out], params=squeeze_attr)
+        permute1_attr = {
+            "order": ArrayAttr([0, 2, 1, 3, 4])
+        }
+        permute1_out = Tensor(dtype=o_dtype, name=out_name + "_permute1_{}".format(i))
+        TpuLang.insert_op("top.Permute", inputs=[squeeze_out], outputs=[permute1_out], params=permute1_attr)
+        reshape2_attr = {
+            "shape": ArrayAttr([-1, num_queries, num_points, 2])
+        }
+        reshape2_out = Tensor(dtype=o_dtype, name=out_name + "_reshape2_{}".format(i))
+        TpuLang.insert_op("top.Reshape", inputs=[permute1_out], outputs=[reshape2_out], params=reshape2_attr)
+        grid_sampler_attr = {
+            "mode": Attr(0, "int64"),
+            "padding_mode": Attr(0, "int64"),
+            "align_corners": Attr(False, 'bool'),
+        }
+        grid_sampler_out = Tensor(dtype=o_dtype, name=out_name + "_grid_sampler_{}".format(i))
+        TpuLang.insert_op("top.GridSampler", inputs=[reshape1_out, reshape2_out], outputs=[grid_sampler_out], params=grid_sampler_attr)
+        unsqueeze_attr = {
+            "axes": ArrayAttr([-2])
+        }
+        unsqueeze_out = Tensor(dtype=o_dtype, name=out_name + "_unsqueeze_{}".format(i))
+        TpuLang.insert_op("top.Unsqueeze", inputs=[grid_sampler_out], outputs=[unsqueeze_out], params=unsqueeze_attr)
+        print(f"Sucess: unsqueeze_{i}")
+        concat_inputs_list.append(unsqueeze_out)
+    concat_attr = {
+        "axis": Attr(-2, "int32")
+    }
+    concat_out = Tensor(dtype=o_dtype, name=out_name + "_concat")
+    TpuLang.insert_op("top.Concat", inputs=concat_inputs_list, outputs=[concat_out], params=concat_attr)
+    reshape3_attr = {
+        "shape": ArrayAttr([bs*num_heads, embed_dims, num_queries, -1])
+    }
+    reshape3_out = Tensor(dtype=o_dtype, name=out_name + "_reshape3")
+    TpuLang.insert_op("top.Reshape", inputs=[concat_out], outputs=[reshape3_out], params=reshape3_attr)
+    permute2_attr = {
+        "order": ArrayAttr([0, 2, 1, 3, 4])
+    }
+    permute2_out = Tensor(dtype=o_dtype, name=out_name + "_permute2")
+    TpuLang.insert_op("top.Permute", inputs=[attention_weights], outputs=[permute2_out], params=permute2_attr)
+    reshape4_attr = {
+        "shape": ArrayAttr([bs*num_heads, 1, num_queries, num_levels * num_points])
+    }
+    reshape4_out = Tensor(dtype=o_dtype, name=out_name + "_reshape4")
+    TpuLang.insert_op("top.Reshape", inputs=[permute2_out], outputs=[reshape4_out], params=reshape4_attr)
+    mul_output = Tensor(dtype=o_dtype, name=out_name + "_mul")
+    TpuLang.insert_op("top.Mul", inputs=[reshape3_out, reshape4_out], outputs=[mul_output])
+    print(f"Sucess: mul")
+    reduce_attr = {
+        "axes": ArrayAttr([-1], "int64"),
+        "keepdims": Attr(False, "bool"),
+        "mode": Attr("ReduceSum", "string"),
+    }
+    reduce_out = Tensor(dtype=o_dtype, name=out_name + "_reduce")
+    TpuLang.insert_op("top.Reduce", inputs=[mul_output], outputs=[reduce_out], params=reduce_attr)
+    reshape5_attr = {
+        "shape": ArrayAttr([bs, num_heads*embed_dims, num_queries])
+    }
+    reshape5_out = Tensor(dtype=o_dtype, name=out_name + "_reshape5")
+    TpuLang.insert_op("top.Reshape", inputs=[reduce_out], outputs=[reshape5_out], params=reshape5_attr)
+    permute3_attr = {
+        "order": ArrayAttr([0, 2, 1])
+    }
+    permute3_out = Tensor(dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.Permute", inputs=[reshape5_out], outputs=[permute3_out], params=permute3_attr)
+
+    return permute3_out
 
 @auto_name()
 @annotation_check
@@ -4613,13 +4776,16 @@ def roiExtractor(rois: Tensor,
                  list_spatial_scale: Union[int, List[int], Tuple[int]],
                  num_layer: int,
                  mode: str = None,
-                 out_name: str = None):
+                 out_name: str = None,
+                 max_roi_num: int = None):
     if isinstance(list_spatial_scale, Tuple): list_spatial_scale = list(list_spatial_scale)
     list_spatial_scale = [1.0 / x for x in list_spatial_scale]
     for i in range(len(feats) - 1):
         assert feats[i].shape[1] == feats[i + 1].shape[1]
 
-    roi_num = rois.shape[0]
+    roi_num =  target_lvls.shape[0]
+    if max_roi_num:
+        assert max_roi_num == roi_num
     o_dtype = rois.dtype
     assert mode in ["DynFuse", "DynNormal", "StaticFuse"]
     outFusion = None
@@ -4724,11 +4890,11 @@ def roiExtractor(rois: Tensor,
         return ScatterND_outputs[-1]
     elif mode == "DynFuse":
         RoiExtractor_out = Tensor(dtype=o_dtype, name=out_name + "_RoiExtractor_{}".format(0))
-        assert (sampling_ratio > 0)
+        assert(sampling_ratio > 0)
         assert (num_layer <= 5 and num_layer >= 1)
-        assert (rois.shape[1] == 5 or rois.shape[1] == 7)
+        # assert (rois.shape[1] == 5 or rois.shape[1] == 7)
         Slice_out = None
-        if (rois.shape[1] == 7):
+        if 0: #if(rois.shape[1] == 7):
             #check coordinates of rois satisfied with [a, batch_id, x0, y0, x1, y1, b]
             batch = feats[0].shape[0]
             for i in range(num_layer):
@@ -4772,7 +4938,7 @@ def roiExtractor(rois: Tensor,
             "is_static": Attr(False, "bool"),
         }
         # inputs =  [feats[i] for i in range(num_layer)] + [rois, target_lvls]
-        rois_revise = rois if rois.shape[1] == 5 else Concat_out
+        rois_revise = rois# if rois.shape[1] == 5  else Concat_out
         assert rois_revise is not None
         inputs = [rois_revise, target_lvls] + [feats[i] for i in range(num_layer)]
         TpuLang.insert_op("top.RoiExtractor",
