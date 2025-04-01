@@ -46,6 +46,8 @@ run_calibration参数介绍
      - 描述
    * - mlir_file
      - mlir文件
+   * - sq
+     - 开启SmoothQuant
    * - we
      - 开启weight_equalization
    * - bc
@@ -132,7 +134,7 @@ run_calibration参数使用介绍
      - 模型量化后在bm1684处理器上部署精度无法满足需求
      - /
      - /
-     - 开启we和bc方法
+     - 开启sq、we和bc方法
 
 case1:当对您的模型进行初步量化时,也就是第一次使用 ``run_calibration`` 命令,此时您对当前模型所适应的校准方法并不清楚,并且对量化速度并不敏感,这里推荐您使用 ``search_threshold`` 方法,该方法可以
 自动选择对应您当前模型最适合的校准方法,并且输出该种方法生成的校准表 ``cali_table`` 到您指定的输出路径。同时也会生成一个log日志文件 ``Search_Threshold``,里面记录了不同校准方法的量化信息。具体操作如下:
@@ -199,12 +201,13 @@ V1.9版本的单个校准方法量化速度提升100%,因此所需时间也平�
 
 除去上面总体的选择规则,也提供一些选择校准方法的细节:1.如果您的模型是yolo系列的检测模型,建议采取默认的KLD校准方法。2.如果您的模型是有多个输出的分类模型,建议采取默认的KLD校准方法。
 
-case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法获得的全int8量化模型精度较差,可以尝试开启跨层权重均衡( ``we``)和偏置修正( ``bc``),具体操作就是在原先的命令上面添加 ``we`` 和 ``bc`` 参数。如果使用了
-``search_threshold`` 进行搜索,添加we和bc操作如下:
+case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法获得的全int8量化模型精度较差,可以尝试开启SmoothQuant(``sq``)、跨层权重均衡( ``we``)和偏置修正( ``bc``),具体操作就是在原先的命令上面添加 ``sq``、``we`` 和 ``bc`` 参数。如果使用了
+``search_threshold`` 进行搜索,添加sq、we和bc操作如下:
 
 .. code-block:: shell
 
    $ run_calibration mlir.file \
+       --sq \
        --we \
        --bc \
        --dataset data_path \
@@ -215,11 +218,12 @@ case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法�
        --bc_inference_num 100 \
        -o cali_table
 
-如果使用 ``cali_method`` 选择固定校准方法,下面以 ``use_mse`` 为例添加 ``we`` 和 ``bc`` 方法,具体操作如下:
+如果使用 ``cali_method`` 选择固定校准方法,下面以 ``use_mse`` 为例添加 ``sq``、``we`` 和 ``bc`` 方法,具体操作如下:
 
 .. code-block:: shell
 
    $ run_calibration mlir.file \
+       --sq \
        --we \
        --bc \
        --dataset data_path \
@@ -231,7 +235,7 @@ case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法�
 
 如果您采用的是默认的KLD校准方法,去掉 ``cali_method`` 参数即可。
 
-注意事项:1.这里需要指定processor参数为bm1684。2. ``bc_inference_num`` 参数是使用 ``bc`` 量化方法时所需的推理数据数量(该数据将从您给定的dataset中抽取),这里图片数量不应太少。3. ``we`` 和 ``bc`` 方法可单独使用,可以仅仅选择 ``we`` 方法,在操作上直接去掉 ``bc`` 参数即可。4. run_calibration过程中会检查每个算子，找到进行shape计算的算子在当前目录生成名为net_name_shape_ops的qtable，将这些算子设置为不量化，里面内容可以手动和下面混精的配置合并作为qtable用在model_deploy中。
+注意事项:1.这里需要指定processor参数为bm1684。2. ``bc_inference_num`` 参数是使用 ``bc`` 量化方法时所需的推理数据数量(该数据将从您给定的dataset中抽取),这里图片数量不应太少。3. ``sq``、``we`` 和 ``bc`` 方法可单独使用,可以仅仅选择 ``we`` 方法,在操作上直接去掉 ``sq`` 和 ``bc`` 参数即可。4. run_calibration过程中会检查每个算子，找到进行shape计算的算子在当前目录生成名为net_name_shape_ops的qtable，将这些算子设置为不量化，里面内容可以手动和下面混精的配置合并作为qtable用在model_deploy中。
 
 TPU-MLIR混合精度量化概述
 ==============================

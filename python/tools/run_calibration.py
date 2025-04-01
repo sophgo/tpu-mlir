@@ -16,6 +16,7 @@ from calibration.kld_calibrator import ActivationCalibrator
 from calibration.data_selector import DataSelector
 from calibration.search_threshold import SearchThreshold
 from calibration.search_qtable import SearchQtable
+from calibration.smoothquant import SmoothQuant
 from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
@@ -29,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('mlir_file', metavar='mlir_file', help='mlir file')
     parser.add_argument('--we', help='weight equalization', action="store_true")
     parser.add_argument('--bc', help='bias correction', action="store_true")
+    parser.add_argument('--sq', help='smoothquant', action="store_true")
     parser.add_argument('--dataset', type=str, help='dataset for calibration')
     parser.add_argument('--data_list', type=str, help='Input list file contain all input')
     parser.add_argument('--input_num', type=int, default=0, help='num of images for calibration')
@@ -101,6 +103,11 @@ if __name__ == '__main__':
         searcherQ = SearchQtable(args, selector, tune_ds)
         searcherQ.run()
     else:
+        # smoothquant
+        if args.sq:
+            args._logger = logger('SmoothQuant', log_level=log_level)
+            smoothquant = SmoothQuant(args, selector)
+            smoothquant.run()
         # weight equalization
         if args.we:
             args._logger = logger('Weight_Equalization', log_level=log_level)

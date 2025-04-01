@@ -6,7 +6,7 @@ General introduction
 
 Calibration is the use of real scene data to tune the proper quantization parameters. Why do we need calibration? When we perform asymmetric quantization of the activation, we need to know the overall dynamic range, i.e., the minmax value, in advance. When applying symmetric quantization to activations, we need to use a suitable quantization threshold algorithm to calculate the quantization threshold based on the overall data distribution of the activation. However, the general trained model does not have the activation statistics. Therefore, both of them need to inference on a miniature sub-training set to collect the output activation of each layer.
 
-The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
+The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
 The above processes are integrated and executed collectively, and the optimized thresholds and min/max values of each operation are output to a quantization calibration parameter file called "cali_table." Subsequently, in the "model_deploy.py" script, these parameters can be used for further int8 quantization. If you have utilized the automatic mixed-precision feature, along with generating the "cali_table," a mixed-precision table "qtable" will also be produced. In the following "model_deploy.py" script, both of these files are required for subsequent int8 mixed-precision quantization.
 
 .. _quantization_process:
@@ -182,7 +182,22 @@ Implementation approach: TPU-MLIR provides two variants of the algorithm, aciq_g
 optimization algorithms Implementation
 ------------------------------------------------
 
-During the calibration process, to further enhance the precision of the quantized model, TPU-MLIR offers a variety of optimization algorithms, including Cross-Layer Weight Equalization (WE), Bias Correction (BC), search_qtable, and search_threshold. Below is an introduction to the aforementioned optimization algorithms.
+During the calibration process, to further enhance the precision of the quantized model, TPU-MLIR offers a variety of optimization algorithms, including SmoothQuant (SQ), Cross-Layer Weight Equalization (WE), Bias Correction (BC), search_qtable, and search_threshold. Below is an introduction to the aforementioned optimization algorithms.
+
+sq Algorithm
+~~~~~~~~~~~~~~~~~~~~~~
+The SmoothQuant algorithm implemented in TPU-MLIR is based on the paper "SmoothQuant: Accurate and Efficient Post-Training Quantisation for Large Language Models".
+This method improves the accuracy of the quantised model by smoothly assigning the tensor scales of the model and adjusting the range of inputs and weights of the model to a more suitable range for quantization, thus improving the accuracy of the quantised model.
+It solves the problem of accuracy degradation of large-scale pre-trained models (e.g., language models and visual models) during the quantisation process.
+
+SmoothQuant redistributes the range of activations and weights by adjusting the tensor ratio of the model, which makes the quantisation process more stable.
+Specifically, SmoothQuant introduces a smoothing factor before quantisation, which partially transfers the range of the activation values to the weights, adjusts the model weights with a mathematically equivalent transformation, thus reducing the quantisation error of the activation values. The technical principle is illustrated in the figure (:ref:`sq`).
+
+.. _sq:
+.. figure:: ../assets/sq.png
+   :align: center
+
+   SmoothQuant
 
 we Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -357,6 +372,18 @@ aciq_laplace:
 
 Using optimization methods:
 
+sq:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --sq \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --cali_method use_mse \
+      -o yolov5s_cali_table
+
 we:
 
 .. code-block:: shell
@@ -425,6 +452,8 @@ search_qtable:
      - Description
    * - mlir_file
      - mlir file
+   * - --sq
+     - open SmoothQuant
    * - --we
      - open weight_equalization
    * - --bc

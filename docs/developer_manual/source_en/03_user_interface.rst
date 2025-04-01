@@ -283,6 +283,9 @@ Supported parameters:
    * - (None)
      - Y
      - Mlir file
+   * - sq
+     - N
+     - Open SmoothQuant
    * - we
      - N
      - Open weight_equalization

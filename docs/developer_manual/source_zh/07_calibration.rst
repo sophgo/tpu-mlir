@@ -8,7 +8,7 @@ Calibration
 在激活总体数据分布的基础上计算得到其量化门限, 而一般训练输出的模型是不带有激活这些数据统计
 信息的, 因此这两者都要依赖于在一个微型的训练集子集上进行推理, 收集各个输入的各层输出激活。
 
-tpu-mlir的校准过程包括了门限方法自动寻优(search_threshold),跨层权重均衡(we),偏置修正(bc)以及自动
+tpu-mlir的校准过程包括了门限方法自动寻优(search_threshold),SmoothQuant(sq),跨层权重均衡(we),偏置修正(bc)以及自动
 混精功能(search_qtable)等方法。总体过程如(:ref:`quantization_process`)所示。其中we,bc,search_qtable
 和search_threshold都是可选择的,可以根据当前要量化的模型的实际情况进行搭配，后面章节也会具体给出各个方法的使用说明。
 上述过程整合在一起统一执行, 最后将各个op的优化后的threshold和
@@ -211,8 +211,23 @@ tpu-mlir实现的aciq算法参考了文章《ACIQ:ANALYTICAL CLIPPING FOR INTEGE
 优化算法实现
 --------------------
 
-在校准过程中,为了进一步提升量化模型的精度,tpu-mlir提供了多种优化算法,其中包括跨层权重均衡(we),偏置修正(bc),search_qtable和search_threshold,下面是上述优化
+在校准过程中,为了进一步提升量化模型的精度,tpu-mlir提供了多种优化算法,其中包括SmoothQuant(sq),跨层权重均衡(we),偏置修正(bc),search_qtable和search_threshold,下面是上述优化
 算法的介绍。
+
+sq算法
+~~~~~~~~~~~~~~~~~~~~~~
+tpu-mlir实现的SmoothQuant算法参考了文章《SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models》,
+该方法通过平滑地分配模型的张量比例,将模型的输入和权重的范围调整到一个更适合量化的范围,从而提高量化后的模型精度,
+解决大规模预训练模型（如语言模型和视觉模型）在量化过程中精度下降的问题。
+
+SmoothQuant通过调整模型的张量比例,将激活和权重的范围进行重新分配,使得量化过程更加稳定。具体来说,SmoothQuant在量化前引入一个平滑因子,
+将激活值的范围部分转移到权重中,通过数学等价转换来调整模型权重,从而降低激活值的量化误差。技术原理如图(:ref:`sq`)所示。
+
+.. _sq:
+.. figure:: ../assets/sq.png
+   :align: center
+
+   SmoothQuant
 
 we算法
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -394,6 +409,18 @@ aciq_laplace:
 
 使用优化方法：
 
+sq:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --sq \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --cali_method use_mse \
+      -o yolov5s_cali_table
+
 we:
 
 .. code-block:: shell
@@ -461,6 +488,8 @@ search_qtable:
      - 描述
    * - mlir_file
      - mlir文件
+   * - --sq
+     - 开启SmoothQuant
    * - --we
      - 开启weight_equalization
    * - --bc

@@ -44,6 +44,8 @@ The table below provides an introduction to the parameters of the ``run_calibrat
      - description
    * - mlir_file
      - mlir file
+   * - sq
+     - open SmoothQuant
    * - we
      - open weight_equalization
    * - bc
@@ -130,7 +132,7 @@ Based on the user's needs and their understanding of the model itself and quanti
      - after model quantization, the accuracy on the bm1684 processor does not meet the requirements
      - /
      - /
-     - open we and bc methods
+     - open sq, we and bc methods
 
 case 1: When you perform the initial quantization on your model, which is the first time you use the ``run_calibration`` command, you may not be clear
 about the calibration method that is best suited for your current model and you may not be sensitive to the quantization speed.
@@ -205,12 +207,13 @@ Apart from the overall selection rules mentioned above, here are some specific d
 it is also recommended to use the default KLD calibration method.
 
 case4: When your model is deployed on the bm1684 processor and the full int8 quantized model obtained through the methods mentioned above has poor accuracy,
-you can try enabling cross-layer weight equalization (``we``) and bias correction (``bc``). To do this, simply add the ``we`` and ``bc`` parameters to the original command.
-If you have used ``search_threshold`` for searching, the operations for adding we and bc are as follows:
+you can try enabling SmoothQuant (``sq``), cross-layer weight equalization (``we``) and bias correction (``bc``). To do this, simply add the ``sq``, ``we`` and ``bc`` parameters to the original command.
+If you have used ``search_threshold`` for searching, the operations for adding sq, we and bc are as follows:
 
 .. code-block:: shell
 
    $ run_calibration mlir.file \
+       --sq \
        --we \
        --bc \
        --dataset data_path \
@@ -226,6 +229,7 @@ If you choose a fixed calibration method using ``cali_method`` , for example, us
 .. code-block:: shell
 
    $ run_calibration mlir.file \
+       --sq \
        --we \
        --bc \
        --dataset data_path \
@@ -238,7 +242,7 @@ If you choose a fixed calibration method using ``cali_method`` , for example, us
 If you are using the default KLD calibration method, simply remove the ``cali_method`` parameter.
 
 Notes:1.Make sure to specify the processor parameter as bm1684. 2.The ``bc_inference_num`` parameter is the number of data samples required when using the ``bc`` quantization method (these samples will be extracted from the dataset you provide), so the number of images should not be too few.
-3.The ``we`` and ``bc`` methods can be used independently. If you choose only the ``we`` method, simply omit the ``bc`` parameter in the operation. 4. Shape calculation ops will be found and set as float in model_name_shape_ops qtable saved in the current directory, the content of this file can be merged by hand with following mix-precision setting files.
+3.The ``sq``, ``we`` and ``bc`` methods can be used independently. If you choose only the ``we`` method, simply omit the ``sq`` and ``bc`` parameters in the operation. 4. Shape calculation ops will be found and set as float in model_name_shape_ops qtable saved in the current directory, the content of this file can be merged by hand with following mix-precision setting files.
 
 Overview of TPU-MLIR Mixed Precision Quantization
 ==================================================

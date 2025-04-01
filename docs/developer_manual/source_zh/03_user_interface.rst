@@ -295,6 +295,9 @@ run_calibration.py
    * - 无
      - 是
      - 指定mlir文件
+   * - sq
+     - 否
+     - SmoothQuant
    * - we
      - 否
      - 跨层权重均衡
