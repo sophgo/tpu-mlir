@@ -484,6 +484,7 @@ inline void update_addr_1688(uint32_t *cmd, uint64_t coeff_limit,
       if (fix_addr >= addr_v[i].addr &&
           fix_addr < addr_v[i].addr + addr_v[i].size) {
         fix_addr += addr_v[i].offset;
+        break;
       }
     }
     fix_addr |= (9ull << 36);
