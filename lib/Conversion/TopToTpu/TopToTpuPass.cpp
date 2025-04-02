@@ -1249,14 +1249,14 @@ void ConvertTopToTpu::runOnOperation() {
         for (auto user : users) {
           if (isa<top::AddOp>(user)) {
             auto name = module::getName(user).str();
-            if (LoweringConfig::quantize_map.find(name) != LoweringConfig::quantize_map.end() &&
+            if (LoweringConfig::quantize_map.find(name) !=
+                    LoweringConfig::quantize_map.end() &&
                 (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
-                 LoweringConfig::quantize_map[name] == module::Mode::BF16
-                  )) {
-                  mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
-                  op->setAttr("output_int16", tmp);
-                  break;
-                }
+                 LoweringConfig::quantize_map[name] == module::Mode::BF16)) {
+              mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+              op->setAttr("output_int16", tmp);
+              break;
+            }
           }
         }
       }
@@ -1930,6 +1930,18 @@ void ConvertTopToTpu::init_qtable() {
 
     llvm::errs() << "Error, quantize file in [" << line << "]\n";
     assert(false);
+  }
+  for (const auto &entry : LoweringConfig::split_map) {
+    const std::string &key = entry.first;
+    const std::set<std::string> &splitValues = entry.second;
+
+    auto it = LoweringConfig::quantize_map.find(key);
+    if (it != LoweringConfig::quantize_map.end()) {
+      module::Mode oldValue = it->second;
+      for (const auto &newKey : splitValues) {
+        LoweringConfig::quantize_map[newKey] = oldValue;
+      }
+    }
   }
 }
 

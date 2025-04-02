@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Common.h"
+#include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
 #include <future>
 namespace tpu_mlir {
 
@@ -1490,6 +1491,8 @@ protected:
     auto loc_name = module::getName(convOp.getOperation()).str();
     // 1. Input->Reshape+permute+Reshape(reorder the input)
     SmallVector<int64_t> colTensorShape = {n, ic, oh, kh, ow, kw};
+    LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                               std::to_string(id));
     auto reshapeOp = rewriter.create<top::ReshapeOp>(
         NameLoc::get(
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
@@ -1500,6 +1503,8 @@ protected:
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
 
+    LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                               std::to_string(id));
     auto perMuteOp_0 = rewriter.create<top::PermuteOp>(
         NameLoc::get(
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
@@ -1510,13 +1515,16 @@ protected:
     attrs.clear();
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+    LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                               std::to_string(id));
     auto perMuteOp = rewriter.create<top::PermuteOp>(
         NameLoc::get(
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
         RankedTensorType::get({n, oh, ow, ic, kh, kw},
                               inputType.getElementType()),
         ValueRange{perMuteOp_0}, attrs);
-
+    LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                               std::to_string(id));
     auto reshapeOp_2 = rewriter.create<top::ReshapeOp>(
         NameLoc::get(
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
@@ -1524,6 +1532,8 @@ protected:
                               inputType.getElementType()),
         ValueRange{perMuteOp});
     // 2. filter->reshape
+    LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                               std::to_string(id));
     auto reshapeOp_3 = rewriter.create<top::ReshapeOp>(
         NameLoc::get(
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
@@ -1534,6 +1544,8 @@ protected:
     operands.emplace_back(reshapeOp_3);
     // 3. bias->reshape
     if (with_bias) {
+      LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                                 std::to_string(id));
       auto reshapeOp_4 = rewriter.create<top::ReshapeOp>(
           NameLoc::get(
               rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
@@ -1552,6 +1564,8 @@ protected:
     attrs.emplace_back(
         rewriter.getNamedAttr("output_transpose", rewriter.getBoolAttr(false)));
     // 4. matmul
+    LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                               std::to_string(id));
     auto matmulOp = rewriter.create<top::MatMulOp>(
         NameLoc::get(
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
@@ -1561,6 +1575,8 @@ protected:
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 1})));
     // 5. permute
+    LoweringConfig::split_map[loc_name].insert(loc_name + "_" +
+                                               std::to_string(id));
     auto perMuteOp_2 = rewriter.create<top::PermuteOp>(
         NameLoc::get(
             rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
@@ -1913,7 +1929,8 @@ protected:
                                               std::to_string(++id))),
           RankedTensorType::get(new_matmul_shape, outputType.getElementType()),
           operands, op->getAttrs());
-
+      auto matmulOpName = loc_name + "_matmul_" + std::to_string(id);
+      LoweringConfig::split_map[loc_name].insert(matmulOpName);
       if (std::distance(value->user_begin(), value->user_end()) == 1 &&
           isa<top::ReshapeOp, top::SqueezeOp>(*(value->user_begin()))) {
         // trick or temp workaround: op order influence layer group
@@ -1921,11 +1938,15 @@ protected:
             module::getShape((*(value->user_begin()))->getResult(0));
         auto elementType =
             module::getElementType((*(value->user_begin()))->getResult(0));
+        auto idx = id;
         auto reshapeOp = rewriter.create<top::ReshapeOp>(
             NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" +
-                                                std::to_string(id++))),
+                                                std::to_string(idx))),
             RankedTensorType::get(new_reshape_shape, elementType),
             ValueRange{matmulOp});
+        LoweringConfig::split_map[loc_name].insert(loc_name + "_reshape_" +
+                                                   std::to_string(idx));
+        id++;
         rewriter.replaceOp(*(value->user_begin()), reshapeOp);
         rewriter.eraseOp(value);
       } else {
@@ -1938,8 +1959,11 @@ protected:
               RankedTensorType::get(new_reshape_shape,
                                     outputType.getElementType()),
               ValueRange{matmulOp});
+          LoweringConfig::split_map[loc_name].insert(loc_name + "_reshape_" +
+                                                     std::to_string(id));
           rewriter.replaceOp(value, reshapeOp);
         } else {
+          LoweringConfig::split_map[loc_name].insert(matmulOpName);
           rewriter.replaceOp(value, matmulOp);
         }
       }
