@@ -384,7 +384,7 @@ void set8chAddress(Value v, size_t index, int64_t offset, int64_t addr) {
   v.setType(ddrType);
 }
 
-size_t getBytes(Value v) {
+int64_t getRealBytes(Value v) {
   if (v.getType().isa<NoneType>()) {
     return 0;
   }
@@ -393,6 +393,12 @@ size_t getBytes(Value v) {
   auto etype = getStorageType(v);
   int elm_bits = etype.getIntOrFloatBitWidth();
   return align_up(elm_count * elm_bits, (int64_t)8) / 8;
+}
+
+size_t getBytes(Value v) {
+  auto elm_bytes = getRealBytes(v);
+  ASSERT_OP(elm_bytes <= 0xFFFFFFFF, v.getDefiningOp());
+  return (size_t)elm_bytes;
 }
 
 double getDtypeSize(Value v) {

@@ -2664,6 +2664,150 @@ private:
   }
 };
 
+/**
+ * Split the following graph into several branches to prevent the activation
+ * shape from overflowing ui32 due to excessive size.
+ *
+ * matmul -> softmax -> matmul
+ *
+ * matmul shape should be (1, b, row, col)
+ * only support row split first matmul's left tensor for now
+ */
+class SplitHugeMatMulPattern : public OpRewriterPatternEx<top::MatMulOp> {
+public:
+  SplitHugeMatMulPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::MatMulOp>(context, "SplitHugeMatMulPattern",
+                                           benefit) {}
+
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    const uint32_t max_ui32 = 0xFFFFFFFF;
+    auto cur_output = op.getOutput();
+    auto mm_shape = module::getShape(cur_output);
+    if (mm_shape.size() != 4) {
+      return failure();
+    }
+    auto max_bytes = module::getRealBytes(cur_output);
+    top::SoftmaxOp softmax_op = nullptr;
+    softmax_op = dyn_cast<top::SoftmaxOp>(*(cur_output.getUsers().begin()));
+    if (!softmax_op || !softmax_op->hasOneUse() ||
+        softmax_op.getAxis() != (mm_shape.size() - 1)) {
+      return failure();
+    }
+    cur_output = softmax_op.getOutput();
+    max_bytes = std::max<int64_t>(max_bytes, module::getRealBytes(cur_output));
+    auto mm_2_op = dyn_cast<top::MatMulOp>(*(cur_output.getUsers().begin()));
+    if (!mm_2_op || !mm_2_op->hasOneUse()) {
+      return failure();
+    }
+    max_bytes = std::max<int64_t>(max_bytes, module::getRealBytes(cur_output));
+    if (max_bytes <= max_ui32) {
+      return failure();
+    }
+
+    auto mm_2_right = mm_2_op.getRight();
+    auto mm_2_bias = mm_2_op.getBias();
+    auto none = module::getNoneOp(op);
+
+    auto mm_left = op.getInput();
+    auto mm_left_shape = module::getShape(mm_left);
+    auto mm_right = op.getRight();
+    auto mm_bias = op.getBias();
+    rewriter.setInsertionPointAfter(mm_2_op);
+
+    // split row dim
+    int split_dim = 2;
+    int num_splits =
+        std::max<int64_t>(ceiling_func(max_bytes, (int64_t)max_ui32),
+                          (int64_t)module::getCoreNum());
+    int origin_left_row = mm_left_shape[split_dim];
+    int split_left_row = origin_left_row / num_splits;
+    ASSERT_OP(split_left_row > 0, op);
+
+    std::vector<Value> operands;
+    for (int i = 0, rest_rows = origin_left_row; i < num_splits; ++i) {
+      std::vector<int64_t> new_mm_left_shape = mm_left_shape;
+      auto cur_row = std::min(split_left_row, rest_rows);
+      new_mm_left_shape[split_dim] = cur_row;
+
+      int start = i * split_left_row;
+      int end = (i + 1) * split_left_row;
+
+      auto slice_type = module::getTypeLike(op.getInput(), new_mm_left_shape);
+      auto slice_loc =
+          module::getLocLike(mm_left, "_slice_" + std::to_string(i));
+
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(rewriter.getNamedAttr(
+          "axes", rewriter.getI64ArrayAttr({1, 2, 3, 4})));
+      attrs.push_back(rewriter.getNamedAttr(
+          "ends", rewriter.getI64ArrayAttr({mm_left_shape[0], mm_left_shape[1],
+                                            end, mm_left_shape[3]})));
+      attrs.push_back(rewriter.getNamedAttr(
+          "offset", rewriter.getI64ArrayAttr({0, 0, start, 0})));
+      attrs.push_back(rewriter.getNamedAttr(
+          "steps", rewriter.getI64ArrayAttr({1, 1, 1, 1})));
+
+      auto slice_op = rewriter.create<top::SliceOp>(
+          slice_loc, slice_type, ValueRange{mm_left, none, none, none}, attrs);
+
+      std::vector<int64_t> new_mm_shape = module::getShape(op.getOutput());
+      new_mm_shape[split_dim] = cur_row;
+      auto new_mm_loc =
+          module::getLocLike(op.getOutput(), "_split_mm_" + std::to_string(i));
+
+      auto new_mm_type = module::getTypeLike(op.getInput(), new_mm_shape);
+      auto new_mm_op = rewriter.create<top::MatMulOp>(
+          new_mm_loc, new_mm_type, ValueRange{slice_op.getOutput(), mm_right, mm_bias},
+          op->getAttrs());
+
+      auto softmax_attrs = softmax_op->getAttrs();
+      auto new_softmax_loc = module::getLocLike(
+          softmax_op.getOutput(), "_split_softmax_" + std::to_string(i));
+      auto new_softmax_type =
+          module::getTypeLike(softmax_op.getInput(), new_mm_shape);
+      auto softmax_op = rewriter.create<top::SoftmaxOp>(
+          new_softmax_loc, new_softmax_type, ValueRange{new_mm_op.getOutput()},
+          softmax_attrs);
+
+      std::vector<int64_t> new_mm_2_shape =
+          module::getShape(mm_2_op.getOutput());
+      new_mm_2_shape[split_dim] = cur_row;
+      auto new_mm_2_loc = module::getLocLike(mm_2_op.getOutput(),
+                                             "_split_mm2_" + std::to_string(i));
+      auto new_mm_2_type =
+          module::getTypeLike(mm_2_op.getInput(), new_mm_2_shape);
+      auto mm_2_attr = mm_2_op->getAttrs();
+
+      auto new_mm_2_op = rewriter.create<top::MatMulOp>(
+          new_mm_2_loc, new_mm_2_type,
+          ValueRange{softmax_op.getOutput(), mm_2_right, mm_2_bias}, mm_2_attr);
+
+      operands.push_back(new_mm_2_op.getOutput());
+      rest_rows -= cur_row;
+    }
+
+    std::vector<NamedAttribute> concat_attrs;
+    std::vector<int64_t> concat_shape = {mm_left_shape[0], mm_left_shape[1],
+                                         mm_left_shape[2],
+                                         module::getShape(mm_2_right)[3]};
+
+    auto concat_type = module::getTypeLike(mm_2_op.getOutput(), concat_shape);
+
+    concat_attrs.emplace_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(split_dim)));
+
+    auto concat_op = rewriter.create<top::ConcatOp>(
+        mm_2_op->getLoc(), concat_type, operands, concat_attrs);
+
+    mm_2_op.replaceAllUsesWith(concat_op.getOutput());
+    rewriter.eraseOp(mm_2_op);
+    rewriter.eraseOp(softmax_op);
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 } // namespace bm1684x
 
 namespace top {
@@ -2677,8 +2821,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner,
             //  ConcatWithReduceSum2SliceWithAdd,
             ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
-            ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt>(
-          patterns->getContext(), 8);
+            ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt,
+            SplitHugeMatMulPattern>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir

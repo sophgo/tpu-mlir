@@ -5362,7 +5362,9 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<MatMulRequantIntFusion>(ctx, 10);
-  patterns->add<LargePadConvPattern, ConvToMatMulPattern>(ctx, 9);
+  patterns
+      ->add<LargePadConvPattern, ConvToMatMulPattern>(
+          ctx, 9);
   // clang-format off
   patterns->add<MatMulHdimBatchPattern,
                 MatMulRemoveReshapePattern,

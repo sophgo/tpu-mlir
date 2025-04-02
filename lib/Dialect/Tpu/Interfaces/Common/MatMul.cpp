@@ -535,7 +535,8 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
       right_num_dims == 2) {
     // GROUP_SMALL_C
     return success();
-  } else if (!module::isTrain() && left_num_dims == 3 && right_num_dims == 3) {
+  } else if (!module::isTrain() && left_num_dims == 3 && right_num_dims == 3)
+  {
     // (1, M, K) x (1, K, N)
     return success();
   } else if (left_num_dims == 4 && right_num_dims == 4 && getHdimIsBatch()) {
