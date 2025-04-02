@@ -67,7 +67,7 @@ public:
     } else if (post_type == "bnr") {
       insertDepackRawOp(builder);
     } else if (post_type == "mmap2rgbmap") {
-        insertMmap2RgbmapOp(builder);
+      insertMmap2RgbmapOp(builder);
     }
     module::updateModuleTypes();
     module::setPostprocess(post_type);
@@ -888,29 +888,8 @@ void AddPostprocessPass::insertYolosegOp(OpBuilder &builder) {
   auto reshape_op1 = builder.create<ReshapeOp>(new_loc, new_type,
                                                squeeze_op9.getOutput(), attrs);
 
-  attrs.clear();
   operands.clear();
   operands.push_back(slice_op8.getOutput());
-  operands.push_back(reshape_op1.getOutput());
-  operands.push_back(none);
-  new_type =
-      module::getTypeLike(predication_op.getOutput(), {p_shape[2], mh * mw});
-  new_loc = NameLoc::get(builder.getStringAttr("yolo_seg_post_matmul1"));
-  auto matmul_op1 =
-      builder.create<MatMulOp>(new_loc, new_type, operands, attrs);
-
-  new_loc = NameLoc::get(builder.getStringAttr("yolo_seg_post_sigmoid1"));
-  auto sigmoid_op1 = builder.create<SigmoidOp>(new_loc, new_type,
-                                               matmul_op1.getOutput(), attrs);
-
-  new_type =
-      module::getTypeLike(predication_op.getOutput(), {p_shape[2], mh, mw});
-  new_loc = NameLoc::get(builder.getStringAttr("yolo_seg_post_reshape2"));
-  auto reshape_op2 = builder.create<ReshapeOp>(new_loc, new_type,
-                                               sigmoid_op1.getOutput(), attrs);
-
-  operands.clear();
-  operands.push_back(reshape_op2.getOutput());
   operands.push_back(none);
   operands.push_back(none);
   operands.push_back(none);
@@ -919,14 +898,35 @@ void AddPostprocessPass::insertYolosegOp(OpBuilder &builder) {
       builder.getNamedAttr("offset", builder.getI64ArrayAttr({0, 0, 0})));
   attrs.push_back(
       builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1, 1})));
-  attrs.push_back(builder.getNamedAttr(
-      "ends", builder.getI64ArrayAttr({max_boxes, mh, mw})));
-  new_type =
-      RankedTensorType::get({max_boxes, mh, mw},
-                            module::getElementType(predication_op)); // 8400 1
-  new_loc = NameLoc::get(builder.getStringAttr("masks_uncrop_uncompare"));
-  auto masks_uncrop_uncompare_op =
+  attrs.push_back(
+      builder.getNamedAttr("ends", builder.getI64ArrayAttr({max_boxes, nm})));
+  new_type = RankedTensorType::get({max_boxes, nm},
+                                   module::getElementType(predication_op));
+  new_loc = NameLoc::get(builder.getStringAttr("yolo_seg_post_slice9"));
+  auto yolo_seg_post_slice9 =
       builder.create<SliceOp>(new_loc, new_type, operands, attrs);
+
+  attrs.clear();
+  operands.clear();
+  operands.push_back(yolo_seg_post_slice9.getOutput());
+  operands.push_back(reshape_op1.getOutput());
+  operands.push_back(none);
+  new_type =
+      module::getTypeLike(predication_op.getOutput(), {max_boxes, mh * mw});
+  new_loc = NameLoc::get(builder.getStringAttr("yolo_seg_post_matmul1"));
+  auto matmul_op1 =
+      builder.create<MatMulOp>(new_loc, new_type, operands, attrs);
+
+  attrs.clear();
+  new_loc = NameLoc::get(builder.getStringAttr("yolo_seg_post_sigmoid1"));
+  auto sigmoid_op1 = builder.create<SigmoidOp>(new_loc, new_type,
+                                               matmul_op1.getOutput(), attrs);
+
+  new_type =
+      module::getTypeLike(predication_op.getOutput(), {max_boxes, mh, mw});
+  new_loc = NameLoc::get(builder.getStringAttr("masks_uncrop_uncompare"));
+  auto masks_uncrop_uncompare_op = builder.create<ReshapeOp>(
+      new_loc, new_type, sigmoid_op1.getOutput(), attrs);
 
   operands.clear();
   operands.push_back(gather_op1.getOutput());
