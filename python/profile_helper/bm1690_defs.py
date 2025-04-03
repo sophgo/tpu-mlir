@@ -723,7 +723,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
         "LMEM->DDR": "St",
         "LMEM->LMEM": "Mv"
     }
-    functinName = dmaFunctionNameDict[(cmd_type, cmd_special_function)]
+    functinName = dmaFunctionNameDict.get((cmd_type, cmd_special_function), functionType)
     if functionType != "unknown" and cmd_special_function == 0 and cmd_type <= 1:
         functinName = "tensor{}".format(direction_dict.get(direction, ""))
 
