@@ -1343,6 +1343,14 @@ public:
     int buffer_size0 = align_up(oc, 32) * ic * kh * kw * 2;
     buffer_size0 = align_up(buffer_size0, 4096);
     buffer_size0 += align_up(ic, 32) * oc * kh * kw * 2;
+    if(module::isBM1684XFamily()){
+      auto grad_out_shape = module::getI64Array(ConvBwdOp.getGradOutShape());
+      int on             = grad_out_shape->at(0);
+      int oc             = grad_out_shape->at(1);
+      int oh             = grad_out_shape->at(2);
+      int ow             = grad_out_shape->at(3);
+      buffer_size0      += align_up(on, 32) * oc * oh * ow * 2;
+    }
     auto type = module::getStorageType(ConvBwdOp.getInput());
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size0};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
