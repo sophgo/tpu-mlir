@@ -9,7 +9,6 @@ import os
 import subprocess
 import logging
 import utils.pattern_counter
-import multiprocessing
 import traceback
 import sys
 
@@ -643,6 +642,9 @@ def codegen_options(model: str,
 
 ## ========================================
 ## build ppl src code
+## ========================================
+''' if build ppl
+import multiprocessing
 ppl_lock = multiprocessing.Lock()
 
 def get_latest_file_mtime(directory):
@@ -683,7 +685,7 @@ def build_ppl(
         finally:
             os.chdir(ori_dir)
 
-
+'''
 ## ========================================
 
 
@@ -790,10 +792,13 @@ def mlir_to_model(
         if bmodel_path.endswith(".bmodel") and not dynamic:
             # The suffix of the profile file is not consistent.
             # bm1684 uses ".dat", bm1684x uses ".txt".
-            _os_system(["mv compiler_profile_0.[td][xa]t",bmodel_path + ".compiler_profile_0.txt",],log_level=log_level,)
-            _os_system(["mv net_0.profile", bmodel_path + ".net_0.profile"],log_level=log_level)
+            if os.path.exists("compiler_profile_0.[td][xa]t"):
+                _os_system(["mv compiler_profile_0.[td][xa]t",bmodel_path + ".compiler_profile_0.txt",],log_level=log_level,)
+            if os.path.exists("net_0.profile"):
+                _os_system(["mv net_0.profile", bmodel_path + ".net_0.profile"],log_level=log_level)
             tensor_loc = bmodel_path + ".json"
-            shutil.copy(tensor_loc, os.path.join(context_dir, "tensor_location.json"))
+            if os.path.exists(tensor_loc):
+                shutil.copy(tensor_loc, os.path.join(context_dir, "tensor_location.json"))
     except RuntimeError:
         pass
 
@@ -947,12 +952,14 @@ def origin_mlir_to_bmodel(
     quant_output_bf16: bool = False,
     dynamic: bool = False,
     debug: bool = False,
+    skip_top: bool = False,
 ):
     if not bmodel_name.endswith(".bmodel"):
         raise RuntimeError(f"bmodel_name should endswith .bmodel:{bmodel_name}")
     options = []
-    new_options = top_opt_options()
-    options.extend(new_options)
+    if not skip_top:
+        new_options = top_opt_options()
+        options.extend(new_options)
     new_options = lowering_options(mode=mode,
                                    chip=chip,
                                    num_device=num_device,
