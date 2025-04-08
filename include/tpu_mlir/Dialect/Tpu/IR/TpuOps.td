@@ -1992,6 +1992,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   let extraClassDeclaration = [{
     matmul_attr_t parseParam();
     matmul_attr_t dynparseParam();
+    uint64_t getL2BufferSize();
     void assign_fw_param(void *param);
   }];
 }

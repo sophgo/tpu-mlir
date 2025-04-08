@@ -136,6 +136,48 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   return p;
 }
 
+uint64_t tpu::MatMulOp::getL2BufferSize() {
+  // calculate L2SRAM buffer size
+  auto p = parseParam();
+  fc_global_spec_t spec = {0};
+  memset(&spec, 0, sizeof(spec));
+  spec.if_getting_buffer_size = true;
+  uint64_t buffer_size = 0;
+  spec.buffer_size_ptr = &buffer_size;
+  spec.if_relu = p.do_relu;
+  spec.relu_limit = p.relu_limit;
+  spec.have_bias = p.with_bias;
+  spec.requant_mode = -1;
+  spec.R_transpose = p.right_transpose;
+  if (module::isUniformQuantized(getInput())) {
+    spec.rshift = 0;
+    spec.is_asymmetric = 1;
+    spec.rzp_is_const = 1;
+    spec.rzp_const_val = p.right_zp;
+    spec.izp_const_val = p.input_zp;
+    if (module::isUniformQuantized(getOutput())) {
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
+      assert(rshift_v->size() == 1);
+      assert(multiplier_v->size() == 1);
+      spec.requant_mode = static_cast<int>(getQuantMode());
+      spec.mul_val = multiplier_v->at(0);
+      spec.shift_val = -rshift_v->at(0);
+      auto output_type = module::getUniformQuantizedType(getOutput());
+      spec.offset_val = output_type.getZeroPoint();
+      spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+    }
+  }
+  auto input_spec = BM168x::get_input_spec(getOperation());
+  auto output_spec = BM168x::get_output_spec(getOperation());
+  // don't check instruction address when getting buffer size
+  BM168x::instance()->dl_set_cmd_check_param(nullptr, false);
+  BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
+                           sizeof(spec), input_spec->data(),
+                           output_spec->data());
+  return buffer_size;
+}
+
 matmul_attr_t tpu::MatMulOp::dynparseParam() {
   std::vector<int64_t> in0_shape = module::getShape(getInput());
   std::vector<int64_t> in1_shape = module::getShape(getRight());
@@ -670,7 +712,19 @@ bool tpu::MatMulOp::support_multi_core() {
   if (!module::isBM1690Family()) {
     return false;
   }
+
   auto p = parseParam();
+
+  auto l2_buffer_size = getL2BufferSize();
+  int64_t l2memSize = BM168x::L2_SRAM_SIZE;
+  auto core_num = module::getCoreNum();
+  const int MAX_CORES = 8;
+  l2memSize = (l2memSize / MAX_CORES) * core_num;
+
+  if (l2_buffer_size > l2memSize) {
+    return false;
+  }
+
   if (p.hdim_is_batch || p.batch != 1 || p.do_relu ||
       module::getMode() == module::Mode::F8E4M3 ||
       module::getMode() == module::Mode::F8E5M2 ||
