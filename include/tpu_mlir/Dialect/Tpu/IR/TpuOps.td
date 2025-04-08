@@ -1125,7 +1125,32 @@ def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale",
   [DeclareOpInterfaceMethods<TypeInterface>,DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "MeanStdScale, it's for preprocess.";
   let description = [{
+    1.Op Introduction
     for preprocess, do multiplier&rshift quantize.
+
+    2.Math formula
+    ```math
+            output = (input - mean) / std * scale + zero_points
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+    f32_param(w.): a weight tensor parameter of type float32.;
+
+    4.attributes
+    quant_mode: the mode or method used for quantization during the requantization operation.;
+    customization_format: custom format for the input data.;
+    channel_order: The order of color channels in the input tensor.;
+    sign: if output is signed.;
+    scale: scalar.;
+    std: standard deviation values for each channel.;
+    mean: mean values to subtract from each channel for normalization.;
+    zero_points: zero point values for each channel.;
+    resize_dims: resize the input tensor' dimensions.;
+    multi: used during the matrix multiplication operation.;
+    rshift: right shift values corresponding to each input tensor.;
+    offset: Scalar;
+    rounding_mode: The rounding method to use during quantization.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -1263,7 +1288,16 @@ def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
 def Tpu_Mmap2RgbmapOp: Tpu_Op<"Mmap2Rgbmap"> {
   let summary = "Postprocess for isp mmap2rgbmap.";
   let description = [{
+    1.Op Introduction
     Postprocess for isp mmap2rgbmap.
+
+    2.Math formula
+    ```math
+        output = Postprocess(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
   }];
   let arguments = (
     ins AnyTensor:$input
@@ -1611,7 +1645,21 @@ def Tpu_ActiveOp: Tpu_Op<"Active",[
   let summary = "Active operator";
 
   let description = [{
-     The operator for activation function
+    1.Op Introduction
+    The operator for activation function.
+
+    2.Math formula
+    ```math
+            output = Active(input),for example:Relu, Silu...
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    mode: the specific activation mode or function to be applied by the operator.;
+    coeffs: an array of float64 values as coefficients for activation functions.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -1667,7 +1715,22 @@ def Tpu_ShapeClipOp: Tpu_Op<"ShapeClip", [
     ShapeProducer, ShapeConsumer]> {
   let summary = "ShapeClip operation running on CPU";
   let description = [{
-     The operator limits the given input to a certain range.
+    1.Op Introduction
+    The operator limits the given input to a certain range.
+
+    2.Math formula
+    ```math
+            output[i] = min      if input[i] < min;
+                        input[i] if input[i] >= min && input[i] <= max;
+                        max      if input[i] > max;
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    min: the minimum value that the elements of the input tensor can take.;
+    max: the maximum value that the elements of the input tensor can take.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -1899,8 +1962,26 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16", [
   let summary = "LutBF16 operator";
 
   let description = [{
+
+    1.Op Introduction
     input and output is BF16, input BF16 split as exponent and mantissa,
     get output by exponent table and mantissa table
+    BF16 mode, lookup table in index [0-255], y[i] = table(x[i]).
+
+    2.Math formula
+    ```math
+            output[i] = table(input[i])
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+    table(w.): map input values to corresponding output values.;
+    mantissa(w.): the mantissa component of the lookup table weights.;
+
+    4.attributes
+    max_range: the maximum value in the range of valid input values.;
+    min_range: the minimum value in the range of valid input values.;
+    lut_mode: the mode of operation for the lookup table.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -2002,10 +2083,27 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
   let summary = "w8a16 / w4a16 matmul operator";
 
   let description = [{
+    1.Op Introduction
     The special matrix multiplication designed for LLM Linear Layer.
     Weight is saved in int8 with f16 per-channel quant scale.
 
-    y_f16 = x_f16 x (quantized_w.to(f16) * scale_f16)
+    2.Math formula
+    ```math
+            y_f16 = x_f16 x (quantized_w.to(f16) * scale_f16)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    weight(w.): weight tensor.;
+    scale(w.): scalar.;
+    zp(w.): zero points for weight quant.;
+    bias(w.): an optional tensor can be added to the result of the matrix multiplication. ;
+
+    4.attributes
+    weight_bits: the bit-width used to represent the weight values.;
+    sign: if output is signed.;
+    w_transpose: whether the weight tensor should be transposed;
+    q_group_size: the group size for per-group quantization.;
   }];
 
   let arguments = (ins
@@ -2097,9 +2195,34 @@ def Tpu_FAttentionOp: Tpu_Op<"FAttention", [
   let summary = "Flash Attention operator";
 
   let description = [{
+    1.Op Introduction
     Performs a two dimensional matrix multiplication. This allows both inputs to
     be activations, rather than reserving weights as an attribute in the
     FULLY_CONNECTED operator.
+
+    2.Math formula
+    ```math
+        Attention(Q, K, V) = softmax(((Q x K^T) / \sqrt{d_k}) + musk) x V;
+        head_i = Attention(Q x queries_weight, K x keys_weight, V x values_weight);
+        MultiHead(Q, K, V) = Concat(head_1, head_2, ..., head_h) x out_weight + out_bias;
+        output = MultiHead(input x queries_weight + queries_bias, input x keys_weight + keys_bias, input x values_weight + values_bias).
+    ```
+
+    3.activation and weight
+    queries(act.): input tensor.;
+    keys(act.): The keys are derived from the input data and help the model determine which parts of the input are relevant for each query.;
+    values(act.): The values are the actual information that will be aggregated based on the attention scores computed from the queries and keys.;
+    mask(w.): apply masking during the attention computation, Masks can prevent the model from attending to certain positions in the input.;;
+    buffer(w.): temporary storage of intermediate results or states during computation.;
+
+    4.attributes
+    scale: scalar.;
+    batch: batch size.;
+    q_head: the number of query heads in the multi-head attention mechanism.;
+    kv_head: the number of key/value heads.;
+    dim: the size of the input features or the size of the query, key, and value vectors.;
+    mq: a dimension or a modifier related to the query matrix.;
+    mk: the key matrix.;
   }];
 
   let arguments = (ins
@@ -2241,9 +2364,21 @@ def Tpu_ShapeReshapeOp:Tpu_Op<"ShapeReshape",[
   ShapeProducer, ShapeConsumer]> {
   let summary = "ShapeReshape operation";
   let description = [{
+    1.Op Introduction
     Returns a tensor with the same type/values as the input, with a new shape
     specified by the shape argument. Reshape may operate on tensors of any rank.
     No data conversion happens during a reshape operation.
+
+    2.Math formula
+    ```math
+        output = ShapeReshapeOp(input, shape)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    shape: 0: keep dim from input; -1: left dim from input.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2256,7 +2391,17 @@ def Tpu_ShapeAssignOp: Tpu_Op<"ShapeAssign", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "ShapeAssign operator";
   let description = [{
+    1.Op Introduction
     reshape for dynamic shape
+
+    2.Math formula
+    ```math
+        output = ShapeAssign(input, shape)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    shape(w.): 0: keep dim from input; -1: left dim from input.;
   }];
 
   let arguments = (ins
@@ -2295,7 +2440,19 @@ def Tpu_ShapeReverseOp:Tpu_Op<"ShapeReverse", [
   ShapeProducer,ShapeConsumer]> {
   let summary = "ShapeReverse operation";
   let description = [{
+    1.Op Introduction
     Reverse on input
+
+    2.Math formula
+    ```math
+        output = ShapeReverse(input, axis)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    axis: the dimension of reverse;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2396,8 +2553,23 @@ def Tpu_LoadOp:Tpu_Op<"Load",
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
+    1.Op Introduction
     load input or weight from gmem to lmem;
     if do_bcast, [1,1,1,w] will load to [1,npu,1,w]
+
+    2.Math formula
+    output = Load(input, do_bcast, use_3ic_optimize, lmem_type, support_compress);
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    do_bcast: whether broadcasting.;
+    use_3ic_optimize: whether the 3-IC (Three Input Channels) optimization;
+    lmem_type: the type of local memory (lmem) to be used when loading data from global memory (gmem).;
+    ginfo: associated with layer grouping information.;
+    support_compress: whether compression is supported for the load operation.;
+    compress_info: used in conjunction with support_compress to specify details like compression schemes, ratios, or any relevant metadata.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2416,7 +2588,18 @@ def Tpu_LoadToL2MOp:Tpu_Op<"LoadToL2M",
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
+    1.Op Introduction
     load weight from gmem to l2mem;
+
+    2.Math formula
+    output = Load(input, id, l2m_addr);
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    id: differentiate or index various instances of the load operation, ensuring correctly matched.;
+    l2m_addr: the address or offset within the local L2 memory (l2mem).;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2434,6 +2617,21 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Store operation";
   let description = [{
+    1.Op Introduction
+    store weight from gmem to l2mem;
+
+    2.Math formula
+    output = store(input, input_gmem, ginfo, support_compress, compress_info, l2m_addr)
+
+    3.activation and weight
+    input(act.): input tensor;
+    input_gmem(w.): the input tensor containing the weights stored in global memory (gmem).;
+
+    4.attributes
+    ginfo: associated with layer grouping information.;
+    support_compress: whether compression is supported for the load operation.;
+    compress_info: used in conjunction with support_compress to specify details like compression schemes, ratios, or any relevant metadata.;
+    l2m_addr: the address or offset within the local L2 memory (l2mem).;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2638,8 +2836,9 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
 
     3.activation and weight
     input(act.): input tensor;
-    quant(act.): This attribute represents the quantization parameters tensor used during the dequantization process.
-                 It typically includes scale factors that define how the 8-bit values are mapped back to higher precision formats. ;
+    quant(act.): This attribute represents the quantization parameters tensor.
+                 It contains the values used for requantization, such as multipliers and shifts,
+                 which are specific to each axis or channel.;
 
     4.attribute
     lshift: a left shift operation applied to the dequantized data after scaling.;
@@ -2661,7 +2860,31 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
 def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   let summary = "Group operation";
   let description = [{
+    1.Op Introduction
     Make ops in one group to inferece by local mem
+
+    2.Math formula
+        output = Group(nsecs, hsecs, dsecs, wsecs, csecs; swpipl_stage_num, group_type, flow, self_up_overlap_op, self_down_overlap_op, other_up_overlap_op, other_down_overlap_op, support_compress, run_core_id, core_slice_ncdhw)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    nsecs: the number of sections in the "n" (batch or number) dimension.;
+    hsecs: the number of sections in the "h" (height) dimension.;
+    dsecs: the number of sections in the "d" (depth) dimension.;
+    wsecs: the number of sections in the "w" (width) dimension.;
+    csecs: the number of sections in the "c" (channel) dimension.;
+    swpipl_stage_num: the number of stages in the pipeline, which related to swappable operations or pipelined processing.;
+    group_type: the type of the grouping strategy.;
+    flow: store both negative timestep indices and positive operation identifiers.;
+    self_up_overlap_op: overlapped in the upward (or previous) direction within the same group.;
+    self_down_overlap_op: overlapped in the downward (or subsequent) direction within the same group.;
+    other_up_overlap_op: Holds the operation identifiers in other groups overlapping in the upward direction.;
+    other_down_overlap_op: Holds the operation identifiers in other groups overlapping in the downward direction.;
+    support_compress: whether compression is supported for the load operation.;
+    run_core_id: an array of core IDs for running.;
+    core_slice_ncdhw: the tensor's dimensions (n, c, d, h, w) are partitioned.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -2693,9 +2916,16 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
 def Tpu_GroupParallelOp : Tpu_BaseOp<"GroupParallel"> {
   let summary = "Mutiple regions run in parallel.";
   let description = [{
+    1.Op Introduction
     This operation is composed of numerous regions, with each region corresponding
     to a subgraph. These subgraphs share identical computational patterns and are
     distributed across various cores of a multi-core TPU for processing.
+
+    2.Math formula
+        output = GroupParallel(input)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
   }];
   let arguments = (ins Variadic<AnyRankedTensor>:$inputs);
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
@@ -2706,7 +2936,17 @@ def Tpu_GroupParallelOp : Tpu_BaseOp<"GroupParallel"> {
 def Tpu_CoreBeginOp:Tpu_BaseOp<"CoreBegin"> {
   let summary = "Begin op parallel to multi cores";
   let description = [{
+    1.Op Introduction
     Begin of pattern to multi cores
+
+    2.Math formula
+        output = CoreBegin(input, pattern)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    pattern: the core operation pattern used for initializing parallel execution across multiple cores.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -2719,7 +2959,17 @@ def Tpu_CoreBeginOp:Tpu_BaseOp<"CoreBegin"> {
 def Tpu_CoreEndOp:Tpu_BaseOp<"CoreEnd"> {
   let summary = "End op parallel to multi cores";
   let description = [{
+    1.Op Introduction
     End of pattern to multi cores
+
+    2.Math formula
+        output = CoreEnd(input, pattern)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    pattern: the core operation pattern used for initializing parallel execution across multiple cores.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -2732,7 +2982,18 @@ def Tpu_CoreEndOp:Tpu_BaseOp<"CoreEnd"> {
 def Tpu_CoreParallelOp:Tpu_BaseOp<"CoreParallel"> {
   let summary = "Parallel execution region in multi cores";
   let description = [{
+    1.Op Introduction
     The ops in one parallel should run in parallel.
+
+    2.Math formula
+        output = CoreParallel(input, offset, size)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    offset: scalar;
+    size: the number of elements.;
   }];
   let arguments = (ins
     Variadic<AnyTensorOrNone>:$inputs,
@@ -2798,7 +3059,14 @@ def Tpu_SplitOp:Tpu_BaseOp<"Split"> {
 def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
   let summary = "Join tensor to continues pieces";
   let description = [{
+    1.Op Introduction
     The ops in one parallel should run in parallel.
+
+    2.Math formula
+        output = concat(input)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs
@@ -2809,7 +3077,20 @@ def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
 def Tpu_DevBeginOp:Tpu_BaseOp<"DevBegin"> {
   let summary = "Begin distribution tensors to multi device";
   let description = [{
+    1.Op Introduction
     Tensors split to distributed device
+
+    2.Math formula
+        output = DevBegin(inputs, pattern, begin_methods, num_head, done)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    pattern: the core operation pattern used for initializing parallel execution across multiple cores.;
+    begin_methods: an array of strategies used to begin the distribution process across devices.;
+    num_head: the number of primary channels that are processed first or in parallel.;
+    done: a flag whether the distribution initialization process is completed.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -2827,7 +3108,18 @@ def Tpu_DevBeginOp:Tpu_BaseOp<"DevBegin"> {
 def Tpu_DevEndOp:Tpu_BaseOp<"DevEnd"> {
   let summary = "End distribution tensors from outputs";
   let description = [{
-    Tensors from distributed device connect together
+    1.Op Introduction
+    Tensors from distributed device connect together.
+
+    2.Math formula
+        output = DevBegin(inputs, pattern, begin_methods, num_head, done)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    pattern: the core operation pattern used for initializing parallel execution across multiple cores.;
+    end_methods: an array of strategies used to end the distribution process across devices.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -2843,6 +3135,14 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield",
   [Terminator, HasParent<"GroupOp, CoreParallelOp, IfOp, LoopOp, GroupParallelOp">]> {
   let summary = "Yield values to parent operation";
   let description = [{
+    1.Op Introduction
+    yields values to its parent operation.
+
+    2.Math formula
+        output_i = input_i i = 1, 2, ..., N
+
+    3.activation and weight
+    operands(act.): a variadic number of input tensors.;
   }];
 
   let arguments = (ins Variadic<AnyTensor>:$operands);
@@ -2996,8 +3296,18 @@ def Tpu_ShapePackOp:Tpu_Op<"ShapePack", [
     ShapeProducer, ShapeConsumer]> {
   let summary = "Shape Concatate operation";
   let description = [{
-  Concatenates the given sequence of seq tensors in the given dimension.
-  All tensors must either have the same shape (except in the concatenating dimension) or be empty.
+    1.Op Introduction
+    Concatenates the given sequence of seq tensors in the given dimension.
+    All tensors must either have the same shape (except in the concatenating dimension) or be empty.
+
+    2.Math formula
+    output = ShapePack(input, axis)
+
+    3.activation and weight
+    inputs(act.): input tensor;
+
+    4.attribute
+    axis: the dimension of the input tensor.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -3010,7 +3320,17 @@ def Tpu_ShapePowOp : Tpu_Op<"ShapePow" , [
     ShapeProducer, ShapeConsumer]> {
   let summary = "ShapePow operation running on CPU";
   let description = [{
-    output = input ^ n
+    1.Op Introduction
+    perform an element-wise power calculation on the input tensor.
+
+    2.Math formula
+        output = input ^ n
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    exponent:;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -3028,7 +3348,19 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
   let summary = "MulShift operator";
 
   let description = [{
-      Y = int8(X-zx) * multiplier >> rshift + zy)
+    1.Op Introduction
+    performs an element-wise multiplication of the input tensor (after adjusting for a zero-point offset)
+
+    2.Math formula
+        output = int8(input-zx) * multiplier >> rshift + zy
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
+    rshift: the number of bits to right-shift the quantized values.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (
@@ -3363,7 +3695,24 @@ def Tpu_ShapeSliceOp: Tpu_Op<"ShapeSlice", [
   ]> {
   let summary = "ShapeSlice operator";
   let description = [{
+    1.Op Introduction
     Slice Operation on shape-type tensor.
+
+    2.Math formula
+    ```math
+            output[i] = input[offset[j] : ends[j] : steps[j]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    offsetT(w.): the starting indices for each slice along the specified axes.;
+    endsT(w.): the ending indices for each slice along the specified axes.;
+    stepsT(w.): the step sizes for each slice along the specified axes.;
+
+    4.attribute
+    offset: An array of the starting indices for slicing along each axis.;
+    steps: An array of the step sizes for slicing along each axis.;
+    ends: An array of the ending indices for slicing along each axis.;
   }];
 
   let arguments = (ins
@@ -3387,7 +3736,17 @@ def Tpu_ShapeUnsqueezeOp: Tpu_Op<"ShapeUnsqueeze", [
   let summary = "Onnx-Style ShapeUnsqueeze operator";
 
   let description = [{
+    1.Op Introduction
     ShapeUnsqueeze Operation on input.
+
+    2.Math formula
+        output = ShapeUnsqueeze(input, axes)
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    axes: An array of the axes along which to perform the slicing operation.;
   }];
 
   let arguments = (ins
@@ -3403,7 +3762,17 @@ def Tpu_ShapeSqueezeOp: Tpu_Op<"ShapeSqueeze", [
   let summary = "Onnx-Style ShapeSqueeze operator";
 
   let description = [{
+    1.Op Introduction
     ShapeSqueeze Operation on input.
+
+    2.Math formula
+        output = ShapeSqueeze(input, axes)
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    axes: An array of the axes along which to perform the slicing operation.;
   }];
 
   let arguments = (ins
@@ -3658,7 +4027,34 @@ def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
   let summary = "3D deconvolution operator";
 
   let description = [{
+    1.Op Introduction
     "Perform 3D deconvolution operation."
+
+    2.Math formula
+    ```math
+        O(n, d, h, w) = \sum_{c=0}^{C_{\text{in}}-1} \sum_{k_d=0}^{K_d-1} \sum_{k_h=0}^{K_h-1} \sum_{k_w=0}^{K_w-1}I\big(n, c, d' \, , h' \, , w'\big) \times F\big(c, :, k_d, k_h, k_w\big)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    filter(w.): the learnable weights of the convolution 2d operation.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    strides: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.;
+    group: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
+    dilations: controls the spacing between the kernel points;
+    output_padding: The value can be provided as a single integer or a tuple, allowing for different padding values for height and width.;
+    dynweight_reorderd: whether the weights (filters) should be reordered dynamically.;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    with_bias: whether to include a bias term in the convolution operation.;
+    multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
+    rshift: the number of bits to right-shift the quantized values.;
+    quant_mode: It determines how the output tensor should be quantized.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -3951,8 +4347,23 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Tile operation";
   let description = [{
+    1.Op Introduction
     Returns a tensor with the same type as the input, with a new shape
     specified by the shape argument.
+
+    2.Math formula
+    ```math
+            output[i_1, i_2, i_3,...i_k] = input[i_1 mod d_1, i_2 mod d_2, i_3 mod d_3,..., i_k mod d_k]
+    ```
+    where d_j represents the corresponding dimension size of the input tensor after tiling.
+
+    3.activation and weight
+    input(act.): input tensor.;
+    tileT(w.): how many times to replicate the input tensor along each dimension.;
+    buffer(w.): temporary storage of intermediate results or states during the computation.;
+
+    4.attributes
+    tile: the number of times to replicate the input tensor along each dimension.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3970,7 +4381,22 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Gather operator";
   let description = [{
+    1.Op Introduction
     Perform Gather operation on the given axis.
+
+    2.Math formula
+    ```math
+            output = input[indices]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    indices(w.): the indices of the elements to be gathered from the input tensor.;
+    buffer(w.): temporary storage of intermediate results or states during the computation.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
+    if_neg_index: how negative indices should be handled.;
   }];
 
   let arguments = (ins
@@ -3988,7 +4414,22 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "GatherElements operator";
   let description = [{
+    1.Op Introduction
     Perform GatherElements operation on the given axis.
+
+    2.Math formula
+    ```math
+            output[i_1, i_2, i_3,...i_k] = input[i_1, i_2, i_3,..., indices[i_k]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    indices(w.): the indices of the elements to be gathered from the input tensor.;
+    indices_coeff(w.): a scaling or modifying factor for the indices.;
+    buffer(w.): temporary storage of intermediate results or states during the computation.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
   }];
 
   let arguments = (ins
@@ -4006,7 +4447,21 @@ def Tpu_GatherNDOp: Tpu_Op<"GatherND", [
   DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "GatherND operator";
   let description = [{
+    1.Op Introduction
     This operator is the inverse of ScatterND.
+
+    2.Math formula
+    ```math
+            output_i = input[indices_i]
+    ```
+
+    3.activation and weight
+    input_data(act.): input tensor.;
+    indices(w.): which elements to gather from the input tensor.;
+
+    4.attributes
+    indice_dims: the number of dimensions in the indices tensor.;
+    batch_dims: the number of batch dimensions in the input tensor.;
   }];
 
   let arguments = (ins
@@ -4026,8 +4481,24 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   InOutSameShape]> {
   let summary = "PReluOp operator";
   let description = [{
-     f(x) = slope * x   for x < 0
-     f(x) = x           for x >= 0
+    1.Op Introduction
+    Parametric Rectified Linear Unit is an activation function.
+
+    2.Math formula
+    ```math
+            f(x) = slope * x   for x < 0
+            f(x) = x           for x >= 0
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    slope(w.): the activation function for negative input values.;
+
+    4.attributes
+    rshift: the number of bits to right-shift the quantized values.;
+    rshift_pos: This attribute defines the right shift for the positive output values during quantization.;
+    multiplier_pos: This parameter specifies the multiplier for the positive part of the output, used in the context of quantization.;
+    ginfo: associated with layer grouping information.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -4045,7 +4516,18 @@ def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "generic cpu operator";
   let description = [{
+    1.Op Introduction
     Generic Cpu Op.
+
+    2.Math formula
+    output = GenericCpu(inputs, param)
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    cpu_op_name: the name of the CPU-specific operator to be executed.;
+    param: a set of parameters.;
   }];
 
   let arguments = (ins
@@ -4060,7 +4542,26 @@ def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
 def Tpu_InterpOp: Tpu_Op<"Interp",[DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Interp operation";
   let description = [{
+    1.Op Introduction
     Perform Interp on input.
+
+    2.Math formula
+    ```math
+            H' = H x scale_h
+            W' = W x scale_w
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    shapeT(act.): an optional input tensor that specifies the desired shape for the output tensor.;
+    buffer(w.): temporary storage of intermediate results or states during the computation.;
+
+    4.attributes
+    scale_h: the scaling factor for the height (number of rows) of the input tensor.;
+    scale_w: the scaling factor for the width (number of columns) of the input tensor.;
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    coord_mode: whether the coordinates are normalized (ranging from 0 to 1) or absolute (based on pixel indices).;
+    ginfo: associated with layer grouping information.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -4080,7 +4581,35 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>]> {
   let summary = "Reduce operator";
   let description = [{
-      Computes the mean/max/prod/sum of the input tensor's element along the provided axes.
+    1.Op Introduction
+    Computes the mean/max/prod/sum of the input tensor's element along the provided axes.
+
+    2.Math formula
+    ```math
+            1.Sum
+                output[i_1, i_2, i_3,..., i_k] = \sum{j in A}input[i_1, i_2,..., j, ..., i_n]
+                where ( A ) is the set of axes to reduce.
+            2.Mean
+                output[i_1, i_2, i_3,..., i_k] = 1 / count (\sum{j in A}input[i_1, i_2,..., j, ..., i_n])
+                where count is the number of elements being summed along the axes ( A ).
+            3.Max
+                output[i_1, i_2, i_3,..., i_k] = max{j in A}input[i_1, i_2,..., j, ..., i_n]
+            4.Product
+                output[i_1, i_2, i_3,..., i_k] = \prod_{j=1}^m(input[i_1, i_2,..., i_k, j])
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    reciprocal_mantissa_table(w.): store the mantissa values of the reciprocal.;
+    buffer(w.): temporary storage of intermediate results or states during computation.;
+
+    4.attributes
+    axes: the dimensions (axes) of the input tensor that should be squeezed (removed).;
+    keepdims: whether to retain the dimensions of the input tensor in the output.
+               If true, will have the same number of dimensions as the input tensor.;
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
+    rshift: the number of bits to right-shift the quantized values.;
   }];
 
   let arguments = (ins
@@ -4107,7 +4636,21 @@ def Tpu_ShapeReduceOp: Tpu_Op<"ShapeReduce", [
   let summary = "ShapeReduce operator";
 
   let description = [{
+    1.Op Introduction
     ShapeReduce Operation on input.
+
+    2.Math formula
+    \text{output} = \text{scale} \times \mathrm{reduce}\left(\text{input}, \text{axes}; \, \text{mode}\right)
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    axes: the dimensions (axes) of the input tensor that should be squeezed (removed).;
+    keepdims: whether to retain the dimensions of the input tensor in the output.
+               If true, will have the same number of dimensions as the input tensor.;
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    scale:scalar.;
   }];
 
   let arguments = (ins
@@ -4476,19 +5019,28 @@ def GridSamplerPadModeAttr: AnyStrAttrOf<["zeros","border","reflection"]>;
 def Tpu_GridSamplerOp : Tpu_Op<"GridSampler"> {
   let summary = "GridSampler operation";
   let description = [{
-     Given an input and a flow-field grid, computes the output
-     using input values and pixel locations from grid.
+    1.Op Introduction
+    Given an input and a flow-field grid, computes the output
+    using input values and pixel locations from grid.
 
-      Attributes:
-        `mode`              : required, interpolation mode to calculate output values, Int attribute [0, 1]
-                                representing 'bilinear' | 'nearest' respectively.
-        `padding_mode`      : required, padding mode for outside grid values, Int attribute [0, 1, 2],
-                                representing 'zero' | 'boundary' | 'reflection' respectively.
-        `align_corners`     : required, Geometrically, we consider the pixels of the input as
-                                squares rather than points. If set to True, the extrema (-1 and 1) are
-                                considered as referring to the center points of the input's corner pixels.
-                                If set to False, they are instead considered as referring to the corner
-                                points of the input's corner pixels, making the sampling more resolution agnostic.
+    2.Math formula
+    ```math
+            output[N, C, H', W'] = input[C, grid[N, H', W', 1], grid[N, H', W', 0]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grid(w.): The flow-field grid tensor that defines the pixel locations for sampling.;
+    buffer(w.): temporary storage of intermediate results or states during computation.;
+
+    4.attributes
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    padding_mode: padding mode for outside grid values, Int attribute [0, 1, 2],
+                                representing 'zero' | 'boundary' | 'reflection't.;
+    align_corners: whether to align the corners of the input and output tensors.;
+    scale: scalar.;
+    mean: mean values to subtract from each channel for normalization.;
+    need_permute: whether permutation of the output tensor is required;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -4551,15 +5103,20 @@ def Tpu_CopyOp: Tpu_Op<"Copy"> {
   let summary = "TG copy operator.";
 
   let description = [{
-    Inputs:
-      `input`          : required, the activation memref.
+    1.Op Introduction
+    duplicating tensor data from an input to an output buffer.
 
-    Attributes:
-      `input_stride`    : required, input data stride(saved as I64ArrayAttr).
-      `output_stride`   : required, output data stride(saved as I64ArrayAttr).
+    2.Math formula
+    output = Copy(input, shape, input_stride, output_stride)
 
-    Result:
-      `output`          : result tensor.
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    shape: 0: keep dim from input; -1: left dim from input.;
+    input_stride: input data stride(saved as I64ArrayAttr).
+    output_stride: output data stride(saved as I64ArrayAttr).
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (
@@ -4816,8 +5373,7 @@ def Tpu_RoiAlignOp: Tpu_Op<"RoiAlign"> {
           rois is 2-D input of shape (num_rois, 4) given as [[x1, y1, x2, y2], ...].
 
     4.attributes
-    mode: the type of comparison to be performed between the two input tensors.
-          mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
+    mode: the pooling mode to be used when extracting features from the RoIs on the input feature maps.;
     output_height: the height of the output feature maps.;
     output_width: the width of the output feature maps.;
     sampling_ratio: the number of sampling points in each direction (height and width).;
@@ -4843,20 +5399,39 @@ def Tpu_RoiExtractorOp: Tpu_Op<"RoiExtractor", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "RoiExtractor operator";
   let description = [{
+    1.Op Introduction
     RoiExtractor consumes an input tensor X and region of interests
     (rois) to apply pooling across each RoI.
 
-    Inputs:
-      `inputs`        : #num_levels of Input data tensor, each 4-D tensor.
-      `rois`          : RoIs (Regions of Interest) to pool over;
-                        rois is 2-D input of shape (num_rois, 4)
-                        given as [[x1, y1, x2, y2], ...]. .
-      `target_lvls` : 1-D tensor with each element denoting
-                        the index of the corresponding image in
-                        the batch.
+    2.Math formula
+      ```math
+        1.ROI coordinate scaling[x1, y1, x2, y2]
+            x_scaled = x x spatial_scale
+            y_scaled = y x spatial_scale
+        2.Delineation of grid sub-areas
+            bin_height = (y2_scaled - y1_scaled) / output_height
+            bin_width  = (x2_scaled - x1_scaled) / output_width
+        3.align_corners -> true
+            x_grid = x1_scaled + (i + 0.5) x bin_width
+            y_grid = y1_scaled + (j + 0.5) x bin_height
+        output = RoiAlign(input, rois, output_height, output_width, sampling_ratio, spatial_scale, align_corners)
+    ```
 
-    Outputs:
-      `output`        : RoI pooled output, 4-D tensor.
+    3.activation and weight
+    input(act.): input tensor;
+    rois(act.): RoIs (Regions of Interest) to pool over;
+                rois is 2-D input of shape (num_rois, 4) given as [[x1, y1, x2, y2], ...]
+    target_lvls(act.): 1-D tensor with each element denoting the index of the corresponding image in the batch.
+
+    4.attributes
+    mode: the pooling mode to be used when extracting features from the RoIs on the input feature maps.;
+    num_levels: the number of feature levels.;
+    output_height: the height of the output feature maps.;
+    output_width: the width of the output feature maps.;
+    sampling_ratio: the number of sampling points in each direction (height and width).;
+    spatial_scale: a scaling factor that maps the input coordinates (RoIs) to the input feature map's scale.;
+    align_corners: whether to align the corners of the input and output tensors.;
+    is_static: whether the RoI extraction process has a fixed (static) configuration.;
   }];
 
   let arguments = (ins
@@ -4993,8 +5568,16 @@ def Tpu_ShapeOp : Tpu_Op<"Shape", [
     DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Shape operation";
   let description = [{
-    Takes a tensor as input and outputs an 1D int tensor containing the shape
-     of the input tensor.
+    1.Op Introduction
+    Takes a tensor as input and outputs an 1D int tensor containing the shape of the input tensor.
+
+    2.Math formula
+    ```math
+            output = shape(input[d1, d2,...,dn])
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins AnyTensor:$input);
   let results = (outs AnyTensor:$output);
@@ -5005,7 +5588,20 @@ def Tpu_ConstantFillOp: Tpu_Op<"ConstantFill", [
     DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "constant fill operator";
   let description = [{
+    1.Op Introduction
     fill the constant value
+
+    2.Math formula
+    ```math
+        output = value * ones(shape(input))
+    ```
+    where, ones(shape(input)) generates a tensor of the same shape as the input tensor, filled with ones.
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attribute
+    value: the constant value that will fill the output tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5025,7 +5621,16 @@ def Tpu_Host2DeviceOp : Tpu_Op<"Host2Device", [
     DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Host2Device Operation";
   let description = [{
+    1.Op Introduction
     takes data from host mem to device mem
+
+    2.Math formula
+    ```math
+        output = Host2Device(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins AnyTensor:$input);
   let results = (outs AnyTensor:$output);
@@ -5036,7 +5641,16 @@ def Tpu_Device2HostOp : Tpu_Op<"Device2Host", [
     DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Device2Host Operation";
   let description = [{
+    1.Op Introduction
     takes data from device mem to host mem
+
+    2.Math formula
+    ```math
+        output = Device2Host(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins AnyTensor:$input);
   let results = (outs AnyTensor:$output);
@@ -5047,7 +5661,17 @@ def Tpu_IfOp : Tpu_Op<"If", [DeclareOpInterfaceMethods<RegionBranchOpInterface>,
                NoRegionArguments]> {
   let summary = "if operation";
   let description = [{
+    1.Op Introduction
     If conditional
+
+    2.Math formula
+    ```math
+            output = then_branch if cond is true
+                     else_branch if cond is false
+    ```
+
+    3.activation and weight
+    cond(act.): which branch of execution to follow.;
   }];
   let arguments = (ins AnyTensor:$cond);
   let results = (outs Variadic<AnyRankedTensor>:$output);
@@ -5075,7 +5699,27 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
   let summary = "Deform gather operator";
 
   let description = [{
+    1.Op Introduction
      The deform gather operator for deform_conv2d.
+
+    2.Math formula
+    ```math
+            output = input(offset) * use_mask * mask
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    offset(w.): the learnable offsets of the module of shape.;
+    mask(act.): place the pooled values in the output tensor.;
+    buffer(w.): temporary storage of intermediate results or states during computation.;
+
+    4.attributes
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    strides: the stride for the cross-correlation, a single number or a tuple.;
+    dilations: controls the spacing between the kernel points;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.;
+    deform_group: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
+    use_mask: whether use mask for input tensor.;
   }];
 
   let arguments = (ins
@@ -5103,7 +5747,22 @@ def Tpu_CustomOp: Tpu_Op<"Custom", [
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Custom operator";
   let description = [{
+    1.Op Introduction
     Custom operator
+
+    2.Math formula
+    ```math
+            output = CustomFunction(inputs, name, params)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+    buffer(w.): temporary storage of intermediate results or states during computation.;
+
+    4.attributes
+    name: the name of the custom operation to be executed.;
+    params: A dictionary of parameters.;
+    ginfo: associated with layer grouping information.;
   }];
 
   let arguments = (ins
@@ -5121,7 +5780,16 @@ def Tpu_Weight2ActivationOp: Tpu_Op<"Weight2Activation"> {
   let summary = "Weight to activation operator";
 
   let description = [{
+    1.Op Introduction
     Convert weight tensor to activation tensor
+
+    2.Math formula
+    ```math
+            \text{output}[i] = \text{input}[i] \quad \forall i
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins AnyRankedTensor:$input);
@@ -5133,14 +5801,28 @@ def Tpu_Space2BatchOp: Tpu_Op<"Space2Batch"> {
   let summary = "Space2Batch operator";
 
   let description = [{
+    1.Op Introduction
     Refer to `https://www.tensorflow.org/api_docs/python/tf/space_to_batch`
-    h_padding = h + pad_top + pad_bottom,
-    w_padding = w + pad_left + pad_right,
-    [n, c, h, w] => [n, c, h_padding, w_padding]
-      =>[n * block_h * block_w, c, h_padding / block_h, w / block_w];
-    h_padding and w_padding should satisfy:
-    h_padding % block_h = 0, w_padding % block_w = 0
-    The format of input or output is NCHW.
+
+    2.Math formula
+    ```math
+        h_padding = h + pad_top + pad_bottom,
+        w_padding = w + pad_left + pad_right,
+        [n, c, h, w] => [n, c, h_padding, w_padding]
+        =>[n * block_h * block_w, c, h_padding / block_h, w / block_w];
+        h_padding and w_padding should satisfy:
+        h_padding % block_h = 0, w_padding % block_w = 0
+        The format of input or output is NCHW.
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+    buffer(w.): temporary storage of intermediate results or states during computation.;
+
+    4.attributes
+    block_h: The height of the blocks used to rearrange the depth into spatial dimensions.;
+    block_w: The width of the blocks used to rearrange the depth into spatial dimensions.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.;
   }];
 
   let arguments = (
@@ -5159,12 +5841,25 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
   let summary = "Batch2Space operator";
 
   let description = [{
+    1.Op Introduction
     Refer to `https://www.tensorflow.org/api_docs/python/tf/batch_to_space`
-    h_croping = h * block_h - crop_top - crop_bottom,
-    w_croping = w * block_w - crop_left - crop_right,
-    [n, c, h, w] => [n / (block_h * block_w), c, h * block_h, w * block_w]
-      => [n / (block_h * block_w), c, h_croping, w_croping];
-    The format of input or output is NCHW.
+
+    2.Math formula
+    ```math
+        h_croping = h * block_h - crop_top - crop_bottom,
+        w_croping = w * block_w - crop_left - crop_right,
+        [n, c, h, w] => [n / (block_h * block_w), c, h * block_h, w * block_w]
+        => [n / (block_h * block_w), c, h_croping, w_croping];
+        The format of input or output is NCHW.
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    block_h: The height of the blocks used to rearrange the depth into spatial dimensions.;
+    block_w: The width of the blocks used to rearrange the depth into spatial dimensions.;
+    crops: It contains four ints with top, left, bottom, right.;
   }];
 
   let arguments = (
@@ -5182,7 +5877,16 @@ def Tpu_IdentityOp : Tpu_Op<"Identity"> {
   let summary = "identity operator";
 
   let description = [{
+    1.Op Introduction
      identity operator.
+
+     2.Math formula
+    ```math
+        output = Identity(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -5227,10 +5931,21 @@ def Tpu_RMSNormOp : Tpu_Op<"RMSNorm", [
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "RMSNorm operation";
   let description = [{
+    1.Op Introduction
     A simplification of the original layer normalization (LayerNorm).
     Only normalize the last dimension of tensor.
 
-    RMSNorm(x) = gamma * x / sqrt(mean(x^2) + epsilon)
+    2.Math formula
+    ```math
+        output = gamma * input / sqrt(mean(input ^ 2) + epsilon)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    gamma(w.): scalar.;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
 
   let arguments = (ins
@@ -5249,7 +5964,14 @@ def Tpu_LoopOp : Tpu_Op<"Loop", [DeclareOpInterfaceMethods<RegionBranchOpInterfa
               RecursiveMemoryEffects]> {
   let summary = "Loop operation";
   let description = [{
+    1.Op Introduction
     Generic Looping construct, support while/do_while/for/forerver etc:
+
+    2.Math formula
+    none
+
+    3.activation and weight
+    AnyTensor;
   }];
 
   let arguments = (ins AnyTypeOf<[AnyTensor, NoneType]>:$M,
@@ -5283,7 +6005,19 @@ def Tpu_AutoIncreaseOp: Tpu_Op<"AutoIncrease",
     [SameOperandsAndResultType]> {
   let summary = "Auto increase ";
   let description = [{
+    1.Op Introduction
     increase by 1 in-place
+
+    2.Math formula
+    ```math
+            output = AutoIncrease(input, const_val)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -5295,7 +6029,19 @@ def Tpu_AutoIncreaseOp: Tpu_Op<"AutoIncrease",
 def Tpu_D2DOp: Tpu_Op<"D2D"> {
   let summary = "Copy WeightOp to Device Mem ";
   let description = [{
+    1.Op Introduction
     for to alloc address, and can modify the data(with WeightOp to init it)
+
+    2.Math formula
+    ```math
+            output = D2D(input, const_val)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -5309,7 +6055,19 @@ def Tpu_ShapeArithOp: Tpu_Op<"ShapeArith", [
   let summary = "Cpu data operation";
 
   let description = [{
+    1.Op Introduction
     Arithmetic implementation for simple data in host memory such as 'Shape, Index, Stride' etc.
+
+    2.Math formula
+    ```math
+            output = ShapeArith(input, type)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    type: the kind of arithmetic operation.;
   }];
 
   let arguments = (ins
@@ -5323,7 +6081,20 @@ def Tpu_CumSumOp: Tpu_Op<"CumSum"> {
   let summary = "CumSum operator";
 
   let description = [{
+    1.Op Introduction
     Returns the cumulative sum of elements of input in the dimension dim.
+
+    2.Math formula
+    ```math
+            output[i] = \sum{j=0, i}input[j]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    dim(w.): If set to 0, computed across rows, If set to 1, computed across columns.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
   }];
 
   let arguments = (ins
@@ -5338,7 +6109,27 @@ def Tpu_CumSumOp: Tpu_Op<"CumSum"> {
 def Tpu_LayerNormTrainOp : Tpu_Op<"LayerNormTrain"> {
   let summary = "LayerNorm operation for train";
   let description = [{
-    layer normalization
+    1.Op Introduction
+    layer normalization in train.
+
+    2.Math formula
+    ```math
+        1.Normalization
+            mean = 1 / H \sum{j=1, H} input[j]
+            var = 1 / H \sum{j=1, H} (input[j] - mean) ^ 2
+        2.Layer Normalized Output
+            output[i] = weight * (input[i] - mean) / sprt(var + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    normalized_shape: the shape of the input tensor dimensions.;
+    axis: the dimension of the input tensor.;
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -5358,7 +6149,30 @@ def Tpu_LayerNormTrainOp : Tpu_Op<"LayerNormTrain"> {
 def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
   let summary = "LayerNorm operation for train";
   let description = [{
+    1.Op Introduction
     layer normalization
+
+    2.Math formula
+    ```math
+        1.gradient input
+            grad_input = 1 / N(weight / sqrt(variance + eps) 1 / N \sum{i=1, N}grad_out)
+                            - (input - mean) / N * \sum(i=1, N)weight * grad_out / sqrt(variance + eps)
+        2.gradient weight
+            grad_weight = \sum(i=1, N)grad_out * (input - mean) / sqrt(variance + eps)
+        3.gradient bias
+            grad_bias = \sum(i=1, N)grad_out
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grad_out(w.): the gradient of the loss with respect to the output of the layer normalization.;
+    mean(w.): mean values to subtract from each channel for normalization.;
+    variance(w.): adjust the predicted boxes during the training process.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    normalized_shape:  the shape of the input tensor dimensions.;
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
@@ -5476,18 +6290,33 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd" ,[
 def Tpu_WhereBnbwdOp: Tpu_Op<"WhereBnbwdOp"> {
   let summary = "WhereBnbwd operation";
   let description = [{
+    1.Op Introduction
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
     with additional channel dimension) as described in the paper
     Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
 
+    2.Math formula
     ```math
-        y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+        output = \frac{input - \mathrm{E}[input]}{ \sqrt{\mathrm{Var}[input] + \epsilon}} * \gamma + \beta
     ```
-
     The mean and standard-deviation are calculated per-dimension over
     the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
     of size C (where C is the input channel size).
+
+    3.activation and weight
+    where_output(act.): an optional intermediate output from a "where" operation applied during the forward pass.;
+    where_grad_out(act.): the gradients computed with respect to the "where" output.;
+    bnbwd_input(act.): the primary input to the batch normalization backward operation.;
+    bnbwd_weight(w.): re-scale the normalized input.;
+    bnbwd_bias(w.): re-centering the normalized values.;
+    bnbwd_saved_mean(w.): the per-dimension mean values computed during the forward pass.;
+    bnbwd_saved_invstd(w.): stores the inverse standard deviation computed during the forward pass.;
+    buffer(w.): serve as a temporary storage or workspace that may be used during the computation of gradients.;
+
+    4.attributes
+    epsilon:;
+    do_recompute: whether recomputed during the backward pass instead of being stored from the forward pass.;
   }];
   let arguments = (ins
     AnyTensorOrNone:$where_output,
@@ -5511,7 +6340,22 @@ def Tpu_WhereBnbwdOp: Tpu_Op<"WhereBnbwdOp"> {
 def Tpu_EmbDenseBwdOp : Tpu_Op<"EmbDenseBwd"> {
   let summary = "EmbDenseBwd operation for train";
   let description = [{
+    1.Op Introduction
     layer normalization
+
+    2.Math formula
+    ```math
+            output = grad_output[indices]
+    ```
+
+    3.activation and weight
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    indices(w.): the indices of the input tokens or items.;
+
+    4.attributes
+    num_weights: the total number of embedding weights.;
+    padding_idx: a index for padding.;
+    scale_grad_by_freq: whether the gradient should be scaled by the inverse frequency of that token.;
   }];
   let arguments = (ins
     AnyTensor:$grad_output,
@@ -5529,7 +6373,19 @@ def Tpu_WeightReorderOp: Tpu_Op<"WeightReorder"> {
   let summary = "WeightReorder operator";
 
   let description = [{
-      reorder Weight.
+    1.Op Introduction
+    reorder Weight.
+
+    2.Math formula
+    ```math
+            output = Reorder(input, reorder_mode)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    reorder_mode: rearranging the weight tensor, such as sorting, shuffling, or applying a specific permutation.;
   }];
 
   let arguments = (
@@ -5544,7 +6400,20 @@ def Tpu_SoftmaxBwdOp: Tpu_Op<"SoftmaxBwd"> {
   let summary = "softmax backward operator";
 
   let description = [{
+    1.Op Introduction
     Integrates some operations related to softmax backward.
+
+    2.Math formula
+    ```math
+            grad_input[i] = softmax(output)[i] * (grad_output[i] - \sum{j}grad_output[j] * softmax(output)[j])
+    ```
+
+    3.activation and weight
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    output(act.): output tensor.;
+
+    4.attributes
+    dim: If set to 0, computed across rows, If set to 1, computed across columns.;
   }];
 
   let arguments = (ins
@@ -5566,7 +6435,30 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight", [SupportFuseRelu,
     DeclareOpInterfaceMethods<DynLocalGenInterface,
       ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "Convolution Backward operator";
-  let description = [{Gradient of Weight in Convolution Backward}];
+  let description = [{
+    1.Op Introduction
+    Gradient of Weight in Convolution Backward.
+
+    2.Math formula
+    ```math
+            \frac{\partial L}{\partial W} = \sum_{n=1}^{N} \sum_{c=1}^{C_{in}} \sum_{h=1}^{H} \sum_{w=1}^{W} \text{input}[n, c, h, w] \cdot \text{grad\_out}[n, :, h', w']
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    gradout_transpose(w.): The transposed gradient of the output tensor.;
+
+    4.attributes
+    groups: Number of blocked connections from input channels to output channels. Default: 1.;
+    input_shape: The shape of the input tensor.;
+    grad_out_shape: The shape of the gradient output tensor.;
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    stride: the stride for the cross-correlation, a single number or a tuple.;
+    dilations: controls the spacing between the kernel points;
+    padding: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    grad_bias_enable: whether to compute the gradient for the bias term as well.;
+    }];
   let arguments = (ins
   AnyTensor:$input,
   AnyTensor:$gradout,
@@ -5623,7 +6515,21 @@ def Tpu_TriluOp:Tpu_Op<"Trilu", [
 def Tpu_SortOp:Tpu_Op<"Sort", [DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Sort operation";
   let description = [{
+    1.Op Introduction
     Integrates some operations related to Sort.
+
+    2.Math formula
+    ```math
+            output = Sort(input, axis, descending)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    buffer(w.): a temporary storage area for intermediate calculations or results during the NMS process.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
+    descending: the order of sorting.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5640,8 +6546,17 @@ def Tpu_SliceMergeOp: Tpu_BaseOp<"SliceMerge"> {
   let summary = "SliceMerge";
 
   let description = [{
+    1.Op Introduction
     When there are multiple slices in the layer-group,
     this operation combines the store op output of each slice to output to the yield op.
+
+    2.Math formula
+    ```math
+            output =  SliceMerge(input)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
   }];
 
   let arguments = (ins
@@ -5654,7 +6569,24 @@ def Tpu_SliceMergeOp: Tpu_BaseOp<"SliceMerge"> {
 def Tpu_MeanRstdOp: Tpu_Op<"MeanRstd">{
   let summary = "Compute Mean, Rstd, Running_mean, Running_var in batchnorm train op ";
   let description = [{
-    mean(x),1/sqrt(var+eps),(1-momentum)*running_mean + momentum*mean,(1-momentum)*running_var + momentum*var
+    1.Op Introduction
+    computes the mean, reverse standard deviation (Rstd), running mean, and running variance.
+
+    2.Math formula
+    ```math
+        mean(x),1/sqrt(var+eps),(1-momentum)*running_mean + momentum*mean,(1-momentum)*running_var + momentum*var
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    running_mean(w.): mean during running.;
+    running_var(w.): variances during running.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    momentum: hyperparameter;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5679,8 +6611,21 @@ def Tpu_OutBufferOp : Tpu_BaseOp<"OutBuffer"> {
   let summary = "OutBuffer for store op";
 
   let description = [{
+    1.Op Introduction
      This operation stores storeOp output data on DDR when some tentor in layer-group
      is not output to returnOp but storeAndLoad is needed.
+
+    2.Math formula
+    ```math
+        output = storeOp_output
+        "storeOp_output" represents the data produced by the store operation that is saved on DDR.
+    ```
+
+    3.activation and weight
+    none
+
+    4.attributes
+    need_dump: whether the stored output data should be additionally dumped for debugging or analysis.;
   }];
 
   let arguments = (ins
@@ -5693,7 +6638,23 @@ def Tpu_OutBufferOp : Tpu_BaseOp<"OutBuffer"> {
 def Tpu_MoveOp:Tpu_BaseOp<"Move"> {
   let summary = "local mem move op for layer group lmem alloc";
   let description = [{
+    1.Op Introduction
     local mem move op for layer group lmem alloc
+
+    2.Math formula
+    ```math
+        output = Move(input, move_src_add, move_dest_add, move_size, ts_id)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    name: a human-readable identifier for the move operation.;
+    move_src_add: source addresses (offsets) in the local memory.;
+    move_dest_add: destination addresses (offsets) in the local memory.;
+    move_size: A list of sizes corresponding to each move operation.;
+    ts_id: A unique identifier (timestamp id or task id);
   }];
 
   let arguments = (ins
@@ -5716,7 +6677,22 @@ def Tpu_MoveOp:Tpu_BaseOp<"Move"> {
 def Tpu_GroupNormTrainOp : Tpu_Op<"GroupNormTrain"> {
   let summary = "GroupNorm operation";
   let description = [{
+    1.Op Introduction
     group normalization
+
+    2.Math formula
+    ```math
+            output = \frac{input - mean}{\sqrt{\sigma^2 + eps}} \cdot weight + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    num_groups: number of groups to divide the channels into for normalization.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5733,7 +6709,18 @@ def Tpu_GroupNormTrainOp : Tpu_Op<"GroupNormTrain"> {
 }
 def Tpu_LogicalAndOp :Tpu_Op<"LogicalAnd">{
   let summary = "logical and operation";
-  let description = [{logical and operation between two variables}];
+  let description = [{
+    1.Op Introduction
+    logical and operation between two variables
+
+    2.Math formula
+    ```math
+            output = input1 and input2
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+    }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs
   );
@@ -5965,7 +6952,30 @@ def Tpu_MaskRCNNBboxPoolerOp: Tpu_Op<"MaskRCNN_BboxPooler", [
   let summary = "Bbox_Pooler gen by PPL";
 
   let description = [{
-    MaskRCNN_Bbox_Pooler, the 1st ROIAlign in MaskRCNN
+    1.Op Introduction
+    MaskRCNN_BBox_Pooler, the 1st ROIAlign in MaskRCNN.
+
+    2.Math formula
+    ```math
+            output = ROIAlign(feature map, rois_multi_batch)
+    ```
+
+    3.activation and weight
+    ptr_feat0(act.): Pointer to the feature map at level 0.;
+    ptr_feat1(act.): Pointer to the feature map at level 1.;
+    ptr_feat2(act.): Pointer to the feature map at level 2.;
+    ptr_feat3(act.): Pointer to the feature map at level 3.;
+    rois_multi_batch(w.): ROIs (Regions of Interest) for multiple batches.;
+
+    4.attributes
+    ROI_NUM_LEVELS: The number of levels in the ROI feature pyramid.;
+    ROI_H: The height of the pooled ROI features.;
+    ROI_W: The width of the pooled ROI features.;
+    CHANNEL_ROI: The number of channels in the pooled ROI features.;
+    ROI_SLICE: The number of slices or segments;
+    ROI_PH: The height of the ROI in the feature map.;
+    ROI_PW: The width of the ROI in the feature map.;
+    ROI_LEN: The length of the ROIs being processed.;
   }];
 
   let arguments = (ins
@@ -5996,7 +7006,57 @@ def Tpu_MaskRCNNGetBboxBOp: Tpu_Op<"MaskRCNN_GetBboxB", [
   let summary = "GetBboxB operator";
 
   let description = [{
+    1.Op Introduction
      MaskRCNN_GetBboxB, the 2nd onnx_nms in MaskRCNN
+
+    2.Math formula
+    ```math
+            decode_bbox_i = bbox_means + scale_factor x (ptr_bbox[i] x bbox_stds + [res_bbox0[i] res_bbox1[i] res_bbox[i]])
+            score_i = ptr_score[i] (or a combination of res_score0,res_score1,res_score2,res_score3)
+            {bboxs, lables} = NMS({decode_bbox_i}, {score_i}, nms_iou_thr)
+    ```
+
+    3.activation and weight
+    ptr_rois(act.): candidate regions of interest for possible objects.;
+    ptr_bbox(act.): the bounding box predictions.;
+    ptr_score(act.): confidence scores associated with each proposal.;
+    max_val(w.): max scores the bbox predictions.;
+    scale_factor(w.): scale the decoded bounding box coordinates.;
+    stds(w.): standard deviation values for each channel.;
+    means(w.): mean values to subtract from each channel for normalization.;
+    res_bbox(w.): bounding box prediction values.;
+    res_bbox1(w.): one branch of the processed bounding box predictions.;
+    res_bbox0(w.): another branch or variant of the bounding box decoding results.;
+    res_score0(w.): one set of confidence scores associated with the proposals.;
+    res_score1(w.): an additional set of confidence scores.;
+    res_score2(w.): another set of scoring values.;
+    res_score3(w.):  final selection of bounding boxes.;
+    res_label2(w.): the predicted class labels.;
+    result_list(w.): the final list of processed results or proposal indices after filtering and ranking.;
+    keep_3nch(w.): whether retains proposals having three-channel inputs.;
+    keep_u32_1h(w.): whether using a single 32-bit unsigned integer per element.;
+    glb_buffer_boxes(w.): A global temporary buffer used to store bounding box.;
+    glb_buffer_scores(w.): A global temporary buffer for storing scores associated with the candidate bounding boxes.;
+    glb_buffer_nms(w.): This global buffer holds intermediate NMS-related information.;
+    glb_buffer_nonzero(w.): stores the non-zero elements (or valid indices) from processed tensors.;
+    result_valid_ind(w.): the indices of proposals.;
+    glb_lables(w.): A global buffer dedicated to storing the class labels.;
+    glb_lables_expand(w.): an expanded version of the global labels.;
+
+    4.attributes
+    threshold_score_eq: A threshold value used to filter out proposals with a low confidence score before applying NMS.;
+    wh_ratio_log: A logarithmic scaling factor, adjust the width-to-height ratio during decoding of bounding boxes.;
+    nms_iou_thr: IoU (Intersection over Union) threshold.;
+    delta2bbox_means: Mean values used to decode the bounding box regression.;
+    delta2bbox_stds_0: Standard deviation (first component) for scaling the decoded bbox values.;
+    delta2bbox_stds_1: Standard deviation (second component) for scaling the decoded bbox values.;
+    NUM_INDEXES: the number of indexes (or anchors).;
+    NUM_CLASSES: The total number of object classes.;
+    TOPK_ONNX_NMS: to select a fixed number of candidates.;
+    NUM_CLASSES_getBboxB: Number of classes used in this bounding box decoding step.;
+    MAX_NMS_LENGTH_GetBboxB: Maximum number of bounding box candidates.;
+    MAX_PER_IMG: The maximum number of detections allowed per image.;
+    MAX_PER_IMG_GetBboxB: maximum number of bounding boxes after the final processing.;
   }];
 
   let arguments = (ins
@@ -6051,7 +7111,37 @@ def Tpu_MaskRCNNMaskPoolerOp: Tpu_Op<"MaskRCNN_MaskPooler", [
   let summary = "Mask_Pooler gen by PPL";
 
   let description = [{
+    1.Op Introduction
     MaskRCNN_Mask_Pooler, the 2st ROIAlign in MaskRCNN
+
+    2.Math formula
+    ```math
+            output = \text{ROIAlign}\Bigl( \{x_i\}_{i=0}^3, \, \text{det\_bboxes\_multi\_batch}, \, \text{det\_labels\_multi\_batch}, \, \text{scale\_factor}, \, ROI\_NUM\_LEVELS, \, ROI\_H, \, ROI\_W, \, CHANNEL\_ROI, \, ROI\_SLICE, \, ROI\_PH, \, ROI\_PW, \, ROI\_LEN \Bigr)
+    ```
+
+    3.activation and weight
+    x_0(act.): first level of the feature pyramid.;
+    x_1(act.): second level of the feature pyramid.;
+    x_2(act.): third level of the feature pyramid.;
+    x_3(act.): fourth level of the feature pyramid.;
+    det_bboxes_multi_batch(act.): detected bounding boxes over multiple batches.;
+    det_labels_multi_batch(act.): class labels associated with the detected bounding boxes across multiple batches.;
+    scale_factor(w.): scale the decoded bounding box coordinates.;
+    ptr_rois_buff(w.): a temporary buffer that holds precomputed or intermediate Regions of Interest (ROIs).;
+    result_filled_det_bboxes(w.): stores the processed or “filled” detection bounding boxes.;
+    result_filled_det_labels(w.): corresponding class labels that have been associated with the detected bounding boxes.;
+    ptr_tmp_res(w.):  temporary result buffer used internally during the pooling process.;
+    ptr_rois_tmp(w.): a temporary workspace that stores intermediate ROI values.;
+
+    4.attributes
+    ROI_NUM_LEVELS: the number of feature levels (or pyramid levels) available for ROI pooling.;
+    ROI_H: target height of the pooled region for each ROI.;
+    ROI_W: target width of the pooled region for each ROI.;
+    CHANNEL_ROI: number of channels to be kept or considered when performing ROIAlign.;
+    ROI_SLICE: slicing strategy for ROIs, if the ROI needs to be segmented into sub-regions for finer pooling.;
+    ROI_PH: Padding height for the ROI.;
+    ROI_PW: Padding width for the ROI.;
+    ROI_LEN: total length (or area) of the ROI.;
   }];
 
   let arguments = (ins
@@ -6085,7 +7175,24 @@ def tpu_MaxPoolingIndicesBwdOp: Tpu_Op<"MaxPoolingIndicesBwd", [
   let summary = "MaxPoolingIndicesBwd operator";
 
   let description = [{
+    1.Op Introduction
     Integrates some operations related to MaxPoolingIndicesBwd.
+
+    2.Math formula
+    ```math
+          grad\_input(p) = \sum_{q} \delta\big(p = indices[q]\big) \times grad\_output(q)
+    ```
+
+    3.activation and weight
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    indices(w.): the indices of the input tokens or items.;
+
+    4.attributes
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    strides: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    dilations: controls the spacing between the kernel points;
+    input_shape: The shape of the input tensor.;
   }];
 
   let arguments = (ins

@@ -373,7 +373,7 @@ def Top_ConcatOp: Top_Op<"Concat"> {
 def Top_RequantIntOp:Top_Op<"RequantInt"> {
   let summary = "requant operation";
   let description = [{
-
+    1.Op Introduction
     Requant 32/16/8 bit data to int8 or uint8 data, by int multiplier and int shift;
 
     2.Math formula
@@ -5045,11 +5045,11 @@ def Top_LoopOp : Top_Op<"Loop"> {
   let description = [{
   Generic Looping construct. This loop has multiple termination conditions:
 
-  1) Trip count. Iteration count specified at runtime. Set by
+  1. Trip count. Iteration count specified at runtime. Set by
      specifying the input M. Optional. Set to empty string to omit.
      Note that a static trip count (specified at graph construction time) can be
      specified by passing in a constant node for input M.
-  2) Loop termination condition. This is an input to the op that determines
+  2. Loop termination condition. This is an input to the op that determines
      whether to run the first iteration and also a loop-carried dependency for
      the body graph. The body graph must yield a value for the condition variable,
      whether this input is provided or not.
@@ -5153,20 +5153,20 @@ def Top_LoopOp : Top_Op<"Loop"> {
 
   There are several things of note in this code snippet:
 
-  1) Values from the enclosing scope (i.e. variable \"a\" here) are in scope and can
+  1. Values from the enclosing scope (i.e. variable \"a\" here) are in scope and can
      be referenced in the inputs of the loop.
-  2) Any values computed in the loop body that needs to be used in a subsequent
+  2. Any values computed in the loop body that needs to be used in a subsequent
      iteration or after the loop are modelled using a pair of variables in the loop-body,
      consisting of an input variable (eg., b_in) and an output variable (eg., b_out).
      These are referred to as loop-carried dependences. The loop operation node
      supplies the input value of the input variable for the first iteration, and
      returns the output value of the output variable produced by the final
      iteration.
-  3) Scan_output variables are used to implicitly concatenate values computed across
+  3. Scan_output variables are used to implicitly concatenate values computed across
      all the iterations. In the above example, the value of user_defined_val computed
      over all iterations are concatenated and returned as the value of user_defined_vals
      after the loop.
-  4) Values created in the body cannot be accessed in the enclosing scope,
+  4. Values created in the body cannot be accessed in the enclosing scope,
      except using the mechanism described above.
 
   Note that the semantics of this op support \"diagonal\" or \"wavefront\" execution.
@@ -5236,7 +5236,21 @@ def Top_ShapeOp : Top_Op<"Shape"> {
 def Top_GatherNDOp: Top_Op<"GatherND"> {
   let summary = "GatherND operator";
   let description = [{
+    1.Op Introduction
     This operator is the inverse of ScatterND.
+
+    2.Math formula
+    ```math
+            output_i = input[indices_i]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    indices(w.): which elements to gather from the input tensor.;
+
+    4.attributes
+    indice_dims: the number of dimensions in the indices tensor.;
+    batch_dims: the number of batch dimensions in the input tensor.;
   }];
 
   let arguments = (ins
@@ -5253,45 +5267,27 @@ def Top_DeformConv2DOp: Top_Op<"DeformConv2D", [SupportFuseRelu]> {
   let summary = "Deformable Convolution Operator";
 
   let description = [{
+    1.Op Introduction
     In the simplest case, the output value of the layer with input size
     $$(N, C_{\text{in}}, H, W)$$ and output $$(N, C_{\text{out}}, H_{\text{out}}, W_{\text{out}})$$
     can be precisely described as:
 
-    weight (Tensor): the learnable weights of the module of shape
-    $$(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}},
-    \text{kernel\_size[0]}, \text{kernel\_size[1]})$$
-
-    offset (Tensor): the learnable offsets of the module of shape
-    $$(\text{N}, \times{\text{2}}{\text{offset\_groups}{\text{kernel\_size[0]}}{\text{kernel\_size[1]}}},
-    \text{H_{\text{out}}}, \text{W_{\text{out}}})$$
-
-    mask (Tensor): the learnable masks of the module of shape
-    $$(\text{N}, \times{\text{offset\_groups}{\text{kernel\_size[0]}}{\text{kernel\_size[1]}}},
-    \text{H_{\text{out}}}, \text{W_{\text{out}}})$$
-
-    bias (Tensor optional): the learnable bias of the module of shape (out_channels).
-
-    - **stride**: controls the stride for the cross-correlation, a single
-      number or a tuple.
-
-    - **padding**: controls the amount of padding applied to the input. It
-      contains four ints with top, left, bottom, right respectively.
-
-    - **dilation**: controls the spacing between the kernel points; also
-      known as the à trous algorithm. It is harder to describe, but this
-      [Link](https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md)
-      has a nice visualization of what **dilation** does.
-
-    - **groups**: (optional): Number of blocked connections from input
-            channels to output channels. Default: 1
-
-    - **deform_groups**: (optional): Number of blocked connections from input
-            channels to output channels. Default: 1
-
-
-    Shape:
+    2.Math formula
         - Input: $$(N, C_{in}, H_{in}, W_{in})$$
         - Output: $$(N, C_{out}, H_{out}, W_{out})$$ where
+            weight (Tensor): the learnable weights of the module of shape
+            $$(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}},
+            \text{kernel\_size[0]}, \text{kernel\_size[1]})$$
+
+            offset (Tensor): the learnable offsets of the module of shape
+            $$(\text{N}, \times{\text{2}}{\text{offset\_groups}{\text{kernel\_size[0]}}{\text{kernel\_size[1]}}},
+            \text{H_{\text{out}}}, \text{W_{\text{out}}})$$
+
+            mask (Tensor): the learnable masks of the module of shape
+            $$(\text{N}, \times{\text{offset\_groups}{\text{kernel\_size[0]}}{\text{kernel\_size[1]}}},
+            \text{H_{\text{out}}}, \text{W_{\text{out}}})$$
+
+            bias (Tensor optional): the learnable bias of the module of shape (out_channels).
 
           ```math
               H_{out} = \left\lfloor\frac{H_{in}  + \text{padding}[0] + \text{padding}[2] - \text{dilation}[0]
@@ -5301,6 +5297,23 @@ def Top_DeformConv2DOp: Top_Op<"DeformConv2D", [SupportFuseRelu]> {
               W_{out} = \left\lfloor\frac{W_{in}  + \text{padding}[1] + \text{padding}[3] - \text{dilation}[1]
                         \times (\text{kernel\_size}[1] - 1) - 1}{\text{stride}[1]} + 1\right\rfloor
           ```
+    3.activation and weight
+    input(act.): input tensor.;
+    filter(w.): the learnable weights of the convolution 2d operation.;
+    offset(w.): the learnable offsets of the module of shape.;
+    mask(w.): the learnable masks of the module of shape.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    strides: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    group: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
+    deform_group: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
+    use_mask: whether use mask for input tensor.;
+    dilations: controls the spacing between the kernel points;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
   }];
 
   let arguments = (ins
@@ -5331,7 +5344,20 @@ def Top_DeformConv2DOp: Top_Op<"DeformConv2D", [SupportFuseRelu]> {
 def Top_CustomOp: Top_Op<"Custom"> {
   let summary = "Custom operator";
   let description = [{
+    1.Op Introduction
     Custom operator
+
+    2.Math formula
+    ```math
+            output = CustomFunction(inputs, name, params)
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+
+    4.attributes
+    name: the name of the custom operation to be executed.;
+    params: A dictionary of parameters.;
   }];
 
   let arguments = (ins
@@ -5346,7 +5372,24 @@ def Top_ScaleDotProductAttentionOp: Top_Op<"ScaleDotProductAttention"> {
   let summary = "ScaleDotProductAttention operator (pytorch)";
 
   let description = [{
+    1.Op Introduction
     Scale_Dot_Product_Attention Operation for pytorch.
+
+    2.Math formula
+    ```math
+            output = (softmax(Q * K^T) / sqrt(d_k) + mask) * V
+    ```
+
+    3.activation and weight
+    query(act.): queries input tensor.;
+    key(act.): keys input tensor.;
+    value(act.): values input tensor.;
+    mask(w.): the learnable masks of the module of shape.;
+
+    4.attributes
+    dropout_p: the dropout probability for attention weights.;
+    is_causal: whether the attention should be causal.;
+    scale: the scaling factor.;
   }];
 
   let arguments = (ins
@@ -5366,7 +5409,17 @@ def Top_ScaleDotProductAttentionOp: Top_Op<"ScaleDotProductAttention"> {
 def Top_CeilOp : Top_Op<"Ceil"> {
   let summary = " Ceil operator";
   let description = [{
-     y = ceil(x)
+    1.Op Introduction
+    y = ceil(x)
+    rounds each element of the input tensor up to the nearest integer.
+
+     2.Math formula
+     ```math
+            output = ceil(input)
+     ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -5378,10 +5431,21 @@ def Top_CeilOp : Top_Op<"Ceil"> {
 def Top_RMSNormOp : Top_Op<"RMSNorm"> {
   let summary = "RMSNorm operation";
   let description = [{
+    1.Op Introduction
     A simplification of the original layer normalization (LayerNorm).
     Only normalize the last dimension of tensor.
 
-    RMSNorm(x) = gamma * x / sqrt(mean(x^2) + epsilon)
+    2.Math formula
+    ```math
+        output = gamma * input / sqrt(mean(input ^ 2) + epsilon)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    gamma(w.): scalar.;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
 
   let arguments = (ins
@@ -5398,10 +5462,18 @@ def Top_RMSNormOp : Top_Op<"RMSNorm"> {
 def Top_RemainderOp: Top_Op<"Remainder"> {
   let summary = " Remainder operator";
   let description = [{
-     z = torch.remainder(x, y);
-     quo = x / y;
-     floor_quo = floor(quo);
-     z = x - y * floor_quo.
+    1.Op Introduction
+    computes the element-wise remainder of division between two tensors.
+
+    2.Math formula
+    ```math
+            quo = x / y;
+            floor_quo = floor(quo);
+            output = torch.remainder(x, y) = x - y * floor_quo.
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs
@@ -5413,7 +5485,20 @@ def Top_RemainderOp: Top_Op<"Remainder"> {
 def Top_CumSumOp: Top_Op<"CumSum"> {
   let summary = " CumSum operator";
   let description = [{
+    1.Op Introduction
     Returns the cumulative sum of elements of input in the dimension dim.
+
+    2.Math formula
+    ```math
+            output[i] = \sum{j=0, i}input[j]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    dim(w.): If set to 0, computed across rows, If set to 1, computed across columns.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5427,11 +5512,20 @@ def Top_CumSumOp: Top_Op<"CumSum"> {
 def Top_RoundOp : Top_Op<"Round"> {
   let summary = " Round operator";
   let description = [{
-     Round takes one input Tensor and rounds the values, element-wise,
-     meaning it finds the nearest integer for each value. In case of halfs,
-     the rule is to round them to the nearest even integer.
-     If input x is integral, +0, -0, NaN, or infinite, x itself is returned.
-     The output tensor has the same shape and type as the input.
+    1.Op Introduction
+    Round takes one input Tensor and rounds the values, element-wise,
+    meaning it finds the nearest integer for each value. In case of halfs,
+    the rule is to round them to the nearest even integer.
+    If input x is integral, +0, -0, NaN, or infinite, x itself is returned.
+    The output tensor has the same shape and type as the input.
+
+    2.Math formula
+    ```math
+            output = Round(input)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -5443,18 +5537,32 @@ def Top_RoundOp : Top_Op<"Round"> {
 def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain", [SupportFuseRelu]> {
   let summary = "BatchNormalization train operation";
   let description = [{
+    1.Op Introduction
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
     with additional channel dimension) as described in the paper
     Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
 
+    2.Math formula
     ```math
         y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
     ```
-
     The mean and standard-deviation are calculated per-dimension over
     the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
     of size C (where C is the input channel size).
+
+    3.activation and weight
+    input(act.): input tensor.;
+    mean(w.): mean values to subtract from each channel for normalization.;
+    variance(w.): adjust the predicted boxes during the training process.;
+
+    4.attributes
+    gamma;
+    beta;
+    epsilon;
+    momentum: hyperparameter;
+    do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
+    relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5479,18 +5587,29 @@ def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain", [SupportFuseRelu]> {
 def Top_BatchNormBwdOp: Top_Op<"BatchNormBwd"> {
   let summary = "BatchNormalization backward operation";
   let description = [{
+    1.Op Introduction
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
     with additional channel dimension) as described in the paper
     Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
 
+    2.Math formula
     ```math
         y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
     ```
-
     The mean and standard-deviation are calculated per-dimension over
     the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
     of size C (where C is the input channel size).
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grad_out(w.): the gradient of the loss with respect to the output of the layer normalization.;
+
+    4.attributes
+    weight_opt: the optimal scaling for the normalized output.;
+    saved_mean: the mean of the input tensor calculated.;
+    saved_invstd: the inverse standard deviation of the input tensor calculated.;
+    epsilon;
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
@@ -5511,7 +5630,27 @@ def Top_BatchNormBwdOp: Top_Op<"BatchNormBwd"> {
 def Top_LayerNormTrainOp : Top_Op<"LayerNormTrain"> {
   let summary = "LayerNorm operation for train";
   let description = [{
-    layer normalization in train
+    1.Op Introduction
+    layer normalization in train.
+
+    2.Math formula
+    ```math
+        1.Normalization
+            mean = 1 / H \sum{j=1, H} input[j]
+            var = 1 / H \sum{j=1, H} (input[j] - mean) ^ 2
+        2.Layer Normalized Output
+            output[i] = weight * (input[i] - mean) / sprt(var + eps) + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    normalized_shape: the shape of the input tensor dimensions.;
+    axis: the dimension of the input tensor.;
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5531,7 +5670,30 @@ def Top_LayerNormTrainOp : Top_Op<"LayerNormTrain"> {
 def Top_LayerNormBwdOp : Top_Op<"LayerNormBwd"> {
   let summary = "LayerNorm operation for train";
   let description = [{
-    layer normalization in train
+    1.Op Introduction
+    layer normalization
+
+    2.Math formula
+    ```math
+        1.gradient input
+            grad_input = 1 / N(weight / sqrt(variance + eps) 1 / N \sum{i=1, N}grad_out)
+                            - (input - mean) / N * \sum(i=1, N)weight * grad_out / sqrt(variance + eps)
+        2.gradient weight
+            grad_weight = \sum(i=1, N)grad_out * (input - mean) / sqrt(variance + eps)
+        3.gradient bias
+            grad_bias = \sum(i=1, N)grad_out
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grad_out(w.): the gradient of the loss with respect to the output of the layer normalization.;
+    mean(w.): mean values to subtract from each channel for normalization.;
+    variance(w.): adjust the predicted boxes during the training process.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    normalized_shape:  the shape of the input tensor dimensions.;
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
@@ -5552,7 +5714,20 @@ def Top_LayerNormBwdOp : Top_Op<"LayerNormBwd"> {
 def Top_EmbDenseBwdOp : Top_Op<"EmbDenseBwd"> {
   let summary = "EmbDenseBwd operation for train";
   let description = [{
+    1.Op Introduction
     layer normalization
+
+    2.Math formula
+    ```math
+            output = grad_output[indices]
+    ```
+
+    3.activation and weight
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    indices(w.): the indices of the input tokens or items.;
+
+    4.attributes
+    num_weights: the total number of embedding weights.;
   }];
   let arguments = (ins
     AnyTensor:$grad_output,
@@ -5568,7 +5743,19 @@ def Top_WeightReorderOp: Top_Op<"WeightReorder"> {
   let summary = "WeightReorder operator";
 
   let description = [{
-      reorder Weight.
+    1.Op Introduction
+    reorder Weight.
+
+    2.Math formula
+    ```math
+            output = Reorder(input, reorder_mode)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    reorder_mode: rearranging the weight tensor, such as sorting, shuffling, or applying a specific permutation.;
   }];
 
   let arguments = (
@@ -5583,7 +5770,20 @@ def Top_SoftmaxBwdOp: Top_Op<"SoftmaxBwd"> {
   let summary = "softmax backward operator";
 
   let description = [{
+    1.Op Introduction
     Integrates some operations related to softmax backward.
+
+    2.Math formula
+    ```math
+            grad_input[i] = softmax(output)[i] * (grad_output[i] - \sum{j}grad_output[j] * softmax(output)[j])
+    ```
+
+    3.activation and weight
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    output(act.): output tensor.;
+
+    4.attributes
+    dim: If set to 0, computed across rows, If set to 1, computed across columns.;
   }];
 
   let arguments = (ins
@@ -5597,7 +5797,30 @@ def Top_SoftmaxBwdOp: Top_Op<"SoftmaxBwd"> {
 
 def Top_ConvBwdWeightOp:Top_Op<"ConvBwd_Weight">{
   let summary = "Convolution Backward operator";
-  let description = [{Gradient of Weight in Convolution Backward}];
+  let description = [{
+    1.Op Introduction
+    Gradient of Weight in Convolution Backward.
+
+    2.Math formula
+    ```math
+            \frac{\partial L}{\partial W} = \sum_{n=1}^{N} \sum_{c=1}^{C_{in}} \sum_{h=1}^{H} \sum_{w=1}^{W} \text{input}[n, c, h, w] \cdot \text{grad\_out}[n, :, h', w']
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    gradout_transpose(w.): The transposed gradient of the output tensor.;
+
+    4.attributes
+    groups: Number of blocked connections from input channels to output channels. Default: 1.;
+    input_shape: The shape of the input tensor.;
+    grad_out_shape: The shape of the gradient output tensor.;
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    stride: the stride for the cross-correlation, a single number or a tuple.;
+    dilations: controls the spacing between the kernel points;
+    padding: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    grad_bias_enable: whether to compute the gradient for the bias term as well.;
+    }];
   let arguments = (ins
   AnyTensor:$input,
   AnyTensor:$gradout,
@@ -5619,7 +5842,23 @@ def Top_ConvBwdWeightOp:Top_Op<"ConvBwd_Weight">{
 }
 def Top_VarianceOp:Top_Op<"Variance">{
   let summary = "Compute Variance operator";
-  let description = [{variance}];
+  let description = [{
+    1.Op Introduction
+    variance
+
+    2.Math formula
+    ```math
+            output = \frac{1}{N} \sum_{i=1}^{N} (input_i - mean)^2
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    reduce_list: A list of dimensions along which to compute the variance.;
+    correction: correction factor.;
+    keep_dims: whether to keep the dimensions of the output tensor the same as the input tensors.;
+    }];
   let arguments = (ins
   AnyTensor:$input,
   I64ArrayAttr:$reduce_list,
@@ -5633,7 +5872,18 @@ def Top_VarianceOp:Top_Op<"Variance">{
 
 def Top_RsqrtOp:Top_Op<"Rsqrt">{
   let summary = "Rsqrt Operator";
-  let description = [{Reverse square root}];
+  let description = [{
+    1.Op Introduction
+    Reverse square root.
+
+    2.Math formula
+    ```math
+            output = \frac{1}{\sqrt{input}}
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    }];
   let arguments = (ins
     AnyTensor:$input);
   let results = (outs
@@ -5644,7 +5894,20 @@ def Top_RsqrtOp:Top_Op<"Rsqrt">{
 def Top_SortOp:Top_Op<"Sort"> {
   let summary = "Sort operation";
   let description = [{
+    1.Op Introduction
     Integrates some operations related to Sort.
+
+    2.Math formula
+    ```math
+            output = Sort(input, axis, descending)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
+    descending: the order of sorting.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5659,7 +5922,24 @@ def Top_SortOp:Top_Op<"Sort"> {
 def Top_MeanRstdOp: Top_Op<"MeanRstd">{
   let summary = "Compute Mean, Rstd, Running_mean, Running_var in batchnorm train op ";
   let description = [{
-    mean(x),1/sqrt(var+eps),(1-momentum)*running_mean + momentum*mean,(1-momentum)*running_var + momentum*var
+    1.Op Introduction
+    computes the mean, reverse standard deviation (Rstd), running mean, and running variance.
+
+    2.Math formula
+    ```math
+        mean(x),1/sqrt(var+eps),(1-momentum)*running_mean + momentum*mean,(1-momentum)*running_var + momentum*var
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    running_mean(w.): mean during running.;
+    running_var(w.): variances during running.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    momentum: hyperparameter;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5683,7 +5963,22 @@ def Top_MeanRstdOp: Top_Op<"MeanRstd">{
 def Top_GroupNormTrainOp : Top_Op<"GroupNormTrain"> {
   let summary = "GroupNorm operation";
   let description = [{
+    1.Op Introduction
     group normalization
+
+    2.Math formula
+    ```math
+            output = \frac{input - mean}{\sqrt{\sigma^2 + eps}} \cdot weight + bias
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    weight(w.): weight tensor.;
+    bias(w.): the learnable bias of the module of shape (out_channels).;
+
+    4.attributes
+    eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    num_groups: number of groups to divide the channels into for normalization.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -5700,7 +5995,18 @@ def Top_GroupNormTrainOp : Top_Op<"GroupNormTrain"> {
 }
 def Top_LogicalAndOp :Top_Op<"LogicalAnd">{
   let summary = "logical and operation";
-  let description = [{logical and operation between two variables}];
+  let description = [{
+    1.Op Introduction
+    logical and operation between two variables
+
+    2.Math formula
+    ```math
+            output = input1 and input2
+    ```
+
+    3.activation and weight
+    inputs(act.): input tensor.;
+    }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs
   );
@@ -5710,7 +6016,40 @@ def Top_LogicalAndOp :Top_Op<"LogicalAnd">{
 }
 def Top_ConvbwdOp :Top_Op<"Convbwd">{
   let summary = "convolution backward";
-  let description = [{calculate grad_input,grad_weight,grad_bias of convolution operation}];
+  let description = [{
+    1.Op Introduction
+    calculate grad_input,grad_weight,grad_bias of convolution operation.
+
+    2.Math formula
+    ```math
+        \text{grad\_input} = \sum_{k=0}^{K-1} \text{grad\_out} \ast \text{kernel}_{k}
+        where \( K \) is the number of output channels and \( \ast \) denotes the convolution operation.
+
+        \text{grad\_weight} = \sum_{n=0}^{N-1} \text{input}_{n} \ast \text{grad\_out}
+        where \( N \) is the number of input channels.
+
+        \text{grad\_bias} = \sum_{i=0}^{M-1} \text{grad\_out}_{i}
+        where \( M \) is the number of output channels.
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grad_out(w.): the gradient of the loss with respect to the output of the layer normalization.;
+    kernel(w.): convolution kernel (filter) tensor.;
+
+    4.attributes
+    groups: Number of blocked connections from input channels to output channels. Default: 1.;
+    input_shape: The shape of the input tensor.;
+    grad_out_shape: The shape of the gradient output tensor.;
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    stride: the stride for the cross-correlation, a single number or a tuple.;
+    dilations: controls the spacing between the kernel points;
+    padding: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    inserts: selectively enabling or disabling the calculation of gradients;
+    grad_input_enable: whether to compute the gradient for the input tensor.;
+    grad_weight_enable: whether to compute the gradient for the weight tensor (kernel).;
+    grad_bias_enable: whether to compute the gradient for the bias term as well.;
+    }];
   let arguments = (ins
     AnyTensor:$grad_out,
     AnyTensor:$input,
@@ -5849,7 +6188,30 @@ def Top_MaskRCNNBboxPoolerOp: Top_Op<"MaskRCNN_BboxPooler"> {
   let summary = "BBox_Pooler gen by PPL";
 
   let description = [{
-    MaskRCNN_BBox_Pooler, the 1st ROIAlign in MaskRCNN
+    1.Op Introduction
+    MaskRCNN_BBox_Pooler, the 1st ROIAlign in MaskRCNN.
+
+    2.Math formula
+    ```math
+            output = ROIAlign(feature map, rois_multi_batch)
+    ```
+
+    3.activation and weight
+    ptr_feat0(act.): Pointer to the feature map at level 0.;
+    ptr_feat1(act.): Pointer to the feature map at level 1.;
+    ptr_feat2(act.): Pointer to the feature map at level 2.;
+    ptr_feat3(act.): Pointer to the feature map at level 3.;
+    rois_multi_batch(w.): ROIs (Regions of Interest) for multiple batches.;
+
+    4.attributes
+    ROI_NUM_LEVELS: The number of levels in the ROI feature pyramid.;
+    ROI_H: The height of the pooled ROI features.;
+    ROI_W: The width of the pooled ROI features.;
+    CHANNEL_ROI: The number of channels in the pooled ROI features.;
+    ROI_SLICE: The number of slices or segments;
+    ROI_PH: The height of the ROI in the feature map.;
+    ROI_PW: The width of the ROI in the feature map.;
+    ROI_LEN: The length of the ROIs being processed.;
   }];
 
   let arguments = (ins
@@ -5876,7 +6238,35 @@ def Top_MaskRCNNBboxPoolerOp: Top_Op<"MaskRCNN_BboxPooler"> {
 def Top_MaskRCNNGetBboxBOp: Top_Op<"MaskRCNN_GetBboxB">{
   let summary = "MaskRCNN GetBboxB gen by PPL";
   let description = [{
+    1.Op Introduction
     Mask rcnn consist of three part: backbone to get proposals, bbox head to get bbox pred, mask_head to get mask pred, GetBboxB is final part in bbox head
+
+    2.Math formula
+    ```math
+            output = \text{NMS}\Bigl( \text{Decode}\Bigl( \text{ptr\_rois},\, \text{ptr\_bbox},\, \text{max\_val},\, \text{scale\_factor},\, \text{delta2bbox\_means},\, \text{delta2bbox\_stds} \Bigr),\, \text{ptr\_score},\, \text{threshold\_score\_eq},\, \text{nms\_iou\_thr} \Bigr)
+    ```
+
+    3.activation and weight
+    ptr_rois(act.): candidate regions of interest for possible objects.;
+    ptr_bbox(act.): the bounding box predictions.;
+    ptr_score(act.): confidence scores associated with each proposal.;
+    max_val(w.): max scores the bbox predictions.;
+    scale_factor(w.): scale the decoded bounding box coordinates.;
+
+    4.attributes
+    threshold_score_eq: A threshold value used to filter out proposals with a low confidence score before applying NMS.;
+    wh_ratio_log: A logarithmic scaling factor, adjust the width-to-height ratio during decoding of bounding boxes.;
+    nms_iou_thr: IoU (Intersection over Union) threshold.;
+    delta2bbox_means: Mean values used to decode the bounding box regression.;
+    delta2bbox_stds_0: Standard deviation (first component) for scaling the decoded bbox values.;
+    delta2bbox_stds_1: Standard deviation (second component) for scaling the decoded bbox values.;
+    NUM_INDEXES: the number of indexes (or anchors).;
+    NUM_CLASSES: The total number of object classes.;
+    TOPK_ONNX_NMS: to select a fixed number of candidates.;
+    NUM_CLASSES_getBboxB: Number of classes used in this bounding box decoding step.;
+    MAX_NMS_LENGTH_GetBboxB: Maximum number of bounding box candidates.;
+    MAX_PER_IMG: The maximum number of detections allowed per image.;
+    MAX_PER_IMG_GetBboxB: maximum number of bounding boxes after the final processing.;
   }];
   let arguments = (ins
     AnyTensor:$ptr_rois,
@@ -5908,7 +6298,32 @@ def Top_MaskRCNNMaskPoolerOp: Top_Op<"MaskRCNN_MaskPooler"> {
   let summary = "Mask_Pooler gen by PPL";
 
   let description = [{
+    1.Op Introduction
     MaskRCNN_Mask_Pooler, the 2st ROIAlign in MaskRCNN
+
+    2.Math formula
+    ```math
+            output = \text{ROIAlign}\Bigl( \{x_i\}_{i=0}^3, \, \text{det\_bboxes\_multi\_batch}, \, \text{det\_labels\_multi\_batch}, \, \text{scale\_factor}, \, ROI\_NUM\_LEVELS, \, ROI\_H, \, ROI\_W, \, CHANNEL\_ROI, \, ROI\_SLICE, \, ROI\_PH, \, ROI\_PW, \, ROI\_LEN \Bigr)
+    ```
+
+    3.activation and weight
+    x_0(act.): first level of the feature pyramid.;
+    x_1(act.): second level of the feature pyramid.;
+    x_2(act.): third level of the feature pyramid.;
+    x_3(act.): fourth level of the feature pyramid.;
+    det_bboxes_multi_batch(act.): detected bounding boxes over multiple batches.;
+    det_labels_multi_batch(act.): class labels associated with the detected bounding boxes across multiple batches.;
+    scale_factor(w.): scale the decoded bounding box coordinates.;
+
+    4.attributes
+    ROI_NUM_LEVELS: the number of feature levels (or pyramid levels) available for ROI pooling.;
+    ROI_H: target height of the pooled region for each ROI.;
+    ROI_W: target width of the pooled region for each ROI.;
+    CHANNEL_ROI: number of channels to be kept or considered when performing ROIAlign.;
+    ROI_SLICE: slicing strategy for ROIs, if the ROI needs to be segmented into sub-regions for finer pooling.;
+    ROI_PH: Padding height for the ROI.;
+    ROI_PW: Padding width for the ROI.;
+    ROI_LEN: total length (or area) of the ROI.;
   }];
 
   let arguments = (ins
@@ -5935,7 +6350,24 @@ def Top_MaxPoolingIndicesBwdOp: Top_Op<"MaxPoolingIndicesBwd"> {
   let summary = "MaxPoolingIndicesBwd operator";
 
   let description = [{
+    1.Op Introduction
     MaxPoolingIndicesBwd operator
+
+    2.Math formula
+    ```math
+        output = grad_output[indices]
+    ```
+
+    3.activation and weight
+    grad_output(act.): the gradient of the loss with respect to the output.;
+    indices(w.): the indices of the input tokens or items.;
+
+    4.attributes
+    kernel_shape: the size of the convolution kernel (filter) as an array.;
+    stride: the stride for the cross-correlation, a single number or a tuple.;
+    pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
+    dilations: controls the spacing between the kernel points;
+    input_shape: The shape of the input tensor.;
   }];
 
   let arguments = (ins
