@@ -501,7 +501,7 @@ void update_cmd(uint32_t *cmd, bool last_cmd, uint64_t coeff_limit,
   // cmd type: 0:DMA_tensor, 1:DMA_matrix, 2:DMA_masked_select, 3:DMA_general
   // 4:DMA_cw_trans, 5:DMA_nonzero, 6:DMA_sys, 7:DMA_gather, 8:DMA_scatter
   // 9:DMA_reverse 10:DMA_compress 11: DMA_decompress
-  if ("BM1684X" == arch || "BM1684XE" == arch) {
+  if ("BM1684X" == arch) {
     if (!last_cmd) {
       update_addr_1684x(cmd + 16, coeff_limit, ctx_offset, addr_v);
       update_addr_1684x(cmd + 18, coeff_limit, ctx_offset, addr_v);
@@ -546,7 +546,7 @@ static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer,
     if (last_cmd) {
       len = (start_offset + 16 - 1 + 128) / 128 - start_offset;
     }
-  } else if ("BM1684X" == arch || "BM1684XE" == arch) {
+  } else if ("BM1684X" == arch) {
     // sys end
     if (last_cmd) {
       len = (start_offset + 16 - 1 + 128) / 128 - start_offset;
@@ -978,9 +978,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen,
            dynamic_coeff_size);
     dynamic_base_size += dynamic_coeff_size;
     // update addr_v
-    if (model->chip()->str() == "BM1684X" ||
-        model->chip()->str() == "BM1684XE") {
-      // BM1684X/BM1684XE save real address. addr = base_addr + offset;
+    if (model->chip()->str() == "BM1684X") {
+      // BM1684X save real address. addr = base_addr + offset;
       auto cur_coeff_addr = param->coeff_mem()->address();
       for (int i = 0; i < addr_update_v[model_idx].size(); ++i) {
         addr_update_v[model_idx][i].addr += cur_coeff_addr;

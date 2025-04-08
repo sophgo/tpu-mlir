@@ -2,7 +2,6 @@ add_subdirectory(cnpy)
 
 install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbackend_1684x.so
-              nntoolchain/lib/libbackend_1684xe.so
               nntoolchain/lib/libbackend_1688.so
               nntoolchain/lib/libbackend_mars3.so
               nntoolchain/lib/libbackend_bm1690.so
@@ -12,7 +11,6 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbmlib.so.0
               nntoolchain/lib/libcmodel_1684.so
               nntoolchain/lib/libcmodel_1684x.so
-              nntoolchain/lib/libcmodel_1684xe.so
               nntoolchain/lib/libcmodel_1688.so
               nntoolchain/lib/libcmodel_mars3.so
               nntoolchain/lib/libcmodel_sg2380.so
@@ -24,8 +22,6 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libcpuop.so.1.0.0
               nntoolchain/lib/libbm1684x_kernel_module.so
               nntoolchain/lib/libbm1684x_kernel_module.a
-              nntoolchain/lib/libbm1684xe_kernel_module.so
-              nntoolchain/lib/libbm1684xe_kernel_module.a
               nntoolchain/lib/libbmtpulv60_kernel_module.so
               nntoolchain/lib/libbmtpulv60_kernel_module.a
               nntoolchain/lib/libbm1690_kernel_module.so

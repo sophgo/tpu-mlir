@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1684XE.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/MARS3.h"
@@ -46,8 +45,6 @@ void Arch::init(uint64_t freq) {
       inst = &BM1684::instance();
     } else if (chip == module::Chip::BM1684X) {
       inst = &BM1684X::instance();
-    } else if (chip == module::Chip::BM1684XE) {
-      inst = &BM1684XE::instance();
     } else if (chip == module::Chip::BM1688) {
       inst = &BM1688::instance(A2_1::value);
     } else if (chip == module::Chip::CV186X) {

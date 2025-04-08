@@ -313,7 +313,7 @@ class DeployTool:
         # dynamic layer output data dump
         if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ[
                 "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
-            if self.chip in ("bm1684x", "bm1684xe", "bm1688") and self.state != "TOP_QUANTIZED":
+            if self.chip in ("bm1684x", "bm1688") and self.state != "TOP_QUANTIZED":
                 dyn_layer_out_data_path = "./.tmp"
                 os.system(f"export DYNAMIC_LAYER_OUTPUT_DATA_PATH={dyn_layer_out_data_path}")
                 os.system("export DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH={}".format(
@@ -425,7 +425,7 @@ if __name__ == '__main__':
     # ========== Basic Options ===========
     parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
-                        choices=['bm1688', 'bm1684x', 'bm1684xe', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380',
+                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
@@ -517,9 +517,9 @@ if __name__ == '__main__':
     parser.add_argument("--compress_mode", default="none", type=str.lower,
                         choices=["none", "weight", "activation", "all"],
                         help="set compress mode")
-    # for bm1684x/bm1684xe and bm1688
+    # for bm1684x and bm1688
     parser.add_argument("--matmul_perchannel", action="store_true", default=False,
-                        help="if quantize matmul in per-channel mode for BM1684x/BM1684xe and BM1688")
+                        help="if quantize matmul in per-channel mode for BM1684x and BM1688")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                     help='used for regression test, check if patterns are successfully applied a specific number of times')

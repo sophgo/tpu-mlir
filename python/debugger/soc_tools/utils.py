@@ -159,7 +159,6 @@ def collect_files():
     shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libatomic_exec_aarch64.so"), os.path.join(soc_tool_dir,"lib"))
     shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libatomic_exec_bm1688_aarch64.so"), os.path.join(soc_tool_dir,"lib"))
     shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libbm1684x_atomic_kernel.so"), os.path.join(soc_tool_dir,"lib"))  # do not use libbm1684x_kernel_module, which may cause nan error
-    shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libbm1684xe_atomic_kernel.so"), os.path.join(soc_tool_dir,"lib"))
     shutil.copy(os.path.join(thirdparty_lib_dir, "nntoolchain/lib/libbmtpulv60_kernel_module.so"), os.path.join(soc_tool_dir,"lib"))
 
     local_tools_path = os.getenv("PROJECT_ROOT", None)
@@ -173,7 +172,6 @@ def collect_files():
 
     collect_copytree(os.path.join(cur_dir, "../target_common"), soc_tool_dir)
     collect_copytree(os.path.join(cur_dir, "../target_1684x"), soc_tool_dir)
-    collect_copytree(os.path.join(cur_dir, "../target_1684xe"), soc_tool_dir)
     collect_copytree(os.path.join(cur_dir, "../target_1688"), soc_tool_dir)
     collect_copytree(os.path.join(cur_dir, "../target_1684"), soc_tool_dir)
     collect_copytree(os.path.join(cur_dir, "../target_1690"), soc_tool_dir)

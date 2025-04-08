@@ -76,7 +76,7 @@ def int2Hex(data_list):
 
 def get_dma_trace(addr):
     CHIP_ARCH = 'bm1684x'
-    if CHIP_ARCH == 'bm1684x' or CHIP_ARCH == 'bm1684xe' or CHIP_ARCH == 'mars3' or CHIP_ARCH == 'sgtpuv8':
+    if CHIP_ARCH == 'bm1684x' or CHIP_ARCH == 'mars3' or CHIP_ARCH == 'sgtpuv8':
         addr = int(addr)
         if addr & 0x1 == 0x1:
             return 'DDR'
