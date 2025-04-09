@@ -79,10 +79,8 @@ class fx2mlir(object):
         self.cmp = cmp if cmp is not None else config.cmp
         self.bmodel_path = None
         self.weight_file = f'graph_for_jit_{self.model_name}.npz'
-        self.input_nodes = []
         self.output_nodes = []
-        self.output_dtypes = []
-        self.return_none_count = 0
+        self.all_output_dtypes = []
         self.operands = dict()
         self.name_map = dict()
         self.init_fxmlirimporter()
@@ -100,7 +98,7 @@ class fx2mlir(object):
             "convolution": lambda node: self.convert_base_conv_op(node),
             "convolution.default": lambda node: self.convert_base_conv_op(node),
             "convolution_backward": lambda node: self.convert_backward_conv_op2(node),
-            # "convolution_backward": lambda node: self.convert_backward_conv_op(node),
+            #"convolution_backward": lambda node: self.convert_backward_conv_op(node),
             "permute": lambda node: self.convert_permute_op(node),
             "relu": lambda node: self.convert_relu_op(node),
             # "native_dropout": lambda node: self.convert_dropout_op(node),
@@ -237,30 +235,28 @@ class fx2mlir(object):
     def convert(self, module):
         print('>>>>>>>>>> starting parsing...')
         # module.to_folder(f'fx_graph_dumped_{self.model_name}', self.model_name)
-        in_tensor_name_to_idx_dict = {}
-        self.input_nodes_tmp = set()
+        self.output_node = [i for i in module.graph.nodes if i.op == 'output' and len(i.args) > 0][0]
+        scalar_tensor_new_fx_graph = {}
+        self.excluded_output = []
+        self.input_nodes = []
         for i, node in enumerate(module.graph.nodes):
             if node.op == 'placeholder':
                 shape = list(node.meta['val'].size())
                 print(f'>>> {i}th op, placeholder:', node.name, 'val:', node.meta['val'])
-                self.input_nodes.append([i, node])
-                self.input_nodes_tmp.add(node)
-                in_tensor_name_to_idx_dict[node.name] = i
-        self.input_nodes = sorted(self.input_nodes, key=lambda x:x[0], reverse=False)
+                self.input_nodes.append(node)
+
         in_args_txt_list = []
-        for node in self.input_nodes:
-            shape = list(node[1].meta['val'].size())
+        for idx, node in enumerate(self.input_nodes):
+            shape = list(node.meta['val'].size())
             shape = [1] if shape == [] else shape
-            in_args_txt_list.append("%args{}: {} loc(unknown)".format(node[0], RankedTensorType.get(shape, F32Type.get()).__str__())) #F32
+            in_args_txt_list.append("%arg{}: {} loc(unknown)".format(idx, RankedTensorType.get(shape, F32Type.get()).__str__())) #F32
         first_call_op = True
-        self.fake_text = []
         for i, node in enumerate(module.graph.nodes):
             if len(node.users) == 0:
                 continue
             if node.op == 'call_module' or node.op == 'call_method' or node.op == 'call_function':
                 if first_call_op:
-                    output_args_txt = self.parseOutputNode([i for i in module.graph.nodes if i.op == 'output' and len(i.args) > 0][0])
-                    self.fake_text.append(output_args_txt)
+                    output_args_txt = self.parseOutputNode(self.output_node)
                     self.mlir.createMlirModuleAndInput(self.input_nodes, ', '.join(in_args_txt_list), output_args_txt,self.operands)
                     first_call_op = False
                 op_type = extrace_op_name(node)
@@ -280,17 +276,12 @@ class fx2mlir(object):
         # add return op
         return_op = list()
         output_tensor_names = []
-        if isinstance(self.output_nodes, torch.fx.node.Node):
-            self.output_nodes = [self.output_nodes]
         for idx, node in enumerate(self.output_nodes):
-            if node is not None:
-                return_op.append(self.operands[node])
-                new_name = node.name
-                if node in self.name_map:
-                    new_name = self.name_map[node]
-                output_tensor_names.append(new_name)
-            else:
-                self.return_none_count += 1
+            return_op.append(self.operands[node])
+            new_name = node.name
+            if node in self.name_map:
+                new_name = self.name_map[node]
+            output_tensor_names.append(new_name)
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
@@ -315,17 +306,19 @@ class fx2mlir(object):
             bmodel_path=self.bmodel_path,
             final_mlir=f"{self.model_name}_{self.chip}_f16_final.mlir",
             quant_input=True,
-            quant_output= not self.bwd_graph)
-        
+            quant_output= not self.bwd_graph,
+            opt = config.compile_opt,
+            debug_info = config.debug_cmd)
+
         if self.mlir != None:
             del self.mlir
             self.mlir = None
         if self.cmp:
             self.model_validate()
         if not config.unit_test:
-            mlir_mod = TpuMlirModule(self.bmodel_path, in_tensor_name_to_idx_dict, output_tensor_names,
-                                 self.output_dtypes, self.output_shapes, self.return_none_count)
-            return mlir_mod        
+            mlir_mod = TpuMlirModule(self.bmodel_path, self.output_count, scalar_tensor_new_fx_graph, output_tensor_names,
+                                 self.all_output_dtypes, self.output_shapes, self.ori_output_nodes)
+            return mlir_mod
         else:
             return None
 
@@ -371,38 +364,25 @@ class fx2mlir(object):
 
     def parseOutputNode(self, node):
         assert node.op == 'output'
-        self.output_nodes = node.args[0]
-
+        output_nodes = node.args[0]
         if isinstance(node.args[0], torch.fx.node.Node):
-            self.output_shapes = [list(node.args[0].meta['val'].shape)]
-            self.is_inputs = [False]
-            self.output_dtypes = [node.args[0].meta['val'].dtype]
-        else:
-            self.output_shapes = [(i,list(i.meta['val'].shape)) for i in node.args[0] if i is not None]
-            self.output_shapes = [ i[1] for i in self.output_shapes]
-            self.is_inputs = [i in self.input_nodes_tmp for i in self.output_nodes]
-            self.output_dtypes = [i.meta['val'].dtype for i in node.args[0] if i is not None]
-        assert len(self.output_shapes) == len(self.output_dtypes)
+            output_nodes = [node.args[0]]
+        self.ori_output_nodes = list(output_nodes)
 
-        output_txt = ','.join([f'{self.mlir.get_tensor_type([]).__str__()}' if not is_in else f'{self.mlir.get_tensor_type(shape, self.mlir.get_dtype(dtype)).__str__()}' for shape, dtype, is_in in zip(self.output_shapes, self.output_dtypes, self.is_inputs)])
+        output_nodes = [i for i in output_nodes if i is not None]
+        self.output_count = len(output_nodes)
+
+        self.all_output_dtypes = [i.meta['val'].dtype for i in output_nodes]
+        print('output_nodes.size:', len(output_nodes))
+        self.output_nodes = [i for i in output_nodes if i not in self.excluded_output]
+        is_inputs = [i in self.input_nodes or (extrace_op_name(i) == '_to_copy' and i.args[0].op == 'placeholder') for i in self.output_nodes]
+        print('is_inputs:', is_inputs)
+        self.output_shapes = [list(i.meta['val'].shape) for i in self.output_nodes]
+        output_dtypes = [i.meta['val'].dtype for i in self.output_nodes]
+        print('output_dtypes.size:', len(output_dtypes))
+
+        output_txt = ','.join([f'{self.mlir.get_tensor_type([] if not is_in else shape, self.mlir.get_dtype(dtype)).__str__()}' for is_in, shape, dtype in zip(is_inputs, self.output_shapes, output_dtypes)])
         if len(self.output_shapes) > 1:
-            output_txt = "({})".format(output_txt)
-        return output_txt
-
-    def parseOutputNode_test(self, node): #unused
-        assert node.op == 'output'
-        self.output_nodes = node.args[0]
-        if isinstance(node.args[0], tuple) or isinstance(node.args[0], list):
-            output_shapes = [(i,list(i.meta['val'].size())) for i in node.args[0] if i is not None]
-            self.output_dtypes = [i.meta['val'].dtype for i in node.args[0] if i is not None]
-        else:
-            output_shapes = [(node.args[0],list(node.args[0].meta['val'].size()))]
-            self.output_dtypes = [node.args[0].meta['val'].dtype]
-        output_shapes = [[1,i[1][0],1,1] if self.nodeIsBelongToChanStyle(i[0]) and len(i[1]) == 1 else i[1] for i in output_shapes]
-
-        assert len(output_shapes) == len(self.output_dtypes)
-        output_txt = ','.join([f'{self.mlir.get_tensor_type(shape, self.mlir.get_dtype(dtype)).__str__()}' for shape, dtype in zip(output_shapes, self.output_dtypes)])
-        if len(output_shapes) > 1:
             output_txt = "({})".format(output_txt)
         return output_txt
 
@@ -934,7 +914,7 @@ class fx2mlir(object):
             tmp = list(node.users.keys())
             self.name_map[tmp[mask_to_users_idx[0]]] = node.name+'_grad_input'
         if output_mask[2]:
-            grad_bias = top.ReduceOp(*self.mlir.get_tensor_type([bias_sizes], dtype),
+            grad_bias = top.ReduceOp(self.mlir.get_tensor_type([]),
                                 grad_out,
                                 axes = [0,2,3],
                                 keepdims = False,
@@ -1821,6 +1801,7 @@ class fx2mlir(object):
 
     def convert_fresh_copy_op(self, node):
         pass
+
     def convert_unsqueeze_op(self, node):
         op0 = self.operands[node.args[0]]
         axis = node.args[1]
@@ -1944,7 +1925,7 @@ class fx2mlir(object):
         padding   = node.args[4] + node.args[4]
         dilation  = node.args[5] + node.args[5]
         ceil_mode = node.args[6]
-        indices   = self.operands[node.args[-1]]  # 前向传播的最大值索引
+        indices   = self.operands[node.args[-1]] #Index of the maximum value of forward propagation
         input_shape = list(node.args[1].meta['val'].size())
         new_op = top.MaxPoolingIndicesBwdOp(self.mlir.get_tensor_type([]),
                                             grad_out,
@@ -1958,7 +1939,7 @@ class fx2mlir(object):
                                             ip=self.mlir.insert_point).grad_input
         self.operands[node] = new_op
     # def convert_maxpool2d_backward_op(self, node):
-    #     # 解析操作节点的输入参数
+    #     # Parse the input parameters of the operation node
     #     grad_out = self.operands[node.args[0]]  # 上游梯度
     #     input    = self.operands[node.args[1]]  # 原始输入
     #     kernel_size = node.args[2]
@@ -1966,13 +1947,12 @@ class fx2mlir(object):
     #     padding   = node.args[4]
     #     dilation  = node.args[5]
     #     ceil_mode = node.args[6]
-    #     indices   = self.operands[node.args[-1]]  # 前向传播的最大值索引
-    #     # 获取数据类型和形状
+    #     indices   = self.operands[node.args[-1]]
     #     dtype       = self.mlir.get_output_dtypes(node)
     #     shape_input = list(node.args[1].meta['val'].size())  # 原始输入形状
     #     shape_grad  = list(node.args[0].meta['val'].size())  # 上游梯度形状
     #     zero_data   = np.zeros(shape_input, dtype=np.float32)  # 用于填充的零数据
-    #     zero_weight = self.mlir.create_weight_op(f'{node.name}_zero', zero_data)  # 创建零权重
+    #     zero_weight = self.mlir.create_weight_op(f'{node.name}_zero', zero_data)
     #     # scatter
     #     new_shape   = [shape_input[0], shape_input[1], shape_input[2] * shape_input[3]]
     #     zero_weight_tensor = top.ReshapeOp(self.mlir.get_tensor_type([]),

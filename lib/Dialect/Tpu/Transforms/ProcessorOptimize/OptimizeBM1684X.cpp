@@ -5412,7 +5412,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 Concat5dto4d,
                 EliminateCastBeforeGatherElements,
                 ConvMergeRequant,
-                CastGradWeight,
+                // CastGradWeight,
                 RemoveReshape,
                 MoveReshapeInSubGraphPattern,
                 SwapDimMerge,

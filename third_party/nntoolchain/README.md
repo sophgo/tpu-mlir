@@ -1,9 +1,10 @@
-**注意：所有提交到代码库的第三方依赖库都必须是release版本的；nntoolchain和libsophon需要与tpu-mlir同级目录**
+**注意：所有提交到代码库的第三方依赖库都必须是 release 版本的；nntoolchain 和 libsophon 需要与 tpu-mlir 同级目录**
 
 ## TPU1684 2024-11-20
+
 sha256: 6ca642e822618af4cffcf531d2cc9e81edc8e03e
 
-``` bash
+```bash
 cd  nntoolchain/net_compiler/
 source  scripts/envsetup.sh
 debug: rebuild_bm1684_backend_cmodel
@@ -13,9 +14,10 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ```
 
 ## TPU1684X/1688/BM1690/SG2380/MARS3/SGTPUV8 2025-06-11
-``` bash
 
-#bm1684x sha256: 607fdc4e7dfc94b101c6890a956208c7dffd8dc5
+```bash
+
+#bm1684x sha256: 2a5e681efccc5173ed3e43b78de824ac446e35d6
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +28,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: 607fdc4e7dfc94b101c6890a956208c7dffd8dc5
+#bm1688 sha256: 2a5e681efccc5173ed3e43b78de824ac446e35d6
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -37,13 +39,13 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: 607fdc4e7dfc94b101c6890a956208c7dffd8dc5
+#bm1690 sha256: 2a5e681efccc5173ed3e43b78de824ac446e35d6
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
 release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
-export EXTRA_CONFIG="-DDEBUG=ON -DUSING_FW_DEBUG=ON" && rebuild_test sgdnn
+export EXTRA_CONFIG="-DDEBUG=OFF -DUSING_FW_DEBUG=OFF" && rebuild_test sgdnn
 cp build/firmware_core/libtpuv7_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
@@ -78,8 +80,10 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 ```
 
 ## tpu-runtime 2025-1-17
+
 build from tpu-runtime 0004f3e0236832afb4bdeae677d6a489b77a9d2d
-``` bash
+
+```bash
 pushd libsophon
 mkdir -p build && cd build
 cmake -G Ninja -DPLATFORM=cmodel -DCMAKE_BUILD_TYPE=DEBUG ../ # release version has problem
@@ -89,7 +93,6 @@ cp -P bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp -P tpu-bmodel/libmodel_combine.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 popd
 ```
-
 
 ## tpu-cpuop 2023-10-10
 
@@ -103,7 +106,9 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 ```
 
 ## tpuv7-runtime 2024-12-20
+
 build from tpuv7-runtime e06660ead76443d9dc6cabd59d9d003a1d5ccfd6
+
 ```bash
 mkdir -p -p build/emulator
 cd build/emulator

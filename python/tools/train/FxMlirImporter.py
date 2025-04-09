@@ -217,7 +217,7 @@ class FxMIIRImporter(object):
             result_var_name = ",".join([f"%1#{var_id}" for var_id in range(num_output)])
             result_types = output_args_txt[1:-1]
         main_func = """
-            module attributes {{sym_name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"TORCH\", module.state=\"{state}\", module.chip=\"{chip}\", module.train={train}}} {{
+            module attributes {{sym_name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"FX\", module.state=\"{state}\", module.chip=\"{chip}\", module.train={train}}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
                     %1:{last_output_num} = \"Placeholder.Op\"() : () -> {output}
@@ -243,7 +243,7 @@ class FxMIIRImporter(object):
         self.entry_block.operations[2].operation.erase()
         self.entry_block.operations[1].operation.erase()
         for node, arg in zip(input_nodes, self.entry_block.arguments):
-            self.create_input_op(node[1], arg, operands)
+            self.create_input_op(node, arg, operands)
 
     def WeightToNpz(self, weight_file):
         tensor_npz = {}

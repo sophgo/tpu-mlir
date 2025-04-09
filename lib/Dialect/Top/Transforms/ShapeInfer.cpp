@@ -235,9 +235,15 @@ public:
 private:
   bool removeIfNoUse(Operation *op) {
     // if the op is in the region of other op, don't do removeIfNoUse
-    if (op->getUsers().empty() &&
-        !isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(
-            op->getBlock()->getParentOp())) {
+    auto parentOp = op->getBlock()->getParentOp();
+    bool is_protected =
+        isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(parentOp);
+
+    if (module::getPlatform() == module::Platform::FX) {
+      is_protected = is_protected || isa<top::InputOp>(op);
+    }
+
+    if (op->getUsers().empty() && !is_protected) {
       op->erase();
       return true;
     }
