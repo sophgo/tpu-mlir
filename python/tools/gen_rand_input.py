@@ -10,8 +10,12 @@
 import abc
 import numpy as np
 import argparse
-from utils.misc import *
-from utils.mlir_parser import *
+try:
+    from tpu_mlir.python.utils.misc import *
+    from tpu_mlir.python.utils.mlir_parser import *
+except:
+    from utils.misc import *
+    from utils.mlir_parser import *
 from PIL import Image
 
 TypeMap = {

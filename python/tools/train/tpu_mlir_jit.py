@@ -10,10 +10,16 @@ from functorch.compile import make_boxed_func
 from torch._functorch import compilers
 from mlir.ir import *
 import mlir.dialects.top as top
-from tools.train.partition import partition
-from tools.train.TpuMlirModule import TpuMlirModule
-from python.tools.train.FxGraphConverter import fx2mlir
-from tools.train.fx_pass import fx_pass_for_bmm_expand
+try:
+    from tpu_mlir.python.tools.train.partition import partition
+    from tpu_mlir.python.tools.train.TpuMlirModule import TpuMlirModule
+    from tpu_mlir.python.tools.train.FxGraphConverter import fx2mlir
+    from tpu_mlir.python.tools.train.fx_pass import fx_pass_for_bmm_expand
+except:
+    from tools.train.partition import partition
+    from tools.train.TpuMlirModule import TpuMlirModule
+    from tools.train.FxGraphConverter import fx2mlir
+    from tools.train.fx_pass import fx_pass_for_bmm_expand
 from . import config
 # TPUC_ROOT = os.environ.get('TPUC_ROOT')
 # torch.ops.load_library(f'{TPUC_ROOT}/lib/liblibtorch_plugin.so')

@@ -15,8 +15,12 @@ import argparse
 import os
 import struct
 import shutil
-from utils.misc import str2bool
-from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
+try:
+    from tpu_mlir.python.utils.misc import str2bool
+    from tpu_mlir.python.utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
+except:
+    from utils.misc import str2bool
+    from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
 from transform.OnnxOpt import *
 
 

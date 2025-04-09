@@ -8,7 +8,10 @@ import shutil
 import os
 import subprocess
 import logging
-import utils.pattern_counter
+try:
+    from tpu_mlir.python.utils import pattern_counter
+except:
+    from utils import pattern_counter
 import traceback
 import sys
 
