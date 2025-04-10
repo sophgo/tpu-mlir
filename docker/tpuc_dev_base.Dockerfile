@@ -31,16 +31,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git-lfs \
     clang lld lldb clang-format \
     libomp-dev \
+    # for firmware
+    flex bison \
     # for opencv
     libgl1 \
     libnuma1 libatlas-base-dev \
     # ssh
     openssh-server openssh-client \
+    # release package
+    patchelf \
     # for document
     texlive-xetex \
     # fix bug: https://bugs.archlinux.org/task/67856
-    texlive-lang-chinese texlive-fonts-recommended && \
-    # clenup
+    texlive-lang-chinese texlive-fonts-recommended \
+    # for regression
+    sshpass \
+    rsync && \
+    # for paddlePaddle
+    wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb && \
+    dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb && \
+    rm libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb && \
+    # cleanup
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -157,6 +168,8 @@ RUN TZ=Asia/Shanghai \
     && unzip /usr/share/fonts/fandol.zip -d /usr/share/fonts \
     && rm /usr/share/fonts/fandol.zip \
     && git config --global --add safe.directory '*' \
+    && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring_1.1-1_all.deb \
+    && dpkg -i /tmp/cuda-keyring_1.1-1_all.deb \
     && rm -rf /tmp/*
 
 

@@ -28,7 +28,6 @@ from chip import *
 from run_model import MODEL_RUN
 import test_tpulang
 import test_torch
-import test_tflite
 import test_onnx
 import test_fx
 import test_custom_tpulang
@@ -71,7 +70,6 @@ class MAIN_ENTRY(object):
             "onnx_int4": (test_onnx.ONNX_IR_TESTER,  test_onnx.test_int4,  ["bm1688"]),
             "onnx_fp8": (test_onnx.ONNX_IR_TESTER,  test_onnx.test_fp8,  ["bm1690"]),
             "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684", "bm1684x", "bm1688", "cv183x", "mars3"]),
-            "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x", "bm1688"]),
             "fx":       (test_fx.FX_IR_TESTER,           test_fx.test_all, ["bm1690"]),
         }
         self.op1_test_types = {

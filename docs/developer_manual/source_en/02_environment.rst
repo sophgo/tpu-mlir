@@ -24,7 +24,7 @@ Download the required image from DockerHub https://hub.docker.com/r/sophgo/tpuc_
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.3
+   $ docker pull sophgo/tpuc_dev:v3.4
 
 
 If the pulling fails, you can download the required image file from the official website development materials https://developer.sophgo.com/site/index/material/86/all.html, or use the following command to download and load the image:
@@ -55,7 +55,7 @@ Make sure the installation package is in the current directory, and then create 
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.3
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
   # "myname" is just an example, you can use any name you want
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
 

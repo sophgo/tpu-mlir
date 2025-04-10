@@ -13,7 +13,7 @@ If you do not meet the above system environment, you need to use Docker, downloa
 .. code-block:: shell
    :linenos:
 
-   $ docker pull sophgo/tpuc_dev:v3.3
+   $ docker pull sophgo/tpuc_dev:v3.4
 
 If the pulling fails, you can download the required image file from the official website development materials https://developer.sophgo.com/site/index/material/86/all.html, or use the following command to download and load the image:
 
@@ -47,7 +47,7 @@ If you download the image file, make sure the image file is in the current direc
 .. code-block:: shell
 
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.3
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 
 where ``myname`` is the name of the container, which can be customized; ``$PWD`` is the current directory, synchronized with the container's ``/workspace`` directory.
 

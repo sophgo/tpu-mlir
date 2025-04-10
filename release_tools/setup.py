@@ -32,7 +32,9 @@ setup(
         "graphviz==0.20.1",
         "pycocotools==2.0.6",
         "scikit-image==0.21.0",
-        "transformers==4.31.0",
+        "transformers==4.51.1",
+        "scikit-learn==1.6.1",
+        "onnxruntime_extensions==0.14.0",
         "pandas==2.0.3",
     ],
     extras_require={
@@ -47,11 +49,15 @@ setup(
             # caffe
             "six==1.16.0",
             # tensorflow
-            "tensorflow-cpu==2.13.0",
             "tf2onnx==1.8.4",
             # paddle
             "paddlepaddle==2.5.0",
             "paddle2onnx==1.0.8",
+            # others
+            "astunparse==1.6.3",
+            "flatbuffers==24.12.23",
+            "setuptools==59.6.0",
+            "tensorboard==2.13.0",
         ],
         "torch": [
             "torch==2.1.0",
@@ -66,7 +72,6 @@ setup(
             "six==1.16.0",
         ],
         "tensorflow": [
-            "tensorflow-cpu==2.13.0",
             "tf2onnx==1.8.4"
         ],
         "paddle": [

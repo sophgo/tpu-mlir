@@ -11,7 +11,7 @@
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.3
+   $ docker pull sophgo/tpuc_dev:v3.4
 
 若下载失败，可从官网开发资料 https://developer.sophgo.com/site/index/material/86/all.html 下载所需镜像文件，或使用下方命令下载镜像：
 
@@ -45,7 +45,7 @@
 .. code-block:: shell
 
   # 使用 --privileged 参数以获取root权限，如果不需要root权限，请删除该参数
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.3
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 
 其中， ``myname`` 为容器名称，可以自定义； ``$PWD`` 为当前目录，与容器的 ``/workspace`` 目录同步。
 
