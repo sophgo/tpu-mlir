@@ -589,10 +589,10 @@ model_deploy.py
      - 如果需要旧版本的cvimodel,请设置版本,例如1.2，默认latest
    * - q_group_size
      - 否
-     - 每组定量的组大小，仅用于 W4A16 定量模式，默认0
+     - 每组定量的组大小，仅用于 W4A16/W8A16 定量模式，默认0
    * - q_symmetric
      - 否
-     - 指定做W4A16对称量化，仅用于 W4A16 定量模式
+     - 指定做W4A16对称量化，仅用于 W4A16/W8A16 定量模式
    * - compress_mode
      - 否
      - 指定模型的压缩模式："none","weight","activation","all"。支持bm1688, 默认为"none",不进行压缩

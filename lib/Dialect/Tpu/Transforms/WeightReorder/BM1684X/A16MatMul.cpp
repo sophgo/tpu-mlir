@@ -59,7 +59,7 @@ static inline data_type_t tpu_type_convert(DATA_TYPE_T data_type) {
 
 LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
                                        PatternRewriter &rewriter) {
-  if (op.getWeightBits() != 4 || op.getQGroupSize() <= 0) {
+  if (op.getQGroupSize() <= 0) {
     return failure();
   }
 

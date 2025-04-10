@@ -47,16 +47,16 @@ void tpu::A16MatMulOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
   // dequant weight back to f16/ bf16
   auto scale = p.inputs[2];
+  auto zp = p.inputs[3];
   auto weight_value = getWeight();
   auto weight_shape =
       weight_value.getType().cast<RankedTensorType>().getShape();
   int K = weight_shape[0];
   int N = weight_shape[1];
   auto weight = p.inputs[1];
+  int q_group_size = module::getQuantGroupSize();
   if (getWeightBits() == 4) {
     auto w_transpose = getWTranspose();
-    int q_group_size = module::getQuantGroupSize();
-    auto zp = p.inputs[3];
     N *= 2;
     auto in_shape = getInput().getType().cast<RankedTensorType>().getShape();
     int64_t M = 1;
@@ -98,13 +98,21 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     matmul->run();
     delete matmul;
   } else {
-    auto zp = p.inputs[3];
-    for (int i = 0; i < K; i++) {
-      auto offset = i * N;
-      for (int j = 0; j < N; j++) {
-        weight[offset + j] = module::isSG2380()
-                                 ? ((weight[offset + j]) * scale[i] - zp[i])
-                                 : ((weight[offset + j]) * scale[i]);
+    if (!q_group_size) {
+      for (int i = 0; i < K; i++) {
+        auto offset = i * N;
+        for (int j = 0; j < N; j++) {
+          weight[offset + j] = module::isSG2380()
+                                   ? ((weight[offset + j]) * scale[i] - zp[i])
+                                   : ((weight[offset + j]) * scale[i]);
+        }
+      }
+    } else {
+      for (int i = 0; i < K * N; i++) {
+        int quant_idx = i / q_group_size;
+        auto zp_i = zp[quant_idx];
+        auto scale_i = scale[quant_idx];
+        weight[i] = (weight[i] - zp_i) * scale_i;
       }
     }
     // hand over the rest work to onednn matmul
