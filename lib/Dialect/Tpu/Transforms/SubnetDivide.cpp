@@ -824,7 +824,7 @@ public:
                 info->type = RunMode::TPU_DYNAMIC;
                 info->ops.emplace_back(op);
                 valid_values.insert(op->result_begin(), op->result_end());
-                if (isa<tpu::TopKOp, tpu::GatherOp>(op)) {
+                if (isa<tpu::SortOp, tpu::TopKOp, tpu::GatherOp>(op)) {
                   updated = false;
                   break;
                 } else {
@@ -1231,10 +1231,10 @@ public:
 
   bool has_special_dyn_op_static_shape(subnet_basic_info *&subnet,
                                        InfoVec &subnets) {
-    auto it = std::find_if(subnet->ops.begin(), subnet->ops.end(),
-                           [&](const Operation *op) {
-                             return isa<tpu::TopKOp, tpu::GatherOp>(op);
-                           });
+    auto it = std::find_if(
+        subnet->ops.begin(), subnet->ops.end(), [&](const Operation *op) {
+          return isa<tpu::SortOp, tpu::TopKOp, tpu::GatherOp>(op);
+        });
     if (it == subnet->ops.end())
       return false;
     // check the type of previous subnet of current dynamic subnet
