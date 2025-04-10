@@ -1746,6 +1746,33 @@ def Top_FlattenOp:Top_Op<"Flatten"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_FAttentionOp: Top_Op<"FAttention"> {
+  let summary = "Flash Attention operator";
+
+  let description = [{
+    Performs a two dimensional matrix multiplication. This allows both inputs to
+    be activations, rather than reserving weights as an attribute in the
+    FULLY_CONNECTED operator.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$queries,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$buffer,
+    F64Attr:$scale,
+    I64Attr:$batch,
+    I64Attr:$q_head,
+    I64Attr:$kv_head,
+    I64Attr:$dim,
+    I64Attr:$mq,
+    I64Attr:$mk
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ReverseOp:Top_Op<"Reverse"> {
   let summary = "Reverse operation";
   let description = [{

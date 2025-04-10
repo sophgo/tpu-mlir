@@ -20,6 +20,7 @@ class Platform:
     TFLITE = "TFLITE"
     CAFFE = "CAFFE"
     TPULANG = "TPULANG"
+    LLM = "LLM"
 
 
 def get_weight_file(model_name: str, state: str, chip: str):
@@ -39,7 +40,8 @@ class MLIRImporter(object):
                  state: str = State.TOP_F32,
                  do_declare: bool = True,
                  run_mode: str = "STATIC",
-                 no_save: bool = False):
+                 no_save: bool = False,
+                 weight_file: str = ""):
         """
             input_shape: List[List], put module input shape. ex: [[1, 3, 224, 224]]
             output_shape: List, put module output shape. ex: [1, 1000]
@@ -51,7 +53,10 @@ class MLIRImporter(object):
         self.chip = "ALL"
         self.run_mode = run_mode
         self.platform = platform
-        self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
+        if weight_file == "":
+            self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
+        else:
+            self.weight_file = weight_file
         self.ctx = Context()
         self.ctx.allow_unregistered_dialects = True
         self.loc = Location.unknown(self.ctx)

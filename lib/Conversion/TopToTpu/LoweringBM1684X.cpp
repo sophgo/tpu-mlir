@@ -125,6 +125,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       DivLowering,
       EluLowering,
       ExpLowering,
+      FAttentionLowering,
       FloorLowering,
       GatherLowering,
       GatherElementsLowering,
