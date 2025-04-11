@@ -2171,9 +2171,10 @@ struct PermuteFuseAddSoftmax : public OpRewriterPatternEx<tpu::PermuteOp> {
 
     // AddOp
     rewriter.setInsertionPoint(add_op);
+    auto out_add = add_op->getResult(0);
     auto new_mask_type = RankedTensorType::get(
         {mask_shape[0], mask_shape[2], mask_shape[1], mask_shape[3]},
-        module::getElementType(out));
+        module::getElementType(out_add));
     if (mask_shape[1] == 1 && mask_shape[2] == 1) {
       // nothing to do
     } else {
