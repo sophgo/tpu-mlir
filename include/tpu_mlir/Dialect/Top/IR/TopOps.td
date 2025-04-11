@@ -1425,6 +1425,34 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   }];
 }
 
+def Top_A16MatMulOp: Top_Op<"A16MatMul"> {
+  let summary = "w8a16 / w4a16 matmul operator";
+
+  let description = [{
+    The special matrix multiplication designed for LLM Linear Layer.
+    Weight is saved in int8 with f16 per-channel quant scale.
+
+    y_f16 = x_f16 x (quantized_w.to(f16) * scale_f16)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$weight,
+    AnyTensor:$scale,
+    AnyTensor:$zp,
+    AnyTensorOrNone:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<I64Attr, "128">:$q_group_size,
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits
+  );
+
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    a16matmul_attr_t parseParam();
+  }];
+}
+
 def Top_AttentionOp: Top_Op<"Attention"> {
   let summary = "Attention operator";
 

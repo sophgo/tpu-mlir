@@ -21,6 +21,25 @@ MatMul::MatMul() {
   engine_stream = dnnl::stream(eng);
 }
 
+void MatMul::dequant_weight(float *dq_weight, float *weight, float *scale,
+                            float *zp, int weight_len, int q_group_size,
+                            int weight_bits) {
+  int compress_ratio = 8 / weight_bits;
+  uint8_t mask = (weight_bits == 4) ? 0xF : 0xFF;
+  for (int i = 0; i < weight_len; i++) {
+    int quant_idx = i / q_group_size;
+    auto zp_i = zp[quant_idx];
+    auto scale_i = scale[quant_idx];
+    for (int j = 0; j < compress_ratio; j++) {
+      dq_weight[i + j] =
+          (((((int)(weight[i / compress_ratio]) >> (weight_bits * j)) & mask) -
+            (int)(zp_i)) *
+           scale_i);
+    }
+    i += compress_ratio - 1;
+  }
+}
+
 void MatMul::right_init(float *right, int64_t right_zp, int64_t batch,
                         int64_t batch_low, int64_t K, int64_t N,
                         bool right_transpose) {

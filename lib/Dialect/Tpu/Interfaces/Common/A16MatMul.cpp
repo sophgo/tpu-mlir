@@ -54,7 +54,8 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
   int K = weight_shape[0];
   int N = weight_shape[1];
   auto weight = p.inputs[1];
-  int q_group_size = module::getQuantGroupSize();
+  int q_group_size =
+      getQGroupSize() ? getQGroupSize() : module::getQuantGroupSize();
   if (getWeightBits() == 4) {
     auto w_transpose = getWTranspose();
     N *= 2;

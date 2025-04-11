@@ -244,6 +244,9 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
 
   LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
                                     PatternRewriter &rewriter) const override {
+    if (op.getScale().getDefiningOp<top::WeightOp>()) {
+      return failure();
+    }
     auto input_value = op.getInput();
     auto ele_type = module::getElementType(input_value);
     if (!ele_type.isF16() && !ele_type.isBF16() &&

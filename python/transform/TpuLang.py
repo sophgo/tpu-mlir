@@ -21,6 +21,7 @@ from debugger.plugins.data_checker import DataCheck, DumpMode
 import pymlir
 
 import numpy as np
+import math
 import logging
 from copy import deepcopy
 
@@ -1378,6 +1379,91 @@ def requant_fp(tensor_i: Tensor,
         "first_round_mode": Attr(round_mode_convert(first_round_mode), "string"),
     }
     TpuLang.insert_op("top.RequantFp", inputs=[tensor_i], outputs=[output], params=attr)
+    return output
+
+def unpack_weights(qweight, qzeros, bits):
+    dtype = np.int32
+    compress_ratio = 32 // bits
+    mask = 0xF if bits == 4 else 0xFF
+
+    K, N = qweight.shape
+    unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
+    pack_int8_weights = np.zeros((K * compress_ratio // 2, N), dtype=np.int8)  # dtype=int8 to fit tpu.a16matmul
+
+    Kz, Nz = qzeros.shape
+    unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.int8)  # dtype=int8 to fit tpu.a16matmul
+
+    for row in range(unpacked_weights.shape[0]):
+        i = row % compress_ratio
+        unpacked_weights[row, :] = (qweight[row // compress_ratio, :] >> (bits * i)) & mask
+
+        if bits == 4:
+            if row % 2 == 0:
+                pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
+            else:
+                pack_int8_weights[row // 2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+
+    for col in range(unpacked_zeros.shape[1]):
+        i = col % compress_ratio
+        unpacked_zeros[:, col] = (qzeros[:, col // compress_ratio] >> (bits * i)) & mask
+
+    if bits == 8:
+        pack_int8_weights = unpacked_weights.astype("uint8")
+    return unpacked_weights, pack_int8_weights, unpacked_zeros + 1
+
+def dequantize_weight(qweight, qzeros, scales, bits, group_size):
+    unpacked_qweight, pack_int8_weights, unpacked_qzeros = unpack_weights(qweight, qzeros, bits)
+
+    assert group_size == unpacked_qweight.shape[0] // scales.shape[0], (
+        "group_size does not match the shape of unpacked weights and scales."
+    )
+
+    scales_expanded = np.repeat(scales, group_size, axis=0)
+    zeros_expanded = np.repeat(unpacked_qzeros, group_size, axis=0)
+
+    dequantized = (unpacked_qweight - zeros_expanded) * scales_expanded
+
+    return dequantized.T, zeros_expanded, pack_int8_weights, unpacked_qzeros
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def a16matmul(input: Tensor,
+               weight: Tensor,
+               scale: Tensor,
+               zp: Tensor,
+               bias: Tensor = None,
+               right_transpose=True,
+               out_dtype: str = 'float16',
+               out_name: str = None,
+               group_size: int = 128,
+               bits: int = 4,
+               g_idx: Tensor = None,   # TODO: formatted as [0, ..., n] in GPTQ, do not support shuffled
+               ):
+    attr = {
+        "right_transpose": Attr(right_transpose, "bool"),
+        "q_group_size": Attr(group_size, "int64"),
+        "weight_bits": Attr(bits, "int64")
+    }
+    assert input.dtype in ["float32", "float16"] and weight.dtype == "int32" and zp.dtype == "int32" and out_dtype in ["float32", "float16", "bfloat16"]
+    assert bits in [4, 8]
+
+    # weight.buffer shape = [K,N]
+    qweight_expanded, zeros_expanded, pack_int8_weights, unpacked_qzeros  = dequantize_weight(weight.buffer, zp.buffer, scale.buffer, bits, group_size)
+
+    # golden = input.buffer @ qweight_expanded.T + bias.buffer
+    # np.savez("/workspace/tpu-mlir/qwen2_vl/final/tpulang_test_bm1684x/A16Matmul/output.npz", output=golden)
+
+    # fit tpu.mlir shape and dtype
+    weight.update(pack_int8_weights.T, pack_int8_weights.T.shape)
+    scale.update(scale.buffer.T, scale.buffer.T.shape)
+    zp.update(unpacked_qzeros.T, unpacked_qzeros.T.shape)
+    weight.dtype = "int8"
+    zp.dtype = "uint8"
+
+    output = Tensor(dtype=out_dtype, name=out_name)
+    inputs = [input, weight, scale, zp, bias]
+    TpuLang.insert_op("top.A16MatMul", inputs=inputs, outputs=[output], params=attr)
     return output
 
 ######## Up / Down Scaling Operator #########

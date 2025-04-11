@@ -192,6 +192,10 @@ class Tensor:
     def reset(self):
         self.buffer = None
 
+    def update(self, buffer, shape):
+        self.buffer = buffer
+        self.shape = shape
+
     def quantization(self,
                      scale: Union[float, List[float]] = None,
                      zero_point: Union[int, List[int]] = None):

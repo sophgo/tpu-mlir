@@ -16,6 +16,7 @@ from utils.timer import Timer
 import cv2
 from typing import List, Union
 import random
+import torch
 from utils.regression_logger import run_in_log_wrapper
 
 def is_int(dtype, width = None):
@@ -204,6 +205,7 @@ class TPULANG_IR_TESTER(object):
             "MultiScaleDeformableAttention": (self.test_MultiScaleDeformableAttention, Y, Y),
             "VitL": (self.test_Vit_L,                   Y, Y),
             # "VitB": (self.test_Vit_B,                   Y, Y),
+            "A16Matmul": (self.test_A16Matmul,               Y, Y),
             "KeepOutputOrder": (self.test_KeepOutputOrder,   Y, Y),
             "MeanStdScale": (self.test_MeanStdScale,    Y, N),
             "MeanStdScaleConv": (self.test_MeanStdScale_Conv,    Y, N),
@@ -1543,6 +1545,49 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=is_quantized)
 
         _test_model_def([1, 3, 224, 224], 32, 3, 'float16', is_quantized=True)
+
+    def test_A16Matmul(self, case_name, dtype='float16'):
+        def gen_weight(read_file, group_size, bits):
+            if read_file:
+                if bits == 4:
+                    file_path = "/workspace/Qwen2-VL-7B-Instruct-GPTQ-Int4/weights/qwen2vl_decoder_layer_0_quantized.pth"
+                else:
+                    file_path = "/workspace/Qwen2-VL-7B-Instruct-GPTQ-Int8/weights/qwen2vl_decoder_layer_0_quantized.pth"
+                model_weights = torch.load(file_path, map_location=torch.device('cpu'))
+                weight = model_weights['self_attn.q_proj.qweight'].numpy()
+                scale = model_weights['self_attn.q_proj.scales'].float().numpy()
+                zp = model_weights['self_attn.q_proj.qzeros'].numpy()
+                bias = model_weights['self_attn.q_proj.bias'].float().numpy()
+            else:
+                w_n = 3584
+                w_k = w_n // (32 // bits)
+                weight = np.random.randint(low=np.iinfo(np.int32).min, high=np.iinfo(np.int32).max, size=(w_k, w_n), dtype=np.int32)
+                scale = np.random.uniform(low=0, high=0.1, size=(w_n // group_size, w_n)).astype("float32")
+                zp = np.random.randint(low=np.iinfo(np.int32).min, high=np.iinfo(np.int32).max, size=(w_n // group_size, w_k), dtype=np.int32)
+                bias = np.random.randn(w_n,).astype("float32")
+
+            weight = tpul.Tensor(dtype="int32", shape=list(weight.shape), data=weight, ttype="coeff")
+            scale = tpul.Tensor(dtype="float32", shape=list(scale.shape), data=scale, ttype="coeff")
+            zp = tpul.Tensor(dtype="int32", shape=list(zp.shape), data=zp, ttype="coeff")
+            bias = tpul.Tensor(dtype="float32", shape=list(bias.shape), data=bias, ttype="coeff")
+
+            return weight, scale, zp, bias
+
+        @tpulang(self.chip)
+        def _test_A16Matmul(dtype, group_size, bits, read_file=False):
+            weight, scale, zp, bias = gen_weight(read_file, group_size, bits)
+            K = int(weight.shape[0] * 32 / bits)
+            N = weight.shape[1]
+            seq_length = 2048
+            input = rand_data((1, seq_length, K), "float32")
+            input = tpul.Tensor(dtype="float32", shape=list(input.shape), data=input)
+            output = tpul.a16matmul(input, weight, scale, zp, bias, right_transpose=True, out_dtype=dtype, out_name="output", group_size=group_size, bits=bits)
+            self.compile_and_check(self.unique_name(case_name), [input], [output])
+
+        _test_A16Matmul(dtype, group_size=128, bits=4)
+        # _test_A16Matmul(dtype, group_size=128, bits=4, read_file=True)
+        # _test_A16Matmul(dtype, group_size=128, bits=8)
+        # _test_A16Matmul(dtype, group_size=128, bits=8, read_file=True)
 
     #######################################################################
     # Convolution

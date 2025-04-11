@@ -44,6 +44,8 @@ def parse_args(args_list):
                         help="fuzzy_match")
     parser.add_argument("--forall", '-a', action='store_true',
                         help="whether print all the arrays or not.")
+    parser.add_argument("--key", '-k', type=str, default="",
+                        help="the only key to compare")
     args = parser.parse_args(args_list)
     # yapf: enable
     return args
@@ -228,9 +230,12 @@ def npz_compare(args_list, log_level="normal"):
             return
 
     common = list()
-    for name in npz2.files:
-        if name in npz1.files and name not in excepts:
-            common.append(name)
+    if args.key:
+        common.append(args.key)
+    else:
+        for name in npz2.files:
+            if name in npz1.files and name not in excepts:
+                common.append(name)
     if ordered_names:
         names = []
         for name in ordered_names:

@@ -101,6 +101,28 @@ typedef struct {
 } matmul_attr_t;
 
 typedef struct {
+  int64_t batch;
+  int64_t M;
+  int64_t K;
+  int64_t N;
+  int64_t batch_low;
+  bool with_bias;
+  bool do_relu;
+  double relu_limit;
+  bool left_transpose;
+  bool right_transpose;
+  bool output_transpose;
+  bool hdim_is_batch;
+  int64_t q_group_size;
+  int64_t weight_bits;
+  std::vector<int64_t> L_shape;
+  std::vector<int64_t> R_shape;
+  std::vector<int64_t> scale_shape;
+  std::vector<int64_t> zp_shape;
+  int dims_merge_2_M;
+} a16matmul_attr_t;
+
+typedef struct {
   int64_t n;
   int64_t c;
   int64_t id;
