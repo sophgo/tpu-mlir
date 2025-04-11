@@ -51,6 +51,7 @@ public:
     bool int4_th_meeted = false;
     bool fp8_th_meeted = false;
     bool asym_op_meeted = false;
+    bool int4_op_meeted = false;
 
     auto check_flag_line = [](std::string line, std::regex pattern) {
       // 1 for weight scale block, both fp8 and int4 int8 from mqbench
@@ -70,6 +71,8 @@ public:
           return 4;
         if (std::string::npos != line.find("asym_op"))
           return 5;
+        if (std::string::npos != line.find("int4_op"))
+          return 6;
         return 0;
       } else
         return 0;
@@ -83,6 +86,7 @@ public:
       std::istringstream iss(line);
       std::string name;
       std::string asym_op_name;
+      std::string int4_op_name;
       auto block_type = check_flag_line(line, info_pattern);
       if (0 == block_type) {
         if (int8_th_meeted) {
@@ -131,6 +135,12 @@ public:
             llvm_unreachable("\n  => not match required format\n");
           }
           asym_op_names.push_back(asym_op_name);
+        } else if (int4_op_meeted) {
+          if (!(iss >> int4_op_name)) {
+            llvm::errs() << line;
+            llvm_unreachable("\n  => not match required format\n");
+          }
+          int4_ops.push_back(int4_op_name);
         } else {
           llvm_unreachable("error th block type logic!\n");
         }
@@ -140,6 +150,7 @@ public:
         int4_th_meeted = block_type == 2;
         fp8_th_meeted = ((block_type == 3) || (block_type == 4));
         asym_op_meeted = block_type == 5;
+        int4_op_meeted = block_type == 6;
       }
     }
     double min, max;
@@ -181,7 +192,8 @@ public:
             if (calibration_map_int4.size() > 0 &&
                 (module::isInt4Op(op) ||
                  (isa<top::InputOp>(op) &&
-                  module::isInt4Op(*(op->getUsers().begin()))))) {
+                  module::isInt4Op(*(op->getUsers().begin())))) &&
+                isOpInt4(op)) {
               if (calibration_map_int4.find(name) !=
                   calibration_map_int4.end()) {
                 info = calibration_map_int4[name];
@@ -215,13 +227,14 @@ public:
           }
         }
 
-        if (calibration_map_int4.size() > 0 && module::isInt4Op(op)) {
+        if (calibration_map_int4.size() > 0 && module::isInt4Op(op) &&
+            isOpInt4(op)) {
           OpBuilder builder(op);
           double scale;
           int64_t zeropoint;
           auto name = module::getName(op->getResults()[0]).str();
           for (auto user : op->getUsers()) {
-            if (!module::isInt4Op(user) && !isa<ReturnOp>(user)) {
+            if (!isOpInt4(user) && !isa<ReturnOp>(user)) {
               if (calibration_map.find(name) != calibration_map.end()) {
                 auto &info = calibration_map[name];
                 module::getScaleAndZeroPoint(info.min, info.max, scale,
@@ -239,7 +252,7 @@ public:
           }
 
           auto preOp = op->getOperands()[0].getDefiningOp();
-          if (!module::isInt4Op(preOp) && !isa<InputOp>(preOp)) {
+          if (!isOpInt4(preOp) && !isa<InputOp>(preOp)) {
             name = module::getName(op->getOperands()[0]).str();
             if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
               auto &info = calibration_map_int4[name];
@@ -307,8 +320,15 @@ public:
     }
   }
 
+  bool isOpInt4(Operation *op) {
+    auto opName = module::getName(op).str();
+    return std::find(int4_ops.begin(), int4_ops.end(), opName) !=
+           int4_ops.end();
+  }
+
 private:
   std::vector<std::string> asym_op_names;
+  std::vector<std::string> int4_ops;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {
