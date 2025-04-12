@@ -715,16 +715,6 @@ bool tpu::MatMulOp::support_multi_core() {
 
   auto p = parseParam();
 
-  auto l2_buffer_size = getL2BufferSize();
-  int64_t l2memSize = BM168x::L2_SRAM_SIZE;
-  auto core_num = module::getCoreNum();
-  const int MAX_CORES = 8;
-  l2memSize = (l2memSize / MAX_CORES) * core_num;
-
-  if (l2_buffer_size > l2memSize) {
-    return false;
-  }
-
   if (p.hdim_is_batch || p.batch != 1 || p.do_relu ||
       module::getMode() == module::Mode::F8E4M3 ||
       module::getMode() == module::Mode::F8E5M2 ||

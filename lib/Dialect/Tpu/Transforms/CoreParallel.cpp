@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "llvm/Support/FormatVariadic.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 
 using namespace llvm;
 
@@ -326,7 +327,18 @@ public:
           return WalkResult::skip();
         }
         if (supportMultiCore(op)) {
-          return WalkResult::skip();
+          if (auto matmul_op = dyn_cast<tpu::MatMulOp>(op)) {
+            auto l2_buffer_size = matmul_op.getL2BufferSize();
+            int64_t l2memSize = backend::BM168x::L2_SRAM_SIZE;
+            auto core_num = module::getCoreNum();
+            const int MAX_CORES = 8;
+            l2memSize = (l2memSize / MAX_CORES) * core_num;
+            if (l2_buffer_size <= l2memSize) {
+              return WalkResult::skip();
+            }
+          } else {
+            return WalkResult::skip();
+          }
         }
         if (auto coreParallelOp = dyn_cast<IndexingMapsInterface>(op)) {
           forAll(coreParallelOp, 0, num_core);
