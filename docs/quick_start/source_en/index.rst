@@ -19,6 +19,7 @@ TPU-MLIR Quick Start
    07_quantization
    08_fuse_preprocess
    09_add_postprocess
+   10_llm_convert
    Appx.01_to_onnx_convert
    Appx.02_cv18xx_guide
    Appx.03_bm168x_guide

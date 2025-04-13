@@ -61,11 +61,13 @@ class LlmConverter(BaseConverter):
         self.q_group_size = args.q_group_size
         self.high_precision = True
         self.symmetric = args.symmetric
-        self.lmhead_with_topk = args.num_device > 1
+        self.lmhead_with_topk = True
         self.chip = args.chip
         self.num_device = args.num_device
         self.embedding_disk = args.embedding_disk
-        self.num_core = args.num_core if args.chip == "bm1688" else 1
+        self.num_core = args.num_core
+        if self.num_core == 0:
+            self.num_core = 1 if args.chip != "bm1688" else 2
         self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
         self.load_pretrained()
         # get attributes
@@ -78,12 +80,13 @@ class LlmConverter(BaseConverter):
         # get file path
         self.out_dir = args.out_dir
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.model_name = os.path.basename(self.model_path).lower()
         if args.chip == "bm1684x":
             folder_name = f"bmodel_seq{self.seq_length}_{self.quantize}_{self.chip}_{self.num_device}dev"
-            self.out_bmodel = f"../{self.model_type}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev_{timestamp}.bmodel"
+            self.out_bmodel = f"../{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev_{timestamp}.bmodel"
         else:
             folder_name = f"bmodel_seq{self.seq_length}_{self.quantize}_{self.chip}_{self.num_core}core"
-            self.out_bmodel = f"../{self.model_type}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core_{timestamp}.bmodel"
+            self.out_bmodel = f"../{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core_{timestamp}.bmodel"
 
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.commands = []
@@ -95,6 +98,7 @@ class LlmConverter(BaseConverter):
         os.chdir(self.bmodel_dir)
         self.gen_all_mlir()
         del self.model
+        self.compile_all()
         os.chdir(ori_path)
         print(f"Success: {self.model_path} has converted to {self.out_dir}")
 
@@ -102,16 +106,17 @@ class LlmConverter(BaseConverter):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = []
 
+            futures.append(executor.submit(self.gen_embedding_lmhead_mlir))
+
             for i in range(self.num_layers):
                 futures.append(executor.submit(self.gen_block_mlir, i))
 
-            futures.append(executor.submit(self.gen_lmhead_mlir))
-            futures.append(executor.submit(self.gen_embedding_mlir))
-
             # Wait for all threads to complete
-            for future in tqdm(concurrent.futures.as_completed(futures),
-                               total=len(futures),
-                               desc="Exporting Blocks"):
+            for future in tqdm(
+                    concurrent.futures.as_completed(futures),
+                    total=len(futures),
+                    desc="generate mlir",
+            ):
                 # This will raise exceptions if any occurred during thread execution
                 future.result()
 
@@ -154,6 +159,9 @@ class LlmConverter(BaseConverter):
             self.rotary_dim = self.config.rotary_dim
         if self.model_type == 'chatglm':
             self.rotary_dim = self.config.head_dim // 2
+        self.tie_word_embeddings = getattr(self.config, 'tie_word_embeddings', False)
+        # whether to merge lm_head and embedding
+        self.do_lmhead_merge = self.tie_word_embeddings and not self.embedding_disk and self.num_device < 2
 
     def get_loc(self, names, mlir):
         if isinstance(names, str):
@@ -183,20 +191,48 @@ class LlmConverter(BaseConverter):
         with open(embedding_file, 'wb') as f:
             f.write(buffer)
 
-    def gen_embedding_mlir(self):
+    def gen_embedding_lmhead_mlir(self):
+        tqdm.write("generate embedding and lm_head mlir ...")
         if self.embedding_disk:
             self.gen_embedding_bin()
-            return
-        # read weights
-        embedding_path = self.model_info.weights[LlmList.EMBEDING] + ".weight"
-        data = self.model.read(embedding_path)
-        embedding_weights = {embedding_path: data}
-        np.savez("embedding_top_weights.npz", **embedding_weights)
+            embedding_data = None
+        else:
+            # read embedding weights
+            embedding_path = self.model_info.weights[LlmList.EMBEDING] + ".weight"
+            embedding_data = self.model.read(embedding_path)
+            embedding_weights = {embedding_path: embedding_data}
+            embedding_npz = "embedding_top_weights.npz"
+            np.savez(embedding_npz, **embedding_weights)
+        # read lm_head weights
+        lmhead = self.model_info.weights[LlmList.LMHEAD]
+        lmhead_path = lmhead + ".weight"
+        norm = self.model_info.weights[LlmList.NORM]
+        norm_path = norm + ".weight"
+        if not self.tie_word_embeddings:
+            lmhead_data = self.model.read(lmhead_path)
+            tqdm.write("lm_head weights is different from embedding weights")
+            lmhead_data = np.ascontiguousarray(np.transpose(lmhead_data, (1, 0)))
+        elif self.embedding_disk:
+            tqdm.write("lm_head weights is same as embedding weights")
+            lmhead_data = self.model.read(embedding_path)
+        else:
+            tqdm.write("lm_head weights is same as embedding weights")
+            lmhead_data = embedding_data
+        lmhead_weights = {lmhead_path: lmhead_data}
+        if not self.do_lmhead_merge:
+            norm_data = self.model.read(norm_path)
+            lmhead_weights[norm_path] = norm_data
+
+        lmhead_npz = "lm_head_top_weights.npz"
+        np.savez(lmhead_npz, **lmhead_weights)
 
         # gen embedding mlir
         def gen_by_length(name: str, seq_length: int):
-            embedding_mlir = MLIRImporter([[1, seq_length]], [[seq_length, self.hidden_size]], name,
-                                          Platform.LLM)
+            embedding_mlir = MLIRImporter([[1, seq_length]], [[1, seq_length, self.hidden_size]],
+                                          name,
+                                          Platform.LLM,
+                                          input_types=["INT32"],
+                                          weight_file=embedding_npz)
             input_op = embedding_mlir.create_input_op(self.get_loc("input_ids", embedding_mlir), 0)
             weight_op = embedding_mlir.create_weight_op(embedding_path,
                                                         [self.vocab_size, self.hidden_size])
@@ -211,8 +247,44 @@ class LlmConverter(BaseConverter):
             with open(f"{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
-        gen_by_length("embedding", self.seq_length)
-        gen_by_length("embedding_cache", 1)
+        # gen lm_head mlir
+        def gen_lm_head():
+            lmhead_mlir = MLIRImporter([[1, self.hidden_size]], [[1, 1]],
+                                       "lm_head",
+                                       Platform.LLM,
+                                       weight_file=lmhead_npz)
+            input_op = lmhead_mlir.create_input_op(self.get_loc("hidden_states", lmhead_mlir), 0)
+            if not self.do_lmhead_merge:
+                weight_op = lmhead_mlir.create_weight_op(norm_path, [1, self.hidden_size])
+                input_op = top.RMSNormOp(lmhead_mlir.get_tensor_type([1, self.hidden_size]),
+                                         input_op,
+                                         weight_op,
+                                         eps=self.rms_norm_eps,
+                                         loc=self.get_loc(norm, lmhead_mlir),
+                                         ip=lmhead_mlir.insert_point).output
+            w_shape = [self.vocab_size, self.hidden_size
+                       ] if self.tie_word_embeddings else [self.hidden_size, self.vocab_size]
+            lmhead_op = self.linear(lmhead_mlir,
+                                    lmhead,
+                                    input_op,
+                                    w_shape, [1, self.vocab_size],
+                                    right_transpose=self.tie_word_embeddings)
+            topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
+                                 lmhead_op,
+                                 axis=1,
+                                 K=1,
+                                 loc=self.get_loc(["token_value", "token_id"], lmhead_mlir),
+                                 ip=lmhead_mlir.insert_point)
+            # topk_op.values, topk_op.indices
+            lmhead_mlir.create_return_op([topk_op.indices])
+            mlir_txt = lmhead_mlir.print_module()
+            with open("lm_head.mlir", "w") as f:
+                f.write(mlir_txt)
+
+        if not self.embedding_disk:
+            gen_by_length("embedding", self.seq_length)
+            gen_by_length("embedding_cache", 1)
+        gen_lm_head()
 
     def repeat_kv(self, mlir_gen, kv_op, len: int, prefix: str):
         unsqueeze = top.UnsqueezeOp(mlir_gen.get_tensor_type(
@@ -234,7 +306,13 @@ class LlmConverter(BaseConverter):
                            ip=mlir_gen.insert_point).output
         return rs
 
-    def linear(self, mlir_gen, proj: str, input_op, weight_shape: list, out_shape: list):
+    def linear(self,
+               mlir_gen,
+               proj: str,
+               input_op,
+               weight_shape: list,
+               out_shape: list,
+               right_transpose: bool = False):
         weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
         if self.model.is_exist(proj + ".bias"):
             bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
@@ -246,11 +324,13 @@ class LlmConverter(BaseConverter):
                             weight_op,
                             bias_op,
                             do_relu=False,
+                            right_transpose=right_transpose,
                             loc=self.get_loc(proj, mlir_gen),
                             ip=mlir_gen.insert_point).output
 
-    def rotary_pos(self, mlir_gen, in_op, cos_op, sin_op, prefix: str, in_shape: list,
+    def rotary_pos(self, mlir_gen, in_op, cos_op, sin_op, out_name: str, in_shape: list,
                    half_shape: list):
+        prefix = f"{out_name}.rotary_pos"
         mul_q_proj = top.MulOp(mlir_gen.get_tensor_type(in_shape), [in_op, cos_op],
                                loc=self.get_loc(prefix + ".mul0", mlir_gen),
                                ip=mlir_gen.insert_point).output
@@ -291,25 +371,30 @@ class LlmConverter(BaseConverter):
                           loc=self.get_loc(prefix + ".mul5", mlir_gen),
                           ip=mlir_gen.insert_point).output
         new_q = top.AddOp(mlir_gen.get_tensor_type(in_shape), [mul_q_proj, new_q],
-                          loc=self.get_loc(prefix + ".add6", mlir_gen),
+                          loc=self.get_loc(out_name, mlir_gen),
                           ip=mlir_gen.insert_point).output
         return new_q
 
-    def set_linear_weight(self, path:str, weight_dict:dict):
+    def set_linear_weight(self, path: str, weight_dict: dict):
         weight_path = path + ".weight"
         bias_path = path + ".bias"
         if self.model.is_exist(weight_path):
             data = self.model.read(weight_path)
             weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
+        else:
+            raise RuntimeError("Can't find key: {}".format(weight_path))
         if self.model.is_exist(bias_path):
             weight_dict[bias_path] = self.model.read(bias_path)
 
-    def set_common_weight(self, path:str, weight_dict:dict):
+    def set_common_weight(self, path: str, weight_dict: dict):
         weight_path = path + ".weight"
         if self.model.is_exist(weight_path):
             weight_dict[weight_path] = self.model.read(weight_path)
+        else:
+            raise RuntimeError("Can't find key: {}".format(weight_path))
 
     def gen_block_mlir(self, idx: int):
+        tqdm.write(f"generate block_{idx} mlir ...")
         # torch path
         TOP_PATH = f'{self.model_info.weights[LlmList.LAYERS]}.{idx}.'
         input_ln = TOP_PATH + self.model_info.weights[LlmList.INPUT_LN]
@@ -321,6 +406,8 @@ class LlmConverter(BaseConverter):
         mlp_gate = TOP_PATH + self.model_info.weights[LlmList.MLP_GATE]
         mlp_up = TOP_PATH + self.model_info.weights[LlmList.MLP_UP]
         mlp_down = TOP_PATH + self.model_info.weights[LlmList.MLP_DOWN]
+        norm = self.model_info.weights[LlmList.NORM]
+        do_norm = self.do_lmhead_merge and idx == self.num_layers - 1
         rotary_cos = "rotary_cos"
         rotary_sin = "rotary_sin"
 
@@ -339,7 +426,8 @@ class LlmConverter(BaseConverter):
         self.set_linear_weight(mlp_gate, weight_dict)
         self.set_linear_weight(mlp_up, weight_dict)
         self.set_linear_weight(mlp_down, weight_dict)
-
+        if do_norm:
+            self.set_common_weight(norm, weight_dict)
 
         np.savez(weight_file, **weight_dict)
 
@@ -349,33 +437,43 @@ class LlmConverter(BaseConverter):
             if self.model.is_exist(post_ln + ".weight"):
                 weight_op = mlir_gen.create_weight_op(post_ln + ".weight", [1, 1, self.hidden_size])
                 new_op = top.RMSNormOp(mlir_gen.get_tensor_type(input_shape),
-                                    in_op,
-                                    weight_op,
-                                    eps=self.rms_norm_eps,
-                                    loc=self.get_loc(post_ln, mlir_gen),
-                                    ip=ip).output
+                                       in_op,
+                                       weight_op,
+                                       eps=self.rms_norm_eps,
+                                       loc=self.get_loc(post_ln, mlir_gen),
+                                       ip=ip).output
             else:
                 new_op = in_op
             gate_op = self.linear(mlir_gen, mlp_gate, new_op,
+                                  [self.hidden_size, self.intermediate_size],
+                                  [1, len, self.intermediate_size])
+            silu_op = top.SiLUOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
+                                 gate_op,
+                                 loc=self.get_loc(mlp_gate + ".silu", mlir_gen),
+                                 ip=ip).output
+            up_op = self.linear(mlir_gen, mlp_up, new_op,
                                 [self.hidden_size, self.intermediate_size],
                                 [1, len, self.intermediate_size])
-            silu_op = top.SiLUOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
-                                gate_op,
-                                loc=self.get_loc(mlp_gate + ".silu", mlir_gen),
-                                ip=ip).output
-            up_op = self.linear(mlir_gen, mlp_up, new_op, [self.hidden_size, self.intermediate_size],
-                                [1, len, self.intermediate_size])
-            new_op = top.MulOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]), [silu_op, up_op],
-                            loc=self.get_loc(mlp_up + ".mul", mlir_gen),
-                            ip=ip).output
-            down_op = self.linear(mlir_gen, mlp_down, new_op,
-                                [self.intermediate_size, self.hidden_size], input_shape)
-            new_op = top.AddOp(mlir_gen.get_tensor_type(input_shape),
-                               [in_op, down_op],
-                               loc=self.get_loc("hidden_states", mlir_gen),
+            new_op = top.MulOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
+                               [silu_op, up_op],
+                               loc=self.get_loc(mlp_up + ".mul", mlir_gen),
                                ip=ip).output
+            down_op = self.linear(mlir_gen, mlp_down, new_op,
+                                  [self.intermediate_size, self.hidden_size], input_shape)
+            last_name = "output_states"
+            new_name = last_name if idx != self.num_layers - 1 else f"{mlp_down}.add"
+            new_op = top.AddOp(mlir_gen.get_tensor_type(input_shape), [in_op, down_op],
+                               loc=self.get_loc(new_name, mlir_gen),
+                               ip=ip).output
+            if do_norm:
+                weight_op = mlir_gen.create_weight_op(norm + ".weight", [1, 1, self.hidden_size])
+                new_op = top.RMSNormOp(mlir_gen.get_tensor_type(input_shape),
+                                       new_op,
+                                       weight_op,
+                                       eps=self.rms_norm_eps,
+                                       loc=self.get_loc(last_name, mlir_gen),
+                                       ip=ip).output
             return new_op
-
 
         # create block mlir
         def gen_block():
@@ -389,8 +487,10 @@ class LlmConverter(BaseConverter):
             kv_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
             kv_half_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim // 2]
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
-                                    [input_shape, kv_shape, kv_shape], name, Platform.LLM,
-                                    ["F32", "INT32", "F32"], weight_file=weight_file)
+                                      [input_shape, kv_shape, kv_shape],
+                                      name,
+                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      weight_file=weight_file)
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -406,68 +506,68 @@ class LlmConverter(BaseConverter):
             return_ops = []
             weight_op = block_mlir.create_weight_op(input_ln + ".weight", [1, 1, self.hidden_size])
             ln_op = top.RMSNormOp(T(input_shape),
-                                in0_op,
-                                weight_op,
-                                eps=self.rms_norm_eps,
-                                loc=L(input_ln),
-                                ip=ip).output
+                                  in0_op,
+                                  weight_op,
+                                  eps=self.rms_norm_eps,
+                                  loc=L(input_ln),
+                                  ip=ip).output
             # q_proj
             q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, self.hidden_size],
-                            input_shape)
+                               input_shape)
             # k_proj
             k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
-                            [1, self.seq_length, self.kv_dim])
+                               [1, self.seq_length, self.kv_dim])
             # v_proj
             v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
-                            [1, self.seq_length, self.kv_dim])
+                               [1, self.seq_length, self.kv_dim])
             # reshape q,k,v
             q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshpae"), ip=ip).output
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
-            v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L(v_proj + ".reshpae"), ip=ip).output
+            v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
             # rotary cos/sin
             weight_op = block_mlir.create_weight_op(rotary_cos + ".weight",
                                                     [self.seq_length, 1, self.head_dim])
             cos_op = top.GatherOp(T([1, self.seq_length, 1, self.head_dim]),
-                                weight_op,
-                                in1_op,
-                                axis=0,
-                                loc=L(rotary_cos),
-                                ip=ip).output
+                                  weight_op,
+                                  in1_op,
+                                  axis=0,
+                                  loc=L(rotary_cos),
+                                  ip=ip).output
             weight_op = block_mlir.create_weight_op(rotary_sin + ".weight",
                                                     [self.seq_length, 1, self.head_dim])
             sin_op = top.GatherOp(T([1, self.seq_length, 1, self.head_dim]),
-                                weight_op,
-                                in1_op,
-                                axis=0,
-                                loc=L(rotary_sin),
-                                ip=ip).output
+                                  weight_op,
+                                  in1_op,
+                                  axis=0,
+                                  loc=L(rotary_sin),
+                                  ip=ip).output
             # ===== q_proj rotary ========
-            q_op = self.rotary_pos(block_mlir, q_op, cos_op, sin_op, q_proj + ".rotary", q_shape,
-                                q_half_shape)
+            q_op = self.rotary_pos(block_mlir, q_op, cos_op, sin_op, "q_proj", q_shape,
+                                   q_half_shape)
 
             # ===== k_proj rotary ========
-            k_op = self.rotary_pos(block_mlir, k_op, cos_op, sin_op, k_proj + ".rotary", kv_shape,
-                                kv_half_shape)
+            k_op = self.rotary_pos(block_mlir, k_op, cos_op, sin_op, "k_cache", kv_shape,
+                                   kv_half_shape)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
             fa_op = top.FAttentionOp(T(input_shape),
-                                    q_op,
-                                    k_op,
-                                    v_op,
-                                    in2_op,
-                                    block_mlir.none_op,
-                                    scale=self.head_dim**-0.5,
-                                    batch=1,
-                                    q_head=self.num_attention_heads,
-                                    kv_head=self.num_key_value_heads,
-                                    dim=self.head_dim,
-                                    mq=self.seq_length,
-                                    mk=self.seq_length,
-                                    loc=L(TOP_PATH + "fattention"),
-                                    ip=ip).output
+                                     q_op,
+                                     k_op,
+                                     v_op,
+                                     in2_op,
+                                     block_mlir.none_op,
+                                     scale=self.head_dim**-0.5,
+                                     batch=1,
+                                     q_head=self.num_attention_heads,
+                                     kv_head=self.num_key_value_heads,
+                                     dim=self.head_dim,
+                                     mq=self.seq_length,
+                                     mk=self.seq_length,
+                                     loc=L(TOP_PATH + "fattention"),
+                                     ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [self.hidden_size, self.hidden_size],
-                            input_shape)
+                               input_shape)
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
@@ -488,9 +588,12 @@ class LlmConverter(BaseConverter):
             kv_shape = [1, 1, self.num_key_value_heads, self.head_dim]
             kv_half_shape = [1, 1, self.num_key_value_heads, self.head_dim // 2]
 
-            block_mlir = MLIRImporter([input_shape, id_shape, mask_shape, history_shape, history_shape],
-                                    [input_shape, kv_shape, kv_shape], name, Platform.LLM,
-                                    ["F32", "INT32", "F32", "F32", "F32"], weight_file=weight_file)
+            block_mlir = MLIRImporter(
+                [input_shape, id_shape, mask_shape, history_shape, history_shape],
+                [input_shape, kv_shape, kv_shape],
+                name,
+                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                weight_file=weight_file)
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -508,73 +611,79 @@ class LlmConverter(BaseConverter):
             return_ops = []
             weight_op = block_mlir.create_weight_op(input_ln + ".weight", [1, 1, self.hidden_size])
             ln_op = top.RMSNormOp(T(input_shape),
-                                in0_op,
-                                weight_op,
-                                eps=self.rms_norm_eps,
-                                loc=L(input_ln),
-                                ip=ip).output
+                                  in0_op,
+                                  weight_op,
+                                  eps=self.rms_norm_eps,
+                                  loc=L(input_ln),
+                                  ip=ip).output
             # q_proj
             q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, self.hidden_size],
-                            input_shape)
+                               input_shape)
             # k_proj
             k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
-                            [1, 1, self.kv_dim])
+                               [1, 1, self.kv_dim])
             # v_proj
             v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
-                            [1, 1, self.kv_dim])
+                               [1, 1, self.kv_dim])
             # reshape q,k,v
             q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshpae"), ip=ip).output
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
-            v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L(v_proj + ".reshpae"), ip=ip).output
+            v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
             # rotary cos/sin
             weight_op = block_mlir.create_weight_op(rotary_cos + ".weight",
                                                     [self.seq_length, 1, self.head_dim])
             cos_op = top.GatherOp(T([1, 1, 1, self.head_dim]),
-                                weight_op,
-                                in1_op,
-                                axis=0,
-                                loc=L(rotary_cos),
-                                ip=ip).output
+                                  weight_op,
+                                  in1_op,
+                                  axis=0,
+                                  loc=L(rotary_cos),
+                                  ip=ip).output
             weight_op = block_mlir.create_weight_op(rotary_sin + ".weight",
                                                     [self.seq_length, 1, self.head_dim])
             sin_op = top.GatherOp(T([1, 1, 1, self.head_dim]),
-                                weight_op,
-                                in1_op,
-                                axis=0,
-                                loc=L(rotary_sin),
-                                ip=ip).output
+                                  weight_op,
+                                  in1_op,
+                                  axis=0,
+                                  loc=L(rotary_sin),
+                                  ip=ip).output
             # ===== q_proj rotary ========
-            q_op = self.rotary_pos(block_mlir, q_op, cos_op, sin_op, q_proj + ".rotary", q_shape,
-                                q_half_shape)
+            q_op = self.rotary_pos(block_mlir, q_op, cos_op, sin_op, "q_rotary", q_shape,
+                                   q_half_shape)
 
             # ===== k_proj rotary ========
-            k_op = self.rotary_pos(block_mlir, k_op, cos_op, sin_op, k_proj + ".rotary", kv_shape,
-                                kv_half_shape)
+            k_op = self.rotary_pos(block_mlir, k_op, cos_op, sin_op, "k_cache", kv_shape,
+                                   kv_half_shape)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ====== kv concat ========
-            k_op = top.ConcatOp(T([1, self.seq_length+1, self.num_key_value_heads, self.head_dim]),
-                                [in3_op, k_op], axis=1, loc=L(k_proj + ".concat"), ip=ip).output
-            v_op = top.ConcatOp(T([1, self.seq_length+1, self.num_key_value_heads, self.head_dim]),
-                                [in4_op, v_op], axis=1, loc=L(v_proj + ".concat"), ip=ip).output
+            k_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
+                                   self.head_dim]), [in3_op, k_op],
+                                axis=1,
+                                loc=L(k_proj + ".concat"),
+                                ip=ip).output
+            v_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
+                                   self.head_dim]), [in4_op, v_op],
+                                axis=1,
+                                loc=L(v_proj + ".concat"),
+                                ip=ip).output
             # ======= fattention =========
             fa_op = top.FAttentionOp(T(input_shape),
-                                    q_op,
-                                    k_op,
-                                    v_op,
-                                    in2_op,
-                                    block_mlir.none_op,
-                                    scale=self.head_dim**-0.5,
-                                    batch=1,
-                                    q_head=self.num_attention_heads,
-                                    kv_head=self.num_key_value_heads,
-                                    dim=self.head_dim,
-                                    mq=self.seq_length,
-                                    mk=self.seq_length,
-                                    loc=L(TOP_PATH + "fattention"),
-                                    ip=ip).output
+                                     q_op,
+                                     k_op,
+                                     v_op,
+                                     in2_op,
+                                     block_mlir.none_op,
+                                     scale=self.head_dim**-0.5,
+                                     batch=1,
+                                     q_head=self.num_attention_heads,
+                                     kv_head=self.num_key_value_heads,
+                                     dim=self.head_dim,
+                                     mq=1,
+                                     mk=self.seq_length + 1,
+                                     loc=L(TOP_PATH + "fattention"),
+                                     ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [self.hidden_size, self.hidden_size],
-                            input_shape)
+                               input_shape)
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
@@ -585,9 +694,6 @@ class LlmConverter(BaseConverter):
 
         gen_block()
         gen_block_cache()
-
-    def gen_lmhead_mlir(self):
-        pass
 
     # ============= compile all code =============
     def send_command(self, command: list[str], log_file: str):
@@ -732,8 +838,6 @@ class LlmConverter(BaseConverter):
         self.run_command(['bash', '-c', ' '.join(get_info_args)])
 
     def compile_all(self):
-        ori_path = os.getcwd()
-        os.chdir(self.bmodel_dir)
 
         if not self.embedding_disk:
             self.compile_embedding()
@@ -758,6 +862,3 @@ class LlmConverter(BaseConverter):
         for npz_file in os.listdir():
             if os.path.splitext(npz_file)[-1] == '.npz':
                 os.remove(npz_file)
-
-        # Change back to the original directory
-        os.chdir(ori_path)

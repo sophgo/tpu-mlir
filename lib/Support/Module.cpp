@@ -1226,6 +1226,9 @@ void setMode(Mode mode) {
 }
 
 int64_t getFLOPs() {
+  if (!m->hasAttrOfType<IntegerAttr>(Attr::FLOPS)) {
+    return 0;
+  }
   return m->getAttrOfType<IntegerAttr>(Attr::FLOPS).getInt();
 }
 

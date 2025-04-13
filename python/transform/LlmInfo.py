@@ -66,7 +66,7 @@ COMMON_INFO = ModelInfo(
         LlmList.K_PROJ: "self_attn.k_proj",
         LlmList.V_PROJ: "self_attn.v_proj",
         LlmList.O_PROJ: "self_attn.o_proj",
-        LlmList.POST_LN: "post_attention_layernorm.weight",
+        LlmList.POST_LN: "post_attention_layernorm",
         LlmList.MLP_GATE: "mlp.gate_proj",
         LlmList.MLP_UP: "mlp.up_proj",
         LlmList.MLP_DOWN: "mlp.down_proj",
