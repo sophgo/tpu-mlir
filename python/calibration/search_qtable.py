@@ -18,6 +18,8 @@ import logging
 import collections
 from utils.mlir_parser import *
 from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
+from sklearn.metrics import silhouette_score
 from calibration.mix_precision import MixQuantModel
 from calibration.mix_precision import MixPrecSearcher
 from calibration.kld_calibrator import CalibrationTable, ActivationCalibrator, SimpleTuner
@@ -269,6 +271,39 @@ class SearchQtable:
             fp_layer_list.append(layer_name)
         return sensitive_layer_analysis_dict, new_cali_table_name, loss_dict
 
+    def search_sensitve_layer_int4(self, layer_names, all_op_names, global_compare_layers, layers_rate, predictions_gt):
+        loss_dict = collections.defaultdict(list)
+        fp_layer_list = []
+        mix_mode = 'INT8'
+        with open(self.cali_table_name, 'a') as file:
+            file.write("\n#int4_op\n")
+        for op_name in all_op_names:
+            fp_layer_list.append(op_name)
+        sensitive_layer_analysis_dict = {}
+        for layer_name in layer_names:
+            layer_type = self.parser.get_op_type_by_op_name(layer_name)
+            self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(layer_name, layer_type))
+            fp_layer_list.remove(layer_name)
+            mix_table = self.mix_prec._gen_mix_table_4_8(fp_layer_list, mix_mode)
+            with open(self.cali_table_name, 'a') as file:
+                file.write(f"{layer_name}")
+            int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table, "int4")
+            outputs_cos, outputs_snr = self.mix_prec.run_model_new(int4_mix_model, False, global_compare_layers, layers_rate, predictions_gt)
+            if layer_name not in loss_dict:
+                loss_dict[layer_name].extend([outputs_cos, outputs_snr])
+            else:
+                self.compare_loss(layer_name, loss_dict, outputs_cos, outputs_snr)
+            with open(self.cali_table_name, 'r') as file:
+                lines = file.readlines()
+            with open(self.cali_table_name, 'w') as file:
+                for line in lines:
+                    if line.strip() != layer_name:
+                        file.write(line)
+            fp_layer_list.append(layer_name)
+            self.mix_prec.logger.print_info("layer {}, outputs_cos:{}, outputs_snr:{}"
+                                           .format(layer_name, outputs_cos, outputs_snr))
+        return loss_dict
+
     def analysis_sensitive_layers(self, sensitive_layer_analysis_dict, pr):
         num = 0
         num_fp32 = 0
@@ -315,10 +350,108 @@ class SearchQtable:
 
         centroids = kmeans.cluster_centers_
         target_cluster = np.argmax(centroids[:, 0])
-        selected_layers = [name for name, label in result.items() if label == target_cluster] 
+        selected_layers = [name for name, label in result.items() if label == target_cluster]
 
         self.mix_prec.logger.print_info("selected_layers = {}".format(selected_layers))
         return selected_layers
+
+    def auto_select_clusters(self, X, max_clusters=10):
+        best_score = -1
+        best_n_clusters = 3  # 聚类数至少从3开始
+        for n in range(2, max_clusters + 1):
+            kmeans = KMeans(n_clusters=n, random_state=42)
+            labels = kmeans.fit_predict(X)
+            score = silhouette_score(X, labels)
+            self.mix_prec.logger.print_info(f"n_clusters={n}, silhouette_score={score:.4f}")
+            if score > best_score:
+                best_score = score
+                best_n_clusters = n
+        return best_n_clusters
+
+    def find_best_eps(self, X, eps_min=0.005, eps_max=0.01, n_points=10, min_samples=2):
+        """
+        自动选择 DBSCAN 中最佳的 eps 参数，基于轮廓系数的评价指标。
+
+        参数:
+            X (array-like): 数据集，形状为 (n_samples, n_features)
+            eps_min (float): eps 搜索的最小值，默认为 0.005
+            eps_max (float): eps 搜索的最大值，默认为 0.01
+            n_points (int): 在 eps_min 与 eps_max 之间生成的 eps 值个数，默认为 100
+            min_samples (int): DBSCAN 中的 min_samples 参数，默认为 2
+
+        返回:
+            best_eps (float or None): 根据轮廓系数选出的最佳 eps 值；
+                                    若所有 eps 下聚类效果均不理想，则返回 None
+        """
+        eps_values = np.linspace(eps_min, eps_max, n_points)
+        best_eps = None
+        best_score = -1
+        for eps in eps_values:
+            db = DBSCAN(eps=eps, min_samples=min_samples)
+            labels = db.fit_predict(X)
+
+            # 如果所有点都归为同一个簇或全为噪声，则跳过
+            if len(set(labels)) <= 1:
+                continue
+
+            # 计算轮廓系数
+            score = silhouette_score(X, labels)
+            if score > best_score:
+                best_score = score
+                best_eps = eps
+
+        return best_eps
+
+    def cluster_4_8(self, loss_dict):
+        layer_names = list(loss_dict.keys())
+        X = np.array([losses for losses in loss_dict.values()])
+
+        # best_n_clusters = self.auto_select_clusters(X)
+        # kmeans = KMeans(n_clusters= best_n_clusters, random_state=42)
+        # labels = kmeans.fit_predict(X)
+        # best_eps = self.find_best_eps(X)
+        db = DBSCAN(eps=0.01, min_samples=2)
+        db.fit(X)
+        labels = db.labels_
+
+        clusters = collections.defaultdict(list)
+        for name, label in zip(layer_names, labels):
+            clusters[label].append(name)
+
+        # 获取聚类中心，centroids.shape = (n_clusters, n_features)
+        #centroids = kmeans.cluster_centers_
+        centroids = {}
+        unique_labels = np.unique(labels)  # 包括噪声标签 -1
+        for label in unique_labels:
+            points = X[labels == label]
+            centroids[label] = np.mean(points, axis=0)
+
+        # 根据 centroids 的第一个元素排序各个聚类
+        # sorted_labels 中的 label 顺序，就是对应聚类中心第一维从小到大的顺序
+        sorted_labels = sorted(clusters.keys(), key=lambda label: centroids[label][0])
+        sorted_clusters = [clusters[label] for label in sorted_labels]
+
+        self.mix_prec.logger.print_info("sorted_clusters = {}".format(sorted_clusters))
+        return sorted_clusters
+ 
+    def remove_lines_from_file(self, file_path, lines_to_remove):
+        """
+        从文件中删除指定的行。
+        参数:
+        file_path (str): 文件路径
+        lines_to_remove (Iterable[str]): 需要移除的内容列表（注意内容比较时去除换行符）
+        """
+        # 读取当前文件中的所有行
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+        # 过滤掉与 lines_to_remove 中的内容匹配的行（去除两端空白后比较）
+        filtered_lines = []
+        for line in lines:
+            if line.strip() not in {s.strip() for s in lines_to_remove}:
+                filtered_lines.append(line)
+        # 将过滤后的结果写回文件（覆盖原有内容）
+        with open(file_path, 'w') as f:
+            f.writelines(filtered_lines)
 
     def adjust_qtable(self, outputs_cos, layer_names_quant, sensitive_layer_analysis_dict, new_cali_table_name, global_compare_layers, layers_rate, predictions_gt):
         if outputs_cos < self.args.expected_cos and (len(layer_names_quant) // 5) > self.args.max_float_layers:
@@ -345,7 +478,6 @@ class SearchQtable:
                         upper_bound = self.args.max_float_layers - 1
                     else:
                         lower_bound = self.args.max_float_layers + 1
-        
 
     def print_log_info(self, layer_cos_list, fp_layer_list, all_int8_cos, outputs_cos, t0):
         self.mix_prec.logger.print_info('>>>run result:')
@@ -361,6 +493,21 @@ class SearchQtable:
                 f.write("{} {}\n".format(layer, self.mix_prec.mix_mode))
         self.mix_prec.logger.print_info(f'int8 outputs_cos:{all_int8_cos:.6f} old')
         self.mix_prec.logger.print_info(f"mix model outputs_cos:{outputs_cos:.6f}")
+        self.mix_prec.logger.print_info("Output mix quantization table to {}".format(self.mix_prec.quantize_table))
+        self.mix_prec.logger.print_info("total time:{}".format(time.time() - t0))
+
+    def print_log_info_4_8(self, fp_layer_list, int8_outputs_cos, t0):
+        self.mix_prec.logger.print_info('>>>run result:')
+        with open(self.mix_prec.quantize_table, "w") as f:
+            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+            f.write("# sample number: {}\n".format(self.mix_prec.num_sample))
+            f.write("# chip: {}  mix_mode: {}\n".format(self.mix_prec.chip, "INT8"))
+            f.write("# number of {} layer: {}\n".format("INT8", len(fp_layer_list)))
+            f.write("###\n")
+            f.write("# op_name   quantize_mode\n")
+            for layer in fp_layer_list:
+                f.write("{} {}\n".format(layer, "INT8"))
+        self.mix_prec.logger.print_info(f'int8 outputs_cos:{int8_outputs_cos:.6f} old')
         self.mix_prec.logger.print_info("Output mix quantization table to {}".format(self.mix_prec.quantize_table))
         self.mix_prec.logger.print_info("total time:{}".format(time.time() - t0))
 
@@ -431,7 +578,7 @@ class SearchQtable:
         mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
         outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
         self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(self.args.max_float_layers,outputs_cos))
-        
+
         if not self.args.cluster:
             self.adjust_qtable(outputs_cos, layer_names_quant, sensitive_layer_analysis_dict, new_cali_table_name, global_compare_layers, layers_rate, predictions_gt)
             self.print_log_info(layer_cos_list, set_fp_layer_list, all_int8_cos, outputs_cos, t0)
@@ -439,3 +586,42 @@ class SearchQtable:
             self.print_log_info(layer_cos_list, selected_fp_layers, all_int8_cos, outputs_cos, t0)
         print("success search qtable")
         return 'success'
+
+    def run_4_8(self):
+
+        t0 = time.time()
+        layer_cos_list, predictions_gt = [], []
+        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name)
+        global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
+        _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate, predictions_gt)
+        int8_outputs_cos = self.mix_prec.run_model(int8_model, False, global_compare_layers, layers_rate, predictions_gt)
+        self.mix_prec.logger.print_info(f'current int8 cos:{int8_outputs_cos}')
+
+        all_op_names = self.parser.get_op_name_list()
+        search_op_type = ['top.Conv', 'top.MatMul']
+        layer_names =  [layer for layer in all_op_names if self.parser.get_op_type_by_op_name(layer) in search_op_type]
+
+        loss_dict = self.search_sensitve_layer_int4(layer_names, all_op_names, global_compare_layers, layers_rate, predictions_gt)
+
+        sorted_loss_items = sorted(loss_dict.items(), key=lambda item: item[1][0])
+        for layer_name, values in sorted_loss_items:
+            outputs_cos, outputs_snr = values
+            self.mix_prec.logger.print_info("Layer: {}, outputs_cos: {}, outputs_snr: {}".format(layer_name, outputs_cos, outputs_snr))
+
+        sorted_clusters = self.cluster_4_8(loss_dict)
+        fp_layer_list = copy.deepcopy(all_op_names)
+        for cluster in sorted_clusters:
+            for op_name in cluster:
+                with open(self.cali_table_name, 'a') as file:
+                    file.write(f"{op_name}\n")
+                fp_layer_list.remove(op_name)
+            mix_table = self.mix_prec._gen_mix_table_4_8(fp_layer_list, 'INT8')
+            int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table, "int4")
+            outputs_cos, outputs_snr = self.mix_prec.run_model_new(int4_mix_model, False, global_compare_layers, layers_rate, predictions_gt)
+            if 1 - outputs_cos < int8_outputs_cos * 0.95:
+                self.remove_lines_from_file(self.cali_table_name, cluster)
+                for op_name in cluster:
+                    fp_layer_list.append(op_name)
+                break
+        self.print_log_info_4_8(fp_layer_list, int8_outputs_cos, t0)

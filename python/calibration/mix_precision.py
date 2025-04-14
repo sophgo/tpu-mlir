@@ -59,7 +59,11 @@ class MixQuantModel:
         self.chip = chip
         self.calib_table = None
         self.mix_table = None
-        if calib_table:
+        if calib_table and fp_type == "int4":
+            self.mode = "INT4"
+            self.calib_table = calib_table
+            self.mix_table = mix_table
+        elif calib_table:
             self.mode = "INT8"
             self.calib_table = calib_table
             self.mix_table = mix_table
@@ -263,6 +267,13 @@ class MixPrecSearcher:
         with open(target_file, 'w') as f:
             for mix_op in mix_ops:
                 f.write("{} {}\n".format(mix_op, self.mix_mode))
+        return target_file
+
+    def _gen_mix_table_4_8(self, mix_ops, mix_mode):
+        target_file = "tmp_mix_table.txt"
+        with open(target_file, 'w') as f:
+            for mix_op in mix_ops:
+                f.write("{} {}\n".format(mix_op, mix_mode))
         return target_file
 
     def _cal_sqnr(self, signal_raw, signal_dequant, remove_zero=False):
