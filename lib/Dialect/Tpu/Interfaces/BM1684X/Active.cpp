@@ -70,6 +70,11 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     if (module::isMARS3() || module::isSGTPUV8() &&
                                  getMode() == ActiveMode::QGELU &&
                                  stype.isBF16()) {
+      /* fast_gelu-----> BF16
+          |    work1    |    work0    |    work2     |  coeff  |   table_size |
+          | tensor_size | tensor_size | tensor_size  |   32    |     128      |
+      */
+      buffer_size += align_up(tensor_size, Arch::EU_BYTES);
       buffer_size += align_up(128 * dtype_len, Arch::EU_BYTES);
     }
     break;
