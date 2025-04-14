@@ -159,8 +159,9 @@ class LlmConverter(BaseConverter):
             self.rotary_dim = self.config.rotary_dim
         if self.model_type == 'chatglm':
             self.rotary_dim = self.config.head_dim // 2
+        # whether llm head and embedding share weight
         self.tie_word_embeddings = getattr(self.config, 'tie_word_embeddings', False)
-        # whether to merge lm_head and embedding
+        # whether to merge lm_head and embedding in bmodel
         self.do_lmhead_merge = self.tie_word_embeddings and not self.embedding_disk and self.num_device < 2
 
     def get_loc(self, names, mlir):
@@ -171,15 +172,13 @@ class LlmConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
-    def gen_embedding_bin(self):
+    def gen_embedding_bin(self, embedding_data):
         embedding_file = '../embedding.bin'
         if os.path.exists(embedding_file):
             print(f"{embedding_file} already exists. Skipping export.")
             return
         import ctypes
-        embedding_path = self.model_info.weights[LlmList.EMBEDING] + ".weight"
-        weight = self.model.read(embedding_path)
-        weight = torch.from_numpy(weight)
+        weight = torch.from_numpy(embedding_data)
         if 'bf16' in self.quantize:
             tensor_data = weight.to(torch.bfloat16)
         elif 'f16' in self.quantize:
@@ -193,13 +192,13 @@ class LlmConverter(BaseConverter):
 
     def gen_embedding_lmhead_mlir(self):
         tqdm.write("generate embedding and lm_head mlir ...")
+        embedding_path = self.model_info.weights[LlmList.EMBEDING] + ".weight"
+        embedding_data = self.model.read(embedding_path)
         if self.embedding_disk:
-            self.gen_embedding_bin()
+            self.gen_embedding_bin(embedding_data)
             embedding_data = None
         else:
             # read embedding weights
-            embedding_path = self.model_info.weights[LlmList.EMBEDING] + ".weight"
-            embedding_data = self.model.read(embedding_path)
             embedding_weights = {embedding_path: embedding_data}
             embedding_npz = "embedding_top_weights.npz"
             np.savez(embedding_npz, **embedding_weights)
@@ -208,20 +207,16 @@ class LlmConverter(BaseConverter):
         lmhead_path = lmhead + ".weight"
         norm = self.model_info.weights[LlmList.NORM]
         norm_path = norm + ".weight"
-        if not self.tie_word_embeddings:
-            lmhead_data = self.model.read(lmhead_path)
-            tqdm.write("lm_head weights is different from embedding weights")
-            lmhead_data = np.ascontiguousarray(np.transpose(lmhead_data, (1, 0)))
-        elif self.embedding_disk:
-            tqdm.write("lm_head weights is same as embedding weights")
-            lmhead_data = self.model.read(embedding_path)
-        else:
-            tqdm.write("lm_head weights is same as embedding weights")
+        if self.tie_word_embeddings:
             lmhead_data = embedding_data
-        lmhead_weights = {lmhead_path: lmhead_data}
+        else:
+            lmhead_data = self.model.read(lmhead_path)
         if not self.do_lmhead_merge:
+            lmhead_data = np.ascontiguousarray(np.transpose(lmhead_data, (1, 0)))
             norm_data = self.model.read(norm_path)
-            lmhead_weights[norm_path] = norm_data
+            lmhead_weights = {lmhead_path: lmhead_data, norm_path: norm_data}
+        else:
+            lmhead_weights = {lmhead_path: lmhead_data}
 
         lmhead_npz = "lm_head_top_weights.npz"
         np.savez(lmhead_npz, **lmhead_weights)
@@ -262,13 +257,14 @@ class LlmConverter(BaseConverter):
                                          eps=self.rms_norm_eps,
                                          loc=self.get_loc(norm, lmhead_mlir),
                                          ip=lmhead_mlir.insert_point).output
-            w_shape = [self.vocab_size, self.hidden_size
-                       ] if self.tie_word_embeddings else [self.hidden_size, self.vocab_size]
+                w_shape = [self.hidden_size, self.vocab_size]
+            else:
+                w_shape = [self.vocab_size, self.hidden_size]
             lmhead_op = self.linear(lmhead_mlir,
                                     lmhead,
                                     input_op,
                                     w_shape, [1, self.vocab_size],
-                                    right_transpose=self.tie_word_embeddings)
+                                    right_transpose=self.do_lmhead_merge)
             topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
                                  lmhead_op,
                                  axis=1,

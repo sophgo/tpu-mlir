@@ -33,7 +33,9 @@ int64_t get_splited_size(int64_t size, int64_t num_devices, int64_t cur_device,
   if (q_group_size_origin != 0) {
     sz *= 2;
   }
-
+  if (sz == 0) {
+    llvm_unreachable("size is 0");
+  }
   //  std::cout << "cur_dievce = " << cur_device << ", size = " << size
   //            << ", length = " << sz << std::endl;
   return sz;
