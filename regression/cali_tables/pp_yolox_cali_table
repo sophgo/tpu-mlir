@@ -5,7 +5,7 @@
 ###
 # op_name    threshold    min    max
 image 2.6355782 -2.1148427 2.6355782
-p2o.Concat.1_Concat_Depth2Space 2.6355782 -2.1148427 2.6355782
+p2o.Concat.1_Concat_r_Depth2Space 2.6355782 -2.1148427 2.6355782
 conv2d_80.tmp_0_Conv 4.3920846 -2.5973599 4.4335613
 p2o.Mul.1_Mul 4.3542517 -0.2396966 4.3815427
 conv2d_81.tmp_0_Conv 4.3087897 -4.1354685 4.3087897
