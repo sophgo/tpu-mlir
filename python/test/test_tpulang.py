@@ -1546,7 +1546,7 @@ class TPULANG_IR_TESTER(object):
 
         _test_model_def([1, 3, 224, 224], 32, 3, 'float16', is_quantized=True)
 
-    def test_A16Matmul(self, case_name, dtype='float16'):
+    def test_A16Matmul(self, case_name):
         def gen_weight(read_file, group_size, bits):
             if read_file:
                 if bits == 4:
@@ -1584,7 +1584,7 @@ class TPULANG_IR_TESTER(object):
             output = tpul.a16matmul(input, weight, scale, zp, bias, right_transpose=True, out_dtype=dtype, out_name="output", group_size=group_size, bits=bits)
             self.compile_and_check(self.unique_name(case_name), [input], [output])
 
-        _test_A16Matmul(dtype, group_size=128, bits=4)
+        _test_A16Matmul('float32', group_size=128, bits=4)
         # _test_A16Matmul(dtype, group_size=128, bits=4, read_file=True)
         # _test_A16Matmul(dtype, group_size=128, bits=8)
         # _test_A16Matmul(dtype, group_size=128, bits=8, read_file=True)

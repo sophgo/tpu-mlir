@@ -4223,3 +4223,293 @@ Processor support
 """"""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
+
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+a16matmul
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+    .. code-block:: python
+
+      def a16matmul(input: Tensor,
+                    weight: Tensor,
+                    scale: Tensor,
+                    zp: Tensor,
+                    bias: Tensor = None,
+                    right_transpose=True,
+                    out_dtype: str = 'float16',
+                    out_name: str = None,
+                    group_size: int = 128,
+                    bits: int = 4,
+                    g_idx: Tensor = None,
+                    ):
+
+        #pass
+
+Description of the function
+"""""""""""
+Perform W4A16/W8A16 MatMul on the input.
+This operation is considered a **global operation** 。
+
+Explanation of parameters
+"""""""""""
+* input: Tensor type, represents the input tensor.
+* weight: Tensor type, represents the weight after 4-bit/8-bit quantization, stored as int32.
+* scale: Tensor type, represents the quantization scaling factor for the weights, stored as float32.
+* zp: Tensor type, represents the quantization zero point for the weights, stored as int32.
+* bias: Tensor type, represents the bias, stored as float32.
+* right_transpose: Boolean type, indicates whether the weight matrix is transposed; currently only supports True.
+* out_dtype: String type, represents the data type of the output tensor.
+* out_name: String type or None, represents the name of the output Tensor; if None, a name will be automatically generated internally.
+* group_size: Integer type, indicates the group size for quantization.
+* bits: Integer type, represents the quantization bit-width; only supports 4 bits/8 bits.
+* g_idx: Tensor type, represents the quantization reordering coefficient; currently not supported.
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as out_dtype。
+
+Processor support
+"""""""""""
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+qwen2_block
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+    .. code-block:: python
+
+      def qwen2_block(hidden_states: Tensor,
+                      position_ids: Tensor,
+                      attention_mask: Tensor,
+                      q_proj_weights: Tensor,
+                      q_proj_scales: Tensor,
+                      q_proj_zps: Tensor,
+                      q_proj_bias: Tensor,
+                      k_proj_weights: Tensor,
+                      k_proj_scales: Tensor,
+                      k_proj_zps: Tensor,
+                      k_proj_bias: Tensor,
+                      v_proj_weights: Tensor,
+                      v_proj_scales: Tensor,
+                      v_proj_zps: Tensor,
+                      v_proj_bias: Tensor,
+                      o_proj_weights: Tensor,
+                      o_proj_scales: Tensor,
+                      o_proj_zps: Tensor,
+                      o_proj_bias: Tensor,
+                      down_proj_weights: Tensor,
+                      down_proj_scales: Tensor,
+                      down_proj_zps: Tensor,
+                      gate_proj_weights: Tensor,
+                      gate_proj_scales: Tensor,
+                      gate_proj_zps: Tensor,
+                      up_proj_weights: Tensor,
+                      up_proj_scales: Tensor,
+                      up_proj_zps: Tensor,
+                      input_layernorm_weight: Tensor,
+                      post_attention_layernorm_weight: Tensor,
+                      cos: List[Tensor],
+                      sin: List[Tensor],
+                      out_dtype: str = 'float16',
+                      group_size: int = 128,
+                      weight_bits: int = 4,
+                      hidden_size: int = 3584,
+                      rms_norm_eps: float = 1e-06,
+                      num_attention_heads: int = 28,
+                      num_key_value_heads: int = 4,
+                      mrope_section: List[int] = [16, 24, 24],
+                      quant_method: str = "gptq",
+                      out_name: str = None
+                      ):
+
+        #pass
+
+Description of the function
+"""""""""""
+A block layer of qwen2 during the prefill stage.
+This operation is considered a **global operation** 。
+
+Explanation of parameters
+"""""""""""
+* hidden_states: Tensor type, representing activation values, with shape (1, seq_length, hidden_size).
+* position_ids: Tensor type, representing positional indices, with shape (3, 1, seq_length).
+* attention_mask: Tensor type, representing the attention mask, with shape (1, 1, seq_length, seq_length).
+* q_proj_weights: Tensor type, representing the quantized query weights, stored as int32.
+* q_proj_scales: Tensor type, representing the quantization scaling factors for the query, stored as float32.
+* q_proj_zps: Tensor type, representing the quantization zero-points for the query, stored as int32.
+* q_proj_bias: Tensor type, representing the query bias, stored as float32.
+* k_proj_weights: Tensor type, representing the quantized key weights, stored as int32.
+* k_proj_scales: Tensor type, representing the quantization scaling factors for the key, stored as float32.
+* k_proj_zps: Tensor type, representing the quantization zero-points for the key, stored as int32.
+* k_proj_bias: Tensor type, representing the key bias, stored as float32.
+* v_proj_weights: Tensor type, representing the quantized value weights, stored as int32.
+* v_proj_scales: Tensor type, representing the quantization scaling factors for the value, stored as float32.
+* v_proj_zps: Tensor type, representing the quantization zero-points for the value, stored as int32.
+* v_proj_bias: Tensor type, representing the value bias, stored as float32.
+* o_proj_weights: Tensor type, representing the quantized output projection weights, stored as int32.
+* o_proj_scales: Tensor type, representing the quantization scaling factors for the output projection, stored as float32.
+* o_proj_zps: Tensor type, representing the quantization zero-points for the output projection, stored as int32.
+* o_proj_bias: Tensor type, representing the output projection bias, stored as float32.
+* down_proj_weights: Tensor type, representing the quantized down projection layer weights, stored as int32.
+* down_proj_scales: Tensor type, representing the quantization scaling factors for the down projection layer, stored as float32.
+* down_proj_zps: Tensor type, representing the quantization zero-points for the down projection layer, stored as int32.
+* gate_proj_weights: Tensor type, representing the quantized gate projection layer weights, stored as int32.
+* gate_proj_scales: Tensor type, representing the quantization scaling factors for the gate projection layer, stored as float32.
+* gate_proj_zps: Tensor type, representing the quantization zero-points for the gate projection layer, stored as int32.
+* up_proj_weights: Tensor type, representing the quantized up projection layer weights, stored as int32.
+* up_proj_scales: Tensor type, representing the quantization scaling factors for the up projection layer, stored as float32.
+* up_proj_zps: Tensor type, representing the quantization zero-points for the up projection layer, stored as int32.
+* input_layernorm_weight: Tensor type, representing the weights for layer normalization on the input, stored as int32.
+* post_attention_layernorm_weight: Tensor type, representing the weights for layer normalization on the attention layer output, stored as int32.
+* cos: List[Tensor] type, representing the cosine positional encodings.
+* sin: List[Tensor] type, representing the sine positional encodings.
+* out_dtype: string type, representing the data type of the output tensor.
+* group_size: int type, representing the group size used for quantization.
+* weight_bits: int type, representing the quantization bit width, currently only supports 4 bits/8 bits.
+* hidden_size: int type, representing the hidden size for the query/key/value.
+* rms_norm_eps: float type, representing the epsilon parameter in layer normalization.
+* num_attention_heads: int type, representing the number of attention heads.
+* num_key_value_heads: int type, representing the number of key/value heads.
+* mrope_section: List[int] type, representing the sizes of the three dimensions for the positional encoding.
+* quant_method: str type, representing the quantization method, currently only GPTQ quantization is supported.
+* out_name: string type or None, representing the name of the output tensor; if None, the name will be automatically generated.
+
+Return value
+"""""""""""
+Returns 3 Tensors: the activation output, the key cache, and the value cache, all with the data type specified by out_dtype.
+
+Processor support
+"""""""""""
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+qwen2_block_cache
+:::::::::::::::::
+
+The interface definition
+"""""""""""
+    .. code-block:: python
+
+      def qwen2_block_cache(hidden_states: Tensor,
+                            position_ids: Tensor,
+                            attention_mask: Tensor,
+                            k_cache: Tensor,
+                            v_cache: Tensor,
+                            q_proj_weights: Tensor,
+                            q_proj_scales: Tensor,
+                            q_proj_zps: Tensor,
+                            q_proj_bias: Tensor,
+                            k_proj_weights: Tensor,
+                            k_proj_scales: Tensor,
+                            k_proj_zps: Tensor,
+                            k_proj_bias: Tensor,
+                            v_proj_weights: Tensor,
+                            v_proj_scales: Tensor,
+                            v_proj_zps: Tensor,
+                            v_proj_bias: Tensor,
+                            o_proj_weights: Tensor,
+                            o_proj_scales: Tensor,
+                            o_proj_zps: Tensor,
+                            o_proj_bias: Tensor,
+                            down_proj_weights: Tensor,
+                            down_proj_scales: Tensor,
+                            down_proj_zps: Tensor,
+                            gate_proj_weights: Tensor,
+                            gate_proj_scales: Tensor,
+                            gate_proj_zps: Tensor,
+                            up_proj_weights: Tensor,
+                            up_proj_scales: Tensor,
+                            up_proj_zps: Tensor,
+                            input_layernorm_weight: Tensor,
+                            post_attention_layernorm_weight: Tensor,
+                            cos: List[Tensor],
+                            sin: List[Tensor],
+                            out_dtype: str = 'float16',
+                            group_size: int = 128,
+                            weight_bits: int = 4,
+                            hidden_size: int = 3584,
+                            rms_norm_eps: float = 1e-06,
+                            num_attention_heads: int = 28,
+                            num_key_value_heads: int = 4,
+                            mrope_section: List[int] = [16, 24, 24],
+                            quant_method: str = "gptq",
+                            out_name: str = None
+                            ):
+
+        #pass
+
+Description of the function
+"""""""""""
+A block layer of qwen2 during the decode stage.
+This operation is considered a **global operation** 。
+
+Explanation of parameters
+"""""""""""
+* hidden_states: Tensor type, representing activation values, with shape (1, 1, hidden_size).
+* position_ids: Tensor type, representing positional indices, with shape (3, 1, 1).
+* attention_mask: Tensor type, representing the attention mask, with shape (1, 1, 1, seq_length + 1).
+* k_cache: Tensor type, representing the key cache. Its shape is (1, seq_length, num_key_value_heads, head_dim).
+* v_cache: Tensor type, representing the value cache. Its shape is (1, seq_length, num_key_value_heads, head_dim).
+* q_proj_weights: Tensor type, representing the quantized query weights, stored as int32.
+* q_proj_scales: Tensor type, representing the quantization scaling factors for the query, stored as float32.
+* q_proj_zps: Tensor type, representing the quantization zero-points for the query, stored as int32.
+* q_proj_bias: Tensor type, representing the query bias, stored as float32.
+* k_proj_weights: Tensor type, representing the quantized key weights, stored as int32.
+* k_proj_scales: Tensor type, representing the quantization scaling factors for the key, stored as float32.
+* k_proj_zps: Tensor type, representing the quantization zero-points for the key, stored as int32.
+* k_proj_bias: Tensor type, representing the key bias, stored as float32.
+* v_proj_weights: Tensor type, representing the quantized value weights, stored as int32.
+* v_proj_scales: Tensor type, representing the quantization scaling factors for the value, stored as float32.
+* v_proj_zps: Tensor type, representing the quantization zero-points for the value, stored as int32.
+* v_proj_bias: Tensor type, representing the value bias, stored as float32.
+* o_proj_weights: Tensor type, representing the quantized output projection weights, stored as int32.
+* o_proj_scales: Tensor type, representing the quantization scaling factors for the output projection, stored as float32.
+* o_proj_zps: Tensor type, representing the quantization zero-points for the output projection, stored as int32.
+* o_proj_bias: Tensor type, representing the output projection bias, stored as float32.
+* down_proj_weights: Tensor type, representing the quantized down projection layer weights, stored as int32.
+* down_proj_scales: Tensor type, representing the quantization scaling factors for the down projection layer, stored as float32.
+* down_proj_zps: Tensor type, representing the quantization zero-points for the down projection layer, stored as int32.
+* gate_proj_weights: Tensor type, representing the quantized gate projection layer weights, stored as int32.
+* gate_proj_scales: Tensor type, representing the quantization scaling factors for the gate projection layer, stored as float32.
+* gate_proj_zps: Tensor type, representing the quantization zero-points for the gate projection layer, stored as int32.
+* up_proj_weights: Tensor type, representing the quantized up projection layer weights, stored as int32.
+* up_proj_scales: Tensor type, representing the quantization scaling factors for the up projection layer, stored as float32.
+* up_proj_zps: Tensor type, representing the quantization zero-points for the up projection layer, stored as int32.
+* input_layernorm_weight: Tensor type, representing the weights for layer normalization on the input, stored as int32.
+* post_attention_layernorm_weight: Tensor type, representing the weights for layer normalization on the attention layer output, stored as int32.
+* cos: List[Tensor] type, representing the cosine positional encodings.
+* sin: List[Tensor] type, representing the sine positional encodings.
+* out_dtype: string type, representing the data type of the output tensor.
+* group_size: int type, representing the group size used for quantization.
+* weight_bits: int type, representing the quantization bit width, currently only supports 4 bits/8 bits.
+* hidden_size: int type, representing the hidden size for the query/key/value.
+* rms_norm_eps: float type, representing the epsilon parameter in layer normalization.
+* num_attention_heads: int type, representing the number of attention heads.
+* num_key_value_heads: int type, representing the number of key/value heads.
+* mrope_section: List[int] type, representing the sizes of the three dimensions for the positional encoding.
+* quant_method: str type, representing the quantization method, currently only GPTQ quantization is supported.
+* out_name: string type or None, representing the name of the output tensor; if None, the name will be automatically generated.
+
+Return value
+"""""""""""
+Returns 3 Tensors: the activation output, the key cache, and the value cache, all with the data type specified by out_dtype.
+
+Processor support
+"""""""""""
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+* BM1688: The input data type can be FLOAT32/FLOAT16.

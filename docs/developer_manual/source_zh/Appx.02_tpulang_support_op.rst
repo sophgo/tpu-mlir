@@ -5185,3 +5185,292 @@ multi_scale_deformable_attention
 """""""""""
 * BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
 * BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+a16matmul
+:::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def a16matmul(input: Tensor,
+                    weight: Tensor,
+                    scale: Tensor,
+                    zp: Tensor,
+                    bias: Tensor = None,
+                    right_transpose=True,
+                    out_dtype: str = 'float16',
+                    out_name: str = None,
+                    group_size: int = 128,
+                    bits: int = 4,
+                    g_idx: Tensor = None,
+                    ):
+
+        #pass
+
+功能描述
+"""""""""""
+对输入进行W4A16/W8A16 MatMul。
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* input:Tensor类型，表示输入tensor。
+* weight: Tensor类型，表示4bits/8bits量化后权重，以int32类型存储。
+* scale: Tensor类型，表示权重量化缩放因子，以float32类型存储。
+* zp: Tensor类型，表示权重量化零点，以int32类型存储。
+* bias: Tensor类型，表示偏置，以float32类型存储。
+* right_transpose: Bool类型，表示权重矩阵是否转置，目前仅支持为True。
+* out_dtype: string类型，表示输出张量的数据类型。
+* out_name: string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+* group_size: int类型，表示量化的group大小。
+* bits: int类型，表示量化位宽，仅支持4bits/8bits。
+* g_idx: Tensor类型，量化重排系数，目前不支持。
+
+返回值
+"""""""""""
+返回一个Tensor，数据类型为out_dtype。
+
+处理器支持
+"""""""""""
+* BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
+* BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
+
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+qwen2_block
+:::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def qwen2_block(hidden_states: Tensor,
+                      position_ids: Tensor,
+                      attention_mask: Tensor,
+                      q_proj_weights: Tensor,
+                      q_proj_scales: Tensor,
+                      q_proj_zps: Tensor,
+                      q_proj_bias: Tensor,
+                      k_proj_weights: Tensor,
+                      k_proj_scales: Tensor,
+                      k_proj_zps: Tensor,
+                      k_proj_bias: Tensor,
+                      v_proj_weights: Tensor,
+                      v_proj_scales: Tensor,
+                      v_proj_zps: Tensor,
+                      v_proj_bias: Tensor,
+                      o_proj_weights: Tensor,
+                      o_proj_scales: Tensor,
+                      o_proj_zps: Tensor,
+                      o_proj_bias: Tensor,
+                      down_proj_weights: Tensor,
+                      down_proj_scales: Tensor,
+                      down_proj_zps: Tensor,
+                      gate_proj_weights: Tensor,
+                      gate_proj_scales: Tensor,
+                      gate_proj_zps: Tensor,
+                      up_proj_weights: Tensor,
+                      up_proj_scales: Tensor,
+                      up_proj_zps: Tensor,
+                      input_layernorm_weight: Tensor,
+                      post_attention_layernorm_weight: Tensor,
+                      cos: List[Tensor],
+                      sin: List[Tensor],
+                      out_dtype: str = 'float16',
+                      group_size: int = 128,
+                      weight_bits: int = 4,
+                      hidden_size: int = 3584,
+                      rms_norm_eps: float = 1e-06,
+                      num_attention_heads: int = 28,
+                      num_key_value_heads: int = 4,
+                      mrope_section: List[int] = [16, 24, 24],
+                      quant_method: str = "gptq",
+                      out_name: str = None
+                      ):
+
+        #pass
+
+功能描述
+"""""""""""
+qwen2在prefill阶段的一个block layer。
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* hidden_states: Tensor类型，表示激活值，形状为 (1, seq_length, hidden_size)。
+* position_ids: Tensor类型，表示位置索引，形状为 (3, 1, seq_length)。
+* attention_mask: Tensor类型，表示注意力掩码，形状为 (1, 1, seq_length, seq_length)。
+* q_proj_weights: Tensor类型，表示query量化后权重，以int32类型存储。
+* q_proj_scales: Tensor类型，表示query量化缩放因子，以float32类型存储。
+* q_proj_zps: Tensor类型，表示query量化零点，以int32类型存储。
+* q_proj_bias: Tensor类型，表示query偏置，以float32类型存储。
+* k_proj_weights: Tensor类型，表示key量化后权重，以int32类型存储。
+* k_proj_scales: Tensor类型，表示key量化缩放因子，以float32类型存储。
+* k_proj_zps: Tensor类型，表示key量化零点，以int32类型存储。
+* k_proj_bias: Tensor类型，表示key偏置，以float32类型存储。
+* v_proj_weights: Tensor类型，表示value量化后权重，以int32类型存储。
+* v_proj_scales: Tensor类型，表示value量化缩放因子，以float32类型存储。
+* v_proj_zps: Tensor类型，表示value量化零点，以int32类型存储。
+* v_proj_bias: Tensor类型，表示value偏置，以float32类型存储。
+* o_proj_weights: Tensor类型，表示输出投影层量化后权重，以int32类型存储。
+* o_proj_scales: Tensor类型，表示输出投影层量化缩放因子，以float32类型存储。
+* o_proj_zps: Tensor类型，表示输出投影层量化零点，以int32类型存储。
+* o_proj_bias: Tensor类型，表示输出投影层偏置，以float32类型存储。
+* down_proj_weights: Tensor类型，表示降维投影层量化后权重，以int32类型存储。
+* down_proj_scales: Tensor类型，表示降维投影层量化缩放因子，以float32类型存储。
+* down_proj_zps: Tensor类型，表示降维投影层量化零点，以int32类型存储。
+* gate_proj_weights: Tensor类型，表示门投影层量化后权重，以int32类型存储。
+* gate_proj_scales: Tensor类型，表示门投影层量化缩放因子，以float32类型存储。
+* gate_proj_zps: Tensor类型，表示门投影层量化零点，以int32类型存储。
+* up_proj_weights: Tensor类型，表示升维投影层量化后权重，以int32类型存储。
+* up_proj_scales: Tensor类型，表示升维投影层量化缩放因子，以float32类型存储。
+* up_proj_zps: Tensor类型，表示升维投影层量化零点，以int32类型存储。
+* input_layernorm_weight: Tensor类型，表示对input做layernorm的权重，以int32类型存储。
+* post_attention_layernorm_weight: Tensor类型，表示对attention层输出做layernorm的权重，以int32类型存储。
+* cos: List[Tensor]型类型，表示cos位置编码。
+* sin: List[Tensor]型类型，表示sin位置编码。
+* out_dtype: string类型，表示输出张量的数据类型。
+* group_size: int类型，表示量化的group大小。
+* weight_bits: int类型，表示量化位宽，仅支持4bits/8bits。
+* hidden_size: int类型，表示query/key/value的hidden_size。
+* rms_norm_eps: float类型，表示layernorm中的eps参数。
+* num_attention_heads: int类型，表示注意力头的个数。
+* num_key_value_heads: int类型，表示key/value头的个数。
+* mrope_section: List[int]类型，表示位置编码的三个维度大小。
+* quant_method: str类型，表示量化方式，目前仅支持GPTQ量化。
+* out_name: string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回3个Tensor，分别为激活输出、key cache、value cache，数据类型为out_dtype。
+
+处理器支持
+"""""""""""
+* BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
+* BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
+
+
+Transform Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+qwen2_block_cache
+:::::::::::::::::
+
+接口定义
+"""""""""""
+    .. code-block:: python
+
+      def qwen2_block_cache(hidden_states: Tensor,
+                            position_ids: Tensor,
+                            attention_mask: Tensor,
+                            k_cache: Tensor,
+                            v_cache: Tensor,
+                            q_proj_weights: Tensor,
+                            q_proj_scales: Tensor,
+                            q_proj_zps: Tensor,
+                            q_proj_bias: Tensor,
+                            k_proj_weights: Tensor,
+                            k_proj_scales: Tensor,
+                            k_proj_zps: Tensor,
+                            k_proj_bias: Tensor,
+                            v_proj_weights: Tensor,
+                            v_proj_scales: Tensor,
+                            v_proj_zps: Tensor,
+                            v_proj_bias: Tensor,
+                            o_proj_weights: Tensor,
+                            o_proj_scales: Tensor,
+                            o_proj_zps: Tensor,
+                            o_proj_bias: Tensor,
+                            down_proj_weights: Tensor,
+                            down_proj_scales: Tensor,
+                            down_proj_zps: Tensor,
+                            gate_proj_weights: Tensor,
+                            gate_proj_scales: Tensor,
+                            gate_proj_zps: Tensor,
+                            up_proj_weights: Tensor,
+                            up_proj_scales: Tensor,
+                            up_proj_zps: Tensor,
+                            input_layernorm_weight: Tensor,
+                            post_attention_layernorm_weight: Tensor,
+                            cos: List[Tensor],
+                            sin: List[Tensor],
+                            out_dtype: str = 'float16',
+                            group_size: int = 128,
+                            weight_bits: int = 4,
+                            hidden_size: int = 3584,
+                            rms_norm_eps: float = 1e-06,
+                            num_attention_heads: int = 28,
+                            num_key_value_heads: int = 4,
+                            mrope_section: List[int] = [16, 24, 24],
+                            quant_method: str = "gptq",
+                            out_name: str = None
+                            ):
+
+        #pass
+
+功能描述
+"""""""""""
+qwen2在decode阶段的一个block layer。
+该操作属于 **全局操作** 。
+
+参数说明
+"""""""""""
+* hidden_states: Tensor类型，表示激活值，形状为 (1, 1, hidden_size)。
+* position_ids: Tensor类型，表示位置索引，形状为 (3, 1, 1)。
+* attention_mask: Tensor类型，表示注意力掩码，形状为 (1, 1, 1, seq_length + 1)。
+* k_cache: Tensor类型，表示key cache，形状为 (1, seq_length, num_key_value_heads, head_dim)。
+* v_cache: Tensor类型，表示value cache，形状为 (1, seq_length, num_key_value_heads, head_dim)。
+* q_proj_weights: Tensor类型，表示query量化后权重，以int32类型存储。
+* q_proj_scales: Tensor类型，表示query量化缩放因子，以float32类型存储。
+* q_proj_zps: Tensor类型，表示query量化零点，以int32类型存储。
+* q_proj_bias: Tensor类型，表示query偏置，以float32类型存储。
+* k_proj_weights: Tensor类型，表示key量化后权重，以int32类型存储。
+* k_proj_scales: Tensor类型，表示key量化缩放因子，以float32类型存储。
+* k_proj_zps: Tensor类型，表示key量化零点，以int32类型存储。
+* k_proj_bias: Tensor类型，表示key偏置，以float32类型存储。
+* v_proj_weights: Tensor类型，表示value量化后权重，以int32类型存储。
+* v_proj_scales: Tensor类型，表示value量化缩放因子，以float32类型存储。
+* v_proj_zps: Tensor类型，表示value量化零点，以int32类型存储。
+* v_proj_bias: Tensor类型，表示value偏置，以float32类型存储。
+* o_proj_weights: Tensor类型，表示输出投影层量化后权重，以int32类型存储。
+* o_proj_scales: Tensor类型，表示输出投影层量化缩放因子，以float32类型存储。
+* o_proj_zps: Tensor类型，表示输出投影层量化零点，以int32类型存储。
+* o_proj_bias: Tensor类型，表示输出投影层偏置，以float32类型存储。
+* down_proj_weights: Tensor类型，表示降维投影层量化后权重，以int32类型存储。
+* down_proj_scales: Tensor类型，表示降维投影层量化缩放因子，以float32类型存储。
+* down_proj_zps: Tensor类型，表示降维投影层量化零点，以int32类型存储。
+* gate_proj_weights: Tensor类型，表示门投影层量化后权重，以int32类型存储。
+* gate_proj_scales: Tensor类型，表示门投影层量化缩放因子，以float32类型存储。
+* gate_proj_zps: Tensor类型，表示门投影层量化零点，以int32类型存储。
+* up_proj_weights: Tensor类型，表示升维投影层量化后权重，以int32类型存储。
+* up_proj_scales: Tensor类型，表示升维投影层量化缩放因子，以float32类型存储。
+* up_proj_zps: Tensor类型，表示升维投影层量化零点，以int32类型存储。
+* input_layernorm_weight: Tensor类型，表示对input做layernorm的权重，以int32类型存储。
+* post_attention_layernorm_weight: Tensor类型，表示对attention层输出做layernorm的权重，以int32类型存储。
+* cos: List[Tensor]型类型，表示cos位置编码。
+* sin: List[Tensor]型类型，表示sin位置编码。
+* out_dtype: string类型，表示输出张量的数据类型。
+* group_size: int类型，表示量化的group大小。
+* weight_bits: int类型，表示量化位宽，仅支持4bits/8bits。
+* hidden_size: int类型，表示query/key/value的hidden_size。
+* rms_norm_eps: float类型，表示layernorm中的eps参数。
+* num_attention_heads: int类型，表示注意力头的个数。
+* num_key_value_heads: int类型，表示key/value头的个数。
+* mrope_section: List[int]类型，表示位置编码的三个维度大小。
+* quant_method: str类型，表示量化方式，目前仅支持GPTQ量化。
+* out_name: string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+"""""""""""
+返回3个Tensor，分别为激活输出、key cache、value cache，数据类型为out_dtype。
+
+处理器支持
+"""""""""""
+* BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
+* BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。

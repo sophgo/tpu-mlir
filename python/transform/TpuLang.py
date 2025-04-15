@@ -1433,7 +1433,7 @@ def a16matmul(input: Tensor,
                scale: Tensor,
                zp: Tensor,
                bias: Tensor = None,
-               right_transpose=True,
+               right_transpose: bool=True,
                out_dtype: str = 'float16',
                out_name: str = None,
                group_size: int = 128,
@@ -1445,7 +1445,7 @@ def a16matmul(input: Tensor,
         "q_group_size": Attr(group_size, "int64"),
         "weight_bits": Attr(bits, "int64")
     }
-    assert input.dtype in ["float32", "float16"] and weight.dtype == "int32" and zp.dtype == "int32" and out_dtype in ["float32", "float16", "bfloat16"]
+    assert input.dtype in ["float32", "float16"] and weight.dtype == "int32" and zp.dtype == "int32" and out_dtype in ["float32", "float16"]
     assert bits in [4, 8]
 
     # weight.buffer shape = [K,N]
@@ -1465,6 +1465,640 @@ def a16matmul(input: Tensor,
     inputs = [input, weight, scale, zp, bias]
     TpuLang.insert_op("top.A16MatMul", inputs=inputs, outputs=[output], params=attr)
     return output
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def qwen2_block(hidden_states: Tensor,
+                   position_ids: Tensor,
+                   attention_mask: Tensor,
+                   q_proj_weights: Tensor,
+                   q_proj_scales: Tensor,
+                   q_proj_zps: Tensor,
+                   q_proj_bias: Tensor,
+                   k_proj_weights: Tensor,
+                   k_proj_scales: Tensor,
+                   k_proj_zps: Tensor,
+                   k_proj_bias: Tensor,
+                   v_proj_weights: Tensor,
+                   v_proj_scales: Tensor,
+                   v_proj_zps: Tensor,
+                   v_proj_bias: Tensor,
+                   o_proj_weights: Tensor,
+                   o_proj_scales: Tensor,
+                   o_proj_zps: Tensor,
+                   o_proj_bias: Tensor,
+                   down_proj_weights: Tensor,
+                   down_proj_scales: Tensor,
+                   down_proj_zps: Tensor,
+                   gate_proj_weights: Tensor,
+                   gate_proj_scales: Tensor,
+                   gate_proj_zps: Tensor,
+                   up_proj_weights: Tensor,
+                   up_proj_scales: Tensor,
+                   up_proj_zps: Tensor,
+                   input_layernorm_weight: Tensor,
+                   post_attention_layernorm_weight: Tensor,
+                   cos: List[Tensor],
+                   sin: List[Tensor],
+                   out_dtype: str = 'float16',
+                   group_size: int = 128,
+                   weight_bits: int = 4,
+                   hidden_size: int = 3584,
+                   rms_norm_eps: float = 1e-06,
+                   num_attention_heads: int = 28,
+                   num_key_value_heads: int = 4,
+                   mrope_section: List[int] = [16, 24, 24],
+                   quant_method: str = "gptq",
+                   out_name: str = None
+                   ):
+    if out_name is None:
+        out_name = generate_name("qwen2_block")
+
+    # Only support gptq for now
+    assert quant_method == "gptq"
+
+    head_dim = hidden_size // num_attention_heads
+    num_key_value_groups = num_attention_heads // num_key_value_heads
+    bsz, q_len, _ = hidden_states.shape
+
+    assert hidden_states.dtype in ["float32", "float16"]
+    assert out_dtype in ["float32", "float16"]
+    assert hidden_states.dtype == input_layernorm_weight.dtype
+    assert hidden_states.shape[-1] == input_layernorm_weight.shape[0] and len(input_layernorm_weight.shape) == 1
+
+    # input layernorm
+    input_layernorm_attr = {"eps": Attr(rms_norm_eps, "float64")}
+    input_layernorm_output = Tensor(dtype=out_dtype, name=out_name + "_input_layernorm_output")
+    TpuLang.insert_op("top.RMSNorm", inputs=[hidden_states, input_layernorm_weight], outputs=[input_layernorm_output], params=input_layernorm_attr)
+
+    ############################## attention block ##############################
+    # q/k/v proj matmul
+    q_proj = a16matmul(input_layernorm_output, q_proj_weights, q_proj_scales, q_proj_zps, q_proj_bias, right_transpose=True,
+                       out_dtype=out_dtype, out_name=out_name + "_q_proj", group_size=group_size, bits=weight_bits)
+    k_proj = a16matmul(input_layernorm_output, k_proj_weights, k_proj_scales, k_proj_zps, k_proj_bias, right_transpose=True,
+                       out_dtype=out_dtype, out_name=out_name + "_k_proj", group_size=group_size, bits=weight_bits)
+    v_proj = a16matmul(input_layernorm_output, v_proj_weights, v_proj_scales, v_proj_zps, v_proj_bias, right_transpose=True,
+                       out_dtype=out_dtype, out_name=out_name + "_v_proj", group_size=group_size, bits=weight_bits)
+
+    # reshape q/k/v
+    reshape_q_attr = {
+        "shape": ArrayAttr([bsz, q_len, num_attention_heads, head_dim]),
+    }
+    reshape_kv_attr = {
+        "shape": ArrayAttr([bsz, q_len, num_key_value_heads, head_dim]),
+    }
+    q_proj_reshape = Tensor(dtype=out_dtype, name=out_name + "_q_proj_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[q_proj], outputs=[q_proj_reshape], params=reshape_q_attr)
+    k_proj_reshape = Tensor(dtype=out_dtype, name=out_name + "_k_proj_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[k_proj], outputs=[k_proj_reshape], params=reshape_kv_attr)
+    v_proj_reshape = Tensor(dtype=out_dtype, name=out_name + "_v_proj_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[v_proj], outputs=[v_proj_reshape], params=reshape_kv_attr)
+
+    # rotary pos emb
+    mrope_section = 2 * mrope_section
+    rope_offset = [0] * 3
+    int64_max = np.iinfo(np.int64).max
+    int32_max = np.iinfo(np.int32).max
+    ends = [int64_max] * 3
+    steps = [1] * 3
+    cos_gather_out_list = []
+    sin_gather_out_list = []
+    for i in range(len(mrope_section) // 2):
+        rope_offset[0] = i
+        ends[0] = i + 1
+        rope_slice_attr = {
+            "offset": ArrayAttr(rope_offset),
+            "ends": ArrayAttr(ends),
+            "steps": ArrayAttr(steps),
+            "hasparamConvert_axes": ArrayAttr([0])
+        }
+        rope_slice_out = Tensor(dtype=out_dtype, name=out_name + "_rope_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[position_ids, None, None, None], outputs=[rope_slice_out], params=rope_slice_attr)
+
+        rope_slice_attr = {
+            "axes": ArrayAttr([0])
+        }
+        rope_slice_squeeze_out = Tensor(dtype=out_dtype, name=out_name + "_rope_slice_squeeze_{}".format(i))
+        TpuLang.insert_op("top.Squeeze", inputs=[rope_slice_out], outputs=[rope_slice_squeeze_out], params=rope_slice_attr)
+
+        gather_attr = {
+            "axis": Attr(0, "int32"),
+        }
+        cos_gather_out = Tensor(dtype=out_dtype, name=out_name + "_cos_gather_{}".format(i))
+        TpuLang.insert_op("top.Gather", inputs=[cos[i], rope_slice_squeeze_out], outputs=[cos_gather_out], params=gather_attr)
+        sin_gather_out = Tensor(dtype=out_dtype, name=out_name + "_sin_gather_{}".format(i))
+        TpuLang.insert_op("top.Gather", inputs=[sin[i], rope_slice_squeeze_out], outputs=[sin_gather_out], params=gather_attr)
+
+        cos_gather_out_list.append(cos_gather_out)
+        sin_gather_out_list.append(sin_gather_out)
+
+    concat_attr = {
+        "axis": Attr(3, "int32"),
+    }
+    cos_concat = Tensor(dtype=out_dtype, name=out_name + "_cos_concat")
+    TpuLang.insert_op("top.Concat", inputs=cos_gather_out_list*2, outputs=[cos_concat], params=concat_attr)
+    sin_concat = Tensor(dtype=out_dtype, name=out_name + "_sin_concat")
+    TpuLang.insert_op("top.Concat", inputs=sin_gather_out_list*2, outputs=[sin_concat], params=concat_attr)
+
+    # rotate_half k/q
+    # q
+    q_slice_attr_1 = {
+        "offset": ArrayAttr([0, 0, 0, 0]),
+        "ends": ArrayAttr([1, q_len, num_attention_heads, head_dim // 2]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    q_slice_out_1 = Tensor(dtype=out_dtype, name=out_name + "_q_slice_1")
+    TpuLang.insert_op("top.Slice", inputs=[q_proj_reshape, None, None, None], outputs=[q_slice_out_1], params=q_slice_attr_1)
+
+    q_slice_attr_2 = {
+        "offset": ArrayAttr([0, 0, 0, head_dim // 2]),
+        "ends": ArrayAttr([1, q_len, num_attention_heads, int32_max - 1024]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    q_slice_out_2 = Tensor(dtype=out_dtype, name=out_name + "_q_slice_2")
+    TpuLang.insert_op("top.Slice", inputs=[q_proj_reshape, None, None, None], outputs=[q_slice_out_2], params=q_slice_attr_2)
+
+    mulconst_attr = {
+        "const_val": Attr(-1.0, "float64"),
+    }
+    q_slice_out_2_mulconst = Tensor(dtype=out_dtype, name=out_name + "_q_slice_2_mulconst")
+    TpuLang.insert_op("top.MulConst", inputs=[q_slice_out_2], outputs=[q_slice_out_2_mulconst], params=mulconst_attr)
+
+    concat_attr = {
+        "axis": Attr(3, "int32"),
+    }
+    q_rotate_half_out = Tensor(dtype=out_dtype, name=out_name + "_q_rotate_half_out")
+    TpuLang.insert_op("top.Concat", inputs=[q_slice_out_2_mulconst, q_slice_out_1], outputs=[q_rotate_half_out], params=concat_attr)
+
+    # k
+    k_slice_attr_1 = {
+        "offset": ArrayAttr([0, 0, 0, 0]),
+        "ends": ArrayAttr([1, q_len, num_key_value_heads, head_dim // 2]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    k_slice_out_1 = Tensor(dtype=out_dtype, name=out_name + "_k_slice_1")
+    TpuLang.insert_op("top.Slice", inputs=[k_proj_reshape, None, None, None], outputs=[k_slice_out_1], params=k_slice_attr_1)
+
+    k_slice_attr_2 = {
+        "offset": ArrayAttr([0, 0, 0, head_dim // 2]),
+        "ends": ArrayAttr([1, q_len, num_key_value_heads, int32_max - 1024]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    k_slice_out_2 = Tensor(dtype=out_dtype, name=out_name + "_k_slice_2")
+    TpuLang.insert_op("top.Slice", inputs=[k_proj_reshape, None, None, None], outputs=[k_slice_out_2], params=k_slice_attr_2)
+
+    mulconst_attr = {
+        "const_val": Attr(-1.0, "float64"),
+    }
+    k_slice_out_2_mulconst = Tensor(dtype=out_dtype, name=out_name + "_k_slice_2_mulconst")
+    TpuLang.insert_op("top.MulConst", inputs=[k_slice_out_2], outputs=[k_slice_out_2_mulconst], params=mulconst_attr)
+
+    concat_attr = {
+        "axis": Attr(3, "int32"),
+    }
+    k_rotate_half_out = Tensor(dtype=out_dtype, name=out_name + "_k_rotate_half_out")
+    TpuLang.insert_op("top.Concat", inputs=[k_slice_out_2_mulconst, k_slice_out_1], outputs=[k_rotate_half_out], params=concat_attr)
+
+    # q/k embed
+    # q
+    q_cos_mul = Tensor(dtype=out_dtype, name=out_name + "_q_cos_mul")
+    TpuLang.insert_op("top.Mul", inputs=[q_proj_reshape, cos_concat], outputs=[q_cos_mul])
+
+    q_rotate_sin_mul = Tensor(dtype=out_dtype, name=out_name + "_q_rotate_sin_mul")
+    TpuLang.insert_op("top.Mul", inputs=[q_rotate_half_out, sin_concat], outputs=[q_rotate_sin_mul])
+
+    q_embed = Tensor(dtype=out_dtype, name=out_name + "_q_embed")
+    TpuLang.insert_op("top.Add", inputs=[q_cos_mul, q_rotate_sin_mul], outputs=[q_embed])
+
+    # k
+    k_cos_mul = Tensor(dtype=out_dtype, name=out_name + "_k_cos_mul")
+    TpuLang.insert_op("top.Mul", inputs=[k_proj_reshape, cos_concat], outputs=[k_cos_mul])
+
+    k_rotate_sin_mul = Tensor(dtype=out_dtype, name=out_name + "_k_rotate_sin_mul")
+    TpuLang.insert_op("top.Mul", inputs=[k_rotate_half_out, sin_concat], outputs=[k_rotate_sin_mul])
+
+    k_embed = Tensor(dtype=out_dtype, name=out_name + "_k_embed")
+    TpuLang.insert_op("top.Add", inputs=[k_cos_mul, k_rotate_sin_mul], outputs=[k_embed])
+
+    # repeat_kv
+    # k
+    k_permute = permute(k_embed, [0, 2, 1, 3], out_name=out_name + "_k_permute")
+    k_unsqueeze = unsqueeze(k_permute, [2], out_name=out_name + "_k_unsqueeze")
+
+    attr_bc = {"shape":ArrayAttr([1, num_key_value_heads, num_key_value_groups, q_len, head_dim])}
+    k_expand = Tensor(dtype=out_dtype, name=out_name + "_k_expand")
+    TpuLang.insert_op("top.Expand", inputs=[k_unsqueeze], outputs=[k_expand], params=attr_bc)
+
+    reshape_attr = {
+        "shape": ArrayAttr([1, num_key_value_heads * num_key_value_groups, q_len, head_dim]),
+    }
+    k_expand_reshape = Tensor(dtype=out_dtype, name=out_name + "_k_expand_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[k_expand], outputs=[k_expand_reshape], params=reshape_attr)
+
+    # v
+    v_permute = permute(v_proj_reshape, [0, 2, 1, 3], out_name=out_name + "_v_permute")
+    v_unsqueeze = unsqueeze(v_permute, [2], out_name=out_name + "_v_unsqueeze")
+
+    v_expand = Tensor(dtype=out_dtype, name=out_name + "_v_expand")
+    TpuLang.insert_op("top.Expand", inputs=[v_unsqueeze], outputs=[v_expand], params=attr_bc)
+
+    reshape_attr = {
+        "shape": ArrayAttr([1, num_key_value_heads * num_key_value_groups, q_len, head_dim]),
+    }
+    v_expand_reshape = Tensor(dtype=out_dtype, name=out_name + "_v_expand_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[v_expand], outputs=[v_expand_reshape], params=reshape_attr)
+
+    # q * k
+    q_permute = permute(q_embed, [0, 2, 1, 3], out_name=out_name + "_q_permute")
+    k_expand_permute = permute(k_expand_reshape, [0, 1, 3, 2], out_name=out_name + "_k_expand_permute")
+    attention_weight = matmul(q_permute, k_expand_permute, out_dtype=out_dtype, out_name=out_name + "_attention_weight")
+
+    mulconst_attr = {
+        "const_val": Attr(1 / math.sqrt(head_dim), "float64")
+    }
+    attention_weight_mulconst = Tensor(dtype=out_dtype, name=out_name + "_attention_weight_mulconst")
+    TpuLang.insert_op("top.MulConst", inputs=[attention_weight], outputs=[attention_weight_mulconst], params=mulconst_attr)
+
+    # add attn mask
+    attention_weight_mask = Tensor(dtype=out_dtype, name=out_name + "_attention_weight_mask")
+    TpuLang.insert_op("top.Add", inputs=[attention_weight_mulconst, attention_mask], outputs=[attention_weight_mask])
+
+    # softmax
+    softmax_out = softmax(attention_weight_mask, 3, out_name=out_name + "_softmax")
+
+    # softmax * v
+    softmax_v = matmul(softmax_out, v_expand_reshape, out_dtype=out_dtype, out_name=out_name + "_softmax_v")
+
+    # o_proj
+    softmax_v_permute = permute(softmax_v, [0, 2, 1, 3], out_name=out_name + "_softmax_v_permute")
+
+    softmax_reshape_attr = {
+        "shape": ArrayAttr([bsz, q_len, -1]),
+    }
+    softmax_v_reshape = Tensor(dtype=out_dtype, name=out_name + "_softmax_v_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[softmax_v_permute], outputs=[softmax_v_reshape], params=softmax_reshape_attr)
+
+    attention_out = a16matmul(softmax_v_reshape, o_proj_weights, o_proj_scales, o_proj_zps, o_proj_bias, right_transpose=True,
+                              out_dtype=out_dtype, out_name=out_name + "_o_proj", group_size=group_size, bits=weight_bits)
+
+    ############################## mlp block ##############################
+    # add residual
+    attention_out_add = Tensor(dtype=out_dtype, name=out_name + "_attention_out_add")
+    TpuLang.insert_op("top.Add", inputs=[hidden_states, attention_out], outputs=[attention_out_add])
+
+    # post layernorm
+    post_layernorm_attr = {"eps": Attr(rms_norm_eps, "float64")}
+    post_layernorm_output = Tensor(dtype=out_dtype, name=out_name + "_post_layernorm_output")
+    TpuLang.insert_op("top.RMSNorm", inputs=[attention_out_add, post_attention_layernorm_weight], outputs=[post_layernorm_output], params=post_layernorm_attr)
+
+    # mlp
+    gate_proj = a16matmul(post_layernorm_output, gate_proj_weights, gate_proj_scales, gate_proj_zps, right_transpose=True,
+                          out_dtype=out_dtype, out_name=out_name + "_gate_proj", group_size=group_size, bits=weight_bits)
+    silu_out = silu(gate_proj, out_name="_silu_out")
+    up_proj = a16matmul(post_layernorm_output, up_proj_weights, up_proj_scales, up_proj_zps, right_transpose=True,
+                        out_dtype=out_dtype, out_name=out_name + "_up_proj", group_size=group_size, bits=weight_bits)
+
+    gate_up_mul = Tensor(dtype=out_dtype, name=out_name + "_gate_up_mul")
+    TpuLang.insert_op("top.Mul", inputs=[silu_out, up_proj], outputs=[gate_up_mul])
+
+    down_proj = a16matmul(gate_up_mul, down_proj_weights, down_proj_scales, down_proj_zps, right_transpose=True,
+                          out_dtype=out_dtype, out_name=out_name + "_down_proj", group_size=group_size, bits=weight_bits)
+
+    # add residual
+    mlp_out_add = Tensor(dtype=out_dtype, name=out_name + "_mlp_out_add")
+    TpuLang.insert_op("top.Add", inputs=[attention_out_add, down_proj], outputs=[mlp_out_add])
+
+    return mlp_out_add, k_embed, v_proj_reshape
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def qwen2_block_cache(hidden_states: Tensor,
+                   position_ids: Tensor,
+                   attention_mask: Tensor,
+                   k_cache: Tensor,
+                   v_cache: Tensor,
+                   q_proj_weights: Tensor,
+                   q_proj_scales: Tensor,
+                   q_proj_zps: Tensor,
+                   q_proj_bias: Tensor,
+                   k_proj_weights: Tensor,
+                   k_proj_scales: Tensor,
+                   k_proj_zps: Tensor,
+                   k_proj_bias: Tensor,
+                   v_proj_weights: Tensor,
+                   v_proj_scales: Tensor,
+                   v_proj_zps: Tensor,
+                   v_proj_bias: Tensor,
+                   o_proj_weights: Tensor,
+                   o_proj_scales: Tensor,
+                   o_proj_zps: Tensor,
+                   o_proj_bias: Tensor,
+                   down_proj_weights: Tensor,
+                   down_proj_scales: Tensor,
+                   down_proj_zps: Tensor,
+                   gate_proj_weights: Tensor,
+                   gate_proj_scales: Tensor,
+                   gate_proj_zps: Tensor,
+                   up_proj_weights: Tensor,
+                   up_proj_scales: Tensor,
+                   up_proj_zps: Tensor,
+                   input_layernorm_weight: Tensor,
+                   post_attention_layernorm_weight: Tensor,
+                   cos: List[Tensor],
+                   sin: List[Tensor],
+                   out_dtype: str = 'float16',
+                   group_size: int = 128,
+                   weight_bits: int = 4,
+                   hidden_size: int = 3584,
+                   rms_norm_eps: float = 1e-06,
+                   num_attention_heads: int = 28,
+                   num_key_value_heads: int = 4,
+                   mrope_section: List[int] = [16, 24, 24],
+                   quant_method: str = "gptq",
+                   out_name: str = None
+                   ):
+    if out_name is None:
+        out_name = generate_name("qwen2_block_cache")
+
+    # Only support gptq for now
+    assert quant_method == "gptq"
+
+    head_dim = hidden_size // num_attention_heads
+    num_key_value_groups = num_attention_heads // num_key_value_heads
+    bsz, q_len, _ = hidden_states.shape
+    _, cache_len, _, _ = k_cache.shape
+
+    concat_len = q_len + cache_len
+
+    assert hidden_states.dtype in ["float32", "float16"]
+    assert hidden_states.dtype == input_layernorm_weight.dtype
+    assert hidden_states.shape[-1] == input_layernorm_weight.shape[0] and len(input_layernorm_weight.shape) == 1
+
+    # input layernorm
+    input_layernorm_attr = {"eps": Attr(rms_norm_eps, "float64")}
+    input_layernorm_output = Tensor(dtype=out_dtype, name=out_name + "_input_layernorm_output")
+    TpuLang.insert_op("top.RMSNorm", inputs=[hidden_states, input_layernorm_weight], outputs=[input_layernorm_output], params=input_layernorm_attr)
+
+    ############################## attention block ##############################
+    # q/k/v proj matmul
+    q_proj = a16matmul(input_layernorm_output, q_proj_weights, q_proj_scales, q_proj_zps, q_proj_bias, right_transpose=True,
+                       out_dtype=out_dtype, out_name=out_name + "_q_proj", group_size=group_size, bits=weight_bits)
+    k_proj = a16matmul(input_layernorm_output, k_proj_weights, k_proj_scales, k_proj_zps, k_proj_bias, right_transpose=True,
+                       out_dtype=out_dtype, out_name=out_name + "_k_proj", group_size=group_size, bits=weight_bits)
+    v_proj = a16matmul(input_layernorm_output, v_proj_weights, v_proj_scales, v_proj_zps, v_proj_bias, right_transpose=True,
+                       out_dtype=out_dtype, out_name=out_name + "_v_proj", group_size=group_size, bits=weight_bits)
+
+    # reshape q/k/v
+    reshape_q_attr = {
+        "shape": ArrayAttr([bsz, q_len, num_attention_heads, head_dim]),
+    }
+    reshape_kv_attr = {
+        "shape": ArrayAttr([bsz, q_len, num_key_value_heads, head_dim]),
+    }
+    q_proj_reshape = Tensor(dtype=out_dtype, name=out_name + "_q_proj_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[q_proj], outputs=[q_proj_reshape], params=reshape_q_attr)
+    k_proj_reshape = Tensor(dtype=out_dtype, name=out_name + "_k_proj_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[k_proj], outputs=[k_proj_reshape], params=reshape_kv_attr)
+    v_proj_reshape = Tensor(dtype=out_dtype, name=out_name + "_v_proj_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[v_proj], outputs=[v_proj_reshape], params=reshape_kv_attr)
+
+    # rotary pos emb
+    mrope_section = 2 * mrope_section
+    rope_offset = [0] * 3
+    int64_max = np.iinfo(np.int64).max
+    int32_max = np.iinfo(np.int32).max
+    ends = [int64_max] * 3
+    steps = [1] * 3
+    cos_gather_out_list = []
+    sin_gather_out_list = []
+    for i in range(len(mrope_section) // 2):
+        rope_offset[0] = i
+        ends[0] = i + 1
+        rope_slice_attr = {
+            "offset": ArrayAttr(rope_offset),
+            "ends": ArrayAttr(ends),
+            "steps": ArrayAttr(steps),
+            "hasparamConvert_axes": ArrayAttr([0])
+        }
+        rope_slice_out = Tensor(dtype=out_dtype, name=out_name + "_rope_slice_{}".format(i))
+        TpuLang.insert_op("top.Slice", inputs=[position_ids, None, None, None], outputs=[rope_slice_out], params=rope_slice_attr)
+
+        rope_slice_attr = {
+            "axes": ArrayAttr([0])
+        }
+        rope_slice_squeeze_out = Tensor(dtype=out_dtype, name=out_name + "_rope_slice_squeeze_{}".format(i))
+        TpuLang.insert_op("top.Squeeze", inputs=[rope_slice_out], outputs=[rope_slice_squeeze_out], params=rope_slice_attr)
+
+        gather_attr = {
+            "axis": Attr(0, "int32"),
+        }
+        cos_gather_out = Tensor(dtype=out_dtype, name=out_name + "_cos_gather_{}".format(i))
+        TpuLang.insert_op("top.Gather", inputs=[cos[i], rope_slice_squeeze_out], outputs=[cos_gather_out], params=gather_attr)
+        sin_gather_out = Tensor(dtype=out_dtype, name=out_name + "_sin_gather_{}".format(i))
+        TpuLang.insert_op("top.Gather", inputs=[sin[i], rope_slice_squeeze_out], outputs=[sin_gather_out], params=gather_attr)
+
+        cos_gather_out_list.append(cos_gather_out)
+        sin_gather_out_list.append(sin_gather_out)
+
+    concat_attr = {
+        "axis": Attr(3, "int32"),
+    }
+    cos_concat = Tensor(dtype=out_dtype, name=out_name + "_cos_concat")
+    TpuLang.insert_op("top.Concat", inputs=cos_gather_out_list*2, outputs=[cos_concat], params=concat_attr)
+    sin_concat = Tensor(dtype=out_dtype, name=out_name + "_sin_concat")
+    TpuLang.insert_op("top.Concat", inputs=sin_gather_out_list*2, outputs=[sin_concat], params=concat_attr)
+
+    # rotate_half k/q
+    # q
+    q_slice_attr_1 = {
+        "offset": ArrayAttr([0, 0, 0, 0]),
+        "ends": ArrayAttr([1, q_len, num_attention_heads, head_dim // 2]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    q_slice_out_1 = Tensor(dtype=out_dtype, name=out_name + "_q_slice_1")
+    TpuLang.insert_op("top.Slice", inputs=[q_proj_reshape, None, None, None], outputs=[q_slice_out_1], params=q_slice_attr_1)
+
+    q_slice_attr_2 = {
+        "offset": ArrayAttr([0, 0, 0, head_dim // 2]),
+        "ends": ArrayAttr([1, q_len, num_attention_heads, int32_max - 1024]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    q_slice_out_2 = Tensor(dtype=out_dtype, name=out_name + "_q_slice_2")
+    TpuLang.insert_op("top.Slice", inputs=[q_proj_reshape, None, None, None], outputs=[q_slice_out_2], params=q_slice_attr_2)
+
+    mulconst_attr = {
+        "const_val": Attr(-1.0, "float64"),
+    }
+    q_slice_out_2_mulconst = Tensor(dtype=out_dtype, name=out_name + "_q_slice_2_mulconst")
+    TpuLang.insert_op("top.MulConst", inputs=[q_slice_out_2], outputs=[q_slice_out_2_mulconst], params=mulconst_attr)
+
+    concat_attr = {
+        "axis": Attr(3, "int32"),
+    }
+    q_rotate_half_out = Tensor(dtype=out_dtype, name=out_name + "_q_rotate_half_out")
+    TpuLang.insert_op("top.Concat", inputs=[q_slice_out_2_mulconst, q_slice_out_1], outputs=[q_rotate_half_out], params=concat_attr)
+
+    # k
+    k_slice_attr_1 = {
+        "offset": ArrayAttr([0, 0, 0, 0]),
+        "ends": ArrayAttr([1, q_len, num_key_value_heads, head_dim // 2]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    k_slice_out_1 = Tensor(dtype=out_dtype, name=out_name + "_k_slice_1")
+    TpuLang.insert_op("top.Slice", inputs=[k_proj_reshape, None, None, None], outputs=[k_slice_out_1], params=k_slice_attr_1)
+
+    k_slice_attr_2 = {
+        "offset": ArrayAttr([0, 0, 0, head_dim // 2]),
+        "ends": ArrayAttr([1, q_len, num_key_value_heads, int32_max - 1024]),
+        "steps": ArrayAttr([1, 1, 1, 1]),
+        "hasparamConvert_axes": ArrayAttr([3])
+    }
+    k_slice_out_2 = Tensor(dtype=out_dtype, name=out_name + "_k_slice_2")
+    TpuLang.insert_op("top.Slice", inputs=[k_proj_reshape, None, None, None], outputs=[k_slice_out_2], params=k_slice_attr_2)
+
+    mulconst_attr = {
+        "const_val": Attr(-1.0, "float64"),
+    }
+    k_slice_out_2_mulconst = Tensor(dtype=out_dtype, name=out_name + "_k_slice_2_mulconst")
+    TpuLang.insert_op("top.MulConst", inputs=[k_slice_out_2], outputs=[k_slice_out_2_mulconst], params=mulconst_attr)
+
+    concat_attr = {
+        "axis": Attr(3, "int32"),
+    }
+    k_rotate_half_out = Tensor(dtype=out_dtype, name=out_name + "_k_rotate_half_out")
+    TpuLang.insert_op("top.Concat", inputs=[k_slice_out_2_mulconst, k_slice_out_1], outputs=[k_rotate_half_out], params=concat_attr)
+
+    # q/k embed
+    # q
+    q_cos_mul = Tensor(dtype=out_dtype, name=out_name + "_q_cos_mul")
+    TpuLang.insert_op("top.Mul", inputs=[q_proj_reshape, cos_concat], outputs=[q_cos_mul])
+
+    q_rotate_sin_mul = Tensor(dtype=out_dtype, name=out_name + "_q_rotate_sin_mul")
+    TpuLang.insert_op("top.Mul", inputs=[q_rotate_half_out, sin_concat], outputs=[q_rotate_sin_mul])
+
+    q_embed = Tensor(dtype=out_dtype, name=out_name + "_q_embed")
+    TpuLang.insert_op("top.Add", inputs=[q_cos_mul, q_rotate_sin_mul], outputs=[q_embed])
+
+    # k
+    k_cos_mul = Tensor(dtype=out_dtype, name=out_name + "_k_cos_mul")
+    TpuLang.insert_op("top.Mul", inputs=[k_proj_reshape, cos_concat], outputs=[k_cos_mul])
+
+    k_rotate_sin_mul = Tensor(dtype=out_dtype, name=out_name + "_k_rotate_sin_mul")
+    TpuLang.insert_op("top.Mul", inputs=[k_rotate_half_out, sin_concat], outputs=[k_rotate_sin_mul])
+
+    k_embed = Tensor(dtype=out_dtype, name=out_name + "_k_embed")
+    TpuLang.insert_op("top.Add", inputs=[k_cos_mul, k_rotate_sin_mul], outputs=[k_embed])
+
+    # concate kv_cache
+    kv_concat_attr = {
+        "axis": Attr(1, "int32"),
+    }
+    k_cache_concat = Tensor(dtype=out_dtype, name=out_name + "_k_cache_concat")
+    TpuLang.insert_op("top.Concat", inputs=[k_cache, k_embed], outputs=[k_cache_concat], params=kv_concat_attr)
+
+    v_cache_concat = Tensor(dtype=out_dtype, name=out_name + "_v_cache_concat")
+    TpuLang.insert_op("top.Concat", inputs=[v_cache, v_proj_reshape], outputs=[v_cache_concat], params=kv_concat_attr)
+
+    # repeat_kv
+    # k
+    k_permute = permute(k_cache_concat, [0, 2, 1, 3], out_name=out_name + "_k_permute")
+    k_unsqueeze = unsqueeze(k_permute, [2], out_name=out_name + "_k_unsqueeze")
+
+    attr_bc = {"shape":ArrayAttr([1, num_key_value_heads, num_key_value_groups, concat_len, head_dim])}
+    k_expand = Tensor(dtype=out_dtype, name=out_name + "_k_expand")
+    TpuLang.insert_op("top.Expand", inputs=[k_unsqueeze], outputs=[k_expand], params=attr_bc)
+
+    reshape_attr = {
+        "shape": ArrayAttr([1, num_key_value_heads * num_key_value_groups, concat_len, head_dim]),
+    }
+    k_expand_reshape = Tensor(dtype=out_dtype, name=out_name + "_k_expand_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[k_expand], outputs=[k_expand_reshape], params=reshape_attr)
+
+    # v
+    v_permute = permute(v_cache_concat, [0, 2, 1, 3], out_name=out_name + "_v_permute")
+    v_unsqueeze = unsqueeze(v_permute, [2], out_name=out_name + "_v_unsqueeze")
+
+    v_expand = Tensor(dtype=out_dtype, name=out_name + "_v_expand")
+    TpuLang.insert_op("top.Expand", inputs=[v_unsqueeze], outputs=[v_expand], params=attr_bc)
+
+    reshape_attr = {
+        "shape": ArrayAttr([1, num_key_value_heads * num_key_value_groups, concat_len, head_dim]),
+    }
+    v_expand_reshape = Tensor(dtype=out_dtype, name=out_name + "_v_expand_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[v_expand], outputs=[v_expand_reshape], params=reshape_attr)
+
+    # q * k
+    q_permute = permute(q_embed, [0, 2, 1, 3], out_name=out_name + "_q_permute")
+    k_expand_permute = permute(k_expand_reshape, [0, 1, 3, 2], out_name=out_name + "_k_expand_permute")
+    attention_weight = matmul(q_permute, k_expand_permute, out_dtype=out_dtype, out_name=out_name + "_attention_weight")
+
+    mulconst_attr = {
+        "const_val": Attr(1 / math.sqrt(head_dim), "float64")
+    }
+    attention_weight_mulconst = Tensor(dtype=out_dtype, name=out_name + "_attention_weight_mulconst")
+    TpuLang.insert_op("top.MulConst", inputs=[attention_weight], outputs=[attention_weight_mulconst], params=mulconst_attr)
+
+    # add attn mask
+    attention_weight_mask = Tensor(dtype=out_dtype, name=out_name + "_attention_weight_mask")
+    TpuLang.insert_op("top.Add", inputs=[attention_weight_mulconst, attention_mask], outputs=[attention_weight_mask])
+
+    # softmax
+    softmax_out = softmax(attention_weight_mask, 3, out_name=out_name + "_softmax")
+
+    # softmax * v
+    softmax_v = matmul(softmax_out, v_expand_reshape, out_dtype=out_dtype, out_name=out_name + "_softmax_v")
+
+    # o_proj
+    softmax_v_permute = permute(softmax_v, [0, 2, 1, 3], out_name=out_name + "_softmax_v_permute")
+
+    softmax_reshape_attr = {
+        "shape": ArrayAttr([bsz, q_len, -1]),
+    }
+    softmax_v_reshape = Tensor(dtype=out_dtype, name=out_name + "_softmax_v_reshape")
+    TpuLang.insert_op("top.Reshape", inputs=[softmax_v_permute], outputs=[softmax_v_reshape], params=softmax_reshape_attr)
+
+    attention_out = a16matmul(softmax_v_reshape, o_proj_weights, o_proj_scales, o_proj_zps, o_proj_bias, right_transpose=True,
+                              out_dtype=out_dtype, out_name=out_name + "_o_proj", group_size=group_size, bits=weight_bits)
+
+    ############################## mlp block ##############################
+    # add residual
+    attention_out_add = Tensor(dtype=out_dtype, name=out_name + "_attention_out_add")
+    TpuLang.insert_op("top.Add", inputs=[hidden_states, attention_out], outputs=[attention_out_add])
+
+    # post layernorm
+    post_layernorm_attr = {"eps": Attr(rms_norm_eps, "float64")}
+    post_layernorm_output = Tensor(dtype=out_dtype, name=out_name + "_post_layernorm_output")
+    TpuLang.insert_op("top.RMSNorm", inputs=[attention_out_add, post_attention_layernorm_weight], outputs=[post_layernorm_output], params=post_layernorm_attr)
+
+    # mlp
+    gate_proj = a16matmul(post_layernorm_output, gate_proj_weights, gate_proj_scales, gate_proj_zps, right_transpose=True,
+                          out_dtype=out_dtype, out_name=out_name + "_gate_proj", group_size=group_size, bits=weight_bits)
+    silu_out = silu(gate_proj, out_name="_silu_out")
+    up_proj = a16matmul(post_layernorm_output, up_proj_weights, up_proj_scales, up_proj_zps, right_transpose=True,
+                        out_dtype=out_dtype, out_name=out_name + "_up_proj", group_size=group_size, bits=weight_bits)
+
+    gate_up_mul = Tensor(dtype=out_dtype, name=out_name + "_gate_up_mul")
+    TpuLang.insert_op("top.Mul", inputs=[silu_out, up_proj], outputs=[gate_up_mul])
+
+    down_proj = a16matmul(gate_up_mul, down_proj_weights, down_proj_scales, down_proj_zps, right_transpose=True,
+                          out_dtype=out_dtype, out_name=out_name + "_down_proj", group_size=group_size, bits=weight_bits)
+
+    # add residual
+    mlp_out_add = Tensor(dtype=out_dtype, name=out_name + "_mlp_out_add")
+    TpuLang.insert_op("top.Add", inputs=[attention_out_add, down_proj], outputs=[mlp_out_add])
+
+    return mlp_out_add, k_embed, v_proj_reshape
+
 
 ######## Up / Down Scaling Operator #########
 @auto_name()
