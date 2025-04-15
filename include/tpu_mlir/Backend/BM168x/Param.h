@@ -2294,4 +2294,38 @@ typedef struct maxpooling_indices_bwd {
   int strides[2];
   int paddings[2];
 } maxpooling_indices_bwd_spec_t;
+
+typedef struct {
+  bool    is_perchannel;
+  bool    has_buffer;
+  float   scale_value;
+  int     offset_value;
+  int     round_mode;
+  int32_t binary_type;
+  int32_t if_relu;
+  float relu_upper_limit;
+} cast_add_param_t;
+
+typedef struct dequant_common_spec {
+    float scale_value;
+    int   offset_value;
+    int   round_mode;
+} dequant_common_spec_t;
+
+typedef struct layer_norm_cast_global_spec{
+    layer_norm_common_spec_t common_layer_norm;
+    dequant_common_spec_t    common_dequant;
+    int                      isCastAtEnd; //0 is Dequant+LN; 1 is LN+Requant
+} layer_norm_cast_global_spec_t;
+
+typedef struct {
+  active_common_spec_t active_spec;
+  dyn_requant_fp_common_param_t requant_spec;
+} active_requant_spec_t;
+
+typedef struct {
+  batch_matmul_common_spec_t common_matmul_param;
+  int table_length;
+} lut_matmul_param_t;
+
 #endif

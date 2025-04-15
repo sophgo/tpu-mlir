@@ -593,6 +593,7 @@ def tpu_ada_options(
     future_update_rank: int = 0,
     future_update_list: str = "",
     trunc_final: list = None,
+    opt_post_processor: bool = False
 ):
     lg_param = ''
     if not disable_layer_group:
@@ -615,6 +616,7 @@ def tpu_ada_options(
     op_divide_param = ""
     if op_divide:
         op_divide_param = "--op-divide"
+    opt_post_processor_param = "--opt-post-processor" if opt_post_processor else ""
     options = [
         distribute_param,
         "--weight-reorder",
@@ -625,6 +627,7 @@ def tpu_ada_options(
         lg_param,
         trunc_param,
         parallel_param,
+        opt_post_processor_param,
         address_assign_param
     ]
     return options
@@ -715,6 +718,7 @@ def mlir_to_model(
     trunc_final: list = None,
     command_mem: dict = None,
     quant_output_bf16: bool = False,
+    opt_post_processor: bool = False
 ):
     if command_mem is None:
         command_mem = {}
@@ -746,6 +750,7 @@ def mlir_to_model(
         future_update_rank=future_update_rank,
         future_update_list=future_update_list,
         trunc_final=trunc_final,
+        opt_post_processor=opt_post_processor
     )
     cmd.extend(options)
 
@@ -753,7 +758,6 @@ def mlir_to_model(
         "-o",
         final_mlir
     ])
-
     log_file = ""
     if count_patterns:
         assert not debug_info and "patterns_count is not allowed to be used with debug_cmd"

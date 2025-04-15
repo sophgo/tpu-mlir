@@ -6101,4 +6101,99 @@ def tpu_MaxPoolingIndicesBwdOp: Tpu_Op<"MaxPoolingIndicesBwd", [
   let results = (outs AnyRankedTensor:$grad_input);
 }
 
+def Tpu_CastAddOp: Tpu_Op<"CastAdd", [
+  SupportFuseRelu, SupportEarlyStride]> {
+  let summary = "add operator";
+
+  let description = [{
+    Cast + Add; One of original Add is casted. Elementwise addition of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_LayerNormCastOp: Tpu_Op<"LayerNormCast", [
+  DeclareOpInterfaceMethods<TypeInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
+  let summary = "LayerNorm + Requant";
+
+  let description = [{
+    LayerNorm + Requant
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    SI32Attr:$axis,
+    F64Attr:$eps,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    DefaultValuedAttr<I64Attr, "1">:$isCastAtEnd
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_MatMulLutOp: Tpu_Op<"MatMulLut", [
+    SupportFuseRelu,
+    DeclareOpInterfaceMethods<TypeInterface>]>{
+  let summary = "MatMul + Lut";
+
+  let description = [{
+    MatMul + Lut
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyRankedTensor:$table,
+    AnyRankedTensor:$right,
+    AnyTensorOrNone:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$left_transpose,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
+    DefaultValuedAttr<BoolAttr, "false">:$output_transpose,
+    DefaultValuedAttr<BoolAttr, "false">:$hdim_is_batch,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<I64ArrayAttr, "{1}">:$multipliers,
+    DefaultValuedAttr<I64ArrayAttr, "{0}">:$rshifts,
+    DefaultValuedAttr<I64Attr, "0">:$right_zp,
+    DefaultValuedAttr<I64Attr, "0">:$input_zp,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    DefaultValuedAttr<I64Attr, "1">:$left_reuse,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multi_core,
+    DefaultValuedAttr<BoolAttr, "false">:$fuse_rq,
+    AnyTensorOrNone:$multi,
+    AnyTensorOrNone:$buffer,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    matmul_attr_t parseParam();
+    void assign_fw_param(void *param);
+  }];
+}
+
+def Tpu_FusedActiveCastOp: Tpu_Op<"FusedActiveCast",[
+  InOutSameShape, SupportElementwise]>{
+  let summary = "Active + Cast";
+  let description = [{}];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    Tpu_ActiveModeAttr:$mode,
+    OptionalAttr<F64ArrayAttr>:$coeffs,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
 #endif // TPU_OPS

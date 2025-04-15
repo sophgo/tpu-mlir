@@ -19,7 +19,9 @@ file(GLOB _sources
           Transforms/WeightReorder/BM1684X/*.cpp
           Transforms/WeightReorder/CV18xx/*.cpp
           Transforms/DevParallel/*.cpp
-          Transforms/CoreParallel/*.cpp)
+          Transforms/CoreParallel/*.cpp
+          Transforms/OptPostProcessor/*.cpp
+)
 
 add_llvm_library(TPUMLIRTpu
   ${_sources}

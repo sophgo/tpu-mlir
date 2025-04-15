@@ -142,6 +142,7 @@ class DeployTool:
         self.trunc_final = args.trunc_final
         if self.trunc_final:
             self.compare_all = True
+        self.opt_post_processor = args.opt_post_processor
 
         self.context_dir = os.path.splitext(self.bmodel_path)[0]
         os.makedirs(self.context_dir, exist_ok=True)
@@ -370,6 +371,7 @@ class DeployTool:
                     trunc_final=self.trunc_final,
                     command_mem=command_mem,
                     quant_output_bf16=self.quant_output_bf16,
+                    opt_post_processor=self.opt_post_processor
                 )
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
@@ -520,6 +522,9 @@ if __name__ == '__main__':
     # for bm1684x and bm1688
     parser.add_argument("--matmul_perchannel", action="store_true", default=False,
                         help="if quantize matmul in per-channel mode for BM1684x and BM1688")
+    # for mars3
+    parser.add_argument("--opt_post_processor", action="store_true", default=False,
+                        help="opt_post_processor")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                     help='used for regression test, check if patterns are successfully applied a specific number of times')

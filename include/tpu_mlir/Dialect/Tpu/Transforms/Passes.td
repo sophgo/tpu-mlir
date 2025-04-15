@@ -195,4 +195,9 @@ def TruncLayer : Pass<"trunc-layer", "ModuleOp"> {
   ];
 }
 
+def OptPostProcessor : Pass<"opt-post-processor", "ModuleOp"> {
+  let summary = "Graph Optimization after LayerGroup but before AddressAssign";
+  let constructor = "createOptPostProcessorPass()";
+  let dependentDialects = ["TpuDialect"];
+}
 #endif
