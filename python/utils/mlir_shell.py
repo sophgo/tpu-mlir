@@ -585,12 +585,14 @@ def tpu_ada_options(
     trunc_final: list = None,
     opt_post_processor: bool = False,
     lg_debugger: bool = False,
+    disable_group_overlap: bool = False,
 ):
     lg_param = ''
+    disable_group_overlap = "true" if disable_group_overlap else "false"
     if not disable_layer_group:
         debugger = 1 if lg_debugger else 0
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={}"'.format(
-            opt, group_by_cores, compress_mode, debugger)
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={}"'.format(
+            opt, group_by_cores, compress_mode, debugger, disable_group_overlap)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     if merge_weight:
@@ -624,6 +626,142 @@ def tpu_ada_options(
     ]
     return options
 
+def time_fixed_subnet_options(time_fixed_subnet, subnet_params, layer_group_cache):
+    all_layers = []
+    layer_group_cache_path = layer_group_cache
+    with open(layer_group_cache_path, 'r') as f:
+        layer_group_cache = json.load(f)
+        for group in (*layer_group_cache["GroupLayer"], *layer_group_cache["GlobalLayer"]):
+            all_layers.append({
+                "index": group["index"],
+                "group_cost": group["group_cost"],
+                "locs": group.get("locs", group.get("loc")),
+            })
+
+    all_layers = sorted(all_layers, key=lambda x: x['index'])
+    subnets = {}
+    subnet_index = 0
+    if time_fixed_subnet == "normal":
+        max_exceed = max(layer['group_cost'] for layer in all_layers if layer['group_cost'] > 0)
+        current_subnet = []
+        current_sum = 0
+        for element in all_layers:
+            element_cost = element['group_cost']
+            if current_sum + element_cost <= max_exceed:
+                current_subnet.append(element)
+                current_sum += element_cost
+            else:
+                _save_subnet(subnets, current_subnet, subnet_index)
+                subnet_index += 1
+                current_subnet = [element]
+                current_sum = element_cost
+        if current_subnet:
+            _save_subnet(subnets, current_subnet, subnet_index)
+    elif time_fixed_subnet == "limit":
+        i = 0
+        n = len(all_layers)
+        while i < n:
+            if all_layers[i]['group_cost'] > 0:
+                _save_subnet(subnets, [all_layers[i]], subnet_index)
+                subnet_index += 1
+                i += 1
+            else:
+                zero_start = i
+                while i < n and all_layers[i]['group_cost'] == 0:
+                    i += 1
+                if i < n:
+                    subnet_layers = all_layers[zero_start:i+1]
+                    _save_subnet(subnets, subnet_layers, subnet_index)
+                    subnet_index += 1
+                    i += 1
+                else:
+                    if subnets:
+                        last_key = f'subfunc_{subnet_index-1}'
+                        last_subnet = subnets[last_key]
+                        last_subnet['end_index'] = all_layers[-1]['index']
+                        if all_layers[-1]['locs']:
+                            locs = all_layers[-1]['locs']
+                            current = locs
+                            while isinstance(current, list) and len(current) > 0:
+                                current = current[-1]
+                            last_subnet['last_loc'] = str(current) if not isinstance(current, list) else current
+                    else:
+                        _save_subnet(subnets, all_layers[zero_start:], subnet_index)
+    elif time_fixed_subnet == "custom":
+        try:
+            params = subnet_params.split(',')
+            if len(params) != 2:
+                raise ValueError
+            frequency, duration = map(float, params)
+            if frequency <= 0 or duration <= 0:
+                raise ValueError
+        except ValueError:
+            raise ValueError(f"Invalid subnet_params format: {subnet_params}. "
+                             "Expected 'frequency,duration' (e.g. '1000,30')") from None
+        cost_threshold = frequency * duration * 1e3
+        current_subnet = []
+        current_cost = 0
+        for layer in all_layers:
+            layer_cost = layer['group_cost']
+            if layer_cost > cost_threshold:
+                if current_subnet:
+                    _save_subnet(subnets, current_subnet, subnet_index)
+                    subnet_index += 1
+                    current_subnet = []
+                    current_cost = 0
+                _save_subnet(subnets, [layer], subnet_index)
+                subnet_index += 1
+            elif current_cost + layer_cost <= cost_threshold:
+                current_subnet.append(layer)
+                current_cost += layer_cost
+            else:
+                if current_subnet:
+                    _save_subnet(subnets, current_subnet, subnet_index)
+                    subnet_index += 1
+                current_subnet = [layer]
+                current_cost = layer_cost
+        if current_subnet:
+            _save_subnet(subnets, current_subnet, subnet_index)
+    else:
+        raise ValueError(f"Unsupported time_fixed_subnet mode: {time_fixed_subnet}")
+
+    output_json = {
+        "subfuncs": [
+            {
+                "subfunc_id": key,
+                "start_index": value["start_index"],
+                "end_index": value["end_index"],
+                "group_cost": value["group_cost"],
+                "last_loc": value["last_loc"]
+            }
+            for key, value in subnets.items()
+        ]
+    }
+
+    time_fixed_subnet_path = layer_group_cache_path.replace('.layer_group_cache.json', '.subnets.json')
+    with open(time_fixed_subnet_path, 'w', encoding='utf-8') as f:
+        json.dump(output_json, f, ensure_ascii=False, indent=2)
+    return [
+        '--time-fixed-subnet="json_file={}"'.format(time_fixed_subnet_path)
+    ]
+
+def _save_subnet(subnets, current_subnet, subnet_index):
+    if not current_subnet:
+        return
+    last_loc = None
+    if current_subnet and current_subnet[-1]['locs']:
+        locs = current_subnet[-1]['locs']
+        current = locs
+        while isinstance(current, list) and len(current) > 0:
+            current = current[-1]
+        last_loc = str(current) if not isinstance(current, list) else current
+
+    subnets[f'subfunc_{subnet_index}'] = {
+        'start_index': current_subnet[0]['index'],
+        'end_index': current_subnet[-1]['index'],
+        'group_cost': sum(layer['group_cost'] for layer in current_subnet),
+        'last_loc': last_loc
+    }
 
 def codegen_options(model: str,
                     embed_debug_info: bool = False,
@@ -714,6 +852,9 @@ def mlir_to_model(
     opt_post_processor: bool = False,
     gdma_check: bool = True,
     lg_debugger: bool = False,
+    time_fixed_subnet: str = None,
+    subnet_params: str = None,
+    layer_group_cache: str = ""
 ):
     if command_mem is None:
         command_mem = {}
@@ -747,6 +888,7 @@ def mlir_to_model(
         trunc_final=trunc_final,
         opt_post_processor=opt_post_processor,
         lg_debugger=lg_debugger,
+        disable_group_overlap=(time_fixed_subnet!=None)
     )
     cmd.extend(options)
 
@@ -771,6 +913,17 @@ def mlir_to_model(
         cmd.insert(2, '--init="level=1"')
 
     _os_system(cmd, log_level=log_level)
+
+    if time_fixed_subnet:
+        command_mem["final_cut"] = " ".join(cmd)
+        cmd = ["tpuc-opt", final_mlir]
+        options = time_fixed_subnet_options(time_fixed_subnet, subnet_params, layer_group_cache)
+        cmd.extend(options)
+        final_cut_mlir = final_mlir.replace("final.mlir", "final_cut.mlir")
+        cmd.extend(["-o", final_cut_mlir])
+        _os_system(cmd)
+        final_mlir = final_cut_mlir
+
     command_mem["final"] = " ".join(cmd)
     # compile ppl code
     # build_ppl()

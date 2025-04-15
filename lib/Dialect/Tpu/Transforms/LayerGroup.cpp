@@ -73,6 +73,7 @@ public:
     options.num_core = module::getCoreNum();
     options.debugger = debugger;
     options.debugger_filename = debugger_filename;
+    options.disable_group_overlap = disable_group_overlap;
     // group pass by modules
     auto modules = module::getAllModules();
     for (auto s : *modules) {

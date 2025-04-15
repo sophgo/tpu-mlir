@@ -576,6 +576,12 @@ model_deploy.py
    * - do_winograd
      - 否
      - 是否使用WinoGrad卷积, 仅用于BM1684平台
+   * - time_fixed_subnet
+     - 否
+     - 将模型按固定时长间隔分割，支持['normal', 'limit', 'custom']，目前支持BM1684X和BM1688处理器，打开可能影响模型性能
+   * - subnet_params
+     - 否
+     - 当time_fixed_subnet为custom时，用于设定子网的频率(MHZ)和耗时(ms)
    * - matmul_perchannel
      - 否
      - MatMul是否使用per-channel量化模式，目前支持BM1684X和BM1688处理器，打开可能影响运行时间

@@ -149,6 +149,8 @@ class DeployTool:
         self.future_update_rank = args.future_update_rank
         self.future_update_list = args.future_update_list
         self.gelu_mode = args.gelu_mode
+        self.time_fixed_subnet = args.time_fixed_subnet
+        self.subnet_params = args.subnet_params
 
         self.tosa_mlir = "{}_tosa.mlir".format(self.prefix)
         self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
@@ -365,32 +367,40 @@ class DeployTool:
                 return {}
             else:
                 command_mem = {}
-                patterns = mlir_to_model(tpu_mlir=self.tpu_mlir,
-                                         bmodel_path=self.bmodel_path,
-                                         final_mlir=self.final_mlir,
-                                         dynamic=self.dynamic,
-                                         quant_input=self.quant_input,
-                                         quant_output=self.quant_output,
-                                         quant_input_list=self.quant_input_list,
-                                         quant_output_list=self.quant_output_list,
-                                         disable_layer_group=self.disable_layer_group,
-                                         opt=self.opt,
-                                         merge_weight=self.merge_weight,
-                                         op_divide=self.op_divide,
-                                         embed_debug_info=self.embed_debug_info,
-                                         group_by_cores=self.group_by_cores,
-                                         model_version=self.model_version,
-                                         count_patterns=True if self.patterns_count else False,
-                                         compress_mode=self.compress_mode,
-                                         future_update_rank=self.future_update_rank,
-                                         future_update_list=self.future_update_list,
-                                         debug_info=self.debug_cmd,
-                                         trunc_final=self.trunc_final,
-                                         command_mem=command_mem,
-                                         quant_output_bf16=self.quant_output_bf16,
-                                         opt_post_processor=self.opt_post_processor,
-                                         gdma_check=self.gdma_check,
-                                         lg_debugger=self.lg_debugger)
+                patterns = mlir_to_model(
+                    tpu_mlir=self.tpu_mlir,
+                    bmodel_path=self.bmodel_path,
+                    final_mlir=self.final_mlir,
+                    dynamic=self.dynamic,
+                    quant_input=self.quant_input,
+                    quant_output=self.quant_output,
+                    quant_input_list=self.quant_input_list,
+                    quant_output_list=self.quant_output_list,
+                    disable_layer_group=self.disable_layer_group,
+                    opt=self.opt,
+                    merge_weight=self.merge_weight,
+                    op_divide=self.op_divide,
+                    embed_debug_info=self.embed_debug_info,
+                    group_by_cores=self.group_by_cores,
+                    model_version=self.model_version,
+                    count_patterns=True if self.patterns_count else False,
+                    compress_mode=self.compress_mode,
+                    future_update_rank=self.future_update_rank,
+                    future_update_list=self.future_update_list,
+                    debug_info=self.debug_cmd,
+                    trunc_final=self.trunc_final,
+                    command_mem=command_mem,
+                    quant_output_bf16=self.quant_output_bf16,
+                    opt_post_processor=self.opt_post_processor,
+                    gdma_check=self.gdma_check,
+                    lg_debugger=self.lg_debugger,
+                    time_fixed_subnet = self.time_fixed_subnet,
+                    subnet_params = self.subnet_params,
+                    layer_group_cache = (
+                        f"{self.prefix}.layer_group_cache.json"
+                        if self.quantize != "int8"
+                        else f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json")
+                )
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -551,6 +561,11 @@ if __name__ == '__main__':
                     help='used for regression test, check if patterns are successfully applied a specific number of times')
     parser.add_argument("--gelu_mode", default="normal", type=str.lower,
                         help="how to approximate gelu, possible options: normal/tanh/sigm")
+    # Customized requirements: Segmenting the model based on fixed time intervals.
+    parser.add_argument('--time_fixed_subnet', default=None, type=str.lower, choices=['normal', 'limit', 'custom'],
+                    help='Split the model by fixed duration intervals')
+    parser.add_argument('--subnet_params', default=None,
+                    help='When time_fixed_subnet is custom, it is used to set the frequency(MHZ) and duration(ms) of the subnet')
     # ========== DEPRECATED Options ==============
     parser.add_argument("--io_alone", action="store_true", default=False,
                         help="DEPRECATED, please use --addr_mode io_alone")
@@ -585,12 +600,13 @@ if __name__ == '__main__':
         tool.do_validate = False
     lowering_patterns = tool.lowering()
     # generate model
+    if args.time_fixed_subnet == 'custom' and not args.subnet_params:
+        parser.error("time_fixed_subnet is custom, please use --subnet_params to set the frequency(MHZ) and duration(ms) of the subnet.")
     if args.not_gen_bmodel:
         exit(0)
     tpu_patterns = tool.build_model()
     if not args.debug:
         tool.cleanup()
-
     total_patterns = {**lowering_patterns, **tpu_patterns}
     if args.patterns_count:
         for k, v in args.patterns_count.items():

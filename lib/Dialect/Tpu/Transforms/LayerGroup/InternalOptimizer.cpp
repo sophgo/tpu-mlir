@@ -54,7 +54,7 @@ void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm,
 
 void InternalLgOptimizer::manage_post_passes(std::shared_ptr<LgPassManager> pm,
                                              const LgOptions &options) {
-  if (options.opt != 3) {
+  if (options.opt != 3 && !options.disable_group_overlap) {
     pm->add_pass(CreateGroupDataMoveOverlapPass(options));
   }
 }

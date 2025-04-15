@@ -35,6 +35,7 @@ typedef struct {
   int64_t num_core;
   int64_t debugger;
   std::string debugger_filename;
+  bool disable_group_overlap;
 } LgOptions;
 
 typedef struct {

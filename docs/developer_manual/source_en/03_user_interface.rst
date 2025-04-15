@@ -565,6 +565,12 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - do_winograd
      - N
      - if do WinoGrad convolution, only for BM1684
+   * - time_fixed_subnet
+     - N
+     - Split the model by fixed-duration intervals, supporting ['normal', 'limit', 'custom'] modes. Currently compatible with BM1684X and BM1688 processors. Enabling this feature may impact model performance
+   * - subnet_params
+     - N
+     - When time_fixed_subnet is set to "custom", it allows manual configuration of the subnet frequency (MHz) and execution time (ms)
    * - matmul_perchannel
      - N
      - if matmul is quantized in per-channel mode, for BM1684X and BM1688, the performance may be decreased if enable

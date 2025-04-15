@@ -38,6 +38,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createTruncIOPass();
 std::unique_ptr<OperationPass<ModuleOp>> createNetStatisticPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTruncLayerPass();
 std::unique_ptr<OperationPass<ModuleOp>> createOptPostProcessorPass();
+std::unique_ptr<OperationPass<ModuleOp>> createTimeFixedSubnetPass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

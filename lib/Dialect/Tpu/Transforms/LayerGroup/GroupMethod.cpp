@@ -1834,6 +1834,11 @@ void GroupMethod::get_final_groups(
         if (!is_layer_group_valid(lg_info, true, &cost)) {
           llvm_unreachable("group_cost is not valid");
         }
+      } else {
+        if (module::isBM1684XFamily() && runmode_ == RunMode::TPU_STATIC) {
+          group_one_layer_proc(lg_info, true, &cost);
+          lg_info.group_cost = cost;
+        }
       }
       if (lg_info.group_ops.size() > 1 || false == options_.group_by_cores) {
         lg_infos.push_back(lg_info);

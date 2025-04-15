@@ -68,6 +68,7 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
            "3: do LayerGroup with debugger file; "
            "4: do partial LayerGroup with debugger file.">,
     Option<"debugger_filename", "debugger_filename", "std::string", /*default=*/"\"\"", "debugger file name">,
+    Option<"disable_group_overlap", "disable_group_overlap", "bool", /*default=*/"false", "disable group overlap">,
   ];
 }
 
@@ -112,6 +113,14 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
            "compress weight memory.">,
     Option<"weight_map_file", "weight_map_file", "std::string", /*default=*/"\"_weight_map.csv\"",
            "record weight offset with its name into a csv map file.">,
+  ];
+}
+
+def TimeFixedSubnet : Pass<"time-fixed-subnet", "ModuleOp"> {
+  let summary = "Split the model by fixed duration intervals";
+  let constructor = "createTimeFixedSubnetPass()";
+  let options = [
+    Option<"json_file", "json_file", "std::string", /*default=*/"", ".subnets.json">
   ];
 }
 
