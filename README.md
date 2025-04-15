@@ -61,8 +61,8 @@ docker pull sophgo/tpuc_dev:latest
 * If the pulling failed, you can download it in the following way:
 
 ``` shell
-wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/01/20/10/sophgo-tpuc_dev_v3.3.tar.gz
-docker load -i sophgo-tpuc_dev_v3.3.tar.gz
+wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/04/15/16/tpuc_dev_v3.4.tar.gz
+docker load -i tpuc_dev_v3.4.tar.gz
 ```
 
 * Create the container:

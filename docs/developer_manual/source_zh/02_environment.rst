@@ -32,8 +32,8 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 .. code-block:: shell
    :linenos:
 
-   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/01/20/10/sophgo-tpuc_dev_v3.3.tar.gz
-   $ docker load -i sophgo-tpuc_dev_v3.3.tar.gz
+   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/04/15/16/tpuc_dev_v3.4.tar.gz
+   $ docker load -i tpuc_dev_v3.4.tar.gz
 
 
 如果是首次使用Docker, 可执行下述命令进行安装和配置(仅首次执行):
