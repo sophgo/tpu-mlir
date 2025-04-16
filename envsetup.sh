@@ -48,9 +48,9 @@ export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
-# using 75% cores
+# using 50% threads
 if [ -z "${OMP_NUM_THREADS+x}" ]; then
-    export OMP_NUM_THREADS=$(($(nproc) * 3 / 4))
+    export OMP_NUM_THREADS=$(($(nproc) * 1 / 2))
 fi
 export FORBID_GEN_RISCV_CODE=1
 # CCache configuration

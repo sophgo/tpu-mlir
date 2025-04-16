@@ -5,7 +5,10 @@ set -ex
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 check_fattention() {
-    grep -q "tpu.FAttention" "$1" || { echo "Error: no fattention!!!" >&2; exit 1; }
+  grep -q "tpu.FAttention" "$1" || {
+    echo "Error: no fattention!!!" >&2
+    exit 1
+  }
 }
 
 # ===------------------------------------------------------------===
@@ -81,6 +84,7 @@ model_deploy.py \
   --tolerance 0.98,0.84 \
   --model llama2_block_cache_0_W4F16_bm1688_2core_static.bmodel
 
+
 model_deploy.py \
   --mlir llama2_block_cache_0.mlir \
   --quantize W4F16 \
@@ -93,9 +97,8 @@ model_deploy.py \
   --addr_mode io_alone \
   --tolerance 0.93,0.59 \
   --model llama2_block_cache_0_W4F16_bm1688_2core_static.bmodel \
---test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
---test_reference llama2_block_cache_0_top_outputs.npz
-
+  --test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
+  --test_reference llama2_block_cache_0_top_outputs.npz
 
 model_deploy.py \
   --mlir llama2_block_cache_0.mlir \
@@ -117,6 +120,7 @@ model_deploy.py \
   --quantize W8F16 \
   --chip bm1688 \
   --num_core 2 \
+  --q_group_size 64 \
   --quant_input \
   --quant_output \
   --addr_mode io_alone \
@@ -214,6 +218,7 @@ model_runner.py \
 model_deploy.py \
   --mlir chatglm3_block_cache_0.mlir \
   --quantize W8F16 \
+  --q_group_size 64 \
   --chip bm1684x \
   --test_input ${NNMODELS_PATH}/llm_models/chatglm3_block_cache_0_input.npz \
   --test_reference chatglm3_block_cache_0_top_outputs.npz \
@@ -225,6 +230,7 @@ check_fattention chatglm3_block_cache_0_bm1684x_w8f16_final.mlir
 model_deploy.py \
   --mlir chatglm3_block_cache_0.mlir \
   --quantize W8F16 \
+  --q_group_size 64 \
   --chip bm1684x \
   --high_precision \
   --test_input ${NNMODELS_PATH}/llm_models/chatglm3_block_cache_0_input.npz \
@@ -233,14 +239,14 @@ model_deploy.py \
   --model chatglm3_block_cache_0_static_v2.bmodel
 
 # parallel
-model_deploy.py \
-  --mlir chatglm3_block_cache_0.mlir \
-  --quantize W8F16 \
-  --chip bm1684x \
-  --num_device 2 \
-  --quant_input \
-  --quant_output \
-  --model chatglm3_block_cache_0_dev2.bmodel
-
+# model_deploy.py \
+#   --mlir chatglm3_block_cache_0.mlir \
+#   --quantize W8F16 \
+#   --q_group_size 0 \
+#   --chip bm1684x \
+#   --num_device 2 \
+#   --quant_input \
+#   --quant_output \
+#   --model chatglm3_block_cache_0_dev2.bmodel
 
 rm -rf *.npz *.bmodel *.onnx
