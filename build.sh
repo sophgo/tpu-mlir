@@ -19,6 +19,7 @@ echo "INSTALL_PATH: $INSTALL_PATH"
 BUILD_TYPE=""
 CXX_FLAGS="-O2"
 USE_CUDA="OFF"
+ENABLE_COVERAGE_FLAG="OFF"
 
 if [ -n "$1" ]; then
     if [ "$1" = "DEBUG" ]; then
@@ -42,6 +43,12 @@ if [ -n "$2" ]; then
     fi
 fi
 
+# 检查覆盖率环境变量
+if [ "${ENABLE_COVERAGE}" = "True" ]; then
+    ENABLE_COVERAGE_FLAG="ON"
+    echo "Building with code coverage enabled"
+fi
+
 # prepare install/build dir
 rm -rf "${INSTALL_PATH}"
 cmake -G Ninja \
@@ -53,6 +60,7 @@ cmake -G Ninja \
   -DTPUMLIR_USE_LLD=ON \
   -DTPUMLIR_INCLUDE_TESTS=ON \
   -DTPUMLIR_USE_CUDA="${USE_CUDA}" \
+  -DTPUMLIR_ENABLE_COVERAGE="${ENABLE_COVERAGE_FLAG}" \
   -DCMAKE_INSTALL_PREFIX="${INSTALL_PATH}" \
   "${PROJECT_ROOT}"
 

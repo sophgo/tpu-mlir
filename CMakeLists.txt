@@ -148,6 +148,16 @@ if(TPUMLIR_USE_LLD)
 endif()
 #-------------------------------------------------------------------------------
 
+# coverage option
+option(TPUMLIR_ENABLE_COVERAGE "Enable code coverage" OFF)
+if(TPUMLIR_ENABLE_COVERAGE)
+  message(STATUS "Code coverage enabled")
+  set(COVERAGE_COMPILE_FLAGS "-fprofile-instr-generate -fcoverage-mapping")
+  set(COVERAGE_LINK_FLAGS "-fprofile-instr-generate")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILE_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${COVERAGE_LINK_FLAGS}")
+endif()
+
 # generate version
 execute_process(
   COMMAND git describe --tags --always

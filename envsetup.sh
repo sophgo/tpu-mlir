@@ -56,6 +56,17 @@ export FORBID_GEN_RISCV_CODE=1
 # CCache configuration
 export CCACHE_REMOTE_STORAGE=redis://10.132.3.118:6379
 
+# 覆盖率相关设置
+export ENABLE_COVERAGE=False
+function enable_coverage() {
+    export ENABLE_COVERAGE=True
+    echo "Code coverage enabled"
+}
+function disable_coverage() {
+    export ENABLE_COVERAGE=False
+    echo "Code coverage disabled"
+}
+
 function use_cmodel() {
     export USING_CMODEL=True
     export LD_LIBRARY_PATH=$CMODEL_LD_LIBRARY_PATH
