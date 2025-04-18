@@ -837,16 +837,25 @@ class LlmConverter(BaseConverter):
 
     def combine(self):
         bmodel_list = []
+        total_bytes = 0
         for i in range(self.num_layers):
             bmodel_list = bmodel_list + [f"block_{i}.bmodel", f"block_cache_{i}.bmodel"]
+            total_bytes += os.path.getsize("block_0.bmodel")
         if not self.embedding_disk:
             bmodel_list += ['embedding.bmodel', 'embedding_cache.bmodel']
+            total_bytes += os.path.getsize("embedding.bmodel")
         if not self.lmhead_with_topk:
             bmodel_list += ["greedy_head.bmodel", "penalty_sample_head.bmodel"]
         bmodel_list += ["lm_head.bmodel"]
+        total_bytes += os.path.getsize("lm_head.bmodel")
 
         combine_args = ['model_tool', '--combine', ' '.join(bmodel_list), '-o', self.out_bmodel]
         self.run_command(['bash', '-c', ' '.join(combine_args)])
+        # Get the size of the combined bmodel
+        bmodel_size = os.path.getsize(self.out_bmodel)
+        print(f"Combined bmodel size: {bmodel_size / (1024.0 ** 3)} GB")
+        if bmodel_size > total_bytes * 1.2:
+            raise RuntimeError("Combined bmodel size is too large, please check the model.")
 
         get_info_args = ['model_tool', '--info', self.out_bmodel, '> ../model.log']
         self.run_command(['bash', '-c', ' '.join(get_info_args)])

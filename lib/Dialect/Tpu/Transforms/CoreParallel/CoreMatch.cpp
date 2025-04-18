@@ -812,7 +812,7 @@ void doCoreParallelPattern(ModuleOp m) {
   module::applyPatternOnce<CommonMatch>(m);
   module::applyPatternOnce<FuncInputMatch>(m);
   // then split different pattern to multi cores
-  module::applyPatternOnce<MatMulMatch>(m);
+  // module::applyPatternOnce<MatMulMatch>(m);
   module::applyPatternOnce<A16MatMulMatch>(m);
   //....
   for (auto op : m.getOps<FuncOp>()) {
