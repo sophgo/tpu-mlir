@@ -54,7 +54,7 @@ class LlmConverter(BaseConverter):
     def __init__(self, args):
         super().__init__()
         self.MODEL_SUPPORED = ["qwen2", "llama"]
-        self.model_path = args.model_path
+        self.model_path = os.path.normpath(args.model_path)
         self.seq_length = args.seq_length
         self.quantize = args.quantize
         self.num_device = args.num_device
@@ -65,6 +65,7 @@ class LlmConverter(BaseConverter):
         self.chip = args.chip
         self.num_device = args.num_device
         self.embedding_disk = args.embedding_disk
+        self.debug = args.debug
         self.num_core = args.num_core
         if self.num_core == 0:
             self.num_core = 1 if args.chip != "bm1688" else 2
@@ -196,7 +197,6 @@ class LlmConverter(BaseConverter):
         embedding_data = self.model.read(embedding_path)
         if self.embedding_disk:
             self.gen_embedding_bin(embedding_data)
-            embedding_data = None
         else:
             # read embedding weights
             embedding_weights = {embedding_path: embedding_data}
@@ -258,13 +258,24 @@ class LlmConverter(BaseConverter):
                                          loc=self.get_loc(norm, lmhead_mlir),
                                          ip=lmhead_mlir.insert_point).output
                 w_shape = [self.hidden_size, self.vocab_size]
+                lmhead_op = self.linear(lmhead_mlir, lmhead, input_op, w_shape,
+                                        [1, self.vocab_size])
             else:
                 w_shape = [self.vocab_size, self.hidden_size]
-            lmhead_op = self.linear(lmhead_mlir,
-                                    lmhead,
-                                    input_op,
-                                    w_shape, [1, self.vocab_size],
-                                    right_transpose=self.do_lmhead_merge)
+                weight_op = lmhead_mlir.create_weight_op(lmhead + ".weight", w_shape)
+                lmhead_op = top.MatMulOp(lmhead_mlir.get_tensor_type([self.vocab_size, 1]),
+                                         weight_op,
+                                         input_op,
+                                         lmhead_mlir.none_op,
+                                         do_relu=False,
+                                         right_transpose=True,
+                                         loc=self.get_loc(lmhead, lmhead_mlir),
+                                         ip=lmhead_mlir.insert_point).output
+                lmhead_op = top.ReshapeOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                          lmhead_op,
+                                          loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
+                                          ip=lmhead_mlir.insert_point).output
+
             topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
                                  lmhead_op,
                                  axis=1,
@@ -302,13 +313,7 @@ class LlmConverter(BaseConverter):
                            ip=mlir_gen.insert_point).output
         return rs
 
-    def linear(self,
-               mlir_gen,
-               proj: str,
-               input_op,
-               weight_shape: list,
-               out_shape: list,
-               right_transpose: bool = False):
+    def linear(self, mlir_gen, proj: str, input_op, weight_shape: list, out_shape: list):
         weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
         if self.model.is_exist(proj + ".bias"):
             bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
@@ -320,7 +325,6 @@ class LlmConverter(BaseConverter):
                             weight_op,
                             bias_op,
                             do_relu=False,
-                            right_transpose=right_transpose,
                             loc=self.get_loc(proj, mlir_gen),
                             ip=mlir_gen.insert_point).output
 
@@ -733,6 +737,8 @@ class LlmConverter(BaseConverter):
             '--quant_input', '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
             f'--num_device {self.num_device}', f'--model {name}.bmodel'
         ]
+        if self.debug:
+            deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
     def compile_embedding_cache(self):
@@ -745,6 +751,8 @@ class LlmConverter(BaseConverter):
             '--quant_input', '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
             f'--num_device {self.num_device}', f'--model {name}.bmodel'
         ]
+        if self.debug:
+            deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
     def compile_lm_head(self):
@@ -757,6 +765,8 @@ class LlmConverter(BaseConverter):
             '--quant_input', f'--chip {self.chip}', f'--num_core {self.num_core}',
             f'--num_device {self.num_device}', f'--model {name}.bmodel'
         ]
+        if self.debug:
+            deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
     def compile_greedy_head(self):
@@ -768,6 +778,8 @@ class LlmConverter(BaseConverter):
             'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
             f'--model {name}.bmodel'
         ]
+        if self.debug:
+            deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
     def compile_penalty_head(self):
@@ -779,6 +791,8 @@ class LlmConverter(BaseConverter):
             'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
             f'--model {name}.bmodel'
         ]
+        if self.debug:
+            deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
     def compile_block(self, layer_id):
@@ -797,6 +811,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--high_precision')
         if self.symmetric:
             deploy_args.append('--q_symmetric')
+        if self.debug:
+            deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
     def compile_block_cache(self, layer_id):
@@ -815,6 +831,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--high_precision')
         if self.symmetric:
             deploy_args.append('--q_symmetric')
+        if self.debug:
+            deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
     def combine(self):
@@ -855,6 +873,7 @@ class LlmConverter(BaseConverter):
         self.combine()
 
         # Remove any .npz files
-        for npz_file in os.listdir():
-            if os.path.splitext(npz_file)[-1] == '.npz':
-                os.remove(npz_file)
+        if not self.debug:
+            for npz_file in os.listdir():
+                if os.path.splitext(npz_file)[-1] == '.npz':
+                    os.remove(npz_file)

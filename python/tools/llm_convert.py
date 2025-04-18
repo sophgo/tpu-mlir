@@ -31,6 +31,8 @@ if __name__ == '__main__':
     parser.add_argument('--symmetric', action='store_true', help='do symmetric quantize')
     parser.add_argument('--embedding_disk', action='store_true',
                         help='export embedding as bin file and inference by cpu')
+    parser.add_argument('--debug', action='store_true',
+                        help='enable debug mode, temp files will not be deleted')
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
                         help='output mlir/bmodel path, default `./tmp`')
     args = parser.parse_args()

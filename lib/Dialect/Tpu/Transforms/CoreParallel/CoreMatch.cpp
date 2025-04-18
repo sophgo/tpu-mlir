@@ -626,6 +626,73 @@ public:
   bool shouldPrint(tpu::A16MatMulOp op) const override { return false; }
 };
 
+// [1, K]x[K,N] -> [1, N] will be split into [1, N/num_cores]
+// [1, K]x[K,N/num_cores] -> [1, N/num_cores]
+class MatMulMatch : public OpRewriterPatternEx<tpu::MatMulOp> {
+public:
+  MatMulMatch(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMulMatch") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto num_cores = module::getCoreNum();
+    if (supportMultiCore(op)) {
+      return failure();
+    }
+    if (module::isOpInBlock(op)) {
+      return failure();
+    }
+    if (!module::isWeight(op.getRight())) {
+      return failure();
+    }
+    auto p = op.parseParam();
+    if (p.batch != 1 || p.M != 1) {
+      return failure();
+    }
+    auto out = op.getOutput();
+    auto w_shape = module::getShape(op.getRight());
+    auto o_shape = module::getShape(out);
+    auto w_dim = w_shape.size();
+    if (p.N % num_cores != 0) {
+      llvm_unreachable("Not Implemented");
+    }
+    auto N_slice = p.N / num_cores;
+    std::vector<Operation *> ops_begin;
+    std::vector<Operation *> ops_end;
+    std::vector<Value> concat_operands;
+    for (int i = 0; i < num_cores; i++) {
+      auto suffix = std::to_string(i);
+      int w_slice_dim = p.right_transpose ? w_dim - 2 : w_dim - 1;
+      auto new_w = module::opSliceAxis(rewriter, op.getRight(), w_slice_dim,
+                                       i * N_slice, N_slice);
+      std::vector<int64_t> shape = o_shape;
+      shape.back() = N_slice;
+      auto new_op = cloneOp(rewriter, op, shape, suffix);
+      new_op->setOperand(1, new_w);
+      if (!module::isNone(op.getBias())) {
+        auto bias = op.getBias();
+        auto b_shape = module::getShape(bias);
+        auto new_b = module::opSliceAxis(rewriter, bias, b_shape.size() - 1,
+                                         i * N_slice, N_slice);
+        new_op->setOperand(2, new_b);
+      } else {
+        new_op->setOperand(2, op.getBias());
+      }
+      concat_operands.push_back(new_op->getResult(0));
+      ops_begin.push_back(new_op);
+      ops_end.push_back(new_op);
+    }
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "axis", rewriter.getSI32IntegerAttr(o_shape.size() - 1)));
+    rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, out.getType(),
+                                               concat_operands, attrs);
+    group_distribute(rewriter, ops_begin, ops_end, tpu::CorePattern::Common);
+    return success();
+  }
+  bool shouldPrint(tpu::MatMulOp op) const override { return false; }
+};
+
 #if 0
 // test case: Gemma-2B block
 // RMSNorm --->A16MatMul------------> Mul -> A16MatMul
@@ -745,6 +812,7 @@ void doCoreParallelPattern(ModuleOp m) {
   module::applyPatternOnce<CommonMatch>(m);
   module::applyPatternOnce<FuncInputMatch>(m);
   // then split different pattern to multi cores
+  module::applyPatternOnce<MatMulMatch>(m);
   module::applyPatternOnce<A16MatMulMatch>(m);
   //....
   for (auto op : m.getOps<FuncOp>()) {

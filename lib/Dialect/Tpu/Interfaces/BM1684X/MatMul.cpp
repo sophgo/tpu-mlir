@@ -83,7 +83,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   spec.relu_limit = p.relu_limit;
   spec.have_bias = p.with_bias;
   spec.requant_mode = -1;
-  spec.R_transpose = p.right_transpose;
+  spec.R_transpose = p.N == 1 ? false : p.right_transpose;
   if (module::isUniformQuantized(getInput())) {
     spec.rshift = 0;
     spec.is_asymmetric = 1;

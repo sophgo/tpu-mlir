@@ -114,7 +114,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
       p.batch = 1;
     }
     if (p.batch > 1 || o_dims <= 2) {
-      p.M = o_s[o_dims - 2];
+      p.M = p.output_transpose ? o_s[o_dims - 1] : o_s[o_dims - 2];
     } else {
       p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
                             std::multiplies<int64_t>());
@@ -638,8 +638,9 @@ void tpu::MatMulOp::assign_fw_param(void *param) {
 ArrayAttr tpu::MatMulOp::getIndexingMaps() {
   MLIRContext *context = getContext();
   if (module::isWeight(getRight()) &&
-      module::getStorageType(getInput()).isInteger(4))
+      module::getStorageType(getInput()).isInteger(4)) {
     return Builder(getContext()).getAffineMapArrayAttr({});
+  }
 
   auto outShape = module::getShape(getOutput());
   auto inputShape = module::getShape(getInput());
