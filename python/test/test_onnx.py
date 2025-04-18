@@ -2820,12 +2820,13 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.filter = torch.arange(0, groups * kernel * kernel,
-                                           dtype=torch.float32).reshape(groups, 1, kernel, kernel)
+                self.filter = torch.randn(groups, 1, kernel, kernel)
+                self.bias = torch.randn(groups)
 
             def forward(self, x):
                 y = F.conv_transpose2d(x,
                                        self.filter,
+                                       self.bias,
                                        padding=1,
                                        stride=2,
                                        dilation=1,

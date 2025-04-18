@@ -240,12 +240,22 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(op);
   operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_bf16(op));
-  operands.push_back(op.getBias());
+  int group = op.getGroup();
+  auto in_shape = module::getShape(op.getInput());
+  auto out_shape = module::getShape(op.getOutput());
+  auto output_c = out_shape[1];
+  bool with_bias = !module::isNone(op.getBias());
+  if (with_bias && group > 1 && in_shape[1] == output_c && output_c == group &&
+      op.getKernelShape().size() == 2) {
+    auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
+    operands.push_back(biasOp.clone_bf16(op));
+  } else {
+    operands.push_back(op.getBias());
+  }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantBF16Type(op.getOutput());
@@ -266,12 +276,22 @@ void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_f16(op));
-  operands.push_back(op.getBias());
+  int group = op.getGroup();
+  auto in_shape = module::getShape(op.getInput());
+  auto out_shape = module::getShape(op.getOutput());
+  auto output_c = out_shape[1];
+  bool with_bias = !module::isNone(op.getBias());
+  if (with_bias && group > 1 && in_shape[1] == output_c && output_c == group &&
+      op.getKernelShape().size() == 2) {
+    auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
+    operands.push_back(biasOp.clone_f16(op));
+  } else {
+    operands.push_back(op.getBias());
+  }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantF16Type(op.getOutput());
