@@ -28,11 +28,16 @@ run_calibration.py test2.mlir \
   -o test2_cali_table
 
 touch test2_qtable
-run_qtable.py test2.mlir \
-  --data_list data2_list \
-  --calibration_table test2_cali_table \
-  --chip bm1684x \
-  -o test2_qtable
+run_calibration.py test2.mlir \
+       --data_list data2_list \
+       --input_num 50 \
+       --search search_qtable\
+       --expected_cos 0.999 \
+       --quantize_method_list MSE \
+       --inference_num 10 \
+       --chip bm1684x \
+       --calibration_table test2_cali_table \
+       --quantize_table test2_qtable
 
 model_deploy.py \
   --mlir test2.mlir \

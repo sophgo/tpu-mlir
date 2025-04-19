@@ -90,6 +90,18 @@ The table below provides an introduction to the parameters of the ``run_calibrat
      - the calibration method used for searching in search_qtable, default is MSE, with selectable range being MSE, KL, MAX, Percentile9999
    * - benchmark_method
      - specify the similarity calculation method of search_threshold, with the default being cosine similarity (cos)
+   * - kurtosis_analysis
+     - Specify the generation of the kurtosis of the activation values for each layer
+   * - part_quantize
+     - Specify partial quantization of the model. The calibration table (cali_table) will be automatically generated alongside the quantization table (qtable). Available modes include N_mode, H_mode, or custom_mode, with H_mode generally delivering higher accuracy
+   * - custom_operator
+     - Specify the operators to be quantized, which should be used in conjunction with the aforementioned custom_mode
+   * - part_asymmetric
+     - When symmetric quantization is enabled, if specific subnets in the model match a defined pattern, the corresponding operators will automatically switch to asymmetric quantization
+   * - mix_mode
+     - Specify the mixed-precision types for the search_qtable. Currently supported options are 8_16 and 4_8
+   * - cluster
+     - Specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - quantize_table
      - the mixed-precision quantization table from search_qtable
    * - o
@@ -247,9 +259,9 @@ Notes:1.Make sure to specify the processor parameter as bm1684. 2.The ``bc_infer
 Overview of TPU-MLIR Mixed Precision Quantization
 ==================================================
 
-Currently, TPU-MLIR provides four mixed precision quantization methods: ``search_qtable`` , ``run_qtable`` , ``run_sensitive_layer`` and ``fp_forward``. Among these, ``search_qtable`` is an optimized version of ``run_qtable`` and ``run_sensitive_layer``.
-Compared to ``run_qtable`` , ``search_qtable`` offers better effectiveness and typically achieves superior quantization results, albeit at a slightly slower speed. In contrast to ``run_sensitive_layer``, ``search_qtable`` is faster and supports more customizable parameters.
-The following section will provide detailed introductions to these four mixed precision tools.
+Currently, TPU-MLIR provides three mixed precision quantization methods: ``search_qtable`` , ``run_sensitive_layer`` and ``fp_forward``. Among these, ``search_qtable`` is an optimized version of ``run_sensitive_layer``.
+In contrast to ``run_sensitive_layer``, ``search_qtable`` is faster and supports more customizable parameters.
+The following section will provide detailed introductions to these three mixed precision tools.
 
 1. search_qtable
 =====================
@@ -597,320 +609,7 @@ The classification information is displayed on the output image. The right label
 
    Execution Performance of classify_mobilenet_v2 in the Mixed Precision Model
 
-2. run_qtable
-==================
-
-This section takes ``yolov3 tiny`` as examples to introduce how to use run_qtable for mix precision.
-
-.. This model is from <https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3>。
-
-This section requires the tpu_mlir python package.
-
-
-Install tpu_mlir
-------------------
-
-.. code-block:: shell
-
-   $ pip install tpu_mlir[all]
-   # or
-   $ pip install tpu_mlir-*-py3-none-any.whl[all]
-
-
-Prepare working directory
----------------------------
-
-.. include:: get_resource.rst
-
-Create a ``yolov3_tiny`` directory, and put both model files and image files into the ``yolov3_tiny`` directory.
-
-The operation is as follows:
-
-.. code-block:: shell
-  :linenos:
-
-   $ mkdir yolov3_tiny && cd yolov3_tiny
-   $ wget https://media.githubusercontent.com/media/onnx/models/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
-   $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
-   $ mkdir workspace && cd workspace
-
-Note that if ``tiny-yolov3-11.onnx`` fails to download with wget, please download it by other means and put it into ``yolov3_tiny`` directory.
-
-
-Verify onnx
--------------------
-
-``detect_yolov3`` is a python program, to run ``yolov3_tiny`` model.
-
-The operation is as follows:
-
-.. code-block:: shell
-
-   $ detect_yolov3 \
-        --model ../tiny-yolov3-11.onnx \
-        --input ../COCO2017/000000366711.jpg \
-        --output yolov3_onnx.jpg
-
-The print result as follows:
-
-.. code-block:: shell
-
-    person:60.7%
-    orange:77.5%
-
-And get result image ``yolov3_onnx.jpg``, as below ( :ref:`yolov3_onnx_result` ):
-
-.. _yolov3_onnx_result:
-.. figure:: ../assets/yolov3_onnx.jpg
-   :height: 13cm
-   :align: center
-
-   yolov3_tiny ONNX
-
-
-To INT8 symmetric model
--------------------------
-
-Step 1: To F32 mlir
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   $ model_transform \
-       --model_name yolov3_tiny \
-       --model_def ../tiny-yolov3-11.onnx \
-       --input_shapes [[1,3,416,416]] \
-       --scale 0.0039216,0.0039216,0.0039216 \
-       --pixel_format rgb \
-       --keep_aspect_ratio \
-       --pad_value 128 \
-       --output_names=convolution_output1,convolution_output \
-       --mlir yolov3_tiny.mlir
-
-Step 2: Gen calibartion table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   $ run_calibration yolov3_tiny.mlir \
-       --dataset ../COCO2017 \
-       --input_num 100 \
-       -o yolov3_cali_table
-
-Step 3: To model
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   $ model_deploy \
-       --mlir yolov3_tiny.mlir \
-       --quantize INT8 \
-       --calibration_table yolov3_cali_table \
-       --processor bm1684x \
-       --model yolov3_int8.bmodel
-
-Step 4: Run model
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   $ detect_yolov3 \
-        --model yolov3_int8.bmodel \
-        --input ../COCO2017/000000366711.jpg \
-        --output yolov3_int8.jpg
-
-The print result as follows, indicates that one target is detected:
-
-.. code-block:: shell
-
-    orange:72.9.0%
-
-And get image ``yolov3_int8.jpg``, as below ( :ref:`yolov3_int8_result` ):
-
-.. _yolov3_int8_result:
-.. figure:: ../assets/yolov3_int8.jpg
-   :height: 13cm
-   :align: center
-
-   yolov3_tiny int8 symmetric
-
-It can be seen that the int8 symmetric quantization model performs poorly compared to the original model on this image and only detects one target.
-
-To Mix Precision Model
------------------------
-
-After int8 conversion, do these commands as beflow.
-
-Step 1: Gen quantization table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Use ``run_qtable`` to gen qtable, parameters as below:
-
-.. list-table:: run_qtable parameters
-   :widths: 23 8 50
-   :header-rows: 1
-
-   * - Name
-     - Required?
-     - Explanation
-   * - (None)
-     - Y
-     - mlir file
-   * - dataset
-     - N
-     - Directory of input samples. Images, npz or npy files are placed in this directory
-   * - data_list
-     - N
-     - The sample list (cannot be used together with "dataset")
-   * - calibration_table
-     - Y
-     - Name of calibration table file
-   * - processor
-     - Y
-     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
-   * - fp_type
-     - N
-     - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
-   * - input_num
-     - N
-     - The number of sample, default 10
-   * - expected_cos
-     - N
-     - Specify the minimum cos value for the expected final output layer of the network. The default is 0.99. The smaller the value, the more layers may be set to floating-point
-   * - min_layer_cos
-     - N
-     - Specify the minimum cos expected per layer, below which an attempt is made to set the fp32 calculation. The default is 0.99
-   * - debug_cmd
-     - N
-     - Specifies a debug command string for development. It is empty by default
-   * - o
-     - Y
-     - output quantization table
-   * - global_compare_layers
-     - N
-     - global compare layers, for example: ``layer1,layer2`` or ``layer1:0.3,layer2:0.7``
-   * - loss_table
-     - N
-     - Specify the name of the file that holds the loss values for all layers quantized to floating point type, default is ``full_loss_table.txt``
-
-In this example, the default calibration of 10 images is used, you need install Graphviz first:
-
-.. code-block:: shell
-
-   $ sudo apt-get install graphviz
-
-
-Then use following command:
-
-.. code-block:: shell
-
-   $ run_qtable yolov3_tiny.mlir \
-       --dataset ../COCO2017 \
-       --calibration_table yolov3_cali_table \
-       --min_layer_cos 0.999 \
-       --expected_cos 0.9999 \
-       --processor bm1684x \
-       -o yolov3_qtable
-
-If the default 0.99 is used in ``--min_layer_cos``, the program detects that the original int8 model already meets the cos of 0.99 and simply stops searching. The final output after execution is printed as follows:
-
-.. code-block:: shell
-
-    int8 outputs_cos:0.999115 old
-    mix model outputs_cos:0.999517
-    Output mix quantization table to yolov3_qtable
-    total time:44 second
-
-Above, int8 outputs_cos represents the cos similarity between original network output of int8 model and fp32; mix model outputs_cos represents the cos similarity of network output after mixing precision is used in some layers; total time represents the search time of 44 seconds.
-In addition, get quantization table ``yolov3_qtable``, context as below:
-
-.. code-block:: shell
-
-    # op_name   quantize_mode
-    model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool F16
-    convolution_output10_Conv F16
-    model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu F16
-    model_1/leaky_re_lu_3/LeakyRelu:0_pooling0_MaxPool F16
-    model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu F16
-    model_1/leaky_re_lu_4/LeakyRelu:0_pooling0_MaxPool F16
-    model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu F16
-    model_1/leaky_re_lu_5/LeakyRelu:0_pooling0_MaxPool F16
-    model_1/concatenate_1/concat:0_Concat F16
-
-
-In the table, first col is layer name, second is quantization type.
-Also ``full_loss_table.txt`` is generated, context as blow:
-
-.. code-block:: shell
-    :linenos:
-
-    # platform: bm1684x  mix_mode: F16
-    ###
-    No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu             Cos: 0.994022
-    No.1   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu             Cos: 0.997445
-    No.2   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu             Cos: 0.997487
-    No.3   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu             Cos: 0.997978
-    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool      Cos: 0.998159
-    No.5   : Layer: convolution_output11_Conv                               Cos: 0.998307
-    No.6   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu             Cos: 0.999249
-    No.7   : Layer: convolution_output9_Conv                                Cos: 0.999292
-    No.8   : Layer: convolution_output8_Conv                                Cos: 0.999427
-    No.9   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool      Cos: 0.999580
-    No.10  : Layer: convolution_output12_Conv                               Cos: 1.000004
-
-
-This table is arranged smoothly according to the cos from small to large, indicating the cos calculated
-by this Layer after the precursor layer of this layer has been changed to the corresponding floating-point mode.
-If the cos is still smaller than the previous parameter min_layer_cos, this layer and its immediate successor
-layer will be set to floating-point calculation.
-``run_qtable`` calculates the output cos of the whole network every time the neighboring two layers are set
-to floating point. If the cos is larger than the specified expected_cos, the search is withdrawn. Therefore,
-if you set a larger expected_cos value, you will try to set more layers to floating point.
-
-
-Step 2: Gen mix precision model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   $ model_deploy \
-       --mlir yolov3_tiny.mlir \
-       --quantize INT8 \
-       --quantize_table yolov3_qtable \
-       --calibration_table yolov3_cali_table \
-       --processor bm1684x \
-       --model yolov3_mix.bmodel
-
-Step 3: run mix precision model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   $ detect_yolov3 \
-        --model yolov3_mix.bmodel \
-        --input ../COCO2017/000000366711.jpg \
-        --output yolov3_mix.jpg
-
-The print result as follows:
-
-.. code-block:: shell
-
-    person:63.9%
-    orange:72.9%
-
-And get image ``yolov3_mix.jpg`` , as below ( :ref:`yolov3_mix_result` ):
-
-.. _yolov3_mix_result:
-.. figure:: ../assets/yolov3_mix.jpg
-   :height: 13cm
-   :align: center
-
-   yolov3_tiny mix
-
-It can be seen that targets that cannot be detected in int8 model can be detected again with the use of mixing precision.
-
-
-3. run_sensitive_layer
+2. run_sensitive_layer
 ========================
 
 This section takes ``mobilenet-v2`` as example to introduce how to use sensitive layer search.
@@ -1246,7 +945,7 @@ The classification results are as follows. The right label ``tench, Tinca tinca`
     n04090263 rifle
 
 
-4. fp_forward
+3. fp_forward
 ==============================
 
 

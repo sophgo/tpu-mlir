@@ -27,13 +27,16 @@ run_calibration.py yolov5s_1o.mlir \
   --tune_num 20 \
   -o yolov5s_1o_cali_table
 
-run_qtable.py \
-  yolov5s_1o.mlir \
-	--dataset ${REGRESSION_PATH}/dataset/COCO2017 \
-	--chip bm1684x \
-	-o yolov5s_1o_qtable \
-	--calibration_table yolov5s_1o_cali_table
-
+run_calibration.py yolov5s_1o.mlir \
+    --dataset ${REGRESSION_PATH}/dataset/COCO2017 \
+    --input_num 100 \
+    --search search_qtable\
+    --expected_cos 0.9999 \
+    --quantize_method_list KL \
+    --inference_num 10 \
+    --chip bm1684x \
+    --calibration_table yolov5s_1o_cali_table \
+    --quantize_table yolov5s_1o_qtable
 # last 4 concat should be float
 matches=$(sed -nE 's/.*\("([^)]+_Concat)"\).*/\1/p' "yolov5s_1o.mlir" | tail -n 4)
 new_matches=""

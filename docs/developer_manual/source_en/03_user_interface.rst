@@ -92,11 +92,16 @@ When the precision of the INT8 model does not meet business requirements, you ca
 
 .. code-block:: shell
 
-   $ run_qtable.py somenet.mlir \
+   $ run_calibration.py somenet.mlir \
        --dataset dataset \
+       --input_num 100 \
+       --inference_num 30 \
+       --expected_cos 0.99 \
        --calibration_table somenet_cali_table \
        --processor BM1684X \
-       -o somenet_qtable
+       --search search_qtable \
+       --quantize_method_list KL,MSE\
+       --quantize_table somenet_qtable
 
 Then pass the quantization table to generate the model
 
@@ -352,6 +357,24 @@ Supported parameters:
    * - benchmark_method
      - N
      - Specifies the method for calculating similarity in search_threshold
+   * - kurtosis_analysis
+     - N
+     - Specify the generation of the kurtosis of the activation values for each layer
+   * - part_quantize
+     - N
+     - Specify partial quantization of the model. The calibration table (cali_table) will be automatically generated alongside the quantization table (qtable). Available modes include N_mode, H_mode, or custom_mode, with H_mode generally delivering higher accuracy
+   * - custom_operator
+     - N
+     - Specify the operators to be quantized, which should be used in conjunction with the aforementioned custom_mode
+   * - part_asymmetric
+     - N
+     - When symmetric quantization is enabled, if specific subnets in the model match a defined pattern, the corresponding operators will automatically switch to asymmetric quantization
+   * - mix_mode
+     - N
+     - Specify the mixed-precision types for the search_qtable. Currently supported options are 8_16 and 4_8
+   * - cluster
+     - N
+     - pecify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - quantize_table
      - N
      - The mixed-precision quantization table output by search_qtable
@@ -386,98 +409,6 @@ A sample calibration table is as follows:
 
 It is divided into 4 columns: the first column is the name of the Tensor; the second column is the threshold (for symmetric quantization);
 The third and fourth columns are min/max, used for asymmetric quantization.
-
-run_qtable.py
-~~~~~~~~~~~~~~~~
-
-Use ``run_qtable.py`` to generate a mixed precision quantization table. The relevant parameters are described as follows:
-
-.. list-table:: Function of run_qtable.py parameters
-   :widths: 20 12 50
-   :header-rows: 1
-
-   * - Name
-     - Required?
-     - Explanation
-   * - (None)
-     - Y
-     - Mlir file
-   * - dataset
-     - N
-     - Directory of input samples. Images, npz or npy files are placed in this directory
-   * - data_list
-     - N
-     - The sample list (cannot be used together with "dataset")
-   * - calibration_table
-     - N
-     - The quantization table path
-   * - processor
-     - Y
-     - The platform that the model will use. Support BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
-   * - input_num
-     - N
-     - The number of input for calibration. Use all samples if it is 10
-   * - expected_cos
-     - N
-     - Expected net output cos
-   * - global_compare_layers
-     - N
-     - Global compare layers, for example: layer1,layer2 or layer1:0.3,layer2:0.7
-   * - fp_type
-     - N
-     - The precision type, default auto
-   * - base_quantize_table
-     - N
-     - Base quantize table
-   * - loss_table
-     - N
-     - The output loss table, default full_loss_table.txt
-   * - o
-     - N
-     - Output mixed precision quantization table
-
-A sample mixed precision quantization table is as follows:
-
-.. code-block:: shell
-
-    # genetated time: 2022-11-09 21:35:47.981562
-    # sample number: 3
-    # all int8 loss: -39.03119206428528
-    # processor: BM1684X  mix_mode: F32
-    ###
-    # op_name   quantize_mode
-    conv2_1/linear/bn F32
-    conv2_2/dwise/bn  F32
-    conv6_1/linear/bn F32
-
-It is divided into 2 columns: the first column corresponds to the name of the layer, and the second column corresponds to the quantization mode.
-
-At the same time, a loss table will be generated, the default is ``full_loss_table.txt``, the sample is as follows:
-
-.. code-block:: shell
-
-    # genetated time: 2022-11-09 22:30:31.912270
-    # sample number: 3
-    # all int8 loss: -39.03119206428528
-    # processor: BM1684X  mix_mode: F32
-    ###
-    No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
-    No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379
-    No.2 : Layer: conv6_1/linear/bn Loss: -38.44639046986898
-    No.3 : Layer: conv6_2/expand/bn Loss: -39.7430411974589
-    No.4 : Layer: conv1/bn          Loss: -40.067259073257446
-    No.5 : Layer: conv4_4/dwise/bn  Loss: -40.183939139048256
-    No.6 : Layer: conv3_1/expand/bn Loss: -40.1949667930603
-    No.7 : Layer: conv6_3/expand/bn Loss: -40.61786969502767
-    No.8 : Layer: conv3_1/linear/bn Loss: -40.9286363919576
-    No.9 : Layer: conv6_3/linear/bn Loss: -40.97952524820963
-    No.10: Layer: block_6_1         Loss: -40.987406969070435
-    No.11: Layer: conv4_3/dwise/bn  Loss: -41.18325670560201
-    No.12: Layer: conv6_3/dwise/bn  Loss: -41.193763415018715
-    No.13: Layer: conv4_2/dwise/bn  Loss: -41.2243926525116
-    ......
-
-It represents the loss of the output obtained after the corresponding Layer is changed to floating point calculation.
 
 .. _model_deploy:
 

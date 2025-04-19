@@ -92,11 +92,16 @@
 
 .. code-block:: shell
 
-   $ run_qtable.py somenet.mlir \
+   $ run_calibration.py somenet.mlir \
        --dataset dataset \
+       --input_num 100 \
+       --inference_num 30 \
+       --expected_cos 0.99 \
        --calibration_table somenet_cali_table \
        --processor BM1684X \
-       -o somenet_qtable
+       --search search_qtable \
+       --quantize_method_list KL,MSE\
+       --quantize_table somenet_qtable
 
 然后将量化表传入生成模型, 如下:
 
@@ -364,6 +369,24 @@ run_calibration.py
    * - benchmark_method
      - 否
      - 指定search_threshold中相似度计算方法
+   * - kurtosis_analysis
+     - 否
+     - 指定生成各层激活值的kurtosis
+   * - part_quantize
+     - 否
+     - 指定模型部分量化,获得cali_table同时会自动生成qtable。可选择N_mode,H_mode,custom_mode,H_mode通常精度较好
+   * - custom_operator
+     - 否
+     - 指定需要量化的算子,配合开启上述custom_mode后使用
+   * - part_asymmetric
+     - 否
+     - 指定当开启对称量化后,模型某些子网符合特定pattern时,将对应位置算子改为非对称量化
+   * - mix_mode
+     - 否
+     - 指定search_qtable特定的混精类型,目前支持8_16和4_8两种
+   * - cluster
+     - 否
+     - 指定search_qtable寻找敏感层时采用聚类算法
    * - quantize_table
      - 否
      - search_qtable输出的混精度量化表
@@ -398,98 +421,6 @@ run_calibration.py
 
 它分为4列: 第一列是Tensor的名字; 第二列是阈值(用于对称量化);
 第三列第四列是min/max, 用于非对称量化。
-
-run_qtable.py
-~~~~~~~~~~~~~~~~
-
-使用 ``run_qtable.py`` 生成混精度量化表, 相关参数说明如下:
-
-.. list-table:: run_qtable.py 参数功能
-   :widths: 18 10 50
-   :header-rows: 1
-
-   * - 参数名
-     - 必选？
-     - 说明
-   * - 无
-     - 是
-     - 指定mlir文件
-   * - dataset
-     - 否
-     - 指定输入样本的目录, 该路径放对应的图片, 或npz, 或npy
-   * - data_list
-     - 否
-     - 指定样本列表, 与dataset必须二选一
-   * - calibration_table
-     - 是
-     - 输入校准表
-   * - processor
-     - 是
-     - 指定模型将要用到的平台, 支持BM1688/BM1684X/BM1684/CV186X/CV183X/CV182X/CV181X/CV180X/BM1690
-   * - input_num
-     - 否
-     - 指定输入样本数量, 默认用10个
-   * - expected_cos
-     - 否
-     - 指定网络输出的期望cos值, 默认0.99
-   * - global_compare_layers
-     - 否
-     - 指定全局对比层，例如 layer1,layer2 或 layer1:0.3,layer2:0.7
-   * - fp_type
-     - 否
-     - 指定精度类型，默认auto
-   * - base_quantize_table
-     - 否
-     - 指定量化表
-   * - loss_table
-     - 否
-     - 输出Loss表, 默认为full_loss_table.txt
-   * - o
-     - 是
-     - 输出混精度量化表
-
-混精度量化表的样板如下:
-
-.. code-block:: shell
-
-    # genetated time: 2022-11-09 21:35:47.981562
-    # sample number: 3
-    # all int8 loss: -39.03119206428528
-    # processor: BM1684X  mix_mode: F32
-    ###
-    # op_name   quantize_mode
-    conv2_1/linear/bn F32
-    conv2_2/dwise/bn  F32
-    conv6_1/linear/bn F32
-
-它分为2列: 第一列对应layer的名称, 第二列对应量化模式。
-
-同时会生成loss表, 默认为 ``full_loss_table.txt``, 样板如下:
-
-.. code-block:: shell
-
-    # genetated time: 2022-11-09 22:30:31.912270
-    # sample number: 3
-    # all int8 loss: -39.03119206428528
-    # processor: BM1684X  mix_mode: F32
-    ###
-    No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
-    No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379
-    No.2 : Layer: conv6_1/linear/bn Loss: -38.44639046986898
-    No.3 : Layer: conv6_2/expand/bn Loss: -39.7430411974589
-    No.4 : Layer: conv1/bn          Loss: -40.067259073257446
-    No.5 : Layer: conv4_4/dwise/bn  Loss: -40.183939139048256
-    No.6 : Layer: conv3_1/expand/bn Loss: -40.1949667930603
-    No.7 : Layer: conv6_3/expand/bn Loss: -40.61786969502767
-    No.8 : Layer: conv3_1/linear/bn Loss: -40.9286363919576
-    No.9 : Layer: conv6_3/linear/bn Loss: -40.97952524820963
-    No.10: Layer: block_6_1         Loss: -40.987406969070435
-    No.11: Layer: conv4_3/dwise/bn  Loss: -41.18325670560201
-    No.12: Layer: conv6_3/dwise/bn  Loss: -41.193763415018715
-    No.13: Layer: conv4_2/dwise/bn  Loss: -41.2243926525116
-    ......
-
-它代表对应的Layer改成浮点计算后, 得到的输出的Loss。
 
 .. _model_deploy:
 

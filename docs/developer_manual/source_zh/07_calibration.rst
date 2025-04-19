@@ -9,7 +9,7 @@ Calibration
 信息的, 因此这两者都要依赖于在一个微型的训练集子集上进行推理, 收集各个输入的各层输出激活。
 
 tpu-mlir的校准过程包括了门限方法自动寻优(search_threshold),SmoothQuant(sq),跨层权重均衡(we),偏置修正(bc)以及自动
-混精功能(search_qtable)等方法。总体过程如(:ref:`quantization_process`)所示。其中we,bc,search_qtable
+混精功能(search_qtable)等方法。总体过程如(:ref:`quantization_process`)所示。其中sq,we,bc,search_qtable
 和search_threshold都是可选择的,可以根据当前要量化的模型的实际情况进行搭配，后面章节也会具体给出各个方法的使用说明。
 上述过程整合在一起统一执行, 最后将各个op的优化后的threshold和
 min/max值输出到一个量化校准参数文件cali_table中, 后续``model_deploy.py``时就可使用这个参数
@@ -519,7 +519,7 @@ search_qtable:
    * - --processor
      - 处理器类型
    * - --cali_method
-     - 量化门限计算方法选择
+     - 量化门限计算方法选择,可选择use_kl,use_mse,use_percentile9999,use_max,默认为use_kl
    * - --fp_type
      - search_qtable浮点层数据类型
    * - --post_process
@@ -531,9 +531,21 @@ search_qtable:
    * - --transformer
      - 是否是transformer模型,search_qtable中如果是transformer模型可分配指定加速策略
    * - --quantize_method_list
-     - search_qtable用来搜索的门限方法
+     - search_qtable用来搜索的门限方法,默认仅MSE,支持KL,MSE,MAX,Percentile9999自由选择
    * - --benchmark_method
      - 指定search_threshold中相似度计算方法
+   * - --kurtosis_analysis
+     - 指定生成各层激活值的kurtosis
+   * - --part_quantize
+     - 指定模型部分量化,获得cali_table同时会自动生成qtable。可选择N_mode,H_mode,custom_mode,H_mode通常精度较好
+   * - --custom_operator
+     - 指定需要量化的算子,配合开启上述custom_mode后使用
+   * - --part_asymmetric
+     - 指定当开启对称量化后,模型某些子网符合特定pattern时,将对应位置算子改为非对称量化
+   * - --mix_mode
+     - 指定search_qtable特定的混精类型,目前支持8_16和4_8两种
+   * - --cluster
+     - 指定search_qtable寻找敏感层时采用聚类算法
    * - --quantize_table
      - search_qtable输出的混精度量化表
    * - -o

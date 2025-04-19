@@ -25,7 +25,7 @@ https://github.com/onnx/tutorials。
 
 如果要转INT8模型, 则需要调用 ``run_calibration`` 生成校准表, 然后传给 ``model_deploy``。
 
-如果INT8模型不满足精度需要, 可以调用 ``run_qtable`` 生成量化表, 用来决定哪些层采用浮点计算，
+如果INT8模型不满足精度需要, 可以调用 ``search_qtable`` 生成量化表, 用来决定哪些层采用浮点计算，
 然后传给 ``model_deploy`` 生成混精度模型。
 
 本文通过简单的例子介绍TPU-MLIR是如何使用的。

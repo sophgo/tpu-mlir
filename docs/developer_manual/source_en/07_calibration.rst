@@ -6,7 +6,7 @@ General introduction
 
 Calibration is the use of real scene data to tune the proper quantization parameters. Why do we need calibration? When we perform asymmetric quantization of the activation, we need to know the overall dynamic range, i.e., the minmax value, in advance. When applying symmetric quantization to activations, we need to use a suitable quantization threshold algorithm to calculate the quantization threshold based on the overall data distribution of the activation. However, the general trained model does not have the activation statistics. Therefore, both of them need to inference on a miniature sub-training set to collect the output activation of each layer.
 
-The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
+The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, sq, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
 The above processes are integrated and executed collectively, and the optimized thresholds and min/max values of each operation are output to a quantization calibration parameter file called "cali_table." Subsequently, in the "model_deploy.py" script, these parameters can be used for further int8 quantization. If you have utilized the automatic mixed-precision feature, along with generating the "cali_table," a mixed-precision table "qtable" will also be produced. In the following "model_deploy.py" script, both of these files are required for subsequent int8 mixed-precision quantization.
 
 .. _quantization_process:
@@ -483,7 +483,7 @@ search_qtable:
    * - --processor
      - processor type
    * - --cali_method
-     - Choose quantization threshold calculation method
+     - Choose quantization threshold calculation method, Options include use_kl, use_mse, use_percentile9999, use_max, with the default being use_kl
    * - --fp_type
      - The data type of floating-point layers in search_qtable
    * - --post_process
@@ -495,9 +495,21 @@ search_qtable:
    * - --transformer
      - Whether it is a transformer model, if it is, search_qtable can allocate specific acceleration strategies
    * - --quantize_method_list
-     - The threshold methods used for searching in search_qtable
+     - The threshold methods used for searching in search_qtable, The default is only MSE, but it supports free selection among KL, MSE, MAX, and Percentile9999
    * - --benchmark_method
      - Specifies the method for calculating similarity in search_threshold
+   * - --kurtosis_analysis
+     - Specify the generation of the kurtosis of the activation values for each layer
+   * - --part_quantize
+     - Specify partial quantization of the model. The calibration table (cali_table) will be automatically generated alongside the quantization table (qtable). Available modes include N_mode, H_mode, or custom_mode, with H_mode generally delivering higher accuracy
+   * - --custom_operator
+     - Specify the operators to be quantized, which should be used in conjunction with the aforementioned custom_mode
+   * - --part_asymmetric
+     - When symmetric quantization is enabled, if specific subnets in the model match a defined pattern, the corresponding operators will automatically switch to asymmetric quantization
+   * - --mix_mode
+     - Specify the mixed-precision types for the search_qtable. Currently supported options are 8_16 and 4_8
+   * - --cluster
+     - Specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - --quantize_table
      - The mixed-precision quantization table output by search_qtable
    * - -o

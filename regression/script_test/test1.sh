@@ -49,12 +49,16 @@ run_calibration.py mobilenet_v2_b4.mlir \
   --data_list data.list \
   -o mobilenet_v2_cali_table_by_list
 
-run_qtable.py mobilenet_v2_b4.mlir \
-  --dataset ${REGRESSION_PATH}/dataset/ILSVRC2012 \
-  --calibration_table mobilenet_v2_cali_table \
-  --chip bm1684x \
-  -o mobilenet_qtable
-
+run_calibration.py mobilenet_v2_b4.mlir \
+       --dataset ${REGRESSION_PATH}/dataset/ILSVRC2012 \
+       --input_num 50 \
+       --search search_qtable\
+       --expected_cos 0.999 \
+       --quantize_method_list MSE \
+       --inference_num 10 \
+       --chip bm1684x \
+       --calibration_table mobilenet_v2_cali_table \
+       --quantize_table mobilenet_qtable
 # do fuse preprocess
 # f32
 model_deploy.py \

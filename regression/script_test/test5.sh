@@ -28,13 +28,16 @@ run_calibration.py yolov3_tiny.mlir \
        -o yolov3_cali_table
 
 
-run_qtable.py yolov3_tiny.mlir \
+run_calibration.py yolov3_tiny.mlir \
        --dataset ../COCO2017 \
-       --calibration_table yolov3_cali_table \
-       --chip bm1684x \
-       --min_layer_cos 0.999 \
+       --input_num 100 \
+       --search search_qtable\
        --expected_cos 0.9999 \
-       -o yolov3_qtable
+       --quantize_method_list KL \
+       --inference_num 10 \
+       --chip bm1684x \
+       --calibration_table yolov3_cali_table \
+       --quantize_table yolov3_qtable
 
 
 model_deploy.py \

@@ -170,6 +170,7 @@ class SearchQtable:
 
         sensitive_op_type = []
         layer_op_map = {layer_name: self.parser.get_op_type_by_op_name(layer_name) for layer_name in layer_names}
+        cos_threshold = max(0.999, self.args.expected_cos)
         for op_type in op_types:
             fp_list = []
             for layer_name in layer_names:
@@ -181,7 +182,7 @@ class SearchQtable:
             mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
             similarity = 1 - self.mix_prec.run_model_new(mix_model, False, global_compare_layers, layers_rate, predictions_gt, -1, ['cos'])
             self.mix_prec.logger.print_info(f"op_type : {op_type}, similarity : {similarity}")
-            if similarity < float_outputs_cos * 0.999:
+            if similarity < float_outputs_cos * cos_threshold:
                 sensitive_op_type.append(op_type)
         self.mix_prec.logger.print_info(f"sensitive_op_type : {sensitive_op_type}, please pay attention to these types of operations")
         return sensitive_op_type
@@ -206,6 +207,9 @@ class SearchQtable:
         loss_dict[layer_name] = [existing_cos, existing_snr]
 
     def search_sensitve_layer(self, layer_names, quantize_method_list, float_model, int8_model, layer_th_dicts, global_compare_layers, layers_rate, predictions_gt):
+        if not layer_names:
+            self.mix_prec.logger.print_info("Layer names are empty. All operators skipped in search phase.")
+            sys.exit(1)
         num_quantize_method = len(quantize_method_list)
         loss_dict = collections.defaultdict(list)
         fp_layer_list = []
