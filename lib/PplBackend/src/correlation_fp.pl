@@ -27,7 +27,7 @@ void correlation(T *ptr_dst, T *ptr_lsrc, T *ptr_rsrc,
         auto view_rgtensor = in_rgtensor.sub_view(in_1b_shape, offset);
         auto view_gtensor = res_gtensor.sub_view(out_1b_shape, offset);
         auto in_view_lgtensor = view_lgtensor.view(in_view_gshape);
-        auto in_view_rgtensor = in_rgtensor.view(in_view_gshape);
+        auto in_view_rgtensor = view_rgtensor.view(in_view_gshape);
         auto out_view_gtensor = view_gtensor.view(out_view_gshape);
 
         int block_h = LANE_NUM;
@@ -83,8 +83,9 @@ void correlation(T *ptr_dst, T *ptr_lsrc, T *ptr_rsrc,
                 // reduce(1,32,1,319)                                      -> reduce(1,32,1,320)
                 // fill_zero(offset={0,0,0,slice_idx})(1,32,1,slice_idx)   ->
                 dim4 fill_shape = {1, tile_h, 1, slice_idx};
-                dma::fill(reduce_tensor.view(fill_shape), 0);
-
+                if (slice_idx > 0) {
+                    dma::fill(reduce_tensor.view(fill_shape), 0);
+                }
                 dim4 offset_gout = {slice_idx, h_idx, 0, 0};
                 dma::store(out_view_gtensor.sub_view(reduce_real_shape, offset_gout), reduce_tensor);
             }

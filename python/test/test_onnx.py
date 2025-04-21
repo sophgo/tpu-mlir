@@ -7171,7 +7171,7 @@ class ONNX_IR_TESTER(object):
         left = torch.randn(1, 96, 104, 160).float()
         right = torch.randn(1, 96, 104, 160).float()
         max_disp = 48
-        num_groups = 1
+        num_groups = 8
 
         self.torch_and_test((left, right), Model(max_disp, num_groups), case_name)
 
