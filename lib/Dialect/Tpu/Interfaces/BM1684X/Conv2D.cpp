@@ -216,9 +216,16 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     sz += align_up(in_hslice * in_wslice, eu_num) * in_nslice * ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) * in_type_len;
   }
   if (use_3ic_optimize) {
-    sz += align_up(dw_out_size, eu_num) * ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) * in_nslice * in_type_len; // depthwise_oaddr
-    sz += BM168x::EU_BYTES * ceiling_func(kernel_len, Arch::NPU_NUM) * 2; // serial_addr / param_addr
-    sz += kernel_len * ceiling_func(kernel_len, Arch::NPU_NUM) * in_type_len; // depthwise_waddr
+    if ((module::isMARS3() || module::isSGTPUV8())) {
+        sz += align_up(align_up(dw_out_size, eu_num) * ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) * in_nslice,
+                       in_type_len); // depthwise_oaddr
+        sz += BM168x::EU_BYTES * ceiling_func(kernel_len, Arch::NPU_NUM) * 2; // serial_addr / param_addr
+        sz += align_up(kernel_len, eu_num) * ceiling_func(kernel_len * (in_cslice), Arch::NPU_NUM) * in_type_len; // depthwise_waddr
+    } else {
+        sz += align_up(dw_out_size, eu_num) * ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) * in_nslice * in_type_len; // depthwise_oaddr
+        sz += BM168x::EU_BYTES * ceiling_func(kernel_len, Arch::NPU_NUM) * 2; // serial_addr / param_addr
+        sz += kernel_len * ceiling_func(kernel_len, Arch::NPU_NUM) * in_type_len; // depthwise_waddr
+    }
   }
   auto Filter_type = BM168x::getDataType(getFilter());
   auto Filter_type_len = BM168x::getFmtBytes(Filter_type);
