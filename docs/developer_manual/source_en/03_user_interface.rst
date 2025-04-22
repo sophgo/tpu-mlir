@@ -539,6 +539,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - disable_layer_group
      - N
      - Whether to disable LayerGroup pass
+   * - disable_gdma_check
+     - N
+     - Whether to disable gdma address check
    * - do_winograd
      - N
      - if do WinoGrad convolution, only for BM1684

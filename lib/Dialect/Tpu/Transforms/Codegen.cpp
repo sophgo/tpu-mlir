@@ -44,11 +44,11 @@ public:
         auto new_name = name + "_" + std::to_string(i);
         sub_m.setName(new_name);
         module::setSubModuleId(sub_m, i, 0);
-        bm_codegen.run(sub_m, embed_debug_info);
+        bm_codegen.run(sub_m, embed_debug_info, gdma_check);
       }
     } else {
       for (auto s : *modules) {
-        bm_codegen.run(s, embed_debug_info);
+        bm_codegen.run(s, embed_debug_info, gdma_check);
       }
     }
 

@@ -94,6 +94,7 @@ class DeployTool:
         self.module_name = self.module.module_name
         self.state = self.module.module_state
         self.disable_layer_group = args.disable_layer_group
+        self.gdma_check = not args.disable_gdma_check
         self.opt = args.opt
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide
@@ -371,7 +372,8 @@ class DeployTool:
                     trunc_final=self.trunc_final,
                     command_mem=command_mem,
                     quant_output_bf16=self.quant_output_bf16,
-                    opt_post_processor=self.opt_post_processor
+                    opt_post_processor=self.opt_post_processor,
+                    gdma_check=self.gdma_check
                 )
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
@@ -502,6 +504,7 @@ if __name__ == '__main__':
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
+    parser.add_argument("--disable_gdma_check", action='store_true', help='disable gdma addr check')
     parser.add_argument("--trunc_final", nargs="*", help="assign op to be trunced in final mlir.")
     # ========== Other Options ==============
     # for cv18xx
