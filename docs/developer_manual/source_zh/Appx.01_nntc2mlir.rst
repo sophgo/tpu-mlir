@@ -87,9 +87,6 @@ ONNX模型导入
    在nntc中,量化之后得到的是int8umodel以及prototxt。
 
 
-值得一提的是, mlir还有run_qtable工具帮助生成混精度模型
-
-
 生成int8模型
 ------------
 

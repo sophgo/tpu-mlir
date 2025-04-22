@@ -25,7 +25,5 @@ TPU-MLIR的整体架构如下:
 
 如果要转INT8模型, 则需要调用 ``run_calibration.py`` 生成校准表, 然后传给 ``model_deploy.py``。
 
-如果INT8模型不满足精度需要, 可以调用 ``run_qtable.py`` 生成量化表, 用来决定哪些层采用浮点计算，
-然后传给 ``model_deploy.py`` 生成混精度模型。
 
 本文详细描述实现细节, 用于指导开发。

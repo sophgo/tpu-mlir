@@ -91,8 +91,6 @@ To use stepwise quantization in nntc, you need to make your own mdb quantization
    In nntc, after quantization, you get int8umodel and prototxt.
 
 
-It is worth mentioning that mlir also has a run_qtable tool to help generate mixed-precision models
-
 Generating int8 models
 ------------------------
 
