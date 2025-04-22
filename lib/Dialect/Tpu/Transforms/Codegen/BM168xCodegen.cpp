@@ -115,7 +115,7 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
   updateAllHidden();
 }
 
-void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
+void BMCodegen::run(ModuleOp s, bool embed_debug_info, bool gdma_check) {
   // record the line number of operation in module.
   DynCodegenInit();
   std::vector<Value> inputs;
@@ -150,7 +150,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
                                    coeff_size,    io_addr,     io_size,
                                    (int)addr_mode};
 
-  bm168x->dl_set_cmd_check_param((void *)&check_param, true);
+  bm168x->dl_set_cmd_check_param((void *)&check_param, gdma_check);
 
   auto &builder = model_gen->Builder();
   // if tensor not in device 0, will be hidden

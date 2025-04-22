@@ -636,10 +636,11 @@ def tpu_ada_options(
 def codegen_options(model: str,
                     embed_debug_info: bool = False,
                     model_version: str = "",
-                    bmodel_only: bool = False):
+                    bmodel_only: bool = False,
+                    gdma_check: bool = True):
     options = [
-        '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={}"'.format(
-          model, str(embed_debug_info).capitalize(), str(model_version).lower(), str(bmodel_only).capitalize())
+        '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={} gdma_check={}"'.format(
+          model, str(embed_debug_info).capitalize(), str(model_version).lower(), str(bmodel_only).capitalize(), str(gdma_check).capitalize())
     ]
     return options
 
@@ -718,7 +719,8 @@ def mlir_to_model(
     trunc_final: list = None,
     command_mem: dict = None,
     quant_output_bf16: bool = False,
-    opt_post_processor: bool = False
+    opt_post_processor: bool = False,
+    gdma_check: bool = True
 ):
     if command_mem is None:
         command_mem = {}
@@ -783,7 +785,8 @@ def mlir_to_model(
     cmd = ["tpuc-opt", final_mlir]
     options = codegen_options(bmodel_path,
                               embed_debug_info,
-                              model_version)
+                              model_version,
+                              gdma_check=gdma_check)
     cmd.extend(options)
     cmd.extend(["-o /dev/null"])
     _os_system(cmd,log_level=log_level)

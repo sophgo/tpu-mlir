@@ -551,6 +551,9 @@ model_deploy.py
    * - disable_layer_group
      - 否
      - 是否关闭LayerGroup
+   * - disable_gdma_check
+     - 否
+     - 是否关闭gdma地址检查
    * - do_winograd
      - 否
      - 是否使用WinoGrad卷积, 仅用于BM1684平台

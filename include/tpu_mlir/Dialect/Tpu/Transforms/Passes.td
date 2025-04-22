@@ -121,6 +121,8 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
            "model version.">,
     Option<"bmodel_only", "bmodel_only", "bool", /*default=*/"false",
            "dump bmodel only.">,
+    Option<"gdma_check", "gdma_check", "bool", /*default=*/"true",
+           "gdma address check.">,
   ];
 }
 
