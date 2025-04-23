@@ -10,8 +10,16 @@
 #include "tpu_mlir/Support/Module.h"
 
 int64_t top::FAttentionOp::getFLOPs() {
-  UNREACHABLE_THIS("Not Implemented");
-  return 0;
+  int batch = getBatch();
+  int M_q = getMq();
+  int M_k = getMk();
+  uint64_t d = getDim();
+  uint64_t q_head = getQHead();
+  // [batch, M_q, q_head, d] * [batch, M_k, kv_head, d] => [batch, M_q, q_head,
+  // M_k]
+  // [batch, M_q, q_head, M_k] * [batch, M_k, kv_head, d] => [batch, M_q,
+  // q_head, d]
+  return batch * M_q * q_head * d * M_k * 4;
 }
 
 LogicalResult top::FAttentionOp::init(InferenceParameter &p) {

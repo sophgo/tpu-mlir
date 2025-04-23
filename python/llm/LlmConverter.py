@@ -6,10 +6,9 @@
 # ==============================================================================
 import torch
 import os
-from .MLIRImporter import MLIRImporter, Platform
-from .BaseConverter import BaseConverter
+from transform.MLIRImporter import MLIRImporter, Platform
+from transform.BaseConverter import BaseConverter
 from .LlmInfo import COMMON_INFO, LlmList
-from transformers import AutoConfig
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
@@ -51,9 +50,8 @@ class LlmLoad:
 # support qwen2/llama
 class LlmConverter(BaseConverter):
 
-    def __init__(self, args):
+    def __init__(self, args, config):
         super().__init__()
-        self.MODEL_SUPPORED = ["qwen2", "llama"]
         self.model_path = os.path.normpath(args.model_path)
         self.seq_length = args.seq_length
         self.quantize = args.quantize
@@ -67,6 +65,9 @@ class LlmConverter(BaseConverter):
         self.embedding_disk = args.embedding_disk
         self.debug = args.debug
         self.num_core = args.num_core
+        self.config = config
+        self.config.max_position_embeddings = self.seq_length
+        self.position_shape = [1, self.seq_length]
         if self.num_core == 0:
             self.num_core = 1 if args.chip != "bm1688" else 2
         self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
@@ -75,9 +76,8 @@ class LlmConverter(BaseConverter):
         self.load_pretrained()
         # get attributes
         self.init_config()
-        cos, sin = self.get_rotary_pos_emb(self.seq_length)
-        self.cos = cos.numpy()
-        self.sin = sin.numpy()
+        self.do_vit = False
+        self.cos, self.sin = self.rotary_embedding()
         cpu_count = os.cpu_count()
         self.max_workers = max(cpu_count, 4)
         # get file path
@@ -109,39 +109,41 @@ class LlmConverter(BaseConverter):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = []
 
+            if self.do_vit:
+                futures.append(executor.submit(self.gen_vit_mlir))
             futures.append(executor.submit(self.gen_embedding_lmhead_mlir))
 
             for i in range(self.num_layers):
                 futures.append(executor.submit(self.gen_block_mlir, i))
 
             # Wait for all threads to complete
-            for future in tqdm(
-                    concurrent.futures.as_completed(futures),
-                    total=len(futures),
-                    desc="generate mlir",
-            ):
-                # This will raise exceptions if any occurred during thread execution
-                future.result()
+            for future in tqdm(concurrent.futures.as_completed(futures),
+                               total=len(futures),
+                               desc="generate mlir"):
+                try:
+                    # This will raise exceptions if any occurred during thread execution
+                    future.result()
+                except Exception as e:
+                    for future in futures:
+                        if not future.done():
+                            future.cancel()
+                    print(f"Error:gen mlir failed: {e}")
+                    sys.exit(1)
 
     def load_pretrained(self):
-        self.config = AutoConfig.from_pretrained(self.model_path, trust_remote_code=True)
         self.model = LlmLoad(self.model_path)
         self.model_type = self.config.model_type
-        if self.model_type not in self.MODEL_SUPPORED:
-            raise RuntimeError("Not Implemented")
         self.model_info = COMMON_INFO
 
-    def get_rotary_pos_emb(self, seq_length):
-        position_ids = torch.tensor([range(seq_length)], dtype=torch.long)
-        theta = 1.0 / (self.rope_theta**(torch.arange(0, self.rotary_dim, 2, dtype=torch.float32) /
-                                         self.rotary_dim))
-        position_ids = position_ids.float().reshape(-1, 1)
-        idx_theta = position_ids * theta
-        rotary_pos_emb = torch.stack([torch.cos(idx_theta), torch.sin(idx_theta)])
-        if self.model_type != 'chatglm2':
-            rotary_pos_emb = torch.cat((rotary_pos_emb, rotary_pos_emb), dim=-1)
-        rotary_pos_emb = rotary_pos_emb.unsqueeze(2).unsqueeze(1)
-        return rotary_pos_emb
+    def rotary_embedding(self):
+        from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
+        rotary_embed = LlamaRotaryEmbedding(self.config)
+        position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(1, self.seq_length)
+        x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
+        cos, sin = rotary_embed(x, position_ids)
+        cos = cos.reshape(self.seq_length, 1, -1)
+        sin = sin.reshape(self.seq_length, 1, -1)
+        return cos.numpy(), sin.numpy()  #[seq, 1, 64]
 
     def unpack_weights(self, qweight, qzeros, bits, quant_mode):
         dtype = np.int32
@@ -162,7 +164,9 @@ class LlmConverter(BaseConverter):
                     if row % 2 == 0:
                         pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
                     else:
-                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+                        pack_int8_weights[
+                            row //
+                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
 
         elif quant_mode == "awq":
             unpacked_weights = np.zeros((K, N * compress_ratio), dtype=dtype)
@@ -176,10 +180,11 @@ class LlmConverter(BaseConverter):
                     if row % 2 == 0:
                         pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
                     else:
-                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+                        pack_int8_weights[
+                            row //
+                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
         else:
             raise NotImplementedError("Not support now")
-
 
         for col in range(unpacked_zeros.shape[1]):
             i = order_map[col % compress_ratio]
@@ -223,7 +228,8 @@ class LlmConverter(BaseConverter):
             self.q_group_size = self.quantization_config["group_size"]
             self.quant_bits = self.quantization_config["bits"]
             if self.quant_mode == "awq":
-                assert self.quantization_config["version"] == "gemm", ("AWQ only support gemm version for now")
+                assert self.quantization_config["version"] == "gemm", (
+                    "AWQ only support gemm version for now")
                 assert self.quant_bits == 4, ("AWQ only support quant bits == 4 for now")
 
     def get_loc(self, names, mlir):
@@ -374,16 +380,27 @@ class LlmConverter(BaseConverter):
                            ip=mlir_gen.insert_point).output
         return rs
 
-    def linear(self, mlir_gen, proj: str, input_op, weight_shape: list, out_shape: list):
-        if self.model.is_exist(proj + ".bias"):
+    def linear(self,
+               mlir_gen,
+               proj: str,
+               input_op,
+               weight_shape: list,
+               out_shape: list,
+               force_bias: bool = False):
+        weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
+        if self.model.is_exist(proj + ".bias") or force_bias:
             bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
         else:
             bias_op = mlir_gen.none_op
-        if self.quant_mode:
-            qweight_op = mlir_gen.create_weight_op(proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)], 'UINT8')
-            scale_op = mlir_gen.create_weight_op(proj + ".scales", [weight_shape[1], weight_shape[0] // self.q_group_size])
-            zp_op = mlir_gen.create_weight_op(proj + ".qzeros", [weight_shape[1], weight_shape[0] // self.q_group_size], 'UINT8')
+        if self.quant_mode and self.model.is_exist(proj + ".qweight"):
+            qweight_op = mlir_gen.create_weight_op(
+                proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)],
+                'UINT8')
+            scale_op = mlir_gen.create_weight_op(
+                proj + ".scales", [weight_shape[1], weight_shape[0] // self.q_group_size])
+            zp_op = mlir_gen.create_weight_op(
+                proj + ".qzeros", [weight_shape[1], weight_shape[0] // self.q_group_size], 'UINT8')
             return top.A16MatMulOp(mlir_gen.get_tensor_type(out_shape),
                                    input_op,
                                    qweight_op,
@@ -394,19 +411,21 @@ class LlmConverter(BaseConverter):
                                    weight_bits=self.quant_bits,
                                    loc=self.get_loc(proj, mlir_gen),
                                    ip=mlir_gen.insert_point).output
-        else:
-            weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
-            return top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
-                                input_op,
-                                weight_op,
-                                bias_op,
-                                do_relu=False,
-                                loc=self.get_loc(proj, mlir_gen),
-                                ip=mlir_gen.insert_point).output
 
-    def rotary_pos(self, mlir_gen, in_op, cos_op, sin_op, out_name: str, in_shape: list,
-                   half_shape: list):
+        weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
+        return top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                            input_op,
+                            weight_op,
+                            bias_op,
+                            do_relu=False,
+                            loc=self.get_loc(proj, mlir_gen),
+                            ip=mlir_gen.insert_point).output
+
+    def rotary_pos(self, mlir_gen, in_op, cos_op, sin_op, out_name: str):
+        in_shape = in_op.type.shape
         prefix = f"{out_name}.rotary_pos"
+        half_shape = list(in_shape)
+        half_shape[-1] = half_shape[-1] // 2
         mul_q_proj = top.MulOp(mlir_gen.get_tensor_type(in_shape), [in_op, cos_op],
                                loc=self.get_loc(prefix + ".mul0", mlir_gen),
                                ip=mlir_gen.insert_point).output
@@ -451,8 +470,41 @@ class LlmConverter(BaseConverter):
                           ip=mlir_gen.insert_point).output
         return new_q
 
+    def apply_rotary_pos(self,
+                         mlir_gen,
+                         pos_op,
+                         q_op,
+                         k_op,
+                         rotary_cos: str,
+                         rotary_sin: str,
+                         decode: bool = False):
+        dim = 1 if decode else self.seq_length
+        weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
+                                              [self.seq_length, 1, self.head_dim])
+        cos_op = top.GatherOp(mlir_gen.get_tensor_type([1, dim, 1, self.head_dim]),
+                              weight_op,
+                              pos_op,
+                              axis=0,
+                              loc=self.get_loc(rotary_cos, mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        weight_op = mlir_gen.create_weight_op(rotary_sin + ".weight",
+                                              [self.seq_length, 1, self.head_dim])
+        sin_op = top.GatherOp(mlir_gen.get_tensor_type([1, dim, 1, self.head_dim]),
+                              weight_op,
+                              pos_op,
+                              axis=0,
+                              loc=self.get_loc(rotary_sin, mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        # ===== q_proj rotary ========
+        q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
+
+        # ===== k_proj rotary ========
+        k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
+        return q_op, k_op
+
     def set_linear_weight(self, path: str, weight_dict: dict):
-        if not self.quant_mode:
+        is_quant = self.quant_mode is not None and self.model.is_exist(path + ".qweight")
+        if not is_quant:
             weight_path = path + ".weight"
             bias_path = path + ".bias"
             if self.model.is_exist(weight_path):
@@ -469,9 +521,10 @@ class LlmConverter(BaseConverter):
                 qweigth_data = self.model.read(qweight_path)
                 scale_data = self.model.read(scale_path)
                 zp_data = self.model.read(zp_path)
-                unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(qweigth_data, zp_data,
-                                                                                          self.quant_bits, self.quant_mode)
-                weight_dict[qweight_path] = np.ascontiguousarray(np.transpose(pack_int8_weights, (1, 0)))
+                unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(
+                    qweigth_data, zp_data, self.quant_bits, self.quant_mode)
+                weight_dict[qweight_path] = np.ascontiguousarray(
+                    np.transpose(pack_int8_weights, (1, 0)))
                 weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
                 weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
             else:
@@ -572,13 +625,11 @@ class LlmConverter(BaseConverter):
         def gen_block():
             name = f"block_{idx}"
             input_shape = [1, self.seq_length, self.hidden_size]
-            id_shape = [1, self.seq_length]
+            id_shape = list(self.position_shape)
             mask_shape = [1, 1, self.seq_length, self.seq_length]
 
             q_shape = [1, self.seq_length, self.num_attention_heads, self.head_dim]
-            q_half_shape = [1, self.seq_length, self.num_attention_heads, self.head_dim // 2]
             kv_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
-            kv_half_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim // 2]
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
@@ -618,29 +669,8 @@ class LlmConverter(BaseConverter):
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
             # rotary cos/sin
-            weight_op = block_mlir.create_weight_op(rotary_cos + ".weight",
-                                                    [self.seq_length, 1, self.head_dim])
-            cos_op = top.GatherOp(T([1, self.seq_length, 1, self.head_dim]),
-                                  weight_op,
-                                  in1_op,
-                                  axis=0,
-                                  loc=L(rotary_cos),
-                                  ip=ip).output
-            weight_op = block_mlir.create_weight_op(rotary_sin + ".weight",
-                                                    [self.seq_length, 1, self.head_dim])
-            sin_op = top.GatherOp(T([1, self.seq_length, 1, self.head_dim]),
-                                  weight_op,
-                                  in1_op,
-                                  axis=0,
-                                  loc=L(rotary_sin),
-                                  ip=ip).output
-            # ===== q_proj rotary ========
-            q_op = self.rotary_pos(block_mlir, q_op, cos_op, sin_op, "q_proj", q_shape,
-                                   q_half_shape)
-
-            # ===== k_proj rotary ========
-            k_op = self.rotary_pos(block_mlir, k_op, cos_op, sin_op, "k_cache", kv_shape,
-                                   kv_half_shape)
+            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
+                                               rotary_sin, False)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
@@ -672,14 +702,13 @@ class LlmConverter(BaseConverter):
         def gen_block_cache():
             name = f"block_cache_{idx}"
             input_shape = [1, 1, self.hidden_size]
-            id_shape = [1, 1]
+            id_shape = list(self.position_shape)
+            id_shape[-1] = 1
             mask_shape = [1, 1, 1, self.seq_length + 1]
             history_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
 
             q_shape = [1, 1, self.num_attention_heads, self.head_dim]
-            q_half_shape = [1, 1, self.num_attention_heads, self.head_dim // 2]
             kv_shape = [1, 1, self.num_key_value_heads, self.head_dim]
-            kv_half_shape = [1, 1, self.num_key_value_heads, self.head_dim // 2]
 
             block_mlir = MLIRImporter(
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
@@ -723,29 +752,8 @@ class LlmConverter(BaseConverter):
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
             # rotary cos/sin
-            weight_op = block_mlir.create_weight_op(rotary_cos + ".weight",
-                                                    [self.seq_length, 1, self.head_dim])
-            cos_op = top.GatherOp(T([1, 1, 1, self.head_dim]),
-                                  weight_op,
-                                  in1_op,
-                                  axis=0,
-                                  loc=L(rotary_cos),
-                                  ip=ip).output
-            weight_op = block_mlir.create_weight_op(rotary_sin + ".weight",
-                                                    [self.seq_length, 1, self.head_dim])
-            sin_op = top.GatherOp(T([1, 1, 1, self.head_dim]),
-                                  weight_op,
-                                  in1_op,
-                                  axis=0,
-                                  loc=L(rotary_sin),
-                                  ip=ip).output
-            # ===== q_proj rotary ========
-            q_op = self.rotary_pos(block_mlir, q_op, cos_op, sin_op, "q_rotary", q_shape,
-                                   q_half_shape)
-
-            # ===== k_proj rotary ========
-            k_op = self.rotary_pos(block_mlir, k_op, cos_op, sin_op, "k_cache", kv_shape,
-                                   kv_half_shape)
+            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
+                                               rotary_sin, True)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ====== kv concat ========
@@ -787,6 +795,9 @@ class LlmConverter(BaseConverter):
 
         gen_block()
         gen_block_cache()
+
+    def gen_vit_mlir(self):
+        pass
 
     # ============= compile all code =============
     def send_command(self, command: list[str], log_file: str):
@@ -928,6 +939,22 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")
 
+    def compile_vit(self):
+        if not self.do_vit:
+            return
+        name = "vit"
+        if os.path.exists(f"{name}.bmodel"):
+            print(f"{name}.bmodel already exists. Skipping compilation.")
+            return
+        deploy_args = [
+            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.half_precision_quantize}',
+            '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}', f'--model {name}.bmodel'
+        ]
+        if self.high_precision:
+            deploy_args.append('--high_precision')
+        self.send_command(deploy_args, f"{name}.log")
+
     def combine(self):
         bmodel_list = []
         total_bytes = 0
@@ -939,6 +966,9 @@ class LlmConverter(BaseConverter):
             total_bytes += os.path.getsize("embedding.bmodel")
         if not self.lmhead_with_topk:
             bmodel_list += ["greedy_head.bmodel", "penalty_sample_head.bmodel"]
+        if self.do_vit:
+            bmodel_list += ["vit.bmodel"]
+            total_bytes += os.path.getsize("vit.bmodel")
         bmodel_list += ["lm_head.bmodel"]
         total_bytes += os.path.getsize("lm_head.bmodel")
 
@@ -954,6 +984,9 @@ class LlmConverter(BaseConverter):
         self.run_command(['bash', '-c', ' '.join(get_info_args)])
 
     def compile_all(self):
+
+        if self.do_vit:
+            self.compile_vit()
 
         if not self.embedding_disk:
             self.compile_embedding()

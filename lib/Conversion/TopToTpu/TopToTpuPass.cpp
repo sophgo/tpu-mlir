@@ -17,8 +17,7 @@
 
 namespace tpu_mlir {
 
-template <typename OpTy>
-static void BackwardOp(OpTy op) {
+template <typename OpTy> static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -37,8 +36,7 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy>
-static void ForwardOp(OpTy op) {
+template <typename OpTy> static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -1197,6 +1195,12 @@ void ConvertTopToTpu::runOnOperation() {
   module::setGroupQuantInfo(quantGroupSize, quantSymmetric);
   if (weightFileName != "") {
     module::setWeightFileName(weightFileName);
+  }
+  int64_t flops = module::getFLOPs();
+  if (flops == 0) {
+    // mark flops
+    mainFunc_.walk([&](FlopsInterface op) { flops += op.getFLOPs(); });
+    module::setFLOPs(flops);
   }
 
   RewritePatternSet patterns(ctx_);

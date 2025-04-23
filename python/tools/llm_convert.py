@@ -10,6 +10,31 @@
 
 import argparse
 
+
+def parse_max_pixels(value):
+    """
+    If the input is a single number, convert it to an integer.
+    If it contains a comma, parse it as a tuple (or list) of two integers, e.g., "128,124".
+    """
+    if ',' in value:
+        parts = value.split(',')
+        if len(parts) != 2:
+            raise argparse.ArgumentTypeError(
+                "The input must be two integers separated by a comma, e.g., 128,124")
+        try:
+            width = int(parts[0].strip())
+            height = int(parts[1].strip())
+        except ValueError:
+            raise argparse.ArgumentTypeError("The input values must be integers, e.g., 128,124")
+        return int(width * height)
+    else:
+        try:
+            return int(value)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                "The input must be an integer or two integers separated by a comma, e.g., 128,124")
+
+
 if __name__ == '__main__':
     # yapf: disable
     parser = argparse.ArgumentParser(description='llm_exporter', formatter_class=argparse.RawTextHelpFormatter)
@@ -31,12 +56,22 @@ if __name__ == '__main__':
     parser.add_argument('--symmetric', action='store_true', help='do symmetric quantize')
     parser.add_argument('--embedding_disk', action='store_true',
                         help='export embedding as bin file and inference by cpu')
+    parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
+                        help="max pixels for vit, for example: 240,420 or 100800")
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
                         help='output mlir/bmodel path, default `./tmp`')
     args = parser.parse_args()
     # yapf: enable
-    from transform.LlmConverter import LlmConverter
-    converter = LlmConverter(args)
+    from transformers import AutoConfig
+    config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
+    if config.model_type in ["qwen2", "llama"]:
+        from llm.LlmConverter import LlmConverter
+        converter = LlmConverter(args, config)
+    elif config.model_type in ['qwen2_vl', 'qwen2_5_vl']:
+        from llm.Qwen2VLConverter import Qwen2VLConverter
+        converter = Qwen2VLConverter(args, config)
+    else:
+        raise RuntimeError("Unsupported model type: {}".format(config.model_type))
     converter.run()
