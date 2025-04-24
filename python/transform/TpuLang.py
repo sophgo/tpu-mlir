@@ -1388,10 +1388,10 @@ def unpack_weights(qweight, qzeros, bits):
 
     K, N = qweight.shape
     unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
-    pack_int8_weights = np.zeros((K * compress_ratio // 2, N), dtype=np.int8)  # dtype=int8 to fit tpu.a16matmul
+    pack_int8_weights = np.zeros((K * compress_ratio // 2, N), dtype=np.uint8)  # dtype=int8 to fit tpu.a16matmul
 
     Kz, Nz = qzeros.shape
-    unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.int8)  # dtype=int8 to fit tpu.a16matmul
+    unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.uint8)  # dtype=int8 to fit tpu.a16matmul
 
     for row in range(unpacked_weights.shape[0]):
         i = row % compress_ratio
@@ -1458,7 +1458,7 @@ def a16matmul(input: Tensor,
     weight.update(pack_int8_weights.T, pack_int8_weights.T.shape)
     scale.update(scale.buffer.T, scale.buffer.T.shape)
     zp.update(unpacked_qzeros.T, unpacked_qzeros.T.shape)
-    weight.dtype = "int8"
+    weight.dtype = "uint8"
     zp.dtype = "uint8"
 
     output = Tensor(dtype=out_dtype, name=out_name)

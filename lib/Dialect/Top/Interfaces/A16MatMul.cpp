@@ -32,7 +32,6 @@ a16matmul_attr_t top::A16MatMulOp::parseParam() {
   p.q_group_size = q_group_size;
   p.weight_bits = weight_bits;
   p.with_bias = !module::isNone(getBias());
-  p.relu_limit = this->getReluLimit().convertToDouble();
   auto a_dims = a_s.size();
   auto w_dims = w_s.size();
   auto s_dims = s_s.size();
@@ -79,7 +78,7 @@ a16matmul_attr_t top::A16MatMulOp::parseParam() {
 
 int64_t top::A16MatMulOp::getFLOPs() {
   auto p = parseParam();
-  auto extra = (p.with_bias ? 1 : 0) + (p.do_relu ? 1 : 0);
+  auto extra = p.with_bias ? 1 : 0;
   return p.batch * (2 * p.K + extra) * p.N * p.M;
 }
 
@@ -123,9 +122,8 @@ LogicalResult top::A16MatMulOp::inference(InferenceParameter &p) {
   // }
 
   matmul->setup(p.inputs[0], new_weight.data(), p.inputs[4], p.outputs[0],
-                a.batch, 1, a.M, a.K, a.N, a.do_relu, a.relu_limit, 0, 0,
-                a.right_transpose, 0, 0, 0, a.L_shape, a.R_shape,
-                a.dims_merge_2_M);
+                a.batch, 1, a.M, a.K, a.N, false, -1.0, 0, 0, a.right_transpose,
+                0, 0, 0, a.L_shape, a.R_shape, a.dims_merge_2_M);
   matmul->run();
   return success();
 }

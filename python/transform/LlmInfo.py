@@ -19,7 +19,8 @@ class ModelConfig:
                  vocab_size: str = 'vocab_size',
                  intermediate_size: str = 'intermediate_size',
                  rope_theta: str = "rope_theta",
-                 rms_norm_eps: str = "rms_norm_eps"):
+                 rms_norm_eps: str = "rms_norm_eps",
+                 quantization_config: str = "quantization_config"):
         self.num_attention_heads = num_attention_heads
         self.num_hidden_layers = num_hidden_layers
         self.num_key_value_heads = num_key_value_heads
@@ -28,6 +29,7 @@ class ModelConfig:
         self.intermediate_size = intermediate_size
         self.rope_theta = rope_theta
         self.rms_norm_eps = rms_norm_eps
+        self.quantization_config = quantization_config
 
 
 class LlmList:

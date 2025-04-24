@@ -70,6 +70,8 @@ class LlmConverter(BaseConverter):
         if self.num_core == 0:
             self.num_core = 1 if args.chip != "bm1688" else 2
         self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
+        self.quant_mode = None
+        self.quant_bits = 0
         self.load_pretrained()
         # get attributes
         self.init_config()
@@ -141,6 +143,56 @@ class LlmConverter(BaseConverter):
         rotary_pos_emb = rotary_pos_emb.unsqueeze(2).unsqueeze(1)
         return rotary_pos_emb
 
+    def unpack_weights(self, qweight, qzeros, bits, quant_mode):
+        dtype = np.int32
+        compress_ratio = 32 // bits
+        mask = 0xF if bits == 4 else 0xFF
+        K, N = qweight.shape
+        Kz, Nz = qzeros.shape
+        unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.uint8)
+
+        if quant_mode == "gptq":
+            unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
+            pack_int8_weights = np.zeros((K * compress_ratio // 2, N), dtype=np.uint8)
+            order_map = [i for i in range(compress_ratio)]
+            for row in range(unpacked_weights.shape[0]):
+                i = order_map[row % compress_ratio]
+                unpacked_weights[row, :] = (qweight[row // compress_ratio, :] >> (bits * i)) & mask
+                if bits == 4:
+                    if row % 2 == 0:
+                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
+                    else:
+                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+
+        elif quant_mode == "awq":
+            unpacked_weights = np.zeros((K, N * compress_ratio), dtype=dtype)
+            pack_int8_weights = np.zeros((K // 2, N * compress_ratio), dtype=np.uint8)
+            order_map = [0, 4, 1, 5, 2, 6, 3, 7]
+            for col in range(unpacked_weights.shape[1]):
+                i = order_map[col % compress_ratio]
+                unpacked_weights[:, col] = (qweight[:, col // compress_ratio] >> (bits * i)) & mask
+            if bits == 4:
+                for row in range(unpacked_weights.shape[0]):
+                    if row % 2 == 0:
+                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
+                    else:
+                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+        else:
+            raise NotImplementedError("Not support now")
+
+
+        for col in range(unpacked_zeros.shape[1]):
+            i = order_map[col % compress_ratio]
+            unpacked_zeros[:, col] = (qzeros[:, col // compress_ratio] >> (bits * i)) & mask
+
+        if bits == 8:
+            pack_int8_weights = unpacked_weights.astype("uint8")
+
+        if quant_mode == "gptq":
+            return unpacked_weights, pack_int8_weights, unpacked_zeros + 1
+        else:
+            return unpacked_weights, pack_int8_weights, unpacked_zeros
+
     def init_config(self):
         c = self.model_info.config
         self.num_layers = getattr(self.config, c.num_hidden_layers)
@@ -164,6 +216,15 @@ class LlmConverter(BaseConverter):
         self.tie_word_embeddings = getattr(self.config, 'tie_word_embeddings', False)
         # whether to merge lm_head and embedding in bmodel
         self.do_lmhead_merge = self.tie_word_embeddings and not self.embedding_disk and self.num_device < 2
+        # specify quant config
+        self.quantization_config = getattr(self.config, c.quantization_config, None)
+        if self.quantization_config:
+            self.quant_mode = self.quantization_config["quant_method"]
+            self.q_group_size = self.quantization_config["group_size"]
+            self.quant_bits = self.quantization_config["bits"]
+            if self.quant_mode == "awq":
+                assert self.quantization_config["version"] == "gemm", ("AWQ only support gemm version for now")
+                assert self.quant_bits == 4, ("AWQ only support quant bits == 4 for now")
 
     def get_loc(self, names, mlir):
         if isinstance(names, str):
@@ -314,19 +375,34 @@ class LlmConverter(BaseConverter):
         return rs
 
     def linear(self, mlir_gen, proj: str, input_op, weight_shape: list, out_shape: list):
-        weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
         if self.model.is_exist(proj + ".bias"):
             bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
         else:
             bias_op = mlir_gen.none_op
-        return top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
-                            input_op,
-                            weight_op,
-                            bias_op,
-                            do_relu=False,
-                            loc=self.get_loc(proj, mlir_gen),
-                            ip=mlir_gen.insert_point).output
+        if self.quant_mode:
+            qweight_op = mlir_gen.create_weight_op(proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)], 'UINT8')
+            scale_op = mlir_gen.create_weight_op(proj + ".scales", [weight_shape[1], weight_shape[0] // self.q_group_size])
+            zp_op = mlir_gen.create_weight_op(proj + ".qzeros", [weight_shape[1], weight_shape[0] // self.q_group_size], 'UINT8')
+            return top.A16MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                                   input_op,
+                                   qweight_op,
+                                   scale_op,
+                                   zp_op,
+                                   bias_op,
+                                   right_transpose=True,
+                                   weight_bits=self.quant_bits,
+                                   loc=self.get_loc(proj, mlir_gen),
+                                   ip=mlir_gen.insert_point).output
+        else:
+            weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
+            return top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                                input_op,
+                                weight_op,
+                                bias_op,
+                                do_relu=False,
+                                loc=self.get_loc(proj, mlir_gen),
+                                ip=mlir_gen.insert_point).output
 
     def rotary_pos(self, mlir_gen, in_op, cos_op, sin_op, out_name: str, in_shape: list,
                    half_shape: list):
@@ -376,13 +452,30 @@ class LlmConverter(BaseConverter):
         return new_q
 
     def set_linear_weight(self, path: str, weight_dict: dict):
-        weight_path = path + ".weight"
-        bias_path = path + ".bias"
-        if self.model.is_exist(weight_path):
-            data = self.model.read(weight_path)
-            weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
+        if not self.quant_mode:
+            weight_path = path + ".weight"
+            bias_path = path + ".bias"
+            if self.model.is_exist(weight_path):
+                data = self.model.read(weight_path)
+                weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
+            else:
+                raise RuntimeError("Can't find key: {}".format(weight_path))
         else:
-            raise RuntimeError("Can't find key: {}".format(weight_path))
+            qweight_path = path + ".qweight"
+            scale_path = path + ".scales"
+            zp_path = path + ".qzeros"
+            bias_path = path + ".bias"
+            if self.model.is_exist(qweight_path):
+                qweigth_data = self.model.read(qweight_path)
+                scale_data = self.model.read(scale_path)
+                zp_data = self.model.read(zp_path)
+                unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(qweigth_data, zp_data,
+                                                                                          self.quant_bits, self.quant_mode)
+                weight_dict[qweight_path] = np.ascontiguousarray(np.transpose(pack_int8_weights, (1, 0)))
+                weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
+                weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
+            else:
+                raise RuntimeError("Can't find key: {}".format(weight_path))
         if self.model.is_exist(bias_path):
             weight_dict[bias_path] = self.model.read(bias_path)
 

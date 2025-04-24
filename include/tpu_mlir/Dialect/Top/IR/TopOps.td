@@ -1442,7 +1442,6 @@ def Top_A16MatMulOp: Top_Op<"A16MatMul"> {
     AnyTensor:$zp,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64Attr, "128">:$q_group_size,
     DefaultValuedAttr<I64Attr, "8">:$weight_bits
   );
