@@ -259,14 +259,57 @@ Notes:1.Make sure to specify the processor parameter as bm1684. 2.The ``bc_infer
 Overview of TPU-MLIR Mixed Precision Quantization
 ==================================================
 
-Currently, TPU-MLIR provides three mixed precision quantization methods: ``search_qtable`` , ``run_sensitive_layer`` and ``fp_forward``. Among these, ``search_qtable`` is an optimized version of ``run_sensitive_layer``.
-In contrast to ``run_sensitive_layer``, ``search_qtable`` is faster and supports more customizable parameters.
-The following section will provide detailed introductions to these three mixed precision tools.
+TPU-MLIR provides model mixed precision quantization methods, with its core step being the acquisition of a ``quantize_table`` ,hereafter referred to as ``qtable`` that records operator names and their quantization types.
+
+TPU-MLIR provides two paths for obtaining the qtable:
+For typical models, TPU-MLIR provides an experience-based ``pattern-match`` method.
+For special or atypical models, PU-MLIR provides three mixed precision quantization methods: ``search_qtable`` , ``run_sensitive_layer`` and ``fp_forward``
+The following four section will provide detailed introductions to these four mixed precision methods.
+
+pattern-match
+=====================
+
+The ``pattern-match`` method is integrated into ``run_calibration`` and does not require explicit parameter specification.
+Currently, there are two type of models for which experience ``qtable`` is provided: one is the YOLO series, and the other is the Transformer series (e.g., BERT).
+After obtaining the ``cali_table`` , if the model matches an existing pattern, a qtable will be generated in the ``path/to/cali_table/`` folder.
+
+YOLO Series Automatic Mixed Precision Method
+-----------------------------------------------
+
+Currently ``pattern-match`` method supported YOLO  models include YOLOV5, V6, V7, V8, V9, V10, V11, and V12.
+
+YOLO series models are classic and widely used. When exporting models through official support,
+post-processing branches with significantly different numerical values are often merged for output, leading to large accuracy loss when quantizing the model to full INT8.
+Due to the similar structural features of YOLO series models (i.e., a three-level maxpool structure),
+``pattern-match`` automatically identifies whether the model belongs to the YOLO series. If so, operators in the post-processing part will further be recognized and set as float in qtable.
+This qtable can be manually merged with the following hybrid precision configurations for use in model_deploy.
+Example of YOLOv8 model output:
+
+.. code-block:: shell
+  :linenos:
+
+  ['top.MaxPool', 'top.MaxPool', 'top.MaxPool', 'top.Concat'] (Name: yolo_block) is a subset of the main list. Count: 1
+  The [yolov6_8_9_11_12] post-processing pattern matches this model. Block count: 1
+  The [yolov6_8_9_11_12] post-processing pattern is: ['top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul', 'top.Concat']
+  The qtable has been generated in: path/to/cali_table/qtable !!!
+
+Transformer Series Automatic Mixed Precision Method
+-------------------------------------------------------
+
+Currently ``pattern-match`` method supported Transformer series models include BERT, EVA, DeIT, Swin, CSWin, ViT, and DETR.
+
+If the above modules are identified, SiLU, GELU and LayerNorm after Add operators will be set as non-quantized.
+For ViT, MatMul after Softmax/GELU operators will be identified.
+For EVA, MatMul after SiLU→Mul and Add operators will be identified.
+For Swin, Permute before Reshape→LayerNorm, Add and Depth2Space operators will be identified.
+For DETR, all operators except Conv, Scale, Reshape, and MatMul after LayerNorm/Reshape will be set as non-quantized.
+These operators are set as non-quantized to generate the qtable.
 
 1. search_qtable
 =====================
 
 ``search_qtable`` is a mixed precision feature integrated into ``run_calibration``. When full int8 quantization precision does not meet the requirements, mixed precision method are needed, meaning that some operators are set to perform floating-point operations.
+``search_qtable`` is an optimized version of ``run_sensitive_layer``. In contrast to ``run_sensitive_layer``, ``search_qtable`` is faster and supports more customizable parameters.
 This section takes ``mobilenet-v2`` as example to introduce how to use ``search_qtable``.
 
 .. This model is from <nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt>.

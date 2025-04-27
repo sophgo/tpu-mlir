@@ -252,13 +252,47 @@ case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法�
 TPU-MLIR混合精度量化概述
 ==============================
 
-目前TPU-MLIR提供了三种混合精度量化方法,分别为 ``search_qtable`` , ``run_sensitive_layer`` 和 ``fp_forward`` 。其中 ``search_qtable`` 是对于 ``run_sensitive_layer`` 的优化版本。
-相比 ``run_sensitive_layer``, ``search_qtable`` 速度更快,支持更多自定义参数。下面将针对这三种混精工具进行详细介绍。
+TPU-MLIR支持模型混精度量化,其核心步骤在于获得记录算子名称及其量化类型的 ``quantize_table``,后称 ``qtable``。
+
+TPU-MLIR支持两种获取 ``qtable`` 的获取路径,对于典型模型,TPU-MLIR提供基于经验的 ``pattern-match`` 方法。对于特殊模型或非典型模型,TPU-MLIR提供三种基于检索的方法,分别为 ``search_qtable`` , ``run_sensitive_layer`` 和 ``fp_forward`` 。
+在后续四个章节中会详细介绍上述四种方法工具
+
+pattern-match
+=====================
+
+``pattern-match`` 方法集成于 ``run_calibration`` 中,不需要显示指定参数,当前共有两类模型提供经验 ``qtable`` ,一类为 YOLO 系列,另一类为 BERT 等 Transformer 系列。
+在获得 ``cali_table`` 后,如果模型匹配上现有pattern,则会在 ``path/to/cali_table/`` 文件夹下生成qtable。
+
+YOLO系列自动混精度方法
+-------------------------------
+
+当前共支持YOLOV5,V6,V7,V8,V9,V10,11,12系列模型。
+
+YOLO系列模型较为经典,使用广泛,在官方支持的模型导出时,通常会将数值差异较大的不同后处理分支合并输出,导致模型量化为全INT8精度损失大。
+由于YOLO系列模型通常具有相似结构特征,即三级maxpool结构, ``pattern-match`` 会自动判断模型是否属于YOLO系列,如是,进一步识别后处理部分算子,将这些算子设置为不量化,生成qtable,该qtable可以手动和下面混精的配置合并作为qtable用在model_deploy中。
+以yolov8模型输出为例:
+
+.. code-block:: shell
+  :linenos:
+
+  ['top.MaxPool', 'top.MaxPool', 'top.MaxPool', 'top.Concat'] (Name: yolo_block) is a subset of the main list. Count: 1
+  The [yolov6_8_9_11_12] post-processing pattern matches this model. Block count: 1
+  The [yolov6_8_9_11_12] post-processing pattern is: ['top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul', 'top.Concat']
+  The qtable has been generated in: path/to/cali_table/qtable !!!
+
+transformer系列自动混精度方法
+-------------------------------
+
+当前共支持BERT, EVA, DeIT, Swin, CSWin, ViT, DETR系列模型。
+
+如识别到上述模块,会将Add后的LayerNorm,SiLU,GELU算子设置为不量化。同时,ViT会识别Softmax/GELU后的MatMul算子；EVA会识别Add,SiLU->Mul后的MatMul算子；
+Swin会识别Add,Depth2Space和Reshape->LayerNorm前的Permute算子；DeIT会识别非Conv,Scale,Reshape及非LayerNorm/Reshape后的MatMul外所有算子。将这些算子设置为不量化,生成qtable。
 
 search_qtable
 =====================
 
 ``search_qtable`` 是集成于 ``run_calibration`` 中的混精功能,当全int8量化精度无法满足需求时,需要采用混合精度方法,也就是将部分算子设置为浮点运算。
+``search_qtable`` 是对于 ``run_sensitive_layer`` 的优化版本。相比 ``run_sensitive_layer``, ``search_qtable`` 速度更快,支持更多自定义参数。
 本节以检测网络 ``mobilenet-v2`` 网络模型为例, 介绍如何使用 ``search_qtable``。
 
 .. 该模型来自nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt。
