@@ -126,10 +126,6 @@ yolo_post_blocks = {
                'top.Reduce', 'top.TopK', 'top.Unsqueeze', 'top.Tile', 'top.Tile', 'top.GatherElements', 'top.GatherElements',
                'top.Reshape', 'top.Reshape', 'top.TopK', 'top.MulConst', 'top.Floor', 'top.Unsqueeze', 'top.Mod', 'top.Unsqueeze',
                'top.Gather', 'top.Concat'],
-    "yolov10":['top.Sub', 'top.Add', 'top.Concat', 'top.Mul', 'top.Concat', 'top.Permute', 'top.Slice', 'top.Slice',
-               'top.Reduce', 'top.TopK', 'top.Unsqueeze', 'top.Tile', 'top.Tile', 'top.GatherElements', 'top.GatherElements',
-               'top.Reshape', 'top.Reshape', 'top.TopK', 'top.MulConst', 'top.Floor', 'top.Unsqueeze', 'top.Mod', 'top.Unsqueeze',
-               'top.Gather', 'top.Concat'],
 }
 # "detr_pattern": ['top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Add']
 
@@ -233,10 +229,17 @@ class MatchPattern:
                             fp_layer_list.extend(all_tensors[start:end])
                             for next_op in self.parser.get_next_op_by_op_name(all_tensors[end-1]):
                                 if next_op:
-                                    next_op_type = self.parser.get_op_type_by_op_name(next_op)
-                                    # v5 && v7
-                                    if next_op_type == 'top.Concat' and next_op not in fp_layer_list:
-                                        fp_layer_list.append(next_op)
+                                    visited = set()
+                                    def recursive_add(op):
+                                        if op in visited:
+                                            return
+                                        if op not in fp_layer_list:
+                                            fp_layer_list.append(op)
+                                        visited.add(op)
+                                        for next_op in self.parser.get_next_op_by_op_name(op):
+                                            if next_op:
+                                                recursive_add(next_op)
+                                    recursive_add(next_op)
                         break
                 split_fuse_fp_layer_list = []
                 for item in fp_layer_list:
