@@ -50,6 +50,12 @@ namespace tpu {
 
 // set GROUP_3D if there is 3DOp
 static bool can_be_group_3d(std::vector<Operation *> &group_ops) {
+  // concat local layer not support 3d case
+  for (auto op : group_ops) {
+    if (isa<ConcatOp>(op)) {
+      return false;
+    }
+  }
   for (auto op : group_ops) {
     if (isa<Conv3DOp, Pool3DOp>(op)) {
       return true;
