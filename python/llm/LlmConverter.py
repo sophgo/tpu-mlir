@@ -59,7 +59,7 @@ class LlmConverter(BaseConverter):
         self.q_group_size = args.q_group_size
         self.high_precision = True
         self.symmetric = args.symmetric
-        self.lmhead_with_topk = True
+        self.lmhead_with_topk = True if not args.penalty_sample else False
         self.chip = args.chip
         self.num_device = args.num_device
         self.embedding_disk = args.embedding_disk
@@ -112,7 +112,11 @@ class LlmConverter(BaseConverter):
 
             if self.do_vit:
                 futures.append(executor.submit(self.gen_vit_mlir))
+
             futures.append(executor.submit(self.gen_embedding_lmhead_mlir))
+
+            if not self.lmhead_with_topk:
+                futures.append(executor.submit(self.gen_sample_head_mlir))
 
             for i in range(self.num_layers):
                 futures.append(executor.submit(self.gen_block_mlir, i))
@@ -286,7 +290,7 @@ class LlmConverter(BaseConverter):
         np.savez(lmhead_npz, **lmhead_weights)
 
         # gen embedding mlir
-        def gen_by_length(name: str, seq_length: int):
+        def gen_embedding_by_length(name: str, seq_length: int):
             embedding_mlir = MLIRImporter([[1, seq_length]], [[1, seq_length, self.hidden_size]],
                                           name,
                                           Platform.LLM,
@@ -308,7 +312,11 @@ class LlmConverter(BaseConverter):
 
         # gen lm_head mlir
         def gen_lm_head():
-            lmhead_mlir = MLIRImporter([[1, self.hidden_size]], [[1, 1]],
+            out_shape = [[1, self.vocab_size]]
+            if self.lmhead_with_topk:
+                out_shape = [[1, 1]]
+            lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
+                                       out_shape,
                                        "lm_head",
                                        Platform.LLM,
                                        weight_file=lmhead_npz)
@@ -339,23 +347,122 @@ class LlmConverter(BaseConverter):
                                           lmhead_op,
                                           loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
                                           ip=lmhead_mlir.insert_point).output
+            if self.lmhead_with_topk:
+                topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
+                                    lmhead_op,
+                                    axis=1,
+                                    K=1,
+                                    loc=self.get_loc(["token_value", "token_id"], lmhead_mlir),
+                                    ip=lmhead_mlir.insert_point)
+                # topk_op.values, topk_op.indices
+                lmhead_mlir.create_return_op([topk_op.indices])
+            else:
+                lmhead_mlir.create_return_op([lmhead_op])
 
-            topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
-                                 lmhead_op,
-                                 axis=1,
-                                 K=1,
-                                 loc=self.get_loc(["token_value", "token_id"], lmhead_mlir),
-                                 ip=lmhead_mlir.insert_point)
-            # topk_op.values, topk_op.indices
-            lmhead_mlir.create_return_op([topk_op.indices])
             mlir_txt = lmhead_mlir.print_module()
             with open("lm_head.mlir", "w") as f:
                 f.write(mlir_txt)
 
         if not self.embedding_disk:
-            gen_by_length("embedding", self.seq_length)
-            gen_by_length("embedding_cache", 1)
+            gen_embedding_by_length("embedding", self.seq_length)
+            gen_embedding_by_length("embedding_cache", 1)
         gen_lm_head()
+
+    def gen_sample_head_mlir(self, top_k=50, min_tokens_to_keep=5):
+        tqdm.write("generate greedy head and penalty sample head mlir ...")
+        # greedy head
+        greedy_head_mlir = MLIRImporter([[1, self.vocab_size]], [[1, 1]],
+                                        "greedy_head",
+                                        Platform.LLM,
+                                        weight_file=None)
+        input_op = greedy_head_mlir.create_input_op(self.get_loc("m_logits", greedy_head_mlir), 0)
+        topk_op = top.TopKOp(*greedy_head_mlir.get_tensor_type([[1, 1], [1, 1]]),
+                            input_op,
+                            axis=1,
+                            K=1,
+                            loc=self.get_loc(["token_value", "token_id"], greedy_head_mlir),
+                            ip=greedy_head_mlir.insert_point)
+        greedy_head_mlir.create_return_op([topk_op.indices])
+        mlir_txt = greedy_head_mlir.print_module()
+        with open(f"greedy_head.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        # penalty sample head
+        penalty_sample_weights = {}
+        penalty_sample_weights["Constant0"] = np.array([1.]).astype(np.float32)
+        penalty_sample_weights["Constant1"] = np.zeros((1, top_k)).astype(np.float32)
+        penalty_sample_weights["Constant1"][0, :min_tokens_to_keep] = 1.
+        np.savez("penalty_sample_top_weights.npz", **penalty_sample_weights)
+
+        penalty_sample_head_mlir = MLIRImporter(
+            [[1, self.vocab_size], [1, self.seq_length],[1],[1],[1]],
+            [[1, top_k],[1, top_k]],
+            "penalty_sample_head",
+            Platform.LLM,
+            input_types=['F32', 'INT32', 'F32', 'F32', 'F32'],
+            weight_file="penalty_sample_top_weights.npz")
+        ip = penalty_sample_head_mlir.insert_point
+
+        def T(shape: list):
+            return penalty_sample_head_mlir.get_tensor_type(shape)
+
+        def L(name: str):
+            return self.get_loc(name, penalty_sample_head_mlir)
+
+        in0_op = penalty_sample_head_mlir.create_input_op(L("m_logits"), 0)
+        in1_op = penalty_sample_head_mlir.create_input_op(L("input_ids"), 1)
+        in2_op = penalty_sample_head_mlir.create_input_op(L("top_p"), 2)
+        in3_op = penalty_sample_head_mlir.create_input_op(L("temperature"), 3)
+        in4_op = penalty_sample_head_mlir.create_input_op(L("penalty"), 4)
+        gather_op = top.GatherElementsOp(
+            T([1, self.seq_length]), in0_op, in1_op, axis=1,
+            loc=L("GatherElements"), ip=ip).output
+        cmpconst_op = top.CompareConstOp(
+            T([1, self.seq_length]), gather_op,
+            mode=StringAttr.get("Less"), const_val=0., inversed=False,
+            loc=L("CompareConst"), ip=ip).output
+        mul_op = top.MulOp(
+            T([1, self.seq_length]), [gather_op, in4_op],
+            loc=L("Mul"), ip=ip).output
+        div0_op = top.DivOp(
+            T([1, self.seq_length]), [gather_op, in4_op],
+            loc=L("Div0"), ip=ip).output
+        where0_op = top.WhereOp(
+            T([1, self.seq_length]), cmpconst_op, mul_op, div0_op,
+            loc=L("Where0"), ip=ip).output
+        scatter_op = top.ScatterElementsOp(
+            T([1, self.vocab_size]), in0_op, in1_op, where0_op, axis=1,
+            loc=L("ScatterElements"), ip=ip).output
+        topk_op = top.TopKOp(
+            *T([[1, top_k], [1, top_k]]), scatter_op, axis=1, K=top_k,
+            loc=L(["token_value", "token_idx"]), ip=ip)
+        div1_op = top.DivOp(
+            T([1, top_k]), [topk_op.values, in3_op],
+            loc=L("Div1"), ip=ip).output
+        softmax0_op = top.SoftmaxOp(
+            T([1, top_k]), div1_op, axis=1,
+            loc=L("Softmax0"), ip=ip).output
+        weight0_op = penalty_sample_head_mlir.create_weight_op("Constant0", [1])
+        cumsum_op = top.CumSumOp(
+            T([1, top_k]), softmax0_op, weight0_op,
+            axis=1, loc=L("CumSum"), ip=ip).output
+        compare_op = top.CompareOp(
+            T([1, top_k]), cumsum_op, in2_op, mode=StringAttr.get("Less"),
+            loc=L("Compare"), ip=ip).output
+        weight1_op = penalty_sample_head_mlir.create_weight_op("Constant1", [1, top_k])
+        add_op = top.AddOp(
+            T([1, top_k]), [compare_op, weight1_op],
+            loc=L("Add"), ip=ip).output
+        where1_op = top.WhereOp(
+            T([1, top_k]), add_op, div1_op, penalty_sample_head_mlir.none_op,
+            y_is_const=True, y_const_val=-1000., loc=L("Where1"), ip=ip).output
+        softmax1_op = top.SoftmaxOp(
+            T([1, top_k]), where1_op, axis=1,
+            loc=L("Softmax1"), ip=ip).output
+        penalty_sample_head_mlir.create_return_op([softmax1_op, topk_op.indices])
+        mlir_txt = penalty_sample_head_mlir.print_module()
+        with open(f"penalty_sample_head.mlir", "w") as f:
+            f.write(mlir_txt)
 
     def repeat_kv(self, mlir_gen, kv_op, len: int, prefix: str):
         unsqueeze = top.UnsqueezeOp(mlir_gen.get_tensor_type(

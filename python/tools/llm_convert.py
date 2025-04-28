@@ -56,6 +56,8 @@ if __name__ == '__main__':
     parser.add_argument('--symmetric', action='store_true', help='do symmetric quantize')
     parser.add_argument('--embedding_disk', action='store_true',
                         help='export embedding as bin file and inference by cpu')
+    parser.add_argument('--penalty_sample', action='store_true',
+                        help='Add penalty sample head and separate greedy head from lmhead')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
                         help="max pixels for vit, for example: 240,420 or 100800")
     parser.add_argument('--debug', action='store_true',
