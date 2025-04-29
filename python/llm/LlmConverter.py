@@ -92,6 +92,7 @@ class LlmConverter(BaseConverter):
             self.out_bmodel = f"../{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core_{timestamp}.bmodel"
 
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
+        self.is_qwen3 = self.model_type == "qwen3"
         self.commands = []
 
     def run(self):
@@ -209,14 +210,10 @@ class LlmConverter(BaseConverter):
         self.vocab_size = getattr(self.config, c.vocab_size)
         self.intermediate_size = getattr(self.config, c.intermediate_size)
         self.rms_norm_eps = getattr(self.config, c.rms_norm_eps)
-        self.head_dim = self.hidden_size // self.num_attention_heads
-        self.rotary_dim = self.head_dim
+        self.head_dim = getattr(self.config, "head_dim",
+                                self.hidden_size // self.num_attention_heads)
         self.kv_dim = self.num_key_value_heads * self.head_dim
         self.kv_tile = self.num_attention_heads // self.num_key_value_heads
-        if hasattr(self.config, 'rotary_dim'):
-            self.rotary_dim = self.config.rotary_dim
-        if self.model_type == 'chatglm':
-            self.rotary_dim = self.config.head_dim // 2
         # whether llm head and embedding share weight
         self.tie_word_embeddings = getattr(self.config, 'tie_word_embeddings', False)
         # whether to merge lm_head and embedding in bmodel
@@ -545,7 +542,9 @@ class LlmConverter(BaseConverter):
         TOP_PATH = f'{self.model_info.weights[LlmList.LAYERS]}.{idx}.'
         input_ln = TOP_PATH + self.model_info.weights[LlmList.INPUT_LN]
         q_proj = TOP_PATH + self.model_info.weights[LlmList.Q_PROJ]
+        q_norm = TOP_PATH + self.model_info.weights[LlmList.Q_NORM]
         k_proj = TOP_PATH + self.model_info.weights[LlmList.K_PROJ]
+        k_norm = TOP_PATH + self.model_info.weights[LlmList.K_NORM]
         v_proj = TOP_PATH + self.model_info.weights[LlmList.V_PROJ]
         o_proj = TOP_PATH + self.model_info.weights[LlmList.O_PROJ]
         post_ln = TOP_PATH + self.model_info.weights[LlmList.POST_LN]
@@ -568,6 +567,9 @@ class LlmConverter(BaseConverter):
         self.set_linear_weight(k_proj, weight_dict)
         self.set_linear_weight(v_proj, weight_dict)
         self.set_linear_weight(o_proj, weight_dict)
+        if self.is_qwen3:
+            self.set_common_weight(q_norm, weight_dict)
+            self.set_common_weight(k_norm, weight_dict)
         self.set_common_weight(post_ln, weight_dict)
         self.set_linear_weight(mlp_gate, weight_dict)
         self.set_linear_weight(mlp_up, weight_dict)
@@ -656,11 +658,13 @@ class LlmConverter(BaseConverter):
                                   loc=L(input_ln),
                                   ip=ip).output
             # q_proj
-            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, self.hidden_size],
-                               input_shape)
+            q_dim = self.num_attention_heads * self.head_dim
+            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, q_dim],
+                               [1, self.seq_length, q_dim])
             # k_proj
             k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
                                [1, self.seq_length, self.kv_dim])
+
             # v_proj
             v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
                                [1, self.seq_length, self.kv_dim])
@@ -668,13 +672,30 @@ class LlmConverter(BaseConverter):
             q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshpae"), ip=ip).output
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
+            if self.is_qwen3:
+                weight_op = block_mlir.create_weight_op(q_norm + ".weight",
+                                                        [1, 1, 1, self.head_dim])
+                q_op = top.RMSNormOp(T(q_shape),
+                                     q_op,
+                                     weight_op,
+                                     eps=self.rms_norm_eps,
+                                     loc=L(q_norm),
+                                     ip=ip).output
+                weight_op = block_mlir.create_weight_op(k_norm + ".weight",
+                                                        [1, 1, 1, self.head_dim])
+                k_op = top.RMSNormOp(T(kv_shape),
+                                     k_op,
+                                     weight_op,
+                                     eps=self.rms_norm_eps,
+                                     loc=L(k_norm),
+                                     ip=ip).output
             # rotary cos/sin
             q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
                                                rotary_sin, False)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
-            fa_op = top.FAttentionOp(T(input_shape),
+            fa_op = top.FAttentionOp(T([1, self.seq_length, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
@@ -689,8 +710,7 @@ class LlmConverter(BaseConverter):
                                      mk=self.seq_length,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
-            o_op = self.linear(block_mlir, o_proj, fa_op, [self.hidden_size, self.hidden_size],
-                               input_shape)
+            o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
@@ -739,8 +759,8 @@ class LlmConverter(BaseConverter):
                                   loc=L(input_ln),
                                   ip=ip).output
             # q_proj
-            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, self.hidden_size],
-                               input_shape)
+            q_dim = self.num_attention_heads * self.head_dim
+            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, q_dim], [1, 1, q_dim])
             # k_proj
             k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
                                [1, 1, self.kv_dim])
@@ -751,6 +771,23 @@ class LlmConverter(BaseConverter):
             q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshpae"), ip=ip).output
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
+            if self.is_qwen3:
+                weight_op = block_mlir.create_weight_op(q_norm + ".weight",
+                                                        [1, 1, 1, self.head_dim])
+                q_op = top.RMSNormOp(T(q_shape),
+                                     q_op,
+                                     weight_op,
+                                     eps=self.rms_norm_eps,
+                                     loc=L(q_norm),
+                                     ip=ip).output
+                weight_op = block_mlir.create_weight_op(k_norm + ".weight",
+                                                        [1, 1, 1, self.head_dim])
+                k_op = top.RMSNormOp(T(kv_shape),
+                                     k_op,
+                                     weight_op,
+                                     eps=self.rms_norm_eps,
+                                     loc=L(k_norm),
+                                     ip=ip).output
             # rotary cos/sin
             q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
                                                rotary_sin, True)
@@ -768,7 +805,7 @@ class LlmConverter(BaseConverter):
                                 loc=L(v_proj + ".concat"),
                                 ip=ip).output
             # ======= fattention =========
-            fa_op = top.FAttentionOp(T(input_shape),
+            fa_op = top.FAttentionOp(T([1, 1, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
@@ -783,8 +820,7 @@ class LlmConverter(BaseConverter):
                                      mk=self.seq_length + 1,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
-            o_op = self.linear(block_mlir, o_proj, fa_op, [self.hidden_size, self.hidden_size],
-                               input_shape)
+            o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)

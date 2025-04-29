@@ -38,7 +38,9 @@ class LlmList:
     # =========== in layers ==========
     INPUT_LN = "INPUT_LN"
     Q_PROJ = "Q_PROJ"
+    Q_NORM = "Q_NORM"  # qwen3
     K_PROJ = "K_PROJ"
+    K_NORM = "K_NORM"  # qwen3
     V_PROJ = "V_PROJ"
     O_PROJ = "O_PROJ"
     POST_LN = "POST_LN"
@@ -56,7 +58,8 @@ class ModelInfo:
         self.config = config
         self.weights = weights
 
-# qwen2/llama
+
+# qwen3/qwen2/llama
 COMMON_INFO = ModelInfo(
     ModelConfig(),
     weights={
@@ -65,7 +68,9 @@ COMMON_INFO = ModelInfo(
         # ========= in layers =============
         LlmList.INPUT_LN: "input_layernorm",
         LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.Q_NORM: "self_attn.q_norm",  # qwen3
         LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.K_NORM: "self_attn.k_norm",  # qwen3
         LlmList.V_PROJ: "self_attn.v_proj",
         LlmList.O_PROJ: "self_attn.o_proj",
         LlmList.POST_LN: "post_attention_layernorm",
