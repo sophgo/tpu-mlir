@@ -151,7 +151,7 @@ class Tiu(object):
                         reg_count += 1
                         if idx != 0:
                             k = int(reg_dict['Cmd Id'])
-                            if any(key[0] == k for key in tiu_layer_map.keys()):
+                            if (k, core_id) in tiu_layer_map.keys():
                                 layer_id_name = tiu_layer_map[(k, core_id)]
                             else:
                                 layer_id_name = ['-', '-']
@@ -178,7 +178,7 @@ class Tiu(object):
                     chip_arch_dict['Platform'] = 'pmu'
                 if idx != 0:
                     k = int(reg_dict['Cmd Id'])
-                    if any(key[0] == k for key in tiu_layer_map.keys()):
+                    if (k, core_id) in tiu_layer_map.keys():
                         layer_id_name = tiu_layer_map[(k, core_id)]
                     else:
                         layer_id_name = ['-', '-']

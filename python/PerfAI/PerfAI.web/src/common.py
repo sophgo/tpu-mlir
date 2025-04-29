@@ -80,6 +80,7 @@ class jsonObj:
         self.dma_ids = None # (start_gdma_id, end_gdma_id]
         self.operands = []
         self.results = []
+        self.is_local = False
 
 class StaticRunNode:
     __run_id = -1

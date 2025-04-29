@@ -57,7 +57,7 @@ class GlobalProfileParser:
             for yield_index in yield_indices:
                 if yield_index > group_index:
                     first_yield_found = True
-                    result_dict[group_args[group_indices.index(group_index)]] = list(range(group_index + 2, yield_index + 1))
+                    result_dict[group_index] = list(range(group_index + 2, yield_index + 1))
                     break
             if not first_yield_found:
                 result_dict[group_args[group_indices.index(group_index)]] = []
@@ -83,6 +83,7 @@ class GlobalProfileParser:
                 json_layer.dma_ids = [d['tiu_dma_id(before)'][1] + 1, d['tiu_dma_id(after)'][1] + 1]
                 json_layer.operands = d['operands']
                 json_layer.results = d['results']
+                json_layer.is_local = d['is_local']
                 json_layer_list.append(json_layer)
         tensor_id = 1
         for index, j_layer in enumerate(json_layer_list):
@@ -91,16 +92,16 @@ class GlobalProfileParser:
                 subnet_dict[subnet_id] = SubnetInfo()
                 subnet_dict[subnet_id].subnet_id = subnet_id #TOCHECK
                 subnet_dict[subnet_id].layer_list = []
-            layer_info = self.get_layer_info(index, j_layer,tensor_id,layer_ins,layer_outs)
+            layer_info = self.get_layer_info(j_layer.file_line, j_layer,tensor_id,layer_ins,layer_outs)
             subnet_dict[subnet_id].layer_list.append(layer_info)
         for subnet_info in subnet_dict.values():
             ginfo.subnet_list.append(subnet_info)
 
         return ginfo, self.file_line_dict
 
-    def get_layer_info(self, index, j_layer,tensor_id,layer_ins,layer_outs):
+    def get_layer_info(self, layer_id, j_layer,tensor_id,layer_ins,layer_outs):
         layer_info = LayerInfo()
-        layer_info.layer_id = index + 1
+        layer_info.layer_id = layer_id
         layer_info.core_id = j_layer.core_id
         layer_info.file_line = j_layer.file_line
 
@@ -138,6 +139,7 @@ class GlobalProfileParser:
             dma_node.core_id = j_layer.core_id
             layer_info.gdma_nodes.append(dma_node)
         layer_info.engine_type, layer_info.layer_type = get_layer_info_by_opcode(j_layer.opcode)
+        layer_info.is_local = j_layer.is_local
         # layer_list.append(layer_info)
         return layer_info
 
@@ -156,7 +158,7 @@ def get_engine_layer(g_info):
                         print('ERROR! Tiu id is not unique.')
                         assert 0
                     else:
-                        tiu_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line]
+                        tiu_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line, layer_info.is_local]
                 for gdma_node in layer_info.gdma_nodes:
                     k = gdma_node.gdma_id
                     c = gdma_node.core_id
@@ -164,5 +166,5 @@ def get_engine_layer(g_info):
                         print('ERROR! Gdma id is not unique.')
                         assert 0
                     else:
-                        gdma_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line]
+                        gdma_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line, layer_info.is_local]
     return tiu_layer_map, gdma_layer_map

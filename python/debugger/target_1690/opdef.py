@@ -357,6 +357,13 @@ class conv_op(TiuCmd):
     description = "convolution"
 
     def ops(self, is_arch=False):
+        # TODO: need real algOps and acrhOps to compute uArchRate
+        n = self.reg.des_res0_n
+        h = self.reg.des_res0_h
+        w = self.reg.des_res0_w
+        c = self.reg.des_res0_c
+        kh = self.reg.des_opd1_h
+        kw = self.reg.des_opd1_w
         return 0
 
 

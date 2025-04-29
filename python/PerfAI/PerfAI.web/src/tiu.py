@@ -53,7 +53,7 @@ class TIU:
                         'des_pad_mode', 'des_opd0_y_ins0', 'des_opd1_y_ins0',
                         'des_short_res0_str', 'des_short_opd1_str', 'des_sym_range', 'des_opt_rq', 'des_op_code',
                         'des_opt_kernel_rotate', 'des_res_op_x_str', 'des_res_op_y_str', 'des_opd0_x_ins0',
-                        'des_tsk_opd_num', 'des_opd0_dn_pad', 'des_intr_en', 'des_opt_relu', 'des_pwr_step', 'Msg Id', 'Sd\Wt Count']
+                        'des_tsk_opd_num', 'des_opd0_dn_pad', 'des_intr_en', 'des_opt_relu', 'des_pwr_step', 'Msg Id', 'Sd\Wt Count', 'is_local']
 
     def process_file(self, layer_map):
         # file_name = f"{self.dirpath}/tiuRegInfo_0.txt"
@@ -112,7 +112,7 @@ class TIU:
                 if "__TIU_REG_INFO__" in row:
                     if idx != 0:
                         k = int(tiuRegDict['Cmd Id'])
-                        layer_info = ['-', '-','-','-','-']
+                        layer_info = ['-', '-','-','-','-', False]
                         if (k,coreId) in layer_map.keys():
                             layer_info = layer_map[(k,coreId)]
                         tiuRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
@@ -120,6 +120,7 @@ class TIU:
                         tiuRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
                         tiuRegDict['Subnet Type'] = layer_info[3]
                         tiuRegDict['File Line'] = int(layer_info[4]) if layer_info[0] != '-' else '-'
+                        tiuRegDict['is_local'] = int(layer_info[5])
                         new_regList.append(tiuRegDict)
                         tiuRegDict = dict.fromkeys(fieldList, '')
 
@@ -132,13 +133,14 @@ class TIU:
                     tiuRegDict[attr] = val
                 idx += 1
             k = int(tiuRegDict['Cmd Id'])
-            layer_info = ['-', '-','-','-','-']
+            layer_info = ['-', '-','-','-','-', False]
             if (k,coreId) in layer_map.keys():
                 layer_info = layer_map[(k,coreId)]
             tiuRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
             tiuRegDict['Layer Name'] = layer_info[1]
             tiuRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
             tiuRegDict['Subnet Type'] = layer_info[3]
+            tiuRegDict['is_local'] = int(layer_info[5])
             new_regList.append(tiuRegDict)
 
         for i in range(len(new_regList)):

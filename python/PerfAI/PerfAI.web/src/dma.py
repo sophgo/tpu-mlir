@@ -48,7 +48,7 @@ class DMA(): #GDMA/SDMA/CDMA
                         'index_csize', 'index_hsize', 'index_cstride', 'index_hstride',
                         'mask_start_addr_h8', 'mask_start_addr_l32', 'mask_data_format', 'localmem_mask_h32',
                         'localmem_mask_l32',
-                        'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'intr_en', 'Msg Id', 'Sd\Wt Count']
+                        'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'intr_en', 'Msg Id', 'Sd\Wt Count', 'is_local']
         self.sys_cmd_id = '6';
         self.sys_wait_id = ['4']
         if self.dmaType == 'CDMA':
@@ -153,16 +153,17 @@ class DMA(): #GDMA/SDMA/CDMA
                 if f"__{self.dmaType}_REG_INFO__" in row: #TDMA/CDMA
                     if idx != 0:
                         k = int(dmaRegDict['Cmd Id'])
-                        layer_info = ['-', '-','-','-']
+                        layer_info = ['-', '-','-','-', '-', False]
                         if (k,coreId) in layer_map.keys():
                             layer_info = layer_map[(k,coreId)]
                         if all(map(lambda x: isinstance(x, float) and math.isnan(x), layer_info)):
-                            layer_info = ['-', '-', '-', '-', '-']
+                            layer_info = ['-', '-', '-', '-', '-', False]
                         dmaRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
                         dmaRegDict['Layer Name'] = layer_info[1]
                         dmaRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
                         dmaRegDict['Subnet Type'] = layer_info[3]
                         dmaRegDict['File Line'] = int(layer_info[4]) if layer_info[0] != '-' else '-'
+                        dmaRegDict['is_local'] = int(layer_info[5])
                         new_reglist.append(dmaRegDict)
                     dmaRegDict = dict.fromkeys(fieldList, '')
                 else:
@@ -172,13 +173,14 @@ class DMA(): #GDMA/SDMA/CDMA
                     dmaRegDict[attr] = val
                 idx += 1
             k = int(dmaRegDict['Cmd Id'])
-            layer_info = ['-', '-', '-', '-', '-']
+            layer_info = ['-', '-', '-', '-', '-', False]
             if (k,coreId) in layer_map.keys():
                 layer_info = layer_map[(k,coreId)]
             dmaRegDict['Layer Id'] = int(layer_info[0]) if layer_info[0] != '-' else '-'
             dmaRegDict['Layer Name'] = layer_info[1]
             dmaRegDict['Subnet Id'] = int(layer_info[2]) if layer_info[0] != '-' else '-'
             dmaRegDict['Subnet Type'] = layer_info[3]
+            dmaRegDict['is_local'] = int(layer_info[5])
             new_reglist.append(dmaRegDict)
 
         temp = []

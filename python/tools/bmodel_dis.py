@@ -68,7 +68,9 @@ def BModel2Bin(bmodel_file):
         suffix = ""
 
         def __str__(self):
-            return bmodel_file.split(".")[0] + f"{self.suffix}.{self.core_id}"
+            import os
+            filename = os.path.basename(bmodel_file)
+            return filename.split(".")[0] + f"{self.suffix}.{self.core_id}"
 
     fname = FName()
     bmodel = dis.BModel(bmodel_file)

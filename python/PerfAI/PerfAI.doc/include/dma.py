@@ -109,7 +109,7 @@ class Dma(object):
                         reg_count += 1
                         if idx != 0:
                             k = int(reg_dict['Cmd Id'])
-                            if any(key[0] == k for key in dma_layer_map.keys()):
+                            if (k, core_id) in dma_layer_map.keys():
                                 layer_id_name = dma_layer_map[(k, core_id)]
                             else:
                                 layer_id_name = ['-', '-']
@@ -135,7 +135,7 @@ class Dma(object):
                         idx += 1
                 if idx != 0:
                     k = int(reg_dict['Cmd Id'])
-                    if any(key[0] == k for key in dma_layer_map.keys()):
+                    if (k, core_id) in dma_layer_map.keys():
                         layer_id_name = dma_layer_map[(k, core_id)]
                     else:
                         layer_id_name = ['-', '-']

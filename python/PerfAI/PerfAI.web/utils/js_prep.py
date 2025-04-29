@@ -38,7 +38,8 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
     gdmaProcessor = DMA(dirpath, "GDMA")
     gdma_instances = gdmaProcessor.process_file(dma_layer_map)
     sdmaProcessor = DMA(dirpath, "SDMA")
-    sdma_instances = sdmaProcessor.process_file(dma_layer_map)
+    sdma_instances = sdmaProcessor.process_file({})
+    # sdma_instances = [pd.DataFrame()]
     cdmaProcessor = DMA(dirpath, "CDMA")
     cdma_instances = cdmaProcessor.process_file(dma_layer_map)
     processors = [tiuProcessor, gdmaProcessor, sdmaProcessor, cdmaProcessor]
@@ -70,7 +71,7 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
         include_layer = True
         categories.append("TPU_LAYER")
         categories.append("TPU_GROUP_LAYER")
-        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type', "global_idx", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type', "global_idx", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count","is_local"]
         filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
     lmem_size = int(chipArchArgs['TPU Lmem Size(MiB)'])
     lane_num = int(chipArchArgs['NPU Num'])
@@ -165,7 +166,8 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             else:
                 height = round(pd.to_numeric(data['DDR Bandwidth(GB/s)'][i]) / (bwlist[0] +1e-6), 2)
         else:
-            height = round(uarch_rate/100, 2)
+            # TODO: uarch_rate now is all 0, need computing
+            height = 0.5 # round(uarch_rate/100, 2)
         tmp = [
             ip_type,
             get_realtime_from_cycle(data['Start Cycle'][i], frequency),
@@ -192,6 +194,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             f"Direction:{data['Direction'][i]}" if 'Direction' in data else f"Bank Conflict Ratio:{data['Bank Conflict Ratio'][i]}",
             data['Msg Id'][i],
             data['Sd\Wt Count'][i],
+            data['is_local'][i],
         ])
         cycle_data_dict[f'time_data{idx}'].append(tmp)
 
@@ -235,6 +238,7 @@ def merge_layer_data(cycle_data_dict, categories):
         return cycle_data_dict  # 如果categories中不包含TPU_LAYER，则不进行任何操作
 
     ip_type = categories.index("TPU_LAYER")
+    half_height_layers = ['Store', 'Load']
     for key in cycle_data_dict.keys():
         data = cycle_data_dict[key]
         layer_data = {}
@@ -242,25 +246,56 @@ def merge_layer_data(cycle_data_dict, categories):
         # group by layer_id
         for entry in data:
             layer_id = entry[9]
+            if layer_id == '-':
+                continue
             if layer_id not in layer_data:
                 layer_data[layer_id] = []
             layer_data[layer_id].append(entry)
         for layer_id, entries in layer_data.items():
-            start_times = [int(e[1]) for e in entries]
-            end_times = [int(e[2]) for e in entries]
-            earliest_start = min(start_times)
-            latest_end = max(end_times)
-            duration = latest_end - earliest_start
+            if entries[0][5] == 'SYS_TR_ACC':
+                entries.pop(0)
             layer_name = entries[0][10]
             subnet_id = entries[0][11]
             subnet_type = entries[0][12]
+            is_local = entries[0][20]
+            height = 0.5 if layer_name in half_height_layers else 1.0
+            if not is_local:
+                start_times = [int(e[1]) for e in entries]
+                end_times = [int(e[2]) for e in entries]
+                earliest_start = min(start_times)
+                latest_end = max(end_times)
+                duration = latest_end - earliest_start
 
-            merged_entry = [
-                ip_type, earliest_start, latest_end, duration, '', layer_name, 0.5,
-                '', layer_name, layer_id, layer_name, subnet_id, subnet_type,
-                '', '', '', '',''
-            ] ##info: to be filled
-            data.append(merged_entry)
+                merged_entry = [
+                    ip_type, earliest_start, latest_end, duration, '', layer_name, height,
+                    '', layer_name, layer_id, layer_name, subnet_id, subnet_type,
+                    '', '', '', '',''
+                ] ##info: to be filled
+                data.append(merged_entry)
+            else:
+                entries.sort(key = lambda x: int(x[7]))
+                merged_ranges = []
+                curr_range = [int(entries[0][1]), int(entries[0][2])]
+                prev_cmd = int(entries[0][7])
+                for entry in entries[1:]:
+                    curr_cmd = int(entry[7])
+                    curr_start = int(entry[1])
+                    curr_end = int(entry[2])
+                    if curr_cmd == prev_cmd + 1:
+                        curr_range[1] = max(curr_range[1], curr_end)
+                    else:
+                        merged_ranges.append(curr_range)
+                        curr_range = [curr_start, curr_end]
+                    prev_cmd = curr_cmd
+                merged_ranges.append(curr_range)
+                for start_time, end_time in merged_ranges:
+                    duration = end_time - start_time
+                    merged_entry = [
+                        ip_type, start_time, end_time, duration, '', layer_name, height,
+                        '', layer_name, layer_id, layer_name, subnet_id, subnet_type,
+                        '', '', '', '',''
+                    ] ##info: to be filled
+                    data.append(merged_entry)
 
         cycle_data_dict[key] = data
     return cycle_data_dict
@@ -291,7 +326,7 @@ def merge_group_layer_data(cycle_data_dict, categories, file_line_dict):
             earliest_start = min(start_times)
             latest_end = max(end_times)
             duration = latest_end - earliest_start
-            layer_name = f'Group{group_num}  %{group_id}'
+            layer_name = f'Group{group_num}  L{group_id}'
             subnet_id = entries[0][11]
             subnet_type = entries[0][12]
             group_num += 1
