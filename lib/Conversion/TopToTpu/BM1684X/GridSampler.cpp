@@ -29,7 +29,20 @@ static void LoweringGridSampler(PatternRewriter &rewriter,
   } else {
     operands.push_back(op.getInput());
   }
-  operands.push_back(op.getGrid());
+  if (module::isWeight(op.getGrid())) {
+    auto wOp = op.getGrid().getDefiningOp<top::WeightOp>();
+    auto stype = module::getStorageType(type);
+    if (stype.isF16()) {
+      operands.push_back(wOp.clone_f16(op));
+    } else if (stype.isBF16()) {
+      operands.push_back(wOp.clone_bf16(op));
+    } else {
+      operands.push_back(op.getGrid());
+    }
+  } else {
+    operands.push_back(op.getGrid());
+  }
+
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp); // buffer
 
