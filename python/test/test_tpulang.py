@@ -741,7 +741,6 @@ class TPULANG_IR_TESTER(object):
             conv1 = tpul.conv_int(rq0, weight0, bias=bias1, stride=[2,2], pad=None, dilation=None,
                         group=1, input_zp=0, weight_zp=0, out_dtype='int32')
             # mul, shift = quantization(input_scale * weight_scale / output_scale)
-            # https://tpumlir.org/docs/developer_manual/06_quantization.html
             mul = [2030043136] * 64
             shift = [-38] * 64
             rq1 = tpul.requant_int(conv1, mul, shift, 0, 2, 'int8', round_mode='half_away_from_zero', out_name= 'conv1_name')

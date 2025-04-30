@@ -12,7 +12,6 @@ from unet_model import UNet
 import re
 
 
-# https://tpumlir.org/docs/quick_start/03_onnx.html
 def get_model(height, width) -> None:
     if check_file(f"../model/float_scale_0.5_{height}_{width}.onnx"):
         return

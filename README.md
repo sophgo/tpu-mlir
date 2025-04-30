@@ -29,8 +29,8 @@ Here are some resources to help you better understand the project:
 | Index | Documents |
 | :---: | --- |
 | 01 | [TPU-MLIR paper](https://arxiv.org/abs/2210.15016) |
-| 02 | [TPU-MLIR Technical Reference Manual](https://tpumlir.org/en/docs/developer_manual/index.html) |
-| 03 | [TPU-MLIR Quick Start](https://tpumlir.org/en/docs/quick_start/index.html) |
+| 02 | [TPU-MLIR Technical Reference Manual](https://doc.sophgo.com/bm1688_sdk-docs/v1.9/docs_latest_release/docs/tpu-mlir/developer_manual) |
+| 03 | [TPU-MLIR Quick Start](https://doc.sophgo.com/bm1688_sdk-docs/v1.9/docs_latest_release/docs/tpu-mlir/quick_start) |
 
 | Index | Sharing Sessions |
 | :---: | --- |
@@ -46,7 +46,7 @@ Here are some resources to help you better understand the project:
 | 05 | TPU Memory | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 | 06 | TPU-MLIR Practice | [To Onnx Format](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Graph Optimization](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Operator Support](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Model Support](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Fuse Preprocess](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Accuracy Validation](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 
-If you have any questions while doing the tasks above, you can ask or check the existing answers in our [Q&A Platform](https://ask.tpumlir.org/questions).
+If you have any questions while doing the tasks above, you can ask or check the existing answers in our [Issues](https://github.com/sophgo/tpu-mlir/issues).
 
 # How to Build
 
@@ -293,11 +293,3 @@ For example, to get basic information of `bmodel`:
 ``` shell
 model_tool --info resnet18_1684x_f32.bmodel
 ```
-
-
-
-# Related Links
-
-* [Official Network](https://tpumlir.org)
-* [Discourse](https://ask.tpumlir.org)
-* [Videos](https://space.bilibili.com/1829795304/channel/collectiondetail?sid=734875)

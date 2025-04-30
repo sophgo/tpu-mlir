@@ -87,4 +87,3 @@ Open ``bmprofile_out/result.html`` with a browser to see the profile chart. In a
 
    tpu_profile --help
 
-For more analysis instructions on using Profile tools, please refer to https://tpumlir.org/zh-cn/2023/09/18/analyse-tpu-performance-with-tpu-profile.html

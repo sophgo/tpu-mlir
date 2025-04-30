@@ -86,4 +86,3 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
 
    tpu_profile --help
 
-更多的Profile工具使用分析说明请参考 https://tpumlir.org/zh-cn/2023/09/18/analyse-tpu-performance-with-tpu-profile.html

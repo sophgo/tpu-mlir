@@ -26,8 +26,8 @@ pip install tpu_mlir
 | 序列 | 文档 |
 | :---: | --- |
 | 01 | [TPU-MLIR 论文](https://arxiv.org/abs/2210.15016) |
-| 02 | [TPU-MLIR 开发参考手册](https://tpumlir.org/docs/developer_manual/index.html) |
-| 03 | [TPU-MLIR 快速入门指南](https://tpumlir.org/docs/quick_start/index.html) |
+| 02 | [TPU-MLIR 开发参考手册](https://doc.sophgo.com/sdk-docs/v23.09.01-lts-sp4/docs_latest_release/docs/tpu-mlir/developer_manual/html/index.html) |
+| 03 | [TPU-MLIR 快速入门指南](https://doc.sophgo.com/sdk-docs/v23.09.01-lts-sp4/docs_latest_release/docs/tpu-mlir/quick_start/html/index.html) |
 
 | 序列 | 分享会 |
 | :---: | --- |
@@ -44,7 +44,7 @@ pip install tpu_mlir
 | 06 | TPU-MLIR 实践 | [转Onnx格式](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [图优化](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [算子支持](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [模型支持](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [融合预处理](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8ddhttpe8), [精度验证](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 
 
-如果你在完成上述任务时有任何疑问，可以在我们的[问答平台](https://ask.tpumlir.org/questions)中提问或查看现有答案。
+如果你在完成上述任务时有任何疑问，可以在中[Issues](https://github.com/sophgo/tpu-mlir/issues)提问或查看现有答案。
 
 # 编译工程
 
@@ -287,10 +287,3 @@ model_runner.py \
 model_tool --info resnet18_1684x_f32.bmodel
 ```
 
-
-
-# 相关链接
-
-* [官方网站](https://tpumlir.org)
-* [问答平台](https://ask.tpumlir.org)
-* [教学视频](https://space.bilibili.com/1829795304/channel/collectiondetail?sid=734875)
