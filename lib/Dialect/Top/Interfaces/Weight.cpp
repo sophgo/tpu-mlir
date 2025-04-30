@@ -297,6 +297,8 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
 Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
+  if (dtype.isBF16())
+    return getResult();
   ASSERT_THIS(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
