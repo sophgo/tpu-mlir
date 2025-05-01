@@ -50,6 +50,14 @@ void tpu::MulShiftOp::assign_fw_param(void *param) {
   memcpy(param, &layer_param, sizeof(fw_mulshift_layer_param_t));
 }
 
+LogicalResult tpu::MulShiftOp::LocalGenSupport() {
+  auto input_shape = module::getShape(getInput());
+  if (input_shape.size() >= 3 && input_shape[1] > 65535) {
+    return failure();
+  }
+  return success();
+}
+
 ArrayAttr tpu::MulShiftOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
   AffineMap identity_map =

@@ -3342,7 +3342,7 @@ def Tpu_ShapePowOp : Tpu_Op<"ShapePow" , [
 def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     InOutSameShape, SupportElementwise,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "MulShift operator";
