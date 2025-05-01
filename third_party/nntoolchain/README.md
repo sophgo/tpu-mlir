@@ -40,6 +40,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 
 #bm1690 sha256: 5feacd747333f42a09b8a35b4ae9216a4ee639cf
 # wanblock fix: + 352f45cdc6d90b601c981044f93c59f7fa89c86f
+# resnet f8 fix: + d76d8a7a21fdd9ea1b6b6406fb11b55cb9903d01
 # yolo train compile: + c4c570dc75466de1e3368d533e4cccf6add5d6ad
 cd TPU1686
 source  scripts/envsetup.sh sg2260
