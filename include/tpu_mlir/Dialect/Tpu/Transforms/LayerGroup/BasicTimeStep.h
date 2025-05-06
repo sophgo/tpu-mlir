@@ -94,6 +94,7 @@ public:
   // visualizer
   void show_timestep();
   void show_lmem_buffer();
+  void debug_lmem_buffer();
 
   bool layer_can_merge_backward(int64_t ts, bool consider_hold_in_coeff);
 

@@ -593,12 +593,14 @@ def tpu_ada_options(
     future_update_rank: int = 0,
     future_update_list: str = "",
     trunc_final: list = None,
-    opt_post_processor: bool = False
+    opt_post_processor: bool = False,
+    lg_debugger: bool = False,
 ):
     lg_param = ''
     if not disable_layer_group:
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={}"'.format(
-            opt, group_by_cores, compress_mode)
+        debugger = 1 if lg_debugger else 0
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={}"'.format(
+            opt, group_by_cores, compress_mode, debugger)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     if merge_weight:
@@ -720,7 +722,8 @@ def mlir_to_model(
     command_mem: dict = None,
     quant_output_bf16: bool = False,
     opt_post_processor: bool = False,
-    gdma_check: bool = True
+    gdma_check: bool = True,
+    lg_debugger: bool = False,
 ):
     if command_mem is None:
         command_mem = {}
@@ -752,7 +755,8 @@ def mlir_to_model(
         future_update_rank=future_update_rank,
         future_update_list=future_update_list,
         trunc_final=trunc_final,
-        opt_post_processor=opt_post_processor
+        opt_post_processor=opt_post_processor,
+        lg_debugger=lg_debugger,
     )
     cmd.extend(options)
 

@@ -367,12 +367,12 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         bm1688->dl_set_gdma_bw_s2l(BW);
         bm1688->dl_set_gdma_bw_l2s(BW);
       }
-      int64_t hold_in_lmem =
-          time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
+      int64_t hold_in_lmem = tensor_info.hold_in_lmem ? 1 : 0;
       DEBUG_WITH_TYPE("cycle_calc", {
         llvm::dbgs() << "; action = cycle_calc"
                      << "; engine = gdma_cycle"
                      << "; op_name = " << module::getName(tensor.first)
+                     << "; hold_in_lmem = " << hold_in_lmem
                      << "; value = " << cycle << "\n";
         tensor.first.dump();
       });
@@ -559,7 +559,14 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
       bm168x->set_command_issue_flag(false);
       bm168x->reset_cmd_id_node();
       castOp.codegen_global_bm168x();
-      cycle = std::max(cycle, bm168x->get_cmd_cycle());
+      auto full_cycle = bm168x->get_cmd_cycle();
+      auto op_name = module::getName(_op);
+      DEBUG_WITH_TYPE("cycle_calc", {
+        llvm::dbgs() << "; action = codegen_global_layer"
+                     << "; op_name = " << op_name
+                     << "; full = " << full_cycle << "\n";
+      });
+      cycle = std::max(cycle, full_cycle);
       bm168x->dl_sg_stas_reset();
     }
   }

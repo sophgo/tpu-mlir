@@ -47,10 +47,11 @@ def parse_dic(line, filter=None):
     ret = kv_pattern.findall(line)
     dic = {}
     for k, _, v in ret:
-        try:
-            dic[k] = int(v) if v.isdigit() else v.strip()
-        except Exception:
-            dic[k] = v.strip()
+        v = v.strip()
+        if v.isdigit():
+            dic[k] = int(v)
+        else:
+            dic[k] = v
     return dic
 
 

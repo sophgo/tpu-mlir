@@ -61,6 +61,13 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
     Option<"group_by_cores", "group_by_cores", "std::string", /*default=*/"\"auto\"", "whether force group by cores">,
     Option<"compress_mode", "compress_mode", "std::string", /*default=*/"\"none\"", "compress mode">,
     Option<"lgcache", "lgcache", "std::string", /*default=*/"\"true\"", "whether to dump cut_results">,
+    Option<"debugger", "debugger", "int64_t", /*default=*/"0",
+           "0: do nothing; "
+           "1: do LayerGroup and create debugger file; "
+           "2: only create debugger file; "
+           "3: do LayerGroup with debugger file; "
+           "4: do partial LayerGroup with debugger file.">,
+    Option<"debugger_filename", "debugger_filename", "std::string", /*default=*/"\"\"", "debugger file name">,
   ];
 }
 

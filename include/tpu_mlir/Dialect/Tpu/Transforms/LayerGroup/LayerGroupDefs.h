@@ -30,6 +30,8 @@ typedef struct {
   NnvlcMode nnvlc_mode;
   bool lgcache;
   int64_t num_core;
+  int64_t debugger;
+  std::string debugger_filename;
 } LgOptions;
 
 typedef struct {
@@ -295,6 +297,10 @@ typedef struct shape_secs {
         .str();
   }
 
+  void clear() {
+    nsecs = hsecs = dsecs = wsecs = csecs = shape_0 = 1;
+    c_slice_num = h_slice_num = n_slice_num = n = c = h = -1;
+  }
 } shape_secs_t;
 
 typedef enum {
@@ -438,6 +444,45 @@ struct LgInfo {
                  << "\n";
   }
 
+  void const dump() const {
+    llvm::dbgs() << "============= lg_info =============\n";
+    llvm::dbgs() << LOG_KV("base_group_idx", base_group_idx)
+                 << LOG_KV("start_idx", start_idx)
+                 << LOG_KV("end_idx", end_idx)
+                 << LOG_KV("func_start_idx", func_start_idx)
+                 << LOG_KV("func_end_idx", func_end_idx)
+                 << LOG_KV("cache_key", cache_key) << "\n\n";
+
+    // operations table
+    // header
+    constexpr int width_0 = 10;
+    constexpr int width_1 = 20;
+    constexpr int width_2 = 20;
+    constexpr int width_3 = 50;
+    const char* header_0 = "idx(func)";
+    const char* header_1 = "idx(base_group)";
+    const char* header_2 = "op_type";
+    const char* header_3 = "op_name";
+    llvm::dbgs() << llvm::format("%-*s %-*s %-*s %-*s\n", width_0, header_0,
+                                 width_1, header_1, width_2, header_2,
+                                 width_3, header_3);
+    // data table
+    for (auto [index, op] : llvm::enumerate(group_ops)) {
+      if (op) {
+        auto type = op->getName().getStringRef().str();
+        auto name = module::getName(op).str();
+
+        llvm::dbgs() << llvm::format("%-*d %-*d %-*s %-*s\n",
+                                     width_0, func_start_idx+index,
+                                     width_1, start_idx+index,
+                                     width_2, type.c_str(),
+                                     width_3, name.c_str());
+      }
+    }
+
+    llvm::dbgs() << "===================================\n";
+  }
+
   // group layers
   std::vector<Operation *> group_ops; /**cached, by loc name */
   // std::vector<Operation *> edge_ops;
@@ -460,6 +505,8 @@ struct LgInfo {
   int64_t base_group_idx = -1; /**cached */
   int64_t start_idx = 0;       /**cached */
   int64_t end_idx = 0;         /**cached */
+  int64_t func_start_idx = 0;  /**cached */
+  int64_t func_end_idx = 0;    /**cached */
   int64_t group_cost;          /**cached */
   int64_t sort_index =
       0; /**only use for loading and dumping cache, 'index' in json*/

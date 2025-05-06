@@ -2222,7 +2222,7 @@ static bool ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group, int& 
             break;
           }
         }
-        update_tensor_infos(sub_group._lgInfo, tensor_infos, sub_group.p_special_grp?1:0);
+        update_tensor_infos(sub_group._lgInfo, tensor_infos, shape_secs, sub_group.p_special_grp?1:0);
         sub_group._lgInfo.update_bank_info();
       }
 

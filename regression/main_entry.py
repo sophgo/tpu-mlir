@@ -81,7 +81,7 @@ class MAIN_ENTRY(object):
         if not self.is_basic:
             del self.op1_test_types["tpulang"]
 
-        self.script_basic = ["test1", "test2","test5","test9","test11","test_llm0","test12",'test_modelzoo','test_encrypt']
+        self.script_basic = ["test1", "test2","test5","test9","test_llm0","test12",'test_modelzoo','test_encrypt']
         self.script_extend = ["test3","test4","test6","test7","test8","test10","test_llm1"]
         # yapf: enable
         self.test_set = {

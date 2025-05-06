@@ -82,6 +82,7 @@ class DeployTool:
         self.quant_output_bf16 = args.quant_output_bf16
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
+        self.lg_debugger = args.debug
         self.debug_cmd = args.debug_cmd
         self.bmodel_path = args.model
         self.ref_npz = args.test_reference
@@ -373,7 +374,8 @@ class DeployTool:
                     command_mem=command_mem,
                     quant_output_bf16=self.quant_output_bf16,
                     opt_post_processor=self.opt_post_processor,
-                    gdma_check=self.gdma_check
+                    gdma_check=self.gdma_check,
+                    lg_debugger=self.lg_debugger
                 )
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()

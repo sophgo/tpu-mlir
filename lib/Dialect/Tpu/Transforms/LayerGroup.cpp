@@ -71,6 +71,8 @@ public:
     options.nnvlc_mode = force_nnvlc_mode(compress_mode);
     options.lgcache = force_lgcache(lgcache);
     options.num_core = module::getCoreNum();
+    options.debugger = debugger;
+    options.debugger_filename = debugger_filename;
     // group pass by modules
     auto modules = module::getAllModules();
     for (auto s : *modules) {

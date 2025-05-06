@@ -44,6 +44,28 @@ typedef enum {
   SECS_VALID_AND_BETTER = 3,
 } search_result_t;
 
+typedef enum {
+  ADDR_ALLOCATE_SUCCESS = 0,
+  ADDR_FIRST_ALLOCATE_FAILED = 1,
+  ADDR_CANDIDATE_ALLOCATE_FAILED = 2,
+} addr_assign_result_t;
+
+// convert search_result_t to string
+static inline std::string search_result_to_string(search_result_t result) {
+  switch (result) {
+  case SECS_TIMESTEP_INVALID:
+    return "SECS_TIMESTEP_INVALID";
+  case SECS_LMEM_INVALID:
+    return "SECS_LMEM_INVALID";
+  case SECS_VALID:
+    return "SECS_VALID";
+  case SECS_VALID_AND_BETTER:
+    return "SECS_VALID_AND_BETTER";
+  default:
+    return "UNKNOWN";
+  }
+}
+
 class LmemAllocator {
 public:
   LmemAllocator(const LgOptions &options) { options_ = options; }
@@ -78,12 +100,14 @@ public:
   MemBlock find_avail_lmem_location(avail_space_t &avail_space,
                                     const mem_buffer_key_t &buffer_key,
                                     const mem_buffer_value_t &buffer_value,
+                                    const LgInfo &lg_info,
                                     bool allow_bank_conflit = false);
 
   MemBlock global_find_avail_lmem_localtion(
       avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
       const mem_buffer_key_t &recent_buffer_allocated,
       BasicTimeStepPtr &time_step, bool one_loop,
+      const LgInfo &lg_info,
       bool allow_bank_conflict = false);
 
 protected:

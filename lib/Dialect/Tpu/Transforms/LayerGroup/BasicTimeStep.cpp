@@ -31,19 +31,16 @@ static inline void stream_gdma_field(const GdmaTsField &field) {
   llvm::dbgs() << " [ ";
   for (int i = 0; i < field.size(); ++i) {
     auto mode = field[i].second.mode;
+    auto hold_in_lmem = field[i].second.hold_in_lmem;
     auto modestr = "L";
     if (mode == TIMESTEP_STORE) {
       modestr = "S";
     }
 
-    if (i > 0)
-      llvm::dbgs() << ", ";
-    std::string op_type =
-        module::isValueBlockArgument(field[i].first)
-            ? "block_arg"
-            : field[i].first.getDefiningOp()->getName().getStringRef().str();
+    if (i > 0) llvm::dbgs() << ", ";
+    std::string op_type = module::getOriValue(field[i].first).getDefiningOp()->getName().getStringRef().str();
     llvm::dbgs() << modestr << "(\"" << module::getName(field[i].first)
-                 << "\")->" << op_type;
+                 << "\", hold_in_lmem = "<< hold_in_lmem << ")->" << op_type;
   }
   llvm::dbgs() << " ]";
 }
@@ -141,15 +138,13 @@ void BasicTimeStep::update_gdma0_ts_field(int64_t ts,
 }
 
 void BasicTimeStep::show_timestep_table() {
-  DEBUG_WITH_TYPE("timestep_assign", {
-    for (int i = 0; i < timestep_table_.size(); ++i) {
-      llvm::dbgs() << "; ts = " << i << "; ";
-      stream_tpu_field(timestep_table_[i].tpu0_ts_field);
-      llvm::dbgs() << " || ";
-      stream_gdma_field(timestep_table_[i].gdma0_ts_field);
-      llvm::dbgs() << "\n";
-    }
-  });
+  for (int i = 0; i < timestep_table_.size(); ++i) {
+    llvm::dbgs() << "; ts = " << i << "; ";
+    stream_tpu_field(timestep_table_[i].tpu0_ts_field);
+    llvm::dbgs() << " || ";
+    stream_gdma_field(timestep_table_[i].gdma0_ts_field);
+    llvm::dbgs() << "\n";
+  }
 }
 
 int64_t BasicTimeStep::get_layer_swpipl_stage(Operation *op) {
@@ -171,6 +166,80 @@ void BasicTimeStep::software_pipeline() {
       iter.second.stage = get_tensor_swpipl_stage(iter.first);
     }
   }
+}
+
+// lmem_buffer_debug_t
+// start_ts, end_ts, size, name, op_type
+// sort by following root
+// 1. start_ts
+// 2. end_ts
+// 3. size
+struct lmem_buffer_debug_t {
+  int start_ts;
+  int end_ts;
+  size_t size;
+  std::string name;
+
+  bool operator<(const lmem_buffer_debug_t& other) const {
+      if (start_ts != other.start_ts)
+          return start_ts < other.start_ts;
+      if (end_ts != other.end_ts)
+          return end_ts < other.end_ts;
+      return size > other.size;
+  }
+};
+
+void BasicTimeStep::debug_lmem_buffer() {
+  llvm::dbgs() << "\n====================================\n";
+  llvm::dbgs() << "== debug_lmem_buffer\n";
+  mem_buffer_key_t key;
+  mem_buffer_value_t value;
+  size_t timestep_num = get_timestep_num();
+  std::vector<std::vector<mem_buffer_key_t>> data(
+      timestep_num, std::vector<mem_buffer_key_t>());
+  std::vector<lmem_buffer_debug_t> lmem_buffer_vec;
+  lmem_buffer_debug_t lmem_buffer_elt;
+  for (auto &iter : lmem_buffer_) {
+    key = iter.first;
+    value = iter.second;
+    bool first_step = true;
+    lmem_buffer_elt.start_ts = value.start_ts;
+    lmem_buffer_elt.end_ts = value.end_ts;
+    lmem_buffer_elt.size = value.size;
+    lmem_buffer_elt.name = module::getName(key.value).str();
+    lmem_buffer_vec.push_back(lmem_buffer_elt);
+    for (int64_t ts = value.start_ts;
+      ts != ((value.end_ts + 1) % timestep_num) || first_step;
+      ts = (ts + 1) % timestep_num) {
+        first_step = false;
+      data[ts].push_back(key);
+    }
+  }
+
+  for (size_t ts = 0; ts < timestep_num; ++ts) {
+    llvm::dbgs() << "=== timestep = " << ts << "\n";
+    llvm::dbgs() << "(name, size): ";
+    int64_t total = 0;
+    for (auto &iter : data[ts]) {
+      value = lmem_buffer_[iter];
+      total += value.size;
+      llvm::dbgs() << "(" << module::getName(iter.value) << ", " << value.size
+                   << "), ";
+    }
+    llvm::dbgs() << "\n" << "total=" << total << "\n";
+  }
+
+  llvm::dbgs() << "====================================\n";
+
+  std::sort(lmem_buffer_vec.begin(), lmem_buffer_vec.end());
+  int cnt = 0;
+  for (auto &iter : lmem_buffer_vec) {
+    llvm::dbgs() << "=== lmem_buffer_vec = " << cnt++
+                 << "(start_ts, end_ts): " << "(" << iter.start_ts << ", " << iter.end_ts << ")"
+                 << ", size: " << iter.size
+                 << ", name: " << iter.name << "\n";
+  }
+  llvm::dbgs() << "====================================\n";
 }
 
 void BasicTimeStep::show_timestep() {
@@ -516,6 +585,10 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
   for (iter = lmem_buffer_.begin(); iter != lmem_buffer_.end();) {
     iter = iter->second.size == 0 ? lmem_buffer_.erase(iter) : std::next(iter);
   }
+
+  GROUP_DEBUG_WITH_TYPE("lmem_buffer", lg_info, [&]() {
+    debug_lmem_buffer();
+  });
 }
 
 const mem_buffer_value_t &

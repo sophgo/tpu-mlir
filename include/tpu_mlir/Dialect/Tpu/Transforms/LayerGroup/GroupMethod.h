@@ -42,21 +42,35 @@ public:
   void process(LgPassIR *pass_ir);
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
                           const llvm::SetVector<Operation *> &subnet_ops);
+  void dynamic_programming_kernel(
+      LgInfo &lg_info,
+      const std::vector<Operation *> &base_group,
+      const std::vector<std::pair<int64_t, int64_t>> &clusters,
+      std::vector<std::vector<int64_t>> &cost_table,
+      std::vector<std::vector<int64_t>> &cut_points,
+      int64_t base_group_idx, int64_t idx_offset);
   void dynamic_programming_layer_group_with_cluster(
       std::vector<LgInfo> &lg_infos,
       const llvm::SetVector<Operation *> &subnet_ops);
-
+  void dynamic_programming_layer_group_with_cluster_debug(
+      std::vector<LgInfo> &lg_infos,
+      const llvm::SetVector<Operation *> &subnet_ops);
   void
   get_final_groups(std::vector<LgInfo> &lg_infos,
                    const std::vector<std::vector<Operation *>> &base_groups);
 
   void get_base_groups(std::vector<std::vector<Operation *>> &base_groups,
                        const llvm::SetVector<Operation *> &subnet_ops);
+  void get_debug_group(std::vector<Operation *> &debug_group,
+                       const llvm::SetVector<Operation *> &subnet_ops,
+                       int64_t start_idx, int64_t end_idx);
+  void get_debug_cluster(std::vector<std::pair<int64_t, int64_t>> &clusters,
+                         int64_t cluster_num);
 
   int64_t get_max_cluster_size(int64_t layer_num);
   void get_group_clusters(std::vector<std::pair<int64_t, int64_t>> &clusters,
                           const std::vector<Operation *> &base_group,
-                          int group_idx);
+                          int group_idx, int64_t idx_offset = 0);
 
   bool is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                             int64_t *group_cost);
@@ -110,7 +124,7 @@ public:
   void init_ilp_base_groups(LgPassIR *pass_ir);
   void get_layer_group(LgInfo &lg_info,
                        const std::vector<Operation *> &base_group, int64_t left,
-                       int64_t right, int64_t base_group_idx);
+                       int64_t right, int64_t base_group_idx, int64_t idx_offset = 0);
   void set_layer_group_cache(LgInfo lg_info);
 
 protected:

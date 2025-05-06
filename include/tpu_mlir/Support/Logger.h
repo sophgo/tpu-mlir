@@ -48,11 +48,24 @@ inline void SetLogFlag(int32_t log_level) { cur_log_level = log_level; }
 
 #define LOG_KV(key, value) "; " << key << " = " << value
 
+#define LOG_KV_FORMAT(key, fmt, ...) "; " << key <<                            \
+  " = " << llvm::format(fmt, ##__VA_ARGS__)
+
 #define LOG_ITEM(key) "; " << key
 
 #define LOG_ACTION(action) "; action = " << action
 
+#define LOG_RANGE(range) "; debug_range = " << range
+
 #define LOG_STEP(step) "; step = " << step
+
+#define LOG_LOC(file, line, func) "; file = " << file << \
+  "; line = " << line << "; func = " << func
+
+#define DEBUGGER_DEFAULT_INFO(step, tag, fmt, ...)                                \
+    "; step = " << step <<                                                           \
+    "; tag = " << tag <<                                                       \
+    "; remark = \"" << llvm::format(fmt, ##__VA_ARGS__) << "\""
 
 #define PROFILE_LOG(step, begin)                                               \
   do {                                                                         \

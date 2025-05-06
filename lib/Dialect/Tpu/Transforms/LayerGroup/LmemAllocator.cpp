@@ -537,66 +537,62 @@ void LmemAllocator::update_avail_lmems(
 
 MemBlock LmemAllocator::find_avail_lmem_location(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
-    const mem_buffer_value_t &buffer_value, bool allow_bank_conflict) {
+    const mem_buffer_value_t &buffer_value, const LgInfo &lg_info,
+    bool allow_bank_conflict) {
 
   MemBlock alloc_lmem(-1, -1);
   if (avail_space.avail_lmems.empty()) {
-    DEBUG_WITH_TYPE("assign_lmem", {
-      llvm::dbgs() << LOG_ACTION("find_avail_lmem")
-                   << LOG_STEP("avail_lmems_empty") << "\n";
+    GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
+      llvm::dbgs() << LOG_STEP("avail_lmems_empty") << "\n";
     });
-    return alloc_lmem;
-  }
-
-  if (allow_bank_conflict) {
+  } else if (allow_bank_conflict) {
     alloc_lmem = avail_space.avail_lmems.front();
-    DEBUG_WITH_TYPE("assign_lmem", {
-      llvm::dbgs() << LOG_ACTION("find_avail_lmem")
-                   << LOG_STEP("use_bank_conflict_buffer")
+    GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
+      llvm::dbgs() << LOG_STEP("use_bank_conflict_buffer")
                    << LOG_KV("lmem", alloc_lmem.first)
                    << LOG_KV("size", alloc_lmem.second) << "\n";
     });
-    return alloc_lmem;
-  }
+  } else {
+    // refine avail_lmems according to exclude_banks
+    MemBlock bank_lmem;
+    std::list<MemBlock> avail_lmems_tmp = avail_space.avail_lmems;
+    for (auto bank_idx : avail_space.exclude_banks) {
+      bank_lmem.first = bank_idx * Arch::LMEM_BANK_BYTES;
+      bank_lmem.second = Arch::LMEM_BANK_BYTES;
+      update_avail_lmems(avail_lmems_tmp, bank_lmem);
+    }
 
-  // refine avail_lmems according to exclude_banks
-  MemBlock bank_lmem;
-  std::list<MemBlock> avail_lmems_tmp = avail_space.avail_lmems;
-  for (auto bank_idx : avail_space.exclude_banks) {
-    bank_lmem.first = bank_idx * Arch::LMEM_BANK_BYTES;
-    bank_lmem.second = Arch::LMEM_BANK_BYTES;
-    update_avail_lmems(avail_lmems_tmp, bank_lmem);
-  }
+    for (auto avail_iter = avail_lmems_tmp.begin();
+         avail_iter != avail_lmems_tmp.end(); ++avail_iter) {
+      GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
+        llvm::dbgs() << LOG_STEP("iter_avail_lmem")
+                     << LOG_KV("lmem", avail_iter->first)
+                     << LOG_KV("size", avail_iter->second) << "\n";
+      });
+      if (avail_iter->second >= buffer_value.size) {
+        alloc_lmem = *avail_iter;
+        GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
+          llvm::dbgs() << LOG_STEP("find_availble_buffer")
+                       << LOG_KV("lmem", alloc_lmem.first)
+                       << LOG_KV("size", alloc_lmem.second) << "\n";
+        });
+        break;
+      }
+    }
 
-  for (auto avail_iter = avail_lmems_tmp.begin();
-       avail_iter != avail_lmems_tmp.end(); ++avail_iter) {
-    DEBUG_WITH_TYPE("assign_lmem", {
-      llvm::dbgs() << LOG_ACTION("find_avail_lmem")
-                   << LOG_STEP("iter_avail_lmem")
-                   << LOG_KV("lmem", avail_iter->first)
-                   << LOG_KV("size", avail_iter->second) << "\n";
-    });
-    if (avail_iter->second >= buffer_value.size) {
-      alloc_lmem = *avail_iter;
-      DEBUG_WITH_TYPE("assign_lmem", {
-        llvm::dbgs() << LOG_ACTION("find_avail_lmem")
-                     << LOG_STEP("find_availble_buffer")
+    // allow bank confict if could not find space not conflict
+    if (alloc_lmem.first == -1) {
+      alloc_lmem = avail_space.avail_lmems.front();
+      GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
+        llvm::dbgs() << LOG_STEP("use_bank_conflict_buffer")
                      << LOG_KV("lmem", alloc_lmem.first)
                      << LOG_KV("size", alloc_lmem.second) << "\n";
       });
-      break;
     }
   }
 
-  // allow bank confict if could not find space not conflict
-  if (alloc_lmem.first == -1) {
-    alloc_lmem = avail_space.avail_lmems.front();
-    DEBUG_WITH_TYPE("assign_lmem", {
-      llvm::dbgs() << LOG_ACTION("find_avail_lmem")
-                   << LOG_STEP("use_bank_conflict_buffer")
-                   << LOG_KV("lmem", alloc_lmem.first)
-                   << LOG_KV("size", alloc_lmem.second) << "\n";
-    });
+  if (alloc_lmem.first >= Arch::LMEM_BYTES) {
+    alloc_lmem = MemBlock(-1, -1);
   }
 
   return alloc_lmem;
@@ -669,7 +665,8 @@ void LmemAllocator::update_exclude_banks(
 MemBlock LmemAllocator::global_find_avail_lmem_localtion(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
     const mem_buffer_key_t &recent_buffer_allocated,
-    BasicTimeStepPtr &time_step, bool one_loop, bool allow_bank_conflict) {
+    BasicTimeStepPtr &time_step, bool one_loop, const LgInfo &lg_info,
+    bool allow_bank_conflict) {
   PROFILE_LOG("global_find_avail_lmem_localtion", true);
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   auto &recent_buffer_value =
@@ -684,7 +681,7 @@ MemBlock LmemAllocator::global_find_avail_lmem_localtion(
 
   // get the available local memory location
   auto alloc_mem = find_avail_lmem_location(avail_space, buffer_key,
-                                            buffer_value, allow_bank_conflict);
+                                            buffer_value, lg_info);
   PROFILE_LOG("global_find_avail_lmem_localtion", false);
   return alloc_mem;
 }
@@ -868,6 +865,78 @@ bool assignL2memAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step) {
   return true;
 }
 
+void dump_lmem_assign_result(std::list<MemBufSortStd>::iterator &membuf_allocated,
+                              const LgInfo &lg_info,
+                              BasicTimeStepPtr &time_step,
+                              bool allow_bank_conflict,
+                              const shape_secs_t &shape_secs,
+                              const char* _function,
+                              const char* lmem_assign_status,
+                              const char* lmem_assign_remark,
+                              int64_t lmem_assign_addr,
+                              bool one_loop) {
+  auto hold_in_lmem = membuf_allocated->first.type != LMEM_OPERATION &&
+                      time_step->is_tensor_hold_in_lmem(
+                          membuf_allocated->first.value);
+  Operation *op = membuf_allocated->first.type == LMEM_OPERATION
+                      ? membuf_allocated->first.op
+                      : module::getOriValue(membuf_allocated->first.value).getDefiningOp();
+  llvm::dbgs() << DEBUGGER_DEFAULT_INFO("dump_lmem_assign_result", "iteration_result", lmem_assign_remark)
+               << LOG_KV("status", lmem_assign_status)
+               << LOG_KV("lmem_type", membuf_allocated->first.lmem_type_str())
+               << LOG_KV("op_type", op->getName())
+               << LOG_KV("op_name",
+                    module::getName(membuf_allocated->first.value));
+  if (lmem_assign_addr < 0) {
+    llvm::dbgs() << LOG_KV("addr", lmem_assign_addr);
+  } else {
+    llvm::dbgs() << LOG_KV("addr", llvm::format("0x%08x", lmem_assign_addr));
+  }
+  llvm::dbgs() << LOG_KV("size",
+                    time_step->get_lmem_size(membuf_allocated->first))
+               << LOG_KV("timestep_start",
+                    time_step->get_lmem_buffer_value(membuf_allocated->first).start_ts)
+               << LOG_KV("timestep_end",
+                      time_step->get_lmem_buffer_value(membuf_allocated->first).end_ts)
+               << LOG_KV("timestep_mode",
+                    time_step->get_tensor_mode_str(membuf_allocated->first.value))
+               << LOG_KV("hold_in_lmem", hold_in_lmem)
+               << LOG_KV("allow_bank_conflict", allow_bank_conflict)
+               << LOG_KV("one_loop", one_loop)
+               << LOG_KV_FORMAT("shape_secs",
+                    "%d,%d,%d,%d,%d", shape_secs.nsecs, shape_secs.csecs,
+                    shape_secs.dsecs, shape_secs.hsecs, shape_secs.wsecs)
+               << "\n";
+}
+
+void dump_membuf_list(
+    const LgInfo &lg_info,
+    std::list<MemBufSortStd> &membuf_list,
+    const char* step,
+    const char* tag,
+    const char* remark) {
+  GROUP_DEBUG_WITH_TYPE("membuf_list", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(step, tag, remark) << "\n";
+    int i = 0;
+    for (auto &iter : membuf_list) {
+      GROUP_DEBUG_WITH_TYPE("membuf_list", lg_info, [&]() {
+        llvm::dbgs() << LOG_KV("buf_idx", i)
+                     << LOG_KV("op_conflict", iter.first.conflict)
+                     << LOG_KV("op_type", iter.first.lmem_type_str())
+                     << LOG_KV("start_ts", iter.second.start_ts)
+                     << LOG_KV("area", iter.second.area);
+        if (iter.first.type == LMEM_OPERATION) {
+          llvm::dbgs() << LOG_KV("op_name", module::getName(iter.first.op));
+        } else {
+          llvm::dbgs() << LOG_KV("op_name", module::getName(iter.first.value));
+        }
+        llvm::dbgs() << "\n";
+      });
+      ++i;
+    }
+  });
+}
+
 bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
                                    BasicTimeStepPtr &time_step,
                                    const shape_secs_t &shape_secs,
@@ -888,24 +957,30 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
    *   int64_t align_bytes;
    * } mem_buffer_value_t;
    *
-   * we should fill all start_ts, end_ts, addr, size, align_bytes for each
-   * mem_buffer_key_t
+   * we should fill all variable for each mem_buffer_key_t
    *
-   * the start_ts, end_ts if filled by
-   * TimeStepMethod::memory_aware_timestep_assignment
+   * variable `start_ts`, `end_ts` and `align_bytes` is filled by function
+   * `time_step->update_all_mem_buffer_size`
    *
-   * then the addr, size, align_bytes is filled in this function
-   * (assignLmemAddr)
+   * variable `addr` and `size` is filled in this function (assignLmemAddr)
    *
    */
   PROFILE_LOG("assignLmemAddr", true);
+  auto _function = static_cast<const char*>(__FUNCTION__);
+
   // iterate all mem_buffer_key_t, then update mem_buffer_value_t.size
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("update_all_mem_buffer_size", "call_function",
+                    "update info in `lmem_buffer_`, first update `start_ts`, `end_ts` and `align_bytes`, "
+                    "then calculate `size`")
+                  << "\n";
+  });
   time_step->update_all_mem_buffer_size(lg_info);
 
+  // init membuf_list
   bool one_loop =
       (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
        shape_secs.csecs == 1 && shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
-
   std::list<MemBufSortStd> membuf_list;
   init_membuf_list(membuf_list, time_step, one_loop);
 
@@ -918,214 +993,193 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
   std::vector<std::set<mem_buffer_key_t *>> gdma_membuf_heap;
   membuf_heap_create(npu_membuf_heap, gdma_membuf_heap, membuf_list, time_step);
 
-  MemBlock alloc_lmem; // consider use alloc_position instead
+  MemBlock candidate_allocation;
   int64_t tgt_min_address = 0;
   int64_t lmem_occupy = 0;
   bool is_first_alloc = true;
   mem_buffer_key_t recent_buffer_allocated;
   std::list<MemBufSortStd>::iterator buflist_it;
   std::list<MemBufSortStd>::iterator tgt_membuf;
+  GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("lmem_spec", "stamp", "show local memory spec of current chip")
+                 << LOG_KV("lmem_eu_bytes", Arch::EU_BYTES)
+                 << LOG_KV("lmem_npu_num", Arch::NPU_NUM)
+                 << LOG_KV("lmem_bytes", Arch::LMEM_BYTES)
+                 << LOG_KV("lmem_banks", Arch::LMEM_BANKS)
+                 << LOG_KV("lmem_bank_bytes", Arch::LMEM_BANK_BYTES) << "\n";
+  });
+
+  // while loop for all membuf_list
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("main_loop", "stamp",
+                    "while loop of `membuf_list` to allocate address for all memory buffer")
+                 << "\n";
+  });
+  addr_assign_result_t addr_assign_result = ADDR_ALLOCATE_SUCCESS;
   while (!membuf_list.empty()) {
-    tgt_min_address = Arch::LMEM_BYTES;
-    DEBUG_WITH_TYPE("assign_lmem", {
-      llvm::dbgs() << LOG_ACTION("assignLmemAddr")
-                   << LOG_STEP("start_iteration")
+    GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("iteration_start", "stamp",
+                      "\\")
                    << LOG_KV("lmem_occupy", lmem_occupy)
-                   << LOG_KV("lmem_eu_bytes", Arch::EU_BYTES)
-                   << LOG_KV("lmem_npu_num", Arch::NPU_NUM)
-                   << LOG_KV("lmem_bytes", Arch::LMEM_BYTES)
-                   << LOG_KV("lmem_banks", Arch::LMEM_BANKS)
-                   << LOG_KV("lmem_bank_bytes", Arch::LMEM_BANK_BYTES)
-                   << LOG_KV("remaining_buffers", membuf_list.size()) << "\n";
+                   << LOG_KV("membuf_need_allocate", membuf_list.size())
+                   << "\n";
     });
+
+    tgt_min_address = Arch::LMEM_BYTES;
 
     update_membuf_conflict_param(npu_membuf_heap, gdma_membuf_heap,
                                  membuf_list);
 
-    DEBUG_WITH_TYPE("assign_lmem_membuf_list", {
-      llvm::dbgs() << LOG_ACTION("assignLmemAddr") << LOG_STEP("before_sort")
-                   << "\n";
 
-      int i = 0;
-      for (auto &iter : membuf_list) {
-        llvm::dbgs() << LOG_KV("buf_idx", i);
+    // sort the membuf_list according to `conflict`, `area` and `start_ts`
+    dump_membuf_list(lg_info, membuf_list, "membuf_list_before_sort", "stamp", "\\");
 
-        if (iter.first.type == LMEM_OPERATION) {
-          llvm::dbgs() << LOG_KV("op_name", module::getName(iter.first.op));
-        } else {
-          llvm::dbgs() << LOG_KV("op_name", module::getName(iter.first.value));
-        }
-
-        llvm::dbgs() << LOG_KV("op_conflict", iter.first.conflict)
-                     << LOG_KV("op_type", iter.first.lmem_type_str())
-                     << LOG_KV("start_ts", iter.second.start_ts)
-                     << LOG_KV("area", iter.second.area) << "\n";
-        ++i;
-      }
-    });
     membuf_list.sort(membuf_sort_std_cmp);
-    DEBUG_WITH_TYPE("assign_lmem_membuf_list", {
-      llvm::dbgs() << LOG_ACTION("assignLmemAddr") << LOG_STEP("after_sort")
+
+    dump_membuf_list(lg_info, membuf_list, "membuf_list_after_sort", "stamp", "\\");
+
+    // 1. find the min address from all candidate allocations of `buflist_it`s as target address
+    //    and take the corresponding `buflist_it` as target memory buffer to allocate
+    GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("start_find_target", "stamp",
+                      "traverse all iter in membuf_list and find the target buffer with "
+                      "minimum address to allocate")
                    << "\n";
-
-      int i = 0;
-      for (auto &iter : membuf_list) {
-        llvm::dbgs() << LOG_KV("buf_idx", i);
-
-        if (iter.first.type == LMEM_OPERATION) {
-          llvm::dbgs() << LOG_KV("op_name", module::getName(iter.first.op));
-        } else {
-          llvm::dbgs() << LOG_KV("op_name", module::getName(iter.first.value));
-        }
-
-        llvm::dbgs() << LOG_KV("op_conflict", iter.first.conflict)
-                     << LOG_KV("op_type", iter.first.lmem_type_str())
-                     << LOG_KV("start_ts", iter.second.start_ts)
-                     << LOG_KV("area", iter.second.area) << "\n";
-        ++i;
-      }
     });
-
-    // 1. find a min position in membuf_list and then allocation
     for (buflist_it = membuf_list.begin(); buflist_it != membuf_list.end();
          ++buflist_it) {
 
-      //  1.1 first allocation can start at 0 directly
+      // 1.1 allocate available address for current buffer iter
       if (is_first_alloc) {
-        is_first_alloc = false;
-        DEBUG_WITH_TYPE("assign_lmem", {
-          std::set<int64_t> used_banks;
-          find_used_banks(used_banks, 0,
-                          time_step->get_lmem_size(buflist_it->first));
-          llvm::dbgs() << LOG_ACTION("assignLmemAddr")
-                       << LOG_STEP("first_allocation")
-                       << LOG_KV("op_type", buflist_it->first.lmem_type_str())
-                       << LOG_KV("op_name",
-                                 module::getName(buflist_it->first.value))
-                       << LOG_KV("size",
-                                 time_step->get_lmem_size(buflist_it->first))
-                       << "; banks = ";
-          for (auto bank : used_banks) {
-            llvm::dbgs() << bank << ",";
-          }
-          llvm::dbgs() << "\n";
+        //  1.1.a first allocation can start at 0 directly
+        GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("first_allocation", "stamp",
+                          "directly assign address for the first lmem buffer in membuf_list")
+                       << "\n";
         });
 
-        if (time_step->get_lmem_size(buflist_it->first) > Arch::LMEM_BYTES) {
-          PROFILE_LOG("assignLmemAddr", false);
-          return false;
+        candidate_allocation = std::make_pair(0, time_step->get_lmem_size(buflist_it->first));
+
+        if (candidate_allocation.second > Arch::LMEM_BYTES) {
+          addr_assign_result = ADDR_FIRST_ALLOCATE_FAILED;
+        } else {
+          tgt_min_address = 0;
+          tgt_membuf = buflist_it;
         }
-
-        tgt_min_address = 0;
-        tgt_membuf = buflist_it;
-        break;
+      } else {
+        // 1.1.b update `exclude_banks` and `avail_lmems` in `avail_space` for current buffer iter
+        //     and find the available location through updated `avail_space` for it
+        // remark: this allocation is not the final allocation result, it is just a
+        //         candidate allocation, we will check whether this allocation is
+        //         the smallest one for all buffers in the loop
+        candidate_allocation = global_find_avail_lmem_localtion(
+            buffer_avail_space[buflist_it->first], buflist_it->first,
+            recent_buffer_allocated, time_step, one_loop, lg_info,
+            allow_bank_conflict);
+        if (candidate_allocation.first == -1) {
+          addr_assign_result = ADDR_CANDIDATE_ALLOCATE_FAILED;
+        }
       }
 
-      // 1.2 search an available lmem location
-      alloc_lmem = global_find_avail_lmem_localtion(
-          buffer_avail_space[buflist_it->first], buflist_it->first,
-          recent_buffer_allocated, time_step, one_loop, allow_bank_conflict);
-
-      // 1.3 early return
-      // if this membuf can't find an available lmem in this step, it can't be
-      // allocated in any step after
-      if (alloc_lmem.first == -1) {
-        DEBUG_WITH_TYPE("assign_lmem", {
-          llvm::dbgs() << LOG_ACTION("assignLmemAddr")
-                       << LOG_STEP("allocation_failed")
-                       << LOG_KV("op_type", buflist_it->first.lmem_type_str())
-                       << LOG_KV("op_name",
-                                 module::getName(buflist_it->first.value))
-                       << LOG_KV("required_size",
-                                 time_step->get_lmem_size(buflist_it->first))
-                       << LOG_KV("max_addr", Arch::LMEM_BYTES) << "\n";
-        });
-        PROFILE_LOG("assignLmemAddr", false);
-        return false;
-      }
-
-      DEBUG_WITH_TYPE("assign_lmem", {
-        std::set<int64_t> used_banks;
-        find_used_banks(used_banks, alloc_lmem.first, alloc_lmem.second);
+      GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
         llvm::dbgs()
-            << LOG_ACTION("assignLmemAddr")
-            << LOG_STEP("found_available_location")
+            << DEBUGGER_DEFAULT_INFO("get_candidate_allocation", "intermediate_result",
+               "this is just a intermediate result not the target allocation result, except for the first allocation")
             << LOG_KV("op_type", buflist_it->first.lmem_type_str())
             << LOG_KV("op_name", module::getName(buflist_it->first.value))
-            << LOG_KV("addr", llvm::format_hex(alloc_lmem.first, 8))
-            << LOG_KV("size", alloc_lmem.second)
+            << LOG_KV("is_first_alloc", is_first_alloc)
             << LOG_KV(
-                   "timestep",
-                   time_step->get_lmem_buffer_value(buflist_it->first).start_ts)
+                  "timestep",
+                  time_step->get_lmem_buffer_value(buflist_it->first).start_ts)
             << "->"
             << time_step->get_lmem_buffer_value(buflist_it->first).end_ts
-            << "; banks = ";
-        for (auto bank : used_banks) {
-          llvm::dbgs() << bank << ",";
+            << LOG_KV("addr", llvm::format_hex(candidate_allocation.first, 8))
+            << LOG_KV("size", candidate_allocation.second);
+        if (candidate_allocation.first != -1) {
+          std::set<int64_t> used_banks;
+          find_used_banks(used_banks, candidate_allocation.first, candidate_allocation.second);
+          llvm::dbgs() << "; banks = ";
+          const char *sep = "";
+          for (auto bank : used_banks) {
+            llvm::dbgs() << sep << bank;
+            sep = ",";
+          }
         }
         llvm::dbgs() << "\n";
       });
-      // 1.4 update tgt_min_address and tgt_membuf
-      if (alloc_lmem.first < tgt_min_address) {
-        tgt_min_address = alloc_lmem.first;
+
+      // 1.2 early break if this is the first allocation or this allocation is failed
+      if (is_first_alloc || addr_assign_result == ADDR_CANDIDATE_ALLOCATE_FAILED) {
+        is_first_alloc = false;
+        break;
+      }
+
+      // 1.3 update tgt_min_address and tgt_membuf if current address is smaller
+      if (candidate_allocation.first < tgt_min_address) {
+        tgt_min_address = candidate_allocation.first;
         tgt_membuf = buflist_it;
-        DEBUG_WITH_TYPE("assign_lmem", {
-          llvm::dbgs() << LOG_ACTION("assignLmemAddr")
-                       << LOG_STEP("update_min_tgt_min_address")
+        GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("update_target", "stamp",
+                          "update target address and buffer iter to find the minimum address")
                        << LOG_KV("tgt_min_address", tgt_min_address)
-                       << LOG_KV("lmem_occupy", lmem_occupy) << "\n";
+                       << LOG_KV("op_type", tgt_membuf->first.lmem_type_str())
+                       << LOG_KV("op_name", module::getName(tgt_membuf->first.value))
+                       << "\n";
         });
       }
     }
 
-    // 2.a after search a min position, if can't find an available lmem, return
-    // false
-    if (tgt_min_address >= Arch::LMEM_BYTES) {
-      llvm::errs() << "Cannot find local memory location for memory buffers\n";
+    // 2.a if find any membuf iter can't find an available lmem space, return false
+    if (addr_assign_result > ADDR_ALLOCATE_SUCCESS) {
+      // dump all failed membuf_list
+      for (auto membuf_allocated_failed = membuf_list.begin(); membuf_allocated_failed != membuf_list.end();
+            ++membuf_allocated_failed) {
+        GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+          dump_lmem_assign_result(membuf_allocated_failed, lg_info, time_step, allow_bank_conflict,
+                                  shape_secs, _function, "failed",
+                                  "early return since appear mem buffer can't find available lmem space",
+                                  -1, one_loop);
+        });
+      }
+      GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddr_finish", "failed",
+                        "assign lmem address for all mem buffers failed")
+                     << LOG_KV("membuf_allocate_failed", membuf_list.size())
+                     << LOG_KV("lmem_already_used", lmem_occupy)
+                     << "%\n";
+      });
       PROFILE_LOG("assignLmemAddr", false);
       return false;
     }
 
     // 2.b allocate this available address for this membuf
+    addr_assign_result = ADDR_ALLOCATE_SUCCESS;
     recent_buffer_allocated = tgt_membuf->first;
     time_step->set_lmem_addr(tgt_membuf->first, tgt_min_address);
     int64_t buffer_end =
         tgt_min_address + time_step->get_lmem_size(tgt_membuf->first);
     lmem_occupy = buffer_end > lmem_occupy ? buffer_end : lmem_occupy;
+
+    // debug info
+    GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+      dump_lmem_assign_result(tgt_membuf, lg_info, time_step, allow_bank_conflict,
+                              shape_secs, _function, "success",
+                              "allocate available address for membuf",
+                              tgt_min_address, one_loop);
+      });
+
     conflict_heap_delete(npu_membuf_heap, gdma_membuf_heap,
                          &(tgt_membuf->first));
     membuf_list.erase(tgt_membuf);
     buffer_avail_space.erase(tgt_membuf->first);
-    DEBUG_WITH_TYPE("assign_lmem", {
-      std::set<int64_t> used_banks;
-      find_used_banks(used_banks, tgt_min_address,
-                      time_step->get_lmem_size(tgt_membuf->first));
-      llvm::dbgs()
-          << LOG_ACTION("assignLmemAddr") << LOG_STEP("allocated_memory")
-          << LOG_KV("op_type", tgt_membuf->first.lmem_type_str())
-          << LOG_KV("op_name", module::getName(tgt_membuf->first.value))
-          << LOG_KV("addr", llvm::format_hex(tgt_min_address, 8))
-          << LOG_KV("size", time_step->get_lmem_size(tgt_membuf->first))
-          << LOG_KV(
-                 "timestep_start",
-                 time_step->get_lmem_buffer_value(tgt_membuf->first).start_ts)
-          << LOG_KV("timestep_end",
-                    time_step->get_lmem_buffer_value(tgt_membuf->first).end_ts)
-          << LOG_KV("timestep_mode",
-                    time_step->get_tensor_mode_str(tgt_membuf->first.value))
-          << LOG_KV("lmem_occupy", lmem_occupy) << "; banks = ";
-      for (auto bank : used_banks) {
-        llvm::dbgs() << bank << ",";
-      }
-      llvm::dbgs() << "\n";
-    });
   }
 
   time_step->set_lmem_occupy(lmem_occupy);
   assignL2memAddr(lg_info, time_step);
 
-  DEBUG_WITH_TYPE("assign_lmem", {
-    llvm::dbgs() << LOG_ACTION("assignLmemAddr") << LOG_STEP("completed")
+  GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddr_finish", "success",
+                    "assign lmem address for all mem buffers success")
                  << LOG_KV("total_lmem_used", lmem_occupy)
                  << LOG_KV("utilization",
                            (lmem_occupy * 100.0 / Arch::LMEM_BYTES))
@@ -1140,18 +1194,27 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            BasicTimeStepPtr &time_step,
                                            shape_secs_t &shape_secs,
                                            bool allow_bank_conflict) {
+  auto& lg_debugger = LgDebugger::getInstance();
   std::vector<std::pair<Operation *, int>> vec_op_hsecs;
   max_shape_secs_ = get_group_max_secs(lg_info, vec_op_hsecs);
   if (!allow_bank_conflict) {
-    update_data_split(time_step, lg_info, shape_secs, options_);
-    DEBUG_WITH_TYPE("shape_secs", {
-      llvm::dbgs() << "; action = shape_secs"
-                   << "; step = update_data_split"
-                   << "; nsecs = " << shape_secs.nsecs
-                   << "; csecs = " << shape_secs.csecs
-                   << "; dsecs = " << shape_secs.dsecs
-                   << "; hsecs = " << shape_secs.hsecs
-                   << "; wsecs = " << shape_secs.wsecs << "\n";
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("update_data_split", "call_function",
+                      "try to find valid `shape_secs` for current layer group faster")
+                   << "\n";
+    });
+    auto shape_secs_update = shape_secs;
+    if (update_data_split(time_step, lg_info, shape_secs_update, options_)) {
+      shape_secs = shape_secs_update;
+    }
+    GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("update_data_split", "stamp",
+                      "show the shape_secs after update_data_split")
+                   << LOG_KV("nsecs", shape_secs.nsecs)
+                   << LOG_KV("csecs", shape_secs.csecs)
+                   << LOG_KV("dsecs", shape_secs.dsecs)
+                   << LOG_KV("hsecs", shape_secs.hsecs)
+                   << LOG_KV("wsecs", shape_secs.wsecs) << "\n";
     });
   }
 
@@ -1166,13 +1229,34 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
     cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
   }
 
-  if (getenv("SC_BRUTE_FORCE")) {
+  bool use_brute_force = false;
+  if (lg_debugger.get_sc_method() == SC_BRUTE_FORCE &&
+      lg_debugger.is_conditional_debug_group(lg_info.func_start_idx, lg_info.func_end_idx)) {
+    use_brute_force = true;
+  }
+
+  if (getenv("SC_BRUTE_FORCE") || use_brute_force) {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("sc_method_brute_force", "call_function",
+                      "this method try all `shape_secs` for debug")
+                   << "\n";
+    });
     sc_method_brute_force(lg_info, shape_secs, allow_bank_conflict, time_step);
   } else if (lg_info.use_cache && lg_info.shape_secs.nsecs != 0 &&
              !getenv("RESEARCH_SHAPE_SECS")) {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("use_layergroup_cache", "stamp",
+                      "use cache info of `group_cost` and `shape_secs` to skip search")
+                    << "\n";
+    });
     min_group_costs_ = lg_info.group_cost;
     min_shape_secs_ = lg_info.shape_secs;
   } else {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("sc_method_quick_search", "call_function",
+                      "this method try to search valid `shape_secs` quickly")
+                   << "\n";
+    });
     sc_method_quick_search(lg_info, shape_secs, allow_bank_conflict, time_step);
 
     if (module::getCoreNum() > 1) {
@@ -1185,42 +1269,90 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   }
 
   if (min_group_costs_ == -1) {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddrWithSecs_finish", "failed", "assign lmem addr with secs failed")
+                   << "\n";
+    });
     return false;
   }
 
   shape_secs = min_shape_secs_;
 
-  DEBUG_WITH_TYPE("shape_secs", {
-    llvm::dbgs() << "; action = shape_secs"
-                 << "; step = assign_lmem_addr_with_secs"
-                 << "; nsecs = " << shape_secs.nsecs
-                 << "; csecs = " << shape_secs.csecs
-                 << "; dsecs = " << shape_secs.dsecs
-                 << "; hsecs = " << shape_secs.hsecs
-                 << "; wsecs = " << shape_secs.wsecs
-                 << "; min_cost = " << min_group_costs_ << "\n";
+  GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("find_valid_shape_secs", "stamp",
+                    "show the valid shape_secs after searching")
+                 << LOG_KV("nsecs", shape_secs.nsecs)
+                 << LOG_KV("csecs", shape_secs.csecs)
+                 << LOG_KV("dsecs", shape_secs.dsecs)
+                 << LOG_KV("hsecs", shape_secs.hsecs)
+                 << LOG_KV("wsecs", shape_secs.wsecs)
+                 << LOG_KV("min_cost", min_group_costs_)
+                 << "\n";
   });
 
   auto status = time_step->assignTimeStep(lg_info, shape_secs, true);
   if (!status) {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddrWithSecs_finish", "failed",
+                      "check `assignTimeStep` for valid `shape_secs` searched failed")
+                   << "\n";
+    });
     return false;
   }
+  lg_debugger.set_do_debug(false);
   status = assignLmemAddr(lg_info, time_step, shape_secs, allow_bank_conflict);
+  lg_debugger.set_do_debug(true);
   if (!status) {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddrWithSecs_finish", "failed",
+                      "check `assignLmemAddr` for valid `shape_secs` searched failed")
+                   << "\n";
+    });
     return false;
   }
+
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddrWithSecs_finish", "success",
+                    "assign lmem addr with secs success")
+                 << LOG_KV("min_group_costs", min_group_costs_)
+                 << LOG_KV("shape_secs",
+                      llvm::format("%d,%d,%d,%d,%d", shape_secs.nsecs,
+                                   shape_secs.csecs, shape_secs.dsecs,
+                                   shape_secs.hsecs, shape_secs.wsecs))
+                 << "\n";
+  });
   return true;
 }
 
 search_result_t LmemAllocator::try_this_shape_secs(
     const LgInfo &lg_info, shape_secs_t &shape_secs, bool allow_bank_conflict,
     BasicTimeStepPtr &time_step) {
+  GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "stamp",
+                    "show current shape_secs for assignTimeStep and assignLmemAddr")
+                 << LOG_KV("nsecs", shape_secs.nsecs)
+                 << LOG_KV("csecs", shape_secs.csecs)
+                 << LOG_KV("dsecs", shape_secs.dsecs)
+                 << LOG_KV("hsecs", shape_secs.hsecs)
+                 << LOG_KV("wsecs", shape_secs.wsecs) << "\n";
+  });
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignTimeStep", "call_function",
+                    "backward `slice_info` of tensors starting from output tensors according to `this shape_secs`; "
+                    "assign and optimize timesteps for gdma and tpu operations")
+                 << "\n";
+  });
   bool status = time_step->assignTimeStep(lg_info, shape_secs, true);
 
   if (!status) {
     return SECS_TIMESTEP_INVALID;
   }
-  status = assignLmemAddr(lg_info, time_step, shape_secs);
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddr", "call_function",
+                    "try to assign local memory address under `this shape_secs`")
+                 << "\n";
+  });
+  status = assignLmemAddr(lg_info, time_step, shape_secs, allow_bank_conflict);
 
   if (!status) {
     return SECS_LMEM_INVALID;
@@ -1247,7 +1379,16 @@ void LmemAllocator::sc_method_brute_force(const LgInfo &lg_info,
                                           shape_secs_t &shape_secs,
                                           bool allow_bank_conflict,
                                           BasicTimeStepPtr &time_step) {
-
+  GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("sc_method_brute_force", "stamp",
+                    "show max shape_secs for brute force search")
+                 << LOG_KV("max_nsecs", max_shape_secs_.nsecs)
+                 << LOG_KV("max_csecs", max_shape_secs_.csecs)
+                 << LOG_KV("max_dsecs", max_shape_secs_.dsecs)
+                 << LOG_KV("max_hsecs", max_shape_secs_.hsecs)
+                 << LOG_KV("max_wsecs", max_shape_secs_.wsecs)
+                 << "\n";
+  });
   for (int _n = 1; _n <= max_shape_secs_.nsecs; _n++) {
     for (int _c = 1; _c <= max_shape_secs_.csecs; _c++) {
       for (int _h = 1; _h <= max_shape_secs_.hsecs; _h++) {
@@ -1272,15 +1413,15 @@ void LmemAllocator::sc_method_brute_force(const LgInfo &lg_info,
             search_result_t ret = try_this_shape_secs(
                 lg_info, cur_shape_secs, allow_bank_conflict, time_step);
             if (ret >= SECS_VALID) {
-              DEBUG_WITH_TYPE("shape_secs", {
-                llvm::dbgs() << "; action = shape_secs"
-                             << "; step = sc_method_brute_force"
-                             << "; nsecs = " << cur_shape_secs.nsecs
-                             << "; csecs = " << cur_shape_secs.csecs
-                             << "; dsecs = " << cur_shape_secs.dsecs
-                             << "; hsecs = " << cur_shape_secs.hsecs
-                             << "; wsecs = " << cur_shape_secs.wsecs
-                             << "; cost = " << last_group_cost_ << "\n";
+              GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+                llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "result",
+                                "show brute force search result")
+                             << LOG_KV_FORMAT("shape_secs",
+                                  "%d,%d,%d,%d,%d", shape_secs.nsecs, shape_secs.csecs,
+                                  shape_secs.dsecs, shape_secs.hsecs, shape_secs.wsecs)
+                             << LOG_KV("search_result", search_result_to_string(ret))
+                             << LOG_KV("group_cost", last_group_cost_)
+                             << "\n";
               });
             }
           }
@@ -1294,30 +1435,54 @@ void LmemAllocator::sc_method_quick_search(const LgInfo &lg_info,
                                            shape_secs_t &_shape_secs,
                                            bool allow_bank_conflict,
                                            BasicTimeStepPtr &time_step) {
-
+  GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("sc_method_quick_search", "stamp",
+                    "compare initial `shape_secs` with `max_shape_secs_` in `sc_method_quick_search`")
+                 << LOG_KV_FORMAT("init_nsecs/max_nsecs",
+                                  "%d/%d", _shape_secs.nsecs, max_shape_secs_.nsecs)
+                 << LOG_KV_FORMAT("init_csecs/max_csecs",
+                                  "%d/%d", _shape_secs.csecs, max_shape_secs_.csecs)
+                 << LOG_KV_FORMAT("init_dsecs/max_dsecs",
+                                  "%d/%d", _shape_secs.dsecs, max_shape_secs_.dsecs)
+                 << LOG_KV_FORMAT("init_hsecs/max_hsecs",
+                                  "%d/%d", _shape_secs.hsecs, max_shape_secs_.hsecs)
+                 << LOG_KV_FORMAT("init_wsecs/max_wsecs",
+                                  "%d/%d", _shape_secs.wsecs, max_shape_secs_.wsecs)
+                 << "\n";
+  });
   shape_secs_t shape_secs = _shape_secs;
   int64_t try_num = 0;
   const int64_t MAX_TRY_NUM = 20;
   int64_t dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("main_loop", "stamp",
+                    "uisng while loop try to find `shape_secs` for %d times", MAX_TRY_NUM)
+                 << "\n";
+  });
+  search_result_t ret;
   while (shape_secs.nsecs <= max_shape_secs_.nsecs &&
          shape_secs.dsecs <= max_shape_secs_.dsecs &&
          shape_secs.hsecs <= max_shape_secs_.hsecs &&
          shape_secs.wsecs <= max_shape_secs_.wsecs &&
          shape_secs.csecs <= max_shape_secs_.csecs) {
     // reassign time step
-    search_result_t ret = try_this_shape_secs(lg_info, shape_secs,
-                                              allow_bank_conflict, time_step);
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("iteration_start", "stamp",
+                      "already try %d times", try_num)
+                   << "\n";
+    });
+    ret = try_this_shape_secs(lg_info, shape_secs, allow_bank_conflict, time_step);
+    auto ret_str = search_result_to_string(ret);
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "result",
+                      "already try %d times", try_num + 1)
+                   << LOG_KV_FORMAT("shape_secs",
+                        "%d,%d,%d,%d,%d", shape_secs.nsecs, shape_secs.csecs,
+                        shape_secs.dsecs, shape_secs.hsecs, shape_secs.wsecs)
+                   << LOG_KV("search_result", ret_str)
+                   << LOG_KV("group_cost", last_group_cost_) << "\n";
+    });
     if (ret >= SECS_VALID) {
-      DEBUG_WITH_TYPE("shape_secs", {
-        llvm::dbgs() << "; action = shape_secs"
-                     << "; step = sc_method_quick_search"
-                     << "; nsecs = " << shape_secs.nsecs
-                     << "; csecs = " << shape_secs.csecs
-                     << "; dsecs = " << shape_secs.dsecs
-                     << "; hsecs = " << shape_secs.hsecs
-                     << "; wsecs = " << shape_secs.wsecs
-                     << "; cost = " << last_group_cost_ << "\n";
-      });
       break;
     } else if (ret > SECS_TIMESTEP_INVALID) {
       update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs_,

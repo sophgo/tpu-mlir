@@ -18,6 +18,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/Debugger.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -37,7 +38,7 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
                            const LgOptions &options);
 void get_op_cut_sec_num(ilp_LgInfo &ilp_lg_info, std::vector<std::pair<Operation *, int>>& vec_op_cut_secs);
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
-                         int speical_pattern = 0);
+                         const shape_secs_t &shape_secs, int speical_pattern = 0);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
                        shape_secs_t &shape_secs, const LgOptions &options);
 int64_t get_split_max_secs(BasicTimeStepPtr time_step);
@@ -83,7 +84,8 @@ int64_t get_buffer_size(Value v, tensor_info_t &ti, group_type_t group_type,
 
 bool stripe_mine_idx_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos, const LgOptions &options);
+                           TensorInfo &tensor_infos,
+                           const LgOptions &options);
 
 void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
                                 int64_t hidx, int64_t hslice, int64_t didx,
@@ -286,6 +288,15 @@ struct dot_graph {
   std::map<std::string, std::vector<std::string>> main_graph_nodes;
   std::map<std::string, std::vector<std::string>> main_graph_edges;
 };
+
+// debug for layer group process
+#define LG_DEBUG_WITH_TYPE(debug_type, callback) \
+  LgDebugger::getInstance().debug_with_type(debug_type, __FILE__, __LINE__, __FUNCTION__, callback)
+
+// debug for group cost simulation, which needs lg_info
+#define GROUP_DEBUG_WITH_TYPE(debug_type, lg_info, callback) \
+  LgDebugger::getInstance().debug_with_type(debug_type, lg_info, __FILE__, __LINE__, __FUNCTION__, callback)
+
 
 } // namespace tpu
 } // namespace tpu_mlir

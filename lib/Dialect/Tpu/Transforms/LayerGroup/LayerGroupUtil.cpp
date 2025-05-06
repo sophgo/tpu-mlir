@@ -623,6 +623,8 @@ get_group_max_secs(const LgInfo &lg_info,
     } else {
       max_nsecs = std::max(n, max_nsecs);
     }
+    // // allow MatMul split by n
+    // max_nsecs = std::max(n, max_nsecs);
   }
   int64_t max_csecs = llvm::maxIntN(64);
   int64_t max_hsecs = llvm::maxIntN(64);
@@ -1069,7 +1071,7 @@ int64_t get_split_max_secs(BasicTimeStepPtr time_step) {
 }
 
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
-                         int speical_pattern) {
+                         const shape_secs_t &shape_secs, int speical_pattern) {
   for (auto &iter : tensor_infos) {
     auto v = iter.first;
     iter.second.use_3ic_opt = use_3ic(v);
@@ -1103,11 +1105,21 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
           ti.slice_info.d.clear();
           ti.slice_info.w.clear();
           ti.slice_info.c.clear();
-          ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
-          ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
-          ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
-          ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
-          ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
+          for (int i = 0; i < shape_secs.nsecs; ++i) {
+            ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
+          }
+          for (int i = 0; i < shape_secs.csecs; ++i) {
+            ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
+          }
+          for (int i = 0; i < shape_secs.dsecs; ++i) {
+            ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
+          }
+          for (int i = 0; i < shape_secs.hsecs; ++i) {
+            ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
+          }
+          for (int i = 0; i < shape_secs.wsecs; ++i) {
+            ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
+          }
           tensor_infos[in] = ti;
         }
       }
@@ -1238,15 +1250,12 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
 
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
                        shape_secs_t &shape_secs, const LgOptions &options) {
-  shape_secs.nsecs = 1;
-  shape_secs.hsecs = 1;
-  shape_secs.dsecs = 1;
-  shape_secs.wsecs = 1;
-  shape_secs.csecs = 1;
+  shape_secs.clear();
   bool status = false;
   auto &tensor_infos = time_step->get_tensor_infos();
   std::vector<std::pair<Operation *, int>> vec_op_hwsecs;
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info, vec_op_hwsecs);
+  int64_t cdhw_secs = 0;
   for (int64_t nsec = 1; nsec <= max_shape_secs.nsecs; ++nsec) {
     shape_secs.nsecs = nsec;
     tensor_infos.clear();
@@ -1256,17 +1265,11 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     }
     time_step->update_all_mem_buffer_size(lg_info);
 
-    // update nsecs
-    int64_t total_secs = get_split_max_secs(time_step);
-    if (total_secs == 0) {
+    cdhw_secs = get_split_max_secs(time_step);
+    if (cdhw_secs == 0) {
       return false;
     }
-    shape_secs.nsecs =
-        std::max(shape_secs.nsecs, std::min(max_shape_secs.nsecs, total_secs));
-    if (shape_secs.nsecs > nsec)
-      continue;
     // update csecs
-    int64_t cdhw_secs = ceiling_func(total_secs, shape_secs.nsecs);
     shape_secs.csecs =
         std::max(shape_secs.csecs, std::min(max_shape_secs.csecs, cdhw_secs));
     // update d/h/w secs
@@ -1275,6 +1278,7 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
       if (shape_secs.nsecs == max_shape_secs.nsecs) {
         assign_dhwsecs(lg_info, shape_secs, dhw_secs, max_shape_secs, options);
       } else {
+        shape_secs.clear();
         continue;
       }
     }
@@ -1286,7 +1290,13 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     }
   }
 
-  update_tensor_infos(lg_info, tensor_infos);
+  update_tensor_infos(lg_info, tensor_infos, shape_secs);
+  auto status_str =
+      status ? "success" : "failed";
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("updata_data_split_result", status_str,
+                    "try to find more appropriate shape_secs than the initial one") << "\n";
+  });
   return status;
 }
 
@@ -1544,7 +1554,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
         idx = 0;
         slice = c;
         in_si.c.emplace_back(slice_pair_t(idx, slice));
-        if (is_group_in) {
+        if (is_group_in && in_si.n.size() == 1) {
           hold_in_lmem = true;
           break;
         } else {

@@ -1173,6 +1173,9 @@ class DebugPerformance(DebugBase):
                 acc += len(df)
 
             ret["cost_table"] = ret["cost_table"].style.apply(_style_cost_table, axis=1)
+            dir_path = os.path.dirname(target.files.lg_log.path)
+            # ret["cost_table"].to_html(os.path.join(dir_path, "cost_table.html"))
+            ret["cost_table"].to_excel(os.path.join(dir_path, "cost_table.xlsx"))
             # ret['lg_profile']
             # for index, row in enumerate(ret['cost_table'].index):
 
