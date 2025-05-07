@@ -63,6 +63,9 @@ void top::SliceAxisOp::shape_inference() {
   std::vector<int64_t> ends(axes.size());
   for (size_t i = 0; i < axes.size(); ++i) {
     auto axis = axes[i];
+    if (axis < 0) {
+      axis += in_shape.size();
+    }
     ends[i] = in_shape[axis];
   }
   if (module::isNone(getEnd()) == false) {

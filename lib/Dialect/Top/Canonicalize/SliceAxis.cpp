@@ -38,18 +38,19 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
     std::vector<int64_t> offset(dims, 0);
     std::vector<int64_t> steps(dims, 1);
     std::vector<int64_t> ends(dims, std::numeric_limits<int64_t>::max());
+    bool has_dynamic_param = false;
     if (!module::isNone(op.getStart())) {
       if (module::isWeight(op.getStart())) {
         auto start_op = op.getStart().getDefiningOp<top::WeightOp>();
         auto start_data = start_op.read_as_float();
         for (int i = 0; i < axis_dims; i++) {
-          auto axis = axis_data->at(i);
-          offset[axis] = start_data->at(i);
+          offset[axis[i]] = start_data->at(i);
         }
         operands.push_back(none_op);
       } else {
         auto start_op = op.getStart();
         operands.push_back(start_op);
+        has_dynamic_param = true;
       }
     }
 
@@ -58,13 +59,13 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
         auto end_op = op.getEnd().getDefiningOp<top::WeightOp>();
         auto end_data = end_op.read_as_float();
         for (int i = 0; i < axis_dims; i++) {
-          auto axis = axis_data->at(i);
-          ends[axis] = end_data->at(i);
+          ends[axis[i]] = end_data->at(i);
         }
         operands.push_back(none_op);
       } else {
         auto end_op = op.getEnd();
         operands.push_back(end_op);
+        has_dynamic_param = true;
       }
     }
 
@@ -73,9 +74,8 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
       auto step_op = op.getStep().getDefiningOp<top::WeightOp>();
       auto step_data = step_op.read_as_float();
       for (int i = 0; i < axis_dims; i++) {
-        auto axis = axis_data->at(i);
-        steps[axis] = step_data->at(i);
-        ASSERT_OP(steps[axis] != 0, op);
+        steps[axis[i]] = step_data->at(i);
+        ASSERT_OP(steps[axis[i]] != 0, op);
       }
       operands.push_back(none_op);
     } else {
@@ -89,16 +89,12 @@ struct SliceAxisToStridedSlice : public OpRewriterPatternEx<SliceAxisOp> {
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
     attrs.push_back(
         rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
-    if ((!module::isNone(op.getStart()) && !module::isWeight(op.getStart())) ||
-        (!module::isNone(op.getEnd()) && !module::isWeight(op.getEnd())) ||
-        (!module::isNone(op.getStep()) && !module::isWeight(op.getStep()))) {
+    if (has_dynamic_param) {
       attrs.push_back(
           rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axis)));
     } else {
       std::vector<int64_t> axes(dims, 0);
-      for (int i = 0; i < dims; i++) {
-        axes[i] = i;
-      }
+      std::iota(axes.begin(), axes.end(), 0);
       attrs.push_back(
           rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axes)));
     }
