@@ -9,6 +9,8 @@
 
 目前该工程直接支持的深度学习框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
 
+也支持编译[HuggingFace](https://huggingface.co) LLM模型，目前支持qwen2系列/llama系列，后续会支持更多类型的LLM模型。
+
 # 预编译的 TPU-MLIR Python 包
 
 我们提供 TPU-MLIR Python 包以便跳过编译工程的步骤快速安装。环境要求：python >= 3.10 和 ubuntu:22.04（推荐直接使用我们的docker镜像）。
@@ -26,8 +28,8 @@ pip install tpu_mlir
 | 序列 | 文档 |
 | :---: | --- |
 | 01 | [TPU-MLIR 论文](https://arxiv.org/abs/2210.15016) |
-| 02 | [TPU-MLIR 开发参考手册](https://doc.sophgo.com/sdk-docs/v23.09.01-lts-sp4/docs_latest_release/docs/tpu-mlir/developer_manual/html/index.html) |
-| 03 | [TPU-MLIR 快速入门指南](https://doc.sophgo.com/sdk-docs/v23.09.01-lts-sp4/docs_latest_release/docs/tpu-mlir/quick_start/html/index.html) |
+| 02 | [TPU-MLIR 开发参考手册](https://tpumlir.org/developer_manual_zh/index.html) |
+| 03 | [TPU-MLIR 快速入门指南](https://tpumlir.org/quick_start_zh/index.html) |
 
 | 序列 | 分享会 |
 | :---: | --- |
@@ -83,7 +85,59 @@ cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
 ```
-# 使用方法
+
+# 使用方法 (Qwen2.5-VL为例)
+
+以 `Qwen2.5-VL` 为例，介绍如何编译[HuggingFace](https://huggingface.co) LLM模型。
+
+1) 首先下载 `Qwen2.5-VL` 模型, 如下:
+
+``` shell
+git lfs install
+git clone git@hf.co:Qwen/Qwen2.5-VL-3B-Instruct-AWQ
+```
+
+2) 在docker环境下编译 `Qwen2.5-VL`, 如下:
+
+``` shell
+llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048 -q w4bf16  -c bm1684x  --max_pixels 672,896 -o qwen2.5vl_3b
+```
+
+`llm_convert.py` 支持的主要参数如下:
+
+| **参数名**     | **简写** | 必选？ | **说明**            |
+| ------------- | -------- | ----- | ------------------- |
+| model_path    |  m       | 是    | 指定权重路径        |
+| seq_length    |  s       | 是    | 指定序列最大长度    |
+| quantize      |  q       | 是    | 指定量化类型, w4bf16/w4f16/bf16/f16等等 |
+| q_group_size  |  g       | 否    | 指定每组量化的组大小, 默认64 |
+| chip          |  c       | 是    | 指定平台, 如bm1684x/bm1688/cv186ah |
+| max_pixels    |  -       | 否    | 多模态参数, 指定最大尺寸, 可以是`672,896`,也可以是`602112`  |
+| out_dir       |  o       | 是    | 指定输出目录 |
+
+执行完成后在指定目录会生成对应的bmodel
+
+3) 在PCIE或者SoC环境运行bmodel, 如下:
+
+将[python_demo](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen2_5_VL/python_demo)代码拷贝到PCIE或者SoC环境后如下编译代码:
+
+``` shell
+mkdir build && cd build && cmake .. && make && cp *cpython*.so .. && cd ..
+```
+
+将bmodel拷贝到运行环境后执行：
+
+``` shell
+# xxxx.bmodel请用实际名称
+python3 pipeline.py -m xxxx.bmodel -c config
+```
+
+执行效果图如下：
+
+![](./docs/assets/qwen2.5vl_zh.png)
+
+
+# 使用方法 (yolov5s为例)
 
 以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
 
@@ -148,7 +202,7 @@ model_transform.py \
 | test_input          | 否    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
 | test_result         | 否    | 指定验证后的输出文件                                         |
 | excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开                      |
-| debug | 否 | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
+| debug               | 否    | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
 | mlir                | 是    | 指定输出的mlir文件路径                                       |
 
 转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
@@ -179,7 +233,7 @@ model_deploy.py的主要参数说明如下（完整参数信息请查看开发�
 | tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
 | correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
 | excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
-| debug | 否 | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
+| debug               | 否    | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
 | model               | 是    | 指定输出的model文件路径                                  |
 | dynamic             | 否    | 动态编译，支持动态shape                           |
 

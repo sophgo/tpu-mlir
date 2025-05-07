@@ -161,6 +161,19 @@
         --test_result resnet50_cf_top_outputs.npz \
         --mlir resnet50_cf.mlir
 
+支持LLM模型
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+    $ llm_convert.py \
+        -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ \
+        -s 2048 \
+        -q w4bf16 \
+        -c bm1684x \
+        --max_pixels 672,896 \
+        -o qwen2.5vl_3b
+
 
 工具参数介绍
 -------------
@@ -586,6 +599,50 @@ model_deploy.py
      - BF16, INT8
 
 其中， ``W4A16`` 与 ``W8A16`` 的 ``Weight-only`` 量化模式仅作用于 MatMul 运算，其余算子根据实际情况仍会进行 ``F16`` 或 ``BF16`` 量化。
+
+
+llm_convert.py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+用于将HuggingFace LLM模型转换成bmodel, 支持的参数如下:
+
+.. list-table:: llm_convert 参数功能
+   :widths: 18 10 50
+   :header-rows: 1
+
+   * - 参数名
+     - 必选？
+     - 说明
+   * - model_path
+     - 是
+     - 指定模型路径
+   * - seq_length
+     - 是
+     - 指定序列最大长度
+   * - quantize
+     - 是
+     - 指定量化类型, 如w4bf16/w4f16/bf16/f16
+   * - q_group_size
+     - 否
+     - 每组量化的组大小
+   * - chip
+     - 是
+     - 指定处理器类型, 支持bm1684x/bm1688/cv186ah
+   * - max_pixels
+     - 否
+     - 多模态参数, 指定最大尺寸, 可以是 ``672,896``, 也可以是 ``602112``
+   * - num_device
+     - 否
+     - 指定 bmodel 部署的设备数
+   * - num_core
+     - 否
+     - 指定 bmodel 部署使用的核数, 0表示采用最大核数
+   * - embedding_disk
+     - 否
+     - 如果设置该标志, 则将word_embedding导出为二进制文件, 并通过 CPU 进行推理
+   * - out_dir
+     - 是
+     - 指定输出的 bmodel 文件保存路径
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~

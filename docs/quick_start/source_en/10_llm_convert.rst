@@ -53,6 +53,9 @@ Below is an explanation of the command-line arguments supported by this tool:
 - ``--embedding_disk``
   Set this flag to export the word_embedding as a binary file and run inference on the CPU.
 
+- ``--max_pixels`` (integer)
+  For multimodal models such as qwen2.5vl, it is used to specify the maximum pixel dimensions. For example, you can specify 672,896, indicating an image of 672x896; or it can be 602112, representing the maximum number of pixels.
+
 - ``-o``, ``--out_dir`` (string, default: ``./tmp``)
   Specify the output directory for the generated bmodel files.
 
@@ -71,4 +74,12 @@ Note: If you encounter an error indicating that transformers is not found, you w
 
 .. code-block:: bash
 
-   pip3 install transformers
+   pip3 install transformers --upgrade
+
+Also supports AWQ and GPTQ models, such as Qwen2.5-0.5B-Instruct-AWQ and Qwen2.5-0.5B-Instruct-GPTQ-Int4. The conversion command is as follows:
+
+.. code-block:: bash
+
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-AWQ -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-GPTQ-Int4 -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
+

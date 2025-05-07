@@ -6,7 +6,7 @@
    :alt: SOPHGO LOGO
 
 | **法律声明**
-| 版权所有 © 算能 2024. 保留一切权利。
+| 版权所有 © 算能 2025. 保留一切权利。
 | 非经本公司书面许可, 任何单位和个人不得擅自摘抄、复制本文档内容的部分或全部, 并不得以任何形式传播。
 
 | **注意**
@@ -34,6 +34,65 @@
    * - 版本
      - 发布日期
      - 说明
+   * - v1.18.0
+     - 2025.05.01
+     - yolo系列增加自动混精设置;
+       run_calibration增加SmoothQuant选择;
+       新增llm一键编译脚本
+   * - v1.17.0
+     - 2025.04.03
+     - LLM模型编译速度大幅提升;
+       TPULang支持PPL算子接入;
+       修复Trilu bf16在Mars3上随机出错问题
+   * - v1.16.0
+     - 2025.03.03
+     - TPULang ROI_Extractor支持;
+       Einsum支持 abcde,abfge->abcdfg模式;
+       LLMC支持Vila模型
+   * - v1.15.0
+     - 2025.02.05
+     - 支持LLMC量化;
+       codegen地址越界判断;
+       修复若干对比问题
+   * - v1.14.0
+     - 2025.01.02
+     - yolov8/v11后处理融合支持;
+       Conv3D stride大于15支持;
+       FAttention精度提升
+   * - v1.13.0
+     - 2024.12.02
+     - 精简Release发布包;
+       MaxPoolWithMask训练算子性能优化;
+       RoPE大算子支持;
+   * - v1.12.0
+     - 2024.11.06
+     - tpuv7-runtime cmodel接入;
+       BM1690多核LayerGroup优化;
+       支持PPL编写后端算子
+   * - v1.11.0
+     - 2024.09.27
+     - BM1688 tdb增加soc模式;
+       bmodel支持细粒度合并;
+       修复若干性能下降问题
+   * - v1.10.0
+     - 2024.08.15
+     - 支持yolov10;
+       增加量化调优章节;
+       优化tpu-perf日志打印
+   * - v1.9.0
+     - 2024.07.16
+     - BM1690新增40个模型回归测试;
+       量化算法新增octav,aciq_guas和aciq_laplace
+   * - v1.8.0
+     - 2024.05.30
+     - BM1690支持多核MatMul算子;
+       TPULang支持输入输出顺序指定;
+       tpuperf移除patchelf依赖
+   * - v1.7.0
+     - 2024.05.15
+     - CV186X双核修改为单核;
+       BM1690测试流程与BM1684X一致;
+       支持gemma/llama/qwen等模型
    * - v1.6.0
      - 2024.02.23
      - 添加了Pypi发布形式;

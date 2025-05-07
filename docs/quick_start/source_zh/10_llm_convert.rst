@@ -6,7 +6,7 @@
 概述
 ----
 
-`llm_convert.py` 是一个用于将大语言模型（LLM）转换成bmodel的工具，将原始模型权重转换为 bmodel 格式，以便在 BM1684X、BM1688 和 CV186AH 等芯片平台上进行高效推理。
+``llm_convert.py`` 是一个用于将大语言模型（LLM）转换成bmodel的工具，将原始模型权重转换为 bmodel 格式，以便在 BM1684X、BM1688 和 CV186AH 等芯片平台上进行高效推理。
 目前支持的LLM类型包括qwen2和llama，比如Qwen2-7B-Instruct、Llama-2-7b-chat-hf等。
 
 
@@ -54,6 +54,9 @@
 - ``--embedding_disk``
   如果设置该标志，则将word_embedding导出为二进制文件，并通过 CPU 进行推理。
 
+- ``--max_pixels`` (integer)
+  对于多模态模型如qwen2.5vl，用于指定最大像素尺寸，比如可以指定为 ``672,896``,表示 ``672x896`` 的图片；也可以是 ``602112``，表示最大像素。
+
 - ``-o``, ``--out_dir`` (string, 默认值: ``./tmp``)
   指定输出的 bmodel 文件保存路径。
 
@@ -72,7 +75,14 @@
 
 .. code-block:: bash
 
-   pip3 install transformers
+   pip3 install transformers --upgrade
+
+另外该命令也支持AWQ和GPTQ模型，参考命令如下：
+
+.. code-block:: bash
+
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-AWQ -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-GPTQ-Int4 -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
 
 
 

@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = u'TPU-MLIR'
-copyright = u'2022, SOPHGO'
+copyright = u'2025, SOPHGO'
 author = u'SOPHGO'
 
 import os, subprocess, re

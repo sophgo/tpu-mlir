@@ -10,6 +10,7 @@ SOPHGO aims to become a leading global provider of general-purpose computing pow
 
 Currently, supported Deep Learning frameworks are PyTorch, ONNX, TFLite and Caffe. Models from other frameworks need to be converted to ONNX models.
 
+It also supports compiling [HuggingFace](https://huggingface.co) LLM models. Currently, the qwen2 and llama series are supported, with more types of LLM models to be added in the future.
 
 # Prebuilt TPU-MLIR Python Package
 
@@ -29,8 +30,8 @@ Here are some resources to help you better understand the project:
 | Index | Documents |
 | :---: | --- |
 | 01 | [TPU-MLIR paper](https://arxiv.org/abs/2210.15016) |
-| 02 | [TPU-MLIR Technical Reference Manual](https://doc.sophgo.com/bm1688_sdk-docs/v1.9/docs_latest_release/docs/tpu-mlir/developer_manual) |
-| 03 | [TPU-MLIR Quick Start](https://doc.sophgo.com/bm1688_sdk-docs/v1.9/docs_latest_release/docs/tpu-mlir/quick_start) |
+| 02 | [TPU-MLIR Technical Reference Manual](https://tpumlir.org/developer_manual_en/index.html) |
+| 03 | [TPU-MLIR Quick Start](https://tpumlir.org/quick_start_en/index.html) |
 
 | Index | Sharing Sessions |
 | :---: | --- |
@@ -83,7 +84,62 @@ cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
 ```
-# Usage
+
+# Usage (Example: Qwen2.5-VL)
+
+Using `Qwen2.5-VL` as an example, here’s how to compile a [HuggingFace](https://huggingface.co) LLM model.
+
+1) Download the `Qwen2.5-VL` model:
+
+```shell
+git lfs install
+git clone git@hf.co:Qwen/Qwen2.5-VL-3B-Instruct-AWQ
+```
+
+2) In a Docker environment, compile `Qwen2.5-VL`:
+
+```shell
+llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048 -q w4bf16 -c bm1684x --max_pixels 672,896 -o qwen2.5vl_3b
+```
+
+The main arguments supported by `llm_convert.py` are:
+
+| Parameter     | Short | Required? | Description                                                                          |
+| ------------- | ----- | --------- | ------------------------------------------------------------------------------------ |
+| model_path    | m     | Yes       | Path to the model weights                                                            |
+| seq_length    | s     | Yes       | Maximum sequence length                                                               |
+| quantize      | q     | Yes       | Quantization type (e.g., `w4bf16`/`w4f16`/`bf16`/`f16`, etc.)                         |
+| q_group_size  | g     | No        | Group size for quantization; default is 64                                           |
+| chip          | c     | Yes       | Target platform (e.g., `bm1684x`/`bm1688`/`cv186ah`)                                  |
+| max_pixels    | —     | No        | Multi-modal parameter; maximum resolution, e.g., `672,896` or single integer `602112` |
+| out_dir       | o     | Yes       | Output directory                                                                      |
+
+After the conversion completes, the corresponding bmodel file will be generated in the specified output directory.
+
+3) Run the bmodel in a PCIe or SoC environment:
+
+- Copy the [python_demo](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen2_5_VL/python_demo) folder into your PCIe/SoC environment, then build:
+
+  ```shell
+  mkdir build && cd build
+  cmake ..
+  make
+  cp *cpython*.so ..
+  cd ..
+  ```
+
+- Copy the generated bmodel to the runtime environment and execute:
+
+  ```shell
+  # Replace xxxx.bmodel with your actual bmodel filename
+  python3 pipeline.py -m xxxx.bmodel -c config
+  ```
+
+The execution result looks like this:
+
+![](./docs/assets/qwen2.5vl_en.png)
+
+# Usage (Example: yolov5s)
 
 Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the BM1684X TPU platform.
 

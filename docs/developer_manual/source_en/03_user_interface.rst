@@ -162,6 +162,20 @@ Support for Caffe Models
         --mlir resnet50_cf.mlir
 
 
+Support LLM models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+    $ llm_convert.py \
+        -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ \
+        -s 2048 \
+        -q w4bf16 \
+        -c bm1684x \
+        --max_pixels 672,896 \
+        -o qwen2.5vl_3b
+
+
 Introduction to Tool Parameters
 ---------------------------------
 
@@ -574,6 +588,51 @@ The following table shows the correspondence between different processors and th
      - BF16, INT8
 
 The ``Weight-only`` quantization mode of ``W4A16`` and ``W8A16`` only applies to the MatMul operation, and other operators will still perform ``F16`` or ``BF16`` quantization.
+
+
+llm_convert.py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Convert the LLM model into bmodel, the parameters are as follows:
+
+.. list-table:: llm_convert Parameter Functions
+   :widths: 18 10 50
+   :header-rows: 1
+
+   * - Parameter
+     - Required?
+     - Description
+   * - model_path
+     - Yes
+     - Specifies the path to the model
+   * - seq_length
+     - Yes
+     - Specifies the maximum sequence length
+   * - quantize
+     - Yes
+     - Specifies the quantization type, e.g., w4bf16/w4f16/bf16/f16
+   * - q_group_size
+     - No
+     - Specifies the group size for quantization
+   * - chip
+     - Yes
+     - Specifies the processor type; supports bm1684x/bm1688/cv186ah
+   * - max_pixels
+     - No
+     - Multimodal parameter; specifies the maximum dimensions, either “672,896” or “602112”
+   * - num_device
+     - No
+     - Specifies the number of devices for bmodel deployment
+   * - num_core
+     - No
+     - Specifies the number of cores for bmodel deployment; 0 means use the maximum available cores
+   * - embedding_disk
+     - No
+     - If set, exports the word embeddings to a binary file and runs inference on the CPU
+   * - out_dir
+     - Yes
+     - Specifies the output directory for the bmodel file
+
 
 model_runner.py
 ~~~~~~~~~~~~~~~~
