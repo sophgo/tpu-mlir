@@ -3740,7 +3740,9 @@ def extract(input: Tensor,
 @assert_with_out_name
 def multi_scale_deformable_attention(
     query: Tensor,
-    value: Tensor,
+    value: Union[Tensor, None],
+    identity: Union[Tensor, None],
+    query_pos: Union[Tensor, None],
     key_padding_mask: Tensor,
     reference_points: Tensor,
     sampling_offsets_weight: Tensor,
@@ -3759,14 +3761,21 @@ def multi_scale_deformable_attention(
     out_name: str = None,
 ):
     assert query.shape[0] == 1
-    assert value.shape[0] == 1
+    if value:
+        assert value.shape[0] == 1
+    else:
+        value = query
+    if identity:
+        assert identity.shape[0] == 1
+    else:
+        identity = query
     bs = 1
-    assert embed_dims % (num_heads * num_levels) == 0
+    # assert embed_dims % (num_heads * num_levels) == 0
     assert TpuLang.chip in ["bm1684x", "bm1688"]
     npu_num = 64 if TpuLang.chip == "bm1684x" else 32
     _, num_query, _ = query.shape
     _, num_value, _ = value.shape
-    _, _, num_levels, _ = reference_points.shape
+    _, _, h, w = reference_points.shape
     spatial_shapes_np = np.array(spatial_shapes)
     assert (spatial_shapes_np[:, 0] * spatial_shapes_np[:, 1]).sum() == num_value
     import math
@@ -3804,6 +3813,10 @@ def multi_scale_deformable_attention(
                       outputs=[output_proj_bias],
                       params=bias_reshape_attr)
 
+    if query_pos:
+        query_out = Tensor(dtype=o_dtype, name=out_name + "_query")
+        TpuLang.insert_op("top.Add", inputs=[query, query_pos], outputs=[query_out])
+        query = query_out
     #  concat: padding query to align with npu_num
     query_padding_weight_np = np.zeros((bs, num_padding, embed_dims), dtype=o_dtype)
     query_padding_weight = Tensor(dtype=o_dtype,
@@ -3821,9 +3834,9 @@ def multi_scale_deformable_attention(
                       params=concat_attr)
 
     # concat: padding reference_points to align with npu_num
-    reference_points_padding_weight_np = np.zeros((bs, num_padding, num_levels, 2), dtype=o_dtype)
+    reference_points_padding_weight_np = np.zeros((bs, num_padding, h, w), dtype=o_dtype)
     reference_points_padding_weight = Tensor(dtype=o_dtype,
-                                             shape=[bs, num_padding, num_levels, 2],
+                                             shape=[bs, num_padding, h, w],
                                              data=reference_points_padding_weight_np,
                                              ttype="coeff")
     reference_points_concat_input_list = [reference_points, reference_points_padding_weight]
@@ -3839,7 +3852,7 @@ def multi_scale_deformable_attention(
 
     # reshape: convert reference_points from [1, align_up(num_query, npu_num), num_levels, 2] to [align_up(num_query, npu_num), num_levels*2]
     reference_points_reshape_attr = {
-        "shape": ArrayAttr([num_query_padding, num_levels * 2]),
+        "shape": ArrayAttr([num_query_padding, h * w]),
     }
     reference_points_reshape_out = Tensor(dtype=o_dtype,
                                           name=out_name + "_reference_points_reshape")
@@ -3858,44 +3871,6 @@ def multi_scale_deformable_attention(
                       inputs=[reference_points_reshape_out],
                       outputs=[reference_points_permute_out],
                       params=reference_points_permute_attr)
-
-    # loop for num_levels*2 times
-    reference_points_list = []
-    reference_points_shape_len = 2
-    reference_points_slice_offset = [0] * reference_points_shape_len
-    reference_points_slice_ends = [int64_max] * reference_points_shape_len
-    reference_points_slice_steps = [1] * reference_points_shape_len
-    for i in range(num_levels):
-        for k in range(2):
-            idx = i * 2 + k
-            # slice: split reference_points
-            reference_points_slice_offset[0] = idx
-            reference_points_slice_ends[0] = idx + 1
-            reference_points_slice_attr = {
-                "offset": ArrayAttr(reference_points_slice_offset),
-                "ends": ArrayAttr(reference_points_slice_ends),
-                "steps": ArrayAttr(reference_points_slice_steps),
-                "axes": ArrayAttr([]),
-            }
-            reference_points_slice_out = Tensor(dtype=o_dtype,
-                                                name=out_name +
-                                                "_reference_points_slice_{}".format(idx))
-            TpuLang.insert_op("top.Slice",
-                              inputs=[reference_points_permute_out, None, None, None],
-                              outputs=[reference_points_slice_out],
-                              params=reference_points_slice_attr)
-            # reshape: reshape reference_points to convert dimension c to npu_num
-            reference_points_reshape_attr = {
-                "shape": ArrayAttr([1, npu_num, -1]),
-            }
-            reference_points_reshape_out = Tensor(dtype=o_dtype,
-                                                  name=out_name +
-                                                  "_reference_points_reshape_{}".format(idx))
-            TpuLang.insert_op("top.Reshape",
-                              inputs=[reference_points_slice_out],
-                              outputs=[reference_points_reshape_out],
-                              params=reference_points_reshape_attr)
-            reference_points_list.append(reference_points_reshape_out)
 
     # reorder weight & bias of linear layer which is used to compute sampling_offsets
     # reorder weight
@@ -4039,55 +4014,199 @@ def multi_scale_deformable_attention(
                           params=sampling_offsets_reshape_1_attr)
         sampling_offsets_list.append(sampling_offsets_reshape_1_out)
 
-    # loop for num_levels*num_heads*2 times
-    offset_normalizer = np.stack([spatial_shapes_np[..., 1], spatial_shapes_np[..., 0]],
-                                 -1).flatten()
-    sampling_locations_list = []
-    for i in range(num_levels):
-        for j in range(num_heads):
+    # loop for num_levels*2 times
+    reference_points_list = []
+    reference_points_shape_len = 2
+    reference_points_slice_offset = [0] * reference_points_shape_len
+    reference_points_slice_ends = [int64_max] * reference_points_shape_len
+    reference_points_slice_steps = [1] * reference_points_shape_len
+    if w == 2:
+        for i in range(num_levels):
             for k in range(2):
-                ik = i * 2 + k
-                ijk = i * num_heads * 2 + j * 2 + k
-                # calculate 2 *(reference_points_list[ik] + sampling_offsets_list[ijk] / offset_normalizer_list[ik]) - 1
-                # mulconst: sampling_offsets_list[ijk] * (1/offset_normalizer_list[ik])
-                sampling_locations_mulconst_0_attr = {
-                    "const_val": Attr(1.0 / offset_normalizer[ik], "float64"),
+                idx = i * 2 + k
+                # slice: split reference_points
+                reference_points_slice_offset[0] = idx
+                reference_points_slice_ends[0] = idx + 1
+                reference_points_slice_attr = {
+                    "offset": ArrayAttr(reference_points_slice_offset),
+                    "ends": ArrayAttr(reference_points_slice_ends),
+                    "steps": ArrayAttr(reference_points_slice_steps),
+                    "axes": ArrayAttr([]),
                 }
-                sampling_locations_mulconst_0_out = Tensor(
-                    dtype=o_dtype, name=out_name + "_sampling_locations_mulconst_0_{}".format(ijk))
-                TpuLang.insert_op("top.MulConst",
-                                  inputs=[sampling_offsets_list[ijk]],
-                                  outputs=[sampling_locations_mulconst_0_out],
-                                  params=sampling_locations_mulconst_0_attr)
-                # add: reference_points_list[ik] + sampling_locations_mulconst_0_out[ijk]
-                sampling_locations_add_out = Tensor(dtype=o_dtype,
+                reference_points_slice_out = Tensor(dtype=o_dtype,
                                                     name=out_name +
-                                                    "_sampling_locations_add_{}".format(ijk))
-                TpuLang.insert_op(
-                    "top.Add",
-                    inputs=[reference_points_list[ik], sampling_locations_mulconst_0_out],
-                    outputs=[sampling_locations_add_out])
-                # mulconst: 2 * sampling_locations_add_out[ijk]
-                sampling_locations_mulconst_1_attr = {
-                    "const_val": Attr(2.0, "float64"),
+                                                    "_reference_points_slice_{}".format(idx))
+                TpuLang.insert_op("top.Slice",
+                                  inputs=[reference_points_permute_out, None, None, None],
+                                  outputs=[reference_points_slice_out],
+                                  params=reference_points_slice_attr)
+                # reshape: reshape reference_points to convert dimension c to npu_num
+                reference_points_reshape_attr = {
+                    "shape": ArrayAttr([1, npu_num, -1]),
                 }
-                sampling_locations_mulconst_1_out = Tensor(
-                    dtype=o_dtype, name=out_name + "_sampling_locations_mulconst_1_{}".format(ijk))
-                TpuLang.insert_op("top.MulConst",
-                                  inputs=[sampling_locations_add_out],
-                                  outputs=[sampling_locations_mulconst_1_out],
-                                  params=sampling_locations_mulconst_1_attr)
-                # addconst: 2 * sampling_locations_add_out[ijk] - 1
-                sampling_locations_addconst_attr = {
-                    "const_val": Attr(-1.0, "float64"),
+                reference_points_reshape_out = Tensor(dtype=o_dtype,
+                                                      name=out_name +
+                                                      "_reference_points_reshape_{}".format(idx))
+                TpuLang.insert_op("top.Reshape",
+                                  inputs=[reference_points_slice_out],
+                                  outputs=[reference_points_reshape_out],
+                                  params=reference_points_reshape_attr)
+                reference_points_list.append(reference_points_reshape_out)
+
+        # loop for num_levels*num_heads*2 times
+        offset_normalizer = np.stack([spatial_shapes_np[..., 1], spatial_shapes_np[..., 0]],
+                                     -1).flatten()
+        sampling_locations_list = []
+        for i in range(num_levels):
+            for j in range(num_heads):
+                for k in range(2):
+                    ik = i * 2 + k
+                    ijk = i * num_heads * 2 + j * 2 + k
+                    # calculate 2 *(reference_points_list[ik] + sampling_offsets_list[ijk] / offset_normalizer_list[ik]) - 1
+                    # mulconst: sampling_offsets_list[ijk] * (1/offset_normalizer_list[ik])
+                    sampling_locations_mulconst_0_attr = {
+                        "const_val": Attr(1.0 / offset_normalizer[ik], "float64"),
+                    }
+                    sampling_locations_mulconst_0_out = Tensor(
+                        dtype=o_dtype,
+                        name=out_name + "_sampling_locations_mulconst_0_{}".format(ijk))
+                    TpuLang.insert_op("top.MulConst",
+                                      inputs=[sampling_offsets_list[ijk]],
+                                      outputs=[sampling_locations_mulconst_0_out],
+                                      params=sampling_locations_mulconst_0_attr)
+                    # add: reference_points_list[ik] + sampling_locations_mulconst_0_out[ijk]
+                    sampling_locations_add_out = Tensor(dtype=o_dtype,
+                                                        name=out_name +
+                                                        "_sampling_locations_add_{}".format(ijk))
+                    TpuLang.insert_op(
+                        "top.Add",
+                        inputs=[reference_points_list[ik], sampling_locations_mulconst_0_out],
+                        outputs=[sampling_locations_add_out])
+                    # mulconst: 2 * sampling_locations_add_out[ijk]
+                    sampling_locations_mulconst_1_attr = {
+                        "const_val": Attr(2.0, "float64"),
+                    }
+                    sampling_locations_mulconst_1_out = Tensor(
+                        dtype=o_dtype,
+                        name=out_name + "_sampling_locations_mulconst_1_{}".format(ijk))
+                    TpuLang.insert_op("top.MulConst",
+                                      inputs=[sampling_locations_add_out],
+                                      outputs=[sampling_locations_mulconst_1_out],
+                                      params=sampling_locations_mulconst_1_attr)
+                    # addconst: 2 * sampling_locations_add_out[ijk] - 1
+                    sampling_locations_addconst_attr = {
+                        "const_val": Attr(-1.0, "float64"),
+                    }
+                    sampling_locations_addconst_out = Tensor(
+                        dtype=o_dtype,
+                        name=out_name + "_sampling_locations_addconst_{}".format(ijk))
+                    TpuLang.insert_op("top.AddConst",
+                                      inputs=[sampling_locations_mulconst_1_out],
+                                      outputs=[sampling_locations_addconst_out],
+                                      params=sampling_locations_addconst_attr)
+                    sampling_locations_list.append(sampling_locations_addconst_out)
+
+    if w == 4:
+        for i in range(num_levels):
+            for k in range(4):
+                idx = i * 4 + k
+                # slice: split reference_points
+                reference_points_slice_offset[0] = idx
+                reference_points_slice_ends[0] = idx + 1
+                reference_points_slice_attr = {
+                    "offset": ArrayAttr(reference_points_slice_offset),
+                    "ends": ArrayAttr(reference_points_slice_ends),
+                    "steps": ArrayAttr(reference_points_slice_steps),
+                    "axes": ArrayAttr([]),
                 }
-                sampling_locations_addconst_out = Tensor(
-                    dtype=o_dtype, name=out_name + "_sampling_locations_addconst_{}".format(ijk))
-                TpuLang.insert_op("top.AddConst",
-                                  inputs=[sampling_locations_mulconst_1_out],
-                                  outputs=[sampling_locations_addconst_out],
-                                  params=sampling_locations_addconst_attr)
-                sampling_locations_list.append(sampling_locations_addconst_out)
+                reference_points_slice_out = Tensor(dtype=o_dtype,
+                                                    name=out_name +
+                                                    "_reference_points_slice_{}".format(idx))
+                TpuLang.insert_op("top.Slice",
+                                  inputs=[reference_points_permute_out, None, None, None],
+                                  outputs=[reference_points_slice_out],
+                                  params=reference_points_slice_attr)
+                # reshape: reshape reference_points to convert dimension c to npu_num
+                reference_points_reshape_attr = {
+                    "shape": ArrayAttr([1, npu_num, -1]),
+                }
+                reference_points_reshape_out = Tensor(dtype=o_dtype,
+                                                      name=out_name +
+                                                      "_reference_points_reshape_{}".format(idx))
+                TpuLang.insert_op("top.Reshape",
+                                  inputs=[reference_points_slice_out],
+                                  outputs=[reference_points_reshape_out],
+                                  params=reference_points_reshape_attr)
+                reference_points_list.append(reference_points_reshape_out)
+
+        sampling_locations_list = []
+        for i in range(num_levels):
+            for j in range(num_heads):
+                for k in range(2):
+                    ik = i * 4 + k
+                    ijk = i * num_heads * 2 + j * 2 + k
+                    # calculate 2 *(reference_points_list[ik] + sampling_offsets_list[ijk] / num_points * reference_points_list[ik + 2] * 0.5) - 1
+                    # mulconst: sampling_offsets_list[ijk] * (1/offset_normalizer_list[ik])
+                    sampling_locations_mulconst_0_attr = {
+                        "const_val": Attr(1.0 / num_points, "float64"),
+                    }
+                    sampling_locations_mulconst_0_out = Tensor(
+                        dtype=o_dtype,
+                        name=out_name + "_sampling_locations_mulconst_0_{}".format(ijk))
+                    TpuLang.insert_op("top.MulConst",
+                                      inputs=[sampling_offsets_list[ijk]],
+                                      outputs=[sampling_locations_mulconst_0_out],
+                                      params=sampling_locations_mulconst_0_attr)
+                    # mul: sampling_locations_mulconst_0_out * offset_normalizer_list[ik + 2]
+                    sampling_locations_mul_out = Tensor(
+                        dtype=o_dtype, name="sampling_locations_mul_{}".format(ijk))
+                    TpuLang.insert_op(
+                        "top.Mul",
+                        inputs=[sampling_locations_mulconst_0_out, reference_points_list[ik + 2]],
+                        outputs=[sampling_locations_mul_out])
+                    # mulconst: sampling_locations_mul_out * 0.5
+                    sampling_locations_mulconst_1_attr = {
+                        "const_val": Attr(0.5, "float64"),
+                    }
+                    sampling_locations_mulconst_1_out = Tensor(
+                        dtype=o_dtype,
+                        name=out_name + "_sampling_locations_mulconst_1_{}".format(ijk))
+                    TpuLang.insert_op("top.MulConst",
+                                      inputs=[sampling_locations_mul_out],
+                                      outputs=[sampling_locations_mulconst_1_out],
+                                      params=sampling_locations_mulconst_1_attr)
+                    # add: reference_points_list[ik] + sampling_locations_mulconst_0_out[ijk]
+                    sampling_locations_add_out = Tensor(dtype=o_dtype,
+                                                        name=out_name +
+                                                        "_sampling_locations_add_{}".format(ijk))
+                    TpuLang.insert_op(
+                        "top.Add",
+                        inputs=[reference_points_list[ik], sampling_locations_mulconst_0_out],
+                        outputs=[sampling_locations_add_out])
+                    # mulconst: 2 * sampling_locations_add_out[ijk]
+                    sampling_locations_mulconst_2_attr = {
+                        "const_val": Attr(2.0, "float64"),
+                    }
+                    sampling_locations_mulconst_2_out = Tensor(
+                        dtype=o_dtype,
+                        name=out_name + "_sampling_locations_mulconst_2_{}".format(ijk))
+                    TpuLang.insert_op("top.MulConst",
+                                      inputs=[sampling_locations_add_out],
+                                      outputs=[sampling_locations_mulconst_2_out],
+                                      params=sampling_locations_mulconst_2_attr)
+                    # addconst: 2 * sampling_locations_add_out[ijk] - 1
+                    sampling_locations_addconst_attr = {
+                        "const_val": Attr(-1.0, "float64"),
+                    }
+                    sampling_locations_addconst_out = Tensor(
+                        dtype=o_dtype,
+                        name=out_name + "_sampling_locations_addconst_{}".format(ijk))
+                    TpuLang.insert_op("top.AddConst",
+                                      inputs=[sampling_locations_mulconst_1_out],
+                                      outputs=[sampling_locations_addconst_out],
+                                      params=sampling_locations_addconst_attr)
+                    sampling_locations_list.append(sampling_locations_addconst_out)
+
     # concat: concat sampling_locations
     sampling_locations_concat_attr = {
         "axis": Attr(0, "int32"),
@@ -4449,12 +4568,16 @@ def multi_scale_deformable_attention(
         "do_relu": Attr(False, "bool"),
         "relu_limit": Attr(-1.0, "float64")
     }
-    output_proj_matmul_out = Tensor(dtype=o_dtype, name=out_name)
+    output_proj_matmul_out = Tensor(dtype=o_dtype, name=out_name + "_matmul")
     TpuLang.insert_op("top.MatMul",
                       inputs=[output_padding_slice_out, output_proj_weight, output_proj_bias],
                       outputs=[output_proj_matmul_out],
                       params=output_proj_matmul_attr)
-    return output_proj_matmul_out
+    output_proj_add_out = Tensor(dtype=o_dtype, name=out_name)
+    TpuLang.insert_op("top.Add",
+                      inputs=[output_proj_matmul_out, identity],
+                      outputs=[output_proj_add_out])
+    return output_proj_add_out
 
 @auto_name()
 @annotation_check

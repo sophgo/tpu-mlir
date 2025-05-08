@@ -5394,24 +5394,27 @@ multi_scale_deformable_attention
     .. code-block:: python
 
       def multi_scale_deformable_attention(
-          query: Tensor,
-          value: Tensor,
-          key_padding_mask: Tensor,
-          reference_points: Tensor,
-          sampling_offsets_weight: Tensor,
-          sampling_offsets_bias_ori: Tensor,
-          attention_weights_weight: Tensor,
-          attention_weights_bias_ori: Tensor,
-          value_proj_weight: Tensor,
-          value_proj_bias_ori: Tensor,
-          output_proj_weight: Tensor,
-          output_proj_bias_ori: Tensor,
-          spatial_shapes: List[List[int]],
-          embed_dims: int,
-          num_heads: int = 8,
-          num_levels: int = 4,
-          num_points: int = 4,
-          out_name: str = None):
+        query: Tensor,
+        value: Union[Tensor, None],
+        identity: Union[Tensor, None],
+        query_pos: Union[Tensor, None],
+        key_padding_mask: Tensor,
+        reference_points: Tensor,
+        sampling_offsets_weight: Tensor,
+        sampling_offsets_bias_ori: Tensor,
+        attention_weights_weight: Tensor,
+        attention_weights_bias_ori: Tensor,
+        value_proj_weight: Tensor,
+        value_proj_bias_ori: Tensor,
+        output_proj_weight: Tensor,
+        output_proj_bias_ori: Tensor,
+        spatial_shapes: List[List[int]],
+        embed_dims: int,
+        num_heads: int = 8,
+        num_levels: int = 4,
+        num_points: int = 4,
+        out_name: str = None):
+
         #pass
 
 功能描述
@@ -5423,7 +5426,9 @@ multi_scale_deformable_attention
 参数说明
 """"""""""""""""""""""""""""""""""""""""""""""
 * query：Tensor类型，Transformer的查询张量，形状为 (1, num_query, embed_dims)。
-* value：Tensor类型，值投影张量，形状为 (1, num_key, embed_dims)。
+* value：Tensor类型或None，值投影张量，形状为 (1, num_key, embed_dims)。
+* identity：Tensor类型或None，用于相加的张量，形状为 (1, num_query, embed_dims)。
+* query_pos: Tensor类型或None，query的位置编码，形状为 (1, num_query, embed_dims)。
 * key_padding_mask: Tensor类型，查询张量的mask，形状为 (1, num_key)。
 * reference_points: Tensor类型，归一化的参考点，形状为 (1, num_query, num_levels, 2)，所有元素的范围在 [0, 1] 之间，左上角为 (0,0)，右下角为 (1,1)，包括填充区域。
 * sampling_offsets_weight: Tensor类型，计算采样偏移量全连接层的权重，形状为 (embed_dims, num_heads\*num_levels\*num_points\*2)。

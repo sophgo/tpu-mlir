@@ -4808,19 +4808,20 @@ class TPULANG_IR_TESTER(object):
         def _test_multi_scale_deformable_attention(
             dtype="float32",
             bs=1,
-            num_query=17821,
-            num_value=17821,
+            num_query=19220,
+            num_value=19220,
             embed_dims=256,
             num_heads=8,
-            num_levels=4,
+            num_levels=5,
             num_points=4,
-            spatial_shapes=[[100, 134], [50, 67], [25, 34], [13, 17]],
+            spatial_shapes=[[90, 160], [45, 80], [23, 40], [12, 20], [6, 10]],
         ):
             assert bs == 1
             query_data = np.random.randn(bs, num_query, embed_dims).astype(dtype)
             value_data = np.random.randn(bs, num_value, embed_dims).astype(dtype)
+            query_pos_data = np.random.randn(bs, num_query, embed_dims).astype(dtype)
             key_padding_mask_data = np.zeros((bs, num_query), dtype=dtype)
-            reference_points_data = np.random.randn(bs, num_query, num_points, 2).astype(dtype)
+            reference_points_data = np.random.randn(bs, num_query, num_levels, 4).astype(dtype)
             sampling_offsets_weight_data = np.random.randn(embed_dims, num_heads * num_levels *
                                                            num_points * 2).astype(dtype)
             sampling_offsets_bias_data = np.random.randn(num_heads * num_levels * num_points *
@@ -4835,11 +4836,14 @@ class TPULANG_IR_TESTER(object):
             output_proj_bias_data = np.random.randn(embed_dims).astype(dtype)
             query = tpul.Tensor(dtype=dtype, shape=[bs, num_query, embed_dims], data=query_data)
             value = tpul.Tensor(dtype=dtype, shape=[bs, num_value, embed_dims], data=value_data)
+            query_pos = tpul.Tensor(dtype=dtype,
+                                    shape=[bs, num_query, embed_dims],
+                                    data=query_pos_data)
             key_padding_mask = tpul.Tensor(dtype=dtype,
                                            shape=[bs, num_query],
                                            data=key_padding_mask_data)
             reference_points = tpul.Tensor(dtype=dtype,
-                                           shape=[bs, num_query, num_points, 2],
+                                           shape=[bs, num_query, num_levels, 4],
                                            data=reference_points_data)
             sampling_offsets_weight = tpul.Tensor(
                 dtype=dtype,
@@ -4878,7 +4882,9 @@ class TPULANG_IR_TESTER(object):
 
             output = tpul.multi_scale_deformable_attention(
                 query,
-                value,
+                None,
+                None,
+                None,
                 key_padding_mask,
                 reference_points,
                 sampling_offsets_weight,
@@ -4896,7 +4902,7 @@ class TPULANG_IR_TESTER(object):
                 num_points,
             )
             self.compile_and_check(self.unique_name(case_name),
-                                   [query, value, key_padding_mask, reference_points], [output])
+                                   [query, key_padding_mask, reference_points], [output])
 
         _test_multi_scale_deformable_attention()
 
