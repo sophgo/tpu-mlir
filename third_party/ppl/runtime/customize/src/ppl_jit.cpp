@@ -31,8 +31,7 @@ static int execCompileCommand(const std::string &command, std::string &output) {
 namespace fs = std::filesystem;
 const std::string RESULT_FILE = "compiled";
 
-int acquireLock(const fs::path& targetFolder) {
-    fs::path lockPath = targetFolder / "lockfile";
+int acquireLock(const fs::path& lockPath) {
     int fd = open(lockPath.c_str(), O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
         throw std::runtime_error("Procecss " + std::to_string(getpid()) +
@@ -253,6 +252,7 @@ private:
                     std::size_t key) {
     std::string inc_path = std::string(getenv("PPL_PROJECT_ROOT")) + "/inc";
     std::string path = cache_dir + std::to_string(key) + "/";
+    std::string lock_file = "/tmp/ppl_" + std::to_string(key) + ".lock";
     fs::create_directory(path);
     fs::path result_file = fs::path(path) / RESULT_FILE;
     int ret = 0;
@@ -261,14 +261,13 @@ private:
     }
     // file lock
     int lockFd = -1;
-    lockFd = acquireLock(fs::path(path));
+    lockFd = acquireLock(lock_file);
     if (!fs::exists(result_file)) {
       // compile
       std::stringstream cmd;
       cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
           << inc_path << " " << path << " " << chip << " " << args
-          << "\n";
-          // << " > /dev/null 2>&1\n";
+          << " > /dev/null 2>&1\n";
       std::string output;
       ret = system(cmd.str().c_str());
       ret >>= 8;

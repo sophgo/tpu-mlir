@@ -567,10 +567,11 @@ def get_tiu_info_dyn(monitor_info, reg_info):
     tiu_info0["Alg Ops"] = 1
     tiu_info0["uArch Ops"] = 1
     tiu_info0["Alg Cycle"] = 0
-    tiu_info0["uArch Rate"] = "100.0%"
+    tiu_info0["uArch Rate"] = "0.0%"
 
 
-    tiu_info0["Alg Cycle"] = reg_info.alg_cycle(tiu_info0["Alg Ops"])
+    # not implemented
+    tiu_info0["Alg Cycle"] = 0
     tiu_info0["Initial Cycle Ratio"] = "0.0%"
     tiu_info0["Bank Conflict Ratio"] = "0.0%"
     tiu_info0['Sim Power(W)'] = 0
