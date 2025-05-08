@@ -166,8 +166,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             else:
                 height = round(pd.to_numeric(data['DDR Bandwidth(GB/s)'][i]) / (bwlist[0] +1e-6), 2)
         else:
-            # TODO: uarch_rate now is all 0, need computing
-            height = 0.5 # round(uarch_rate/100, 2)
+            height = round(uarch_rate/100, 2)
         tmp = [
             ip_type,
             get_realtime_from_cycle(data['Start Cycle'][i], frequency),

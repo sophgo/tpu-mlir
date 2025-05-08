@@ -377,3 +377,6 @@ class MemRef(MemRefBase):
             return t5_stride()
 
         return self.stride
+
+CubeOutputHeightWidthAlignNum = 4
+ExecutionUnitNumber = 64 * 256 // 2 // 8

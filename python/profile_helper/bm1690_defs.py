@@ -414,7 +414,7 @@ def get_dma_info_dyn(monitor_info, reg_info, engine_id=1):
         # dma_info["Stall Cycle"] = monitor_info.m0_data_wr_stall_cntr + monitor_info.m0_data_rd_stall_cntr \
         #                          + monitor_info.ari_data_stall_cntr + monitor_info.ati_data_stall_cntr
         dma_info["Stall Cycle"] = 0
-        dma_info["DMA data size(B)"] = monitor_info.m0_data_ar_cntr + monitor_info.m0_data_aw_cntr
+        dma_info["DMA data size(B)"] = monitor_info.m0_data_aw_cntr # + monitor_info.m0_data_ar_cntr
         dma_info["DDR Bandwidth(GB/s)"] =  round(dma_info["DMA data size(B)"] / dma_info["Asic Cycle"], 4)
         # dma_info["lmem_xact_cnt"] = 1
         dma_info["gmem_xact_cnt"] = monitor_info.ari_data_valid_cntr + monitor_info.ati_data_valid_cntr \
@@ -506,9 +506,8 @@ def get_dma_info(monitor_info, reg_info, core_id, engine_id=1):
     else:
         dma_info["Stall Cycle"] = 0
         dma_info["lmem_bandwidth"] = 0
-        dma_info["DMA data size(B)"] = monitor_info.m0_data_ar_cntr + monitor_info.m0_data_aw_cntr
+        dma_info["DMA data size(B)"] = monitor_info.m0_data_aw_cntr # + monitor_info.m0_data_ar_cntr
         dma_info["gmem_bandwidth"] =  round(dma_info["DMA data size(B)"] / dma_info["Asic Cycle"], 4)
-        # dma_info["lmem_xact_cnt"] = 1
         dma_info["gmem_xact_cnt"] = monitor_info.ari_data_valid_cntr + monitor_info.ati_data_valid_cntr \
                                     + monitor_info.m0_data_rd_valid_cntr + monitor_info.m0_data_wr_valid_cntr
     if "DDR" in dma_info["Direction"]:
@@ -571,7 +570,7 @@ def get_tiu_info_dyn(monitor_info, reg_info):
     tiu_info0["uArch Rate"] = "100.0%"
 
 
-    # not implemented
+    tiu_info0["Alg Cycle"] = reg_info.alg_cycle(tiu_info0["Alg Ops"])
     tiu_info0["Initial Cycle Ratio"] = "0.0%"
     tiu_info0["Bank Conflict Ratio"] = "0.0%"
     tiu_info0['Sim Power(W)'] = 0
@@ -602,13 +601,13 @@ def get_tiu_info(monitor_info, reg_info):
 
     tiu_info0["Alg Ops"] = _reg_info.ops(False)
     tiu_info0["uArch Ops"] = _reg_info.ops(True)
+    if tiu_info0["uArch Ops"] == 0:
+        tiu_info0["uArch Rate"] = "0.0%"
+    else:
+        tiu_info0["uArch Rate"] = "{:.1%}".format(
+            tiu_info0["Alg Ops"]/tiu_info0["uArch Ops"])
 
-    # tiu_info0["Alg Cycle"] = _reg_info.alg_cycle(tiu_info0["Alg Ops"])
-    # tiu_info0["uArch Rate"] = "{:.1%}".format(
-    #     tiu_info0["Alg Ops"]/tiu_info0["uArch Ops"])
-    # not implemented
-    tiu_info0["Alg Cycle"] = 1
-    tiu_info0["uArch Rate"] = "0.0%"
+    tiu_info0["Alg Cycle"] = _reg_info.alg_cycle(tiu_info0["Alg Ops"])
     tiu_info0["Initial Cycle Ratio"] = "{:.1%}".format(1e-4)
     tiu_info0["Bank Conflict Ratio"] = "{:.1%}".format(1e-4)
 
