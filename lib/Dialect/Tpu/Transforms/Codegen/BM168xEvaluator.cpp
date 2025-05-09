@@ -265,17 +265,32 @@ BM168xEvaluator::getTensor(const std::string &name) {
   auto data_fp32 = std::make_shared<std::vector<float>>(count);
   if (module::isUniformQuantized(value)) {
     auto qtype = module::getUniformQuantizedType(value);
-    assert(module::getStorageType(value).isInteger(8));
-    if (qtype.isSigned()) {
-      for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) = ((int8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
-                           (float)qtype.getScale();
+    if (module::getStorageType(value).isInteger(8)) {
+      if (qtype.isSigned()) {
+        for (auto i = 0; i < count; i++) {
+          data_fp32->at(i) = ((int8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+                            (float)qtype.getScale();
+        }
+      } else {
+        for (auto i = 0; i < count; i++) {
+          data_fp32->at(i) = ((uint8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+                            (float)qtype.getScale();
+        }
       }
+    } else if (module::getStorageType(value).isInteger(16)) {
+        if (qtype.isSigned()) {
+          for (auto i = 0; i < count; i++) {
+            data_fp32->at(i) = ((int16_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+                              (float)qtype.getScale();
+          }
+        } else {
+          for (auto i = 0; i < count; i++) {
+            data_fp32->at(i) = ((uint16_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+                              (float)qtype.getScale();
+          }
+        }
     } else {
-      for (auto i = 0; i < count; i++) {
-        data_fp32->at(i) = ((uint8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
-                           (float)qtype.getScale();
-      }
+      assert(0);
     }
     return std::move(data_fp32);
   } else if (module::isCalibratedType(value)) {

@@ -44,6 +44,7 @@ protected:
           return failure();
       }
     }
+    int flag_swap = 0;
 
     //  if (module::isAsymmetric()) {
     //    return failure();
@@ -52,7 +53,6 @@ protected:
     // 1. Define Left and Right
     auto left = op.getInput();
     auto right = op.getRight();
-
     auto stype = module::getStorageType(left);
     auto hdim_is_batch = op.getHdimIsBatch();
     if (stype.isF32() || hdim_is_batch) {
@@ -97,6 +97,7 @@ protected:
       if (isa<tpu::PermuteOp>(l_op) && !isa<tpu::PermuteOp>(r_op) &&
           l_output_shape[2] == r_output_shape[2]) {
         std::swap(l_op, r_op);
+        flag_swap = 1;
       }
 
       if (isa<tpu::PermuteOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
@@ -244,7 +245,6 @@ protected:
             NameLoc::get(rewriter.getStringAttr(op_name + "_permute")),
             l_trans_type,
             ValueRange{l_trans_op->getResult(0), module::getNoneOp(op)}, attrs);
-
         auto r_trans = op.getRightTranspose();
         if (r_order->at(2) == 3 && r_order->at(3) == 1) {
           r_trans = !r_trans;
@@ -357,6 +357,10 @@ protected:
     rewriter.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
     std::vector<int64_t> out_order = {0, 2, 1, 3};
+    if (flag_swap && !hdim_is_batch) {
+      out_order[2] = 3;
+      out_order[3] = 1;
+    }
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(out_order)));
     auto trans_op = rewriter.create<tpu::PermuteOp>(
