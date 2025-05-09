@@ -5,52 +5,16 @@
 本项目是算能深度学处理器的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
 同框架下预训练的神经网络，转化为可以在算能TPU上高效运算的二进制文件`bmodel`。
 
-算能致力于成为全球领先的通用算力提供商。算能专注于深度学习、RISC-V 处理器等算力产品的研发和推广应用，以自研产品为核心打造了覆盖“云、边、端”的全场景应用矩阵 ，为城市大脑、智算中心、智慧安防、智慧交通、安全生产、工业质检、智能终端等应用提供算力产品及整体解决方案 。公司在北京、上海、深圳、青岛、厦门等国内 10 多个城市及美国、新加坡等国家设有研发中心。
-
 目前该工程直接支持的深度学习框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
 
 也支持编译[HuggingFace](https://huggingface.co) LLM模型，目前支持qwen2系列/llama系列，后续会支持更多类型的LLM模型。
 
-# 预编译的 TPU-MLIR Python 包
-
-我们提供 TPU-MLIR Python 包以便跳过编译工程的步骤快速安装。环境要求：python >= 3.10 和 ubuntu:22.04（推荐直接使用我们的docker镜像）。
-
-安装：
-
-``` shell
-pip install tpu_mlir
-```
-
-# 资源
-
-以下资源可以帮助你更好地了解TPU-MLIR：
-
-| 序列 | 文档 |
-| :---: | --- |
-| 01 | [TPU-MLIR 论文](https://arxiv.org/abs/2210.15016) |
-| 02 | [TPU-MLIR 开发参考手册](https://tpumlir.org/developer_manual_zh/index.html) |
-| 03 | [TPU-MLIR 快速入门指南](https://tpumlir.org/quick_start_zh/index.html) |
-
-| 序列 | 分享会 |
-| :---: | --- |
-| 01 | [TPU-MLIR 论文讲解](https://www.bilibili.com/video/BV1My4y1o73Q/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 02 | [LayerGroup 讲解](https://www.bilibili.com/video/BV1wo4y1z7AG/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-
-| 序列 | 主题 | 视频链接 |
-| :---: | --- | --- |
-| 01 | 什么是深度学习编译器？ | [深度学习编译器简介](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
-| 02 | MLIR 简介 | [基本语法(一)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(二)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(三)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40dbaf08684), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 03 | TPU-MLIR 介绍 | [概述](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [前端转换](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 04 | 量化 | [概述](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [公式推导](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [校准](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
-| 05 | TPU 内存 | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 06 | TPU-MLIR 实践 | [转Onnx格式](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [图优化](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [算子支持](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [模型支持](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [融合预处理](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8ddhttpe8), [精度验证](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-
-
-如果你在完成上述任务时有任何疑问，可以在中[Issues](https://github.com/sophgo/tpu-mlir/issues)提问或查看现有答案。
 
 # 编译工程
 
-克隆本工程代码后，需要在docker中编译。
+首先需要安装指定的Docker，然后可以选择用预编译包或者编译源码。
+
+## 安装Docker
 
 * 从[dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev)下载所需的镜像。
 
@@ -73,6 +37,15 @@ docker load -i tpuc_dev_v3.4.tar.gz
 docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
+## 预编译包 (方式一)
+
+我们提供 TPU-MLIR Python 包以便跳过编译工程的步骤快速安装。环境要求：python >= 3.10 和 ubuntu:22.04（推荐直接使用我们的docker镜像）。
+
+``` shell
+pip install tpu_mlir
+```
+
+## 编译源码 (方式二)
 
 容器建立后，代码在docker中的目录为`/workspace/tpu-mlir`。
 
@@ -341,3 +314,29 @@ model_runner.py \
 model_tool --info resnet18_1684x_f32.bmodel
 ```
 
+# 资源
+
+以下资源可以帮助你更好地了解TPU-MLIR：
+
+| 序列 | 文档 |
+| :---: | --- |
+| 01 | [TPU-MLIR 论文](https://arxiv.org/abs/2210.15016) |
+| 02 | [TPU-MLIR 开发参考手册](https://tpumlir.org/developer_manual_zh/index.html) |
+| 03 | [TPU-MLIR 快速入门指南](https://tpumlir.org/quick_start_zh/index.html) |
+
+| 序列 | 分享会 |
+| :---: | --- |
+| 01 | [TPU-MLIR 论文讲解](https://www.bilibili.com/video/BV1My4y1o73Q/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| 02 | [LayerGroup 讲解](https://www.bilibili.com/video/BV1wo4y1z7AG/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+
+| 序列 | 主题 | 视频链接 |
+| :---: | --- | --- |
+| 01 | 什么是深度学习编译器？ | [深度学习编译器简介](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
+| 02 | MLIR 简介 | [基本语法(一)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(二)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(三)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40dbaf08684), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| 03 | TPU-MLIR 介绍 | [概述](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [前端转换](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| 04 | 量化 | [概述](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [公式推导](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [校准](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
+| 05 | TPU 内存 | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| 06 | TPU-MLIR 实践 | [转Onnx格式](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [图优化](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [算子支持](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [模型支持](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [融合预处理](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8ddhttpe8), [精度验证](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+
+
+如果你在完成上述任务时有任何疑问，可以在中[Issues](https://github.com/sophgo/tpu-mlir/issues)提问或查看现有答案。
