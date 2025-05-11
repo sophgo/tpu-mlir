@@ -11,6 +11,9 @@ check_fattention() {
   }
 }
 
+mkdir -p test_llm1
+pushd test_llm1
+
 # ===------------------------------------------------------------===
 # Llama2
 # ===------------------------------------------------------------===
@@ -250,3 +253,5 @@ model_deploy.py \
 #   --model chatglm3_block_cache_0_dev2.bmodel
 
 rm -rf *.npz *.bmodel *.onnx
+
+popd

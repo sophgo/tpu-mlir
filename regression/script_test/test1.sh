@@ -4,6 +4,9 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+mkdir -p test1
+pushd test1
+
 # convert by batch 4, check batch 4
 model_transform.py \
   --model_name mobilenet_v2_b4 \
@@ -137,3 +140,5 @@ tpuc-opt mobilenet_v2_b4.mlir \
 #     -o mobilenet_v2.o
 
 rm -rf *.npz
+
+popd

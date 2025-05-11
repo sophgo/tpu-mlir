@@ -3,6 +3,8 @@
 set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+mkdir -p test12
+pushd test12
 
 python3 $DIR/test12.py
 
@@ -18,3 +20,5 @@ model_deploy.py \
   --model resnetquant.bmodel
 
 rm -rf *.npz
+
+popd

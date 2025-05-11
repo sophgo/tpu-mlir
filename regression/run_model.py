@@ -20,6 +20,7 @@ import threading
 import queue
 from utils.misc import *
 import re
+import sys
 
 def extract_profile_info(file_path):
     with open(file_path, 'rb') as f:
@@ -521,30 +522,11 @@ class MODEL_RUN(object):
             if (self.quant_modes["int4_sym"] or self.quant_modes["int8_sym"]
                     or self.quant_modes["int8_asym"] or self.quant_modes['f8e4m3'] or self.quant_modes['f8e5m2']) and self.do_cali:
                 self.make_calibration_table()
-            if self.disable_thread:
-                for quant_mode, support in self.quant_modes.items():
-                    if support:
-                        result_queue = queue.Queue()
-                        self.run_model_deploy_wrapper(quant_mode, self.model_name, do_sample,
-                                                      result_queue)
-                        _, success, error = result_queue.get()
-                        if not success:
-                            raise error
-            else:
-                result_queue = queue.Queue()
-                threads = []
-                for quant_mode in self.quant_modes.keys():
-                    if self.quant_modes[quant_mode]:
-                        t = threading.Thread(target=self.run_model_deploy_wrapper,
-                                             args=(quant_mode, self.model_name, do_sample,
-                                                   result_queue))
-                        t.start()
-                        threads.append(t)
-
-                for t in threads:
-                    t.join()
-
-                while not result_queue.empty():
+            for quant_mode, support in self.quant_modes.items():
+                if support:
+                    result_queue = queue.Queue()
+                    self.run_model_deploy_wrapper(quant_mode, self.model_name, do_sample,
+                                                    result_queue)
                     _, success, error = result_queue.get()
                     if not success:
                         raise error
@@ -557,11 +539,11 @@ class MODEL_RUN(object):
         except RuntimeError as e:
             print(repr(e))
             print("Failed: {}".format(self.command))
-            return 1
+            sys.exit(1)
         except:
             print("Unknown errors")
             print("Failed: {}".format(self.command))
-            return 1
+            sys.exit(1)
 
 
 if __name__ == "__main__":

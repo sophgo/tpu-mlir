@@ -4,6 +4,8 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+mkdir -p test10
+pushd test10
 #
 python3 $DIR/test10.py
 
@@ -40,3 +42,5 @@ model_runner.py --input test10_input.npz --model test10_b.bmodel --output b_out.
 npz_tool.py compare a_out.npz b_out.npz --tolerance 1.0,1.0
 
 rm -rf *.npz
+
+popd

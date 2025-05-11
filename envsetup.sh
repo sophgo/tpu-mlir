@@ -48,10 +48,9 @@ export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
-# using 50% threads
-if [ -z "${OMP_NUM_THREADS+x}" ]; then
-    export OMP_NUM_THREADS=$(($(nproc) * 1 / 2))
-fi
+
+export OMP_NUM_THREADS=4
+
 export FORBID_GEN_RISCV_CODE=1
 # CCache configuration
 export CCACHE_REMOTE_STORAGE=redis://10.132.3.118:6379

@@ -3,6 +3,8 @@
 set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-
+mkdir -p test_MaskRCNN
+pushd test_MaskRCNN
 #
 python3 $DIR/../../python/test/test_MaskRCNN.py --debug
+popd

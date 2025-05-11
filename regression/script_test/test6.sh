@@ -4,8 +4,8 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
-mkdir -p mobilenet_v2
-pushd mobilenet_v2
+mkdir -p test6
+pushd test6
 
 cp ${NNMODELS_PATH}/pytorch_models/accuracy_test/classification/mobilenet_v2.pt .
 cp -rf ${DIR}/../dataset/ILSVRC2012 .

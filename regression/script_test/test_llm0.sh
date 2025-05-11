@@ -8,6 +8,9 @@ check_fattention() {
     grep -q "tpu.FAttention" "$1" || { echo "Error: no fattention!!!" >&2; exit 1; }
 }
 
+mkdir -p test_llm0
+pushd test_llm0
+
 # ===------------------------------------------------------------===
 # Qwen
 # ===------------------------------------------------------------===
@@ -209,3 +212,5 @@ check_merge qwen_block_0.bmodel qwen_block_cache_0.bmodel
 check_merge qwen_block_0_bf16.bmodel qwen_block_cache_0_bf16.bmodel
 
 rm -rf *.npz *.onnx *.bmodel
+
+popd

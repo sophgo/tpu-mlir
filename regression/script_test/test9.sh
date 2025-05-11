@@ -4,6 +4,8 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+mkdir -p test9
+pushd test9
 # convert by batch 1
 model_transform.py \
   --model_name mobilenet_v2_b1 \
@@ -49,3 +51,5 @@ model_deploy.py \
   --model mobilenet_v2_1688_io_alone.bmodel
 
 rm -rf *.npz
+
+popd

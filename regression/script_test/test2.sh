@@ -4,6 +4,8 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+mkdir -p test2
+pushd test2
 #
 python3 $DIR/test2.py
 
@@ -52,3 +54,5 @@ model_deploy.py \
   --model test2_1684x_int8.bmodel
 
 rm -rf *.npz
+
+popd

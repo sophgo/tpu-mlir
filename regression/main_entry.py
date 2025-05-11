@@ -33,6 +33,7 @@ import test_fx
 import test_custom_tpulang
 import argparse
 import logging
+import subprocess
 from utils.mlir_shell import _os_system_log
 
 SUCCESS = 0
@@ -81,7 +82,7 @@ class MAIN_ENTRY(object):
         if not self.is_basic:
             del self.op1_test_types["tpulang"]
 
-        self.script_basic = ["test1", "test2","test5","test9","test_llm0","test12",'test_modelzoo','test_encrypt']
+        self.script_basic = ["test1", "test2","test5","test9","test_llm0","test12",'test_modelzoo','test_encrypt', 'test_MaskRCNN']
         self.script_extend = ["test3","test4","test6","test7","test8","test10","test_llm1"]
         # yapf: enable
         self.test_set = {
@@ -91,12 +92,15 @@ class MAIN_ENTRY(object):
             "model": self.run_model_test,
             "multi_core_model": self.run_multi_core_test,
             "cuda": self.run_cuda_test,
-            "maskrcnn": self.run_maskrcnn_test,
             "tdb": self.run_tdb_test,
         }
 
         self.results = []
         self.time_cost = []
+        cpu_count = os.cpu_count()
+        self.max_workers = max(cpu_count, 4)
+        self.task_file = os.path.join(self.current_dir,  f"{test_type}_task.txt")
+        self.commands = []
         self.logger = logging.getLogger()
 
     def extend_time_cost_list(self, test_type: str, duration: int):
@@ -112,57 +116,47 @@ class MAIN_ENTRY(object):
             "time": time
         })
 
-    def run_regression_net(self, model_name, chip, num_core, finished_list):
-        case_name = f"{model_name}_{chip}_num_core_{num_core}"
-        # set the file for saving output stream
-        fake_cmd = f"======= python run_model.py {model_name} --chip {chip} --mode {self.test_type} --num_core {num_core} ====="
+    def print_log(self, log_file):
+        with open(log_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        print(lines)
 
-        file_handler = logging.FileHandler(filename=case_name + ".log", mode="w")
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter("%(message)s"))
-        if self.concise_log:
-            file_logger = logging.getLogger("logger_to_file")
-            file_logger.addHandler(file_handler)
-            file_logger.propagate = False
-            console_logger = logging.getLogger("logger_to_file.console")
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(logging.Formatter("%(message)s"))
-            console_logger.addHandler(console_handler)
-            console_logger.setLevel(logging.INFO)
+    def run_command(self, command, log_file):
+        GREEN_COLOR = "\033[92m"  # ANSI escape code for green text
+        RED_COLOR = "\033[91m"
+        RESET_COLOR = "\033[0m"
+        try:
+            print(f"{GREEN_COLOR}Executing command: \n{' '.join(command)}{RESET_COLOR}"
+                  )  # Print the command in green
+            subprocess.run(command, check=True)
+        except subprocess.CalledProcessError as e:
+            self.print_log(log_file)
+            # Print the error message in red
+            print(f"{RED_COLOR}Error: Command failed with return code {e.returncode}{RESET_COLOR}")
+            print(f"{RED_COLOR}Failed command: {' '.join(command)}{RESET_COLOR}")
+            # Exit the program with the same return code as the failed command
+            sys.exit(e.returncode)
 
-            console_logger.info(fake_cmd)
-        else:
-            self.logger.addHandler(file_handler)
-            self.logger.info(fake_cmd)
+    def execute_commands(self):
+        if len(self.commands) == 0:
+            return
+        with open(self.task_file, "w") as f:
+            f.writelines(self.commands)
+        self.commands.clear()
+        task_log = f"{self.task_file}.log"
+        halt_now = ""
+        if self.is_basic:
+            halt_now = " --halt now,fail=1"
+        parallel_cmd = [
+            "parallel", f"-j {self.max_workers}", halt_now, "--progress", f"--joblog {task_log}",
+            f"< {self.task_file}"
+        ]
+        self.run_command(['bash', '-c', ' '.join(parallel_cmd)], task_log)
 
-        t = Timer()
-        target_dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
-        os.makedirs(target_dir, exist_ok=True)
-        os.chdir(target_dir)
-        regressor = MODEL_RUN(model_name,
-                              chip,
-                              self.test_type,
-                              save_log=True,
-                              num_core=num_core,
-                              disable_thread=self.disable_thread)
-        ret = regressor.run_full()
-        finished_list.append({
-            "name": case_name,
-            "status": Status.PASSED if ret == 0 else Status.FAILED,
-            "error_cases": [],
-            "time":int(t.elapsed_time())
-        })
-        if self.concise_log:
-            file_logger.removeHandler(file_handler)
-            console_logger.removeHandler(console_handler)
-            file_handler.close()
-            console_handler.close()
-        else:
-            self.logger.removeHandler(file_handler)
-            file_handler.close()
-        os.chdir(self.current_dir)
-        shutil.rmtree(target_dir)
-        return ret == 0
+    def send_regression_net(self, model_name, chip, num_core):
+        run_model = os.path.expandvars(f"$REGRESSION_PATH/run_model.py")
+        self.commands.append(f"python {run_model} {model_name} --chip {chip} --mode {self.test_type} --num_core {num_core} \n")
+
 
     def _run_op_test(self, op_source, tester, test_all_func, chip):
         print(f"======= test_{op_source}.py ======")
@@ -179,6 +173,10 @@ class MAIN_ENTRY(object):
         os.chdir(self.current_dir)
         shutil.rmtree(case_name) # too large
         return not error_cases
+
+    def send_script_test(self, source):
+        script_path = os.path.expandvars(f"$REGRESSION_PATH/script_test/{source}.sh")
+        self.commands.append(f"bash {script_path} \n")
 
     def _run_script_test(self, source):
         print(f"======= test script:{source}.sh ======")
@@ -221,21 +219,17 @@ class MAIN_ENTRY(object):
         return success
 
     def run_script_test(self):
-        # return exit status
-        t = Timer()
         # run scripts under $REGRESSION_OUT/script_test
         print("======= script test ======")
 
         sources = self.script_basic
         if not self.is_basic:
             sources += self.script_extend
-        ret = True
+
         for source in sources:
-            ret = self._run_script_test(source)
-            if not ret and self.is_basic:
-                break
-        self.extend_time_cost_list("run_script", int(t.elapsed_time()))
-        return SUCCESS if ret else FAILURE
+            self.send_script_test(source)
+
+
 
     def run_cuda_test(self):
         # return exit status
@@ -280,63 +274,15 @@ class MAIN_ENTRY(object):
                     continue
                 num_core = multi_core_info[chip]
 
-            t = Timer()
             cur_model_list = [
                 model_name for model_name, do_test in model_list.items() if do_test[idx]
             ]
-            if self.disable_thread:
-                finished_list = list()
-                for model in cur_model_list:
-                    self.run_regression_net(model, chip, num_core, finished_list)
-                self.results.extend(finished_list)
-                if self.is_basic:
-                    for result in finished_list:
-                        if result["status"] != Status.PASSED:
-                            return 1
-            else:
-                import multiprocessing
-                from utils.misc import collect_process
-                process_number = multiprocessing.cpu_count() // 2 + 1
-                processes = []
-                finished_list = multiprocessing.Manager().list()
-                error_cases = multiprocessing.Manager().list()
-                for model in cur_model_list:
-                    name = f"{model}_{chip}_num_core_{num_core}"
-                    p = multiprocessing.Process(target=self.run_regression_net,
-                                                name=name,
-                                                args=(model, chip, num_core, finished_list))
-                    processes.append(p)
-                    if len(processes) == process_number:
-                        collect_process(processes, error_cases, 2000)
-                        processes = []
-                collect_process(processes, error_cases, 2000)
-                processes = []
-                for error in error_cases:
-                    if error not in finished_list:
-                        finished_list.append({
-                            "name": error,
-                            "status": Status.TIMEOUT,
-                            "error_cases": [],
-                            "time": -1
-                        })
-                self.results.extend(finished_list)
-                if self.is_basic:
-                    for result in finished_list:
-                        if result["status"] != Status.PASSED:
-                            return 1
-            self.extend_time_cost_list(f"run models for {chip}", int(t.elapsed_time()))
+
+            for model in cur_model_list:
+                self.send_regression_net(model, chip, num_core)
 
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)
-
-    def run_maskrcnn_test(self):
-        # return exit status
-        t = Timer()
-        # run scripts under $REGRESSION_OUT/script_test
-        print("======= MaskRCNN test ======")
-        ret = self._run_script_test("test_MaskRCNN")
-        self.extend_time_cost_list(f"run_MaskRCNN", int(t.elapsed_time()))
-        return SUCCESS if ret else FAILURE
 
     def run_tdb_test(self):
         # return exit status
@@ -354,7 +300,7 @@ class MAIN_ENTRY(object):
         for test in test_set:
             if self.test_set[test]() and self.is_basic:
                 return FAILURE
-
+        self.execute_commands()
         self.time_cost.append(f"total time: {int(t.elapsed_time())} seconds")
         return FAILURE if any(result.get("status") != Status.PASSED
                               for result in self.results) else SUCCESS
@@ -364,8 +310,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
-                        help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
-    choices = ["op0", "op1", "script", "model", "multi_core_model", "cuda", "maskrcnn", "tdb"]
+                        help="whether do all model test, 'all' runs all modes, 'basic' runs basic models f16 and int8 sym only")
+    choices = ["op0", "op1", "script", "model", "multi_core_model", "cuda", "tdb"]
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')

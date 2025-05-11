@@ -4,6 +4,9 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+mkdir -p test4
+pushd test4
+
 mkdir -p yolov5s_1output
 pushd yolov5s_1output
 
@@ -28,22 +31,21 @@ run_calibration.py yolov5s_1o.mlir \
   -o yolov5s_1o_cali_table
 
 run_calibration.py yolov5s_1o.mlir \
-    --dataset ${REGRESSION_PATH}/dataset/COCO2017 \
-    --input_num 100 \
-    --search search_qtable\
-    --expected_cos 0.9999 \
-    --quantize_method_list KL \
-    --inference_num 10 \
-    --chip bm1684x \
-    --calibration_table yolov5s_1o_cali_table \
-    --quantize_table yolov5s_1o_qtable
+  --dataset ${REGRESSION_PATH}/dataset/COCO2017 \
+  --input_num 100 \
+  --search search_qtable --expected_cos 0.9999 \
+  --quantize_method_list KL \
+  --inference_num 10 \
+  --chip bm1684x \
+  --calibration_table yolov5s_1o_cali_table \
+  --quantize_table yolov5s_1o_qtable
 # last 4 concat should be float
 matches=$(sed -nE 's/.*\("([^)]+_Concat)"\).*/\1/p' "yolov5s_1o.mlir" | tail -n 4)
 new_matches=""
 for match in $matches; do
   new_matches+="$match F16\n"
 done
-echo -e $new_matches >> yolov5s_1o_qtable
+echo -e $new_matches >>yolov5s_1o_qtable
 
 model_deploy.py \
   --mlir yolov5s_1o.mlir \
@@ -243,5 +245,7 @@ segment_yolo.py \
   --output dog_seg_out_f16.jpg
 
 rm -rf *.npz
+
+popd
 
 popd
