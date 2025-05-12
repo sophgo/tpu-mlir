@@ -618,13 +618,13 @@ get_group_max_secs(const LgInfo &lg_info,
           tpu::MinOp, tpu::MatMulOp>(lg_info.group_ops[0])) {
     module::getNCDHW(lg_info.group_ops[0]->getOperand(1), n, c, d, h, w,
                      lg_info.type);
-    if (isa<tpu::MatMulOp>(lg_info.group_ops[0]) && n != max_nsecs) {
-      max_nsecs = 1;
-    } else {
-      max_nsecs = std::max(n, max_nsecs);
-    }
+    // if (isa<tpu::MatMulOp>(lg_info.group_ops[0]) && n != max_nsecs) {
+    //   max_nsecs = 1;
+    // } else {
+    //   max_nsecs = std::max(n, max_nsecs);
+    // }
     // // allow MatMul split by n
-    // max_nsecs = std::max(n, max_nsecs);
+    max_nsecs = std::max(n, max_nsecs);
   }
   int64_t max_csecs = llvm::maxIntN(64);
   int64_t max_hsecs = llvm::maxIntN(64);
@@ -1101,25 +1101,15 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
           ti.need_bcast = need_bcast(in);
           module::getNCDHW(in, n, c, d, h, w, lg_info.type);
           ti.slice_info.n.clear();
-          ti.slice_info.h.clear();
-          ti.slice_info.d.clear();
-          ti.slice_info.w.clear();
           ti.slice_info.c.clear();
-          for (int i = 0; i < shape_secs.nsecs; ++i) {
-            ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
-          }
-          for (int i = 0; i < shape_secs.csecs; ++i) {
-            ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
-          }
-          for (int i = 0; i < shape_secs.dsecs; ++i) {
-            ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
-          }
-          for (int i = 0; i < shape_secs.hsecs; ++i) {
-            ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
-          }
-          for (int i = 0; i < shape_secs.wsecs; ++i) {
-            ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
-          }
+          ti.slice_info.d.clear();
+          ti.slice_info.h.clear();
+          ti.slice_info.w.clear();
+          ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
+          ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
+          ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
+          ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
+          ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
           tensor_infos[in] = ti;
         }
       }

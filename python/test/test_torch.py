@@ -3452,6 +3452,9 @@ class TORCH_IR_TESTER(object):
                                         padding_mode, align_corners)
                         _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
                                         padding_mode, align_corners)
+
+        _test_grid_sampler((1, 96, 58, 58), (1, 3136, 9, 2), 0,
+                            0, False)
         # # max shape in Grouding Dino
         # _test_grid_sampler((8, 32, 100, 100), (8, 13294, 4, 2), 0,
         #                     0, False)

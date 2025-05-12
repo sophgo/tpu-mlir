@@ -866,19 +866,23 @@ void GroupMethod::dynamic_programming_kernel(
         llvm::dbgs() << DEBUGGER_DEFAULT_INFO("group_cost", "record", "calculate group_cost(start_idx=%d, end_idx=%d)", start_idx, end_idx)
                      << LOG_KV("func_start_idx", lg_info.func_start_idx)
                      << LOG_KV("func_end_idx", lg_info.func_end_idx)
-                     << LOG_KV("cost", cost) << "\n";
+                     << LOG_KV("cost", cost)
+                     << LOG_KV_FORMAT("shape_secs",
+                          "%d,%d,%d,%d,%d", lg_info.shape_secs.nsecs, lg_info.shape_secs.csecs,
+                          lg_info.shape_secs.dsecs, lg_info.shape_secs.hsecs, lg_info.shape_secs.wsecs)
+                     << "\n";
       });
       for (int64_t sweep = start; sweep < end; ++sweep) {
         int64_t temp_cost =
             cost_add(cost_table[start][sweep], cost_table[sweep + 1][end]);
+        GROUP_DEBUG_WITH_TYPE("cost_table", lg_info, [&]() {
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("interval_cost", "record", "calculate (cost_table[%d][%d] + cost_table[%d][%d])", start, sweep, sweep+1, end)
+                        << LOG_KV("idx_offset", idx_offset)
+                        << LOG_KV("cost", temp_cost) << "\n";
+        });
         if (temp_cost < cost) {
           cost = temp_cost;
           optimal_cut_point = sweep;
-
-          GROUP_DEBUG_WITH_TYPE("lg_cost", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO("interval_cost", "record", "calculate (cost_table[%d][%d] + cost_table[%d][%d])", start, sweep, sweep+1, end)
-                         << LOG_KV("cost", cost) << "\n";
-          });
         }
       }
 

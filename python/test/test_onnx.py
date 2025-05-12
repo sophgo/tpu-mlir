@@ -152,6 +152,9 @@ class ONNX_IR_TESTER(object):
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y, Y),
             "Not":          (self.test_Not,           N, Y, Y, N, Y, Y),
+            # "MLP1":         (self.test_MLP1,          N, Y, Y, N, N, N),
+            # "MLP2":         (self.test_MLP2,          N, Y, Y, N, N, N),
+            # "MLP3":         (self.test_MLP3,          N, Y, Y, N, N, N),
             "Mod":          (self.test_Mod,           N, Y, Y, N, N, N),
             "Mul":          (self.test_Mul,           Y, Y, Y, Y, Y, Y),
             "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N, Y, Y),
@@ -728,7 +731,7 @@ class ONNX_IR_TESTER(object):
             self.compare(origin_output.data.numpy().ravel(), onnx_outs[0].ravel())
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str,  small_inputs=None, static_shape=True, dynamic=False, support_modes=None, dynamic_axes=None, dynamic_in_names=None, dynamic_shape_input_names = [], shape_influencing_input_names=[]):
+    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str,  small_inputs=None, static_shape=True, dynamic=False, support_modes=None, dynamic_axes=None, dynamic_in_names=None, dynamic_shape_input_names = [], shape_influencing_input_names=[], matmul_perchannel=False):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -817,7 +820,8 @@ class ONNX_IR_TESTER(object):
                            support_modes=support_modes,
                            dynamic=dynamic,
                            dynamic_shape_input_names = dynamic_shape_input_names,
-                           shape_influencing_input_names=shape_influencing_input_names)
+                           shape_influencing_input_names=shape_influencing_input_names,
+                           matmul_perchannel=matmul_perchannel)
 
     def onnx_and_test(self,
                       graph_def,
@@ -970,6 +974,36 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(76800,2).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_MLP(self, case_name, model_name=None):
+        class Model(nn.Module):
+            def __init__(self, k1, k2, n):
+                super(Model, self).__init__()
+                self.linear1 = nn.Linear(k1, k2)
+                self.linear2 = nn.Linear(k2, n)
+
+            def forward(self, x):
+                x = self.linear1(x)
+                x = F.gelu(x)
+                x = self.linear2(x)
+                return x
+
+        b, m, k1, k2, n = -1, -1, -1, -1, -1
+        if model_name == "vit_B":
+            b, m, k1, k2, n = 1, 197, 768, 3072, 768
+        elif model_name == "bert_base":
+            b, m, k1, k2, n = 1, 384, 768, 3072, 768
+        elif model_name == "vit_L_8b":
+            b, m, k1, k2, n = 8, 256, 1024, 4096, 1024
+        x = torch.randn(b, m, k1).float()
+        self.torch_and_test(x, Model(k1, k2, n), case_name + "_" + model_name, matmul_perchannel=True)
+
+    def test_MLP1(self, case_name):
+        self.test_MLP(case_name, "vit_B")
+    def test_MLP2(self, case_name):
+        self.test_MLP(case_name, "bert_base")
+    def test_MLP3(self, case_name):
+        self.test_MLP(case_name, "vit_L_8b")
 
     def test_Space2Depth(self, case_name):
 
@@ -7156,7 +7190,7 @@ class ONNX_IR_TESTER(object):
 
             @staticmethod
             def symbolic(g, left_features, right_features, max_disp, num_groups):
-                return g.op("tpu_mlir::Correlation", left_features, right_features, max_disp_i=max_disp, num_groups_i=num_groups) 
+                return g.op("tpu_mlir::Correlation", left_features, right_features, max_disp_i=max_disp, num_groups_i=num_groups)
         class Model(nn.Module):
 
             def __init__(self, max_disp, num_groups):

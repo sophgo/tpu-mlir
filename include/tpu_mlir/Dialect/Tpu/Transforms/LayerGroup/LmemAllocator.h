@@ -95,7 +95,7 @@ public:
                           const mem_buffer_key_t &recent_buffer_allocated,
                           const mem_buffer_value_t &recent_buffer_value,
                           BasicTimeStepPtr &time_step, bool hold_on_coeff,
-                          bool consider_inplace);
+                          bool consider_inplace, bool allow_hold_in_lmem);
 
   MemBlock find_avail_lmem_location(avail_space_t &avail_space,
                                     const mem_buffer_key_t &buffer_key,
@@ -108,7 +108,8 @@ public:
       const mem_buffer_key_t &recent_buffer_allocated,
       BasicTimeStepPtr &time_step, bool one_loop,
       const LgInfo &lg_info,
-      bool allow_bank_conflict = false);
+      bool allow_bank_conflict = false,
+      bool allow_hold_in_lmem = false);
 
 protected:
   LgOptions options_;

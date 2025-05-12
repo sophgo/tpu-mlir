@@ -367,7 +367,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         bm1688->dl_set_gdma_bw_s2l(BW);
         bm1688->dl_set_gdma_bw_l2s(BW);
       }
-      int64_t hold_in_lmem = tensor_info.hold_in_lmem ? 1 : 0;
+      int64_t hold_in_lmem =
+          time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
       DEBUG_WITH_TYPE("cycle_calc", {
         llvm::dbgs() << "; action = cycle_calc"
                      << "; engine = gdma_cycle"

@@ -485,14 +485,15 @@ void LmemAllocator::update_avail_lmems(
     const mem_buffer_value_t &buffer_value,
     const mem_buffer_key_t &recent_buffer_allocated,
     const mem_buffer_value_t &recent_buffer_value, BasicTimeStepPtr &time_step,
-    bool hold_on_coeff, bool consider_inplace) {
+    bool hold_on_coeff, bool consider_inplace,
+    bool allow_hold_in_lmem) {
   PROFILE_LOG("update_avail_lmems", true);
   // find the allocated buffer overlap in time dimension
   bool ts_overlap = is_timestep_overlapped(
       buffer_value.start_ts, buffer_value.end_ts, recent_buffer_value.start_ts,
       recent_buffer_value.end_ts);
 
-  if (!ts_overlap && hold_on_coeff) {
+  if (!ts_overlap && hold_on_coeff && allow_hold_in_lmem) {
     ts_overlap =
         (buffer_key.type != LMEM_OPERATION &&
          time_step->is_tensor_hold_in_lmem(buffer_key.value)) ||
@@ -666,7 +667,7 @@ MemBlock LmemAllocator::global_find_avail_lmem_localtion(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
     const mem_buffer_key_t &recent_buffer_allocated,
     BasicTimeStepPtr &time_step, bool one_loop, const LgInfo &lg_info,
-    bool allow_bank_conflict) {
+    bool allow_bank_conflict, bool allow_hold_in_lmem) {
   PROFILE_LOG("global_find_avail_lmem_localtion", true);
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   auto &recent_buffer_value =
@@ -677,11 +678,12 @@ MemBlock LmemAllocator::global_find_avail_lmem_localtion(
 
   update_avail_lmems(avail_space.avail_lmems, buffer_key, buffer_value,
                      recent_buffer_allocated, recent_buffer_value, time_step,
-                     !one_loop, true);
+                     !one_loop, true, allow_hold_in_lmem);
 
   // get the available local memory location
   auto alloc_mem = find_avail_lmem_location(avail_space, buffer_key,
-                                            buffer_value, lg_info);
+                                            buffer_value, lg_info,
+                                            allow_bank_conflict);
   PROFILE_LOG("global_find_avail_lmem_localtion", false);
   return alloc_mem;
 }
@@ -811,7 +813,8 @@ static void conflict_heap_delete(
 }
 
 static void init_membuf_list(std::list<MemBufSortStd> &membuf_list,
-                             const BasicTimeStepPtr &time_step, bool one_loop) {
+                             const BasicTimeStepPtr &time_step, bool one_loop,
+                             bool allow_hold_in_lmem) {
   int64_t membuf_area;
   bool hold_on_coeff;
   membuf_sort_std_t membuf_sort_std;
@@ -824,7 +827,7 @@ static void init_membuf_list(std::list<MemBufSortStd> &membuf_list,
       hold_on_coeff = time_step->is_tensor_hold_in_lmem(v);
     }
 
-    if (!one_loop && hold_on_coeff) {
+    if (!one_loop && hold_on_coeff && allow_hold_in_lmem) {
       membuf_area = timestep_num * it->second.size;
     } else {
       membuf_area = get_membuf_area(it->second.start_ts, it->second.end_ts,
@@ -869,8 +872,8 @@ void dump_lmem_assign_result(std::list<MemBufSortStd>::iterator &membuf_allocate
                               const LgInfo &lg_info,
                               BasicTimeStepPtr &time_step,
                               bool allow_bank_conflict,
+                              bool allow_hold_in_lmem,
                               const shape_secs_t &shape_secs,
-                              const char* _function,
                               const char* lmem_assign_status,
                               const char* lmem_assign_remark,
                               int64_t lmem_assign_addr,
@@ -878,6 +881,7 @@ void dump_lmem_assign_result(std::list<MemBufSortStd>::iterator &membuf_allocate
   auto hold_in_lmem = membuf_allocated->first.type != LMEM_OPERATION &&
                       time_step->is_tensor_hold_in_lmem(
                           membuf_allocated->first.value);
+  hold_in_lmem = allow_hold_in_lmem && hold_in_lmem;
   Operation *op = membuf_allocated->first.type == LMEM_OPERATION
                       ? membuf_allocated->first.op
                       : module::getOriValue(membuf_allocated->first.value).getDefiningOp();
@@ -966,7 +970,6 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
    *
    */
   PROFILE_LOG("assignLmemAddr", true);
-  auto _function = static_cast<const char*>(__FUNCTION__);
 
   // iterate all mem_buffer_key_t, then update mem_buffer_value_t.size
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
@@ -977,12 +980,67 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
   });
   time_step->update_all_mem_buffer_size(lg_info);
 
+  // check whether to allow tensors hold in local memory
+  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("allow_hold_in_lmem_judgment", "stamp",
+                    "if the size of tensors hold in local memory is larger than local memory, "
+                    "then not allow any tensors to hold in local memory")
+                    << "\n";
+  });
+  auto allow_hold_in_lmem = true;
+  const MemBuff &lmem_buffer = time_step->get_lmem_buffer();
+  int64_t lmem_size_hold_in_lmem = 0;
+  for (auto iter = lmem_buffer.begin(); iter != lmem_buffer.end(); ++iter) {
+    if (iter->first.type != LMEM_OPERATION && time_step->is_tensor_hold_in_lmem(iter->first.value)) {
+      lmem_size_hold_in_lmem += iter->second.size;
+    }
+  }
+
+  allow_hold_in_lmem = lmem_size_hold_in_lmem < Arch::LMEM_BYTES;
+  if (!allow_hold_in_lmem) {
+    int64_t n, c, d, h, w;
+    for (size_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
+      auto& cur_ts_tensors = time_step->getTensors(ts);
+      for (auto& tensor : cur_ts_tensors) {
+        tensor_info_t& ti = tensor.second;
+        if (ti.mode == TIMESTEP_LOAD) {
+          auto in = tensor.first;
+          if (time_step->is_tensor_hold_in_lmem(in)) {
+            time_step->cancel_tensor_hold_in_lmem(in);
+            module::getNCDHW(in, n, c, d, h, w, lg_info.type);
+            ti.slice_info.n.clear();
+            ti.slice_info.c.clear();
+            ti.slice_info.d.clear();
+            ti.slice_info.h.clear();
+            ti.slice_info.w.clear();
+            for (int i = 0; i < shape_secs.nsecs; ++i) {
+              ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
+            }
+            for (int i = 0; i < shape_secs.csecs; ++i) {
+              ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
+            }
+            for (int i = 0; i < shape_secs.dsecs; ++i) {
+              ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
+            }
+            for (int i = 0; i < shape_secs.hsecs; ++i) {
+              ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
+            }
+            for (int i = 0; i < shape_secs.wsecs; ++i) {
+              ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
+            }
+          }
+        }
+      }
+    }
+  }
+
+
   // init membuf_list
   bool one_loop =
       (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
        shape_secs.csecs == 1 && shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
   std::list<MemBufSortStd> membuf_list;
-  init_membuf_list(membuf_list, time_step, one_loop);
+  init_membuf_list(membuf_list, time_step, one_loop, allow_hold_in_lmem);
 
   // init avail_lmems and exclude_banks
   BufferAvailSpace buffer_avail_space;
@@ -1075,7 +1133,7 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
         candidate_allocation = global_find_avail_lmem_localtion(
             buffer_avail_space[buflist_it->first], buflist_it->first,
             recent_buffer_allocated, time_step, one_loop, lg_info,
-            allow_bank_conflict);
+            allow_bank_conflict, allow_hold_in_lmem);
         if (candidate_allocation.first == -1) {
           addr_assign_result = ADDR_CANDIDATE_ALLOCATE_FAILED;
         }
@@ -1135,8 +1193,9 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
       for (auto membuf_allocated_failed = membuf_list.begin(); membuf_allocated_failed != membuf_list.end();
             ++membuf_allocated_failed) {
         GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
-          dump_lmem_assign_result(membuf_allocated_failed, lg_info, time_step, allow_bank_conflict,
-                                  shape_secs, _function, "failed",
+          dump_lmem_assign_result(membuf_allocated_failed, lg_info, time_step,
+                                  allow_bank_conflict, allow_hold_in_lmem,
+                                  shape_secs, "failed",
                                   "early return since appear mem buffer can't find available lmem space",
                                   -1, one_loop);
         });
@@ -1162,8 +1221,9 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
 
     // debug info
     GROUP_DEBUG_WITH_TYPE("lmem_assign", lg_info, [&]() {
-      dump_lmem_assign_result(tgt_membuf, lg_info, time_step, allow_bank_conflict,
-                              shape_secs, _function, "success",
+      dump_lmem_assign_result(tgt_membuf, lg_info, time_step,
+                              allow_bank_conflict, allow_hold_in_lmem,
+                              shape_secs, "success",
                               "allocate available address for membuf",
                               tgt_min_address, one_loop);
       });
