@@ -13,12 +13,15 @@ import sys
 import numpy as np
 import argparse
 import os
-import struct
 import shutil
-from utils.misc import str2bool
+from filelock import FileLock
+import fcntl
+import time
+
 from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
 from transform.OnnxOpt import *
 
+TPUC_ROOT = os.getenv("TPUC_ROOT")
 
 def show_fake_cmd(in_npz: str, model: str, out_npz: str, dump_all_tensors=False, use_cuda=False):
     dump_all = "--dump_all_tensors" if dump_all_tensors else ""
@@ -47,72 +50,170 @@ def pack_bmodel_context_generator(model_file, net):
             o.data.tofile(f)
 
 
-def model_inference(inputs: dict, model_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, decrypt_lib: str = "",log_level:str='normal') -> dict:
+class ChipLock:
+
+    def __init__(self, chip: str, lock_file: str, retry_delay: float = 0.1):
+        self.chip = chip
+        self.lock_file = lock_file
+        self.retry_delay = retry_delay
+        self._entered = False
+
+    def __enter__(self):
+        self._f = open(self.lock_file, "a+")
+        while True:
+            fcntl.flock(self._f, fcntl.LOCK_EX)
+            self._f.seek(0)
+            data = self._f.read().strip()
+            if not data:
+                cur_chip, cnt = None, 0
+            else:
+                try:
+                    cur_chip, cnt = data.split(":", 1)
+                    cnt = int(cnt)
+                except Exception as e:
+                    print("Warning: lock file format error, {}".format(e))
+                    cur_chip, cnt = None, 0
+            if cur_chip is None or cur_chip == self.chip:
+                cnt += 1
+                self._f.seek(0)
+                self._f.truncate()
+                self._f.write("{}:{}".format(self.chip, cnt))
+                self._f.flush()
+                fcntl.flock(self._f, fcntl.LOCK_UN)
+                self._entered = True
+                return self
+            fcntl.flock(self._f, fcntl.LOCK_UN)
+            time.sleep(self.retry_delay)
+
+    def __exit__(self, exc_type, exc, tb):
+        if not self._entered:
+            return False
+        with open(self.lock_file, "r+") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            data = f.read().strip()
+            if data:
+                cur_chip, cnt = data.split(":", 1)
+                cnt = int(cnt)
+            else:
+                cur_chip, cnt = None, 0
+            f.seek(0)
+            f.truncate()
+            if cur_chip == self.chip and cnt > 1:
+                cnt -= 1
+                f.write("{}:{}".format(self.chip, cnt))
+            f.flush()
+            fcntl.flock(f, fcntl.LOCK_UN)
+        self._f.close()
+        return False
+
+
+def model_inference(inputs: dict,
+                    model_file: str,
+                    dump_all: bool = True,
+                    mute: bool = False,
+                    out_fixed: bool = False,
+                    decrypt_lib: str = "",
+                    log_level: str = 'normal') -> dict:
+    is_bmodel = model_file.endswith(".bmodel")
+    if not is_bmodel:  # cv183x...
+        return _model_inference(inputs, model_file, dump_all, out_fixed, decrypt_lib)
     if mute or log_level == "quiet":
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
             os.dup2(devnull.fileno(), sys.stderr.fileno())
-    try:
+        try:
+            outputs = _model_inference(inputs, model_file, dump_all, out_fixed, decrypt_lib)
+        finally:
+            if mute or log_level == 'quiet' or log_level == 'simple' or log_level == 'only-layer-group':
+                os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
+                os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
+        return outputs
+    # single thread
+    CMODEL_LOCKFILE = os.getenv("CMODEL_LOCKFILE", "")
+    if CMODEL_LOCKFILE == "":
         return _model_inference(inputs, model_file, dump_all, out_fixed, decrypt_lib)
-    finally:
-        if mute or log_level=='quiet' or log_level=='simple' or log_level=='only-layer-group':
-            os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
-            os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
+    # multi thread
+    chip = get_chip_from_model(model_file)
+    with ChipLock(chip, CMODEL_LOCKFILE):
+        outputs = _model_inference(inputs, model_file, dump_all, out_fixed, decrypt_lib)
+    return outputs
 
 
-def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=False, decrypt_lib: str = "") -> dict:
+def get_cmodel_so(chip: str):
+    if chip == 'BM1688' or chip == 'CV186X':
+        return 'libcmodel_1688.so'
+    elif chip == 'BM1684':
+        return 'libcmodel_1684.so'
+    elif chip == "BM1690":
+        return 'libtpuv7_emulator.so'
+    elif chip == "MARS3":
+        return 'libcmodel_mars3.so'
+    elif chip == "SGTPUV8":
+        return 'libcmodel_sgtpuv8.so'
+    elif chip == "SG2380":
+        return 'libcmodel_sg2380.so'
+    else:
+        return 'libcmodel_1684x.so'
+
+
+def link_custom_so(chip: str):
+    custom_so = 'libcmodel_custom_1684x.so'
+    if chip == 'BM1688':
+        custom_so = 'libcmodel_custom_1688.so'
+    # elif chip == 'BM1684':
+    #     lib_so = 'libcmodel_custom_1684.so'
+    # elif chip == "BM1690":
+    #     lib_so = 'libcmodel_custom_bm1690.so'
+    # elif chip == "MARS3":
+    #     lib_so = 'libcmodel_custom_mars3.so'
+    custom_path = os.path.join(TPUC_ROOT, "lib", custom_so)
+    custom_link = os.path.join(TPUC_ROOT, "lib", "libcmodel_custom.so")
+    if os.path.exists(custom_path):
+        return
+    if os.path.exists(custom_link):
+        cur_lib = os.readlink(custom_link)
+        if cur_lib != custom_path:
+            os.system(f'ln -sf {custom_path} {custom_link}')
+    else:
+        os.system(f'ln -sf {custom_path} {custom_link}')
+
+
+def link_cmodel_so(chip: str):
+    lib_so = get_cmodel_so(chip)
+    lib_path = os.path.join(TPUC_ROOT, "lib", lib_so)
+    link_path = os.path.join(TPUC_ROOT, "lib", "libcmodel.so")
+    cur_lib = os.readlink(link_path)
+    if cur_lib != lib_path:
+        cmd = f'ln -sf {lib_path} {link_path}'
+        print(cmd)
+        os.system(cmd)
+
+
+def _model_inference(inputs: dict,
+                     model_file: str,
+                     dump_all=True,
+                     out_fixed=False,
+                     decrypt_lib: str = "") -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
     if model_file.endswith(".bmodel"):
         pyruntime = pyruntime + "bm"
         chip = get_chip_from_model(model_file)
-        # trick for runtime link chip cmodel
-        lib_so = 'libcmodel_1684x.so'
-        if chip == 'BM1688' or chip == 'CV186X':
-            lib_so = 'libcmodel_1688.so'
-        elif chip == 'BM1684':
-            lib_so = 'libcmodel_1684.so'
-        elif chip == "BM1690":
-            lib_so = 'libtpuv7_emulator.so'
-            pyruntime = "pyruntime_" + "tpuv7"
-        elif chip == "MARS3":
-            lib_so = 'libcmodel_mars3.so'
-        elif chip == "SGTPUV8":
-            lib_so = 'libcmodel_sgtpuv8.so'
-        elif chip == "SG2380":
-            lib_so = 'libcmodel_sg2380.so'
-        assert (os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)))
-        cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(
-            lib_so)
-        os.system(cmd)
-        # used in custom layer
-        lib_so = 'libcmodel_custom_1684x.so'
-        if chip == 'BM1688':
-            lib_so = 'libcmodel_custom_1688.so'
-        # elif chip == 'BM1684':
-        #     lib_so = 'libcmodel_custom_1684.so'
-        # elif chip == "BM1690":
-        #     lib_so = 'libcmodel_custom_bm1690.so'
-        # elif chip == "MARS3":
-        #     lib_so = 'libcmodel_custom_mars3.so'
-        if os.path.exists("{}/lib/{}".format(os.getenv("TPUC_ROOT"), lib_so)):
-            cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel_custom.so'.format(
-                lib_so)
-            os.system(cmd)
+        with FileLock("/tmp/cmodel_so.lock"):
+            link_cmodel_so(chip)
+            link_custom_so(chip)
+        pyrtlib = importlib.import_module(pyruntime)
+        model = pyrtlib.Model(model_file, 0, decrypt_lib)
+        net = model.Net(model.networks[0])
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
         is_cv18xx = True
+        pyrtlib = importlib.import_module(pyruntime)
+        model = pyrtlib.Model(model_file, output_all_tensors=dump_all)
+        net = model
     else:
         raise RuntimeError("not support modle file:{}".format(model_file))
-    pyruntime = importlib.import_module(pyruntime)
 
-    outputs = dict()
-    if not is_cv18xx:
-        model = pyruntime.Model(model_file, 0, decrypt_lib)
-        net = model.Net(model.networks[0])
-    else:
-        model = pyruntime.Model(model_file, output_all_tensors=dump_all)
-        net = model
     input_shapes = []
     only_one = len(inputs) == 1
     if only_one and len(net.inputs) != 1:
@@ -137,8 +238,11 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
         if list(input.shape) == []:
             i.data[0] = input
         else:
-            i.data.reshape(-1)[:np.prod(input.shape)] = lowering(input, pdtype=i.dtype,
-                                                             pshape=input.shape, pzero_point=i.qzero_point, pscale=i.qscale).flatten()
+            i.data.reshape(-1)[:np.prod(input.shape)] = lowering(input,
+                                                                 pdtype=i.dtype,
+                                                                 pshape=input.shape,
+                                                                 pzero_point=i.qzero_point,
+                                                                 pscale=i.qscale).flatten()
 
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
@@ -160,13 +264,13 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
         # for example: last layer is NonMaxSuppression, NonZero, etc.
         dyn_output_shapes = net.forward_dynamic(input_shapes)
     dyn_idx = 0
-
+    outputs = dict()
     for i in net.outputs:
-        if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0 and out_fixed == False:
+        if (i.data.dtype == np.int8
+                or i.data.dtype == np.uint8) and i.qscale != 0 and out_fixed == False:
             if is_cv18xx and i.name in inputs:
                 name = i.name + "_si8" if i.data.dtype == np.int8 else "_ui8"
-                outputs[name] = np.array(i.data.astype(
-                    np.float32) / np.float32(i.qscale))
+                outputs[name] = np.array(i.data.astype(np.float32) / np.float32(i.qscale))
             else:
                 zp = i.qzero_point
                 outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
@@ -191,38 +295,42 @@ def _model_inference(inputs: dict, model_file: str, dump_all=True, out_fixed=Fal
         pass
 
     if not is_cv18xx and dump_all:
-        if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ["NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
+        if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ[
+                "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA"] == "1":
             if "DYNAMIC_LAYER_OUTPUT_DATA_PATH" in os.environ and \
                     "DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH" in os.environ:
                 dyn_layer_out_data_path = os.environ["DYNAMIC_LAYER_OUTPUT_DATA_PATH"]
                 id_dict_file = os.environ["DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH"]
-                if os.path.exists(dyn_layer_out_data_path) and os.path.exists(id_dict_file) and os.path.isfile(id_dict_file):
+                if os.path.exists(dyn_layer_out_data_path) and os.path.exists(
+                        id_dict_file) and os.path.isfile(id_dict_file):
                     id_dict_str = "{"
                     with open(id_dict_file) as f:
                         id_dict_str += f.readline()
                     id_dict_str += "}"
                     id_dict = eval(id_dict_str)
                     os.remove(id_dict_file)
-                    ids = sorted([int(file) for file in os.listdir(
-                        dyn_layer_out_data_path) if file.isdecimal() and int(file) in id_dict])
+                    ids = sorted([
+                        int(file) for file in os.listdir(dyn_layer_out_data_path)
+                        if file.isdecimal() and int(file) in id_dict
+                    ])
                     for id in ids:
                         name = id_dict[id]
-                        filename = os.path.join(
-                            dyn_layer_out_data_path, str(id))
+                        filename = os.path.join(dyn_layer_out_data_path, str(id))
                         with open(filename, "r") as f:
                             dict_str = f.readline()
                             dict_ = eval(dict_str)
                             data = dict_["data"]
                             is_fp = dict_["is_fp"]
                             shape = dict_["shape"]
-                            data = np.array(data, dtype=(
-                                np.float32 if is_fp else np.int32))
+                            data = np.array(data, dtype=(np.float32 if is_fp else np.int32))
                             outputs[name] = np.reshape(data, shape)
                     os.system(f"rm -r {dyn_layer_out_data_path}/*")
 
     return outputs
 
+
 g_final_mlir_module = None
+
 
 def final_mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     import pyfinalmlir
@@ -267,7 +375,13 @@ g_mlir_module = None
 g_mlir_cuda = None
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bool = False, out_fixed: bool = False, use_cuda: bool = False, log_level:str = 'normal') -> dict:
+def mlir_inference(inputs: dict,
+                   mlir_file: str,
+                   dump_all: bool = True,
+                   mute: bool = False,
+                   out_fixed: bool = False,
+                   use_cuda: bool = False,
+                   log_level: str = 'normal') -> dict:
     if mute or log_level == "quiet":
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stdout.fileno())
@@ -283,7 +397,10 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, mute: bo
             os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
 
 
-def _mlir_inference_by_cpu(inputs: dict, mlir_file: str, dump_all: bool = True, out_fixed: bool = False) -> dict:
+def _mlir_inference_by_cpu(inputs: dict,
+                           mlir_file: str,
+                           dump_all: bool = True,
+                           out_fixed: bool = False) -> dict:
     import pymlir
     pymlir.set_mem_mode("value_mem")
     from utils.mlir_parser import MlirParser
@@ -374,15 +491,15 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
                 intermediate_layer_value_info = onnx.helper.ValueInfoProto()
                 intermediate_layer_value_info.name = name
                 model.graph.output.append(intermediate_layer_value_info)
-                output_keys.append(
-                    intermediate_layer_value_info.name + '_' + x.op_type)
+                output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
         try:
             onnx.save(model, dump_all_tensors_onnx)
         except Exception as E:
             if "The proto size is larger than the 2 GB limit." in str(E):
-                print("LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file.".format(
-                    dump_all_tensors_onnx))
+                print(
+                    "LOG: Try to save {} by using save_as_external_data to save tensors separately from the model file."
+                    .format(dump_all_tensors_onnx))
                 onnx.save(model,
                           dump_all_tensors_onnx,
                           save_as_external_data=True,
@@ -396,12 +513,11 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
     try:
-        session = onnxruntime.InferenceSession(
-            onnx_file, providers=['CPUExecutionProvider'])
+        session = onnxruntime.InferenceSession(onnx_file, providers=['CPUExecutionProvider'])
     except Exception as E:
-            if "is not a registered function/op" in str(E):
-                sess = PyOrtFunction.from_model(onnx_file)
-                session = sess.ort_session
+        if "is not a registered function/op" in str(E):
+            sess = PyOrtFunction.from_model(onnx_file)
+            session = sess.ort_session
     inodes = session.get_inputs()
     only_one = len(inputs) == 1
     if only_one:
@@ -507,11 +623,9 @@ def tflite_inference(
             data[name] = d
         elif d.dtype == np.float32 and is_quant:
             scale, zp = input["quantization"]
-            data[name] = np.clip(round_away_from_zero(
-                d / scale + zp), 0, 255).astype(t)
+            data[name] = np.clip(round_away_from_zero(d / scale + zp), 0, 255).astype(t)
         else:
-            raise RuntimeError(
-                "input type:{} not match model type:{}".format(d.dtype, t))
+            raise RuntimeError("input type:{} not match model type:{}".format(d.dtype, t))
     outputs = session.run(input_is_nchw, **data)
 
     if dump_all:
@@ -592,22 +706,23 @@ if __name__ == '__main__':
     data = np.load(args.input)
     output = dict()
     if args.model.endswith("final.mlir"):
-        output = final_mlir_inference(
-            data, args.model, args.dump_all_tensors)
+        output = final_mlir_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".mlir"):
-        output = mlir_inference(
-            data, args.model, args.dump_all_tensors, args.debug, args.out_fixed, args.cuda)
+        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug, args.out_fixed,
+                                args.cuda)
     elif args.model.endswith('.onnx'):
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):
         output = tflite_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
-        output = caffe_inference(
-            data, args.model, args.weight, args.dump_all_tensors)
+        output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
     elif args.model.endswith(".pt") or args.model.endswith(".pth"):
         output = torch_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
-        output = model_inference(data, args.model, out_fixed=args.out_fixed, decrypt_lib=args.decrypt_lib)
+        output = model_inference(data,
+                                 args.model,
+                                 out_fixed=args.out_fixed,
+                                 decrypt_lib=args.decrypt_lib)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     print("\nSaving ...")

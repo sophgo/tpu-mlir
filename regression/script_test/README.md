@@ -30,5 +30,3 @@
 * test_llm1:     test llm all
 
 * test_encrypt:  test encrypt and decrypt
-
-* test_MaskRCNN:  test MaskRCNN Utest

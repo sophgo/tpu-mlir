@@ -36,7 +36,6 @@ class TORCH_IR_TESTER(object):
                  chip: str = "bm1684x",
                  mode: str = "all",
                  simple: bool = False,
-                 disable_thread: bool = False,
                  quant_input: bool = False,
                  quant_output: bool = False,
                  debug: bool = False,
@@ -204,7 +203,6 @@ class TORCH_IR_TESTER(object):
         self.chip = chip.lower()
         self.simple = simple
         self.num_core = num_core
-        self.multithread = not disable_thread
         if self.simple:
             self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
@@ -3858,29 +3856,11 @@ def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cas
 
 
 def test_all(tester: TORCH_IR_TESTER):
-    if tester.multithread:
-        import multiprocessing
-        from utils.misc import collect_process
-        process_number = multiprocessing.cpu_count() // 2 + 1
-        processes = []
-        error_cases = multiprocessing.Manager().list()
-        success_cases = multiprocessing.Manager().list()
-        for case in tester.test_cases:
-            if tester.check_support(case):
-                p = multiprocessing.Process(target=test_one_case_in_all, name = case,
-                                            args=(tester, case, error_cases, success_cases))
-                processes.append(p)
-            if len(processes) == process_number:
-                collect_process(processes, error_cases)
-                processes = []
-        collect_process(processes, error_cases)
-        processes = []
-    else:
-        error_cases = []
-        success_cases = []
-        for case in tester.test_cases:
-            if tester.check_support(case):
-                test_one_case_in_all(tester, case, error_cases, success_cases)
+    error_cases = []
+    success_cases = []
+    for case in tester.test_cases:
+        if tester.check_support(case):
+            test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
@@ -3903,7 +3883,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_core", default=1, type=int, help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
-    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--quant_input", action="store_true", help='quant input')
     parser.add_argument("--quant_output", action="store_true", help='quant output')
@@ -3913,7 +3892,7 @@ if __name__ == "__main__":
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
     args = parser.parse_args()
-    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread,
+    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple,
                              args.quant_input, args.quant_output, args.debug, args.num_core,
                              args.debug_cmd, args.cuda, args.dynamic, args.concise_log)
     if args.show_all:

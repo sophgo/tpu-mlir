@@ -35,7 +35,6 @@ class CUSTOM_TPULANG_TESTER(object):
                  mode: str = "all",
                  dynamic: bool = False,
                  simple: bool = False,
-                 disable_thread: bool = False,
                  num_core: int = 1,
                  op_type: str = "all",
                  concise_log: bool = False):
@@ -74,7 +73,6 @@ class CUSTOM_TPULANG_TESTER(object):
         self.chip = chip.lower()
         self.dynamic = dynamic
         self.simple = simple
-        self.multithread = not disable_thread
         self.num_core = num_core
         self.mode = mode.lower()
         self.concise_log = concise_log # use when run regression/main_entry.py
@@ -359,32 +357,11 @@ def test_one_case_in_all(tester: CUSTOM_TPULANG_TESTER, case, error_cases, succe
     success_cases.append(case)
 
 def test_all_base(tester: CUSTOM_TPULANG_TESTER):
-    if tester.multithread:
-        import multiprocessing
-        from utils.misc import collect_process
-        process_number = multiprocessing.cpu_count() // 2 + 1
-        processes = []
-        error_cases = multiprocessing.Manager().list()
-        success_cases = multiprocessing.Manager().list()
-        for case in tester.test_cases:
-            if tester.check_support(case):
-                print("====== test_custom_tpulang.py --case {} --chip {} TEST START PROCESSING ======".format(
-                    case, tester.chip))
-                p = multiprocessing.Process(target=test_one_case_in_all,
-                                            name=case,
-                                            args=(tester, case, error_cases, success_cases))
-                processes.append(p)
-            if len(processes) == process_number:
-                collect_process(processes, error_cases)
-                processes = []
-        collect_process(processes, error_cases)
-        processes = []
-    else:
-        error_cases = []
-        success_cases = []
-        for case in tester.test_cases:
-            if tester.check_support(case):
-                test_one_case_in_all(tester, case, error_cases, success_cases)
+    error_cases = []
+    success_cases = []
+    for case in tester.test_cases:
+        if tester.check_support(case):
+            test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
@@ -414,14 +391,13 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--num_core", default=1, type=int, help='The numer of TPU cores used for parallel computation')
-    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     parser.add_argument("--report", default="", type=str, help="report file name")
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
 
     # yapf: enable
     args = parser.parse_args()
-    tester = CUSTOM_TPULANG_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread,
+    tester = CUSTOM_TPULANG_TESTER(args.chip, args.mode, args.dynamic, args.simple,
                                    args.num_core, args.op_type, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")

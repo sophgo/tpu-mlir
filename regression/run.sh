@@ -4,7 +4,7 @@ pip list
 
 if [ "$1" = "op" ]; then
     echo "::RUN operation set 0 test."
-    $REGRESSION_PATH/main_entry.py --test_type basic --test_set op0 --concise_log
+    $REGRESSION_PATH/main_entry.py --test_type basic --test_set onnx --concise_log
 elif [ "$1" = "script" ]; then
     echo "::RUN operation set 1 test."
     source $PROJECT_ROOT/third_party/customlayer/envsetup.sh
@@ -12,7 +12,7 @@ elif [ "$1" = "script" ]; then
     rebuild_custom_backend
     rebuild_custom_firmware_cmodel bm1684x
     rebuild_custom_firmware_cmodel bm1688
-    $REGRESSION_PATH/main_entry.py --test_type basic --test_set op1 --concise_log
+    $REGRESSION_PATH/main_entry.py --test_type basic --test_set torch --concise_log
 elif [ "$1" = "model" ]; then
     echo "::RUN check tests and unit tests."
     cmake --build ${BUILD_PATH} --target check-tpumlir
