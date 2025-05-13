@@ -39,7 +39,7 @@ TpuLang中Tensor的定义如下：
 * shape：Tensor的形状，List[int]，对于Operator输出的Tensor，可以不指定shape，默认值为[]。
 * Name：Tensor的名称，string或None，该值推荐使用默认值None以免因为Name相同导致问题；
 * ttype：Tensor的类型，可以是"neuron"或"coeff"，初始值为"neuron"；
-* data：Tensor的数据，ndarray，为默认值None，当ttype为coeff时，不可以为None；为ndarray时，data的shape，dtype必须与输入shape，dtype一致。
+* data：Tensor的数据，ndarray或None，默认值为None，此时Tensor将根据指定的形状初始化为全零。当ttype为coeff时，不可以为None，data为ndarray，此时data的shape，dtype必须与输入shape，dtype一致。
 * dtype：Tensor的数据类型，默认值为"float32"，否则取值范围为"float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"；
 * scale：Tensor的量化参数，float或List[float]，默认值为None；
 * zero_point：Tensor的偏移参数，int或List[int]，默认值为None；
@@ -78,12 +78,12 @@ TpuLang中Tensor.preprocess的定义如下：
                         black_level : float = 112):
                #pass
 
-如上所示，TpuLang中Tensor的preprocess有4个参数。
+如上所示，TpuLang中Tensor的preprocess有如下几个参数。
 
 * mean：Tensor的每个channel的平均值，默认值为[0, 0, 0]；
 * scale：Tensor的每个channel的scale值，默认值为[1, 1, 1]；
 * pixel_format：Tensor的pixel的方式，默认值为'bgr'，取值范围为：'rgb'，'bgr'，'gray'，'rgba'，'gbrg'，'grbg'，'bggr'，'rggb'；
-* channel_format：Tensor的格式是，channel维在前还是在最后。默认值为'nchw'，取值范围为"nchw"，"nhwc"。
+* channel_format：Tensor的格式，channel维在前还是在最后。默认值为'nchw'，取值范围为"nchw"，"nhwc"。
 * resize_dims：Tensor的resize后的[h，w]，默认值为None，表示取Tensor的h和w；
 * keep_aspect_ratio：resize参数，是否保持相同的scale。bool量，默认值为False；
 * keep_ratio_mode：resize参数，如果使能keep_aspect_ratio的两种模式，默认值'letterbox'，取值范围为'letterbox'，'short_side_scale'；
@@ -845,7 +845,7 @@ matmul
 
 要求左右Tensor的维度长度一致。
 当Tensor的维度长度为2时，表示矩阵和矩阵乘运算。
-当Tensor的维度长度大于2时，表示批矩阵乘运算。要求lhr.shape[-1] == rhs.shape[-2]，lhr.shape[:-2]和rhs.shape[:-2]需要满足广播规则。
+当Tensor的维度长度大于2时，表示批矩阵乘运算。要求input.shape[-1] == right.shape[-2]，input.shape[:-2]和right.shape[:-2]需要满足广播规则。
 
 返回值
 """""""""""
@@ -899,7 +899,7 @@ matmul_int
 
 要求左右Tensor的维度长度一致。
 当Tensor的维度长度为2时，表示矩阵和矩阵乘运算。
-当Tensor的维度长度大于2时，表示批矩阵乘运算。要求lhr.shape[-1] == rhs.shape[-2]，lhr.shape[:-2]和rhs.shape[:-2]需要满足广播规则。
+当Tensor的维度长度大于2时，表示批矩阵乘运算。要求input.shape[-1] == right.shape[-2]，input.shape[:-2]和right.shape[:-2]需要满足广播规则。
 
 返回值
 """""""""""
@@ -956,7 +956,7 @@ matmul_quant
 
 要求左右Tensor的维度长度一致。
 当Tensor的维度长度为2时，表示矩阵和矩阵乘运算。
-当Tensor的维度长度大于2时，表示批矩阵乘运算。要求lhr.shape[-1] == rhs.shape[-2]，lhr.shape[:-2]和rhs.shape[:-2]需要满足广播规则。
+当Tensor的维度长度大于2时，表示批矩阵乘运算。要求input.shape[-1] == right.shape[-2]，input.shape[:-2]和right.shape[:-2]需要满足广播规则。
 
 返回值
 """""""""""
@@ -4078,7 +4078,7 @@ maxpool2d_with_mask
 
 参数说明
 """""""""""
-* tensor：Tensor类型，表示输入操作Tensor。
+* input：Tensor类型，表示输入操作Tensor。
 * kernel：List[int]或Tuple[int]型或None，输入None表示使用global_pooling，不为None时要求该参数长度为2。
 * pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
 * stride：List[int]或Tuple[int]型或None，表示步长尺寸，输入None使用默认值[1,1]，不为None时要求该参数长度为2。
@@ -4126,7 +4126,7 @@ maxpool3d
 * kernel：List[int]或Tuple[int]型或int或None，输入None表示使用global_pooling，不为None时若输入单个整数，表示在3个维度上的kernel大小相同，若输入List或Tuple，要求该参数长度为3。
 * stride：List[int]或Tuple[int]型或int或None，表示步长尺寸，输入None使用默认值[1,1,1]，不为None时若输入单个整数，表示在3个维度上的stride大小相同，若输入List或Tuple，要求该参数长度为3。
 * pad：List[int]或Tuple[int]型或int或None，表示填充尺寸，输入None使用默认值[0,0,0,0,0,0]，不为None时若输入单个整数，表示在3个维度上的pad大小相同，若输入List或Tuple，要求该参数长度为6。
-* ceil：bool型，表示计算output shape时是否向上取整。
+* ceil_mode：bool型，表示计算output shape时是否向上取整。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -4175,7 +4175,7 @@ avgpool2d
 * kernel：List[int]或Tuple[int]型或None，输入None表示使用global_pooling，不为None时要求该参数长度为2。
 * stride：List[int]或Tuple[int]型或None，表示步长尺寸，输入None使用默认值[1,1]，不为None时要求该参数长度为2。
 * pad：List[int]或Tuple[int]型或None，表示填充尺寸，输入None使用默认值[0,0,0,0]，不为None时要求该参数长度为4。
-* ceil：bool型，表示计算output shape时是否向上取整。
+* ceil_mode：bool型，表示计算output shape时是否向上取整。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -4225,7 +4225,7 @@ avgpool3d
 * kernel：List[int]或Tuple[int]型或int或None，输入None表示使用global_pooling，不为None时若输入单个整数，表示在3个维度上的kernel大小相同，若输入List或Tuple，要求该参数长度为3。
 * pad：List[int]或Tuple[int]型或int或None，表示填充尺寸，输入None使用默认值[0,0,0,0,0,0]，不为None时若输入单个整数，表示在3个维度上的pad大小相同，若输入List或Tuple，要求该参数长度为6。
 * stride：List[int]或Tuple[int]型或int或None，表示步长尺寸，输入None使用默认值[1,1,1]，不为None时若输入单个整数，表示在3个维度上的stride大小相同，若输入List或Tuple，要求该参数长度为3。
-* ceil：bool型，表示计算output shape时是否向上取整。
+* ceil_mode：bool型，表示计算output shape时是否向上取整。
 * scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为input，output的scale。
 * zero_point：List[int]类型或None，偏移参数。取None代表非量化计算。若为List，长度为2，分别为input，output的zero_point。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
@@ -4507,8 +4507,9 @@ normalize
 对输入张量input的指定维度进行 :math:`L_p`  归一化。
 
 对于大小为 :math:`(n_0, ..., n_{dim}, ..., n_k)` 的张量输入，每个 :math:`n_{dim}`元素向量:math:`v`沿维度:attr:`axes` 的变换为
+
 .. math::
-v = \frac{v}{\max(\lVert v \rVert_p, \epsilon)}
+  v = \frac{v}{\max(\lVert v \rVert_p, \epsilon)}
 
 在默认参数下，它对向量的维度1上进行L2归一化。
 

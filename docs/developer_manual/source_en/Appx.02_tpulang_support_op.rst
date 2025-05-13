@@ -30,7 +30,9 @@ The definition of Tensor in TpuLang is as follows:
                      name: str = None,
                      ttype="neuron",
                      data=None,
-                     dtype: str = "float32")
+                     dtype: str = "float32",
+                     scale: Union[float, List[float]] = None,
+                     zero_point: Union[int, List[int]] = None)
                #pass
 
 
@@ -39,9 +41,10 @@ As shown above, a Tensor in TpuLang has five parameters:
 * shape: The shape of the Tensor, a List[int]. For Tensors that serve as the output of an Operator, the shape can be left unspecified with a default value of [].
 * Name: The name of the Tensor, a string or None. It is recommended to use the default value None to avoid potential issues arising from identical names.
 * ttype: The type of the Tensor, which can be "neuron," "coeff," or None. The initial value is "neuron."
-* data: The input data for the Tensor. If the default value None is used, the Tensor will be initialized with all zeros based on the specified shape. Otherwise, it should be an ndarray.
+* data: The input data for the Tensor.ndarray or None,the default value is None, the Tensor will be initialized with all zeros based on the specified shape.If ttype == "coeff", data **must** be provided (cannot be None).  If data is an ndarray, its shape and dtype must match the declared shape and dtype.
 * dtype: The data type of the Tensor, with a default value of "float32." Other possible values include "float32," "float16," "int32," "uint32," "int16," "uint16," "int8," and "uint8."
-
+* scale:  The quantization scale parameter of Tensor, float or List[float], default value is None;
+* zero_point:  The quantization zero-point parameter, also known as the offset parameter of Tensor, int or List[int], default value is None;
 
 Example of declaring a Tensor:
 
@@ -51,6 +54,55 @@ Example of declaring a Tensor:
       input = tpul.Tensor(name='x', shape=[2,3], dtype='int8')
       #weight
       weight = tpul.Tensor(dtype='float32', shape=[3,4], data=np.random.uniform(0,1,shape).astype('float32'), ttype="coeff")
+
+Tensor Preprocessing (Tensor.preprocess)
+---------------------------------------
+
+In TpuLang, if a Tensor is an input and requires preprocessing, you can call this function.
+
+The definition of Tensor.preprocess in TpuLang is as follows:
+
+   .. code-block:: python
+
+      class Tensor:
+
+         def preprocess(self,
+                        mean : List[float] = [0, 0, 0],
+                        scale : List[float] = [1.0, 1.0, 1.0],
+                        pixel_format : str = 'bgr',
+                        channel_format : str = 'nchw',
+                        resize_dims : List[int] = None,
+                        keep_aspect_ratio : bool = False,
+                        keep_ratio_mode : str = 'letterbox',
+                        pad_value : int = 0,
+                        pad_type : str = 'center',
+                        white_level : float = 4095,
+                        black_level : float = 112):
+               #pass
+
+As shown above, Tensor.preprocess in TpuLang has the following parameters:
+
+* mean: The average value of each channel of Tensor. Default = [0, 0, 0]
+* scale: The scale value of each channel of the Tensor. Default = [1, 1, 1]
+* pixel_format: The pixel format of Tensor. Default = 'bgr', Choices:'rgb', 'bgr', 'gray', 'rgba','gbrg', 'grbg', 'bggr', 'rggb'.
+* channel_format: The data format of Tensor, i.e. whether channel is first or last. Default = 'nchw'.Choices: 'nchw', 'nhwc'.
+* resize_dims: [h, w] of the Tensor after resizing. The default value is None, which means taking the h and w of the Tensor.
+* keep_aspect_ratio: Parameter of resize operation that determines whether to maintain the same scaling ratio, bool, default = False
+* keep_ratio_mode: Parameter of resize operation that specifies the mode when keep_aspect_ratio is enabled, default = 'letterbox'. Choices: 'letterbox', 'short_side_scale'.
+* pad_value:Parameter of resize operation that sets the value when padding, int, default = 0.
+* pad_type: The padding strategy when resizing, str, default = 'center'. Choices: 'normal', 'center'.
+* white_level: The white-level parameter for raw image processing, str, default = 4095
+* black_level: The black-level parameter for raw image processing, str, default = 112
+
+Example of declaring Tensor.preprocess:
+
+   .. code-block:: python
+
+      #activation
+      input = tpul.Tensor(name='x', shape=[2,3], dtype='int8')
+      input.preprocess(mean=[123.675,116.28,103.53], scale=[0.017,0.017,0.017])
+      # pass
+
 
 .. _scalar:
 
@@ -120,7 +172,7 @@ The interface definition
             outputs: List[Tensor],
             cmp=True,
             refs=None,
-            mode='f32',
+            mode='f32',         # unused
             dynamic=False,
             asymmetric=False,
             no_save=False,
@@ -173,6 +225,127 @@ Only after deinitialization, the TPU executable target generated by the previous
        def deinit():
           #pass
 
+.. _reset_default_graph:
+
+Reset Default Graph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before constructing a network, it is necessary to reset the default graph. If the input graph is None, after resetting the default graph, the current graph will be an empty graph.
+If a specific graph is provided, it will be set as the default graph.
+If there is only one subgraph, explicitly calling reset_default_graph is optional because the init function will invoke this method automatically.
+
+    .. code-block:: python
+
+       def reset_default_graph(graph = None):
+          #pass
+
+.. _get_default_graph:
+
+Get Current Default Graph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After building the network, if you need to obtain the default subgraph, call this function to retrieve the default graph.
+
+    .. code-block:: python
+
+       def get_default_graph():
+          #pass
+
+.. _reset_graph:
+
+Reset Graph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To clear a graph and its stored Tensor information, call this function. If graph is None, it clears the information of the current default graph.
+
+    .. code-block:: python
+
+       def reset_graph(graph = None):
+          #pass
+
+Note: If the Tensors in the graph are still used by other graphs, do not call this function to clear the graph's information.
+
+.. _RoundingMode:
+
+Rounding Mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Rounding is the process of discarding extra digits beyond a certain point according to specific rules, yielding a shorter, unambiguous numerical representation.
+Given x, the rounded result is y. The following rounding modes are available:
+
+Half to Even
+"""""""""""
+
+    Round to nearest; when the fractional part is 0.5, round to the nearest even number. Corresponds to :cpp:enumerator:`half_to_even`.
+
+Half Away From Zero
+"""""""""""
+
+    Round to nearest; positive values toward +∞, negative values toward -∞. Corresponds to :cpp:enumerator:`half_away_from_zero`. Formula:
+
+    .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x| + 0.5\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x| - 0.5\right\rceil}
+
+Towards Zero
+"""""""""""
+
+    Unconditional truncation toward zero. Corresponds to :cpp:enumerator:`towards_zero`. Formula:
+
+    .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x|\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x|\right\rceil} = {\begin{cases}\mathsf{\lfloor x\rfloor}&{\text{if}}\mathsf{\ \ x > 0,}\\ \mathsf{\lceil x\rceil}&{\text{otherwise}}.\end{cases}}
+
+Down
+"""""""""""
+
+    Round toward -∞. Corresponds to :cpp:enumerator:`down`. Formula:
+
+    .. math:: \mathsf{y = \lfloor x\rfloor = -\lceil-x\rceil}
+
+Up
+"""""""""""
+
+    Round toward +∞. Corresponds to :cpp:enumerator:`up`. Formula:
+
+    .. math:: \mathsf{y = \lceil x\rceil = -\lfloor-x\rfloor}
+
+Half Up
+"""""""""""
+
+    Round to nearest; when the fractional part is 0.5, round toward +∞. Corresponds to :cpp:enumerator:`half_up`. Formula:
+
+    .. math:: \mathsf{y = \lceil x + 0.5\rceil = -\lfloor-x - 0.5\rfloor = \left\lceil\frac{\lfloor 2x\rfloor}{2}\right\rceil}
+
+Half Down
+"""""""""""
+
+    Round to nearest; when the fractional part is 0.5, round toward -∞. Corresponds to :cpp:enumerator:`half_down`. Formula:
+
+    .. math:: \mathsf{y = \lfloor x - 0.5\rfloor = -\lceil-x + 0.5\rceil = \left\lfloor\frac{\lceil 2x\rceil}{2}\right\rfloor}
+
+Examples
+"""""""""""
+
+The table below shows the mapping from x to y under different rounding modes.
+
+.. math::
+    \begin{array}{|c|c|c|c|c|c|c|c|}
+    \hline
+    ~ & \textsf{Half to} & \textsf{Half Away} & \textsf{Towards} & \textsf{Down} & \textsf{ Up } & \textsf{Half Up} & \textsf{Half Down}\\
+    ~ & \textsf{Even}    & \textsf{From Zero} & \textsf{Zero}    & ~           & ~         & ~              & ~               \\ \hline
+    +1.8 & +2 & +2 & +1 & +1 & +2 & +2 & +2\\ \hline
+    +1.5 & +2 & +2 & +1 & +1 & +2 & +2 & +1\\ \hline
+    +1.2 & +1 & +1 & +1 & +1 & +2 & +1 & +1\\ \hline
+    +0.8 & +1 & +1 &  0 &  0 & +1 & +1 & +1\\ \hline
+    +0.5 &  0 & +1 &  0 &  0 & +1 & +1 &  0\\ \hline
+    +0.2 &  0 &  0 &  0 &  0 & +1 &  0 &  0\\ \hline
+    -0.2 &  0 &  0 &  0 & -1 &  0 &  0 &  0\\ \hline
+    -0.5 &  0 & -1 &  0 & -1 &  0 &  0 & -1\\ \hline
+    -0.8 & -1 & -1 &  0 & -1 &  0 & -1 & -1\\ \hline
+    -1.2 & -1 & -1 & -1 & -2 & -1 & -1 & -1\\ \hline
+    -1.5 & -2 & -2 & -1 & -2 & -1 & -1 & -2\\ \hline
+    -1.8 & -2 & -2 & -1 & -2 & -1 & -2 & -2\\ \hline
+    \end{array}
+
+.. _rounding mode of right-shift:
+
+
 .. _operator:
 
 Operator
@@ -207,15 +380,15 @@ The interface definition
 
     .. code-block:: python
 
-      def conv(input,
-            weight,
-            bias=None,
-            kernel=None,
-            dilation=None,
-            pad=None,
-            stride=None,
-            groups=1,
-            out_name=None):
+      def conv(input: Tensor,
+               weight: Tensor,
+               bias: Tensor = None,
+               stride: List[int] = None,
+               dilation: List[int] = None,
+               pad: List[int] = None,
+               group: int = 1,
+               out_dtype: str = None,
+               out_name: str = None):
           #pass
 
 Description of the function
@@ -229,11 +402,11 @@ Explanation of parameters
 * input: Tensor type, representing the input Tensor in 4D NCHW format.
 * weight: Tensor type, representing the convolutional kernel Tensor in 4D NCHW format.
 * bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1], where oc represents the number of output channels.
-* kernel: This parameter is currently deprecated and not used.
+* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
 * dilation: List of integers, representing the dilation size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
 * pad: List of integers, representing the padding size along each spatial axis, which follows the order of [x1_begin, x2_begin…x1_end, x2_end,…]. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4.
-* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
 * groups: An integer, representing the number of groups in the convolution layer.
+* out_dtype: str or None. If None, the output tensor's data type matches the input's. Choices: "float32" or "float16".
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -242,11 +415,11 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
+* BM1684X: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 
 
-conv_v2
+conv_int
 :::::::::::::::::
 
 The interface definition
@@ -254,55 +427,130 @@ The interface definition
 
     .. code-block:: python
 
-      def conv_v2(tensor_i,
-                  weight,
-                  bias = None,
-                  stride = None,
-                  dilation = None,
-                  pad = None,
-                  group = 1,
-                  input_zp = None,
-                  weight_zp = None,
-                  out_dtype = None,
-                  out_name = None):
+      def conv_int(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   group: int = 1,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
           # pass
 
 Description of the function
 """""""""""""""""""""""""""""""""
-
-Fixed-point two-dimensional convolution operation. You can refer to the definitions of fixed-point 2D convolution in various frameworks.
+Two-dimensional convolution operation. You can refer to the definitions of 2D convolution in various frameworks.
 ::
 
   for c in channel
     izp = is_izp_const ? izp_val : izp_vec[c];
-    kzp = is_kzp_const ? kzp_val : kzp_vec[c];
-    output = (input - izp) Conv (weight - kzp) + bias[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    output = (input - izp) Conv (weight - wzp) + bias[c];
 
 This operation belongs to **local operations**.
 
 Explanation of parameters
-""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input Tensor in 4D NCHW format.
-* weight: Tensor type, representing the convolutional kernel Tensor in 4D [oc, ic, kh, kw] format. Here, oc represents the number of output channels, ic represents the number of input channels, kh is the kernel height, and kw is the kernel width.
-* bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1].
-* dilation: List of integers, representing the dilation size. If None, it is [1, 1]. If not None, it requires a length of 2. The order in the list is [height, width].
-* pad: List of integers, representing the padding size. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4. The order in the list is [top, bottom, left, right].
-* stride: List of integers, representing the stride size. If None, it is [1, 1]. If not None, it requires a length of 2. The order in the list is [height, width].
-* groups: An integer, representing the number of groups in the convolution layer. If ic=oc=groups, the convolution is depthwise.
-* input_zp: List of integers or an integer, representing the input offset. If None, it is 0. If a list is provided, it should have a length of ic.
-* weight_zp: List of integers or an integer, representing the kernel offset. If None, it is 0. If a list is provided, it should have a length of ic, where ic represents the number of input channels.
-* out_dtype: A string or None, representing the data type of the input Tensor. If None, it is int32. Possible values: int32/uint32.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, the input tensor in 4-D NCHW format.
+* weight: Tensor type, the convolution kernel in 4-D [oc, ic, kh, kw] format, where
+    oc = number of output channels
+    ic = number of input channels
+    kh = kernel height
+    kw = kernel width
+* bias: Tensor type or None. If None, no bias is applied; otherwise shape must be [1, oc, 1, 1]. Data type is int32.
+* stride: List[int] or None, the stride for each spatial dimension. Defaults to [1, 1] if None; if provided, length must be 2.
+* dilation: List[int] or None, the dilation for each spatial dimension. Defaults to [1, 1] if None; if provided, length must be 2.
+* pad: List[int] or None, the padding for each spatial dimension in [x1_begin, x2_begin, x1_end, x2_end] order. Defaults to [0, 0, 0, 0] if None; if provided, length must be 4.
+* groups: int, number of convolution groups. If ic = oc = groups, performs depthwise convolution.
+* input_zp: int or List[int] or None, the zero-point for input. Defaults to 0 if None; if a list is provided its length must equal ic. (List mode not supported currently.)
+* weight_zp: int or List[int] or None, the zero-point for weight. Defaults to 0 if None; if a list is provided its length must equal ic (the number of input channels).
+* out_dtype: string or None, the output tensor's data type. Defaults to int32 if None. Valid values: "int32", "uint32".
+* out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
 
 Return value
-"""""""""""""""""
-Returns a Tensor with the data type determined by out_dtype.
+""""""""""""""""""""""
+Returns a Tensor whose data type is determined by out_dtype.
 
 Processor support
 """"""""""""""""""""""
-BM1688: The input data type can be INT8/UINT8.
-BM1684X: The input data type can be INT8/UINT8.
+* BM1688: The input data type can be INT8 or UINT8. The bias data type must be INT32.
+* BM1684X: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 
+
+
+conv_quant
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def conv_quant(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   group: int = 1,
+                   input_scale: Union[float, List[float]] = None,
+                   weight_scale: Union[float, List[float]] = None,
+                   output_scale: Union[float, List[float]] = None,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   output_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
+          # pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Two-dimensional convolution operation. You can refer to the definitions of 2D convolution in various frameworks.
+::
+
+  for c in channel
+    izp = is_izp_const ? izp_val : izp_vec[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    conv_i32 = (input - izp) Conv (weight - wzp) + bias[c];
+    output = requant_int(conv_i32, mul, shift) + ozp
+
+    mul,shift are obtained from iscale, wscale, oscale
+
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor type, the input tensor in 4-D NCHW format.
+* weight: Tensor type, the convolution kernel in 4-D [oc, ic, kh, kw] format, where
+    oc = number of output channels
+    ic = number of input channels
+    kh = kernel height
+    kw = kernel width
+* bias: Tensor type or None. If None, no bias is applied; otherwise shape must be [1, oc, 1, 1]. Data type is int32.
+* stride: List[int] or None, the stride for each spatial dimension. Defaults to [1, 1] if None; if provided, length must be 2.
+* dilation: List[int] or None, the dilation for each spatial dimension. Defaults to [1, 1] if None; if provided, length must be 2.
+* pad: List[int] or None, the padding for each spatial dimension in [x1_begin, x2_begin, x1_end, x2_end] order. Defaults to [0, 0, 0, 0] if None; if provided, length must be 4.
+* groups: int, number of convolution groups. If ic = oc = groups, performs depthwise convolution.
+* input_scale: float or List[float] or None, the input quantization scale(s). Defaults to the tensor's existing scale if None; if a list is provided its length must equal ic. (List mode not supported.)
+* weight_scale: float or List[float] or None, the kernel quantization scale(s). Defaults to the tensor's existing scale if None; if a list is provided its length must equal oc.
+* output_scale: float or List[float], the output quantization scale(s). Must be provided; if a list is given its length must equal oc. (List mode not supported.)
+* input_zp: int or List[int] or None, the input zero-point(s). Defaults to 0 if None; if a list is provided its length must equal ic. (List mode not supported.)
+* weight_zp: int or List[int] or None, the kernel zero-point(s). Defaults to 0 if None; if a list is provided its length must equal oc.
+* output_zp: int or List[int] or None, the output zero-point(s). Defaults to 0 if None; if a list is provided its length must equal oc. (List mode not supported.)
+* out_dtype: string or None, the output tensor's data type. Defaults to int8 if None. Valid values: "int8", "uint8".
+* out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor whose data type is determined by out_dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be INT8 or UINT8. The bias data type must be INT32.
+* BM1684X: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 
 deconv
 :::::::::::::::::
@@ -312,16 +560,16 @@ The interface definition
 
     .. code-block:: python
 
-      def deconv(input,
-            weight,
-            bias=None,
-            kernel=None,
-            dilation=None,
-            pad=None,
-            output_padding = None,
-            stride=None,
-            output_padding=None,
-            out_name=None):
+      def deconv(input: Tensor,
+                 weight: Tensor,
+                 bias: Tensor = None,
+                 stride: List[int] = None,
+                 dilation: List[int] = None,
+                 pad: List[int] = None,
+                 output_padding: List[int] = None,
+                 group: int = 1,
+                 out_dtype: str = None,
+                 out_name: str = None):
           #pass
 
 Description of the function
@@ -334,11 +582,12 @@ Explanation of parameters
 * input: Tensor type, representing the input Tensor in 4D NCHW format.
 * weight: Tensor type, representing the convolutional kernel Tensor in 4D NCHW format.
 * bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1], where oc represents the number of output channels.
-* kernel: This parameter is currently deprecated and not used.
+* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
 * dilation: List of integers, representing the dilation size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
 * pad: List of integers, representing the padding size along each spatial axis. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4.
 * output_padding: List of integers, representing the output padding size along each spatial axis, which follows the order of [x1_begin, x2_begin…x1_end, x2_end,…]. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4.
-* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1]. If not None, it requires a length of 2.
+* group: An integer, representing the number of group in the deconvolution layer.
+* out_dtype: str or None. If None, the output tensor's data type matches the input's. Choices: "float32" or "float16".
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -347,11 +596,10 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
+* BM1684X: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 
-
-deconv_v2
+deconv_int
 :::::::::::::::::
 
 The interface definition
@@ -359,57 +607,59 @@ The interface definition
 
     .. code-block:: python
 
-      def deconv_v2(tensor_i,
-                    weight,
-                    bias = None,
-                    stride = None,
-                    dilation = None,
-                    pad = None,
-                    output_padding = None,
-                    group = 1,
-                    input_zp = None,
-                    weight_zp = None,
-                    out_dtype = None,
-                    out_name = None):
-
+      def deconv_int(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   output_padding: List[int] = None,
+                   group: int = 1,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
+          # pass
 
 Description of the function
 """""""""""""""""""""""""""""""""
-
-Fixed-point two-dimensional transposed convolution operation. You can refer to the definitions of fixed-point 2D transposed convolution in various frameworks.
+Two-dimensional convolution operation. You can refer to the definitions of 2D convolution in various frameworks.
 ::
 
   for c in channel
     izp = is_izp_const ? izp_val : izp_vec[c];
-    kzp = is_kzp_const ? kzp_val : kzp_vec[c];
-    output = (input - izp) DeConv (weight - kzp) + bias[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    output = (input - izp) Deconv (weight - wzp) + bias[c];
 
 This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor_i: Tensor type, representing the input Tensor in 4D NCHW format.
-* weight: Tensor type, representing the convolutional kernel Tensor in 4D [ic, oc, kh, kw] format. Here, oc represents the number of output channels, ic represents the number of input channels, kh is the kernel height, and kw is the kernel width.
-* bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1].
-* dilation: List of integers, representing the dilation size. If None, it is [1, 1]. If not None, it requires a length of 2. The order in the list is [height, width].
-* pad: List of integers, representing the padding size. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 4. The order in the list is [top, bottom, left, right].
-* output_padding: List of integers, representing the output padding size. If None, it is [0, 0, 0, 0]. If not None, it requires a length of 1 or 2 or 4.
-* stride: List of integers, representing the stride size. If None, it is [1, 1]. If not None, it requires a length of 2. The order in the list is [height, width].
-* groups: An integer, representing the number of groups in the convolution layer. If ic=oc=groups, the convolution is depthwise deconvolution.
-* input_zp: List of integers or an integer, representing the input offset. If None, it is 0. If a list is provided, it should have a length of ic.
-* weight_zp: List of integers or an integer, representing the kernel offset. If None, it is 0. If a list is provided, it should have a length of ic, where ic represents the number of input channels.
-* out_dtype: A string or None, representing the data type of the input Tensor. If None, it is int32. Possible values: int32/uint32.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* tensor_i: Tensor, the input tensor in 4-D NCHW format.
+* weight: Tensor, the deconvolution (transpose convolution) kernel in 4-D `[oc, ic, kh, kw]` format, where
+    oc = number of output channels
+    ic = number of input channels
+    kh = kernel height
+    kw = kernel width
+* bias: Tensor or None. If None, no bias is applied; otherwise its shape must be `[1, oc, 1, 1]`. Data type is `int32`.
+* stride: List[int] or None, the stride for each spatial dimension. Defaults to `[1, 1]` if None; if provided, length must be 2.
+* dilation: List[int] or None, the dilation for each spatial dimension. Defaults to `[1, 1]` if None; if provided, length must be 2.
+* pad: List[int] or None, the padding for each spatial dimension in `[x1_begin, x2_begin, x1_end, x2_end]` order. Defaults to `[0, 0, 0, 0]` if None; if provided, length must be 4.
+* output_padding: List[int] or None, the additional size added to the output shape. Defaults to `[0, 0]` if None; if provided, length must be 1 or 2.
+* groups: int, the number of deconvolution groups.
+* input_zp: int or List[int] or None, the zero-point for input quantization. Defaults to 0 if None; if a list is provided its length must equal `ic`. (List mode not supported currently.)
+* weight_zp: int or List[int] or None, the zero-point for kernel quantization. Defaults to 0 if None; if a list is provided its length must equal `ic` (the number of input channels).
+* out_dtype: string or None, the output tensor's data type. Defaults to `int32` if None. Valid values: `"int32"`, `"uint32"`.
+* out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
 
 Return value
-"""""""""""""
-Returns a Tensor with the data type determined by out_dtype.
+""""""""""""""""""""""
+Returns a Tensor whose data type is determined by out_dtype.
 
 Processor support
 """"""""""""""""""""""
-BM1688: The input data type can be INT8/UINT8.
-BM1684X: The input data type can be INT8/UINT8.
-
+* BM1688: The input data type can be INT8 or UINT8. The bias data type must be INT32.
+* BM1684X: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 
 conv3d
 :::::::::::::::::
@@ -419,15 +669,15 @@ The interface definition
 
     .. code-block:: python
 
-      def conv3d(input,
-            weight,
-            bias=None,
-            kernel=None,
-            dilation=None,
-            pad=None,
-            stride=None,
-            groups=1,
-            out_name=None):
+      def conv3d(input: Tensor,
+                 weight: Tensor,
+                 bias: Tensor = None,
+                 stride: List[int] = None,
+                 dilation: List[int] = None,
+                 pad: List[int] = None,
+                 group: int = 1,
+                 out_dtype: str = None,
+                 out_name: str = None):
           #pass
 
 Description of the function
@@ -440,11 +690,11 @@ Explanation of parameters
 * input: Tensor type, representing the input Tensor in 5D NCDHW format.
 * weight: Tensor type, representing the convolutional kernel Tensor in 4D NCDHW format.
 * bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1, 1] or [oc], where oc represents the number of output channels.
-* kernel: This parameter is currently deprecated and not used.
+* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1, 1]. If not None, it requires a length of 3.
 * dilation: List of integers, representing the dilation size along each spatial axis. If None, it is [1, 1, 1]. If not None, it requires a length of 3.
 * pad: List of integers, representing the padding size along each spatial axis, which follows the order of [x1_begin, x2_begin…x1_end, x2_end,…]. If None, it is [0, 0, 0, 0, 0, 0]. If not None, it requires a length of 6.
-* stride: List of integers, representing the stride size along each spatial axis. If None, it is [1, 1, 1]. If not None, it requires a length of 3.
 * groups: An integer, representing the number of groups in the convolution layer.
+* out_dtype: string or None, the output tensor's data type. If None, inherits the input tensor's data type. Valid values: "float32", "float16".
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -453,11 +703,11 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
+* BM1684X: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 
 
-conv3d_v2
+conv3d_int
 :::::::::::::::::
 
 The interface definition
@@ -465,17 +715,17 @@ The interface definition
 
     .. code-block:: python
 
-      def conv3d_v2(tensor_i,
-                    weight,
-                    bias = None,
-                    stride = None,
-                    dilation = None,
-                    pad = None,
-                    group = 1,
-                    input_zp = None,
-                    weight_zp = None,
-                    out_dtype = None,
-                    out_name = None):
+      def conv3d_int(input: Tensor,
+                     weight: Tensor,
+                     bias: Tensor = None,
+                     stride: List[int] = None,
+                     dilation: List[int] = None,
+                     pad: List[int] = None,
+                     group: int = 1,
+                     input_zp: Union[int, List[int]] = None,
+                     weight_zp: Union[int, List[int]] = None,
+                     out_dtype: str = None,
+                     out_name: str = None):
 
 
 Description of the function
@@ -498,9 +748,9 @@ Explanation of parameters
 * tensor_i: Tensor type, representing the input Tensor in 5D NCTHW format.
 * weight: Tensor type, representing the convolutional kernel Tensor in 5D [oc, ic, kt, kh, kw] format. Here, oc represents the number of output channels, ic represents the number of input channels, kt is the kernel depth, kh is the kernel height, and kw is the kernel width.
 * bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [1, oc, 1, 1, 1].
+* stride: List of integers, representing the stride size. If None, it is [1, 1, 1]. If not None, it requires a length of 3. The order in the list is [stride_t, stride_h, stride_w].
 * dilation: List of integers, representing the dilation size. If None, it is [1, 1, 1]. If not None, it requires a length of 2. The order in the list is [dilation_t, dilation_h, dilation_w].
 * pad: List of integers, representing the padding size. If None, it is [0, 0, 0, 0, 0, 0]. If not None, it requires a length of 6. The order in the list is [before, after, top, bottom, left, right].
-* stride: List of integers, representing the stride size. If None, it is [1, 1, 1]. If not None, it requires a length of 3. The order in the list is [stride_t, stride_h, stride_w].
 * groups: An integer, representing the number of groups in the convolution layer. If ic=oc=groups, the convolution is depthwise conv3d.
 * input_zp: List of integers or an integer, representing the input offset. If None, it is 0. If a list is provided, it should have a length of ic.
 * weight_zp: List of integers or an integer, representing the kernel offset. If None, it is 0. If a list is provided, it should have a length of ic, where ic represents the number of input channels.
@@ -513,10 +763,10 @@ Returns a Tensor with the data type determined by out_dtype.
 
 Processor support
 """"""""""""""""""""""
-BM1688: The input data type can be INT8/UINT8.
-BM1684X: The input data type can be FINT8/UINT8.
+BM1688: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
+BM1684X: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
 
-matrix_mul
+conv3d_quant
 :::::::::::::::::
 
 The interface definition
@@ -524,8 +774,86 @@ The interface definition
 
     .. code-block:: python
 
-      def matrix_mul(lhs, rhs, bias=None, left_zp=None, right_zp=None, \
-                     out_dtype=None, out_name=None):
+      def conv3d_quant(input: Tensor,
+                   weight: Tensor,
+                   bias: Tensor = None,
+                   stride: List[int] = None,
+                   dilation: List[int] = None,
+                   pad: List[int] = None,
+                   group: int = 1,
+                   input_scale: Union[float, List[float]] = None,
+                   weight_scale: Union[float, List[float]] = None,
+                   output_scale: Union[float, List[float]] = None,
+                   input_zp: Union[int, List[int]] = None,
+                   weight_zp: Union[int, List[int]] = None,
+                   output_zp: Union[int, List[int]] = None,
+                   out_dtype: str = None,
+                   out_name: str = None):
+          # pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Two-dimensional convolution operation. You can refer to the definitions of 2D convolution in various frameworks.
+::
+
+  for c in channel
+    izp = is_izp_const ? izp_val : izp_vec[c];
+    wzp = is_wzp_const ? wzp_val : wzp_vec[c];
+    conv_i32 = (input - izp) Conv (weight - wzp) + bias[c];
+    output = requant_int(conv_i32, mul, shift) + ozp
+    mul,shift are obtained from iscale, wscale, oscale
+
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i: Tensor, the input tensor in 5-D NCTHW format (N, C, T, H, W).
+* weight: Tensor, the 3D convolution kernel in 5-D [oc, ic, kt, kh, kw] format, where
+  - oc = number of output channels
+  - ic = number of input channels
+  - kt = kernel temporal depth
+  - kh = kernel height
+  - kw = kernel width
+* bias: Tensor or None. If None, no bias is applied; otherwise its shape must be [1, oc, 1, 1, 1]. Data type is int32.
+* stride: List[int] or None, the stride along each spatial/temporal dimension. Defaults to [1, 1, 1] if None; if provided, length must be 3.
+* dilation: List[int] or None, the dilation along each spatial/temporal dimension. Defaults to [1, 1, 1] if None; if provided, length must be 3.
+* pad: List[int] or None, the padding for each dimension in [t_begin, h_begin, w_begin, t_end, h_end, w_end] order. Defaults to [0, 0, 0, 0, 0, 0] if None; if provided, length must be 6.
+* groups: int, the number of convolution groups. If ic == oc == groups, this is a depthwise 3D conv.
+* input_scale: float, List[float], or None, the quantization scale(s) for the input. If None, uses the scale in tensor_i; if a list is provided, its length must be ic. (List mode not supported currently.)
+* weight_scale: float, List[float], or None, the quantization scale(s) for the kernel. If None, uses the scale in weight; if a list is provided, its length must be oc.
+* output_scale: float or List[float], the quantization scale(s) for the output. Cannot be None; if a list is provided, its length must be oc. (List mode not supported currently.)
+* input_zp: int, List[int], or None, the zero-point(s) for the input. Defaults to 0 if None; if a list is provided, its length must be ic. (List mode not supported currently.)
+* weight_zp: int, List[int], or None, the zero-point(s) for the kernel. Defaults to 0 if None; if a list is provided, its length must be oc.
+* output_zp: int, List[int], or None, the zero-point(s) for the output. Defaults to 0 if None; if a list is provided, its length must be oc. (List mode not supported currently.)
+* out_dtype: string or None, the output tensor's data type. If None, defaults to int8. Valid values: "int8", "uint8".
+* out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
+
+Return value
+"""""""""""""
+Returns a Tensor with the data type determined by out_dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
+* BM1684X: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
+
+matmul
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def matmul(input: Tensor,
+                 right: Tensor,
+                 bias: Tensor = None,
+                 right_transpose: bool = False,
+                 left_transpose: bool = False,
+                 output_transpose: bool = False,
+                 keep_dims: bool = True,
+                 out_dtype: str = None,
+                 out_name: str = None):
           #pass
 
 Description of the function
@@ -536,16 +864,22 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* lhs: Tensor type, representing the input left operand, with dimensions greater than or equal to 2, and the last two dimensions have shape=[m, k].
-* rhs: Tensor type, representing the input right operand, with dimensions greater than or equal to 2, and the last two dimensions have shape=[k, n].
-* bias: Tensor type, representing the bias Tensor. If None, it indicates no bias. Otherwise, it requires a shape of [n].
-* left_zp: List of integers or an integer, representing the offset of lhs. If None, it is 0. If a list is provided, it should have a length of k. This parameter is only useful when the dtype of lhs is 'int8/uint8'. Currently, only 0 is supported.
-* right_zp: List of integers or an integer, representing the offset of rhs. If None, it is 0. If a list is provided, it should have a length of k. This parameter is only useful when the dtype of rhs is 'int8/uint8'.
-* out_dtype: A string or None, representing the data type of the input Tensor. If None, it is consistent with the dtype of lhs. When the dtype of lhs is 'int8/uint8', the possible values for out_dtype are int32/uint32.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* input: Tensor, the left operand of the matmul. Must have rank ≥ 2, with shape [..., m, k] where m and k are the last two dimensions.
+* right: Tensor, the right operand of the matmul. Must have rank ≥ 2, with shape [..., k, n] where k and n are the last two dimensions.
+* bias: Tensor or None. If None, no bias is applied; otherwise its shape must be [n].
+* left_transpose: bool, default False. If True, transpose the last two dims of input before multiplication (i.e. swap m and k).
+* right_transpose: bool, default False. If True, transpose the last two dims of right before multiplication (i.e. swap k and n).
+* output_transpose: bool, default False. If True, transpose the last two dims of the result before returning (i.e. swap result's last two dims).
+* keep_dims: bool, default True. If True, the output retains the same rank as the broadcasted inputs; if False, the output is squeezed to a 2-D matrix of shape [M, N].
+* out_dtype: string or None. If None, inherits the data type of input. Valid values: "float32", "float16".
+* out_name: string or None. The name of the output tensor. If None, a name is generated automatically.
 
-It is required that the dimensions of the left and right tensors are consistent. When the dimensions of the tensor are 2, it represents matrix-matrix multiplication. When the dimensions of the tensor are greater than 2, it represents batch matrix multiplication.
-It is required that lhr.shape[-1] == rhs.shape[-2], and lhr.shape[:-2] and rhs.shape[:-2] need to satisfy the broadcasting rules.
+Notes on shapes and broadcasting:
+input and right must have the same rank.
+If rank = 2, a simple matrix-matrix multiply is performed.
+If rank > 2, a batched matmul is performed:
+The inner dimensions must match: input.shape[-1] == right.shape[-2].
+The batch dims (input.shape[:-2] and right.shape[:-2]) must be broadcastable to a common shape.
 
 Return value
 """""""""""""
@@ -553,8 +887,125 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16. The input and right data types must be consistent. The bias data type must be FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16. The input and right data types must be consistent.
+
+matmul_int
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def matmul_int(input: Tensor,
+                     right: Tensor,
+                     bias: Tensor = None,
+                     right_transpose: bool = False,
+                     left_transpose: bool = False,
+                     output_transpose: bool = False,
+                     keep_dims: bool = True,
+                     input_zp: Union[int, List[int]] = None,
+                     right_zp: Union[int, List[int]] = None,
+                     out_dtype: str = None,
+                     out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+
+Matrix multiplication operation. You can refer to the definitions of matrix multiplication in various frameworks.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* input: Tensor, the left operand of the matmul. Must have rank ≥ 2, with shape [..., m, k] (i.e. its last two dims are [m, k]).
+* right: Tensor, the right operand of the matmul. Must have rank ≥ 2, with shape [..., k, n] (i.e. its last two dims are [k, n]).
+* bias: Tensor or None. If None, no bias is applied; otherwise its shape must be [n].
+* left_transpose: bool, default False. If True, transpose the last two dims of input before multiplication (swap m and k).
+* right_transpose: bool, default False. If True, transpose the last two dims of right before multiplication (swap k and n).
+* output_transpose: bool, default False. If True, transpose the last two dims of the result before returning.
+* keep_dims: bool, default True. If True, the output retains the same rank as the broadcasted inputs; if False, the output is squeezed to a 2-D matrix of shape [M, N].
+* input_zp: int or List[int], the zero-point(s) for input. Defaults to 0 if None. (List mode not supported currently.)
+* right_zp: int or List[int], the zero-point(s) for right. Defaults to 0 if None. (List mode not supported currently.)
+* out_dtype: string or None. If None, defaults to int32. Valid values: "int32", "uint32".
+* out_name: string or None. The name of the output tensor. If None, a name is generated automatically.
+
+Notes on shapes and broadcasting:
+input and right must have the same rank.
+If rank = 2, a simple matrix-matrix multiply is performed.
+If rank > 2, a batched matmul is performed:
+The inner dimensions must match: input.shape[-1] == right.shape[-2].
+The batch dims (input.shape[:-2] and right.shape[:-2]) must be broadcastable to a common shape.
+
+Return value
+"""""""""""""
+Returns a Tensor whose data type is specified by out_dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be INT8/UINT8. The bias data type is INT32.
+* BM1684X: The input data type can be INT8/UINT8. The bias data type is INT32.
+
+matmul_quant
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def matmul_quant(input: Tensor,
+                     right: Tensor,
+                     bias: Tensor = None,
+                     right_transpose: bool = False,
+                     keep_dims: bool = True,
+                     input_scale: Union[float, List[float]] = None,
+                     right_scale: Union[float, List[float]] = None,
+                     output_scale: Union[float, List[float]] = None,
+                     input_zp: Union[int, List[int]] = None,
+                     right_zp: Union[int, List[int]] = None,
+                     output_zp: Union[int, List[int]] = None,
+                     out_dtype: str = None,
+                     out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+
+Matrix multiplication operation. You can refer to the definitions of matrix multiplication in various frameworks.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* input:Tensor type, representing the left operand; rank ≥ 2, with its last two dims shaped [m, k].
+* right:Tensor type, representing the right operand; rank ≥ 2, with its last two dims shaped [k, n].
+* bias:Tensor type, representing the bias tensor. If None, no bias is applied; otherwise its shape must be [n].
+* right_transpose:bool type, default False. Specifies whether to transpose the right matrix before computation.
+* keep_dims:bool type, default True. Specifies whether to retain the original number of dims; if False, the output shape is 2-D.
+* input_scale:List[float] or float, representing the quantization scale for input. If None, uses the input tensor's own scale. List[float] not supported.
+* right_scale:List[float] or float, representing the quantization scale for right. If None, uses the right tensor's own scale. List[float] not supported.
+* output_scale:List[float] or float, representing the quantization scale for output. Cannot be None. List[float] not supported.
+* input_zp:List[int] or int, representing the zero-point for input. If None, defaults to 0. List[int] not supported.
+* right_zp:List[int] or int, representing the zero-point for right. If None, defaults to 0. List[int] not supported.
+* output_zp:List[int] or int, representing the zero-point for output. If None, defaults to 0. List[int] not supported.
+* out_dtype:string type or None, representing the output tensor's data type; if None, defaults to int8. Valid values: int8/uint8.
+* out_name:string type or None, representing the output tensor's name; if None, an internal name is autogenerated.
+
+The ranks of the left and right Tensors must match.
+If the rank of the Tensors is 2, a matrix-matrix multiplication is performed.
+If the rank of the Tensors is greater than 2, a batched matrix multiplication is performed. It requires input.shape[-1] == right.shape[-2], and input.shape[:-2] and right.shape[:-2] must satisfy broadcasting rules.
+
+Return value
+"""""""""""""
+Returns a Tensor whose data type is specified by out_dtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be INT8/UINT8. The bias data type is INT32.
+* BM1684X: The input data type can be INT8/UINT8. The bias data type is INT32.
+
+
 
 Base Element-wise Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -585,18 +1036,20 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* scale: List[float] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the scales of tensor_i0, tensor_i1, and the output.
+* zero_point: List[int] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the zero-points of tensor_i0, tensor_i1, and the output.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include float32/float16/int8/uint8/int16/uint16/int32/uint32.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is 'int8', the output defaults to 'int8' type). When the input is 'float32'/'float16', the output data type must be consistent with the input.
+Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is int8, the output defaults to int8 type). When the input is float32/float16, the output data type must be consistent with the input.
 
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 
 
 sub
@@ -625,18 +1078,20 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string type or None, representing the data type of the output tensor. If None, it is consistent with the input tensors' dtype. The optional parameters are 'float32'/'float16'/'int8'/'int16'/'int32'.
+* scale: List[float] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the scales of tensor_i0, tensor_i1, and the output.
+* zero_point: List[int] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the zero-points of tensor_i0, tensor_i1, and the output.
+* out_dtype: A string type or None, representing the data type of the output tensor. If None, it is consistent with the input tensors' dtype. The optional parameters are float32/float16/int8/int16/int32.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is 'float32'/'float16',
-the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output data type is 'int8'/'int16'/'int32'.
+Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is float32/float16,
+the output data type must be the same as the input. When the input is int8/uint8/int16/uint16/int32/uint32, the output data type is int8/int16/int32.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 
 
 mul
@@ -666,17 +1121,19 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* scale: List[float] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the scales of tensor_i0, tensor_i1, and the output.
+* zero_point: List[int] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the zero-points of tensor_i0, tensor_i1, and the output.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include float32/float16/int8/uint8/int16/uint16/int32/uint32.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is 'int8', the output defaults to 'int8' type). When the input is 'float32'/'float16', the output data type must be consistent with the input.
+Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is int8, the output defaults to int8 type). When the input is float32/float16, the output data type must be consistent with the input.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 
 
 div
@@ -741,18 +1198,20 @@ Explanation of parameters
 """""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* scale: List[float] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the scales of tensor_i0, tensor_i1, and the output.
+* zero_point: List[int] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the zero-points of tensor_i0, tensor_i1, and the output.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include float32/float16/int8/uint8/int16/uint16/int32/uint32.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""
-Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is 'float32'/'float16',
-the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output can be any integer type.
+Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is float32/float16,
+the output data type must be the same as the input. When the input is int8/uint8/int16/uint16/int32/uint32, the output can be any integer type.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
-* BM1684X: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT8/UINT8.
 
 
 min
@@ -781,19 +1240,159 @@ Explanation of parameters
 """"""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
-* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include 'float32'/'float16'/'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* scale: List[float] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the scales of tensor_i0, tensor_i1, and the output.
+* zero_point: List[int] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the zero-points of tensor_i0, tensor_i1, and the output.
+* out_dtype: A string or None, representing the data type of the output Tensor. If set to None, it will be consistent with the input data type. Optional values include float32/float16/int8/uint8/int16/uint16/int32/uint32.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""
 Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type.
-When the input is 'float32'/'float16', the output data type must be the same as the input. When the input is 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32', the output can be any integer type.
+When the input is float32/float16, the output data type must be the same as the input. When the input is int8/uint8/int16/uint16/int32/uint32, the output can be any integer type.
 
 Processor support
 """""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
 
+add_shift
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def add_shift(tensor_i0: Union[Tensor, Scalar, int],
+                    tensor_i1: Union[Tensor, Scalar, int],
+                    shift: int,
+                    out_dtype: str,
+                    round_mode: str='half_away_from_zero',
+                    is_saturate: bool=True,
+                    out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Operation Formula :math:`tensor\_o = (tensor\_i0 - tensor\_i1) << shift`.
+After adding tensor_i0 and tensor_i1 element-wise, a rounded arithmetic shift by shift bits is applied. A positive shift denotes a left shift; a negative shift denotes a right shift. The rounding mode is determined by round_mode.
+The sum is first stored in INT64 as an intermediate result, then the rounded arithmetic shift is performed on the INT64 value.
+The result supports saturation. If tensor_i0 and tensor_i1 are signed and tensor_o is unsigned, saturation is mandatory.
+This operation supports broadcasting.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor, Scalar, or int type, representing the left-hand input operand. At least one of tensor_i0 and tensor_i1 must be a Tensor.
+* tensor_i1: Tensor, Scalar, or int type, representing the right-hand input operand. At least one of tensor_i0 and tensor_i1 must be a Tensor.
+* shift: int type, specifying the number of bits to shift.
+* round_mode: String type, specifying the rounding mode; default is 'half_away_from_zero'. Valid values are 'half_away_from_zero', 'half_to_even', 'towards_zero', 'down', and 'up'.
+* is_saturate: bool type, indicating whether to apply saturation; default is True.
+* out_dtype: String type or None, specifying the output Tensor data type; if None, defaults to the type of tensor_i0. Optional values are int8, uint8, int16, uint16, int32, and uint32.
+* out_name: String type or None, specifying the name of the output Tensor; if None, a name is generated automatically.
+
+Return value
+"""""""""""""
+Returns a Tensor.
+The data type of the Tensor is specified by out_dtype, or is consistent with the input data type.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
+* BM1684X: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
+
+sub_shift
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def sub_shift(tensor_i0: Union[Tensor, Scalar, int],
+                    tensor_i1: Union[Tensor, Scalar, int],
+                    shift: int,
+                    out_dtype: str,
+                    round_mode: str='half_away_from_zero',
+                    is_saturate: bool=True,
+                    out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Operation Formula :math:`tensor\_o = (tensor\_i0 - tensor\_i1) << shift`.
+Element-wise subtraction between two tensors followed by a rounded arithmetic shift by shift bits. If shift > 0, performs a left shift; if shift < 0, performs a right shift. The rounding mode is determined by round_mode.
+This operation supports broadcasting of input tensors.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor, Scalar, or int type, representing the left-hand input operand. At least one of tensor_i0 and tensor_i1 must be a Tensor.
+* tensor_i1: Tensor, Scalar, or int type, representing the right-hand input operand. At least one of tensor_i0 and tensor_i1 must be a Tensor.
+* shift: int type, specifying the number of bits to shift.
+* round_mode: String type, specifying the rounding mode; default is 'half_away_from_zero'. Valid values are 'half_away_from_zero', 'half_to_even', 'towards_zero', 'down', and 'up'.
+* is_saturate: bool type, indicating whether to apply saturation; default is True.
+* out_dtype: String type or None, specifying the output Tensor's data type; if None, defaults to tensor_i0's type. Optional values are 'int8', 'int16', and 'int32'.
+* out_name: String type or None, specifying the name of the output Tensor; if None, a name is generated automatically.
+
+Return value
+"""""""""""""
+Returns a Tensor.
+The data type of the Tensor is specified by out_dtype, or is consistent with the input data type.
+
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
+* BM1684X: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
+
+mul_shift
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def mul_shift(tensor_i0: Union[Tensor, Scalar, int],
+                    tensor_i1: Union[Tensor, Scalar, int],
+                    shift: int,
+                    out_dtype: str,
+                    round_mode: str='half_away_from_zero',
+                    is_saturate: bool=True,
+                    out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Operation Formula :math:`tensor\_o = (tensor\_i0 * tensor\_i1) << shift`
+Subtract the tensors element-wise and then perform a rounded arithmetic shift for the result. When shift is positive, perform a left shift; when shift is negative, perform a right shift. The rounding mode is determined by round_mode.
+After multiplying the data for mul_shift, save the intermediate result as INT64, and then perform a rounded arithmetic shift operation based on INT64.
+The result supports saturation processing. When tensor_i0 and tensor_i1 are signed and tensor_o is unsigned, the result must be saturated.
+This operation supports broadcasting of input tensors.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor, Scalar, or int type, representing the left-hand input operand. At least one of tensor_i0 and tensor_i1 must be a Tensor.
+* tensor_i1: Tensor, Scalar, or int type, representing the right-hand input operand. At least one of tensor_i0 and tensor_i1 must be a Tensor.
+* shift: int type, specifying the number of bits to shift.
+* round_mode: String type, specifying the rounding mode; default is 'half_away_from_zero'. Valid values are 'half_away_from_zero', 'half_to_even', 'towards_zero', 'down', and 'up'.
+* is_saturate: bool type, indicating whether to apply saturation; default is True.
+* out_dtype: String type or None, specifying the output Tensor's data type; if None, defaults to tensor_i0's type. Optional values are 'int8'/'uint8'/'int16'/'uint16'/'int32'/'uint32'.
+* out_name: String type or None, specifying the name of the output Tensor; if None, a name is generated automatically.
+
+
+Return value
+"""""""""""""
+Returns a Tensor.
+The data type of the Tensor is specified by out_dtype, or is consistent with the input data type.
+
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
+* BM1684X: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
 
 copy
 :::::::::::::::::
@@ -856,8 +1455,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 Element-wise Compare Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -870,7 +1469,11 @@ The interface definition
 
     .. code-block:: python
 
-      def gt(tensor_i0, tensor_i1, out_name = None):
+        def gt(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -884,6 +1487,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input Tensor.
 * tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -892,8 +1497,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 lt
 :::::::::::::::::
@@ -903,7 +1508,11 @@ The interface definition
 
     .. code-block:: python
 
-      def lt(tensor_i0, tensor_i1, out_name = None):
+      def lt(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -917,6 +1526,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input Tensor.
 * tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -925,8 +1536,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 ge
 :::::::::::::::::
@@ -936,7 +1547,11 @@ The interface definition
 
     .. code-block:: python
 
-      def ge(tensor_i0, tensor_i1, out_name = None):
+      def ge(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -951,6 +1566,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input Tensor.
 * tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -959,8 +1576,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 le
 :::::::::::::::::
@@ -970,7 +1587,11 @@ The interface definition
 
     .. code-block:: python
 
-      def le(tensor_i0, tensor_i1, out_name = None):
+      def le(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -985,6 +1606,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input Tensor.
 * tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -993,9 +1616,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
-
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 eq
 :::::::::::::::::
 
@@ -1004,7 +1626,11 @@ The interface definition
 
     .. code-block:: python
 
-      def eq(tensor_i0, tensor_i1, out_name = None):
+      def eq(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1019,6 +1645,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input Tensor.
 * tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1027,8 +1655,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 ne
 :::::::::::::::::
@@ -1038,7 +1666,11 @@ The interface definition
 
     .. code-block:: python
 
-      def ne(tensor_i0, tensor_i1, out_name = None):
+      def ne(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1052,6 +1684,8 @@ Explanation of parameters
 """"""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input Tensor.
 * tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1060,8 +1694,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 gts
 :::::::::::::::::
@@ -1071,7 +1705,11 @@ The interface definition
 
     .. code-block:: python
 
-      def gts(tensor_i0, scalar_i1, out_name = None):
+      def gts(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1083,6 +1721,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
 * scalar_i1: Tensor type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1091,8 +1731,9 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+
 
 lts
 :::::::::::::::::
@@ -1102,7 +1743,11 @@ The interface definition
 
     .. code-block:: python
 
-      def lts(tensor_i0, scalar_i1, out_name = None):
+        def lts(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1114,6 +1759,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
 * scalar_i1: Tensor type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1122,8 +1769,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 ges
 :::::::::::::::::
@@ -1133,7 +1780,11 @@ The interface definition
 
     .. code-block:: python
 
-      def ges(tensor_i0, scalar_i1, out_name = None):
+      def ges(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1145,6 +1796,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
 * scalar_i1: Tensor type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1153,8 +1806,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 les
 :::::::::::::::::
@@ -1164,7 +1817,11 @@ The interface definition
 
     .. code-block:: python
 
-      def les(tensor_i0, scalar_i1, out_name = None):
+      def les(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1176,6 +1833,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
 * scalar_i1: Tensor type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1184,8 +1843,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 eqs
 :::::::::::::::::
@@ -1195,7 +1854,11 @@ The interface definition
 
     .. code-block:: python
 
-      def eqs(tensor_i0, scalar_i1, out_name = None):
+      def eqs(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1207,6 +1870,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
 * scalar_i1: Tensor type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1215,8 +1880,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 nes
 :::::::::::::::::
@@ -1226,7 +1891,11 @@ The interface definition
 
     .. code-block:: python
 
-      def nes(tensor_i0, scalar_i1, out_name = None):
+      def nes(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1238,6 +1907,8 @@ Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
 * scalar_i1: Tensor type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1246,8 +1917,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 Activation Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1260,7 +1931,7 @@ The interface definition
 
     .. code-block:: python
 
-      def relu(tensor, out_name=None):
+      def relu(input: Tensor, out_name: str = None):
           #pass
 
 Description of the function
@@ -1279,8 +1950,40 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+
+prelu
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def prelu(input: Tensor, slope : Tensor, out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+prelu activation function, implements function element by element :math:`y =\begin{cases}x\quad x>0\\x*slope \quad x<=0\\\end{cases}`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* input: Tensor type, representing the input Tensor.
+* slope: Tensor type, representing the slope Tensor. Only supports slope as a coeff Tensor.
+* out_name: string type or None, representing the name of the output Tensor; if None, a name will be automatically generated internally.
+
+Return value
+"""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+
 
 
 leaky_relu
@@ -1291,7 +1994,10 @@ The interface definition
 
     .. code-block:: python
 
-      def leaky_relu(tensor, negative_slope=0.01, out_name=None):
+      def leaky_relu(input: Tensor,
+                    negative_slope: float = 0.01,
+                    out_name: str = None,
+                    round_mode : str="half_away_from_zero",):
           #pass
 
 Description of the function
@@ -1301,9 +2007,10 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor: A Tensor type, representing the input Tensor.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-* negative_slope: A FLOAT type, representing the negative slope of the input.
+* input: Tensor type, representing the input tensor.
+* negative_slope: float type, representing the negative slope for inputs < 0; default is 0.01.
+* out_name: string type or None, the name of the output tensor; if None, a name is auto-generated internally.
+* round_mode: string type, the rounding mode; default is “half_away_from_zero”. Valid values are “half_away_from_zero”, “half_to_even”, “towards_zero”, “down”, and “up.”
 
 Return value
 """"""""""""""""""""""
@@ -1311,8 +2018,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 abs
 :::::::::::::::::
@@ -1322,7 +2029,7 @@ The interface definition
 
     .. code-block:: python
 
-      def abs(tensor, out_name=None):
+      def abs(input: Tensor, out_name: str = None):
           #pass
 
 Description of the function
@@ -1341,8 +2048,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 ln
 :::::::::::::::::
@@ -1352,7 +2059,10 @@ The interface definition
 
     .. code-block:: python
 
-      def ln(tensor, out_name=None):
+      def ln(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1362,8 +2072,10 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor: A Tensor type, representing the input Tensor.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* tensor: Tensor type, representing the input tensor.
+* scale: List[float] type or None, quantization parameter(s). If None, indicates non-quantized computation. If a list, length must be 2, specifying the scales for tensor_i0 and the output.
+* zero_point: List[int] type or None, quantization parameter(s). If None, indicates non-quantized computation. If a list, length must be 2, specifying the zero points for tensor_i0 and the output.
+* out_name: string type or None, the name of the output tensor; if None, a name will be automatically generated internally.
 
 Return value
 """"""""""""""""""""""
@@ -1371,38 +2083,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
-
-square
-:::::::::::::::::
-
-The interface definition
-"""""""""""""""""""""""""""""""""
-
-    .. code-block:: python
-
-      def square(tensor, out_name=None):
-          #pass
-
-Description of the function
-"""""""""""""""""""""""""""""""""
-The square function, implemented on an element-wise basis. :math:`y = x*x`.
-This operation belongs to **local operations**.
-
-Explanation of parameters
-"""""""""""""""""""""""""""""""""
-* tensor: A Tensor type, representing the input Tensor.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
-
-Return value
-""""""""""""""""""""""
-Returns a Tensor with the same shape and data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 ceil
 :::::::::::::::::
@@ -1412,7 +2094,10 @@ The interface definition
 
     .. code-block:: python
 
-      def ceil(tensor, out_name=None):
+      def ceil(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1422,8 +2107,14 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor: A Tensor type, representing the input Tensor.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* tensor: Tensor type, representing the input tensor.
+* scale: List[float] type or None, quantization parameter(s).
+  • None indicates non-quantized computation.
+  • If a list, it must have length 2, specifying [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, quantization parameter(s).
+  • None indicates non-quantized computation.
+  • If a list, it must have length 2, specifying [tensor_i0_zero_point, output_zero_point].
+* out_name: string type or None, the name of the output tensor; if None, a name is automatically generated internally.
 
 Return value
 """"""""""""""""""""""
@@ -1431,8 +2122,9 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+
 
 floor
 :::::::::::::::::
@@ -1442,7 +2134,10 @@ The interface definition
 
     .. code-block:: python
 
-      def floor(tensor, out_name=None):
+      def floor(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1453,6 +2148,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale:List[float] type or None, quantization parameters. None indicates non-quantized computation. If a list, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point:List[int] type or None, quantization parameters. None indicates non-quantized computation. If a list, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1461,8 +2158,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 round
 :::::::::::::::::
@@ -1472,7 +2169,7 @@ The interface definition
 
     .. code-block:: python
 
-      def round(tensor, out_name=None):
+      def round(input: Tensor, out_name: str = None):
           #pass
 
 Description of the function
@@ -1491,8 +2188,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 sin
@@ -1503,7 +2200,10 @@ The interface definition
 
     .. code-block:: python
 
-      def sin(tensor, out_name=None):
+      def sin(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1514,6 +2214,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale:List[float] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point:List[int] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1522,8 +2224,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 
 cos
@@ -1534,7 +2236,10 @@ The interface definition
 
     .. code-block:: python
 
-      def cos(tensor, out_name=None):
+      def cos(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1545,6 +2250,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale:List[float] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point:List[int] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1553,8 +2260,9 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+
 
 exp
 :::::::::::::::::
@@ -1564,7 +2272,10 @@ The interface definition
 
     .. code-block:: python
 
-      def exp(tensor, out_name=None):
+      def exp(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1575,6 +2286,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale:List[float] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point:List[int] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1583,8 +2296,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 tanh
 :::::::::::::::::
@@ -1594,7 +2307,11 @@ The interface definition
 
     .. code-block:: python
 
-      def tanh(tensor, out_name=None):
+      def tanh(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None,
+            round_mode : str="half_away_from_zero"):
           #pass
 
 Description of the function
@@ -1605,7 +2322,10 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale:List[float] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point:List[int] type or None, quantization parameters. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* round_mode:string type, rounding mode. Defaults to "half_away_from_zero". Allowed values: "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
 """"""""""""""""""""""
@@ -1613,8 +2333,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 sigmoid
 :::::::::::::::::
@@ -1624,7 +2344,11 @@ The interface definition
 
     .. code-block:: python
 
-      def sigmoid(tensor, out_name=None):
+      def sigmoid(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None,
+                round_mode : str="half_away_from_zero"):
           #pass
 
 Description of the function
@@ -1634,8 +2358,11 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* tensor: A Tensor type, representing the input Tensor.
-* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* tensor: Tensor type, representing the input tensor.
+* scale: List[float] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
+* out_name: string type or None, name of the output tensor. If None, a name is auto-generated internally.
+* round_mode: string type, rounding mode. Defaults to `"half_away_from_zero"`. Allowed values: `"half_away_from_zero"`, `"half_to_even"`, `"towards_zero"`, `"down"`, `"up"`.
 
 Return value
 """"""""""""""""""""""
@@ -1643,8 +2370,44 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+
+log_sigmoid
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def log_sigmoid(input: Tensor,
+                    scale: List[float]=None,
+                    zero_point: List[int]=None,
+                    out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The log_sigmoid activation function, implemented on an element-wise basis. :math:`y = log(1 / (1 + e^{-x}))`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: Tensor type, representing the input tensor.
+* scale: List[float] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
+* out_name: string type or None, name of the output tensor. If None, a name is auto-generated internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+
 
 elu
 :::::::::::::::::
@@ -1654,7 +2417,10 @@ The interface definition
 
     .. code-block:: python
 
-      def elu(tensor, out_name=None):
+      def elu(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1665,6 +2431,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1673,8 +2441,43 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
+
+square
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def square(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The square function, implemented on an element-wise basis. :math:`y = \square{x}`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 sqrt
 :::::::::::::::::
@@ -1684,7 +2487,10 @@ The interface definition
 
     .. code-block:: python
 
-      def sqrt(tensor, out_name=None):
+      def sqrt(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1695,6 +2501,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1703,8 +2511,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 rsqrt
 :::::::::::::::::
@@ -1714,7 +2522,10 @@ The interface definition
 
     .. code-block:: python
 
-      def rsqrt(tensor, out_name=None):
+      def rsqrt(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
           #pass
 
 Description of the function
@@ -1725,6 +2536,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1733,8 +2546,9 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+
 
 silu
 :::::::::::::::::
@@ -1744,12 +2558,15 @@ The interface definition
 
     .. code-block:: python
 
-      def silu(tensor, out_name=None):
+      def silu(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The silu activation function, implemented on an element-wise basis. :math:`y = x * (1 / (1 + e^{-x}))`.
+The silu activation function, implemented on an element-wise basis. :math:`y = \frac{2}{\sqrt{\pi }}\int_{0}^{x}e^{-\eta ^{2}}d\eta`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
@@ -1766,6 +2583,46 @@ Processor support
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
+swish
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def swish(input: Tensor,
+              beta: float,
+              scale: List[float]=None,
+              zero_point: List[int]=None,
+              round_mode: str = "half_away_from_zero",
+              out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The swish activation function, implemented on an element-wise basis. :math:`y = x * (1 / (1 + e^{-x * beta}))`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* input: Tensor type, representing the input tensor.
+* beta: Scalar or float type, representing the β value.
+* scale: List[float] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [input_scale, output_scale].
+* zero_point: List[int] type or None, quantization parameter. None indicates non-quantized computation. If a List, length must be 2, specifying [input_zero_point, output_zero_point].
+* round_mode: string type, rounding mode. Defaults to `"half_away_from_zero"`. Allowed values: `"half_away_from_zero"`, `"half_to_even"`, `"towards_zero"`, `"down"`, `"up"`.
+* out_name: string type or None, name of the output tensor. If None, a name is auto-generated internally.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+
+
 erf
 :::::::::::::::::
 
@@ -1774,7 +2631,10 @@ The interface definition
 
     .. code-block:: python
 
-      def erf(tensor, out_name=None):
+      def erf(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -1786,6 +2646,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1794,8 +2656,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 tan
 :::::::::::::::::
@@ -1805,7 +2667,7 @@ The interface definition
 
     .. code-block:: python
 
-      def tan(tensor, out_name=None):
+      def tan(input: Tensor, out_name: str = None):
           #pass
 
 Description of the function
@@ -1824,8 +2686,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 softmax
@@ -1836,7 +2698,9 @@ The interface definition
 
     .. code-block:: python
 
-      def softmax(tensor_i, axis, out_name=None):
+      def softmax(input: Tensor,
+                axis: int,
+                out_name: str = None):
           #pass
 
 Description of the function
@@ -1857,8 +2721,60 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
+
+softmax_int
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def softmax_int(input: Tensor,
+                    axis: int,
+                    scale: List[float],
+                    zero_point: List[int] = None,
+                    out_name: str = None,
+                    round_mode : str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Softmax fixed-point operation. Please refer to the softmax definition in each framework.
+
+    ::
+
+      for i in range(256)
+        table[i] = exp(scale[0] * i)
+
+      for n,h,w in N,H,W
+        max_val = max(input[n,c,h,w] for c in C)
+        sum_exp = sum(table[max_val - input[n,c,h,w]] for c in C)
+        for c in C
+          prob = table[max_val - input[n,c,h,w]] / sum_exp
+          output[n,c,h,w] = saturate(int(round(prob * scale[1])) + zero_point[1]),    其中saturate饱和到output数据类型
+
+Among them, "table" represents table lookup.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: Tensor type, representing the input tensor.
+* axis: int type, axis along which the operation is performed.
+* scale: List[float] type, quantization scales for input and output. Must be of length 2, specifying [input_scale, output_scale].
+* zero_point: List[int] type or None, quantization zero points for input and output. Must match the length of `scale`. If None, defaults to [0, 0].
+* out_name: string type or None, name of the output tensor. If None, a name is auto-generated internally.
+* round_mode: string type, rounding mode. Defaults to `"half_away_from_zero"`. Allowed values: `"half_away_from_zero"`, `"half_to_even"`, `"towards_zero"`, `"down"`, `"up"`.
+
+Return value
+""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be INT8/UINT8.
+* BM1684X: The input data type can be INT8/UINT8.
 
 
 mish
@@ -1869,17 +2785,22 @@ The interface definition
 
     .. code-block:: python
 
-      def mish(tensor_i,  out_name=None):
+      def mish(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
 """""""""""""""""""""""""""""""""
-The Mish activation function, implemented on an element-wise basis.:math:`y = x * tanh(ln(1 + e^{x}))`.
+The Mish activation function, implemented on an element-wise basis. :math:`y = x * tanh(ln(1 + e^{x}))`.
 This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1888,8 +2809,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 
 
@@ -1901,7 +2822,10 @@ The interface definition
 
     .. code-block:: python
 
-      def hswish(tensor_i, out_name=None):
+      def hswish(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
           #pass
 
 Description of the function
@@ -1912,6 +2836,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -1920,8 +2846,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 
@@ -1933,7 +2859,7 @@ The interface definition
 
     .. code-block:: python
 
-      def arccos(tensor_i, out_name=None):
+      def arccos(input: Tensor, out_name: str = None):
           #pass
 
 Description of the function
@@ -1952,8 +2878,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 arctanh
@@ -1964,7 +2890,7 @@ The interface definition
 
     .. code-block:: python
 
-      def arctanh(tensor_i, out_name=None):
+      def arctanh(input: Tensor, out_name: str = None):
           #pass
 
 Description of the function
@@ -1983,8 +2909,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 sinh
@@ -1995,7 +2921,10 @@ The interface definition
 
     .. code-block:: python
 
-      def sinh(tensor_i, out_name=None):
+      def sinh(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -2006,6 +2935,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2014,8 +2945,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 
@@ -2027,7 +2958,10 @@ The interface definition
 
     .. code-block:: python
 
-      def cosh(tensor_i,  out_name=None):
+      def cosh(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -2038,6 +2972,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2046,8 +2982,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32. FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32. FLOAT16 data is automatically converted to FLOAT32.
 
 
 sign
@@ -2058,7 +2994,10 @@ The interface definition
 
     .. code-block:: python
 
-      def sign(tensor_i, out_name=None):
+      def sign(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
           #pass
 
 Description of the function
@@ -2069,6 +3008,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2077,8 +3018,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 gelu
@@ -2089,7 +3030,11 @@ The interface definition
 
     .. code-block:: python
 
-      def gelu(tensor_i, out_name=None):
+      def gelu(input: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None,
+            round_mode : str="half_away_from_zero"):
           #pass
 
 Description of the function
@@ -2100,7 +3045,11 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+* round_mode: string type, rounding mode. Defaults to `"half_away_from_zero"`.
+  Allowed values: `"half_away_from_zero"`, `"half_to_even"`, `"towards_zero"`, `"down"`, `"up"`.
 
 Return value
 """"""""""""""""""""""
@@ -2108,8 +3057,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 
 hsigmoid
@@ -2120,7 +3069,10 @@ The interface definition
 
     .. code-block:: python
 
-      def hsigmoid(tensor_i,  out_name=None):
+      def hsigmoid(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
           #pass
 
 Description of the function
@@ -2131,6 +3083,8 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -2139,8 +3093,8 @@ Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 Data Arrange Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2420,8 +3374,8 @@ This operation is considered a **restricted local operation**.
 Parameters
 """""""""""
 * input: Tensor type, representing input tensor.
-* start: A list or tuple of int, or None, representing the start of slice. If set to None, `start`` is filled all with 0.
-* end: A list or tuple of int, or None, representing the end of slice. If set to None, `end`` is given as shape of input.
+* start: A list or tuple of int, or None, representing the start of slice. If set to None, `start` is filled all with 0.
+* end: A list or tuple of int, or None, representing the end of slice. If set to None, `end` is given as shape of input.
 * stride: A list or tuple of int, or None, representing the stride of slice. If set to None, `stride` is filled all with 1.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
@@ -2682,8 +3636,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 reshape
 :::::::::::::::::
@@ -2713,8 +3667,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 shape_fetch
 :::::::::::::::::
@@ -2751,8 +3705,8 @@ Returns a `Tensor` with the data type `INT32`.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 unsqueeze
 :::::::::::::::::
@@ -2782,8 +3736,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 Quant Operator
@@ -3143,8 +4097,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """""""""""
-* BM1688: The input data type can be FLOAT32/UINT8/INT8.
-* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 maxpool2d_with_mask
@@ -3175,7 +4129,7 @@ Explanation of parameters
 * kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
 * pad: List[int] or Tuple[int] type or None. Indicates the padding size. If None is entered, the default value [0,0,0,0] is used. If not None, the length of this parameter is required to be 4.
 * stride: List[int] or Tuple[int] type or None. Indicates the stride size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
-* ceil: bool type, indicating whether to round up when calculating the output shape.
+* ceil_mode: bool type, indicating whether to round up when calculating the output shape.
 * out_name: string type or None. Indicates the name of the output Tensor. If None, the name is automatically generated internally.
 * mask_name: string type or None. Indicates the name of the output Mask. If None, the name is automatically generated internally.
 
@@ -3187,6 +4141,148 @@ Processor support
 """""""""""
 * BM1688: The input data type can be FLOAT32
 * BM1684X: The input data type can be FLOAT32
+
+
+maxpool3d
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def maxpool3d(input: Tensor,
+                kernel: Union[List[int],int,Tuple[int, ...]] = None,
+                stride: Union[List[int],int,Tuple[int, ...]] = None,
+                pad:    Union[List[int],int,Tuple[int, ...]] = None,
+                ceil_mode: bool = False,
+                scale: List[float] = None,
+                zero_point: List[int] = None,
+                out_name: str = None,
+                round_mode : str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""
+Performs Max Pooling on the input Tensor.The Max Pooling 3d operation can refer to the maxpool3d operator of each framework This operation is a  **local operation** 。
+
+Explanation of parameters
+"""""""""""
+* input: Tensor type, representing the input tensor for the operation.
+* kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
+* stride: List[int] or Tuple[int] or int or None, represents the stride size. If None, the default value [1,1,1] is used. If not None and a single integer is provided, it indicates the same stride size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* ceil_mode: bool type, indicates whether to round up when calculating the output shape.
+* scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
+* zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
+* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
+* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+
+avgpool2d
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def avgpool2d(input: Tensor,
+                    kernel: Union[List[int],Tuple[int],None] = None,
+                    stride: Union[List[int],Tuple[int],None] = None,
+                    pad:    Union[List[int],Tuple[int],None] = None,
+                    ceil_mode: bool = False,
+                    scale: List[float] = None,
+                    zero_point: List[int] = None,
+                    out_name: str = None,
+                    count_include_pad : bool = False,
+                    round_mode : str="half_away_from_zero",
+                    first_round_mode : str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""
+Performs Avg Pooling on the input Tensor.The Avg Pooling 2d operation can refer to the avgpool2d operator of each framework This operation is a  **local operation** 。
+
+Explanation of parameters
+"""""""""""
+* input: Tensor type, indicating the input operation Tensor.
+* kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
+* stride: List[int] or Tuple[int] type or None, indicating the step size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
+* pad: List[int] or Tuple[int] type or None, indicating the padding size. If None is entered, the default value [0,0,0,0] is used. If not None, the length of this parameter is required to be 4.
+* ceil_mode: bool type, indicating whether to round up when calculating the output shape.
+* scale: List[float] type or None, quantization parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the scales of input and output respectively.
+* zero_point: List[int] type or None, offset parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the zero_points of input and output respectively.
+* out_name: string type or None, indicating the name of the output Tensor. If it is None, the name will be automatically generated internally.
+* count_include_pad: Bool type, indicating whether the pad value is included when calculating the average value. The default value is False.
+* round_mode: String type, when the input and output Tensors are quantized, it indicates the second rounding mode. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+* first_round_mode: String type, when the input and output Tensors are quantized, it indicates the first rounding mode. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
+
+avgpool3d
+:::::::::::::::::::
+
+The interface definition
+"""""""""""
+
+    .. code-block:: python
+
+      def avgpool3d(input: Tensor,
+            kernel: Union[List[int],int,Tuple[int, ...]] = None,
+            stride: Union[List[int],int,Tuple[int, ...]] = None,
+            pad:    Union[List[int],int,Tuple[int, ...]] = None,
+            ceil_mode: bool = False,
+            scale: List[float] = None,
+            zero_point: List[int] = None,
+            out_name: str = None,
+            count_include_pad : bool = False,
+            round_mode : str="half_away_from_zero",
+            first_round_mode : str="half_away_from_zero"):
+          #pass
+
+Description of the function
+"""""""""""
+Performs Avg Pooling on the input Tensor.The Avg Pooling 3d operation can refer to the avgpool3d operator of each framework This operation is a  **local operation** 。
+
+Explanation of parameters
+"""""""""""
+* tensor: Tensor type, representing the input tensor for the operation.
+* kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
+* stride: List[int] or Tuple[int] or int or None, represents the stride size. If None, the default value [1,1,1] is used. If not None and a single integer is provided, it indicates the same stride size in three dimensions. If a List or Tuple is provided, its length must be 3.
+* ceil_mode: bool type, indicates whether to round up when calculating the output shape.
+* scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
+* zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
+* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
+* count_include_pad: bool type, specifies whether to include padded elements in the average calculation. Defaults to False.
+* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+* first_round_mode: String type, indicating the rounding mode for the first round when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
+
+Return value
+"""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
+
 
 upsample
 :::::::::::::::::
@@ -3255,150 +4351,8 @@ Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
-
-maxpool3d
-:::::::::::::::::::
-
-The interface definition
-"""""""""""
-
-    .. code-block:: python
-
-      def maxpool3d(input: Tensor,
-                kernel: Union[List[int],int,Tuple[int, ...]] = None,
-                stride: Union[List[int],int,Tuple[int, ...]] = None,
-                pad:    Union[List[int],int,Tuple[int, ...]] = None,
-                ceil_mode: bool = False,
-                scale: List[float] = None,
-                zero_point: List[int] = None,
-                out_name: str = None,
-                round_mode : str="half_away_from_zero"):
-          #pass
-
-Description of the function
-"""""""""""
-Performs Max Pooling on the input Tensor.The Max Pooling 3d operation can refer to the maxpool3d operator of each framework This operation is a  **local operation** 。
-
-Explanation of parameters
-"""""""""""
-* input: Tensor type, representing the input tensor for the operation.
-* kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
-* pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
-* stride: List[int] or Tuple[int] or int or None, represents the stride size. If None, the default value [1,1,1] is used. If not None and a single integer is provided, it indicates the same stride size in three dimensions. If a List or Tuple is provided, its length must be 3.
-* ceil_mode: bool type, indicates whether to round up when calculating the output shape.
-* scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
-* zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
-* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
-* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
-
-Return value
-"""""""""""
-Returns a Tensor with the same data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32/UINT8/INT8.
-* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
-
-avgpool2d
-:::::::::::::::::::
-
-The interface definition
-"""""""""""
-
-    .. code-block:: python
-
-      def avgpool2d(input: Tensor,
-                    kernel: Union[List[int],Tuple[int],None] = None,
-                    stride: Union[List[int],Tuple[int],None] = None,
-                    pad:    Union[List[int],Tuple[int],None] = None,
-                    ceil_mode: bool = False,
-                    scale: List[float] = None,
-                    zero_point: List[int] = None,
-                    out_name: str = None,
-                    count_include_pad : bool = False,
-                    round_mode : str="half_away_from_zero",
-                    first_round_mode : str="half_away_from_zero"):
-          #pass
-
-Description of the function
-"""""""""""
-Performs Avg Pooling on the input Tensor.The Avg Pooling 2d operation can refer to the avgpool2d operator of each framework This operation is a  **local operation** 。
-
-Explanation of parameters
-"""""""""""
-* input: Tensor type, indicating the input operation Tensor.
-* kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
-* stride: List[int] or Tuple[int] type or None, indicating the step size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
-* pad: List[int] or Tuple[int] type or None, indicating the padding size. If None is entered, the default value [0,0,0,0] is used. If not None, the length of this parameter is required to be 4.
-* ceil: bool type, indicating whether to round up when calculating the output shape.
-* scale: List[float] type or None, quantization parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the scales of input and output respectively.
-* zero_point: List[int] type or None, offset parameter. None is used to represent non-quantized calculation. If it is a List, the length is 2, which are the zero_points of input and output respectively.
-* out_name: string type or None, indicating the name of the output Tensor. If it is None, the name will be automatically generated internally.
-* count_include_pad: Bool type, indicating whether the pad value is included when calculating the average value. The default value is False.
-* round_mode: String type, when the input and output Tensors are quantized, it indicates the second rounding mode. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
-* first_round_mode: String type, when the input and output Tensors are quantized, it indicates the first rounding mode. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
-
-Return value
-"""""""""""
-Returns a Tensor with the same data type as the input Tensor.
-
-Processor support
-"""""""""""
-* BM1688: The input data type can be FLOAT32/UINT8/INT8.
-* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
-
-avgpool3d
-:::::::::::::::::::
-
-The interface definition
-"""""""""""
-
-    .. code-block:: python
-
-      def avgpool3d(input: Tensor,
-                kernel: Union[List[int],int,Tuple[int, ...]] = None,
-                stride: Union[List[int],int,Tuple[int, ...]] = None,
-                pad:    Union[List[int],int,Tuple[int, ...]] = None,
-                ceil_mode: bool = False,
-                scale: List[float] = None,
-                zero_point: List[int] = None,
-                out_name: str = None,
-                round_mode : str="half_away_from_zero",
-                first_round_mode : str="half_away_from_zero"):
-          #pass
-
-Description of the function
-"""""""""""
-Performs Avg Pooling on the input Tensor.The Avg Pooling 3d operation can refer to the avgpool3d operator of each framework This operation is a  **local operation** 。
-
-Explanation of parameters
-"""""""""""
-* tensor: Tensor type, representing the input tensor for the operation.
-* kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
-* pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
-* stride: List[int] or Tuple[int] or int or None, represents the stride size. If None, the default value [1,1,1] is used. If not None and a single integer is provided, it indicates the same stride size in three dimensions. If a List or Tuple is provided, its length must be 3.
-* ceil_mode: bool type, indicates whether to round up when calculating the output shape.
-* scale: List[float] type or None, quantization parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the scale for input and output respectively.
-* zero_point: List[int] type or None, offset parameters. If None, non-quantized computation is performed. If a List is provided, its length must be 2, representing the zero point for input and output respectively.
-* out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
-* round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
-* first_round_mode: String type, indicating the rounding mode for the first round when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
-
-Return value
-"""""""""""
-Returns a Tensor with the same data type as the input Tensor.
-
-Processor support
-""""""""""""""""""""""
-* BM1688: The input data type can be FLOAT32/UINT8/INT8.
-* BM1684X: The input data type can be FLOAT32/UINT8/INT8.
-
-
-
-
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 Normalization Operator
@@ -3446,8 +4400,8 @@ Returns the Tensor type with the same data type as the input Tensor., representi
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 layer_norm
 :::::::::::::::::::
@@ -3597,8 +4551,9 @@ Description
 Perfrom :math:`L_p` normalization over specified dimension of input tensor.
 For a tensor input of sizes :math:`(n_0, ..., n_{dim}, ..., n_k)`,
 each :math:`n_{dim}`-element vector :math:`v` along dimension :attr:`axes`  is transformed as:
+
 .. math::
-v = \frac{v}{\max(\lVert v \rVert_p, \epsilon)}
+  v = \frac{v}{\max(\lVert v \rVert_p, \epsilon)}
 
 With the default arguments, it uses the Euclidean norm over vectors along dimension (1) for normalization.
 
@@ -3656,8 +4611,8 @@ Returns one Tensor, which is the selected indices from the boxes tensor of 2 dim
 
 Processor support
 """""""""""
-* BM1688: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
-* BM1684X: The input data type can be FLOAT32/FLOAT16(TODO)/INT8/UINT8.
+* BM1688: The input data type can be FLOAT32.
+* BM1684X: The input data type can be FLOAT32.
 
 
 interpolate
@@ -3763,8 +4718,8 @@ One rgb tensor will be output, with shape=[n,3,h,w], where n represents `batch`,
 
 Processor support
 """""""""""
-* BM1684X: The input data type must be UINT8/INT8. Output data type is INT8.
-* BM1688: The input data type must be UINT8/INT8. Output data type is INT8.
+* BM1684X: The input data type must be UINT8/INT8. Output data type is UINT8.
+* BM1688: The input data type must be UINT8/INT8. Output data type is UINT8.
 
 roiExtractor
 :::::::::::::::::
@@ -3827,8 +4782,8 @@ The interface definition
     .. code-block:: python
 
       def nonzero(tensor_i:Tensor,
-                  dtype = 'int32',
-                  out_name=None):
+                  dtype: str = 'int32',
+                  out_name: str = None):
           #pass
 
 Description of the function
@@ -3839,17 +4794,17 @@ This operation is considered a **global operation**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i: Tensor type, representing the input tensor for the operation.
-* dtype: The data type of the output tensor, with a default value of "int32."
+* dtype: String type. The data type of the output tensor, with a default value of "int32."
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
 """"""""""""""""""""""
-Returns a Tensor with the same data type as the input Tensor.
+Returns a Tensor with data type INT32.
 
 Processor support
 """"""""""""""""""""""
-* BM1688: The input data type can be FLOAT32.
-* BM1684X: The input data type can be FLOAT32.
+* BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 lut
@@ -3921,8 +4876,8 @@ Returns a Tensor whose data type is the same that of `tbrn`.
 
 Processor Support
 """""""""""
-* BM1688:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
-* BM1684X:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1688:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16(TODO).
+* BM1684X:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16(TODO).
 
 cond_select
 :::::::::::::::::
@@ -4009,7 +4964,6 @@ Parameters
 * skip_check: Bool tyoe, set to True to disable data check to decrease time cost for CMODEL/PCIE mode.
 * run_by_op: Bool type, enable to run_by_op, decrease time cost but may cause timeout error when some OPs contain too many atomic cmds.
 * desire_op: List type, specify this option to dump specific tensors, dump all tensor as defalut.
-* cmodel_skip_check: Bool type, enable this to skip data check to speed up inference.
 * is_soc: Bool type, representing whether to use in soc mode.
 * using_memory_opt: Bool type, enable to use memory opt, decrease memory usage at the expense of increasing time cost. Suggest to enable when running large model.
 * enable_soc_log: Bool type, enable to print and save log at `save_path`.
@@ -4159,6 +5113,62 @@ Processor support
 
 Transform Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+rope
+:::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def rope( input: Tensor,
+                weight0: Tensor,
+                weight1: Tensor,
+                is_permute_optimize: bool = False,    # unused
+                mul1_round_mode: str = 'half_up',
+                mul2_round_mode: str= 'half_up',
+                add_round_mode: str = 'half_up',
+                mul1_shift: int = None,
+                mul2_shift: int = None,
+                add_shift: int = None,
+                mul1_saturation: bool = True,
+                mul2_saturation: bool = True,
+                add_saturation: bool = True,
+                out_name: str = None):
+            #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Perform a rotation encoding (RoPE) operation on the input Tensor.
+This operation belongs to **global operation**
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* input: Tensor type, indicating the input operation Tensor. It must be four-dimensional.
+* weight0: Tensor, indicating the input operation Tensor.
+* weight1: Tensor, indicating the input operation Tensor.
+* is_permute_optimize: bool type, indicating whether to perform permute sinking and check the shape of permute sinking. # unused
+* mul1_round_mode: Type String, representing the rounding method of mul1 in RoPE. The default value is "half_away_from_zero", and the range is "half_away_from_zero", "half_to_even "," towards_zero ", "down "," up ", "half_up "," half_down ".
+* mul2_round_mode: Type String, representing the rounding method of mul2 in RoPE. The default value is "half_away_from_zero", and the range is "half_away_from_zero", "half_to_even "," towards_zero ", "down "," up ", "half_up "," half_down ".
+* add_round_mode: Type String, representing the rounding method of add in RoPE. The default value is "half_away_from_zero", and the range is "half_away_from_zero", "half_to_even "," towards_zero ", "down "," up ", "half_up "," half_down ".
+* mul1_shift: int type, representing the number of bits of the shift of mul1 in RoPE.
+* mul2_shift: int type, indicating the number of bits of the shift of mul2 in RoPE.
+* add_shift: int type, indicating the number of bits shifted by add in RoPE.
+* mul1_saturation: bool type, indicating whether the calculation result of mul1 in RoPE requires saturation processing. The default is True saturation processing, and no modification is needed unless necessary.
+* mul2_saturation: bool type, indicating whether the calculation result of mul2 in RoPE requires saturation processing. The default is True saturation processing, and no modification is needed unless necessary.
+* add_saturation: bool type, indicating whether the add calculation result in RoPE requires saturation processing. The default is True saturation processing, and no modification is needed unless necessary.
+* out_name: output name, type string, default to None.
+
+Return value
+"""""""""""""
+Return a Tensor with the data type of odtype.
+
+Processor support
+""""""""""""""""""""""
+* BM1684X: The input data types can be FLOAT32,FLOAT16 and INT types.
+
 
 multi_scale_deformable_attention
 :::::::::::::::::
