@@ -323,13 +323,24 @@ Run the following commands under the PCIE board to test the precision of the gen
 
 where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
 
-Note: If multiple SOPHGO accelerator cards are installed on the host, you can
+Note:
+
+- If multiple SOPHGO accelerator cards are installed on the host, you can
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 ``tpu_perf``. Such as:
 
 .. code-block:: shell
 
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
+
+- The precision test of ``BM1688``, ``BM1690``, and ``CV186X`` requires additional configuration of the following environment variables:
+
+.. code-block:: shell
+
+   $ export SET_NUM_SAMPLES_YOLO=200
+   $ export SET_NUM_SAMPLES_TOPK=100
+   $ export SET_NUM_SAMPLES_BERT=200
+
 
 Specific parameter descriptions can be obtained with the following commands:
 

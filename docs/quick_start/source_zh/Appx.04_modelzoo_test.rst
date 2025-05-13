@@ -318,12 +318,23 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 
 其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
-注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
+注意：
+
+- 如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
 
 .. code-block:: shell
 
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
+
+- ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 精度测试需要额外配置以下环境变量：
+
+.. code-block:: shell
+
+   $ export SET_NUM_SAMPLES_YOLO=200
+   $ export SET_NUM_SAMPLES_TOPK=100
+   $ export SET_NUM_SAMPLES_BERT=200
+
 
 具体参数说明可以通过以下命令获得：
 
