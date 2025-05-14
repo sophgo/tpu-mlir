@@ -241,6 +241,7 @@ class OnnxConverter(BaseConverter):
             "Not": lambda node: self.convert_not_op(node),
             "NonZero": lambda node: self.convert_nonzero_op(node),
             "OneHot": lambda node: self.convert_onehot_op(node),
+            "Or": lambda node: self.convert_or_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "PixelNormalization": lambda node: self.convert_pixel_norm_op(node),
             "PRelu": lambda node: self.convert_prelu_op(node),
@@ -1545,6 +1546,23 @@ class OnnxConverter(BaseConverter):
                 tensor_data = tensor_data[(slice(None), ) * axis + (s, )]
             self.addWeight(onnx_node.name, tensor_data)
             return
+        if axes != []:
+            def is_sorted(arr):
+                for i in range(len(arr) - 1):
+                    if arr[i] > arr[i + 1]:
+                        return False
+                return True
+            if not is_sorted(axes):
+                indexed_axes = list(enumerate(axes))
+                sorted_indexed_axes = sorted(indexed_axes, key=lambda x: x[1])
+
+                axes = [x[1] for x in sorted_indexed_axes]
+                original_indices = [x[0] for x in sorted_indexed_axes]
+
+                starts = [starts[i] for i in original_indices]
+                ends = [ends[i] for i in original_indices]
+                steps = [steps[i] for i in original_indices]
+
         op = self.getOperand(onnx_node.inputs[0])
         new_op = top.SliceOp(self.unranked_type,
                              op,
@@ -1778,6 +1796,24 @@ class OnnxConverter(BaseConverter):
                                                                   onnx_node.op_type)),
                                   ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, div_op)
+
+    def convert_or_op(self, onnx_node):
+        assert (onnx_node.op_type == "Or")
+        operand0 = self.getOperand(onnx_node.inputs[0])
+        operand1 = self.getOperand(onnx_node.inputs[1])
+        output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+
+        add_value = top.AddOp(self.unranked_type, [operand0, operand1],
+                              loc = self.get_loc(output_name + "_add"),
+                              ip = self.mlir.insert_point).output
+
+        new_op = top.CompareConstOp(self.unranked_type, add_value, mode=StringAttr.get("Greater"),
+                                    const_val=np.array([0]),
+                                    inversed=False,
+                                    loc=self.get_loc(output_name + "_compare"),
+                                    ip=self.mlir.insert_point).output
+
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_squeeze_op(self, onnx_node):
         assert (onnx_node.op_type == "Squeeze")
