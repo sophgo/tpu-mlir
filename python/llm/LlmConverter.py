@@ -85,12 +85,10 @@ class LlmConverter(BaseConverter):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.model_name = os.path.basename(self.model_path).lower()
         if args.chip == "bm1684x":
-            folder_name = f"bmodel_seq{self.seq_length}_{self.quantize}_{self.chip}_{self.num_device}dev"
-            self.out_bmodel = f"../{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev_{timestamp}.bmodel"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev"
         else:
-            folder_name = f"bmodel_seq{self.seq_length}_{self.quantize}_{self.chip}_{self.num_core}core"
-            self.out_bmodel = f"../{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core_{timestamp}.bmodel"
-
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core"
+        self.out_bmodel = f"../{folder_name}_{timestamp}.bmodel"
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.is_qwen3 = self.model_type == "qwen3"
         self.commands = []

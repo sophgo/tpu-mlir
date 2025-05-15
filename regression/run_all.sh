@@ -10,4 +10,4 @@ rebuild_custom_backend
 rebuild_custom_firmware_cmodel bm1684x
 rebuild_custom_firmware_cmodel bm1688
 
-$REGRESSION_PATH/main_entry.py --test_type all --concise_log
+$REGRESSION_PATH/main_entry.py --test_type all

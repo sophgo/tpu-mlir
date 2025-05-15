@@ -19,50 +19,17 @@ test_custom_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
 sys.path.append(test_custom_dir)
 
-regression_out_path = os.path.join(os.getenv("REGRESSION_PATH"), "regression_out")
-assert regression_out_path
-regression_log_path = os.path.join(regression_out_path, "../regression_op_log")
-os.makedirs(regression_log_path, exist_ok=True)
-
-from utils.timer import Timer
 from chip import *
-import test_tpulang
-import test_torch
-import test_custom_tpulang
 import argparse
-import logging
 import subprocess
-
-SUCCESS = 0
-FAILURE = 1
-
-
-class Status:
-    PASSED = 'PASSED'
-    FAILED = 'FAILED'
-    TIMEOUT = 'TIMEOUT'
-
-
-def timeit(func):
-
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        end = time.time()
-        print(f"{func.__name__} ran in {end - start:.2f} seconds")
-        return result
-
-    return wrapper
 
 
 class MAIN_ENTRY(object):
 
-    def __init__(self, test_type, disable_thread: bool, concise_log=False):
+    def __init__(self, test_type):
         self.test_type = test_type
-        self.disable_thread = disable_thread
         self.current_dir = os.getcwd()
         self.is_basic = test_type == "basic"
-        self.concise_log = concise_log
 
         # yapf: enable
         self.test_set = {
@@ -71,7 +38,7 @@ class MAIN_ENTRY(object):
             "script": self.run_script_test,
             "model": self.run_model_test,
             "multi_core_model": self.run_multi_core_test,
-            "cuda": self.run_cuda_test
+            "cuda": self.run_cuda_test,
         }
 
         self.results = []
@@ -85,7 +52,7 @@ class MAIN_ENTRY(object):
             context = f.read()
             print(context)
 
-    def run_command(self, command, log_file):
+    def run_command(self, command, log_file=""):
         GREEN_COLOR = "\033[92m"  # ANSI escape code for green text
         RED_COLOR = "\033[91m"
         RESET_COLOR = "\033[0m"
@@ -93,8 +60,11 @@ class MAIN_ENTRY(object):
             print(f"{GREEN_COLOR}Executing command: \n{' '.join(command)}{RESET_COLOR}"
                   )  # Print the command in green
             subprocess.run(command, check=True)
+            if log_file != "":
+                self.print_log(log_file)
         except subprocess.CalledProcessError as e:
-            self.print_log(log_file)
+            if log_file != "":
+                self.print_log(log_file)
             # Print the error message in red
             print(f"{RED_COLOR}Error: Command failed with return code {e.returncode}{RESET_COLOR}")
             print(f"{RED_COLOR}Failed command: {' '.join(command)}{RESET_COLOR}")
@@ -110,7 +80,7 @@ class MAIN_ENTRY(object):
         task_log = f"{self.task_file}.log"
         halt_now = ""
         if self.is_basic:
-            halt_now = " --halt now,fail=1"
+            halt_now = f"--halt now,fail=1"
         parallel_cmd = [
             "parallel", f"-j {self.max_workers}", halt_now, "--progress", f"--joblog {task_log}",
             f"< {self.task_file}"
@@ -149,7 +119,6 @@ class MAIN_ENTRY(object):
 
     def run_op_onnx_test(self):
         import test_onnx
-        import test_fx
         # send onnx test
         onnx_tester = test_onnx.ONNX_IR_TESTER()
         chips = ["bm1684x", "bm1688", "bm1684", "cv183x", "mars3"]
@@ -172,17 +141,11 @@ class MAIN_ENTRY(object):
         for case in onnx_tester.cases_fp8:
             self.commands.append(f"test_onnx.py --case {case} --chip bm1690 {simple} \n")
         del onnx_tester
-        fx_tester = test_fx.FX_IR_TESTER()
-        # send 1690 fx
-        for case in fx_tester.test_cases.keys():
-            self.commands.append(f"test_fx.py --case {case} \n")
-        del fx_tester
 
     def run_op_torch_test(self):
         import test_torch
         import test_tpulang
         import test_custom_tpulang
-        import test_MaskRCNN
         # send torch test
         torch_tester = test_torch.TORCH_IR_TESTER()
         chips = ["bm1684", "bm1684x", "bm1688", "cv183x", "mars3"]
@@ -227,13 +190,12 @@ class MAIN_ENTRY(object):
                     continue
                 self.commands.append(f"python3 {custom_py} --case {case} --chip {chip} {simple}\n")
         del custom_tester
-        # send MaskRCNN test only bm1684x
-        maskrcnn_tester = test_MaskRCNN.MaskRCNN_IR_TESTER()
-        for case in maskrcnn_tester.test_cases.keys():
-            self.commands.append(f"test_MaskRCNN.py --case {case} --chip bm1684x\n")
-        del maskrcnn_tester
+
 
     def run_model_test(self, multi_core: bool = False):
+        # run llm test
+        self.run_llm_test()
+        # run model list
         model_list = None
         if multi_core:
             model_list = basic_multi_core_model_list if self.is_basic else full_multi_core_model_list
@@ -253,9 +215,35 @@ class MAIN_ENTRY(object):
 
             for model in cur_model_list:
                 self.send_regression_net(model, chip, num_core)
+        # ===== run other test =======
+        import test_MaskRCNN
+        # send MaskRCNN test only bm1684x
+        maskrcnn_tester = test_MaskRCNN.MaskRCNN_IR_TESTER()
+        for case in maskrcnn_tester.test_cases.keys():
+            self.commands.append(f"test_MaskRCNN.py --case {case} --chip bm1684x\n")
+        del maskrcnn_tester
+        # send 1690 fx
+        import test_fx
+        fx_tester = test_fx.FX_IR_TESTER()
+        for case in fx_tester.test_cases.keys():
+            self.commands.append(f"test_fx.py --case {case} \n")
+        del fx_tester
+
 
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)
+
+    def run_llm_test(self):
+        NNMODELS_PATH = os.getenv('NNMODELS_PATH')
+        LLM_MODELS = [
+            "Qwen2.5-0.5B-Instruct", "Qwen2.5-0.5B-Instruct-AWQ", "Qwen2.5-0.5B-Instruct-GPTQ-Int4"
+        ]
+        for model in LLM_MODELS:
+            MODEL_PATH = os.path.join(NNMODELS_PATH, "llm_models", model)
+            self.run_command([
+                "llm_convert.py", "-m", MODEL_PATH, "-s", "384", "-q", "w4bf16", "-g", "128", "-c",
+                "bm1684x", "--out_dir", "qwen2.5_0.5b"
+            ])
 
     def run_all(self, test_set):
         for test in test_set:
@@ -271,8 +259,6 @@ if __name__ == "__main__":
     choices = ["onnx", "torch", "script", "model", "multi_core_model", "cuda"]
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
-    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
-    parser.add_argument("--concise_log", action="store_true", help='do test with concise log')
     # yapf: enable
     args = parser.parse_args()
     LOCK_FILE = "/tmp/bmchip_mux.lock"
@@ -280,16 +266,15 @@ if __name__ == "__main__":
         os.remove(LOCK_FILE)
     os.environ["CMODEL_LOCKFILE"] = LOCK_FILE
     dir = os.path.expandvars("${REGRESSION_PATH}/regression_out")
+    cur_dir = os.getcwd()
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
 
-    logging.basicConfig(filename="main.log",
-                        filemode='w',
-                        level=logging.DEBUG,
-                        format='%(message)s')
-
-    main_entry = MAIN_ENTRY(args.test_type, args.disable_thread, args.concise_log)
+    main_entry = MAIN_ENTRY(args.test_type)
 
     main_entry.run_all(args.test_set)
 
     print(f"TEST {args.test_type} {args.test_set} PASSED")
+    os.chdir(cur_dir)
+    shutil.rmtree(dir)
+
