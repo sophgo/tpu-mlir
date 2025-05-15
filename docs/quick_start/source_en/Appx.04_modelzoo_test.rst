@@ -181,21 +181,6 @@ After running the command, it will be in a Docker container. You can the latest 
    $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 
-.. _get tpu-perf:
-
-Install ``tpu-perf`` tool
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Get the latest ``tpu-perf`` wheel installer from the SDK package provided by SOPHGO. For example, ``tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl`` .
-
-You need to install ``tpu-perf`` both inside and outside of Docker:
-
-.. code-block:: shell
-
-   # go to Docker and install tpu-perf
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-
-
 .. _test_main:
 
 Model performance and accuracy testing process
@@ -204,7 +189,7 @@ Model performance and accuracy testing process
 Compile the model
 ---------
 
-The model compilation process needs to be done within Docker, where ``tpu_mlir`` and ``tpu_perf`` need to be installed as described above.
+The model compilation process needs to be done within Docker, where ``tpu_mlir`` need to be installed as described above.
 
 ``confg.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` .
 
@@ -281,11 +266,8 @@ specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 
 The SOC device uses the following steps to test the performance of the generated high priority model ``bmodel``.
 
-Get the latest ``tpu-perf`` wheel installer from the SDK package provided by SOPHGO. For example, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl``, then transfer the file to the SOC device and execute the following operations:
-
 .. code-block:: shell
 
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 

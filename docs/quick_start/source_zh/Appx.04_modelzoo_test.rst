@@ -181,26 +181,13 @@ Vid4 (可选)
    $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 
-安装 ``tpu-perf`` 工具
-~~~~~~~~~~~~~~~~~~~~~~
-
-从SOPHGO提供的SDK包中获取最新的 ``tpu-perf`` wheel安装包。例如 ``tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl`` 。
-
-在Docker内和Docker外都需要安装 ``tpu-perf`` ：
-
-.. code-block:: shell
-
-   # 进入Docker，安装tpu-perf
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-
-
 模型性能和精度测试流程
 ~~~~~~~~~~~~~~~~~~~~~~
 
 模型编译
 ---------
 
-模型编译过程需要在Docker内进行，Docker内需要按照上文要求安装 ``tpu_mlir`` 和 ``tpu_perf`` 。
+模型编译过程需要在Docker内进行，Docker内需要按照上文要求安装 ``tpu_mlir``。
 
 ``model-zoo`` 的相关 ``confg.yaml`` 配置了SDK的测试内容。以 ``resnet18-v2`` 为例，其配置文件为 ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` 。
 
@@ -275,11 +262,9 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 
 SOC 设备使用以下步骤, 测试生成的高优先级模型的 ``bmodel`` 性能。
 
-从SOPHGO提供的SDK包中获取最新的 ``tpu-perf`` wheel安装包，例如 ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl`` ，并将文件传输到SOC设备上执行以下操作:
 
 .. code-block:: shell
 
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
