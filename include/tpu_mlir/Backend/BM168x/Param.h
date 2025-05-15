@@ -2328,4 +2328,8 @@ typedef struct {
   int table_length;
 } lut_matmul_param_t;
 
+typedef struct softmax_cast_global_spec_t {
+    softmax_common_param_t   common_softmax;
+    dequant_common_spec_t    common_dequant;
+} softmax_cast_global_spec_t;
 #endif

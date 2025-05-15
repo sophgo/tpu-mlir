@@ -406,13 +406,80 @@ public:
   }
 };
 
+
+/*
+Softmax + Cast(Requant) => SoftmaxCast.cpp
+
+only support Cast: bf16 => i8
+*/
+class FuseSoftmaxCastPattern : public OpRewriterPatternEx<tpu::SoftmaxOp> {
+public:
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+  FuseSoftmaxCastPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::SoftmaxOp>(context, "FuseSoftmaxCastPattern",
+                                           benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::SoftmaxOp op,
+                                    PatternRewriter &rewriter) const override {
+    if(!module::isMARS3()) return failure();
+    if(op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) return failure();
+    auto output = op.getOutput();
+    if (!output.hasOneUse()) { return failure(); }
+    auto op_name  = module::getName(op.getResult()).str();
+    op_name = op_name;
+
+    bool castValid = 0;
+    auto next_op   = dyn_cast_or_null<tpu::CastOp>(*op.getResult().getUsers().begin());
+    if (next_op) {
+       //if(!next_op->hasOneUse()) return failure();
+       auto CastInputType  = module::getStorageType(next_op.getInput());
+       if ((!module::isUniformQuantized(next_op.getOutput())) || (!CastInputType.isBF16())) {
+        castValid = 0;
+       } else {
+        castValid = 1;
+       }
+    }
+
+    if (!(castValid)) return failure();
+
+    std::vector<NamedAttribute> attrs;
+    rewriter.setInsertionPointAfter(op);
+    std::vector<Value> opds;
+    opds.reserve(6);
+    const int nInputs = 6;
+    assert(nInputs <= op->getNumOperands());
+    for (auto i = 0; i < nInputs; ++i) {
+        auto opd = op->getOperand(i);
+        opds.push_back(opd);
+    }
+
+    auto type_out = next_op.getResult().getType();
+    auto cast_op_name = module::getName(next_op.getResult()).str();
+    cast_op_name = cast_op_name;
+    auto new_softmax_op = rewriter.create<tpu::SoftmaxCastOp>(
+            NameLoc::get(rewriter.getStringAttr(op_name)),
+            type_out,
+            opds, attrs);
+
+    auto Castoutput = next_op.getOutput();
+    Castoutput.replaceAllUsesExcept(new_softmax_op.getOutput(), new_softmax_op);
+    if (castValid) {
+        new_softmax_op.setAxisAttr(op.getAxisAttr());
+        new_softmax_op.setRoundModeAttr(next_op.getRoundModeAttr());
+        new_softmax_op.setLogAttr(op.getLogAttr());
+        new_softmax_op.setBetaAttr(op.getBetaAttr());
+        next_op.erase();
+    }
+    return success();
+  }
+};
 } // namespace bm1684x
 
 namespace tpu {
 using namespace bm1684x;
 void populateOptPostProcessorBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
-    patterns->add<FuseCastAddPattern, MoveReshapePattern, FuseLayerNormCastPattern, FuseMatMulLutPattern, ActiveCastFusePattern>(ctx, 10);
+    patterns->add<FuseCastAddPattern, MoveReshapePattern, FuseLayerNormCastPattern, FuseMatMulLutPattern, ActiveCastFusePattern,
+    FuseSoftmaxCastPattern>(ctx, 10);
 }
 } // namespace tpu
 

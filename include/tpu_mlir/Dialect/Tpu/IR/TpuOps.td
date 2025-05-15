@@ -7303,4 +7303,29 @@ def Tpu_FusedActiveCastOp: Tpu_Op<"FusedActiveCast",[
   );
   let results = (outs AnyRankedTensor:$output);
 }
+
+def Tpu_SoftmaxCastOp: Tpu_Op<"SoftmaxCast",[
+  DeclareOpInterfaceMethods<TypeInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
+  let summary = "softmax operator";
+
+  let description = [{
+    Softmax + Requant
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyTensorOrNone:$table,
+    AnyTensorOrNone:$slope_table,
+    AnyTensorOrNone:$reciprocal_table,
+    AnyTensorOrNone:$reciprocal_mantissa_table,
+    AnyTensorOrNone:$buffer,
+    SI32Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "false">:$log,
+    DefaultValuedAttr<F64Attr, "1.0">:$beta,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
 #endif // TPU_OPS
