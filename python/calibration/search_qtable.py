@@ -308,6 +308,26 @@ class SearchQtable:
                                            .format(layer_name, outputs_cos, outputs_snr))
         return loss_dict
 
+    def search_sensitve_layer_fast(self, layer_names, all_op_names, sensitive_layer, global_compare_layers, layers_rate, predictions_gt, count):
+        loss_dict = collections.defaultdict(list)
+        fp_layer_list = copy.deepcopy(sensitive_layer)
+        fp_layer_list += [layer for layer in layer_names if layer not in sensitive_layer]
+        for layer_name in layer_names:
+            fp_layer_list.remove(layer_name)
+            layer_type = self.parser.get_op_type_by_op_name(layer_name)
+            self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(layer_name, layer_type))
+            mix_table = self.mix_prec._gen_mix_table(fp_layer_list)
+            int8_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+            outputs_cos, outputs_snr = self.mix_prec.run_model_fast(int8_mix_model, False, global_compare_layers, layers_rate, predictions_gt, count)
+            if layer_name not in loss_dict:
+                loss_dict[layer_name].extend([outputs_cos, outputs_snr])
+            else:
+                self.compare_loss(layer_name, loss_dict, outputs_cos, outputs_snr)
+            self.mix_prec.logger.print_info("layer {}, outputs_cos:{}, outputs_snr:{}"
+                                           .format(layer_name, outputs_cos, outputs_snr))
+            fp_layer_list.append(layer_name)
+        return loss_dict
+
     def analysis_sensitive_layers(self, sensitive_layer_analysis_dict, pr):
         num = 0
         num_fp32 = 0
@@ -629,3 +649,58 @@ class SearchQtable:
                     fp_layer_list.append(op_name)
                 break
         self.print_log_info_4_8(fp_layer_list, int8_outputs_cos, t0)
+
+    def run_fast(self):
+        t0 = time.time()
+        layer_cos_list, predictions_gt = [], []
+        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name)
+        global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
+        _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate, predictions_gt)
+        int8_outputs_cos = self.mix_prec.run_model(int8_model, False, global_compare_layers, layers_rate, predictions_gt)
+        if int8_outputs_cos > self.args.expected_cos:
+            float_model.clean()
+            int8_model.clean()
+            self.mix_prec.enable_print()
+            self.mix_prec.logger.print_info(
+                f'job success, current int8 cos:{int8_outputs_cos} is higher than expected_cos:{self.args.expected_cos},no need for mix precsion')
+            exit(0)
+        
+        float_outputs_cos = 1.0
+        all_op_names = self.parser.get_op_name_list()
+        sensitive_op_type = self.search_layer_type_no_need_quant(all_op_names, float_outputs_cos, global_compare_layers, layers_rate, predictions_gt)
+        layer_names =  [layer for layer in all_op_names if self.parser.get_op_type_by_op_name(layer) in sensitive_op_type]
+        self.mix_prec.logger.print_info("transformer model: {}, all search layer number: {}".format(self.args.transformer, len(layer_names)))
+
+        sensitive_layer = []
+        cos_sim = int8_outputs_cos
+        count = 0
+        eps = 0
+        while int8_outputs_cos < self.args.expected_cos:
+            loss_dict = self.search_sensitve_layer_fast(layer_names, all_op_names, sensitive_layer, global_compare_layers, layers_rate, predictions_gt, count)
+
+            keys = list(loss_dict.keys())
+            sorted_by_first = sorted(keys, key=lambda k: loss_dict[k][0])
+            rank_first = {key: idx for idx, key in enumerate(sorted_by_first)}
+            sorted_by_second = sorted(keys, key=lambda k: loss_dict[k][1])
+            rank_second = {key: idx for idx, key in enumerate(sorted_by_second)}
+            total_rank = {key: rank_first[key] + rank_second[key] for key in keys}
+            sorted_keys = sorted(keys, key=lambda k: (total_rank[k], loss_dict[k][0]))
+
+            top_5_layers = sorted_keys[-5:]
+            layer_names = [layer for layer in layer_names if layer not in top_5_layers]
+            sensitive_layer += [layer for layer in top_5_layers if layer not in sensitive_layer]
+
+            mix_table = self.mix_prec._gen_mix_table(sensitive_layer)
+            int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+            outputs_cos = self.mix_prec.run_model(int8_model, False, global_compare_layers, layers_rate, predictions_gt)
+            if (outputs_cos - cos_sim < eps and outputs_cos - cos_sim < 0.001) or len(sensitive_layer) > 0.2 * len(all_op_names):
+                break
+            else:
+                if count == 0:
+                    eps = abs(outputs_cos - cos_sim) / 2
+                cos_sim = outputs_cos
+                count += 1
+                if count > self.args.inference_num - 1:
+                    break
+        self.print_log_info(layer_cos_list, sensitive_layer, int8_outputs_cos, outputs_cos, t0)

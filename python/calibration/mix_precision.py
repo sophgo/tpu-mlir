@@ -653,6 +653,36 @@ class MixPrecSearcher:
         else:
             return outputs_snr
 
+    def run_model_fast(self, model, float_type, global_compare_layers, layers_rate, predictions_gt, count):
+        outputs_cos = 0
+        outputs_snr = 0
+        if float_type:
+            self.disable_print()
+            self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
+        else:
+            self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
+
+        data = []
+        for name in list(self.ref_activations[count].keys()):
+            data.append(self.ref_activations[count][name][0])
+        outputs = model.infer(data, global_compare_layers)
+        if self.post_process_path:
+            module_path = self.post_process_path
+            module_name = self.post_process_name
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            modulevar = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(modulevar)
+            outputs = modulevar.PostProcess(outputs)
+        if float_type:
+            predictions_gt.append(outputs)
+        else:
+            outputs_snr += self._loss(outputs, predictions_gt[count], layers_rate, type='snr')
+            outputs_cos += self._loss(outputs, predictions_gt[count], layers_rate)
+        outputs_cos = 1 - outputs_cos
+        outputs_snr = outputs_snr
+
+        return outputs_cos, outputs_snr
+
     def run_model_loss_snr(self, model, float_type, global_compare_layers, layers_rate, predictions_gt):
         outputs_cos = 0
         if float_type:

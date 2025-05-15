@@ -72,6 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
     parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8'],
                         help='Specify the bit width for automatic mixed precision')
+    parser.add_argument('--fast',help='faster search_qtable', action='store_true')
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
     parser.add_argument('-o', '--calibration_table', type=str,
                         help='output threshold table')
@@ -106,7 +107,10 @@ if __name__ == '__main__':
         if args.mix_mode == '4_8':
             searcherQ.run_4_8()
         else:
-            searcherQ.run()
+            if args.fast:
+                searcherQ.run_fast()
+            else:
+                searcherQ.run()
     else:
         # smoothquant
         if args.sq:
