@@ -728,7 +728,19 @@ class ONNX_IR_TESTER(object):
         print("* Torch and Onnx result compared *")
 
 
-    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str,  small_inputs=None, static_shape=True, dynamic=False, support_modes=None, dynamic_axes=None, dynamic_in_names=None, dynamic_shape_input_names = [], shape_influencing_input_names=[], matmul_perchannel=False):
+    def torch_and_test(self,
+                       inputs,
+                       torch_model: nn.Module,
+                       model_name: str,
+                       small_inputs=None,
+                       static_shape=True,
+                       dynamic=False,
+                       support_modes=None,
+                       dynamic_axes=None,
+                       dynamic_in_names=None,
+                       dynamic_shape_input_names=[],
+                       shape_influencing_input_names=[],
+                       matmul_perchannel=False):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -7257,7 +7269,10 @@ class ONNX_IR_TESTER(object):
         max_disp = 48
         num_groups = 8
 
-        self.torch_and_test((left, right), Model(max_disp, num_groups), case_name)
+        self.torch_and_test((left, right),
+                            Model(max_disp, num_groups),
+                            case_name,
+                            support_modes=["f16", "bf16"])
 
     def user_define_net(self, case_name):
         """user_define_net"""

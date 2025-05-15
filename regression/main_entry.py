@@ -18,6 +18,7 @@ sys.path.append(train_test_dir)
 test_custom_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'third_party', 'customlayer', 'test'))
 sys.path.append(test_custom_dir)
+REGRESSION_PATH = os.getenv('REGRESSION_PATH')
 
 from chip import *
 import argparse
@@ -28,7 +29,6 @@ class MAIN_ENTRY(object):
 
     def __init__(self, test_type):
         self.test_type = test_type
-        self.current_dir = os.getcwd()
         self.is_basic = test_type == "basic"
 
         # yapf: enable
@@ -44,7 +44,10 @@ class MAIN_ENTRY(object):
         self.results = []
         self.time_cost = []
         self.max_workers = os.cpu_count()
-        self.task_file = os.path.join(self.current_dir, f"regression_{test_type}_task.txt")
+        self.log_dir = os.path.join(REGRESSION_PATH, "regression_op_log")
+        os.makedirs(self.log_dir, exist_ok=True)
+        self.task_file = os.path.join(self.log_dir, f"regression_{self.test_type}_tast.txt")
+        self.task_log = os.path.join(self.log_dir, f"regression_{self.test_type}_task.log")
         self.commands = []
 
     def print_log(self, log_file):
@@ -52,7 +55,7 @@ class MAIN_ENTRY(object):
             context = f.read()
             print(context)
 
-    def run_command(self, command, log_file=""):
+    def run_command(self, command):
         GREEN_COLOR = "\033[92m"  # ANSI escape code for green text
         RED_COLOR = "\033[91m"
         RESET_COLOR = "\033[0m"
@@ -60,11 +63,7 @@ class MAIN_ENTRY(object):
             print(f"{GREEN_COLOR}Executing command: \n{' '.join(command)}{RESET_COLOR}"
                   )  # Print the command in green
             subprocess.run(command, check=True)
-            if log_file != "":
-                self.print_log(log_file)
         except subprocess.CalledProcessError as e:
-            if log_file != "":
-                self.print_log(log_file)
             # Print the error message in red
             print(f"{RED_COLOR}Error: Command failed with return code {e.returncode}{RESET_COLOR}")
             print(f"{RED_COLOR}Failed command: {' '.join(command)}{RESET_COLOR}")
@@ -77,25 +76,24 @@ class MAIN_ENTRY(object):
         with open(self.task_file, "w") as f:
             f.writelines(self.commands)
         self.commands.clear()
-        task_log = f"{self.task_file}.log"
         halt_now = ""
         if self.is_basic:
             halt_now = f"--halt now,fail=1"
         parallel_cmd = [
-            "parallel", f"-j {self.max_workers}", halt_now, "--progress", f"--joblog {task_log}",
-            f"< {self.task_file}"
+            "parallel", f"-j {self.max_workers}", halt_now, "--progress",
+            f"--joblog {self.task_log}", f"< {self.task_file}"
         ]
-        self.run_command(['bash', '-c', ' '.join(parallel_cmd)], task_log)
+        self.run_command(['bash', '-c', ' '.join(parallel_cmd)])
 
     def send_regression_net(self, model_name, chip, num_core):
-        run_model = os.path.expandvars(f"$REGRESSION_PATH/run_model.py")
+        run_model = os.path.join(REGRESSION_PATH, "run_model.py")
         self.commands.append(
-            f"python {run_model} {model_name} --chip {chip} --mode {self.test_type} --num_core {num_core} \n"
+            f"python {run_model} {model_name} --chip {chip} --mode {self.test_type} --num_core {num_core} > {self.log_dir}/run_model_{model_name}_{chip}_{num_core}core.log\n"
         )
 
     def send_script_test(self, source):
-        script_path = os.path.expandvars(f"$REGRESSION_PATH/script_test/{source}.sh")
-        self.commands.append(f"bash {script_path} \n")
+        script_path = os.path.join(REGRESSION_PATH, f"script_test/{source}.sh")
+        self.commands.append(f"bash {script_path} > {self.log_dir}/script_test_{source}.log\n")
 
     def run_script_test(self):
         # run scripts under $REGRESSION_OUT/script_test
@@ -136,10 +134,14 @@ class MAIN_ENTRY(object):
                     continue
                 if chip == "mars3" and not mars3_support:
                     continue
-                self.commands.append(f"test_onnx.py --case {case} --chip {chip} {simple} \n")
+                self.commands.append(
+                    f"test_onnx.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_onnx_{case}_{chip}.log\n"
+                )
         # send 1690 fp8
         for case in onnx_tester.cases_fp8:
-            self.commands.append(f"test_onnx.py --case {case} --chip bm1690 {simple} \n")
+            self.commands.append(
+                f"test_onnx.py --case {case} --chip bm1690 {simple} > {self.log_dir}/test_onnx_{case}_bm1690.log\n"
+            )
         del onnx_tester
 
     def run_op_torch_test(self):
@@ -163,7 +165,9 @@ class MAIN_ENTRY(object):
                     continue
                 if chip == "mars3" and not mars3_support:
                     continue
-                self.commands.append(f"test_torch.py --case {case} --chip {chip} {simple}\n")
+                self.commands.append(
+                    f"test_torch.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_torch_{case}_{chip}.log\n"
+                )
         del torch_tester
         # send tpulang test
         if not self.is_basic:
@@ -176,7 +180,9 @@ class MAIN_ENTRY(object):
                         continue
                     if chip == "bm1688" and not bm1688_support:
                         continue
-                    self.commands.append(f"test_tpulang.py --case {case} --chip {chip} {simple}\n")
+                    self.commands.append(
+                        f"test_tpulang.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_tpulang_{case}_{chip}.log\n"
+                    )
             del tpulang_tester
         # send custom tpulang test
         custom_tester = test_custom_tpulang.CUSTOM_TPULANG_TESTER()
@@ -188,9 +194,10 @@ class MAIN_ENTRY(object):
                     continue
                 if chip == "bm1688" and not bm1688_support:
                     continue
-                self.commands.append(f"python3 {custom_py} --case {case} --chip {chip} {simple}\n")
+                self.commands.append(
+                    f"python3 {custom_py} --case {case} --chip {chip} {simple} > {self.log_dir}/test_custom_tpulang_{case}_{chip}.log\n"
+                )
         del custom_tester
-
 
     def run_model_test(self, multi_core: bool = False):
         # run llm test
@@ -220,15 +227,16 @@ class MAIN_ENTRY(object):
         # send MaskRCNN test only bm1684x
         maskrcnn_tester = test_MaskRCNN.MaskRCNN_IR_TESTER()
         for case in maskrcnn_tester.test_cases.keys():
-            self.commands.append(f"test_MaskRCNN.py --case {case} --chip bm1684x\n")
+            self.commands.append(
+                f"test_MaskRCNN.py --case {case} --chip bm1684x > {self.log_dir}/test_MaskRCNN_{case}_bm1684x.log\n"
+            )
         del maskrcnn_tester
         # send 1690 fx
         import test_fx
         fx_tester = test_fx.FX_IR_TESTER()
         for case in fx_tester.test_cases.keys():
-            self.commands.append(f"test_fx.py --case {case} \n")
+            self.commands.append(f"test_fx.py --case {case} > {self.log_dir}/test_fx_{case}.log\n")
         del fx_tester
-
 
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)
@@ -248,6 +256,7 @@ class MAIN_ENTRY(object):
     def run_all(self, test_set):
         for test in test_set:
             self.test_set[test]()
+
         self.execute_commands()
 
 
@@ -265,7 +274,7 @@ if __name__ == "__main__":
     if os.path.exists(LOCK_FILE):
         os.remove(LOCK_FILE)
     os.environ["CMODEL_LOCKFILE"] = LOCK_FILE
-    dir = os.path.expandvars("${REGRESSION_PATH}/regression_out")
+    dir = os.path.join(REGRESSION_PATH, "regression_out")
     cur_dir = os.getcwd()
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
@@ -277,4 +286,3 @@ if __name__ == "__main__":
     print(f"TEST {args.test_type} {args.test_set} PASSED")
     os.chdir(cur_dir)
     shutil.rmtree(dir)
-
