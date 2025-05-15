@@ -20,6 +20,14 @@ struct Binary {
     size:uint64;
 }
 
+/** (for IO_RELOC mode of BM1684x) :  With user-io-addrs (base_addrs), tpu-runtime relocates cmd-io-addrs
+* that stored in 1.gdma-commands and 2.IMM_IO tensor descriptors. */
+struct RelEntry {
+    base_addr_id: uint32;   // user-io-addrs are used as base_addrs.
+    addr_offset: uint32;    // addr offset from base_addr[base_addr_id];
+    cmd_offset: uint32;     // offset (bytes) in current gdma-cmdgroup. Used for cmd relocation.
+}
+
 table Shape {
     dim:[uint64] (id:0);
 }
@@ -31,6 +39,7 @@ table CmdGroup {
     binary_gdma:Binary (id: 3);  // gdma binary data
     bdc_cmd_byte:uint32 (id: 4);  // m_bdc_cmd_byte_v
     gdma_cmd_byte:uint32 (id: 5); // m_gdma_cmd_byte_v
+    reloc_entries: [RelEntry] (id: 6);    // relocation table
 }
 
 table CoreCommands {
@@ -80,6 +89,7 @@ table Tensor {
     zero_point:int32 = 0 (id: 10); // zero point for requant or dequant
     hidden:int32 (id: 11);         // hidden tensor, for cascade model. 0:hidden;1:input;2:output
     index:int32 (id: 12);          // input or output index
+    relentry:RelEntry (id: 13);    // Tensor reloc entry for IO_RELOC mode.
 }
 
 table CpuConst {
@@ -183,6 +193,7 @@ table Net {
                                        // 1: io alone mode, io mem and neuron mem alloc seperated by runtime
                                        // 2: io tag mode, select max 5 data size io to assign mem by address tag (others in neuron mem)
                                        // 3: io tag fuse mode, fuse inputs to a io tag and fuse outputs to another io tag
+                                       // 4: io reloc mode, relocate cmd-io-addrs to user-io-addrs, using rel-entries.
 }
 
 table KernelModule {

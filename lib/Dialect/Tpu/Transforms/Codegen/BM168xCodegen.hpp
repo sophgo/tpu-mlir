@@ -39,6 +39,8 @@ private:
   Offset<bmodel::SubNet> CreateMergeSubNet(ModuleOp s, func::CallOp call);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   std::shared_ptr<std::vector<bmodel::Binary>> CreateCmdVector(const char *);
+  std::shared_ptr<std::vector<bmodel::RelEntry>> CreateGdmaRelEntryVector(u32 gdma_cmd_num, u8 *gdma_cmd_buffer);
+  std::shared_ptr<bmodel::RelEntry> CreateTensorRelentry(const uint64_t &tensor_addr, const uint64_t &tensor_bytes);
   bool getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
                           uint64_t coeff_size, uint64_t &offset,
                           uint64_t &size);
@@ -71,6 +73,7 @@ private:
   void checkAndUpdateHidden(const std::vector<Value> &inputs,
                             const std::vector<Value> &outputs);
   void updateAllHidden();
+  void updateFullnetIOAddress();
   std::string getfilename();
 
 private:
@@ -84,6 +87,8 @@ private:
   std::vector<StringRef> hidden_names;
   std::vector<StringRef> special_in_names;
   std::vector<StringRef> special_out_names;
+  //cmd-io-addrs, saved as pair: [StartAddr, EndAddr)
+  std::vector<std::pair<uint64_t, uint64_t>> fullnet_io_addrs;
   uint32_t current_step = 0;
   uint32_t current_device = 0;
   std::shared_ptr<bmodel::ModelGen> model_gen;

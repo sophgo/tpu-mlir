@@ -109,6 +109,10 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
   }
   input_names = module::getInputs();
   output_names = module::getOutputs();
+  if (module::isAddrMode(module::AddrMode::IO_RELOC)) {
+    assert(module::isBM1684X());
+    updateFullnetIOAddress();
+  }
   hidden_names.clear();
   current_step = 0;
   current_device = 0;
@@ -340,6 +344,17 @@ BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
   return builder.CreateVector(stage_shape_v);
 }
 
+std::shared_ptr<bmodel::RelEntry>
+BMCodegen::CreateTensorRelentry(const uint64_t &addr, const uint64_t &bytes) {
+  for (u32 id = 0; id < fullnet_io_addrs.size(); id++) {
+    if (addr >= fullnet_io_addrs[id].first && addr < fullnet_io_addrs[id].second) {
+      assert(addr + bytes <= fullnet_io_addrs[id].second);
+      return std::make_shared<bmodel::RelEntry>(id, (u32)(addr - fullnet_io_addrs[id].first), 0);
+    }
+  }
+  return nullptr;
+}
+
 Offset<Vector<Offset<bmodel::Tensor>>>
 BMCodegen::CreateTensorVector(const std::vector<Value> &values, int devid) {
   auto &builder = model_gen->Builder();
@@ -434,6 +449,10 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values, int devid) {
     }
     tb.add_device_addr(module::getAddress(v));
     tb.add_size(Arch::get_gmem_bytes(v));
+    auto relentry = CreateTensorRelentry(module::getAddress(v), module::getBytes(v));
+    if (relentry) {
+      tb.add_relentry(relentry.get());
+    }
     tensor_v.push_back(tb.Finish());
     ++index;
   }
@@ -545,9 +564,17 @@ BMCodegen::CreateCmdGroupVector() {
       bdc_offset += bdc_len;
     }
     auto gdma_len = bm168x->get_gdma_len(gdma_num, group_idx);
+    std::shared_ptr<std::vector<bmodel::RelEntry>> cmd_reloc_entries;
     if (gdma_num != 0) {
       binary_gdma = model_gen->WriteBinary(gdma_len, gdma_ptr + gdma_offset);
+      cmd_reloc_entries = CreateGdmaRelEntryVector(gdma_num, gdma_ptr + gdma_offset);
       gdma_offset += gdma_len;
+    }
+    Offset<Vector<const bmodel::RelEntry *>> reloc_entries_v;
+    if (cmd_reloc_entries) {
+      reloc_entries_v = model_gen->Builder().CreateVectorOfStructs(
+                        cmd_reloc_entries->data(), cmd_reloc_entries->size());
+      llvm::outs() << "[io_reloc] TOTALLY " << cmd_reloc_entries->size() << " reloc entries\n";
     }
     bmodel::CmdGroupBuilder cgb(model_gen->Builder());
     cgb.add_bdc_num(bdc_num);
@@ -560,12 +587,53 @@ BMCodegen::CreateCmdGroupVector() {
     if (gdma_num != 0) {
       cgb.add_binary_gdma(&binary_gdma);
     }
+    if (cmd_reloc_entries) {
+      cgb.add_reloc_entries(reloc_entries_v);
+    }
     cmd_group_v->push_back(cgb.Finish());
   }
   if (cmd_group_v->size() == 0) {
     return 0;
   }
   return std::move(cmd_group_v);
+}
+
+// IO_RELOC: cmd-io-addr will be relocated to user-io-addr.
+std::shared_ptr<std::vector<bmodel::RelEntry>>
+BMCodegen::CreateGdmaRelEntryVector(u32 cmd_num, u8 *cmd_buffer) {
+  if (!module::isAddrMode(module::AddrMode::IO_RELOC))
+    return nullptr;
+  using RelEntryVec = std::vector<bmodel::RelEntry>;
+  auto reloc_entries_v = std::make_shared<RelEntryVec>();
+  auto get_gdma_cmd_len = []() -> u32 { return 96; }; // for 1684x, except sys-end cmd.
+  auto try_add_reloc_entry = [this](std::shared_ptr<RelEntryVec> reloc_entries_v,
+                                    u64 ori_addr, u64 cmd_offset) -> bool {
+    for (u32 id = 0; id < fullnet_io_addrs.size(); id++) {
+      if (ori_addr >= fullnet_io_addrs[id].first && ori_addr < fullnet_io_addrs[id].second) {
+        bmodel::RelEntry rel_entry(id, (u32)(ori_addr - fullnet_io_addrs[id].first), cmd_offset);
+        reloc_entries_v->push_back(rel_entry);
+        return true; // success.
+      }
+    }
+    return false;
+  };
+  // walk through each cmd (except sys-end cmd).
+  u32 cmd_cur = 0;
+  for (u32 cmd_idx = 0; cmd_idx < cmd_num -1; cmd_idx++) {
+    u32 cmd_bytes = get_gdma_cmd_len();
+    u32 *cmd = reinterpret_cast<u32 *>(cmd_buffer + cmd_cur);
+    u64 src_addr = (u64)(cmd[17] & 0xff) << 32 | ((u64)cmd[16]);
+    try_add_reloc_entry(reloc_entries_v, src_addr, cmd_cur + 64);
+    u64 dst_addr = (u64)(cmd[19] & 0xff) << 32 | ((u64)cmd[18]);
+    try_add_reloc_entry(reloc_entries_v, dst_addr, cmd_cur + 72);
+    u32 cmd_type = cmd[1] & 0xf;
+    if (cmd_type == 2 || cmd_type == 7 || cmd_type ==8) {
+      u64 index_addr = ((u64)(cmd[21] & 0xff) << 32 | ((u64)cmd[20]));
+      try_add_reloc_entry(reloc_entries_v, index_addr, cmd_cur + 80);
+    }
+    cmd_cur += cmd_bytes;
+  }
+  return reloc_entries_v;
 }
 
 std::shared_ptr<std::vector<bmodel::Binary>>
@@ -2117,6 +2185,45 @@ void BMCodegen::checkAndUpdateHidden(const std::vector<Value> &inputs,
     } else {
       special_in_names.push_back(name);
     }
+  }
+}
+
+/** FullNetIOAddr is used as base_addrs for relocation */
+void BMCodegen::updateFullnetIOAddress() {
+  fullnet_io_addrs.clear();
+  std::vector<Value> io_v;
+  {
+    std::vector<Value> cur_io_v;
+    auto modules = module::getAllModules();
+    assert(modules->size() == 1);
+    for (auto s : *modules) {
+      module::getInputsOutputs(s, cur_io_v, cur_io_v);
+    }
+    // double-check for correct order
+    for (auto name : *this->input_names) {
+      for (auto v : cur_io_v) {
+        if (module::getName(v) == name) {
+          io_v.push_back(v);
+          break;
+        }
+      }
+      llvm::errs() << "input not found: " << name.str() << "\n";
+    }
+    for (auto name : *this->output_names) {
+      for (auto v : cur_io_v) {
+        if (module::getName(v) == name) {
+          io_v.push_back(v);
+          break;
+        }
+      }
+      llvm::errs() << "output not found: " << name.str() << "\n";
+    }
+    assert(io_v.size() == input_names->size() + output_names->size());
+  }
+  for (auto var : io_v) {
+    uint64_t addr_begin = module::getAddress(var);
+    uint64_t addr_end = addr_begin + module::getBytes(var);
+    fullnet_io_addrs.push_back(std::make_pair(addr_begin, addr_end));
   }
 }
 
