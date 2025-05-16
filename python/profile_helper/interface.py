@@ -54,14 +54,17 @@ def bmprofile_parse_perfAI(
     core_num = 2
     style = 1
     if arch == "BM1690":
-        from bmprofile_perfAI_2260 import BMProfileParserPerfAI
+        from bmprofile_perfAI_2260 import BMProfileParserPerfAI as ParserIns
 
         core_num = 8
         style = 0
+    elif arch == "MARS3":
+        from bmprofile_perfAI import BMProfileParserPerfAI_MARS3 as ParserIns
+        core_num = 1
     else:
-        from bmprofile_perfAI import BMProfileParserPerfAI
+        from bmprofile_perfAI import BMProfileParserPerfAI as ParserIns
     try:
-        bmProfile = BMProfileParserPerfAI()
+        bmProfile = ParserIns()
         bmProfile.parse(input_dir)
         bmProfile.to_txt(output_dir)
         target_dir = output_dir

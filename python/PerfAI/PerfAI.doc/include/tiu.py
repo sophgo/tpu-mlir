@@ -88,7 +88,7 @@ class Tiu(object):
                             'Tiu Frequency(MHz)': ['1000'],
                             'DMA Frequency(MHz)': ['1000'],
                             'Dram Bandwidth': ['8533'],
-                            'TPU Lmem Size(MiB)': ['16777216']}
+                            'TPU Lmem Size(Bytes)': ['16777216']}
         self.kpi_desc = pd.DataFrame({'Field': [
             'uArch Rate',
             'Bank Conflict Ratio',
@@ -195,8 +195,8 @@ class Tiu(object):
                     'Vector OHOW Align(8bits)': [chip_arch_dict['Vector OHOW Align(8bits)']],
                     'TIU Frequency(MHz)': [chip_arch_dict['TIU Frequency(MHz)']],
                     'DMA Frequency(MHz)': [chip_arch_dict['DMA Frequency(MHz)']],
-                    'DDR Frequency(GHz)': [chip_arch_dict['DDR Frequency(GHz)']],
-                    'TPU Lmem Size(MiB)': [chip_arch_dict['TPU Lmem Size(MiB)']]}
+                    'DDR Frequency(MHz)': [chip_arch_dict['DDR Frequency(MHz)']],
+                    'TPU Lmem Size(Bytes)': [chip_arch_dict['TPU Lmem Size(Bytes)']]}
         self.height = len(self.reg_list)
         self.chip_arch_dict = chip_arch_dict
         return chip_arch_dict

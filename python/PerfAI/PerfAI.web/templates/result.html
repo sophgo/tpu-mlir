@@ -379,7 +379,7 @@
                 'Spec': ['Core Num', 'NPU Num', 'Execution Unit Number(int8)'],
                 'Chip Arch': ['Chip Arch'],
                 'Platform': ['Platform'],
-                'TPU Lmem Size': ['TPU Lmem Size(MiB)']
+                'TPU Lmem Size': ['TPU Lmem Size(Bytes)']
             };
 
             let keyValuePairs = [];
@@ -388,7 +388,7 @@
                     if (configs.hasOwnProperty(key)) {
                         let value = configs[key];
                         // Format specific keys
-                        if (key === 'TPU Lmem Size(MiB)') {
+                        if (key === 'TPU Lmem Size(Bytes)') {
                             value = Math.round(value * Math.pow(10, -6));
                         }
                         keyValuePairs.push({ key: key, value: value });

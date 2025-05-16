@@ -11,7 +11,6 @@
 from profile_helper.bmprofile_parser import BMProfileParser, parse_data_blocks, IterRecord, parse_monitor_bd, parse_monitor_gdma
 from profile_helper.bmprofile_common import BlockType, GlobalInfo, Arch
 from profile_helper.bmprofile_utils import re_key_value
-from profile_helper.bm1688_defs import get_tiu_info, get_dma_info
 import os
 import logging
 from typing import List
@@ -83,7 +82,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                         value in self.archlib.DMA_ARCH.items()))
                 for gidx, j in enumerate(gdma, start=1):
                     reg_info = gdma_cmd[j.inst_id]
-                    dma_info: dict = self.__get_gdma_info(j, reg_info)
+                    dma_info: dict = self._get_gdma_info(j, reg_info)
                     dma_info["Core Id"] = idx
                     dma_info["Global Idx"] = gidx
                     f.write("__TDMA_REG_INFO__\n")
@@ -96,7 +95,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                         value in self.archlib.TIU_ARCH.items()))
                 for gidx, j in enumerate(bd, start=1):
                     reg_info = bd_cmd[j.inst_id]
-                    tiu_info0, tiu_info1 = self.__get_tiu_info(j, reg_info)
+                    tiu_info0, tiu_info1 = self._get_tiu_info(j, reg_info)
                     tiu_info0["Core Id"] = idx
                     tiu_info1["Global Idx"] = gidx
                     f.write("__TIU_REG_INFO__\n")
@@ -265,11 +264,26 @@ class BMProfileParserPerfAI(BMProfileParser):
             command_list = command_parser.parse(raw_data)
         return command_list
 
-    def __get_gdma_info(self, monitor_info, reg_info):
-        return get_dma_info(monitor_info, reg_info)
+    def _get_gdma_info(self, monitor_info, reg_info):
+        from profile_helper.bm1688_defs import get_dma_info as get_dma_info_bm1688
+        return get_dma_info_bm1688(monitor_info, reg_info)
 
-    def __get_tiu_info(self, monitor_info, reg_info):
-        return get_tiu_info(monitor_info, reg_info)
+    def _get_tiu_info(self, monitor_info, reg_info):
+        from profile_helper.bm1688_defs import get_tiu_info as get_tiu_info_bm1688
+        return get_tiu_info_bm1688(monitor_info, reg_info)
+
+
+class BMProfileParserPerfAI_MARS3(BMProfileParserPerfAI):
+    def __init__(self):
+        super().__init__()
+
+    def _get_gdma_info(self, monitor_info, reg_info):
+        from profile_helper.mars3_defs import get_dma_info as get_dma_info_mars3
+        return get_dma_info_mars3(monitor_info, reg_info)
+
+    def _get_tiu_info(self, monitor_info, reg_info):
+        from profile_helper.mars3_defs import get_tiu_info as get_tiu_info_mars3
+        return get_tiu_info_mars3(monitor_info, reg_info)
 
 
 if __name__ == "__main__":

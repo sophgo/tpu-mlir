@@ -73,7 +73,7 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
         categories.append("TPU_GROUP_LAYER")
         time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type', "global_idx", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count","is_local"]
         filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
-    lmem_size = int(chipArchArgs['TPU Lmem Size(MiB)'])
+    lmem_size = int(chipArchArgs['TPU Lmem Size(Bytes)'])
     lane_num = int(chipArchArgs['NPU Num'])
     lane_size  = lmem_size // lane_num
     lmem_partition = generate_partition(lmem_size,lane_num,'BANK')

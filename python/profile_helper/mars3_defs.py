@@ -14,9 +14,10 @@ from enum import Enum
 from debugger.target_common import get_target_context
 from debugger.target_common import DType
 
-GDMA_FREQ = 750
-BD_FREQ = 900
-arch_name = "BM1688"
+GDMA_FREQ = 650
+BD_FREQ = 750
+# TODO: mars3 has more than three kinds of work freqs, need auto parse form pmu header
+arch_name = "MARS3"
 
 class EngineType(Enum):
     BD = 0
@@ -30,73 +31,54 @@ class MEMTYPE(Enum):
 
 class DATATYPE(Enum):
     INT8 = 0
-    FP16 = 1
     FP32 = 2
     INT16 = 3
     INT32 = 4
     BFP16 = 5
-    INT4 = 6
-
-    def prec(self):
-        if self.value == 0:
-            return 1
-        if self.value == 1 or self.value == 3 or self.value == 5:
-            return 2
-        if self.value == 2 or self.value == 4:
-            return 4
-        if self.value == 6:
-            return 0.5
-
 
 class BDProfileFormat(dictStructure):
     _pack_ = 1
     _fields_ = [
+        ("inst_id", ct.c_uint32, 20),
+        ("reserved", ct.c_uint32, 12),
+        ("thread_id", ct.c_uint32, 1),
+        ("bank_conflict", ct.c_uint32, 31),
         ("inst_start_time", ct.c_uint32),
         ("inst_end_time", ct.c_uint32),
-        ("inst_id", ct.c_uint64, 16),
-        ("computation_load", ct.c_uint64, 48),
-        ("num_read", ct.c_uint32),
-        ("num_read_stall", ct.c_uint32),
-        ("num_write", ct.c_uint32),
-        ("reserved", ct.c_uint32),
     ]
 
 
 class GDMAProfileFormat(dictStructure):
     _pack_ = 1
     _fields_ = [
-        ("inst_start_time", ct.c_uint32), ("inst_end_time", ct.c_uint32), ("inst_id",
-                                                                           ct.c_uint32, 20), ("reserved", ct.c_uint32, 12), ("d0_aw_bytes", ct.c_uint32),
-        ("d0_wr_bytes", ct.c_uint32), ("d0_ar_bytes",
-                                       ct.c_uint32), ("d1_aw_bytes", ct.c_uint32), ("d1_wr_bytes", ct.c_uint32),
-        ("d1_ar_bytes", ct.c_uint32), ("fmem_aw_bytes",
-                                       ct.c_uint32), ("fmem_wr_bytes", ct.c_uint32), ("fmem_ar_bytes", ct.c_uint32),
-        ("l2sram_aw_bytes", ct.c_uint32), ("l2sram_wr_bytes",
-                                           ct.c_uint32), ("l2sram_ar_bytes", ct.c_uint32), ("reserved1", ct.c_uint32),
-        ("d0_wr_valid_bytes", ct.c_uint32), ("d0_rd_valid_bytes", ct.c_uint32), (
-            "d1_wr_valid_bytes", ct.c_uint32), ("d1_rd_valid_bytes", ct.c_uint32),
-        ("fmem_wr_valid_bytes", ct.c_uint32), ("fmem_rd_valid_bytes", ct.c_uint32), (
-            "l2sram_wr_valid_bytes", ct.c_uint32), ("l2sram_rd_valid_bytes", ct.c_uint32),
-        # ("no_need40", ct.c_uint64), ("no_need48", ct.c_uint64),
-        # ("no_need50", ct.c_uint64), ("no_need58", ct.c_uint64),
-        ("no_need60", ct.c_uint64), ("no_need68", ct.c_uint64),
-        ("gif_fmem_wr_stall_bytes", ct.c_uint32), ("gif_fmem_rd_stall_bytes", ct.c_uint32), (
-            "gif_l2sram_wr_stall_bytes", ct.c_uint32), ("gif_12sram_rd_stall_bytes", ct.c_uint32),
-        # ("no_need70", ct.c_uint64), ("no_need78", ct.c_uint64),
-        ("no_need80", ct.c_uint64), ("no_need88", ct.c_uint64),
-        ("no_need90", ct.c_uint64), ("no_need98", ct.c_uint64),
-        ("no_needA0", ct.c_uint64), ("no_needA8", ct.c_uint64),
-        ("no_needB0", ct.c_uint64), ("no_needB8", ct.c_uint64),
-        ("no_needC0", ct.c_uint64), ("no_needC8", ct.c_uint64),
-        ("no_needD0", ct.c_uint64), ("no_needD8", ct.c_uint64),
-        ("no_needE0", ct.c_uint64), ("no_needE8", ct.c_uint64),
-        ("no_needF0", ct.c_uint64), ("no_needF8", ct.c_uint64),
+        # H0
+        ("inst_start_time", ct.c_uint32),
+        ("inst_end_time", ct.c_uint32),
+        ("inst_id", ct.c_uint32),
+        ("thread_id", ct.c_uint32, 1),
+        ("ar_latency_cnt", ct.c_uint32, 19),
+        ("rip_valid_latency", ct.c_uint32, 12),
+        # H1
+        ("gif_wr_rd_stall_cntr", ct.c_uint32),
+        ("axi_d0_w_cntr", ct.c_uint32),
+        ("axi_d0_ar_cntr", ct.c_uint32),
+        ("axi_d0_aw_cntr", ct.c_uint32),
+        # H2
+        ("axi_d0_wr_stall_cntr", ct.c_uint32),
+        ("axi_d0_rd_stall_cntr", ct.c_uint32),
+        ("gif_mem_w_cntr", ct.c_uint32),
+        ("gif_mem_ar_cntr", ct.c_uint32),
+        # H3
+        ("axi_d0_wr_vaild_cntr", ct.c_uint32),
+        ("axi_d0_rd_vaild_cntr", ct.c_uint32),
+        ("gif_wr_valid_cntr", ct.c_uint32),
+        ("gif_rd_valid_cntr", ct.c_uint32),
     ]
 
 
 class GDMACommandParser():
     def __init__(self) -> None:
-        self.ctx = get_target_context("BM1688")
+        self.ctx = get_target_context("MARS3")
 
     def parse(self, raw_data):
         tmp = bytearray(raw_data)
@@ -105,7 +87,7 @@ class GDMACommandParser():
 
 class BDCommandParser():
     def __init__(self) -> None:
-        self.ctx = get_target_context("BM1688")
+        self.ctx = get_target_context("MARS3")
 
     def parse(self, raw_data):
         tmp = bytearray(raw_data)
@@ -113,26 +95,26 @@ class BDCommandParser():
 
 
 DMA_ARCH = {
-    "Chip Arch": "A2",
+    "Chip Arch": "MARS3",
     "Platform": "ASIC",
-    "Core Num": 2,
-    "NPU Num": 32,
-    "TPU Lmem Size(Bytes)": 4194304,
-    "Tpu Lmem Addr Width(bits)": 17,
-    "Tpu Bank Addr Width(bits)": 13,
-    "Execution Unit Number(int8)": 16,
-    "Bus Max Burst": 16,
+    "Core Num": 1,
+    "NPU Num": 8,
+    "TPU Lmem Size(Bytes)": 64 * 1024 * 8,
+    "Tpu Lmem Addr Width(bits)": 16,
+    "Tpu Bank Addr Width(bits)": 12,
+    "Execution Unit Number(int8)": 8,
+    "Bus Max Burst": 32,
     "L2 Max Burst": 0,
     "Bus Bandwidth": 64,
-    "DDR Frequency(MHz)": 4266,
-    "DDR Max BW(GB/s/Core)": 32,
+    "DDR Frequency(MHz)": 2133,
+    "DDR Max BW(GB/s/Core)": 4,
     "L2 Max BW(GB/s)": 0,
-    "Cube IC Align(8bits)": 32,
+    "Cube IC Align(8bits)": 16,
     "Cube OHOW Align(8bits)": 4,
-    "Cube OHOW Align(16bits)": 4,
-    "Vector OHOW Align(8bits)": 16,
-    "TIU Frequency(MHz)": 900,
-    "DMA Frequency(MHz)": 750}
+    "Cube OHOW Align(16bits)": 2,
+    "Vector OHOW Align(8bits)": 8,
+    "TIU Frequency(MHz)": BD_FREQ,
+    "DMA Frequency(MHz)": GDMA_FREQ}
 
 TIU_ARCH = DMA_ARCH
 
@@ -145,9 +127,9 @@ def get_dma_info(monitor_info, reg_info):
     # step1 : get registor information from command
     field_trans = {
         "dst_start_addr_h32": "dst_start_addr_l32",
-        "dst_start_addr_l8": "dst_start_addr_h8",
+        "dst_start_addr_l8": "dst_start_addr_h13",
         "src_start_addr_h32": "src_start_addr_l32",
-        "src_start_addr_l8": "src_start_addr_h8"
+        "src_start_addr_l8": "src_start_addr_h13"
     }
     for key, value in dict(reg_info).items():
         trans_key = field_trans.get(key, key)
@@ -155,19 +137,19 @@ def get_dma_info(monitor_info, reg_info):
     dma_info["mask_start_addr_h8"] = dma_info.get("mask_start_addr_h8", 0)
     dma_info["mask_start_addr_l32"] = dma_info.get("mask_start_addr_l32", 0)
     if is_sys:
-        dma_info["dst_start_addr"] = 0
-        dma_info["src_start_addr"] = 0
-        dma_info["src_start_addr_h8"] = 0
-        dma_info["dst_start_addr_h8"] = 0
+        dma_info["dst_start_addr_l32"] = 0
+        dma_info["src_start_addr_l32"] = 0
+        dma_info["src_start_addr_h13"] = 0
+        dma_info["dst_start_addr_h13"] = 0
     else:
         dma_info["dst_start_addr"] = (
-            int(dma_info["dst_start_addr_h8"]) << 32) + int(dma_info["dst_start_addr_l32"])
+            int(dma_info["dst_start_addr_h13"]) << 32) + int(dma_info["dst_start_addr_l32"])
         dma_info["src_start_addr"] = (
-            int(dma_info["src_start_addr_h8"]) << 32) + int(dma_info["src_start_addr_l32"])
+            int(dma_info["src_start_addr_h13"]) << 32) + int(dma_info["src_start_addr_l32"])
 
     # step2: get custom information
-    src_type = MEMTYPE(dma_info['src_start_addr_h8'] >> 7).name
-    dst_type = MEMTYPE(dma_info['dst_start_addr_h8'] >> 7).name
+    src_type = MEMTYPE(dma_info['src_start_addr_l32'] >> 31).name
+    dst_type = MEMTYPE(dma_info['dst_start_addr_l32'] >> 31).name
     data_type = DATATYPE(reg_info.src_data_format)
 
     dma_info["Engine Id"] = 1
@@ -182,27 +164,21 @@ def get_dma_info(monitor_info, reg_info):
     dma_info["Data Type"] = data_type.name
     dma_info["Asic Cycle"] = monitor_info.inst_end_time - \
         monitor_info.inst_start_time + 1
-    dma_info["Stall Cycle"] = monitor_info.gif_fmem_wr_stall_bytes + \
-        monitor_info.gif_fmem_rd_stall_bytes
-
-    dma_info["gmem_xfer_bytes(B)"] = monitor_info.d0_aw_bytes + \
-        monitor_info.d1_aw_bytes + monitor_info.d0_ar_bytes + monitor_info.d1_ar_bytes
+    dma_info["Stall Cycle"] = monitor_info.gif_wr_rd_stall_cntr
+    dma_info["gmem_xfer_bytes(B)"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
     dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
-                                       dma_info["Asic Cycle"] * 0.75, 4)
+                                       dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
     # dma_info["gmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
     #                                         (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * getattr(reg_info,"dst_hsize", 0) * getattr(reg_info,"src_wsize", 0)) * data_type.prec()
     # dma_info["lmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
     #                                         (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * getattr(reg_info,"dst_hsize", 0) * getattr(reg_info,"src_wsize", 0)) * data_type.prec()
     dma_info["gmem_dma_data_size(B)"] = dma_info["gmem_xfer_bytes(B)"]
-    dma_info["gmem_xact_cnt"] = (monitor_info.d0_ar_bytes + monitor_info.d0_aw_bytes +
-                                 monitor_info.d1_ar_bytes + monitor_info.d1_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
-    dma_info["lmem_xfer_bytes"] = monitor_info.fmem_aw_bytes + \
-        monitor_info.fmem_ar_bytes
+    dma_info["gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
+    dma_info["lmem_xfer_bytes"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
     dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] /
-                                       dma_info["Asic Cycle"] * 0.75, 4)
+                                       dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
     dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
-    dma_info["lmem_xact_cnt"] = (
-        monitor_info.fmem_ar_bytes + monitor_info.fmem_aw_bytes) // DMA_ARCH["Vector OHOW Align(8bits)"]
+    dma_info["lmem_xact_cnt"] = monitor_info.gif_wr_valid_cntr + monitor_info.gif_rd_valid_cntr
     dma_info["DMA data size(B)"] = max(
         dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
     dma_info["DDR Bandwidth(GB/s)"] = max(

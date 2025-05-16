@@ -17,7 +17,7 @@ from profile_helper.interface import *
 def profileArgParser():
     parser = arg.ArgumentParser()
     # yapf: disable
-    parser.add_argument("--arch", type=str.upper, required=True, choices=["BM1684", "BM1684X", "BM1688", "CV186X", "BM1690"], help="chip arch")
+    parser.add_argument("--arch", type=str.upper, required=True, choices=["BM1684", "BM1684X", "BM1688", "CV186X", "BM1690", "MARS3"], help="chip arch")
     parser.add_argument("--mode", type=str, choices=["time", "command", "check", "sim", "lg"],
                         help="time: parse profile data to visualize. "
                         "sim: parse net_stat.sim in profile to visualize. "
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     parser = profileArgParser()
     args, unknown = parser.parse_known_args(sys.argv[1:] + ['profile_out'])
     if args.mode == "time":
-        if args.arch in ["BM1688", "CV186X", "BM1690"]:
+        if args.arch in ["BM1688", "CV186X", "BM1690", "MARS3"]:
             bmprofile_parse_perfAI(args.input_dir, args.output_dir, args.test, arch=args.arch, debug=args.debug, doc=not args.disable_doc)
         else:
             bmprofile_analyze(args.input_dir, args.output_dir, args.format, args.option)
