@@ -2329,10 +2329,22 @@ class OnnxConverter(BaseConverter):
         inp2 = onnx_node.inputs[1]
         inp1_op = self.getOp(inp1)
         inp2_op = self.getOp(inp2)
-        new_op = top.ModOp(self.unranked_type,
+        mod_op = top.ModOp(self.unranked_type,
                            [inp1_op, inp2_op],
                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                            ip=self.mlir.insert_point).output
+
+        notequal_op = top.CompareOp(self.unranked_type,
+                                         mod_op,
+                                         inp2_op,
+                                         mode = StringAttr.get("NotEqual"),
+                                         loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type) + '_NotEqual'),
+                                         ip=self.mlir.insert_point).output
+
+        new_op = top.MulOp(self.unranked_type,[notequal_op, mod_op],
+                           loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type) + '_Mul'),
+                           ip=self.mlir.insert_point).output
+
         self.addOperand(onnx_node.name, new_op)
 
     def convert_abs_op(self, onnx_node):
