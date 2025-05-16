@@ -44,6 +44,7 @@ class MAIN_ENTRY(object):
         self.results = []
         self.time_cost = []
         self.max_workers = os.cpu_count()
+        print(f"### max_workers: {self.max_workers}")
         self.log_dir = os.path.join(REGRESSION_PATH, "regression_op_log")
         os.makedirs(self.log_dir, exist_ok=True)
         self.task_file = os.path.join(self.log_dir, f"regression_{self.test_type}_tast.txt")
@@ -80,7 +81,7 @@ class MAIN_ENTRY(object):
         if self.is_basic:
             halt_now = f"--halt now,fail=1"
         parallel_cmd = [
-            "parallel", f"-j {self.max_workers}", halt_now, "--progress",
+            "parallel", f"-j {self.max_workers}", halt_now, "--verbose",
             f"--joblog {self.task_log}", f"< {self.task_file}"
         ]
         self.run_command(['bash', '-c', ' '.join(parallel_cmd)])

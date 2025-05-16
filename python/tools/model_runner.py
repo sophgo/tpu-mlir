@@ -23,6 +23,7 @@ from transform.OnnxOpt import *
 
 TPUC_ROOT = os.getenv("TPUC_ROOT")
 
+
 def show_fake_cmd(in_npz: str, model: str, out_npz: str, dump_all_tensors=False, use_cuda=False):
     dump_all = "--dump_all_tensors" if dump_all_tensors else ""
     cuda = "--cuda" if use_cuda else ""
@@ -52,7 +53,7 @@ def pack_bmodel_context_generator(model_file, net):
 
 class ChipLock:
 
-    def __init__(self, chip: str, lock_file: str, retry_delay: float = 0.1):
+    def __init__(self, chip: str, lock_file: str, retry_delay: float = 0.5):
         self.chip = chip
         self.lock_file = lock_file
         self.retry_delay = retry_delay
@@ -73,7 +74,7 @@ class ChipLock:
                 except Exception as e:
                     print("Warning: lock file format error, {}".format(e))
                     cur_chip, cnt = None, 0
-            if cur_chip is None or cur_chip == self.chip:
+            if (cur_chip is None or cur_chip == self.chip) and cnt < 8:
                 cnt += 1
                 self._f.seek(0)
                 self._f.truncate()
