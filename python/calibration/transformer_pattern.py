@@ -118,6 +118,17 @@ sub_blocks = {
     "yolo_block_12":['top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul', 'top.Concat']
 
 }
+openclip_blocks = {
+    'openclip_vision_block': ['top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Permute',
+                              'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Softmax',
+                              'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
+                              'top.MulConst', 'top.Sigmoid', 'top.Mul', 'top.MatMul', 'top.Add'],
+    'openclip_text_block': ['top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Permute',
+                            'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape',
+                            'top.Add', 'top.Add', 'top.Reshape', 'top.Softmax', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul',
+                            'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MulConst', 'top.Sigmoid', 'top.Mul', 'top.MatMul', 'top.Add'],
+    'l2_norm_block': ['top.Abs', 'top.Mul', 'top.Reduce', 'top.Sqrt', 'top.Div'],
+}
 yolo_post_blocks = {
     "yolov5":['top.MulConst', 'top.Add', 'top.MulConst', 'top.MulConst', 'top.Mul', 'top.Mul', 'top.Concat', 'top.Reshape'],
     "yolov7":['top.MulConst', 'top.Add', 'top.Mul', 'top.Mul', 'top.Concat', 'top.Reshape'],
@@ -202,6 +213,21 @@ class MatchPattern:
                 model_block_name = name
                 self.logger.print_info(f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
                 break
+        else:
+            openclip_block_counts = {
+                name: type_tensors_str.count(''.join(map(str, sub_block)))
+                for name, sub_block in openclip_blocks.items()
+            }
+            if all(count for count in openclip_block_counts.values()) and openclip_block_counts['l2_norm_block'] == 2:
+                flag = 1
+                model_block_name = 'openclip_block'
+                for name, sub_block in openclip_blocks.items():
+                    count = openclip_block_counts[name]
+                    self.logger.print_info(f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
+                last_matmul_index = num_tensors - type_tensors_str[type_tensors_str.rfind('top.MatMul'):].count('top')
+                first_text_block_index = type_tensors_str[:type_tensors_str.index(''.join(openclip_blocks['openclip_text_block']))].count('top')
+                first_text_mlp_start_index = first_text_block_index + 27 # 27 is the index of the fisrt mlp matmul in openclip text block
+                first_text_mlp_end_index = first_text_block_index + 31 # 31 is the index of the second mlp matmul in openclip text block
         if flag == 1:
             if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
                 from collections import Counter
@@ -320,6 +346,34 @@ class MatchPattern:
                             fp_layer_list.append(all_tensors[i])
                     else:
                         fp_layer_list.append(all_tensors[i])
+                if model_block_name == 'openclip_block':
+                    if i >= last_matmul_index or (first_text_mlp_start_index <= i <= first_text_mlp_end_index):
+                        fp_layer_list.append(all_tensors[i])
+                    elif op_type in ['top.Abs', 'top.Reduce', 'top.Sqrt', 'top.Softmax', 'top.Gather',
+                                     'top.Slice', 'top.Squeeze', 'top.Arg', 'top.Concat']:
+                        fp_layer_list.append(all_tensors[i])
+                    elif op_type == 'top.Div':
+                        # Div op name will be changed by adding '_inv' suffix when deploying.
+                        fp_layer_list.append(f'{all_tensors[i]}_inv')
+                    elif op_type == 'top.Mul':
+                        next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
+                        if len(next_op) == 1 and next_op_type == 'top.Reduce':
+                            fp_layer_list.append(all_tensors[i])
+                    elif op_type == 'top.Permute':
+                        pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
+                        pre_op_type = self.parser.get_op_type_by_op_name(pre_op[0])
+                        if len(pre_op) == 1 and pre_op_type == 'top.Div':
+                            fp_layer_list.append(all_tensors[i])
+                    elif op_type == 'top.Add':
+                        next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
+                        pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
+                        pre_op_types = [self.parser.get_op_type_by_op_name(pre_op) for pre_op in pre_ops]
+                        if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
+                           all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
+                            fp_layer_list.append(all_tensors[i])
+
             self.gen_qtable(fp_layer_list, flag)
         if flag == 0 and self.args.part_quantize:
             for j in range(num_tensors):
