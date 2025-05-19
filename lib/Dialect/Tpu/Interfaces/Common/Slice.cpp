@@ -263,9 +263,11 @@ LogicalResult tpu::SliceOp::BackwardN(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
+  std::vector<int64_t> in_shape = module::getShape(getInput());
   auto &p = getSliceParam(*this);
   in_idx = out_idx * steps->at(0);
   in_slice = out_slice * steps->at(0) + offset->at(0);
+  in_slice += offset->at(0) > 0 ? 0 : in_shape[0];
   bool is_last = (out_idx + out_slice == p.os_4[0]);
   LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[0], is_last);
   return success();
@@ -275,9 +277,11 @@ LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
+  std::vector<int64_t> in_shape = module::getShape(getInput());
   auto &p = getSliceParam(*this);
   in_idx = out_idx * steps->at(2);
   in_slice = out_slice * steps->at(2) + offset->at(2);
+  in_slice += offset->at(2) > 0 ? 0 : in_shape[2];
   bool is_last = (out_idx + out_slice == p.os_4[2]);
   LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[2], is_last);
   return success();
@@ -287,9 +291,11 @@ LogicalResult tpu::SliceOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
+  std::vector<int64_t> in_shape = module::getShape(getInput());
   auto &p = getSliceParam(*this);
   in_idx = out_idx * steps->at(3);
   in_slice = out_slice * steps->at(3) + offset->at(3);
+  in_slice += offset->at(3) > 0 ? 0 : in_shape[3];
   bool is_last = (out_idx + out_slice == p.os_4[3]);
   LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[3], is_last);
   return success();
