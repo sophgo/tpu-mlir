@@ -532,6 +532,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - compress_mode
      - N
      - Specify the compression mode of the model: "none", "weight", "activation", "all". Supported on BM1688. Default is "none", no compression
+   * - opt_post_processor
+     - N
+     - Specify whether to further optimize the results of LayerGroup. Supported on MARS3. Default is "none", no opt
    * - lgcache
      - N
      - Specifies whether to cache the partitioning results of LayerGroup: "true", "false". The default is "true", which saves the partitioning results of each subnet to the working directory as "cut_result_{subnet_name}.mlircache".
