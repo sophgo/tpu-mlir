@@ -57,15 +57,20 @@ class ChipLock:
         self.chip = chip
         self.lock_file = lock_file
         self.retry_delay = retry_delay
-        self._entered = False
+        open(self.lock_file, "a").close()
 
     def __enter__(self):
-        self._f = open(self.lock_file, "a+")
+        self._fd = os.open(self.lock_file, os.O_RDWR)
+        self._f = os.fdopen(self._fd, "r+")
         while True:
-            fcntl.flock(self._f, fcntl.LOCK_EX)
+            try:
+                fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                time.sleep(self.retry_delay)
+                continue
             self._f.seek(0)
             data = self._f.read().strip()
-            if not data:
+            if data == "":
                 cur_chip, cnt = None, 0
             else:
                 try:
@@ -74,37 +79,34 @@ class ChipLock:
                 except Exception as e:
                     print("Warning: lock file format error, {}".format(e))
                     cur_chip, cnt = None, 0
-            if (cur_chip is None or cur_chip == self.chip) and cnt < 8:
+            if cur_chip in (None, self.chip):
                 cnt += 1
                 self._f.seek(0)
                 self._f.truncate()
-                self._f.write("{}:{}".format(self.chip, cnt))
+                self._f.write(f"{self.chip}:{cnt}")
                 self._f.flush()
-                fcntl.flock(self._f, fcntl.LOCK_UN)
-                self._entered = True
+                fcntl.flock(self._fd, fcntl.LOCK_UN)
                 return self
-            fcntl.flock(self._f, fcntl.LOCK_UN)
+            fcntl.flock(self._fd, fcntl.LOCK_UN)
             time.sleep(self.retry_delay)
 
     def __exit__(self, exc_type, exc, tb):
-        if not self._entered:
-            return False
-        with open(self.lock_file, "r+") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
-            data = f.read().strip()
-            if data:
-                cur_chip, cnt = data.split(":", 1)
-                cnt = int(cnt)
-            else:
-                cur_chip, cnt = None, 0
-            f.seek(0)
-            f.truncate()
-            if cur_chip == self.chip and cnt > 1:
-                cnt -= 1
-                f.write("{}:{}".format(self.chip, cnt))
-            f.flush()
-            fcntl.flock(f, fcntl.LOCK_UN)
-        self._f.close()
+        fcntl.flock(self._fd, fcntl.LOCK_EX)
+        self._f.seek(0)
+        data = self._f.read().strip()
+        if data != "":
+            cur_chip, cnt = data.split(":", 1)
+            cnt = int(cnt)
+        else:
+            cur_chip, cnt = None, 0
+        self._f.seek(0)
+        self._f.truncate()
+        if cur_chip == self.chip and cnt > 1:
+            cnt -= 1
+            self._f.write("{}:{}".format(self.chip, cnt))
+        self._f.flush()
+        fcntl.flock(self._fd, fcntl.LOCK_UN)
+        os.close(self._fd)
         return False
 
 

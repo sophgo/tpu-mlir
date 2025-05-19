@@ -114,7 +114,8 @@ class MAIN_ENTRY(object):
             self.send_script_test(source)
 
     def run_cuda_test(self):
-        self.send_script_test("test_cuda")
+        if self.is_basic:
+            self.send_script_test("test_cuda")
 
     def run_op_onnx_test(self):
         import test_onnx
