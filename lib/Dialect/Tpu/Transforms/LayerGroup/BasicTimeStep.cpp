@@ -179,6 +179,7 @@ struct lmem_buffer_debug_t {
   int end_ts;
   size_t size;
   std::string name;
+  std::string type;
 
   bool operator<(const lmem_buffer_debug_t& other) const {
       if (start_ts != other.start_ts)
@@ -202,11 +203,21 @@ void BasicTimeStep::debug_lmem_buffer() {
   for (auto &iter : lmem_buffer_) {
     key = iter.first;
     value = iter.second;
+    if (module::isBM1684Family() && module::isWeight(key.value) &&
+        llvm::any_of(key.value.getUsers(),
+                     [](Operation *op) { return isa<tpu::LutOp>(op); })) {
+      // 1684 LutOp use l2mem
+      llvm::dbgs() << LOG_STEP("skip weight in l2mem for bm1684")
+                   << LOG_KV("name", module::getName(key.value))
+                   << "\n";
+      continue;
+    }
     bool first_step = true;
     lmem_buffer_elt.start_ts = value.start_ts;
     lmem_buffer_elt.end_ts = value.end_ts;
     lmem_buffer_elt.size = value.size;
     lmem_buffer_elt.name = module::getName(key.value).str();
+    lmem_buffer_elt.type = key.lmem_type_str();
     lmem_buffer_vec.push_back(lmem_buffer_elt);
     for (int64_t ts = value.start_ts;
       ts != ((value.end_ts + 1) % timestep_num) || first_step;
@@ -237,7 +248,9 @@ void BasicTimeStep::debug_lmem_buffer() {
     llvm::dbgs() << "=== lmem_buffer_vec = " << cnt++
                  << "(start_ts, end_ts): " << "(" << iter.start_ts << ", " << iter.end_ts << ")"
                  << ", size: " << iter.size
-                 << ", name: " << iter.name << "\n";
+                 << ", name: " << iter.name
+                 << ", type: " << iter.type
+                 << "\n";
   }
   llvm::dbgs() << "====================================\n";
 }

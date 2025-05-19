@@ -980,53 +980,71 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
   });
   time_step->update_all_mem_buffer_size(lg_info);
 
-  // check whether to allow tensors hold in local memory
-  GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("allow_hold_in_lmem_judgment", "stamp",
-                    "if the size of tensors hold in local memory is larger than local memory, "
-                    "then not allow any tensors to hold in local memory")
-                    << "\n";
-  });
-  auto allow_hold_in_lmem = true;
-  const MemBuff &lmem_buffer = time_step->get_lmem_buffer();
-  int64_t lmem_size_hold_in_lmem = 0;
-  for (auto iter = lmem_buffer.begin(); iter != lmem_buffer.end(); ++iter) {
-    if (iter->first.type != LMEM_OPERATION && time_step->is_tensor_hold_in_lmem(iter->first.value)) {
-      lmem_size_hold_in_lmem += iter->second.size;
-    }
-  }
+  bool one_loop =
+      (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
+       shape_secs.csecs == 1 && shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
 
-  allow_hold_in_lmem = lmem_size_hold_in_lmem < Arch::LMEM_BYTES;
-  if (!allow_hold_in_lmem) {
-    int64_t n, c, d, h, w;
-    for (size_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
-      auto& cur_ts_tensors = time_step->getTensors(ts);
-      for (auto& tensor : cur_ts_tensors) {
-        tensor_info_t& ti = tensor.second;
-        if (ti.mode == TIMESTEP_LOAD) {
-          auto in = tensor.first;
-          if (time_step->is_tensor_hold_in_lmem(in)) {
-            time_step->cancel_tensor_hold_in_lmem(in);
-            module::getNCDHW(in, n, c, d, h, w, lg_info.type);
-            ti.slice_info.n.clear();
-            ti.slice_info.c.clear();
-            ti.slice_info.d.clear();
-            ti.slice_info.h.clear();
-            ti.slice_info.w.clear();
-            for (int i = 0; i < shape_secs.nsecs; ++i) {
-              ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
+  // check whether to allow tensors hold in local memory
+  bool allow_hold_in_lmem = !one_loop;
+  if (allow_hold_in_lmem) {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("allow_hold_in_lmem_judgment", "stamp",
+                      "if the size of tensors hold in local memory is larger than local memory, "
+                      "then not allow any tensors to hold in local memory")
+                      << "\n";
+    });
+    const MemBuff &lmem_buffer = time_step->get_lmem_buffer();
+    int64_t lmem_size_hold_in_lmem = 0;
+    for (auto iter = lmem_buffer.begin(); iter != lmem_buffer.end(); ++iter) {
+      if (iter->first.type != LMEM_OPERATION && time_step->is_tensor_hold_in_lmem(iter->first.value)) {
+        lmem_size_hold_in_lmem += iter->second.size;
+      }
+    }
+
+    allow_hold_in_lmem = lmem_size_hold_in_lmem < Arch::LMEM_BYTES;
+    if (!allow_hold_in_lmem) {
+      int64_t n, c, d, h, w;
+      for (size_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
+        auto& cur_ts_tensors = time_step->getTensors(ts);
+        for (auto& tensor : cur_ts_tensors) {
+          tensor_info_t& ti = tensor.second;
+          if (ti.mode == TIMESTEP_LOAD) {
+            auto in = tensor.first;
+            if (module::isBM1684Family() && module::isWeight(tensor.first) &&
+                llvm::any_of(tensor.first.getUsers(),
+                            [](Operation *op) { return isa<tpu::LutOp>(op); })) {
+              // 1684 LutOp use l2mem for weight
+              continue;
             }
-            for (int i = 0; i < shape_secs.csecs; ++i) {
-              ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
-            }
-            for (int i = 0; i < shape_secs.dsecs; ++i) {
-              ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
-            }
-            for (int i = 0; i < shape_secs.hsecs; ++i) {
-              ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
-            }
-            for (int i = 0; i < shape_secs.wsecs; ++i) {
-              ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
+            if (time_step->is_tensor_hold_in_lmem(in)) {
+              GROUP_DEBUG_WITH_TYPE("lmem_buffer", lg_info, [&]() {
+                llvm::dbgs() << DEBUGGER_DEFAULT_INFO("lmem_buffer", "stamp",
+                                "cancel tensor hold in local memory")
+                             << LOG_KV("name", module::getName(in))
+                             << "\n";
+              });
+              time_step->cancel_tensor_hold_in_lmem(in);
+              module::getNCDHW(in, n, c, d, h, w, lg_info.type);
+              ti.slice_info.n.clear();
+              ti.slice_info.c.clear();
+              ti.slice_info.d.clear();
+              ti.slice_info.h.clear();
+              ti.slice_info.w.clear();
+              for (int i = 0; i < shape_secs.nsecs; ++i) {
+                ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
+              }
+              for (int i = 0; i < shape_secs.csecs; ++i) {
+                ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
+              }
+              for (int i = 0; i < shape_secs.dsecs; ++i) {
+                ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
+              }
+              for (int i = 0; i < shape_secs.hsecs; ++i) {
+                ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
+              }
+              for (int i = 0; i < shape_secs.wsecs; ++i) {
+                ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
+              }
             }
           }
         }
@@ -1034,11 +1052,7 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
     }
   }
 
-
   // init membuf_list
-  bool one_loop =
-      (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
-       shape_secs.csecs == 1 && shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
   std::list<MemBufSortStd> membuf_list;
   init_membuf_list(membuf_list, time_step, one_loop, allow_hold_in_lmem);
 
