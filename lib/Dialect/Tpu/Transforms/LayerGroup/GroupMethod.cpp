@@ -845,6 +845,18 @@ void GroupMethod::dynamic_programming_kernel(
     return group_cost;
   };
 
+  auto calc_group_cost_with_cache = [&](LgInfo &lg_info) {
+
+    int64_t group_cost = MAX_COST;
+    auto hash_key = LgCostCache::getInstance().get_graph_hash(lg_info);
+    bool cache_hit = LgCostCache::getInstance().get_cost_from_cache(hash_key, group_cost);
+    if (!cache_hit) {
+      group_cost = calc_group_cost(lg_info);
+      LgCostCache::getInstance().add_cache(hash_key, group_cost);
+    }
+    return group_cost;
+  };
+
   for (size_t len = 2; len <= cluster_num; ++len) {
     if (lg_debugger.get_type() == DEBUGGER_DO_NOTHING) {
       bar.update();
@@ -857,7 +869,9 @@ void GroupMethod::dynamic_programming_kernel(
       int64_t start_idx = clusters[start].first;
       int64_t end_idx = clusters[end].first + clusters[end].second - 1;
       get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx, idx_offset);
-      int64_t cost = calc_group_cost(lg_info);
+      int64_t cost =  LgCostCache::getInstance().cache_enabled
+                      ? calc_group_cost_with_cache(lg_info)
+                      : calc_group_cost(lg_info);
       int64_t optimal_cut_point = end;
       // sweep_for_min_cost(&cost, &optimal_cut_point, start, end,
       //                    cost_table);
@@ -997,6 +1011,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
     llvm::outs() << llvm::format("total num of base_group is %d\n",
                                  base_groups.size());
   });
+  LgCostCache::getInstance().init(base_groups); // To disable cache, just comment this line.
   int64_t idx_offset = 0;
   for (size_t i = 0; i < base_groups.size(); idx_offset += base_groups[i].size(), ++i) {
     LG_DEBUG_WITH_TYPE("lg_step", [&]() {

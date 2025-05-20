@@ -397,6 +397,33 @@ LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   return success();
 }
 
+void tpu::MatMulOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+  for (auto attr : getOperation()->getAttrs()) {
+    auto attr_name = attr.getName().str();
+    if (attr_name == "ginfo" || attr_name == "rshifts" || attr_name == "multipliers") {
+      continue;
+    }
+    os << attr_name << "=";
+    attr.getValue().print(os);
+    os << "; ";
+  }
+
+  auto rshift_v = module::getI64Array(getRshifts());
+  auto multiplier_v = module::getI64Array(getMultipliers());
+  assert(rshift_v && multiplier_v);
+  if (rshift_v->size() == 1 && rshift_v->at(0) == 0 ) {
+    // do-nothing.
+  } else {
+    os << "rshifts_len=" << rshift_v->size() << "; ";   // to distinguish per-channel/per-tensor
+  }
+
+  if (multiplier_v->size() == 1 && multiplier_v->at(0) == 1) {
+    // do-nothing.
+  } else {
+    os << "multipliers_len=" << multiplier_v->size() << "; ";
+  }
+}
+
 void tpu::MatMulOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     auto matmul = (MatMul *)p.handle;

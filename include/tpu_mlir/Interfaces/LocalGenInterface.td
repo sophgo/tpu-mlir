@@ -29,6 +29,24 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       >,
       InterfaceMethod<
         /*desc=*/[{}],
+        /*retType=*/"void",
+        /*methodName=*/"DumpQuantAgnosticAttrs",
+        /*args=*/(ins "llvm::raw_string_ostream&":$os),
+        [{}],
+        [{
+          for (auto attr : $_op->getAttrs()) {
+            auto attr_name = attr.getName().str();
+            if (attr_name == "ginfo") {
+              continue;
+            }
+            os << attr_name << "=";
+            attr.getValue().print(os);
+            os << "; ";
+          }
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
         /*retType=*/"::mlir::LogicalResult",
         /*methodName=*/"AllowDataSplit",
         /*args=*/(ins "int64_t":$axis, "group_type_t":$group_type),

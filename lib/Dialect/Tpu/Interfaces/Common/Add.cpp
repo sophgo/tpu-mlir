@@ -294,6 +294,35 @@ LogicalResult tpu::AddOp::LocalGenSupport() {
   return BroadCastBinaryLocalGenSupport(getOperation());
 }
 
+void tpu::AddOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+  for (auto attr : getOperation()->getAttrs()) {
+    auto attr_name = attr.getName().str();
+    if (attr_name == "ginfo" || attr_name == "rshifts" || attr_name == "multipliers") {
+      continue;
+    }
+    os << attr_name << "=";
+    attr.getValue().print(os);
+    os << "; ";
+  }
+
+  if (getRshifts().has_value()) {
+    auto rshift_v = module::getI64Array(getRshifts().value());
+    if (std::all_of(rshift_v->begin(), rshift_v->end(), [](int64_t x) { return x == 0; })) {
+      // do-nothing.P
+    } else {
+      os << "rshifts_len=" << rshift_v->size() << "; ";
+    }
+  }
+  if (getMultipliers().has_value()) {
+    auto multiplier_v = module::getI64Array(getMultipliers().value());
+    if (std::all_of(multiplier_v->begin(), multiplier_v->end(), [](int64_t x) { return x == 1; })) {
+      // do-nothing.
+    } else {
+      os << "multipliers_len=" << multiplier_v->size() << "; ";
+    }
+  }
+}
+
 void tpu::AddOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
                                  int64_t d_step, int64_t w_step,
                                  group_type_t group_type,
