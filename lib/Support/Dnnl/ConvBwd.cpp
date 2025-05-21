@@ -15,16 +15,18 @@ void ConvBwd::setup(float *src_data, float *weights_data, float *dst_data,
                     float *grad_input, float *grad_weight, float *grad_bias,
                     int batch_size, int in_channels, int out_channels,
                     int height, int width, int kernel_h, int kernel_w,
-                    int out_h, int out_w, int stride_h, int stride_w, int pad_h,
-                    int pad_w, bool compute_grad_input,
-                    bool compute_grad_weight, bool compute_grad_bias) {
+                    int out_h, int out_w, int stride_h, int stride_w,
+                    int pad_h_t, int pad_w_l, int pad_h_b, int pad_w_r,
+                    bool compute_grad_input, bool compute_grad_weight,
+                    bool compute_grad_bias, int dilation_h, int dilation_w) {
   // Set up shapes and parameters
   src_shape = {batch_size, in_channels, height, width};
   weights_shape = {out_channels, in_channels, kernel_h, kernel_w};
   dst_shape = {batch_size, out_channels, out_h, out_w};
   strides = {stride_h, stride_w};
-  padding_l = {pad_h, pad_w};
-  padding_r = {pad_h, pad_w}; // Assuming symmetric padding
+  padding_l = {pad_h_t, pad_w_l};
+  padding_r = {pad_h_b, pad_w_r};
+  dilation = {dilation_h - 1, dilation_w - 1};
 
   // Create memory descriptors
   auto src_md =
@@ -36,18 +38,18 @@ void ConvBwd::setup(float *src_data, float *weights_data, float *dst_data,
 
   // Create forward convolution primitive descriptor
   conv_fwd_pd = convolution_forward::primitive_desc(
-      eng, prop_kind::forward_training, algorithm::convolution_direct, src_md,
-      weights_md, dst_md, strides, padding_l, padding_r);
+      eng, prop_kind::forward_training, algorithm::convolution_auto, src_md,
+      weights_md, dst_md, strides, dilation, padding_l, padding_r);
 
   // Create backward data convolution primitive descriptor
   conv_bwd_data_pd = convolution_backward_data::primitive_desc(
       eng, algorithm::convolution_direct, src_md, weights_md, dst_md, strides,
-      padding_l, padding_r, conv_fwd_pd);
+      dilation, padding_l, padding_r, conv_fwd_pd);
 
   // Create backward weights convolution primitive descriptor
   conv_bwd_weights_pd = convolution_backward_weights::primitive_desc(
       eng, algorithm::convolution_direct, src_md, weights_md, dst_md, strides,
-      padding_l, padding_r, conv_fwd_pd);
+      dilation, padding_l, padding_r, conv_fwd_pd);
 
   // Create memory objects
   src_mem = memory(src_md, eng, src_data);

@@ -851,7 +851,7 @@ class fx2mlir(object):
         if dtype[0] is None:
             dtype.pop(0)
         bias_op = self.mlir.none_op
-        if config.chip == "bm1690":
+        if config.chip == "bm1690" or config.chip == "bm1688":
             grad_out_shape = list(node.args[0].meta['val'].size())
             input_shape = list(node.args[1].meta['val'].size())
             kernel_shape = list(node.args[2].meta['val'].size())
