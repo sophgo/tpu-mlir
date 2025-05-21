@@ -36,6 +36,7 @@ class LlmType:
     QWEN2 = "qwen2"
     LLAMA = "llama"
     QWEN3 = "qwen3"
+    CHATGLM3 = "chatglm"
     GEMMA3 = "gemma3_text"
     MINICPM4 = "minicpm"
 
@@ -67,6 +68,8 @@ class LlmList:
     K_NORM = "K_NORM"  # qwen3
     V_PROJ = "V_PROJ"
     O_PROJ = "O_PROJ"
+    QKV_WB = "QKV_WB"  # chatglm
+    ATT_D = "ATT_D"  # chatglm
     POST_ATTN_LN = "POST_ATTN_LN"
     # MLP
     PRE_MLP_LN = "PRE_MLP_LN"  # gemma3
@@ -107,6 +110,27 @@ COMMON_INFO = ModelInfo(
         # ================================
         LlmList.NORM: "model.norm",
         LlmList.LMHEAD: "lm_head",
+    })
+
+# chatglm3
+CHATGLM3_INFO = ModelInfo(
+    ModelConfig(intermediate_size="ffn_hidden_size",
+                rms_norm_eps="layernorm_epsilon",
+                num_key_value_heads="multi_query_group_num",
+                num_hidden_layers="num_layers"),
+    weights={
+        LlmList.LAYERS: "transformer.encoder.layers",
+        LlmList.EMBEDING: "transformer.embedding.word_embeddings",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.QKV_WB: "self_attention.query_key_value",
+        LlmList.ATT_D: "self_attention.dense",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.MLP_UP: "mlp.dense_h_to_4h",
+        LlmList.MLP_DOWN: "mlp.dense_4h_to_h",
+        # ================================
+        LlmList.NORM: "transformer.encoder.final_layernorm",
+        LlmList.LMHEAD: "transformer.output_layer",
     })
 
 # gemma3

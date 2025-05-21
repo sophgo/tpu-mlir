@@ -73,6 +73,9 @@ if __name__ == '__main__':
     if config.model_type in ["qwen3", "qwen2", "llama", "minicpm"]:
         from llm.LlmConverter import LlmConverter
         converter = LlmConverter(args, config)
+    elif config.model_type in ["chatglm"]:
+        from llm.Chatglm3Converter import Chatglm3Converter
+        converter = Chatglm3Converter(args, config)
     elif config.model_type in ['qwen2_vl']:
         from llm.Qwen2VLConverter import Qwen2VLConverter
         converter = Qwen2VLConverter(args, config)
