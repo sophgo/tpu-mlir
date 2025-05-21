@@ -63,6 +63,7 @@ class LlmConverter(BaseConverter):
         self.chip = args.chip
         self.num_device = args.num_device
         self.embedding_disk = args.embedding_disk
+        self.dynamic = args.dynamic
         self.debug = args.debug
         self.num_core = args.num_core
         self.config = config
@@ -81,21 +82,22 @@ class LlmConverter(BaseConverter):
         cpu_count = os.cpu_count()
         self.max_workers = max(cpu_count, 4)
         # get file path
-        self.out_dir = args.out_dir
+        self.out_dir = os.path.abspath(args.out_dir)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.model_name = os.path.basename(self.model_path).lower()
         if args.chip == "bm1684x":
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev"
         else:
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core"
-        self.out_bmodel = f"../{folder_name}_{timestamp}.bmodel"
+        self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
+        self.config_dir = os.path.join(self.out_dir, "config")
         self.is_qwen3 = self.model_type == "qwen3"
         self.commands = []
 
     def run(self):
-        os.makedirs(self.out_dir, exist_ok=True)
         os.makedirs(self.bmodel_dir, exist_ok=True)
+        self.gen_config()
         ori_path = os.getcwd()
         os.chdir(self.bmodel_dir)
         self.gen_all_mlir()
@@ -103,6 +105,16 @@ class LlmConverter(BaseConverter):
         self.compile_all()
         os.chdir(ori_path)
         print(f"Success: {self.model_path} has converted to {self.out_dir}")
+
+    def gen_config(self):
+        import shutil
+        # copy model json file to config dir
+        shutil.copytree(self.model_path,
+                        self.config_dir,
+                        ignore=shutil.ignore_patterns("*.safetensors",
+                                                      ".git*",
+                                                      "model.safetensors.index.json"),
+                        dirs_exist_ok=True)
 
     def gen_all_mlir(self):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
@@ -347,11 +359,11 @@ class LlmConverter(BaseConverter):
                                           ip=lmhead_mlir.insert_point).output
             if self.lmhead_with_topk:
                 topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
-                                    lmhead_op,
-                                    axis=1,
-                                    K=1,
-                                    loc=self.get_loc(["token_value", "token_id"], lmhead_mlir),
-                                    ip=lmhead_mlir.insert_point)
+                                     lmhead_op,
+                                     axis=1,
+                                     K=1,
+                                     loc=self.get_loc(["token_value", "token_id"], lmhead_mlir),
+                                     ip=lmhead_mlir.insert_point)
                 # topk_op.values, topk_op.indices
                 lmhead_mlir.create_return_op([topk_op.indices])
             else:
@@ -375,11 +387,11 @@ class LlmConverter(BaseConverter):
                                         weight_file=None)
         input_op = greedy_head_mlir.create_input_op(self.get_loc("m_logits", greedy_head_mlir), 0)
         topk_op = top.TopKOp(*greedy_head_mlir.get_tensor_type([[1, 1], [1, 1]]),
-                            input_op,
-                            axis=1,
-                            K=1,
-                            loc=self.get_loc(["token_value", "token_id"], greedy_head_mlir),
-                            ip=greedy_head_mlir.insert_point)
+                             input_op,
+                             axis=1,
+                             K=1,
+                             loc=self.get_loc(["token_value", "token_id"], greedy_head_mlir),
+                             ip=greedy_head_mlir.insert_point)
         greedy_head_mlir.create_return_op([topk_op.indices])
         mlir_txt = greedy_head_mlir.print_module()
         with open(f"greedy_head.mlir", "w") as f:
@@ -393,8 +405,7 @@ class LlmConverter(BaseConverter):
         np.savez("penalty_sample_top_weights.npz", **penalty_sample_weights)
 
         penalty_sample_head_mlir = MLIRImporter(
-            [[1, self.vocab_size], [1, self.seq_length],[1],[1],[1]],
-            [[1, top_k],[1, top_k]],
+            [[1, self.vocab_size], [1, self.seq_length], [1], [1], [1]], [[1, top_k], [1, top_k]],
             "penalty_sample_head",
             Platform.LLM,
             input_types=['F32', 'INT32', 'F32', 'F32', 'F32'],
@@ -412,51 +423,68 @@ class LlmConverter(BaseConverter):
         in2_op = penalty_sample_head_mlir.create_input_op(L("top_p"), 2)
         in3_op = penalty_sample_head_mlir.create_input_op(L("temperature"), 3)
         in4_op = penalty_sample_head_mlir.create_input_op(L("penalty"), 4)
-        gather_op = top.GatherElementsOp(
-            T([1, self.seq_length]), in0_op, in1_op, axis=1,
-            loc=L("GatherElements"), ip=ip).output
-        cmpconst_op = top.CompareConstOp(
-            T([1, self.seq_length]), gather_op,
-            mode=StringAttr.get("Less"), const_val=0., inversed=False,
-            loc=L("CompareConst"), ip=ip).output
-        mul_op = top.MulOp(
-            T([1, self.seq_length]), [gather_op, in4_op],
-            loc=L("Mul"), ip=ip).output
-        div0_op = top.DivOp(
-            T([1, self.seq_length]), [gather_op, in4_op],
-            loc=L("Div0"), ip=ip).output
-        where0_op = top.WhereOp(
-            T([1, self.seq_length]), cmpconst_op, mul_op, div0_op,
-            loc=L("Where0"), ip=ip).output
-        scatter_op = top.ScatterElementsOp(
-            T([1, self.vocab_size]), in0_op, in1_op, where0_op, axis=1,
-            loc=L("ScatterElements"), ip=ip).output
-        topk_op = top.TopKOp(
-            *T([[1, top_k], [1, top_k]]), scatter_op, axis=1, K=top_k,
-            loc=L(["token_value", "token_idx"]), ip=ip)
-        div1_op = top.DivOp(
-            T([1, top_k]), [topk_op.values, in3_op],
-            loc=L("Div1"), ip=ip).output
-        softmax0_op = top.SoftmaxOp(
-            T([1, top_k]), div1_op, axis=1,
-            loc=L("Softmax0"), ip=ip).output
+        gather_op = top.GatherElementsOp(T([1, self.seq_length]),
+                                         in0_op,
+                                         in1_op,
+                                         axis=1,
+                                         loc=L("GatherElements"),
+                                         ip=ip).output
+        cmpconst_op = top.CompareConstOp(T([1, self.seq_length]),
+                                         gather_op,
+                                         mode=StringAttr.get("Less"),
+                                         const_val=0.,
+                                         inversed=False,
+                                         loc=L("CompareConst"),
+                                         ip=ip).output
+        mul_op = top.MulOp(T([1, self.seq_length]), [gather_op, in4_op], loc=L("Mul"), ip=ip).output
+        div0_op = top.DivOp(T([1, self.seq_length]), [gather_op, in4_op], loc=L("Div0"),
+                            ip=ip).output
+        where0_op = top.WhereOp(T([1, self.seq_length]),
+                                cmpconst_op,
+                                mul_op,
+                                div0_op,
+                                loc=L("Where0"),
+                                ip=ip).output
+        scatter_op = top.ScatterElementsOp(T([1, self.vocab_size]),
+                                           in0_op,
+                                           in1_op,
+                                           where0_op,
+                                           axis=1,
+                                           loc=L("ScatterElements"),
+                                           ip=ip).output
+        topk_op = top.TopKOp(*T([[1, top_k], [1, top_k]]),
+                             scatter_op,
+                             axis=1,
+                             K=top_k,
+                             loc=L(["token_value", "token_idx"]),
+                             ip=ip)
+        div1_op = top.DivOp(T([1, top_k]), [topk_op.values, in3_op], loc=L("Div1"), ip=ip).output
+        softmax0_op = top.SoftmaxOp(T([1, top_k]), div1_op, axis=1, loc=L("Softmax0"), ip=ip).output
         weight0_op = penalty_sample_head_mlir.create_weight_op("Constant0", [1])
-        cumsum_op = top.CumSumOp(
-            T([1, top_k]), softmax0_op, weight0_op,
-            axis=1, loc=L("CumSum"), ip=ip).output
-        compare_op = top.CompareOp(
-            T([1, top_k]), cumsum_op, in2_op, mode=StringAttr.get("Less"),
-            loc=L("Compare"), ip=ip).output
+        cumsum_op = top.CumSumOp(T([1, top_k]),
+                                 softmax0_op,
+                                 weight0_op,
+                                 axis=1,
+                                 loc=L("CumSum"),
+                                 ip=ip).output
+        compare_op = top.CompareOp(T([1, top_k]),
+                                   cumsum_op,
+                                   in2_op,
+                                   mode=StringAttr.get("Less"),
+                                   loc=L("Compare"),
+                                   ip=ip).output
         weight1_op = penalty_sample_head_mlir.create_weight_op("Constant1", [1, top_k])
-        add_op = top.AddOp(
-            T([1, top_k]), [compare_op, weight1_op],
-            loc=L("Add"), ip=ip).output
-        where1_op = top.WhereOp(
-            T([1, top_k]), add_op, div1_op, penalty_sample_head_mlir.none_op,
-            y_is_const=True, y_const_val=-1000., loc=L("Where1"), ip=ip).output
-        softmax1_op = top.SoftmaxOp(
-            T([1, top_k]), where1_op, axis=1,
-            loc=L("Softmax1"), ip=ip).output
+        add_op = top.AddOp(T([1, top_k]), [compare_op, weight1_op], loc=L("Add"), ip=ip).output
+        where1_op = top.WhereOp(T([1, top_k]),
+                                add_op,
+                                div1_op,
+                                penalty_sample_head_mlir.none_op,
+                                y_is_const=True,
+                                y_const_val=-1000.,
+                                loc=L("Where1"),
+                                ip=ip).output
+        softmax1_op = top.SoftmaxOp(T([1, top_k]), where1_op, axis=1, loc=L("Softmax1"),
+                                    ip=ip).output
         penalty_sample_head_mlir.create_return_op([softmax1_op, topk_op.indices])
         mlir_txt = penalty_sample_head_mlir.print_module()
         with open(f"penalty_sample_head.mlir", "w") as f:
@@ -1056,6 +1084,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--high_precision')
         if self.symmetric:
             deploy_args.append('--q_symmetric')
+        if self.dynamic:
+            deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
         self.send_command(deploy_args, f"{name}.log")

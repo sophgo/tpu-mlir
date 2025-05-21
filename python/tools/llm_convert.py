@@ -60,6 +60,8 @@ if __name__ == '__main__':
                         help='Add penalty sample head and separate greedy head from lmhead')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
                         help="max pixels for vit, for example: 240,420 or 100800")
+    parser.add_argument('--dynamic', action='store_true',
+                        help='enable dynamic compiling for prefill, not recommended')
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',

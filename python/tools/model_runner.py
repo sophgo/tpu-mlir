@@ -205,8 +205,8 @@ def _model_inference(inputs: dict,
         with FileLock("/tmp/cmodel_so.lock"):
             link_cmodel_so(chip)
             link_custom_so(chip)
-        pyrtlib = importlib.import_module(pyruntime)
-        model = pyrtlib.Model(model_file, 0, decrypt_lib)
+            pyrtlib = importlib.import_module(pyruntime)
+            model = pyrtlib.Model(model_file, 0, decrypt_lib)
         net = model.Net(model.networks[0])
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
