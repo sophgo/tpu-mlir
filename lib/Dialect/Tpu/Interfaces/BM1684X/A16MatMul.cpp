@@ -42,12 +42,18 @@ int64_t tpu::A16MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(a16_matmul_spec_t);
   a16_matmul_spec_t spec;
+  memset(&spec, 0, sizeof(a16_matmul_spec_t));
   spec.has_bias = !module::isNone(getBias());
   spec.R_trans = getWTranspose();
   spec.sign = getSign();
   spec.weight_bits = getWeightBits();
   spec.has_zp = !module::isNone(getZp());
   spec.q_group_size = getQGroupSize();
+  if (supportMultiCore(*this)) {
+    spec.use_multi_core = 1;
+  } else {
+    spec.use_multi_core = 0;
+  }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 

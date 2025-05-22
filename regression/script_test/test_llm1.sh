@@ -133,19 +133,19 @@ model_deploy.py \
   --model llama2_block_cache_0_W8F16_bm1688_2core_static.bmodel
 
 # dynamic
-# model_deploy.py \
-#   --mlir llama2_block_cache_0.mlir \
-#   --quantize W4F16 \
-#   --q_group_size 64 \
-#   --chip bm1684x \
-#   --quant_input \
-#   --quant_output \
-#   --addr_mode io_alone \
-#   --dynamic \
-#   --test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
-#   --test_reference llama2_block_cache_0_top_outputs.npz \
-#   --tolerance 0.98,0.84 \
-#   --model llama2_block_cache_0_dynamic.bmodel
+model_deploy.py \
+  --mlir llama2_block_cache_0.mlir \
+  --quantize W4F16 \
+  --q_group_size 64 \
+  --chip bm1684x \
+  --quant_input \
+  --quant_output \
+  --addr_mode io_alone \
+  --dynamic \
+  --test_input ${NNMODELS_PATH}/llm_models/llama2_block_cache_0_input.npz \
+  --test_reference llama2_block_cache_0_top_outputs.npz \
+  --tolerance 0.98,0.84 \
+  --model llama2_block_cache_0_dynamic.bmodel
 
 # parallel
 # model_deploy.py \

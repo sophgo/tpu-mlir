@@ -83,6 +83,8 @@ model_deploy.py \
   --q_group_size 64 \
   --chip bm1684x \
   --dynamic \
+  --test_input ${NNMODELS_PATH}/llm_models/qwen_block_0_input.npz \
+  --test_reference qwen_block_0_top_outputs.npz \
   --model qwen_block_0_dynamic.bmodel
 
 # parallel
@@ -151,6 +153,8 @@ model_deploy.py \
   --quantize W8BF16 \
   --chip bm1684x \
   --dynamic \
+  --test_input ${NNMODELS_PATH}/llm_models/qwen_block_cache_0_input.npz \
+  --test_reference qwen_block_cache_0_top_outputs.npz \
   --model qwen_block_cache_0_dynamic.bmodel
 
 # parallel
