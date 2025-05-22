@@ -4,13 +4,20 @@ files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(lib|include
 RED='\033[0;31m'
 NC='\033[0m'
 
+if ! command -v clang-format &> /dev/null
+then
+  echo -e "${RED}ERROR${NC}: No clang-format found, please install it with the following command.\n"
+  echo -e "\t sudo apt-get install -y clang-format\n"
+  exit 1
+fi
+
 if [ -n "$files" ]; then
     echo "Running clang-format on staged files..."
     clang-format -i $files
     if ! git diff --quiet; then
-        echo "${RED}Warning${NC}: Some files were formatted. Please review the changes."
-        git add $files
-        exit 0
+        echo -e "${RED}Warning${NC}: Some files were formatted. Please review the changes and then commit it again."
+        # git add $files
+        exit 1
     fi
 fi
 echo "Success: clang-format check ok"

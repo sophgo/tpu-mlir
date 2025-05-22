@@ -1,9 +1,17 @@
 #!/bin/bash
 # ./build.sh [DEBUG|RELEASE] [CUDA|CPU]
 set -e
+RED='\033[0;31m'
+NC='\033[0m'
 
 if [[ -z "$INSTALL_PATH" ]]; then
-  echo "Please source envsetup.sh firstly."
+  echo "${RED}ERROR${NC}: Please source envsetup.sh firstly."
+  exit 1
+fi
+
+if [[ -z "$ENVSETUP_LAST_UPDATED " || "$ENVSETUP_LAST_UPDATED" != "2025-05-22" ]];
+then
+  echo -e "${RED}ERROR${NC}: envsetup.sh has updated. Please source envsetup.sh again."
   exit 1
 fi
 
