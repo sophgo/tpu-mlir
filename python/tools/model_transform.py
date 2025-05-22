@@ -60,7 +60,7 @@ class ModelTransformer(object):
         file_mark(mlir_origin)
         return mlir_origin
 
-    def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}):
+    def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}, pruning: str=""):
         self.set_mlir_file(mlir_file)
         mlir_origin = self.mlir_file.replace('.mlir', '_origin.mlir', 1)
         if self.converter:
@@ -69,7 +69,7 @@ class ModelTransformer(object):
         else:
             mlir_origin = self.model_def # skip frontend conversion if model_def is origin.mlir
 
-        patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False)
+        patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False, pruning=pruning)
         if patterns_count:
             for k, v in patterns_count.items():
                 assert k in patterns and v == patterns[k], \
@@ -405,6 +405,8 @@ if __name__ == '__main__':
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--add_postprocess", default="", type=str.lower,
                         choices=['','yolov3','yolov5','yolov7','yolov8','yolov8_seg','yolov11','yolov11_seg','ssd','bnr', 'mmap2rgbmap'], help="add postprocess for model")
+    parser.add_argument("--pruning", default="", type=str,
+                        help="path of the pruning config file")
     parser.add_argument("--onnx_sim", default="", type=str, choices=['', 'skip_fuse_bn'],
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--do_onnx_sim", default=True, type=bool, help="whether do onnx sim for onnx")
@@ -446,13 +448,15 @@ if __name__ == '__main__':
         import json
         args.op_custom_shape = json.loads(args.op_custom_shape)
         print("op_custom_shape:", args.op_custom_shape)
+    if args.pruning:
+        assert os.path.exists(args.pruning), f"pruning path {args.pruning} not exist!"
 
     qat_tool = FakeQuantNodelProcessor(args.model_def, args.model_name)
     if qat_tool.fakequant_model:
         qat_tool.process_model()
         args.model_def = args.model_def.replace('.onnx', '_qat.onnx')
     tool = get_model_transform(args)
-    tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count)
+    tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count, args.pruning)
     if (not args.not_inference) and args.test_input:
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)

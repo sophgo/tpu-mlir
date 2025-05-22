@@ -94,6 +94,16 @@ def ShapeInfer : Pass<"shape-infer", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
 }
 
+def Pruning : Pass<"pruning", "ModuleOp"> {
+  let summary = "do pruning for matmul op";
+  let constructor = "createPruningPass()";
+  let dependentDialects = ["TopDialect"];
+  let options = [
+      Option<"config", "config", "std::string", /*default=*/"",
+             "path of config_file.">
+  ];
+}
+
 def FusePreprocess : Pass<"fuse-preprocess", "ModuleOp"> {
   let summary = "Fuse preprocess in cvimodels";
   let constructor = "createFusePreprocessPass()";

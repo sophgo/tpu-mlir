@@ -27,6 +27,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createExtraOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createFusePreprocessPass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddPostprocessPass();
 std::unique_ptr<OperationPass<ModuleOp>> createShapeInferPass();
+std::unique_ptr<OperationPass<ModuleOp>> createPruningPass();
 
 void WeightFolder(Operation *op);
 #define GEN_PASS_REGISTRATION

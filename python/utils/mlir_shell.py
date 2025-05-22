@@ -427,8 +427,10 @@ def get_matched_patterns(log_file: str = ""):
     return {}
 
 
-def top_opt_options(add_postprocess: str = ""):
+def top_opt_options(add_postprocess: str = "", pruning: str = ""):
     options = ["--shape-infer"]
+    if len(pruning) > 0:
+        options = [f"--pruning=\"config={pruning}\"", "--shape-infer"]
     if len(add_postprocess) > 0:
         options.extend([f"--add-postprocess=\"type={add_postprocess}\""])
     options.extend(["--canonicalize", "--extra-optimize"])
@@ -437,9 +439,9 @@ def top_opt_options(add_postprocess: str = ""):
 def mlir_opt_for_top(mlirfile: str,
                      opt_mlirfile: str,
                      add_postprocess: str = "",
-                     count_patterns: bool = False, log_level:str="normal"):
+                     count_patterns: bool = False, log_level:str="normal", pruning: str = ""):
     cmd = ["tpuc-opt", mlirfile]
-    options = top_opt_options(add_postprocess)
+    options = top_opt_options(add_postprocess, pruning)
     cmd.extend(options)
     cmd.extend(["-o", opt_mlirfile])
     log_file = ""
