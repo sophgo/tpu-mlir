@@ -1818,6 +1818,9 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
       zeropoint = 0;
       auto th = std::max(std::abs(max), std::abs(min));
       scale = getScale(th, sign, bitwidth);
+      if (auto cop = dyn_cast<top::CompareOp>(v.getDefiningOp())) {
+        scale = 1.0;
+      }
     }
   } else if (isUniformQuantized(v)) {
     auto qtype = getUniformQuantizedType(v);
