@@ -18,12 +18,12 @@ extern "C" {
 // -------------------------------------------------------------------
 // Chip Definition for PPL
 // -------------------------------------------------------------------
-#define PPL_BM1684X  "bm1684x"
-#define PPL_BM1688   "bm1688"
-#define PPL_BM1690   "bm1690"
-#define PPL_SG2262   "sg2262"
-#define PPL_SG2380   "sg2380"
-#define PPL_MARS3    "mars3"
+#define PPL_BM1684X "bm1684x"
+#define PPL_BM1688 "bm1688"
+#define PPL_BM1690 "bm1690"
+#define PPL_SG2262 "sg2262"
+#define PPL_SG2380 "sg2380"
+#define PPL_MARS3 "mars3"
 #define PPL_BM1684XE "bm1684xe"
 
 // -------------------------------------------------------------------
@@ -834,15 +834,15 @@ typedef struct roi_align_spec {
 } roi_align_spec_t;
 
 typedef struct roi_extractor_spec {
-    int num_levels;
-    int pooled_height;
-    int pooled_width;
-    float spatial_scales[MAX_ROI_ALIGN_NUM_LEVELS];
-    int sampling_ratio;
-    int position_sensitive;
-    int align_corners;
-    int plat_sp;
-    int isStatic;
+  int num_levels;
+  int pooled_height;
+  int pooled_width;
+  float spatial_scales[MAX_ROI_ALIGN_NUM_LEVELS];
+  int sampling_ratio;
+  int position_sensitive;
+  int align_corners;
+  int plat_sp;
+  int isStatic;
 } roi_extractor_spec_t;
 
 typedef struct {
@@ -2296,26 +2296,26 @@ typedef struct maxpooling_indices_bwd {
 } maxpooling_indices_bwd_spec_t;
 
 typedef struct {
-  bool    is_perchannel;
-  bool    has_buffer;
-  float   scale_value;
-  int     offset_value;
-  int     round_mode;
+  bool is_perchannel;
+  bool has_buffer;
+  float scale_value;
+  int offset_value;
+  int round_mode;
   int32_t binary_type;
   int32_t if_relu;
   float relu_upper_limit;
 } cast_add_param_t;
 
 typedef struct dequant_common_spec {
-    float scale_value;
-    int   offset_value;
-    int   round_mode;
+  float scale_value;
+  int offset_value;
+  int round_mode;
 } dequant_common_spec_t;
 
-typedef struct layer_norm_cast_global_spec{
-    layer_norm_common_spec_t common_layer_norm;
-    dequant_common_spec_t    common_dequant;
-    int                      isCastAtEnd; //0 is Dequant+LN; 1 is LN+Requant
+typedef struct layer_norm_cast_global_spec {
+  layer_norm_common_spec_t common_layer_norm;
+  dequant_common_spec_t common_dequant;
+  int isCastAtEnd; // 0 is Dequant+LN; 1 is LN+Requant
 } layer_norm_cast_global_spec_t;
 
 typedef struct {
@@ -2329,7 +2329,7 @@ typedef struct {
 } lut_matmul_param_t;
 
 typedef struct softmax_cast_global_spec_t {
-    softmax_common_param_t   common_softmax;
-    dequant_common_spec_t    common_dequant;
+  softmax_common_param_t common_softmax;
+  dequant_common_spec_t common_dequant;
 } softmax_cast_global_spec_t;
 #endif

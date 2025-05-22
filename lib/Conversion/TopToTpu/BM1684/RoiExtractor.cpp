@@ -13,12 +13,13 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void RoiExtractorLowering::LoweringF32(PatternRewriter &rewriter,
-                                   top::RoiExtractorOp op) const {
+                                       top::RoiExtractorOp op) const {
   UNREACHABLE_OP("Not Implemented", op);
 }
 
 void RoiExtractorLowering::LoweringINT8(PatternRewriter &rewriter,
-                                    top::RoiExtractorOp op, bool asymmetric) const {
+                                        top::RoiExtractorOp op,
+                                        bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
 

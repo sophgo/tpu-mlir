@@ -38,11 +38,11 @@ void api_avgpool_global(void *param, size_t param_size, void *input_spec,
 
   auto call_kernel = [&]() {
     return avg_pool_2d_bf16(
-        out_spec->addr, in_spec->addr, in_spec->shape[0],
-        in_spec->shape[1], _param->kh, _param->kw, _param->stride_h,
-        _param->stride_w, _param->pad_h_t, _param->pad_h_b, _param->pad_w_l,
-        _param->pad_w_r, in_spec->shape[2], in_spec->shape[3],
-        out_spec->shape[2], out_spec->shape[3], block_c, block_oh);
+        out_spec->addr, in_spec->addr, in_spec->shape[0], in_spec->shape[1],
+        _param->kh, _param->kw, _param->stride_h, _param->stride_w,
+        _param->pad_h_t, _param->pad_h_b, _param->pad_w_l, _param->pad_w_r,
+        in_spec->shape[2], in_spec->shape[3], out_spec->shape[2],
+        out_spec->shape[3], block_c, block_oh);
   };
   auto split_func = [&](std::vector<std::tuple<int *, int, int>> &value) {
     for (int i = 0; i < value.size(); i++) {

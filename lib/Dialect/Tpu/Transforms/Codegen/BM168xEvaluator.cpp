@@ -268,27 +268,31 @@ BM168xEvaluator::getTensor(const std::string &name) {
     if (module::getStorageType(value).isInteger(8)) {
       if (qtype.isSigned()) {
         for (auto i = 0; i < count; i++) {
-          data_fp32->at(i) = ((int8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
-                            (float)qtype.getScale();
+          data_fp32->at(i) =
+              ((int8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+              (float)qtype.getScale();
         }
       } else {
         for (auto i = 0; i < count; i++) {
-          data_fp32->at(i) = ((uint8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
-                            (float)qtype.getScale();
+          data_fp32->at(i) =
+              ((uint8_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+              (float)qtype.getScale();
         }
       }
     } else if (module::getStorageType(value).isInteger(16)) {
-        if (qtype.isSigned()) {
-          for (auto i = 0; i < count; i++) {
-            data_fp32->at(i) = ((int16_t)mem->at(i) - (float)qtype.getZeroPoint()) *
-                              (float)qtype.getScale();
-          }
-        } else {
-          for (auto i = 0; i < count; i++) {
-            data_fp32->at(i) = ((uint16_t)mem->at(i) - (float)qtype.getZeroPoint()) *
-                              (float)qtype.getScale();
-          }
+      if (qtype.isSigned()) {
+        for (auto i = 0; i < count; i++) {
+          data_fp32->at(i) =
+              ((int16_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+              (float)qtype.getScale();
         }
+      } else {
+        for (auto i = 0; i < count; i++) {
+          data_fp32->at(i) =
+              ((uint16_t)mem->at(i) - (float)qtype.getZeroPoint()) *
+              (float)qtype.getScale();
+        }
+      }
     } else {
       assert(0);
     }

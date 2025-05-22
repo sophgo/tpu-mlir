@@ -9,7 +9,9 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-LogicalResult tpu::RoiExtractorOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::RoiExtractorOp::init(InferenceParameter &p) {
+  return success();
+}
 
 void tpu::RoiExtractorOp::deinit(InferenceParameter &p) {}
 
@@ -45,14 +47,14 @@ LogicalResult tpu::RoiExtractorOp::inference(InferenceParameter &p) {
   param.inputs.emplace_back(std::move(target_lvls));
   int offset = 2;
   for (int id_feature = 0; id_feature < param.num_levels; id_feature++) {
-      tensor_list_t feature;
-      feature.ptr = p.inputs[offset + id_feature];
-      feature.size = module::getNumElements(getInputs()[id_feature]);
-      feature.shape = module::getShape(getInputs()[id_feature]);
-      param.inputs.emplace_back(std::move(feature));
+    tensor_list_t feature;
+    feature.ptr = p.inputs[offset + id_feature];
+    feature.size = module::getNumElements(getInputs()[id_feature]);
+    feature.shape = module::getShape(getInputs()[id_feature]);
+    param.inputs.emplace_back(std::move(feature));
   }
 
-  //output
+  // output
   param.output.ptr = p.outputs[0];
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
@@ -63,7 +65,8 @@ LogicalResult tpu::RoiExtractorOp::inference(InferenceParameter &p) {
 
 bool tpu::RoiExtractorOp::support_multi_core() { return false; }
 
-mlir::Type tpu::RoiExtractorOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::RoiExtractorOp::type_verify(uint64_t opd_idx,
+                                            TypeCastMode &mode) {
   auto op = getOperation();
   if (opd_idx == 1) {
     // target_lvls must be int32

@@ -58,11 +58,10 @@ static block_t v2_configs[2][2][2][2] = {
      }}};
 
 using ATTENTION = std::function<int(
-    unsigned long long v1,
-    unsigned long long v2, unsigned long long v3, unsigned long long v4,
-    unsigned long long v5, int32_t v6, int32_t v7, int32_t v8, int32_t v9,
-    int32_t v10, int32_t v11, float v12, int32_t v13, int32_t v14, int32_t v15,
-    int32_t v16, int32_t v17, int32_t v18)>;
+    unsigned long long v1, unsigned long long v2, unsigned long long v3,
+    unsigned long long v4, unsigned long long v5, int32_t v6, int32_t v7,
+    int32_t v8, int32_t v9, int32_t v10, int32_t v11, float v12, int32_t v13,
+    int32_t v14, int32_t v15, int32_t v16, int32_t v17, int32_t v18)>;
 
 static ATTENTION get_attention_func(bool is_fp16, bool is_mha,
                                     bool high_precision) {
@@ -96,10 +95,11 @@ static int *get_block_split(bool is_fp16, bool is_mha, bool is_decode,
                : v1_configs[chip_idx][mha_idx][f16_idx][dc_idx].block;
 }
 
-int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k, gaddr_t ptr_v,
-                      gaddr_t ptr_mask, int b, int qm, int kvm, int d, int q_head,
-                      int kv_head, float sqrt_d, int has_mask, int core_num,
-                      int dtype, bool high_precision) {
+int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
+                      gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm, int kvm,
+                      int d, int q_head, int kv_head, float sqrt_d,
+                      int has_mask, int core_num, int dtype,
+                      bool high_precision) {
   int ret = 0;
   int dmax = align_up(d, 32 /*eu num*/);
   int block_m, block_k, block_h;
@@ -117,12 +117,9 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k, gaddr_t ptr
   while (block_m > 0 && block_k > 0) {
     printf("fattention block_m:%d, block_k:%d, block_h:%d\n", block_m, block_k,
            block_h);
-    ret = func(
-        ptr_dst, ptr_q, ptr_k, ptr_v,
-        ptr_mask, b,
-        qm, kvm, d,
-        q_head, kv_head, sqrt_d,
-        has_mask, core_num, dmax, block_m, block_k, block_h);
+    ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, d, q_head,
+               kv_head, sqrt_d, has_mask, core_num, dmax, block_m, block_k,
+               block_h);
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       printf("block is not suitable, have another try !!!\n");
@@ -147,4 +144,3 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k, gaddr_t ptr
 #ifdef __cplusplus
 }
 #endif
-

@@ -65,7 +65,8 @@ struct TopArgReducefull : public OpRewriterPatternEx<ArgOp> {
       op.getValues().setType(new_type);
       if (no_values) {
         std::vector<Location> locs_v = {op.getIndices().getLoc()};
-        std::string out_values_name = module::getName(reop.getOutput()).str() + "_r_values";
+        std::string out_values_name =
+            module::getName(reop.getOutput()).str() + "_r_values";
         auto values_loc = NameLoc::get(rewriter.getStringAttr(out_values_name));
         locs_v.push_back(values_loc);
         module::setLoc(op.getValues(), values_loc);

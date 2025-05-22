@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/ActiveUtils.h"
-#include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/GenericCpuFunc.h"
 
 namespace tpu_mlir {
 
@@ -170,17 +170,14 @@ activate_f getActivateFunc(tpu::FusedActiveCastOp op) {
   switch (op.getMode()) {
   case tpu::ActiveMode::ELU: {
     coeffs = module::getF64Array(op.getCoeffs(), 1, 0);
-  }
-  break;
+  } break;
   case tpu::ActiveMode::HSIGMOID: {
     coeffs = module::getF64Array(op.getCoeffs(), 2, 0);
-  }
-  break;
+  } break;
   case tpu::ActiveMode::SWISH: {
     coeffs = module::getF64Array(op.getCoeffs(), 1, 0);
-  }
-  break;
-  default: ;
+  } break;
+  default:;
   }
   return getActivateFunc(op.getMode(), coeffs);
 }

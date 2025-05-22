@@ -106,10 +106,8 @@ public:
   MemBlock global_find_avail_lmem_localtion(
       avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
       const mem_buffer_key_t &recent_buffer_allocated,
-      BasicTimeStepPtr &time_step, bool one_loop,
-      const LgInfo &lg_info,
-      bool allow_bank_conflict = false,
-      bool allow_hold_in_lmem = false);
+      BasicTimeStepPtr &time_step, bool one_loop, const LgInfo &lg_info,
+      bool allow_bank_conflict = false, bool allow_hold_in_lmem = false);
 
 protected:
   LgOptions options_;

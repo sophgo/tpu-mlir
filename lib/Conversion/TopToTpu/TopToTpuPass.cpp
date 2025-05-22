@@ -17,7 +17,8 @@
 
 namespace tpu_mlir {
 
-template <typename OpTy> static void BackwardOp(OpTy op) {
+template <typename OpTy>
+static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -36,7 +37,8 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy> static void ForwardOp(OpTy op) {
+template <typename OpTy>
+static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));

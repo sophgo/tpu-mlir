@@ -410,7 +410,8 @@ struct AlignInputsDim : public OpRewriterPatternEx<AddOp> {
         rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(new_shape)));
     auto reshape_op = rewriter.create<top::ReshapeOp>(
         NameLoc::get(rewriter.getStringAttr(
-            module::getName(add_need_reshape->getResult(0)).str() + "_r_reshape")),
+            module::getName(add_need_reshape->getResult(0)).str() +
+            "_r_reshape")),
         RankedTensorType::get(
             new_shape, module::getElementType(add_need_reshape->getResult(0))),
         add_need_reshape->getResult(0), attrs);

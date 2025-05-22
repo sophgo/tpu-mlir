@@ -11,11 +11,11 @@
 #include "progressbar.hpp"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/Debugger.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/IlpTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/Debugger.h"
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/WithColor.h>
 #include <random>
@@ -25,7 +25,7 @@
   module::getName(module::getModuleOp()).str() + "_" +                         \
       module::getChipStr().str() + "_" + module::getModeStr() +                \
       ".layer_group_cache.json"
-#define DEBUGGER_FILE_NAME                                                        \
+#define DEBUGGER_FILE_NAME                                                     \
   module::getName(module::getModuleOp()).str() + "_" +                         \
       module::getChipStr().str() + "_" + module::getModeStr() +                \
       ".layer_group_debugger.json"
@@ -223,8 +223,7 @@ void GroupMethod::set_layer_group_cache(LgInfo lg_info) {
 void GroupMethod::get_layer_group(LgInfo &lg_info,
                                   const std::vector<Operation *> &base_group,
                                   int64_t left, int64_t right,
-                                  int64_t base_group_idx,
-                                  int64_t idx_offset) {
+                                  int64_t base_group_idx, int64_t idx_offset) {
   auto key = pair_key(left, right);
   // if (lg_cache_.find(base_group_idx) != lg_cache_.end() &&
   //     lg_cache_[base_group_idx].find(key) != lg_cache_[base_group_idx].end())
@@ -245,10 +244,13 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
   // }
   lg_info.clear();
   LG_DEBUG_WITH_TYPE("lg_step", [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("set_lg_info", "stamp",
-                    "setting: group info(group_ops, group_ins, group_outs, group_op_outs, type) & "
-                    "cache info(base_group_idx, start_idx, end_idx, "
-                    "func_start_idx, func_end_idx, cache_key)") << "\n";
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "set_lg_info", "stamp",
+                        "setting: group info(group_ops, group_ins, group_outs, "
+                        "group_op_outs, type) & "
+                        "cache info(base_group_idx, start_idx, end_idx, "
+                        "func_start_idx, func_end_idx, cache_key)")
+                 << "\n";
   });
   for (int idx = left; idx <= right; ++idx) {
     lg_info.group_ops.push_back(base_group[idx]);
@@ -264,7 +266,8 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
 
   GROUP_DEBUG_WITH_TYPE("lg_info", lg_info, [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO("set_lg_info", "end",
-                    "show current `lg_info`") << "\n";
+                                          "show current `lg_info`")
+                 << "\n";
     lg_info.dump();
   });
 }
@@ -375,8 +378,8 @@ void GroupMethod::get_base_groups(
 
 void GroupMethod::get_debug_group(
     std::vector<Operation *> &debug_group,
-    const llvm::SetVector<Operation *> &subnet_ops,
-    int64_t start_idx, int64_t end_idx) {
+    const llvm::SetVector<Operation *> &subnet_ops, int64_t start_idx,
+    int64_t end_idx) {
   int idx = 0;
   for (auto op : subnet_ops) {
     if (idx > end_idx) {
@@ -390,8 +393,7 @@ void GroupMethod::get_debug_group(
 }
 
 void GroupMethod::get_debug_cluster(
-    std::vector<std::pair<int64_t, int64_t>> &clusters,
-    int64_t cluster_num) {
+    std::vector<std::pair<int64_t, int64_t>> &clusters, int64_t cluster_num) {
   for (auto i = 0; i < cluster_num; i++) {
     clusters.push_back(std::make_pair(i, 1)); // (start_idx=i, cluster_size=1)
   }
@@ -494,8 +496,10 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   PROFILE_LOG("is_layer_group_valid", true);
   bool status;
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("group_one_layer_proc", "call_function",
-                    "if group has only one layer, calculate the cost of the layer and return")
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "group_one_layer_proc", "call_function",
+                        "if group has only one layer, calculate the cost of "
+                        "the layer and return")
                  << "\n";
   });
   status = group_one_layer_proc(lg_info, calc_cost, group_cost);
@@ -506,16 +510,19 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.group_cost = *group_cost;
     set_layer_group_cache(lg_info);
     GROUP_DEBUG_WITH_TYPE("lg_result", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("group_one_layer_proc", "success",
-                      "group with only one layer is always valid")
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "group_one_layer_proc", "success",
+                          "group with only one layer is always valid")
                    << "\n";
     });
     return true;
   }
 
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("group_valid_pre_check", "call_function",
-                    "check group's validity through specific ops' info and group type")
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("group_valid_pre_check",
+                                          "call_function",
+                                          "check group's validity through "
+                                          "specific ops' info and group type")
                  << "\n";
   });
   if (!group_valid_pre_check(lg_info)) {
@@ -524,8 +531,9 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
     GROUP_DEBUG_WITH_TYPE("lg_result", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("group_valid_pre_check", "failed",
-                      "failed to match rules setting for group's `lg_info`")
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "group_valid_pre_check", "failed",
+                          "failed to match rules setting for group's `lg_info`")
                    << "\n";
     });
     return false;
@@ -534,10 +542,12 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   shape_secs_t shape_secs;
   std::vector<std::pair<Value, int64_t>> value_size;
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("init_group_data_secs", "call_function",
-                    "get group's `init shape_secs` which is a upper bound of "
-                    "all valid `shape_secs` according to chip and op features")
-                 << "\n";
+    llvm::dbgs()
+        << DEBUGGER_DEFAULT_INFO(
+               "init_group_data_secs", "call_function",
+               "get group's `init shape_secs` which is a upper bound of "
+               "all valid `shape_secs` according to chip and op features")
+        << "\n";
   });
   if (!init_group_data_secs(lg_info, shape_secs, value_size, options_)) {
     PROFILE_LOG("is_layer_group_valid", false);
@@ -545,28 +555,33 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
     GROUP_DEBUG_WITH_TYPE("lg_result", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("init_group_data_secs", "failed",
-                      "local memory isn't enough to store all tensors even if use "
-                      "`init shape_secs` which is a upper bound of all valid `shape_secs`")
-                   << "\n";
+      llvm::dbgs()
+          << DEBUGGER_DEFAULT_INFO(
+                 "init_group_data_secs", "failed",
+                 "local memory isn't enough to store all tensors even if use "
+                 "`init shape_secs` which is a upper bound of all valid "
+                 "`shape_secs`")
+          << "\n";
     });
     return false;
   }
   GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("init_group_data_secs_success", "stamp",
-                    "find a upper bound of all valid `shape_secs`")
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "init_group_data_secs_success", "stamp",
+                        "find a upper bound of all valid `shape_secs`")
                  << LOG_KV("nsecs", shape_secs.nsecs)
                  << LOG_KV("csecs", shape_secs.csecs)
                  << LOG_KV("dsecs", shape_secs.dsecs)
                  << LOG_KV("hsecs", shape_secs.hsecs)
-                 << LOG_KV("wsecs", shape_secs.wsecs)
-                 << "\n";
+                 << LOG_KV("wsecs", shape_secs.wsecs) << "\n";
   });
 
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("dynamic_group_valid_check", "call_function",
-                    "check whether the group with dynamic run mode is valid")
-                 << "\n";
+    llvm::dbgs()
+        << DEBUGGER_DEFAULT_INFO(
+               "dynamic_group_valid_check", "call_function",
+               "check whether the group with dynamic run mode is valid")
+        << "\n";
   });
   if (!dynamic_group_valid_check(lg_info)) {
     PROFILE_LOG("is_layer_group_valid", false);
@@ -574,19 +589,24 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
     GROUP_DEBUG_WITH_TYPE("lg_result", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("dynamic_group_valid_check", "failed",
-                      "failed to match the rules setting for dynamic subnet")
-                   << "\n";
+      llvm::dbgs()
+          << DEBUGGER_DEFAULT_INFO(
+                 "dynamic_group_valid_check", "failed",
+                 "failed to match the rules setting for dynamic subnet")
+          << "\n";
     });
     return false;
   }
 
   auto time_step = std::make_shared<BasicTimeStep>(options_);
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignTimeStep", "call_function",
-                    "backward `slice_info` of tensors starting from output tensors according to `init shape_secs`; "
-                    "assign and optimize timesteps for gdma and tpu operations")
-                 << "\n";
+    llvm::dbgs()
+        << DEBUGGER_DEFAULT_INFO(
+               "assignTimeStep", "call_function",
+               "backward `slice_info` of tensors starting from output tensors "
+               "according to `init shape_secs`; "
+               "assign and optimize timesteps for gdma and tpu operations")
+        << "\n";
   });
   status = time_step->assignTimeStep(lg_info, shape_secs, true);
   if (status == false) {
@@ -595,8 +615,10 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
     GROUP_DEBUG_WITH_TYPE("lg_result", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignTimeStep", "failed",
-                      "failed to backward `slice_info` of tensors according to `init shape_secs`")
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "assignTimeStep", "failed",
+                          "failed to backward `slice_info` of tensors "
+                          "according to `init shape_secs`")
                    << "\n";
     });
     return false;
@@ -604,17 +626,21 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
 
   auto lmem_allocator = std::make_shared<LmemAllocator>(options_);
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddrWithSecs", "call_function",
-                    "try to find a valid `shape_secs` which allows all tensors get available "
-                    "local memory address and try to make the group reach the best performance")
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "assignLmemAddrWithSecs", "call_function",
+                        "try to find a valid `shape_secs` which allows all "
+                        "tensors get available "
+                        "local memory address and try to make the group reach "
+                        "the best performance")
                  << "\n";
   });
-  status =
-      lmem_allocator->assignLmemAddrWithSecs(lg_info, time_step, shape_secs, false);
+  status = lmem_allocator->assignLmemAddrWithSecs(lg_info, time_step,
+                                                  shape_secs, false);
   // allow bank conflict
   // if (status == false) {
   //   status =
-  //     lmem_allocator->assignLmemAddrWithSecs(lg_info, time_step, shape_secs, true);
+  //     lmem_allocator->assignLmemAddrWithSecs(lg_info, time_step, shape_secs,
+  //     true);
   // }
   if (status == false) {
     PROFILE_LOG("is_layer_group_valid", false);
@@ -622,9 +648,11 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     lg_info.group_cost = MAX_COST;
     set_layer_group_cache(lg_info);
     GROUP_DEBUG_WITH_TYPE("lg_result", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("assignLmemAddrWithSecs", "failed",
-                      "failed to find a valid `shape_secs` which allows all tensors get available "
-                      "local memory address")
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "assignLmemAddrWithSecs", "failed",
+                          "failed to find a valid `shape_secs` which allows "
+                          "all tensors get available "
+                          "local memory address")
                    << "\n";
     });
     return false;
@@ -644,8 +672,9 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   lg_info.group_cost = group_cost ? *group_cost : -1;
   set_layer_group_cache(lg_info);
   GROUP_DEBUG_WITH_TYPE("lg_result", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("check_is_layer_group_valid", "success",
-                    "group with multiple layers is valid")
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("check_is_layer_group_valid",
+                                          "success",
+                                          "group with multiple layers is valid")
                  << "\n";
   });
   return status;
@@ -667,7 +696,8 @@ void GroupMethod::get_layer_cut_result(
 
 void GroupMethod::get_group_clusters(
     std::vector<std::pair<int64_t, int64_t>> &clusters,
-    const std::vector<Operation *> &base_group, int group_idx, int64_t idx_offset) {
+    const std::vector<Operation *> &base_group, int group_idx,
+    int64_t idx_offset) {
   LgInfo sub_group;
   size_t group_layer_num = base_group.size();
   const int64_t max_cluster_size = get_max_cluster_size(group_layer_num);
@@ -685,41 +715,43 @@ void GroupMethod::get_group_clusters(
         pre_cost =
             cycle_calculator_->getGlobalLayerCycle(base_group[start_idx]);
         LG_DEBUG_WITH_TYPE("group_clusters", [&]() {
-          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_pre_cost", "result",
-                          "calculate pre_cost when start_idx == end_idx - 1")
-                       << LOG_KV("base_group_idx", group_idx)
-                       << LOG_KV("cost_type", "Global")
-                       << LOG_KV("start_idx", start_idx)
-                       << LOG_KV("end_idx", start_idx)
-                       << LOG_KV("cost", pre_cost) << "\n";
+          llvm::dbgs()
+              << DEBUGGER_DEFAULT_INFO(
+                     "get_pre_cost", "result",
+                     "calculate pre_cost when start_idx == end_idx - 1")
+              << LOG_KV("base_group_idx", group_idx)
+              << LOG_KV("cost_type", "Global") << LOG_KV("start_idx", start_idx)
+              << LOG_KV("end_idx", start_idx) << LOG_KV("cost", pre_cost)
+              << "\n";
         });
       }
       int64_t post_cost =
           cycle_calculator_->getGlobalLayerCycle(base_group[end_idx]);
       LG_DEBUG_WITH_TYPE("group_clusters", [&]() {
         llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_post_cost", "result",
-                        "calculate post_cost")
+                                              "calculate post_cost")
                      << LOG_KV("base_group_idx", group_idx)
                      << LOG_KV("cost_type", "Global")
                      << LOG_KV("start_idx", end_idx)
-                     << LOG_KV("end_idx", end_idx)
-                     << LOG_KV("cost", post_cost) << "\n";
+                     << LOG_KV("end_idx", end_idx) << LOG_KV("cost", post_cost)
+                     << "\n";
       });
 
       pre_cost = cost_add(pre_cost, post_cost);
 
       int64_t temp_cost = 0;
-      get_layer_group(sub_group, base_group, start_idx, end_idx, group_idx, idx_offset);
+      get_layer_group(sub_group, base_group, start_idx, end_idx, group_idx,
+                      idx_offset);
       bool is_valid = is_layer_group_valid(sub_group, true, &temp_cost);
 
       LG_DEBUG_WITH_TYPE("group_clusters", [&]() {
         llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_group_cost", "result",
-                        "calculate group cost")
+                                              "calculate group cost")
                      << LOG_KV("base_group_idx", group_idx)
                      << LOG_KV("cost_type", "Group")
                      << LOG_KV("start_idx", start_idx)
-                     << LOG_KV("end_idx", end_idx)
-                     << LOG_KV("cost", temp_cost) << "\n";
+                     << LOG_KV("end_idx", end_idx) << LOG_KV("cost", temp_cost)
+                     << "\n";
       });
 
       if (is_valid) {
@@ -765,14 +797,14 @@ void GroupMethod::get_group_clusters(
 
   LG_DEBUG_WITH_TYPE("cluster_info", [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_group_clusters", "result",
-                    "get clusters info") << "\n";
+                                          "get clusters info")
+                 << "\n";
     for (size_t i = 0; i < clusters.size(); ++i) {
-      llvm::dbgs() << LOG_ACTION("cluster_info")
-                   << LOG_KV("cluster_idx", i)
+      llvm::dbgs() << LOG_ACTION("cluster_info") << LOG_KV("cluster_idx", i)
                    << LOG_KV("cluster_size", clusters[i].second)
                    << LOG_KV("start_idx", clusters[i].first)
                    << LOG_KV("end_idx",
-                              clusters[i].first + clusters[i].second - 1)
+                             clusters[i].first + clusters[i].second - 1)
                    << "\n";
     }
   });
@@ -792,13 +824,12 @@ void GroupMethod::sweep_for_min_cost(
 }
 
 void GroupMethod::dynamic_programming_kernel(
-    LgInfo &lg_info,
-    const std::vector<Operation *> &base_group,
+    LgInfo &lg_info, const std::vector<Operation *> &base_group,
     const std::vector<std::pair<int64_t, int64_t>> &clusters,
     std::vector<std::vector<int64_t>> &cost_table,
-    std::vector<std::vector<int64_t>> &cut_points,
-    int64_t base_group_idx, int64_t idx_offset) {
-  auto& lg_debugger = LgDebugger::getInstance();
+    std::vector<std::vector<int64_t>> &cut_points, int64_t base_group_idx,
+    int64_t idx_offset) {
+  auto &lg_debugger = LgDebugger::getInstance();
   auto cluster_num = clusters.size();
   // auto cost_table = std::vector<std::vector<int64_t>>(
   //     cluster_num, std::vector<int64_t>(cluster_num, 0));
@@ -807,18 +838,21 @@ void GroupMethod::dynamic_programming_kernel(
   for (size_t j = 0; j < cluster_num; ++j) {
     int64_t start_idx = clusters[j].first;
     int64_t end_idx = start_idx + clusters[j].second - 1;
-    get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx, idx_offset);
+    get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx,
+                    idx_offset);
 
     assert(is_layer_group_valid(lg_info, true, &cost_table[j][j]));
 
     GROUP_DEBUG_WITH_TYPE("lg_cost", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("cluster_cost", "record", "calculate cost_table[%d][%d]", j ,j)
-                    << LOG_KV("base_group_idx", base_group_idx)
-                    << LOG_KV("start_idx", lg_info.start_idx)
-                    << LOG_KV("end_idx", lg_info.end_idx)
-                    << LOG_KV("func_start_idx", lg_info.func_start_idx)
-                    << LOG_KV("func_end_idx", lg_info.func_end_idx)
-                    << LOG_KV("cost", cost_table[j][j]) << "\n";
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("cluster_cost", "record",
+                                            "calculate cost_table[%d][%d]", j,
+                                            j)
+                   << LOG_KV("base_group_idx", base_group_idx)
+                   << LOG_KV("start_idx", lg_info.start_idx)
+                   << LOG_KV("end_idx", lg_info.end_idx)
+                   << LOG_KV("func_start_idx", lg_info.func_start_idx)
+                   << LOG_KV("func_end_idx", lg_info.func_end_idx)
+                   << LOG_KV("cost", cost_table[j][j]) << "\n";
     });
 
     cut_points[j][j] = j;
@@ -833,11 +867,13 @@ void GroupMethod::dynamic_programming_kernel(
    */
   auto calc_group_cost = [&](LgInfo &lg_info) {
     GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("is_layer_group_valid", "call_function",
-                      "check if the group is valid and calculate the cost")
-                    << "\n";
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "is_layer_group_valid", "call_function",
+                          "check if the group is valid and calculate the cost")
+                   << "\n";
     });
-    // if (lg_debugger.is_conditional_debug_group(sub_group.func_start_idx, sub_group.func_end_idx)) {
+    // if (lg_debugger.is_conditional_debug_group(sub_group.func_start_idx,
+    // sub_group.func_end_idx)) {
     //   return MAX_COST;
     // }
     int64_t group_cost = MAX_COST;
@@ -846,10 +882,10 @@ void GroupMethod::dynamic_programming_kernel(
   };
 
   auto calc_group_cost_with_cache = [&](LgInfo &lg_info) {
-
     int64_t group_cost = MAX_COST;
     auto hash_key = LgCostCache::getInstance().get_graph_hash(lg_info);
-    bool cache_hit = LgCostCache::getInstance().get_cost_from_cache(hash_key, group_cost);
+    bool cache_hit =
+        LgCostCache::getInstance().get_cost_from_cache(hash_key, group_cost);
     if (!cache_hit) {
       group_cost = calc_group_cost(lg_info);
       LgCostCache::getInstance().add_cache(hash_key, group_cost);
@@ -868,31 +904,41 @@ void GroupMethod::dynamic_programming_kernel(
       // llvm::outs() << "start = " << start << ", end = " << end << "\n";
       int64_t start_idx = clusters[start].first;
       int64_t end_idx = clusters[end].first + clusters[end].second - 1;
-      get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx, idx_offset);
-      int64_t cost =  LgCostCache::getInstance().cache_enabled
-                      ? calc_group_cost_with_cache(lg_info)
-                      : calc_group_cost(lg_info);
+      get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx,
+                      idx_offset);
+      int64_t cost = LgCostCache::getInstance().cache_enabled
+                         ? calc_group_cost_with_cache(lg_info)
+                         : calc_group_cost(lg_info);
       int64_t optimal_cut_point = end;
       // sweep_for_min_cost(&cost, &optimal_cut_point, start, end,
       //                    cost_table);
 
       GROUP_DEBUG_WITH_TYPE("lg_cost", lg_info, [&]() {
-        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("group_cost", "record", "calculate group_cost(start_idx=%d, end_idx=%d)", start_idx, end_idx)
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "group_cost", "record",
+                            "calculate group_cost(start_idx=%d, end_idx=%d)",
+                            start_idx, end_idx)
                      << LOG_KV("func_start_idx", lg_info.func_start_idx)
                      << LOG_KV("func_end_idx", lg_info.func_end_idx)
                      << LOG_KV("cost", cost)
-                     << LOG_KV_FORMAT("shape_secs",
-                          "%d,%d,%d,%d,%d", lg_info.shape_secs.nsecs, lg_info.shape_secs.csecs,
-                          lg_info.shape_secs.dsecs, lg_info.shape_secs.hsecs, lg_info.shape_secs.wsecs)
+                     << LOG_KV_FORMAT(
+                            "shape_secs", "%d,%d,%d,%d,%d",
+                            lg_info.shape_secs.nsecs, lg_info.shape_secs.csecs,
+                            lg_info.shape_secs.dsecs, lg_info.shape_secs.hsecs,
+                            lg_info.shape_secs.wsecs)
                      << "\n";
       });
       for (int64_t sweep = start; sweep < end; ++sweep) {
         int64_t temp_cost =
             cost_add(cost_table[start][sweep], cost_table[sweep + 1][end]);
         GROUP_DEBUG_WITH_TYPE("cost_table", lg_info, [&]() {
-          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("interval_cost", "record", "calculate (cost_table[%d][%d] + cost_table[%d][%d])", start, sweep, sweep+1, end)
-                        << LOG_KV("idx_offset", idx_offset)
-                        << LOG_KV("cost", temp_cost) << "\n";
+          llvm::dbgs()
+              << DEBUGGER_DEFAULT_INFO(
+                     "interval_cost", "record",
+                     "calculate (cost_table[%d][%d] + cost_table[%d][%d])",
+                     start, sweep, sweep + 1, end)
+              << LOG_KV("idx_offset", idx_offset) << LOG_KV("cost", temp_cost)
+              << "\n";
         });
         if (temp_cost < cost) {
           cost = temp_cost;
@@ -904,7 +950,8 @@ void GroupMethod::dynamic_programming_kernel(
       cut_points[start][end] = optimal_cut_point;
       GROUP_DEBUG_WITH_TYPE("lg_cost", lg_info, [&]() {
         llvm::dbgs() << DEBUGGER_DEFAULT_INFO("cost_table", "record",
-                        "calculate cost_table[%d][%d]", start, end)
+                                              "calculate cost_table[%d][%d]",
+                                              start, end)
                      << LOG_KV("func_start_idx", lg_info.func_start_idx)
                      << LOG_KV("func_end_idx", lg_info.func_end_idx)
                      << LOG_KV("optimal_cut_point", optimal_cut_point)
@@ -914,18 +961,18 @@ void GroupMethod::dynamic_programming_kernel(
   }
   llvm::outs() << "\n";
   std::vector<int64_t> cut_result;
-  get_layer_cut_result(cut_result, clusters, cut_points, 0,
-                        cluster_num - 1);
+  get_layer_cut_result(cut_result, clusters, cut_points, 0, cluster_num - 1);
   cut_results_.push_back(std::move(cut_result));
   LLVM_DEBUG({
     LgInfo lg_info;
     int start = 0;
     for (auto end : cut_result) {
-      get_layer_group(lg_info, base_group, start, end, base_group_idx, idx_offset);
+      get_layer_group(lg_info, base_group, start, end, base_group_idx,
+                      idx_offset);
       int64_t group_cost = MAX_COST;
       auto temp_status = is_layer_group_valid(lg_info, true, &group_cost);
       llvm::dbgs() << temp_status << " ;start" << start << " - "
-                    << " end " << end << " = " << group_cost << "\n";
+                   << " end " << end << " = " << group_cost << "\n";
       start = end + 1;
     }
 
@@ -934,7 +981,7 @@ void GroupMethod::dynamic_programming_kernel(
     for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
       for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
         llvm::dbgs() << cut_points[cost_i][cost_j] << ", "
-                      << "";
+                     << "";
       }
       llvm::dbgs() << "\n";
     }
@@ -942,7 +989,7 @@ void GroupMethod::dynamic_programming_kernel(
     for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
       for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
         llvm::dbgs() << cost_table[cost_i][cost_j] << ", "
-                      << "";
+                     << "";
       }
       llvm::dbgs() << "\n";
     }
@@ -952,21 +999,24 @@ void GroupMethod::dynamic_programming_kernel(
 }
 
 void GroupMethod::dynamic_programming_layer_group_with_cluster_debug(
-  std::vector<LgInfo> &lg_infos,
-  const llvm::SetVector<Operation *> &subnet_ops) {
-  auto& lg_debugger = LgDebugger::getInstance();
+    std::vector<LgInfo> &lg_infos,
+    const llvm::SetVector<Operation *> &subnet_ops) {
+  auto &lg_debugger = LgDebugger::getInstance();
   LAYER_GROUP_LOG_DEBUG_BLOCK({
-    llvm::dbgs() << "\n"
-                 << "========================================================\n"
-                 << "** Dynamic Programming layer group with cluster debug **\n"
-                 << "========================================================\n";
+    llvm::dbgs()
+        << "\n"
+        << "========================================================\n"
+        << "** Dynamic Programming layer group with cluster debug **\n"
+        << "========================================================\n";
   });
   LgInfo lg_info;
   int debug_group_idx = 0;
   for (auto iter : lg_debugger.get_conditional_debug_groups()) {
     LG_DEBUG_WITH_TYPE("lg_step", [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("lg_debugger_iteration_start", "stamp",
-                      "process debug_groups[%d], start_idx=%d, end_idx=%d", debug_group_idx, iter.first, iter.second)
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "lg_debugger_iteration_start", "stamp",
+                          "process debug_groups[%d], start_idx=%d, end_idx=%d",
+                          debug_group_idx, iter.first, iter.second)
                    << "\n";
     });
     auto start_idx = iter.first;
@@ -977,13 +1027,19 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster_debug(
     get_debug_group(debug_group, subnet_ops, start_idx, end_idx);
     get_debug_cluster(clusters, cluster_num);
     LG_DEBUG_WITH_TYPE("lg_step", [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("dynamic_programming_kernel", "call_function",
-                      "process clusters using dynamic programming algorithm, cluster_num=%d", cluster_num)
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "dynamic_programming_kernel", "call_function",
+                          "process clusters using dynamic programming "
+                          "algorithm, cluster_num=%d",
+                          cluster_num)
                    << "\n";
     });
-    auto cost_table = std::vector<std::vector<int64_t>>(cluster_num, std::vector<int64_t>(cluster_num, 0));
-    auto cut_points = std::vector<std::vector<int64_t>>(cluster_num, std::vector<int64_t>(cluster_num, 0));
-    dynamic_programming_kernel(lg_info, debug_group, clusters, cost_table, cut_points, debug_group_idx++, start_idx);
+    auto cost_table = std::vector<std::vector<int64_t>>(
+        cluster_num, std::vector<int64_t>(cluster_num, 0));
+    auto cut_points = std::vector<std::vector<int64_t>>(
+        cluster_num, std::vector<int64_t>(cluster_num, 0));
+    dynamic_programming_kernel(lg_info, debug_group, clusters, cost_table,
+                               cut_points, debug_group_idx++, start_idx);
   }
 }
 
@@ -1011,18 +1067,24 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
     llvm::outs() << llvm::format("total num of base_group is %d\n",
                                  base_groups.size());
   });
-  LgCostCache::getInstance().init(base_groups); // To disable cache, just comment this line.
+  LgCostCache::getInstance().init(
+      base_groups); // To disable cache, just comment this line.
   int64_t idx_offset = 0;
-  for (size_t i = 0; i < base_groups.size(); idx_offset += base_groups[i].size(), ++i) {
+  for (size_t i = 0; i < base_groups.size();
+       idx_offset += base_groups[i].size(), ++i) {
     LG_DEBUG_WITH_TYPE("lg_step", [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("base_groups_iteration_start", "stamp",
-                      "process base_groups[%d], layer_num=%d, idx_offset=%d", i, base_groups[i].size(), idx_offset)
-                   << "\n";
+      llvm::dbgs()
+          << DEBUGGER_DEFAULT_INFO(
+                 "base_groups_iteration_start", "stamp",
+                 "process base_groups[%d], layer_num=%d, idx_offset=%d", i,
+                 base_groups[i].size(), idx_offset)
+          << "\n";
     });
     std::vector<std::pair<int64_t, int64_t>> clusters;
     LG_DEBUG_WITH_TYPE("lg_step", [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_group_clusters", "call_function",
-                      "get group clusters of base_groups[%d]", i)
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "get_group_clusters", "call_function",
+                          "get group clusters of base_groups[%d]", i)
                    << "\n";
     });
     get_group_clusters(clusters, base_groups[i], i, idx_offset);
@@ -1038,39 +1100,48 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
       auto cut_points = std::vector<std::vector<int64_t>>(
           cluster_num, std::vector<int64_t>(cluster_num, 0));
       LG_DEBUG_WITH_TYPE("lg_step", [&]() {
-        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("dynamic_programming_kernel", "call_function",
-                        "process clusters using dynamic programming algorithm, cluster_num=%d", cluster_num)
-                      << "\n";
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "dynamic_programming_kernel", "call_function",
+                            "process clusters using dynamic programming "
+                            "algorithm, cluster_num=%d",
+                            cluster_num)
+                     << "\n";
       });
-      dynamic_programming_kernel(sub_group, base_groups[i], clusters, cost_table, cut_points, i, idx_offset);
+      dynamic_programming_kernel(sub_group, base_groups[i], clusters,
+                                 cost_table, cut_points, i, idx_offset);
     } else {
       LG_DEBUG_WITH_TYPE("lg_step", [&]() {
-        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("single_cluster", "stamp",
-                        "process clusters whose size is 1")
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "single_cluster", "stamp",
+                            "process clusters whose size is 1")
                      << "\n";
       });
       cut_results_.push_back(std::vector<int64_t>(1, 0));
       int64_t start_idx = clusters[0].first;
-      get_layer_group(sub_group, base_groups[i], start_idx, start_idx, i, idx_offset);
+      get_layer_group(sub_group, base_groups[i], start_idx, start_idx, i,
+                      idx_offset);
       GROUP_DEBUG_WITH_TYPE("lg_cost", sub_group, [&]() {
         if (!isa<ReturnOp>(base_groups[i][0]) &&
             runmode_ == RunMode::TPU_STATIC) {
           int64_t cost;
           assert(is_layer_group_valid(sub_group, true, &cost));
-          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("single_cluster", "record",
-                           "calculate cost of single cluster")
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                              "single_cluster", "record",
+                              "calculate cost of single cluster")
                        << LOG_KV("base_group_idx", i)
                        << LOG_KV("func_start_idx", sub_group.func_start_idx)
                        << LOG_KV("func_end_idx", sub_group.func_end_idx)
                        << LOG_KV("cost", cost) << "\n";
         } else {
-          llvm::dbgs() << LOG_STEP("GroupMethod::dynamic_programming_layer_group_with_cluster@[cost of specific case is set to 0]")
-                       << DEBUGGER_DEFAULT_INFO("single_cluster", "record",
-                           "cost of specific case is set to 0")
-                       << LOG_KV("group_idx", i)
-                       << LOG_KV("func_start_idx", sub_group.func_start_idx)
-                       << LOG_KV("func_end_idx", sub_group.func_end_idx)
-                       << LOG_KV("cost", 0) << "\n";
+          llvm::dbgs()
+              << LOG_STEP("GroupMethod::dynamic_programming_layer_group_with_"
+                          "cluster@[cost of specific case is set to 0]")
+              << DEBUGGER_DEFAULT_INFO("single_cluster", "record",
+                                       "cost of specific case is set to 0")
+              << LOG_KV("group_idx", i)
+              << LOG_KV("func_start_idx", sub_group.func_start_idx)
+              << LOG_KV("func_end_idx", sub_group.func_end_idx)
+              << LOG_KV("cost", 0) << "\n";
         }
       });
     }
@@ -1240,7 +1311,8 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
       valid = false;
       break;
     }
-    if (!update_data_split(time_steps[i], *groups[i], shape_secs[i], options_)) {
+    if (!update_data_split(time_steps[i], *groups[i], shape_secs[i],
+                           options_)) {
       valid = false;
       break;
     }
@@ -1539,7 +1611,7 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   llvm::SetVector<Operation *> &subnet_ops = pass_ir->subnet_ops;
   auto start = std::chrono::high_resolution_clock::now();
   runmode_ = getRunMode(subnet_ops[0]);
-  auto& lg_debugger = LgDebugger::getInstance();
+  auto &lg_debugger = LgDebugger::getInstance();
   // auto func_name = pass_ir->func.getName();
 
   // debugger
@@ -1552,27 +1624,30 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   if (!options_.debugger_filename.empty()) {
     debugger_filename = options_.debugger_filename;
   }
-  switch(options_.debugger) {
-    case 0: {
-      break;
-    }
-    case 1: {
-      lg_debugger.create_debugger_config(debugger_filename); // create debugger file and do LayerGroup
-      break;
-    }
-    case 2: {
-      lg_debugger.create_debugger_config(debugger_filename); // only create debugger file
-      llvm::WithColor(llvm::outs(), llvm::raw_ostream::GREEN)
+  switch (options_.debugger) {
+  case 0: {
+    break;
+  }
+  case 1: {
+    lg_debugger.create_debugger_config(
+        debugger_filename); // create debugger file and do LayerGroup
+    break;
+  }
+  case 2: {
+    lg_debugger.create_debugger_config(
+        debugger_filename); // only create debugger file
+    llvm::WithColor(llvm::outs(), llvm::raw_ostream::GREEN)
         << "Only create debugger file when debugger=2!\n";
-      return;
-    }
-    case 3: // Fall through
-    case 4:
-      lg_debugger.load_debugger_config(debugger_filename); // both 3 and 4 need to load debugger file
-      break;
-    default: {
-      llvm_unreachable("Invalid debugger option");
-    }
+    return;
+  }
+  case 3: // Fall through
+  case 4:
+    lg_debugger.load_debugger_config(
+        debugger_filename); // both 3 and 4 need to load debugger file
+    break;
+  default: {
+    llvm_unreachable("Invalid debugger option");
+  }
   }
 
   if (getenv("LOAD_TPU_GROUP") || options_.opt == 4) {
@@ -1586,12 +1661,12 @@ void GroupMethod::process(LgPassIR *pass_ir) {
     }
   } else if (options_.debugger == 4) {
     switch (options_.opt) {
-      case 2:
-        dynamic_programming_layer_group_with_cluster_debug(lg_infos, subnet_ops);
-        break;
-      default:
-        llvm_unreachable("only opt=2 is supported when debugger=4");
-        break;
+    case 2:
+      dynamic_programming_layer_group_with_cluster_debug(lg_infos, subnet_ops);
+      break;
+    default:
+      llvm_unreachable("only opt=2 is supported when debugger=4");
+      break;
     }
   } else {
     switch (options_.opt) {

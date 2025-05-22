@@ -238,11 +238,11 @@ LogicalResult tpu::ReduceOp::LocalGenSupport() {
     return failure();
   }
   // Note: support other REDUCE-MODE may need to change getBufferSize().
-  if (module::getStorageType(getInput()) != module::getStorageType(getOutput())) {
+  if (module::getStorageType(getInput()) !=
+      module::getStorageType(getOutput())) {
     return failure();
   }
-  if (axes->size() != 1 ||
-      axes->at(0) != 2 && axes->at(0) != 3) {
+  if (axes->size() != 1 || axes->at(0) != 2 && axes->at(0) != 3) {
     return failure();
   }
   if (getMode() != "ReduceMean" && getMode() != "ReduceSum" &&

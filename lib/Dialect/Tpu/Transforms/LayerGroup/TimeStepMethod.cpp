@@ -124,9 +124,11 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
   }
 
   GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_assign", "intermediate_result",
-                    "using nearest algorithm to assign timestep for tpu and gdma operations firstly")
-                  << "\n============= nearest algorithm =============\n";
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "timestep_assign", "intermediate_result",
+                        "using nearest algorithm to assign timestep for tpu "
+                        "and gdma operations firstly")
+                 << "\n============= nearest algorithm =============\n";
     time_step->show_timestep_table();
   });
 
@@ -136,9 +138,10 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
   }
 
   GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_assign", "intermediate_result",
-                    "adust timesteps considering the software pipeline ")
-                  << "\n============= software pipeline =============\n";
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "timestep_assign", "intermediate_result",
+                        "adust timesteps considering the software pipeline ")
+                 << "\n============= software pipeline =============\n";
     time_step->show_timestep_table();
   });
 }
@@ -166,10 +169,13 @@ bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
   // backward update slice
   if (gen_idx) {
     GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("stripe_mine_idx_slice", "call_function",
-                      "backward and update slice_info of tensors starting from output tensors "
-                      "according to shape_secs, store the idx and slice of each tile in `tensor_infos`")
-                    << "\n";
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "stripe_mine_idx_slice", "call_function",
+                          "backward and update slice_info of tensors starting "
+                          "from output tensors "
+                          "according to shape_secs, store the idx and slice of "
+                          "each tile in `tensor_infos`")
+                   << "\n";
     });
     if (stripe_mine_idx_slice(lg_info, shape_secs, tensor_infos, options_) ==
         false) {
@@ -184,25 +190,30 @@ bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
 
   // update tensor_infos
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("update_tensor_infos", "call_function",
-                    "set tags and slice_info for specific tensors")
-                  << "\n";
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "update_tensor_infos", "call_function",
+                        "set tags and slice_info for specific tensors")
+                 << "\n";
   });
   update_tensor_infos(lg_info, tensor_infos, shape_secs);
 
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("memory_aware_timestep_assignment", "call_function",
-                    "assign timesteps and try to optimize the performance by moving timesteps")
-                  << "\n";
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "memory_aware_timestep_assignment", "call_function",
+                        "assign timesteps and try to optimize the performance "
+                        "by moving timesteps")
+                 << "\n";
   });
   // layer_nearest_timestep_assignment(time_step, tensor_infos, lg_info);
   memory_aware_timestep_assignment(time_step, tensor_infos, lg_info);
 
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("gen_hold_coeff", "call_function",
-                    "use map hold_coeff_ to store whether we needs the tensor to hold in lmem"
-                    "for better performance")
-                  << "\n";
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "gen_hold_coeff", "call_function",
+                        "use map hold_coeff_ to store whether we needs the "
+                        "tensor to hold in lmem"
+                        "for better performance")
+                 << "\n";
   });
   time_step->gen_hold_coeff();
   return true;
@@ -339,9 +350,11 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
   }
 
   GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_assign", "final_result",
-                    "optimize timesteps using algorithm based on cycle slack and buffer area")
-                  << "\n============= timestep optimized =============\n";
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "timestep_assign", "final_result",
+                        "optimize timesteps using algorithm based on cycle "
+                        "slack and buffer area")
+                 << "\n============= timestep optimized =============\n";
     time_step->show_timestep_table();
   });
 

@@ -13,40 +13,32 @@ namespace tpu_mlir {
 namespace tpu {
 
 std::map<lg_debugger_type_t, std::string> lg_debugger_type_str_map = {
-  {DEBUGGER_DUMP_ALL, "DEBUGGER_DUMP_ALL"},
-  {DEBUGGER_DUMP_GIVEN, "DEBUGGER_DUMP_GIVEN"},
-  {DEBUGGER_DUMP_MIXED, "DEBUGGER_DUMP_MIXED"},
-  {DEBUGGER_TRY_GIVEN, "DEBUGGER_TRY_GIVEN"},
-  {DEBUGGER_DO_NOTHING, "DEBUGGER_DO_NOTHING"}
-};
+    {DEBUGGER_DUMP_ALL, "DEBUGGER_DUMP_ALL"},
+    {DEBUGGER_DUMP_GIVEN, "DEBUGGER_DUMP_GIVEN"},
+    {DEBUGGER_DUMP_MIXED, "DEBUGGER_DUMP_MIXED"},
+    {DEBUGGER_TRY_GIVEN, "DEBUGGER_TRY_GIVEN"},
+    {DEBUGGER_DO_NOTHING, "DEBUGGER_DO_NOTHING"}};
 
 std::map<std::string, lg_debugger_type_t> lg_debugger_str_type_map = {
-  {"DEBUGGER_DUMP_ALL", DEBUGGER_DUMP_ALL},
-  {"DEBUGGER_DUMP_GIVEN", DEBUGGER_DUMP_GIVEN},
-  {"DEBUGGER_DUMP_MIXED", DEBUGGER_DUMP_MIXED},
-  {"DEBUGGER_TRY_GIVEN", DEBUGGER_TRY_GIVEN},
-  {"DEBUGGER_DO_NOTHING", DEBUGGER_DO_NOTHING}
-};
+    {"DEBUGGER_DUMP_ALL", DEBUGGER_DUMP_ALL},
+    {"DEBUGGER_DUMP_GIVEN", DEBUGGER_DUMP_GIVEN},
+    {"DEBUGGER_DUMP_MIXED", DEBUGGER_DUMP_MIXED},
+    {"DEBUGGER_TRY_GIVEN", DEBUGGER_TRY_GIVEN},
+    {"DEBUGGER_DO_NOTHING", DEBUGGER_DO_NOTHING}};
 
 std::map<lg_sc_method_t, std::string> lg_sc_method_type_str_map = {
-  {SC_QUICK_SEARCH, "SC_QUICK_SEARCH"},
-  {SC_BRUTE_FORCE, "SC_BRUTE_FORCE"}
-};
+    {SC_QUICK_SEARCH, "SC_QUICK_SEARCH"}, {SC_BRUTE_FORCE, "SC_BRUTE_FORCE"}};
 
 std::map<std::string, lg_sc_method_t> lg_sc_method_str_type_map = {
-  {"SC_QUICK_SEARCH", SC_QUICK_SEARCH},
-  {"SC_BRUTE_FORCE", SC_BRUTE_FORCE}
-};
+    {"SC_QUICK_SEARCH", SC_QUICK_SEARCH}, {"SC_BRUTE_FORCE", SC_BRUTE_FORCE}};
 
 void LgDebugger::dump() {
   // dump type_
-  llvm::dbgs() << LOG_ACTION("debugger")
-               << LOG_STEP("type_")
+  llvm::dbgs() << LOG_ACTION("debugger") << LOG_STEP("type_")
                << LOG_KV("type_", get_type_str()) << "\n";
 
   // dump conditional_debug_types_
-  llvm::dbgs() << LOG_ACTION("debugger")
-               << LOG_STEP("conditional_debug_types_")
+  llvm::dbgs() << LOG_ACTION("debugger") << LOG_STEP("conditional_debug_types_")
                << "; conditional_debug_types_ = ";
   const char *sep = "\"";
   for (auto debug_type : conditional_debug_types_) {
@@ -68,8 +60,7 @@ void LgDebugger::dump() {
   // dump lg_debugger_infos_
   i = 1;
   for (const auto &info : lg_debugger_infos_) {
-    llvm::dbgs() << LOG_ACTION("debugger")
-                 << LOG_STEP("lg_debugger_infos_")
+    llvm::dbgs() << LOG_ACTION("debugger") << LOG_STEP("lg_debugger_infos_")
                  << LOG_KV("dump_idx", i++)
                  << LOG_KV("func_start_idx", info.func_start_idx)
                  << LOG_KV("func_end_idx", info.func_end_idx) << "\n";
@@ -80,8 +71,9 @@ void LgDebugger::create_debugger_config(const std::string &config_file) {
   llvm::outs() << "Try to create debugger file\n";
 
   if (std::filesystem::exists(config_file)) {
-    llvm::WithColor(llvm::outs(), llvm::raw_ostream::YELLOW)
-      << llvm::format("Debugger file \"%s\" already exists! Just do nothing.\n", (const char *)config_file.c_str());
+    llvm::WithColor(llvm::outs(), llvm::raw_ostream::YELLOW) << llvm::format(
+        "Debugger file \"%s\" already exists! Just do nothing.\n",
+        (const char *)config_file.c_str());
     return;
   }
 
@@ -143,10 +135,12 @@ void LgDebugger::create_debugger_config(const std::string &config_file) {
 
   if (std::filesystem::exists(config_file)) {
     llvm::WithColor(llvm::outs(), llvm::raw_ostream::GREEN)
-      << llvm::format("Create debugger file \"%s\"success!\n", (const char *)config_file.c_str());
+        << llvm::format("Create debugger file \"%s\"success!\n",
+                        (const char *)config_file.c_str());
   } else {
     llvm::WithColor(llvm::outs(), llvm::raw_ostream::RED)
-      << llvm::format("Create debugger file \"%s\" failed!\n", (const char *)config_file.c_str());
+        << llvm::format("Create debugger file \"%s\" failed!\n",
+                        (const char *)config_file.c_str());
   }
 }
 
@@ -177,14 +171,16 @@ void LgDebugger::load_debugger_config(const std::string &config_file) {
     if (auto sc_method_s = rootObj->getString("sc_method")) {
       set_sc_method(sc_method_s->str());
     } else {
-      llvm::dbgs() << "debugger sc_method not found, set to \'SC_QUICK_SEARCH\'\n";
+      llvm::dbgs()
+          << "debugger sc_method not found, set to \'SC_QUICK_SEARCH\'\n";
     }
     // set show_function_location_ boolean
     if (auto show_function_location =
             rootObj->getBoolean("show_function_location")) {
       show_function_location_ = *show_function_location;
     } else {
-      llvm::dbgs() << "debugger show_function_location not found, set to \'false\'\n";
+      llvm::dbgs()
+          << "debugger show_function_location not found, set to \'false\'\n";
     }
     // set conditional_debug_types_
     if (auto conditional_debug_types_ =
@@ -225,14 +221,14 @@ void LgDebugger::load_debugger_config(const std::string &config_file) {
 
     debug_with_type("debugger", __FILE__, __LINE__, __FUNCTION__, [&]() {
       llvm::dbgs() << DEBUGGER_DEFAULT_INFO("dump", "call_function",
-                      "dump debugger settings") << "\n";
+                                            "dump debugger settings")
+                   << "\n";
       dump();
     });
-    llvm::WithColor(llvm::outs(), llvm::raw_ostream::GREEN)
-        << llvm::format("Load debugger file \"%s\" success!\n", config_file.c_str());
+    llvm::WithColor(llvm::outs(), llvm::raw_ostream::GREEN) << llvm::format(
+        "Load debugger file \"%s\" success!\n", config_file.c_str());
   }
 }
-
 
 } // namespace tpu
 } // namespace tpu_mlir

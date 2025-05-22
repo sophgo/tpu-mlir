@@ -25,7 +25,8 @@ namespace backend {
 #define BUFFER_SIZE (4 * 1024 * 1024)
 class MARS3 : public BM1684X {
 public:
-  static constexpr llvm::StringRef LIB_KERNEL_NAME = "libmars3_kernel_module.so";
+  static constexpr llvm::StringRef LIB_KERNEL_NAME =
+      "libmars3_kernel_module.so";
   static bool classof(const BM168x *bm168x) {
     return bm168x->getTypeID() == TypeID::get<MARS3>();
   }

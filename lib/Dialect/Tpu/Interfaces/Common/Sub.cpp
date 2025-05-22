@@ -44,7 +44,8 @@ void tpu::SubOp::deinit(InferenceParameter &p) {
 void tpu::SubOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
   for (auto attr : getOperation()->getAttrs()) {
     auto attr_name = attr.getName().str();
-    if (attr_name == "ginfo" || attr_name == "rshifts" || attr_name == "multipliers") {
+    if (attr_name == "ginfo" || attr_name == "rshifts" ||
+        attr_name == "multipliers") {
       continue;
     }
     os << attr_name << "=";
@@ -54,7 +55,8 @@ void tpu::SubOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
 
   if (getRshifts().has_value()) {
     auto rshift_v = module::getI64Array(getRshifts().value());
-    if (std::all_of(rshift_v->begin(), rshift_v->end(), [](int64_t x) { return x == 0; })) {
+    if (std::all_of(rshift_v->begin(), rshift_v->end(),
+                    [](int64_t x) { return x == 0; })) {
       // do-nothing.
     } else {
       os << "rshifts_len=" << rshift_v->size() << "; ";
@@ -62,14 +64,14 @@ void tpu::SubOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
   }
   if (getMultipliers().has_value()) {
     auto multiplier_v = module::getI64Array(getMultipliers().value());
-    if (std::all_of(multiplier_v->begin(), multiplier_v->end(), [](int64_t x) { return x == 1; })) {
+    if (std::all_of(multiplier_v->begin(), multiplier_v->end(),
+                    [](int64_t x) { return x == 1; })) {
       // do-nothing.
     } else {
       os << "multipliers_len=" << multiplier_v->size() << "; ";
     }
   }
 }
-
 
 LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
   auto output_shape = computer_broadcast_shape(getOperation());

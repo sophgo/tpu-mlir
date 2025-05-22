@@ -160,7 +160,8 @@ public:
       formerOp->setOperand(i, new_weight);
     }
 
-    std::string mul_name = module::getName(op.getOperation()).str() + "_r_MulOrConv";
+    std::string mul_name =
+        module::getName(op.getOperation()).str() + "_r_MulOrConv";
     auto new_loc = NameLoc::get(rewriter.getStringAttr(mul_name));
     formerOp->setLoc(new_loc);
     firstFormerOp->setLoc(op.getLoc());

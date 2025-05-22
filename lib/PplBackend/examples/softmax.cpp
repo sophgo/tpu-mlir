@@ -1,5 +1,5 @@
-#include "helper.h"
 #include "softmax.h"
+#include "helper.h"
 
 #include "tpu_mlir/Backend/BM168x/Param.h"
 
@@ -71,12 +71,12 @@ void api_softmax_global(void *param, size_t param_size, void *input_spec,
   auto call_kernel = [&]() {
     if (iner == 1) {
       printf("------------------  w_dim  -------------------\n");
-      return softmax_w_dim(out_spec->addr, in_spec->addr, n, c, h,
-                           w, block_c, block_w);
+      return softmax_w_dim(out_spec->addr, in_spec->addr, n, c, h, w, block_c,
+                           block_w);
     } else {
       printf("------------------  h_dim  -------------------\n");
-      return softmax_h_dim(out_spec->addr, in_spec->addr, n, c, h,
-                           w, block_c, block_h, block_w);
+      return softmax_h_dim(out_spec->addr, in_spec->addr, n, c, h, w, block_c,
+                           block_h, block_w);
     }
   };
 

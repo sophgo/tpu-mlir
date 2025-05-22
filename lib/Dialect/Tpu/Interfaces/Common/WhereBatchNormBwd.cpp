@@ -23,4 +23,3 @@ LogicalResult tpu::WhereBnbwdOp::inference(InferenceParameter &p) {
 }
 
 bool tpu::WhereBnbwdOp::support_multi_core() { return true; }
-

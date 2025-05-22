@@ -13,7 +13,9 @@ int64_t top::RoiExtractorOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 4;
 }
 
-LogicalResult top::RoiExtractorOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::RoiExtractorOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::RoiExtractorOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::RoiExtractorOp::inference(InferenceParameter &p) {
@@ -48,14 +50,14 @@ LogicalResult top::RoiExtractorOp::inference(InferenceParameter &p) {
   param.inputs.emplace_back(std::move(target_lvls));
   int offset_feature = 2;
   for (int id_feature = 0; id_feature < param.num_levels; id_feature++) {
-      tensor_list_t feature;
-      feature.ptr = p.inputs[offset_feature + id_feature];
-      feature.size = module::getNumElements(getInputs()[id_feature]);
-      feature.shape = module::getShape(getInputs()[id_feature]);
-      param.inputs.emplace_back(std::move(feature));
+    tensor_list_t feature;
+    feature.ptr = p.inputs[offset_feature + id_feature];
+    feature.size = module::getNumElements(getInputs()[id_feature]);
+    feature.shape = module::getShape(getInputs()[id_feature]);
+    param.inputs.emplace_back(std::move(feature));
   }
 
-  //output
+  // output
   param.output.ptr = p.outputs[0];
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());

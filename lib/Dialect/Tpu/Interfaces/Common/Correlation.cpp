@@ -35,14 +35,14 @@ LogicalResult tpu::CorrelationOp::inference(InferenceParameter &p) {
 
   const int64_t spatial_dim = ih * iw;
 
-  #pragma omp parallel for collapse(2) schedule(static)
+#pragma omp parallel for collapse(2) schedule(static)
   for (int64_t group = 0; group < in; ++group) {
     for (int64_t cut_idx = 0; cut_idx < max_disp; ++cut_idx) {
-      const float* lsrc_group = lsrc + group * ic * spatial_dim;
-      const float* rsrc_group = rsrc + group * ic * spatial_dim;
-      float* dst_group = dst + group * max_disp * spatial_dim;
+      const float *lsrc_group = lsrc + group * ic * spatial_dim;
+      const float *rsrc_group = rsrc + group * ic * spatial_dim;
+      float *dst_group = dst + group * max_disp * spatial_dim;
 
-      float* output = dst_group + cut_idx * spatial_dim;
+      float *output = dst_group + cut_idx * spatial_dim;
       int64_t w_start = cut_idx;
 
       for (int64_t h_idx = 0; h_idx < ih; ++h_idx) {
@@ -53,7 +53,7 @@ LogicalResult tpu::CorrelationOp::inference(InferenceParameter &p) {
           for (int64_t c = 0; c < ic; ++c) {
             const int64_t c_offset = c * spatial_dim;
             sum += lsrc_group[c_offset + hw + w_idx] *
-                  rsrc_group[c_offset + hw + wcut];
+                   rsrc_group[c_offset + hw + wcut];
           }
           output[hw + w_idx] = sum / ic;
         }

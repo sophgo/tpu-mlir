@@ -400,7 +400,8 @@ LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
 void tpu::MatMulOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
   for (auto attr : getOperation()->getAttrs()) {
     auto attr_name = attr.getName().str();
-    if (attr_name == "ginfo" || attr_name == "rshifts" || attr_name == "multipliers") {
+    if (attr_name == "ginfo" || attr_name == "rshifts" ||
+        attr_name == "multipliers") {
       continue;
     }
     os << attr_name << "=";
@@ -411,10 +412,11 @@ void tpu::MatMulOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
   auto rshift_v = module::getI64Array(getRshifts());
   auto multiplier_v = module::getI64Array(getMultipliers());
   assert(rshift_v && multiplier_v);
-  if (rshift_v->size() == 1 && rshift_v->at(0) == 0 ) {
+  if (rshift_v->size() == 1 && rshift_v->at(0) == 0) {
     // do-nothing.
   } else {
-    os << "rshifts_len=" << rshift_v->size() << "; ";   // to distinguish per-channel/per-tensor
+    os << "rshifts_len=" << rshift_v->size()
+       << "; "; // to distinguish per-channel/per-tensor
   }
 
   if (multiplier_v->size() == 1 && multiplier_v->at(0) == 1) {

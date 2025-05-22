@@ -37,10 +37,15 @@ static inline void stream_gdma_field(const GdmaTsField &field) {
       modestr = "S";
     }
 
-    if (i > 0) llvm::dbgs() << ", ";
-    std::string op_type = module::getOriValue(field[i].first).getDefiningOp()->getName().getStringRef().str();
+    if (i > 0)
+      llvm::dbgs() << ", ";
+    std::string op_type = module::getOriValue(field[i].first)
+                              .getDefiningOp()
+                              ->getName()
+                              .getStringRef()
+                              .str();
     llvm::dbgs() << modestr << "(\"" << module::getName(field[i].first)
-                 << "\", hold_in_lmem = "<< hold_in_lmem << ")->" << op_type;
+                 << "\", hold_in_lmem = " << hold_in_lmem << ")->" << op_type;
   }
   llvm::dbgs() << " ]";
 }
@@ -181,12 +186,12 @@ struct lmem_buffer_debug_t {
   std::string name;
   std::string type;
 
-  bool operator<(const lmem_buffer_debug_t& other) const {
-      if (start_ts != other.start_ts)
-          return start_ts < other.start_ts;
-      if (end_ts != other.end_ts)
-          return end_ts < other.end_ts;
-      return size > other.size;
+  bool operator<(const lmem_buffer_debug_t &other) const {
+    if (start_ts != other.start_ts)
+      return start_ts < other.start_ts;
+    if (end_ts != other.end_ts)
+      return end_ts < other.end_ts;
+    return size > other.size;
   }
 };
 
@@ -208,8 +213,7 @@ void BasicTimeStep::debug_lmem_buffer() {
                      [](Operation *op) { return isa<tpu::LutOp>(op); })) {
       // 1684 LutOp use l2mem
       llvm::dbgs() << LOG_STEP("skip weight in l2mem for bm1684")
-                   << LOG_KV("name", module::getName(key.value))
-                   << "\n";
+                   << LOG_KV("name", module::getName(key.value)) << "\n";
       continue;
     }
     bool first_step = true;
@@ -220,9 +224,9 @@ void BasicTimeStep::debug_lmem_buffer() {
     lmem_buffer_elt.type = key.lmem_type_str();
     lmem_buffer_vec.push_back(lmem_buffer_elt);
     for (int64_t ts = value.start_ts;
-      ts != ((value.end_ts + 1) % timestep_num) || first_step;
-      ts = (ts + 1) % timestep_num) {
-        first_step = false;
+         ts != ((value.end_ts + 1) % timestep_num) || first_step;
+         ts = (ts + 1) % timestep_num) {
+      first_step = false;
       data[ts].push_back(key);
     }
   }
@@ -237,7 +241,8 @@ void BasicTimeStep::debug_lmem_buffer() {
       llvm::dbgs() << "(" << module::getName(iter.value) << ", " << value.size
                    << "), ";
     }
-    llvm::dbgs() << "\n" << "total=" << total << "\n";
+    llvm::dbgs() << "\n"
+                 << "total=" << total << "\n";
   }
 
   llvm::dbgs() << "====================================\n";
@@ -245,12 +250,10 @@ void BasicTimeStep::debug_lmem_buffer() {
   std::sort(lmem_buffer_vec.begin(), lmem_buffer_vec.end());
   int cnt = 0;
   for (auto &iter : lmem_buffer_vec) {
-    llvm::dbgs() << "=== lmem_buffer_vec = " << cnt++
-                 << "(start_ts, end_ts): " << "(" << iter.start_ts << ", " << iter.end_ts << ")"
-                 << ", size: " << iter.size
-                 << ", name: " << iter.name
-                 << ", type: " << iter.type
-                 << "\n";
+    llvm::dbgs() << "=== lmem_buffer_vec = " << cnt++ << "(start_ts, end_ts): "
+                 << "(" << iter.start_ts << ", " << iter.end_ts << ")"
+                 << ", size: " << iter.size << ", name: " << iter.name
+                 << ", type: " << iter.type << "\n";
   }
   llvm::dbgs() << "====================================\n";
 }
@@ -599,9 +602,7 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
     iter = iter->second.size == 0 ? lmem_buffer_.erase(iter) : std::next(iter);
   }
 
-  GROUP_DEBUG_WITH_TYPE("lmem_buffer", lg_info, [&]() {
-    debug_lmem_buffer();
-  });
+  GROUP_DEBUG_WITH_TYPE("lmem_buffer", lg_info, [&]() { debug_lmem_buffer(); });
 }
 
 const mem_buffer_value_t &

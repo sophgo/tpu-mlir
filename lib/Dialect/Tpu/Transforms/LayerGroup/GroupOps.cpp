@@ -242,29 +242,36 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, LgOptions &options) {
     return;
   }
 
-  Operation* dot_root_op = nullptr;
-  std::vector<Operation*> global_layers, tmp_ops, excluded_ops, ops_bk;
-  for (auto itr: lg_pass_ir_->subnet_ops) {
-    if (!dot_root_op && module::isDebugCmdEnable("dot_root_op_name-" + module::getName(itr).str() + ",")) {
-      llvm::errs() <<"GroupOps find dot_root_op_name:" << module::getName(itr).str()<<"\n";
+  Operation *dot_root_op = nullptr;
+  std::vector<Operation *> global_layers, tmp_ops, excluded_ops, ops_bk;
+  for (auto itr : lg_pass_ir_->subnet_ops) {
+    if (!dot_root_op &&
+        module::isDebugCmdEnable("dot_root_op_name-" +
+                                 module::getName(itr).str() + ",")) {
+      llvm::errs() << "GroupOps find dot_root_op_name:"
+                   << module::getName(itr).str() << "\n";
       dot_root_op = itr;
     }
-    if (module::isDebugCmdEnable("user_defined_global_op-" + module::getName(itr).str())) {
+    if (module::isDebugCmdEnable("user_defined_global_op-" +
+                                 module::getName(itr).str())) {
       global_layers.push_back(itr);
     }
     tmp_ops.push_back(itr);
   }
 
   if (module::isDebugCmdEnable("dot_root_op_name") && dot_root_op) {
-    std::vector<Operation*> op_tree, exclude_ops, break_ops;
-    find_op_tree_by_root2(dot_root_op, op_tree, tmp_ops, exclude_ops, break_ops, 0, 8);
+    std::vector<Operation *> op_tree, exclude_ops, break_ops;
+    find_op_tree_by_root2(dot_root_op, op_tree, tmp_ops, exclude_ops, break_ops,
+                          0, 8);
     auto dot_graph_log_subnet = createSubnetGraph(op_tree);
-    dot_graph_log_subnet->export_dot("svg_initial_" + module::getName(module::getModuleOp()).str(), true);
+    dot_graph_log_subnet->export_dot(
+        "svg_initial_" + module::getName(module::getModuleOp()).str(), true);
   }
 
   if (module::isDebugCmdEnable("export_full_svg")) {
     auto dot_graph_log_subnet = createSubnetGraph(tmp_ops);
-    dot_graph_log_subnet->export_dot("svg_initial_" + module::getName(module::getModuleOp()).str(), true);
+    dot_graph_log_subnet->export_dot(
+        "svg_initial_" + module::getName(module::getModuleOp()).str(), true);
   }
 
   func.walk([&](Operation *op) {

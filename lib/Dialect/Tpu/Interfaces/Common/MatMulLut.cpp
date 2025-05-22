@@ -140,17 +140,13 @@ LogicalResult tpu::MatMulLutOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tpu::MatMulLutOp::deinit(InferenceParameter &p) {
-  return;
-}
+void tpu::MatMulLutOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult tpu::MatMulLutOp::inference(InferenceParameter &p) {
   return success();
 }
 
-bool tpu::MatMulLutOp::support_multi_core() {
-  return false;
-}
+bool tpu::MatMulLutOp::support_multi_core() { return false; }
 
 mlir::Type tpu::MatMulLutOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_same(getOperation(), opd_idx, mode);

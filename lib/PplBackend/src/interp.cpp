@@ -17,11 +17,10 @@
 extern "C" {
 #endif
 
-using INTERP =
-    std::function<int(unsigned long long v1,
-                      unsigned long long v2, unsigned long long v3, int32_t v11,
-                      int32_t v12, int32_t v13, float v14, int32_t v15,
-                      int32_t v16, int32_t v17, int32_t v18, int32_t v19)>;
+using INTERP = std::function<int(
+    unsigned long long v1, unsigned long long v2, unsigned long long v3,
+    int32_t v11, int32_t v12, int32_t v13, float v14, int32_t v15, int32_t v16,
+    int32_t v17, int32_t v18, int32_t v19)>;
 
 static INTERP get_interp_func(bool is_fp16, bool is_bf16, bool linear_mode) {
   if (linear_mode) {
@@ -81,9 +80,9 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
 
   while (block_h > 0) {
     printf("block_h:%d\n", block_h);
-    ret = func(out_spec->addr, in_spec[0].addr,
-               _param->spec.buffer_addr, core_num, N, C, H_in, W_in, H_out,
-               W_out, block_h, _param->spec.common.align_corners);
+    ret = func(out_spec->addr, in_spec[0].addr, _param->spec.buffer_addr,
+               core_num, N, C, H_in, W_in, H_out, W_out, block_h,
+               _param->spec.common.align_corners);
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       printf("block is not suitable, have another try !!!\n");

@@ -40,8 +40,9 @@ void tpu::FusedActiveCastOp::codegen_global_bm1684x() {
     spec.requant_spec.output_dtype = BM168x::getDataType(getOutput());
     spec.requant_spec.mode = 0;
     spec.requant_spec.round_mode = round_mode;
-    BM168x::call_global_func("backend_api_active_requant_global", &spec, sizeof(spec),
-                             input_spec->data(), output_spec->data());
+    BM168x::call_global_func("backend_api_active_requant_global", &spec,
+                             sizeof(spec), input_spec->data(),
+                             output_spec->data());
   } else {
     UNREACHABLE_THIS("to be implemented");
   }
@@ -50,6 +51,10 @@ void tpu::FusedActiveCastOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::FusedActiveCastOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::FusedActiveCastOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}
 
-int64_t tpu::FusedActiveCastOp::get_fw_type_bm1684x() { return FW_LAYER_UNKNOWN; }
+int64_t tpu::FusedActiveCastOp::get_fw_type_bm1684x() {
+  return FW_LAYER_UNKNOWN;
+}

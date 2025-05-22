@@ -17,8 +17,8 @@
 #include <set>
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/Debugger.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
 
 namespace tpu_mlir {
 namespace tpu {
@@ -36,9 +36,12 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
                            Operation *&fail_op,
                            std::shared_ptr<dot_graph> dot_graph_log,
                            const LgOptions &options);
-void get_op_cut_sec_num(ilp_LgInfo &ilp_lg_info, std::vector<std::pair<Operation *, int>>& vec_op_cut_secs);
+void get_op_cut_sec_num(
+    ilp_LgInfo &ilp_lg_info,
+    std::vector<std::pair<Operation *, int>> &vec_op_cut_secs);
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
-                         const shape_secs_t &shape_secs, int speical_pattern = 0);
+                         const shape_secs_t &shape_secs,
+                         int speical_pattern = 0);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
                        shape_secs_t &shape_secs, const LgOptions &options);
 int64_t get_split_max_secs(BasicTimeStepPtr time_step);
@@ -84,8 +87,7 @@ int64_t get_buffer_size(Value v, tensor_info_t &ti, group_type_t group_type,
 
 bool stripe_mine_idx_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
-                           TensorInfo &tensor_infos,
-                           const LgOptions &options);
+                           TensorInfo &tensor_infos, const LgOptions &options);
 
 void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
                                 int64_t hidx, int64_t hslice, int64_t didx,
@@ -136,8 +138,9 @@ std::vector<std::vector<Operation *>> seg_grp_ops_by_global_op(
     const std::vector<Operation *> &break_ops,
     std::vector<Operation *> &excluded_ops, const LgOptions &options,
     std::map<Operation *, bool> *break_op_reside = nullptr);
-std::vector<std::vector<Operation*>> seg_network_by_group_ops(const std::vector<Operation*>& network_ops,
-                         const std::vector<Operation*>& group_ops);
+std::vector<std::vector<Operation *>>
+seg_network_by_group_ops(const std::vector<Operation *> &network_ops,
+                         const std::vector<Operation *> &group_ops);
 void findReshapeAtEdge(std::vector<Operation *> &ops,
                        std::vector<Operation *> &del_ops);
 void find_all_pre_ops(Operation *op, std::vector<Operation *> &glayer_pre_ops,
@@ -163,7 +166,7 @@ std::string show_op_info(Operation *op);
 std::string shape_str(int64_t n, int64_t c, int64_t d, int64_t h, int64_t w);
 std::string shape_str(std::vector<int64_t> ncdhw);
 void show_group(const LgInfo *sub_group);
-void PrintOps(std::string ops_name, const std::vector<Operation*>& ops);
+void PrintOps(std::string ops_name, const std::vector<Operation *> &ops);
 bool grp_is_valid(std::vector<Operation *> &group_ops);
 bool isPreOpHaveAComputeOp(Operation *op);
 int64_t align(int64_t input, int64_t align_size);
@@ -290,13 +293,14 @@ struct dot_graph {
 };
 
 // debug for layer group process
-#define LG_DEBUG_WITH_TYPE(debug_type, callback) \
-  LgDebugger::getInstance().debug_with_type(debug_type, __FILE__, __LINE__, __FUNCTION__, callback)
+#define LG_DEBUG_WITH_TYPE(debug_type, callback)                               \
+  LgDebugger::getInstance().debug_with_type(debug_type, __FILE__, __LINE__,    \
+                                            __FUNCTION__, callback)
 
 // debug for group cost simulation, which needs lg_info
-#define GROUP_DEBUG_WITH_TYPE(debug_type, lg_info, callback) \
-  LgDebugger::getInstance().debug_with_type(debug_type, lg_info, __FILE__, __LINE__, __FUNCTION__, callback)
-
+#define GROUP_DEBUG_WITH_TYPE(debug_type, lg_info, callback)                   \
+  LgDebugger::getInstance().debug_with_type(debug_type, lg_info, __FILE__,     \
+                                            __LINE__, __FUNCTION__, callback)
 
 } // namespace tpu
 } // namespace tpu_mlir

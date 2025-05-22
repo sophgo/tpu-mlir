@@ -10,8 +10,8 @@
 #pragma once
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
+#include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/xxhash.h"
@@ -165,10 +165,12 @@ struct tensor_info_t {
         need_bcast(false), hold_in_lmem(true) {}
   tensor_info_t(slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
-        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false), hold_in_lmem(true) {}
+        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false),
+        hold_in_lmem(true) {}
   tensor_info_t(Operation *next_op, slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
-        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false), hold_in_lmem(true) {
+        use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false),
+        hold_in_lmem(true) {
     slice_infos[next_op] = slice_info;
   }
   void add_slice_info(Operation *next_op, slice_info_t slice_info) {
@@ -435,7 +437,9 @@ struct LgInfo {
       // op->dump();
       if (op) {
         auto name = module::getName(op).str();
-        llvm::dbgs()<< llvm::formatv("idx:{0} op: {1}, type: {2}\n", index, name, op->getName()).str();
+        llvm::dbgs() << llvm::formatv("idx:{0} op: {1}, type: {2}\n", index,
+                                      name, op->getName())
+                            .str();
       }
     }
     // llvm::dbgs() << "outs"
@@ -450,8 +454,7 @@ struct LgInfo {
   void const dump() const {
     llvm::dbgs() << "============= lg_info =============\n";
     llvm::dbgs() << LOG_KV("base_group_idx", base_group_idx)
-                 << LOG_KV("start_idx", start_idx)
-                 << LOG_KV("end_idx", end_idx)
+                 << LOG_KV("start_idx", start_idx) << LOG_KV("end_idx", end_idx)
                  << LOG_KV("func_start_idx", func_start_idx)
                  << LOG_KV("func_end_idx", func_end_idx)
                  << LOG_KV("cache_key", cache_key) << "\n\n";
@@ -462,24 +465,22 @@ struct LgInfo {
     constexpr int width_1 = 20;
     constexpr int width_2 = 20;
     constexpr int width_3 = 50;
-    const char* header_0 = "idx(func)";
-    const char* header_1 = "idx(base_group)";
-    const char* header_2 = "op_type";
-    const char* header_3 = "op_name";
+    const char *header_0 = "idx(func)";
+    const char *header_1 = "idx(base_group)";
+    const char *header_2 = "op_type";
+    const char *header_3 = "op_name";
     llvm::dbgs() << llvm::format("%-*s %-*s %-*s %-*s\n", width_0, header_0,
-                                 width_1, header_1, width_2, header_2,
-                                 width_3, header_3);
+                                 width_1, header_1, width_2, header_2, width_3,
+                                 header_3);
     // data table
     for (auto [index, op] : llvm::enumerate(group_ops)) {
       if (op) {
         auto type = op->getName().getStringRef().str();
         auto name = module::getName(op).str();
 
-        llvm::dbgs() << llvm::format("%-*d %-*d %-*s %-*s\n",
-                                     width_0, func_start_idx+index,
-                                     width_1, start_idx+index,
-                                     width_2, type.c_str(),
-                                     width_3, name.c_str());
+        llvm::dbgs() << llvm::format(
+            "%-*d %-*d %-*s %-*s\n", width_0, func_start_idx + index, width_1,
+            start_idx + index, width_2, type.c_str(), width_3, name.c_str());
       }
     }
 
@@ -522,28 +523,28 @@ struct LgInfo {
 /* LgCostCache: {key: sub_graph_hash, value:cost }  */
 class LgCostCache {
 public:
-  static LgCostCache& getInstance() {
+  static LgCostCache &getInstance() {
     static LgCostCache instance;
     return instance;
   }
 
   // pre encode each local op. Results stored as u64 strings.
-  void init(const std::vector<std::vector<Operation*>> &base_groups) {
+  void init(const std::vector<std::vector<Operation *>> &base_groups) {
     cache_enabled = true;
     base_group_op_hash.resize(base_groups.size());
     for (size_t idx_group = 0; idx_group < base_groups.size(); ++idx_group) {
-      const auto& base_group = base_groups[idx_group];
+      const auto &base_group = base_groups[idx_group];
       base_group_op_hash[idx_group].resize(base_group.size());
 
       for (size_t idx_op = 0; idx_op < base_group.size(); ++idx_op) {
         base_group_op_hash[idx_group][idx_op] =
-                std::to_string(get_op_hash(base_group[idx_op]));
+            std::to_string(get_op_hash(base_group[idx_op]));
       }
     }
   }
 
   /// get sub-graph cost from cache
-  bool get_cost_from_cache(const uint64_t key, int64_t& cost) {
+  bool get_cost_from_cache(const uint64_t key, int64_t &cost) {
     auto it = cost_cache.find(key);
     if (it != cost_cache.end()) {
       cost = it->second;
@@ -558,9 +559,9 @@ public:
   }
 
   /// gen hash key for sub-graph
-  uint64_t get_graph_hash(const LgInfo& lginfo) {
+  uint64_t get_graph_hash(const LgInfo &lginfo) {
     const int64_t base_group_idx = lginfo.base_group_idx;
-    assert(base_group_idx >= 0);   /// -1 for init value.
+    assert(base_group_idx >= 0); /// -1 for init value.
     const int64_t start_idx = lginfo.start_idx, end_idx = lginfo.end_idx;
 
     std::string buffer;
@@ -580,25 +581,29 @@ public:
     }
     os.flush();
     // std::cout << "\n" << buffer << "\n\n";
-    uint64_t key = llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
+    uint64_t key =
+        llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
     return key;
   }
 
   /// gen hash key for single op
-  uint64_t get_op_hash(Operation* op, bool dump = false) {
+  uint64_t get_op_hash(Operation *op, bool dump = false) {
     std::string buffer;
     llvm::raw_string_ostream os(buffer);
     this->serialize_op(os, op);
     if (dump) {
-      llvm::outs() << "hash_key: " << llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size())) << "\n"
-                   << "serialized op:" <<  buffer << "\n\n";
+      llvm::outs() << "hash_key: "
+                   << llvm::xxh3_64bits(
+                          llvm::StringRef(buffer.data(), buffer.size()))
+                   << "\n"
+                   << "serialized op:" << buffer << "\n\n";
     }
     return llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
   }
 
   /// serialize op to string
-  void serialize_op(llvm::raw_string_ostream& os, Operation* op) {
-    os << op->getName().getStringRef()<< ":";
+  void serialize_op(llvm::raw_string_ostream &os, Operation *op) {
+    os << op->getName().getStringRef() << ":";
     os << "\tInputs: ";
     for (auto v : op->getOperands()) {
       serialize_value(os, v);
@@ -617,7 +622,7 @@ public:
   }
 
   /// serialize value to string
-  void serialize_value(llvm::raw_string_ostream& os, Value v) {
+  void serialize_value(llvm::raw_string_ostream &os, Value v) {
     if (v.getType().isa<NoneType>()) {
       os << "None; ";
       return;
@@ -640,8 +645,8 @@ public:
 private:
   LgCostCache() = default;
   ~LgCostCache() = default;
-  LgCostCache(const LgCostCache&) = delete;
-  LgCostCache& operator=(const LgCostCache&) = delete;
+  LgCostCache(const LgCostCache &) = delete;
+  LgCostCache &operator=(const LgCostCache &) = delete;
 };
 
 typedef enum {
@@ -746,21 +751,22 @@ public:
                                        const shape_secs_t &max_shape_secs);
   void fill_slice_info(ilp_LgInfo &ilp_lg_info);
   bool inc_slice_num(Operation *op, int &test_slice_n, int &try_c_slice_num,
-                     int &try_h_slice_num, int max_n_slice_num, int max_c_slice_num,
-                     int max_h_slice_num, int old_target_secs, bool inc_c_slice = true);
-  bool inc_n_slice_num(int& n_slice_num, int max_n_slice_num);
-  bool is_cut_h(Operation* op);
+                     int &try_h_slice_num, int max_n_slice_num,
+                     int max_c_slice_num, int max_h_slice_num,
+                     int old_target_secs, bool inc_c_slice = true);
+  bool inc_n_slice_num(int &n_slice_num, int max_n_slice_num);
+  bool is_cut_h(Operation *op);
   bool check_group_valid();
   int get_secs(Operation *op, int slice_n, int c_slice_num, int h_slice_num);
   int get_slice_max_n(int n, int slice_num);
   int get_best_n_slice_num(int n, int slice_num);
   virtual bool CalcMatMulGroupTpNum(ilp_LgInfo &lg_info, Operation *&failed_op,
-                            int64_t core_num);
+                                    int64_t core_num);
 
-  Operation* main_mm_op = nullptr;
-  std::vector<Operation*> need_del_ops;
-  std::vector<Operation*> ops;
-  std::vector<Operation*> h_cut_ops;
+  Operation *main_mm_op = nullptr;
+  std::vector<Operation *> need_del_ops;
+  std::vector<Operation *> ops;
+  std::vector<Operation *> h_cut_ops;
   std::map<int, int> map_n_slice_num_to_max_n;
   bool col_cut = true;
   bool find_softmax = false;

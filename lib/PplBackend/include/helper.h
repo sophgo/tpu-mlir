@@ -58,12 +58,10 @@
           "Can not get the kernel from cache, please check cache path!!!\n");  \
       exit(ret);                                                               \
     case PplJitSetChipErr:                                                     \
-      printf(                                                                  \
-          "Check chip is set or is valild. 'echo ${CHIP}'!!!\n");              \
+      printf("Check chip is set or is valild. 'echo ${CHIP}'!!!\n");           \
       exit(ret);                                                               \
     case LocalMemSetErr:                                                       \
-        printf(                                                                \
-          "Can not partially set local_mem, please check in pl file!!!\n");    \
+      printf("Can not partially set local_mem, please check in pl file!!!\n"); \
       exit(ret);                                                               \
     default:                                                                   \
       break;                                                                   \

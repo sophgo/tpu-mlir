@@ -500,7 +500,8 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
     }
   } else {
     auto attr = parseParam();
-    if (module::isMARS3() && (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15)) {
+    if (module::isMARS3() &&
+        (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15)) {
       return failure();
     }
   }

@@ -43,12 +43,11 @@ public:
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
                           const llvm::SetVector<Operation *> &subnet_ops);
   void dynamic_programming_kernel(
-      LgInfo &lg_info,
-      const std::vector<Operation *> &base_group,
+      LgInfo &lg_info, const std::vector<Operation *> &base_group,
       const std::vector<std::pair<int64_t, int64_t>> &clusters,
       std::vector<std::vector<int64_t>> &cost_table,
-      std::vector<std::vector<int64_t>> &cut_points,
-      int64_t base_group_idx, int64_t idx_offset);
+      std::vector<std::vector<int64_t>> &cut_points, int64_t base_group_idx,
+      int64_t idx_offset);
   void dynamic_programming_layer_group_with_cluster(
       std::vector<LgInfo> &lg_infos,
       const llvm::SetVector<Operation *> &subnet_ops);
@@ -112,19 +111,17 @@ public:
   void cut_this_group_is_better(
       ilp_LgInfo &original_group, LgPassIR *pass_ir,
       std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-      std::vector<Operation *>& processed_ops,
-      bool is_cut_op_is_global = true);
-  void
-  try_cut_some_group(LgPassIR *pass_ir,
-                     std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
-                     bool is_cut_op_is_global);
-  void
-  try_modify_mlp_group_sub_sum(LgPassIR *pass_ir,
-                     std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
+      std::vector<Operation *> &processed_ops, bool is_cut_op_is_global = true);
+  void try_cut_some_group(LgPassIR *pass_ir,
+                          std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups,
+                          bool is_cut_op_is_global);
+  void try_modify_mlp_group_sub_sum(
+      LgPassIR *pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void init_ilp_base_groups(LgPassIR *pass_ir);
   void get_layer_group(LgInfo &lg_info,
                        const std::vector<Operation *> &base_group, int64_t left,
-                       int64_t right, int64_t base_group_idx, int64_t idx_offset = 0);
+                       int64_t right, int64_t base_group_idx,
+                       int64_t idx_offset = 0);
   void set_layer_group_cache(LgInfo lg_info);
 
 protected:

@@ -15,10 +15,10 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace tpu {
 
-extern void populateOptPostProcessorBM1684XPatterns(RewritePatternSet *patterns);
+extern void
+populateOptPostProcessorBM1684XPatterns(RewritePatternSet *patterns);
 
-class OptPostProcessorPass
-    : public OptPostProcessorBase<OptPostProcessorPass> {
+class OptPostProcessorPass : public OptPostProcessorBase<OptPostProcessorPass> {
 public:
   OptPostProcessorPass() {}
   void runOnOperation() override {

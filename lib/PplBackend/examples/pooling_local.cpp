@@ -47,9 +47,9 @@ void api_avgpool_local(void *param, size_t param_size, void *slice_info,
   const int block_ih = in_spec->shape[2];
 
   auto ret =
-      avg_pool_2d_local(output_addr, input_addr, kh, kw, stride_h,
-                        stride_w, pad_h_t, pad_h_b, pad_w_l, pad_w_r, block_n,
-                        block_c, block_oh, block_iw, block_ow, block_ih);
+      avg_pool_2d_local(output_addr, input_addr, kh, kw, stride_h, stride_w,
+                        pad_h_t, pad_h_b, pad_w_l, pad_w_r, block_n, block_c,
+                        block_oh, block_iw, block_ow, block_ih);
 
   CHECK_PPL_RET(ret);
   if (ret != 0) {

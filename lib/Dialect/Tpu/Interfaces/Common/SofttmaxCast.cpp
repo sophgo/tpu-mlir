@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/CastUtils.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
-#include "tpu_mlir/Support/CastUtils.h"
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
@@ -43,7 +43,8 @@ ArrayAttr tpu::SoftmaxCastOp::getIndexingMaps() {
 
 bool tpu::SoftmaxCastOp::support_multi_core() { return false; }
 
-mlir::Type tpu::SoftmaxCastOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::SoftmaxCastOp::type_verify(uint64_t opd_idx,
+                                           TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
     auto stype = module::getStorageType(getInput());

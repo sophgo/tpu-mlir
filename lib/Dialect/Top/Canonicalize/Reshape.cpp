@@ -125,8 +125,8 @@ struct ReshapeInstanceNormPattern : public OpRewriterPatternEx<ReshapeOp> {
 
     auto gn_out_type =
         RankedTensorType::get(ishape, module::getElementType(input));
-    auto loc = NameLoc::get(
-        rewriter.getStringAttr(module::getName(next_op.getResult()).str() + "_r_GroupNorm"));
+    auto loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(next_op.getResult()).str() + "_r_GroupNorm"));
 
     auto groupnorm_filter_broadcast =
         [](const std::vector<int64_t> &filter_shape, const void *filter_orig,
@@ -327,7 +327,8 @@ struct InValidReshapeMergePattern : public OpRewriterPatternEx<ReshapeOp> {
 
 //  Do:
 //     A                                          A + Reshape
-//       + Add + Reshape + LayerNorm/Matmul -->>              + Add + LayerNorm/Matmul
+//       + Add + Reshape + LayerNorm/Matmul -->>              + Add +
+//       LayerNorm/Matmul
 //     B                                          B + Reshape
 // swint
 struct TopAddReshapeSwap : public OpRewriterPatternEx<ReshapeOp> {

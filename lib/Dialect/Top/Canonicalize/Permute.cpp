@@ -907,8 +907,9 @@ struct TopMoveSoftmaxAfterPermute : public OpRewriterPatternEx<PermuteOp> {
   }
 };
 
-// Permute(0, 2, 1) + Conv1D(kw=1) + Conv1D(kw=1) + Permute(0, 2, 1) => MatMul + MatMul
-// [b,w,c1] -> [b,c1,w] -> [b,c2,w] -> [b,c3,w] -> [b,w,c3] => [b,w,c1] -> [b,w,c2] -> [b,w,c3]
+// Permute(0, 2, 1) + Conv1D(kw=1) + Conv1D(kw=1) + Permute(0, 2, 1) => MatMul +
+// MatMul [b,w,c1] -> [b,c1,w] -> [b,c2,w] -> [b,c3,w] -> [b,w,c3] => [b,w,c1]
+// -> [b,w,c2] -> [b,w,c3]
 struct PermuteAndConv1DtoMatMul : public OpRewriterPatternEx<PermuteOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
@@ -997,7 +998,8 @@ struct PermuteAndConv1DtoMatMul : public OpRewriterPatternEx<PermuteOp> {
       return failure();
     }
     // Permute2
-    auto permute2 = dyn_cast_or_null<PermuteOp>(*conv2.getResult().user_begin());
+    auto permute2 =
+        dyn_cast_or_null<PermuteOp>(*conv2.getResult().user_begin());
     if (!permute2) {
       return failure();
     }
@@ -1009,18 +1011,19 @@ struct PermuteAndConv1DtoMatMul : public OpRewriterPatternEx<PermuteOp> {
     // rewrite
     // MatMul1
     // create MatMul1 weight
-    auto conv1_weight_op = dyn_cast<WeightOp>(conv1.getFilter().getDefiningOp());
+    auto conv1_weight_op =
+        dyn_cast<WeightOp>(conv1.getFilter().getDefiningOp());
     auto storage_type = module::getStorageType(conv1.getFilter());
     auto conv1_weight_data = conv1_weight_op.read<float>();
     auto conv1_weight_shape = module::getShape(conv1_weight_op.getOutput());
-    auto matmul1_weight
-        = std::make_shared<std::vector<float>>(conv1_weight_data->size(), 0);
-    auto conv1_weight_2d_shape = std::vector<int64_t>{
-        conv1_weight_shape[0], conv1_weight_shape[1]};
+    auto matmul1_weight =
+        std::make_shared<std::vector<float>>(conv1_weight_data->size(), 0);
+    auto conv1_weight_2d_shape =
+        std::vector<int64_t>{conv1_weight_shape[0], conv1_weight_shape[1]};
     function_permute(conv1_weight_data->data(), matmul1_weight->data(),
                      conv1_weight_2d_shape, {1, 0});
-    auto matmul1_weight_shape = std::vector<int64_t>{
-      conv1_weight_shape[1], conv1_weight_shape[0]};
+    auto matmul1_weight_shape =
+        std::vector<int64_t>{conv1_weight_shape[1], conv1_weight_shape[0]};
     rewriter.setInsertionPointAfter(conv1);
     auto weight1 = WeightOp::create_float(conv1, "reorder", *matmul1_weight,
                                           matmul1_weight_shape, storage_type);
@@ -1030,28 +1033,30 @@ struct PermuteAndConv1DtoMatMul : public OpRewriterPatternEx<PermuteOp> {
     // [b, w, ic] -> Permute(0, 2, 1) -> [b, ic, w] -> Conv1D -> [b, oc, w]
     // [b, w, ic] -> MatMul([ic, oc]) -> [b, w, oc]
     auto conv1_shape = module::getShape(conv1.getOutput());
-    auto matmul1_type = RankedTensorType::get(
-        {conv1_shape[0], conv1_shape[2], conv1_shape[1]},
-        module::getElementType(conv1.getOutput()));
+    auto matmul1_type =
+        RankedTensorType::get({conv1_shape[0], conv1_shape[2], conv1_shape[1]},
+                              module::getElementType(conv1.getOutput()));
     rewriter.setInsertionPointAfter(weight1.getDefiningOp());
     auto conv1_name = module::getName(conv1.getOutput()).str();
     auto matmul1_op = rewriter.create<MatMulOp>(
-        NameLoc::get(rewriter.getStringAttr(conv1_name + "_r_permute")), matmul1_type,
-        ValueRange{op.getOperand(), weight1, conv1.getBias()}, attrs);
+        NameLoc::get(rewriter.getStringAttr(conv1_name + "_r_permute")),
+        matmul1_type, ValueRange{op.getOperand(), weight1, conv1.getBias()},
+        attrs);
 
     // MatMul2
     // create MatMul2 weight
-    auto conv2_weight_op = dyn_cast<WeightOp>(conv2.getFilter().getDefiningOp());
+    auto conv2_weight_op =
+        dyn_cast<WeightOp>(conv2.getFilter().getDefiningOp());
     auto conv2_weight_data = conv2_weight_op.read<float>();
     auto conv2_weight_shape = module::getShape(conv2_weight_op.getOutput());
-    auto matmul2_weight
-        = std::make_shared<std::vector<float>>(conv2_weight_data->size(), 0);
-    auto conv2_weight_2d_shape = std::vector<int64_t>{
-        conv2_weight_shape[0], conv2_weight_shape[1]};
+    auto matmul2_weight =
+        std::make_shared<std::vector<float>>(conv2_weight_data->size(), 0);
+    auto conv2_weight_2d_shape =
+        std::vector<int64_t>{conv2_weight_shape[0], conv2_weight_shape[1]};
     function_permute(conv2_weight_data->data(), matmul2_weight->data(),
                      conv2_weight_2d_shape, {1, 0});
-    auto matmul2_weight_shape = std::vector<int64_t>{
-      conv2_weight_shape[1], conv2_weight_shape[0]};
+    auto matmul2_weight_shape =
+        std::vector<int64_t>{conv2_weight_shape[1], conv2_weight_shape[0]};
     rewriter.setInsertionPointAfter(conv2);
     auto weight2 = WeightOp::create_float(conv2, "reorder", *matmul2_weight,
                                           matmul2_weight_shape, storage_type);

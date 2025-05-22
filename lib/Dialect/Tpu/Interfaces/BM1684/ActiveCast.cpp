@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
@@ -17,7 +16,8 @@ void tpu::FusedActiveCastOp::codegen_global_bm1684() {
   UNREACHABLE_THIS("to be implemented");
 }
 
-uint32_t tpu::FusedActiveCastOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+uint32_t
+tpu::FusedActiveCastOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }

@@ -8,12 +8,14 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
-#include "tpu_mlir/Support/GenericCpuFunc.h"
-#include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/ActiveUtils.h"
 #include "tpu_mlir/Support/CastUtils.h"
+#include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Support/LutFunc.h"
 
-LogicalResult tpu::FusedActiveCastOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::FusedActiveCastOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::FusedActiveCastOp::deinit(InferenceParameter &p) {}
 
 static void active_func(InferenceParameter &p, int64_t num, activate_f func) {

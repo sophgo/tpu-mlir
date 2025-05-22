@@ -291,7 +291,7 @@ static void register_blk_out(Operation *blk_op, upd_info_t &upd_info,
   }
 }
 
-static unsigned get_op_file_line(Operation* op) {
+static unsigned get_op_file_line(Operation *op) {
   return op->getLoc().dyn_cast<FileLineColLoc>().getLine();
 }
 
@@ -433,8 +433,8 @@ public:
     return nullptr;
   }
 
-  static Vector<Operation*> analyze_from_tp_for_more(Operation *func_op) {
-    Vector<Operation*> end_ops;
+  static Vector<Operation *> analyze_from_tp_for_more(Operation *func_op) {
+    Vector<Operation *> end_ops;
     auto funcOp = dyn_cast<func::FuncOp>(func_op);
     auto &ops = funcOp.getFunctionBody().front().getOperations();
     for (auto &op : ops) {
@@ -1160,7 +1160,7 @@ public:
     Map<Operation *, upd_info_t> blk_upd_infos;
     auto mainFuncOp = module::getMainFuncOp(g_moduleOp);
     auto main_func_op = mainFuncOp.getOperation();
-    Vector<Operation*> end_ops;
+    Vector<Operation *> end_ops;
     if (trunc_mode == 0) {
       Operation *may_be_end_op =
           FuncDataFlowAnalysis::analyze_from_tp(main_func_op);
@@ -1168,8 +1168,7 @@ public:
         return;
       end_ops.push_back(may_be_end_op);
     } else if (trunc_mode == 1) {
-      end_ops =
-          FuncDataFlowAnalysis::analyze_from_tp_for_more(main_func_op);
+      end_ops = FuncDataFlowAnalysis::analyze_from_tp_for_more(main_func_op);
       if (end_ops.empty())
         return;
     } else {

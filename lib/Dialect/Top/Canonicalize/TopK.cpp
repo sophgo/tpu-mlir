@@ -47,9 +47,10 @@ struct TopKWithSlice : public OpRewriterPatternEx<TopKOp> {
   }
 
 private:
-  LogicalResult slice2k(TopKOp op, SliceOp slice_indice_op, SliceOp slice_value_op,
-                        PatternRewriter &rewriter, int64_t axis) const {
-    SliceOp slice_op = slice_indice_op?slice_indice_op:slice_value_op;
+  LogicalResult slice2k(TopKOp op, SliceOp slice_indice_op,
+                        SliceOp slice_value_op, PatternRewriter &rewriter,
+                        int64_t axis) const {
+    SliceOp slice_op = slice_indice_op ? slice_indice_op : slice_value_op;
     auto slice_shape = module::getShape(slice_op);
     auto offset = module::getI64Array(slice_op.getOffset());
     auto steps = module::getI64Array(slice_op.getSteps());
@@ -94,19 +95,25 @@ private:
     std::vector<Location> locs = {};
 
     if (slice_indice_op) {
-      std::string slice_indice_op_name = module::getName(slice_indice_op.getOperation()).str() + "_r_TopK";
-      auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_indice_op_name));
+      std::string slice_indice_op_name =
+          module::getName(slice_indice_op.getOperation()).str() + "_r_TopK";
+      auto slice_loc =
+          NameLoc::get(rewriter.getStringAttr(slice_indice_op_name));
       locs.push_back(slice_loc);
-    } else{
-      auto indices_loc = NameLoc::get(rewriter.getStringAttr(module::getName(op.getResult(0)).str()));
+    } else {
+      auto indices_loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(op.getResult(0)).str()));
       locs.push_back(indices_loc);
     }
     if (slice_value_op) {
-      std::string slice_value_op_name = module::getName(slice_value_op.getOperation()).str() + "_r_TopK";
-      auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_value_op_name));
+      std::string slice_value_op_name =
+          module::getName(slice_value_op.getOperation()).str() + "_r_TopK";
+      auto slice_loc =
+          NameLoc::get(rewriter.getStringAttr(slice_value_op_name));
       locs.push_back(slice_loc);
-    } else{
-      auto values_loc = NameLoc::get(rewriter.getStringAttr(module::getName(op.getResult(1)).str()));
+    } else {
+      auto values_loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(op.getResult(1)).str()));
       locs.push_back(values_loc);
     }
     auto fused_loc = FusedLoc::get(getContext(), locs);
@@ -141,9 +148,10 @@ private:
     }
   }
 
-  LogicalResult which_axes(TopKOp op, SliceOp slice_indice_op, SliceOp slice_value_op,
+  LogicalResult which_axes(TopKOp op, SliceOp slice_indice_op,
+                           SliceOp slice_value_op,
                            PatternRewriter &rewriter) const {
-    SliceOp slice_op = slice_indice_op?slice_indice_op:slice_value_op;
+    SliceOp slice_op = slice_indice_op ? slice_indice_op : slice_value_op;
     if (!slice_op.getHasparamConvertAxesAttr().empty()) {
       auto axes = module::getI64Array(slice_op.getHasparamConvertAxesAttr());
 
@@ -151,7 +159,7 @@ private:
         return failure();
       } else {
         auto axis = axes->at(0);
-        return slice2k(op, slice_indice_op,slice_value_op, rewriter, axis);
+        return slice2k(op, slice_indice_op, slice_value_op, rewriter, axis);
       }
     } else {
       auto axes = module::getI64Array(slice_op.getAxes());
@@ -159,7 +167,7 @@ private:
         return failure();
       } else {
         auto axis = axes->at(0);
-        return slice2k(op, slice_indice_op,slice_value_op, rewriter, axis);
+        return slice2k(op, slice_indice_op, slice_value_op, rewriter, axis);
       }
     }
   }
@@ -186,7 +194,8 @@ private:
             (slice_indices_op.getStepsT() == slice_values_op.getStepsT()) &
             (slice_indices_op.getEndsT() == slice_values_op.getEndsT())) {
 
-          auto slice_ret = which_axes(op, slice_indices_op, slice_values_op, rewriter);
+          auto slice_ret =
+              which_axes(op, slice_indices_op, slice_values_op, rewriter);
           return slice_ret;
         } else {
           return failure();

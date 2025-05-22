@@ -42,7 +42,7 @@ mlir::Type type_verify_case_i32(mlir::Operation *op, uint64_t opd_idx,
 // conv/matmul output if is i16 or i32, then input should be quant i8
 // else will be the same
 mlir::Type type_verify_case_i16_or_i32(mlir::Operation *op, uint64_t opd_idx,
-  TypeCastMode &mode);
+                                       TypeCastMode &mode);
 
 // for matmul in fp8 mode, the output is always fp32, but the input should be
 // f8, maybe can be used for conv in the future

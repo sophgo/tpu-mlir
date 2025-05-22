@@ -22,11 +22,10 @@ void tpu::WhereBnbwdOp::codegen_global_bm1684x() {
 
   where_batchnorm_backward_param_t param = {0};
   param.do_recompute = getDoRecompute();
-  BM168x::call_global_func("backend_api_where_batchnorm_backward_global", &param,
-                           sizeof(param), input_spec->data(),
+  BM168x::call_global_func("backend_api_where_batchnorm_backward_global",
+                           &param, sizeof(param), input_spec->data(),
                            output_spec->data());
 }
-
 
 void tpu::WhereBnbwdOp::codegen_global_cv18xx(int64_t layer_id) {}
 
@@ -44,4 +43,3 @@ int64_t tpu::WhereBnbwdOp::dyn_codegen_global_bm1684x(void *buffer) {
 // =========================================
 
 int64_t tpu::WhereBnbwdOp::get_fw_type_bm1684x() { return FW_LAYER_UNKNOWN; }
-

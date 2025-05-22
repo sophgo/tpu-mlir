@@ -32,16 +32,16 @@ void tpu::PadOp::codegen_global_bm1684x() {
     out_shape[i] += (pads_4[i] + pads_4[i + 4]);
   }
   bool with_insert_zero = getWithInsertZeroAttr().getValue();
-  if(with_insert_zero) {
+  if (with_insert_zero) {
     auto inserts = module::getI64Array(getInsertZeros().value());
     int inserts_size = inserts->size();
     assert((shape.size() - 2) == inserts_size);
     for (int i = inserts_size; i > 0; i--) {
       out_shape[4 - i] += inserts->at(inserts_size - i) * (shape_4[4 - i] - 1);
-      if(inserts_size == 1)
+      if (inserts_size == 1)
         param.insert_zeros[inserts_size - i] = inserts->at(inserts_size - i);
       else if (inserts_size == 2)
-        param.insert_zeros[inserts_size - i] = inserts->at(i-1);
+        param.insert_zeros[inserts_size - i] = inserts->at(i - 1);
       else
         assert(0);
     }

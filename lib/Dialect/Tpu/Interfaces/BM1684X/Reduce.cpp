@@ -27,10 +27,11 @@ int64_t tpu::ReduceOp::getBufferSize_bm1684x(
     auto axes = module::getI64Array(getAxes());
     assert(axes->size() == 1);
     if (axes->at(0) == 3) {
-      // NOTE: NOW,  INT8 uses 3-stage reduce-w optimize, while FP16/FP32 uses 2-stage reduce-w.
-      // INT8 reduce ==> in_wslice -> npu_num -> 2 -> 1
+      // NOTE: NOW,  INT8 uses 3-stage reduce-w optimize, while FP16/FP32 uses
+      // 2-stage reduce-w. INT8 reduce ==> in_wslice -> npu_num -> 2 -> 1
       // FP16/FP32 reduce ==> in_wslice -> npu_num -> 1
-      buffer_size += 2 * ceiling_func(in_cslice, npu_num) * in_hslice * eu_num * dtype_size;
+      buffer_size += 2 * ceiling_func(in_cslice, npu_num) * in_hslice * eu_num *
+                     dtype_size;
     }
     return buffer_size;
   }
@@ -61,8 +62,9 @@ void tpu::ReduceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.spec.common.output_scale = 1.0f;
   param.spec.common.keep_dims = getKeepdims() ? 1 : 0;
   param.spec.buffer_addr = gi.buffer_addr;
-  BM168x::call_local_func("backend_api_reduce_full_local", &param, sizeof(param),
-                           &sec_info, input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_reduce_full_local", &param,
+                          sizeof(param), &sec_info, input_spec->data(),
+                          output_spec->data());
 }
 
 void tpu::ReduceOp::codegen_global_bm1684x() {

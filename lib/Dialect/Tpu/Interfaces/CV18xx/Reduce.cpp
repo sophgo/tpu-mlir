@@ -12,11 +12,9 @@
 
 using namespace tpu_mlir::backend;
 
-int64_t tpu::ReduceOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
-                                         int64_t out_lmem_bytes,
-                                         int64_t in_nslice, int64_t in_hslice,
-                                         int64_t out_nslice,
-                                         int64_t out_hslice) {
+int64_t tpu::ReduceOp::getBufferSize_cv18xx(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   llvm_unreachable("Not supported now");
   return 0;
 }

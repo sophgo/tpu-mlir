@@ -25,7 +25,7 @@ void tpu::CorrelationOp::codegen_global_bm1684x() {
   param.num_groups = getNumGroups();
 
   BM168x::call_ppl_global_func("api_correlation_global", &param, sizeof(param),
-                              input_spec->data(), output_spec->data());
+                               input_spec->data(), output_spec->data());
 }
 
 // ======================================

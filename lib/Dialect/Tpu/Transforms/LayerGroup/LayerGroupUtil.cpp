@@ -1281,11 +1281,13 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
   }
 
   update_tensor_infos(lg_info, tensor_infos, shape_secs);
-  auto status_str =
-      status ? "success" : "failed";
+  auto status_str = status ? "success" : "failed";
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("updata_data_split_result", status_str,
-                    "try to find more appropriate shape_secs than the initial one") << "\n";
+    llvm::dbgs()
+        << DEBUGGER_DEFAULT_INFO(
+               "updata_data_split_result", status_str,
+               "try to find more appropriate shape_secs than the initial one")
+        << "\n";
   });
   return status;
 }
@@ -1436,7 +1438,7 @@ void slice_distributor(std::vector<slice_pair_t> &slice_pairs,
                        int64_t vec_length, int64_t secs) {
   slice_pairs.clear();
   int64_t per_sec_base = vec_length / secs; // 每个分片的基本大小
-  int64_t extra = vec_length % secs;        // 需要额外分配一个单位的分片数量
+  int64_t extra = vec_length % secs; // 需要额外分配一个单位的分片数量
 
   int64_t start_idx = 0; // 当前分片的起始索引
   for (int64_t i = 0; i < secs; ++i) {
@@ -1942,7 +1944,7 @@ static bool backward_update_slice(
             return isa<tpu::Conv2DOp>(op);
           } else {
             return isa<tpu::Conv2DOp, tpu::AddOp, tpu::BinaryShiftOp,
-                      tpu::BinaryConstShiftOp>(op);
+                       tpu::BinaryConstShiftOp>(op);
           }
         };
 
@@ -1950,8 +1952,9 @@ static bool backward_update_slice(
           return false;
         }
         for (auto user : pre_op->getUsers()) {
-          if (!(tpukernel_allow_HWmargins(user) || isa<tpu::LutOp, tpu::CastOp>(user))
-              || module::isF8Modes()) {
+          if (!(tpukernel_allow_HWmargins(user) ||
+                isa<tpu::LutOp, tpu::CastOp>(user)) ||
+              module::isF8Modes()) {
             return false;
           }
         }

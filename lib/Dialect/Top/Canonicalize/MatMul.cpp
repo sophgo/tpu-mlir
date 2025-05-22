@@ -377,8 +377,8 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
       }
       squeeze_out.setType(
           UnrankedTensorType::get(module::getElementType(squeeze_out)));
-      squeeze_out.setLoc(NameLoc::get(
-          rewriter.getStringAttr(module::getName(squeeze_out).str() + "_r_new")));
+      squeeze_out.setLoc(NameLoc::get(rewriter.getStringAttr(
+          module::getName(squeeze_out).str() + "_r_new")));
       squeeze_op.shape_inference();
 
       std::vector<mlir::Operation *> users;
@@ -813,7 +813,8 @@ struct MatMulReverse : public OpRewriterPatternEx<MatMulOp> {
     std::swap(new_in1_shape[in1_ndims - 1], new_in1_shape[in1_ndims - 2]);
     auto outType = module::getTypeLike(out, new_in1_shape);
     std::string in1_name = module::getName(in1).str();
-    auto newLoc = NameLoc::get(rewriter.getStringAttr(in1_name + "_r_permute1"));
+    auto newLoc =
+        NameLoc::get(rewriter.getStringAttr(in1_name + "_r_permute1"));
     // auto newLoc = module::getLocLike(in1, "order");
     auto p1_op =
         rewriter.create<top::PermuteOp>(newLoc, outType, operands, attrs);

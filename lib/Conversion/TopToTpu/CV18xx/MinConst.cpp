@@ -12,8 +12,8 @@
 #define DEBUG_TYPE "lowering-minconst"
 namespace tpu_mlir {
 namespace cv18xx {
-void MinConstLowering::LoweringINT8(PatternRewriter &rewriter, top::MinConstOp op,
-                               bool asymmetric) const {
+void MinConstLowering::LoweringINT8(PatternRewriter &rewriter,
+                                    top::MinConstOp op, bool asymmetric) const {
   auto in = op.getInput();
   auto out = op.getInput();
   int64_t in_zp, out_zp;
@@ -27,12 +27,15 @@ void MinConstLowering::LoweringINT8(PatternRewriter &rewriter, top::MinConstOp o
   const_val = static_cast<int>(round(const_val / out_scale)) << rshift;
 
   auto input_shape = module::getShape(op.getInput());
-  int nums = std::accumulate(input_shape.begin(), input_shape.end(), 1, std::multiplies<int>());
+  int nums = std::accumulate(input_shape.begin(), input_shape.end(), 1,
+                             std::multiplies<int>());
   auto in_type = op.getInput().getType().cast<RankedTensorType>();
-  auto weight_type = RankedTensorType::get(
-          in_type.getShape(), rewriter.getI8Type());
-  auto weight_operand =
-          top::WeightOp::create(op, "const_min", std::vector<int8_t>(nums, to_int8(const_val, ROUNDING_HALF_UP)), weight_type);
+  auto weight_type =
+      RankedTensorType::get(in_type.getShape(), rewriter.getI8Type());
+  auto weight_operand = top::WeightOp::create(
+      op, "const_min",
+      std::vector<int8_t>(nums, to_int8(const_val, ROUNDING_HALF_UP)),
+      weight_type);
   std::vector<Value> operands;
   operands.push_back(op->getOperand(0));
   operands.push_back(weight_operand);
@@ -40,13 +43,15 @@ void MinConstLowering::LoweringINT8(PatternRewriter &rewriter, top::MinConstOp o
   rewriter.replaceOpWithNewOp<tpu::MinOp>(op, new_type, operands);
 }
 
-void MinConstLowering::LoweringBF16(PatternRewriter &rewriter, top::MinConstOp op) const {
+void MinConstLowering::LoweringBF16(PatternRewriter &rewriter,
+                                    top::MinConstOp op) const {
   double const_val = op.getConstVal().convertToDouble();
   auto weight_type = op.getInput().getType().cast<RankedTensorType>();
   auto input_shape = module::getShape(op.getInput());
-  int nums = std::accumulate(input_shape.begin(), input_shape.end(), 1, std::multiplies<int>());
-  auto weight_operand =
-          top::WeightOp::create(op, "const_min", std::vector<float>(nums, const_val), weight_type);
+  int nums = std::accumulate(input_shape.begin(), input_shape.end(), 1,
+                             std::multiplies<int>());
+  auto weight_operand = top::WeightOp::create(
+      op, "const_min", std::vector<float>(nums, const_val), weight_type);
   std::vector<Value> operands;
   operands.push_back(op->getOperand(0));
   operands.push_back(weight_operand);

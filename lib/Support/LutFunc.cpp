@@ -124,8 +124,7 @@ Value create_lookup_table_fp32(Value in, activate_f &&func) {
     int index = i < 0 ? 256 + i : i;
     table[index] = func(dequant(i, qtype));
   }
-  return top::WeightOp::create(in.getDefiningOp(), "table", table,
-                                table_type);
+  return top::WeightOp::create(in.getDefiningOp(), "table", table, table_type);
 }
 
 Value create_lookup_table_fp16(Value in, activate_f &&func) {
@@ -141,8 +140,7 @@ Value create_lookup_table_fp16(Value in, activate_f &&func) {
     int index = i < 0 ? 256 + i : i;
     table[index] = f32_to_f16(F16(func(dequant(i, qtype))));
   }
-  return top::WeightOp::create(in.getDefiningOp(), "table", table,
-                                table_type);
+  return top::WeightOp::create(in.getDefiningOp(), "table", table, table_type);
 }
 
 Value create_lookup_table(Operation *owner, const std::vector<float> &table) {

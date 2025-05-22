@@ -29,7 +29,8 @@ void tpu::CastAddOp::codegen_global_bm1684x() {
   auto round_mode = round_mode_convert(getRoundMode());
 
   if (qInput && fOutput) {
-    auto qtype = qInput_0 ? module::getUniformQuantizedType(getInputs()[0]) : module::getUniformQuantizedType(getInputs()[1]);
+    auto qtype = qInput_0 ? module::getUniformQuantizedType(getInputs()[0])
+                          : module::getUniformQuantizedType(getInputs()[1]);
 
     cast_add_param_t param = {0};
     param.is_perchannel = false;

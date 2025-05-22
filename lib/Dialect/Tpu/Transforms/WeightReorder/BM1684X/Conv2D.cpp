@@ -100,9 +100,10 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
       auto bias_value = op.getBias();
       rewriter.setInsertionPointAfterValue(bias_value);
       auto reshape_loc = module::getLocLike(bias_value, "reshaped");
-      auto reshape_type = RankedTensorType::get(bias_shape, module::getElementType(bias_value));
-      auto reshape_op =
-        rewriter.create<tpu::ReshapeOp>(reshape_loc, reshape_type, ValueRange{bias_value});
+      auto reshape_type =
+          RankedTensorType::get(bias_shape, module::getElementType(bias_value));
+      auto reshape_op = rewriter.create<tpu::ReshapeOp>(
+          reshape_loc, reshape_type, ValueRange{bias_value});
       op.setOperand(2, reshape_op.getOutput());
     }
   }
@@ -478,7 +479,8 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   return success();
 }
 
-template <typename T> static void filter_rotate(tpu::Conv2DOp &op) {
+template <typename T>
+static void filter_rotate(tpu::Conv2DOp &op) {
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter = filterOp.read<T>();
   auto attr = op.parseParam();

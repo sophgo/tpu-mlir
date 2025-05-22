@@ -5234,7 +5234,7 @@ class QuantizedSoftmaxPattern : public OpRewriterPatternEx<tpu::SoftmaxOp> {
 public:
   QuantizedSoftmaxPattern(mlir::MLIRContext *context, int benefit)
       : OpRewriterPatternEx<tpu::SoftmaxOp>(context, "QuantizedSoftmaxPattern",
-                                                 benefit) {}
+                                            benefit) {}
 
   LogicalResult matchAndRewriteImpl(tpu::SoftmaxOp op,
                                     PatternRewriter &rewriter) const override {
@@ -5243,7 +5243,8 @@ public:
     }
     if (!op.getInput().getDefiningOp() ||
         !isa<tpu::CastOp>(op.getInput().getDefiningOp()) ||
-        !module::isUniformQuantized(op.getInput().getDefiningOp()->getOperand(0))) {
+        !module::isUniformQuantized(
+            op.getInput().getDefiningOp()->getOperand(0))) {
       return failure();
     }
     if (!op.getOutput().hasOneUse() ||
@@ -5251,8 +5252,7 @@ public:
       return failure();
     }
     auto input_shape = module::getShape(op.getInput());
-    if (input_shape.size() != 4 ||
-        op.getAxis() != 2 && op.getAxis() != 3) {
+    if (input_shape.size() != 4 || op.getAxis() != 2 && op.getAxis() != 3) {
       return failure();
     }
     // NOTE: here is a TEMPORARY solution, because
@@ -5276,35 +5276,38 @@ public:
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "axes", rewriter.getI64ArrayAttr({op.getAxis()})));
-    attrs.push_back(rewriter.getNamedAttr(
-        "keepdims", rewriter.getBoolAttr(true)));
-    attrs.push_back(rewriter.getNamedAttr(
-        "mode", rewriter.getStringAttr("ReduceMax")));
+    attrs.push_back(
+        rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(true)));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceMax")));
     std::vector<int64_t> reduced_shape = input_shape;
     reduced_shape[op.getAxis()] = 1;
     auto noneOp = module::getNoneOp(op);
     auto reduceMaxOp = rewriter.create<tpu::ReduceOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(pre_cast_op.getInput()).str()+"_reduceMax")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(pre_cast_op.getInput()).str() + "_reduceMax")),
         module::getTypeLike(pre_cast_op.getInput(), reduced_shape),
         ValueRange{pre_cast_op.getInput(), noneOp, noneOp}, attrs);
 
     // BinaryShiftOp:
     attrs.clear();
-    attrs.push_back(rewriter.getNamedAttr(
-        "mode", rewriter.getStringAttr("Sub")));
-    attrs.push_back(rewriter.getNamedAttr(
-        "shift", rewriter.getSI32IntegerAttr(0)));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("Sub")));
+    attrs.push_back(
+        rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(0)));
     auto binary_shiftOp = rewriter.create<tpu::BinaryShiftOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(reduceMaxOp, 0).str()+"_binaryShift")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(reduceMaxOp, 0).str() + "_binaryShift")),
         module::getTypeLike(pre_cast_op.getInput(), input_shape),
         ValueRange{pre_cast_op.getInput(), reduceMaxOp.getOutput()}, attrs);
 
     // LutOp:
-    auto table = create_lookup_table_fp16(binary_shiftOp.getOutput(), [&beta_v](double x) {
-      return std::exp(x * beta_v);
-    });
+    auto table = create_lookup_table_fp16(
+        binary_shiftOp.getOutput(),
+        [&beta_v](double x) { return std::exp(x * beta_v); });
     auto lutOp = rewriter.create<tpu::LutOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(binary_shiftOp, 0).str()+"_lut")),
+        NameLoc::get(rewriter.getStringAttr(
+            module::getName(binary_shiftOp, 0).str() + "_lut")),
         RankedTensorType::get(input_shape, rewriter.getF16Type()),
         ValueRange{binary_shiftOp.getOutput(), table});
 
@@ -5312,12 +5315,13 @@ public:
     attrs.clear();
     attrs.push_back(rewriter.getNamedAttr(
         "axes", rewriter.getI64ArrayAttr({op.getAxis()})));
-    attrs.push_back(rewriter.getNamedAttr(
-        "keepdims", rewriter.getBoolAttr(true)));
-    attrs.push_back(rewriter.getNamedAttr(
-        "mode", rewriter.getStringAttr("ReduceSum")));
+    attrs.push_back(
+        rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(true)));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceSum")));
     auto reduceSumOp = rewriter.create<tpu::ReduceOp>(
-        NameLoc::get(rewriter.getStringAttr(module::getName(lutOp, 0).str()+"_reduceSum")),
+        NameLoc::get(rewriter.getStringAttr(module::getName(lutOp, 0).str() +
+                                            "_reduceSum")),
         module::getTypeLike(lutOp.getOutput(), reduced_shape),
         ValueRange{lutOp.getOutput(), noneOp, noneOp}, attrs);
 
@@ -5326,26 +5330,30 @@ public:
     if (module::getChip() == module::Chip::BM1684X) {
       // Cast to F32 before reciprocal
       auto castToF32Op = rewriter.create<tpu::CastOp>(
-          NameLoc::get(rewriter.getStringAttr(module::getName(reduceSumOp, 0).str()+"_toF32")),
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(reduceSumOp, 0).str() + "_toF32")),
           RankedTensorType::get(reduced_shape, rewriter.getF32Type()),
           ValueRange{reduceSumOp.getOutput()});
 
       // Reciprocal in F32
       auto reciprocalOp = rewriter.create<tpu::ReciprocalOp>(
-          NameLoc::get(rewriter.getStringAttr(module::getName(castToF32Op, 0).str()+"_reciprocal")),
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(castToF32Op, 0).str() + "_reciprocal")),
           RankedTensorType::get(reduced_shape, rewriter.getF32Type()),
           ValueRange{castToF32Op.getOutput()});
       reciprocalOp.setConstVal(APFloat(1.0));
 
       // Cast back to original type
       auto castBackOp = rewriter.create<tpu::CastOp>(
-          NameLoc::get(rewriter.getStringAttr(module::getName(reciprocalOp, 0).str()+"_toF16")),
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(reciprocalOp, 0).str() + "_toF16")),
           module::getTypeLike(lutOp.getOutput(), reduced_shape),
           ValueRange{reciprocalOp.getOutput()});
       reciprocal_expsum = castBackOp.getOutput();
     } else {
       auto reciprocalOp = rewriter.create<tpu::ReciprocalOp>(
-          NameLoc::get(rewriter.getStringAttr(module::getName(reduceSumOp, 0).str()+"_reciprocal")),
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(reduceSumOp, 0).str() + "_reciprocal")),
           module::getTypeLike(lutOp.getOutput(), reduced_shape),
           ValueRange{reduceSumOp.getOutput()});
       reciprocalOp.setConstVal(APFloat(1.0));
@@ -5354,8 +5362,7 @@ public:
 
     // MulOp:
     rewriter.replaceOpWithNewOp<tpu::MulOp>(
-        op,
-        module::getTypeLike(lutOp.getOutput(), input_shape),
+        op, module::getTypeLike(lutOp.getOutput(), input_shape),
         ValueRange{lutOp.getOutput(), reciprocal_expsum});
     return success();
   }
@@ -5422,7 +5429,6 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   // patterns->add<MatmulUsePermutePattern>(ctx, 4);
   patterns->add<MultipleSameActivationMatmulMergePattern>(ctx, 3);
   patterns->add<QuantizedSoftmaxPattern>(ctx, 5);
-
 }
 } // namespace tpu
 

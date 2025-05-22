@@ -412,12 +412,11 @@ typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
                                         void *input, void *output);
 void BM168x::call_ppl_global_func(const char *symbolName, void *params,
                                   int param_size, void *input, void *output) {
-    auto set_node_chip =
-        instance()->PplCastToFPtr<ppl_set_node>("ppl_set_node");
-    set_node_chip((*instance())->cmdid_node);
-    auto kernel_func =
-        instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
-    kernel_func(params, param_size, input, output);
+  auto set_node_chip = instance()->PplCastToFPtr<ppl_set_node>("ppl_set_node");
+  set_node_chip((*instance())->cmdid_node);
+  auto kernel_func =
+      instance()->PplCastToFPtr<ppl_global_backend_api_t>(symbolName);
+  kernel_func(params, param_size, input, output);
 }
 
 typedef int (*ppl_local_backend_api_t)(void *params, int param_size,

@@ -564,8 +564,8 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
       auto op_name = module::getName(_op);
       DEBUG_WITH_TYPE("cycle_calc", {
         llvm::dbgs() << "; action = codegen_global_layer"
-                     << "; op_name = " << op_name
-                     << "; full = " << full_cycle << "\n";
+                     << "; op_name = " << op_name << "; full = " << full_cycle
+                     << "\n";
       });
       cycle = std::max(cycle, full_cycle);
       bm168x->dl_sg_stas_reset();

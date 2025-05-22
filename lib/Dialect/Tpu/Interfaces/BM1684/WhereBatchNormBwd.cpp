@@ -18,8 +18,6 @@ void tpu::WhereBnbwdOp::codegen_global_bm1684() {
   UNREACHABLE_THIS("Not Implemented");
 }
 
-
-
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
@@ -34,4 +32,3 @@ int64_t tpu::WhereBnbwdOp::get_fw_type_bm1684() { return -1; }
 // ======================================
 // Dynamic LocalGenInterface
 // ======================================
-

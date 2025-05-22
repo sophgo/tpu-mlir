@@ -153,7 +153,7 @@ mlir::Type type_verify_case_i32(mlir::Operation *op, uint64_t opd_idx,
 }
 
 mlir::Type type_verify_case_i16_or_i32(mlir::Operation *op, uint64_t opd_idx,
-  TypeCastMode &mode) {
+                                       TypeCastMode &mode) {
   auto in = op->getOperand(opd_idx);
   auto out = op->getResult(0);
   auto is_qtype = module::isUniformQuantized(in);

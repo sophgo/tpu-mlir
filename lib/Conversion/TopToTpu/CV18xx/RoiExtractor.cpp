@@ -13,13 +13,14 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
-void RoiExtractorLowering::LoweringINT8(PatternRewriter &rewriter, top::RoiExtractorOp op,
-                                   bool asymmetric) const {
+void RoiExtractorLowering::LoweringINT8(PatternRewriter &rewriter,
+                                        top::RoiExtractorOp op,
+                                        bool asymmetric) const {
   UNREACHABLE_OP("to be implemented", op);
 }
 
 void RoiExtractorLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::RoiExtractorOp op) const {
+                                        top::RoiExtractorOp op) const {
   UNREACHABLE_OP("to be implemented", op);
 }
 

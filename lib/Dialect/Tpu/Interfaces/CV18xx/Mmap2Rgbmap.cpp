@@ -28,6 +28,6 @@ void tpu::Mmap2RgbmapOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t on, oc, oh, ow;
   module::getNCHW(getOutput(), on, oc, oh, ow);
   assert(ow % iw == 0);
-  cvi_backend_tg_mmap2rgbmap_kernel(layer_id, ga_input, ga_output,
-    in, ic, ih, iw, ow / iw, fmt);
+  cvi_backend_tg_mmap2rgbmap_kernel(layer_id, ga_input, ga_output, in, ic, ih,
+                                    iw, ow / iw, fmt);
 }

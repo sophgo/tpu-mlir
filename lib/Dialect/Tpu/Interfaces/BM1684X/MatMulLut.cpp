@@ -26,16 +26,18 @@ void tpu::MatMulLutOp::codegen_global_bm1684x() {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {
-        BM168x::fix_shape(input_spec->at(1 + offset_table), {p.batch, p.K, p.N});
+        BM168x::fix_shape(input_spec->at(1 + offset_table),
+                          {p.batch, p.K, p.N});
       } else {
-        BM168x::fix_shape(input_spec->at(1 + offset_table), {p.batch, p.N, p.K});
+        BM168x::fix_shape(input_spec->at(1 + offset_table),
+                          {p.batch, p.N, p.K});
       }
       BM168x::fix_shape(output_spec->at(0), {p.batch, p.M, p.N});
     }
     lut_matmul_param_t spec{0};
-  //LUT
+    // LUT
     spec.table_length = 256;
-  //Matmul
+    // Matmul
     spec.common_matmul_param.Y_dtype = output_spec->at(0).dtype;
     spec.common_matmul_param.L_trans = p.left_transpose;
     spec.common_matmul_param.R_trans = p.right_transpose;
@@ -49,7 +51,8 @@ void tpu::MatMulLutOp::codegen_global_bm1684x() {
       spec.common_matmul_param.R_zp_const_val = p.right_zp;
       spec.common_matmul_param.izp_const_val = p.input_zp;
       if (module::isUniformQuantized(getOutput())) {
-        spec.common_matmul_param.requant_mode = static_cast<int>(getQuantMode());
+        spec.common_matmul_param.requant_mode =
+            static_cast<int>(getQuantMode());
         auto rshift_v = module::getI64Array(getRshifts());
         auto multiplier_v = module::getI64Array(getMultipliers());
         spec.common_matmul_param.mul_val = multiplier_v->at(0);
@@ -68,7 +71,7 @@ void tpu::MatMulLutOp::codegen_global_bm1684x() {
                              sizeof(spec), input_spec->data(),
                              output_spec->data());
   } else {
-    assert(0);// only  support LUT + MatMul, thus must be int8
+    assert(0); // only  support LUT + MatMul, thus must be int8
   }
 }
 
