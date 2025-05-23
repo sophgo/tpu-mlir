@@ -87,3 +87,4 @@ Open ``bmprofile_out/result.html`` with a browser to see the profile chart. In a
 
    tpu_profile --help
 
+There is a more detailed explanation of the Profile in the development manual for your reference.

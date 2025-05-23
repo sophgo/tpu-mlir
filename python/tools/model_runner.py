@@ -174,7 +174,9 @@ def link_custom_so(chip: str):
     if os.path.exists(custom_path):
         return
     if os.path.exists(custom_link):
-        cur_lib = os.readlink(custom_link)
+        cur_lib = ""
+        if os.path.islink(custom_link):
+            cur_lib = os.readlink(custom_link)
         if cur_lib != custom_path:
             os.system(f'ln -sf {custom_path} {custom_link}')
     else:
@@ -185,7 +187,9 @@ def link_cmodel_so(chip: str):
     lib_so = get_cmodel_so(chip)
     lib_path = os.path.join(TPUC_ROOT, "lib", lib_so)
     link_path = os.path.join(TPUC_ROOT, "lib", "libcmodel.so")
-    cur_lib = os.readlink(link_path)
+    cur_lib = ""
+    if os.path.islink(link_path):
+        cur_lib = os.readlink(link_path)
     if cur_lib != lib_path:
         cmd = f'ln -sf {lib_path} {link_path}'
         print(cmd)

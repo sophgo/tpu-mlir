@@ -86,3 +86,4 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
 
    tpu_profile --help
 
+在开发手册中有更详细的Profile说明，可以参考。

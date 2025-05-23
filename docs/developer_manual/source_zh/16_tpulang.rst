@@ -69,7 +69,7 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 算子转换样例
 ----------------
 
-本节以 Conv 算子为例, 将单 Conv 算子模型转换为 Top mlir, 原模型定义如图所示(:ref:`tpulang_conv_op`)
+本节以 Conv 算子为例, 将单 Conv 算子模型转换为 Top mlir
 
    .. code-block:: python
 

@@ -31,5 +31,6 @@ TPU-MLIR开发参考手册
    19_final_mlir
    20_maskrcnn
    21_llmc
+   22_profile
    Appx.01_nntc2mlir.rst
    Appx.02_tpulang_support_op

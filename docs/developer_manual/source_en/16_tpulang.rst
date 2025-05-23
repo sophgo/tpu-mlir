@@ -70,7 +70,7 @@ Supplementary Note:
 Operator Conversion Example
 ---------------------------
 
-This section takes the Conv operator as an example to convert a single Conv operator model to Top mlir. The original model definition is shown in the figure (:ref:`tpulang_conv_op`)
+This section takes the Conv operator as an example to convert a single Conv operator model to Top mlir
 
    .. code-block:: python
 

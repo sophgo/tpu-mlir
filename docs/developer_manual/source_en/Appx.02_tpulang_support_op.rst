@@ -56,7 +56,7 @@ Example of declaring a Tensor:
       weight = tpul.Tensor(dtype='float32', shape=[3,4], data=np.random.uniform(0,1,shape).astype('float32'), ttype="coeff")
 
 Tensor Preprocessing (Tensor.preprocess)
----------------------------------------
+---------------------------------------------
 
 In TpuLang, if a Tensor is an input and requires preprocessing, you can call this function.
 
@@ -163,7 +163,7 @@ compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The interface definition
-:::::::::::::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
     .. code-block:: python
 
@@ -185,12 +185,12 @@ The interface definition
 
 
 Description of the function
-:::::::::::::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The function for comipling TpuLang model to bmodel.
 
 Explanation of parameters
-:::::::::::::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 * name: A string. Model name.
 * inputs: List of Tensors, representing all input Tensors for compiling the network.
@@ -273,54 +273,54 @@ Rounding is the process of discarding extra digits beyond a certain point accord
 Given x, the rounded result is y. The following rounding modes are available:
 
 Half to Even
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     Round to nearest; when the fractional part is 0.5, round to the nearest even number. Corresponds to :cpp:enumerator:`half_to_even`.
 
 Half Away From Zero
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     Round to nearest; positive values toward +∞, negative values toward -∞. Corresponds to :cpp:enumerator:`half_away_from_zero`. Formula:
 
     .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x| + 0.5\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x| - 0.5\right\rceil}
 
 Towards Zero
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     Unconditional truncation toward zero. Corresponds to :cpp:enumerator:`towards_zero`. Formula:
 
     .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x|\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x|\right\rceil} = {\begin{cases}\mathsf{\lfloor x\rfloor}&{\text{if}}\mathsf{\ \ x > 0,}\\ \mathsf{\lceil x\rceil}&{\text{otherwise}}.\end{cases}}
 
 Down
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     Round toward -∞. Corresponds to :cpp:enumerator:`down`. Formula:
 
     .. math:: \mathsf{y = \lfloor x\rfloor = -\lceil-x\rceil}
 
 Up
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     Round toward +∞. Corresponds to :cpp:enumerator:`up`. Formula:
 
     .. math:: \mathsf{y = \lceil x\rceil = -\lfloor-x\rfloor}
 
 Half Up
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     Round to nearest; when the fractional part is 0.5, round toward +∞. Corresponds to :cpp:enumerator:`half_up`. Formula:
 
     .. math:: \mathsf{y = \lceil x + 0.5\rceil = -\lfloor-x - 0.5\rfloor = \left\lceil\frac{\lfloor 2x\rfloor}{2}\right\rceil}
 
 Half Down
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     Round to nearest; when the fractional part is 0.5, round toward -∞. Corresponds to :cpp:enumerator:`half_down`. Formula:
 
     .. math:: \mathsf{y = \lfloor x - 0.5\rfloor = -\lceil-x + 0.5\rceil = \left\lfloor\frac{\lceil 2x\rceil}{2}\right\rfloor}
 
 Examples
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
 The table below shows the mapping from x to y under different rounding modes.
 
@@ -373,7 +373,7 @@ NN/Matrix Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 conv
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -410,17 +410,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 * BM1684X: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 
 
 conv_int
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -471,18 +471,18 @@ Explanation of parameters
 * out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 * BM1684X: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 
 
 
 conv_quant
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -544,16 +544,16 @@ Explanation of parameters
 * out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 * BM1684X: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 
 deconv
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -591,16 +591,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 * BM1684X: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 
 deconv_int
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -653,16 +653,16 @@ Explanation of parameters
 * out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 * BM1684X: The input data type can be INT8 or UINT8. The bias data type must be INT32.
 
 conv3d
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -698,17 +698,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 * BM1684X: The input data type can be FLOAT32 or FLOAT16. The data types of input and weight must match. The bias data type must be FLOAT32.
 
 
 conv3d_int
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -758,16 +758,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the data type determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 BM1688: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
 BM1684X: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
 
 conv3d_quant
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -829,16 +829,16 @@ Explanation of parameters
 * out_name: string or None, the name of the output tensor. If None, a name is generated automatically.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the data type determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
 * BM1684X: The data type of input and weight can be INT8/UINT8. The data type of bias is INT32.
 
 matmul
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -882,16 +882,16 @@ The inner dimensions must match: input.shape[-1] == right.shape[-2].
 The batch dims (input.shape[:-2] and right.shape[:-2]) must be broadcastable to a common shape.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16. The input and right data types must be consistent. The bias data type must be FLOAT32.
 * BM1684X: The input data type can be FLOAT32/FLOAT16. The input and right data types must be consistent.
 
 matmul_int
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -939,16 +939,16 @@ The inner dimensions must match: input.shape[-1] == right.shape[-2].
 The batch dims (input.shape[:-2] and right.shape[:-2]) must be broadcastable to a common shape.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is specified by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT8/UINT8. The bias data type is INT32.
 * BM1684X: The input data type can be INT8/UINT8. The bias data type is INT32.
 
 matmul_quant
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -997,11 +997,11 @@ If the rank of the Tensors is 2, a matrix-matrix multiplication is performed.
 If the rank of the Tensors is greater than 2, a batched matrix multiplication is performed. It requires input.shape[-1] == right.shape[-2], and input.shape[:-2] and right.shape[:-2] must satisfy broadcasting rules.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is specified by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT8/UINT8. The bias data type is INT32.
 * BM1684X: The input data type can be INT8/UINT8. The bias data type is INT32.
 
@@ -1011,7 +1011,7 @@ Base Element-wise Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 add
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1042,18 +1042,18 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is int8, the output defaults to int8 type). When the input is float32/float16, the output data type must be consistent with the input.
 
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 
 
 sub
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1084,18 +1084,18 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is float32/float16,
 the output data type must be the same as the input. When the input is int8/uint8/int16/uint16/int32/uint32, the output data type is int8/int16/int32.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 
 
 mul
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1127,17 +1127,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is specified by out_dtype or is consistent with the input data type (when one of the inputs is int8, the output defaults to int8 type). When the input is float32/float16, the output data type must be consistent with the input.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. When the data type is FLOAT16/FLOAT32, the data types of tensor_i0 and tensor_i1 must be consistent.
 
 
 div
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1163,20 +1163,20 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
 
 max
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -1204,21 +1204,21 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type. When the input is float32/float16,
 the output data type must be the same as the input. When the input is int8/uint8/int16/uint16/int32/uint32, the output can be any integer type.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT8/UINT8.
 
 
 min
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -1237,7 +1237,7 @@ This operation supports broadcasting.
 This operation belongs to **local operations**.
 
 Explanation of parameters
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type or Scalar, int, float. It represents the left operand Tensor or Scalar for the input.
 * tensor_i1: Tensor type or Scalar, int, float. It represents the right operand Tensor or Scalar for the input. At least one of tensor_i0 and tensor_i1 must be a Tensor.
 * scale: List[float] type or None, representing the quantization parameters; if None, indicates non-quantized computation; if a List, its length must be 3, corresponding to the scales of tensor_i0, tensor_i1, and the output.
@@ -1246,17 +1246,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor, and the data type of this Tensor is specified by out_dtype or is consistent with the input data type.
 When the input is float32/float16, the output data type must be the same as the input. When the input is int8/uint8/int16/uint16/int32/uint32, the output can be any integer type.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT16/UINT16/INT32/UINT32/INT8/UINT8.
 
 add_shift
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1292,17 +1292,17 @@ Explanation of parameters
 * out_name: String type or None, specifying the name of the output Tensor; if None, a name is generated automatically.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor.
 The data type of the Tensor is specified by out_dtype, or is consistent with the input data type.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
 * BM1684X: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
 
 sub_shift
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1336,18 +1336,18 @@ Explanation of parameters
 * out_name: String type or None, specifying the name of the output Tensor; if None, a name is generated automatically.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor.
 The data type of the Tensor is specified by out_dtype, or is consistent with the input data type.
 
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
 * BM1684X: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
 
 mul_shift
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1384,18 +1384,18 @@ Explanation of parameters
 
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor.
 The data type of the Tensor is specified by out_dtype, or is consistent with the input data type.
 
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
 * BM1684X: The input data type can be INT32/UINT32/INT16/UINT6/INT8/UINT8.
 
 copy
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1416,17 +1416,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
 
 clamp
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""
@@ -1443,18 +1443,18 @@ Values greater than the maximum are truncated to the maximum, and values less th
 This operation belongs to **local operations**.
 
 Explanation of parameters
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * tensor_i: Tensor type, representing the input tensor.
 * min_value: Scalar type, representing the lower bound of the range.
 * max_value: Scalar type, representing the upper bound of the range.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
@@ -1462,10 +1462,10 @@ Element-wise Compare Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 gt
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -1492,19 +1492,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 lt
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -1531,16 +1531,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 ge
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""
@@ -1571,19 +1571,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 le
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -1611,15 +1611,15 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 eq
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""
@@ -1650,19 +1650,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 ne
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -1681,7 +1681,7 @@ tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
 This operation belongs to **local operations**.
 
 Explanation of parameters
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input Tensor.
 * tensor_i1: Tensor type, representing the right operand input Tensor.
 * scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
@@ -1689,19 +1689,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
 gts
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -1726,17 +1726,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 
 lts
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1764,16 +1764,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 ges
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1801,16 +1801,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 les
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1838,16 +1838,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 eqs
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1875,16 +1875,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
 nes
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1912,11 +1912,11 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
 
@@ -1924,7 +1924,7 @@ Activation Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 relu
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1945,16 +1945,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 prelu
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -1976,18 +1976,18 @@ Explanation of parameters
 * out_name: string type or None, representing the name of the output Tensor; if None, a name will be automatically generated internally.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 
 leaky_relu
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2013,16 +2013,16 @@ Explanation of parameters
 * round_mode: string type, the rounding mode; default is “half_away_from_zero”. Valid values are “half_away_from_zero”, “half_to_even”, “towards_zero”, “down”, and “up.”
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 abs
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2043,16 +2043,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 ln
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2078,16 +2078,16 @@ Explanation of parameters
 * out_name: string type or None, the name of the output tensor; if None, a name will be automatically generated internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 ceil
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2117,17 +2117,17 @@ Explanation of parameters
 * out_name: string type or None, the name of the output tensor; if None, a name is automatically generated internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 floor
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2153,16 +2153,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 round
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2183,17 +2183,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 sin
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2219,17 +2219,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 
 cos
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2255,17 +2255,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 
 exp
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2291,16 +2291,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 tanh
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2328,16 +2328,16 @@ Explanation of parameters
 * round_mode:string type, rounding mode. Defaults to "half_away_from_zero". Allowed values: "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 sigmoid
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2365,16 +2365,16 @@ Explanation of parameters
 * round_mode: string type, rounding mode. Defaults to `"half_away_from_zero"`. Allowed values: `"half_away_from_zero"`, `"half_to_even"`, `"towards_zero"`, `"down"`, `"up"`.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 log_sigmoid
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2400,17 +2400,17 @@ Explanation of parameters
 * out_name: string type or None, name of the output tensor. If None, a name is auto-generated internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 
 elu
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2436,16 +2436,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 square
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2471,16 +2471,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 sqrt
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2506,16 +2506,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 rsqrt
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2541,17 +2541,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 
 silu
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2575,16 +2575,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
 swish
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2614,17 +2614,17 @@ Explanation of parameters
 * out_name: string type or None, name of the output tensor. If None, a name is auto-generated internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 
 erf
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2651,16 +2651,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8.FLOAT16 data is automatically converted to FLOAT32.
 
 tan
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2681,17 +2681,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 softmax
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2716,16 +2716,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 softmax_int
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2768,17 +2768,17 @@ Explanation of parameters
 * round_mode: string type, rounding mode. Defaults to `"half_away_from_zero"`. Allowed values: `"half_away_from_zero"`, `"half_to_even"`, `"towards_zero"`, `"down"`, `"up"`.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be INT8/UINT8.
 * BM1684X: The input data type can be INT8/UINT8.
 
 
 mish
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2804,18 +2804,18 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 
 
 hswish
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2841,18 +2841,18 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 
 arccos
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2873,17 +2873,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 arctanh
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2904,17 +2904,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 sinh
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2940,18 +2940,18 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32.FLOAT16 data is automatically converted to FLOAT32.
 
 
 
 cosh
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -2977,17 +2977,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32. FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32. FLOAT16 data is automatically converted to FLOAT32.
 
 
 sign
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3013,17 +3013,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 gelu
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3052,17 +3052,17 @@ Explanation of parameters
   Allowed values: `"half_away_from_zero"`, `"half_to_even"`, `"towards_zero"`, `"down"`, `"up"`.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
 
 hsigmoid
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3088,11 +3088,11 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same shape and data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
@@ -3100,7 +3100,7 @@ Data Arrange Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 permute
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3126,16 +3126,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 tile
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3158,16 +3158,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 broadcast
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3191,17 +3191,17 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 
 concat
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3234,16 +3234,16 @@ Explanation of parameters
 * round_mode: String type, representing rounding type. default to "half_away_from_zero".
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 split
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3273,16 +3273,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a `List[Tensor]`, where each `Tensor` has the same data type as the input `Tensor`.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 pad
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3311,16 +3311,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 repeat
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3344,19 +3344,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 extract
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -3367,12 +3367,12 @@ Definition
                     out_name: str = None)
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Extract slice of input tensor.
 This operation is considered a **restricted local operation**.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing input tensor.
 * start: A list or tuple of int, or None, representing the start of slice. If set to None, `start` is filled all with 0.
 * end: A list or tuple of int, or None, representing the end of slice. If set to None, `end` is given as shape of input.
@@ -3380,20 +3380,20 @@ Parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor, whose data type is same of that of `table`.
 
 Processor Support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688:  Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
 
 roll
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -3404,23 +3404,23 @@ Definition
           #pass
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Roll the tensor input along the given dimension(s). Elements that are shifted beyond the last position are re-introduced at the first position. If dims is None, the tensor will be flattened before rolling and then restored to the original shape.
 This operation is considered a **restricted local operation**.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type. the input tensor.
 * shifts: int, a list or tuple of int. the number of places by which the elements of the tensor are shifted. If shifts is a tuple.
 * dims: int, a list or tuple of int or None. Axis along which to roll.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor Support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688:  Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
@@ -3430,7 +3430,7 @@ Sort Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 arg
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3459,19 +3459,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns two Tensors, the first Tensor represents indices, of type int32; and the second Tensor represents values, the type of which will be the same as the type of the input.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
 topk
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -3481,31 +3481,31 @@ Definition
                  out_name: str = None):
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Find top k numbers after sorted
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input tensor.
 * axis: Int type, representing axis used in sorting.
 * k: Int type, representing the number of top values along axis.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns two Tensors: the first one represents the values, whose data type is the same as that of the input tensor while the second one represents the indices in input tensor after sorted along axis.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
 
 sort
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -3515,31 +3515,31 @@ Definition
                  out_name = None)
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Sort input tensor along axis then return the sorted tensor and correspending indices.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing input.
 * axis: Int type, representing the axis used in sorting. (Recently, only support axis == -1)
 * descending: Bool type, representing whether it is sorted descending or not.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns two Tensors: data type of the first is the same of that of input, and data type of the second is INT32.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 argsort
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -3549,31 +3549,31 @@ Definition
                     out_name : str = None)
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Sort input tensor along axis then return the correspending indices of sorted tensor.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing input.
 * axis: Int type, representing the axis used in sorting. (Recently, only support axis == -1)
 * descending: Bool type, representing whether it is sorted descending or not.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns one Tensor whose data type is INT32.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 sort_by_key (TODO)
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -3584,11 +3584,11 @@ Definition
                         out_name = None)
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Sort input tensor by key along axis then return the sorted tensor and correspending keys.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing input.
 * key: Tensor type, representing key.
 * axis: Int type, representing the axis used in sorting.
@@ -3596,11 +3596,11 @@ Parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns two Tensors: data type of the first is the same of that of input, and data type of the second is is the same of that of key.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
@@ -3609,7 +3609,7 @@ Shape About Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 squeeze
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3631,16 +3631,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 reshape
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3662,16 +3662,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 shape_fetch
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3700,16 +3700,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a `Tensor` with the data type `INT32`.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 unsqueeze
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3731,11 +3731,11 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
@@ -3744,7 +3744,7 @@ Quant Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 requant_fp_to_int
-:::::::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3794,19 +3794,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor. The data type of this Tensor is determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
 requant_fp
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -3819,7 +3819,7 @@ The interface definition
                first_round_mode: str='half_away_from_zero'):
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Quantizes the input tensor.
 
 The calculation formula for this operation is:
@@ -3833,7 +3833,7 @@ The calculation formula for this operation is:
 This operation is a **local operation**.
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * tensor_i: Tensor type, representing the input tensor, with 3-5 dimensions.
 * scale: List[float] or float, representing the quantization scale.
 * offset: List[int] or int, representing the output offset.
@@ -3843,16 +3843,16 @@ Explanation of parameters
 * first_round_mode: String type, representing the rounding mode used for quantizing tensor_i previously. Default is "half_away_from_zero". The first_round_mode can take values of "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return Value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor. The data type of this Tensor is determined by out_dtype.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: Support input datatype: INT32/INT16/UINT16.
 * BM1684X: Support input datatype: INT32/INT16/UINT16.
 
 requant_int
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3911,16 +3911,16 @@ Explanation of parameters
 * fuse_rq_to_matmul: bool, indicating whether to fuse requant into matmul. Default is False.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a tensor. The data type of this tensor is determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X
 * BM1688
 
 dequant_int_to_fp
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -3951,19 +3951,19 @@ Explanation of parameters
 * round_mode: String type, representing the rounding mode. Default is "half_away_from_zero". The round_mode can take values of "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor. The data type of this Tensor is specified by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: Input data types can be INT16/UINT16/INT8/UINT8.
 
 
 dequant_int
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 def dequant_int(tensor_i: Tensor,
         mul: Union[int, List[int]],
         shift: Union[int, List[int]],
@@ -4011,19 +4011,19 @@ Explanation of parameters
 * out_name: String type or None, representing the name of the output tensor. If set to None, the name will be automatically generated internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor. The data type of this Tensor is determined by out_dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X
 
 
 cast
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4033,23 +4033,23 @@ The interface definition
          round_mode: str = 'half_away_from_zero'):
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Converts the input tensor `tensor_i` to the specified data type `out_dtype`, and rounds the data according to the specified rounding mode `round_mode`.
 Note that this operator cannot be used alone and must be used in conjunction with other operators.
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * tensor_i: Tensor type, representing the input Tensor.
 * out_dtype: str = 'float32', the data type of the output tensor, default is `float32`.
 * out_name: str = None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 * round_mode: str = 'half_away_from_zero', the rounding mode, default is `half_away_from_zero`. Possible values are “half_away_from_zero”, “half_to_even”, “towards_zero”, “down”, “up”. Note that this function does not support the rounding modes “half_up” and “half_down”.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is determined by the input `out_dtype`.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
 
@@ -4057,10 +4057,10 @@ Up/Down Scaling Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 maxpool2d
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4076,11 +4076,11 @@ The interface definition
           #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Performs Max Pooling on the input Tensor.The Max Pooling 2d operation can refer to the maxpool2d operator of each framework This operation is a  **local operation** 。
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, indicating the input operation Tensor.
 * kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
 * stride: List[int] or Tuple[int] type or None, indicating the step size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
@@ -4092,20 +4092,20 @@ Explanation of parameters
 * round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 
 maxpool2d_with_mask
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4119,12 +4119,12 @@ The interface definition
           #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Perform Max pooling on the input Tensor and output its mask index. Please refer to the pooling operations under various frameworks.
 This operation belongs to **local operation**.
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, indicating the input operation Tensor.
 * kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
 * pad: List[int] or Tuple[int] type or None. Indicates the padding size. If None is entered, the default value [0,0,0,0] is used. If not None, the length of this parameter is required to be 4.
@@ -4134,20 +4134,20 @@ Explanation of parameters
 * mask_name: string type or None. Indicates the name of the output Mask. If None, the name is automatically generated internally.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns two Tensors, one of which has the same data type as the input Tensor and the other returns a coordinate Tensor, which records the coordinates selected when using comparison operation pooling.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32
 * BM1684X: The input data type can be FLOAT32
 
 
 maxpool3d
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4163,11 +4163,11 @@ The interface definition
           #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Performs Max Pooling on the input Tensor.The Max Pooling 3d operation can refer to the maxpool3d operator of each framework This operation is a  **local operation** 。
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input tensor for the operation.
 * kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
 * pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
@@ -4179,19 +4179,19 @@ Explanation of parameters
 * round_mode: string type, indicates the rounding mode for the second time when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
 
 avgpool2d
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4209,11 +4209,11 @@ The interface definition
           #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Performs Avg Pooling on the input Tensor.The Avg Pooling 2d operation can refer to the avgpool2d operator of each framework This operation is a  **local operation** 。
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, indicating the input operation Tensor.
 * kernel: List[int] or Tuple[int] type or None. If None is entered, global_pooling is used. If not None, the length of this parameter is required to be 2.
 * stride: List[int] or Tuple[int] type or None, indicating the step size. If None is entered, the default value [1,1] is used. If not None, the length of this parameter is required to be 2.
@@ -4227,19 +4227,19 @@ Explanation of parameters
 * first_round_mode: String type, when the input and output Tensors are quantized, it indicates the first rounding mode. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
 
 avgpool3d
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4257,11 +4257,11 @@ The interface definition
           #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Performs Avg Pooling on the input Tensor.The Avg Pooling 3d operation can refer to the avgpool3d operator of each framework This operation is a  **local operation** 。
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * tensor: Tensor type, representing the input tensor for the operation.
 * kernel: List[int] or Tuple[int] or int or None, if None, global pooling is used. If not None and a single integer is provided, it indicates the same kernel size in three dimensions. If a List or Tuple is provided, its length must be 3.
 * pad: List[int] or Tuple[int] or int or None, represents the padding size. If None, the default value [0,0,0,0,0,0] is used. If not None and a single integer is provided, it indicates the same padding size in three dimensions. If a List or Tuple is provided, its length must be 6.
@@ -4275,17 +4275,17 @@ Explanation of parameters
 * first_round_mode: String type, indicating the rounding mode for the first round when the input and output Tensors are quantized. The default value is 'half_away_from_zero'.The value range of round_mode is "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/UINT8/INT8.
 
 
 upsample
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -4309,16 +4309,16 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8.
 
 reduce
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -4346,11 +4346,11 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input Tensor.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
@@ -4359,10 +4359,10 @@ Normalization Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 batch_norm
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4377,14 +4377,14 @@ The interface definition
 
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 The batch_norm op first completes batch normalization of the input values, and then scales and shifts them.
 The batch normalization operation can refer to the batch_norm operator of each framework.
 
 This operation belongs to **local operations**.
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
 * input: * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
 * mean: A Tensor type, representing the mean value of the input, shape is [c].
@@ -4395,19 +4395,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 layer_norm
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4421,14 +4421,14 @@ The interface definition
 
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 The layer_norm op first completes layer normalization of the input values, and then scales and shifts them.
 The layer normalization operation can refer to the layer_norm operator of each framework.
 
 This operation belongs to **local operations**.
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
 * gamma: A Tensor type or None, representing the scaling after layer normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
@@ -4438,20 +4438,20 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 group_norm
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4465,14 +4465,14 @@ The interface definition
 
 
 Description of the function
-"""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 The group_norm op first completes group normalization of the input values, and then scales and shifts them.
 The group normalization operation can refer to the group_norm operator of each framework.
 
 This operation belongs to **local operations**.
 
 Explanation of parameters
-""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""
 
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
 * gamma: A Tensor type or None, representing the scaling after group normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
@@ -4482,20 +4482,20 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 rms_norm
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4509,14 +4509,14 @@ The interface definition
 
 
 Description of the function
-"""""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 The rms_norm op first completes RMS normalization of the input values, and then scales them.
 The RMS normalization operation can refer to the RMSNorm operator of each framework.
 
 This operation belongs to **local operations**.
 
 Explanation of parameters
-""""""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited.
 * gamma: A Tensor type or None, representing the scaling after RMS normalization. If the value is not None, shape is required to be equal with the last dimension of the input. If None is used, shape is equivalent to all 1 Tensor.
@@ -4525,19 +4525,19 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 normalize
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
     .. code-block:: python
 
       def normalize(input: Tensor,
@@ -4547,7 +4547,7 @@ Definition
                         out_name: str = None):
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Perfrom :math:`L_p` normalization over specified dimension of input tensor.
 For a tensor input of sizes :math:`(n_0, ..., n_{dim}, ..., n_k)`,
 each :math:`n_{dim}`-element vector :math:`v` along dimension :attr:`axes`  is transformed as:
@@ -4560,7 +4560,7 @@ With the default arguments, it uses the Euclidean norm over vectors along dimens
 This operation belongs to **local operations**.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input Tensor.The dimension of input is not limited. Support data type included: float32, float16.
 * p: float type, representing the exponent vaue in the norm operation. Default to 2.0 .
 * axes: Union[list[int], int] type, representing the dimension need to normalized. Default to 1. If axes is list, all the values in the list must be continuous. Caution: axes = [0, -1] is not continuous.
@@ -4568,11 +4568,11 @@ Parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns the Tensor type with the same data type as the input Tensor., representing the normalized output.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
@@ -4580,10 +4580,10 @@ Vision Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 nms
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4594,11 +4594,11 @@ Definition
                 out_name: str = None)
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Perform non-maximum-suppression upon input tensor.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * boxes: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of box, the third dimension is 4 coordinates of boxes.
 * scores: Tensor type, representing a tensor of 3 dimensions, where the first dimension is number of batch, the second dimension is number of classes, the third dimension is number of boxes.
 * format: String type, where 'TENSORFLOW' representing Tensorflow format [y1, x1, y2, x2] and 'PYTORCH'表示representing Pytorch format [x_center, y_center, width, height]. The default value is 'PYTORCH'.
@@ -4606,20 +4606,20 @@ Parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns one Tensor, which is the selected indices from the boxes tensor of 2 dimensions:[num_selected_indices, 3], the selected index format is [batch_index, class_index, box_index].
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32.
 * BM1684X: The input data type can be FLOAT32.
 
 
 interpolate
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4631,11 +4631,11 @@ Definition
                         out_name: str = None)
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Perform interpolation upon input tensor.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input Tensor. Must be at least a 2-dimensional tensor.
 * scale_h: Float type, representing the resize scale along h-axis. Must be greater than 0.
 * scale_w: Float type, representing the resize scale along w-axis. Must be greater than 0.
@@ -4670,21 +4670,21 @@ Note that, parameter `coord_mode` defined here is the same as the parameter `coo
 
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor representing the interpolated result. The data type is the same as the input type, and the shape is adjusted based on the scaling factors.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: Supports input data types FLOAT32/FLOAT16/INT8.
 * BM1684X: Supports input data types FLOAT32/FLOAT16/INT8.
 
 
 
 yuv2rgb
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4699,11 +4699,11 @@ The interface definition
         ):
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Transfer input tensor from yuv to rgb. Require tensor shape=[n,h*3/2,w], n represents `batch`, h represents `pixels height`, w represents `pixels width`.
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * inputs: Tensor type, representing the input yuv tensor。Its dims must be 3, 1st dim represents `batch`, 2nd dim represents `pixels height`, 3rd dim represents `pixels width`.
 * src_format: Int type, representing the input format. `FORMAT_MAPPING_YUV420P_YU12`=0, `FORMAT_MAPPING_YUV420P_YV12`=1, `FORMAT_MAPPING_NV12`=2, `FORMAT_MAPPING_NV21`=3.
 * dst_format: Int type, representing the output format. `FORMAT_MAPPING_RGB`=4, `FORMAT_MAPPING_BGR`=5.
@@ -4713,19 +4713,19 @@ Explanation of parameters
 * out_name: string type, representing the name of output tensor, default= `None`.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 One rgb tensor will be output, with shape=[n,3,h,w], where n represents `batch`, h represents `pixels height`, w represents `pixels width`.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type must be UINT8/INT8. Output data type is UINT8.
 * BM1688: The input data type must be UINT8/INT8. Output data type is UINT8.
 
 roiExtractor
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4740,11 +4740,11 @@ Definition
                          out_name:str=None)
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Given 4 feature maps, extract the corresponding ROI from `rois` based on the `target_lvls` indices and perform ROI Align with the corresponding feature maps to obtain the final output. This operation is considered a **restricted local operation**.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * rois: Tensor type, representing all the ROIs.
 * target_lvls: Tensor type, representing which level of feature map each ROI corresponds to.
 * feats: List[Tensor], representing all feature maps.
@@ -4760,11 +4760,11 @@ Parameters
 * out_name: string type, representing the name of output tensor, default= `None`.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as the input `rois`.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: Supports input data types FLOAT32/FLOAT16.
 * BM1684X: Supports input data types FLOAT32/FLOAT16.
 
@@ -4774,7 +4774,7 @@ Select Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 nonzero
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -4798,20 +4798,20 @@ Explanation of parameters
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with data type INT32.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 
 
 lut
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4821,29 +4821,29 @@ Definition
         #pass
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Use look-up table to transform values of input tensor.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input.
 * table: Tensor type, representing the look-up table.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns one Tensor, whose data type is the same as that of the `table` tensor.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688:  The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
 * BM1684X: The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
 
 select
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4856,11 +4856,11 @@ Definition
         #pass
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Select by the comparison result of `lhs` and `rhs`. If condition is True, select `tbrn`, otherwise select `fbrn`.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * lhs: Tensor type, representing the left-hand-side.
 * rhs: Tensor type, representing the right-hand-side.
 * tbrn: Tensor type, representing the true branch.
@@ -4871,19 +4871,19 @@ Parameters
 Constraint: The shape and data type of `lhs` and `rhs` should be the same. The shape and data type of `tbrn` and `fbrn` should be the same.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is the same that of `tbrn`.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16(TODO).
 * BM1684X:  Data type of `lhs`/ `rhs`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16(TODO).
 
 cond_select
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4894,11 +4894,11 @@ Definition
         #pass
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Select by condition representing by `cond`. If condition is True, select `tbrn`, otherwise select `fbrn`.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * cond: Tensor type, representing condition.
 * tbrn: Tensor type or Scalar type, representing true branch.
 * fbrn: Tensor type or Scalar type, representing false branch.
@@ -4907,19 +4907,19 @@ Parameters
 Constraint: If `tbrn` and `fbrn` are all Tensors, then the shape and data type of `tbrn` and `fbrn` should be the same.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor whose data type is the same that of `tbrn`.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
 * BM1684X:  Data type of `cond`/ `tbrn`/ `fbrn` can be FLOAT32/FLOAT16/INT8/UINT8.
 
 bmodel_inference_combine
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -4947,11 +4947,11 @@ Definition
         ):
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Dump tensors layer by layer according to the bmodel, which help to verify the correctness of bmodel.
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * bmodel_file: String type, representing the abs path of bmodel.
 * final_mlir_fn: String type, representing the abs path of final.mlir.
 * input_data_fn: String type or Dict type, representing the input data, supporting Dict/.dat/.npz.
@@ -4979,20 +4979,20 @@ Attention:
 * When the funciton is called in soc mode, use `use_chip` and `reference_data_fn` must be .npz.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * cmodel/pcie mode: if `dump_file=True`, then bmodel_infer_xxx.npz will be generated in `save_path`, otherwise return python dict.
 * soc mode: soc_infer_xxx.npz will be generated in `save_path`.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1688:  only cmodel mode.
 * BM1684X: cmodel/pcie/soc mode.
 
 scatter
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -5004,12 +5004,12 @@ Definition
         #pass
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Based on the specified indices, write the input data to specific positions in the target Tensor. This operation allows the elements of the input Tensor to be scattered to the specified positions in the output Tensor. Refer to the ScatterElements operation in various frameworks for more details.
 This operation belongs to **local operation**。
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, represents the input operation Tensor, i.e., the target Tensor that needs to be updated.
 * index: Tensor type, represents the index Tensor that specifies the update positions.
 * updates: Tensor type, represents the values to be written into the target Tensor.
@@ -5018,22 +5018,22 @@ Parameters
 
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a new Tensor with updates applied at the specified positions, while other positions retain the original values from the input Tensor.
 
 
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/UINT8/INT8.
 * BM1688: The input data type can be FLOAT32/UINT8/INT8.
 
 
 scatterND
-:::::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 Definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
 
     .. code-block:: python
 
@@ -5044,23 +5044,23 @@ Definition
         #pass
 
 Description
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Based on the specified indices, write the input data to specific positions in the target Tensor. This operation allows the elements of the input Tensor to be scattered to the specified positions in the output Tensor. Refer to the scatterND operation in ONNX 11 for more details.
 This operation belongs to **local operation**。
 
 Parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, represents the input operation Tensor, i.e., the target Tensor that needs to be updated.
 * indices: Tensor type, represents the index Tensor that specifies the update positions. The datatype must be uint32.
 * updates: Tensor type, represents the values to be written into the target Tensor. Rank(updates) = Rank(input) + Rank(indices) - shape(indices)[-1] -1.
 * out_name: string type or None, represents the name of the output Tensor. If None, a name will be automatically generated internally.
 
 Returns
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a new Tensor with updates applied at the specified positions, while other positions retain the original values from the input Tensor. The shape and datatype are the same with the input tensor.
 
 Processor Support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/UINT8/INT8.
 * BM1688: The input data type can be FLOAT32/UINT8/INT8.
 
@@ -5069,7 +5069,7 @@ Preprocess Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 mean_std_scale
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -5103,11 +5103,11 @@ Explanation of parameters
 * round_mode: String, representing the rounding method. Default is "half_away_from_zero", with options "half_away_from_zero", "half_to_even", "towards_zero", "down", "up".
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the type of odtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/UINT8/INT8, the output data type can be INT8/FLOAT16.
 
 
@@ -5116,7 +5116,7 @@ Transform Operator
 
 
 rope
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
 """""""""""""""""""""""""""""""""
@@ -5162,19 +5162,19 @@ Explanation of parameters
 * out_name: output name, type string, default to None.
 
 Return value
-"""""""""""""
+"""""""""""""""""""""""""""""""""
 Return a Tensor with the data type of odtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data types can be FLOAT32,FLOAT16 and INT types.
 
 
 multi_scale_deformable_attention
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
     .. code-block:: python
 
       def multi_scale_deformable_attention(
@@ -5226,11 +5226,11 @@ Explanation of parameters
 * out_name: string type or None, the name of the output Tensor, and the name will be automatically generated internally if it is None.
 
 Return value
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as query.dtype.
 
 Processor support
-""""""""""""""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 
@@ -5239,10 +5239,10 @@ Transform Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 a16matmul
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
     .. code-block:: python
 
       def a16matmul(input: Tensor,
@@ -5261,12 +5261,12 @@ The interface definition
         #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Perform W4A16/W8A16 MatMul on the input.
 This operation is considered a **global operation** 。
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * input: Tensor type, represents the input tensor.
 * weight: Tensor type, represents the weight after 4-bit/8-bit quantization, stored as int32.
 * scale: Tensor type, represents the quantization scaling factor for the weights, stored as float32.
@@ -5280,11 +5280,11 @@ Explanation of parameters
 * g_idx: Tensor type, represents the quantization reordering coefficient; currently not supported.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns a Tensor with the same data type as out_dtype。
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 
@@ -5293,10 +5293,10 @@ Transform Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 qwen2_block
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
     .. code-block:: python
 
       def qwen2_block(hidden_states: Tensor,
@@ -5346,12 +5346,12 @@ The interface definition
         #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 A block layer of qwen2 during the prefill stage.
 This operation is considered a **global operation** 。
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * hidden_states: Tensor type, representing activation values, with shape (1, seq_length, hidden_size).
 * position_ids: Tensor type, representing positional indices, with shape (3, 1, seq_length).
 * attention_mask: Tensor type, representing the attention mask, with shape (1, 1, seq_length, seq_length).
@@ -5396,11 +5396,11 @@ Explanation of parameters
 * out_name: string type or None, representing the name of the output tensor; if None, the name will be automatically generated.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns 3 Tensors: the activation output, the key cache, and the value cache, all with the data type specified by out_dtype.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
 
@@ -5409,10 +5409,10 @@ Transform Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 qwen2_block_cache
-:::::::::::::::::
+:::::::::::::::::::::::::::::::::::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
     .. code-block:: python
 
       def qwen2_block_cache(hidden_states: Tensor,
@@ -5464,12 +5464,12 @@ The interface definition
         #pass
 
 Description of the function
-"""""""""""
+"""""""""""""""""""""""""""""""""
 A block layer of qwen2 during the decode stage.
 This operation is considered a **global operation** 。
 
 Explanation of parameters
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * hidden_states: Tensor type, representing activation values, with shape (1, 1, hidden_size).
 * position_ids: Tensor type, representing positional indices, with shape (3, 1, 1).
 * attention_mask: Tensor type, representing the attention mask, with shape (1, 1, 1, seq_length + 1).
@@ -5516,10 +5516,10 @@ Explanation of parameters
 * out_name: string type or None, representing the name of the output tensor; if None, the name will be automatically generated.
 
 Return value
-"""""""""""
+"""""""""""""""""""""""""""""""""
 Returns 3 Tensors: the activation output, the key cache, and the value cache, all with the data type specified by out_dtype.
 
 Processor support
-"""""""""""
+"""""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
