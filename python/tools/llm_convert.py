@@ -48,7 +48,7 @@ if __name__ == '__main__':
     parser.add_argument('-g', "--q_group_size", default=64, type=int,
                         help="group size for per-group quant, only used in W4A16 quant mode")
     parser.add_argument('-c', '--chip', type=str, default="bm1684x",
-                        choices=["bm1684x", "bm1688", "cv186ah"],
+                        choices=["bm1684x", "bm1688", "cv186x"],
                         help="chip type for bmodel")
     parser.add_argument('--num_device', type=int, default=1,
                         help="num device for bmodel")
@@ -56,8 +56,8 @@ if __name__ == '__main__':
     parser.add_argument('--symmetric', action='store_true', help='do symmetric quantize')
     parser.add_argument('--embedding_disk', action='store_true',
                         help='export embedding as bin file and inference by cpu')
-    parser.add_argument('--penalty_sample', action='store_true',
-                        help='Add penalty sample head and separate greedy head from lmhead')
+    parser.add_argument('--do_sample', action='store_true',
+                        help='Add sample head and separate greedy head from lmhead')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
                         help="max pixels for vit, for example: 240,420 or 100800")
     parser.add_argument('--dynamic', action='store_true',
@@ -76,6 +76,9 @@ if __name__ == '__main__':
     elif config.model_type in ['qwen2_vl', 'qwen2_5_vl']:
         from llm.Qwen2VLConverter import Qwen2VLConverter
         converter = Qwen2VLConverter(args, config)
+    elif config.model_type in ['internvl_chat']:
+        from llm.InternVL3VLConverter import InternVL3VLConverter
+        converter = InternVL3VLConverter(args, config)
     else:
         raise RuntimeError("Unsupported model type: {}".format(config.model_type))
     converter.run()
