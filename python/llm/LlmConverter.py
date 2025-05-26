@@ -111,8 +111,7 @@ class LlmConverter(BaseConverter):
         # copy model json file to config dir
         shutil.copytree(self.model_path,
                         self.config_dir,
-                        ignore=shutil.ignore_patterns("*.safetensors",
-                                                      ".git*",
+                        ignore=shutil.ignore_patterns("*.safetensors", ".git*", "*.pth", "*.pt",
                                                       "model.safetensors.index.json"),
                         dirs_exist_ok=True)
 
