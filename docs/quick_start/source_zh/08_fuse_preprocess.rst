@@ -29,7 +29,7 @@
 
 若要将预处理融入到模型中，则需要在使用 ``model_deploy`` 工具进行部署时使用 “--fuse_preprocess” 参数。如果要做验证，则传入的 ``test_input`` 需要是图像原始格式的输入(即jpg, jpeg和png格式)， 相应地会生成原始图像输入对应的npz文件，名称为 ``${model_name}_in_ori.npz``。
 
-此外，当实际外部输入格式与模型的格式不相同时，用 “--customization_format” 指定实际的外部输入格式，支持的格式说明如下：
+此外，当实际外部输入格式与模型的格式不相同时，用 “--customization_format” 指定实际的外部输入格式，支持的格式说明如下（以下支持情况不包含BM1684）：
 
 .. list-table:: customization_format格式和说明
    :widths: 27 43 12 10
@@ -37,7 +37,7 @@
 
    * - customization_format
      - 说明
-     - BM1684X
+     - BM168X
      - CV18xx
    * - None
      - 与原始模型输入保持一致, 不做处理。默认
@@ -65,22 +65,24 @@
      - True
    * - YUV420_PLANAR
      - yuv420 planner格式,来⾃vpss的输⼊
-     - False
+     - True
      - True
    * - YUV_NV21
      - yuv420的NV21格式,来⾃vpss的输⼊
-     - False
+     - True
      - True
    * - YUV_NV12
      - yuv420的NV12格式,来⾃vpss的输⼊
-     - False
+     - True
      - True
    * - RGBA_PLANAR
      - rgba格式,按照nchw摆放
      - False
      - True
 
-其中 “YUV*” 类格式为CV18xx系列特有的输入格式。当 ``customization_format`` 中颜色通道的顺序与模型输入不同时，将会进行通道转换操作。若指令中未设置 ``customization_format`` 参数，则根据使用 ``model_transform ``工具时定义的 ``pixel_format`` 和 ``channel_format`` 参数自动获取对应的 ``customization_format`` 。
+注意，BM168X模型中 ``YUV`` 格式的输入数据形状是（n, resize_dim_h, resize_dim_w）， ``resize_dim_h,resize_dim_w`` 为 ``model_transform `` 阶段的 ``resize_dim`` 参数。
+
+当 ``customization_format`` 中颜色通道的顺序与模型输入不同时，将会进行通道转换操作。若指令中未设置 ``customization_format`` 参数，则根据使用 ``model_transform `` 工具时定义的 ``pixel_format`` 和 ``channel_format`` 参数自动获取对应的 ``customization_format`` 。
 
 
 模型部署样例

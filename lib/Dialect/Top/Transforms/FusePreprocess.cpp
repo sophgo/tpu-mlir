@@ -326,6 +326,23 @@ public:
           }
         }
       });
+    } else if (module::isBM1684XFamily() &&
+               pixel_format.find("YUV") != std::string::npos) {
+      fn.walk([&](top::InputOp inputOp) {
+        module::getNCHW(inputOp.getResult(), n, c, h, w, false);
+        std::vector<int64_t> input_shape{n, c, h, w};
+        RankedTensorType input_type;
+        std::vector<Operation *> uses;
+        double min, max;
+        input_shape[0] = 1;
+        input_shape[1] = n;
+        auto uni_type = quant::UniformQuantizedType::get(
+            0, IntegerType::get(ctx_, 8), builder.getF32Type(), 1.0, 0, 0, 255);
+        input_type = RankedTensorType::get(input_shape, uni_type);
+        min = 0;
+        max = 255;
+        inputOp.getResult().setType(input_type);
+      });
     }
   }
 

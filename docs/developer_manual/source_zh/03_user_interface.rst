@@ -264,7 +264,7 @@ model_transform.py
      - 该参数只对onnx模型有效. 如果设置了, 工具链会自动将模型带有dynamic_axis的输入加入dynamic_shape_input_names列表中, 将模型中1维的输入加入shape_influencing_input_names列表中, 且model_deploy需要设置参数'dynamic'.
    * - resize_dims
      - 否
-     - 图像缩放到指定的固定尺寸h/w,缺省时为输入图像本身尺寸
+     - 预处理前的原始输入图像尺寸h,w，默认为模型原始输入尺寸
    * - pad_value
      - 否
      - 图片缩放时边框填充大小

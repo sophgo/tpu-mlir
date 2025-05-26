@@ -24,7 +24,7 @@ void tpu::Yuv2rgbFormulaOp::codegen_global_bm1684x() {
   yuv2rgb_formula_spec_t spec = {0};
   auto YUV_shape = module::getShape(getYUV());
   size_t product = 1;
-  assert(YUV_shape.size() >= 2);
+  ASSERT_THIS(YUV_shape.size() >= 2);
   for (auto it = YUV_shape.begin(); it != YUV_shape.end() - 2; it++) {
     product *= *it;
   }

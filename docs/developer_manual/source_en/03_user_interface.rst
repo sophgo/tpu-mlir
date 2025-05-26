@@ -266,7 +266,7 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
      - Only valid for onnx model. If set, will automatically set inputs with dyanmic axis as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names and '--dynamic' is required during model_deploy.
    * - resize_dims
      - N
-     - Image was resize to fixed 'h,w', default is same as net input dims
+     - The original image size 'h,w', default is same as net input dims
    * - pad_value
      - N
      - pad value when resize

@@ -27,7 +27,7 @@ At present, the two main series of processors supported by TPU-MLIR are BM168x (
 
 The image cropping will first adjust the image to the size specified by the "--resize_dims" argument of the ``model_transform`` tool, and then crop it to the size of the model input. The normalization supports directly converting unpreprocessed image data.
 
-To integrate preprocessing into the model, you need to speficy the "--fuse_preprocess" argument when using the ``model_deploy`` tool, and the ``test_input`` should be an image of the original format (i.e., jpg, jpeg and png format). There will be a preprocessed npz file of input named ``${model_name}_in_ori.npz`` generated. In addition, there is a "--customization_format" argument to specify the original image format input to the model. The supported image formats are described as follows:
+To integrate preprocessing into the model, you need to speficy the "--fuse_preprocess" argument when using the ``model_deploy`` tool, and the ``test_input`` should be an image of the original format (i.e., jpg, jpeg and png format). There will be a preprocessed npz file of input named ``${model_name}_in_ori.npz`` generated. In addition, there is a "--customization_format" argument to specify the original image format input to the model. The supported image formats are described as follows (BM1684 not included):
 
 .. list-table:: Types of customization_format and Description
    :widths: 27 43 12 10
@@ -63,22 +63,24 @@ To integrate preprocessing into the model, you need to speficy the "--fuse_prepr
      - True
    * - YUV420_PLANAR
      - yuv420 planner format, from vpss input
-     - False
+     - True
      - True
    * - YUV_NV21
      - NV21 format of yuv420, from vpss input
-     - False
+     - True
      - True
    * - YUV_NV12
      - NV12 format of yuv420, from vpss input
-     - False
+     - True
      - True
    * - RGBA_PLANAR
      - rgba format and nchw tensor format
      - False
      - True
 
-The "YUV*" type format is the special input format of CV18xx series processors. When the order of the color channels in the ``customization_format`` is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding ``customization_format`` will be automatically set according to the ``pixel_format`` and ``channel_format`` arguments defined when using the ``model_transform`` tool.
+Note that the input data shape of the ``YUV`` format in the BM168X model is (n, resize_dim_h, resize_dim_w), ``resize_dim_h,resize_dim_w`` is the ``resize_dim`` argument of the ``model_transform`` stage.
+
+When the order of the color channels in the ``customization_format`` is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding ``customization_format`` will be automatically set according to the ``pixel_format`` and ``channel_format`` arguments defined when using the ``model_transform`` tool.
 
 
 Model Deployment Example

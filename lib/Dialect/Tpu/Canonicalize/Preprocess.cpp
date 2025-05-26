@@ -122,6 +122,7 @@ public:
          {"RGBA_PLANAR", {"rgba", "nchw"}}, {"GBRG_RAW", {"gbrg", "nchw"}},
          {"GRBG_RAW", {"grbg", "nchw"}},    {"BGGR_RAW", {"bggr", "nchw"}},
          {"RGGB_RAW", {"rggb", "nchw"}}};
+
     if (attributes_map.find(pixel_format) == attributes_map.end())
       llvm_unreachable("customization format is not supported yet.");
     auto color = std::get<0>(attributes_map[pixel_format]);
@@ -131,6 +132,14 @@ public:
                    << "pixel_format:" << pixel_format << ", color:" << color
                    << ", channel_order_attr:" << channel_order << ", layout:"
                    << layout << ", swap_channel:" << swap_channel << "\n";);
+    if (module::isBM1684XFamily() && pixel_format.substr(0, 3) == "YUV") {
+      // insert Yuv2RgbOp
+      currentOut = this->insertYuv2RgbOp(rewriter, name, currentOut,
+                                         pixel_format, channel_order);
+      c = 3; // channel
+      swap_channel = false;
+      resize_h = (resize_h * 2) / 3;
+    }
 
     // insert PackRawOp, no need other preprocessOp & castOp
     if (color == "gbrg" || color == "grbg" || color == "rggb" ||
@@ -262,6 +271,47 @@ private:
   bool _asymmetric = module::isAsymmetric();
   bool sign;
   bool isInt8;
+
+  Value insertYuv2RgbOp(PatternRewriter &rewriter, std::string &name, Value opd,
+                        const std::string &pixel_format,
+                        const std::string &target_order) {
+
+    int32_t src_fmt;
+    if (pixel_format == "YUV420_PLANAR")
+      src_fmt = 0; // FORMAT_MAPPING_YUV420P_YU12
+    else if (pixel_format == "YUV_NV21")
+      src_fmt = 3; // FORMAT_MAPPING_NV21
+    else if (pixel_format == "YUV_NV12")
+      src_fmt = 2; // FORMAT_MAPPING_NV12
+    else
+      llvm_unreachable("BM1688 unsopprt yuv format");
+    int32_t dst_fmt = (target_order == "rgb") ? 4 : 5; // RGB=4,BGR=5
+
+    // attr
+    mlir::MLIRContext *ctx = rewriter.getContext();
+    auto image_format = ImageOutFormatAttr::get(ctx, ImageOutFormat::UINT8);
+    auto formula_mode =
+        Yuv2rgbFormulaAttr::get(ctx, Yuv2rgbFormula::_601_limited);
+    std::vector<NamedAttribute> attrs = {
+        rewriter.getNamedAttr("src_format",
+                              rewriter.getUI32IntegerAttr(src_fmt)),
+        rewriter.getNamedAttr("dst_format",
+                              rewriter.getUI32IntegerAttr(dst_fmt)),
+        rewriter.getNamedAttr("image_format", image_format),
+        rewriter.getNamedAttr("formula_mode", formula_mode),
+    };
+
+    // [n, c, h, w] -> [n,3,h,w]
+    auto in_shape = module::getShape(opd);
+    int64_t n = in_shape[1];
+    int64_t h = (in_shape[2] * 2) / 3; // YUV420 height convert
+    int64_t w = in_shape[3];
+    auto out_type = RankedTensorType::get({n, 3, h, w},
+                                          module::getUniformQuantizedType(opd));
+    return rewriter.create<tpu::Yuv2rgbFormulaOp>(
+        NameLoc::get(rewriter.getStringAttr(name + "_yuv2rgb")), out_type,
+        ValueRange{opd}, attrs);
+  }
 
   Value insertTransposeOp(PatternRewriter &rewriter, std::string &name,
                           Value opd) {
