@@ -6,9 +6,31 @@ from calibration.data_selector import DataSelector
 from utils.mlir_parser import MlirParser
 from utils.preprocess import preprocess
 
+def linear(x, W, b=None):
+    y = x @ W
+    if b is not None:
+        y += b
+    return y
+
+def qdq_weight(W, perchannel=True):
+    if perchannel:
+        mxw = np.abs(W).max(axis=1, keepdims=True)
+    else:
+        mxw = np.abs(W).max()
+    s = mxw / 127
+    qdqW = np.clip(np.round(W / s), -127, 127) * s
+    return qdqW
+
+def qdq_act(X, mxa):
+    s = mxa / 127
+    qdqX = np.clip(np.round(X / s), -127, 127) * s
+    return qdqX
+
+def mse(x, y):
+    return np.mean((x - y) ** 2)
 
 class SmoothQuant:
-    def __init__(self, args, data_selector: DataSelector, alpha: float = 0.5):
+    def __init__(self, args, data_selector: DataSelector):
         self.args = args
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
@@ -25,7 +47,6 @@ class SmoothQuant:
                     self.data_list.append(self.data_list[i])
                     self.args.input_num += 1
             self.args.input_num = self.args.input_num // self.batch_size
-        self.alpha = alpha
 
     def init_ppa(self):
         self.ppa_list = []
@@ -79,10 +100,9 @@ class SmoothQuant:
                             )
                         else:
                             batched_inputs[input] = x[input].astype(np.float32)
-                        if batched_inputs[input].shape[0] >= self.batch_size:
-                            real_batch_size = self.parser.get_op_by_op_name(input).shape[0]
-                            self.input_tensors[batch_idx][input] = batched_inputs[input][:real_batch_size]
-                            batched_inputs[input] = batched_inputs[input][real_batch_size:]
+                        real_batch_size = self.parser.get_op_by_op_name(input).shape[0]
+                        self.input_tensors[batch_idx][input] = batched_inputs[input][:real_batch_size]
+                        batched_inputs[input] = batched_inputs[input][real_batch_size:]
 
             elif self.data_selector.all_image:
                 inputs = [s.strip() for s in data.split(',')]
@@ -115,13 +135,28 @@ class SmoothQuant:
         self.smooth_op_names = []
         self.all_op_names = self.parser.get_op_name_list()
         for op in self.all_op_names:
-            if self.parser.get_op_type_by_op_name(op) == 'top.LayerNorm':
+            op_type = self.parser.get_op_type_by_op_name(op)
+            if op_type == 'top.LayerNorm':
                 users = self.skip_reshape_like_users(op)
                 for user in users:
                     if self.parser.get_op_type_by_op_name(user) != 'top.MatMul':
                         break
                 else: # all user is top.MatMul
                     self.smooth_op_names.append(op)
+            elif op_type == 'top.Mul':
+                mul_op = self.parser.get_op_by_op_name(op)
+                if mul_op.opds[1] not in self.module_weights:
+                    continue # opds[1] is not weight op
+                if self.module_weights[mul_op.opds[1]].shape[-1] != mul_op.shape[-1]:
+                    continue # weight shape is different from act shape
+                users = self.skip_reshape_like_users(op)
+                for user in users:
+                    if self.parser.get_op_type_by_op_name(user) != 'top.MatMul':
+                        break
+                else: # all user is top.MatMul
+                    self.smooth_op_names.append(op)
+            elif self.is_vproj_matmul(op): # smooth between v proj and o proj, now only support bert model
+                self.smooth_op_names.append(op)
         for i, op_name in enumerate(self.smooth_op_names):
             print(f"smooth op {i} {op_name}")
 
@@ -175,12 +210,70 @@ class SmoothQuant:
         users = list(set(users))
         return users
 
+    def is_vproj_matmul(self, op_name):
+        if self.parser.get_op_type_by_op_name(op_name) != 'top.MatMul':
+            return False
+
+        first_matmul_users = []
+        users = self.parser.get_next_op_by_op_name(op_name)
+        while True:
+            if len(users) != 1:
+                return False
+            if self.parser.get_op_type_by_op_name(users[0]) == 'top.MatMul':
+                break
+            first_matmul_users.append(users[0])
+            users = self.parser.get_next_op_by_op_name(users[0])
+        for user_op in first_matmul_users:
+            if self.parser.get_op_type_by_op_name(user_op) not in ['top.Reshape', 'top.Permute']:
+                return False
+
+        second_matmul_users = []
+        users = self.parser.get_next_op_by_op_name(users[0])
+        while True:
+            if len(users) != 1:
+                return False
+            if self.parser.get_op_type_by_op_name(users[0]) == 'top.MatMul':
+                break
+            second_matmul_users.append(users[0])
+            users = self.parser.get_next_op_by_op_name(users[0])
+        for user_op in second_matmul_users:
+            if self.parser.get_op_type_by_op_name(user_op) not in ['top.Reshape', 'top.Permute']:
+                return False
+
+        matmul_op = self.parser.get_op_by_op_name(op_name)
+        first_matmul_user_ops = [self.parser.get_op_by_op_name(_) for _ in first_matmul_users]
+        second_matmul_user_ops = [self.parser.get_op_by_op_name(_) for _ in second_matmul_users]
+        if matmul_op.shape != second_matmul_user_ops[-1].shape:
+            return False
+        for first_op in first_matmul_user_ops:
+            second_op = second_matmul_user_ops.pop()
+            if first_op.type != second_op.type:
+                return False
+            second_input_shape = self.parser.get_op_by_op_name(second_op.opds[0]).shape
+            if second_input_shape != first_op.shape:
+                return False
+        return True
+
+    def get_next_matmul_ops(self, op_name):
+        next_ops = self.parser.get_next_op_by_op_name(op_name)
+        next_matmuls = []
+        while next_ops:
+            next_op = next_ops.pop()
+            if self.parser.get_op_type_by_op_name(next_op) == 'top.MatMul':
+                next_matmuls.append(next_op)
+            else:
+                next_ops.extend(self.parser.get_next_op_by_op_name(next_op))
+        return next_matmuls
+
     def collect_activation_scales_by_op_name(self, op_name):
         outputs = self.parser.get_outputs_by_op_name(op_name)
         for output in outputs:
             if output not in self.all_op_names:
                 continue
             activation = self.module.get_tensor(output).copy()
+            if op_name not in self.activation_collection:
+                self.activation_collection[op_name] = []
+            self.activation_collection[op_name].append(activation)
             if activation is None:
                 continue
             activation = activation.reshape(-1, activation.shape[-1])
@@ -195,6 +288,7 @@ class SmoothQuant:
 
     def collect_activation_scales(self):
         self.activation_scales = {}
+        self.activation_collection = {}
         pbar = tqdm([i for i in range(self.args.input_num)],
                     total=self.args.input_num, position=0, leave=True)
         for idx in range(self.args.input_num):
@@ -211,31 +305,122 @@ class SmoothQuant:
     def collect_weight_scales(self):
         self.weight_scales = {}
         for op_name in self.smooth_op_names:
-            users = self.skip_reshape_like_users(op_name)
-            for user in users:
-                assert self.parser.get_op_type_by_op_name(user) == 'top.MatMul'
-                user_op = self.parser.get_op_by_op_name(user)
-                user_weight = self.module_weights[user_op.opds[1]]
-                if user_weight.ndim == 1:
-                    user_weight = user_weight.reshape(-1, user_op.shape[-1])
-                user_weight_scale = np.abs(user_weight).max(axis=1)
+            op_type = self.parser.get_op_type_by_op_name(op_name)
+            if op_type in ['top.LayerNorm', 'top.Mul']:
+                users = self.skip_reshape_like_users(op_name)
+                for user in users:
+                    assert self.parser.get_op_type_by_op_name(user) == 'top.MatMul'
+                    user_op = self.parser.get_op_by_op_name(user)
+                    user_weight = self.module_weights[user_op.opds[1]]
+                    if user_weight.ndim == 1:
+                        user_weight = user_weight.reshape(-1, user_op.shape[-1])
+                    user_weight_scale = np.abs(user_weight).max(axis=1)
+                    if op_name not in self.weight_scales:
+                        self.weight_scales[op_name] = user_weight_scale
+                    else:
+                        self.weight_scales[op_name] = np.maximum(
+                            user_weight_scale,
+                            self.weight_scales[op_name]
+                        )
+
+            elif op_type == 'top.MatMul':
+                users = self.get_next_matmul_ops(op_name)
+                oproj = self.get_next_matmul_ops(users[0])[0]
+                oproj_op = self.parser.get_op_by_op_name(oproj)
+                oproj_weight = self.module_weights[oproj_op.opds[1]]
+                if oproj_weight.ndim == 1:
+                    oproj_weight = oproj_weight.reshape(-1, oproj_op.shape[-1])
+                oproj_weight_scale = np.abs(oproj_weight).max(axis=1)
                 if op_name not in self.weight_scales:
-                    self.weight_scales[op_name] = user_weight_scale
+                    self.weight_scales[op_name] = oproj_weight_scale
                 else:
                     self.weight_scales[op_name] = np.maximum(
-                        user_weight_scale,
+                        oproj_weight_scale,
                         self.weight_scales[op_name]
                     )
 
+    def search_opt_scale(self, op_name):
+        # search the best smooth scale by minimizing the mse loss
+        op_type = self.parser.get_op_type_by_op_name(op_name)
+        weight_scale = self.weight_scales[op_name]
+        activation_scale = self.activation_scales[op_name]
+        inputs = self.activation_collection[op_name]
+        opt_loss = float('inf')
+        opt_scale = None
+
+        if op_type in ['top.LayerNorm', 'top.Mul']:
+            users = self.skip_reshape_like_users(op_name)
+        elif op_type == 'top.MatMul':
+            users = self.get_next_matmul_ops(op_name)
+            users = self.get_next_matmul_ops(users[0])
+
+        fp32_outputs = {user: [] for user in users}
+        user_weights = {}
+        for user in users:
+            user_opds = self.parser.get_opds_by_op_name(user)
+            ori_weight = self.module_weights[user_opds[1]].copy()
+            if ori_weight.ndim == 1:
+                ori_weight = ori_weight.reshape(inputs[0].shape[-1], -1)
+            user_weights[user] = ori_weight
+            for x in inputs:
+                fp32_outputs[user].append(linear(x, ori_weight))
+
+        # smoothquant search space
+        for alpha in np.arange(0, 1.05, 0.05):
+            loss = 0
+            smooth_scale = activation_scale ** alpha / weight_scale ** (1 - alpha)
+            smooth_scale[np.isinf(smooth_scale)] = 1
+            smooth_scale[np.isnan(smooth_scale)] = 1
+            scaled_mxa = (activation_scale / smooth_scale).max()
+            scaled_inputs = []
+            for x in inputs:
+                scaled_inputs.append(qdq_act(x / smooth_scale, scaled_mxa))
+            for user in users:
+                scaled_weight = user_weights[user] * smooth_scale.reshape(-1, 1)
+                scaled_weight = qdq_weight(
+                    scaled_weight,
+                )
+                for i, scaled_x in enumerate(scaled_inputs):
+                    scaled_output = linear(scaled_x, scaled_weight)
+                    loss += mse(scaled_output, fp32_outputs[user][i])
+            if loss < opt_loss:
+                opt_loss = loss
+                opt_scale = smooth_scale
+
+        # os+ search space
+        max_step = 20
+        amx = activation_scale.max()
+        for step in range(max_step):
+            loss = 0
+            mx_range = amx * (1 + step) / max_step
+            smooth_scale = np.maximum(1.0, activation_scale / mx_range)
+            smooth_scale[np.isinf(smooth_scale)] = 1
+            smooth_scale[np.isnan(smooth_scale)] = 1
+            scaled_mxa = (activation_scale / smooth_scale).max()
+            scaled_inputs = []
+            for x in inputs:
+                scaled_inputs.append(qdq_act(x / smooth_scale, scaled_mxa))
+            for user in users:
+                scaled_weight = user_weights[user] * smooth_scale.reshape(-1, 1)
+                scaled_weight = qdq_weight(
+                    scaled_weight,
+                )
+                for i, scaled_x in enumerate(scaled_inputs):
+                    scaled_output = linear(scaled_x, scaled_weight)
+                    loss += mse(scaled_output, fp32_outputs[user][i])
+            if loss < opt_loss:
+                opt_loss = loss
+                opt_scale = smooth_scale
+
+        return opt_scale
+
     def smoothquant(self):
-        for op_name in self.smooth_op_names:
+        for op_name in tqdm(self.smooth_op_names):
             if op_name in self.weight_scales and op_name in self.activation_scales:
+                op_type = self.parser.get_op_type_by_op_name(op_name)
                 opds = self.parser.get_opds_by_op_name(op_name)
-                weight_scale = self.weight_scales[op_name]
-                activation_scale = self.activation_scales[op_name]
-                smooth_scale = activation_scale ** self.alpha / weight_scale ** (1 -self.alpha)
-                smooth_scale[np.isinf(smooth_scale)] = 1
-                smooth_scale[np.isnan(smooth_scale)] = 1
+                smooth_scale = self.search_opt_scale(op_name)
+
                 ori_weight_shape = self.module_weights[opds[1]].shape
                 self.module_weights[opds[1]] /= smooth_scale
                 new_weight_shape = self.module_weights[opds[1]].shape
@@ -246,7 +431,15 @@ class SmoothQuant:
                     new_weight_shape = self.module_weights[opds[2]].shape
                     assert np.all(ori_weight_shape == new_weight_shape), f"{op_name} bias {ori_weight_shape} {new_weight_shape}"
                 smooth_scale = smooth_scale.reshape(-1, 1)
-                users = self.skip_reshape_like_users(op_name)
+
+                if op_type in ['top.LayerNorm', 'top.Mul']:
+                    users = self.skip_reshape_like_users(op_name)
+                elif op_type == 'top.MatMul':
+                    users = self.get_next_matmul_ops(op_name)
+                    users = self.get_next_matmul_ops(users[0])
+                else:
+                    users = []
+
                 for user in users:
                     assert self.parser.get_op_type_by_op_name(user) == 'top.MatMul'
                     user_opds = self.parser.get_opds_by_op_name(user)
@@ -269,7 +462,7 @@ class SmoothQuant:
         self.load_net_weights()
         self.load_net_inputs()
         self.get_smooth_op_names()
-        if len(self.smooth_op_names) and self.alpha != 0:
+        if len(self.smooth_op_names):
             self.collect_weight_scales()
             self.collect_activation_scales()
             self.smoothquant()
