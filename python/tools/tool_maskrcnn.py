@@ -29,7 +29,10 @@ def str2listFloat(v):
 
 class MaskRCNN_Tester_Basic(object):
     NNMODELS_PATH = os.getenv('NNMODELS_PATH')
-    path_default_MaskRCNN_dataset = NNMODELS_PATH + "/maskrcnn_models/"
+    path_default_MaskRCNN_dataset = ""
+    if NNMODELS_PATH:
+        path_default_MaskRCNN_dataset = NNMODELS_PATH + "/maskrcnn_models/"
+
     params_model_transform_MaskRCNN = "maskrcnn_model_transform_extern_params"
 
     def __init__(self, debug: bool = True, path_custom_dataset: str = None):
