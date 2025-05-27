@@ -357,6 +357,7 @@ In order to optimize performance in TpuLang programming, operators are categoriz
 * Local Operator: During compilation, local operators can be merged and optimized with other local operators, ensuring that the data between operations only exists in the local storage of the TPU.
 * Limited Local Operator: Limited local operators can be merged and optimized with other local operators under certain conditions.
 * Global Operator: Global operators cannot be merged and optimized with other operators. The input and output data of these operators need to be placed in the TPU's global storage.
+
 Many of the following operations are element-wise operations, requiring input and output Tensors to have the same number of dimensions.
 
 When an operation has two input Tensors, there are two categories based on whether shape broadcasting is supported or not.
@@ -1618,6 +1619,7 @@ Processor support
 """""""""""""""""""""""""""""""""
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+
 eq
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -3146,6 +3148,7 @@ The interface definition
                reps: Union[List[int], Tuple[int]],
                out_name: str = None):
           #pass
+
 Description of the function
 """""""""""""""""""""""""""""""""
 Repeat the data by copying it along the specified dimension(s).
@@ -4698,9 +4701,11 @@ The interface definition
             out_name: str = None,
         ):
 
+
 Description of the function
 """""""""""""""""""""""""""""""""
 Transfer input tensor from yuv to rgb. Require tensor shape=[n,h*3/2,w], n represents `batch`, h represents `pixels height`, w represents `pixels width`.
+
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
@@ -4715,6 +4720,7 @@ Explanation of parameters
 Return value
 """""""""""""""""""""""""""""""""
 One rgb tensor will be output, with shape=[n,3,h,w], where n represents `batch`, h represents `pixels height`, w represents `pixels width`.
+
 
 Processor support
 """""""""""""""""""""""""""""""""
@@ -4739,9 +4745,11 @@ Definition
                          mode:str=None,
                          out_name:str=None)
 
+
 Description
 """""""""""""""""""""""""""""""""
 Given 4 feature maps, extract the corresponding ROI from `rois` based on the `target_lvls` indices and perform ROI Align with the corresponding feature maps to obtain the final output. This operation is considered a **restricted local operation**.
+
 
 Parameters
 """""""""""""""""""""""""""""""""

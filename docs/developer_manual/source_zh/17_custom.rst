@@ -349,6 +349,7 @@ TpuLang自定义算子添加
      run_custom_unittest {processor_arch}
 
 9. 上卡测试
+
   当网络中存在动态自定义算子时，bmodel中包含的固件可能无法使bmrt_test正常工作，这时就需要替换固件了，使用shell命令可以达到这一目标：
 
   .. code-block:: shell
