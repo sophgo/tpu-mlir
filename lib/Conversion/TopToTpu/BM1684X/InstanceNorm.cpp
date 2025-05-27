@@ -63,7 +63,7 @@ void InstanceNormLowering::LoweringINT8(PatternRewriter &rewriter,
   if (module::isMARS3() || module::isSGTPUV8())
     LoweringInstanceNorm(rewriter, op, rewriter.getBF16Type());
   else
-    LoweringInstanceNorm(rewriter, op, rewriter.getF16Type());
+    LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void InstanceNormLowering::LoweringINT4(PatternRewriter &rewriter,
@@ -79,7 +79,7 @@ void InstanceNormLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void InstanceNormLowering::LoweringF16(PatternRewriter &rewriter,
                                        top::InstanceNormOp op) const {
-  LoweringInstanceNorm(rewriter, op, rewriter.getF16Type());
+  LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());
 }
 
 void InstanceNormLowering::LoweringF8(PatternRewriter &rewriter,
