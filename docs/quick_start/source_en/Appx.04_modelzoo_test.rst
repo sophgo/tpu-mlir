@@ -248,7 +248,6 @@ Run the following commands under the PCIE board to test the performance of the g
 
 .. code-block:: shell
 
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
@@ -299,7 +298,6 @@ Run the following commands under the PCIE board to test the precision of the gen
 
 .. code-block:: shell
 
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt --priority_filter high
 

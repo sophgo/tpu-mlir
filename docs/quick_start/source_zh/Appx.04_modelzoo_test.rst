@@ -246,7 +246,6 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 
 .. code-block:: shell
 
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
@@ -297,7 +296,6 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 
 .. code-block:: shell
 
-   $ pip3 install path/to/tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
