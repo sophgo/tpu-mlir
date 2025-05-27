@@ -24,6 +24,10 @@ struct SplitSlicePattern : public OpRewriterPatternEx<SliceOp> {
     if (op->hasOneUse()) {
       return failure();
     }
+    if (module::isDynamic()) {
+      // to be consistent with MergeSlicePattern
+      return failure();
+    }
     // ****** CAUTION ******
     // Method 1:
     // auto users = op->getUsers();
