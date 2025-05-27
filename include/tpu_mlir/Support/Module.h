@@ -156,6 +156,7 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
 void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
               int64_t &w, group_type_t group_type);
 double getDtypeSize(Value v);
+int64_t getRealBytes(Value v);
 size_t getBytes(Value v);
 int64_t getNumElements(Value v);
 Type getStorageType(Value v); // storage type
