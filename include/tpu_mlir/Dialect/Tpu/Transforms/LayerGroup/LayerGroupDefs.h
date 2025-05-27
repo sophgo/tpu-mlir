@@ -615,9 +615,10 @@ public:
     os << "\tAttrs: ";
     if (auto lg_op = dyn_cast<LocalGenInterface>(op)) {
       lg_op.DumpQuantAgnosticAttrs(os);
-    } else {
-      llvm::errs() << "op is not a LocalGenInterface: \n";
     }
+    // else {
+    //   llvm::errs() << "op is not a LocalGenInterface: \n";
+    // }
     os.flush();
   }
 

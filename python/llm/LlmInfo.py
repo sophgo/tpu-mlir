@@ -20,6 +20,7 @@ class ModelConfig:
                  intermediate_size: str = 'intermediate_size',
                  rope_theta: str = "rope_theta",
                  rms_norm_eps: str = "rms_norm_eps",
+                 hidden_act: str = "hidden_act",
                  quantization_config: str = "quantization_config"):
         self.num_attention_heads = num_attention_heads
         self.num_hidden_layers = num_hidden_layers
@@ -29,7 +30,16 @@ class ModelConfig:
         self.intermediate_size = intermediate_size
         self.rope_theta = rope_theta
         self.rms_norm_eps = rms_norm_eps
+        self.hidden_act = hidden_act
         self.quantization_config = quantization_config
+
+
+# only for llm, not for vlm
+class LlmType(Enum):
+    QWEN2 = "qwen2"
+    LLAMA = "llama"
+    QWEN3 = "qwen3"
+    GEMMA3 = "gemma3_text"
 
 
 class LlmList:
@@ -43,7 +53,10 @@ class LlmList:
     K_NORM = "K_NORM"  # qwen3
     V_PROJ = "V_PROJ"
     O_PROJ = "O_PROJ"
-    POST_LN = "POST_LN"
+    POST_ATTN_LN = "POST_ATTN_LN"
+    # MLP
+    PRE_MLP_LN = "PRE_MLP_LN"  # gemma3
+    POST_MLP_LN = "POST_MLP_LN"  # gemma3
     MLP_GATE = "MLP_GATE"
     MLP_UP = "MLP_UP"
     MLP_DOWN = "MLP_DOWN"
@@ -73,11 +86,36 @@ COMMON_INFO = ModelInfo(
         LlmList.K_NORM: "self_attn.k_norm",  # qwen3
         LlmList.V_PROJ: "self_attn.v_proj",
         LlmList.O_PROJ: "self_attn.o_proj",
-        LlmList.POST_LN: "post_attention_layernorm",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
         LlmList.MLP_GATE: "mlp.gate_proj",
         LlmList.MLP_UP: "mlp.up_proj",
         LlmList.MLP_DOWN: "mlp.down_proj",
         # ================================
         LlmList.NORM: "model.norm",
         LlmList.LMHEAD: "lm_head",
+    })
+
+# gemma3
+GEMMA3_INFO = ModelInfo(
+    ModelConfig(hidden_act="hidden_activation", ),
+    weights={
+        LlmList.LAYERS: "language_model.model.layers",
+        LlmList.EMBEDING: "language_model.model.embed_tokens",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.Q_NORM: "self_attn.q_norm",
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.K_NORM: "self_attn.k_norm",
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.O_PROJ: "self_attn.o_proj",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.PRE_MLP_LN: "pre_feedforward_layernorm",
+        LlmList.POST_MLP_LN: "post_feedforward_layernorm",
+        LlmList.MLP_GATE: "mlp.gate_proj",
+        LlmList.MLP_UP: "mlp.up_proj",
+        LlmList.MLP_DOWN: "mlp.down_proj",
+        # ================================
+        LlmList.NORM: "language_model.model.norm",
+        LlmList.LMHEAD: "language_model.model.lm_head",
     })

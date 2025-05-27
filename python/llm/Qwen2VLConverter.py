@@ -35,9 +35,15 @@ class Qwen2VLConverter(LlmConverter):
         self.vhead_dim = self.embed_dim // self.vnum_heads
         self.vintermediate_size = self.vconfig.intermediate_size
         self.position_shape = [3, self.seq_length]
+        # support qwen2.5-vl and qwen2-vl
         self.is_qwen2_5vl = self.model_type == "qwen2_5_vl"
         if self.is_qwen2_5vl:
             self.fullatt_block_indexes = self.vconfig.fullatt_block_indexes
+
+    @override
+    def load_pretrained(self):
+        super().load_pretrained()
+        self.llm_type = LlmType.QWEN2
 
     @override
     def rotary_embedding(self):

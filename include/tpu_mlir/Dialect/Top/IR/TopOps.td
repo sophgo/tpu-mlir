@@ -2103,8 +2103,11 @@ def Top_GELUOp : Top_Op<"GELU"> {
 
     4.attribute
     round_mode: how values are rounded during the conversion from higher precision to lower precision.;
-    approx_mode: include two mode. normal: This mode uses the exact mathematical form of the GELU function.
-                 approximate: This mode uses an approximation to speed up computation.;
+    approx_mode: include three mode.
+                  normal: This mode uses the exact mathematical form of the GELU function;
+                  tanh: This mode uses tanh to speed up computation;
+                  sigm: This mode uses sigmoid to speed up computation;
+
   }];
   let arguments = (
     ins AnyTensor:$input,

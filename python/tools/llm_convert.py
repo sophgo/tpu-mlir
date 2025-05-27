@@ -77,8 +77,11 @@ if __name__ == '__main__':
         from llm.Qwen2VLConverter import Qwen2VLConverter
         converter = Qwen2VLConverter(args, config)
     elif config.model_type in ['internvl_chat']:
-        from llm.InternVL3VLConverter import InternVL3VLConverter
-        converter = InternVL3VLConverter(args, config)
+        from llm.InternVL3Converter import InternVL3Converter
+        converter = InternVL3Converter(args, config)
+    elif config.model_type in ['gemma3']:
+        from llm.Gemma3Converter import Gemma3Converter
+        converter = Gemma3Converter(args, config)
     else:
         raise RuntimeError("Unsupported model type: {}".format(config.model_type))
     converter.run()
