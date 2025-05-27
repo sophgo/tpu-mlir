@@ -33,6 +33,10 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.19.0
+     - 2025.05.30
+     - Support AWQ and GPTQ models;
+       Deconv3D F16, F32 bugfix
    * - v1.18.0
      - 2025.05.01
      - YOLO series adds automatic mixed precision setting;
