@@ -39,6 +39,7 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
 #bm1690 sha256: c92f9c274ce727a8975d28233088aa6fcaac0d43
+# + mm_int8 bug: 15f5546737bd3a1f185a74311a096d685c461ca5
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
