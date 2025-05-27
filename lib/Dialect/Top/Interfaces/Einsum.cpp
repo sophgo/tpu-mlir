@@ -93,6 +93,15 @@ void top::EinsumOp::shape_inference() {
   } else if (mode == "abcd,aecd->aeb") {
     module::setShapeOrVerify(getOutput(),
                              {lhs_shape[0], rhs_shape[1], lhs_shape[1]});
+  } else if (mode == "abcd,aecd->abec") {
+    module::setShapeOrVerify(
+        getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[1], rhs_shape[2]});
+  } else if (mode == "abcd,aecd->acbe") {
+    module::setShapeOrVerify(
+        getOutput(), {lhs_shape[0], lhs_shape[2], lhs_shape[1], rhs_shape[1]});
+  } else if (mode == "abcd,acde->abde") {
+    module::setShapeOrVerify(
+        getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[2], rhs_shape[3]});
   } else if (mode == "abc,cde->abde") {
     module::setShapeOrVerify(
         getOutput(), {lhs_shape[0], lhs_shape[1], rhs_shape[1], rhs_shape[2]});
@@ -117,6 +126,18 @@ void top::EinsumOp::shape_inference() {
     module::setShapeOrVerify(getOutput(),
                              {lhs_shape[0], lhs_shape[1], lhs_shape[2],
                               lhs_shape[3], rhs_shape[2], rhs_shape[3]});
+  } else if (mode == "abcd,abef->acdef") {
+    module::setShapeOrVerify(
+        getOutput(),
+        {lhs_shape[0], lhs_shape[2], lhs_shape[3], rhs_shape[2], rhs_shape[3]});
+  } else if (mode == "abcd,abce->abde") {
+    module::setShapeOrVerify(
+        getOutput(), {lhs_shape[0], lhs_shape[1], lhs_shape[3], rhs_shape[3]});
+  } else if (mode == "abcd,adbe->acbe") {
+    module::setShapeOrVerify(
+        getOutput(), {lhs_shape[0], lhs_shape[2], lhs_shape[1], rhs_shape[3]});
+  } else if (mode == "ab,abc->ac") {
+    module::setShapeOrVerify(getOutput(), {lhs_shape[0], rhs_shape[2]});
   } else {
     llvm_unreachable("Not support now.");
   }
