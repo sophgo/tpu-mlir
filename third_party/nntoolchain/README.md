@@ -17,6 +17,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 
 #bm1684x sha256: c92f9c274ce727a8975d28233088aa6fcaac0d43
 # - io_reloc bug: 7250b7d58bbbf329566feb509d16221681a906f3
+# + erfnet prob: 28dbd904fc8fefd3a9d39a34bb25f7e4f9de50a3
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
