@@ -2029,6 +2029,53 @@ public:
   }
 };
 
+class GridSampleInDeformableAttnBuffer
+    : public OpRewriterPatternEx<tpu::GridSampleInDeformableAttnOp> {
+public:
+  GridSampleInDeformableAttnBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::GridSampleInDeformableAttnOp>(
+            context, "GridSampleInDeformableAttnBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(
+      tpu::GridSampleInDeformableAttnOp GridSampleInDeformableAttnOp,
+      PatternRewriter &rewriter) const override {
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    if (!module::isNone(GridSampleInDeformableAttnOp.getBuffer())) {
+      return failure();
+    }
+    auto type = ::mlir::Builder(getContext()).getIntegerType(8);
+    int f32_size = 4;
+    int64_t buffer_size;
+
+    auto dim = GridSampleInDeformableAttnOp.getInputDims();
+    auto num_grid_samples = GridSampleInDeformableAttnOp.getNumGridSamples();
+    auto input_c = (*(GridSampleInDeformableAttnOp.getInputC().begin()))
+                       .cast<mlir::IntegerAttr>()
+                       .getInt();
+    auto grid_hout = GridSampleInDeformableAttnOp.getGridHout();
+    auto grid_wout = GridSampleInDeformableAttnOp.getGridWout();
+    if (dim > 0 && num_grid_samples > 0) {
+      buffer_size =
+          input_c * grid_hout * grid_wout * (num_grid_samples + 1) * f32_size;
+    } else {
+      return failure();
+    }
+
+    auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
+    auto buffer =
+        tpu::BufferOp::create(GridSampleInDeformableAttnOp, buffer_type);
+    GridSampleInDeformableAttnOp.setOperand(
+        GridSampleInDeformableAttnOp.getNumOperands() - 1, buffer);
+    return success();
+  }
+  bool shouldPrint(tpu::GridSampleInDeformableAttnOp
+                       GridSampleInDeformableAttnOp) const override {
+    return false;
+  }
+};
+
 namespace tpu {
 using namespace bm168x;
 void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
@@ -2045,6 +2092,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       PermuteGlobalBuffer,
       InterpGlobalBuffer,
       GridSamplerBuffer,
+      GridSampleInDeformableAttnBuffer,
       Pool3DGlobalBuffer,
       NonZeroGlobalBuffer,
       DeformGatherGlobalBuffer,

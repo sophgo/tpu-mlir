@@ -2332,4 +2332,30 @@ typedef struct softmax_cast_global_spec_t {
   softmax_common_param_t common_softmax;
   dequant_common_spec_t common_dequant;
 } softmax_cast_global_spec_t;
+
+typedef struct {
+  uint64_t input_global_addr[MAX_SHAPE_DIMS];
+  uint64_t grid_global_addr[MAX_SHAPE_DIMS];
+  uint64_t attn_global_addr[MAX_SHAPE_DIMS];
+  uint64_t output_global_addr;
+  uint64_t buffer_global_addr;
+  int num_grid_samples; // number of grid_sample OP
+  int input_dims;       // dims of grid_sample OP' input & grid tensor
+  int input_n[MAX_SHAPE_DIMS];
+  int input_c[MAX_SHAPE_DIMS];
+  int input_d[MAX_SHAPE_DIMS];
+  int input_h[MAX_SHAPE_DIMS];
+  int input_w[MAX_SHAPE_DIMS];
+  int grid_dout;
+  int grid_hout;
+  int grid_wout;
+  int align_corners;
+  float mean;
+  float scale;
+  bool need_permute;
+  GridSampleInterpMode interp_mode;
+  GridSamplePaddingMode padding_mode;
+  int dtype;
+} grid_sample_in_deformable_attn_global_param_t;
+
 #endif

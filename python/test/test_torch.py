@@ -111,6 +111,7 @@ class TORCH_IR_TESTER(object):
             "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N, N), # bm1684x has random error casued by 2.18 commit
             "GridSampler3DPermute": (self.test_GridSampler3DPermute,     N, N, N, N, N), # bm1684x has random error casued by 2.18 commit
             "SplitGridSampler":(self.test_SplitGridSampler,   N, Y, Y, N, N),
+            "GridSampleInDeformableAttn":(self.test_GridSampleInDeformableAttn, N, Y, Y, N, N),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N, Y),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y, N),
             "IndexPut":         (self.test_IndexPut,          N, Y, Y, N, Y),
@@ -427,8 +428,10 @@ class TORCH_IR_TESTER(object):
                        in_shapes,
                        torch_model: nn.Module,
                        descs: List[Desc] = [],
-                       use_cos: bool = False):
+                       use_cos: bool = False,
+                       quant_modes: List[str] = None):
         """Generic function to generate and compare torch and Tpu-Mlir output"""
+        test_quant_modes = quant_modes if quant_modes is not None else self.quant_modes
         model_name = "{}_{}".format(self.CURRENT_CASE, TORCH_IR_TESTER.ID)
         TORCH_IR_TESTER.ID += 1
         model_def = model_name + ".pt"
@@ -448,7 +451,7 @@ class TORCH_IR_TESTER(object):
         if counter == 0:
             raise RuntimeError("No compare between torch outs and mlir outts")
         print("Success: Torch outs and Mlir outs are equal\n")
-        for quant_mode in self.quant_modes:
+        for quant_mode in test_quant_modes:
             if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
                     tpu_mlir, model = self.model_generate(model_name, quant_mode, isAsym)
@@ -3634,11 +3637,72 @@ class TORCH_IR_TESTER(object):
                     out = out.permute(2, 1, 3, 0)
                     return out + 0.5
 
-            self.trace_and_test([in_shape, disp_shape], Model(),
+            self.trace_and_test([in_shape, disp_shape],
+                                Model(),
                                 [self.Desc('float32', -10, 10),
-                                 self.Desc('float32', -1, 1)])
+                                 self.Desc('float32', -1, 1)],
+                                quant_modes=["f32", "f16"])
 
         _test_grid_sampler((1, 8, 48, 8320), (1, 1, 104, 80))
+
+    #######################################################################
+    # GridSampleInDeformableAttn
+    # ------------
+    def test_GridSampleInDeformableAttn(self):
+
+        def _test_grid_sampler(in_shape, grid_shape, weight_shape):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, data, grid, weight):
+                    in_data = []
+                    split_sizes = [15360, 3840, 960, 240, 60]
+                    data = torch.split(data, split_sizes, dim=1)
+                    reshape_h = [96, 48, 24, 12, 6]
+                    reshape_w = [160, 80, 40, 20, 10]
+                    for i in range(len(data)):
+                        in_data.append(data[i].permute(0, 2,
+                                                       1).reshape(8, 32, reshape_h[i],
+                                                                  reshape_w[i]))
+
+                    grid_data = []
+                    for i in range(grid.shape[0]):
+                        grid_data.append(grid[i].permute(0, 2, 3, 1))
+
+                    weight_data = []
+                    weight = weight.permute(0, 2, 1).reshape(8, 20, -1)
+                    for i in range(grid.shape[0]):
+                        weight_data.append(weight[:, i:i + 4, :].unsqueeze(1))
+
+                    mul_out = []
+                    for i in range(grid.shape[0]):
+                        grid_out = F.grid_sample(in_data[i],
+                                                 grid_data[i],
+                                                 mode="bilinear",
+                                                 padding_mode="zeros",
+                                                 align_corners=True)
+                        mul_out.append(grid_out)
+
+                    out = None
+                    for i in range(grid.shape[0]):
+                        if out is not None:
+                            out += weight_data[i] * mul_out[i]
+                        else:
+                            out = weight_data[i] * mul_out[i]
+                    return out.sum(dim=-2).permute(0, 2, 1)
+
+            self.trace_and_test([in_shape, grid_shape, weight_shape],
+                                Model(), [
+                                    self.Desc('float32', -10, 10),
+                                    self.Desc('float32', -1, 1),
+                                    self.Desc('float32', -10, 10)
+                                ],
+                                quant_modes=["f32", "f16"])
+
+        _test_grid_sampler((1, 20460, 256), (5, 8, 2, 4, 900), (1, 900, 160))
 
     #######################################################################
     # Deformable Convolution

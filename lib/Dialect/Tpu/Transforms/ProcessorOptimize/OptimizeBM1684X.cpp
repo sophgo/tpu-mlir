@@ -5499,6 +5499,138 @@ public:
   }
 };
 
+struct GridSampleInDeformableAttnFusionPattern
+    : public OpRewriterPatternEx<tpu::ReduceOp> {
+
+  GridSampleInDeformableAttnFusionPattern(mlir::MLIRContext *context,
+                                          int benifit)
+      : OpRewriterPatternEx<tpu::ReduceOp>(
+            context, "GridSampleInDeformableAttnFusionPattern", benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::ReduceOp op,
+                                    PatternRewriter &rewriter) const override {
+    if (!op->hasOneUse())
+      return failure();
+    if (op.getMode() != "ReduceSum")
+      return failure();
+    auto inputOp = op.getInput().getDefiningOp();
+    if (!isa<tpu::AddOp>(inputOp) && !inputOp->hasOneUse())
+      return failure();
+
+    unsigned num_grid_samples = 0;
+    SmallVector<Value> gridsampleInputs;
+    SmallVector<Value> gridsampleGrids;
+    SmallVector<Value> attnWeight; // MulOp another input
+
+    SmallVector<int64_t> input_n;
+    SmallVector<int64_t> input_c;
+    SmallVector<int64_t> input_h;
+    SmallVector<int64_t> input_w;
+    int64_t grid_hout;
+    int64_t grid_wout;
+    int64_t interp_mode;
+    int64_t padding_mode;
+    bool align_corners;
+    Value buffer = nullptr;
+
+    SmallVector<Operation *> worklist;
+    worklist.push_back(inputOp);
+    bool modesCollected = false;
+    while (!worklist.empty()) {
+      auto currentOp = worklist.pop_back_val();
+      if (!isa<tpu::AddOp>(currentOp) || !currentOp->hasOneUse()) {
+        return failure();
+      }
+      for (auto operand : currentOp->getOperands()) {
+        auto defOp = operand.getDefiningOp();
+        if (!defOp)
+          continue;
+        if (isa<tpu::MulOp>(defOp) && defOp->hasOneUse()) {
+          bool foundGridsample = false;
+          Value MulInput;
+          for (auto mulOperand : defOp->getOperands()) {
+            auto mulDefOp = mulOperand.getDefiningOp();
+            if (mulDefOp && isa<tpu::GridSamplerOp>(mulDefOp)) {
+              auto gridSampleOp = cast<tpu::GridSamplerOp>(mulDefOp);
+              auto inputType = gridSampleOp.getInput()
+                                   .getType()
+                                   .dyn_cast<RankedTensorType>();
+              auto input_dims = inputType.getRank();
+              // only support dim=4 and bilinear
+              if (input_dims != 4 || gridSampleOp.getMode() != 0)
+                return failure();
+              gridsampleInputs.push_back(gridSampleOp.getInput());
+              auto grid_input = gridSampleOp->getOperand(1);
+              auto permuteOp =
+                  dyn_cast<tpu::PermuteOp>(grid_input.getDefiningOp());
+              if (!permuteOp)
+                return failure();
+              gridsampleGrids.push_back(permuteOp.getInput());
+              auto input_shapes = inputType.getShape();
+              input_n.push_back(input_shapes[0]);
+              input_c.push_back(input_shapes[1]);
+              input_h.push_back(input_shapes[2]);
+              input_w.push_back(input_shapes[3]);
+              if (!modesCollected) {
+                buffer = module::getNoneOp(gridSampleOp);
+                auto gridType = gridSampleOp.getGrid()
+                                    .getType()
+                                    .dyn_cast<RankedTensorType>();
+                grid_hout = gridType.getShape()[1];
+                grid_wout = gridType.getShape()[2];
+                interp_mode = gridSampleOp.getMode();
+                padding_mode = gridSampleOp.getPaddingMode();
+                align_corners = gridSampleOp.getAlignCorners();
+                modesCollected = true;
+              } else {
+                if (gridSampleOp.getMode() != interp_mode ||
+                    gridSampleOp.getPaddingMode() != padding_mode ||
+                    gridSampleOp.getAlignCorners() != align_corners) {
+                  return failure();
+                }
+              }
+              foundGridsample = true;
+              num_grid_samples++;
+              // only support num_grid_samples <= 5
+              if (num_grid_samples > 5) {
+                return failure();
+              }
+            } else {
+              MulInput = mulOperand;
+            }
+          }
+          if (!foundGridsample) {
+            return failure();
+          }
+          attnWeight.push_back(MulInput);
+        } else if (isa<tpu::AddOp>(defOp) && defOp->hasOneUse()) {
+          worklist.push_back(defOp);
+        } else {
+          return failure();
+        }
+      }
+    }
+    rewriter.setInsertionPointAfter(op);
+    auto new_op = rewriter.create<tpu::GridSampleInDeformableAttnOp>(
+        op.getLoc(), op.getOutput().getType(), gridsampleInputs,
+        gridsampleGrids, attnWeight,
+        rewriter.getI64IntegerAttr(num_grid_samples),
+        rewriter.getI64IntegerAttr(4), rewriter.getI64ArrayAttr(input_n),
+        rewriter.getI64ArrayAttr(input_c),
+        rewriter.getI64ArrayAttr({0, 0, 0, 0, 0}),
+        rewriter.getI64ArrayAttr(input_h), rewriter.getI64ArrayAttr(input_w),
+        rewriter.getI64IntegerAttr(0), rewriter.getI64IntegerAttr(grid_hout),
+        rewriter.getI64IntegerAttr(grid_wout),
+        rewriter.getI64IntegerAttr(interp_mode),
+        rewriter.getI64IntegerAttr(padding_mode),
+        rewriter.getBoolAttr(align_corners), buffer);
+
+    op.replaceAllUsesWith(new_op.getOperation());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
@@ -5540,6 +5672,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                 SplitMatmulPattern,
                 GridSamplerFusePattern,
                 CanCutGridSamplerFusePattern,
+                GridSampleInDeformableAttnFusionPattern,
                 TryInsertTileBinaryPattern<tpu::AddOp>,
                 TryInsertTileBinaryPattern<tpu::MulOp>,
                 Concat5dto4d,

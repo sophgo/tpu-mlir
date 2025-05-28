@@ -734,7 +734,7 @@ if __name__ == '__main__':
                                  out_fixed=args.out_fixed,
                                  decrypt_lib=args.decrypt_lib)
     else:
-        raise RuntimeError("not support modle file:{}".format(args.model))
+        raise RuntimeError("not support model file:{}".format(args.model))
     print("\nSaving ...")
     if output:
         np.savez(args.output, **output)

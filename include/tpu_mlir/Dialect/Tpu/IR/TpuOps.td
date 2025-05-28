@@ -7335,4 +7335,60 @@ def Tpu_SoftmaxCastOp: Tpu_Op<"SoftmaxCast",[
 
   let results = (outs AnyRankedTensor:$output);
 }
+
+// def GridSamplerPadModeAttr: AnyStrAttrOf<["zeros","border","reflection"]>;
+def Tpu_GridSampleInDeformableAttnOp : Tpu_Op<"GridSampleInDeformableAttn", [
+    SameVariadicOperandSize,
+    DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<GlobalGenInterface>,
+    DeclareOpInterfaceMethods<InferenceInterface>
+    ]> {
+  let summary = "GridSampleInDeformableAttn operation";
+  let description = [{
+    1.Op Introduction
+    Given an input and a flow-field grid, computes the output
+    using input values and pixel locations from grid.
+
+    2.Math formula
+    ```math
+            output[N, C, H', W'] = input[C, grid[N, H', W', 1], grid[N, H', W', 0]]
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    grid(w.): The flow-field grid tensor that defines the pixel locations for sampling.;
+    buffer(w.): temporary storage of intermediate results or states during computation.;
+
+    4.attributes
+    mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
+    padding_mode: padding mode for outside grid values, Int attribute [0, 1, 2],
+                                representing 'zero' | 'boundary' | 'reflection't.;
+    align_corners: whether to align the corners of the input and output tensors.;
+    scale: scalar.;
+    mean: mean values to subtract from each channel for normalization.;
+    need_permute: whether permutation of the output tensor is required;
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$input_global_addr,
+    Variadic<AnyTensor>:$grid_global_addr,
+    Variadic<AnyTensor>:$attn_global_addr,
+    I64Attr:$num_grid_samples,
+    I64Attr:$input_dims,
+    I64ArrayAttr:$input_n,
+    I64ArrayAttr:$input_c,
+    I64ArrayAttr:$input_d,
+    I64ArrayAttr:$input_h,
+    I64ArrayAttr:$input_w,
+    I64Attr:$grid_dout,
+    I64Attr:$grid_hout,
+    I64Attr:$grid_wout,
+    I64Attr:$interp_mode,
+    I64Attr:$padding_mode,
+    BoolAttr:$align_corners,
+    AnyTensorOrNone:$buffer
+  );
+
+  let results = (outs AnyTensor:$output_global_addr);
+}
+
 #endif // TPU_OPS
