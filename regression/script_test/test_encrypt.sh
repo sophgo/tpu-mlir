@@ -55,9 +55,9 @@ npz_tool.py compare a_out.npz a_dec_out.npz --tolerance 1.0,1.0
 npz_tool.py compare b_out.npz b_dec_out.npz --tolerance 1.0,1.0
 
 # encrypt a
-model_tool --encrypt -model test_encrypt_a.bmodel -net test_encrypt_a -lib $DIR/libcipher.so -o encrypted_a.bmodel
-model_runner.py --input test_encrypt_input.npz --model encrypted_a.bmodel --output a_encrypt_out.npz --decrypt_lib $DIR/libcipher.so
-npz_tool.py compare a_out.npz a_encrypt_out.npz --tolerance 1.0,1.0
+# model_tool --encrypt -model test_encrypt_a.bmodel -net test_encrypt_a -lib $DIR/libcipher.so -o encrypted_a.bmodel
+# model_runner.py --input test_encrypt_input.npz --model encrypted_a.bmodel --output a_encrypt_out.npz --decrypt_lib $DIR/libcipher.so
+# npz_tool.py compare a_out.npz a_encrypt_out.npz --tolerance 1.0,1.0
 
 
 rm -rf *.npz

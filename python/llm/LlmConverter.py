@@ -9,49 +9,16 @@ import os
 from transform.MLIRImporter import MLIRImporter, Platform
 from transform.BaseConverter import BaseConverter
 from .LlmInfo import *
+from .LlmLoad import *
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
-from safetensors import safe_open
+
 import concurrent.futures
 import subprocess
 import sys
 from mlir.ir import *
 import mlir.dialects.top as top
-
-
-class LlmLoad:
-
-    def __init__(self, model_path: str):
-        self.st_files = []
-        # get all safetensors
-        for entry in os.listdir(model_path):
-            file_path = os.path.join(model_path, entry)
-            if os.path.isfile(file_path):
-                if entry.lower().endswith('.safetensors'):
-                    f = safe_open(file_path, "pt")
-                    self.st_files.append(f)
-                elif entry.lower().endswith('.bin'):
-                    f = torch.load(file_path, map_location="cpu")
-                    self.st_files.append(f)
-
-    def read(self, key: str):
-        for f in self.st_files:
-            if key in f.keys():
-                if isinstance(f, dict):
-                    data = f[key]
-                else:
-                    data = f.get_tensor(key)
-                if data.dtype in [torch.float16, torch.bfloat16]:
-                    return data.float().numpy()
-                return data.numpy()
-        raise RuntimeError(f"Can't find key: {key}")
-
-    def is_exist(self, key: str):
-        for f in self.st_files:
-            if key in f.keys():
-                return True
-        return False
 
 
 # support qwen2/llama
@@ -78,6 +45,7 @@ class LlmConverter(BaseConverter):
         self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
         self.quant_mode = None
         self.quant_bits = 0
+        self.vit_f16_out_bf16 = False  # force vit f16, output bf16
         # init config
         self.load_pretrained(config)
         self.llm_config.max_position_embeddings = self.seq_length
@@ -116,9 +84,8 @@ class LlmConverter(BaseConverter):
         # copy model json file to config dir
         shutil.copytree(self.model_path,
                         self.config_dir,
-                        ignore=shutil.ignore_patterns("*.safetensors", ".*",
-                                                      "*.pth", "*.pt", "*.py",
-                                                      "*.bin", "*.bin.index.json",
+                        ignore=shutil.ignore_patterns("*.safetensors", ".*", "*.pth", "*.pt",
+                                                      "*.py", "*.bin", "*.bin.index.json",
                                                       "model.safetensors.index.json"),
                         dirs_exist_ok=True)
 
@@ -170,19 +137,38 @@ class LlmConverter(BaseConverter):
         sin = sin.reshape(self.seq_length, 1, -1)
         return cos.numpy(), sin.numpy()  #[seq, 1, 64]
 
-    def rms_norm(self, mlir_gen, in_op, norm_path: str, name: str = ""):
+    def rms_norm(self, mlir_gen, in_op, norm_path: str, name: str = "", eps=None):
         if not self.model.is_exist(norm_path + ".weight"):
             return in_op
         input_shape = list(in_op.type.shape)
         norm_shape = [1] * (len(input_shape) - 1) + [input_shape[-1]]
         weight_op = mlir_gen.create_weight_op(norm_path + ".weight", norm_shape)
         loc_name = name if name else norm_path
+        eps = self.rms_norm_eps if eps is None else eps
         return top.RMSNormOp(mlir_gen.get_tensor_type(input_shape),
                              in_op,
                              weight_op,
-                             eps=self.rms_norm_eps,
+                             eps=eps,
                              loc=self.get_loc(loc_name, mlir_gen),
                              ip=mlir_gen.insert_point).output
+
+    def layer_norm(self, mlir_gen, in_op, norm_path: str, eps, name: str = ""):
+        if not self.model.is_exist(norm_path + ".weight"):
+            return in_op
+        input_shape = list(in_op.type.shape)
+        norm_shape = [1] * (len(input_shape) - 1) + [input_shape[-1]]
+        weight_op = mlir_gen.create_weight_op(norm_path + ".weight", norm_shape)
+        bias_op = mlir_gen.create_weight_op(norm_path + ".bias", norm_shape)
+        loc_name = name if name else norm_path
+        return top.LayerNormOp(mlir_gen.get_tensor_type(input_shape),
+                               in_op,
+                               weight_op,
+                               bias_op,
+                               normalized_shape=[input_shape[-1]],
+                               axis=len(input_shape) - 1,
+                               eps=eps,
+                               loc=self.get_loc(loc_name, mlir_gen),
+                               ip=mlir_gen.insert_point).output
 
     def unpack_weights(self, qweight, qzeros, bits, quant_mode):
         dtype = np.int32
@@ -250,7 +236,7 @@ class LlmConverter(BaseConverter):
         self.rms_norm_eps = getattr(self.llm_config, c.rms_norm_eps)
         self.head_dim = getattr(self.llm_config, "head_dim",
                                 self.hidden_size // self.num_attention_heads)
-        self.hidden_act = getattr(self.llm_config, c.hidden_act, "silu")
+        self.hidden_act = getattr(self.llm_config, c.hidden_act, ActType.SILU)
         self.kv_dim = self.num_key_value_heads * self.head_dim
         self.kv_tile = self.num_attention_heads // self.num_key_value_heads
         # whether llm head and embedding share weight
@@ -326,7 +312,8 @@ class LlmConverter(BaseConverter):
 
         # gen embedding mlir
         def gen_embedding_by_length(name: str, seq_length: int):
-            embedding_mlir = MLIRImporter([[1, seq_length]], [[1, seq_length, self.hidden_size]],
+            out_shape = [1, seq_length, self.hidden_size]
+            embedding_mlir = MLIRImporter([[1, seq_length]], [out_shape],
                                           name,
                                           Platform.LLM,
                                           input_types=["INT32"],
@@ -334,12 +321,18 @@ class LlmConverter(BaseConverter):
             input_op = embedding_mlir.create_input_op(self.get_loc("input_ids", embedding_mlir), 0)
             weight_op = embedding_mlir.create_weight_op(embedding_path,
                                                         [self.vocab_size, self.hidden_size])
-            new_op = top.GatherOp(embedding_mlir.get_tensor_type([1, seq_length, self.hidden_size]),
+            new_op = top.GatherOp(embedding_mlir.get_tensor_type(out_shape),
                                   weight_op,
                                   input_op,
                                   axis=0,
                                   loc=self.get_loc(name, embedding_mlir),
                                   ip=embedding_mlir.insert_point).output
+            if self.llm_type in [LlmType.GEMMA3]:
+                new_op = top.MulConstOp(embedding_mlir.get_tensor_type(out_shape),
+                                        new_op,
+                                        const_val=self.hidden_size**0.5,
+                                        loc=self.get_loc(name + ".scale", embedding_mlir),
+                                        ip=embedding_mlir.insert_point).output
             embedding_mlir.create_return_op([new_op])
             mlir_txt = embedding_mlir.print_module()
             with open(f"{name}.mlir", "w") as f:
@@ -701,19 +694,23 @@ class LlmConverter(BaseConverter):
         if self.model.is_exist(bias_path):
             weight_dict[bias_path] = self.model.read(bias_path)
 
-    def set_common_weight(self, path: str, weight_dict: dict):
+    def set_common_weight(self, path: str, weight_dict: dict, type=WeightType.NORMAL):
         weight_path = path + ".weight"
         bias_path = path + ".bias"
-        if self.model.is_exist(weight_path):
-            weight_dict[weight_path] = self.model.read(weight_path)
-        if self.model.is_exist(bias_path):
+        has_weight = self.model.is_exist(weight_path)
+        has_bias = self.model.is_exist(bias_path)
+        has_path = self.model.is_exist(path)
+        if not has_weight and not has_bias and not has_path:
+            raise RuntimeError("Can't find key: {}".format(path))
+        if has_weight:
+            data = self.model.read(weight_path)
+            if type == WeightType.RMS_NORM and self.llm_type in [LlmType.GEMMA3]:
+                data = data + 1.0  # GEMMA3 RMSNorm weight is not same as others
+            weight_dict[weight_path] = data
+        if has_bias:
             weight_dict[bias_path] = self.model.read(bias_path)
-        if self.model.is_exist(path):
+        if has_path:
             weight_dict[path] = self.model.read(path)
-        if not self.model.is_exist(weight_path) and \
-           not self.model.is_exist(bias_path) and \
-           not self.model.is_exist(path):
-            raise RuntimeError("Can't find key: {}".format(weight_path))
 
     def gen_block_mlir(self, idx: int):
         tqdm.write(f"generate block_{idx} mlir ...")
@@ -744,23 +741,23 @@ class LlmConverter(BaseConverter):
             rotary_cos + ".weight": self.cos,
             rotary_sin + ".weight": self.sin,
         }
-        self.set_common_weight(input_ln, weight_dict)
+        self.set_common_weight(input_ln, weight_dict, WeightType.RMS_NORM)
         self.set_linear_weight(q_proj, weight_dict)
         self.set_linear_weight(k_proj, weight_dict)
         self.set_linear_weight(v_proj, weight_dict)
         self.set_linear_weight(o_proj, weight_dict)
         if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
-            self.set_common_weight(q_norm, weight_dict)
-            self.set_common_weight(k_norm, weight_dict)
+            self.set_common_weight(q_norm, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(k_norm, weight_dict, WeightType.RMS_NORM)
         if self.llm_type in [LlmType.GEMMA3]:
-            self.set_common_weight(pre_mlp_ln, weight_dict)
-            self.set_common_weight(post_mlp_ln, weight_dict)
-        self.set_common_weight(post_attn_ln, weight_dict)
+            self.set_common_weight(pre_mlp_ln, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(post_mlp_ln, weight_dict, WeightType.RMS_NORM)
+        self.set_common_weight(post_attn_ln, weight_dict, WeightType.RMS_NORM)
         self.set_linear_weight(mlp_gate, weight_dict)
         self.set_linear_weight(mlp_up, weight_dict)
         self.set_linear_weight(mlp_down, weight_dict)
         if do_norm:
-            self.set_common_weight(norm, weight_dict)
+            self.set_common_weight(norm, weight_dict, WeightType.RMS_NORM)
 
         np.savez(weight_file, **weight_dict)
 
@@ -776,12 +773,12 @@ class LlmConverter(BaseConverter):
             gate_op = self.linear(mlir_gen, mlp_gate, new_op,
                                   [self.hidden_size, self.intermediate_size],
                                   [1, len, self.intermediate_size])
-            if self.hidden_act == "silu":
+            if self.hidden_act == ActType.SILU:
                 act_op = top.SiLUOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
                                     gate_op,
                                     loc=self.get_loc(mlp_gate + ".silu", mlir_gen),
                                     ip=ip).output
-            elif self.hidden_act == "gelu_pytorch_tanh":
+            elif self.hidden_act == ActType.GELU_PYTORCH_TANH:
                 act_op = top.GELUOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
                                     gate_op,
                                     approx_mode=StringAttr.get("tanh"),
@@ -991,7 +988,7 @@ class LlmConverter(BaseConverter):
         pass
 
     # ============= compile all code =============
-    def send_command(self, command: list[str], log_file: str):
+    def add_task(self, command: list[str], log_file: str):
         command.append(f"> {log_file}\n")
         cmd = ' '.join(command)
         self.commands.append(cmd)
@@ -1011,7 +1008,7 @@ class LlmConverter(BaseConverter):
             # Exit the program with the same return code as the failed command
             sys.exit(e.returncode)
 
-    def execute_commands(self):
+    def execute_tasks(self):
         task_file = "task.txt"
         with open(task_file, "w") as f:
             f.writelines(self.commands)
@@ -1034,7 +1031,7 @@ class LlmConverter(BaseConverter):
         ]
         if self.debug:
             deploy_args.append('--debug')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_embedding_cache(self):
         name = "embedding_cache"
@@ -1048,7 +1045,7 @@ class LlmConverter(BaseConverter):
         ]
         if self.debug:
             deploy_args.append('--debug')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_lm_head(self):
         name = "lm_head"
@@ -1062,7 +1059,7 @@ class LlmConverter(BaseConverter):
         ]
         if self.debug:
             deploy_args.append('--debug')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_greedy_head(self):
         name = "greedy_head"
@@ -1075,7 +1072,7 @@ class LlmConverter(BaseConverter):
         ]
         if self.debug:
             deploy_args.append('--debug')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_sample_head(self):
         name = "sample_head"
@@ -1088,7 +1085,7 @@ class LlmConverter(BaseConverter):
         ]
         if self.debug:
             deploy_args.append('--debug')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_block(self, layer_id):
         name = f"block_{layer_id}"
@@ -1110,7 +1107,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_block_cache(self, layer_id):
         name = f"block_cache_{layer_id}"
@@ -1130,7 +1127,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--q_symmetric')
         if self.debug:
             deploy_args.append('--debug')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_vit(self):
         if not self.do_vit:
@@ -1140,13 +1137,19 @@ class LlmConverter(BaseConverter):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.half_precision_quantize}',
-            '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}', f'--model {name}.bmodel'
+            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
+            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'--model {name}.bmodel'
         ]
+        if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
+            deploy_args.append('--quantize f16')
+            deploy_args.append('--quant_output_bf16')
+        else:
+            deploy_args.append(f'--quantize {self.half_precision_quantize}')
+            deploy_args.append('--quant_output')
         if self.high_precision:
             deploy_args.append('--high_precision')
-        self.send_command(deploy_args, f"{name}.log")
+        self.add_task(deploy_args, f"{name}.log")
 
     def combine(self):
         bmodel_list = []
@@ -1195,7 +1198,7 @@ class LlmConverter(BaseConverter):
             self.compile_block(i)
             self.compile_block_cache(i)
 
-        self.execute_commands()
+        self.execute_tasks()
 
         # Combine all bmodel files
         self.combine()

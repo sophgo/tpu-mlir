@@ -39,6 +39,20 @@ class LlmType:
     GEMMA3 = "gemma3_text"
 
 
+class ActType:
+    RELU = "relu"
+    GELU = "gelu"
+    SWISH = "swish"
+    SILU = "silu"
+    TANH = "tanh"
+    GELU_PYTORCH_TANH = "gelu_pytorch_tanh"
+
+class WeightType:
+    NORMAL = "Normal"
+    RMS_NORM = "RMSNorm"
+    LAYER_NORM = "LayerNorm"
+
+
 class LlmList:
     LAYERS = "LAYERS"
     EMBEDING = "EMBEDING"

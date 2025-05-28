@@ -41,8 +41,8 @@ class Qwen2VLConverter(LlmConverter):
             self.fullatt_block_indexes = self.vconfig.fullatt_block_indexes
 
     @override
-    def load_pretrained(self):
-        super().load_pretrained()
+    def load_pretrained(self, config):
+        super().load_pretrained(config)
         self.llm_type = LlmType.QWEN2
 
     @override
