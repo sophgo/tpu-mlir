@@ -5,9 +5,6 @@
 #
 # ==============================================================================
 
-from typing import List
-from enum import Enum
-
 
 class ModelConfig:
 
@@ -35,7 +32,7 @@ class ModelConfig:
 
 
 # only for llm, not for vlm
-class LlmType(Enum):
+class LlmType:
     QWEN2 = "qwen2"
     LLAMA = "llama"
     QWEN3 = "qwen3"
