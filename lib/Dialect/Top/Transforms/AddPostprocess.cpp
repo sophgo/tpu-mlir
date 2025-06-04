@@ -122,7 +122,7 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     return;
   }
   // yolov8
-  if (post_type == "yolov8" && num_opds == 1) {
+  if ((post_type == "yolov8" || post_type == "yolov11") && num_opds == 1) {
     operands.push_back(opds[0]);
     anchors = {0};
     return;
