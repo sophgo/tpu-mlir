@@ -1833,7 +1833,13 @@ protected:
           for (int32_t i = 0; i < ops.size(); i++) {
             auto offset =
                 module::getI64Array(cast<top::SliceOp>(ops[i]).getOffset());
-            offsets.push_back(offset->at(index));
+            auto inshape =
+                module::getShape(cast<top::SliceOp>(ops[i]).getInput());
+            if (offset->at(index) >= 0) {
+              offsets.push_back(offset->at(index));
+            } else {
+              offsets.push_back(offset->at(index) + inshape[index]);
+            }
           }
 
           std::vector<int32_t> indexs(ops.size());
