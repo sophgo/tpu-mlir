@@ -1,10 +1,14 @@
 import os
 import pymlir
 import numpy as np
+import mlir.dialects.top as top
 from tqdm import tqdm
 from calibration.data_selector import DataSelector
-from utils.mlir_parser import MlirParser
+from utils.mlir_parser import Operation, MlirParser
 from utils.preprocess import preprocess
+from utils.mlir_shell import _os_system
+from transform.MLIRImporter import MLIRImporter
+from mlir.ir import Location
 
 def linear(x, W, b=None):
     y = x @ W
@@ -130,6 +134,114 @@ class SmoothQuant:
         print(f"input_num = {self.args.input_num}, ref = {len(self.input_tensors)}")
         print(f"real input_num = {self.args.input_num}")
         assert self.args.input_num > 0
+
+    def insert_mul_after_ln(self):
+        need_mul_lns = [] # layernorms that need to insert mul for smooth
+        matmul2ln = {} # matmul to layernorm mapping, used to replace matmul input
+        for op in self.parser.get_op_name_list():
+            op_type = self.parser.get_op_type_by_op_name(op)
+            if op_type == 'top.LayerNorm':
+                users = self.skip_reshape_like_users(op)
+                users_type = [self.parser.get_op_type_by_op_name(user) for user in users]
+                if set(users_type) == {'top.Add', 'top.MatMul'}:
+                    need_mul_lns.append(op)
+                    for ut, u in zip(users_type, users):
+                        if ut == 'top.MatMul':
+                            matmul2ln[u] = op
+        if len(need_mul_lns) == 0: return
+
+        input_shapes = [list(self.input_tensors[0][n].shape) for n in self.module.input_names]
+        output_shapes = [[] for n in self.module.output_names]
+        input_types = []
+        for n in self.module.input_names:
+            if self.input_tensors[0][n].dtype == np.float32:
+                input_types.append('F32')
+            elif self.input_tensors[0][n].dtype == np.int32:
+                input_types.append('INT32')
+            else:
+                raise TypeError(f'input_name: {n}, sunknown input data type: {self.input_tensors[0][n]}')
+
+        new_mlir = MLIRImporter(input_shapes, output_shapes, self.parser.module_name,
+                                "ONNX", input_types, run_mode='STATIC',
+                                weight_file=self.parser.module_weight_file)
+        self.unranked_type = new_mlir.get_tensor_type([])
+
+        idx2operand = {0: new_mlir.none_op}
+        idx2name = {0: ''}
+        # create input ops
+        for i, name in enumerate(self.module.input_names):
+            op = self.parser.body.operations[i+1]
+            attrs = op.attributes
+            name = Operation.name(op)
+            kwargs = {}
+            for a in attrs:
+                if hasattr(a.attr, 'value'):
+                    kwargs[a.name] = a.attr.value
+                else:
+                    kwargs[a.name] = [_.value for _ in a.attr]
+            input_ = new_mlir.create_input_op(
+                Location.fused([Location.name(name)], context=new_mlir.ctx),
+                i, kwargs
+            )
+            idx2operand[i+1] = input_
+            idx2name[i+1] = name
+
+        ln2mulout = {} # layernorm to mul output mapping, used to replace matmul input
+        return_idx = []
+        # insert other ops
+        for i in range(len(self.module.input_names)+1, len(self.parser.body.operations)-1):
+            op = self.parser.body.operations[i]
+            op_type = Operation.type(op)
+            attrs = op.attributes
+            name = Operation.name(op)
+            kwargs = {a.name: a.attr for a in attrs}
+            kwargs['ip'] = new_mlir.insert_point
+            kwargs['loc'] = Location.fused([Location.name(name)], context=new_mlir.ctx)
+            pre_op_ids = [int(_.get_name().strip('%')) for _ in op.operands]
+            args = [idx2operand[j] for j in pre_op_ids]
+            if name in matmul2ln: # replace matmul input with inserted mul output
+                args[0] = ln2mulout[matmul2ln[name]]
+
+            if op_type == 'top.Weight':
+                weight_shape = Operation.shape(op)
+                new_out = new_mlir.create_weight_op(name, weight_shape)
+                self.module_weights[name] = self.module_weights[name].reshape(weight_shape)
+            else:
+                new_out = self.insert_origin_op(new_mlir, op_type, args, kwargs)
+            if new_out is None: return # fail to insert, stop inserting mul
+
+            if name in need_mul_lns: # insert mul after layernorm
+                mul_shape = self.module_weights[idx2name[pre_op_ids[1]]].shape
+                mulW_name = name + "_scaled_weight"
+                self.module_weights[mulW_name] = np.ones(mul_shape).astype(np.float32)
+                mulW_out = new_mlir.create_weight_op(mulW_name, mul_shape)
+                mul_name = "Mul_after_" + name
+                mul_out = top.MulOp(self.unranked_type, [new_out, mulW_out],
+                                    loc=Location.fused([Location.name(mul_name)], context=new_mlir.ctx),
+                                    ip=new_mlir.insert_point).output
+                ln2mulout[name] = mul_out
+
+            idx2operand[i] = new_out
+            idx2name[i] = name
+            if name in self.parser.get_output_op_names_n_shapes():
+                return_idx.append(i)
+        # create return op
+        return_op = []
+        for i in return_idx:
+            return_op.append(idx2operand[i])
+        new_mlir.create_return_op(return_op)
+        # update mlir file
+        new_mlir_txt = new_mlir.print_module()
+        with open('tmp.mlir', 'w') as f:
+            f.write(new_mlir_txt)
+        np.savez(self.parser.module_weight_file, **self.module_weights)
+        cmd = ['tpuc-opt', 'tmp.mlir', '--shape-infer', '-o', self.args.mlir_file]
+        _os_system(cmd, log_level="normal")
+        os.remove('tmp.mlir')
+        # update module and parser
+        self.module = pymlir.module()
+        self.module.load(self.args.mlir_file)
+        self.parser = MlirParser(self.args.mlir_file)
 
     def get_smooth_op_names(self):
         self.smooth_op_names = []
@@ -461,8 +573,294 @@ class SmoothQuant:
             self.init_ppa()
         self.load_net_weights()
         self.load_net_inputs()
+        self.insert_mul_after_ln()
         self.get_smooth_op_names()
         if len(self.smooth_op_names):
             self.collect_weight_scales()
             self.collect_activation_scales()
             self.smoothquant()
+
+    def insert_origin_op(self, mlir, op_type, args, kwargs):
+        if op_type == 'top.Add':
+            new_out = top.AddOp(
+                self.unranked_type,
+                args,
+                do_relu=kwargs['do_relu'].value,
+                relu_limit=kwargs['relu_limit'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Concat':
+            new_out = top.ConcatOp(
+                self.unranked_type,
+                args,
+                axis=kwargs['axis'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.SubConst':
+            new_out = top.SubConstOp(
+                self.unranked_type,
+                args[0],
+                const_val=kwargs['const_val'],
+                is_reverse=kwargs['is_reverse'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Gather':
+            new_out = top.GatherOp(
+                self.unranked_type,
+                *args,
+                axis=kwargs['axis'].value,
+                keepdims=kwargs['keepdims'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Unsqueeze':
+            new_out = top.UnsqueezeOp(
+                self.unranked_type,
+                *args,
+                axes=[_.value for _ in kwargs['axes']],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.MulConst':
+            new_out = top.MulConstOp(
+                self.unranked_type,
+                *args,
+                const_val=kwargs['const_val'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.LayerNorm':
+            new_out = top.LayerNormOp(
+                self.unranked_type,
+                *args,
+                normalized_shape=[],
+                axis=kwargs['axis'].value,
+                eps=kwargs['eps'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.MatMul':
+            new_out = top.MatMulOp(
+                self.unranked_type,
+                *args,
+                do_relu=kwargs['do_relu'].value,
+                relu_limit=kwargs['relu_limit'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Reshape':
+            new_out = top.ReshapeOp(
+                self.unranked_type,
+                *args,
+                shape=[_.value for _ in kwargs['shape']],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Permute':
+            new_out = top.PermuteOp(
+                self.unranked_type,
+                *args,
+                order=[_.value for _ in kwargs['order']],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Softmax':
+            new_out = top.SoftmaxOp(
+                self.unranked_type,
+                *args,
+                axis=kwargs['axis'].value,
+                log=kwargs['log'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.GELU':
+            new_out = top.GELUOp(
+                self.unranked_type,
+                *args,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Slice':
+            new_out = top.SliceOp(
+                self.unranked_type,
+                *args,
+                offset=[_.value for _ in kwargs['offset']],
+                steps=[_.value for _ in kwargs['steps']],
+                ends=[_.value for _ in kwargs['ends']],
+                axes=[_.value for _ in kwargs['axes']],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Squeeze':
+            new_out = top.SqueezeOp(
+                self.unranked_type,
+                *args,
+                axes=[_.value for _ in kwargs['axes']],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Conv':
+            new_out = top.ConvOp(
+                self.unranked_type,
+                *args,
+                kernel_shape=[_.value for _ in kwargs['kernel_shape']],
+                strides=[_.value for _ in kwargs['strides']],
+                dilations=[_.value for _ in kwargs['dilations']],
+                pads=[_.value for _ in kwargs['pads']],
+                group=kwargs['group'].value,
+                weight_is_coeff=kwargs['weight_is_coeff'].value,
+                do_relu=kwargs['do_relu'].value,
+                relu_limit=kwargs['relu_limit'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Sigmoid':
+            new_out = top.SigmoidOp(
+                self.unranked_type,
+                args[0],
+                scale=kwargs['scale'].value,
+                bias=kwargs['bias'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Mul':
+            new_out = top.MulOp(
+                self.unranked_type,
+                args,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Deconv':
+            new_out = top.DeconvOp(
+                self.unranked_type,
+                *args,
+                kernel_shape=[_.value for _ in kwargs['kernel_shape']],
+                strides=[_.value for _ in kwargs['strides']],
+                dilations=[_.value for _ in kwargs['dilations']],
+                pads=[_.value for _ in kwargs['pads']],
+                output_padding=[_.value for _ in kwargs['output_padding']],
+                group=kwargs['group'].value,
+                do_relu=kwargs['do_relu'].value,
+                relu_limit=kwargs['relu_limit'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Scale':
+            new_out = top.ScaleOp(
+                self.unranked_type,
+                *args,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.LeakyRelu':
+            new_out = top.LeakyReluOp(
+                self.unranked_type,
+                args[0],
+                alpha=kwargs['alpha'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Pad':
+            new_out = top.PadOp(
+                self.unranked_type,
+                args[0],
+                paddings=[_.value for _ in kwargs['paddings']],
+                val=kwargs['val'].value,
+                mode=kwargs['mode'],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.InstanceNorm':
+            new_out = top.InstanceNormOp(
+                self.unranked_type,
+                *args,
+                eps=kwargs['eps'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Reduce':
+            new_out = top.ReduceOp(
+                self.unranked_type,
+                *args,
+                axes=[_.value for _ in kwargs['axes']],
+                keepdims=kwargs['keepdims'].value,
+                mode=kwargs['mode'],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Clip':
+            new_out = top.ClipOp(
+                self.unranked_type,
+                args[0],
+                min=kwargs['min'].value,
+                max=kwargs['max'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Tile':
+            new_out = top.TileOp(
+                self.unranked_type,
+                args[0],
+                tile=[_.value for _ in kwargs['tile']],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Div':
+            new_out = top.DivOp(
+                self.unranked_type,
+                args,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Sub':
+            new_out = top.SubOp(
+                self.unranked_type,
+                args,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.AddConst':
+            new_out = top.AddConstOp(
+                self.unranked_type,
+                args[0],
+                const_val=kwargs['const_val'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.SiLU':
+            new_out = top.SiLUOp(
+                self.unranked_type,
+                args[0],
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.MaxPool':
+            new_out = top.MaxPoolOp(
+                self.unranked_type,
+                args[0],
+                kernel_shape=[_.value for _ in kwargs['kernel_shape']],
+                strides=[_.value for _ in kwargs['strides']],
+                pads=[_.value for _ in kwargs['pads']],
+                count_include_pad=kwargs['count_include_pad'].value,
+                do_relu=kwargs['do_relu'].value,
+                relu_limit=kwargs['relu_limit'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        elif op_type == 'top.Upsample':
+            new_out = top.UpsampleOp(
+                self.unranked_type,
+                args[0],
+                scale_h=kwargs['scale_h'].value,
+                scale_w=kwargs['scale_w'].value,
+                ip=kwargs['ip'],
+                loc=kwargs['loc'],
+            ).output
+        else:
+            # unknown op type, stop inserting mul and return
+            print(f"not support inserting mul in models with {op_type}")
+            return None # insert failed
+        return new_out # insert success
