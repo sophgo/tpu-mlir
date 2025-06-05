@@ -55,6 +55,10 @@ sub_blocks = {
                                'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst',
                                'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
                                'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.GELU', 'top.MatMul'],
+    "insert_mul_bert_block_2":['top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute',
+                               'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul',
+                               'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
+                               'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.GELU', 'top.MatMul'],
     "deit_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Squeeze', 'top.Slice', 'top.Squeeze',
                   'top.Slice', 'top.Squeeze', 'top.Permute', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Softmax',
                   'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
@@ -298,23 +302,16 @@ class MatchPattern:
                 if op_type == 'top.SiLU' or op_type == 'top.GELU':
                     fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'vit_block':
-                    if count < 20 :
-                        if op_type == 'top.Softmax':
-                            next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
-                            next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
-                            if next_op_type == 'top.MatMul':
-                                fp_layer_list.append(next_op[0])
-                    else:
-                        first_ln_index = type_tensors_str[:type_tensors_str.find('top.LayerNorm')].count('top')
-                        if op_type == 'top.GELU' and all_tensors[i] in fp_layer_list:
-                            fp_layer_list.remove(all_tensors[i])
-                        if i < first_ln_index and op_type != 'top.Input':
-                            if op_type == 'top.Add':
-                                next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
-                                if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(next_ops[0]) != 'top.LayerNorm':
-                                    fp_layer_list.append(all_tensors[i]) # avoid to add top.Add repeatedly
-                            else:
-                                fp_layer_list.append(all_tensors[i])
+                    first_ln_index = type_tensors_str[:type_tensors_str.find('top.LayerNorm')].count('top')
+                    if op_type == 'top.GELU' and all_tensors[i] in fp_layer_list:
+                        fp_layer_list.remove(all_tensors[i])
+                    if i < first_ln_index and op_type != 'top.Input' and count >= 20:
+                        if op_type == 'top.Add':
+                            next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
+                            if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(next_ops[0]) != 'top.LayerNorm':
+                                fp_layer_list.append(all_tensors[i]) # avoid to add top.Add repeatedly
+                        else:
+                            fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'eva_block':
                     if op_type == 'top.Add':
                         fp_layer_list.append(all_tensors[i])
@@ -347,7 +344,7 @@ class MatchPattern:
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if next_op_type == 'top.MatMul':
                             fp_layer_list.append(next_op[0])
-                if model_block_name == 'insert_mul_bert_block' or model_block_name == 'insert_mul_bert_block_1':
+                if model_block_name.startswith('insert_mul_bert_block'):
                     if op_type == 'top.GELU' and all_tensors[i] in fp_layer_list:
                         fp_layer_list.remove(all_tensors[i])
                     elif op_type == 'top.Add':
