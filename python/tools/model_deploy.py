@@ -70,9 +70,21 @@ class DeployTool:
         self.chip = args.chip
         self.includeWeight = args.includeWeight
         self.excepts = args.excepts
-        self.tolerance = args.tolerance
-        self.test_input = args.test_input
         self.quantize = args.quantize.lower()
+        self.tolerance = args.tolerance
+        if not self.tolerance:
+            if self.quantize in ["int8","w8f16","w8bf16","w4f16","w4bf16"]:
+                self.tolerance = "0.90,0.80"
+            elif self.quantize in ["f16", "bf16"]:
+                self.tolerance = "0.99,0.90"
+            elif self.quantize in ["f32"]:
+                self.tolerance = "0.99,0.99"
+            elif self.quantize in ["f8e4m3", "f8e5m2"]:
+                self.tolerance = "0.80,0.50"
+            else:
+                raise RuntimeError(
+                    "Please set the tolerance for quantization type: {}".format(self.quantize))
+        self.test_input = args.test_input
         self.asymmetric = args.asymmetric
         self.cali_table = args.calibration_table
         self.quant_input = args.quant_input
@@ -241,7 +253,7 @@ class DeployTool:
         gen_ref = True if len(self.ref_npz) == 0 else False
 
         if self.fuse_preprocess:
-            assert (self.test_input[0].endswith(('.jpg', '.jpeg', '.png')))
+            assert (self.test_input[0].endswith(('.jpg', '.jpeg', '.png','.yuv')))
         if num_inputs == 1 and self.test_input[0].endswith(".npz"):
             x = np.load(self.test_input[0])
             for name in x.files:
@@ -251,7 +263,8 @@ class DeployTool:
         else:
             assert (len(self.test_input) == len(self.module.inputs))
             for infile, op in zip(self.test_input, self.module.inputs):
-                if infile.endswith(('.jpg', '.jpeg', '.png')):
+
+                if infile.endswith(('.jpg', '.jpeg', '.png','.yuv')):
                     ppa = preprocess()
                     input_op = op.op
                     input_shape = [Operation.shape(input_op)]
@@ -474,7 +487,7 @@ if __name__ == '__main__':
                         help="reference npz file; if none, will run inner")
     parser.add_argument("--compare_all", action="store_true",
                         help="Decide if compare all tensors when lowering")
-    parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance for compare")
+    parser.add_argument("--tolerance", default='', help="tolerance for compare")
     parser.add_argument("--excepts", default='-', help="excepts tensors no compare")
     parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
     parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')

@@ -17,7 +17,7 @@ from utils.mlir_shell import *
 from utils.mlir_parser import *
 from utils.misc import *
 from utils.auto_remove import file_mark, file_clean
-from utils.preprocess import get_preprocess_parser, preprocess
+from utils.preprocess import get_preprocess_parser, preprocess, supported_yuv_type
 from utils.log_setting import setup_logger
 import pymlir
 import warnings
@@ -98,7 +98,7 @@ class ModelTransformer(object):
             )
             self.file_recorder.add_command(transform_cmd=' '.join(sys.argv))
 
-    def model_validate(self, file_list: str, tolerance, excepts, test_result):
+    def model_validate(self, file_list: str, tolerance, excepts, test_result, yuv_type):
         from tools.model_runner import mlir_inference, free_mlir_module, show_fake_cmd
         import gc
         inputs = dict()
@@ -116,7 +116,9 @@ class ModelTransformer(object):
                     assert (name in npz_in.files)
                     batch_size = self.converter.getShape(name)[0]
                     inputs[name] = self.ensure_batch_size(npz_in[name], batch_size)
-        elif file_list[0].endswith(('.jpg', '.jpeg', '.png', '.JPEG')):  #todo add isPicture in util
+        elif file_list[0].endswith(('.jpg', '.jpeg', '.png', '.JPEG', '.yuv')):  #todo add isPicture in util
+            if file_list[0].endswith('.yuv'):
+                assert yuv_type, "yuv_type must be set when input is yuv file"
             ppa = preprocess()
             for i in range(self.input_num):
                 pic_path = file_list[i] if i < len(file_list) else file_list[-1]
@@ -466,6 +468,8 @@ if __name__ == '__main__':
     parser.add_argument("--enable_maskrcnn", action='store_true', help="if enable maskrcnn")
     # ========== Replace Topk Options ==============
     parser.add_argument("--replace_topk_indices", default=False, type=str2bool, help="replace topk indices with the correct onnx topk indices")
+    parser.add_argument("--yuv_type", default='', type=str.upper,choices=supported_yuv_type,
+                        help="pixel format of yuv file")
 
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
@@ -497,7 +501,7 @@ if __name__ == '__main__':
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count, args.pruning)
     if (not args.not_inference) and args.test_input:
         assert (args.test_result)
-        tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
+        tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result,args.yuv_type)
     if qat_tool.fakequant_model:
         node_name_mapping = tool.converter.node_name_mapping
         qat_tool.align_final_opt(node_name_mapping, args.onnx_sim)
