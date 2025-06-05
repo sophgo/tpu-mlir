@@ -38,7 +38,10 @@ class LlmLoad:
     def read(self, key: str):
         for f in self.st_files:
             if key in f.keys():
-                data = f.get_tensor(key)
+                if isinstance(f, dict):
+                    data = f[key]
+                else:
+                    data = f.get_tensor(key)
                 if data.dtype in [torch.float16, torch.bfloat16]:
                     return data.float().numpy()
                 return data.numpy()
@@ -78,7 +81,6 @@ class LlmConverter(BaseConverter):
         # init config
         self.load_pretrained(config)
         self.llm_config.max_position_embeddings = self.seq_length
-
         # get attributes
         self.init_config()
         self.do_vit = False
@@ -114,7 +116,8 @@ class LlmConverter(BaseConverter):
         # copy model json file to config dir
         shutil.copytree(self.model_path,
                         self.config_dir,
-                        ignore=shutil.ignore_patterns("*.safetensors", ".*", "*.pth", "*.pt",
+                        ignore=shutil.ignore_patterns("*.safetensors", ".*",
+                                                      "*.pth", "*.pt", "*.py",
                                                       "*.bin", "*.bin.index.json",
                                                       "model.safetensors.index.json"),
                         dirs_exist_ok=True)
@@ -700,9 +703,16 @@ class LlmConverter(BaseConverter):
 
     def set_common_weight(self, path: str, weight_dict: dict):
         weight_path = path + ".weight"
+        bias_path = path + ".bias"
         if self.model.is_exist(weight_path):
             weight_dict[weight_path] = self.model.read(weight_path)
-        else:
+        if self.model.is_exist(bias_path):
+            weight_dict[bias_path] = self.model.read(bias_path)
+        if self.model.is_exist(path):
+            weight_dict[path] = self.model.read(path)
+        if not self.model.is_exist(weight_path) and \
+           not self.model.is_exist(bias_path) and \
+           not self.model.is_exist(path):
             raise RuntimeError("Can't find key: {}".format(weight_path))
 
     def gen_block_mlir(self, idx: int):
