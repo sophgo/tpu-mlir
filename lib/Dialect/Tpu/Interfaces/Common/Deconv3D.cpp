@@ -140,3 +140,7 @@ void tpu::Deconv3DOp::assign_fw_param(void *param) {
 }
 
 bool tpu::Deconv3DOp::support_multi_core() { return false; }
+
+mlir::Type tpu::Deconv3DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  return type_verify_case_i32(getOperation(), opd_idx, mode);
+}

@@ -4023,6 +4023,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
 
 def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
     SupportFuseRelu,
+    DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "3D deconvolution operator";
 

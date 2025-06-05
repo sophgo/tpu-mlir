@@ -12,10 +12,10 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690/SG2380/MARS3/SGTPUV8 2025-05-14
+## TPU1684X/1688/BM1690/SG2380/MARS3/SGTPUV8 2025-06-11
 ``` bash
 
-#bm1684x sha256: 7250b7d58bbbf329566feb509d16221681a906f3
+#bm1684x sha256: 607fdc4e7dfc94b101c6890a956208c7dffd8dc5
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
-#bm1688 sha256: a09f6ba63f61b308e7855f441f3f3cb9cddba3c6
+#bm1688 sha256: 607fdc4e7dfc94b101c6890a956208c7dffd8dc5
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 
-#bm1690 sha256: 5feacd747333f42a09b8a35b4ae9216a4ee639cf
+#bm1690 sha256: 607fdc4e7dfc94b101c6890a956208c7dffd8dc5
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel

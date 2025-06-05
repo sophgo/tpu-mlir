@@ -94,7 +94,7 @@ class ONNX_IR_TESTER(object):
             "Deconv":       (self.test_Deconv,        Y, Y, Y, Y, Y, N),
             "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N, Y, N),
             "Deconv2":      (self.test_Deconv2,       Y, N, N, Y, N, N),
-            "Deconv3d":     (self.test_Deconv3d,      Y, N, N, N, N, N),
+            "Deconv3d":     (self.test_Deconv3d,      Y, Y, Y, N, Y, Y),
             "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N, Y, Y),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N, Y, Y),

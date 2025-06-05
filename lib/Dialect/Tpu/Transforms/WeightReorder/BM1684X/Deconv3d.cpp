@@ -15,8 +15,9 @@ using namespace bm1684x;
 template <typename T>
 static void filter_rotate(std::shared_ptr<std::vector<T>> &filter,
                           std::shared_ptr<std::vector<T>> &filter_rotated,
-                          int64_t oc, int64_t ic, int64_t kd, int64_t kh,
-                          int64_t kw) {
+                          int64_t groups, int64_t oc, int64_t ic, int64_t kd,
+                          int64_t kh, int64_t kw) {
+  ic /= groups;
   std::vector<int64_t> strides = {ic * kd * kh * kw, kd * kh * kw, kh * kw, kw,
                                   1};
   for (auto n = 0; n < oc; ++n) {
@@ -27,7 +28,8 @@ static void filter_rotate(std::shared_ptr<std::vector<T>> &filter,
             auto src_idx = n * strides[0] + c * strides[1] + d * strides[2] +
                            h * strides[3] + w;
             auto dst_idx = n * strides[0] + c * strides[1] +
-                           (kd - 1 - d) * strides[2] + (kh - 1 - h) * strides[3] + (kw - 1 - w);
+                           (kd - 1 - d) * strides[2] +
+                           (kh - 1 - h) * strides[3] + (kw - 1 - w);
             filter_rotated->data()[dst_idx] = filter->data()[src_idx];
           }
         }
@@ -41,15 +43,15 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
                            std::vector<int64_t> &shape, int64_t kd) {
   // (oc, ic, kt, kh, kw) -> (oc, (ic*kt)/IC_PARALLEL, kh, kw,
   // IC_PARALLEL)
-  int64_t  OC, IC, KH, KW;
-  module::getNCHW(shape,  OC, IC, KH, KW);
+  int64_t OC, IC, KH, KW;
+  module::getNCHW(shape, OC, IC, KH, KW);
   int64_t KT = kd;
   auto type_bytes = sizeof(T);
   int64_t IC_PARALLEL = BM168x::ic_num(type_bytes);
   std::vector<int64_t> filter_shape = {
       1, OC, ceiling_func(IC * KT, IC_PARALLEL), KH * KW, IC_PARALLEL};
   auto filter_new = std::make_shared<std::vector<T>>(
-      OC*ceiling_func(IC * KT, IC_PARALLEL)*KH * KW*IC_PARALLEL, 0);
+      OC * ceiling_func(IC * KT, IC_PARALLEL) * KH * KW * IC_PARALLEL, 0);
   for (int oc = 0; oc < OC; ++oc) {
     for (int ic = 0; ic < ceiling_func(IC * KT, IC_PARALLEL); ++ic) {
       for (int khw = 0; khw < KH * KW; ++khw) {
@@ -70,7 +72,6 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
   shape = filter_shape;
 }
 
-
 // refer to net_compiler: bool BM1684XCoeffArranger::DeconvWeightArr(GraphEdge*
 // edge)
 template <>
@@ -82,26 +83,35 @@ LogicalResult WeightReorder<tpu::Deconv3DOp, int8_t>::matchAndRewriteImpl(
 
   // filter op
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
-  auto filter_i8 = filterOp.read<int8_t>();
+  auto filter_i8 = filterOp.read<uint8_t>();
   auto filter_type = module::getStorageType(op.getFilter());
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   if (attr.is_dw) {
-    filter_shape = {1, attr.oc, attr.kh, attr.kw};
+    filter_shape = {1, attr.oc, attr.kd, attr.kh, attr.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
     op.getFilter().setType(new_filter_type);
   } else {
-    filter_reorder(filter_i8, filter_shape, attr.kd);
+    // kernel_rotate
+    auto newFilter =
+        std::make_shared<std::vector<uint8_t>>(filter_i8->size(), 0);
+    filter_rotate(filter_i8, newFilter, attr.g, attr.ic, attr.oc, attr.kd,
+                  attr.kh, attr.kw);
+    filterOp.update(*newFilter, newFilter->size());
+
+    // kernel_reorder
+    auto filter_rotate_i8 = filterOp.read<uint8_t>();
+    filter_reorder(filter_rotate_i8, filter_shape, attr.kd);
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-    auto newFilterOp =
-        top::WeightOp::create(op, "_reordered", *filter_i8, new_filter_type);
+    auto newFilterOp = top::WeightOp::create(
+        op, "_reordered", *filter_rotate_i8, new_filter_type);
     op->setOperand(1, newFilterOp);
   }
 
   // bias op
   if (module::isWeight(op.getBias())) {
     auto bias_type = module::getStorageType(op.getBias());
-    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    int64_t bias_shape[5] = {1, attr.oc, 1, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
     op.getBias().setType(new_bias_type);
   }
@@ -118,9 +128,10 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Deconv3DOp op,
     auto filter_u16 = filterOp.read<uint16_t>();
 
     // do kernel_rotate first
-    auto newFilter = std::make_shared<std::vector<uint16_t>> (filter_u16->size(), 0);
-    filter_rotate(filter_u16, newFilter,
-                  attr.ic, attr.oc, attr.kd, attr.kh, attr.kw);
+    auto newFilter =
+        std::make_shared<std::vector<uint16_t>>(filter_u16->size(), 0);
+    filter_rotate(filter_u16, newFilter, attr.g, attr.ic, attr.oc, attr.kd,
+                  attr.kh, attr.kw);
     filterOp.update(*newFilter, newFilter->size());
     // end kernel_rotate
 
@@ -129,7 +140,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Deconv3DOp op,
     std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                          attr.kw};
     if (attr.is_dw) {
-      //unspoort now
+      // unspoort now
       llvm::errs() << "not support for 3D now, pleaser check filter_shape\n";
       filter_shape = {1, attr.oc, attr.kh, attr.kw};
       auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -161,7 +172,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Deconv3DOp op,
   // bias op
   if (attr.with_bias) {
     auto bias_type = module::getStorageType(op.getBias());
-    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    int64_t bias_shape[5] = {1, attr.oc, 1, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
     op.getBias().setType(new_bias_type);
   }
@@ -196,14 +207,14 @@ LogicalResult WeightReorder<tpu::Deconv3DOp, Float32Type>::matchAndRewriteImpl(
   // filter op
   auto filter_type = module::getStorageType(op.getFilter());
   std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.g,
-                                        attr.kd * attr.kh * attr.kw};
+                                       attr.kd * attr.kh * attr.kw};
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-  //kernel rorate
+  // kernel rorate
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter = filterOp.read<float>();
-  auto filter_rotated =std::make_shared<std::vector<float>>(
-      attr.oc * attr.ic * attr.kd * attr.kh * attr.kw / attr.g);
-  filter_rotate(filter, filter_rotated, attr.oc, attr.ic, attr.kd, attr.kh, attr.kw);
+  auto filter_rotated = std::make_shared<std::vector<float>>(filter->size(), 0);
+  filter_rotate(filter, filter_rotated, attr.g, attr.oc, attr.ic, attr.kd,
+                attr.kh, attr.kw);
   auto rotatedFilterOp =
       top::WeightOp::create(op, "_rotated", *filter_rotated, new_filter_type);
   op->setOperand(1, rotatedFilterOp);
@@ -228,11 +239,9 @@ LogicalResult WeightReorder<tpu::Deconv3DOp, Float32Type>::matchAndRewriteImpl(
   // bias op
   if (attr.with_bias) {
     auto bias_type = module::getStorageType(op.getBias());
-    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    int64_t bias_shape[5] = {1, attr.oc, 1, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
     op.getBias().setType(new_bias_type);
   }
   return success();
 }
-
-
