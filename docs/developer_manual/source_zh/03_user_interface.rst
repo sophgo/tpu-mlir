@@ -280,6 +280,9 @@ model_transform.py
    * - enable_maskrcnn
      - 否
      - 是否启用 MaskRCNN大算子.
+   * - yuv_type
+     - 否
+     - 采用'.yuv'文件作为输入时指定其类型
 
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。

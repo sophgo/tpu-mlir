@@ -188,7 +188,9 @@ def Top_InputOp: Top_BaseOp<"Input", [
     OptionalAttr<F64ArrayAttr>:$mean,
     // for fusepreprocess
     OptionalAttr<StrAttr>:$customization_format,
-    OptionalAttr<BoolAttr>:$aligned
+    OptionalAttr<BoolAttr>:$aligned,
+    // for .yuv file
+    OptionalAttr<StrAttr>:$yuv_type
   );
 
   let results = (outs AnyTensor:$output);

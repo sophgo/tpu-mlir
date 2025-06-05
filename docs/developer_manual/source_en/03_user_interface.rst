@@ -282,6 +282,9 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
    * - enable_maskrcnn
      - N
      - if enable MaskRCNN transformation
+   * - yuv_type
+     - N
+     - Specify its type when using the '.yuv' file as input
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 

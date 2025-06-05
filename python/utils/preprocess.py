@@ -9,6 +9,7 @@ from utils.log_setting import setup_logger
 from utils.mlir_parser import *
 from utils.misc import *
 from PIL import Image
+import math
 
 logger = setup_logger('root', log_level="INFO")
 
@@ -23,7 +24,11 @@ supported_customization_format = [
     'RGB_PLANAR', 'RGB_PACKED', 'BGR_PLANAR', 'BGR_PACKED', 'GRAYSCALE', 'YUV420_PLANAR',
     'YUV_NV21', 'YUV_NV12', 'RGBA_PLANAR', 'GBRG_RAW', 'GRBG_RAW', 'BGGR_RAW', 'RGGB_RAW', ''
 ]
-
+supported_yuv_type = [
+    'YUV420_PLANAR',
+    'YUV_NV21',
+    'YUV_NV12'
+]
 customization_format_attributes = {
     'RGB_PLANAR': ('rgb', 'nchw'),
     'RGB_PACKED': ('rgb', 'nhwc'),
@@ -186,6 +191,7 @@ class preprocess(object):
                preprocess_list: list = [],
                debug_cmd='',
                input_shapes=None,
+               yuv_type='',
                unknown_params=[],
                **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
@@ -222,6 +228,7 @@ class preprocess(object):
         self.pad_type = pad_type
         self.pixel_format = pixel_format
         self.channel_format = channel_format
+        self.yuv_type = yuv_type
 
         self.input_name = 'input'
         self.channel_num = 3
@@ -286,12 +293,13 @@ class preprocess(object):
             "\tscale                 : {}\n" + \
             "\t--------------------------\n" + \
             "\tpixel_format          : {}\n" + \
-            "\tchannel_format        : {}\n"
+            "\tchannel_format        : {}\n" + \
+            "\tyuv_type              : {}\n"
         resize_dims_str = resize_dims if resize_dims is not None else 'same to net input dims'
         info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.keep_ratio_mode,
                                       self.pad_value, self.pad_type, list(self.mean.flatten()),
                                       list(self.scale.flatten()), self.pixel_format,
-                                      self.channel_format)
+                                      self.channel_format, self.yuv_type)
         logger.info(info_str)
 
     def load_config(self, input_op):
@@ -343,6 +351,7 @@ class preprocess(object):
         self.scale = self.scale[np.newaxis, :, np.newaxis, np.newaxis]
         self.crop_method = 'center'
         self.has_pre = True
+        self.yuv_type = Operation.str(attrs['yuv_type'])
         format_str = "\n  load_config Preprocess args : \n" + \
             "\tresize_dims           : {}\n" + \
             "\tkeep_aspect_ratio     : {}\n" + \
@@ -355,12 +364,14 @@ class preprocess(object):
             "\tscale                 : {}\n" + \
             "\t--------------------------\n" + \
             "\tpixel_format          : {}\n" + \
-            "\tchannel_format        : {}\n"
+            "\tchannel_format        : {}\n" + \
+            "\tyuv_type              : {}\n"
+
         logger.info(
             format_str.format(self.resize_dims, self.keep_aspect_ratio, self.keep_ratio_mode,
                               self.pad_value, self.pad_type, self.net_input_dims,
                               list(self.mean.flatten()), list(self.scale.flatten()),
-                              self.pixel_format, self.channel_format))
+                              self.pixel_format, self.channel_format, self.yuv_type))
 
     def to_dict(self):
         if not self.has_pre:
@@ -375,7 +386,8 @@ class preprocess(object):
             'mean': list(self.mean.flatten()),
             'scale': list(self.scale.flatten()),
             'pixel_format': self.pixel_format,
-            'channel_format': self.channel_format
+            'channel_format': self.channel_format,
+            'yuv_type': self.yuv_type,
         }
 
     def __right_crop(self, img, crop_dim):
@@ -392,6 +404,29 @@ class preprocess(object):
         start_w = (w // 2) - (crop_w // 2)
         img = img[:, :, start_h:(start_h + crop_h), start_w:(start_w + crop_w)]
         return img
+
+    def yuv2rgb(self, path, h, w):
+        with open(path, 'rb') as f:
+            data = f.read()
+        assert len(data) == h * w, "YUV data size is not correct"
+        yuv = np.frombuffer(data, dtype=np.uint8).reshape((h , w))
+        if self.pixel_format =='rgb':
+            if self.yuv_type == 'YUV420_PLANAR':
+                rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2RGB_I420)
+            elif self.yuv_type == 'YUV_NV12':
+                rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2RGB_NV12)
+            else:
+                rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2RGB_NV21)
+        elif self.pixel_format == 'bgr':
+            if self.yuv_type == 'YUV420_PLANAR':
+                rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_I420)
+            elif self.yuv_type == 'YUV_NV12':
+                rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_NV12)
+            else:
+                rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_NV21)
+        else:
+            raise RuntimeError("Unsupported pixel format: {}".format(self.pixel_format))
+        return rgb
 
     def __load_image_and_resize(self, input):
         image = None
@@ -414,10 +449,15 @@ class preprocess(object):
             width, height = image.size
             ratio = min(self.net_input_dims[0] / height, self.net_input_dims[1] / width)
         else:
+            if image_path.endswith('.yuv'):
+                assert self.channel_num == 3, "YUV image unsupport {} channe".format(self.channel_num)
             if self.channel_num == 1:
                 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
             elif self.channel_num == 3:
-                image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+                if image_path.endswith('.yuv'):
+                    image = self.yuv2rgb(image_path, self.resize_dims[0], self.resize_dims[1])
+                else:
+                    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
             elif self.channel_num == 4:
                 image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
                 if image.shape[-1] != 4:
@@ -429,6 +469,9 @@ class preprocess(object):
             ratio = min(self.net_input_dims[0] / image.shape[0],
                         self.net_input_dims[1] / image.shape[1])
         if self.keep_aspect_ratio:
+            if image_path.endswith('.yuv'):
+                logger.info("YUV image unsupport keep_aspect_ratio");
+                assert(0)
             if self.keep_ratio_mode == "letterbox":
                 image = ImageResizeTool.letterbox_resize(image, self.resize_dims[0],
                                                          self.resize_dims[1], self.pad_value,
@@ -437,8 +480,12 @@ class preprocess(object):
                 image = ImageResizeTool.short_side_scale_resize(image, self.resize_dims[0],
                                                                 self.resize_dims[1], use_pil_resize)
         else:
-            image = ImageResizeTool.stretch_resize(image, self.resize_dims[0], self.resize_dims[1],
-                                                   use_pil_resize)
+            if image_path.endswith('.yuv'):
+                image = ImageResizeTool.stretch_resize(
+                    image, math.ceil(self.resize_dims[0]/3*2), self.resize_dims[1], use_pil_resize)
+            else:
+                image = ImageResizeTool.stretch_resize(image, self.resize_dims[0], self.resize_dims[1],
+                                                    use_pil_resize)
 
         if self.channel_num == 1:
             # if grapscale image, expand dim to (1, h, w)
@@ -533,6 +580,13 @@ class preprocess(object):
         x_tmp2[:, :, :h * align_w_size] = x_tmp1
         return x_tmp2
 
+    def readyuv(self, input, h, w):
+        with open(input, 'rb') as f:
+            data = f.read()
+        assert len(data) == h * w, "YUV data size is not correct"
+        yuv = np.frombuffer(data, dtype=np.uint8).reshape((h*w))
+        return yuv.reshape(-1,1,1)
+
     def run(self, input):
         # load and resize image, the output image is chw format.
         x_list = []
@@ -558,19 +612,22 @@ class preprocess(object):
                 x = np.expand_dims(x, axis=0)
                 x = x.astype(np.uint8)
             elif self.customization_format.find("YUV") >= 0:
-                # swap to 'rgb'
-                pixel_type = YuvType.YUV420_PLANAR
-                if self.customization_format == 'YUV420_PLANAR':
-                    pixel_type = YuvType.YUV420_PLANAR
-                elif self.customization_format == 'YUV_NV12':
-                    pixel_type = YuvType.YUV_NV12
+                if input.endswith('.yuv'):
+                    x=self.readyuv(input, self.resize_dims[0], self.resize_dims[1])
                 else:
-                    pixel_type = YuvType.YUV_NV21
-                x = x[[2, 1, 0], :, :]
-                x = np.transpose(x, (1, 2, 0))
-                x = self.rgb2yuv420(x, pixel_type)
-                x = x.astype(np.uint8)
-                assert (self.batch_size == 1)
+                    # swap to 'rgb'
+                    pixel_type = YuvType.YUV420_PLANAR
+                    if self.customization_format == 'YUV420_PLANAR':
+                        pixel_type = YuvType.YUV420_PLANAR
+                    elif self.customization_format == 'YUV_NV12':
+                        pixel_type = YuvType.YUV_NV12
+                    else:
+                        pixel_type = YuvType.YUV_NV21
+                    x = x[[2, 1, 0], :, :]
+                    x = np.transpose(x, (1, 2, 0))
+                    x = self.rgb2yuv420(x, pixel_type)
+                    x = x.astype(np.uint8)
+                assert(self.batch_size == 1)
             elif self.customization_format.find("_PLANAR") >= 0:
                 if self.pixel_format == 'rgb':
                     x = x[[2, 1, 0], :, :]

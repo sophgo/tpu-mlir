@@ -90,6 +90,7 @@ model_deploy.py \
   --chip bm1684x \
   --calibration_table mobilenet_v2_cali_table \
   --fuse_preprocess \
+  --tolerance 0.97,0.73 \
   --test_input ${REGRESSION_PATH}/image/cat.jpg \
   --test_reference mobilenet_v2_top_outputs.npz \
   --compare_all \
