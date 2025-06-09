@@ -219,7 +219,7 @@ class mlir_inference(common_inference):
         super().__init__(args)
 
     def invoke(self):
-        self.module.set_tensor(self.img_proc.input_name, self.x)
+        self.module.set_tensor(self.img_proc.input_name, self.x, self.x.shape)
         self.module.invoke()
         all_tensors = self.module.get_all_tensor()
         outputs = []
