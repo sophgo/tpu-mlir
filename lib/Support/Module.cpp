@@ -2152,8 +2152,6 @@ void assert_with_dump(bool cond, Operation *op, const char *info,
 
 void unreachable(const char *info, Operation *op, const char *file,
                  unsigned line) {
-  std::cerr << "ASSERT executed at" << file << ":" << line << std::endl;
-  std::cerr << "ASSERT INFO:" << info << std::endl << "Operation:" << std::endl;
   if (op != nullptr) {
     auto inputs = op->getOperands();
     if (!inputs.empty()) {
@@ -2167,6 +2165,8 @@ void unreachable(const char *info, Operation *op, const char *file,
         user->dump();
     }
   }
+  std::cerr << "ASSERT executed at" << file << ":" << line << std::endl;
+  std::cerr << "ASSERT INFO:" << info << std::endl << "Operation:" << std::endl;
   exit(-1);
 }
 

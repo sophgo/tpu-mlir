@@ -527,6 +527,10 @@ public:
       seperate = true;
       return RunMode::LOOP;
     } else if (dynamic || force_dynamic_run(op)) {
+      if (module::isMARS3()) {
+        UNREACHABLE_THIS("Arch not support dynamic subnet, please do constant "
+                         "folding and use static mode");
+      }
       return RunMode::TPU_DYNAMIC;
     } else if (isa<CustomOp>(op)) {
       if (dyn_cast<CustomOp>(op).getName().starts_with("ap")) {
