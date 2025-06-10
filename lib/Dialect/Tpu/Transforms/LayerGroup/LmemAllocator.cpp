@@ -1302,31 +1302,7 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   auto &lg_debugger = LgDebugger::getInstance();
   std::vector<std::pair<Operation *, int>> vec_op_hsecs;
   max_shape_secs_ = get_group_max_secs(lg_info, vec_op_hsecs);
-  if (!allow_bank_conflict) {
-    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("update_data_split",
-                                            "call_function",
-                                            "try to find valid `shape_secs` "
-                                            "for current layer group faster")
-                   << "\n";
-    });
-    auto shape_secs_update = shape_secs;
-    if (update_data_split(time_step, lg_info, shape_secs_update, options_)) {
-      shape_secs = shape_secs_update;
-    }
-    GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
-      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                          "update_data_split", "stamp",
-                          "show the shape_secs after update_data_split")
-                   << LOG_KV("nsecs", shape_secs.nsecs)
-                   << LOG_KV("csecs", shape_secs.csecs)
-                   << LOG_KV("dsecs", shape_secs.dsecs)
-                   << LOG_KV("hsecs", shape_secs.hsecs)
-                   << LOG_KV("wsecs", shape_secs.wsecs) << "\n";
-    });
-  }
-
-  min_total_secs_ = get_split_max_secs(time_step);
+  min_total_secs_ = 1;
   std::vector<int64_t> group_costs;
   std::vector<shape_secs_t> shape_secs_space;
   if (module::isCV18xx()) {

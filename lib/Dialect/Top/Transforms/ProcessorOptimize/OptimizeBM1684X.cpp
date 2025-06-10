@@ -3031,7 +3031,8 @@ protected:
 
 namespace top {
 using namespace bm1684x;
-void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
+void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
+                                     const std::vector<RewriterRule> &rules) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns
       ->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,

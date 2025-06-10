@@ -377,8 +377,11 @@ void TimeStepMethod::get_timestep_cycle_slack(
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
     const auto &ts_layers = time_step->getLayers(ts);
     for (auto op : ts_layers) {
-      int64_t cycle_slack = cycle_calculator_->getLocalLayerCycle(
-          op, tensor_infos, lg_info.type, true);
+      int64_t cycle_slack = 0;
+      if (!isa<LutOp>(op)) {
+        cycle_slack = cycle_calculator_->getLocalLayerCycle(op, tensor_infos,
+                                                            lg_info.type, true);
+      }
       timestep_cycle_slack[ts] += cycle_slack;
       time_step->set_layer_cycle(op, cycle_slack);
     }

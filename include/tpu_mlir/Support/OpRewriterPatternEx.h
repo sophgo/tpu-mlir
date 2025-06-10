@@ -1,5 +1,6 @@
 #pragma once
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/RewriterConfigUtils.h"
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/IR/PatternMatch.h>
 #include <mutex>
@@ -125,6 +126,74 @@ protected:
 
 private:
   std::string patternName;
+};
+
+template <typename SourceOp>
+class OpRewriterPatternEx4 : public mlir::OpRewritePattern<SourceOp> {
+public:
+  OpRewriterPatternEx4(mlir::MLIRContext *context,
+                       llvm::StringRef patternName = "",
+                       const std::vector<RewriterRule> &all_rules = {},
+                       mlir::PatternBenefit benefit = 1)
+      : mlir::OpRewritePattern<SourceOp>(context, benefit),
+        patternName(patternName) {
+    if (!this->patternName.empty()) {
+      for (const auto &rule : all_rules) {
+        if (rule.pattern_name == this->patternName) {
+          pattern_rules.push_back(rule);
+        }
+      }
+    }
+  }
+
+  mlir::LogicalResult
+  matchAndRewrite(SourceOp op, mlir::PatternRewriter &rewriter) const override {
+    mlir::LogicalResult result = matchAndRewriteImpl(op, rewriter);
+    if (mlir::succeeded(result)) {
+      if (!patternName.empty()) {
+        std::lock_guard<std::mutex> lock(
+            tpu_mlir::module::patternMatchCountsMutex);
+        ++tpu_mlir::module::patternMatchCounts[patternName];
+      }
+      if (shouldPrint(op) && !patternName.empty()) {
+        //  #todo : print opname,no save mode has bug need to solve,this is a
+        //  temporary solution
+        PASS_LOG_DEBUG_BLOCK({
+          llvm::outs() << patternName << " : " << op.getOperationName()
+                       << " succeed!";
+        });
+      }
+    }
+    return result;
+  }
+
+  std::vector<RewriterRule> getPatternRules() const { return pattern_rules; }
+
+  void configMatchSuccess(SourceOp op, RewriterRule &rule) const {
+    if (shouldPrint(op) && !patternName.empty()) {
+      PASS_LOG_DEBUG_BLOCK({
+        llvm::outs() << patternName << " : rewriter config matching succeed!\n";
+        dumpRewriterRule(rule, llvm::outs());
+      });
+    }
+  }
+
+protected:
+  virtual mlir::LogicalResult
+  matchAndRewriteImpl(SourceOp op, mlir::PatternRewriter &rewriter) const = 0;
+
+  virtual bool shouldPrint(SourceOp op) const { return true; }
+
+private:
+  std::string patternName;
+  std::vector<RewriterRule> pattern_rules;
+  static void printPatternMatchCounts() {
+    std::lock_guard<std::mutex> lock(tpu_mlir::module::patternMatchCountsMutex);
+    for (const auto &entry : tpu_mlir::module::patternMatchCounts) {
+      std::cout << "Pattern [" << entry.first << "] matched " << entry.second
+                << " times.\n";
+    }
+  }
 };
 
 #include "mlir/Transforms/DialectConversion.h"

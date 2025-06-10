@@ -12,6 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/LutFunc.h"
+#include "tpu_mlir/Support/RewriterConfigUtils.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -4472,11 +4473,12 @@ public:
   }
 };
 
-class SplitQuantizedMLP2Pattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+class SplitQuantizedMLP2Pattern : public OpRewriterPatternEx4<tpu::MatMulOp> {
 public:
-  SplitQuantizedMLP2Pattern(mlir::MLIRContext *context, int benefit)
-      : OpRewriterPatternEx<tpu::MatMulOp>(context, "SplitQuantizedMLP2Pattern",
-                                           benefit) {}
+  SplitQuantizedMLP2Pattern(mlir::MLIRContext *context, int benefit,
+                            const std::vector<RewriterRule> &rules)
+      : OpRewriterPatternEx4<tpu::MatMulOp>(
+            context, "SplitQuantizedMLP2Pattern", rules, benefit) {}
 
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp matMulOp,
                                     PatternRewriter &rewriter) const override {
@@ -4504,37 +4506,91 @@ public:
     bool l_fuse_rq = prevMatMulOp.getFuseRq();
     if (!l_fuse_rq)
       return failure();
-    auto in_size = module::getNumElements(prevMatMulOp.getInput());
-    auto out_size = module::getNumElements(matMulOp.getOutput()) *
-                    4; // stored as INT32 before sumed together and requantized.
-    auto w_shape = module::getShape(matMulOp.getRight());
-    auto dim = w_shape.size();
-    auto w_size = module::getNumElements(matMulOp.getRight());
-    auto ceilDiv = [](int64_t a, int64_t b) -> int64_t {
-      return (a + b - 1) / b;
-    };
-    // at tpu.Add(BinaryShift) timestep, min_Lmem = 3 x outsize + insize.
-    if (BM168x::LMEM_BANKS <
-        ceilDiv(3 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) +
-            ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES)) {
-      return failure();
-    }
-    // get split number
-    // at tpu.matmul timestep, min_Lmem = 2 x outsize + insize + bias,lut size +
-    // 2 * weightsize
-    auto max_weight_banks =
-        BM168x::LMEM_BANKS -
-        ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) -
-        ceilDiv(2 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) - 1;
-    auto max_weight_size = (int64_t)(max_weight_banks / 2) *
-                           BM168x::LMEM_BANK_BYTES * BM168x::NPU_NUM;
     int split_num = 1;
-    while (w_size > max_weight_size) {
-      split_num *= 2;
-      w_size /= 2;
-      if (w_shape[dim - 1] / split_num < BM168x::NPU_NUM ||
-          w_shape[dim - 1] % split_num != 0) {
+    auto use_config = false;
+    if (!getPatternRules().empty()) {
+      // get shape of inputb, w0 and w1
+      auto shape_input = module::getShape(prevMatMulOp.getInput());
+      auto shape_w0 = module::getShape(prevMatMulOp.getRight());
+      auto shape_w1 = module::getShape(matMulOp.getRight());
+      auto pattern_rules = getPatternRules();
+      // check shape dim
+      for (auto rule : pattern_rules) {
+        auto params = rule.params;
+        auto config_shape_input = getParamVector<int>(params, "shape_input");
+        auto config_shape_w0 = getParamVector<int>(params, "shape_w0");
+        auto config_shape_w1 = getParamVector<int>(params, "shape_w1");
+        // check shape dims
+        if (shape_input.size() != config_shape_input.size() ||
+            shape_w0.size() != config_shape_w0.size() ||
+            shape_w1.size() != config_shape_w1.size()) {
+          continue;
+        }
+        // check shape values
+        bool match = true;
+        for (size_t i = 0; i < shape_input.size(); ++i) {
+          if (shape_input[i] != config_shape_input[i]) {
+            match = false;
+            break;
+          }
+        }
+        for (size_t i = 0; i < shape_w0.size(); ++i) {
+          if (shape_w0[i] != config_shape_w0[i]) {
+            match = false;
+            break;
+          }
+        }
+        for (size_t i = 0; i < shape_w1.size(); ++i) {
+          if (shape_w1[i] != config_shape_w1[i]) {
+            match = false;
+            break;
+          }
+        }
+        if (!match) {
+          continue;
+        } else {
+          use_config = true;
+          split_num = getParam(params, "split_num", 1);
+          // llvm::outs() << "SplitQuantizedMLP2Pattern : rewriter config
+          // matching succeed!\n"; dumpRewriterRule(rule, llvm::outs());
+          configMatchSuccess(matMulOp, rule);
+          break;
+        }
+      }
+    }
+    if (!use_config) {
+      auto in_size = module::getNumElements(prevMatMulOp.getInput());
+      auto out_size =
+          module::getNumElements(matMulOp.getOutput()) *
+          4; // stored as INT32 before sumed together and requantized.
+      auto w_shape = module::getShape(matMulOp.getRight());
+      auto dim = w_shape.size();
+      auto w_size = module::getNumElements(matMulOp.getRight());
+      auto ceilDiv = [](int64_t a, int64_t b) -> int64_t {
+        return (a + b - 1) / b;
+      };
+      // at tpu.Add(BinaryShift) timestep, min_Lmem = 3 x outsize + insize.
+      if (BM168x::LMEM_BANKS <
+          ceilDiv(3 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) +
+              ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES)) {
         return failure();
+      }
+      // get split number
+      // at tpu.matmul timestep, min_Lmem = 2 x outsize + insize + bias,lut size
+      // + 2 * weightsize
+      auto max_weight_banks =
+          BM168x::LMEM_BANKS -
+          ceilDiv(in_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) -
+          ceilDiv(2 * out_size / BM168x::NPU_NUM, BM168x::LMEM_BANK_BYTES) - 1;
+      auto max_weight_size = (int64_t)(max_weight_banks / 2) *
+                             BM168x::LMEM_BANK_BYTES * BM168x::NPU_NUM;
+      while (w_size > max_weight_size) {
+        split_num *= 2;
+        w_size /= 2;
+        if (w_shape[dim - 1] / split_num < BM168x::NPU_NUM ||
+            w_shape[dim - 1] % split_num != 0) {
+          return failure();
+        }
       }
     }
     if (split_num == 1) {
@@ -5445,7 +5501,8 @@ public:
 
 namespace tpu {
 using namespace bm1684x;
-void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
+void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
+                                     const std::vector<RewriterRule> &rules) {
   auto ctx = patterns->getContext();
   patterns->add<MatMulRequantIntFusion>(ctx, 10);
   patterns->add<LargePadConvPattern, ConvToMatMulPattern>(ctx, 9);
@@ -5500,7 +5557,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
-  patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3);
+  // patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3);
+  patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3, rules);
   patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
   // patterns->add<MatmulUsePermutePattern>(ctx, 4);
   patterns->add<MultipleSameActivationMatmulMergePattern>(ctx, 3);

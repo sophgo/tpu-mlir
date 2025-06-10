@@ -17,6 +17,7 @@ from utils.misc import *
 from utils.preprocess import preprocess, supported_customization_format
 from utils.auto_remove import file_mark, file_clean
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
+from tools.gen_rewriter_config import gen_rewriter_config
 import pymlir
 from utils.misc import str2bool
 from utils.log_setting import setup_logger
@@ -174,6 +175,16 @@ class DeployTool:
         self.file_recorder.add_command(deploy_cmd=" ".join(sys.argv))
         self.file_recorder.add_property(chip=self.chip, compare_all=self.compare_all)
         self.file_recorder.dump()
+
+        if args.use_rewriter_config:
+            gen_rewriter_config(
+                model_name=self.module_name,
+                dialect="tpu",
+                chip=self.chip,
+                quantize=self.quantize,
+                overwrite=True,
+                silence=True,
+            )
 
     def cleanup(self):
         file_clean()
@@ -528,6 +539,8 @@ if __name__ == '__main__':
                         help="set address assign mode, if not set, auto as default")
     parser.add_argument("--not_gen_bmodel", action="store_true",
                         help="for qat intergation, only gen tpu.mlir")
+    parser.add_argument("--use_rewriter_config", action="store_true",
+                        help="use rewriter config to do model deploy.")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
