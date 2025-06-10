@@ -4884,6 +4884,8 @@ struct WhereBnbwdFusePattern : public OpRewriterPatternEx<tpu::BatchNormBwdOp> {
 
   LogicalResult matchAndRewriteImpl(tpu::BatchNormBwdOp op,
                                     PatternRewriter &rewriter) const override {
+    if (!module::isBM1690Family())
+      return failure();
     auto where_op =
         dyn_cast_or_null<tpu::WhereOp>(op.getOperand(0).getDefiningOp());
     if (!where_op)
