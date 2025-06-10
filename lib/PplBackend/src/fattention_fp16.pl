@@ -67,7 +67,7 @@ void flash_attention_fp16_v1(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
     auto out_sub_global =
         out_global_tensor.sub_view(q_sub_shape, sub_offset).view(q_sub_reshape);
     for (int _h = q_head_start; _h < q_head_end; _h += block_h_iter) {
-      int real_q_h = min(block_h_iter, q_head - _h);
+      int real_q_h = min(block_h_iter, q_head_end - _h);
       real_q_h = min(real_q_h, block_h);
       int real_kv_h = real_q_h / head_rep;
       for (int _m = 0; _m < qm; _m += block_m) {

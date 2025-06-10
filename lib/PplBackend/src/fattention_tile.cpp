@@ -113,6 +113,11 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   block_m = split[0];
   block_k = split[1];
   block_h = split[2];
+  if (is_mha) {
+    int safe_core_num = std::max(1, core_num);
+    int max_block_h = (q_head + safe_core_num - 1) / safe_core_num;
+    block_h = std::min(block_h, max_block_h);
+  }
 
   while (block_m > 0 && block_k > 0) {
     printf("fattention block_m:%d, block_k:%d, block_h:%d\n", block_m, block_k,
