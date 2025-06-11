@@ -37,6 +37,7 @@ class LlmType:
     LLAMA = "llama"
     QWEN3 = "qwen3"
     GEMMA3 = "gemma3_text"
+    MINICPM4 = "minicpm"
 
 
 class ActType:
@@ -46,6 +47,7 @@ class ActType:
     SILU = "silu"
     TANH = "tanh"
     GELU_PYTORCH_TANH = "gelu_pytorch_tanh"
+
 
 class WeightType:
     NORMAL = "Normal"

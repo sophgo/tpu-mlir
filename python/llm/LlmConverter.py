@@ -20,8 +20,6 @@ import sys
 from mlir.ir import *
 import mlir.dialects.top as top
 
-
-# support qwen2/llama
 class LlmConverter(BaseConverter):
 
     def __init__(self, args, config):
@@ -49,6 +47,7 @@ class LlmConverter(BaseConverter):
         # init config
         self.load_pretrained(config)
         self.llm_config.max_position_embeddings = self.seq_length
+        self.llm_config.rope_scaling = None # no need rope scaling
         # get attributes
         self.init_config()
         self.do_vit = False
@@ -82,6 +81,10 @@ class LlmConverter(BaseConverter):
     def gen_config(self):
         import shutil
         # copy model json file to config dir
+        if self.config_dir.startswith(os.path.abspath(self.model_path)):
+            os.rmdir(self.bmodel_dir)
+            os.rmdir(self.out_dir)
+            raise RuntimeError("Can't run under original model path!")
         shutil.copytree(self.model_path,
                         self.config_dir,
                         ignore=shutil.ignore_patterns("*.safetensors", ".*", "*.pth", "*.pt",
@@ -239,6 +242,10 @@ class LlmConverter(BaseConverter):
         self.hidden_act = getattr(self.llm_config, c.hidden_act, ActType.SILU)
         self.kv_dim = self.num_key_value_heads * self.head_dim
         self.kv_tile = self.num_attention_heads // self.num_key_value_heads
+        # for minicpm4
+        self.scale_emb = getattr(self.llm_config, "scale_emb", 1.)
+        self.scale_depth = getattr(self.llm_config, "scale_depth", 1.)
+        self.dim_model_base = getattr(self.llm_config, "dim_model_base", 1.)
         # whether llm head and embedding share weight
         self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', False)
         # whether to merge lm_head and embedding in bmodel
@@ -333,6 +340,12 @@ class LlmConverter(BaseConverter):
                                         const_val=self.hidden_size**0.5,
                                         loc=self.get_loc(name + ".scale", embedding_mlir),
                                         ip=embedding_mlir.insert_point).output
+            if self.llm_type == LlmType.MINICPM4:
+                new_op = top.MulConstOp(embedding_mlir.get_tensor_type(out_shape),
+                                        new_op,
+                                        const_val=self.scale_emb,
+                                        loc=self.get_loc(name + ".scale", embedding_mlir),
+                                        ip=embedding_mlir.insert_point).output
             embedding_mlir.create_return_op([new_op])
             mlir_txt = embedding_mlir.print_module()
             with open(f"{name}.mlir", "w") as f:
@@ -352,6 +365,12 @@ class LlmConverter(BaseConverter):
             if not self.do_lmhead_merge:
                 weight_op = lmhead_mlir.create_weight_op(norm_path, [1, self.hidden_size])
                 input_op = self.rms_norm(lmhead_mlir, input_op, norm)
+                if self.llm_type == LlmType.MINICPM4:
+                    input_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.hidden_size]),
+                                              input_op,
+                                              const_val=self.dim_model_base / self.hidden_size,
+                                              loc=self.get_loc(lmhead + ".scale", lmhead_mlir),
+                                              ip=lmhead_mlir.insert_point).output
                 w_shape = [self.hidden_size, self.vocab_size]
                 lmhead_op = self.linear(lmhead_mlir, lmhead, input_op, w_shape,
                                         [1, self.vocab_size])
@@ -798,6 +817,12 @@ class LlmConverter(BaseConverter):
                                   [self.intermediate_size, self.hidden_size], input_shape)
             if self.llm_type in [LlmType.GEMMA3]:
                 down_op = self.rms_norm(mlir_gen, down_op, post_mlp_ln)
+            if self.llm_type == LlmType.MINICPM4:
+                down_op = top.MulConstOp(mlir_gen.get_tensor_type(input_shape),
+                                        down_op,
+                                        const_val=self.scale_depth / np.sqrt(self.num_layers),
+                                        loc=self.get_loc(mlp_down + ".scale", mlir_gen),
+                                        ip=ip).output
             last_name = "output_states"
             new_name = last_name if idx != self.num_layers - 1 else f"{mlp_down}.add"
             new_op = top.AddOp(mlir_gen.get_tensor_type(input_shape), [in_op, down_op],
@@ -880,6 +905,12 @@ class LlmConverter(BaseConverter):
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
             if self.llm_type == LlmType.GEMMA3:
                 o_op = self.rms_norm(block_mlir, o_op, post_attn_ln)
+            if self.llm_type == LlmType.MINICPM4:
+                o_op = top.MulConstOp(T(input_shape),
+                                      o_op,
+                                      const_val=self.scale_depth / np.sqrt(self.num_layers),
+                                      loc=L(o_proj + ".scale"),
+                                      ip=ip).output
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
@@ -973,6 +1004,12 @@ class LlmConverter(BaseConverter):
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
             if self.llm_type == LlmType.GEMMA3:
                 o_op = self.rms_norm(block_mlir, o_op, post_attn_ln)
+            if self.llm_type == LlmType.MINICPM4:
+                o_op = top.MulConstOp(T(input_shape),
+                                      o_op,
+                                      const_val=self.scale_depth / np.sqrt(self.num_layers),
+                                      loc=L(o_proj + ".scale0"),
+                                      ip=ip).output
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)

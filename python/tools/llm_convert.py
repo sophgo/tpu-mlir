@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # yapf: enable
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
-    if config.model_type in ["qwen3", "qwen2", "llama"]:
+    if config.model_type in ["qwen3", "qwen2", "llama", "minicpm"]:
         from llm.LlmConverter import LlmConverter
         converter = LlmConverter(args, config)
     elif config.model_type in ['qwen2_vl']:
