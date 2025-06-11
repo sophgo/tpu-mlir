@@ -9,7 +9,7 @@ from .LlmConverter import *
 from typing_extensions import override
 
 
-class Qwen2VLConverter(LlmConverter):
+class Qwen2_5VLConverter(LlmConverter):
 
     def __init__(self, args, config):
         super().__init__(args, config)
@@ -30,10 +30,12 @@ class Qwen2VLConverter(LlmConverter):
         self.depth = self.vconfig.depth
         self.num_patches = self.max_pixels // (self.patch_size * self.patch_size)
         self.patch_dim = self.in_channels * self.patch_size * self.patch_size * self.temporal_patch_size
-        self.embed_dim = self.vconfig.embed_dim
+        self.embed_dim = self.vconfig.hidden_size
         self.vnum_heads = self.vconfig.num_heads
         self.vhead_dim = self.embed_dim // self.vnum_heads
+        self.vintermediate_size = self.vconfig.intermediate_size
         self.position_shape = [3, self.seq_length]
+        self.fullatt_block_indexes = self.vconfig.fullatt_block_indexes
 
     @override
     def load_pretrained(self, config):
@@ -145,7 +147,7 @@ class Qwen2VLConverter(LlmConverter):
 
     def vision_rotary(self):
         from transformers.models.qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding
-        head_dim = self.vconfig.embed_dim // self.vnum_heads
+        head_dim = self.vconfig.hidden_size // self.vnum_heads
         rotary_embed = VisionRotaryEmbedding(head_dim // 2)
         freqs = rotary_embed(self.num_patches)
         return freqs.cos().numpy(), freqs.sin().numpy()
@@ -166,7 +168,7 @@ class Qwen2VLConverter(LlmConverter):
             return self.get_loc(name, vit_mlir)
 
         def vision_attention(in_op):
-            norm1_op = self.layer_norm(vit_mlir, in_op, norm1, eps=1e-6)
+            norm1_op = self.rms_norm(vit_mlir, in_op, norm1)
             hidden_shape = [self.num_patches, self.embed_dim]
             q_op = self.linear(vit_mlir,
                                attn_q,
@@ -220,19 +222,28 @@ class Qwen2VLConverter(LlmConverter):
 
         def vision_mlp(in_op):
             in_shape = [self.num_patches, self.embed_dim]
-            mlp_fc1 = f"visual.blocks.{id}.mlp.fc1"
-            mlp_fc2 = f"visual.blocks.{id}.mlp.fc2"
-            mlp_dim = int(self.vconfig.mlp_ratio * self.embed_dim)
-            new_op = self.layer_norm(vit_mlir, in_op, norm2, eps=1e-6)
-            fc1_op = self.linear(vit_mlir, mlp_fc1, new_op, [self.embed_dim, mlp_dim],
-                                 [self.num_patches, mlp_dim])
-            silu_op = top.SiLUOp(T([self.num_patches, mlp_dim]),
-                                 fc1_op,
-                                 loc=L(mlp_fc1 + ".silu"),
+            mlp_gate = f"visual.blocks.{id}.mlp.gate_proj"
+            mlp_up = f"visual.blocks.{id}.mlp.up_proj"
+            mlp_down = f"visual.blocks.{id}.mlp.down_proj"
+
+            new_op = self.rms_norm(vit_mlir, in_op, norm2)
+
+            gate_op = self.linear(vit_mlir, mlp_gate, new_op,
+                                  [self.embed_dim, self.vintermediate_size],
+                                  [self.num_patches, self.vintermediate_size])
+            silu_op = top.SiLUOp(T([self.num_patches, self.vintermediate_size]),
+                                 gate_op,
+                                 loc=L(mlp_gate + ".silu"),
                                  ip=ip).output
-            up_op = self.linear(vit_mlir, mlp_fc2, silu_op, [mlp_dim, self.embed_dim],
-                                [self.num_patches, self.embed_dim])
-            new_op = top.AddOp(T(in_shape), [in_op, up_op], loc=L(mlp_fc2 + ".add"), ip=ip).output
+            up_op = self.linear(vit_mlir, mlp_up, new_op, [self.embed_dim, self.vintermediate_size],
+                                [self.num_patches, self.vintermediate_size])
+            new_op = top.MulOp(T([self.num_patches, self.vintermediate_size]), [silu_op, up_op],
+                               loc=L(mlp_up + ".mul"),
+                               ip=ip).output
+            down_op = self.linear(vit_mlir, mlp_down, new_op,
+                                  [self.vintermediate_size, self.embed_dim], in_shape)
+            new_op = top.AddOp(T(in_shape), [in_op, down_op], loc=L(mlp_down + ".add"),
+                               ip=ip).output
             return new_op
 
         in_op = vision_attention(in_op)
@@ -267,8 +278,9 @@ class Qwen2VLConverter(LlmConverter):
                 self.set_common_weight(f"visual.blocks.{i}.norm1", weights_dict)
                 self.set_common_weight(f"visual.blocks.{i}.norm2", weights_dict)
                 self.set_linear_weight(f"visual.blocks.{i}.attn.proj", weights_dict)
-                self.set_linear_weight(f"visual.blocks.{i}.mlp.fc1", weights_dict)
-                self.set_linear_weight(f"visual.blocks.{i}.mlp.fc2", weights_dict)
+                self.set_linear_weight(f"visual.blocks.{i}.mlp.gate_proj", weights_dict)
+                self.set_linear_weight(f"visual.blocks.{i}.mlp.up_proj", weights_dict)
+                self.set_linear_weight(f"visual.blocks.{i}.mlp.down_proj", weights_dict)
                 # split qkv
                 # self.set_linear_weight(f"visual.blocks.{i}.attn.qkv", weights_dict)
                 weight = self.model.read(f"visual.blocks.{i}.attn.qkv.weight").reshape(
@@ -299,8 +311,8 @@ class Qwen2VLConverter(LlmConverter):
         mask_shape = [1, 1, self.num_patches, self.num_patches]
         out_dim = self.num_patches // (self.spatial_merge_size**2)
         out_shape = [out_dim, self.hidden_size]
-        input_shapes = [in_shape, position_shape, mask_shape]
-        input_types = ['F32', 'INT32', 'F32']
+        input_shapes = [in_shape, position_shape, mask_shape, mask_shape, out_dim]
+        input_types = ['F32', 'INT32', 'F32', 'F32', 'INT32']
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 "vit",
@@ -318,7 +330,8 @@ class Qwen2VLConverter(LlmConverter):
         in0_op = vit_mlir.create_input_op(L('input_states'), 0)
         in1_op = vit_mlir.create_input_op(L('position_ids'), 1)
         in2_op = vit_mlir.create_input_op(L('full_attn_mask'), 2)
-
+        in3_op = vit_mlir.create_input_op(L('window_attn_mask'), 3)
+        in4_op = vit_mlir.create_input_op(L('reverse_index'), 4)
         new_weight = vit_mlir.create_weight_op(patch_embed + ".weight",
                                                [self.patch_dim, self.embed_dim])
         new_op = top.MatMulOp(T([self.num_patches, self.embed_dim]),
@@ -360,10 +373,13 @@ class Qwen2VLConverter(LlmConverter):
                             loc=L(rotary_sin + ".tile"),
                             ip=ip).output
         for id in range(self.depth):
-            new_op = self.vision_block(vit_mlir, id, new_op, cos_op, sin_op, in2_op)
+            mask_op = in2_op
+            if id not in self.fullatt_block_indexes:
+                mask_op = in3_op
+            new_op = self.vision_block(vit_mlir, id, new_op, cos_op, sin_op, mask_op)
 
         # merge
-        new_op = self.layer_norm(vit_mlir, new_op, merger_ln_q, eps=1e-6)
+        new_op = self.rms_norm(vit_mlir, new_op, merger_ln_q)
         out_dim = self.embed_dim * (self.spatial_merge_size**2)
         in_dim = self.num_patches // (self.spatial_merge_size**2)
         new_op = top.ReshapeOp(T([in_dim, out_dim]), new_op, loc=L(merger_ln_q + ".reshape"),
@@ -373,6 +389,13 @@ class Qwen2VLConverter(LlmConverter):
                             ip=ip).output
         new_op = self.linear(vit_mlir, merger_mlp2, new_op, [out_dim, self.hidden_size],
                              [in_dim, self.hidden_size])
+        # reverse
+        new_op = top.GatherOp(T([in_dim, self.hidden_size]),
+                              new_op,
+                              in4_op,
+                              axis=0,
+                              loc=L(merger_mlp2 + ".reverse"),
+                              ip=ip).output
         vit_mlir.create_return_op([new_op])
         mlir_txt = vit_mlir.print_module()
         with open(f"vit.mlir", "w") as f:

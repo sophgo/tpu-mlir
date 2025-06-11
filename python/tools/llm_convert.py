@@ -73,9 +73,12 @@ if __name__ == '__main__':
     if config.model_type in ["qwen3", "qwen2", "llama"]:
         from llm.LlmConverter import LlmConverter
         converter = LlmConverter(args, config)
-    elif config.model_type in ['qwen2_vl', 'qwen2_5_vl']:
+    elif config.model_type in ['qwen2_vl']:
         from llm.Qwen2VLConverter import Qwen2VLConverter
         converter = Qwen2VLConverter(args, config)
+    elif config.model_type in ['qwen2_5_vl']:
+        from llm.Qwen2_5VLConverter import Qwen2_5VLConverter
+        converter = Qwen2_5VLConverter(args, config)
     elif config.model_type in ['internvl_chat']:
         from llm.InternVL3Converter import InternVL3Converter
         converter = InternVL3Converter(args, config)
