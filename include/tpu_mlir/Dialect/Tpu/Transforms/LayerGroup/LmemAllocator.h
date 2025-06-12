@@ -72,7 +72,8 @@ public:
   bool assignLmemAddrWithSecs(const LgInfo &lg_info,
                               BasicTimeStepPtr &time_step,
                               shape_secs_t &shape_secs,
-                              bool allow_bank_conflict = false);
+                              bool allow_bank_conflict = false,
+                              bool just_check_validation = false);
   bool assignLmemAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
                       const shape_secs_t &shape_secs,
                       bool allow_bank_conflict = false);
@@ -108,6 +109,8 @@ public:
       const mem_buffer_key_t &recent_buffer_allocated,
       BasicTimeStepPtr &time_step, bool one_loop, const LgInfo &lg_info,
       bool allow_bank_conflict = false, bool allow_hold_in_lmem = false);
+
+  int64_t get_min_group_cost() { return min_group_costs_; }
 
 protected:
   LgOptions options_;

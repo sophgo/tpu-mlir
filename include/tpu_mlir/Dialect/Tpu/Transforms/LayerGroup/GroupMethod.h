@@ -70,7 +70,10 @@ public:
   void get_group_clusters(std::vector<std::pair<int64_t, int64_t>> &clusters,
                           const std::vector<Operation *> &base_group,
                           int group_idx, int64_t idx_offset = 0);
-
+  void get_group_clusters_with_dynamic_programming(
+                        std::vector<std::pair<int64_t, int64_t>> &clusters,
+                        const std::vector<Operation *> &base_group, int group_idx,
+                        int64_t idx_offset = 0);
   bool is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                             int64_t *group_cost);
   bool group_one_layer_proc(const LgInfo &lg_info, bool calc_cost,

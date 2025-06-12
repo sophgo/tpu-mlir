@@ -22,7 +22,7 @@ LogicalResult top::UpsampleOp::inference(InferenceParameter &p) {
   int64_t oh = ih * getScaleH();
   int64_t ow = iw * getScaleW();
   auto num_elem = module::getNumElements(getOutput());
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+#pragma omp parallel for collapse(2) schedule(static, omp_schedule(num_elem))
   for (int64_t d0 = 0; d0 < n; d0++) {
     for (int64_t d1 = 0; d1 < c; d1++) {
       for (int64_t d2 = 0; d2 < oh; d2++) {

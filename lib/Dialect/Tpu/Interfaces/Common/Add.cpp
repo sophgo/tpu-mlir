@@ -310,7 +310,7 @@ void tpu::AddOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
     auto rshift_v = module::getI64Array(getRshifts().value());
     if (std::all_of(rshift_v->begin(), rshift_v->end(),
                     [](int64_t x) { return x == 0; })) {
-      // do-nothing.P
+      // do-nothing.
     } else {
       os << "rshifts_len=" << rshift_v->size() << "; ";
     }

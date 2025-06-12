@@ -169,6 +169,31 @@ void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
   sec_info.out_w_slice = gi.w_slice;
 }
 
+void tpu::MulOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+  for (auto attr : getOperation()->getAttrs()) {
+    auto attr_name = attr.getName().str();
+    if (attr_name == "ginfo" || attr_name == "rshift" || attr_name == "multiplier") {
+      continue;
+    }
+    os << attr_name << "=";
+    attr.getValue().print(os);
+    os << "; ";
+  }
+
+  auto rshift_v = getRshift();
+  auto multiplier_v = getMultiplier();
+  if (rshift_v == 0) {
+    // do-nothing.
+  } else {
+    os << "rshift_len=1; ";
+  }
+  if (multiplier_v == 1) {
+    // do-nothing.
+  } else {
+    os << "multiplier=1; ";
+  }
+}
+
 void tpu::MulOp::assign_fw_param(void *param) {
   fw_broadcast_binary_layer_param_t *fw_broadcast_binary_layer_param =
       (fw_broadcast_binary_layer_param_t *)param;

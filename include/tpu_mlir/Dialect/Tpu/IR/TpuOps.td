@@ -1407,7 +1407,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
 
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info", "DumpQuantAgnosticAttrs"]>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul operator";
@@ -2125,7 +2125,7 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
 
 def Tpu_AttentionOp: Tpu_Op<"Attention", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit", "DumpQuantAgnosticAttrs"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Attention operator";
@@ -2646,7 +2646,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["DumpQuantAgnosticAttrs"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "requant operation";

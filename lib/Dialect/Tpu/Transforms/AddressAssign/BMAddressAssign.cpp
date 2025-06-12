@@ -274,6 +274,7 @@ static int64_t fix_addr_for_io_reloc(int64_t addr_limit, mlir::ModuleOp &m) {
 
     // support some (but not all) in-place ops
     for (auto func : m.getOps<FuncOp>()) {
+      bool dump_ = func.getName() != "main";
       func.walk([&](Operation *op) {
         if (isa<top::NoneOp, top::WeightOp, func::ReturnOp>(op)) {
           // do nothing
@@ -283,8 +284,10 @@ static int64_t fix_addr_for_io_reloc(int64_t addr_limit, mlir::ModuleOp &m) {
             get_addr_interval(v, imm_start, imm_end);
             if (is_contain(io_start, io_end, imm_start, imm_end)) {
               module::setAddress(v, imm_start + addr_offset);
-              llvm::outs() << "[io_reloc] Fix IO addr for: "
+              if (dump_) {
+                llvm::outs() << "[io_reloc] Fix IO addr for: "
                            << module::getName(v) << "\n";
+              }
             }
           }
         }

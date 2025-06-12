@@ -59,6 +59,27 @@ void tpu::AttentionOp::deinit(InferenceParameter &p) {
   return;
 }
 
+void tpu::AttentionOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+  for (auto attr : getOperation()->getAttrs()) {
+    auto attr_name = attr.getName().str();
+    if (attr_name == "ginfo" || attr_name == "quant_param") {
+      continue;
+    }
+    os << attr_name << "=";
+    attr.getValue().print(os);
+    os << "; ";
+  }
+
+  auto quant_param_v = module::getI64Array(getQuantParam());
+  assert(quant_param_v);
+  if (quant_param_v->size() == 1 && quant_param_v->at(0) == 0) {
+    // do-nothing.
+  } else {
+    os << "quant_param_len=" << quant_param_v->size()
+       << "; ";
+  }
+}
+
 LogicalResult tpu::AttentionOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();

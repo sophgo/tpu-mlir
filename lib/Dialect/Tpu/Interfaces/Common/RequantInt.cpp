@@ -91,6 +91,30 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
   return do_nothing(mode);
 }
 
+void tpu::RequantIntOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+  for (auto attr : getOperation()->getAttrs()) {
+    auto attr_name = attr.getName().str();
+    if (attr_name == "ginfo" || attr_name == "multiplier" || attr_name == "rshift") {
+      continue;
+    }
+    os << attr_name << "=";
+    attr.getValue().print(os);
+    os << "; ";
+  }
+  auto rshift_v = getRshift();
+  auto multiplier_v = getMultiplier();
+  if (rshift_v == 0) {
+    // do-nothing.
+  } else {
+    os << "rshift_len=1; ";
+  }
+  if (multiplier_v == 1) {
+    // do-nothing.
+  } else {
+    os << "multiplier=1; ";
+  }
+}
+
 ArrayAttr tpu::RequantIntOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
   AffineMap identity_map =

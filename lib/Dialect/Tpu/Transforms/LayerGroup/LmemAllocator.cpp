@@ -1297,7 +1297,8 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
 bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            BasicTimeStepPtr &time_step,
                                            shape_secs_t &shape_secs,
-                                           bool allow_bank_conflict) {
+                                           bool allow_bank_conflict,
+                                           bool just_check_validation) {
   auto &lg_debugger = LgDebugger::getInstance();
   std::vector<std::pair<Operation *, int>> vec_op_hsecs;
   max_shape_secs_ = get_group_max_secs(lg_info, vec_op_hsecs);
@@ -1391,6 +1392,11 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   }
 
   shape_secs = min_shape_secs_;
+
+  if (just_check_validation) {
+    // do not need to re-assign lmem addrs a.
+    return true;
+  }
 
   GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
