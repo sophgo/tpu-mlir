@@ -141,15 +141,7 @@ openclip_blocks = {
                             'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MulConst', 'top.Sigmoid', 'top.Mul', 'top.MatMul', 'top.Add'],
     'l2_norm_block': ['top.Abs', 'top.Mul', 'top.Reduce', 'top.Sqrt', 'top.Div'],
 }
-yolo_post_blocks = {
-    "yolov5":['top.MulConst', 'top.Add', 'top.MulConst', 'top.MulConst', 'top.Mul', 'top.Mul', 'top.Concat', 'top.Reshape'],
-    "yolov7":['top.MulConst', 'top.Add', 'top.Mul', 'top.Mul', 'top.Concat', 'top.Reshape'],
-    "yolov6_8_9_11_12":['top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul', 'top.Concat'],
-    "yolov10":['top.Sub', 'top.Add', 'top.Concat', 'top.Mul', 'top.Concat', 'top.Permute', 'top.Slice', 'top.Slice',
-               'top.Reduce', 'top.TopK', 'top.Unsqueeze', 'top.Tile', 'top.Tile', 'top.GatherElements', 'top.GatherElements',
-               'top.Reshape', 'top.Reshape', 'top.TopK', 'top.MulConst', 'top.Floor', 'top.Unsqueeze', 'top.Mod', 'top.Unsqueeze',
-               'top.Gather', 'top.Concat'],
-}
+
 # "detr_pattern": ['top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Add']
 
 N_mode = ['top.Relu', 'top.MaxPool', 'top.Conv', 'top.MatMul', 'top.PRelu', 'top.AvgPool', 'top.Add', 'top.Sigmoid', 'top.Deconv']
@@ -242,43 +234,36 @@ class MatchPattern:
                 first_text_mlp_end_index = first_text_block_index + 31 # 31 is the index of the second mlp matmul in openclip text block
         if flag == 1:
             if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
-                from collections import Counter
-                def find_sublist(main_list, sub_list):
-                    sub_len = len(sub_list)
-                    if sub_len == 0:
-                        return []
-                    sub_counter = Counter(sub_list)
-                    matches = []
-                    for i in range(len(main_list) - sub_len + 1):
-                        window = main_list[i:i+sub_len]
-                        window_counter = Counter(window)
-                        if window_counter == sub_counter:
-                            end_idx = i + sub_len
-                            matches.append((i, end_idx))
-                    return matches
+                for op_name in all_tensors:
+                    # detect the last conv of yolo head
+                    # the pre op of the last conv should be SiLU or LeakyRelu
+                    # the next op of the last conv should be Concat or Reshape
+                    # the next op of the next op should not be Conv
+                    op_type = self.parser.get_op_type_by_op_name(op_name)
+                    if op_type != 'top.Conv': continue
+                    next_ops = self.parser.get_next_op_by_op_name(op_name)
+                    pre_ops = self.parser.get_pre_op_by_op_name(op_name)
+                    if len(next_ops) != 1 or len(pre_ops) != 1: continue
+                    next_op_type = self.parser.get_op_type_by_op_name(next_ops[0])
+                    pre_op_type = self.parser.get_op_type_by_op_name(pre_ops[0])
+                    if next_op_type not in ['top.Concat', 'top.Reshape']:
+                        continue
+                    if pre_op_type not in ['top.SiLU', 'top.LeakyRelu']:
+                        continue
+                    next_next_ops = self.parser.get_next_op_by_op_name(next_ops[0])
+                    nn_op_types = [self.parser.get_op_type_by_op_name(_) for _ in next_next_ops]
+                    if any(_ == 'top.Conv' for _ in nn_op_types):
+                        continue
+                    # recursively find all the ops after the last conv
+                    ops_after_last_conv = next_ops
+                    while ops_after_last_conv:
+                        current_op = ops_after_last_conv.pop(0)
+                        if current_op in fp_layer_list:
+                            continue
+                        fp_layer_list.append(current_op)
+                        next_ops = self.parser.get_next_op_by_op_name(current_op)
+                        ops_after_last_conv.extend(next_ops)
 
-                for name, yolo_post_block in yolo_post_blocks.items():
-                    matches = find_sublist(type_tensors, yolo_post_block)
-                    if matches:
-                        match_count = len(matches)
-                        self.logger.print_info(f"The [{name}] post-processing pattern matches this model. Block count: {match_count}")
-                        self.logger.print_info(f"The [{name}] post-processing pattern is: {yolo_post_block}")
-                        for idx, (start, end) in enumerate(matches, 1):
-                            fp_layer_list.extend(all_tensors[start:end])
-                            for next_op in self.parser.get_next_op_by_op_name(all_tensors[end-1]):
-                                if next_op:
-                                    visited = set()
-                                    def recursive_add(op):
-                                        if op in visited:
-                                            return
-                                        if op not in fp_layer_list:
-                                            fp_layer_list.append(op)
-                                        visited.add(op)
-                                        for next_op in self.parser.get_next_op_by_op_name(op):
-                                            if next_op:
-                                                recursive_add(next_op)
-                                    recursive_add(next_op)
-                        break
                 split_fuse_fp_layer_list = []
                 for item in fp_layer_list:
                     if item.startswith('fused['):
