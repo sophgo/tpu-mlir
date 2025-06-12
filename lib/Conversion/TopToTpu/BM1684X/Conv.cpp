@@ -70,9 +70,15 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   bool input_asymmetric = op->hasAttr("input_asym");
+  bool output_int16 =
+      op->hasAttr("output_int16") && op.getKernelShape().size() == 2;
   module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp,
                                input_asymmetric || asymmetric);
   module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
+  if (output_int16) {
+    out_scale = out_scale * 255 / 65535;
+    out_zp = 0;
+  }
   // filter
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
@@ -201,7 +207,12 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  Type newType;
+  if (output_int16) {
+    newType = getQuantIntType(op.getOutput(), out_scale, out_zp, 16);
+  } else {
+    newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  }
 
   bool output_int32 = false;
   if (op.getKernelShape().size() == 3) {

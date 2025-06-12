@@ -1267,6 +1267,94 @@ void ConvertTopToTpu::runOnOperation() {
         }
       }
     });
+    bool is_yolo = false;
+    // detect Yolo by multiple MaxPool and Concat
+    mainFunc_.walk([&](Operation *op) {
+      auto users = op->getUsers();
+      auto users_len = std::distance(users.begin(), users.end());
+      if (!is_yolo && isa<top::MaxPoolOp>(op) && users_len == 2) {
+        bool maxpool_use = false;
+        bool concat_use = false;
+        Operation *second_maxpool = nullptr;
+        Operation *third_maxpool = nullptr;
+        Operation *concat = nullptr;
+        for (auto user : users) {
+          if (isa<top::MaxPoolOp>(user)) {
+            maxpool_use = true;
+            second_maxpool = user;
+          }
+          if (isa<top::ConcatOp>(user)) {
+            concat_use = true;
+            concat = user;
+          }
+        }
+        if (maxpool_use && concat_use) {
+          maxpool_use = concat_use = false;
+          auto second_users = second_maxpool->getUsers();
+          auto second_users_len =
+              std::distance(second_users.begin(), second_users.end());
+          if (second_users_len == 2) {
+            for (auto second_user : second_users) {
+              if (isa<top::MaxPoolOp>(second_user)) {
+                third_maxpool = second_user;
+                maxpool_use = true;
+              }
+              if (isa<top::ConcatOp>(second_user)) {
+                concat_use = second_user == concat;
+              }
+            }
+          }
+        }
+        if (maxpool_use && concat_use) {
+          auto third_users = third_maxpool->getUsers();
+          auto third_users_len =
+              std::distance(third_users.begin(), third_users.end());
+          if (third_users_len == 1) {
+            for (auto third_user : third_users) {
+              if (isa<top::ConcatOp>(third_user)) {
+                is_yolo = third_user == concat;
+              }
+            }
+          }
+        }
+      }
+    });
+    if (is_yolo) {
+      // set the last conv of yolo head to output int16
+      mainFunc_.walk([&](Operation *op) {
+        if (!isa<top::ConvOp>(op)) {
+          return;
+        }
+        auto operand = op->getOperand(0);
+        auto input_op = operand.getDefiningOp();
+        if (!isa<top::SiLUOp, top::LeakyReluOp>(input_op)) {
+          return;
+        }
+        auto users = op->getUsers();
+        auto users_len = std::distance(users.begin(), users.end());
+        if (users_len == 1) {
+          for (auto user : users) {
+            if (isa<top::ReshapeOp, top::ConcatOp>(user)) {
+              for (auto user2 : user->getUsers()) {
+                if (isa<top::ConvOp>(user2)) {
+                  return;
+                }
+              }
+              auto name = module::getName(user).str();
+              if (LoweringConfig::quantize_map.find(name) !=
+                      LoweringConfig::quantize_map.end() &&
+                  (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
+                   LoweringConfig::quantize_map[name] == module::Mode::BF16)) {
+                mlir::Attribute tmp =
+                    mlir::BoolAttr::get(op->getContext(), true);
+                op->setAttr("output_int16", tmp);
+                break;
+              }
+            }
+          }
+        }
+      });
+    }
   }
   if (module::isMARS3() || module::isSGTPUV8()) {
     mainFunc_.walk([&](Operation *op) {

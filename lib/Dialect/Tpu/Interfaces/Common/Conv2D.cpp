@@ -317,9 +317,9 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
-      int64_t shift = per_axis       ? rshift_v->at(ic)
-                      : use_winograd ? rshift_v->at(1)
-                                     : rshift_v->at(0);
+      int64_t shift = per_axis
+                          ? rshift_v->at(ic)
+                          : use_winograd ? rshift_v->at(1) : rshift_v->at(0);
       int64_t multi = 1;
       if (qmode != tpu::RequantMode::OnlyShift) {
         multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
@@ -425,7 +425,7 @@ mlir::Type tpu::Conv2DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (opd_idx == 2 && !module::isBM1690Family()) {
     return module::getElementType(getOperand(opd_idx));
   }
-  return type_verify_case_i32(getOperation(), opd_idx, mode);
+  return type_verify_case_i16_or_i32(getOperation(), opd_idx, mode);
 }
 
 LogicalResult tpu::Conv2DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
