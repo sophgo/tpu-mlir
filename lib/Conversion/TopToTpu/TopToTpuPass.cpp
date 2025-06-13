@@ -1231,7 +1231,7 @@ void ConvertTopToTpu::runOnOperation() {
     calibration_process();
   }
 
-  if ((module::isBM1684X() || module::isBM1688()) &&
+  if ((module::isBM1684X() || module::isBM1688() || module::isMARS3()) &&
       !LoweringConfig::isQuantized &&
       (module::getMode() == module::Mode::INT8 ||
        module::getMode() == module::Mode::UINT8)) {
