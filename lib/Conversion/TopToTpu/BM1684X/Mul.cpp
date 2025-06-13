@@ -137,7 +137,7 @@ void MulLowering::LoweringF8(PatternRewriter &rewriter, top::MulOp op) const {
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     if (auto weightOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
-      newWeight = weightOp.clone_f8e4m3(op, false);
+      newWeight = weightOp.clone_f8e4m3(op, false, true);
       auto w_op = dyn_cast<top::WeightOp>(newWeight.getDefiningOp());
       f64_array_t weight_scale_v;
       weight_scale_v = module::getF64Array(w_op.getScale().value());

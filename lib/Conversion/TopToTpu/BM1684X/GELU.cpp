@@ -72,7 +72,8 @@ void GELULowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void GELULowering::LoweringF8(PatternRewriter &rewriter, top::GELUOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  auto op_ = update_attr(op);
+  lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
 }
 
 void GELULowering::LoweringQuantized(PatternRewriter &rewriter,

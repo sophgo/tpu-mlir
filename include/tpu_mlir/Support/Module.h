@@ -233,6 +233,7 @@ bool isBM1688();
 bool isBM1684X();
 bool isMARS3();
 bool isSGTPUV8();
+bool isSG2262();
 
 //-----------------------------------------------------------------
 // Helper Functions for submodule

@@ -453,9 +453,21 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       if (!getOutF8Scales().has_value())
         llvm_unreachable("should have out scale for MatMul in f8 mode");
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
-      [[maybe_unused]] auto scale_f = scales->at(0);
-      [[maybe_unused]] auto scale_f_reciprocal = 1 / scales->at(0);
-      F8E4M3(p.outputs[0], p.outputs[0], num_elem, scale_f_reciprocal, true);
+      if (scales->size() == 1) {
+        [[maybe_unused]] auto scale_f = scales->at(0);
+        [[maybe_unused]] auto scale_f_reciprocal = 1 / scales->at(0);
+        F8E4M3(p.outputs[0], p.outputs[0], num_elem, scale_f_reciprocal, true);
+      } else {
+        auto output_shape = module::getShape(getOutput());
+        ASSERT_THIS(scales->size() == output_shape[output_shape.size() - 1]);
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+        for (int i = 0; i < num_elem; i++) {
+          p.outputs[0][i] = F8E4M3(
+              p.outputs[0][i],
+              1.0 / scales->at(i % output_shape[output_shape.size() - 1]),
+              true);
+        }
+      }
     } else if (out_type.isFloat8E5M2()) {
       F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else if (out_type.isF16()) {

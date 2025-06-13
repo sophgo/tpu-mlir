@@ -698,7 +698,7 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter, top::ConvOp op) const {
     auto opd = op.getOperand(i);
     if (auto weightOp = dyn_cast<top::WeightOp>(opd.getDefiningOp())) {
       if (module::getMode() == module::Mode::F8E4M3) {
-        newWeight = weightOp.clone_f8e4m3(op, true);
+        newWeight = weightOp.clone_f8e4m3(op, true, true);
         operands.push_back(newWeight);
       } else if (module::getMode() == module::Mode::F8E5M2) {
         newWeight = weightOp.clone_f8e5m2(op);

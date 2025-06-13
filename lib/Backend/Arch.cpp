@@ -59,6 +59,8 @@ void Arch::init(uint64_t freq) {
       inst = &SGTPUV8::instance(A2_1::value);
     } else if (chip == module::Chip::SG2380) {
       inst = &SG2380::instance();
+    } else if (chip == module::Chip::SG2262) {
+      inst = &BM1690::instance();
     } else {
       llvm_unreachable("unsupport chip\n");
     }

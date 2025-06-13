@@ -40,7 +40,8 @@ void Depth2SpaceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void Depth2SpaceLowering::LoweringF8(PatternRewriter &rewriter,
                                      top::Depth2SpaceOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::Depth2SpaceOp>(rewriter, op, isE4);
 }
 
 void Depth2SpaceLowering::LoweringQuantized(PatternRewriter &rewriter,

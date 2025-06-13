@@ -791,21 +791,32 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   }
   int64_t left_num_dims = module::getShape(op.getInput()).size();
   Value newWeight;
-  double w_scale;
-  double scale_f;
+  std::vector<double> sclae_f_v;
   if (auto weightOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
-    newWeight = weightOp.clone_f8e4m3(op, false);
+    newWeight =
+        weightOp.clone_f8e4m3(op, module::isSG2262(), op.getRightTranspose());
     auto w_op = dyn_cast<top::WeightOp>(newWeight.getDefiningOp());
     f64_array_t weight_scale_v = module::getF64Array(w_op.getScale().value());
-    w_scale = weight_scale_v.get()->at(0);
     operands.push_back(in);
     operands.push_back(newWeight);
-    scale_f = in_scale * w_scale / out_scale;
+    if (module::isSG2262()) {
+      for (int j = 0; j < p.N; j++)
+        sclae_f_v.push_back(in_scale * weight_scale_v.get()->at(j) / out_scale);
+    } else {
+      sclae_f_v.push_back(in_scale * weight_scale_v.get()->at(0) / out_scale);
+    }
     if (p.with_bias) {
       auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
       auto b_value = biasOp.read<float>();
-      for (int j = 0; j < p.N; j++)
-        b_value->at(j) = b_value->at(j) / (in_scale * w_scale);
+      for (int j = 0; j < p.N; j++) {
+        if (module::isSG2262()) {
+          b_value->at(j) =
+              b_value->at(j) / (in_scale * weight_scale_v.get()->at(j));
+        } else {
+          b_value->at(j) =
+              b_value->at(j) / (in_scale * weight_scale_v.get()->at(0));
+        }
+      }
       auto new_bias = op.getBias();
       std::vector<int64_t> shape(left_num_dims, 1);
       shape[left_num_dims - 1] = p.N;
@@ -819,8 +830,8 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   } else {
     auto right = op.getRight();
     auto qtype_right = module::getCalibratedType(right);
-    w_scale = qtype_right.getMax() / get_f8e4m3_max();
-    scale_f = in_scale * w_scale / out_scale;
+    double w_scale = qtype_right.getMax() / get_f8e4m3_max();
+    sclae_f_v.push_back(in_scale * w_scale / out_scale);
     for (auto operand : op.getOperands())
       operands.push_back(operand);
     if (p.with_bias) {
@@ -838,8 +849,8 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
     }
   }
   bool with_bias = !module::isNone(op.getBias());
-  attrs.push_back(rewriter.getNamedAttr("out_f8_scales",
-                                        rewriter.getF64ArrayAttr(scale_f)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "out_f8_scales", rewriter.getF64ArrayAttr(ArrayRef<double>{sclae_f_v})));
   attrs.push_back(rewriter.getNamedAttr(
       "quant_mode", tpu::RequantModeAttr::get(op->getContext(),
                                               tpu::RequantMode::OnlyScale)));

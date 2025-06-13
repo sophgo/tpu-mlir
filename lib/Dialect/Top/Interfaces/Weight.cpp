@@ -254,9 +254,8 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp =
       builder.create<top::WeightOp>(NameLoc::get(nameAttr), type, ValueRange{});
-  auto stmodeAttr = builder.getStringAttr(store_mode == 0   ? "1N"
-                                          : store_mode == 1 ? "2N"
-                                                            : "4N");
+  auto stmodeAttr = builder.getStringAttr(
+      store_mode == 0 ? "1N" : store_mode == 1 ? "2N" : "4N");
   if (stmodeAttr != "1N")
     newOp.setStoreModeAttr(stmodeAttr);
   if (module::getWeightInMemFlag()) {
@@ -370,39 +369,70 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
   return newOp.getResult();
 };
 
-Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
+Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale,
+                             bool channel_first_dim) {
   auto type = getType().cast<RankedTensorType>();
   auto shape = type.getShape();
   auto dtype = type.getElementType();
   ASSERT_THIS(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
-  auto cnt_p_c = count / shape[0];
   auto data_f8 = std::make_shared<std::vector<uint8_t>>(count);
+  size_t oc;
+  size_t cnt_p_c;
+  if (channel_first_dim) {
+    oc = shape[0];
+    cnt_p_c = count / shape[0];
+  } else {
+    ASSERT_THIS(shape.size() == 2); // only support 2d matmul
+    oc = shape[1];
+    cnt_p_c = count / shape[1];
+  }
 
   f64_array_t weight_scale_v;
   if (per_channel_scale) {
     if (getScale().has_value()) {
       weight_scale_v = module::getF64Array(getScale().value());
-      ASSERT_THIS(shape[0] == weight_scale_v->size());
+      ASSERT_THIS(oc == weight_scale_v->size());
     } else {
       // search for the max value and set scale to it
       std::vector<double> weight_scale_v_;
-      for (size_t i = 0; i < shape[0]; i++) {
-        float absmax = std::abs(data->at(i * cnt_p_c));
-        for (size_t j = 0; j < cnt_p_c; j++) {
-          absmax = std::abs(data->at(i * cnt_p_c + j)) > absmax
-                       ? std::abs(data->at(i * cnt_p_c + j))
-                       : absmax;
+      if (channel_first_dim) {
+        for (size_t i = 0; i < oc; i++) {
+          float absmax = std::abs(data->at(i * cnt_p_c));
+          for (size_t j = 0; j < cnt_p_c; j++) {
+            absmax = std::abs(data->at(i * cnt_p_c + j)) > absmax
+                         ? std::abs(data->at(i * cnt_p_c + j))
+                         : absmax;
+          }
+          absmax = absmax > 1e-8 ? absmax : 1e-8;
+          weight_scale_v_.push_back(absmax / get_f8e4m3_max());
         }
-        absmax = absmax > 1e-8 ? absmax : 1e-8;
-        weight_scale_v_.push_back(absmax / get_f8e4m3_max());
+      } else {
+        for (size_t i = 0; i < oc; i++) {
+          float absmax = std::abs(data->at(oc));
+          for (size_t j = 0; j < cnt_p_c; j++) {
+            absmax = std::abs(data->at(j * oc + i)) > absmax
+                         ? std::abs(data->at(j * oc + i))
+                         : absmax;
+          }
+          absmax = absmax > 1e-8 ? absmax : 1e-8;
+          weight_scale_v_.push_back(absmax / get_f8e4m3_max());
+        }
       }
       weight_scale_v = std::make_shared<std::vector<double>>(weight_scale_v_);
     }
+    if (channel_first_dim) {
 #pragma omp parallel for schedule(static, omp_schedule(count))
-    for (uint32_t i = 0; i < count; i++) {
-      data->at(i) = data->at(i) / weight_scale_v.get()->at((int)(i / cnt_p_c));
+      for (uint32_t i = 0; i < count; i++) {
+        data->at(i) =
+            data->at(i) / weight_scale_v.get()->at((int)(i / cnt_p_c));
+      }
+    } else {
+#pragma omp parallel for schedule(static, omp_schedule(count))
+      for (uint32_t i = 0; i < count; i++) {
+        data->at(i) = data->at(i) / weight_scale_v.get()->at(i % oc);
+      }
     }
   } else {
     float absmax = std::abs(data->at(0));

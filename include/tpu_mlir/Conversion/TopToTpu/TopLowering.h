@@ -404,7 +404,7 @@ static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
       } else if (stype.isFloat8E5M2()) {
         operands.push_back(wOp.clone_f8e5m2(from));
       } else if (stype.isFloat8E4M3FN()) {
-        operands.push_back(wOp.clone_f8e4m3(from, false));
+        operands.push_back(wOp.clone_f8e4m3(from, false, true));
       } else {
         operands.push_back(in);
       }

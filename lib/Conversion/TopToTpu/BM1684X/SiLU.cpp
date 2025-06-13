@@ -62,7 +62,11 @@ void SiLULowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void SiLULowering::LoweringF8(PatternRewriter &rewriter, top::SiLUOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  if (module::isBM1690Family()) {
+    auto op_ = set_mode(op);
+    lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
+  } else
+    LoweringF32(rewriter, op);
 }
 
 void SiLULowering::LoweringQuantized(PatternRewriter &rewriter,

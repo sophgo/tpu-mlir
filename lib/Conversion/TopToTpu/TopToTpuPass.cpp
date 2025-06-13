@@ -1880,7 +1880,11 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
                                              builder.getF64FloatAttr(const_v)));
         auto mulOp =
             builder.create<tpu::MulConstOp>(loc, newType, ValueRange{v}, attrs);
-        v.replaceAllUsesExcept(mulOp.getOutput(), mulOp);
+        for (auto u : user_op->getOperands()) {
+          if (u == v) {
+            u = mulOp.getOutput();
+          }
+        }
         return mulOp.getOutput();
       } else {
         auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});

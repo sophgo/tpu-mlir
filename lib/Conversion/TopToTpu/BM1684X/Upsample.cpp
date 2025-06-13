@@ -37,7 +37,7 @@ void UpsampleLowering::LoweringF16(PatternRewriter &rewriter,
 
 void UpsampleLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::UpsampleOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  lowering_common_f16<tpu::UpsampleOp>(rewriter, op);
 }
 
 void UpsampleLowering::LoweringQuantized(PatternRewriter &rewriter,

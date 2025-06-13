@@ -40,7 +40,8 @@ void SwapDimInnerLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SwapDimInnerLowering::LoweringF8(PatternRewriter &rewriter,
                                       top::SwapDimInnerOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::SwapDimInnerOp>(rewriter, op, isE4);
 }
 
 void SwapDimInnerLowering::LoweringQuantized(PatternRewriter &rewriter,
