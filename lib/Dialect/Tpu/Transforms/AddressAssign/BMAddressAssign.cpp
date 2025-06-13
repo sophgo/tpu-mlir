@@ -239,14 +239,14 @@ static void fix_addr_for_io_alone(mlir::ModuleOp &m, int64_t start,
   }
 }
 
-/** Set cmd-io-addr to new addresses. (The new addr spaces will NOT be allocated by runtime,
-*                                      they are only used as FAKE addrs.)
-* Inplace optimizations are also kept as many as we can. */
+/** Set cmd-io-addr to new addresses. (The new addr spaces will NOT be allocated
+ * by runtime, they are only used as FAKE addrs.) Inplace optimizations are also
+ * kept as many as we can. */
 static int64_t fix_addr_for_io_reloc(int64_t addr_limit, mlir::ModuleOp &m) {
 
   auto is_contain = [](const int64_t &a_start, const int64_t &a_end,
-                        const int64_t &b_start, const int64_t &b_end) -> bool {
-    return a_start <= b_start && a_end >= b_end;  // a contains b => true.
+                       const int64_t &b_start, const int64_t &b_end) -> bool {
+    return a_start <= b_start && a_end >= b_end; // a contains b => true.
   };
   auto get_addr_interval = [](Value v, int64_t &start, int64_t &end) -> void {
     start = module::getAddress(v);
@@ -254,18 +254,22 @@ static int64_t fix_addr_for_io_reloc(int64_t addr_limit, mlir::ModuleOp &m) {
   };
 
   const int64_t alignment = BM168x::ALIGNMENT;
-  // TODO: allow output reuse input addr. E.g. %output = tpu.Slice(%input), now in-palce opt is not applied.
+  // TODO: allow output reuse input addr. E.g. %output = tpu.Slice(%input), now
+  // in-palce opt is not applied.
   std::vector<Value> input_values, output_values, io_values_must_fix;
   module::getInputsOutputs(m, input_values, output_values);
-  io_values_must_fix.insert(io_values_must_fix.end(), input_values.begin(), input_values.end());
-  io_values_must_fix.insert(io_values_must_fix.end(), output_values.begin(), output_values.end());
+  io_values_must_fix.insert(io_values_must_fix.end(), input_values.begin(),
+                            input_values.end());
+  io_values_must_fix.insert(io_values_must_fix.end(), output_values.begin(),
+                            output_values.end());
 
   for (auto io_var : io_values_must_fix) {
     int64_t io_start, io_end;
     get_addr_interval(io_var, io_start, io_end);
     int64_t addr_offset = addr_limit - io_start;
     module::setAddress(io_var, addr_limit);
-    llvm::outs() << "[io_reloc] Fix IO addr for: " << module::getName(io_var) << "\n";
+    llvm::outs() << "[io_reloc] Fix IO addr for: " << module::getName(io_var)
+                 << "\n";
     addr_limit += align_up(module::getBytes(io_var), alignment);
 
     // support some (but not all) in-place ops
@@ -279,7 +283,8 @@ static int64_t fix_addr_for_io_reloc(int64_t addr_limit, mlir::ModuleOp &m) {
             get_addr_interval(v, imm_start, imm_end);
             if (is_contain(io_start, io_end, imm_start, imm_end)) {
               module::setAddress(v, imm_start + addr_offset);
-              llvm::outs() << "[io_reloc] Fix IO addr for: " << module::getName(v) << "\n";
+              llvm::outs() << "[io_reloc] Fix IO addr for: "
+                           << module::getName(v) << "\n";
             }
           }
         }
@@ -661,6 +666,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
     for (auto func : m.getOps<FuncOp>()) {
       auto mode = getRunMode(func);
+      if (mode == tpu::RunMode::UNKNOW) {
+        mode = RunMode::TPU_STATIC;
+      }
       if (is_static && mode != RunMode::TPU_STATIC) {
         continue;
       } else if (!is_static && mode == RunMode::TPU_STATIC) {
