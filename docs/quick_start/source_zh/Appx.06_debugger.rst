@@ -581,9 +581,9 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 .. figure:: ../assets/tdb_check_data_3.png
 
 
-**SOC 设备**
+**SoC 设备**
 
-当在 SOC 设备上执行时，为了在不引入 mlir 依赖的情况下执行比对，需要先在 Docker 环境内生成缓存，随后在 SOC 设备环境下使用缓存模型比对模型。
+当在 SoC 设备上执行时，为了在不引入 mlir 依赖的情况下执行比对，需要先在 Docker 环境内生成缓存，随后在 SoC 设备环境下使用缓存模型比对模型。
 
 .. code-block:: shell
 

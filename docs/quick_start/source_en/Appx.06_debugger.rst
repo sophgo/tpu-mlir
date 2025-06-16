@@ -565,9 +565,9 @@ An example of comparison error data is shown below:
 .. figure:: ../assets/tdb_check_data_3.png
 
 
-**SOC Devices**
+**SoC Devices**
 
-When executing on SOC devices, in order to perform comparisons without introducing an mlir dependency, it is necessary to first generate a cache within a Docker environment. Subsequently, the cached model can be used for comparison in the SOC device environment.
+When executing on SoC devices, in order to perform comparisons without introducing an mlir dependency, it is necessary to first generate a cache within a Docker environment. Subsequently, the cached model can be used for comparison in the SoC device environment.
 
 .. code-block:: shell
 

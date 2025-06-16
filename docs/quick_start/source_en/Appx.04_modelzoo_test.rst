@@ -63,12 +63,12 @@ Install the dependencies needed to run ``model-zoo`` on your system (outside of 
 In addition, tpu hardware needs to be invoked for performance and accuracy tests, so please install the runtime environment for the TPU hardware.
 
 
-Configure SOC device
+Configure SoC device
 ~~~~~~~~~~~~~~~~~~
 
 Note: If your device is a PCIE board, you can skip this section directly.
 
-The performance test only depends on the runtime environment for the TPU hardware, so after packaging models, compiled in the toolchain compilation environment, and ``model-zoo``, the performance test can be carried out in the SOC environment by ``tpu_perf``. However, the complete ``model-zoo`` as well as compiled output contents may not be fully copied to the SOC since the storage on the SOC device is limited. Here is a method to run tests on SOC devices through linux nfs remote file system mounts.
+The performance test only depends on the runtime environment for the TPU hardware, so after packaging models, compiled in the toolchain compilation environment, and ``model-zoo``, the performance test can be carried out in the SoC environment by ``tpu_perf``. However, the complete ``model-zoo`` as well as compiled output contents may not be fully copied to the SoC since the storage on the SoC device is limited. Here is a method to run tests on SoC devices through linux nfs remote file system mounts.
 
 First, install the nfs service on the toolchain environment server "host system":
 
@@ -102,7 +102,7 @@ In addition, you need to add read permissions to the images in the dataset direc
 
    $ chmod -R +r path/to/model-zoo/dataset
 
-Install the client on the SOC device and mount the shared directory:
+Install the client on the SoC device and mount the shared directory:
 
 .. code-block:: shell
 
@@ -110,11 +110,13 @@ Install the client on the SOC device and mount the shared directory:
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 
-In this way, the test directory is accessible in the SOC environment. The rest of the SOC test operation is basically the same as that of PCIE. Please refer to the following content for operation. The difference in command execution position and operating environment has been explained in the execution place.
+In this way, the test directory is accessible in the SoC environment. The rest of the SoC test operation is basically the same as that of PCIE. Please refer to the following content for operation. The difference in command execution position and operating environment has been explained in the execution place.
 
 
 Prepare dataset
 ~~~~~~~~~~~~~~~~~~
+
+Note: Due to the limited CPU resources of SoC devices, precision testing is not recommended. Therefore, the SoC device test can skip the data set preparation and precision test part.
 
 ImageNet
 --------
@@ -261,9 +263,9 @@ specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 
    $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
-**SOC device**
+**SoC device**
 
-The SOC device uses the following steps to test the performance of the generated high priority model ``bmodel``.
+The SoC device uses the following steps to test the performance of the generated high priority model ``bmodel``.
 
 .. code-block:: shell
 
@@ -287,6 +289,8 @@ After that, performance data is available in ``output/stats.csv``, in which the 
 
 Precision test
 ---------
+
+Note: Due to the limited CPU resources of SoC devices, precision testing is not recommended. Therefore, the SoC device test can skip the precision test part.
 
 Running the test needs to be done in an environment outside Docker, it is assumed that you have installed and configured the runtime environment for the TPU hardware, so you can exit the Docker environment:
 

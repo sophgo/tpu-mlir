@@ -63,12 +63,12 @@ model-zoo的目录结构如下：
 另外，进行性能和精度测试时需要调用 TPU 硬件，请安装 TPU 硬件对应的 runtime 环境。
 
 
-配置SOC设备
+配置SoC设备
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 注意: 如果您的设备是 PCIE 板卡, 可以直接跳过该节内容。
 
-性能测试只依赖于 TPU 硬件对应的 runtime 环境, 所以在工具链编译环境编译完的模型连同 ``model-zoo`` 整个打包, 就可以在 SOC 环境使用 ``tpu_perf`` 进行性能与精度测试。但是, SOC设备上存储有限, 完整的 ``model-zoo`` 与编译输出内容可能无法完整拷贝到 SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现在 SOC 设备上运行测试的方法。
+性能测试只依赖于 TPU 硬件对应的 runtime 环境, 所以在工具链编译环境编译完的模型连同 ``model-zoo`` 整个打包, 就可以在 SoC 环境使用 ``tpu_perf`` 进行性能测试。但是, SoC设备上存储有限, 完整的 ``model-zoo`` 与编译输出内容可能无法完整拷贝到 SoC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现在 SoC 设备上运行测试的方法。
 
 首先, 在工具链环境服务器『host 系统』安装 nfs 服务:
 
@@ -102,7 +102,7 @@ model-zoo的目录结构如下：
 
    $ chmod -R +r path/to/model-zoo/dataset
 
-在 SOC 设备上安装客户端并挂载该共享目录:
+在 SoC 设备上安装客户端并挂载该共享目录:
 
 .. code-block:: shell
 
@@ -110,11 +110,13 @@ model-zoo的目录结构如下：
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 
-这样便可以在 SOC 环境访问测试目录。SOC 测试其余的操作与 PCIE 基本一致, 请参考下文进行操作; 运行环境命令执行位置的差别, 已经在执行处添加说明。
+这样便可以在 SoC 环境访问测试目录。SoC 测试其余的操作与 PCIE 基本一致, 请参考下文进行操作; 运行环境命令执行位置的差别, 已经在执行处添加说明。
 
 
 准备数据集
 ~~~~~~~~~~~~
+
+注意：由于SoC设备CPU资源有限，不推荐进行精度测试，因此SoC设备测试可以跳过数据集准备与精度测试部分
 
 ImageNet
 --------
@@ -257,9 +259,9 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 
    $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
-**SOC设备**
+**SoC设备**
 
-SOC 设备使用以下步骤, 测试生成的高优先级模型的 ``bmodel`` 性能。
+SoC 设备使用以下步骤, 测试生成的高优先级模型的 ``bmodel`` 性能。
 
 
 .. code-block:: shell
@@ -285,6 +287,8 @@ SOC 设备使用以下步骤, 测试生成的高优先级模型的 ``bmodel`` �
 
 精度测试
 ---------
+
+注意：由于SoC设备CPU资源有限，不推荐进行精度测试，因此SoC设备测试可以跳过精度测试部分
 
 精度测试需要在 Docker 外面的环境中进行，此处假设已经安装并配置好了 TPU 硬件对应的 runtime 环境。退出 Docker 环境:
 
@@ -385,5 +389,5 @@ no module named 'xxx'
 
 精度测试因为内存不足被kill
 --------------------------
-对于YOLO系列的模型精度测试，可能需要4G左右的内存空间。SOC环境如果存在内存不足被kill的情况，可以参考SOPHON
+对于YOLO系列的模型精度测试，可能需要4G左右的内存空间。SoC环境如果存在内存不足被kill的情况，可以参考SOPHON
 BSP 开发手册的板卡预制内存布局章节扩大内存。
