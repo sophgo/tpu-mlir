@@ -226,11 +226,9 @@ class Qwen2VLConverter(LlmConverter):
             new_op = self.layer_norm(vit_mlir, in_op, norm2, eps=1e-6)
             fc1_op = self.linear(vit_mlir, mlp_fc1, new_op, [self.embed_dim, mlp_dim],
                                  [self.num_patches, mlp_dim])
-            silu_op = top.SiLUOp(T([self.num_patches, mlp_dim]),
-                                 fc1_op,
-                                 loc=L(mlp_fc1 + ".silu"),
-                                 ip=ip).output
-            up_op = self.linear(vit_mlir, mlp_fc2, silu_op, [mlp_dim, self.embed_dim],
+            # quick gelu
+            act_op = self.activate(vit_mlir, fc1_op, self.vconfig.hidden_act, mlp_fc1)
+            up_op = self.linear(vit_mlir, mlp_fc2, act_op, [mlp_dim, self.embed_dim],
                                 [self.num_patches, self.embed_dim])
             new_op = top.AddOp(T(in_shape), [in_op, up_op], loc=L(mlp_fc2 + ".add"), ip=ip).output
             return new_op
@@ -369,8 +367,7 @@ class Qwen2VLConverter(LlmConverter):
         new_op = top.ReshapeOp(T([in_dim, out_dim]), new_op, loc=L(merger_ln_q + ".reshape"),
                                ip=ip).output
         new_op = self.linear(vit_mlir, merger_mlp0, new_op, [out_dim, out_dim], [in_dim, out_dim])
-        new_op = top.GELUOp(T([in_dim, out_dim]), new_op, loc=L(merger_mlp0 + ".gelu"),
-                            ip=ip).output
+        new_op = self.activate(vit_mlir, new_op, ActType.GELU, merger_mlp0)
         new_op = self.linear(vit_mlir, merger_mlp2, new_op, [out_dim, self.hidden_size],
                              [in_dim, self.hidden_size])
         vit_mlir.create_return_op([new_op])

@@ -47,7 +47,7 @@ void SwishLowering::LoweringINT8(PatternRewriter &rewriter, top::SwishOp op,
 
 void SwishLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::SwishOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  LoweringF32(rewriter, op);
 }
 
 void SwishLowering::LoweringF16(PatternRewriter &rewriter,

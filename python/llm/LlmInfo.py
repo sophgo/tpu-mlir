@@ -46,6 +46,7 @@ class ActType:
     SWISH = "swish"
     SILU = "silu"
     TANH = "tanh"
+    QUICK_GELU = "quick_gelu"
     GELU_PYTORCH_TANH = "gelu_pytorch_tanh"
 
 

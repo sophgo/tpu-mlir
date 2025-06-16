@@ -20,6 +20,7 @@ import sys
 from mlir.ir import *
 import mlir.dialects.top as top
 
+
 class LlmConverter(BaseConverter):
 
     def __init__(self, args, config):
@@ -47,7 +48,7 @@ class LlmConverter(BaseConverter):
         # init config
         self.load_pretrained(config)
         self.llm_config.max_position_embeddings = self.seq_length
-        self.llm_config.rope_scaling = None # no need rope scaling
+        self.llm_config.rope_scaling = None  # no need rope scaling
         # get attributes
         self.init_config()
         self.do_vit = False
@@ -127,7 +128,10 @@ class LlmConverter(BaseConverter):
         self.model_type = self.config.model_type
         self.model_info = COMMON_INFO
         # default llm_config is model config; but in vlm, maybe it is not the same
-        self.llm_config = config
+        if hasattr(self.config, "text_config"):
+            self.llm_config = self.config.text_config
+        else:
+            self.llm_config = config
         self.llm_type = self.llm_config.model_type
 
     def rotary_embedding(self):
@@ -172,6 +176,33 @@ class LlmConverter(BaseConverter):
                                eps=eps,
                                loc=self.get_loc(loc_name, mlir_gen),
                                ip=mlir_gen.insert_point).output
+
+    def activate(self, mlir_gen, in_op, act_type: ActType, path: str):
+        input_shape = list(in_op.type.shape)
+        if act_type == ActType.SILU:
+            return top.SiLUOp(mlir_gen.get_tensor_type(input_shape),
+                              in_op,
+                              loc=self.get_loc(path + ".silu", mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        elif act_type == ActType.GELU_PYTORCH_TANH:
+            return top.GELUOp(mlir_gen.get_tensor_type(input_shape),
+                              in_op,
+                              approx_mode=StringAttr.get("tanh"),
+                              loc=self.get_loc(path + ".gelu", mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        elif act_type == ActType.QUICK_GELU:
+            return top.SwishOp(mlir_gen.get_tensor_type(input_shape),
+                               in_op,
+                               beta=1.702,
+                               loc=self.get_loc(path + ".swish", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        elif act_type == ActType.GELU:
+            return top.GELUOp(mlir_gen.get_tensor_type(input_shape),
+                              in_op,
+                              loc=self.get_loc(path + ".gelu", mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        else:
+            raise NotImplementedError(f"Unsupported activation type: {act_type}")
 
     def unpack_weights(self, qweight, qzeros, bits, quant_mode):
         dtype = np.int32
@@ -792,20 +823,7 @@ class LlmConverter(BaseConverter):
             gate_op = self.linear(mlir_gen, mlp_gate, new_op,
                                   [self.hidden_size, self.intermediate_size],
                                   [1, len, self.intermediate_size])
-            if self.hidden_act == ActType.SILU:
-                act_op = top.SiLUOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
-                                    gate_op,
-                                    loc=self.get_loc(mlp_gate + ".silu", mlir_gen),
-                                    ip=ip).output
-            elif self.hidden_act == ActType.GELU_PYTORCH_TANH:
-                act_op = top.GELUOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
-                                    gate_op,
-                                    approx_mode=StringAttr.get("tanh"),
-                                    loc=self.get_loc(mlp_gate + ".gelu", mlir_gen),
-                                    ip=ip).output
-            else:
-                raise NotImplementedError(f"Unsupported activation type: {self.hidden_act}")
-
+            act_op = self.activate(mlir_gen, gate_op, self.hidden_act, mlp_gate)
             up_op = self.linear(mlir_gen, mlp_up, new_op,
                                 [self.hidden_size, self.intermediate_size],
                                 [1, len, self.intermediate_size])
@@ -819,10 +837,10 @@ class LlmConverter(BaseConverter):
                 down_op = self.rms_norm(mlir_gen, down_op, post_mlp_ln)
             if self.llm_type == LlmType.MINICPM4:
                 down_op = top.MulConstOp(mlir_gen.get_tensor_type(input_shape),
-                                        down_op,
-                                        const_val=self.scale_depth / np.sqrt(self.num_layers),
-                                        loc=self.get_loc(mlp_down + ".scale", mlir_gen),
-                                        ip=ip).output
+                                         down_op,
+                                         const_val=self.scale_depth / np.sqrt(self.num_layers),
+                                         loc=self.get_loc(mlp_down + ".scale", mlir_gen),
+                                         ip=ip).output
             last_name = "output_states"
             new_name = last_name if idx != self.num_layers - 1 else f"{mlp_down}.add"
             new_op = top.AddOp(mlir_gen.get_tensor_type(input_shape), [in_op, down_op],

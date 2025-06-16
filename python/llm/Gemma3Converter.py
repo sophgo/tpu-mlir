@@ -145,19 +145,7 @@ class Gemma3Converter(LlmConverter):
             fc1_op = self.linear(vit_mlir, f"{layer_path}.mlp.fc1", new_op,
                                  [embed_dim, intermediate_size],
                                  [1, num_patches, intermediate_size])
-            if hidden_act == ActType.SILU:
-                act_op = top.SiLUOp(T([1, num_patches, intermediate_size]),
-                                    fc1_op,
-                                    loc=L(layer_path + ".silu"),
-                                    ip=ip).output
-            elif hidden_act == ActType.GELU_PYTORCH_TANH:
-                act_op = top.GELUOp(T([1, num_patches, intermediate_size]),
-                                    fc1_op,
-                                    approx_mode=StringAttr.get("tanh"),
-                                    loc=L(layer_path + ".gelu"),
-                                    ip=ip).output
-            else:
-                raise NotImplementedError(f"Unsupported activation type: {hidden_act}")
+            act_op = self.activate(vit_mlir, fc1_op, hidden_act, layer_path)
             fc2_op = self.linear(vit_mlir, f"{layer_path}.mlp.fc2", act_op,
                                  [intermediate_size, embed_dim], in_shape)
             new_op = top.AddOp(T([1, num_patches, embed_dim]), [in_op, fc2_op],
