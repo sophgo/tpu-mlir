@@ -20,7 +20,8 @@ class QDropFakeQuantize(QuantizeBase):
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.calculate_qparams()
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.ch_axis != -1:
                 self.scale.data = torch.ones_like(_scale)
                 self.zero_point.resize_(_zero_point.shape)
@@ -32,8 +33,7 @@ class QDropFakeQuantize(QuantizeBase):
             x_orig = X
             if self.is_per_channel:
                 X = _fake_quantize_learnable_per_channel_affine_training(
-                    X, self.scale, self.zero_point, self.ch_axis,
-                    self.quant_min, self.quant_max)
+                    X, self.scale, self.zero_point, self.ch_axis, self.quant_min, self.quant_max)
             else:
                 X = _fake_quantize_learnable_per_tensor_affine_training(
                     X, self.scale, self.zero_point, self.quant_min, self.quant_max)
@@ -60,7 +60,8 @@ def round_ste(x: torch.Tensor):
     return (x.round() - x).detach() + x
 
 
-def _fake_quantize_learnable_per_channel_affine_training(x, scale, zero_point, ch_axis, quant_min, quant_max):
+def _fake_quantize_learnable_per_channel_affine_training(x, scale, zero_point, ch_axis, quant_min,
+                                                         quant_max):
     new_shape = [1] * len(x.shape)
     new_shape[ch_axis] = x.shape[ch_axis]
     scale = scale.reshape(new_shape)

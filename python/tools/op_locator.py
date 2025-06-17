@@ -15,8 +15,8 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Locate op in final.mlir according to the given core_id, subnet_id, tiu/gdma cmd_id ."
-    )
+        description=
+        "Locate op in final.mlir according to the given core_id, subnet_id, tiu/gdma cmd_id .")
     parser.add_argument(
         "tensor_location",
         type=str,
@@ -65,15 +65,11 @@ if __name__ == "__main__":
         if op_dict["is_local"]:
             local_op_file_line_buffer[op_dict["file-line"]] += 1
 
-        if (
-            op_dict["tiu_dma_id(before)"][args.cmd_type]
-            < args.cmd_id
-            <= op_dict["tiu_dma_id(after)"][args.cmd_type]
-        ):
+        if (op_dict["tiu_dma_id(before)"][args.cmd_type] < args.cmd_id <=
+                op_dict["tiu_dma_id(after)"][args.cmd_type]):
             file_line_result = op_dict["file-line"]
-            repeat_count = local_op_file_line_buffer[
-                op_dict["file-line"]
-            ]  # if op is in layer group, it may appears multiple times. Otherwise, it only appears once.
+            repeat_count = local_op_file_line_buffer[op_dict[
+                "file-line"]]  # if op is in layer group, it may appears multiple times. Otherwise, it only appears once.
             break
     if file_line_result:
         if args.cmd_type == 0:

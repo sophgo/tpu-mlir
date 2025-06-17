@@ -17,7 +17,6 @@ from torch import nn
 import shutil
 from typing import List, Union, Dict
 
-
 sh_template = r"""
 
 model_transform.py \
@@ -206,23 +205,26 @@ def shape_list_to_str(shape_list: List[List[int]]) -> List[str]:
     return res
 
 
-def generate_shell(
-    model_name: str, shape_list: List[List[int]], workspace_root: str, suf: str = "pt"
-):
+def generate_shell(model_name: str,
+                   shape_list: List[List[int]],
+                   workspace_root: str,
+                   suf: str = "pt"):
     shape_str = ",".join(shape_list_to_str(shape_list))
     sh = sh_template.format(model_name=model_name, shape_str=f"[{shape_str}]", suf=suf)
     with open(os.path.join(workspace_root, f"convert.sh"), "w") as w:
         w.write(sh)
 
 
-def generate_yaml(
-    model_name: str, shape_list: List[List[int]], workspace_root: str, suf: str = "pt"
-):
+def generate_yaml(model_name: str,
+                  shape_list: List[List[int]],
+                  workspace_root: str,
+                  suf: str = "pt"):
     shape_str = ",".join(shape_list_to_str(shape_list))
     shape_list_str = shape_list_str = f" - {shape_str}"
-    yaml = yaml_template.format(
-        model_name=model_name, gops=[1, 1], shape_list=shape_list_str, suf=suf
-    )
+    yaml = yaml_template.format(model_name=model_name,
+                                gops=[1, 1],
+                                shape_list=shape_list_str,
+                                suf=suf)
     with open(os.path.join(workspace_root, f"{model_name}.mlir.config.yaml"), "w") as w:
         w.write(yaml)
 
@@ -280,14 +282,11 @@ def generate(
 
     shape_list = [list(i.shape) for i in input_lis if hasattr(i, "shape")]
     # generate convert.sh + mlir.config.yaml
-    generate_shell(
-        model_name, shape_list, workspace_root, suf="onnx" if use_onnx else "pt"
-    )
-    generate_yaml(
-        model_name, shape_list, workspace_root, suf="onnx" if use_onnx else "pt"
-    )
+    generate_shell(model_name, shape_list, workspace_root, suf="onnx" if use_onnx else "pt")
+    generate_yaml(model_name, shape_list, workspace_root, suf="onnx" if use_onnx else "pt")
 
     input_names = get_ordered_input_names(model.forward)
+
     def detach(v):
         try:
             return v.cpu().detach().numpy()
@@ -308,8 +307,8 @@ def generate(
         model,  # model being run
         tuple(input_lis),  # model input (or a tuple for multiple inputs)
         os.path.join(
-            workspace_root, f"{model_name}.onnx"
-        ),  # where to save the model (can be a file or file-like object)
+            workspace_root,
+            f"{model_name}.onnx"),  # where to save the model (can be a file or file-like object)
         export_params=True,  # store the trained parameter weights inside the model file
         opset_version=10,  # the ONNX version to export the model to
         do_constant_folding=True,

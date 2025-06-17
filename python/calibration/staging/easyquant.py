@@ -25,8 +25,8 @@ from .utils import cal_loss
 from .utils import cosine_sim
 
 import pymlir
-pymlir.set_mem_mode("force_value_mem")
 
+pymlir.set_mem_mode("force_value_mem")
 
 EASY_QUANT_OPERATION = [
     # 'top.Conv', 'top.MatMul'#
@@ -35,6 +35,7 @@ EASY_QUANT_OPERATION = [
 
 
 class EasyQuant:
+
     def __init__(self, args):
         self.scales = None
         self.scales4 = None
@@ -105,29 +106,34 @@ class EasyQuant:
         top_ops = {op.name: op for op in self.parser.ops}
         exclude = excepts.split(',')
         for op in top_ops:
-            if top_ops[op].type in EASY_QUANT_OPERATION and top_ops[op].name not in exclude and self.included(top_ops[op].name):
+            if top_ops[op].type in EASY_QUANT_OPERATION and top_ops[
+                    op].name not in exclude and self.included(top_ops[op].name):
                 if top_ops[op].type == 'top.Conv':
                     if int(top_ops[op].attrs['group'].split(':')[0]) > 1:
                         continue
-                if len(top_ops[op].opds) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
+                if len(top_ops[op].opds
+                       ) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
                     self.finetune_layers.append(op)
                     self.finetune_layer_weights[op] = top_ops[op].opds[1]
-                if len(top_ops[op].opds) > 2 and top_ops[op].opds[2] in self.module.all_weight_names:
+                if len(top_ops[op].opds
+                       ) > 2 and top_ops[op].opds[2] in self.module.all_weight_names:
                     self.finetune_layer_bias[op] = top_ops[op].opds[2]
 
     def search_best_th(self, op, opd):
         if len(self.orig_scales4) == 0:
             for op_ in self.scales4:
-                self.orig_scales4[op_] = np.maximum(np.abs(self.scales4[op_][1]), np.abs(self.scales4[op_][2]))
+                self.orig_scales4[op_] = np.maximum(np.abs(self.scales4[op_][1]),
+                                                    np.abs(self.scales4[op_][2]))
             self.best_scales4 = self.orig_scales4
         opdname = self.parser.get_opds_by_op_name(op)[opd]
-        otheropd = self.parser.get_opds_by_op_name(op)[1-opd]
+        otheropd = self.parser.get_opds_by_op_name(op)[1 - opd]
         if opdname in self.finetune_layer_weights[op]:  # handle weight input
             best_sim = np.zeros(self.steps)
             for thidx in np.arange(self.steps):
                 for sample_idx in np.arange(self.num_sample):
-                    th = self.finetune_layer_weight_orig_ths[opdname]*self.alpha + self.finetune_layer_weight_orig_ths[opdname]*(
-                        self.beta-self.alpha)/self.steps * (thidx + 1)
+                    th = self.finetune_layer_weight_orig_ths[
+                        opdname] * self.alpha + self.finetune_layer_weight_orig_ths[opdname] * (
+                            self.beta - self.alpha) / self.steps * (thidx + 1)
                     self.quant_weight(op, th, 4)
                     self.quant_active(otheropd, self.best_scales4[otheropd], sample_idx, 4)
                     outputs = self.module.invoke_at(op).copy()
@@ -136,7 +142,8 @@ class EasyQuant:
                     refoutputs = self.module.invoke_at(op).copy()
                     best_sim[thidx] += self.calculate_sim(outputs, refoutputs)
             best_th = (np.argmax(best_sim) + 1) * self.finetune_layer_weight_orig_ths[opdname] * (
-                self.beta - self.alpha)/self.steps + self.finetune_layer_weight_orig_ths[opdname] * self.alpha
+                self.beta -
+                self.alpha) / self.steps + self.finetune_layer_weight_orig_ths[opdname] * self.alpha
             # print(f'best SIM after searching {opdname} is {best_sim[np.argmax(best_sim)]}')
             # print(f'best th of {opdname} change from {self.finetune_layer_weight_best_ths[opdname]} to {best_th}')
             self.finetune_layer_weight_best_ths[opdname] = best_th
@@ -188,8 +195,8 @@ class EasyQuant:
         tmpout /= self.num_sample
         shape = tmpout.shape
         origbias = self.orig_bias[op].copy()
-        tmpbias = np.sum(tmpout.reshape(-1, tmpout.shape[len(shape)-1]),
-                         axis=0).reshape(origbias.shape) / (tmpout.size / tmpout.shape[-1])
+        tmpbias = np.sum(tmpout.reshape(-1, tmpout.shape[len(shape) - 1]), axis=0).reshape(
+            origbias.shape) / (tmpout.size / tmpout.shape[-1])
         self.update_bias(op, tmpbias)
 
     def learn_one(self, total):
@@ -214,7 +221,7 @@ class EasyQuant:
                 if isweight:
                     self.restore_weight(op)
                 # else:
-                    # self.ref_tensors.consumed_tensor(opdname)
+                # self.ref_tensors.consumed_tensor(opdname)
         for op in self.best_scales4:
             if self.best_scales4[op] != self.scales4[op][0] and op in self.finetune_layers:
                 print(f'change {op} from {self.scales4[op][0]} to {self.best_scales4[op]}')
@@ -226,21 +233,22 @@ class EasyQuant:
                 if op not in self.finetune_layer_weights:
                     continue
                 weightname = self.finetune_layer_weights[op]
-                if self.finetune_layer_weight_best_ths[weightname] != self.finetune_layer_weight_orig_ths[weightname]:
+                if self.finetune_layer_weight_best_ths[
+                        weightname] != self.finetune_layer_weight_orig_ths[weightname]:
                     print(
-                        f'change {weightname} from {self.finetune_layer_weight_orig_ths[weightname]} to {self.finetune_layer_weight_best_ths[weightname]}')
+                        f'change {weightname} from {self.finetune_layer_weight_orig_ths[weightname]} to {self.finetune_layer_weight_best_ths[weightname]}'
+                    )
                     pbar_detail.update()
                     weight = self.orig_weights[op].copy()
                     bitwidth = 4
-                    qmax = 2**(bitwidth-1)-1
-                    qmin = - 2**(bitwidth-1) + 1
-                    step = self.finetune_layer_weight_best_ths[weightname] / (2**(bitwidth-1)-1)
+                    qmax = 2**(bitwidth - 1) - 1
+                    qmin = -2**(bitwidth - 1) + 1
+                    step = self.finetune_layer_weight_best_ths[weightname] / (2**(bitwidth - 1) - 1)
                     weight = np.clip(np.round(weight / step), qmin, qmax)
                     weight = weight * step
                     self.update_weight(op, weight)
                     if op in self.finetune_layer_bias:  # when with weight and with bias, can do bias correction
-                        pbar_detail.set_postfix_str(
-                            f"Correct {op}")
+                        pbar_detail.set_postfix_str(f"Correct {op}")
                         pbar_detail.update()
                         self.bias_correction(op)
         else:  # output new weight th to file
@@ -254,34 +262,40 @@ class EasyQuant:
 
     def backup_weights(self):
         for op in self.finetune_layers:
-            self.orig_weights[op] = copy.deepcopy(self.module.get_tensor(self.finetune_layer_weights[op]))
+            self.orig_weights[op] = copy.deepcopy(
+                self.module.get_tensor(self.finetune_layer_weights[op]))
             if op in self.finetune_layer_bias:
-                self.orig_bias[op] = copy.deepcopy(self.module.get_tensor(self.finetune_layer_bias[op]))
+                self.orig_bias[op] = copy.deepcopy(
+                    self.module.get_tensor(self.finetune_layer_bias[op]))
             oc = self.orig_weights[op].shape[0]
             if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
-                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op].reshape(oc, -1)), axis=1)
-                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8, self.weights_scales[op], 1e-8)
+                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op].reshape(oc, -1)),
+                                                 axis=1)
+                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8,
+                                                   self.weights_scales[op], 1e-8)
             elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
                 self.weights_scales[op] = np.max(np.abs(self.orig_weights[op]))
-                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8, self.weights_scales[op], 1e-8)
+                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8,
+                                                   self.weights_scales[op], 1e-8)
             else:
                 print("not support!")
                 sys.exit(1)
 
     def quant_weight(self, op, scale, bitwidth=8):
         tmpweight = self.orig_weights[op].copy()
-        step = scale / (2**(bitwidth-1)-1)
-        tmpweight = np.round(tmpweight/step)
-        tmpweight = np.clip(tmpweight, -2**(bitwidth-1)+1, 2**(bitwidth-1)-1)  # use -7 to 7 for right absmax
-        tmpweight = tmpweight*step
+        step = scale / (2**(bitwidth - 1) - 1)
+        tmpweight = np.round(tmpweight / step)
+        tmpweight = np.clip(tmpweight, -2**(bitwidth - 1) + 1,
+                            2**(bitwidth - 1) - 1)  # use -7 to 7 for right absmax
+        tmpweight = tmpweight * step
         self.module.set_tensor(self.finetune_layer_weights[op], tmpweight)
 
     def quant_active(self, active_name, scale, sample_idx, bitwidth=8):
         tmpactive = self.ref_tensors.get(active_name, sample_idx).copy()
-        step = scale / (2**(bitwidth-1)-1)
-        tmpactive = np.round(tmpactive/step)
-        tmpactive = np.clip(tmpactive, -2**(bitwidth-1), 2**(bitwidth-1)-1)
-        tmpactive = tmpactive*step
+        step = scale / (2**(bitwidth - 1) - 1)
+        tmpactive = np.round(tmpactive / step)
+        tmpactive = np.clip(tmpactive, -2**(bitwidth - 1), 2**(bitwidth - 1) - 1)
+        tmpactive = tmpactive * step
         self.module.set_tensor(active_name, tmpactive)
 
     def restore_weight(self, op):
@@ -292,13 +306,13 @@ class EasyQuant:
         self.module.set_tensor(active_name, tmpactive)
 
     def l2norm(self, pred, ref):
-        return - np.sum((pred.flatten() - ref.flatten())**2)
+        return -np.sum((pred.flatten() - ref.flatten())**2)
 
     def wl2norm(self, pred, ref):
-        return - np.sum(np.abs(ref.flatten()) * (pred.flatten() - ref.flatten())**2)
+        return -np.sum(np.abs(ref.flatten()) * (pred.flatten() - ref.flatten())**2)
 
     def wsl2norm(self, pred, ref):
-        return - np.sum(ref.flatten() * (ref.flatten() - pred.flatten())**2)
+        return -np.sum(ref.flatten() * (ref.flatten() - pred.flatten())**2)
 
     def hessian(self, pred, ref):
         return None

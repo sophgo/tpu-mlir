@@ -8,9 +8,7 @@ import argparse
 def find_Start_Cycle_row_index_by_keyword(file_path, keyword, num_core):
     xl = pd.ExcelFile(file_path)
     duration_sheet_name = xl.sheet_names[1] if num_core != 2 else xl.sheet_names[3]
-    bandwidth_usage_sheet_name = (
-        xl.sheet_names[2] if num_core != 2 else xl.sheet_names[4]
-    )
+    bandwidth_usage_sheet_name = (xl.sheet_names[2] if num_core != 2 else xl.sheet_names[4])
     df_duration = xl.parse(duration_sheet_name)
     df_bandwidth_usage = xl.parse(bandwidth_usage_sheet_name)
     for index, row in df_duration.iterrows():
@@ -31,9 +29,7 @@ def read_perfAI_excel(perfAI_excel_path, num_core):
     (
         TIU_Start_Cycle_row_index,
         DMA_Start_Cycle_row_index,
-    ) = find_Start_Cycle_row_index_by_keyword(
-        perfAI_excel_path, "Start Cycle", num_core
-    )
+    ) = find_Start_Cycle_row_index_by_keyword(perfAI_excel_path, "Start Cycle", num_core)
     duration_sheet_index = 1 if num_core != 2 else 3
     bandwidth_usage_sheet_index = 2 if num_core != 2 else 4
 
@@ -42,7 +38,11 @@ def read_perfAI_excel(perfAI_excel_path, num_core):
         sheet_name=duration_sheet_index,
         skiprows=TIU_Start_Cycle_row_index,
         usecols=["Cmd Id", "Start Cycle", "End Cycle"],
-        dtype={"Cmd Id": int, "Start Cycle": float, "End Cycle": float},
+        dtype={
+            "Cmd Id": int,
+            "Start Cycle": float,
+            "End Cycle": float
+        },
     )
 
     bandwidth_usage_data_df = pd.read_excel(
@@ -71,16 +71,14 @@ def read_mlir_json(
     with open(mlir_json_path, "r") as f:
         data = json.load(f)
 
-    csv_data = [
-        [
-            "File Line",
-            "Opcode",
-            "TIU DMA ID (Before)",
-            "TIU DMA ID (After)",
-            "TIU ID",
-            "DMA ID",
-        ]
-    ]
+    csv_data = [[
+        "File Line",
+        "Opcode",
+        "TIU DMA ID (Before)",
+        "TIU DMA ID (After)",
+        "TIU ID",
+        "DMA ID",
+    ]]
     duration_dict = {}
     bandwidth_usage_dict = {}
     opname_dict = {}
@@ -92,26 +90,16 @@ def read_mlir_json(
         tiu_dma_id_after = items.get("tiu_dma_id(after)")
         tiu_id = [tiu_dma_id_before[0], tiu_dma_id_after[0]]
         dma_id = [tiu_dma_id_before[1], tiu_dma_id_after[1]]
-        csv_data.append(
-            [file_line, opcode, tiu_dma_id_before, tiu_dma_id_after, tiu_id, dma_id]
-        )
+        csv_data.append([file_line, opcode, tiu_dma_id_before, tiu_dma_id_after, tiu_id, dma_id])
 
-        if not (
-            tiu_id[0] + 1 < len(duration_data_df) and tiu_id[1] < len(duration_data_df)
-        ):
+        if not (tiu_id[0] + 1 < len(duration_data_df) and tiu_id[1] < len(duration_data_df)):
             continue
-        if not (
-            dma_id[0] + 1 < len(bandwidth_usage_data_df)
-            and dma_id[1] < len(bandwidth_usage_data_df)
-        ):
+        if not (dma_id[0] + 1 < len(bandwidth_usage_data_df)
+                and dma_id[1] < len(bandwidth_usage_data_df)):
             continue
 
-        filtered_duration_df1 = duration_data_df[
-            duration_data_df["Cmd Id"] == tiu_id[0] + 1
-        ]
-        filtered_duration_df2 = duration_data_df[
-            duration_data_df["Cmd Id"] == tiu_id[1]
-        ]
+        filtered_duration_df1 = duration_data_df[duration_data_df["Cmd Id"] == tiu_id[0] + 1]
+        filtered_duration_df2 = duration_data_df[duration_data_df["Cmd Id"] == tiu_id[1]]
 
         if not filtered_duration_df1.empty and not filtered_duration_df2.empty:
             tiu_start_cycle_left = float(filtered_duration_df1["Start Cycle"].values[0])
@@ -119,12 +107,10 @@ def read_mlir_json(
         else:
             continue
 
-        filtered_BW_usage_df1 = bandwidth_usage_data_df[
-            bandwidth_usage_data_df["Cmd Id"] == dma_id[0] + 1
-        ]
-        filtered_BW_usage_df2 = bandwidth_usage_data_df[
-            bandwidth_usage_data_df["Cmd Id"] == dma_id[1]
-        ]
+        filtered_BW_usage_df1 = bandwidth_usage_data_df[bandwidth_usage_data_df["Cmd Id"] ==
+                                                        dma_id[0] + 1]
+        filtered_BW_usage_df2 = bandwidth_usage_data_df[bandwidth_usage_data_df["Cmd Id"] ==
+                                                        dma_id[1]]
 
         if not filtered_BW_usage_df1.empty and not filtered_BW_usage_df2.empty:
             dma_start_cycle_left = float(filtered_BW_usage_df1["Start Cycle"].values[0])
@@ -146,14 +132,11 @@ def read_mlir_json(
         )
 
         duration_dict[file_line] = duration_dict.get(file_line, 0) + duration_op
-        bandwidth_usage_dict[file_line] = (
-            bandwidth_usage_dict.get(file_line, 0) + bandwidth_usage_op
-        )
+        bandwidth_usage_dict[file_line] = (bandwidth_usage_dict.get(file_line, 0) +
+                                           bandwidth_usage_op)
 
         sorted_duration = sorted(duration_dict.items(), key=lambda x: x[0])
-        sorted_bandwidth_usage = sorted(
-            bandwidth_usage_dict.items(), key=lambda x: x[0]
-        )
+        sorted_bandwidth_usage = sorted(bandwidth_usage_dict.items(), key=lambda x: x[0])
         opname_dict[file_line] = opcode
 
     json_message_csv_file_output_path = "json_message_output.csv"
@@ -181,32 +164,21 @@ def calculate_duration(
     elif dma_id[0] == dma_id[1]:
         return (tiu_end_cycle_right - tiu_start_cycle_left) / tiu_frequency * 1000
     else:
-        merge_interval_left = (
-            min(
-                tiu_start_cycle_left / tiu_frequency,
-                dma_start_cycle_left / dma_frequency,
-            )
-            * 1000
-        )
+        merge_interval_left = (min(
+            tiu_start_cycle_left / tiu_frequency,
+            dma_start_cycle_left / dma_frequency,
+        ) * 1000)
         merge_interval_right = (
-            max(
-                tiu_end_cycle_right / tiu_frequency, dma_end_cycle_right / dma_frequency
-            )
-            * 1000
-        )
+            max(tiu_end_cycle_right / tiu_frequency, dma_end_cycle_right / dma_frequency) * 1000)
         return merge_interval_right - merge_interval_left
 
 
 def calculate_bandwidth_usage(dma_id, bandwidth_usage_data_df):
-    return (
-        bandwidth_usage_data_df.loc[
-            (bandwidth_usage_data_df["Cmd Id"] >= dma_id[0] + 1)
-            & (bandwidth_usage_data_df["Cmd Id"] <= dma_id[1]),
-            "DMA data size(B)",
-        ]
-        .astype(float)
-        .sum()
-    )
+    return (bandwidth_usage_data_df.loc[
+        (bandwidth_usage_data_df["Cmd Id"] >= dma_id[0] + 1)
+        & (bandwidth_usage_data_df["Cmd Id"] <= dma_id[1]),
+        "DMA data size(B)",
+    ].astype(float).sum())
 
 
 def write_csv_data_duration(
@@ -226,15 +198,12 @@ def write_csv_data_duration(
     total_duration = sum([item[1] for item in sorted_duration])
     total_BW_usage = sum([item_[1] for item_ in sorted_bandwidth_usage])
 
-    with open(
-        f"{num_core}_{output_duration_CSV_file}", "w", encoding="UTF-8"
-    ) as csv_file:
+    with open(f"{num_core}_{output_duration_CSV_file}", "w", encoding="UTF-8") as csv_file:
         csv_file.write(
             f"{'File Line':<10} {'Operation_Name':<20} {'Duration(ns)':<20} {'Bandwidth_Usage(B)':<20}\n"
         )
-        for (file_line, duration), (_, bandwidth_usage) in zip(
-            sorted_duration, sorted_bandwidth_usage
-        ):
+        for (file_line, duration), (_, bandwidth_usage) in zip(sorted_duration,
+                                                               sorted_bandwidth_usage):
             x_labels.append(str(file_line))
             y_duration_values.append(duration)
             op_labels.append(str(opname_dict[file_line]).replace("tpu.", ""))
@@ -330,14 +299,7 @@ def plot_duration_and_bandwidth_usage_chart(
                 rotation=45,
                 color="black",
             )
-    plt.savefig(
-        str(num_core)
-        + "_core_"
-        + str(keyword_A)
-        + "_and_"
-        + str(keyword_B)
-        + "_chart.png"
-    )
+    plt.savefig(str(num_core) + "_core_" + str(keyword_A) + "_and_" + str(keyword_B) + "_chart.png")
 
 
 def workflow(perfAI_excel_path, mlir_json_path, output_duration_CSV_file, num_core):
@@ -365,20 +327,18 @@ def workflow(perfAI_excel_path, mlir_json_path, output_duration_CSV_file, num_co
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Run the workflow with given parameters."
-    )
-    parser.add_argument(
-        "--mlir_json", type=str, required=True, help="Path to the MLIR JSON file."
-    )
-    parser.add_argument(
-        "--perfai_excel", type=str, required=True, help="Path to the PerfAI Excel file."
-    )
+    parser = argparse.ArgumentParser(description="Run the workflow with given parameters.")
+    parser.add_argument("--mlir_json", type=str, required=True, help="Path to the MLIR JSON file.")
+    parser.add_argument("--perfai_excel",
+                        type=str,
+                        required=True,
+                        help="Path to the PerfAI Excel file.")
     parser.add_argument(
         "--output_csv",
         type=str,
         default="duration_and_BW_usage_output.csv",
-        help='Path to the output CSV file. Optional, defaults to "output_duration_and_BW_usage.csv".',
+        help=
+        'Path to the output CSV file. Optional, defaults to "output_duration_and_BW_usage.csv".',
     )
 
     args = parser.parse_args()

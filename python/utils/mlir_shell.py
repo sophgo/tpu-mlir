@@ -25,6 +25,7 @@ import sys
 # from typing import TextIO
 # from utils.tpuc_cmd_builder import TpucCommandBuilder
 
+
 def env2bashstr(env: dict, auto_pick=True):
     ret = []
 
@@ -74,9 +75,7 @@ def getstatusoutput_v2(
     print_output=False,
     **kwargs,
 ) -> Tuple[int, str]:
-    if is_logger_configured("logger_to_file") and is_logger_configured(
-        "logger_to_file.console"
-    ):
+    if is_logger_configured("logger_to_file") and is_logger_configured("logger_to_file.console"):
         # for handler in logging.getLogger("logger_to_file").handlers:
         #     if isinstance(handler, logging.FileHandler):
         #         print(f"FileHandler found: {handler.baseFilename}")
@@ -102,7 +101,6 @@ def getstatusoutput_v2(
             timeout=timeout,
             check=check,
             shell=shell,
-
             print_output=print_output,
             **kwargs,
         )
@@ -181,9 +179,7 @@ def getstatusoutput_v2_without_split_log(
 
     except (CalledProcessError, TimeoutExpired) as e:
         temp_output.seek(0)
-        logf.write(
-            textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! ")
-        )
+        logf.write(textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! "))
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Failed in Command]\n")
         ex = e
@@ -206,9 +202,7 @@ def getstatusoutput_v2_without_split_log(
     except Exception as e:
         if redirect_output is None:
             temp_output.seek(0)
-            logf.write(
-                textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! ")
-            )
+            logf.write(textwrap.indent(temp_output.read(), f"{str(type(e).__name__).upper()}!! "))
         logf.write(f"========Command Output End=========\n")
         logf.write(f" -> [Failed Outside Command]\n")
         ex = e
@@ -269,7 +263,7 @@ def getstatusoutput_v2_split_log(
 
     file_logger = logging.getLogger("logger_to_file")
     console_logger = logging.getLogger("logger_to_file.console")
-    file_logger.setLevel(logging.DEBUG) # do not delete this
+    file_logger.setLevel(logging.DEBUG)  # do not delete this
     ex = None
 
     temp_logf = tempfile.NamedTemporaryFile("w+", delete=False)
@@ -300,9 +294,7 @@ def getstatusoutput_v2_split_log(
 
     except (CalledProcessError, TimeoutExpired) as e:
         temp_logf.seek(0)
-        file_logger.debug(
-            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!!")
-        )
+        file_logger.debug(textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!!"))
         file_logger.debug(f"========Command Output End=========\n")
         console_logger.info(f" -> [Failed in Command]\n")
         ex = e
@@ -324,9 +316,7 @@ def getstatusoutput_v2_split_log(
         console_logger.info(f"======traceback info end======\n")
     except Exception as e:
         temp_logf.seek(0)
-        file_logger.debug(
-            textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! ")
-        )
+        file_logger.debug(textwrap.indent(temp_logf.read(), f"{str(type(e).__name__).upper()}!! "))
         file_logger.debug(f"========Command Output End=========\n")
         console_logger.info(f" -> [Failed Outside Command]\n")
         ex = e
@@ -436,10 +426,13 @@ def top_opt_options(add_postprocess: str = "", pruning: str = ""):
     options.extend(["--canonicalize", "--extra-optimize"])
     return options
 
+
 def mlir_opt_for_top(mlirfile: str,
                      opt_mlirfile: str,
                      add_postprocess: str = "",
-                     count_patterns: bool = False, log_level:str="normal", pruning: str = ""):
+                     count_patterns: bool = False,
+                     log_level: str = "normal",
+                     pruning: str = ""):
     cmd = ["tpuc-opt", mlirfile]
     options = top_opt_options(add_postprocess, pruning)
     cmd.extend(options)
@@ -447,13 +440,17 @@ def mlir_opt_for_top(mlirfile: str,
     log_file = ""
     if count_patterns:
         log_file = "top_patterns.log"
-        cmd.extend(["-debug-only=pattern-application,dialect-conversion,greedy-rewriter", "> {} 2>&1".format(log_file)])
+        cmd.extend([
+            "-debug-only=pattern-application,dialect-conversion,greedy-rewriter",
+            "> {} 2>&1".format(log_file)
+        ])
     if log_level == "quiet":
         cmd.extend(["> /dev/null"])
     elif log_level == "simple":
         cmd.insert(2, '--init="level=1"')
-    _os_system(cmd,log_level=log_level)
+    _os_system(cmd, log_level=log_level)
     return get_matched_patterns(log_file)
+
 
 def lowering_options(mode: str,
                      chip: str,
@@ -475,8 +472,8 @@ def lowering_options(mode: str,
                      gelu_mode: str = "normal"):
     mode = mode.upper()
     options = [
-        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={} high_precision={}\"".format(
-            chip.lower(), mode, num_device, num_core, addr_mode, high_precision)
+        "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={} high_precision={}\""
+        .format(chip.lower(), mode, num_device, num_core, addr_mode, high_precision)
     ]
 
     # asymmetric = False  # TODO: always using symmetric, as asymmetric not good
@@ -500,6 +497,7 @@ def lowering_options(mode: str,
         "--weight-fold",
     ])
     return options
+
 
 def mlir_lowering(top_mlir: str,
                   tpu_mlir: str,
@@ -529,30 +527,19 @@ def mlir_lowering(top_mlir: str,
     if quantize_table:
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
-    options =  lowering_options(mode,
-                                chip,
-                                num_device,
-                                num_core,
-                                cali_table,
-                                asymmetric,
-                                quantize_table,
-                                weight_name,
-                                customization_format,
-                                fuse_preprocess,
-                                aligned_input,
-                                high_precision,
-                                do_winograd,
-                                q_group_size,
-                                q_symmetric,
-                                addr_mode,
-                                matmul_perchannel,
-                                gelu_mode)
+    options = lowering_options(mode, chip, num_device, num_core, cali_table, asymmetric,
+                               quantize_table, weight_name, customization_format, fuse_preprocess,
+                               aligned_input, high_precision, do_winograd, q_group_size,
+                               q_symmetric, addr_mode, matmul_perchannel, gelu_mode)
     cmd.extend(options)
     cmd.extend(["-o", tpu_mlir])
     log_file = ""
     if count_patterns:
         log_file = "tpu_patterns.log"
-        cmd.extend(["--debug-only=pattern-application,dialect-conversion,greedy-rewriter", "> {} 2>&1".format(log_file)])
+        cmd.extend([
+            "--debug-only=pattern-application,dialect-conversion,greedy-rewriter",
+            "> {} 2>&1".format(log_file)
+        ])
     if log_level == "quiet":
         cmd.extend(["> /dev/null"])
     elif log_level == "only-layer-group":
@@ -560,15 +547,16 @@ def mlir_lowering(top_mlir: str,
         cmd.insert(2, '--init="level=2"')
     elif log_level == "simple":
         cmd.insert(2, '--init="level=1"')
-    _os_system(cmd, mute=mute,log_level=log_level)
+    _os_system(cmd, mute=mute, log_level=log_level)
     return get_matched_patterns(log_file)
+
 
 def tpu_opt_options(quant_input: bool = False,
                     quant_output: bool = False,
                     quant_input_list: str = "",
                     quant_output_list: str = "",
                     mlir_disable_threading: bool = True,
-                    quant_output_bf16: bool = False) :
+                    quant_output_bf16: bool = False):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={} quant_output_bf16={}"'.format(
         quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16)
@@ -762,15 +750,15 @@ def mlir_to_model(
     )
     cmd.extend(options)
 
-    cmd.extend([
-        "-o",
-        final_mlir
-    ])
+    cmd.extend(["-o", final_mlir])
     log_file = ""
     if count_patterns:
         assert not debug_info and "patterns_count is not allowed to be used with debug_cmd"
         log_file = "tpu_patterns.log"
-        cmd.extend(["-debug-only=pattern-application,dialect-conversion,greedy-rewriter", "> {} 2>&1".format(log_file)])
+        cmd.extend([
+            "-debug-only=pattern-application,dialect-conversion,greedy-rewriter",
+            "> {} 2>&1".format(log_file)
+        ])
     else:
         cmd.extend([debug_cmd])
 
@@ -789,13 +777,10 @@ def mlir_to_model(
 
     # codegen based on final mlir
     cmd = ["tpuc-opt", final_mlir]
-    options = codegen_options(bmodel_path,
-                              embed_debug_info,
-                              model_version,
-                              gdma_check=gdma_check)
+    options = codegen_options(bmodel_path, embed_debug_info, model_version, gdma_check=gdma_check)
     cmd.extend(options)
     cmd.extend(["-o /dev/null"])
-    _os_system(cmd,log_level=log_level)
+    _os_system(cmd, log_level=log_level)
     command_mem["bmodel"] = " ".join(cmd)
 
     context_dir = os.path.splitext(bmodel_path)[0]
@@ -806,9 +791,16 @@ def mlir_to_model(
             # The suffix of the profile file is not consistent.
             # bm1684 uses ".dat", bm1684x uses ".txt".
             if os.path.exists("compiler_profile_0.[td][xa]t"):
-                _os_system(["mv compiler_profile_0.[td][xa]t",bmodel_path + ".compiler_profile_0.txt",],log_level=log_level,)
+                _os_system(
+                    [
+                        "mv compiler_profile_0.[td][xa]t",
+                        bmodel_path + ".compiler_profile_0.txt",
+                    ],
+                    log_level=log_level,
+                )
             if os.path.exists("net_0.profile"):
-                _os_system(["mv net_0.profile", bmodel_path + ".net_0.profile"],log_level=log_level)
+                _os_system(["mv net_0.profile", bmodel_path + ".net_0.profile"],
+                           log_level=log_level)
             tensor_loc = bmodel_path + ".json"
             if os.path.exists(tensor_loc):
                 shutil.copy(tensor_loc, os.path.join(context_dir, "tensor_location.json"))
@@ -863,31 +855,13 @@ def origin_mlir_txt_to_bmodel(
     options = []
     new_options = top_opt_options(add_postprocess)
     options.extend(new_options)
-    new_options =  lowering_options(mode,
-                                    chip,
-                                    num_device,
-                                    num_core,
-                                    cali_table,
-                                    asymmetric,
-                                    quantize_table,
-                                    None,
-                                    customization_format,
-                                    fuse_preprocess,
-                                    aligned_input,
-                                    high_precision,
-                                    do_winograd,
-                                    q_group_size,
-                                    q_symmetric,
-                                    addr_mode,
-                                    matmul_perchannel,
-                                    gelu_mode)
+    new_options = lowering_options(mode, chip, num_device, num_core, cali_table, asymmetric,
+                                   quantize_table, None, customization_format, fuse_preprocess,
+                                   aligned_input, high_precision, do_winograd, q_group_size,
+                                   q_symmetric, addr_mode, matmul_perchannel, gelu_mode)
     options.extend(new_options)
-    new_options =   tpu_opt_options(quant_input,
-                                    quant_output,
-                                    quant_input_list,
-                                    quant_output_list,
-                                    False,
-                                    quant_output_bf16)
+    new_options = tpu_opt_options(quant_input, quant_output, quant_input_list, quant_output_list,
+                                  False, quant_output_bf16)
     options.extend(new_options)
     new_options = tpu_ada_options(
         dynamic=dynamic,
@@ -901,9 +875,7 @@ def origin_mlir_txt_to_bmodel(
         future_update_list=future_update_list,
     )
     options.extend(new_options)
-    new_options = codegen_options(f"{model_name}_{mode}.bmodel",
-                                  embed_debug_info,
-                                  model_version,
+    new_options = codegen_options(f"{model_name}_{mode}.bmodel", embed_debug_info, model_version,
                                   True)
     options.extend(new_options)
     options.extend(['--deinit="no_save_weight=True"'])
@@ -941,11 +913,13 @@ def origin_mlir_txt_to_bmodel(
         pymlir.run_pass_pipeline(mlir_txt, options)
     return get_matched_patterns(log_file)
 
-def get_final_mlir_name(bmodel:str):
+
+def get_final_mlir_name(bmodel: str):
     old_suffix = ".bmodel"
     new_suffix = "_final.mlir"
     filename = bmodel[:-len(old_suffix)] + new_suffix
     return filename
+
 
 def origin_mlir_to_bmodel(
     origin_mlir: str,
@@ -1063,7 +1037,7 @@ def tosa_to_llvm(tosa_mlir: str, objfile: str):
 
 
 # Model inference on CPU
-def model_inference_cpu(objfile: str, output_size: str, log_level:str = "normal"):
+def model_inference_cpu(objfile: str, output_size: str, log_level: str = "normal"):
     # generate executable file: a.out
     print("Generating executable file a.out ...")
     ccompiler = "clang"
@@ -1075,12 +1049,12 @@ def model_inference_cpu(objfile: str, output_size: str, log_level:str = "normal"
     lib4 = "-lm"
     cflag = "-fPIC"
     cmd = [ccompiler, cfile, model, lib1, lib2, lib3, lib4, cflag]
-    _os_system(cmd,log_level=log_level)
+    _os_system(cmd, log_level=log_level)
     print("Successfully generate executable file a.out!")
     # execute model inference
     print("Runing ...")
     cmd1 = ["./a.out", output_size]
-    _os_system(cmd1,log_level=log_level)
+    _os_system(cmd1, log_level=log_level)
     print("Inference ends successfully! Results are saved in inference_result.txt.")
 
 
@@ -1088,6 +1062,7 @@ def model_inference_cpu(objfile: str, output_size: str, log_level:str = "normal"
 def delete_file(file: str):
     cmd = ["rm -f", file]
     _os_system(cmd)
+
 
 def mlir2onnx(mlir_file: str, onnx_file: str):
     cmd = ['mlir2onnx.py -m', mlir_file, '-o', onnx_file]

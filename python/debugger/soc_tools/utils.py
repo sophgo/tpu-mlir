@@ -5,7 +5,8 @@ import shutil
 import time
 import paramiko
 
-clean_list=[]
+clean_list = []
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Soc bmodel infer combine")
@@ -39,9 +40,7 @@ def parse_args():
         action="store_true",
         help="Whether to output fixed number.",
     )
-    parser.add_argument(
-        "--enable_log", action="store_true", help="Whether to enable log."
-    )
+    parser.add_argument("--enable_log", action="store_true", help="Whether to enable log.")
     parser.add_argument(
         "--using_memory_opt",
         action="store_true",
@@ -67,16 +66,12 @@ def _soc_upload_dir(sftp, local_dir, remote_dir):
     for root, dirs, files in os.walk(local_dir):
         for file in files:
             local_path = os.path.join(root, file)
-            remote_path = os.path.join(
-                remote_dir, os.path.relpath(local_path, local_dir)
-            )
+            remote_path = os.path.join(remote_dir, os.path.relpath(local_path, local_dir))
             sftp.put(local_path, remote_path)
 
         for dir in dirs:
             local_path = os.path.join(root, dir)
-            remote_path = os.path.join(
-                remote_dir, os.path.relpath(local_path, local_dir)
-            )
+            remote_path = os.path.join(remote_dir, os.path.relpath(local_path, local_dir))
             try:
                 sftp.mkdir(remote_path)
             except:
@@ -146,29 +141,37 @@ def collect_copytree(src_path, dst_path):
 
 
 def collect_files():
-    cur_dir=os.path.dirname(__file__)
+    cur_dir = os.path.dirname(__file__)
     soc_tool_dir = os.path.join(cur_dir, "debugger")
     add_to_clean(soc_tool_dir)
     os.makedirs(os.path.join(soc_tool_dir, "lib"), exist_ok=True)
-    utils_dir=os.path.join(cur_dir, "../../utils")
-    thirdparty_lib_dir=os.path.join(cur_dir, "../../../third_party")
+    utils_dir = os.path.join(cur_dir, "../../utils")
+    thirdparty_lib_dir = os.path.join(cur_dir, "../../../third_party")
     shutil.copy(os.path.join(cur_dir, "../disassembler.py"), soc_tool_dir)
     shutil.copy(os.path.join(cur_dir, "../final_mlir.py"), soc_tool_dir)
-    shutil.copy(os.path.join(cur_dir, "soc_atomic_dialect.py"), os.path.join(soc_tool_dir, "atomic_dialect.py"))
+    shutil.copy(os.path.join(cur_dir, "soc_atomic_dialect.py"),
+                os.path.join(soc_tool_dir, "atomic_dialect.py"))
     shutil.copy(os.path.join(utils_dir, "lowering.py"), soc_tool_dir)
-    shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libatomic_exec_aarch64.so"), os.path.join(soc_tool_dir,"lib"))
-    shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libatomic_exec_bm1688_aarch64.so"), os.path.join(soc_tool_dir,"lib"))
-    shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libbm1684x_atomic_kernel.so"), os.path.join(soc_tool_dir,"lib"))  # do not use libbm1684x_kernel_module, which may cause nan error
-    shutil.copy(os.path.join(thirdparty_lib_dir, "nntoolchain/lib/libbmtpulv60_kernel_module.so"), os.path.join(soc_tool_dir,"lib"))
+    shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libatomic_exec_aarch64.so"),
+                os.path.join(soc_tool_dir, "lib"))
+    shutil.copy(os.path.join(thirdparty_lib_dir, "atomic_exec/libatomic_exec_bm1688_aarch64.so"),
+                os.path.join(soc_tool_dir, "lib"))
+    shutil.copy(
+        os.path.join(thirdparty_lib_dir, "atomic_exec/libbm1684x_atomic_kernel.so"),
+        os.path.join(soc_tool_dir,
+                     "lib"))  # do not use libbm1684x_kernel_module, which may cause nan error
+    shutil.copy(os.path.join(thirdparty_lib_dir, "nntoolchain/lib/libbmtpulv60_kernel_module.so"),
+                os.path.join(soc_tool_dir, "lib"))
 
     local_tools_path = os.getenv("PROJECT_ROOT", None)
     if not local_tools_path:
         local_tools_path = os.getenv("TPUC_ROOT")
         assert local_tools_path
-    if(os.path.exists(os.path.join(local_tools_path,"./install/python/debugger/bmodel_fbs.py"))):
-        shutil.copy(os.path.join(local_tools_path,"./install/python/debugger/bmodel_fbs.py"), soc_tool_dir)
-    elif(os.path.exists(os.path.join(local_tools_path,"./python/debugger/bmodel_fbs.py"))):
-        shutil.copy(os.path.join(local_tools_path,"./python/debugger/bmodel_fbs.py"), soc_tool_dir)
+    if (os.path.exists(os.path.join(local_tools_path, "./install/python/debugger/bmodel_fbs.py"))):
+        shutil.copy(os.path.join(local_tools_path, "./install/python/debugger/bmodel_fbs.py"),
+                    soc_tool_dir)
+    elif (os.path.exists(os.path.join(local_tools_path, "./python/debugger/bmodel_fbs.py"))):
+        shutil.copy(os.path.join(local_tools_path, "./python/debugger/bmodel_fbs.py"), soc_tool_dir)
 
     collect_copytree(os.path.join(cur_dir, "../target_common"), soc_tool_dir)
     collect_copytree(os.path.join(cur_dir, "../target_1684x"), soc_tool_dir)
@@ -199,13 +202,16 @@ def soc_connect(hostname, port, username, password):
 
 
 # transfer cache files and soc_infer tools
-def soc_trans_files(client, sftp, local_path, remote_path,bmodel,input,ref):
+def soc_trans_files(client, sftp, local_path, remote_path, bmodel, input, ref):
     # transfer file
     _soc_mk_dir(client, remote_path)
     sftp.chdir(remote_path)
-    progress_put(sftp, "cmds.pkl", os.path.join(local_path, "soc_tmp", "cmds.pkl"), "cmds.pkl", progress)
-    progress_put(sftp, "values_in.pkl", os.path.join(local_path, "soc_tmp", "values_in.pkl"), "values_in.pkl", progress)
-    progress_put(sftp, "values_out.pkl", os.path.join(local_path, "soc_tmp", "values_out.pkl"), "values_out.pkl", progress)
+    progress_put(sftp, "cmds.pkl", os.path.join(local_path, "soc_tmp", "cmds.pkl"), "cmds.pkl",
+                 progress)
+    progress_put(sftp, "values_in.pkl", os.path.join(local_path, "soc_tmp", "values_in.pkl"),
+                 "values_in.pkl", progress)
+    progress_put(sftp, "values_out.pkl", os.path.join(local_path, "soc_tmp", "values_out.pkl"),
+                 "values_out.pkl", progress)
     progress_put(sftp, "bmodel file", bmodel, os.path.basename(bmodel), progress)
     progress_put(sftp, "input data", input, os.path.basename(input), progress)
     progress_put(sftp, "ref data", ref, os.path.basename(ref), progress)
@@ -216,11 +222,8 @@ def soc_trans_files(client, sftp, local_path, remote_path,bmodel,input,ref):
     if not local_tools_path:
         local_tools_path = os.getenv("TPUC_ROOT")
         assert local_tools_path
-    _soc_upload_dir(
-        sftp,
-        os.path.join(local_tools_path, "python/debugger/soc_tools/"),
-        os.path.join(remote_path,"soc_tools")
-    )
+    _soc_upload_dir(sftp, os.path.join(local_tools_path, "python/debugger/soc_tools/"),
+                    os.path.join(remote_path, "soc_tools"))
 
 
 def soc_check_end_status(exec_command, client, sftp, soc_tool_path):
@@ -249,9 +252,7 @@ def soc_check_end_status(exec_command, client, sftp, soc_tool_path):
     print("######## REMOTE OUTPUTS END ########\n")
 
 
-def soc_fetch_log_and_npz(
-    client, sftp, local_path, remote_path, remote_ref, enable_soc_log=False
-):
+def soc_fetch_log_and_npz(client, sftp, local_path, remote_path, remote_ref, enable_soc_log=False):
     if enable_soc_log:
         progress_get(
             sftp,

@@ -9,7 +9,12 @@ from sophgo_mq.utils.logger import logger
 from sophgo_mq.utils.state import disable_all
 
 
-def mixprecision_profiling(model: Module, quantized_model: Module, bitwidth_list: List, data: Tuple, criterion, algo='naive'):
+def mixprecision_profiling(model: Module,
+                           quantized_model: Module,
+                           bitwidth_list: List,
+                           data: Tuple,
+                           criterion,
+                           algo='naive'):
     """
     Get layer sensitive index under a list of bitwidth.
     A lot of algorithms can do the same thing.
@@ -43,17 +48,19 @@ def mixprecision_profiling(model: Module, quantized_model: Module, bitwidth_list
             # delta_w: List shape = bitwidth_list
             sensetive_dict[layer] = trace * delta_w[layer]
     elif algo == 'naive':
-        sensetive_dict = prec_degradation_by_layer(model, quantized_model, bitwidth_list, data, criterion)
+        sensetive_dict = prec_degradation_by_layer(model, quantized_model, bitwidth_list, data,
+                                                   criterion)
     else:
         logger.info("Unknown algorithm!")
     return sensetive_dict
 
 
 def get_delta_w(quantized_model: Module, bitwidth_list: List):
+
     def get_new_qrange(bits, qscheme):
         if is_symmetric_quant(qscheme):
-            return -2 ** (bits - 1), 2 ** (bits - 1) - 1
-        return 0, 2 ** bits - 1
+            return -2**(bits - 1), 2**(bits - 1) - 1
+        return 0, 2**bits - 1
 
     def square_mean(ta, tb):
         return torch.pow((ta - tb), 2.0).mean().detach().cpu().numpy()
@@ -112,14 +119,16 @@ def mp_model_size(model: Module):
     return mp_size / 8 / 1024 / 1024
 
 
-def prec_degradation_by_layer(model: Module, quantized_model: Module, bitwidth_list: List, data: Tuple, creterion):
+def prec_degradation_by_layer(model: Module, quantized_model: Module, bitwidth_list: List,
+                              data: Tuple, creterion):
     """
     Calculate degradation of each layer in different bitwidth.
     """
+
     def get_new_qrange(bits, qscheme):
         if is_symmetric_quant(qscheme):
-            return -2 ** (bits - 1), 2 ** (bits - 1) - 1
-        return 0, 2 ** bits - 1
+            return -2**(bits - 1), 2**(bits - 1) - 1
+        return 0, 2**bits - 1
 
     input_data, label_data = data
     sensetive_dict = {}
@@ -145,7 +154,8 @@ def prec_degradation_by_layer(model: Module, quantized_model: Module, bitwidth_l
                     output_data = quantized_model(input_data)
                 loss = creterion(output_data, label_data)
                 sensetive_dict[name].append(loss - fp_loss)
-                logger.info("Layer {} under bit {} with sensetive {}".format(name, bits, loss - fp_loss))
+                logger.info("Layer {} under bit {} with sensetive {}".format(
+                    name, bits, loss - fp_loss))
             mod.weight_fake_quant.disable_observer()
             mod.weight_fake_quant.disable_fake_quant()
 
@@ -163,24 +173,26 @@ def hawq(model: Module, data: Tuple, criterion, type='trace'):
     elif type == 'trace':
         return hessian_comp.layer_trace()
     else:
-        raise(NotImplementedError, "{} is not supported, only trace and eigenvalues.".format(type))
+        raise (NotImplementedError, "{} is not supported, only trace and eigenvalues.".format(type))
 
 
-def mixprecision_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict, model_size_constraints, latency_constraints):
+def mixprecision_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict,
+                               model_size_constraints, latency_constraints):
     """
     Resolute bitwidth by layer sensetive index / model size / accuracy.
     """
     # preato_frontier(model)
-    ILP_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict, model_size_constraints, latency_constraints)
+    ILP_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict, model_size_constraints,
+                      latency_constraints)
 
 
-def ILP_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict, model_size_constraints: int, latency_constraints: int):
+def ILP_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict,
+                      model_size_constraints: int, latency_constraints: int):
     """
     Bit selection process using ILP.
     """
     import pulp
-    from pulp import (GLPK_CMD, LpInteger, LpMinimize, LpStatus, LpVariable,
-                      value)
+    from pulp import (GLPK_CMD, LpInteger, LpMinimize, LpStatus, LpVariable, value)
 
     assert model_size_constraints or latency_constraints
 
@@ -188,7 +200,10 @@ def ILP_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict, mode
     variable = {}
     for layer_name in sensetive_dict:
         for bit in bitwidth_list:
-            variable[f"x_{layer_name}_{bit}"] = LpVariable(f"x_{layer_name}_{bit}", 0, 1, cat=LpInteger)
+            variable[f"x_{layer_name}_{bit}"] = LpVariable(f"x_{layer_name}_{bit}",
+                                                           0,
+                                                           1,
+                                                           cat=LpInteger)
 
     # Model acc constrains
     senseitve_contrains = []
@@ -223,7 +238,8 @@ def ILP_bit_selection(bitwidth_list, sensetive_dict, layer_parameters_dict, mode
     senseitve_contrains = []
     for name, params in layer_parameters_dict.items():
         for idx, bit in enumerate(bitwidth_list):
-            senseitve_contrains.append(value(variable[f"x_{name}_{bit}"]) * sensetive_dict[name][idx])
+            senseitve_contrains.append(
+                value(variable[f"x_{name}_{bit}"]) * sensetive_dict[name][idx])
     logger.info("Result model sensetive is {}".format(sum(senseitve_contrains)))
 
 
@@ -250,12 +266,18 @@ if __name__ == '__main__':
     #                                               data=(inputs, targets), criterion=torch.nn.CrossEntropyLoss(), algo='naive')
     # maxeigen_sensetive_dict = mixprecision_profiling(model, quantized_model, test_bitwidth_list,
     #                                                  data=(inputs, targets), criterion=torch.nn.CrossEntropyLoss(), algo='hawq_eigen')
-    trace_sensetive_dict = mixprecision_profiling(model, quantized_model, test_bitwidth_list,
-                                                  data=(inputs, targets), criterion=torch.nn.CrossEntropyLoss(), algo='hawq_trace')
+    trace_sensetive_dict = mixprecision_profiling(model,
+                                                  quantized_model,
+                                                  test_bitwidth_list,
+                                                  data=(inputs, targets),
+                                                  criterion=torch.nn.CrossEntropyLoss(),
+                                                  algo='hawq_trace')
 
-    mixprecision_bit_selection(test_bitwidth_list, 
-                               # naive_sensetive_dict,
-                               # maxeigen_sensetive_dict,
-                               trace_sensetive_dict,
-                               layer_parameters_dict,
-                               model_size_constraints=3, latency_constraints=None)
+    mixprecision_bit_selection(
+        test_bitwidth_list,
+        # naive_sensetive_dict,
+        # maxeigen_sensetive_dict,
+        trace_sensetive_dict,
+        layer_parameters_dict,
+        model_size_constraints=3,
+        latency_constraints=None)

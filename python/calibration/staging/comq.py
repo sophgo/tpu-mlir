@@ -26,10 +26,12 @@ from .utils import cosine_sim
 
 from .lapq import LossAwareQuant
 import pymlir
+
 pymlir.set_mem_mode("force_value_mem")
 
 
 class COMQ_Layer:
+
     def __init__(self, op, weight, scalar, bits=4):
         self.name = op
         self.W = torch.tensor(weight.copy()).T
@@ -44,11 +46,12 @@ class COMQ_Layer:
         self.bits = bits
         self.bit_code = []
         self.device = 'cpu'
-        delta = (self.max_w - self.min_w)/(2**self.bits - 2)  # use -7 +7
+        delta = (self.max_w - self.min_w) / (2**self.bits - 2)  # use -7 +7
         starts = (self.min_w[0] / delta).round()
         ends = starts + (2**self.bits - 1)
-        self.bit_code = scalar * torch.stack([torch.linspace(start, end, steps=2**self.bits-1)
-                                             for start, end in zip(starts, ends)]).to(self.device)
+        self.bit_code = scalar * torch.stack([
+            torch.linspace(start, end, steps=2**self.bits - 1) for start, end in zip(starts, ends)
+        ]).to(self.device)
         self.bit_code = self.bit_code * delta.unsqueeze(1)
         self.greedy = True
         self.u = None
@@ -83,7 +86,8 @@ class COMQ_Layer:
                 X_permed = torch.index_select(X.T, 0, perm[:, idx]).T
                 self.u -= X_permed * (w - self.Q[:, idx]).unsqueeze(0)
                 w_x = X_permed * w.unsqueeze(0)
-                target_val = torch.sum((w_x + self.u) * X_permed, dim=0) / torch.sum(X_permed*X_permed, dim=0)
+                target_val = torch.sum(
+                    (w_x + self.u) * X_permed, dim=0) / torch.sum(X_permed * X_permed, dim=0)
                 q = self._quantizer(target_val)
                 self.u.add_(X_permed * (w - q).unsqueeze(0))
                 self.Q[:, idx] = q
@@ -112,6 +116,7 @@ class COMQ_Layer:
 
 
 class Comq(LossAwareQuant):
+
     def learning(self):
         total = len(self.finetune_layers)
         quantizer = {}
@@ -130,7 +135,8 @@ class Comq(LossAwareQuant):
                 input_name = self.parser.get_pre_op_by_op_name(op)[0]
                 input_data = self.ref_tensors.get(input_name, 0)
                 for idx in np.arange(1, self.num_sample):
-                    input_data = np.concatenate((input_data, self.ref_tensors.get(input_name, idx)), axis=0)
+                    input_data = np.concatenate((input_data, self.ref_tensors.get(input_name, idx)),
+                                                axis=0)
                     shape = input_data.shape
                 input_data = input_data.reshape(-1, shape[-1])
                 quantizer[op]._quant_layer(input_data)

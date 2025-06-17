@@ -47,7 +47,8 @@ optimizer = HyperParameterOptimizer(
         UniformParameterRange('Hyperparameters/fliplr', min_value=0.0, max_value=1.0),
         UniformParameterRange('Hyperparameters/mosaic', min_value=0.0, max_value=1.0),
         UniformParameterRange('Hyperparameters/mixup', min_value=0.0, max_value=1.0),
-        UniformParameterRange('Hyperparameters/copy_paste', min_value=0.0, max_value=1.0)],
+        UniformParameterRange('Hyperparameters/copy_paste', min_value=0.0, max_value=1.0)
+    ],
     # this is the objective metric we want to maximize/minimize
     objective_metric_title='metrics',
     objective_metric_series='mAP_0.5',

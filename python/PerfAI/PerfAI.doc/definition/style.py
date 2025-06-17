@@ -11,7 +11,12 @@ class DetailsStyle:
     title_header_pattern = PatternFill(fgColor='548235', fill_type="solid")
     title_content_pattern = PatternFill(fgColor='F2F2F2', fill_type="solid")
     title_font = Font(u'等线', size=10, bold=True, italic=False, strike=False, color='000000')
-    title_header_font = Font(u'Calibri', size=10, bold=True, italic=False, strike=False, color='ffffff')
+    title_header_font = Font(u'Calibri',
+                             size=10,
+                             bold=True,
+                             italic=False,
+                             strike=False,
+                             color='ffffff')
 
     content_pattern = PatternFill(fgColor='305496', fill_type="solid")
     key_content_pattern = PatternFill(fgColor='FCE4D6', fill_type="solid")
@@ -29,19 +34,30 @@ class DetailsStyle:
     sdma_pattern = PatternFill(fgColor='D0CECE', fill_type='solid')
     cdma_pattern = PatternFill(fgColor='C0504D', fill_type='solid')
 
+
 class LayerStyle:
     title_pattern = PatternFill(fgColor='ffffff', fill_type="solid")
     title_header_pattern = PatternFill(fgColor='B8CCE4', fill_type="solid")
     title_content_pattern = PatternFill(fgColor='F2F2F2', fill_type="solid")
     title_font = Font(u'等线', size=10, bold=True, italic=False, strike=False, color='000000')
-    title_header_font = Font(u'Calibri', size=10, bold=True, italic=False, strike=False, color='000000')
+    title_header_font = Font(u'Calibri',
+                             size=10,
+                             bold=True,
+                             italic=False,
+                             strike=False,
+                             color='000000')
 
     content_header1_pattern = PatternFill(fgColor='95B3D7', fill_type="solid")
     content_header2_pattern = PatternFill(fgColor='31869B', fill_type="solid")
     uarch_pattern = PatternFill(fgColor='538FD5', fill_type="solid")
     alg_pattern = PatternFill(fgColor='B8CCE4', fill_type="solid")
     sim_pattern = PatternFill(fgColor='95B3D7', fill_type="solid")
-    content_header_font = Font(u'Calibri', size=10, bold=True, italic=False, strike=False, color='ffffff')
+    content_header_font = Font(u'Calibri',
+                               size=10,
+                               bold=True,
+                               italic=False,
+                               strike=False,
+                               color='ffffff')
 
     red_light = PatternFill(fgColor='FF0000', fill_type="solid")
     yellow_light = PatternFill(fgColor='FFFF00', fill_type="solid")
@@ -61,14 +77,24 @@ class SummaryStyle:
     title_header_pattern = PatternFill(fgColor='B8CCE4', fill_type="solid")
     title_content_pattern = PatternFill(fgColor='F4DCDB', fill_type="solid")
     title_font = Font(u'等线', size=10, bold=True, italic=False, strike=False, color='000000')
-    title_header_font = Font(u'Calibri', size=10, bold=True, italic=False, strike=False, color='000000')
+    title_header_font = Font(u'Calibri',
+                             size=10,
+                             bold=True,
+                             italic=False,
+                             strike=False,
+                             color='000000')
 
     # content0_pattern = PatternFill(fgColor='F2F2F2', fill_type="solid")
     content1_pattern = PatternFill(fgColor='FDF5E6', fill_type="solid")
     content2_pattern = PatternFill(fgColor='F5DEB3', fill_type="solid")
     content_header1_pattern = PatternFill(fgColor='C6E0B4', fill_type="solid")
     content_header2_pattern = PatternFill(fgColor='548235', fill_type="solid")
-    content_header_font = Font(u'Calibri', size=10, bold=True, italic=False, strike=False, color='ffffff')
+    content_header_font = Font(u'Calibri',
+                               size=10,
+                               bold=True,
+                               italic=False,
+                               strike=False,
+                               color='ffffff')
 
     red_light = PatternFill(fgColor='FF0000', fill_type="solid")
     yellow_light = PatternFill(fgColor='FFFF00', fill_type="solid")

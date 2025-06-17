@@ -7,7 +7,6 @@
 #
 # ==============================================================================
 
-
 import numpy as np
 import sys
 import struct
@@ -160,6 +159,7 @@ class TensorCompare():
             d1_loop[np.isneginf(d1_loop)] = -10000.0
             d2_loop[np.isposinf(d2_loop)] = 10000.0
             d2_loop[np.isneginf(d2_loop)] = -10000.0
+
             # check similarity
 
             def cosine_distance(a, b):

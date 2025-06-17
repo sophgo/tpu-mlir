@@ -24,7 +24,7 @@ def fuse_deconv_bn_eval(deconv, bn):
     assert (not (deconv.training or bn.training)), 'Fusion only for eval!'
 
     fused_deconv = deepcopy(deconv)
-    fused_deconv.weight, fused_deconv.bias = fuse_deconv_bn_weights(
-        deconv.weight, deconv.bias, bn.running_mean, bn.running_var, bn.eps,
-        bn.weight, bn.bias)
+    fused_deconv.weight, fused_deconv.bias = fuse_deconv_bn_weights(deconv.weight, deconv.bias,
+                                                                    bn.running_mean, bn.running_var,
+                                                                    bn.eps, bn.weight, bn.bias)
     return fused_deconv

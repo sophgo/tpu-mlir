@@ -28,19 +28,12 @@ new_path = [
     f"{package_path}/customlayer/python:",
 ]
 os.environ["PATH"] += "".join(new_path)
-os.environ["PYTHONPATH"] = (
-    f"{package_path}/:"
-    + f"{package_path}/python/:"
-    + f"{package_path}/regression/:"
-    + f"{package_path}/customlayer/python/:"
-)
+os.environ["PYTHONPATH"] = (f"{package_path}/:" + f"{package_path}/python/:" +
+                            f"{package_path}/regression/:" + f"{package_path}/customlayer/python/:")
 os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["TPUC_ROOT"] = f"{package_path}"
-os.environ["LD_LIBRARY_PATH"] = (
-    f"{package_path}/lib:"
-    + f"{package_path}/lib/capi:"
-    + f"{package_path}/lib/third_party:"
-)
+os.environ["LD_LIBRARY_PATH"] = (f"{package_path}/lib:" + f"{package_path}/lib/capi:" +
+                                 f"{package_path}/lib/third_party:")
 os.environ["TPUKERNEL_CUSTOM_FIRMWARE_PATH"] = f"{package_path}/lib/libcmodel_custom.so"
 os.environ["CUSTOM_LAYER_UNITTEST_DIR"] = f"{package_path}/customlayer/test_if/unittest"
 

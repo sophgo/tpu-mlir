@@ -6,6 +6,7 @@ from pyhessian import hessian, hessian_vector_product, group_product, normalizat
 
 
 class hessian_per_layer(hessian):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.first_order_grad_dict = {}
@@ -76,29 +77,35 @@ class hessian_per_layer(hessian):
 
         return trace_dict
 
+
 class FWDSaverHook:
     """
     Forward hook that stores the input and output of a layer/block
     """
+
     def __init__(self):
-        self.store_input = None 
+        self.store_input = None
 
     def __call__(self, module, input_batch, output_batch):
         output_batch.requires_grad_()
         output_batch.retain_grad()
         self.store_input = output_batch
 
+
 class BWDSaverHook:
     """
     Forward hook that stores the input and output of a layer/block
     """
+
     def __init__(self):
-        self.store_input = None 
+        self.store_input = None
 
     def __call__(self, module, input_batch, output_batch):
         self.store_input = output_batch
 
+
 class hessian_per_layer_acti(hessian):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.first_order_grad_dict = {}
@@ -118,7 +125,10 @@ class hessian_per_layer_acti(hessian):
         los = torch.nn.CrossEntropyLoss()
         loss = los(self.model(data.cuda()), target.cuda())
         loss.backward(create_graph=True)
-        self.grad_dict = {key: self.grad_savers[key].store_input[0] + 0. for key in self.grad_savers}
+        self.grad_dict = {
+            key: self.grad_savers[key].store_input[0] + 0.
+            for key in self.grad_savers
+        }
         self.acti_dict = {key: self.acti_savers[key].store_input for key in self.acti_savers}
 
     def layer_eigenvalues(self, maxIter=100, tol=1e-3) -> Dict:
@@ -141,7 +151,7 @@ class hessian_per_layer_acti(hessian):
                     v = orthnormal(v, eigenvectors)
                     self.model.zero_grad()
 
-                    actis = [self.acti_dict[name] for name in self.acti_dict] 
+                    actis = [self.acti_dict[name] for name in self.acti_dict]
                     grads = [self.grad_dict[name] for name in self.grad_dict]
                     v = [torch.randn_like(a) for a in actis]
                     Hv = hessian_vector_product(grads, actis, v)

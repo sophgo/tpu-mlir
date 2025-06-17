@@ -98,7 +98,6 @@ dma_sheet_name = [
     "DMA_decompress ",
 ]
 
-
 reg_bdc = pandas.read_excel(tiu_reg_sgtpuv8, sheet_name=bdc_sheet_name)
 reg_dma = pandas.read_excel(dma_reg_sgtpuv8, sheet_name=dma_sheet_name)
 
@@ -130,7 +129,6 @@ from ..target_common import cmd_base_reg
 
 """
 
-
 tail_template_str = """
 
 op_class_dic: Dict[str, Type[cmd_base_reg]] = {
@@ -139,7 +137,6 @@ op_class_dic: Dict[str, Type[cmd_base_reg]] = {
     {%- endfor %}
 }
 """
-
 
 for key in cmd_reg.keys():
     cmd_reg_def = cmd_reg[key]
@@ -187,11 +184,8 @@ with open("regdef.py", "w") as fb:
         fields = [(k, l) for k, l in zip(field_keys, bits_width)]
 
         valid_key = [match_illegal.sub("_", key) for key in field_keys]
-        invalid_key = [
-            (key, match_illegal.sub("_", key))
-            for key in field_keys
-            if match_illegal.search(key)
-        ]
+        invalid_key = [(key, match_illegal.sub("_", key)) for key in field_keys
+                       if match_illegal.search(key)]
 
         # print(match_illegal.sub("_", key))
         ctype_py_str.append(
@@ -202,8 +196,7 @@ with open("regdef.py", "w") as fb:
                 valid_key=valid_key,
                 invalid_key=invalid_key,
                 length=high_bits[-1],
-            )
-        )
+            ))
         cmds.append((key, match_illegal.sub("_", key)))
 
     fb.write(("\n").join(ctype_py_str))

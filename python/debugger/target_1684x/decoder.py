@@ -77,40 +77,32 @@ class Decoder(DecoderBase):
 
     def decode_tiu_cmd(self, reg_buf: memoryview, *, offset, subnet_id) -> BaseTpuCmd:
         head = TiuHead.from_buffer(reg_buf, offset)  # type: TiuHead
-        op_info = tiu_index.get(
-            (bool(head.cmd_short), head.tsk_typ, head.tsk_eu_typ), None
-        )
+        op_info = tiu_index.get((bool(head.cmd_short), head.tsk_typ, head.tsk_eu_typ), None)
         assert op_info is not None, (
             f"Unable to decode TIU code at offset {offset} out of {len(reg_buf)} total."
-            f" Potential head identified as {head}"
-        )
+            f" Potential head identified as {head}")
 
         # get op struct
         op_clazz = op_class_dic[op_info.name]
         reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
-        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
         cmd = op_info(reg, buf=buf, subnet_id=subnet_id)
         return cmd
 
     def decode_dma_cmd(self, reg_buf: memoryview, *, offset, subnet_id) -> BaseTpuCmd:
         head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
-        op_info = dma_index.get(
-            (bool(head.cmd_short), head.cmd_type, head.cmd_sp_func), None
-    )
+        op_info = dma_index.get((bool(head.cmd_short), head.cmd_type, head.cmd_sp_func), None)
         # get op struct
         assert op_info is not None, (
             f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
-            f" Potential head identified as {head}"
-        )
+            f" Potential head identified as {head}")
         op_clazz = op_class_dic[op_info.name]
         reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
-        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
         cmd = op_info(reg, buf=buf, subnet_id=subnet_id)
         return cmd
 
-    def decode_dma_cmds(
-        self, reg_buf: memoryview, subnet_id=0, **_
-    ) -> List[BaseTpuCmd]:
+    def decode_dma_cmds(self, reg_buf: memoryview, subnet_id=0, **_) -> List[BaseTpuCmd]:
         """
         reg_buf: editable memoryview directly passed from bmodel binary buffer
         """
@@ -124,9 +116,7 @@ class Decoder(DecoderBase):
                 break
         return res
 
-    def decode_tiu_cmds(
-        self, reg_buf: memoryview, subnet_id=0, **_
-    ) -> List[BaseTpuCmd]:
+    def decode_tiu_cmds(self, reg_buf: memoryview, subnet_id=0, **_) -> List[BaseTpuCmd]:
         """
         reg_buf: editable memoryview directly passed from bmodel binary buffer
         """

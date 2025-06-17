@@ -22,6 +22,7 @@ import copy
 
 logger = logging.getLogger("root")
 
+
 class CaffeConverter(BaseConverter):
 
     def __init__(self,
@@ -70,10 +71,10 @@ class CaffeConverter(BaseConverter):
         if 'preprocess_list' in preprocess_args:
             if preprocess_args['preprocess_list'] is not None:
                 for input_index in preprocess_args['preprocess_list']:
-                    assert( 0 < input_index <= len(self.input_names)
-                        and "Please check --preprocess_list is right input")
+                    assert (0 < input_index <= len(self.input_names)
+                            and "Please check --preprocess_list is right input")
             else:
-                preprocess_args['preprocess_list'] = [ i + 1 for i in range(len(self.input_names)) ]
+                preprocess_args['preprocess_list'] = [i + 1 for i in range(len(self.input_names))]
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
                 self.preprocess_args = preprocess_args
@@ -132,7 +133,6 @@ class CaffeConverter(BaseConverter):
             'Tile': lambda layer: self.convert_tile_op(layer),
             'Upsample': lambda layer: self.convert_upsample_op(layer),
             'YoloDetection': lambda layer: self.convert_yolo_detection_op(layer),
-
         }
 
     def __del__(self):
@@ -193,7 +193,11 @@ class CaffeConverter(BaseConverter):
                     break
             output_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, platform=Platform.CAFFE, no_save=self.no_save)
+        self.mlir = MLIRImporter(input_shapes,
+                                 output_shapes,
+                                 self.model_name,
+                                 platform=Platform.CAFFE,
+                                 no_save=self.no_save)
         self.weight_file = self.mlir.weight_file
 
     def layerType(self, layer):
@@ -214,7 +218,8 @@ class CaffeConverter(BaseConverter):
                 assert self.test_input.endswith('.npz')
                 test_file = self.test_input
             else:
-                raise ValueError("test_input npz file is necessary when shape_influencing_input_names is set")
+                raise ValueError(
+                    "test_input npz file is necessary when shape_influencing_input_names is set")
             input_data = np.load(test_file)
         for idx, _name in enumerate(self.input_names):
             kwargs = copy.deepcopy(self.preprocess_args)
@@ -613,9 +618,9 @@ class CaffeConverter(BaseConverter):
         output_shape = self.getShape(layer.top[0])
 
         reshape_op = top.ReshapeOp(self.mlir.get_tensor_type([in_shape[0], in_shape[-1]]),
-                                       in_op,
-                                       **reshape_attrs,
-                                       ip=self.mlir.insert_point).output
+                                   in_op,
+                                   **reshape_attrs,
+                                   ip=self.mlir.insert_point).output
 
         new_op = top.MatMulOp(self.mlir.get_tensor_type(output_shape),
                               reshape_op,
@@ -1005,12 +1010,10 @@ class CaffeConverter(BaseConverter):
         self.addOperand(layer.top[0], new_op)
 
     def convert_absval_op(self, layer):
-        assert (self.layerType(layer) ==  "AbsVal")
+        assert (self.layerType(layer) == "AbsVal")
         in_op = self.getOperand(layer.bottom[0])
         output_shape = self.getShape(layer.top[0])
-        param = {
-            'loc': self.get_loc(layer.top[0])
-        }
+        param = {'loc': self.get_loc(layer.top[0])}
         new_op = top.AbsOp(self.mlir.get_tensor_type(output_shape),
                            in_op,
                            **param,
@@ -1355,31 +1358,31 @@ class CaffeConverter(BaseConverter):
                                 ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
-    def convert_reduce_op(self,layer):
+    def convert_reduce_op(self, layer):
         assert (self.layerType(layer) == 'Reduction')
         p = layer.reduction_param
-        reduce_dict = {"4":"ReduceMean"}
+        reduce_dict = {"4": "ReduceMean"}
         reduce_method = str(p.operation)
         assert reduce_method in reduce_dict
         method = reduce_dict[reduce_method]
         keepdims = False
         axis = p.axis
         input_shape = self.getShape(layer.bottom[0])
-        if axis<0:
-            axis+=len(input_shape)
+        if axis < 0:
+            axis += len(input_shape)
         ## cal output shape ##
         if isinstance(axis, int):
             axis = [axis]
         output_shape = list(input_shape)
         for a in sorted(axis, reverse=True):
-            output_shape.pop(a)  
+            output_shape.pop(a)
         op = self.getOperand(layer.bottom[0])
         params = {}
         param = {
-                'axes':axis,
-                'keepdims':keepdims,
-                'mode':StringAttr.get(method),
-                'loc':self.get_loc(layer.top[0])
+            'axes': axis,
+            'keepdims': keepdims,
+            'mode': StringAttr.get(method),
+            'loc': self.get_loc(layer.top[0])
         }
         new_op = top.ReduceOp(self.mlir.get_tensor_type(output_shape),
                               op,

@@ -4,8 +4,10 @@ import pdb
 import time
 import numpy as np
 from typing import List
+
 MIN_BLOCK_SIZE = 5
 from mlir.ir import *
+
 tpu_dev = "cpu"
 device = torch.device(tpu_dev)
 from . import config
@@ -17,6 +19,7 @@ from . import config
 
 import importlib
 
+
 def torch_dtype_from_tpu_mlir(dtype) -> torch.dtype:
     if dtype == 'f16':
         return torch.float16
@@ -26,6 +29,7 @@ def torch_dtype_from_tpu_mlir(dtype) -> torch.dtype:
         return torch.float32
     else:
         raise TypeError("%s is not supported by torch" % dtype)
+
 
 def get_np_type_from_torch_type2(type):
     if type == torch.float16:
@@ -37,11 +41,17 @@ def get_np_type_from_torch_type2(type):
     else:
         return np.float32
 
+
 class TpuMlirModule(torch.nn.Module):
-    def __init__(
-        self, model_file, output_count, scalar_tensor_new_fx_graph,
-        output_tensor_names = None, output_dtypes = None, output_shapes = [], ori_output_nodes = []
-    ):
+
+    def __init__(self,
+                 model_file,
+                 output_count,
+                 scalar_tensor_new_fx_graph,
+                 output_tensor_names=None,
+                 output_dtypes=None,
+                 output_shapes=[],
+                 ori_output_nodes=[]):
         super(TpuMlirModule, self).__init__()
         self._register_state_dict_hook(TpuMlirModule._on_state_dict)
         output_shapes = [[1] if i == [] else i for i in output_shapes]
@@ -77,7 +87,7 @@ class TpuMlirModule(torch.nn.Module):
             self.bmodel = BmodelRunner(self.model_file, device_id=0)
             self.bmodel_name = self.bmodel.model_info["networks"][0]
             print('bmodel_name:', self.bmodel_name)
-            self.bmodel_input_info  = self.bmodel.model_net_info[self.bmodel_name]["inputs"]
+            self.bmodel_input_info = self.bmodel.model_net_info[self.bmodel_name]["inputs"]
             print('bmodel_input_info:', self.bmodel_input_info)
             self.bmodel_output_info = self.bmodel.model_net_info[self.bmodel_name]["outputs"]
             print('bmodel_output_info:', self.bmodel_output_info)
@@ -150,7 +160,7 @@ class TpuMlirModule(torch.nn.Module):
                     net_input = self.net.inputs[idx0]
                     idx0 += 1
                     # input = input.cpu().numpy()
-                    if len(input.shape) == 0 :
+                    if len(input.shape) == 0:
                         net_input.data[:] = input.view((1))
                     else:
                         net_input.data[:] = input
@@ -183,25 +193,31 @@ class TpuMlirModule(torch.nn.Module):
         else:
             self.outputs_tpu = []
             for i in range(len(self.bmodel_output_info)):
-                out_v = self.bmodel.get_model_tensor(i, is_input = 0)
-                print(f'bmodel_output device:{out_v.device}, shape:{out_v.shape}, dtype:{out_v.dtype}')
+                out_v = self.bmodel.get_model_tensor(i, is_input=0)
+                print(
+                    f'bmodel_output device:{out_v.device}, shape:{out_v.shape}, dtype:{out_v.dtype}'
+                )
                 self.outputs_tpu.append(out_v)
             self.inputs_tpu = []
             scalar_tensor_output = {}
             idx0 = 0
             for idx, input in enumerate(inputs):
-                print(f'torch input device:{input.device}, shape:{input.shape}, dtype:{input.dtype}')
+                print(
+                    f'torch input device:{input.device}, shape:{input.shape}, dtype:{input.dtype}')
                 if idx in self.scalar_tensor_new_fx_graph:
                     fx_g, out_idx = self.scalar_tensor_new_fx_graph[idx]
                     scalar_tensor_output[out_idx] = fx_g(input)
                 else:
                     bmodel_in = self.bmodel.get_model_tensor(idx0)
                     idx0 += 1
-                    print(f'bmodel_in device:{bmodel_in.device}, shape:{bmodel_in.shape}, dtype:{bmodel_in.dtype}')
+                    print(
+                        f'bmodel_in device:{bmodel_in.device}, shape:{bmodel_in.shape}, dtype:{bmodel_in.dtype}'
+                    )
                     input = input.to(bmodel_in.dtype)
                     bmodel_in.copy_(input)
                     self.inputs_tpu.append(bmodel_in)
-            print(f"inputs_tpu size:{len(self.inputs_tpu)}, outputs_tpu size:{len(self.outputs_tpu)}")
+            print(
+                f"inputs_tpu size:{len(self.inputs_tpu)}, outputs_tpu size:{len(self.outputs_tpu)}")
             self.bmodel.forward_with_outputs(self.inputs_tpu, self.outputs_tpu, with_check=False)
             print("forward_sync_with_outputs end", flush=True)
             idx = 0

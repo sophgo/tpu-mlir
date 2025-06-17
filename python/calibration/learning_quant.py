@@ -40,6 +40,7 @@ from staging.lapq import LossAwareQuant
 from staging.comq import Comq
 
 import pymlir
+
 pymlir.set_mem_mode("force_value_mem")
 
 
@@ -139,7 +140,9 @@ if __name__ == '__main__':
     learn_lapq = args.target == "LossAwareQuant"
     learn_comq = args.target == "Comq"
 
-    print(f'Learning Scale: {learn_scale}; Learning AdaWeight: {learn_adaweight}; Learning GptWeight: {learn_gptweight}; Learning Active and Weight Threahold: {learn_dualthreshold}')
+    print(
+        f'Learning Scale: {learn_scale}; Learning AdaWeight: {learn_adaweight}; Learning GptWeight: {learn_gptweight}; Learning Active and Weight Threahold: {learn_dualthreshold}'
+    )
     if learn_scale:
         scale_searcher.num_sample = num_sample
         scale_searcher.ref_tensors = ref_tensors(scale_searcher, all_inputs, loger)
@@ -154,7 +157,7 @@ if __name__ == '__main__':
         del scale_searcher.ref_tensors
         del scale_searcher
     if learn_adaweight:
-        scheduler = LrScheduler(args.lr, num_sample*args.epoch, args.lr_scheduler)
+        scheduler = LrScheduler(args.lr, num_sample * args.epoch, args.lr_scheduler)
         weight_searcher = LearningAdaWeight(args)
         weight_searcher.loger = loger
         weight_searcher.scales = cali_table.table
@@ -173,7 +176,8 @@ if __name__ == '__main__':
         weight_searcher.num_sample = num_sample
         weight_searcher.ref_tensors = ref_tensors(weight_searcher, all_inputs, loger)
         fix_float = get_fixed_float_layers(args.mlir_file, 'INT8', args.chip,
-                                           args.calibration_table, args.qtable, weight_searcher.ref_tensors)
+                                           args.calibration_table, args.qtable,
+                                           weight_searcher.ref_tensors)
         weight_searcher.filter_fixed_floats(fix_float)
         weight_searcher.learning()
         del weight_searcher

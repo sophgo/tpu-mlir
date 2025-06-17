@@ -13,7 +13,6 @@ from dash import html
 import dash_bootstrap_components as dbc
 from dash import dcc
 
-
 app = dash.Dash(__name__,
                 title="TPU-MLIR Calibration-Analysis-Tool",
                 external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -22,10 +21,7 @@ server = app.server
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--debug',
-                        action='store_true',
-                        dest='debug',
-                        help='debug mode')
+    parser.add_argument('--debug', action='store_true', dest='debug', help='debug mode')
     parser.add_argument('-p',
                         '--port',
                         type=int,
@@ -61,6 +57,7 @@ def parse_args():
 
 
 class global_state():
+
     def __init__(self):
         self.graph = None
         self.analysis_data = None
@@ -84,9 +81,7 @@ app.layout = html.Div(
     children=[
         component.auto_load(),
         dbc.Row([
-            dbc.Col(
-                component.top_label('top-label'),
-            ),
+            dbc.Col(component.top_label('top-label'), ),
             dbc.Col(
                 dbc.Row(
                     [
@@ -111,9 +106,8 @@ app.layout = html.Div(
                 align="center",
             )
         ],
-            justify="between"),
-        dcc.Store(id='forward-state',
-                  data="Inactive"),  # state machine: Idle, Forward, Metrics
+                justify="between"),
+        dcc.Store(id='forward-state', data="Inactive"),  # state machine: Idle, Forward, Metrics
         dcc.Interval(id='forward-interval', interval=800, disabled=True),
         dbc.Progress(id='forward-progress',
                      value=0,
@@ -133,27 +127,17 @@ app.layout = html.Div(
                     split='vertical',
                     size="40%",
                     children=[
-                        html.Div(
-                            component.cyto_graph(
-                                'cytoscape-responsive-layout'),
-                        ),
-                        html.Div(
-                            component.info_tab(
-                                'info-tab', 'info-tab0', 'info-tab1', 'info-tab2', 'info-tab3'),
-                            style={'height': '100vh'}),
+                        html.Div(component.cyto_graph('cytoscape-responsive-layout'), ),
+                        html.Div(component.info_tab('info-tab', 'info-tab0', 'info-tab1',
+                                                    'info-tab2', 'info-tab3'),
+                                 style={'height': '100vh'}),
                     ]),
             ]),
         component.draggable_toolbox('draggable-toolbox', 'toolbox'),
         dcc.Location(id='url'),
-        html.Div(id='viewport-container',
-                 children="test",
-                 style={'display': 'none'}),
-        html.Div(id='viewport-container-cy',
-                 children="test",
-                 style={'display': 'none'}),
-        html.Div(id='viewport-container-edge-info',
-                 children="test",
-                 style={'display': 'none'}),
+        html.Div(id='viewport-container', children="test", style={'display': 'none'}),
+        html.Div(id='viewport-container-cy', children="test", style={'display': 'none'}),
+        html.Div(id='viewport-container-edge-info', children="test", style={'display': 'none'}),
     ])
 
 for call in callback:
@@ -168,5 +152,8 @@ if __name__ == '__main__':
     if args.debug:
         app.run_server(host=args.host, port=args.port, debug=True)
     else:
-        app.run_server(host=args.host, port=args.port, debug=False,
-                       dev_tools_silence_routes_logging=True, dev_tools_serve_dev_bundles=False)
+        app.run_server(host=args.host,
+                       port=args.port,
+                       debug=False,
+                       dev_tools_silence_routes_logging=True,
+                       dev_tools_serve_dev_bundles=False)

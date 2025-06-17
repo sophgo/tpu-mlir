@@ -324,10 +324,10 @@ if __name__ == "__main__":
     '''
     parser.add_argument('--basic_max_shape_inverse', type=str2listInt,  default="1216,800",
                         help="inital h-w-inversed multi-batch img_shape(though it called max_shape, it's not padding_shape!) \
-                        ex:1199,800,1100,740  for batch-2 [800,1199,3]&[740,1100,3]"                                                                                    )
+                        ex:1199,800,1100,740  for batch-2 [800,1199,3]&[740,1100,3]"                                                                                                                                                                        )
     parser.add_argument('--basic_scalar_factor', type=str2listFloat,  default="1.8734375,1.8735363",
                         help="inital h-w-inversed multi-batch scalar_factor \
-                        ex:1.3,1.2 for 1-batch w-h-inversed"                                                            )
+                        ex:1.3,1.2 for 1-batch w-h-inversed"                                                                                                                        )
     parser.add_argument('--mode_input_generator', type=str,  default="Complete", choices=["Complete", "RPN2END", "RPN2BBOXPOOLER"],
                         help="mode of input")
     parser.add_argument('--path_input_image', type=str, default=None,

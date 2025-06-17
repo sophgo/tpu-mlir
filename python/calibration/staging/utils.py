@@ -17,24 +17,24 @@ import numpy as np
 from scipy import spatial
 import datetime
 
-
 from utils.preprocess import preprocess
 from calibration.data_selector import DataSelector
 
 from utils.mlir_shell import mlir_lowering
 import pymlir
+
 pymlir.set_mem_mode("force_value_mem")
 
 
 def quant_requant_active(data, scale, unsigned=False, bits=8):
     if unsigned:
-        d = data/scale*(2**bits-1)
+        d = data / scale * (2**bits - 1)
         dout = np.round(d)
-        return np.clip(dout, 0, 2**bits-1)/(2**bits-1) * scale
+        return np.clip(dout, 0, 2**bits - 1) / (2**bits - 1) * scale
     else:
-        d = data/scale*(2**(bits-1)-1)
+        d = data / scale * (2**(bits - 1) - 1)
         dout = np.round(d)
-        return np.clip(dout, -(2**(bits-1)), 2**(bits-1)-1)/(2**(bits-1)-1) * scale
+        return np.clip(dout, -(2**(bits - 1)), 2**(bits - 1) - 1) / (2**(bits - 1) - 1) * scale
 
 
 def cal_loss(target, ref):
@@ -63,7 +63,8 @@ def into_groups(parser, layers):
             notin = True
             for out_op in parser.get_next_op_by_op_name(l):
                 for layer in groups[i]:
-                    if out_op not in parser.get_pre_op_by_op_name(layer) and out_op not in parser.get_next_op_by_op_name(layer):
+                    if out_op not in parser.get_pre_op_by_op_name(
+                            layer) and out_op not in parser.get_next_op_by_op_name(layer):
                         continue
                     else:
                         notin = False
@@ -71,7 +72,8 @@ def into_groups(parser, layers):
             if notin:
                 for in_op in parser.get_pre_op_by_op_name(l):
                     for layer in groups[i]:
-                        if in_op not in parser.get_next_op_by_op_name(layer) and in_op not in parser.get_pre_op_by_op_name(layer):
+                        if in_op not in parser.get_next_op_by_op_name(
+                                layer) and in_op not in parser.get_pre_op_by_op_name(layer):
                             continue
                         else:
                             notin = False
@@ -131,6 +133,7 @@ def lower_and_eval(mlir, mode, chip, cali_table, q_table, ref_tensor, sample_idx
 
 
 class logging:
+
     def __init__(self, filename="logging"):
         self.file_name = filename
         self.log_file = open(self.file_name, 'w')
@@ -144,6 +147,7 @@ class logging:
 
 
 class imagenet_dataset:
+
     def __init__(self, path, input_size, mean, scale):
         self.path = path
         self.input_size = input_size
@@ -155,11 +159,17 @@ class imagenet_dataset:
         self.num_workers = 4
 
     def build_dataset(self):
-        mean = tuple([m/255.0 for m in self.mean])
-        std = tuple([(1.0/x)/255.0 for x in self.scale])
+        mean = tuple([m / 255.0 for m in self.mean])
+        std = tuple([(1.0 / x) / 255.0 for x in self.scale])
         crop_pct = 0.875
-        train_transform = self.build_transform(input_size=self.input_size, mean=mean, std=std, crop_pct=crop_pct)
-        val_transform = self.build_transform(input_size=self.input_size, mean=mean, std=std, crop_pct=crop_pct)
+        train_transform = self.build_transform(input_size=self.input_size,
+                                               mean=mean,
+                                               std=std,
+                                               crop_pct=crop_pct)
+        val_transform = self.build_transform(input_size=self.input_size,
+                                             mean=mean,
+                                             std=std,
+                                             crop_pct=crop_pct)
 
         # Data
         traindir = os.path.join(self.path, 'train')
@@ -173,7 +183,6 @@ class imagenet_dataset:
             num_workers=self.num_workers,
             pin_memory=True,
         )
-
         '''
         train_dataset = datasets.ImageFolder(traindir, train_transform)
         train_loader = torch.utils.data.DataLoader(
@@ -187,9 +196,13 @@ class imagenet_dataset:
         '''
         return val_loader
 
-    def build_transform(self, input_size=224, interpolation="bicubic",
-                        mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225),
+    def build_transform(self,
+                        input_size=224,
+                        interpolation="bicubic",
+                        mean=(0.485, 0.456, 0.406),
+                        std=(0.229, 0.224, 0.225),
                         crop_pct=0.875):
+
         def _pil_interp(method):
             if method == "bicubic":
                 return Image.BICUBIC
@@ -199,15 +212,15 @@ class imagenet_dataset:
                 return Image.HAMMING
             else:
                 return Image.BILINEAR
+
         resize_im = input_size > 32
         t = []
         if resize_im:
             size = int(math.floor(input_size / crop_pct))
             ip = _pil_interp(interpolation)
             t.append(
-                transforms.Resize(
-                    size, interpolation=ip
-                ),  # to maintain same ratio w.r.t. 224 images
+                transforms.Resize(size,
+                                  interpolation=ip),  # to maintain same ratio w.r.t. 224 images
             )
             t.append(transforms.CenterCrop(input_size))
 
@@ -217,6 +230,7 @@ class imagenet_dataset:
 
 
 class learning_inputs:
+
     def __init__(self, parser, args):
         self.dataset = args.dataset
         self.data_list = args.data_list
@@ -247,7 +261,8 @@ class learning_inputs:
                 self.scale = [x for x in ppa.scale.reshape(-1)]
                 self.resize_dims = ppa.net_input_dims
                 self.pixel_format = ppa.pixel_format
-            imgnet_ds = imagenet_dataset(self.dataset, self.resize_dims[0], self.mean, self.scale)  # ugly input dim 0
+            imgnet_ds = imagenet_dataset(self.dataset, self.resize_dims[0], self.mean,
+                                         self.scale)  # ugly input dim 0
             val_loader = imgnet_ds.build_dataset()
             cnt = 0
             batched_idx = 0
@@ -331,6 +346,7 @@ class learning_inputs:
 
 
 class ref_tensors:
+
     def __init__(self, learner, inputs, loger=None):
         self.parser = learner.parser
         self.module = learner.module
@@ -430,9 +446,10 @@ class ref_tensors:
 
 
 class LrScheduler:
+
     def __init__(self, lr, max_iter, mode):
         self.lr = lr
-        self.min_lr = lr/10
+        self.min_lr = lr / 10
         self.mode = mode
         self.max_iter = max_iter
         self.scale = 0.1
@@ -445,17 +462,20 @@ class LrScheduler:
             if iter <= self.max_iter * self.warm_up:
                 return self.lr
             else:
-                return self.min_lr + 0.5 * (self.lr-self.min_lr)*(1.0+np.cos((iter-self.max_iter*self.warm_up)/(self.max_iter-self.max_iter*self.warm_up)*np.pi))
+                return self.min_lr + 0.5 * (self.lr - self.min_lr) * (1.0 + np.cos(
+                    (iter - self.max_iter * self.warm_up) /
+                    (self.max_iter - self.max_iter * self.warm_up) * np.pi))
         elif self.mode == 'MultiStep':
             if iter <= self.max_iter * 0.5:
                 return self.lr
-            elif iter <= self.max_iter*2/3:
+            elif iter <= self.max_iter * 2 / 3:
                 return self.lr * self.scale
             else:
                 return self.lr * self.scale * self.scale
 
 
 class CaliTable:
+
     def __init__(self, in_table, out_table):
         self.in_table = in_table
         self.out_table = out_table
@@ -473,11 +493,9 @@ class CaliTable:
                 if len(s) != 4:
                     continue
                 if int4:
-                    self.table4[s[0]] = [
-                        float(s[1]), float(s[2]), float(s[3])]
+                    self.table4[s[0]] = [float(s[1]), float(s[2]), float(s[3])]
                 else:
-                    self.table[s[0]] = [
-                        float(s[1]), float(s[2]), float(s[3])]
+                    self.table[s[0]] = [float(s[1]), float(s[2]), float(s[3])]
             if line.startswith("#int4_th"):
                 int4 = True
 
@@ -497,12 +515,10 @@ class CaliTable:
         f.write("# Learning genetated time: {}\n".format(datetime.datetime.now()))
         f.write("# op_name    threshold    min    max\n")
         for op in self.table:
-            f.write(
-                f'{op}  {self.table[op][0]}  {self.table[op][1]}  {self.table[op][2]}\n')
+            f.write(f'{op}  {self.table[op][0]}  {self.table[op][1]}  {self.table[op][2]}\n')
         if len(self.table4) > 0:
             f.write('\n')
             f.write('#int4_th\n')
             for op in self.table4:
-                f.write(
-                    f'{op}  {self.table4[op][0]}  {self.table4[op][1]}  {self.table4[op][2]}\n')
+                f.write(f'{op}  {self.table4[op][0]}  {self.table4[op][1]}  {self.table4[op][2]}\n')
         f.close()

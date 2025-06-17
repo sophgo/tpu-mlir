@@ -10,7 +10,6 @@ from transformers import (
     AutoModelForImageClassification,
 )
 
-
 logger = logging.getLogger("transformer")
 
 
@@ -53,11 +52,11 @@ def make_huggingface_training_args(config_train, config_progress):
         disable_tqdm=config_progress.disable_tqdm,
         load_best_model_at_end=config_progress.load_best_model_at_end,
         metric_for_best_model=config_progress.metric_for_best_model,
-        greater_is_better=config_progress.greater_is_better
-    )
+        greater_is_better=config_progress.greater_is_better)
     logger.warning(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}, "
-        + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
+        +
+        f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
     )
     logger.info(f"Training/evaluation parameters {training_args}")
 
@@ -114,9 +113,10 @@ def load_image_dataset(config_data, config_model):
             task="image-classification",
             keep_in_memory=True,
         )
-    
+
     # If we don't have a validation split, split off a percentage of train as validation.
-    config_data.train_val_split = None if "validation" in dataset.keys() else config_data.train_val_split
+    config_data.train_val_split = None if "validation" in dataset.keys(
+    ) else config_data.train_val_split
     if isinstance(config_data.train_val_split, float) and config_data.train_val_split > 0.0:
         split = dataset["train"].train_test_split(config_data.train_val_split)
         dataset["train"] = split["train"]

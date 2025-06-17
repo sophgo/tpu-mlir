@@ -21,12 +21,13 @@ arch_name = "BM1684X"
 ID_WIDTH = 20
 EU_NUM = 16
 NPU_NUM = 64
-LOCAL_MEM_SHIFT=18
-LOCAL_MEM_SIZE=1<<LOCAL_MEM_SHIFT #256k
-LOCAL_BANK_NUM=16
+LOCAL_MEM_SHIFT = 18
+LOCAL_MEM_SIZE = 1 << LOCAL_MEM_SHIFT  #256k
+LOCAL_BANK_NUM = 16
 TOTAL_LOCAL_MEM_SIZE = LOCAL_MEM_SIZE * NPU_NUM
-LOCAL_MEM_ADDR_MASK = TOTAL_LOCAL_MEM_SIZE -1
-LOCAL_BANK_SIZE=LOCAL_MEM_SIZE//LOCAL_BANK_NUM
+LOCAL_MEM_ADDR_MASK = TOTAL_LOCAL_MEM_SIZE - 1
+LOCAL_BANK_SIZE = LOCAL_MEM_SIZE // LOCAL_BANK_NUM
+
 
 class EngineType(Enum):
     BD = 0
@@ -36,6 +37,7 @@ class EngineType(Enum):
     NMS = 4
     CDMA = 5
     UNKNOWN = -1
+
 
 class DynRecordType(Enum):
     FUNC = 0
@@ -47,6 +49,7 @@ class DynRecordType(Enum):
     NMS = 6
     CUSTOM = 100
     UNKNOWN = -1
+
 
 class BDFuncType(Enum):
     CONV = 0
@@ -64,11 +67,13 @@ class BDFuncType(Enum):
     SYS = 15
     UNKNOWN = -1
 
+
 class CONV(Enum):
     CONV_NORMAL = 0
     CONV_WRQ = 1
     CONV_WRQ_RELU = 2
     UNKNOWN = -1
+
 
 class PD(Enum):
     PD_DEPTHWISE = 0
@@ -80,6 +85,7 @@ class PD(Enum):
     PD_ROI_MAX = 7
     UNKNOWN = -1
 
+
 class MM(Enum):
     MM_NORMAL = 1
     MM_WRQ = 2
@@ -88,6 +94,7 @@ class MM(Enum):
     MM_NT = 5
     MM_TT = 6
     UNKNOWN = -1
+
 
 class AR(Enum):
     AR_MUL = 0
@@ -123,12 +130,14 @@ class AR(Enum):
     AR_GET_FIRST_ZERO = 30
     UNKNOWN = -1
 
+
 class RQDQ(Enum):
     RQ_0 = 0
     RQ_1 = 1
     DQ_0 = 3
     DQ_1 = 4
     UNKNOWN = -1
+
 
 class TRANS_BC(Enum):
     TRAN_C_W_TRANSPOSE = 0
@@ -138,6 +147,7 @@ class TRANS_BC(Enum):
     STATIC_BROAD = 4
     STATIC_DISTRIBUTE = 5
     UNKNOWN = -1
+
 
 class SG(Enum):
     PL_gather_d1coor = 0
@@ -160,6 +170,7 @@ class SG(Enum):
     PE_S_mask_seline = 19
     UNKNOWN = -1
 
+
 class SFU(Enum):
     SFU_TAYLOR_4X = 12
     SFU_TAYLOR = 13
@@ -167,11 +178,13 @@ class SFU(Enum):
     SFU_RSQ = 17
     UNKNOWN = -1
 
+
 class LIN(Enum):
     LIN_MAC = 1
     LIN_ADD_SQR = 20
     LIN_SUB_SQR = 21
     UNKNOWN = -1
+
 
 class CMP(Enum):
     CMP_GT_AND_SG = 22
@@ -180,6 +193,7 @@ class CMP(Enum):
     CMP_LT_AND_SL = 25
     CMP_SL = 26
     UNKNOWN = -1
+
 
 class VC(Enum):
     VC_MUL = 0
@@ -200,6 +214,7 @@ class VC(Enum):
     VC_MULDHR = 23
     UNKNOWN = -1
 
+
 class SYS(Enum):
     INSTR_BARRIER = 0
     SPB = 1
@@ -210,6 +225,7 @@ class SYS(Enum):
     DATA_BARRIER = 6
     SYS_END = 31
     UNKNOWN = -1
+
 
 class GDMAFuncType(Enum):
     TENSOR = 0
@@ -223,6 +239,7 @@ class GDMAFuncType(Enum):
     SCATTER = 8
     UNKNOWN = -1
 
+
 class GDMASubFunc(Enum):
     NONE = 0
     TRANS = 1
@@ -233,6 +250,7 @@ class GDMASubFunc(Enum):
     BANK4_BDC = 6
     UNKNOWN = -1
 
+
 class GDMADirection(Enum):
     S2L = 0
     L2S = 1
@@ -240,14 +258,16 @@ class GDMADirection(Enum):
     L2L = 3
     UNKNOWN = -1
 
+
 class GDMAFormat(Enum):
-    UNKNOWN=-1
+    UNKNOWN = -1
     INT8 = 0
     FLOAT16 = 1
     FLOAT32 = 2
     INT16 = 3
     INT32 = 4
     BFLOAT16 = 5
+
 
 class BDProfileFormat(dictStructure):
     _pack_ = 1
@@ -261,6 +281,7 @@ class BDProfileFormat(dictStructure):
         ("num_write", ct.c_uint32),
         ("reserved", ct.c_uint32),
     ]
+
 
 class GDMAProfileFormat(dictStructure):
     _pack_ = 1
@@ -355,9 +376,10 @@ class GDMAProfileFormat(dictStructure):
         }[f"{_from}->{_to}"]
 
 
-GDMACyclePeriod= 1.0/1000
-BDCyclePeriod= 1.0/1000
+GDMACyclePeriod = 1.0 / 1000
+BDCyclePeriod = 1.0 / 1000
 PeriodFixed = False
+
 
 class MemType(Enum):
     GLOBAL = 0
@@ -365,6 +387,7 @@ class MemType(Enum):
     L2MEM = 2
     LOCAL = 3
     UNKNOWN = -1
+
 
 class BDFormat(Enum):
     INT8 = 0
@@ -375,11 +398,13 @@ class BDFormat(Enum):
     BFP16 = 5
     UNKNOWN = -1
 
+
 def local_mem_partition():
     partitions = []
     for i in range(LOCAL_BANK_NUM):
-        partitions.append([i*LOCAL_BANK_SIZE, LOCAL_BANK_SIZE, "BANK[{}]".format(i)])
+        partitions.append([i * LOCAL_BANK_SIZE, LOCAL_BANK_SIZE, "BANK[{}]".format(i)])
     return partitions
+
 
 def get_node_set_info(dyn_data):
     raw_id = dyn_data.id
@@ -388,8 +413,9 @@ def get_node_set_info(dyn_data):
     bd_cmd_id = raw_id & 0xFFFFF
     return engine, gdma_cmd_id, bd_cmd_id
 
-def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func,
-                 bd_set_data, gdma_set_data, layer_id, layer_type):
+
+def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func, bd_set_data, gdma_set_data,
+                 layer_id, layer_type):
 
     func_types = ["global", "local", "gdma"]
     func_type = ""
@@ -399,18 +425,18 @@ def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func,
 
     if dyn_type == DynRecordType.FUNC:
         group_id = (raw_id >> 48) & 0x0FFFF
-        base_func_type = func_types[(raw_id >>32) & 0x0FFFF]
+        base_func_type = func_types[(raw_id >> 32) & 0x0FFFF]
         info.append("group_id={}".format(group_id))
         info.append("func_type={}".format(base_func_type))
         type_value = raw_id & 0x0FFFF
         cast_type = FWLayerType if base_func_type != "gdma" else FWGDMAType
-        func_type = "gdma" if base_func_type == "gdma" else base_func_type+":"+layer_type
+        func_type = "gdma" if base_func_type == "gdma" else base_func_type + ":" + layer_type
         layer_type = enum_cast(type_value, cast_type).name
         height = 0.5
         if base_func_type != "gdma":
             info.append("layer_type={}".format(layer_type))
             height = 1
-            layer_id = group_id # use group_id as layer_id
+            layer_id = group_id  # use group_id as layer_id
     elif dyn_type == DynRecordType.NODE_SET:
         engine = EngineType((raw_id >> 40) & 0x7)
         state = "parallel" if bool((raw_id >> 52) & 0x1) else "serial"
@@ -420,7 +446,7 @@ def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func,
         info.append("bd_id={}".format(bd_cmd_id))
         info.append(state)
         version = (raw_id >> 60) & 0xF
-        if current_func is not None and begin_usec>=current_func.begin_usec and end_usec <= current_func.end_usec:
+        if current_func is not None and begin_usec >= current_func.begin_usec and end_usec <= current_func.end_usec:
             layer_id = current_func.layer_id
             layer_type = current_func.layer_type
         if engine == EngineType.BD:
@@ -447,19 +473,20 @@ def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func,
         func_type = "wait"
     elif dyn_type == DynRecordType.GDE:
         func_type = "GDE"
-        info.append("data=%d[0x%x]"%(raw_id, raw_id))
+        info.append("data=%d[0x%x]" % (raw_id, raw_id))
     elif dyn_type == DynRecordType.SORT:
         func_type = "SORT"
-        info.append("data=%d[0x%x]"%(raw_id, raw_id))
+        info.append("data=%d[0x%x]" % (raw_id, raw_id))
     elif dyn_type == DynRecordType.NMS:
         func_type = "NMS"
-        info.append("data=%d[0x%x]"%(raw_id, raw_id))
+        info.append("data=%d[0x%x]" % (raw_id, raw_id))
     elif dyn_type == DynRecordType.CUSTOM:
         height = 0.5
         func_type = "CUSTOM"
-        info.append("data=%d[0x%x]"%(raw_id, raw_id))
+        info.append("data=%d[0x%x]" % (raw_id, raw_id))
 
     return func_type, height, layer_id, layer_type, info, bd_set_data, gdma_set_data
+
 
 def show_arch_info():
     print("BM1684X")
@@ -467,31 +494,38 @@ def show_arch_info():
 
 import opdef_1684x, opparam_1684x
 from op_support import Layout
-MemRecord=namedtuple("MemRecord", "addr data_size cover_size is_global is_out desc")
+
+MemRecord = namedtuple("MemRecord", "addr data_size cover_size is_global is_out desc")
+
 
 class CMDWrapper():
     _cmd_id_ = 0
+
     def __init__(self):
-        self.ref_id= self.__class__._cmd_id_
+        self.ref_id = self.__class__._cmd_id_
         self.__class__._cmd_id_ += 1
         self.__attr_names = []
+
     def set_attr_names(self, names):
         self.__attr_names = names
 
     def attr_names(self):
         return self.__attr_names
+
     def test(self, mark_condition):
         args = {"gdma": False, "bd": True}
+
         class MStruct:
             pass
+
         for key, value in self.__dict__.items():
             if key == "mem_records":
                 v_list = []
                 for m in value:
-                    v=MStruct()
-                    v.is_out =m.is_out
+                    v = MStruct()
+                    v.is_out = m.is_out
                     v.is_in = not m.is_out
-                    v.gmem =m.is_global
+                    v.gmem = m.is_global
                     v.lmem = not v.is_global
                     v.start_addr = m.addr
                     v.end_addr = m.addr + m.cover_size
@@ -520,19 +554,21 @@ class CMDWrapper():
                 mem_str += "in,  "
             if m.is_global:
                 mem_str += "gmem, "
-                mem_str += "start_addr=%d[0x%x], "%(m.addr, m.addr)
-                mem_str += "end_addr=%d[0x%x], "%(m.addr+m.cover_size, m.addr+m.cover_size)
+                mem_str += "start_addr=%d[0x%x], " % (m.addr, m.addr)
+                mem_str += "end_addr=%d[0x%x], " % (m.addr + m.cover_size, m.addr + m.cover_size)
             else:
                 mem_str += "lmem, "
-                mem_str += "start_offset=%d[0x%x], "%(m.addr, m.addr)
-                mem_str += "end_offset=%d[0x%x], "%(m.addr+m.cover_size, m.addr+m.cover_size)
-            mem_str += "data_size=%d, "%(m.data_size)
-            mem_str += "cover_size=%d, "%(m.cover_size)
+                mem_str += "start_offset=%d[0x%x], " % (m.addr, m.addr)
+                mem_str += "end_offset=%d[0x%x], " % (m.addr + m.cover_size, m.addr + m.cover_size)
+            mem_str += "data_size=%d, " % (m.data_size)
+            mem_str += "cover_size=%d, " % (m.cover_size)
             mem_str += m.desc
             info.append(mem_str)
         return "\n".join(info)
 
+
 class BaseCommandParser:
+
     def __get_mem_records(self, cmd):
         import copy
 
@@ -550,7 +586,7 @@ class BaseCommandParser:
 
         def get_address(memref):
             if memref.mtype == opparam_1684x.MType.R:
-                return memref.mtype.r_addr%LOCAL_MEM_SIZE
+                return memref.mtype.r_addr % LOCAL_MEM_SIZE
             return memref.address
 
         def get_info(memref):
@@ -563,13 +599,14 @@ class BaseCommandParser:
                 stride = memref.stride
             else:
                 shape, stride = memref.local_shape, memref.local_stride
-                if len(shape)==2 and len(stride)==4:
+                if len(shape) == 2 and len(stride) == 4:
                     shape = [1, shape[0], 1, shape[1]]
                 cover_size = _get_size(shape, stride) * memref.itemsize
             return (address, size, cover_size, is_global, shape, stride)
 
         def is_memref(memref):
             return isinstance(memref, opparam_1684x.MemRef)
+
         def get_desc(shape, stride, cmd, memref):
             shape = memref.shape
             cmd_type = "gdma" if isinstance(cmd, opdef_1684x.dma_base) else "tiu"
@@ -590,13 +627,12 @@ class BaseCommandParser:
                 mem_info.append((*info[0:4], 1, get_desc(*info[-2:], cmd, ret)))
         return [MemRecord(*m) for m in mem_info]
 
-
     def __decode_single(self, cmd_buf, cmd_bits, cmd_set):
         cmd = None
         l, h = cmd_bits
         cmd_key = opdef_1684x.packbits(cmd_buf[l:h])
 
-        for op in cmd_set.get(cmd_key,[]):
+        for op in cmd_set.get(cmd_key, []):
             if op.is_comp(cmd_buf):
                 # check whether this command is recognized by the operation
                 cmd = op.decode(cmd_buf)
@@ -616,12 +652,12 @@ class BaseCommandParser:
         return full_command
 
     def decode(self, cmd_buf, cmd_bits, cmd_set, max_num):
-        cmds= []
+        cmds = []
         cur = 0
         if cmd_buf is None:
             return cmds
         cmd_buf = np.frombuffer(cmd_buf, np.uint8)
-        cmd_buf = np.unpackbits(cmd_buf, bitorder="little" )
+        cmd_buf = np.unpackbits(cmd_buf, bitorder="little")
         consume_len = 0
         while cmd_buf.size > 0 and len(cmds) < max_num:
             cmd = self.__decode_single(cmd_buf, cmd_bits, cmd_set)
@@ -629,13 +665,14 @@ class BaseCommandParser:
             offset = cmd.len
             if cmd.type == 'dma.sys' or cmd.type == 'sys.end':
                 # every command group is stored align to 128 bytes
-                align_size = 128*8
-                offset = (cmd.len + consume_len + align_size - 1)//align_size * align_size - consume_len
+                align_size = 128 * 8
+                offset = (cmd.len + consume_len + align_size -
+                          1) // align_size * align_size - consume_len
                 #print(f"{cmd.type} offset = {offset}, consume_len={consume_len}, num_cmd={len(cmds)}")
             cmd_buf = cmd_buf[offset:]
             consume_len += offset
 
-        assert len(cmds)<=max_num
+        assert len(cmds) <= max_num
         return cmds
 
     def parse(self, buf, max_num):
@@ -644,22 +681,22 @@ class BaseCommandParser:
     def command_byte_len(self):
         return self._byte_len_
 
+
 class GDMACommandParser(BaseCommandParser):
     _byte_len_ = 256
+
     def __init__(self):
         super().__init__()
+
     def parse(self, cmd_buf, max_num):
-        return self.decode(
-            cmd_buf,
-            opdef_1684x.dma_base.opcode_bits,
-            opdef_1684x.dma_cmd, max_num)
+        return self.decode(cmd_buf, opdef_1684x.dma_base.opcode_bits, opdef_1684x.dma_cmd, max_num)
+
 
 class BDCommandParser(BaseCommandParser):
     _byte_len_ = 256
+
     def __init__(self):
         super().__init__()
+
     def parse(self, cmd_buf, max_num):
-        return self.decode(
-            cmd_buf,
-            opdef_1684x.bdc_base.opcode_bits,
-            opdef_1684x.bdc_cmd, max_num)
+        return self.decode(cmd_buf, opdef_1684x.bdc_base.opcode_bits, opdef_1684x.bdc_cmd, max_num)

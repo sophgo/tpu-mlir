@@ -12,7 +12,9 @@ import argparse
 import copy
 from transform.OnnxOpt import onnx_opt
 
+
 class AssignOutput(object):
+
     def __init__(self, model):
         self.model = copy.deepcopy(model)
         onnx.checker.check_model(self.model)
@@ -30,9 +32,13 @@ class AssignOutput(object):
         self.shape_info = [info for info in model.graph.value_info]
         self.shape_info.extend(model.graph.input)
         self.shape_info.extend(model.graph.output)
-        self.shape_info = {info.name: {"shape": [i.dim_value for i in info.type.tensor_type.shape.dim if i.dim_value > 0],
-                                       "dtype": info.type.tensor_type.elem_type}
-                            for info in self.shape_info}
+        self.shape_info = {
+            info.name: {
+                "shape": [i.dim_value for i in info.type.tensor_type.shape.dim if i.dim_value > 0],
+                "dtype": info.type.tensor_type.elem_type
+            }
+            for info in self.shape_info
+        }
 
     def is_node(self, out):
         return out in self.out2name.keys()
@@ -45,8 +51,7 @@ class AssignOutput(object):
             for o in self.model.graph.node[idx].output:
                 oinput.append(o)
                 info = self.shape_info[o]
-                output = onnx.helper.make_tensor_value_info(
-                           o, info["dtype"], info["shape"])
+                output = onnx.helper.make_tensor_value_info(o, info["dtype"], info["shape"])
                 self.model.graph.output.extend([output])
         return oinput
 
@@ -102,7 +107,9 @@ class AssignOutput(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, help="onnx model file")
-    parser.add_argument("--output", required=True, help="assign outputs by using node name eg: conv1,conv2")
+    parser.add_argument("--output",
+                        required=True,
+                        help="assign outputs by using node name eg: conv1,conv2")
     args = parser.parse_args()
     model = onnx.load(args.model)
     opt_model, _ = onnx_opt(model)
@@ -110,4 +117,3 @@ if __name__ == '__main__':
     onames = [s.strip() for s in args.output.split(",")]
     new_model_name = args.model.replace(".onnx", "_new.onnx")
     assigner.run(onames, new_model_name)
-

@@ -30,6 +30,7 @@ from collections import Counter
 
 CACHE_MODE_VERSION = "v1.0"
 
+
 class TdbStatus(Enum):
     # bmodel not loaded
     UNINIT = 0
@@ -98,7 +99,9 @@ class Displays:
 
 
 def add_callback(name=None, *filter):
+
     def outer(func):
+
         def inner(self: "TdbCmdBackend", *args, **kwargs):
             call_name = name if name is not None else func.__name__
             call_name = call_name.replace("do_", "")
@@ -134,6 +137,7 @@ def add_callback(name=None, *filter):
 
 
 def safe_command(func):
+
     def outer(self, *args):
         try:
             func(self, *args)
@@ -182,7 +186,7 @@ def commom_args(parser: ArgumentParser):
         default=False,
         help="whether run by atomic cmds, set False as default which means run_by_op. \
               This option only effect PCIE and SOC mode, disable this may decrease time cost,\
-              but may have timeout error when an op contain too many atomic cmds. "                                                                                   ,
+              but may have timeout error when an op contain too many atomic cmds. ",
     )
     parser.add_argument(
         "--force_reindex_cmd",
@@ -204,9 +208,7 @@ def commom_args(parser: ArgumentParser):
         default="",
         help="The commands to be executed after loading bmodel.",
     )
-    parser.add_argument(
-        "--quiet", action="store_true", default=False, help="disable progress bar"
-    )
+    parser.add_argument("--quiet", action="store_true", default=False, help="disable progress bar")
     parser.add_argument("--infer_mode", choices=["cascade", "standalone"], default="cascade")
     parser.add_argument(
         "--plugins",
@@ -215,6 +217,7 @@ def commom_args(parser: ArgumentParser):
         default=None,
         help="The extra plugins to be added.",
     )
+
 
 class TdbCmdBackend(cmd.Cmd):
     file_recorder: Optional[CommandRecorder] = None
@@ -241,7 +244,7 @@ class TdbCmdBackend(cmd.Cmd):
         assert args is not None
         default_cmds = args.get("do", "")
         if default_cmds:
-            self.cmdqueue = [ s.strip() for s in default_cmds.split(";") ]
+            self.cmdqueue = [s.strip() for s in default_cmds.split(";")]
         self.bmodel_file = bmodel_file
         self.bmodel_dir = os.path.dirname(bmodel_file)
         self.final_mlir_fn = final_mlir_fn
@@ -287,7 +290,7 @@ class TdbCmdBackend(cmd.Cmd):
         if not args.get("quiet", False):
             extra_plugins.append("progress")
 
-        extra_plugins.extend(args.get('plugins',[]) or [])
+        extra_plugins.extend(args.get('plugins', []) or [])
 
         self.add_plugin("breakpoint")  # `break/b` command
         self.add_plugin("predict-time")
@@ -308,15 +311,11 @@ class TdbCmdBackend(cmd.Cmd):
         self.extra_check = extra_check
 
         if os.path.exists(os.path.join(self.bmodel_dir, "final.mlir")):
+            self.file_recorder = CommandRecorder(os.path.join(self.bmodel_dir, "ref_files.json"))
+        elif os.path.exists(os.path.join(self.bmodel_file.replace(".bmodel", ""),
+                                         "ref_files.json")):
             self.file_recorder = CommandRecorder(
-                os.path.join(self.bmodel_dir, "ref_files.json")
-            )
-        elif os.path.exists(
-            os.path.join(self.bmodel_file.replace(".bmodel", ""), "ref_files.json")
-        ):
-            self.file_recorder = CommandRecorder(
-                os.path.join(self.bmodel_file.replace(".bmodel", ""), "ref_files.json")
-            )
+                os.path.join(self.bmodel_file.replace(".bmodel", ""), "ref_files.json"))
         else:
             self.file_recorder = None
         if self.file_recorder is not None:
@@ -343,8 +342,7 @@ class TdbCmdBackend(cmd.Cmd):
         if self.get_plugin("progress") is None:
             self.message(
                 "You are in quiet mode, add `-v/--verbose` argument to open prograss bar,\n"
-                "or use `info progress` to show progress information."
-            )
+                "or use `info progress` to show progress information.")
 
         for i in self.args.get("on_load_commands", []):
             self.onecmd(i)
@@ -406,10 +404,9 @@ class TdbCmdBackend(cmd.Cmd):
             from .target_mars3.context import MARS3Context
             from .target_sgtpuv8.context import SGTPUV8Context
             if isinstance(self.context, BM1688Context) or isinstance(
-                self.context, BM1690Context) or isinstance(
-                self.context, SG2380Context) or isinstance(
-                self.context, MARS3Context) or isinstance(
-                self.context, SGTPUV8Context):
+                    self.context,
+                    BM1690Context) or isinstance(self.context, SG2380Context) or isinstance(
+                        self.context, MARS3Context) or isinstance(self.context, SGTPUV8Context):
                 address = self.context.fix_addr(address)
             addr_offset_ddr = address - self.context.memmap[MType.G][0]
             # load constant data
@@ -417,13 +414,10 @@ class TdbCmdBackend(cmd.Cmd):
                 self.LMEM = self.runner.LMEM
                 self.SMEM = self.runner.SMEM
                 self.DDR = self.runner.DDR
-                self.DDR[addr_offset_ddr : addr_offset_ddr + len(coeff.data)] = (
-                    memoryview(coeff.data)
-                )
+                self.DDR[addr_offset_ddr:addr_offset_ddr + len(coeff.data)] = (memoryview(
+                    coeff.data))
             else:
-                self.memory.set_data_to_address(
-                    coeff.address, coeff_data
-                )
+                self.memory.set_data_to_address(coeff.address, coeff_data)
 
     def _load_data(self):
         if self.auto_soc:
@@ -442,9 +436,8 @@ class TdbCmdBackend(cmd.Cmd):
             for arg in self.atomic_mlir.functions[0].signature[0]:
                 mem = arg.memref
                 size = int(np.prod(mem.shape) * mem.itemsize)
-                assert self.memory.set_data(
-                    ValueRef(mem), inputs[_offset : _offset + size].view(mem.np_dtype)
-                )  #  load input tensor
+                assert self.memory.set_data(ValueRef(mem), inputs[_offset:_offset + size].view(
+                    mem.np_dtype))  #  load input tensor
 
                 _offset += size
         elif file.endswith(".npz"):
@@ -496,9 +489,7 @@ class TdbCmdBackend(cmd.Cmd):
             op_df.to_csv("cmd_records.csv")
             pprint(
                 "top10 cmd_id and its rows",
-                op_df.sort_values("cmd_id", ascending=False)
-                .head(10)
-                .to_dict("records"),
+                op_df.sort_values("cmd_id", ascending=False).head(10).to_dict("records"),
             )
             msg = """
                 bmodel has dumplicated index, cmd info has been saved into cmd_records.csv.
@@ -807,6 +798,7 @@ class TdbCmdBackend(cmd.Cmd):
         with open(path, "rb") as r:
             return pickle.load(r)
 
+
 class BreakpointStop(Exception):
     pass
 
@@ -993,7 +985,8 @@ class PluginCompact:
             try:
                 plugin = register_plugins[plugin].from_tdb(self.tdb)
             except KeyError as e:
-                message = "only regist plugin: {}, but try to add plugin named '{}'".format(list(register_plugins.keys()), plugin)
+                message = "only regist plugin: {}, but try to add plugin named '{}'".format(
+                    list(register_plugins.keys()), plugin)
                 raise KeyError(message) from e
         self.plugins[plugin.name] = plugin
         return plugin

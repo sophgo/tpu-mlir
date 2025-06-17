@@ -20,6 +20,7 @@ from .op_support import (
 
 
 class HeadDef(ctypes.Structure):
+
     def __repr__(self):
         return str(dict(self))
 
@@ -29,7 +30,6 @@ class HeadDef(ctypes.Structure):
 
     def __eq__(self, other):
         return hash(self) == hash(other)
-
 
 
 class DecoderBase:
@@ -72,10 +72,13 @@ class DecoderBase:
 
     def decode_tiu_cmds(self, reg_buf: bytes, *, subnet_id, **kw) -> List[BaseTpuCmd]:
         raise NotImplementedError()
+
     def decode_cdma_cmds(self, reg_buf: bytes, *, subnet_id, **kw) -> List[BaseTpuCmd]:
         raise NotImplementedError()
+
     def decode_cmds(self, cmd_arry: bytes, core_id: int, cmd_id: int, t: int) -> list:
         raise NotImplementedError()
+
     def decode_cpu_cmd(
         self,
         op_type: CpuLayerType,

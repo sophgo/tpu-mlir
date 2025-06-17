@@ -1,8 +1,9 @@
 import torch
 from torch.nn.parameter import Parameter
 
-from sophgo_mq.fake_quantize.quantize_base import QuantizeBase, _version_under_1100 
+from sophgo_mq.fake_quantize.quantize_base import QuantizeBase, _version_under_1100
 from sophgo_mq.utils.hook import PerChannelLoadHook
+
 
 def _rectified_sigmoid(alpha, zeta, gamma):
     """Function to generate rounding mask.
@@ -18,7 +19,16 @@ def _rectified_sigmoid(alpha, zeta, gamma):
     return ((zeta - gamma) * torch.sigmoid(alpha) + gamma).clamp(0, 1)
 
 
-def adaround_forward(x, scale, zero_point, quant_min, quant_max, ch_axis, alpha, zeta, gamma, hard_value=False):
+def adaround_forward(x,
+                     scale,
+                     zero_point,
+                     quant_min,
+                     quant_max,
+                     ch_axis,
+                     alpha,
+                     zeta,
+                     gamma,
+                     hard_value=False):
     if ch_axis != -1:
         new_shape = [1] * len(x.shape)
         new_shape[ch_axis] = x.shape[ch_axis]
@@ -46,9 +56,14 @@ class AdaRoundFakeQuantize(QuantizeBase):
         self.register_buffer('scale', torch.tensor([1.0], dtype=torch.float))
         self.register_buffer('zero_point', torch.tensor([0], dtype=torch.int))
         self.adaround = False
-        self.load_state_dict_hook = PerChannelLoadHook(self, hook_param=['scale', 'zero_point', 'alpha'])
+        self.load_state_dict_hook = PerChannelLoadHook(self,
+                                                       hook_param=['scale', 'zero_point', 'alpha'])
 
-    def init(self, weight_tensor: torch.Tensor, round_mode='learned_hard_sigmoid', ):
+    def init(
+        self,
+        weight_tensor: torch.Tensor,
+        round_mode='learned_hard_sigmoid',
+    ):
         self.adaround = True
         self.observer_enabled[0] = 0
         self.fake_quant_enabled[0] = 1
@@ -69,7 +84,8 @@ class AdaRoundFakeQuantize(QuantizeBase):
         if self.round_mode == 'learned_hard_sigmoid':
             print('Init alpha to be FP32')
             rest = (x / scale) - x_floor  # rest of rounding [0, 1)
-            alpha = -torch.log((self.zeta - self.gamma) / (rest - self.gamma) - 1)  # => sigmoid(alpha) = rest
+            alpha = -torch.log(
+                (self.zeta - self.gamma) / (rest - self.gamma) - 1)  # => sigmoid(alpha) = rest
             self.alpha = Parameter(alpha)
         else:
             raise NotImplementedError
@@ -88,15 +104,24 @@ class AdaRoundFakeQuantize(QuantizeBase):
         return ((self.zeta - self.gamma) * torch.sigmoid(self.alpha) + self.gamma).clamp(0, 1)
 
     def get_hard_value(self, X):
-        X = adaround_forward(X, self.scale.data, self.zero_point.data.long(), self.quant_min,
-                             self.quant_max, self.ch_axis, self.alpha, self.zeta, self.gamma, hard_value=True)
+        X = adaround_forward(X,
+                             self.scale.data,
+                             self.zero_point.data.long(),
+                             self.quant_min,
+                             self.quant_max,
+                             self.ch_axis,
+                             self.alpha,
+                             self.zeta,
+                             self.gamma,
+                             hard_value=True)
         return X
 
     def forward(self, X):
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.calculate_qparams()
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.scale.shape != _scale.shape:
                 self.scale.resize_(_scale.shape)
                 self.zero_point.resize_(_zero_point.shape)
@@ -111,15 +136,16 @@ class AdaRoundFakeQuantize(QuantizeBase):
                         self.zero_point.long() if _version_under_1100 else self.zero_point,
                         self.ch_axis, self.quant_min, self.quant_max)
                 else:
-                    X = torch.fake_quantize_per_tensor_affine(
-                        X, self.scale.item(), int(self.zero_point.item()),
-                        self.quant_min, self.quant_max)
+                    X = torch.fake_quantize_per_tensor_affine(X, self.scale.item(),
+                                                              int(self.zero_point.item()),
+                                                              self.quant_min, self.quant_max)
             else:
                 if not hasattr(self, 'alpha'):
                     raise NotImplementedError
                 if self.round_mode == 'learned_hard_sigmoid':
-                    X = adaround_forward(X, self.scale.data, self.zero_point.data.long(), self.quant_min,
-                                         self.quant_max, self.ch_axis, self.alpha, self.zeta, self.gamma)
+                    X = adaround_forward(X, self.scale.data, self.zero_point.data.long(),
+                                         self.quant_min, self.quant_max, self.ch_axis, self.alpha,
+                                         self.zeta, self.gamma)
                 else:
                     raise NotImplementedError
         return X

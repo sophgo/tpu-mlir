@@ -11,7 +11,13 @@ Usage:
 import torch
 
 
-def _create(name, pretrained=True, channels=3, classes=80, autoshape=True, verbose=True, device=None):
+def _create(name,
+            pretrained=True,
+            channels=3,
+            classes=80,
+            autoshape=True,
+            verbose=True,
+            device=None):
     """Creates or loads a YOLOv5 model
 
     Arguments:
@@ -39,7 +45,8 @@ def _create(name, pretrained=True, channels=3, classes=80, autoshape=True, verbo
         LOGGER.setLevel(logging.WARNING)
     check_requirements(exclude=('tensorboard', 'thop', 'opencv-python'))
     name = Path(name)
-    path = name.with_suffix('.pt') if name.suffix == '' and not name.is_dir() else name  # checkpoint path
+    path = name.with_suffix(
+        '.pt') if name.suffix == '' and not name.is_dir() else name  # checkpoint path
     try:
         device = select_device(device)
         if pretrained and channels == 3 and classes == 80:
@@ -50,7 +57,8 @@ def _create(name, pretrained=True, channels=3, classes=80, autoshape=True, verbo
             except Exception:
                 model = attempt_load(path, device=device, fuse=False)  # arbitrary model
         else:
-            cfg = list((Path(__file__).parent / 'models').rglob(f'{path.stem}.yaml'))[0]  # model.yaml path
+            cfg = list(
+                (Path(__file__).parent / 'models').rglob(f'{path.stem}.yaml'))[0]  # model.yaml path
             model = Model(cfg, channels, classes)  # create model
             if pretrained:
                 ckpt = torch.load(attempt_download(path), map_location=device)  # load
@@ -140,7 +148,12 @@ if __name__ == '__main__':
     print_args(vars(opt))
 
     # Model
-    model = _create(name=opt.model, pretrained=True, channels=3, classes=80, autoshape=True, verbose=True)
+    model = _create(name=opt.model,
+                    pretrained=True,
+                    channels=3,
+                    classes=80,
+                    autoshape=True,
+                    verbose=True)
     # model = custom(path='path/to/model.pt')  # custom
 
     # Images
@@ -150,7 +163,8 @@ if __name__ == '__main__':
         'https://ultralytics.com/images/zidane.jpg',  # URI
         cv2.imread('data/images/bus.jpg')[:, :, ::-1],  # OpenCV
         Image.open('data/images/bus.jpg'),  # PIL
-        np.zeros((320, 640, 3))]  # numpy
+        np.zeros((320, 640, 3))
+    ]  # numpy
 
     # Inference
     results = model(imgs, size=320)  # batched inference

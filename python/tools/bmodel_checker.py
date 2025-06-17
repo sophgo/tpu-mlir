@@ -17,16 +17,13 @@ import argparse
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
-        description="Verify the correctness of BModel using reference data."
-    )
+        description="Verify the correctness of BModel using reference data.")
     commom_args(parser)
     parser.add_argument(
         "reference_data",
         help="The reference data used for checking this BModel.",
     )
-    parser.add_argument(
-        "--tolerance", default="0.99,0.99", help="tolerance for compare."
-    )
+    parser.add_argument("--tolerance", default="0.99,0.99", help="tolerance for compare.")
     parser.add_argument(
         "--dump_mode",
         type=str,
@@ -42,12 +39,10 @@ def parse_args(argv=None):
         help="bmodel inference result",
     )
 
-    parser.add_argument(
-        "--fail_fast", action="store_true", help="Stop if there is a check failure."
-    )
-    parser.add_argument(
-        "--excepts", type=str, help="List of tensors except from comparing"
-    )
+    parser.add_argument("--fail_fast",
+                        action="store_true",
+                        help="Stop if there is a check failure.")
+    parser.add_argument("--excepts", type=str, help="List of tensors except from comparing")
 
     parser.add_argument("--no_interactive", action="store_true")
     parser.add_argument("--dump_dataframe", action="store_true")
@@ -64,9 +59,7 @@ def main(argv=None):
     final_mlir_fn = os.path.join(context_dir, "final.mlir")
     tensor_loc_file = os.path.join(context_dir, "tensor_location.json")
 
-    assert all(
-        [os.path.exists(i) for i in [bmodel_file, final_mlir_fn, tensor_loc_file]]
-    )
+    assert all([os.path.exists(i) for i in [bmodel_file, final_mlir_fn, tensor_loc_file]])
 
     input_data_fn = os.path.join(context_dir, "input_ref_data.dat")
 
@@ -138,9 +131,7 @@ def main(argv=None):
 
         with open(os.path.join(context_dir, "cache_out.pickle"), "wb") as w:
             pickle.dump(list(plugin.soc_values_out), w)
-        tdb.message(
-            "cache dumped succeed! now run same command with `--cache_mode offline`"
-        )
+        tdb.message("cache dumped succeed! now run same command with `--cache_mode offline`")
 
 
 if __name__ == "__main__":

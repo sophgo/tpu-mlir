@@ -5,6 +5,7 @@ from easydict import EasyDict
 from .quantize_base import QuantizeBase
 from ..utils.hook import PerChannelLoadHook
 
+
 class Fp16FakeQuantize(QuantizeBase):
     """This is FP16 Quantization Emulator"""
 
@@ -20,7 +21,8 @@ class Fp16FakeQuantize(QuantizeBase):
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.calculate_qparams()
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.scale.shape != _scale.shape:
                 self.scale.resize_(_scale.shape)
                 self.zero_point.resize_(_zero_point.shape)
@@ -28,7 +30,7 @@ class Fp16FakeQuantize(QuantizeBase):
             self.zero_point.copy_(_zero_point)
 
         if self.fake_quant_enabled[0] == 1:
-            if self.is_per_channel: # per-channel
+            if self.is_per_channel:  # per-channel
                 channels = X.shape[0]
                 for c in range(channels):
                     sub_tensor = X.select(0, c).detach()
@@ -36,7 +38,7 @@ class Fp16FakeQuantize(QuantizeBase):
                     sub_tensor_quant = sub_tensor_quant.to(torch.float)
                     tensor_quant.select(0, c).data.copy_(sub_tensor_quant)
                 X = tensor_quant
-            else: # per-tensor
+            else:  # per-tensor
                 X_quant = X.to(torch.float16)
                 X = X_quant.to(torch.float)
         return X
@@ -58,8 +60,8 @@ class Fp16FakeQuantize(QuantizeBase):
         destination[prefix + 'scale'] = self.scale
         destination[prefix + 'zero_point'] = self.zero_point
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         # Removing this function throws an error that the the size of the loaded tensor does not match the original size
         # i.e., These buffers start out with numel 0 and become numel 1 once they have their first forward pass.
         local_state = ['scale', 'zero_point']
@@ -86,11 +88,14 @@ class Fp16FakeQuantize(QuantizeBase):
                         self.zero_point.copy_(val)
             elif strict:
                 missing_keys.append(key)
-        super(Fp16FakeQuantize, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
-                                                             missing_keys, unexpected_keys, error_msgs)
+        super(Fp16FakeQuantize,
+              self)._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys,
+                                          unexpected_keys, error_msgs)
+
 
 class BF16FakeQuantize(QuantizeBase):
     """This is BF16 Quantization Emulator."""
+
     def __init__(self, observer, **observer_kwargs):
         super(BF16FakeQuantize, self).__init__(observer, **observer_kwargs)
         self.dtype = 'BF16'
@@ -103,13 +108,14 @@ class BF16FakeQuantize(QuantizeBase):
 
     @torch.jit.export
     def extra_repr(self):
-        return 'fake_quant_enabled={}, observer_enabled={}'.format(
-                   self.fake_quant_enabled, self.observer_enabled)
+        return 'fake_quant_enabled={}, observer_enabled={}'.format(self.fake_quant_enabled,
+                                                                   self.observer_enabled)
 
     def _save_to_state_dict(self, destination, prefix, keep_vars):
         super(BF16FakeQuantize, self)._save_to_state_dict(destination, prefix, keep_vars)
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
-        super(BF16FakeQuantize, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
-                                                             missing_keys, unexpected_keys, error_msgs)
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
+        super(BF16FakeQuantize,
+              self)._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys,
+                                          unexpected_keys, error_msgs)

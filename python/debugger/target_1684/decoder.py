@@ -42,13 +42,13 @@ class TiuHead(ctypes.Structure):
 
 
 # cache for convert binary to unsigned integer.
-_TABLE = 2 ** np.arange(64, dtype=np.uint64)
+_TABLE = 2**np.arange(64, dtype=np.uint64)
 
 
 def packbits(arr: np.ndarray):
     if arr.size > 64:
         return 0
-    return int(arr.dot(_TABLE[: arr.size]))
+    return int(arr.dot(_TABLE[:arr.size]))
 
 
 def buffer_to_bits(buffer):
@@ -57,19 +57,20 @@ def buffer_to_bits(buffer):
 
 
 class Decoder(DecoderBase):
+
     def decode_tiu_cmd(self, reg_buf: memoryview, offset, subnet_id) -> TiuCmd:
         head = TiuHead.from_buffer(reg_buf, offset)  # type: TiuHead
         op_info = tiu_index.get((head.tsk_typ, head.tsk_eu_typ), None)
 
         # get op struct
         op_clazz = op_class_dic[op_info.op_name]
-        buffer = buffer_to_bits(reg_buf[offset : offset + op_clazz.length // 8])
+        buffer = buffer_to_bits(reg_buf[offset:offset + op_clazz.length // 8])
         bits_sec = np.split(buffer, tiu_high_bits)  # slow
         values = [packbits(x) for x in bits_sec]  # slow
         reg = op_clazz.from_values(values)  # type: atomic_reg
         cmd = TiuCmd(
             reg,
-            buf=reg_buf[offset : offset + op_clazz.length // 8],
+            buf=reg_buf[offset:offset + op_clazz.length // 8],
             subnet_id=subnet_id,
         )
         return cmd
@@ -78,14 +79,14 @@ class Decoder(DecoderBase):
         # get op struct
         op_clazz = op_class_dic["dma_tensor"]
 
-        buffer = buffer_to_bits(reg_buf[offset : offset + op_clazz.length // 8])
+        buffer = buffer_to_bits(reg_buf[offset:offset + op_clazz.length // 8])
         bits_sec = np.split(buffer, dma_high_bits)  # slow
         values = [packbits(x) for x in bits_sec]  # slow
         reg = op_clazz.from_values(values)  # type: atomic_reg
 
         cmd = DmaCmd(
             reg,
-            buf=reg_buf[offset : offset + op_clazz.length // 8],
+            buf=reg_buf[offset:offset + op_clazz.length // 8],
             subnet_id=subnet_id,
         )
         return cmd

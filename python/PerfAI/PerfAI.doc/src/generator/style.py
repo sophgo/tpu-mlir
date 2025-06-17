@@ -27,8 +27,10 @@ def set_details_style(out_file, core_num, chip_arch):
         Sdma.set_style(out_file, core_id, chip_arch=chip_arch)
         Cdma.set_style(out_file, core_id, chip_arch=chip_arch)
 
+
 def set_sim_summary_style(out_file, core_num, chip_arch):
     AsicSummary.set_style(out_file, chip_arch=chip_arch)
+
 
 def set_layer_style(out_file):
     TotalLayerInfo.set_style(out_file)

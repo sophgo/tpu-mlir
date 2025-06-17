@@ -115,7 +115,9 @@ class DeployTool:
         self.model_version = args.model_version
         self.addr_mode = args.addr_mode
         self.cuda = args.cuda
-        self.q_group_size = args.q_group_size if self.quantize in ["w4f16", "w4bf16", "w8f16", "w8bf16"] else 0
+        self.q_group_size = args.q_group_size if self.quantize in [
+            "w4f16", "w4bf16", "w8f16", "w8bf16"
+        ] else 0
         self.q_symmetric = args.q_symmetric
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
@@ -152,17 +154,11 @@ class DeployTool:
 
         self.file_recorder = CommandRecorder(self.file_recorder_cache_path)
         self.file_recorder.clear()
-        self.file_recorder.update_file(
-            f"{self.mlir_file.replace('.mlir','')}.ref_files.json"
-        )
-        self.file_recorder.add_file(
-            tpuc_opt=shutil.which("tpuc-opt"),
-        )
+        self.file_recorder.update_file(f"{self.mlir_file.replace('.mlir','')}.ref_files.json")
+        self.file_recorder.add_file(tpuc_opt=shutil.which("tpuc-opt"), )
         self.file_recorder.add_property(prefix=self.prefix)
         self.file_recorder.add_command(deploy_cmd=" ".join(sys.argv))
-        self.file_recorder.add_property(
-            chip=self.chip, compare_all=self.compare_all
-        )
+        self.file_recorder.add_property(chip=self.chip, compare_all=self.compare_all)
         self.file_recorder.dump()
 
     def cleanup(self):
@@ -333,11 +329,18 @@ class DeployTool:
         if self.trunc_final:
             self.tpu_inputs.update(tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
-        f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts, fuzzy_match=self.fazzy_match)
+        f32_blobs_compare(self.tpu_npz,
+                          self.ref_npz,
+                          self.tolerance,
+                          self.excepts,
+                          fuzzy_match=self.fazzy_match)
         if self.cuda:
             show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz, self.compare_all, True)
-            cuda_outputs = mlir_inference(self.tpu_inputs, self.tpu_mlir, self.compare_all, use_cuda=True)
-            cuda_npz = self.tpu_npz.replace("_tpu_","_cuda_")
+            cuda_outputs = mlir_inference(self.tpu_inputs,
+                                          self.tpu_mlir,
+                                          self.compare_all,
+                                          use_cuda=True)
+            cuda_npz = self.tpu_npz.replace("_tpu_", "_cuda_")
             np.savez(cuda_npz, **cuda_outputs)
             file_mark(cuda_npz)
             f32_blobs_compare(cuda_npz, self.tpu_npz, "0.9999,0.9999", self.excepts)
@@ -349,34 +352,32 @@ class DeployTool:
                 return {}
             else:
                 command_mem = {}
-                patterns = mlir_to_model(
-                    tpu_mlir=self.tpu_mlir,
-                    bmodel_path=self.bmodel_path,
-                    final_mlir=self.final_mlir,
-                    dynamic=self.dynamic,
-                    quant_input=self.quant_input,
-                    quant_output=self.quant_output,
-                    quant_input_list=self.quant_input_list,
-                    quant_output_list=self.quant_output_list,
-                    disable_layer_group=self.disable_layer_group,
-                    opt=self.opt,
-                    merge_weight=self.merge_weight,
-                    op_divide=self.op_divide,
-                    embed_debug_info=self.embed_debug_info,
-                    group_by_cores=self.group_by_cores,
-                    model_version=self.model_version,
-                    count_patterns=True if self.patterns_count else False,
-                    compress_mode=self.compress_mode,
-                    future_update_rank=self.future_update_rank,
-                    future_update_list=self.future_update_list,
-                    debug_info=self.debug_cmd,
-                    trunc_final=self.trunc_final,
-                    command_mem=command_mem,
-                    quant_output_bf16=self.quant_output_bf16,
-                    opt_post_processor=self.opt_post_processor,
-                    gdma_check=self.gdma_check,
-                    lg_debugger=self.lg_debugger
-                )
+                patterns = mlir_to_model(tpu_mlir=self.tpu_mlir,
+                                         bmodel_path=self.bmodel_path,
+                                         final_mlir=self.final_mlir,
+                                         dynamic=self.dynamic,
+                                         quant_input=self.quant_input,
+                                         quant_output=self.quant_output,
+                                         quant_input_list=self.quant_input_list,
+                                         quant_output_list=self.quant_output_list,
+                                         disable_layer_group=self.disable_layer_group,
+                                         opt=self.opt,
+                                         merge_weight=self.merge_weight,
+                                         op_divide=self.op_divide,
+                                         embed_debug_info=self.embed_debug_info,
+                                         group_by_cores=self.group_by_cores,
+                                         model_version=self.model_version,
+                                         count_patterns=True if self.patterns_count else False,
+                                         compress_mode=self.compress_mode,
+                                         future_update_rank=self.future_update_rank,
+                                         future_update_list=self.future_update_list,
+                                         debug_info=self.debug_cmd,
+                                         trunc_final=self.trunc_final,
+                                         command_mem=command_mem,
+                                         quant_output_bf16=self.quant_output_bf16,
+                                         opt_post_processor=self.opt_post_processor,
+                                         gdma_check=self.gdma_check,
+                                         lg_debugger=self.lg_debugger)
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -414,7 +415,8 @@ class DeployTool:
         if self.enable_maskrcnn:
             self.revise_MaskRCNN_tpu_ref()
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True, self.fazzy_match)
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True,
+                              self.fazzy_match)
         else:
             f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, True)
 

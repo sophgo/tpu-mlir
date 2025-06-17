@@ -71,12 +71,16 @@ def run(
     p = F.softmax(results, dim=1)  # probabilities
     i = p.argsort(1, descending=True)[:, :5].squeeze()  # top 5 indices
     dt[2] += time_sync() - t3
-    LOGGER.info(f"image 1/1 {file}: {imgsz}x{imgsz} {', '.join(f'{model.names[j]} {p[0, j]:.2f}' for j in i)}")
+    LOGGER.info(
+        f"image 1/1 {file}: {imgsz}x{imgsz} {', '.join(f'{model.names[j]} {p[0, j]:.2f}' for j in i)}"
+    )
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     shape = (1, 3, imgsz, imgsz)
-    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms post-process per image at shape {shape}' % t)
+    LOGGER.info(
+        f'Speed: %.1fms pre-process, %.1fms inference, %.1fms post-process per image at shape {shape}'
+        % t)
     if show:
         imshow_cls(im, f=save_dir / Path(file).name, verbose=True)
     LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}")
@@ -85,15 +89,26 @@ def run(
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s-cls.pt', help='model path(s)')
+    parser.add_argument('--weights',
+                        nargs='+',
+                        type=str,
+                        default=ROOT / 'yolov5s-cls.pt',
+                        help='model path(s)')
     parser.add_argument('--source', type=str, default=ROOT / 'data/images/bus.jpg', help='file')
-    parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=224, help='train, val image size (pixels)')
+    parser.add_argument('--imgsz',
+                        '--img',
+                        '--img-size',
+                        type=int,
+                        default=224,
+                        help='train, val image size (pixels)')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     parser.add_argument('--project', default=ROOT / 'runs/predict-cls', help='save to project/name')
     parser.add_argument('--name', default='exp', help='save to project/name')
-    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
+    parser.add_argument('--exist-ok',
+                        action='store_true',
+                        help='existing project/name ok, do not increment')
     opt = parser.parse_args()
     print_args(vars(opt))
     return opt

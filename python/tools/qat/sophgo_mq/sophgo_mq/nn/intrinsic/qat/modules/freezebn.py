@@ -19,25 +19,33 @@ class _ConvFreezebnNd(nn.modules.conv._ConvNd, nni._FusedModule):
     _version = 2
     _FLOAT_MODULE = MOD
 
-    def __init__(self,
-                 # ConvNd args
-                 in_channels, out_channels, kernel_size, stride,
-                 padding, dilation, transposed, output_padding,
-                 groups,
-                 bias,
-                 padding_mode,
-                 # BatchNormNd args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None,
-                 dim=2):
-        nn.modules.conv._ConvNd.__init__(self, in_channels, out_channels, kernel_size,
-                                         stride, padding, dilation, transposed,
-                                         output_padding, groups, False, padding_mode)
+    def __init__(
+            self,
+            # ConvNd args
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            transposed,
+            output_padding,
+            groups,
+            bias,
+            padding_mode,
+            # BatchNormNd args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None,
+            dim=2):
+        nn.modules.conv._ConvNd.__init__(self, in_channels, out_channels, kernel_size, stride,
+                                         padding, dilation, transposed, output_padding, groups,
+                                         False, padding_mode)
         assert qconfig, 'qconfig must be provided for QAT module'
         self.qconfig = qconfig
         self.freeze_bn = freeze_bn if self.training else True
@@ -148,7 +156,8 @@ class _ConvFreezebnNd(nn.modules.conv._ConvNd, nni._FusedModule):
     #        |--- running_mean : Tensor (moved from v1.self.running_mean)
     #        |--- running_var : Tensor (moved from v1.self.running_var)
     #        |--- num_batches_tracked : Tensor (moved from v1.self.num_batches_tracked)
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         version = local_metadata.get('version', None)
         if version is None or version == 1:
             # BN related parameters and buffers were moved into the BN module for v2
@@ -176,8 +185,9 @@ class _ConvFreezebnNd(nn.modules.conv._ConvNd, nni._FusedModule):
                 elif strict:
                     missing_keys.append(prefix + v2_name)
 
-        super(_ConvFreezebnNd, self)._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+        super(_ConvFreezebnNd,
+              self)._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys,
+                                          unexpected_keys, error_msgs)
 
     @classmethod
     def from_float(cls, mod):
@@ -191,13 +201,9 @@ class _ConvFreezebnNd(nn.modules.conv._ConvNd, nni._FusedModule):
         assert mod.qconfig, 'Input float module must have a valid qconfig'
         qconfig = mod.qconfig
         conv, bn = mod[0], mod[1]
-        qat_convbn = cls(conv.in_channels, conv.out_channels, conv.kernel_size,
-                         conv.stride, conv.padding, conv.dilation,
-                         conv.groups, conv.bias is not None,
-                         conv.padding_mode,
-                         bn.eps, bn.momentum,
-                         False,
-                         qconfig)
+        qat_convbn = cls(conv.in_channels, conv.out_channels, conv.kernel_size, conv.stride,
+                         conv.padding, conv.dilation, conv.groups, conv.bias is not None,
+                         conv.padding_mode, bn.eps, bn.momentum, False, qconfig)
         qat_convbn.weight = conv.weight
         qat_convbn.bias = conv.bias
         qat_convbn.bn.weight = bn.weight
@@ -207,6 +213,7 @@ class _ConvFreezebnNd(nn.modules.conv._ConvNd, nni._FusedModule):
         # mypy error: Cannot determine type of 'num_batches_tracked'
         qat_convbn.bn.num_batches_tracked = bn.num_batches_tracked  # type: ignore[has-type]
         return qat_convbn
+
 
 class ConvFreezebn2d(_ConvFreezebnNd, nn.Conv2d):
     r"""
@@ -223,25 +230,49 @@ class ConvFreezebn2d(_ConvFreezebnNd, nn.Conv2d):
     """
     _FLOAT_MODULE = qnni.ConvFreezebn2d
 
-    def __init__(self,
-                 # ConvNd args
-                 in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=None,
-                 padding_mode='zeros',
-                 # BatchNorm2d args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None):
+    def __init__(
+            self,
+            # ConvNd args
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            padding=0,
+            dilation=1,
+            groups=1,
+            bias=None,
+            padding_mode='zeros',
+            # BatchNorm2d args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
-        _ConvFreezebnNd.__init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation, False, _pair(0), groups, bias, padding_mode, eps, momentum, freeze_bn, qconfig, dim=2)
+        _ConvFreezebnNd.__init__(self,
+                                 in_channels,
+                                 out_channels,
+                                 kernel_size,
+                                 stride,
+                                 padding,
+                                 dilation,
+                                 False,
+                                 _pair(0),
+                                 groups,
+                                 bias,
+                                 padding_mode,
+                                 eps,
+                                 momentum,
+                                 freeze_bn,
+                                 qconfig,
+                                 dim=2)
+
 
 class ConvFreezebnReLU2d(ConvFreezebn2d):
     r"""
@@ -258,21 +289,30 @@ class ConvFreezebnReLU2d(ConvFreezebn2d):
     # base class defines _FLOAT_MODULE as "ConvBn2d"
     _FLOAT_MODULE = qnni.ConvFreezebnReLU2d  # type: ignore[assignment]
 
-    def __init__(self,
-                 # Conv2d args
-                 in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=None,
-                 padding_mode='zeros',
-                 # BatchNorm2d args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None):
-        super(ConvFreezebnReLU2d, self).__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode, eps, momentum, freeze_bn, qconfig)
+    def __init__(
+            self,
+            # Conv2d args
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            padding=0,
+            dilation=1,
+            groups=1,
+            bias=None,
+            padding_mode='zeros',
+            # BatchNorm2d args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None):
+        super(ConvFreezebnReLU2d,
+              self).__init__(in_channels, out_channels, kernel_size, stride, padding, dilation,
+                             groups, bias, padding_mode, eps, momentum, freeze_bn, qconfig)
 
     def forward(self, input):
         return F.relu(ConvFreezebn2d._forward(self, input))
@@ -317,11 +357,9 @@ class _ConvTransposeFreezebnNd(_ConvTransposeBnNd):
         padding = _single(padding)
         dilation = _single(dilation)
         output_padding = _single(output_padding)
-        nn.modules.conv._ConvTransposeNd.__init__(self, in_channels,
-                                                  out_channels, kernel_size,
-                                                  stride, padding, dilation,
-                                                  transposed, output_padding,
-                                                  groups, False, padding_mode)
+        nn.modules.conv._ConvTransposeNd.__init__(self, in_channels, out_channels, kernel_size,
+                                                  stride, padding, dilation, transposed,
+                                                  output_padding, groups, False, padding_mode)
         assert qconfig, 'qconfig must be provided for a QAT module'
         self.qconfig = qconfig
         self.freeze_bn = freeze_bn if self.training else True
@@ -377,18 +415,15 @@ class ConvTransposeFreezebn2d(_ConvTransposeFreezebnNd, nn.ConvTranspose2d):
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
-        _ConvTransposeFreezebnNd.__init__(self, in_channels, out_channels,
-                                          kernel_size, stride, bias, transposed,
-                                          padding, output_padding, groups, dilation,
-                                          padding_mode, eps, momentum, freeze_bn,
-                                          qconfig)
+        _ConvTransposeFreezebnNd.__init__(self, in_channels, out_channels, kernel_size, stride,
+                                          bias, transposed, padding, output_padding, groups,
+                                          dilation, padding_mode, eps, momentum, freeze_bn, qconfig)
 
     def _convtransposed_forward(self, x, w, b):
-        output_padding = self._output_padding(x, None, self.stride,
-                                              self.padding, self.kernel_size,
+        output_padding = self._output_padding(x, None, self.stride, self.padding, self.kernel_size,
                                               self.dilation)
-        return F.conv_transpose2d(x, w, b, self.stride, self.padding,
-                                  output_padding, self.groups, self.dilation)
+        return F.conv_transpose2d(x, w, b, self.stride, self.padding, output_padding, self.groups,
+                                  self.dilation)
 
 
 class ConvTransposeFreezebnReLU2d(ConvTransposeFreezebn2d):
@@ -423,22 +458,21 @@ class ConvTransposeFreezebnReLU2d(ConvTransposeFreezebn2d):
         #                                             padding_mode, eps, momentum,
         #                                             freeze_bn,
         #                                             qconfig)
-        super(ConvTransposeFreezebnReLU2d,
-              self).__init__(in_channels,
-                             out_channels,
-                             kernel_size,
-                             stride=stride,
-                             bias=bias,
-                             transposed=transposed,
-                             padding=padding,
-                             output_padding=output_padding,
-                             groups=groups,
-                             dilation=dilation,
-                             padding_mode=padding_mode,
-                             eps=eps,
-                             momentum=momentum,
-                             freeze_bn=freeze_bn,
-                             qconfig=qconfig)
+        super(ConvTransposeFreezebnReLU2d, self).__init__(in_channels,
+                                                          out_channels,
+                                                          kernel_size,
+                                                          stride=stride,
+                                                          bias=bias,
+                                                          transposed=transposed,
+                                                          padding=padding,
+                                                          output_padding=output_padding,
+                                                          groups=groups,
+                                                          dilation=dilation,
+                                                          padding_mode=padding_mode,
+                                                          eps=eps,
+                                                          momentum=momentum,
+                                                          freeze_bn=freeze_bn,
+                                                          qconfig=qconfig)
 
     def forward(self, input):
         return F.relu(ConvTransposeFreezebn2d._forward(self, input))

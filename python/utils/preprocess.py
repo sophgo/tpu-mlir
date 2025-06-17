@@ -12,48 +12,39 @@ from PIL import Image
 
 logger = setup_logger('root', log_level="INFO")
 
+
 class YuvType(Enum):
-  YUV420_PLANAR = 1
-  YUV_NV12 = 2
-  YUV_NV21 = 3
+    YUV420_PLANAR = 1
+    YUV_NV12 = 2
+    YUV_NV21 = 3
+
 
 supported_customization_format = [
-    'RGB_PLANAR',
-    'RGB_PACKED',
-    'BGR_PLANAR',
-    'BGR_PACKED',
-    'GRAYSCALE',
-    'YUV420_PLANAR',
-    'YUV_NV21',
-    'YUV_NV12',
-    'RGBA_PLANAR',
-    'GBRG_RAW',
-    'GRBG_RAW',
-    'BGGR_RAW',
-    'RGGB_RAW',
-    ''
+    'RGB_PLANAR', 'RGB_PACKED', 'BGR_PLANAR', 'BGR_PACKED', 'GRAYSCALE', 'YUV420_PLANAR',
+    'YUV_NV21', 'YUV_NV12', 'RGBA_PLANAR', 'GBRG_RAW', 'GRBG_RAW', 'BGGR_RAW', 'RGGB_RAW', ''
 ]
 
 customization_format_attributes = {
-    'RGB_PLANAR':    ('rgb', 'nchw'),
-    'RGB_PACKED':    ('rgb', 'nhwc'),
-    'BGR_PLANAR':    ('bgr', 'nchw'),
-    'BGR_PACKED':    ('bgr', 'nhwc'),
-    'GRAYSCALE':     ('gray', 'nchw'),
+    'RGB_PLANAR': ('rgb', 'nchw'),
+    'RGB_PACKED': ('rgb', 'nhwc'),
+    'BGR_PLANAR': ('bgr', 'nchw'),
+    'BGR_PACKED': ('bgr', 'nhwc'),
+    'GRAYSCALE': ('gray', 'nchw'),
     'YUV420_PLANAR': ('bgr', 'nchw'),
-    'YUV_NV12':      ('bgr', 'nchw'),
-    'YUV_NV21':      ('bgr', 'nchw'),
-    'RGBA_PLANAR':   ('rgba', 'nchw'),
-    'GBRG_RAW':      ('gbrg', 'nchw'),
-    'GRBG_RAW':      ('grbg', 'nchw'),
-    'BGGR_RAW':      ('bggr', 'nchw'),
-    'RGGB_RAW':      ('rggb', 'nchw')
+    'YUV_NV12': ('bgr', 'nchw'),
+    'YUV_NV21': ('bgr', 'nchw'),
+    'RGBA_PLANAR': ('rgba', 'nchw'),
+    'GBRG_RAW': ('gbrg', 'nchw'),
+    'GRBG_RAW': ('grbg', 'nchw'),
+    'BGGR_RAW': ('bggr', 'nchw'),
+    'RGGB_RAW': ('rggb', 'nchw')
 }
 
 # fix bool bug of argparse
 
 
 class ImageResizeTool:
+
     @staticmethod
     def stretch_resize(image, h, w, use_pil_resize=False):
         if use_pil_resize:
@@ -73,8 +64,7 @@ class ImageResizeTool:
         rescale_w = int(iw * scale)
         rescale_h = int(ih * scale)
         if use_pil_resize:
-            resized_img = image.resize(
-                (rescale_w, rescale_h), PIL.Image.BILINEAR)
+            resized_img = image.resize((rescale_w, rescale_h), PIL.Image.BILINEAR)
             resized_img = np.array(resized_img)
         else:
             resized_img = cv2.resize(image, (rescale_w, rescale_h))
@@ -85,13 +75,11 @@ class ImageResizeTool:
             paste_h = (h - rescale_h) // 2
         if resized_img.ndim == 3 and resized_img.shape[2] == 3:
             new_image = np.full((h, w, 3), pad_value, dtype=resized_img.dtype)
-            new_image[paste_h:paste_h + rescale_h,
-                      paste_w: paste_w + rescale_w, :] = resized_img
+            new_image[paste_h:paste_h + rescale_h, paste_w:paste_w + rescale_w, :] = resized_img
             return new_image
         elif resized_img.ndim == 2:
             new_image = np.full((h, w), pad_value, dtype=resized_img.dtype)
-            new_image[paste_h:paste_h + rescale_h,
-                      paste_w: paste_w + rescale_w] = resized_img
+            new_image[paste_h:paste_h + rescale_h, paste_w:paste_w + rescale_w] = resized_img
             return new_image
         raise RuntimeError("invalid image shape:{}".format(resized_img.shape))
 
@@ -106,43 +94,59 @@ class ImageResizeTool:
         rescale_w = int(iw * scale) if iw * scale >= w else w
         rescale_h = int(ih * scale) if ih * scale >= h else h
         if use_pil_resize:
-            resized_img = image.resize(
-                (rescale_w, rescale_h), PIL.Image.BILINEAR)
+            resized_img = image.resize((rescale_w, rescale_h), PIL.Image.BILINEAR)
             resized_img = np.array(resized_img)
         else:
             resized_img = cv2.resize(image, (rescale_w, rescale_h))
         #center_crop to make sure resized_img shape is (h,w)
         start_h = (rescale_h - h) // 2 if rescale_h - h > 0 else 0
         start_w = (rescale_w - w) // 2 if rescale_w - w > 0 else 0
-        resized_img = resized_img[start_h : start_h + h, start_w : start_w + w]
+        resized_img = resized_img[start_h:start_h + h, start_w:start_w + w]
         return resized_img
 
 
 def add_preprocess_parser(parser):
-    parser.add_argument("--resize_dims", type=str,
+    parser.add_argument("--resize_dims",
+                        type=str,
                         help="Image was resize to fixed 'h,w', default is same as net input dims")
-    parser.add_argument("--keep_aspect_ratio", action='store_true', default=False,
+    parser.add_argument("--keep_aspect_ratio",
+                        action='store_true',
+                        default=False,
                         help="Resize image by keeping same ratio, any areas which" +
-                             "are not taken are filled with 0")
-    parser.add_argument("--keep_ratio_mode", choices=['letterbox', 'short_side_scale'], default='letterbox',
-                        help = "If use keep_aspect_ratio, different mode for resize")
-    parser.add_argument("--mean", default='0,0,0', nargs='?',
-                        help="Per Channel image mean values")
-    parser.add_argument("--scale", default='1,1,1',
-                        help="Per Channel image scale values")
-    parser.add_argument("--pixel_format", choices=['rgb', 'bgr', 'gray', 'rgba', 'gbrg', 'grbg', 'bggr', 'rggb' ], default='bgr',
+                        "are not taken are filled with 0")
+    parser.add_argument("--keep_ratio_mode",
+                        choices=['letterbox', 'short_side_scale'],
+                        default='letterbox',
+                        help="If use keep_aspect_ratio, different mode for resize")
+    parser.add_argument("--mean", default='0,0,0', nargs='?', help="Per Channel image mean values")
+    parser.add_argument("--scale", default='1,1,1', help="Per Channel image scale values")
+    parser.add_argument("--pixel_format",
+                        choices=['rgb', 'bgr', 'gray', 'rgba', 'gbrg', 'grbg', 'bggr', 'rggb'],
+                        default='bgr',
                         help='fixel format of output data that sent into model')
-    parser.add_argument("--channel_format", choices=['nhwc', 'nchw', 'none'], default='nchw',
+    parser.add_argument("--channel_format",
+                        choices=['nhwc', 'nchw', 'none'],
+                        default='nchw',
                         help='channel first or channel last, or not image')
-    parser.add_argument("--pad_value", type=int, default=0,
-                        help="pad value when resize ")
-    parser.add_argument("--pad_type", type=str, choices=[
-                        'normal', 'center'], default='center', help="type of pad when resize ")
-    parser.add_argument("--preprocess_list", type=str2list, default=list(),
-                        help = "choose which input need preprocess, like:'1,3' means input 1&3 need preprocess, default all inputs")
+    parser.add_argument("--pad_value", type=int, default=0, help="pad value when resize ")
+    parser.add_argument("--pad_type",
+                        type=str,
+                        choices=['normal', 'center'],
+                        default='center',
+                        help="type of pad when resize ")
+    parser.add_argument(
+        "--preprocess_list",
+        type=str2list,
+        default=list(),
+        help=
+        "choose which input need preprocess, like:'1,3' means input 1&3 need preprocess, default all inputs"
+    )
     parser.add_argument("--debug_cmd", type=str, default='', help="debug cmd")
     avoid_opts = parser.add_argument_group('avoid options')
-    avoid_opts.add_argument('unknown_params', nargs='?', default=[], help='not parameters but starting with "-"')
+    avoid_opts.add_argument('unknown_params',
+                            nargs='?',
+                            default=[],
+                            help='not parameters but starting with "-"')
 
     return parser
 
@@ -158,20 +162,36 @@ def get_preprocess_parser(existed_parser=None):
 
 
 class preprocess(object):
+
     def __init__(self, debug_cmd=''):
         self.debug_cmd = debug_cmd
         self.fuse_pre = False
         self.has_pre = False
         pass
 
-    def config(self, resize_dims=None, keep_aspect_ratio=False, keep_ratio_mode = "letterbox",
-               customization_format = None, fuse_pre = False, aligned = False,
-               mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0, chip = "",
-               channel_format='nchw', preprocess_list: list = [], debug_cmd='', input_shapes=None, unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
+    def config(self,
+               resize_dims=None,
+               keep_aspect_ratio=False,
+               keep_ratio_mode="letterbox",
+               customization_format=None,
+               fuse_pre=False,
+               aligned=False,
+               mean='0,0,0',
+               scale='1,1,1',
+               pixel_format='bgr',
+               pad_type='center',
+               pad_value=0,
+               chip="",
+               channel_format='nchw',
+               preprocess_list: list = [],
+               debug_cmd='',
+               input_shapes=None,
+               unknown_params=[],
+               **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
             self.debug_cmd = debug_cmd
         if preprocess_list is not None and preprocess_list != []:
-            self.preprocess_list = [ int(i) for i in preprocess_list ]
+            self.preprocess_list = [int(i) for i in preprocess_list]
         else:
             self.preprocess_list = None
         if input_shapes is not None and input_shapes != [] and channel_format != 'none':
@@ -192,7 +212,7 @@ class preprocess(object):
             elif isinstance(resize_dims, list):
                 self.resize_dims = resize_dims
             else:
-                assert("resize_dims should either be str or list.")
+                assert ("resize_dims should either be str or list.")
         else:
             self.resize_dims = self.net_input_dims
         self.crop_method = 'center'
@@ -211,14 +231,14 @@ class preprocess(object):
             self.channel_num = 4
 
         if unknown_params:
-            self.mean = np.array([float(s) for sublist in unknown_params for s in sublist.split(',')], dtype=np.float32)
+            self.mean = np.array(
+                [float(s) for sublist in unknown_params for s in sublist.split(',')],
+                dtype=np.float32)
         else:
-            self.mean = np.array([float(s)
-                             for s in mean.split(',')], dtype=np.float32)
+            self.mean = np.array([float(s) for s in mean.split(',')], dtype=np.float32)
         self.mean = self.mean[np.newaxis, :, np.newaxis, np.newaxis]
         assert (self.mean.size >= self.channel_num)
-        self.scale = np.array([float(s)
-                              for s in scale.split(',')], dtype=np.float32)
+        self.scale = np.array([float(s) for s in scale.split(',')], dtype=np.float32)
         self.scale = self.scale[np.newaxis, :, np.newaxis, np.newaxis]
         assert (self.scale.size >= self.channel_num)
 
@@ -229,7 +249,7 @@ class preprocess(object):
         #fuse_preprocess for cv18xx
         if self.fuse_pre:
             #resize_dims should be greater than net_input_dims
-            self.resize_dims = [max(x,y) for (x,y) in zip(self.resize_dims, self.net_input_dims)]
+            self.resize_dims = [max(x, y) for (x, y) in zip(self.resize_dims, self.net_input_dims)]
             self.net_input_dims = self.resize_dims
             self.pixel_format = customization_format_attributes[self.customization_format][0]
             self.channel_format = customization_format_attributes[self.customization_format][1]
@@ -243,11 +263,11 @@ class preprocess(object):
                 if self.customization_format == "YUV420_PLANAR":
                     self.VPSS_Y_ALIGN = self.VPSS_W_ALIGN * 2
             else:
-               self.VPSS_W_ALIGN = 64
-               self.VPSS_Y_ALIGN = 64
-               self.VPSS_CHANNEL_ALIGN = 64
-               if self.customization_format == "YUV420_PLANAR":
-                   self.VPSS_Y_ALIGN = self.VPSS_W_ALIGN * 2
+                self.VPSS_W_ALIGN = 64
+                self.VPSS_Y_ALIGN = 64
+                self.VPSS_CHANNEL_ALIGN = 64
+                if self.customization_format == "YUV420_PLANAR":
+                    self.VPSS_Y_ALIGN = self.VPSS_W_ALIGN * 2
 
         info_str = \
             "\n\t _____________________________________________________ \n" + \
@@ -268,9 +288,10 @@ class preprocess(object):
             "\tpixel_format          : {}\n" + \
             "\tchannel_format        : {}\n"
         resize_dims_str = resize_dims if resize_dims is not None else 'same to net input dims'
-        info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.keep_ratio_mode, self.pad_value, self.pad_type,
-                                      list(self.mean.flatten()), list(
-                                          self.scale.flatten()), self.pixel_format, self.channel_format)
+        info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.keep_ratio_mode,
+                                      self.pad_value, self.pad_type, list(self.mean.flatten()),
+                                      list(self.scale.flatten()), self.pixel_format,
+                                      self.channel_format)
         logger.info(info_str)
 
     def load_config(self, input_op):
@@ -316,11 +337,9 @@ class preprocess(object):
             self.resize_dims = self.net_input_dims
         if len(self.resize_dims) == 0 or self.resize_dims is None:
             self.resize_dims = self.net_input_dims
-        self.mean = np.array(Operation.fp_array(
-            attrs['mean'])).astype(np.float32)
+        self.mean = np.array(Operation.fp_array(attrs['mean'])).astype(np.float32)
         self.mean = self.mean[np.newaxis, :, np.newaxis, np.newaxis]
-        self.scale = np.array(Operation.fp_array(
-            attrs['scale'])).astype(np.float32)
+        self.scale = np.array(Operation.fp_array(attrs['scale'])).astype(np.float32)
         self.scale = self.scale[np.newaxis, :, np.newaxis, np.newaxis]
         self.crop_method = 'center'
         self.has_pre = True
@@ -337,18 +356,17 @@ class preprocess(object):
             "\t--------------------------\n" + \
             "\tpixel_format          : {}\n" + \
             "\tchannel_format        : {}\n"
-        logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio, self.keep_ratio_mode, self.pad_value, self.pad_type,
-                                      self.net_input_dims,
-                                      list(self.mean.flatten()), list(
-                                          self.scale.flatten()),
-                                      self.pixel_format,
-                                      self.channel_format))
+        logger.info(
+            format_str.format(self.resize_dims, self.keep_aspect_ratio, self.keep_ratio_mode,
+                              self.pad_value, self.pad_type, self.net_input_dims,
+                              list(self.mean.flatten()), list(self.scale.flatten()),
+                              self.pixel_format, self.channel_format))
 
     def to_dict(self):
         if not self.has_pre:
             return {}
         return {
-            'preprocess_list':self.preprocess_list,
+            'preprocess_list': self.preprocess_list,
             'resize_dims': self.resize_dims,
             'keep_aspect_ratio': self.keep_aspect_ratio,
             'keep_ratio_mode': self.keep_ratio_mode,
@@ -363,7 +381,7 @@ class preprocess(object):
     def __right_crop(self, img, crop_dim):
         ih, iw = img.shape[2:]
         oh, ow = crop_dim
-        img = img[:, :, ih-oh:, iw-ow:]
+        img = img[:, :, ih - oh:, iw - ow:]
         return img
 
     def __center_crop(self, img, crop_dim):
@@ -372,8 +390,7 @@ class preprocess(object):
         crop_h, crop_w = crop_dim
         start_h = (h // 2) - (crop_h // 2)
         start_w = (w // 2) - (crop_w // 2)
-        img = img[:, :, start_h: (start_h + crop_h),
-                  start_w: (start_w + crop_w)]
+        img = img[:, :, start_h:(start_h + crop_h), start_w:(start_w + crop_w)]
         return img
 
     def __load_image_and_resize(self, input):
@@ -395,8 +412,7 @@ class preprocess(object):
             elif self.channel_num == 4:
                 image = PIL.Image.open(image_path).convert('RGBA')
             width, height = image.size
-            ratio = min(self.net_input_dims[0] /
-                        height, self.net_input_dims[1] / width)
+            ratio = min(self.net_input_dims[0] / height, self.net_input_dims[1] / width)
         else:
             if self.channel_num == 1:
                 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -410,18 +426,19 @@ class preprocess(object):
                 else:
                     # convert from BGRA to RGBA
                     image = image[:, :, [2, 1, 0, 3]]
-            ratio = min(
-                self.net_input_dims[0] / image.shape[0], self.net_input_dims[1] / image.shape[1])
+            ratio = min(self.net_input_dims[0] / image.shape[0],
+                        self.net_input_dims[1] / image.shape[1])
         if self.keep_aspect_ratio:
             if self.keep_ratio_mode == "letterbox":
-                image = ImageResizeTool.letterbox_resize(
-                    image, self.resize_dims[0], self.resize_dims[1], self.pad_value, self.pad_type, use_pil_resize)
+                image = ImageResizeTool.letterbox_resize(image, self.resize_dims[0],
+                                                         self.resize_dims[1], self.pad_value,
+                                                         self.pad_type, use_pil_resize)
             else:
-                image = ImageResizeTool.short_side_scale_resize(
-                    image, self.resize_dims[0], self.resize_dims[1], use_pil_resize)
+                image = ImageResizeTool.short_side_scale_resize(image, self.resize_dims[0],
+                                                                self.resize_dims[1], use_pil_resize)
         else:
-            image = ImageResizeTool.stretch_resize(
-                image, self.resize_dims[0], self.resize_dims[1], use_pil_resize)
+            image = ImageResizeTool.stretch_resize(image, self.resize_dims[0], self.resize_dims[1],
+                                                   use_pil_resize)
 
         if self.channel_num == 1:
             # if grapscale image, expand dim to (1, h, w)
@@ -436,7 +453,7 @@ class preprocess(object):
             return self.ratio_list
 
     def align_up(self, x, n):
-        return x if n == 0 else ((x + n - 1)// n) * n
+        return x if n == 0 else ((x + n - 1) // n) * n
 
     # Y = 0.2569 * R + 0.5044 * G + 0.0979 * B + 16
     # U = -0.1483 * R - 0.2911 * G + 0.4394 * B + 128
@@ -448,15 +465,15 @@ class preprocess(object):
         y_w_aligned = self.align_up(w, self.VPSS_Y_ALIGN)
         y_offset = 0
         if pixel_type == YuvType.YUV420_PLANAR:
-          uv_w_aligned = self.align_up(int(w/2), self.VPSS_W_ALIGN)
-          u_offset = self.align_up(y_offset + h * y_w_aligned, self.VPSS_CHANNEL_ALIGN)
-          v_offset = self.align_up(u_offset + int(h/2) * uv_w_aligned, self.VPSS_CHANNEL_ALIGN)
-        else :
-          uv_w_aligned = self.align_up(w, self.VPSS_W_ALIGN)
-          u_offset = self.align_up(y_offset + h * y_w_aligned, self.VPSS_CHANNEL_ALIGN)
-          v_offset = u_offset
+            uv_w_aligned = self.align_up(int(w / 2), self.VPSS_W_ALIGN)
+            u_offset = self.align_up(y_offset + h * y_w_aligned, self.VPSS_CHANNEL_ALIGN)
+            v_offset = self.align_up(u_offset + int(h / 2) * uv_w_aligned, self.VPSS_CHANNEL_ALIGN)
+        else:
+            uv_w_aligned = self.align_up(w, self.VPSS_W_ALIGN)
+            u_offset = self.align_up(y_offset + h * y_w_aligned, self.VPSS_CHANNEL_ALIGN)
+            v_offset = u_offset
 
-        total_size = self.align_up(v_offset + int(h/2) * uv_w_aligned, self.VPSS_CHANNEL_ALIGN)
+        total_size = self.align_up(v_offset + int(h / 2) * uv_w_aligned, self.VPSS_CHANNEL_ALIGN)
         yuv420 = np.zeros(int(total_size), np.uint8)
         for h_idx in range(h):
             for w_idx in range(w):
@@ -469,18 +486,20 @@ class preprocess(object):
                 v = max(min(v, 255), 0)
                 yuv420[y_offset + h_idx * y_w_aligned + w_idx] = y
                 if (h_idx % 2 == 0 and w_idx % 2 == 0):
-                  if pixel_type == YuvType.YUV420_PLANAR:
-                    u_idx = int(u_offset + int(h_idx/2) * uv_w_aligned + int(w_idx / 2))
-                    v_idx = int(v_offset + int(h_idx/2) * uv_w_aligned + int(w_idx / 2))
-                  elif pixel_type == YuvType.YUV_NV12:
-                    u_idx = int(u_offset + int(h_idx/2) * uv_w_aligned + int(w_idx / 2) * 2)
-                    v_idx = int(v_offset + int(h_idx/2) * uv_w_aligned + int(w_idx / 2) * 2 + 1)
-                  else :
-                    u_idx = int(u_offset + int(h_idx/2) * uv_w_aligned + int(w_idx / 2) * 2 + 1)
-                    v_idx = int(v_offset + int(h_idx/2) * uv_w_aligned + int(w_idx / 2) * 2)
+                    if pixel_type == YuvType.YUV420_PLANAR:
+                        u_idx = int(u_offset + int(h_idx / 2) * uv_w_aligned + int(w_idx / 2))
+                        v_idx = int(v_offset + int(h_idx / 2) * uv_w_aligned + int(w_idx / 2))
+                    elif pixel_type == YuvType.YUV_NV12:
+                        u_idx = int(u_offset + int(h_idx / 2) * uv_w_aligned + int(w_idx / 2) * 2)
+                        v_idx = int(v_offset + int(h_idx / 2) * uv_w_aligned + int(w_idx / 2) * 2 +
+                                    1)
+                    else:
+                        u_idx = int(u_offset + int(h_idx / 2) * uv_w_aligned + int(w_idx / 2) * 2 +
+                                    1)
+                        v_idx = int(v_offset + int(h_idx / 2) * uv_w_aligned + int(w_idx / 2) * 2)
 
-                  yuv420[u_idx] = u
-                  yuv420[v_idx] = v
+                    yuv420[u_idx] = u
+                    yuv420[v_idx] = v
         return yuv420.reshape(int(total_size), 1, 1)
 
     def align_packed_frame(self, x, aligned):
@@ -490,7 +509,7 @@ class preprocess(object):
         w = w * c
         x = np.reshape(x, (1, h, w))
         x_tmp = np.zeros((1, h, self.align_up(w, self.VPSS_W_ALIGN)), x.dtype)
-        x_tmp[:, :, : w] = x
+        x_tmp[:, :, :w] = x
         return x_tmp
 
     def align_gray_frame(self, x, aligned):
@@ -503,7 +522,7 @@ class preprocess(object):
 
     def align_planar_frame(self, x, aligned):
         if not aligned:
-          return x
+            return x
         c, h, w = x.shape
         align_w_size = self.align_up(w, self.VPSS_W_ALIGN)
         align_c_size = self.align_up(align_w_size * h, self.VPSS_CHANNEL_ALIGN)
@@ -511,7 +530,7 @@ class preprocess(object):
         x_tmp1[:, :, :w] = x
         x_tmp1 = np.reshape(x_tmp1, (c, 1, h * align_w_size))
         x_tmp2 = np.zeros((c, 1, align_c_size), x.dtype)
-        x_tmp2[:, :, : h * align_w_size] = x_tmp1
+        x_tmp2[:, :, :h * align_w_size] = x_tmp1
         return x_tmp2
 
     def run(self, input):
@@ -551,7 +570,7 @@ class preprocess(object):
                 x = np.transpose(x, (1, 2, 0))
                 x = self.rgb2yuv420(x, pixel_type)
                 x = x.astype(np.uint8)
-                assert(self.batch_size == 1)
+                assert (self.batch_size == 1)
             elif self.customization_format.find("_PLANAR") >= 0:
                 if self.pixel_format == 'rgb':
                     x = x[[2, 1, 0], :, :]
@@ -566,8 +585,8 @@ class preprocess(object):
                 x = np.expand_dims(x, axis=0)
                 x = x.astype(np.uint8)
             else:
-                logger.info("unsupported pixel format");
-                assert(0)
+                logger.info("unsupported pixel format")
+                assert (0)
         else:
             if self.pixel_format == 'gray':
                 self.mean = self.mean[:, :1, :, :]

@@ -28,7 +28,9 @@ from .utils import *
 
 pymlir.set_mem_mode("force_value_mem")
 
+
 class SearchThreshold:
+
     def __init__(self, args, selector, tune_ds):
         self.args = args
         self.fp32_mlir = args.mlir_file
@@ -48,7 +50,8 @@ class SearchThreshold:
 
     def gen_multiple_thresholds_new(self, quantize_method_list):
         calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)
-        thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, _, _, _, _, thresholds, thresholds4= calibrator.activation_collect_and_calc_th_parallel()
+        thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, _, _, _, _, thresholds, thresholds4 = calibrator.activation_collect_and_calc_th_parallel(
+        )
         calibrator._clean_resource()
         for i, method_name in enumerate(quantize_method_list):
             thresholds_map = thresholds[method_name]
@@ -71,25 +74,29 @@ class SearchThreshold:
                     outputs = self.parser.get_outputs_by_op_name(op_name)
                     for out in outputs:
                         if out not in thresholds_map:
-                            continue   # possible useless leaf output
+                            continue  # possible useless leaf output
                         if 'fp8' in self.debug_cmd:
                             threshold = thresholds_map[out]
-                            min_value, max_value = -threshold*128.0/127.0, threshold
-                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
-                                                               max_value))
+                            min_value, max_value = -threshold * 128.0 / 127.0, threshold
+                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(
+                                out, threshold, min_value, max_value))
                         else:
                             if out in thresholds_map:
                                 threshold = thresholds_map[out]
                             else:
                                 threshold = 1.0
                             if out in calibrator._activations_statistics:
-                                min_value, max_value, *_ = calibrator._activations_statistics[op_name]
+                                min_value, max_value, *_ = calibrator._activations_statistics[
+                                    op_name]
                             else:
-                                min_value, max_value = -1,1
+                                min_value, max_value = -1, 1
                             if threshold <= 1e-5 or np.isnan(threshold):
                                 threshold = 1e-5
-                                self.mix_prec.logger.print_info("WARNING: layer {} threshold is zero. Please check the input data correctness.".format(op_name))
-                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value, max_value))
+                                self.mix_prec.logger.print_info(
+                                    "WARNING: layer {} threshold is zero. Please check the input data correctness."
+                                    .format(op_name))
+                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                                                                   max_value))
                 if 'int4' in self.debug_cmd:
                     thresholds_map4 = thresholds4[method_name]
                     f.write("\n")
@@ -102,17 +109,20 @@ class SearchThreshold:
                             threshold = thresholds_map4[out]
                             if threshold <= 1e-5 or np.isnan(threshold):
                                 threshold = 1e-5
-                                self.mix_prec.logger.print_info("WARNING: layer {} threshold is zero. Please check the input data correctness.".format(out))
-                            min_value, max_value = -threshold*8.0/7.0, threshold
-                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
-                                                                    max_value))
+                                self.mix_prec.logger.print_info(
+                                    "WARNING: layer {} threshold is zero. Please check the input data correctness."
+                                    .format(out))
+                            min_value, max_value = -threshold * 8.0 / 7.0, threshold
+                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(
+                                out, threshold, min_value, max_value))
             if calibrator.args.tune_num <= 0 or 'int4' in self.debug_cmd or method_name != 'KL':
                 continue
 
             if self.args.tune_num > 0:
                 cali_table = cali_table.rsplit(".1", 1)[0]
             calibrator.args.calibration_table = cali_table
-            tunner = SimpleTuner(calibrator.args, calibrator.tune_ds, calibrator.ppa_list, thresholds_map_absmax)
+            tunner = SimpleTuner(calibrator.args, calibrator.tune_ds, calibrator.ppa_list,
+                                 thresholds_map_absmax)
             thresholds_map = tunner.run()
 
             layer_name_list = []
@@ -131,10 +141,13 @@ class SearchThreshold:
                     threshold = thresholds_map[op_name]
                     if threshold <= 1e-5:
                         threshold = 1e-5
-                        self.mix_prec.logger.print_info("WARNING: layer {} threshold is zero. Please check the input data correctness.".format(op_name))
+                        self.mix_prec.logger.print_info(
+                            "WARNING: layer {} threshold is zero. Please check the input data correctness."
+                            .format(op_name))
                     layer_name_list.append('{}_{}'.format(i, op_name))
                     min_value, max_value, *_ = calibrator._activations_statistics[op_name]
-                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value, max_value))
+                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                                                               max_value))
         return
 
     def run_search_calitable(self):
@@ -142,12 +155,14 @@ class SearchThreshold:
         float_model = MixQuantModel(self.fp32_mlir, self.chip)
         predictions_gt = []
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
-        quantize_method_list = ["KL","MAX", "Percentile9999","MSE"]
-        self.mix_prec.logger.print_info("Quantization threshold calculation method: {}".format(quantize_method_list))
+        quantize_method_list = ["KL", "MAX", "Percentile9999", "MSE"]
+        self.mix_prec.logger.print_info(
+            "Quantization threshold calculation method: {}".format(quantize_method_list))
         self.gen_multiple_thresholds_new(quantize_method_list)
 
         result = {}
-        _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate, predictions_gt)
+        _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
+                                    predictions_gt)
         for method in quantize_method_list:
             cali_table = self.cali_table_name + "_" + method + ".1"
             if method == 'KL':
@@ -159,16 +174,20 @@ class SearchThreshold:
                 file.write(data)
             int8_model = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name)
             if self.benchmark_method == 'cos':
-                outputs = self.mix_prec.run_model(int8_model, False, global_compare_layers, layers_rate, predictions_gt)
+                outputs = self.mix_prec.run_model(int8_model, False, global_compare_layers,
+                                                  layers_rate, predictions_gt)
             elif self.benchmark_method == 'snr':
-                outputs = 1 - self.mix_prec.run_model_loss_snr(int8_model, False, global_compare_layers, layers_rate, predictions_gt)
+                outputs = 1 - self.mix_prec.run_model_loss_snr(
+                    int8_model, False, global_compare_layers, layers_rate, predictions_gt)
             result[method] = outputs
 
         optimal_method = max(result.items(), key=lambda item: item[1])
         optimal_method_name = optimal_method[0]
         optimal_value = optimal_method[1]
-        self.mix_prec.logger.print_info("{} similarity scores: {}".format(self.benchmark_method,result))
-        self.mix_prec.logger.print_info("optimal_method_name: {}, optimal_value: {}".format(optimal_method_name,optimal_value))
+        self.mix_prec.logger.print_info("{} similarity scores: {}".format(
+            self.benchmark_method, result))
+        self.mix_prec.logger.print_info("optimal_method_name: {}, optimal_value: {}".format(
+            optimal_method_name, optimal_value))
 
         if optimal_method_name == 'KL':
             cali_table = self.cali_table_name + "_" + optimal_method_name + "_tune"

@@ -48,7 +48,8 @@ def run(
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
-        device, pt, jit, engine = next(model.parameters()).device, True, False, False  # get model device, PyTorch model
+        device, pt, jit, engine = next(
+            model.parameters()).device, True, False, False  # get model device, PyTorch model
         half &= device.type != 'cpu'  # half precision only supported on CUDA
         model.half() if half else model.float()
     else:  # called directly
@@ -69,11 +70,14 @@ def run(
             device = model.device
             if not (pt or jit):
                 batch_size = 1  # export.py models default to batch-size 1
-                LOGGER.info(f'Forcing --batch-size 1 square inference (1,3,{imgsz},{imgsz}) for non-PyTorch models')
+                LOGGER.info(
+                    f'Forcing --batch-size 1 square inference (1,3,{imgsz},{imgsz}) for non-PyTorch models'
+                )
 
         # Dataloader
         data = Path(data)
-        test_dir = data / 'test' if (data / 'test').exists() else data / 'val'  # data/test or data/val
+        test_dir = data / 'test' if (data /
+                                     'test').exists() else data / 'val'  # data/test or data/val
         dataloader = create_classification_dataloader(path=test_dir,
                                                       imgsz=imgsz,
                                                       batch_size=batch_size,
@@ -86,7 +90,12 @@ def run(
     n = len(dataloader)  # number of batches
     action = 'validating' if dataloader.dataset.root.stem == 'val' else 'testing'
     desc = f"{pbar.desc[:-36]}{action:>36}" if pbar else f"{action}"
-    bar = tqdm(dataloader, desc, n, not training, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', position=0)
+    bar = tqdm(dataloader,
+               desc,
+               n,
+               not training,
+               bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}',
+               position=0)
     with torch.cuda.amp.autocast(enabled=device.type != 'cpu'):
         for images, labels in bar:
             t1 = time_sync()
@@ -123,7 +132,9 @@ def run(
         # Print results
         t = tuple(x / len(dataloader.dataset.samples) * 1E3 for x in dt)  # speeds per image
         shape = (1, 3, imgsz, imgsz)
-        LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms post-process per image at shape {shape}' % t)
+        LOGGER.info(
+            f'Speed: %.1fms pre-process, %.1fms inference, %.1fms post-process per image at shape {shape}'
+            % t)
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}")
 
     return top1, top5, loss
@@ -132,15 +143,29 @@ def run(
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', type=str, default=ROOT / '../datasets/mnist', help='dataset path')
-    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s-cls.pt', help='model.pt path(s)')
+    parser.add_argument('--weights',
+                        nargs='+',
+                        type=str,
+                        default=ROOT / 'yolov5s-cls.pt',
+                        help='model.pt path(s)')
     parser.add_argument('--batch-size', type=int, default=128, help='batch size')
-    parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=224, help='inference size (pixels)')
+    parser.add_argument('--imgsz',
+                        '--img',
+                        '--img-size',
+                        type=int,
+                        default=224,
+                        help='inference size (pixels)')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--workers', type=int, default=8, help='max dataloader workers (per RANK in DDP mode)')
+    parser.add_argument('--workers',
+                        type=int,
+                        default=8,
+                        help='max dataloader workers (per RANK in DDP mode)')
     parser.add_argument('--verbose', nargs='?', const=True, default=True, help='verbose output')
     parser.add_argument('--project', default=ROOT / 'runs/val-cls', help='save to project/name')
     parser.add_argument('--name', default='exp', help='save to project/name')
-    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
+    parser.add_argument('--exist-ok',
+                        action='store_true',
+                        help='existing project/name ok, do not increment')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     opt = parser.parse_args()

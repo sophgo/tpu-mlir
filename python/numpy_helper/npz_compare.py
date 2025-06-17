@@ -143,11 +143,8 @@ def compare_one_array(
             d1 = d1[:min_v, :]
         d1, d2 = align_type_and_shape(d1, d2)
     except:
-        print(
-            "Error: {} in two npz file is not same shape. {} v.s. {}".format(
-                name, d1.shape, d2.shape
-            )
-        )
+        print("Error: {} in two npz file is not same shape. {} v.s. {}".format(
+            name, d1.shape, d2.shape))
         result = (False, tc.NOT_MATCH, 0, {}, None)
         dic[name] = result
         return result
@@ -202,9 +199,8 @@ def npz_compare(args_list, log_level="normal"):
                 d2 = npz2.get(name2)
                 if d1.shape == d2.shape:
                     d1, d2 = align_type_and_shape(d1, d2)
-                    result = tc.compare(
-                        d1, d2, args.verbose, int8_tensor_close, args.per_axis_compare
-                    )
+                    result = tc.compare(d1, d2, args.verbose, int8_tensor_close,
+                                        args.per_axis_compare)
                     matched_name2 = name2
                     if result[1] == "EQUAL":
                         if log_level == "normal":
@@ -305,9 +301,7 @@ def npz_compare(args_list, log_level="normal"):
             continue
         stats.update(name, dic.get(name))
         if log_level == "normal":
-            print_result_one_array(
-                tc, npz1, name, dic, args.verbose, args.per_axis_compare
-            )
+            print_result_one_array(tc, npz1, name, dic, args.verbose, args.per_axis_compare)
 
     if log_level == "normal":
         stats.print_result()
@@ -315,7 +309,7 @@ def npz_compare(args_list, log_level="normal"):
     if args.save:
         if args.only_key:
             with open(args.save, "w") as f:
-                for k,v in stats.results.items():
+                for k, v in stats.results.items():
                     if not v[0]:
                         f.write(k + "\n")
         else:
@@ -336,6 +330,7 @@ def npz_compare(args_list, log_level="normal"):
         else:
             print("npz compare FAILED.", flush=True)
             sys.exit(-1)
+
 
 if __name__ == "__main__":
     npz_compare(sys.argv)

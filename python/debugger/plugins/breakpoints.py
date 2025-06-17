@@ -341,8 +341,7 @@ class BreakpointPlugin(TdbPlugin, TdbPluginCmd):
             self.tdb.message(f"{break_res}")
         else:
             self.tdb.error(
-                f"Supported Break patterns: {', '.join(self.breakpoints.supported_patterns())}"
-            )
+                f"Supported Break patterns: {', '.join(self.breakpoints.supported_patterns())}")
         return break_res
 
     def after_load(self, tdb: TdbCmdBackend):

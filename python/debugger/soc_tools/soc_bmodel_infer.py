@@ -14,6 +14,7 @@ import pickle
 import os
 import time
 import numpy as np
+
 os.environ["TDB_CACHE_MODE"] = "auto"
 
 import debugger
@@ -35,12 +36,12 @@ import warnings
 # ignore all warning of"Duplicate name", this comes when args.using_memory_opt=True.
 warnings.filterwarnings("ignore", category=UserWarning, message="Duplicate name")
 
-
 npz_in_memory = {}
 log_txt = ""
 
 
 class soc_launch_struct:
+
     def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf, core_ids=set({0})):
         self.tiu_num = tiu_num
         self.dma_num = dma_num
@@ -52,6 +53,7 @@ class soc_launch_struct:
 
 
 class CustomUnpickler(pickle.Unpickler):
+
     def find_class(self, module, name):
         if module == "debugger.target_1684x.pcie" and name == "soc_launch_struct":
             return soc_launch_struct
@@ -87,11 +89,11 @@ def get_ref_data(operand: Pickled_Value, ref):
     # The data in HW has a transposed collapsed shape.
     # To align the Bmodel with TPU.mlir, we need to transpose the reference data.
     if operand.tlvalue.layout in (
-        "continuous_group3d",
-        "eu_align_group3d",
-        "compact_group3d",
-        "eu_align_xn_group3d",
-        "compact_xn_group3d",
+            "continuous_group3d",
+            "eu_align_group3d",
+            "compact_group3d",
+            "eu_align_xn_group3d",
+            "compact_xn_group3d",
     ):
         n, c, d, h, w = 0, 1, 2, 3, 4
         data = data.transpose((d, n, c, h, w))
@@ -136,7 +138,8 @@ def collect_without_mem_opt(operand, origin_shape, reshape, slices, actual, npz_
     npz_in_disk[operand.tlvalue.name] = tmp.reshape(origin_shape)
 
 
-def collect_infer_data_from_ref(operand: Pickled_Value, actual, desired, ref, npz_in_disk, use_memory_opt, desire_op):
+def collect_infer_data_from_ref(operand: Pickled_Value, actual, desired, ref, npz_in_disk,
+                                use_memory_opt, desire_op):
     if desire_op and operand.tlvalue.name not in desire_op:
         return
     if operand.tlvalue.name not in ref:
@@ -152,23 +155,18 @@ def collect_infer_data_from_ref(operand: Pickled_Value, actual, desired, ref, np
     else:
         slice_list = _slice[1:-1].split(",")
         sliced_shape = tuple(
-            [
-                int(slice.split(":")[1]) - int(slice.split(":")[0])
-                for slice in slice_list
-            ]
-        )
+            [int(slice.split(":")[1]) - int(slice.split(":")[0]) for slice in slice_list])
         slices = [
-            slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
-            for s in slice_list
+            slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1])) for s in slice_list
         ]
     actual = actual.reshape(desired.shape)
 
     if operand.tlvalue.layout in (
-        "continuous_group3d",
-        "eu_align_group3d",
-        "compact_group3d",
-        "eu_align_xn_group3d",
-        "compact_xn_group3d",
+            "continuous_group3d",
+            "eu_align_group3d",
+            "compact_group3d",
+            "eu_align_xn_group3d",
+            "compact_xn_group3d",
     ):
         d, n, c, h, w = 0, 1, 2, 3, 4
         actual = actual.transpose((n, c, d, h, w))
@@ -187,7 +185,7 @@ def collect_infer_data_from_ref(operand: Pickled_Value, actual, desired, ref, np
 
 
 def infer_combine(
-    value, # Pickled_value
+    value,  # Pickled_value
     context,
     soc_runner,
     ref_data,
@@ -209,7 +207,8 @@ def infer_combine(
         actual = (raw_data.astype(np.float32) - value.tlvalue.zero_point) * value.tlvalue.scale
 
     desired = get_ref_data(value, ref_data)
-    collect_infer_data_from_ref(value, actual, desired, ref_data, infer_data, using_memory_opt, desire_op)
+    collect_infer_data_from_ref(value, actual, desired, ref_data, infer_data, using_memory_opt,
+                                desire_op)
     if enable_log:
         if is_operand:
             log_txt += f"gather operand slice: {value}\n"
@@ -249,9 +248,7 @@ def main():
         action="store_true",
         help="Whether to output fixed number.",
     )
-    parser.add_argument(
-        "--enable_log", action="store_true", help="Whether to enable log."
-    )
+    parser.add_argument("--enable_log", action="store_true", help="Whether to enable log.")
     parser.add_argument(
         "--using_memory_opt",
         action="store_true",
@@ -294,9 +291,7 @@ def log_end(idx, run_by_atomic=False, enable_log=False):
     log_txt += f"################################ {log_type} {idx} End ################################\n"
 
 
-def collect_before_compute(
-    values_in_pkl, in_value_idx, soc_runner, ref_data, infer_data, args
-):
+def collect_before_compute(values_in_pkl, in_value_idx, soc_runner, ref_data, infer_data, args):
     in_values = values_in_pkl[in_value_idx]
     for value in in_values:
         infer_combine(
@@ -309,13 +304,12 @@ def collect_before_compute(
             args.using_memory_opt,
             is_operand=True,
             enable_log=args.enable_log,
-            desire_op=[desire_op.strip() for desire_op in args.desire_op.split(",")] if args.desire_op!="" else [],
+            desire_op=[desire_op.strip()
+                       for desire_op in args.desire_op.split(",")] if args.desire_op != "" else [],
         )
 
 
-def collect_after_compute(
-    values_out_pkl, out_value_idx, soc_runner, ref_data, infer_data, args
-):
+def collect_after_compute(values_out_pkl, out_value_idx, soc_runner, ref_data, infer_data, args):
     out_value = values_out_pkl[out_value_idx]
     infer_combine(
         out_value,
@@ -327,7 +321,8 @@ def collect_after_compute(
         args.using_memory_opt,
         is_operand=False,
         enable_log=args.enable_log,
-        desire_op=[desire_op.strip() for desire_op in args.desire_op.split(",")] if args.desire_op!="" else [],
+        desire_op=[desire_op.strip()
+                   for desire_op in args.desire_op.split(",")] if args.desire_op != "" else [],
     )
 
 
@@ -376,9 +371,8 @@ if __name__ == "__main__":
             for arg in atomic_mlir.functions[0].signature[0]:
                 mem = arg.memref
                 size = int(np.prod(mem.shape) * mem.itemsize)
-                assert soc_runner.memory.set_data(
-                    mem, inputs[_offset : _offset + size].view(mem.np_dtype)
-                )  #  load input tensor
+                assert soc_runner.memory.set_data(mem, inputs[_offset:_offset + size].view(
+                    mem.np_dtype))  #  load input tensor
                 _offset += size
         elif input_data_fn.endswith(".npz"):
             inputs = np.load(input_data_fn)
@@ -402,36 +396,50 @@ if __name__ == "__main__":
         for idx, struct in enumerate(tqdm_iter):
             log_start(idx, args.run_by_atomic, args.enable_log)
 
-            if isinstance(soc_runner,BM1684XSoc):
+            if isinstance(soc_runner, BM1684XSoc):
                 if not args.run_by_atomic:
-                    collect_before_compute(values_in_pkl, cmd_points[idx], soc_runner, ref_data, infer_data, args)
-                    soc_runner.checker_fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
+                    collect_before_compute(values_in_pkl, cmd_points[idx], soc_runner, ref_data,
+                                           infer_data, args)
+                    soc_runner.checker_fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf,
+                                                    struct.dma_buf)
                     history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-                    tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
-                    collect_after_compute(values_out_pkl, idx, soc_runner, ref_data, infer_data, args)
+                    tqdm_iter.set_description(
+                        f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+                    collect_after_compute(values_out_pkl, idx, soc_runner, ref_data, infer_data,
+                                          args)
                 else:
                     if not in_op:
                         op_start_idx = idx
-                        collect_before_compute(values_in_pkl, cmd_points[op_idx], soc_runner, ref_data, infer_data, args)
+                        collect_before_compute(values_in_pkl, cmd_points[op_idx], soc_runner,
+                                               ref_data, infer_data, args)
                         in_op = True
-                    soc_runner.fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf)
+                    soc_runner.fast_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf,
+                                            struct.dma_buf)
                     history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-                    tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
-                    if op_start_idx + values_out_pkl[op_idx].cmd_point-values_in_pkl[cmd_points[op_idx]][0].cmd_point == idx:
-                        collect_after_compute(values_out_pkl, op_idx, soc_runner, ref_data, infer_data, args)
+                    tqdm_iter.set_description(
+                        f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+                    if op_start_idx + values_out_pkl[op_idx].cmd_point - values_in_pkl[
+                            cmd_points[op_idx]][0].cmd_point == idx:
+                        collect_after_compute(values_out_pkl, op_idx, soc_runner, ref_data,
+                                              infer_data, args)
                         in_op = False
                         op_idx += 1
 
-            elif isinstance(soc_runner,BM1688Soc):
+            elif isinstance(soc_runner, BM1688Soc):
                 if not in_op:
                     op_start_idx = idx
-                    collect_before_compute(values_in_pkl, cmd_points[op_idx], soc_runner, ref_data, infer_data, args)
+                    collect_before_compute(values_in_pkl, cmd_points[op_idx], soc_runner, ref_data,
+                                           infer_data, args)
                     in_op = True
-                soc_runner._cmds_soc_single_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf, struct.dma_buf, struct.core_ids)
+                soc_runner._cmds_soc_single_compute(struct.tiu_num, struct.dma_num, struct.tiu_buf,
+                                                    struct.dma_buf, struct.core_ids)
                 history.update({"tiu": struct.tiu_num, "dma": struct.dma_num})
-                tqdm_iter.set_description(f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
-                if op_start_idx + values_out_pkl[op_idx].cmd_point-values_in_pkl[cmd_points[op_idx]][0].cmd_point == idx:
-                    collect_after_compute(values_out_pkl, op_idx, soc_runner, ref_data, infer_data, args)
+                tqdm_iter.set_description(
+                    f"execute {history['tiu']} tiu {history['dma']} dma cmds.")
+                if op_start_idx + values_out_pkl[op_idx].cmd_point - values_in_pkl[
+                        cmd_points[op_idx]][0].cmd_point == idx:
+                    collect_after_compute(values_out_pkl, op_idx, soc_runner, ref_data, infer_data,
+                                          args)
                     in_op = False
                     op_idx += 1
 

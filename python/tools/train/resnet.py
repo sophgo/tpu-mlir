@@ -4,7 +4,10 @@ import math
 # TODO: support SyncBatchNorm for mutilGPU
 BN = None
 
-__all__ = ['resnet18', 'resnet26', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'resnet_custom']
+__all__ = [
+    'resnet18', 'resnet26', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'resnet_custom'
+]
+
 
 def drop_path(x, drop_prob: float = 0., training: bool = False):
     """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
@@ -17,7 +20,8 @@ def drop_path(x, drop_prob: float = 0., training: bool = False):
     if drop_prob == 0. or not training:
         return x
     keep_prob = 1 - drop_prob
-    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
+    shape = (
+        x.shape[0], ) + (1, ) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
     random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
     random_tensor.floor_()  # binarize
     output = x.div(keep_prob) * random_tensor
@@ -27,6 +31,7 @@ def drop_path(x, drop_prob: float = 0., training: bool = False):
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
     """
+
     def __init__(self, drop_prob=None):
         super(DropPath, self).__init__()
         self.drop_prob = drop_prob
@@ -34,10 +39,10 @@ class DropPath(nn.Module):
     def forward(self, x):
         return drop_path(x, self.drop_prob, self.training)
 
+
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
 class BasicBlock(nn.Module):
@@ -84,8 +89,7 @@ class Bottleneck(nn.Module):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = BN(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
-                               padding=1, bias=False)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn2 = BN(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = BN(planes * 4)
@@ -128,6 +132,7 @@ class ResNet(nn.Module):
     """Redidual Networks class, based on
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/abs/1512.03385>`_
     """
+
     def __init__(self,
                  block,
                  layers,
@@ -169,15 +174,24 @@ class ResNet(nn.Module):
 
         if self.deep_stem:
             self.conv1 = nn.Sequential(
-                        nn.Conv2d(3, self.inplanes // 2, kernel_size=3, stride=2, padding=1, bias=False),
-                        BN(self.inplanes // 2),
-                        nn.ReLU(inplace=True),
-                        nn.Conv2d(self.inplanes // 2, self.inplanes // 2, kernel_size=3,
-                                  stride=1, padding=1, bias=False),
-                        BN(self.inplanes // 2),
-                        nn.ReLU(inplace=True),
-                        nn.Conv2d(self.inplanes // 2, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False),
-                    )
+                nn.Conv2d(3, self.inplanes // 2, kernel_size=3, stride=2, padding=1, bias=False),
+                BN(self.inplanes // 2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(self.inplanes // 2,
+                          self.inplanes // 2,
+                          kernel_size=3,
+                          stride=1,
+                          padding=1,
+                          bias=False),
+                BN(self.inplanes // 2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(self.inplanes // 2,
+                          self.inplanes,
+                          kernel_size=3,
+                          stride=1,
+                          padding=1,
+                          bias=False),
+            )
         else:
             self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = BN(self.inplanes)
@@ -213,7 +227,7 @@ class ResNet(nn.Module):
                 m.bias.data.zero_()
             elif isinstance(m, nn.Linear):
                 n = m.weight.size(1)
-                m.weight.data.normal_(0, 1.0/float(n))
+                m.weight.data.normal_(0, 1.0 / float(n))
                 m.bias.data.zero_()
 
         if bypass_last_bn:
@@ -226,14 +240,20 @@ class ResNet(nn.Module):
             if self.avg_down:
                 downsample = nn.Sequential(
                     nn.AvgPool2d(stride, stride=stride, ceil_mode=True, count_include_pad=False),
-                    nn.Conv2d(self.inplanes, planes * block.expansion,
-                              kernel_size=1, stride=1, bias=False),
+                    nn.Conv2d(self.inplanes,
+                              planes * block.expansion,
+                              kernel_size=1,
+                              stride=1,
+                              bias=False),
                     BN(planes * block.expansion),
                 )
             else:
                 downsample = nn.Sequential(
-                    nn.Conv2d(self.inplanes, planes * block.expansion,
-                              kernel_size=1, stride=stride, bias=False),
+                    nn.Conv2d(self.inplanes,
+                              planes * block.expansion,
+                              kernel_size=1,
+                              stride=stride,
+                              bias=False),
                     BN(planes * block.expansion),
                 )
 

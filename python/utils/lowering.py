@@ -21,7 +21,7 @@ equal_dtypes = {
 }
 
 
-def lowering(input:np.array, pdtype:str, pshape, pzero_point=0, pscale=1):
+def lowering(input: np.array, pdtype: str, pshape, pzero_point=0, pscale=1):
     if pdtype == "si8": pdtype = "i8"
     if pdtype == "si16": pdtype = "i16"
     if pdtype == "si32": pdtype = "i32"
@@ -52,7 +52,8 @@ def lowering(input:np.array, pdtype:str, pshape, pzero_point=0, pscale=1):
         res = fp32_to_bf16(input).reshape(pshape)
     elif pdtype == "i32" and (input.dtype == np.float32 or input.dtype == np.int64):
         res = input.astype(np.int32).reshape(pshape)
-    elif pdtype == "u32" and (input.dtype == np.float32 or input.dtype == np.int64 or input.dtype == np.uint32):
+    elif pdtype == "u32" and (input.dtype == np.float32 or input.dtype == np.int64
+                              or input.dtype == np.uint32):
         res = input.astype(np.uint32).reshape(pshape)
     elif pdtype == "i4" and input.dtype == np.float32:
         data = round_away_from_zero(input * pscale + pzero_point)

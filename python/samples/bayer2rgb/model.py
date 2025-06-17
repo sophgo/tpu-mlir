@@ -101,7 +101,7 @@ class BayerNet(torch.nn.Module):
         b_conv = nn.functional.conv2d(b, self.kernel1, stride=1)
         c_conv = nn.functional.conv2d(c, self.kernel2, stride=1)
         d_conv = nn.functional.conv2d(d, self.kernel3, stride=1)
-        e = torch.cat((a_conv,b_conv,c_conv,d_conv), 1)
+        e = torch.cat((a_conv, b_conv, c_conv, d_conv), 1)
         y = self.shuffle_dcr(e)  #[B, 3, H, W]
         return y
 
@@ -111,4 +111,3 @@ x = torch.randint(0, 256, (1, 1, 1024, 1024), dtype=torch.float32)
 inputs = {'x': x.numpy()}
 np.savez("input.npz", **inputs)
 torch.jit.trace(BayerNet().eval(), x).save("bayer2rgb.pt")
-

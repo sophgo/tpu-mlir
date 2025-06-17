@@ -9,6 +9,7 @@ from ..version import GITHUB_RES
 
 
 class TestLoadCheckPoint(unittest.TestCase):
+
     def test_case_1(self):
         dummy_input = torch.randn(2, 3, 224, 224, device='cpu')
         extra_qconfig_dict = {

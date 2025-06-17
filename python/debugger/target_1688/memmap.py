@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 
 class BM1688Info(TPUInfo):
+
     def __init__(self) -> None:
         super().__init__("libcmodel_1688.so")
 
@@ -208,9 +209,7 @@ class MemRef(MemRefBase):
     @functools.lru_cache()
     def r_addr(self):
         if self.mtype in [MType.UNKNOWN, MType.G]:
-            return (
-                self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
-            )
+            return (self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0])
 
         r_addr = self.address & 0x7FFFFF  # remain 23 bit as local offset
         return r_addr

@@ -11,7 +11,6 @@
 # @Time    : 2023/8/7 11:23
 # @Author  : chongqing.zeng@sophgo.com
 # @Project: PerfAI
-
 """
 Note: The functionality to generate summary and layer information
     is temporarily not maintained due to the incomplete state of the
@@ -34,6 +33,7 @@ from utils.utils import load_arch_lib, get_ratio_str_3f, cycle_to_us, ops_to_gop
 
 
 class GlobalInfo:
+
     def __init__(self):
         self.subnet_list = []
         self.arch = Arch.UNKNOWN
@@ -53,6 +53,7 @@ class GlobalInfo:
 
 
 class SubnetInfo:
+
     def __init__(self):
         self.subnet_id = -1
         self.layer_list = []
@@ -63,6 +64,7 @@ class SubnetInfo:
 
 
 class TensorInfo:
+
     def __init__(self):
         self.tensor_id = -1
         self.name = None
@@ -106,6 +108,7 @@ class SubnetType(Enum):
 
 
 class SummaryInfo:
+
     def __init__(self):
         self.layer_id = -1
         self.layer_type = None
@@ -126,26 +129,31 @@ class SummaryInfo:
 
 
 class jsonObj:
+
     def __init__(self):
         self.flie_line = -1
         self.subnet_id = 0
         self.core_id = 0
         self.opcode = None
-        self.bd_ids = None # (start_bd_id, end_bd_id]
-        self.dma_ids = None # (start_gdma_id, end_gdma_id]
+        self.bd_ids = None  # (start_bd_id, end_bd_id]
+        self.dma_ids = None  # (start_gdma_id, end_gdma_id]
         self.operands = []
         self.results = []
 
 
 class Summary:
+
     def __init__(self, writer):
         self.layer_summary_map = dict()
-        self.layer_summary_header = ["Function", "Algorithm OPs", "Algorithm OPs Ratio", "Weight Size(B)(不准确)",
-                                     "uArch OPs",
-                                     "uArch URate", "uArch GOPs Ratio", "ASIC Cycles", "ASIC Time(us)",
-                                     "Time Ratio", "ASIC FPS", "Operations"]
-        self.mac_util_profile_header = ['Case', 'ReducedTime(us)', 'CurrentTotalTime(us)', 'Concurrency(%)',
-                                        'macUtil(%)', 'Remark']
+        self.layer_summary_header = [
+            "Function", "Algorithm OPs", "Algorithm OPs Ratio", "Weight Size(B)(不准确)", "uArch OPs",
+            "uArch URate", "uArch GOPs Ratio", "ASIC Cycles", "ASIC Time(us)", "Time Ratio",
+            "ASIC FPS", "Operations"
+        ]
+        self.mac_util_profile_header = [
+            'Case', 'ReducedTime(us)', 'CurrentTotalTime(us)', 'Concurrency(%)', 'macUtil(%)',
+            'Remark'
+        ]
         self.layer_summary_row_map = {
             # Active
             "active": "Active",
@@ -237,7 +245,7 @@ class Summary:
         platform = platform.lower()
         if layer_name in ['Conv', 'MatMul', 'Attention']:
             if platform == 'bm1684x':
-                cu_num = 64 * 64 * 4 # int8 compute units number of BM1684X
+                cu_num = 64 * 64 * 4  # int8 compute units number of BM1684X
                 if dtype in [DataType.FP16, DataType.BF16, 'f16', 'bf16']:
                     cu_num = cu_num / 2
                 elif dtype in [DataType.FP32, 'f32']:
@@ -257,7 +265,7 @@ class Summary:
             return cu_num * 2 * tpu_freq / 1e6
         elif layer_name in ['LayerNorm', 'Pool', 'Reduce', 'FC']:
             if platform == 'bm1684x':
-                cu_num = 64 * 64 # int8 compute units number of BM1684X
+                cu_num = 64 * 64  # int8 compute units number of BM1684X
                 if dtype in [DataType.FP16, DataType.BF16, 'f16', 'bf16']:
                     cu_num = cu_num / 2
                 elif dtype in [DataType.FP32, 'f32']:
@@ -285,7 +293,7 @@ class Summary:
             return cu_num * tpu_freq / 1e6
         else:
             if platform == 'bm1684x':
-                cu_num = 64 * 64 # int8 compute units number of BM1684X
+                cu_num = 64 * 64  # int8 compute units number of BM1684X
                 if dtype in [DataType.FP16, DataType.BF16, 'f16', 'bf16']:
                     cu_num = cu_num / 2
                 elif dtype in [DataType.FP32, 'f32']:
@@ -310,25 +318,30 @@ class Summary:
     def _get_ddr_bw(self, tpu_freq):
         pass
 
-    def _profile_with_peak_tops(self, layer_name, layer_tiu_us, layer_alg_ops, dtype, platform, tpu_freq, current_time, model_theo_time):
+    def _profile_with_peak_tops(self, layer_name, layer_tiu_us, layer_alg_ops, dtype, platform,
+                                tpu_freq, current_time, model_theo_time):
         peak_tops = self._get_peak_tops(dtype, platform, tpu_freq)
         tiu_theo_us = layer_alg_ops / peak_tops / 1e6
         reduced_us = layer_tiu_us - tiu_theo_us
         cur_time = current_time - reduced_us
-        mac_util = round(model_theo_time/cur_time * 100, 3)
-        return [layer_name + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us',
-                reduced_us, cur_time, 100.0, mac_util,
-                f'{layer_name}的耗时用ModelPeakTops得到的理论耗时替换']
+        mac_util = round(model_theo_time / cur_time * 100, 3)
+        return [
+            layer_name + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us', reduced_us,
+            cur_time, 100.0, mac_util, f'{layer_name}的耗时用ModelPeakTops得到的理论耗时替换'
+        ]
 
-    def _profile_with_layer_peak_tops(self, layer_name, layer_tiu_us, layer_alg_ops, dtype, platform, tpu_freq, current_time, model_theo_time):
+    def _profile_with_layer_peak_tops(self, layer_name, layer_tiu_us, layer_alg_ops, dtype,
+                                      platform, tpu_freq, current_time, model_theo_time):
         peak_tops = self._get_layer_peak_tops(layer_name, dtype, platform, tpu_freq)
         tiu_theo_us = layer_alg_ops / peak_tops / 1e6
         reduced_us = layer_tiu_us - tiu_theo_us
         cur_time = current_time - reduced_us
-        mac_util = round(model_theo_time/cur_time * 100, 3)
-        return [layer_name + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us',
-                reduced_us, cur_time, 100.0, mac_util,
-                f'{layer_name}的耗时用LayerPeakTops得到的理论耗时替换']
+        mac_util = round(model_theo_time / cur_time * 100, 3)
+        return [
+            layer_name + f' tiuTime: {layer_tiu_us:.2f} us -> {tiu_theo_us:.2f} us', reduced_us,
+            cur_time, 100.0, mac_util, f'{layer_name}的耗时用LayerPeakTops得到的理论耗时替换'
+        ]
+
     def _profile_with_uarch_rate(self):
         pass
 
@@ -365,8 +378,10 @@ class Summary:
             total_alg_ops += layer_alg_ops
             total_arch_ops += layer_arch_ops
             total_sim_cycles += layer_cycles
-            item = [row_name, layer_alg_ops, 0, weight_size, layer_arch_ops, 0, 0, layer_cycles,
-                    0, 0, layer_cycles]
+            item = [
+                row_name, layer_alg_ops, 0, weight_size, layer_arch_ops, 0, 0, layer_cycles, 0, 0,
+                layer_cycles
+            ]
             for i in range(1, len(item) - 1):
                 self.layer_summary_map[row_name][i] += item[i]
         for row in self.layer_summary_rows:
@@ -384,30 +399,39 @@ class Summary:
         others_row = self.data_rows[-1]
         self.data_rows = sorted(self.data_rows[:-1], key=lambda x: x[7], reverse=True)
         self.data_rows.append(others_row)
-        self.data_rows.append(
-            ["Overall", total_alg_ops, "100%", total_weight_size, total_arch_ops,
-             total_arch_urate, "100%",
-             total_sim_cycles, cycle_to_us(total_sim_cycles, tpu_freq), "100%", cycle_to_fps(total_sim_cycles), "-"])
+        self.data_rows.append([
+            "Overall", total_alg_ops, "100%", total_weight_size, total_arch_ops, total_arch_urate,
+            "100%", total_sim_cycles,
+            cycle_to_us(total_sim_cycles, tpu_freq), "100%",
+            cycle_to_fps(total_sim_cycles), "-"
+        ])
 
         tiu_time = float(self.data_rows[-1][8])
         total_time = float(chip_arch['total_time(us)'])
-        model_theo_time = chip_arch['flops'] / self._get_peak_tops(quant_type, platform, tpu_freq) / 1e6
+        model_theo_time = chip_arch['flops'] / self._get_peak_tops(quant_type, platform,
+                                                                   tpu_freq) / 1e6
         mac_util = round(model_theo_time / total_time * 100, 3)
-        self.mac_util_rows.append(
-            ['origin', 0, total_time, float(chip_arch['concurrency'][:-1]), mac_util, '排除CPU耗时及输入输出在runtime空间和用户空间的搬运耗时']
-        )
-        self.mac_util_rows.append(
-            ['100% Concurrency', total_time - tiu_time, tiu_time, 100.0, round(model_theo_time / tiu_time * 100, 3), 'TIU和GDMA的并行度100%']
-        )
+        self.mac_util_rows.append([
+            'origin', 0, total_time,
+            float(chip_arch['concurrency'][:-1]), mac_util, '排除CPU耗时及输入输出在runtime空间和用户空间的搬运耗时'
+        ])
+        self.mac_util_rows.append([
+            '100% Concurrency', total_time - tiu_time, tiu_time, 100.0,
+            round(model_theo_time / tiu_time * 100, 3), 'TIU和GDMA的并行度100%'
+        ])
         current_time = self.mac_util_rows[1][2]
         for row in self.data_rows[:-1]:
-            self.mac_util_rows.append(self._profile_with_peak_tops(row[0], float(row[8]), int(row[1]), quant_type, platform, tpu_freq, current_time, model_theo_time))
+            self.mac_util_rows.append(
+                self._profile_with_peak_tops(row[0], float(row[8]), int(row[1]), quant_type,
+                                             platform, tpu_freq, current_time, model_theo_time))
             current_time = self.mac_util_rows[-1][2]
         current_time = self.mac_util_rows[1][2]
         for row in self.data_rows[:-1]:
-            self.mac_util_rows.append(self._profile_with_layer_peak_tops(row[0], float(row[8]), int(row[1]), quant_type, platform, tpu_freq, current_time, model_theo_time))
+            self.mac_util_rows.append(
+                self._profile_with_layer_peak_tops(row[0], float(row[8]), int(row[1]), quant_type,
+                                                   platform, tpu_freq, current_time,
+                                                   model_theo_time))
             current_time = self.mac_util_rows[-1][2]
-
 
     def write(self, chip_arch):
         network = chip_arch['network']
@@ -455,18 +479,42 @@ class Summary:
             'Pool OPs/s': [pooling_ops]
         }
 
-        pd.DataFrame(condition_dict).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=0, startcol=1, float_format='%g')
-        pd.DataFrame(detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=3, startcol=1, float_format='%g')
+        pd.DataFrame(condition_dict).to_excel(self.writer,
+                                              index=False,
+                                              sheet_name=self.sheet_name,
+                                              engine='xlsxwriter',
+                                              startrow=0,
+                                              startcol=1,
+                                              float_format='%g')
+        pd.DataFrame(detail_spec).to_excel(self.writer,
+                                           index=False,
+                                           sheet_name=self.sheet_name,
+                                           engine='xlsxwriter',
+                                           startrow=3,
+                                           startcol=1,
+                                           float_format='%g')
         if len(self.data_rows) > 0:
             df = pd.DataFrame(self.data_rows)
             df.columns = self.layer_summary_header
-            df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=8, startcol=1, float_format='%g')
+            df.to_excel(self.writer,
+                        index=False,
+                        sheet_name=self.sheet_name,
+                        engine='xlsxwriter',
+                        startrow=8,
+                        startcol=1,
+                        float_format='%g')
             next_start_row = 8 + len(df) + 3
 
         if len(self.mac_util_rows) > 0:
             df = pd.DataFrame(self.mac_util_rows)
             df.columns = self.mac_util_profile_header
-            df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter', startrow=next_start_row, startcol=1, float_format='%g')
+            df.to_excel(self.writer,
+                        index=False,
+                        sheet_name=self.sheet_name,
+                        engine='xlsxwriter',
+                        startrow=next_start_row,
+                        startcol=1,
+                        float_format='%g')
 
     @classmethod
     def set_style(cls, file_path):
@@ -487,9 +535,9 @@ class Summary:
         ws.cell(4, 1).value = 'Detail Spec'
         ws.cell(8, 1).value = 'Performance'
         ws.cell(9, 1).value = 'Summary'
-        ws.cell(13+layer_num, 1).value = 'mac_util'
-        ws.cell(14+layer_num, 1).value = 'analysis'
-        for h, w in zip([1, 4, 8, 9, 13+layer_num, 14+layer_num], [1, 1, 1, 1, 1, 1]):
+        ws.cell(13 + layer_num, 1).value = 'mac_util'
+        ws.cell(14 + layer_num, 1).value = 'analysis'
+        for h, w in zip([1, 4, 8, 9, 13 + layer_num, 14 + layer_num], [1, 1, 1, 1, 1, 1]):
             ws.cell(h, w).fill = summary_style.title_pattern
             ws.cell(h, w).font = summary_style.title_font
         summary_start_cols = 2
@@ -500,33 +548,33 @@ class Summary:
                     ws.cell(h, w).fill = summary_style.title_header_pattern
                     ws.cell(h, w).font = summary_style.title_header_font
                     ws.cell(h, w).border = SummaryStyle.border
-                    ws.cell(h+1, w).fill = summary_style.title_content_pattern
-                    ws.cell(h+1, w).font = summary_style.title_header_font
-                    ws.cell(h+1, w).alignment = summary_style.center_align
-                    ws.cell(h+1, w).border = SummaryStyle.border
+                    ws.cell(h + 1, w).fill = summary_style.title_content_pattern
+                    ws.cell(h + 1, w).font = summary_style.title_header_font
+                    ws.cell(h + 1, w).alignment = summary_style.center_align
+                    ws.cell(h + 1, w).border = SummaryStyle.border
                 elif h == 4 and w < summary_end_cols - 3:
                     # summary title style
                     ws.cell(h, w).fill = summary_style.title_header_pattern
                     ws.cell(h, w).font = summary_style.title_header_font
                     ws.cell(h, w).border = SummaryStyle.border
                     # summary content style
-                    ws.cell(h+1, w).fill = summary_style.title_content_pattern
-                    ws.cell(h+1, w).font = summary_style.title_header_font
-                    ws.cell(h+1, w).alignment = summary_style.center_align
-                    ws.cell(h+1, w).border = SummaryStyle.border
+                    ws.cell(h + 1, w).fill = summary_style.title_content_pattern
+                    ws.cell(h + 1, w).font = summary_style.title_header_font
+                    ws.cell(h + 1, w).alignment = summary_style.center_align
+                    ws.cell(h + 1, w).border = SummaryStyle.border
 
         content_start_cols = 2
         content_end_cols = content_start_cols + 12
         content_header_row = 8
         for w in range(content_start_cols, content_end_cols):
-            ws.cell(content_header_row+1, w).fill = summary_style.content_header2_pattern
-            ws.cell(content_header_row+1, w).font = summary_style.content_header_font
-            for h in range(content_header_row+2, content_header_row+2+layer_num+1):
+            ws.cell(content_header_row + 1, w).fill = summary_style.content_header2_pattern
+            ws.cell(content_header_row + 1, w).font = summary_style.content_header_font
+            for h in range(content_header_row + 2, content_header_row + 2 + layer_num + 1):
                 ws.cell(h, w).font = summary_style.title_header_font
                 ws.cell(h, w).alignment = summary_style.center_align
                 ws.cell(h, w).border = SummaryStyle.border
                 ws.cell(h, w).fill = summary_style.content1_pattern
-            ws.cell(content_header_row+2+layer_num, w).fill = summary_style.content2_pattern
+            ws.cell(content_header_row + 2 + layer_num, w).fill = summary_style.content2_pattern
         ws.cell(8, 3).value = 'Algorithm'
         ws.cell(8, 6).value = 'uArch'
         ws.cell(8, 9).value = 'Simulation'
@@ -543,22 +591,23 @@ class Summary:
         # mac_util analysis
         content_start_cols = 2
         content_end_cols = content_start_cols + 6
-        content_header_row = 13+layer_num
+        content_header_row = 13 + layer_num
         for w in range(content_start_cols, content_end_cols):
             ws.cell(content_header_row, w).fill = summary_style.content_header2_pattern
             ws.cell(content_header_row, w).font = summary_style.content_header_font
             # origin, 100% concurrency
-            for h in range(content_header_row+1, content_header_row+3):
+            for h in range(content_header_row + 1, content_header_row + 3):
                 ws.cell(h, w).font = summary_style.title_header_font
                 ws.cell(h, w).border = SummaryStyle.border
                 ws.cell(h, w).fill = summary_style.content1_pattern
             # Analysis with ModelPeakTops
-            for h in range(content_header_row+3, content_header_row+3+layer_num):
+            for h in range(content_header_row + 3, content_header_row + 3 + layer_num):
                 ws.cell(h, w).font = summary_style.title_header_font
                 ws.cell(h, w).border = SummaryStyle.border
                 ws.cell(h, w).fill = summary_style.content2_pattern
             # Analysis with LayerPeakTops
-            for h in range(content_header_row+3+layer_num, content_header_row+3+layer_num*2):
+            for h in range(content_header_row + 3 + layer_num,
+                           content_header_row + 3 + layer_num * 2):
                 ws.cell(h, w).font = summary_style.title_header_font
                 ws.cell(h, w).border = SummaryStyle.border
                 ws.cell(h, w).fill = summary_style.content1_pattern

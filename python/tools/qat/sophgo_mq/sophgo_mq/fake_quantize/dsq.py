@@ -40,6 +40,7 @@ def dsq_function_per_channel(x, scale, zero_point, quant_min, quant_max, ch_axis
 
 
 class DSQFakeQuantize(QuantizeBase):
+
     def __init__(self, observer, alpha=0.4, **observer_kwargs):
         super(DSQFakeQuantize, self).__init__(observer, **observer_kwargs)
         self.register_buffer('scale', torch.tensor([1.0], dtype=torch.float))
@@ -51,7 +52,8 @@ class DSQFakeQuantize(QuantizeBase):
         if self.training:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.activation_post_process.calculate_qparams()
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.scale.shape != _scale.shape:
                 self.scale.resize_(_scale.shape)
                 self.zero_point.resize_(_zero_point.shape)
@@ -61,30 +63,38 @@ class DSQFakeQuantize(QuantizeBase):
         if self.fake_quant_enabled[0] == 1:
             if self.is_per_channel:
                 if is_tracing_state():
-                    X = FakeQuantizeDSQPerchannel.apply(
-                        X, self.scale, self.zero_point, self.quant_min, self.quant_max, self.ch_axis, self.alpha)
+                    X = FakeQuantizeDSQPerchannel.apply(X, self.scale, self.zero_point,
+                                                        self.quant_min, self.quant_max,
+                                                        self.ch_axis, self.alpha)
                 else:
-                    X = dsq_function_per_channel(
-                        X, self.scale, self.zero_point, self.quant_min, self.quant_max, self.ch_axis, self.alpha)
+                    X = dsq_function_per_channel(X, self.scale, self.zero_point, self.quant_min,
+                                                 self.quant_max, self.ch_axis, self.alpha)
             else:
                 if is_tracing_state():
-                    X = FakeQuantizeDSQPertensor.apply(
-                        X, self.scale, self.zero_point, self.quant_min, self.quant_max, self.alpha)
+                    X = FakeQuantizeDSQPertensor.apply(X, self.scale, self.zero_point,
+                                                       self.quant_min, self.quant_max, self.alpha)
                 else:
-                    X = dsq_function_per_tensor(
-                        X, self.scale, self.zero_point, self.quant_min, self.quant_max, self.alpha)
+                    X = dsq_function_per_tensor(X, self.scale, self.zero_point, self.quant_min,
+                                                self.quant_max, self.alpha)
 
         return X
 
 
 class FakeQuantizeDSQPerchannel(torch.autograd.Function):
+
     @staticmethod
     def forward(ctx, x, scale, zero_point, quant_min, quant_max, ch_axis, alpha):
         return dsq_function_per_channel(x, scale, zero_point, quant_min, quant_max, ch_axis, alpha)
 
     @staticmethod
     def symbolic(g, x, scale, zero_point, quant_min, quant_max, ch_axis, alpha):
-        output = g.op("Sophgo_custom::FakeQuantizeDSQPerchannel", x, scale, zero_point, quant_min_i=quant_min, quant_max_i=quant_max, alpha_f=alpha)
+        output = g.op("Sophgo_custom::FakeQuantizeDSQPerchannel",
+                      x,
+                      scale,
+                      zero_point,
+                      quant_min_i=quant_min,
+                      quant_max_i=quant_max,
+                      alpha_f=alpha)
 
         input_shape = symbolic_helper._get_tensor_sizes(x)
         if input_shape is not None and hasattr(x.type(), 'with_sizes'):
@@ -93,14 +103,22 @@ class FakeQuantizeDSQPerchannel(torch.autograd.Function):
 
         return output
 
+
 class FakeQuantizeDSQPertensor(torch.autograd.Function):
+
     @staticmethod
     def forward(ctx, x, scale, zero_point, quant_min, quant_max, alpha):
         return dsq_function_per_tensor(x, scale, zero_point, quant_min, quant_max, alpha)
 
     @staticmethod
     def symbolic(g, x, scale, zero_point, quant_min, quant_max, alpha):
-        output = g.op("Sophgo_custom::FakeQuantizeDSQPertensor", x, scale, zero_point, quant_min_i=quant_min, quant_max_i=quant_max, alpha_f=alpha)
+        output = g.op("Sophgo_custom::FakeQuantizeDSQPertensor",
+                      x,
+                      scale,
+                      zero_point,
+                      quant_min_i=quant_min,
+                      quant_max_i=quant_max,
+                      alpha_f=alpha)
 
         input_shape = symbolic_helper._get_tensor_sizes(x)
         if input_shape is not None and hasattr(x.type(), 'with_sizes'):

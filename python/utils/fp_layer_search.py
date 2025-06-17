@@ -23,7 +23,9 @@ chip_support_mix_fp_type = {
     "cv186x": ["BF16"]
 }
 
+
 class FpLayerSearcher:
+
     def __init__(self, args):
         self.args = args
         self.fp32_mlir = args.mlir_file
@@ -45,12 +47,12 @@ class FpLayerSearcher:
         ops = [op for op in input_str.split(',')]
         return ops
 
-    def parse_blocks(self,block_list):
+    def parse_blocks(self, block_list):
         parsed_blocks = []
         if not block_list:
             return []
         for block in block_list:
-            block_starts,block_ends = block.split(':')
+            block_starts, block_ends = block.split(':')
             block_start = [start for start in block_starts.split(',')]
             block_end = [start for start in block_ends.split(',')]
             block = [block_start, block_end]
@@ -63,7 +65,8 @@ class FpLayerSearcher:
         op_names = []
         for op_name in input_names:
             if not parser.get_op_by_op_name(op_name):
-                print("warning, op: {} not found in mlir file, please check it again".format(op_name))
+                print(
+                    "warning, op: {} not found in mlir file, please check it again".format(op_name))
         if mode == 0:
             for op_name in input_names:
                 op_names.extend(parser.get_all_pre_ops_by_op_name(op_name))
@@ -92,6 +95,7 @@ class FpLayerSearcher:
             f.write("# op_name   quantize_mode\n")
             for layer in fp_layer_list:
                 f.write("{} {}\n".format(layer, self.mix_mode))
+
     def run(self):
         fp_layer_set = set()
         if self.fpfwd_inputs:

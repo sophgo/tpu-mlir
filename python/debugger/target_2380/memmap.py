@@ -14,7 +14,6 @@ import functools
 if TYPE_CHECKING:
     from .context import SG2380Context
 
-
 NPU_SHIFT = 5
 NPU_NUM = 32
 BANK_NUM = 16
@@ -22,7 +21,6 @@ LANE_SIZE = 1 << 17
 BANK_SIZE = LANE_SIZE // BANK_NUM
 LMEM_SIZE = LANE_SIZE * NPU_NUM
 ALIGN_EU_BASE = 16
-
 
 BASE_EU_NUM = 4
 TYPED_EU_NUM = {
@@ -174,9 +172,7 @@ class MemRef(MemRefBase):
     @functools.lru_cache()
     def r_addr(self):
         if self.mtype in [MType.UNKNOWN, MType.G]:
-            return (
-                self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
-            )
+            return (self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0])
 
         r_addr = self.address & 0x7FFFFF  # remain 23 bit as local offset
         return r_addr

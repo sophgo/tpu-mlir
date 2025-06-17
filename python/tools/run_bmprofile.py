@@ -120,7 +120,7 @@ class ProgramRunner:
         output_dict = {}
         for root, dirs, files in os.walk(result_path):
             if "output" in dirs:
-                folder_name = root[len(result_path) + 1 :]
+                folder_name = root[len(result_path) + 1:]
                 output_path = os.path.abspath(os.path.join(root, "output"))
                 output_dict[folder_name] = output_path
         return output_dict
@@ -182,9 +182,7 @@ class ProgramRunner:
         command_string = " ".join(command_parts)
         return command_string
 
-    def execute_program(
-        self, file_dict, chip: str, core_num, script_path, style, gen_web, configs
-    ):
+    def execute_program(self, file_dict, chip: str, core_num, script_path, style, gen_web, configs):
         """
         Execute program in each model folder and then generate corresponding files
         The generated files will then move to the subfolder/output folder
@@ -259,9 +257,7 @@ def find_summaryinfo(folder_path):
                 elif "simulatorTotalCycle" in file_name:
                     temp["simulator"] = os.path.abspath(os.path.join(root, file_name))
             if "profile" not in temp.keys():
-                temp["profile"] = os.path.abspath(
-                    os.path.join(root, "compiler_profile_0.txt")
-                )
+                temp["profile"] = os.path.abspath(os.path.join(root, "compiler_profile_0.txt"))
             if len(temp) == 3:
                 summaryinfo.append(temp["csvfinal"])
                 summaryinfo.append(temp["profile"])
@@ -318,9 +314,7 @@ def simulation(bmodel: str):
     e.g. python3 tool/AutoGenRegInfo.py ./out/bin/ TPUPerfBenchZoo/SG2260 --toolonly TPUPerfBenchZoo/result_SG2260 --style 1 --gen_web 1
     """
     nowdir = os.getcwd()
-    assert (
-        "PERFAI_SIMULATION_ROOT" in os.environ
-    ), "should assign PERFAI_SIMULATION_ROOT"
+    assert ("PERFAI_SIMULATION_ROOT" in os.environ), "should assign PERFAI_SIMULATION_ROOT"
 
     bmodel_abs_path = os.path.abspath(bmodel)
     bmodel_base_name = os.path.basename(bmodel_abs_path)
@@ -356,19 +350,19 @@ def simulation(bmodel: str):
             raise NotImplementedError(chip)
 
         os.environ["CHIP_ARCH"] = CHIP_ARCH
-        os.environ["PATH"] = os.pathsep.join(
-            [
-                os.environ["PATH"],
-                os.path.join(os.environ["PERFAI_SIMULATION_ROOT"], CHIP_ARCH),
-            ]
-        )
+        os.environ["PATH"] = os.pathsep.join([
+            os.environ["PATH"],
+            os.path.join(os.environ["PERFAI_SIMULATION_ROOT"], CHIP_ARCH),
+        ])
 
         global profile_path
         profile_path = profile_raw_dir
         recreate(profile_raw_dir)
-        runner.parallel_processing(
-            bmodel_binary_dir, chip=chip, style=0, gen_web=0, configs=config_path
-        )
+        runner.parallel_processing(bmodel_binary_dir,
+                                   chip=chip,
+                                   style=0,
+                                   gen_web=0,
+                                   configs=config_path)
 
     start = time.time()
     bmodel_binary_dir = bmodel2binary()
@@ -408,9 +402,7 @@ def bmprofile(path: str):
         pass
 
     os.makedirs(os.path.dirname(profile_raw), exist_ok=True)
-    ret, log = subprocess.getstatusoutput(
-        f"scp -r {remote}:{name}/bmprofile_data-1 {profile_raw}"
-    )
+    ret, log = subprocess.getstatusoutput(f"scp -r {remote}:{name}/bmprofile_data-1 {profile_raw}")
     return profile_raw
 
 

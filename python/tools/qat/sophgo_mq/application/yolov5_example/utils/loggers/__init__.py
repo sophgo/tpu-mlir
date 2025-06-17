@@ -44,7 +44,13 @@ except (ImportError, AssertionError):
 
 class Loggers():
     # YOLOv5 Loggers class
-    def __init__(self, save_dir=None, weights=None, opt=None, hyp=None, logger=None, include=LOGGERS):
+    def __init__(self,
+                 save_dir=None,
+                 weights=None,
+                 opt=None,
+                 hyp=None,
+                 logger=None,
+                 include=LOGGERS):
         self.save_dir = save_dir
         self.weights = weights
         self.opt = opt
@@ -64,8 +70,11 @@ class Loggers():
             'val/cls_loss',  # val loss
             'x/lr0',
             'x/lr1',
-            'x/lr2']  # params
-        self.best_keys = ['best/epoch', 'best/precision', 'best/recall', 'best/mAP_0.5', 'best/mAP_0.5:0.95']
+            'x/lr2'
+        ]  # params
+        self.best_keys = [
+            'best/epoch', 'best/precision', 'best/recall', 'best/mAP_0.5', 'best/mAP_0.5:0.95'
+        ]
         for k in LOGGERS:
             setattr(self, k, None)  # init empty logger dictionary
         self.csv = True  # always log to csv
@@ -84,13 +93,17 @@ class Loggers():
         s = self.save_dir
         if 'tb' in self.include and not self.opt.evolve:
             prefix = colorstr('TensorBoard: ')
-            self.logger.info(f"{prefix}Start with 'tensorboard --logdir {s.parent}', view at http://localhost:6006/")
+            self.logger.info(
+                f"{prefix}Start with 'tensorboard --logdir {s.parent}', view at http://localhost:6006/"
+            )
             self.tb = SummaryWriter(str(s))
 
         # W&B
         if wandb and 'wandb' in self.include:
-            wandb_artifact_resume = isinstance(self.opt.resume, str) and self.opt.resume.startswith('wandb-artifact://')
-            run_id = torch.load(self.weights).get('wandb_id') if self.opt.resume and not wandb_artifact_resume else None
+            wandb_artifact_resume = isinstance(
+                self.opt.resume, str) and self.opt.resume.startswith('wandb-artifact://')
+            run_id = torch.load(self.weights).get(
+                'wandb_id') if self.opt.resume and not wandb_artifact_resume else None
             self.opt.hyp = self.hyp  # add hyperparameters
             self.wandb = WandbLogger(self.opt, run_id)
             # temp warn. because nested artifacts not supported after 0.12.10
@@ -130,7 +143,10 @@ class Loggers():
             if (self.wandb or self.clearml) and ni == 10:
                 files = sorted(self.save_dir.glob('train*.jpg'))
                 if self.wandb:
-                    self.wandb.log({'Mosaics': [wandb.Image(str(f), caption=f.name) for f in files if f.exists()]})
+                    self.wandb.log({
+                        'Mosaics':
+                        [wandb.Image(str(f), caption=f.name) for f in files if f.exists()]
+                    })
                 if self.clearml:
                     self.clearml.log_debug_samples(files, title='Mosaics')
 
@@ -161,7 +177,8 @@ class Loggers():
         if self.csv:
             file = self.save_dir / 'results.csv'
             n = len(x) + 1  # number of cols
-            s = '' if file.exists() else (('%20s,' * n % tuple(['epoch'] + self.keys)).rstrip(',') + '\n')  # add header
+            s = '' if file.exists() else (
+                ('%20s,' * n % tuple(['epoch'] + self.keys)).rstrip(',') + '\n')  # add header
             with open(file, 'a') as f:
                 f.write(s + ('%20.5g,' * n % tuple([epoch] + vals)).rstrip(',') + '\n')
 
@@ -177,7 +194,8 @@ class Loggers():
             if best_fitness == fi:
                 best_results = [epoch] + vals[3:7]
                 for i, name in enumerate(self.best_keys):
-                    self.wandb.wandb_run.summary[name] = best_results[i]  # log best results in the summary
+                    self.wandb.wandb_run.summary[name] = best_results[
+                        i]  # log best results in the summary
             self.wandb.log(x)
             self.wandb.end_epoch(best_result=best_fitness == fi)
 
@@ -188,11 +206,17 @@ class Loggers():
     def on_model_save(self, last, epoch, final_epoch, best_fitness, fi):
         # Callback runs on model save event
         if self.wandb:
-            if ((epoch + 1) % self.opt.save_period == 0 and not final_epoch) and self.opt.save_period != -1:
-                self.wandb.log_model(last.parent, self.opt, epoch, fi, best_model=best_fitness == fi)
+            if ((epoch + 1) % self.opt.save_period == 0
+                    and not final_epoch) and self.opt.save_period != -1:
+                self.wandb.log_model(last.parent,
+                                     self.opt,
+                                     epoch,
+                                     fi,
+                                     best_model=best_fitness == fi)
 
         if self.clearml:
-            if ((epoch + 1) % self.opt.save_period == 0 and not final_epoch) and self.opt.save_period != -1:
+            if ((epoch + 1) % self.opt.save_period == 0
+                    and not final_epoch) and self.opt.save_period != -1:
                 self.clearml.task.update_output_model(model_path=str(last),
                                                       model_name='Latest Model',
                                                       auto_delete_file=False)
@@ -201,7 +225,10 @@ class Loggers():
         # Callback runs on training end
         if plots:
             plot_results(file=self.save_dir / 'results.csv')  # save results.png
-        files = ['results.png', 'confusion_matrix.png', *(f'{x}_curve.png' for x in ('F1', 'PR', 'P', 'R'))]
+        files = [
+            'results.png', 'confusion_matrix.png',
+            *(f'{x}_curve.png' for x in ('F1', 'PR', 'P', 'R'))
+        ]
         files = [(self.save_dir / f) for f in files if (self.save_dir / f).exists()]  # filter
         self.logger.info(f"Results saved to {colorstr('bold', self.save_dir)}")
 
@@ -223,8 +250,8 @@ class Loggers():
         if self.clearml:
             # Save the best model here
             if not self.opt.evolve:
-                self.clearml.task.update_output_model(model_path=str(best if best.exists() else last),
-                                                      name='Best Model')
+                self.clearml.task.update_output_model(
+                    model_path=str(best if best.exists() else last), name='Best Model')
 
     def on_params_update(self, params):
         # Update hyperparams or configs of the experiment
@@ -251,13 +278,15 @@ class GenericLogger:
         if 'tb' in self.include:
             prefix = colorstr('TensorBoard: ')
             self.console_logger.info(
-                f"{prefix}Start with 'tensorboard --logdir {self.save_dir.parent}', view at http://localhost:6006/")
+                f"{prefix}Start with 'tensorboard --logdir {self.save_dir.parent}', view at http://localhost:6006/"
+            )
             self.tb = SummaryWriter(str(self.save_dir))
 
         if wandb and 'wandb' in self.include:
-            self.wandb = wandb.init(project="YOLOv5-Classifier" if opt.project == "runs/train" else opt.project,
-                                    name=None if opt.name == "exp" else opt.name,
-                                    config=opt)
+            self.wandb = wandb.init(
+                project="YOLOv5-Classifier" if opt.project == "runs/train" else opt.project,
+                name=None if opt.name == "exp" else opt.name,
+                config=opt)
         else:
             self.wandb = None
 
@@ -272,7 +301,8 @@ class GenericLogger:
 
     def log_images(self, files, name='Images', epoch=0):
         # Log images to all loggers
-        files = [Path(f) for f in (files if isinstance(files, (tuple, list)) else [files])]  # to Path
+        files = [Path(f)
+                 for f in (files if isinstance(files, (tuple, list)) else [files])]  # to Path
         files = [f for f in files if f.exists()]  # filter by exists
 
         if self.tb:

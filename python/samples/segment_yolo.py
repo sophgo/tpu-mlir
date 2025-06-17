@@ -21,7 +21,6 @@ import cv2
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, torch_inference
 from utils.preprocess import supported_customization_format
 
-
 COCO_CLASSES = ("person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
                 "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
                 "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra",
@@ -34,6 +33,7 @@ COCO_CLASSES = ("person", "bicycle", "car", "motorcycle", "airplane", "bus", "tr
                 "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
                 "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush")
 
+
 class PostProcess:
 
     def __init__(self, conf_thres=0.7, iou_thres=0.5, num_masks=32, fuse_postprocess=False):
@@ -43,35 +43,46 @@ class PostProcess:
         self.nms = pseudo_torch_nms()
         self.fuse_postprocess = fuse_postprocess
 
-    def __call__(self, outputs, im0_shape,ratio, txy):
-        results=[]
+    def __call__(self, outputs, im0_shape, ratio, txy):
+        results = []
         if not self.fuse_postprocess:
             for out in outputs.values():
-                assert (out.ndim == 3 or out.ndim == 4), "Wrong output, please provide a correct model"
-                if(out.ndim == 3):
+                assert (out.ndim == 3
+                        or out.ndim == 4), "Wrong output, please provide a correct model"
+                if (out.ndim == 3):
                     prediction = out
-                if(out.ndim == 4):
+                if (out.ndim == 4):
                     proto = out
 
             for i in range(prediction.shape[0]):
-                output=[prediction[i][np.newaxis,:],proto[i][np.newaxis,:]]
-                results.append(self.postprocess(output,im0_shape[i],ratio[i], txy[i][0], txy[i][1],self.conf_threshold,self.iou_threshold,self.num_masks))
+                output = [prediction[i][np.newaxis, :], proto[i][np.newaxis, :]]
+                results.append(
+                    self.postprocess(output, im0_shape[i], ratio[i], txy[i][0], txy[i][1],
+                                     self.conf_threshold, self.iou_threshold, self.num_masks))
             return results
         else:
             for out in outputs.values():
-                if(out.ndim == 3):
+                if (out.ndim == 3):
                     masks_uncrop = out
-                if(out.ndim == 2):
+                if (out.ndim == 2):
                     seg_out = out
             for i in range(len(txy)):
-                masks, boxes = self.postprocess2(masks_uncrop, seg_out, im0_shape[i], ratio[i], txy[i][0], txy[i][1])
+                masks, boxes = self.postprocess2(masks_uncrop, seg_out, im0_shape[i], ratio[i],
+                                                 txy[i][0], txy[i][1])
                 segments = self.masks2segments(masks)
                 results.append([boxes, segments, masks])
 
             return results
 
-
-    def postprocess(self, preds, im0_shape, ratio, pad_w, pad_h, conf_threshold, iou_threshold, nm=32):
+    def postprocess(self,
+                    preds,
+                    im0_shape,
+                    ratio,
+                    pad_w,
+                    pad_h,
+                    conf_threshold,
+                    iou_threshold,
+                    nm=32):
         """
         Post-process the prediction.
 
@@ -100,30 +111,32 @@ class PostProcess:
 
         # Create a new matrix which merge these(box, score, cls, nm) into one
         # For more details about `numpy.c_()`: https://numpy.org/doc/1.26/reference/generated/numpy.c_.html
-        x = np.c_[x[..., :4], np.amax(x[..., 4:-nm], axis=-1), np.argmax(x[..., 4:-nm], axis=-1), x[..., -nm:]]
+        x = np.c_[x[..., :4],
+                  np.amax(x[..., 4:-nm], axis=-1),
+                  np.argmax(x[..., 4:-nm], axis=-1), x[..., -nm:]]
 
         # NMS filtering
-        if(x.shape[0]):
+        if (x.shape[0]):
             x = x[self.nms.nms_boxes(x[:, :4], x[:, 4], iou_threshold)]
 
-        ans1,ans2,ans3=[],[],[]
+        ans1, ans2, ans3 = [], [], []
         post_batch_size = 1
-        for i in range((int(x.shape[0]/post_batch_size)+1)):
-            X=x[i*post_batch_size:min((i+1)*post_batch_size,x.shape[0])]
-            X=self.get_mask_distrubute(X,im0_shape, ratio, pad_w, pad_h,protos)
+        for i in range((int(x.shape[0] / post_batch_size) + 1)):
+            X = x[i * post_batch_size:min((i + 1) * post_batch_size, x.shape[0])]
+            X = self.get_mask_distrubute(X, im0_shape, ratio, pad_w, pad_h, protos)
             ans1.extend(X[0])
             ans2.extend(X[1])
             ans3.extend(X[2])
-        return ans1,ans2,ans3
+        return ans1, ans2, ans3
 
     def postprocess2(self, masks_uncrop, seg_out, im0_shape, ratio, pad_w, pad_h):
 
         seg_out = seg_out[:-1, ...]
-        masks_uncrop = masks_uncrop[:-1,...]
+        masks_uncrop = masks_uncrop[:-1, ...]
         masks_uncrop = masks_uncrop.transpose(1, 2, 0)
         masks_uncrop = self.scale_mask(masks_uncrop, im0_shape[:2])
         masks_uncrop = masks_uncrop.transpose(2, 0, 1)
-        boxes =  seg_out[:,:4]
+        boxes = seg_out[:, :4]
 
         boxes[..., :4] -= [pad_w, pad_h, pad_w, pad_h]
         boxes[..., :4] /= min(ratio)
@@ -133,7 +146,6 @@ class PostProcess:
         masks = self.crop_mask(masks_uncrop, boxes)
         masks = np.greater(masks, 0.5)
         return masks, seg_out
-
 
     def get_mask_distrubute(self, x, im0_shape, ratio, pad_w, pad_h, protos):
         if len(x) > 0:
@@ -152,13 +164,14 @@ class PostProcess:
             return x[..., :6], segments, masks  # boxes, segments, masks
         else:
             return [], [], []
+
     @staticmethod
     def masks2segments(masks):
 
         segments = []
         for x in masks.astype('uint8'):
             contours, _ = cv2.findContours(x, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            if(contours):
+            if (contours):
                 contours = np.array(contours[np.array([len(x) for x in contours]).argmax()])
                 coco_segmentation = [contours.flatten().astype('float32')]
                 segments.append(coco_segmentation)
@@ -190,9 +203,11 @@ class PostProcess:
             (numpy.ndarray): The upsampled masks.
         """
         c, mh, mw = protos.shape
-        masks = np.matmul(masks_in, protos.reshape((c, -1))).reshape((-1, mh, mw)).transpose(1, 2, 0)  # HWN
+        masks = np.matmul(masks_in, protos.reshape((c, -1))).reshape(
+            (-1, mh, mw)).transpose(1, 2, 0)  # HWN
         masks = np.ascontiguousarray(masks)
-        masks = self.scale_mask(masks, im0_shape)  # re-scale mask from P3 shape to original input image shape
+        masks = self.scale_mask(
+            masks, im0_shape)  # re-scale mask from P3 shape to original input image shape
         masks = np.einsum('HWN -> NHW', masks)  # HWN -> NHW
         masks = self.crop_mask(masks, bboxes)
         return np.greater(masks, 0.5)
@@ -214,25 +229,29 @@ class PostProcess:
         im1_shape = masks.shape[:2]
 
         if ratio_pad is None:  # calculate from im0_shape
-            gain = min(im1_shape[0] / im0_shape[0], im1_shape[1] / im0_shape[1])  # gain  = old / new
-            pad = (im1_shape[1] - im0_shape[1] * gain) / 2, (im1_shape[0] - im0_shape[0] * gain) / 2  # wh padding
+            gain = min(im1_shape[0] / im0_shape[0],
+                       im1_shape[1] / im0_shape[1])  # gain  = old / new
+            pad = (im1_shape[1] - im0_shape[1] * gain) / 2, (im1_shape[0] -
+                                                             im0_shape[0] * gain) / 2  # wh padding
         else:
             pad = ratio_pad[1]
 
         # Calculate tlbr of mask
         top, left = int(round(pad[1] - 0.1)), int(round(pad[0] - 0.1))  # y, x
-        bottom, right = int(round(im1_shape[0] - pad[1] + 0.1)), int(round(im1_shape[1] - pad[0] + 0.1))
+        bottom, right = int(round(im1_shape[0] - pad[1] + 0.1)), int(
+            round(im1_shape[1] - pad[0] + 0.1))
         if len(masks.shape) < 2:
             raise ValueError(f'"len of masks shape" should be 2 or 3, but got {len(masks.shape)}')
         masks = masks[top:bottom, left:right]
-        masks = cv2.resize(masks, (im0_shape[1], im0_shape[0]))#,
-                           #interpolation=cv2.INTER_CUBIC)  # INTER_CUBIC would be better
+        masks = cv2.resize(masks, (im0_shape[1], im0_shape[0]))  #,
+        #interpolation=cv2.INTER_CUBIC)  # INTER_CUBIC would be better
         if len(masks.shape) == 2:
             masks = masks[:, :, None]
         return masks
 
 
 class pseudo_torch_nms:
+
     def nms_boxes(self, boxes, scores, iou_thres):
         x = boxes[:, 0]
         y = boxes[:, 1]
@@ -263,17 +282,15 @@ class pseudo_torch_nms:
         return keep
 
 
-def preprocess(ori_img, input_shape, fuse_preprocess = False):
+def preprocess(ori_img, input_shape, fuse_preprocess=False):
 
-    letterbox_img, ratio, (tx1, ty1) = letterbox(
-        ori_img,
-        new_shape=input_shape,
-        color=(114, 114, 114),
-        auto=False,
-        scaleFill=False,
-        scaleup=True,
-        stride=32
-    )
+    letterbox_img, ratio, (tx1, ty1) = letterbox(ori_img,
+                                                 new_shape=input_shape,
+                                                 color=(114, 114, 114),
+                                                 auto=False,
+                                                 scaleFill=False,
+                                                 scaleup=True,
+                                                 stride=32)
 
     img = letterbox_img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
     img = img.astype(np.float32)
@@ -281,7 +298,14 @@ def preprocess(ori_img, input_shape, fuse_preprocess = False):
         img = np.ascontiguousarray(img / 255.0)
     return img, ratio, (tx1, ty1)
 
-def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=False, scaleFill=False, scaleup=True, stride=32):
+
+def letterbox(im,
+              new_shape=(640, 640),
+              color=(114, 114, 114),
+              auto=False,
+              scaleFill=False,
+              scaleup=True,
+              stride=32):
     # Resize and pad image while meeting stride-multiple constraints
     shape = im.shape[:2]  # current shape [height, width]
     if isinstance(new_shape, int):
@@ -310,7 +334,8 @@ def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=False, scale
         im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
     top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
     left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
-    im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+    im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT,
+                            value=color)  # add border
 
     return im, ratio, (dw, dh)
 
@@ -339,30 +364,34 @@ def hsv2bgr(h, s, v):
 
     return int(b * 255), int(g * 255), int(r * 255)
 
+
 def random_color(id):
     h_plane = (((id << 2) ^ 0x937151) % 100) / 100.0
     s_plane = (((id << 3) ^ 0x315793) % 100) / 100.0
     return hsv2bgr(h_plane, s_plane, 1)
 
 
-def draw_and_visualize(filename, im, bboxes, segments, vis=False, save=True, using_COCO_name = True):
+def draw_and_visualize(filename, im, bboxes, segments, vis=False, save=True, using_COCO_name=True):
 
     # Draw rectangles and polygons
     im_canvas = im.copy()
     for (*box, confidence, label), segment in zip(bboxes, segments):
 
-        if confidence < 0.25 :continue
-        color=random_color(int(label))
+        if confidence < 0.25: continue
+        color = random_color(int(label))
         #draw contour and fill mask
-        if(len(segment)):
+        if (len(segment)):
             for seg in segment:
                 # cv2.polylines(im, np.int32([np.int32([seg]).reshape(-1,1,2)]), True, color, 2)  # white borderline
-                cv2.fillPoly(im_canvas, np.int32([np.int32([seg]).reshape(-1,1,2)]), color)
+                cv2.fillPoly(im_canvas, np.int32([np.int32([seg]).reshape(-1, 1, 2)]), color)
 
         # draw bbox rectangle
         left, top, right, bottom = int(box[0]), int(box[1]), int(box[2]), int(box[3])
 
-        cv2.rectangle(im, (left, top), (right, bottom), color = color ,thickness=2, lineType=cv2.LINE_AA)
+        cv2.rectangle(im, (left, top), (right, bottom),
+                      color=color,
+                      thickness=2,
+                      lineType=cv2.LINE_AA)
         if using_COCO_name:
             caption = f"{COCO_CLASSES[int(label)]} {confidence:.3f}"
         else:
@@ -378,6 +407,7 @@ def draw_and_visualize(filename, im, bboxes, segments, vis=False, save=True, usi
         cv2.imwrite(filename, im)
         print(f"output been saved as {filename}")
     return im
+
 
 def parse_args():
     # yapf: disable
@@ -400,7 +430,7 @@ def main():
     args = parse_args()
     input_shape = tuple(map(int, args.net_input_dims.split(',')))
     origin_img = cv2.imread(args.input)
-    img, ratio, (tx1, ty1) = preprocess(origin_img, input_shape, args.fuse_preprocess) #new preproc
+    img, ratio, (tx1, ty1) = preprocess(origin_img, input_shape, args.fuse_preprocess)  #new preproc
     ratio_list = []
     txy_list = []
     ori_size_list = []
@@ -424,12 +454,11 @@ def main():
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
 
-    assert len(output.values()) == 2, "The number of outputs should be 2, please provide a correct model"
-    postprocess = PostProcess(
-                conf_thres=args.conf_thres,
-                iou_thres=args.iou_thres,
-                fuse_postprocess=args.fuse_postprocess
-               )
+    assert len(
+        output.values()) == 2, "The number of outputs should be 2, please provide a correct model"
+    postprocess = PostProcess(conf_thres=args.conf_thres,
+                              iou_thres=args.iou_thres,
+                              fuse_postprocess=args.fuse_postprocess)
 
     results = postprocess(output, ori_size_list, ratio_list, txy_list)
     boxes, segments, masks = results[0]

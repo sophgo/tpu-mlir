@@ -31,6 +31,7 @@ def set_auto_pad(auto_pad, input_shape, kernel_shape, strides):
         raise RuntimeError("Not support {} pad method".format(pad_method))
     return pads
 
+
 def set_caffe_pad(input_shape, output_shape, kernel_shape, strides, leading_pad):
     padding_along_h = (output_shape[2] - 1) * strides[0] + kernel_shape[0] - input_shape[2]
     padding_along_w = (output_shape[3] - 1) * strides[1] + kernel_shape[1] - input_shape[3]
@@ -42,6 +43,7 @@ def set_caffe_pad(input_shape, output_shape, kernel_shape, strides, leading_pad)
     if pad_r < 0:
         pad_r = 0
     return [pad_t, pad_l, pad_b, pad_r]
+
 
 def get_TF_SAME_Padding(input_spatial_shape, kernel, stride):
     """

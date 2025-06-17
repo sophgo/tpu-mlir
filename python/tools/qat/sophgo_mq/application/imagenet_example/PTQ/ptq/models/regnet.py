@@ -5,29 +5,107 @@ import math
 # TODO: support SyncBn for mutilGPU
 
 regnetX_200M_config = {'WA': 36.44, 'W0': 24, 'WM': 2.49, 'DEPTH': 13, 'GROUP_W': 8, 'SE_ON': False}
-regnetX_400M_config = {'WA': 24.48, 'W0': 24, 'WM': 2.54, 'DEPTH': 22, 'GROUP_W': 16, 'SE_ON': False}
-regnetX_600M_config = {'WA': 36.97, 'W0': 48, 'WM': 2.24, 'DEPTH': 16, 'GROUP_W': 24, 'SE_ON': False}
-regnetX_800M_config = {'WA': 35.73, 'W0': 56, 'WM': 2.28, 'DEPTH': 16, 'GROUP_W': 16, 'SE_ON': False}
-regnetX_1600M_config = {'WA': 34.01, 'W0': 80, 'WM': 2.25, 'DEPTH': 18, 'GROUP_W': 24, 'SE_ON': False}
-regnetX_3200M_config = {'WA': 26.31, 'W0': 88, 'WM': 2.25, 'DEPTH': 25, 'GROUP_W': 48, 'SE_ON': False}
-regnetX_4000M_config = {'WA': 38.65, 'W0': 96, 'WM': 2.43, 'DEPTH': 23, 'GROUP_W': 40, 'SE_ON': False}
-regnetX_6400M_config = {'WA': 60.83, 'W0': 184, 'WM': 2.07, 'DEPTH': 17, 'GROUP_W': 56, 'SE_ON': False}
+regnetX_400M_config = {
+    'WA': 24.48,
+    'W0': 24,
+    'WM': 2.54,
+    'DEPTH': 22,
+    'GROUP_W': 16,
+    'SE_ON': False
+}
+regnetX_600M_config = {
+    'WA': 36.97,
+    'W0': 48,
+    'WM': 2.24,
+    'DEPTH': 16,
+    'GROUP_W': 24,
+    'SE_ON': False
+}
+regnetX_800M_config = {
+    'WA': 35.73,
+    'W0': 56,
+    'WM': 2.28,
+    'DEPTH': 16,
+    'GROUP_W': 16,
+    'SE_ON': False
+}
+regnetX_1600M_config = {
+    'WA': 34.01,
+    'W0': 80,
+    'WM': 2.25,
+    'DEPTH': 18,
+    'GROUP_W': 24,
+    'SE_ON': False
+}
+regnetX_3200M_config = {
+    'WA': 26.31,
+    'W0': 88,
+    'WM': 2.25,
+    'DEPTH': 25,
+    'GROUP_W': 48,
+    'SE_ON': False
+}
+regnetX_4000M_config = {
+    'WA': 38.65,
+    'W0': 96,
+    'WM': 2.43,
+    'DEPTH': 23,
+    'GROUP_W': 40,
+    'SE_ON': False
+}
+regnetX_6400M_config = {
+    'WA': 60.83,
+    'W0': 184,
+    'WM': 2.07,
+    'DEPTH': 17,
+    'GROUP_W': 56,
+    'SE_ON': False
+}
 regnetY_200M_config = {'WA': 36.44, 'W0': 24, 'WM': 2.49, 'DEPTH': 13, 'GROUP_W': 8, 'SE_ON': True}
 regnetY_400M_config = {'WA': 27.89, 'W0': 48, 'WM': 2.09, 'DEPTH': 16, 'GROUP_W': 8, 'SE_ON': True}
 regnetY_600M_config = {'WA': 32.54, 'W0': 48, 'WM': 2.32, 'DEPTH': 15, 'GROUP_W': 16, 'SE_ON': True}
 regnetY_800M_config = {'WA': 38.84, 'W0': 56, 'WM': 2.4, 'DEPTH': 14, 'GROUP_W': 16, 'SE_ON': True}
-regnetY_1600M_config = {'WA': 20.71, 'W0': 48, 'WM': 2.65, 'DEPTH': 27, 'GROUP_W': 24, 'SE_ON': True}
-regnetY_3200M_config = {'WA': 42.63, 'W0': 80, 'WM': 2.66, 'DEPTH': 21, 'GROUP_W': 24, 'SE_ON': True}
-regnetY_4000M_config = {'WA': 31.41, 'W0': 96, 'WM': 2.24, 'DEPTH': 22, 'GROUP_W': 64, 'SE_ON': True}
-regnetY_6400M_config = {'WA': 33.22, 'W0': 112, 'WM': 2.27, 'DEPTH': 25, 'GROUP_W': 72, 'SE_ON': True}
-
+regnetY_1600M_config = {
+    'WA': 20.71,
+    'W0': 48,
+    'WM': 2.65,
+    'DEPTH': 27,
+    'GROUP_W': 24,
+    'SE_ON': True
+}
+regnetY_3200M_config = {
+    'WA': 42.63,
+    'W0': 80,
+    'WM': 2.66,
+    'DEPTH': 21,
+    'GROUP_W': 24,
+    'SE_ON': True
+}
+regnetY_4000M_config = {
+    'WA': 31.41,
+    'W0': 96,
+    'WM': 2.24,
+    'DEPTH': 22,
+    'GROUP_W': 64,
+    'SE_ON': True
+}
+regnetY_6400M_config = {
+    'WA': 33.22,
+    'W0': 112,
+    'WM': 2.27,
+    'DEPTH': 25,
+    'GROUP_W': 72,
+    'SE_ON': True
+}
 
 BN = None
 
-__all__ = ['regnetx_200m', 'regnetx_400m', 'regnetx_600m', 'regnetx_800m',
-           'regnetx_1600m', 'regnetx_3200m', 'regnetx_4000m', 'regnetx_6400m',
-           'regnety_200m', 'regnety_400m', 'regnety_600m', 'regnety_800m',
-           'regnety_1600m', 'regnety_3200m', 'regnety_4000m', 'regnety_6400m']
+__all__ = [
+    'regnetx_200m', 'regnetx_400m', 'regnetx_600m', 'regnetx_800m', 'regnetx_1600m',
+    'regnetx_3200m', 'regnetx_4000m', 'regnetx_6400m', 'regnety_200m', 'regnety_400m',
+    'regnety_600m', 'regnety_800m', 'regnety_1600m', 'regnety_3200m', 'regnety_4000m',
+    'regnety_6400m'
+]
 
 
 class SimpleStemIN(nn.Module):
@@ -39,9 +117,7 @@ class SimpleStemIN(nn.Module):
 
     def _construct(self, in_w, out_w):
         # 3x3, BN, ReLU
-        self.conv = nn.Conv2d(
-            in_w, out_w, kernel_size=3, stride=2, padding=1, bias=False
-        )
+        self.conv = nn.Conv2d(in_w, out_w, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn = BN(out_w)
         self.relu = nn.ReLU(True)
 
@@ -90,9 +166,13 @@ class BottleneckTransform(nn.Module):
         self.a_bn = BN(w_b)
         self.a_relu = nn.ReLU(True)
         # 3x3, BN, ReLU
-        self.b = nn.Conv2d(
-            w_b, w_b, kernel_size=3, stride=stride, padding=1, groups=num_gs, bias=False
-        )
+        self.b = nn.Conv2d(w_b,
+                           w_b,
+                           kernel_size=3,
+                           stride=stride,
+                           padding=1,
+                           groups=num_gs,
+                           bias=False)
         self.b_bn = BN(w_b)
         self.b_relu = nn.ReLU(True)
         # Squeeze-and-Excitation (SE)
@@ -118,9 +198,7 @@ class ResBottleneckBlock(nn.Module):
         self._construct(w_in, w_out, stride, bm, gw, se_r)
 
     def _add_skip_proj(self, w_in, w_out, stride):
-        self.proj = nn.Conv2d(
-            w_in, w_out, kernel_size=1, stride=stride, padding=0, bias=False
-        )
+        self.proj = nn.Conv2d(w_in, w_out, kernel_size=1, stride=stride, padding=0, bias=False)
         self.bn = BN(w_out)
 
     def _construct(self, w_in, w_out, stride, bm, gw, se_r):
@@ -169,9 +247,7 @@ class AnyStage(nn.Module):
             b_stride = stride if i == 0 else 1
             b_w_in = w_in if i == 0 else w_out
             # Construct the block
-            self.add_module(
-                "b{}".format(i + 1), block_fun(b_w_in, w_out, b_stride, bm, gw, se_r)
-            )
+            self.add_module("b{}".format(i + 1), block_fun(b_w_in, w_out, b_stride, bm, gw, se_r))
 
     def forward(self, x):
         for block in self.children():
@@ -221,9 +297,7 @@ class AnyNet(nn.Module):
         block_fun = ResBottleneckBlock
         prev_w = stem_w
         for i, (d, w, s, bm, gw) in enumerate(stage_params):
-            self.add_module(
-                "s{}".format(i + 1), AnyStage(prev_w, w, s, d, block_fun, bm, gw, se_r)
-            )
+            self.add_module("s{}".format(i + 1), AnyStage(prev_w, w, s, d, block_fun, bm, gw, se_r))
             prev_w = w
         # Construct the head
         self.head = AnyHead(w_in=prev_w, nc=nc)
@@ -293,15 +367,9 @@ class RegNet(AnyNet):
     `"Designing Network Design Spaces" <https://arxiv.org/abs/2003.13678>`_
     """
 
-    def __init__(self,
-                 cfg,
-                 num_classes=1000,
-                 scale=1.0,
-                 bn=None):
+    def __init__(self, cfg, num_classes=1000, scale=1.0, bn=None):
         # Generate RegNet ws per block
-        b_ws, num_s, _, _ = generate_regnet(
-            cfg['WA'], cfg['W0'], cfg['WM'], cfg['DEPTH']
-        )
+        b_ws, num_s, _, _ = generate_regnet(cfg['WA'], cfg['W0'], cfg['WM'], cfg['DEPTH'])
         # Convert to per stage format
         # ws: channel list for stages, ds: number of blocks list
         ws, ds = get_stages_from_blocks(b_ws, b_ws)

@@ -20,6 +20,7 @@ from .utils import quant_requant_active
 from .utils import cal_loss
 
 import pymlir
+
 pymlir.set_mem_mode("force_value_mem")
 
 SKIP_OPERATION = [
@@ -29,7 +30,14 @@ SKIP_OPERATION = [
 
 
 class SgdScaleOpt:
-    def __init__(self, lr, momentum=0.0, nesterov=False, weight_decay=0.0, loger=None, support_unsigned=False):
+
+    def __init__(self,
+                 lr,
+                 momentum=0.0,
+                 nesterov=False,
+                 weight_decay=0.0,
+                 loger=None,
+                 support_unsigned=False):
         self.lr = lr
         self.momentum = momentum
         self.nesterov = nesterov
@@ -41,32 +49,32 @@ class SgdScaleOpt:
         self.loger = loger
         self.support_unsigned = support_unsigned
         print(
-            f'Learning Scale SGD, momentum is {self.momentum} nesterov is {self.nesterov} weight_decay is {self.weight_decay}')
+            f'Learning Scale SGD, momentum is {self.momentum} nesterov is {self.nesterov} weight_decay is {self.weight_decay}'
+        )
 
     def cal_scale(self, iter, scale, loss, grd, unsigned=False):
         if unsigned:
-            step = np.abs(scale)/255.0
+            step = np.abs(scale) / 255.0
         else:
-            step = np.abs(scale)/127.0
+            step = np.abs(scale) / 127.0
 
         step = step - self.lr.cal_lr(iter) * grd
-        self.loger.logging(
-            f"update scale step {step} grd {grd} loss {loss}")
+        self.loger.logging(f"update scale step {step} grd {grd} loss {loss}")
 
         if unsigned:
-            scale = step*255.0
+            scale = step * 255.0
         else:
-            scale = step*127.0
+            scale = step * 127.0
         return scale
 
     def update_scale(self, iter, op, scale, mini_batch, unsigned=False):
-        self.grd[op] = self.grd[op]/mini_batch
-        self.loss[op] = self.loss[op]/mini_batch
+        self.grd[op] = self.grd[op] / mini_batch
+        self.loss[op] = self.loss[op] / mini_batch
         if self.weight_decay != 0.0:
             if unsigned:
-                self.grd[op] = self.grd[op] + np.abs(scale)/255.0*self.weight_decay
+                self.grd[op] = self.grd[op] + np.abs(scale) / 255.0 * self.weight_decay
             else:
-                self.grd[op] = self.grd[op] + np.abs(scale)/127.0*self.weight_decay
+                self.grd[op] = self.grd[op] + np.abs(scale) / 127.0 * self.weight_decay
         if self.momentum != 0.0:
             if op in self.v:
                 self.v[op] = self.v[op]*self.momentum + \
@@ -74,7 +82,7 @@ class SgdScaleOpt:
             else:
                 self.v[op] = self.grd[op]
             if self.nesterov:
-                self.grd[op] = self.v[op]*self.momentum + self.grd[op]
+                self.grd[op] = self.v[op] * self.momentum + self.grd[op]
             else:
                 self.grd[op] = self.v[op]
 
@@ -103,7 +111,14 @@ class SgdScaleOpt:
 
 
 class AdamScaleOpt:
-    def __init__(self, lr, beta1=0.9, beta2=0.999, weight_decay=0.0, loger=None, support_unsigned=False):
+
+    def __init__(self,
+                 lr,
+                 beta1=0.9,
+                 beta2=0.999,
+                 weight_decay=0.0,
+                 loger=None,
+                 support_unsigned=False):
         self.lr = lr
         self.weight_decay = weight_decay
         self.beta1 = beta1
@@ -118,62 +133,59 @@ class AdamScaleOpt:
         self.loss = {}
         self.ams_grads = {}
         self.loger = loger
-        print(
-            f'Learning Scale Adam, weight_decay is {self.weight_decay}')
+        print(f'Learning Scale Adam, weight_decay is {self.weight_decay}')
 
     def cal_scale(self, scale, delta, unsigned=False):
         if unsigned:
-            step = np.abs(scale)/255.0
+            step = np.abs(scale) / 255.0
         else:
-            step = np.abs(scale)/127.0
+            step = np.abs(scale) / 127.0
 
         step = step - delta
-        self.loger.logging(
-            f"update scale step {step} step {step}")
+        self.loger.logging(f"update scale step {step} step {step}")
 
         if unsigned:
-            scale = step*255.0
+            scale = step * 255.0
         else:
-            scale = step*127.0
+            scale = step * 127.0
         return scale
 
     def update_scale(self, iter, op, scale, mini_batch, unsigned=False):
-        self.grd[op] = self.grd[op]/mini_batch
-        self.loss[op] = self.loss[op]/mini_batch
+        self.grd[op] = self.grd[op] / mini_batch
+        self.loss[op] = self.loss[op] / mini_batch
         if op in self.steps:
             self.steps[op] = self.steps[op] + 1
         else:
             self.steps[op] = 1
         if self.weight_decay != 0.0:
             if unsigned:
-                self.grd[op] = scale/255.0*self.weight_decay + self.grd[op]
+                self.grd[op] = scale / 255.0 * self.weight_decay + self.grd[op]
             else:
-                self.grd[op] = scale/127.0*self.weight_decay + self.grd[op]
-        bias_correction1 = 1 - self.beta1 ** self.steps[op]
-        bias_correction2 = 1 - self.beta2 ** self.steps[op]
+                self.grd[op] = scale / 127.0 * self.weight_decay + self.grd[op]
+        bias_correction1 = 1 - self.beta1**self.steps[op]
+        bias_correction2 = 1 - self.beta2**self.steps[op]
 
         if op in self.exp_avgs:
-            self.exp_avgs[op] = self.exp_avgs[op]*self.beta1+self.grd[op]*(1-self.beta1)
-            self.exp_avgs_sqs[op] = self.exp_avgs_sqs[op]*self.beta2+(self.grd[op]**2)*(1-self.beta2)
+            self.exp_avgs[op] = self.exp_avgs[op] * self.beta1 + self.grd[op] * (1 - self.beta1)
+            self.exp_avgs_sqs[op] = self.exp_avgs_sqs[op] * self.beta2 + (self.grd[op]**
+                                                                          2) * (1 - self.beta2)
         else:
             self.exp_avgs[op] = 0
             self.exp_avgs_sqs[op] = 0
             self.max_exp_avgs_sqs[op] = 0
         if self.amsgrad:
             self.max_exp_avgs_sqs[op] = np.maximum(self.max_exp_avgs_sqs[op], self.exp_avgs_sqs[op])
-            denorm = np.sqrt(self.max_exp_avgs_sqs[op])/np.sqrt(bias_correction2)+self.eps
+            denorm = np.sqrt(self.max_exp_avgs_sqs[op]) / np.sqrt(bias_correction2) + self.eps
         else:
-            denorm = np.sqrt(self.exp_avgs_sqs[op])/np.sqrt(bias_correction2)+self.eps
+            denorm = np.sqrt(self.exp_avgs_sqs[op]) / np.sqrt(bias_correction2) + self.eps
         step_size = self.lr.cal_lr(iter) / bias_correction1
-        delta = step_size * self.exp_avgs[op]/denorm
+        delta = step_size * self.exp_avgs[op] / denorm
         if unsigned:
-            scale = (np.abs(scale)/255.0 - delta)*255.0
-            self.loger.logging(
-                f"update scale {scale/255.0} grd {self.grd[op]} delta {delta}")
+            scale = (np.abs(scale) / 255.0 - delta) * 255.0
+            self.loger.logging(f"update scale {scale/255.0} grd {self.grd[op]} delta {delta}")
         else:
-            scale = (np.abs(scale)/127.0 - delta)*127.0
-            self.loger.logging(
-                f"update scale {scale/127.0} grd {self.grd[op]} delta {delta}")
+            scale = (np.abs(scale) / 127.0 - delta) * 127.0
+            self.loger.logging(f"update scale {scale/127.0} grd {self.grd[op]} delta {delta}")
         self.reset_grd_loss(op)
         return scale
 
@@ -195,6 +207,7 @@ class AdamScaleOpt:
 
 
 class LearningScale:
+
     def __init__(self, args):
         self.args = args
         self.mlir_file = args.mlir_file
@@ -241,7 +254,10 @@ class LearningScale:
         for pop in pre_ops:
             shape = self.ref_tensors.get(pop, loop).shape
             if pop not in self.module.all_tensor_names:
-                if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape' or self.parser.get_op_type_by_op_name(pop) == 'top.Squeeze' or self.parser.get_op_type_by_op_name(pop) == 'top.Unsqueeze':
+                if self.parser.get_op_type_by_op_name(
+                        pop) == 'top.Reshape' or self.parser.get_op_type_by_op_name(
+                            pop) == 'top.Squeeze' or self.parser.get_op_type_by_op_name(
+                                pop) == 'top.Unsqueeze':
                     pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
                     pop = pre_pre_ops[0]
                 else:
@@ -262,46 +278,47 @@ class LearningScale:
             self.module.set_tensor(pop, d)
 
     def cal_grdscale_unsigned(self, out):
-        return 1.0 / (out.size * 255.0) ** 0.5
+        return 1.0 / (out.size * 255.0)**0.5
 
     def cal_grdscale_signed(self, out):
-        return 1.0 / (out.size * 127.0) ** 0.5
+        return 1.0 / (out.size * 127.0)**0.5
 
     def cal_grd_unsigned(self, out, scale):
-        step = np.abs(scale)/255.0
+        step = np.abs(scale) / 255.0
         grd = 0
-        m = np.round(out/step)
+        m = np.round(out / step)
         qmin = np.zeros_like(m)
-        qmax = np.ones_like(m)*(255)
-        g = (np.minimum(np.maximum(m, qmin), qmax)*step - out)*2
-        grd = grd + (np.where(m <= 0, 0, 0)*g).sum()
-        grd = grd + (np.where(m >= 255, 255, 0)*g).sum()
+        qmax = np.ones_like(m) * (255)
+        g = (np.minimum(np.maximum(m, qmin), qmax) * step - out) * 2
+        grd = grd + (np.where(m <= 0, 0, 0) * g).sum()
+        grd = grd + (np.where(m >= 255, 255, 0) * g).sum()
         left = np.where(m > 0, 1, 0) & np.where(m < 255, 1, 0)
-        m = m-out/step
-        m = m*left * g
+        m = m - out / step
+        m = m * left * g
         grd = grd + m.sum()
         return grd
 
     def cal_grd_signed(self, out, scale):
-        step = np.abs(scale)/127.0
+        step = np.abs(scale) / 127.0
         grd = 0
-        m = np.round(out/step)
-        qmin = np.ones_like(m)*(-128)
-        qmax = np.ones_like(m)*(127)
-        g = (np.minimum(np.maximum(m, qmin), qmax)*step - out)*2
-        grd = grd + (np.where(m <= -128, -128, 0)*g).sum()
-        grd = grd + (np.where(m >= 127, 127, 0)*g).sum()
+        m = np.round(out / step)
+        qmin = np.ones_like(m) * (-128)
+        qmax = np.ones_like(m) * (127)
+        g = (np.minimum(np.maximum(m, qmin), qmax) * step - out) * 2
+        grd = grd + (np.where(m <= -128, -128, 0) * g).sum()
+        grd = grd + (np.where(m >= 127, 127, 0) * g).sum()
         left = np.where(m > -128, 1, 0) & np.where(m < 127, 1, 0)
-        m = m-out/step
-        m = m*left * g
+        m = m - out / step
+        m = m * left * g
         grd = grd + m.sum()
         return grd
 
     def cal_grd(self, out, scale, use_grdscale=True, unsigned=False):
-        grd_funcs = {'unsigned': self.cal_grd_unsigned,
-                     'signed': self.cal_grd_signed}
-        grdscale_funcs = {'unsigned': self.cal_grdscale_unsigned,
-                          'signed': self.cal_grdscale_signed}
+        grd_funcs = {'unsigned': self.cal_grd_unsigned, 'signed': self.cal_grd_signed}
+        grdscale_funcs = {
+            'unsigned': self.cal_grdscale_unsigned,
+            'signed': self.cal_grdscale_signed
+        }
         if unsigned:
             grdfunc = grd_funcs['unsigned']
             grdscalefunc = grdscale_funcs['unsigned']
@@ -313,17 +330,16 @@ class LearningScale:
         grd_scale = grdscalefunc(out)
 
         if use_grdscale:
-            return grd*grd_scale
+            return grd * grd_scale
         else:
             return grd
 
     def learning_one(self, op, total):
         self.loger.logging(f"now to learn {op} scale")
-        pbar_detail = tqdm(np.arange(self.num_sample*3))
+        pbar_detail = tqdm(np.arange(self.num_sample * 3))
         pbar_detail.set_description("Learning Scale, op %s" % op)
         for loop in np.arange(self.num_sample):
-            pbar_detail.set_postfix_str(
-                f"Cal orig loss {loop} [Total Progress: {total}]")
+            pbar_detail.set_postfix_str(f"Cal orig loss {loop} [Total Progress: {total}]")
             pbar_detail.update()
             self.set_op_inputs(op, loop, quant=True)
             outputs = self.module.invoke_at(op).copy()
@@ -342,8 +358,7 @@ class LearningScale:
                 self.pre_loss[op] = pre_loss
 
         for loop in np.arange(self.num_sample):
-            pbar_detail.set_postfix_str(
-                f"Learning {loop} [Total Progress: {total}]")
+            pbar_detail.set_postfix_str(f"Learning {loop} [Total Progress: {total}]")
             pbar_detail.update()
             self.set_op_inputs(op, loop, quant=True)
             outputs = self.module.invoke_at(op).copy()
@@ -366,18 +381,17 @@ class LearningScale:
             unsigned = self.orig_scales8[op][1] >= 0 and self.orig_scales8[op][2] >= 0
             grd = self.cal_grd(outputs[0], scale, True, unsigned)
             self.opt.update_grd(op, grd)
-            if (loop+1) % self.mini_batch == 0:
+            if (loop + 1) % self.mini_batch == 0:
                 scale = self.opt.update_scale(loop, op, scale, self.mini_batch, unsigned)
                 if op in self.new_scales:
                     self.new_scales[op][0] = scale
                 else:
                     self.new_scales[op] = [scale, 0, 0]
                 self.loger.logging("{} new scale is {:.16f} iter {} batch {}".format(
-                    op, scale, loop+1, self.mini_batch))
+                    op, scale, loop + 1, self.mini_batch))
 
         for loop in np.arange(self.num_sample):
-            pbar_detail.set_postfix_str(
-                f"Comparing {loop} [Total Progress: {total}]")
+            pbar_detail.set_postfix_str(f"Comparing {loop} [Total Progress: {total}]")
             pbar_detail.update()
             self.set_op_inputs(op, loop, quant=True)
             self.module.invoke_at(op)
@@ -399,13 +413,16 @@ class LearningScale:
         for in_ in self.parser.get_pre_op_by_op_name(op):
             self.ref_tensors.consumed_tensor(in_)
 
-        if self.post_loss[op] >= self.pre_loss[op] or self.new_scales[op][0] < 0 or self.new_scales[op][0]/self.orig_scales8[op][0] > 1.5:
+        if self.post_loss[op] >= self.pre_loss[op] or self.new_scales[op][
+                0] < 0 or self.new_scales[op][0] / self.orig_scales8[op][0] > 1.5:
             self.loger.logging(
-                f'abandon backward tune of {op}, old loss: {self.pre_loss[op]}, new loss: {self.post_loss[op]}, old scale {self.orig_scales8[op][0]} new scale {self.new_scales[op][0]}')
+                f'abandon backward tune of {op}, old loss: {self.pre_loss[op]}, new loss: {self.post_loss[op]}, old scale {self.orig_scales8[op][0]} new scale {self.new_scales[op][0]}'
+            )
             del self.new_scales[op]
         else:
             self.loger.logging(
-                f'use tune of {op}, old loss: {self.pre_loss[op]}, new loss: {self.post_loss[op]}, old scale {self.orig_scales8[op][0]} new scale {self.new_scales[op][0]}')
+                f'use tune of {op}, old loss: {self.pre_loss[op]}, new loss: {self.post_loss[op]}, old scale {self.orig_scales8[op][0]} new scale {self.new_scales[op][0]}'
+            )
 
     def learning(self):
         total = len(self.finetune_layers)

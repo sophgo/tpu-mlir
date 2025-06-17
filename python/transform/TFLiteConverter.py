@@ -232,10 +232,10 @@ class TFLiteConverter(BaseConverter):
         if 'preprocess_list' in preprocess_args:
             if preprocess_args['preprocess_list'] is not None:
                 for input_index in preprocess_args['preprocess_list']:
-                    assert( 0 < input_index <= len(self.graph.inputs)
-                        and "Please check --preprocess_list is right input")
+                    assert (0 < input_index <= len(self.graph.inputs)
+                            and "Please check --preprocess_list is right input")
             else:
-                preprocess_args['preprocess_list'] = [ i + 1 for i in range(len(self.graph.inputs)) ]
+                preprocess_args['preprocess_list'] = [i + 1 for i in range(len(self.graph.inputs))]
         self.need_transpose = False
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
@@ -531,7 +531,7 @@ class TFLiteConverter(BaseConverter):
         attr = {
             "paddings": self.mlir.ArrayAttr(paddings.flatten()),
             "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val),
-            "mode":StringAttr.get("constant")
+            "mode": StringAttr.get("constant")
         }
         return "top.Pad", attr, self.need_transpose
 
@@ -974,7 +974,9 @@ class TFLiteConverter(BaseConverter):
                     assert self.test_input.endswith('.npz')
                     test_file = self.test_input
                 else:
-                    raise ValueError("test_input npz file is necessary when shape_influencing_input_names is set")
+                    raise ValueError(
+                        "test_input npz file is necessary when shape_influencing_input_names is set"
+                    )
                 input_data = np.load(test_file)
             kwargs = copy.deepcopy(self.preprocess_args)
             if input.name in self.shape_influencing_input_names:

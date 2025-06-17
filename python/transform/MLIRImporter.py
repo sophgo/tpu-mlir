@@ -179,8 +179,8 @@ class MLIRImporter(object):
                     for k, v in kargs.items()
                 }
         if 'preprocess_list' in kargs and kargs['preprocess_list'] is not None:
-            if index + 1 in kargs['preprocess_list'] :
-                    init_args["do_preprocess"] = 1
+            if index + 1 in kargs['preprocess_list']:
+                init_args["do_preprocess"] = 1
             if 'preprocess_list' in init_args:
                 del init_args["preprocess_list"]
         if 'shape_tensor' in kargs:
@@ -188,8 +188,9 @@ class MLIRImporter(object):
         init_args["loc"] = loc
         init_args["ip"] = self.insert_point
         init_args["input"] = self.func_args[index]
-        init_args["output"] = self.input_types[
-            index] if self.platform in [Platform.TFLITE, Platform.TPULANG] else self.input_op_types[index]
+        init_args["output"] = self.input_types[index] if self.platform in [
+            Platform.TFLITE, Platform.TPULANG
+        ] else self.input_op_types[index]
         input_op = top.InputOp(**init_args)
         return input_op.output
 

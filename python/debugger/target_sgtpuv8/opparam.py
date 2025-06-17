@@ -37,7 +37,9 @@ opparam_converter: Dict[
 
 
 def get_opparam_converter_with_context(context, opparam_converter: dict):
+
     def wrap(fn):
+
         def outer(cmd):
             return fn(context, cmd)
 
@@ -50,6 +52,7 @@ def get_opparam_converter_with_context(context, opparam_converter: dict):
 
 
 def opparam_converter_regitstry(sheet_name):
+
     def add_converter(fun):
         if sheet_name in opparam_converter:
             raise KeyError(f"{sheet_name} have already registered.")
@@ -83,6 +86,7 @@ def get_value(
 
 
 class TGCR:
+
     def __init__(self):
         self.regs = dict(
             T5=0,
@@ -769,7 +773,7 @@ def sRQ_sDQ_converter(context: "SGTPUV8Context", reg: sRQ_sDQ_reg):
         opds = [opd0, opd1, opd2]
     elif reg.tsk_eu_typ == 5:  # dq_2
         gsize = 1 << (reg.opd2_n_str + 5)
-        assert(gsize in (32, 64, 128, 256))
+        assert (gsize in (32, 64, 128, 256))
         opd1["dtype"] = DType.si32
         opd1["shape"] = (n, c, h, div_up(w, gsize))
         opds = [opd0, opd1]
@@ -898,6 +902,7 @@ def sSGL_converter(context: "SGTPUV8Context", reg: sSGL_reg):
 
 @opparam_converter_regitstry("SYS_TR_ACC")
 def SYS_TR_ACC_converter(context: "SGTPUV8Context", reg):
+
     def int2bin(x, width):
         return np.binary_repr(x, width=width)
 
@@ -986,9 +991,7 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
         res0["shape"] = opd0["shape"]
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     return res0, {}, opd0
 
@@ -1102,22 +1105,20 @@ def DMA_general_converter(context: "SGTPUV8Context", reg: DMA_general_reg):
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h13, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
     bc_size = reg.dst_csize
     if reg.cmd_special_function == 1:
         res0["shape"] = (bc_size, copy_len)
@@ -1148,9 +1149,7 @@ def DMA_cw_transpose_converter(context: "SGTPUV8Context", reg: DMA_cw_transpose_
     )
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]
@@ -1236,6 +1235,7 @@ def DMA_scatter_converter(context: "SGTPUV8Context", reg: DMA_scatter_reg):
 
     return (results, {}, operands)
 
+
 opparam_converter_regitstry("DMA_scatter ")(DMA_scatter_converter)
 opparam_converter_regitstry("DMA_scatter")(DMA_scatter_converter)
 
@@ -1264,6 +1264,7 @@ def DMA_reverse_converter(context: "SGTPUV8Context", reg: DMA_reverse_reg):
     results = [get_value(context, **res0)]
 
     return (results, attr, operands)
+
 
 @opparam_converter_regitstry("sDMA_sys")
 def sDMA_sys_converter(context: "SGTPUV8Context", reg: sDMA_sys_reg):

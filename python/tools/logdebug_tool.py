@@ -17,6 +17,7 @@ kv_pattern = re.compile(r";\s*([\w/.]+)\s*=\s*(['\"]?)([:,_\w\s/\-\".]+)\2")
 
 
 def comsume_in_main(func):
+
     def wrapper(*args, **kwargs):
         iterable = func(*args, **kwargs)
         if isinstance(iterable, pd.DataFrame):
@@ -125,9 +126,8 @@ def show_cut_results_costs(log_file):
     cut_ret.clear()
     for row in cut_df.to_dict("records"):
         # breakpoint()
-        row["group_cost"] = cost_df.loc[
-            (row["start_idx"], row["end_idx"], row["group_idx"])
-        ]["group_cost"].iloc[0]
+        row["group_cost"] = cost_df.loc[(row["start_idx"], row["end_idx"],
+                                         row["group_idx"])]["group_cost"].iloc[0]
         cut_ret.append(row)
 
     cut_df = pd.DataFrame.from_records(cut_ret)
@@ -164,9 +164,7 @@ def op_lg_cost(log_file):
 
     cut_df = pd.DataFrame.from_records(cut_ret)
     cost_df = pd.DataFrame.from_records(cost_ret)
-    cost_df.drop_duplicates(
-        ["start_idx", "end_idx", "group_idx"], keep="first", inplace=True
-    )
+    cost_df.drop_duplicates(["start_idx", "end_idx", "group_idx"], keep="first", inplace=True)
     # breakpoint()
     cost_df = cost_df.set_index(["start_idx", "end_idx", "group_idx"])
 
@@ -179,37 +177,29 @@ def op_lg_cost(log_file):
     for _, row in enumerate(cut_df.to_dict("records")):
         base_group_idx = row["group_idx"]
         group_cost = (
-            cost_df.loc[(row["start_idx"], row["end_idx"], row["group_idx"])][
-                "group_cost"
-            ]
-            / 1000
-        )
+            cost_df.loc[(row["start_idx"], row["end_idx"], row["group_idx"])]["group_cost"] / 1000)
         while base_group_idx - prev > 1:
             prev += 1
             group_cost = cost_df.loc[(0, 0, prev)]["group_cost"] / 1000
-            cut_ret.append(
-                {
-                    "base_group_idx": prev,
-                    "group_idx": group_idx,
-                    "op_idx": index,
-                    "lg_group_cost": group_cost,
-                    "lg_cost_accumulate": acc,
-                }
-            )
+            cut_ret.append({
+                "base_group_idx": prev,
+                "group_idx": group_idx,
+                "op_idx": index,
+                "lg_group_cost": group_cost,
+                "lg_cost_accumulate": acc,
+            })
             acc += group_cost
             group_idx += 1
 
         acc += group_cost
         for i in range(row["start_idx"], row["end_idx"] + 1):
-            cut_ret.append(
-                {
-                    "base_group_idx": base_group_idx,
-                    "group_idx": group_idx,
-                    "op_idx": index,
-                    "lg_group_cost": group_cost,
-                    "lg_cost_accumulate": acc,
-                }
-            )
+            cut_ret.append({
+                "base_group_idx": base_group_idx,
+                "group_idx": group_idx,
+                "op_idx": index,
+                "lg_group_cost": group_cost,
+                "lg_cost_accumulate": acc,
+            })
             index += 1
         prev = base_group_idx
         group_idx += 1
@@ -361,7 +351,6 @@ entry = {
     "draw_live_range": draw_live_range,
     "show_cut_results_costs": comsume_in_main(show_cut_results_costs),
 }
-
 
 if __name__ == "__main__":
     fire.Fire(entry)

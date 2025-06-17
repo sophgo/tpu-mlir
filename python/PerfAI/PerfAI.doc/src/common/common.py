@@ -17,6 +17,7 @@ import logging
 
 
 class IterRecord:
+
     def __init__(self):
         self.dyn_data = []
         self.dyn_extra = dict()
@@ -73,6 +74,7 @@ class BMLibExtraType(Enum):
 
 
 class SendInfo:
+
     def __init__(self, api, begin_usec, gdma_data, bdc_data, dyn_data, dyn_extra, info=""):
         self.api = api
         self.begin_usec = begin_usec
@@ -84,6 +86,7 @@ class SendInfo:
 
 
 class SyncInfo:
+
     def __init__(self, begin_usec, end_usec, info=""):
         self.begin_usec = begin_usec
         self.end_usec = end_usec
@@ -91,6 +94,7 @@ class SyncInfo:
 
 
 class MarkInfo:
+
     def __init__(self, mark_id, begin_usec, end_usec, info=""):
         self.mark_id = mark_id
         self.begin_usec = begin_usec
@@ -99,6 +103,7 @@ class MarkInfo:
 
 
 class CopyInfo:
+
     def __init__(self, src_addr, dst_addr, dir, size, begin_usec, end_usec, info=""):
         self.src_addr = src_addr
         self.dst_addr = dst_addr
@@ -110,6 +115,7 @@ class CopyInfo:
 
 
 class MemInfo:
+
     def __init__(self, device_addr, size, type, begin_usec, end_usec, info=""):
         self.device_addr = device_addr
         self.size = size
@@ -391,8 +397,8 @@ def enum_cast(value, enum_type, default_val=-1):
     try:
         return enum_type(value)
     except:
-        logging.warn(
-            "{} is not a valid {} value, using default({}) instead. ".format(value, enum_type.__name__, default_val))
+        logging.warn("{} is not a valid {} value, using default({}) instead. ".format(
+            value, enum_type.__name__, default_val))
         return enum_type(default_val)
 
 
@@ -441,12 +447,13 @@ class dictStructure(ct.Structure):
     def __repr__(self):
         return str(dict(self.items()))
 
+
 def calc_bandwidth(num_bytes, dur_usec):
-    bandwidth = num_bytes/dur_usec*1e6
-    if bandwidth>1e9:
-        return "%.2fGB/s"%(bandwidth/1e9)
-    elif bandwidth>1e6:
-        return "%.2fMB/s"%(bandwidth/1e6)
-    elif bandwidth>1e3:
-        return "%.2fKB/s"%(bandwidth/1e3)
-    return "%.2fB/s"%bandwidth
+    bandwidth = num_bytes / dur_usec * 1e6
+    if bandwidth > 1e9:
+        return "%.2fGB/s" % (bandwidth / 1e9)
+    elif bandwidth > 1e6:
+        return "%.2fMB/s" % (bandwidth / 1e6)
+    elif bandwidth > 1e3:
+        return "%.2fKB/s" % (bandwidth / 1e3)
+    return "%.2fB/s" % bandwidth

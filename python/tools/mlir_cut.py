@@ -74,9 +74,7 @@ def cut_mlir_input(ast: MlirAST, input_names: List[str]):
 
     opd_ids = list(chain(*[i.opd_ids for i in ops]))
     for op in ops:
-        assert (
-            len(op.output_types) == 1
-        ), "currently only support one operands operation"
+        assert (len(op.output_types) == 1), "currently only support one operands operation"
     input_types = list(chain(*[i.output_types for i in ops]))
 
     module_state = ast.module.attrs["module.state"]
@@ -155,39 +153,30 @@ def cut_mlir(
     if module_state == '"TOP_F32"':
         tgt_name = basename.replace("_origin", "")
         print(
-            f"tpuc-opt {basename} --shape-infer --canonicalize --extra-optimize -o {tgt_name}.mlir"
-        )
+            f"tpuc-opt {basename} --shape-infer --canonicalize --extra-optimize -o {tgt_name}.mlir")
     elif module_state == '"TPU_LOWERED"':
-        print(
-            " ".join(
-                [
-                    f"tpuc-opt {basename}",
-                    "--mlir-disable-threading",
-                    '''--strip-io-quant="quant_input=False quant_output=False"''',
-                    "--processor-tpu-optimize",
-                    "--dev-parallel",
-                    "--weight-reorder",
-                    '''--subnet-divide="dynamic=False"''',
-                    "--op-reorder",
-                    '''--layer-group="opt=2"''',
-                    "--core-parallel",
-                    "--address-assign",
-                    f"-o {ast.mlir_file.replace('tpu.mlir','final.mlir')}",
-                ]
-            )
-        )
+        print(" ".join([
+            f"tpuc-opt {basename}",
+            "--mlir-disable-threading",
+            '''--strip-io-quant="quant_input=False quant_output=False"''',
+            "--processor-tpu-optimize",
+            "--dev-parallel",
+            "--weight-reorder",
+            '''--subnet-divide="dynamic=False"''',
+            "--op-reorder",
+            '''--layer-group="opt=2"''',
+            "--core-parallel",
+            "--address-assign",
+            f"-o {ast.mlir_file.replace('tpu.mlir','final.mlir')}",
+        ]))
 
     elif module_state == '"TPU_ADDRESSED"':
-        print(
-            rf""" tpuc-opt {basename} \
+        print(rf""" tpuc-opt {basename} \
             --codegen="model_file={fn}.bmodel embed_debug_info=false" \
-            -o /dev/null"""
-        )
+            -o /dev/null""")
 
 
-def backtrace(
-    ast_parser: MlirASTParser, output_names: List[str], number: int, dir="bt"
-):
+def backtrace(ast_parser: MlirASTParser, output_names: List[str], number: int, dir="bt"):
     parser = MlirParserV2.from_astparser(ast_parser)
     side_names = []
     for name in output_names:
@@ -195,11 +184,8 @@ def backtrace(
         queue = [name]
         while count < number:
             top = queue.pop()
-            neighbor = (
-                parser.get_pre_op_by_op_name(top)
-                if dir == "bt"
-                else parser.get_next_op_by_op_name(top)
-            )
+            neighbor = (parser.get_pre_op_by_op_name(top)
+                        if dir == "bt" else parser.get_next_op_by_op_name(top))
             queue.extend(neighbor)
             count += len(neighbor)
         side_names.extend(queue)

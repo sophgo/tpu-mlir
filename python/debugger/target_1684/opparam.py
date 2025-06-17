@@ -21,12 +21,12 @@ __all__ = ["opparam_converter"]
 
 ValueType = Union[MemRef, Scalar]
 
-opparam_converter: Dict[
-    str, Callable[[atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]]
-] = {}
+opparam_converter: Dict[str, Callable[[atomic_reg], Tuple[List[ValueType], Dict[str, Any],
+                                                          List[ValueType]]]] = {}
 
 
 def opparam_converter_regitstry(class_name):
+
     def add_converter(fun):
         if class_name in opparam_converter:
             raise KeyError(f"{class_name} have already registered.")
@@ -37,84 +37,84 @@ def opparam_converter_regitstry(class_name):
 
 
 def default_converter(_):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("conv_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("pord_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("mm_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("ar_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("mm2_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("cc_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("lut_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("md_sum_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("md_scalar_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("md_sfu_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("md_linear_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("lma_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("decompress_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("md_cmp_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("vc_op")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("dma_tensor")
 def _converter(reg):
-    return ([],) * 3
+    return ([], ) * 3

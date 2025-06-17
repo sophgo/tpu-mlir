@@ -14,13 +14,16 @@ from collections import namedtuple
 from bmprofile_common import FWGDMAType, FWLayerType, dictStructure
 from bmprofile_utils import enum_cast
 
-arch_name="BM1684"
+arch_name = "BM1684"
+
+
 class EngineType(Enum):
     BD = 0
     GDMA = 1
     CDMA = 2
     GDE = 3
     UNKNOWN = -1
+
 
 class DynRecordType(Enum):
     UNKNOWN = -1
@@ -31,16 +34,18 @@ class DynRecordType(Enum):
     GDE = 4
     CUSTOM = 100
 
+
 class StoreMode(Enum):
-    UNKNOWN    = -1
-    FP32_1N    = 0
-    INT8_1N    = 1
-    INT16_1N   = 2
-    INT16_2N   = 3
-    INT8_4N    = 4
-    FP32_2IC   = 5
+    UNKNOWN = -1
+    FP32_1N = 0
+    INT8_1N = 1
+    INT16_1N = 2
+    INT16_2N = 3
+    INT8_4N = 4
+    FP32_2IC = 5
     IC4_OC4_4N = 6
-    INT16_4N   = 7
+    INT16_4N = 7
+
 
 class BDFuncType(Enum):
     UNKNOWN = -1
@@ -59,6 +64,7 @@ class BDFuncType(Enum):
     DECOMPRESS = 12
     MD_CMP = 13
     VECTOR_CORRELATION = 14
+
 
 class BDEUType(Enum):
     EU_MUL = 0
@@ -97,12 +103,14 @@ class GDMAFuncType(Enum):
     FILTER_RES_COUNTER = 8
     UNKNOWN = -1
 
+
 class GDMADirection(Enum):
     S2L = 0
     L2S = 1
     S2S = 2
     L2L = 3
     UNKNOWN = -1
+
 
 class BDProfileFormat(dictStructure):
     _pack_ = 1
@@ -172,9 +180,11 @@ class GDMAProfileFormat(dictStructure):
         ("gif_rd_st", ct.c_uint32),
     ]
 
-GDMACyclePeriod= 1.0/575
-BDCyclePeriod= 1.0/550
+
+GDMACyclePeriod = 1.0 / 575
+BDCyclePeriod = 1.0 / 550
 PeriodFixed = True
+
 
 class MemType(Enum):
     GLOBAL = 0
@@ -183,13 +193,15 @@ class MemType(Enum):
     LOCAL = 3
     UNKNOWN = -1
 
+
 class GDMAFormat(Enum):
-    UNKNOWN=-1
+    UNKNOWN = -1
     FLOAT32 = 0
     INT16 = 1
     UINT8 = 2
     INT8 = 3
     FLOAT16 = 4
+
 
 class BDFormat(Enum):
     UNKNOWN = -1
@@ -198,6 +210,7 @@ class BDFormat(Enum):
     FP32 = 2
     INT16 = 3
     INT32 = 4
+
 
 def __get_format_len(f):
     if isinstance(f, GDMAFormat):
@@ -215,38 +228,73 @@ def __get_format_len(f):
         else:
             return 1
 
-def __get_global_mem_size_info(addr, n, c, h, w, ns, cs, hs, ws, f, is_out, desc="", result_add=False):
+
+def __get_global_mem_size_info(addr,
+                               n,
+                               c,
+                               h,
+                               w,
+                               ns,
+                               cs,
+                               hs,
+                               ws,
+                               f,
+                               is_out,
+                               desc="",
+                               result_add=False):
     format_len = __get_format_len(f)
-    data_size = n*c*h*w*format_len
-    cover_size = ((n-1)*ns+ (c-1)*cs+ (h-1)*hs+ (w-1)*ws+1)*format_len
+    data_size = n * c * h * w * format_len
+    cover_size = ((n - 1) * ns + (c - 1) * cs + (h - 1) * hs + (w - 1) * ws + 1) * format_len
     # print("--global-->", addr, n, c, h, w, ns, cs, hs, ws, f)
-    desc += ", dtype={}, shape=({},{},{},{}), stride=({},{},{},{})".format(f.name, n, c, h, w, ns, cs, hs, ws)
+    desc += ", dtype={}, shape=({},{},{},{}), stride=({},{},{},{})".format(
+        f.name, n, c, h, w, ns, cs, hs, ws)
     if result_add:
-        desc+= ", res_add=True"
+        desc += ", res_add=True"
     return [addr, data_size, cover_size, True, is_out, desc]
 
-ID_WIDTH=16
+
+ID_WIDTH = 16
 EU_NUM = 32
 NPU_NUM = 64
-LOCAL_MEM_SHIFT=19
-LOCAL_MEM_SIZE=1<<LOCAL_MEM_SHIFT #512k
+LOCAL_MEM_SHIFT = 19
+LOCAL_MEM_SIZE = 1 << LOCAL_MEM_SHIFT  #512k
 TOTAL_LOCAL_MEM_SIZE = LOCAL_MEM_SIZE * NPU_NUM
-LOCAL_MEM_ADDR_MASK = TOTAL_LOCAL_MEM_SIZE -1
-LOCAL_BANK_NUM=8
-LOCAL_BANK_SIZE=LOCAL_MEM_SIZE//LOCAL_BANK_NUM
+LOCAL_MEM_ADDR_MASK = TOTAL_LOCAL_MEM_SIZE - 1
+LOCAL_BANK_NUM = 8
+LOCAL_BANK_SIZE = LOCAL_MEM_SIZE // LOCAL_BANK_NUM
+
 
 def local_mem_partition():
     partitions = []
     for i in range(LOCAL_BANK_NUM):
-        partitions.append([i*LOCAL_BANK_SIZE, LOCAL_BANK_SIZE, "BANK[{}]".format(i)])
+        partitions.append([i * LOCAL_BANK_SIZE, LOCAL_BANK_SIZE, "BANK[{}]".format(i)])
     return partitions
 
-MemRecord=namedtuple("MemRecord", "addr data_size cover_size is_global is_out desc")
-def __get_local_mem_size_info(addr, n, c, h, w, ns, cs, hs, ws, f, is_aligned, enable_stride, is_out, desc, format_len=None, result_add=False, store_mode=StoreMode.UNKNOWN):
+
+MemRecord = namedtuple("MemRecord", "addr data_size cover_size is_global is_out desc")
+
+
+def __get_local_mem_size_info(addr,
+                              n,
+                              c,
+                              h,
+                              w,
+                              ns,
+                              cs,
+                              hs,
+                              ws,
+                              f,
+                              is_aligned,
+                              enable_stride,
+                              is_out,
+                              desc,
+                              format_len=None,
+                              result_add=False,
+                              store_mode=StoreMode.UNKNOWN):
     local_addr = addr & LOCAL_MEM_ADDR_MASK
-    local_offset = local_addr & (LOCAL_MEM_SIZE-1)
-    cidx = (local_addr & (~(LOCAL_MEM_SIZE-1)))>>LOCAL_MEM_SHIFT
-    cnum = (cidx + c+NPU_NUM-1)//NPU_NUM
+    local_offset = local_addr & (LOCAL_MEM_SIZE - 1)
+    cidx = (local_addr & (~(LOCAL_MEM_SIZE - 1))) >> LOCAL_MEM_SHIFT
+    cnum = (cidx + c + NPU_NUM - 1) // NPU_NUM
     real_type_len = __get_format_len(f)
     is_normal = store_mode == StoreMode.UNKNOWN
     if format_len is None:
@@ -259,28 +307,30 @@ def __get_local_mem_size_info(addr, n, c, h, w, ns, cs, hs, ws, f, is_aligned, e
     if store_mode == StoreMode.INT8_4N:
         divide_num = 4
 
-    data_size = n*c*h*w*format_len
+    data_size = n * c * h * w * format_len
     if not enable_stride:
         ws = 1
         hs = w
         if is_aligned:
-            align_num = EU_NUM*4//format_len
-            cs = (w*h + align_num-1)//align_num * align_num
+            align_num = EU_NUM * 4 // format_len
+            cs = (w * h + align_num - 1) // align_num * align_num
         else:
-            cs = w*h
+            cs = w * h
         ns = cnum * cs
-    cover_size = ((n-1)//divide_num* ns + (cnum-1)*cs + (h-1)*hs + (w-1)*ws)*format_len + ((n-1)%divide_num*real_type_len) + 1
+    cover_size = ((n - 1) // divide_num * ns + (cnum - 1) * cs + (h - 1) * hs +
+                  (w - 1) * ws) * format_len + ((n - 1) % divide_num * real_type_len) + 1
     # print("--local-->", addr, n, c, h, w, ns, cs, hs, ws, f, cnum)
     stride_name = "user_stride" if enable_stride else "auto_stride"
     desc += ", {}, shape=({},{},{},{}), {}=({},{},{},{}), cidx={}, cnum={}".format(
         f.name, n, c, h, w, stride_name, ns, cs, hs, ws, cidx, cnum)
     if real_type_len != format_len:
-        desc+= ", elem_size={}".format(format_len)
+        desc += ", elem_size={}".format(format_len)
     if not is_normal:
-        desc+= ", store={}".format(store_mode.name)
+        desc += ", store={}".format(store_mode.name)
     if result_add:
-        desc+= ", res_add=True"
+        desc += ", res_add=True"
     return [local_offset, data_size, cover_size, False, is_out, desc]
+
 
 def matrix_desc(rows, cols, transposed, row_stride, desc=""):
     new_desc = desc
@@ -292,9 +342,10 @@ def matrix_desc(rows, cols, transposed, row_stride, desc=""):
     new_desc += ", stride={}".format(row_stride)
     return new_desc
 
+
 def get_gdma_mem_record(cmd):
-    cmd.DST_START_ADDR = cmd.DST_START_ADDR_H8<<32 | cmd.DST_START_ADDR_L32
-    cmd.SRC_START_ADDR = cmd.SRC_START_ADDR_H8<<32 | cmd.SRC_START_ADDR_L32
+    cmd.DST_START_ADDR = cmd.DST_START_ADDR_H8 << 32 | cmd.DST_START_ADDR_L32
+    cmd.SRC_START_ADDR = cmd.SRC_START_ADDR_H8 << 32 | cmd.SRC_START_ADDR_L32
     gdma_func = GDMAFuncType(cmd.SPECIAL_FUNC)
     gdma_dir = GDMADirection(cmd.DIRECTION)
     src_format = GDMAFormat(cmd.SRC_DATA_FORMAT)
@@ -348,37 +399,59 @@ def get_gdma_mem_record(cmd):
 
         if is_lrn:
             # input local mem
-            info = __get_local_mem_size_info(
-                cmd.SRC_START_ADDR, src_nsize, src_csize, src_hsize, src_wsize,
-                src_nstride, src_cstride, src_hstride, src_wstride, src_format,
-                is_aligned, enable_stride, 0, desc)
+            info = __get_local_mem_size_info(cmd.SRC_START_ADDR, src_nsize, src_csize, src_hsize,
+                                             src_wsize, src_nstride, src_cstride, src_hstride,
+                                             src_wstride, src_format, is_aligned, enable_stride, 0,
+                                             desc)
             mem_info.append(info)
 
             # output local mem
-            info =  __get_local_mem_size_info(
-                cmd.DST_START_ADDR, src_nsize, src_csize, src_hsize, src_wsize,
-                src_nstride, src_cstride, src_hstride, src_wstride, src_format,
-                is_aligned, enable_stride, 1, desc, result_add=result_add)
+            info = __get_local_mem_size_info(cmd.DST_START_ADDR,
+                                             src_nsize,
+                                             src_csize,
+                                             src_hsize,
+                                             src_wsize,
+                                             src_nstride,
+                                             src_cstride,
+                                             src_hstride,
+                                             src_wstride,
+                                             src_format,
+                                             is_aligned,
+                                             enable_stride,
+                                             1,
+                                             desc,
+                                             result_add=result_add)
             mem_info.append(info)
 
         elif is_filter_move:
             mask_local_addr = dst_nstride
-            info = __get_local_mem_size_info(
-                cmd.SRC_START_ADDR, src_nsize, src_csize, src_hsize, src_wsize,
-                src_nstride, src_cstride, src_hstride, src_wstride,
-                src_format, is_aligned, enable_stride, 0, desc)
+            info = __get_local_mem_size_info(cmd.SRC_START_ADDR, src_nsize, src_csize, src_hsize,
+                                             src_wsize, src_nstride, src_cstride, src_hstride,
+                                             src_wstride, src_format, is_aligned, enable_stride, 0,
+                                             desc)
             mem_info.append(info)
 
-            info = __get_local_mem_size_info(
-                mask_local_addr, src_nsize, src_csize, src_hsize, src_wsize,
-                src_nstride, src_cstride, src_hstride, src_wstride,
-                src_format, is_aligned, enable_stride, 0, desc)
+            info = __get_local_mem_size_info(mask_local_addr, src_nsize, src_csize, src_hsize,
+                                             src_wsize, src_nstride, src_cstride, src_hstride,
+                                             src_wstride, src_format, is_aligned, enable_stride, 0,
+                                             desc)
             mem_info.append(info)
 
-            info = __get_local_mem_size_info(
-                cmd.DST_START_ADDR, src_nsize, src_csize, src_hsize, src_wsize,
-                src_nstride, src_cstride, src_hstride, src_wstride,
-                src_format, is_aligned, enable_stride, 1, desc, result_add=result_add)
+            info = __get_local_mem_size_info(cmd.DST_START_ADDR,
+                                             src_nsize,
+                                             src_csize,
+                                             src_hsize,
+                                             src_wsize,
+                                             src_nstride,
+                                             src_cstride,
+                                             src_hstride,
+                                             src_wstride,
+                                             src_format,
+                                             is_aligned,
+                                             enable_stride,
+                                             1,
+                                             desc,
+                                             result_add=result_add)
             mem_info.append(info)
 
         elif cwtrans_used or is_winograd:
@@ -390,54 +463,85 @@ def get_gdma_mem_record(cmd):
             src_hsize = 1
             src_nstride = 0
             src_hstride = 0
-            info = __get_local_mem_size_info(
-                cmd.SRC_START_ADDR, src_nsize, src_csize, src_hsize, src_wsize,
-                src_nstride, src_cstride, src_hstride, src_wstride,
-                src_format, is_aligned, enable_stride, 0, desc)
+            info = __get_local_mem_size_info(cmd.SRC_START_ADDR, src_nsize, src_csize, src_hsize,
+                                             src_wsize, src_nstride, src_cstride, src_hstride,
+                                             src_wstride, src_format, is_aligned, enable_stride, 0,
+                                             desc)
             mem_info.append(info)
-            info = __get_local_mem_size_info(
-                cmd.DST_START_ADDR, dst_nsize, dst_csize, dst_hsize, dst_wsize,
-                dst_nstride, dst_cstride, dst_hstride, dst_wstride,
-                dst_format,is_aligned, enable_stride, 1, desc, result_add=result_add)
+            info = __get_local_mem_size_info(cmd.DST_START_ADDR,
+                                             dst_nsize,
+                                             dst_csize,
+                                             dst_hsize,
+                                             dst_wsize,
+                                             dst_nstride,
+                                             dst_cstride,
+                                             dst_hstride,
+                                             dst_wstride,
+                                             dst_format,
+                                             is_aligned,
+                                             enable_stride,
+                                             1,
+                                             desc,
+                                             result_add=result_add)
             mem_info.append(info)
-        elif cmd.SYS_MEM_TYPE == 0: # neuron
+        elif cmd.SYS_MEM_TYPE == 0:  # neuron
             if need_transpose:
                 dst_nsize = src_csize
                 dst_csize = src_nsize
             if gdma_func != GDMAFuncType.CONSTANT:
                 if src_is_global:
-                    info = __get_global_mem_size_info(cmd.SRC_START_ADDR,
-                        src_nsize, src_csize, src_hsize, src_wsize,
-                        src_nstride, src_cstride, src_hstride, src_wstride,
-                        src_format, 0, desc)
+                    info = __get_global_mem_size_info(cmd.SRC_START_ADDR, src_nsize, src_csize,
+                                                      src_hsize, src_wsize, src_nstride,
+                                                      src_cstride, src_hstride, src_wstride,
+                                                      src_format, 0, desc)
                     mem_info.append(info)
                 else:
-                    info = __get_local_mem_size_info(
-                        cmd.SRC_START_ADDR, src_nsize, src_csize, src_hsize, src_wsize,
-                        src_nstride, src_cstride, src_hstride, src_wstride, src_format,
-                        is_aligned, enable_stride, 0, desc)
+                    info = __get_local_mem_size_info(cmd.SRC_START_ADDR, src_nsize, src_csize,
+                                                     src_hsize, src_wsize, src_nstride, src_cstride,
+                                                     src_hstride, src_wstride, src_format,
+                                                     is_aligned, enable_stride, 0, desc)
                     mem_info.append(info)
 
             if dst_is_global:
                 info = __get_global_mem_size_info(cmd.DST_START_ADDR,
-                    dst_nsize, dst_csize, dst_hsize, dst_wsize,
-                    dst_nstride, dst_cstride, dst_hstride, dst_wstride,
-                    dst_format, 1, desc, result_add=result_add)
+                                                  dst_nsize,
+                                                  dst_csize,
+                                                  dst_hsize,
+                                                  dst_wsize,
+                                                  dst_nstride,
+                                                  dst_cstride,
+                                                  dst_hstride,
+                                                  dst_wstride,
+                                                  dst_format,
+                                                  1,
+                                                  desc,
+                                                  result_add=result_add)
                 mem_info.append(info)
             else:
-                info = __get_local_mem_size_info(
-                    cmd.DST_START_ADDR, dst_nsize, dst_csize, dst_hsize, dst_wsize,
-                    dst_nstride, dst_cstride, dst_hstride, dst_wstride, dst_format,
-                    is_aligned, enable_stride, 1, desc, result_add=result_add)
+                info = __get_local_mem_size_info(cmd.DST_START_ADDR,
+                                                 dst_nsize,
+                                                 dst_csize,
+                                                 dst_hsize,
+                                                 dst_wsize,
+                                                 dst_nstride,
+                                                 dst_cstride,
+                                                 dst_hstride,
+                                                 dst_wstride,
+                                                 dst_format,
+                                                 is_aligned,
+                                                 enable_stride,
+                                                 1,
+                                                 desc,
+                                                 result_add=result_add)
                 mem_info.append(info)
 
-        elif cmd.SYS_MEM_TYPE == 1: # matrix
+        elif cmd.SYS_MEM_TYPE == 1:  # matrix
             if gdma_dir == GDMADirection.S2L:
                 cols = src_wsize
                 rows = src_hsize
                 row_stride = src_hstride
-                mem_size = rows*cols*format_len
-                cover_size = cols*row_stride*format_len if need_transpose else rows*row_stride*format_len
+                mem_size = rows * cols * format_len
+                cover_size = cols * row_stride * format_len if need_transpose else rows * row_stride * format_len
                 desc = matrix_desc(rows, cols, need_transpose, row_stride, desc)
                 if is_aligned:
                     cover_size = mem_size
@@ -450,12 +554,23 @@ def get_gdma_mem_record(cmd):
 
                 lm_rows = cols if need_transpose else rows
                 lm_cols = rows if need_transpose else cols
-                local_num = (lm_cols + sec_len -1)//sec_len
+                local_num = (lm_cols + sec_len - 1) // sec_len
 
-                info = __get_local_mem_size_info(
-                    cmd.DST_START_ADDR, lm_rows, local_num, 1, sec_len,
-                    sec_nstride, sec_cstride, 0, sec_wstride, dst_format,
-                    is_aligned, enable_stride, 1, desc, result_add=result_add)
+                info = __get_local_mem_size_info(cmd.DST_START_ADDR,
+                                                 lm_rows,
+                                                 local_num,
+                                                 1,
+                                                 sec_len,
+                                                 sec_nstride,
+                                                 sec_cstride,
+                                                 0,
+                                                 sec_wstride,
+                                                 dst_format,
+                                                 is_aligned,
+                                                 enable_stride,
+                                                 1,
+                                                 desc,
+                                                 result_add=result_add)
                 mem_info.append(info)
 
             elif gdma_dir == GDMADirection.L2S:
@@ -470,16 +585,15 @@ def get_gdma_mem_record(cmd):
 
                 lm_rows = cols if need_transpose else rows
                 lm_cols = rows if need_transpose else cols
-                local_num = (lm_cols + sec_len -1)//sec_len
+                local_num = (lm_cols + sec_len - 1) // sec_len
 
-                info = __get_local_mem_size_info(
-                    cmd.SRC_START_ADDR, lm_rows, local_num, 1, sec_len,
-                    sec_nstride, sec_cstride, 0, sec_wstride,
-                    src_format, is_aligned, enable_stride, 0, desc)
+                info = __get_local_mem_size_info(cmd.SRC_START_ADDR, lm_rows, local_num, 1, sec_len,
+                                                 sec_nstride, sec_cstride, 0, sec_wstride,
+                                                 src_format, is_aligned, enable_stride, 0, desc)
                 mem_info.append(info)
 
-                mem_size = rows*cols*format_len
-                cover_size = cols*row_stride*format_len if need_transpose else rows*row_stride*format_len
+                mem_size = rows * cols * format_len
+                cover_size = cols * row_stride * format_len if need_transpose else rows * row_stride * format_len
                 if is_aligned:
                     cover_size = mem_size
                 if result_add:
@@ -525,11 +639,11 @@ def get_bd_mem_record(cmd):
         kernel_stride_enable = cmd.SHORT_OPD1_STR == 3
         bias_stride_enable = cmd.SHORT_OPD1_STR == 3
         pad_h_t = cmd.OPD0_UP_PAD
-        pad_h_b =cmd.OPD0_DN_PAD
-        pad_w_l =cmd.OPD0_LF_PAD
-        pad_w_r =cmd.OPD0_RT_PAD
-        stride_w =cmd.RES_OP_X_STR
-        stride_h =cmd.RES_OP_Y_STR
+        pad_h_b = cmd.OPD0_DN_PAD
+        pad_w_l = cmd.OPD0_LF_PAD
+        pad_w_r = cmd.OPD0_RT_PAD
+        stride_w = cmd.RES_OP_X_STR
+        stride_h = cmd.RES_OP_Y_STR
         ins_h = cmd.OPD0_Y_INS0
         ins_w = cmd.OPD0_X_INS0
         kernel_flip = cmd.OPT_KERNEL_ROTATE
@@ -544,12 +658,23 @@ def get_bd_mem_record(cmd):
         store_mode = StoreMode.UNKNOWN
         if in0_format == BDFormat.INT8:
             store_mode = StoreMode.INT8_4N
-        input_desc = desc+", input0, pad({},{},{},{}), str({},{}), dilate({},{}), ins0({},{})".format(
-                      pad_h_b, pad_h_t, pad_w_l, pad_w_r,
-                      stride_h, stride_w, dh, dw, ins_h, ins_w)
-        m = __get_local_mem_size_info(input_addr, input_n, input_c, input_h, input_w,
-                input_n_stride, input_c_stride, input_h_stride, input_w_stride, in0_format,
-                True, input_stride_enable, 0, input_desc, store_mode = store_mode)
+        input_desc = desc + ", input0, pad({},{},{},{}), str({},{}), dilate({},{}), ins0({},{})".format(
+            pad_h_b, pad_h_t, pad_w_l, pad_w_r, stride_h, stride_w, dh, dw, ins_h, ins_w)
+        m = __get_local_mem_size_info(input_addr,
+                                      input_n,
+                                      input_c,
+                                      input_h,
+                                      input_w,
+                                      input_n_stride,
+                                      input_c_stride,
+                                      input_h_stride,
+                                      input_w_stride,
+                                      in0_format,
+                                      True,
+                                      input_stride_enable,
+                                      0,
+                                      input_desc,
+                                      store_mode=store_mode)
         mem_list.append(m)
 
         if not kernel_is_const:
@@ -562,9 +687,21 @@ def get_bd_mem_record(cmd):
             weight_h = kh
             weight_w = kw
             weight_desc = desc + ", kernel"
-            m = __get_local_mem_size_info(weight_addr, weight_n, weight_c, weight_h, weight_w,
-                    weight_n_stride, weight_c_stride, weight_h_stride, weight_w_stride, in1_format,
-                    False, kernel_stride_enable, 0, weight_desc, store_mode = store_mode)
+            m = __get_local_mem_size_info(weight_addr,
+                                          weight_n,
+                                          weight_c,
+                                          weight_h,
+                                          weight_w,
+                                          weight_n_stride,
+                                          weight_c_stride,
+                                          weight_h_stride,
+                                          weight_w_stride,
+                                          in1_format,
+                                          False,
+                                          kernel_stride_enable,
+                                          0,
+                                          weight_desc,
+                                          store_mode=store_mode)
             mem_list.append(m)
         if with_bias:
             bias_n = 1
@@ -580,9 +717,9 @@ def get_bd_mem_record(cmd):
             if in0_format == BDFormat.FP32:
                 bias_stride_enable = False
                 bias_format = in0_format
-            m = __get_local_mem_size_info(bias_addr, bias_n, bias_c, bias_h, bias_w,
-                    bias_n_stride, bias_c_stride, bias_h_stride, bias_w_stride,
-                    bias_format, False, bias_stride_enable, 0, bias_desc)
+            m = __get_local_mem_size_info(bias_addr, bias_n, bias_c, bias_h, bias_w, bias_n_stride,
+                                          bias_c_stride, bias_h_stride, bias_w_stride, bias_format,
+                                          False, bias_stride_enable, 0, bias_desc)
             mem_list.append(m)
         if in0_format == BDFormat.FP32:
             output_stride_enable = False
@@ -592,9 +729,21 @@ def get_bd_mem_record(cmd):
         output_c_stride = cmd.RES0_C_STR
         output_h_stride = cmd.RES0_H_STR
         output_w_stride = cmd.RES0_W_STR
-        m = __get_local_mem_size_info(output_addr, input_n, output_c, output_h, output_w,
-                output_n_stride, output_c_stride, output_h_stride, output_w_stride,
-                res0_prec, True, output_stride_enable, 1, output_desc, store_mode=store_mode)
+        m = __get_local_mem_size_info(output_addr,
+                                      input_n,
+                                      output_c,
+                                      output_h,
+                                      output_w,
+                                      output_n_stride,
+                                      output_c_stride,
+                                      output_h_stride,
+                                      output_w_stride,
+                                      res0_prec,
+                                      True,
+                                      output_stride_enable,
+                                      1,
+                                      output_desc,
+                                      store_mode=store_mode)
         mem_list.append(m)
     elif bd_func == BDFuncType.DEPTHWISE_OR_POOLING:
         # parse as pooling
@@ -611,11 +760,11 @@ def get_bd_mem_record(cmd):
         kh = cmd.OPD1_H
         kw = cmd.OPD1_W
         pad_h_t = cmd.OPD0_UP_PAD
-        pad_h_b =cmd.OPD0_DN_PAD
-        pad_w_l =cmd.OPD0_LF_PAD
-        pad_w_r =cmd.OPD0_RT_PAD
-        stride_h =cmd.RES_OP_Y_STR
-        stride_w =cmd.RES_OP_X_STR
+        pad_h_b = cmd.OPD0_DN_PAD
+        pad_w_l = cmd.OPD0_LF_PAD
+        pad_w_r = cmd.OPD0_RT_PAD
+        stride_h = cmd.RES_OP_Y_STR
+        stride_w = cmd.RES_OP_X_STR
         ins_h = cmd.OPD0_Y_INS0
         ins_w = cmd.OPD0_X_INS0
         dh = cmd.OPD1_Y_INS0 + 1
@@ -630,8 +779,21 @@ def get_bd_mem_record(cmd):
             in_store_mode = StoreMode.INT8_4N
             weight_store_mode = StoreMode.INT8_1N
             bias_store_mode = StoreMode.INT16_1N
-        m = __get_local_mem_size_info(input_addr, input_n, input_c, input_h, input_w,
-                0, 0, 0, 0, in0_format, True, False, 0, desc, store_mode = in_store_mode)
+        m = __get_local_mem_size_info(input_addr,
+                                      input_n,
+                                      input_c,
+                                      input_h,
+                                      input_w,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      in0_format,
+                                      True,
+                                      False,
+                                      0,
+                                      desc,
+                                      store_mode=in_store_mode)
         mem_list.append(m)
         if is_avg and not kernel_is_const:
             weight_n = 1
@@ -639,8 +801,21 @@ def get_bd_mem_record(cmd):
             weight_h = kh
             weight_w = kw
             weight_desc = desc + ", kernel"
-            m = __get_local_mem_size_info(weight_addr, weight_n, weight_c, weight_h, weight_w,
-                    0, 0, 0, 0, in0_format, False, False, 0, weight_desc, store_mode=weight_store_mode)
+            m = __get_local_mem_size_info(weight_addr,
+                                          weight_n,
+                                          weight_c,
+                                          weight_h,
+                                          weight_w,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          in0_format,
+                                          False,
+                                          False,
+                                          0,
+                                          weight_desc,
+                                          store_mode=weight_store_mode)
             mem_list.append(m)
         if with_bias:
             bias_n = 1
@@ -648,11 +823,38 @@ def get_bd_mem_record(cmd):
             bias_h = 1
             bias_w = 1
             bias_desc = desc + ", bias"
-            m = __get_local_mem_size_info(bias_addr, bias_n, bias_c, bias_h, bias_w,
-                    0, 0, 0, 0, in0_format, False, False, 0, bias_desc, store_mode = bias_store_mode)
+            m = __get_local_mem_size_info(bias_addr,
+                                          bias_n,
+                                          bias_c,
+                                          bias_h,
+                                          bias_w,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          in0_format,
+                                          False,
+                                          False,
+                                          0,
+                                          bias_desc,
+                                          store_mode=bias_store_mode)
         output_desc = desc + ", output"
-        m = __get_local_mem_size_info(output_addr, input_n, input_c, output_h, output_w,
-                0, 0, 0, 0, res0_prec, True, False, 1, output_desc, result_add=result_add, store_mode=in_store_mode)
+        m = __get_local_mem_size_info(output_addr,
+                                      input_n,
+                                      input_c,
+                                      output_h,
+                                      output_w,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      res0_prec,
+                                      True,
+                                      False,
+                                      1,
+                                      output_desc,
+                                      result_add=result_add,
+                                      store_mode=in_store_mode)
         mem_list.append(m)
     elif bd_func == BDFuncType.FC:
         with_bias = cmd.TSK_OPD_NUM == 3
@@ -664,7 +866,7 @@ def get_bd_mem_record(cmd):
         L_tensor_W = cmd.OPD0_W
         R_col_num = R_tensor_C * R_tensor_W
         L_last_W = cmd.OPD1_W
-        L_col_num = (L_tensor_C-1) * L_tensor_W + L_last_W
+        L_col_num = (L_tensor_C - 1) * L_tensor_W + L_last_W
         img_num = cmd.OPD0_N
 
         if is_L_trans:
@@ -677,22 +879,36 @@ def get_bd_mem_record(cmd):
         is_L_const = cmd.OPT_OPD0_CONST
         if not is_L_const:
             L_desc = desc + ", LMatrix({},{}), T={}".format(img_num, L_col_num, is_L_trans)
-            m = __get_local_mem_size_info(L_tensor_start_addr, cmd.OPD0_N, L_tensor_C, 1, L_tensor_W,
-                    0, 0, 0, 0, in0_format, True, False, 0, L_desc)
+            m = __get_local_mem_size_info(L_tensor_start_addr, cmd.OPD0_N, L_tensor_C, 1,
+                                          L_tensor_W, 0, 0, 0, 0, in0_format, True, False, 0,
+                                          L_desc)
             mem_list.append(m)
 
         R_desc = desc + ", RMatrix({},{})".format(L_col_num, R_col_num)
-        m = __get_local_mem_size_info(R_tensor_start_addr, L_col_num, R_tensor_C, 1, R_tensor_W,
-                0, 0, 0, 0, in0_format, True, False, 0, R_desc)
+        m = __get_local_mem_size_info(R_tensor_start_addr, L_col_num, R_tensor_C, 1, R_tensor_W, 0,
+                                      0, 0, 0, in0_format, True, False, 0, R_desc)
         mem_list.append(m)
         if with_bias:
             bias_desc = desc + ", bias"
-            m = __get_local_mem_size_info(bias_tensor_start_addr, 1, R_col_num, 1, 1,
-                    0, 0, 0, 0, in0_format, True, False, 0, bias_desc)
+            m = __get_local_mem_size_info(bias_tensor_start_addr, 1, R_col_num, 1, 1, 0, 0, 0, 0,
+                                          in0_format, True, False, 0, bias_desc)
             mem_list.append(m)
         out_desc = desc + ", OMatrix({},{})".format(img_num, R_col_num)
-        m = __get_local_mem_size_info(Y_tensor_start_addr, img_num, R_col_num, 1, R_tensor_W,
-                0, 0, 0, 0, in0_format, True, False, 1, out_desc, result_add=result_add)
+        m = __get_local_mem_size_info(Y_tensor_start_addr,
+                                      img_num,
+                                      R_col_num,
+                                      1,
+                                      R_tensor_W,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      in0_format,
+                                      True,
+                                      False,
+                                      1,
+                                      out_desc,
+                                      result_add=result_add)
         mem_list.append(m)
     elif bd_func == BDFuncType.TENSOR_ARITHMETIC:
         tensorA_addr = cmd.OPD0_ADDR
@@ -715,7 +931,7 @@ def get_bd_mem_record(cmd):
         a_is_const = cmd.OPT_OPD0_CONST
         b_is_const = cmd.OPT_OPD1_CONST
         op = cmd.TSK_EU_TYP
-        op_names={
+        op_names = {
             0: "TENSOR_MUL",
             1: "TENSOR_MAC",
             2: "TENSOR_ADD",
@@ -731,7 +947,7 @@ def get_bd_mem_record(cmd):
             8: "TENSOR_OR",
             9: "TENSOR_XOR",
         }
-        op_name=op_names[op]
+        op_name = op_names[op]
 
         a_n_stride = cmd.OPD0_N_STR
         a_c_stride = cmd.OPD0_C_STR
@@ -761,21 +977,58 @@ def get_bd_mem_record(cmd):
         b_store_mode = format_map[in1_format]
         c_store_mode = format_map[res0_prec]
         if not a_is_const:
-            a_desc = desc+", A"
-            m = __get_local_mem_size_info(tensorA_addr, n, c, h, w,
-                a_n_stride, a_c_stride, a_h_stride, a_w_stride, in0_format,
-                True, a_stride_enable, 0, a_desc, store_mode = a_store_mode)
+            a_desc = desc + ", A"
+            m = __get_local_mem_size_info(tensorA_addr,
+                                          n,
+                                          c,
+                                          h,
+                                          w,
+                                          a_n_stride,
+                                          a_c_stride,
+                                          a_h_stride,
+                                          a_w_stride,
+                                          in0_format,
+                                          True,
+                                          a_stride_enable,
+                                          0,
+                                          a_desc,
+                                          store_mode=a_store_mode)
             mem_list.append(m)
         if not b_is_const and op_name != "TENSOR_CPY":
-            b_desc = desc+", B"
-            m = __get_local_mem_size_info(tensorB_addr, b_n, b_c, b_h, b_w,
-                b_n_stride, b_c_stride, b_h_stride, b_w_stride, in1_format,
-                True, b_stride_enable, 0, b_desc, store_mode = b_store_mode)
+            b_desc = desc + ", B"
+            m = __get_local_mem_size_info(tensorB_addr,
+                                          b_n,
+                                          b_c,
+                                          b_h,
+                                          b_w,
+                                          b_n_stride,
+                                          b_c_stride,
+                                          b_h_stride,
+                                          b_w_stride,
+                                          in1_format,
+                                          True,
+                                          b_stride_enable,
+                                          0,
+                                          b_desc,
+                                          store_mode=b_store_mode)
             mem_list.append(m)
-        c_desc = desc+", C, op={}".format(op_name)
-        m = __get_local_mem_size_info(tensorC_addr, n, c, h, w,
-            c_n_stride, c_c_stride, c_h_stride, c_w_stride, res0_prec,
-            True, c_stride_enable, 1, c_desc, result_add=result_add, store_mode = c_store_mode)
+        c_desc = desc + ", C, op={}".format(op_name)
+        m = __get_local_mem_size_info(tensorC_addr,
+                                      n,
+                                      c,
+                                      h,
+                                      w,
+                                      c_n_stride,
+                                      c_c_stride,
+                                      c_h_stride,
+                                      c_w_stride,
+                                      res0_prec,
+                                      True,
+                                      c_stride_enable,
+                                      1,
+                                      c_desc,
+                                      result_add=result_add,
+                                      store_mode=c_store_mode)
         mem_list.append(m)
     elif bd_func == BDFuncType.FC2:
         L_addr = cmd.OPD0_ADDR
@@ -784,16 +1037,14 @@ def get_bd_mem_record(cmd):
         opd0_sign = cmd.OPT_OPD0_SIGN
         opd1_sign = cmd.OPT_OPD1_SIGN
         op_format = BDFormat.INT8
-        m = __get_local_mem_size_info(L_addr, 1, 256, 1, 256,
-            0, 0, 0, 0, op_format,
-            True, False, 0, desc+", LMatrix, sign=".format(opd0_sign), 4)
+        m = __get_local_mem_size_info(L_addr, 1, 256, 1, 256, 0, 0, 0, 0, op_format, True, False, 0,
+                                      desc + ", LMatrix, sign=".format(opd0_sign), 4)
         mem_list.append(m)
-        m = __get_local_mem_size_info(R_addr, 1, 256, 1, 256,
-            0, 0, 0, 0, op_format,
-            True, False, 0, desc+", RMatrix, sign=".format(opd1_sign), 4)
+        m = __get_local_mem_size_info(R_addr, 1, 256, 1, 256, 0, 0, 0, 0, op_format, True, False, 0,
+                                      desc + ", RMatrix, sign=".format(opd1_sign), 4)
         mem_list.append(m)
-        m = __get_local_mem_size_info(RES_addr, 1, 256, 1, 256,
-            0, 0, 0, 0, op_format, True, False, 1, desc+", result", 4)
+        m = __get_local_mem_size_info(RES_addr, 1, 256, 1, 256, 0, 0, 0, 0, op_format, True, False,
+                                      1, desc + ", result", 4)
         mem_list.append(m)
     elif bd_func == BDFuncType.TABLE_LOOKUP:
         N = cmd.RES0_N
@@ -804,13 +1055,30 @@ def get_bd_mem_record(cmd):
         C_addr = cmd.RES0_ADDR
         table_size = cmd.OPD1_H
         table_addr = cmd.OPD1_ADDR
-        m = __get_local_mem_size_info(B_addr, N, C, H, W,
-                        0, 0, 0, 0, in0_format, True, False, 0, desc + ", index", 4)
+        m = __get_local_mem_size_info(B_addr, N, C, H, W, 0, 0, 0, 0, in0_format, True, False, 0,
+                                      desc + ", index", 4)
         mem_list.append(m)
-        m = [table_addr, table_size*4, table_size*4, True, 0, desc+ ", table_size={}".format(table_size)]
+        m = [
+            table_addr, table_size * 4, table_size * 4, True, 0,
+            desc + ", table_size={}".format(table_size)
+        ]
         mem_list.append(m)
-        m = __get_local_mem_size_info(C_addr, N, C, H, W,
-                        0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc+", result", 4, result_add=result_add)
+        m = __get_local_mem_size_info(C_addr,
+                                      N,
+                                      C,
+                                      H,
+                                      W,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      BDFormat.FP32,
+                                      True,
+                                      False,
+                                      1,
+                                      desc + ", result",
+                                      4,
+                                      result_add=result_add)
         mem_list.append(m)
     elif bd_func == BDFuncType.MD_SUM:
         A_addr = cmd.OPD0_ADDR
@@ -819,11 +1087,24 @@ def get_bd_mem_record(cmd):
         W = cmd.OPD0_W
         C = cmd.RES0_C
         N = cmd.OPD0_N
-        m = __get_local_mem_size_info(A_addr, N, C, H, W,
-                        0, 0, 0, 0, BDFormat.FP32, True, False, 0, desc + ", input")
+        m = __get_local_mem_size_info(A_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True, False, 0,
+                                      desc + ", input")
         mem_list.append(m)
-        m = __get_local_mem_size_info(Y_addr, 1, C, 1, 1,
-                        0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc + ", output", result_add=result_add)
+        m = __get_local_mem_size_info(Y_addr,
+                                      1,
+                                      C,
+                                      1,
+                                      1,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      BDFormat.FP32,
+                                      True,
+                                      False,
+                                      1,
+                                      desc + ", output",
+                                      result_add=result_add)
         mem_list.append(m)
     elif bd_func == BDFuncType.MD_SCALAR:
         A_addr = cmd.OPD0_ADDR
@@ -845,15 +1126,28 @@ def get_bd_mem_record(cmd):
         }
         op_name = op_names[op]
         if not A_is_constant:
-            m = __get_local_mem_size_info(A_addr, N, C, H, W,
-                0, 0, 0, 0, op_format, True, False, 0, desc+", A")
+            m = __get_local_mem_size_info(A_addr, N, C, H, W, 0, 0, 0, 0, op_format, True, False, 0,
+                                          desc + ", A")
             mem_list.append(m)
         if not B_is_constant:
-            m = __get_local_mem_size_info(B_addr, N, C, H, W,
-                0, 0, 0, 0, op_format, True, False, 0, desc+", B")
+            m = __get_local_mem_size_info(B_addr, N, C, H, W, 0, 0, 0, 0, op_format, True, False, 0,
+                                          desc + ", B")
             mem_list.append(m)
-        m = __get_local_mem_size_info(R_addr, N, C, H, W,
-            0, 0, 0, 0, op_format, True, False, 1, desc+", result", result_add=result_add)
+        m = __get_local_mem_size_info(R_addr,
+                                      N,
+                                      C,
+                                      H,
+                                      W,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      op_format,
+                                      True,
+                                      False,
+                                      1,
+                                      desc + ", result",
+                                      result_add=result_add)
         mem_list.append(m)
     elif bd_func == BDFuncType.MD_SFU:
         A_addr = cmd.OPD0_ADDR
@@ -865,7 +1159,7 @@ def get_bd_mem_record(cmd):
         taylor_num = cmd.OPD1_N
         taylor_addr = cmd.OPD1_ADDR
         op = cmd.TSK_EU_TYP
-        op_names =  {
+        op_names = {
             13: "TAYLOR",
             14: "SFU_F2I",
             15: "SFU_NORMB",
@@ -873,14 +1167,30 @@ def get_bd_mem_record(cmd):
             17: "SFU_RSQ",
         }
         op_name = op_names[op]
-        m = __get_local_mem_size_info(A_addr, N, C, H, W,
-                        0, 0, 0, 0, BDFormat.FP32, True, False, 0, desc + ", input", 4)
+        m = __get_local_mem_size_info(A_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True, False, 0,
+                                      desc + ", input", 4)
         mem_list.append(m)
         if op == 13:
-            m = [taylor_addr, taylor_num*4, taylor_num*4, True, 0, desc+ ", taylor_num={}".format(taylor_num)]
+            m = [
+                taylor_addr, taylor_num * 4, taylor_num * 4, True, 0,
+                desc + ", taylor_num={}".format(taylor_num)
+            ]
             mem_list.append(m)
-        m = __get_local_mem_size_info(Y_addr, N, C, H, W,
-                        0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc+", result, op={}".format(op_name), result_add=result_add)
+        m = __get_local_mem_size_info(Y_addr,
+                                      N,
+                                      C,
+                                      H,
+                                      W,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      BDFormat.FP32,
+                                      True,
+                                      False,
+                                      1,
+                                      desc + ", result, op={}".format(op_name),
+                                      result_add=result_add)
         mem_list.append(m)
     elif bd_func == BDFuncType.MD_LINEAR:
         op = cmd.TSK_EU_TYP
@@ -896,22 +1206,35 @@ def get_bd_mem_record(cmd):
         B_addr = cmd.OPD1_ADDR
         S_addr = cmd.OPD2_ADDR
         R_addr = cmd.RES0_ADDR
-        a_desc = desc+", A"
+        a_desc = desc + ", A"
         op_format = BDFormat.FP32
-        m = __get_local_mem_size_info(A_addr, N, C, H, W,
-            0, 0, 0, 0, op_format, True, False, 0, a_desc)
+        m = __get_local_mem_size_info(A_addr, N, C, H, W, 0, 0, 0, 0, op_format, True, False, 0,
+                                      a_desc)
         mem_list.append(m)
         if not S_is_const:
-            m = __get_local_mem_size_info(S_addr, 1, C, 1, 1,
-                0, 0, 0, 0, op_format, False, False, 0, desc+", S")
+            m = __get_local_mem_size_info(S_addr, 1, C, 1, 1, 0, 0, 0, 0, op_format, False, False,
+                                          0, desc + ", S")
             mem_list.append(m)
         if not B_is_const:
-            m = __get_local_mem_size_info(B_addr, 1, C, 1, 1,
-                0, 0, 0, 0, op_format, False, False, 0, desc+", B")
+            m = __get_local_mem_size_info(B_addr, 1, C, 1, 1, 0, 0, 0, 0, op_format, False, False,
+                                          0, desc + ", B")
             mem_list.append(m)
-        r_desc = desc+", result, op_name={}".format(op_name)
-        m = __get_local_mem_size_info(A_addr, N, C, H, W,
-            0, 0, 0, 0, op_format, True, False, 1, r_desc, result_add=result_add)
+        r_desc = desc + ", result, op_name={}".format(op_name)
+        m = __get_local_mem_size_info(A_addr,
+                                      N,
+                                      C,
+                                      H,
+                                      W,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      op_format,
+                                      True,
+                                      False,
+                                      1,
+                                      r_desc,
+                                      result_add=result_add)
         mem_list.append(m)
     elif bd_func == BDFuncType.MD_CMP:
         A_addr = cmd.OPD0_ADDR
@@ -940,35 +1263,35 @@ def get_bd_mem_record(cmd):
         eu_type = cmd.TSK_EU_TYP
 
         if not a_is_const:
-            m = __get_local_mem_size_info(A_addr, N, C, H, W,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 0, desc+", A")
+            m = __get_local_mem_size_info(A_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 0, desc + ", A")
             mem_list.append(m)
         if not b_is_const:
-            m = __get_local_mem_size_info(B_addr, BN, BC, BH, BW,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 0, desc+", B")
+            m = __get_local_mem_size_info(B_addr, BN, BC, BH, BW, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 0, desc + ", B")
             mem_list.append(m)
         if not c_is_const:
-            m = __get_local_mem_size_info(C_addr, BN, BC, BH, BW,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 0, desc+", C")
+            m = __get_local_mem_size_info(C_addr, BN, BC, BH, BW, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 0, desc + ", C")
             mem_list.append(m)
         if not d_is_const:
-            m = __get_local_mem_size_info(D_addr, BN, BC, BH, BW,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 0, desc+", D")
+            m = __get_local_mem_size_info(D_addr, BN, BC, BH, BW, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 0, desc + ", D")
             mem_list.append(m)
         if eu_type == 24:
-            m = __get_local_mem_size_info(Y_addr, N, C, H, W,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc+", Y")
+            m = __get_local_mem_size_info(Y_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 1, desc + ", Y")
             mem_list.append(m)
-            m = __get_local_mem_size_info(R_addr, N, C, H, W,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc+", R")
+            m = __get_local_mem_size_info(R_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 1, desc + ", R")
             mem_list.append(m)
         elif eu_type == 22:
-            m = __get_local_mem_size_info(Y_addr, N, C, H, W,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc+", Y")
+            m = __get_local_mem_size_info(Y_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 1, desc + ", Y")
             mem_list.append(m)
         else:
-            m = __get_local_mem_size_info(R_addr, N, C, H, W,
-                0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc+", R")
+            m = __get_local_mem_size_info(R_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True,
+                                          False, 1, desc + ", R")
             mem_list.append(m)
     elif bd_func == BDFuncType.CONV_CORRELATION:
         input_addr = cmd.OPD0_ADDR
@@ -989,14 +1312,15 @@ def get_bd_mem_record(cmd):
         kh = cmd.OPD1_H
         kw = cmd.OPD1_W
         op_format = BDFormat.FP32
-        m = __get_local_mem_size_info(input_addr, 1, ic, ih, iw,
-            0, 0, 0, 0, op_format, True, False, 0, desc + ", input")
+        m = __get_local_mem_size_info(input_addr, 1, ic, ih, iw, 0, 0, 0, 0, op_format, True, False,
+                                      0, desc + ", input")
         mem_list.append(m)
-        m = __get_local_mem_size_info(weight_addr, 1, oc, kh, kw,
-            0, 0, 0, 0, op_format, True, False, 0, desc + ", weight")
+        m = __get_local_mem_size_info(weight_addr, 1, oc, kh, kw, 0, 0, 0, 0, op_format, True,
+                                      False, 0, desc + ", weight")
         mem_list.append(m)
-        m = __get_local_mem_size_info(output_addr, ic, oc, oh, ow,
-            0, 0, 0, 0, op_format, False, False, 1, desc + ", output, pad=({},{},{},{}), conv_stride=({},{})".format(
+        m = __get_local_mem_size_info(
+            output_addr, ic, oc, oh, ow, 0, 0, 0, 0, op_format, False, False, 1,
+            desc + ", output, pad=({},{},{},{}), conv_stride=({},{})".format(
                 pad_h_t, pad_h_t, pad_w_l, pad_w_r, stride_h, stride_w))
         mem_list.append(m)
     elif bd_func == BDFuncType.VECTOR_CORRELATION:
@@ -1013,26 +1337,29 @@ def get_bd_mem_record(cmd):
         Y_tensor_start_addr = cmd.RES0_ADDR
         op = cmd.TSK_EU_TYP
         op_names = {
-            2:  "ADD",
-            3:  "SUB",
-            0:  "MUL",
+            2: "ADD",
+            3: "SUB",
+            0: "MUL",
             12: "DIV",
-            4:  "MAX",
-            5:  "MIN",
-            7:  "AND",
-            8:  "OR",
-            9:  "XOR",
+            4: "MAX",
+            5: "MIN",
+            7: "AND",
+            8: "OR",
+            9: "XOR",
         }
         op_format = res0_prec
         op_name = op_names[op]
-        m = __get_local_mem_size_info(L_tensor_start_addr, 1, L_tensor_C, 1, L_tensor_W,
-            0, 0, 0, 0, op_format, True, False, 0, desc + ", LMatrix({},{})".format(1, L_col_num))
+        m = __get_local_mem_size_info(L_tensor_start_addr, 1, L_tensor_C, 1, L_tensor_W, 0, 0, 0, 0,
+                                      op_format, True, False, 0,
+                                      desc + ", LMatrix({},{})".format(1, L_col_num))
         mem_list.append(m)
-        m = __get_local_mem_size_info(R_tensor_start_addr, 1, R_tensor_C, 1, R_tensor_W,
-            0, 0, 0, 0, op_format, True, False, 0, desc + ", RMatrix({},{})".format(1, R_col_num))
+        m = __get_local_mem_size_info(R_tensor_start_addr, 1, R_tensor_C, 1, R_tensor_W, 0, 0, 0, 0,
+                                      op_format, True, False, 0,
+                                      desc + ", RMatrix({},{})".format(1, R_col_num))
         mem_list.append(m)
-        m = __get_local_mem_size_info(Y_tensor_start_addr, L_col_num, R_tensor_C, 1, R_tensor_W,
-            0, 0, 0, 0, op_format, True, False, 1, desc + ", op={}, OMatrix({},{})".format(op_name, L_col_num, R_col_num))
+        m = __get_local_mem_size_info(
+            Y_tensor_start_addr, L_col_num, R_tensor_C, 1, R_tensor_W, 0, 0, 0, 0, op_format, True,
+            False, 1, desc + ", op={}, OMatrix({},{})".format(op_name, L_col_num, R_col_num))
         mem_list.append(m)
 
     elif bd_func == BDFuncType.DECOMPRESS:
@@ -1044,14 +1371,14 @@ def get_bd_mem_record(cmd):
         C = NPU_NUM
         H = 1
         W = cmd.OPD0_W
-        m = __get_local_mem_size_info(I_addr, N, C, H, W,
-            0, 0, 0, 0, op_format, True, False, 0, desc + ", Compressed", 4)
+        m = __get_local_mem_size_info(I_addr, N, C, H, W, 0, 0, 0, 0, op_format, True, False, 0,
+                                      desc + ", Compressed", 4)
         mem_list.append(m)
-        m = __get_local_mem_size_info(C_addr, N, C, H, W,
-            0, 0, 0, 0, BDFormat.INT16, True, False, 0, desc + ", Coeff", 4)
+        m = __get_local_mem_size_info(C_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.INT16, True, False,
+                                      0, desc + ", Coeff", 4)
         mem_list.append(m)
-        m = __get_local_mem_size_info(D_addr, N, C, H, W,
-            0, 0, 0, 0, op_format, True, False, 1, desc + ", Decompressed", 4)
+        m = __get_local_mem_size_info(D_addr, N, C, H, W, 0, 0, 0, 0, op_format, True, False, 1,
+                                      desc + ", Decompressed", 4)
         mem_list.append(m)
     elif bd_func == BDFuncType.LOCALMEM_ARANGE:
         input_addr = cmd.OPD0_ADDR
@@ -1059,37 +1386,45 @@ def get_bd_mem_record(cmd):
         table_addr = cmd.OPD1_ADDR
         table_entry_cnt = cmd.OPD1_N
         table_size = table_entry_cnt * 64
-        N=1
-        C=NPU_NUM
-        H=1
-        W=EU_NUM
-        m = [table_addr, table_size, table_size, True, 0, desc+ ", index_table, entry_cnt={}".format(table_entry_cnt)]
+        N = 1
+        C = NPU_NUM
+        H = 1
+        W = EU_NUM
+        m = [
+            table_addr, table_size, table_size, True, 0,
+            desc + ", index_table, entry_cnt={}".format(table_entry_cnt)
+        ]
         mem_list.append(m)
-        m = __get_local_mem_size_info(input_addr, N, C, H, W,
-            0, 0, 0, 0, BDFormat.FP32, True, False, 0, desc, 4)
+        m = __get_local_mem_size_info(input_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True,
+                                      False, 0, desc, 4)
         mem_list.append(m)
-        m = __get_local_mem_size_info(output_addr, N, C, H, W,
-            0, 0, 0, 0, BDFormat.FP32, True, False, 1, desc, 4)
+        m = __get_local_mem_size_info(output_addr, N, C, H, W, 0, 0, 0, 0, BDFormat.FP32, True,
+                                      False, 1, desc, 4)
         mem_list.append(m)
     return [MemRecord(*m) for m in mem_list]
 
+
 class CMDWrapper():
     _cmd_id_ = 0
+
     def __init__(self):
-        self.ref_id= self.__class__._cmd_id_
+        self.ref_id = self.__class__._cmd_id_
         self.__class__._cmd_id_ += 1
+
     def test(self, mark_condition):
         args = {"gdma": False, "bd": True}
+
         class MStruct:
             pass
+
         for key, value in self.__dict__.items():
             if key == "mem_records":
                 v_list = []
                 for m in value:
-                    v=MStruct()
-                    v.is_out =m.is_out
+                    v = MStruct()
+                    v.is_out = m.is_out
                     v.is_in = not m.is_out
-                    v.gmem =m.is_global
+                    v.gmem = m.is_global
                     v.lmem = not v.is_global
                     v.start_addr = m.addr
                     v.end_addr = m.addr + m.cover_size
@@ -1108,13 +1443,13 @@ class CMDWrapper():
         return eval(mark_condition, args)
 
     def __str__(self):
-        info=[]
-        reg_info=[]
+        info = []
+        reg_info = []
         info.append("Registers:")
         for key, value in self.__dict__.items():
             if key == "mem_records":
                 continue
-            reg_info.append("  {}={}".format(key,value))
+            reg_info.append("  {}={}".format(key, value))
         reg_info.sort()
         info += reg_info
         info.append("MemRecords:")
@@ -1126,25 +1461,28 @@ class CMDWrapper():
                 mem_str += "in,  "
             if m.is_global:
                 mem_str += "gmem, "
-                mem_str += "start_addr=%d[0x%x], "%(m.addr, m.addr)
-                mem_str += "end_addr=%d[0x%x], "%(m.addr+m.cover_size, m.addr+m.cover_size)
+                mem_str += "start_addr=%d[0x%x], " % (m.addr, m.addr)
+                mem_str += "end_addr=%d[0x%x], " % (m.addr + m.cover_size, m.addr + m.cover_size)
             else:
                 mem_str += "lmem, "
-                mem_str += "start_offset=%d[0x%x], "%(m.addr, m.addr)
-                mem_str += "end_offset=%d[0x%x], "%(m.addr+m.cover_size, m.addr+m.cover_size)
-            mem_str += "data_size=%d, "%(m.data_size)
-            mem_str += "cover_size=%d, "%(m.cover_size)
+                mem_str += "start_offset=%d[0x%x], " % (m.addr, m.addr)
+                mem_str += "end_offset=%d[0x%x], " % (m.addr + m.cover_size, m.addr + m.cover_size)
+            mem_str += "data_size=%d, " % (m.data_size)
+            mem_str += "cover_size=%d, " % (m.cover_size)
             mem_str += m.desc
             info.append(mem_str)
         return "\n".join(info)
 
+
 class BaseCommandParser:
+
     def __init__(self):
         self.__attr_names = [name for name, _, _ in self._desc_]
         last_desc = self._desc_[0]
         for d in self._desc_:
-            if last_desc[1]<d[1]:
+            if last_desc[1] < d[1]:
                 last_desc = d
+
     def parse(self, buf, max_num):
         desc = self._desc_
         cmd_list = []
@@ -1153,15 +1491,15 @@ class BaseCommandParser:
             cmd.mlir_cmd = None
             for d in desc:
                 name, bit_begin, bit_len = d
-                byte_begin = bit_begin//8
-                byte_end = (bit_begin + bit_len+7)//8
-                bit_offset = bit_begin%8
-                byte_slice=buf[byte_begin:byte_end]
+                byte_begin = bit_begin // 8
+                byte_end = (bit_begin + bit_len + 7) // 8
+                bit_offset = bit_begin % 8
+                byte_slice = buf[byte_begin:byte_end]
                 total_val = 0
                 for v in byte_slice[::-1]:
-                    total_val = (total_val<<8 | v)
-                total_val = total_val>>bit_offset
-                total_val = (total_val & ((1<<bit_len)-1))
+                    total_val = (total_val << 8 | v)
+                total_val = total_val >> bit_offset
+                total_val = (total_val & ((1 << bit_len) - 1))
                 cmd.__dict__[name] = total_val
             cmd.type = self.__class__._type_func_(cmd)
             cmd.mem_records = self.__class__._mem_record_func_(cmd)
@@ -1184,6 +1522,7 @@ class BaseCommandParser:
 
     def command_byte_len(self):
         return self._byte_len_
+
 
 class GDMACommandParser(BaseCommandParser):
     _mem_record_func_ = get_gdma_mem_record
@@ -1242,6 +1581,7 @@ class GDMACommandParser(BaseCommandParser):
         ("SINGLE_STEP", 832 - 128, 1),
         ("DEBUG_MODE", 833 - 128, 1),
     ]
+
 
 class BDCommandParser(BaseCommandParser):
     _mem_record_func_ = get_bd_mem_record
@@ -1336,27 +1676,30 @@ class BDCommandParser(BaseCommandParser):
         ("RES1_ADDR", 960, 32),
         ("OPD3_ADDR", 992, 32),
     ]
+
     def parse(self, cmd_buf, max_num):
         new_buf = bytes()
         for i in range(max_num):
-            buf = cmd_buf[i*self._byte_len_: (i+1)*self._byte_len_]
+            buf = cmd_buf[i * self._byte_len_:(i + 1) * self._byte_len_]
             buf_len = self._byte_len_
-            reversed_buf = buf[buf_len-4: buf_len]
-            word_len = buf_len//4
-            for i in range(word_len-1):
-                reversed_buf += buf[(word_len-2-i)*4: (word_len-1-i)*4]
+            reversed_buf = buf[buf_len - 4:buf_len]
+            word_len = buf_len // 4
+            for i in range(word_len - 1):
+                reversed_buf += buf[(word_len - 2 - i) * 4:(word_len - 1 - i) * 4]
             new_buf += reversed_buf
         return super().parse(new_buf, max_num)
 
+
 def get_node_set_info(dyn_data):
     raw_id = dyn_data.id
-    engine = EngineType((raw_id>>48)&0xF)
-    gdma_cmd_id = (raw_id>>16) & 0x0FFFF
+    engine = EngineType((raw_id >> 48) & 0xF)
+    gdma_cmd_id = (raw_id >> 16) & 0x0FFFF
     bd_cmd_id = raw_id & 0x0FFFF
-    return EngineType((raw_id>>48)&0xF), gdma_cmd_id, bd_cmd_id
+    return EngineType((raw_id >> 48) & 0xF), gdma_cmd_id, bd_cmd_id
 
-def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func,
-                 bd_set_data, gdma_set_data, layer_id, layer_type):
+
+def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func, bd_set_data, gdma_set_data,
+                 layer_id, layer_type):
 
     func_types = ["global", "local", "gdma"]
     func_type = ""
@@ -1366,74 +1709,75 @@ def parse_raw_id(dyn_type, raw_id, begin_usec, end_usec, current_func,
 
     if dyn_type == DynRecordType.FUNC:
         group_id = (raw_id >> 48) & 0x0FFFF
-        base_func_type = func_types[(raw_id >>32) & 0x0FFFF]
+        base_func_type = func_types[(raw_id >> 32) & 0x0FFFF]
         info.append("group_id={}".format(group_id))
         info.append("func_type={}".format(base_func_type))
         type_value = raw_id & 0x0FFFF
         cast_type = FWLayerType if base_func_type != "gdma" else FWGDMAType
-        func_type = "gdma" if base_func_type == "gdma" else base_func_type+":"+layer_type
+        func_type = "gdma" if base_func_type == "gdma" else base_func_type + ":" + layer_type
         layer_type = enum_cast(type_value, cast_type).name
         height = 0.5
         if base_func_type != "gdma":
             info.append("layer_type={}".format(layer_type))
             height = 1
-        layer_id = group_id # use group_id as layer_id
+        layer_id = group_id  # use group_id as layer_id
     elif dyn_type == DynRecordType.NODE_SET:
-        engine = EngineType((raw_id>>48)&0xF)
-        state = "parallel" if bool((raw_id>>32) & 0x1) else "serial"
-        gdma_cmd_id = (raw_id>>16) & 0x0FFFF
+        engine = EngineType((raw_id >> 48) & 0xF)
+        state = "parallel" if bool((raw_id >> 32) & 0x1) else "serial"
+        gdma_cmd_id = (raw_id >> 16) & 0x0FFFF
         bd_cmd_id = raw_id & 0x0FFFF
         info.append("gdma_id={}".format(gdma_cmd_id))
         info.append("bd_id={}".format(bd_cmd_id))
         info.append(state)
-        version = (raw_id >> 60)&0xF
-        if current_func is not None and begin_usec>=current_func.begin_usec and end_usec <= current_func.end_usec:
+        version = (raw_id >> 60) & 0xF
+        if current_func is not None and begin_usec >= current_func.begin_usec and end_usec <= current_func.end_usec:
             layer_id = current_func.layer_id
             layer_type = current_func.layer_type
         if engine == EngineType.BD:
             if version > 0:
-                bd_func = enum_cast((raw_id>>36)&0xF, BDFuncType)
-                bd_op = enum_cast((raw_id>>40)&0x1F, BDEUType)
+                bd_func = enum_cast((raw_id >> 36) & 0xF, BDFuncType)
+                bd_op = enum_cast((raw_id >> 40) & 0x1F, BDEUType)
                 info.append(bd_func.name)
                 info.append(bd_op.name)
             bd_set_data.append([bd_cmd_id, begin_usec, layer_id, layer_type, bd_func])
         if engine == EngineType.GDMA:
             gdma_set_data.append([gdma_cmd_id, begin_usec, layer_id, layer_type])
             if version > 0:
-                gdma_dir = enum_cast(((raw_id>>36)&0x3), GDMADirection)
-                gdma_func = enum_cast(((raw_id>>40)&0x7), GDMAFuncType)
+                gdma_dir = enum_cast(((raw_id >> 36) & 0x3), GDMADirection)
+                gdma_func = enum_cast(((raw_id >> 40) & 0x7), GDMAFuncType)
                 info.append(gdma_func.name)
                 info.append(gdma_dir.name)
         func_type = "set_{}".format(engine.name)
         end_usec = begin_usec  # just mark time point
         begin_usec = begin_usec - 1
     elif dyn_type == DynRecordType.NODE_WAIT:
-        gdma_cmd_id = (raw_id>>16) & 0x0FFFF
+        gdma_cmd_id = (raw_id >> 16) & 0x0FFFF
         bd_cmd_id = raw_id & 0x0FFFF
         info.append("gdma_id={}".format(gdma_cmd_id))
         info.append("bd_id={}".format(bd_cmd_id))
         func_type = "wait"
     elif dyn_type == DynRecordType.CDMA:
-        cdma_type = (raw_id>>56)&0x1
+        cdma_type = (raw_id >> 56) & 0x1
         if cdma_type == 0:
             func_type = "CDMA:general_move"
-            info.append("len={}".format(raw_id&0x0FFFFFFFF))
+            info.append("len={}".format(raw_id & 0x0FFFFFFFF))
         elif cdma_type == 1:
             func_type = "CDMA:sort_move"
-            info.append("len={}".format(raw_id&0x0FFFFFFFF))
-            info.append("sort_cnt={}".format((raw_id>>32)&0x0FFFF))
-            info.append("order={}".format((raw_id>>50)&0x1))
-            info.append("auto_index={}".format((raw_id>>49)&0x1))
-            info.append("index_valid={}".format((raw_id>>48)&0x1))
+            info.append("len={}".format(raw_id & 0x0FFFFFFFF))
+            info.append("sort_cnt={}".format((raw_id >> 32) & 0x0FFFF))
+            info.append("order={}".format((raw_id >> 50) & 0x1))
+            info.append("auto_index={}".format((raw_id >> 49) & 0x1))
+            info.append("index_valid={}".format((raw_id >> 48) & 0x1))
     elif dyn_type == DynRecordType.GDE:
         func_type = "GDE:gather"
-        info.append("len={}".format(raw_id&0x0FFFFFFFF))
+        info.append("len={}".format(raw_id & 0x0FFFFFFFF))
     elif dyn_type == DynRecordType.CUSTOM:
         height = 0.5
         func_type = "CUSTOM"
-        info.append("data=%d[0x%x]"%(raw_id, raw_id))
+        info.append("data=%d[0x%x]" % (raw_id, raw_id))
 
     return func_type, height, layer_id, layer_type, info, bd_set_data, gdma_set_data
 
+
 def show_arch_info():
-    print("BM1684 bdc_freq={} gdma_freq={}".format(1/BDCyclePeriod, 1/GDMACyclePeriod))
+    print("BM1684 bdc_freq={} gdma_freq={}".format(1 / BDCyclePeriod, 1 / GDMACyclePeriod))

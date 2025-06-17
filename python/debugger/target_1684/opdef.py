@@ -49,12 +49,9 @@ class DmaCmd(BaseTpuCmd, Dma):
 
         op_name = self.sp_fun[self.reg["cmd_special_function"]]
 
-        return (
-            f"{', '.join(res_name)}, %D{cmd_id_desc} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %B{cmd_id_dep_desc})"
-            + attribute
-            + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
-        )
+        return (f"{', '.join(res_name)}, %D{cmd_id_desc} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %B{cmd_id_dep_desc})" + attribute +
+                f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)")
 
     @property
     def cmd_id_dep(self):
@@ -125,12 +122,9 @@ class TiuCmd(BaseTpuCmd, Tiu):
         else:
             op_name = op_info["tsk_eu_typ"][eu_type_id]
 
-        return (
-            f"{', '.join(res_name)}, %B{cmd_id_desc} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %D{cmd_id_dep_desc})"
-            + attribute
-            + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
-        )
+        return (f"{', '.join(res_name)}, %B{cmd_id_desc} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %D{cmd_id_dep_desc})" + attribute +
+                f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)")
 
     @property
     def cmd_id_dep(self):

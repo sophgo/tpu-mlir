@@ -37,10 +37,10 @@ def before_compare(actual, desire):
     desire = desire.astype(np.float32)
     if actual.size != desire.size:
         if actual.size > desire.size:
-            actual = actual.flatten()[: desire.size].reshape(desire.shape)
+            actual = actual.flatten()[:desire.size].reshape(desire.shape)
         else:
             new_actual = np.zeros_like(desire)
-            new_actual[: actual.size] = actual.flatten()
+            new_actual[:actual.size] = actual.flatten()
             actual = new_actual
     return actual, desire
 
@@ -83,13 +83,9 @@ class MlirDebugger:
 
     def invoke_at(self, name: str, input_data_dict: Dict[str, np.ndarray]) -> dict:
         op = self.parser.get_op_by_op_name(name)
-        missing = [
-            i for i in op.opds if i not in input_data_dict and i not in self.weights
-        ]
+        missing = [i for i in op.opds if i not in input_data_dict and i not in self.weights]
         if len(missing) > 0:
-            raise ValueError(
-                f"Lacking of value of key {missing} of op {pformat(op.__dict__)}"
-            )
+            raise ValueError(f"Lacking of value of key {missing} of op {pformat(op.__dict__)}")
 
         for k in op.opds:
             if k not in input_data_dict:
@@ -197,9 +193,7 @@ class MlirDebugger:
                 for opt in opt_names:
                     op = self.parser.get_op_by_op_name(opt)
                     missing = [
-                        pre
-                        for pre in self.parser.get_pre_op_by_op_name(opt)
-                        if pre not in memo
+                        pre for pre in self.parser.get_pre_op_by_op_name(opt) if pre not in memo
                     ]
 
                     if any(missing):
@@ -212,9 +206,7 @@ class MlirDebugger:
                         if pre not in feed_dict:
                             raise KeyError(f"Missing {pre} in feed_dict or op_names")
                         memo[pre] = feed_dict[pre]
-                        print(
-                            f"[warn] taken {pre} from feed_dict for {opt}({op.type}) operation"
-                        )
+                        print(f"[warn] taken {pre} from feed_dict for {opt}({op.type}) operation")
 
                     if force_correct:
                         for pre in self.parser.get_pre_op_by_op_name(opt):
@@ -224,9 +216,8 @@ class MlirDebugger:
                                     print(
                                         f"inplace because shape not equal memo {memo[pre].shape} but ref {reference[pre].shape}"
                                     )
-                                    memo[pre].flatten()[: reference[pre].size] = (
-                                        reference[pre].flatten()
-                                    )
+                                    memo[pre].flatten()[:reference[pre].size] = (
+                                        reference[pre].flatten())
                                 else:
                                     memo[pre] = reference[pre]
 
@@ -238,12 +229,11 @@ class MlirDebugger:
                     )  # update output_keyset, when len(output_keyset) == 0, all required output_name are calculated.
 
                     op_input = {k: memo[k] for k in op.opds if k in memo}
-                    op_input_weight = {
-                        k: self.weights[k] for k in op.opds if k in self.weights
-                    }
+                    op_input_weight = {k: self.weights[k] for k in op.opds if k in self.weights}
                     op_input_shape = {k: memo[k].shape for k in op.opds if k in memo}
                     op_input_weight_shape = {
-                        k: self.weights[k].shape for k in op.opds if k in self.weights
+                        k: self.weights[k].shape
+                        for k in op.opds if k in self.weights
                     }
 
                     if opt in reference and opt not in excepts:
@@ -261,20 +251,28 @@ class MlirDebugger:
                             succeed_type_counter[op.type] += 1
                         else:
                             failed_type_counter[op.type] += 1
-                            failed.setdefault(op.type, []).append(
-                                {
-                                    "op": op,
-                                    "name": op.name,
-                                    "compare_score": meta,
-                                    "input": op_input,
-                                    "input_shape": op_input_shape,
-                                    "input_weight": op_input_weight,
-                                    "input_weight_shape": op_input_weight_shape,
-                                    "output": res[opt],
-                                    "output_shape": res[opt].shape,
-                                    "reference_output": reference[opt],
-                                }
-                            )
+                            failed.setdefault(op.type, []).append({
+                                "op":
+                                op,
+                                "name":
+                                op.name,
+                                "compare_score":
+                                meta,
+                                "input":
+                                op_input,
+                                "input_shape":
+                                op_input_shape,
+                                "input_weight":
+                                op_input_weight,
+                                "input_weight_shape":
+                                op_input_weight_shape,
+                                "output":
+                                res[opt],
+                                "output_shape":
+                                res[opt].shape,
+                                "reference_output":
+                                reference[opt],
+                            })
 
                             print(failed_type_counter)
                             if fast_fail:

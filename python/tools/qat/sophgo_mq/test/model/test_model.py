@@ -10,17 +10,23 @@ from ..version import GITHUB_RES
 
 
 class TestQuantizeModel(unittest.TestCase):
+
     def test_model_ppl(self):
-        test_model_list = ['alexnet', 'deeplabv3_resnet50', 'densenet121', 'fcn_resnet50', 'mnasnet0_5',
-                           'mobilenet_v2', 'resnet18', 'resnext50_32x4d', 'shufflenet_v2_x0_5', 'squeezenet1_0',
-                           'vgg11', 'vgg11_bn', 'wide_resnet50_2', 'regnet_x_400mf']
+        test_model_list = [
+            'alexnet', 'deeplabv3_resnet50', 'densenet121', 'fcn_resnet50', 'mnasnet0_5',
+            'mobilenet_v2', 'resnet18', 'resnext50_32x4d', 'shufflenet_v2_x0_5', 'squeezenet1_0',
+            'vgg11', 'vgg11_bn', 'wide_resnet50_2', 'regnet_x_400mf'
+        ]
         entrypoints = torch.hub.list(GITHUB_RES, force_reload=False)
         for entrypoint in entrypoints:
             if entrypoint not in test_model_list:
                 continue
             logger.info(f'testing {entrypoint}')
             if 'deeplab' in entrypoint or 'fcn' in entrypoint:
-                model_to_quantize = torch.hub.load(GITHUB_RES, entrypoint, pretrained=False, pretrained_backbone=False)
+                model_to_quantize = torch.hub.load(GITHUB_RES,
+                                                   entrypoint,
+                                                   pretrained=False,
+                                                   pretrained_backbone=False)
             else:
                 model_to_quantize = torch.hub.load(GITHUB_RES, entrypoint, pretrained=False)
             dummy_input = torch.randn(2, 3, 224, 224, device='cpu')
@@ -36,4 +42,6 @@ class TestQuantizeModel(unittest.TestCase):
                 loss = output['out'].sum()
             loss.backward()
             model_prepared.eval()
-            convert_deploy(model_prepared, BackendType.PPLW8A16, {'x': [1, 3, 224, 224]}, model_name='{}.onnx'.format(entrypoint))
+            convert_deploy(model_prepared,
+                           BackendType.PPLW8A16, {'x': [1, 3, 224, 224]},
+                           model_name='{}.onnx'.format(entrypoint))

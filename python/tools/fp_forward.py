@@ -7,7 +7,7 @@
 # third-party components.
 #
 # ==============================================================================
-import  pymlir
+import pymlir
 import argparse
 from utils.fp_layer_search import FpLayerSearcher
 from utils.log_setting import setup_logger

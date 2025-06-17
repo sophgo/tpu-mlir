@@ -44,14 +44,14 @@ def BModel2Hash(bmodel_file):
 
 
 class CacheTool:
+
     def __init__(self, cache_skip: bool) -> None:
         self.fn = os.path.join(os.getcwd(), "build_flag.json")
         self.cache = self.read_json(self.fn)
         self.cache_skip = cache_skip or os.environ.get("CACHE_SKIP", "False") == "True"
         if cache_skip:
             logger.info(
-                "open cache_skip mode, validation will skipped when hash comparison succeed."
-            )
+                "open cache_skip mode, validation will skipped when hash comparison succeed.")
 
     def mark_top_success(self):
         self["top_validate"] = True
@@ -73,14 +73,9 @@ class CacheTool:
     def do_top_validate(self, top_mlir, top_output, sim, debug=False):
         new_hash = self.hash_file(top_mlir)
 
-        if (
-            self["top_mlir_debug"] == debug
-            and self["top_mlir"] == new_hash
-            and not self.sim_more_strict(self["top_sim"], sim)
-            and self["top_validate"]
-            and os.path.exists(top_output)
-            and self.cache_skip
-        ):
+        if (self["top_mlir_debug"] == debug and self["top_mlir"] == new_hash
+                and not self.sim_more_strict(self["top_sim"], sim) and self["top_validate"]
+                and os.path.exists(top_output) and self.cache_skip):
             self["top_sim"] = sim  # always update last used similarity
             logger.info("cached skip top validatation.")
             return False
@@ -91,14 +86,10 @@ class CacheTool:
 
     def do_tpu_validate(self, tpu_mlir, tpu_output, sim, debug=False):
         new_hash = self.hash_file(tpu_mlir)
-        if (
-            self["tpu_mlir_debug"] == debug
-            and self["tpu_mlir"] == new_hash
-            and not self.sim_more_strict(self["tpu_sim"], sim)
-            and self["tpu_validate"]
-            # and os.path.exists(tpu_output)
-            and self.cache_skip
-        ):
+        if (self["tpu_mlir_debug"] == debug and self["tpu_mlir"] == new_hash
+                and not self.sim_more_strict(self["tpu_sim"], sim) and self["tpu_validate"]
+                # and os.path.exists(tpu_output)
+                and self.cache_skip):
             self["tpu_sim"] = sim  # always update last used similarity
             logger.info("cached skip tpu validatation.")
             return False
@@ -112,12 +103,9 @@ class CacheTool:
 
         new_hash = BModel2Hash(bmodel)
 
-        if (
-            self["model_mlir"] == new_hash
-            and self["model_validate"]
-            # and os.path.exists(model_output)
-            and self.cache_skip
-        ):
+        if (self["model_mlir"] == new_hash and self["model_validate"]
+                # and os.path.exists(model_output)
+                and self.cache_skip):
             logger.info("cached skip model validatation.")
             return False
 
@@ -167,6 +155,7 @@ history_commands = []
 
 
 class CommandRecorder:
+
     def __init__(self, cache_fn, read=False):
         if read and not os.path.exists(cache_fn):
             raise FileNotFoundError(f"cache file {cache_fn} not found")
@@ -221,7 +210,7 @@ class CommandRecorder:
                         "path": rel_path,
                         "last_modify": os.path.getmtime(modify_file),
                     }
-                    
+
                 else:
                     ret[name] = {
                         "path": rel_path,
@@ -242,7 +231,7 @@ class CommandRecorder:
             ref_dir = os.path.dirname(file_path)
             for file_name, file_info in load_from._dic.get("files", {}).items():
                 self.add_file(**{file_name: os.path.join(ref_dir, file_info["path"])})
-                
+
             for k, v in load_from._dic.items():
                 if k == "files":
                     continue

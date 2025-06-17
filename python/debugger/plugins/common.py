@@ -286,21 +286,17 @@ class FinalMlirIndexPlugin(TdbPlugin):
 
     def get_mlir_by_point(self, point=None) -> Optional[str]:
         """NOTE: file-line in tensor_location.json starts from 1"""
-        file_line = self.tdb.index_df.loc[
-            self.tdb.index_df["executed_id"] == point + 1, "line-num"
-        ].item()
+        file_line = self.tdb.index_df.loc[self.tdb.index_df["executed_id"] == point + 1,
+                                          "line-num"].item()
 
         file_line = int(file_line)
 
         return self.final_mlir.lines[file_line - 1]
 
-    def get_mlir_context_by_point(
-        self, point=None, pre=2, next=2
-    ) -> Optional[List[str]]:
-        file_line = self.tdb.index_df.loc[
-            self.tdb.index_df["executed_id"] == point + 1, "line-num"
-        ].item()
-        return self.final_mlir.lines[max(0, file_line - 1 - pre) : file_line - 1 + next]
+    def get_mlir_context_by_point(self, point=None, pre=2, next=2) -> Optional[List[str]]:
+        file_line = self.tdb.index_df.loc[self.tdb.index_df["executed_id"] == point + 1,
+                                          "line-num"].item()
+        return self.final_mlir.lines[max(0, file_line - 1 - pre):file_line - 1 + next]
 
     def get_locindex_by_atomic(self, point=None) -> Optional[int]:
         """
@@ -310,9 +306,8 @@ class FinalMlirIndexPlugin(TdbPlugin):
         if point is None:
             point = self.tdb.cmd_point
 
-        loc_index = self.tdb.index_df.loc[
-            self.tdb.index_df["executed_id"] == point + 1, "loc_index"
-        ].item()
+        loc_index = self.tdb.index_df.loc[self.tdb.index_df["executed_id"] == point + 1,
+                                          "loc_index"].item()
 
         if np.isnan(loc_index):
             return None
@@ -324,13 +319,11 @@ class FinalMlirIndexPlugin(TdbPlugin):
             return None
         return self.final_mlir.loc[loc_index]
 
-    def get_loc_context_by_point(
-        self, point=None, pre=2, next=2
-    ) -> Optional[List[CMD]]:
+    def get_loc_context_by_point(self, point=None, pre=2, next=2) -> Optional[List[CMD]]:
         loc_index = self.get_locindex_by_atomic(point)
         if loc_index is None:
             return None
-        return self.final_mlir.loc[max(0, loc_index - pre) : loc_index + next]
+        return self.final_mlir.loc[max(0, loc_index - pre):loc_index + next]
 
 
 class DisplayPlugin(TdbPlugin, TdbPluginCmd):
@@ -403,9 +396,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                 if cmd.operands[index].is_scalar:
                     data = cmd.operands[index].data
                 else:
-                    data = self.tdb.memory.get_data(
-                        cmd.operands[index].to_ref(core_id=cmd.core_id)
-                    )
+                    data = self.tdb.memory.get_data(cmd.operands[index].to_ref(core_id=cmd.core_id))
             else:
                 self.tdb.error("")
                 return
@@ -449,9 +440,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                         self.tdb.error(f"not a valid stride: {new}")
 
                     try:
-                        data = self.tdb.memory.get_data(
-                            value.to_ref(core_id=cmd.core_id)
-                        )
+                        data = self.tdb.memory.get_data(value.to_ref(core_id=cmd.core_id))
                     finally:
                         value.stride = ori
 
@@ -542,7 +531,8 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                 if watchpoint.value.is_scalar:
                     data = watchpoint.value.data
                 else:
-                    data = self.tdb.memory.get_data(ValueRef(watchpoint.value, core_id=watchpoint.core_id))
+                    data = self.tdb.memory.get_data(
+                        ValueRef(watchpoint.value, core_id=watchpoint.core_id))
             else:
                 self.tdb.error("")
                 return
@@ -561,29 +551,23 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                 for i, result in enumerate(cmd.operands):
                     if not result.is_scalar:
                         if args == "range":
-                            ipt = (
-                                np.arange(
-                                    np.prod(result.shape), dtype=np.float32
-                                ).reshape(result.shape)
-                                / 100
-                            )
+                            ipt = (np.arange(np.prod(result.shape), dtype=np.float32).reshape(
+                                result.shape) / 100)
 
                             ipt -= ipt.mean()
                             ipt = ipt.astype(dtype=result.np_dtype)
                             self.tdb.message("load range")
                         elif args == "range_head":
-                            ipt = np.zeros(
-                                np.prod(result.shape), dtype=np.float32
-                            ).reshape(result.shape)
+                            ipt = np.zeros(np.prod(result.shape),
+                                           dtype=np.float32).reshape(result.shape)
                             index = np.arange(np.prod(ipt.shape[:-1])).reshape(-1, 1)
                             ipt.reshape(-1, ipt.shape[-1])[:] += index
                             ipt = ipt.astype(dtype=result.np_dtype)
 
                             self.tdb.message(f"load index range")
                         else:
-                            ipt = np.ones(
-                                np.prod(result.shape), dtype=result.np_dtype
-                            ).reshape(result.shape)
+                            ipt = np.ones(np.prod(result.shape),
+                                          dtype=result.np_dtype).reshape(result.shape)
                             self.tdb.message("load all 1")
                         self.tdb.memory.set_data(ValueRef(result), ipt)
             else:
@@ -636,7 +620,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
         total_len = len(str(len(self.tdb.cmditer)))
         current_index = str(self.tdb.cmd_point)
         current_len = len(current_index)
-        prefix="" if total_len - current_len ==0 else "0"*(total_len - current_len)
+        prefix = "" if total_len - current_len == 0 else "0" * (total_len - current_len)
         if self.tdb.context.using_cmodel:
             filename = f"info_dump_{prefix+current_index}_{cmd.cmd_type.name}_{cmd.cmd_id}_cmodel.npz"
         else:
@@ -695,20 +679,18 @@ class ProgressPlugin(TdbPlugin):
 
     def after_load(self, tdb: TdbCmdBackend):
         columns: List["ProgressColumn"] = []
-        columns.extend(
-            (
-                TextColumn("{task.description}"),
-                BarColumn(
-                    style="bar.back",
-                    complete_style="bar.complete",
-                    finished_style="bar.finished",
-                    pulse_style="bar.pulse",
-                ),
-                TaskProgressColumn(show_speed=True),
-                TimeRemainingColumn(elapsed_when_finished=True),
-                TimeElapsedColumn(),
-            )
-        )
+        columns.extend((
+            TextColumn("{task.description}"),
+            BarColumn(
+                style="bar.back",
+                complete_style="bar.complete",
+                finished_style="bar.finished",
+                pulse_style="bar.pulse",
+            ),
+            TaskProgressColumn(show_speed=True),
+            TimeRemainingColumn(elapsed_when_finished=True),
+            TimeElapsedColumn(),
+        ))
 
         progress = Progressbar(
             *columns,
@@ -784,7 +766,7 @@ class PredictTime(TdbPlugin):
 
     def after_load(self, tdb: TdbCmdBackend):
         total_cmd = len(tdb.cmditer)
-        self.tdb.message(f"total cmd: {total_cmd}, may finished in {total_cmd / 180:.2f}~{total_cmd / 70:.2f}s")
+        self.tdb.message(
+            f"total cmd: {total_cmd}, may finished in {total_cmd / 180:.2f}~{total_cmd / 70:.2f}s")
 
         return super().after_load(tdb)
-

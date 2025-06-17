@@ -5,7 +5,9 @@ from torch.quantization.fake_quantize import _is_per_channel, _is_per_tensor
 
 from sophgo_mq.utils import is_symmetric_quant
 
-_version_under_1100 = (int(torch.__version__.split('.')[1]) < 10) and (int(torch.__version__.split('.')[0]) == 1)
+_version_under_1100 = (int(torch.__version__.split('.')[1]) < 10) and (int(
+    torch.__version__.split('.')[0]) == 1)
+
 
 class QuantizeBase(FakeQuantizeBase):
     r""" This is an extension of the FakeQuantize module in fake_quantize.py, which
@@ -15,6 +17,7 @@ class QuantizeBase(FakeQuantizeBase):
     In addition to the attributes in the original FakeQuantize module, the _LearnableFakeQuantize
     module also includes the following attributes to support quantization parameter learning.
     """
+
     def __init__(self, observer=MovingAverageMinMaxObserver, **observer_kwargs):
         super().__init__()
         self.only_enable_observer = False
@@ -39,8 +42,8 @@ class QuantizeBase(FakeQuantizeBase):
         bitrange = torch.tensor(self.quant_max - self.quant_min + 1).double()
         self.bitwidth = int(torch.log2(bitrange).item())
         self.is_symmetric_quant = is_symmetric_quant(self.qscheme)
-    
-    def enable_only_observer(self, enable = True):
+
+    def enable_only_observer(self, enable=True):
         self.only_enable_observer = enable
         self.run_fquant_time = 1
 

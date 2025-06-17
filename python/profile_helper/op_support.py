@@ -19,18 +19,20 @@ __all__ = ["InsBase", "TIUBase", "DMABase", "NamedDict", "MType", "DType", "Scal
 # utility function
 
 # cache for convert binary to unsigned integer.
-_TABLE = 2 ** np.arange(64, dtype=np.uint64)
+_TABLE = 2**np.arange(64, dtype=np.uint64)
 
 
 def packbits(arr):
-    return int(arr.dot(_TABLE[: arr.size]))
+    return int(arr.dot(_TABLE[:arr.size]))
 
 
 def DIV_UP(x, a):
-    return (x+a-1)//a
+    return (x + a - 1) // a
+
 
 def ALIGN(x, a):
-    return DIV_UP(x,a) * a
+    return DIV_UP(x, a) * a
+
 
 # ------------------------------------------------------------
 class InsBase:
@@ -64,9 +66,7 @@ class InsBase:
     def __set_cache(self):
         self._cache = {
             k: v
-            for k, v in zip(
-                ("results", "attribute", "operands"), self._set_op(self.reg)
-            )
+            for k, v in zip(("results", "attribute", "operands"), self._set_op(self.reg))
         }
 
     @classmethod
@@ -77,7 +77,7 @@ class InsBase:
     def decode(cls, cmd_bits):
         cls = cls()
         cls._cache = {}
-        cls.cmd = cmd_bits[: cls.length]
+        cls.cmd = cmd_bits[:cls.length]
         cls._cache = {}
         cls._decode()
         return cls
@@ -155,6 +155,8 @@ class DType(IntEnum):
 
     def is_int(self):
         return not self.is_float()
+
+
 class ExtEnum:
     """
     Add additional information to Enumerate.
@@ -320,6 +322,7 @@ class MemRef:
 
 
 class Scalar:
+
     def __init__(self, value, dtype: DType):
         data = np.uint32([value])
         self.dtype = dtype
@@ -336,6 +339,7 @@ class Scalar:
 
 
 class NamedDict(OrderedDict):
+
     def __init__(self, _dict):
         super().__init__()
         super().update(_dict)

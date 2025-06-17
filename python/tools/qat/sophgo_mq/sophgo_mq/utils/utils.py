@@ -36,10 +36,9 @@ def pot_quantization(tensor: torch.Tensor, mode='round'):
     if mode == 'round':
         log2t = (torch.round(log2t) - log2t).detach() + log2t
     else:
-        assert mode == 'floor' 
+        assert mode == 'floor'
         log2t = (torch.floor(log2t) - log2t).detach() + log2t
-    return 2 ** log2t
-
+    return 2**log2t
 
 
 def is_symmetric_quant(qscheme: 'torch.qscheme') -> bool:
@@ -47,6 +46,7 @@ def is_symmetric_quant(qscheme: 'torch.qscheme') -> bool:
 
 
 class no_jit_trace:
+
     def __enter__(self):
         # pylint: disable=protected-access
         self.state = torch._C._get_tracing_state()
@@ -95,6 +95,7 @@ def deepcopy_mixedmodule(mm: Module, module_list: list):
 
 
 def getitem2node(model: GraphModule) -> dict:
+
     def _update_getitem_path(getitem_args_dict):
         for node in getitem_args_dict:
             args_list = getitem_args_dict[node]
@@ -110,12 +111,13 @@ def getitem2node(model: GraphModule) -> dict:
                 ret = ret[a]
             except (IndexError, KeyError):
                 return {}
-        return ret 
+        return ret
+
     import operator
     nodes = list(model.graph.nodes)
     # the getitem's call graph
     getitem_args_dict = {}
-    # the dict used in the model 
+    # the dict used in the model
     original_key_dict = {}
     getitem2node = {}
     for node in nodes:
@@ -138,7 +140,6 @@ def getitem2node(model: GraphModule) -> dict:
                 original_key_dict[node.args[0]].update(original_key_dict[node.args[1]])
             else:
                 raise ValueError('Wrong type for update')
-
 
     return getitem2node
 
@@ -175,8 +176,9 @@ def _fix_succ_recursivly(args, target_node, inserted_node):
 def topology_order(model):
     node2idx = {}
     for idx, node in enumerate(model.graph.nodes):
-        node2idx[node] = idx 
+        node2idx[node] = idx
     return node2idx
+
 
 def get_flattened_qconfig_dict(qconfig_dict):
     """ flatten the global, object_type and module_name qconfig

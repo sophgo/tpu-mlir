@@ -1,5 +1,5 @@
-#------------------------------------------------------------------------------ 
-# Copyright (c) 2023, Intel Corporation - All rights reserved. 
+#------------------------------------------------------------------------------
+# Copyright (c) 2023, Intel Corporation - All rights reserved.
 # This file is part of FP8-Emulation-Toolkit
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -18,7 +18,6 @@ from enum import Enum
 from torch.onnx import symbolic_helper
 
 torch.manual_seed(42)
-
 """
     NONE
     E5M2_RTZ
@@ -41,27 +40,41 @@ torch.manual_seed(42)
     E4M3_STOCHASTIC
 """
 
+
 class FPEmuOp_cpp_per_tensor(Function):
+
     @staticmethod
-    def forward(ctx, input, mode='NONE', inplace=False, scale=torch.tensor([1.0]), zero_point=torch.tensor([0.0]), quant_min=float(1.5258789E-05), quant_max=float(57344.0), blocknorm=False, blocksize=1):
+    def forward(ctx,
+                input,
+                mode='NONE',
+                inplace=False,
+                scale=torch.tensor([1.0]),
+                zero_point=torch.tensor([0.0]),
+                quant_min=float(1.5258789E-05),
+                quant_max=float(57344.0),
+                blocknorm=False,
+                blocksize=1):
         scale = float(scale.item())
-        if mode == 'NONE' :
+        if mode == 'NONE':
             ctx.mark_dirty(input)
             return input
-        else :
-            if input.is_sparse :
+        else:
+            if input.is_sparse:
                 input = input.coalesce()
                 size = input.values().nelement()
                 if inplace == True:
-                    outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace, scale, blocknorm, blocksize)
+                    outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace,
+                                                scale, blocknorm, blocksize)
                     output = input
-                else :
-                    outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace, scale, blocknorm, blocksize) 
+                else:
+                    outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace,
+                                                scale, blocknorm, blocksize)
                     output = torch.sparse.FloatTensor(input.indices(), outputs[0], input.size())
-            else :
+            else:
                 input = input.cpu()
                 size = input.nelement()
-                outputs = fpemu_cpp.forward(input.contiguous(), mode, size, inplace, scale, blocknorm, blocksize)
+                outputs = fpemu_cpp.forward(input.contiguous(), mode, size, inplace, scale,
+                                            blocknorm, blocksize)
                 output = outputs[0]
 
             if inplace == True:
@@ -75,8 +88,22 @@ class FPEmuOp_cpp_per_tensor(Function):
         return output_grad, None, None, None, None
 
     @staticmethod
-    def symbolic(g, input, mode='NONE', inplace=False, scale=torch.tensor([1.0]), zero_point=torch.tensor([0.0]), quant_min=float(1.5258789E-05), quant_max=float(57344.0), blocknorm=False, blocksize=1):
-        output = g.op("Sophgo_custom::FPEmuOp_per_tensor", input, scale, zero_point, quant_min_f=quant_min, quant_max_f=quant_max)
+    def symbolic(g,
+                 input,
+                 mode='NONE',
+                 inplace=False,
+                 scale=torch.tensor([1.0]),
+                 zero_point=torch.tensor([0.0]),
+                 quant_min=float(1.5258789E-05),
+                 quant_max=float(57344.0),
+                 blocknorm=False,
+                 blocksize=1):
+        output = g.op("Sophgo_custom::FPEmuOp_per_tensor",
+                      input,
+                      scale,
+                      zero_point,
+                      quant_min_f=quant_min,
+                      quant_max_f=quant_max)
 
         input_shape = symbolic_helper._get_tensor_sizes(input)
         if input_shape is not None and hasattr(input.type(), 'with_sizes'):
@@ -85,38 +112,53 @@ class FPEmuOp_cpp_per_tensor(Function):
 
         return output
 
+
 def get_flt_max(mode):
     if mode.lower() == "e5m2":
-        return float(57344.0) 
+        return float(57344.0)
     elif mode.lower() == "e4m3":
         return float(448.0)
 
+
 def get_flt_min(mode):
-    if mode.lower() =="e5m2":
-        return float(1.5258789E-05) # Min Subnormal
+    if mode.lower() == "e5m2":
+        return float(1.5258789E-05)  # Min Subnormal
     elif mode.lower() == "e4m3":
         return float(1.9531250E-03)
 
-def _forward_per_channel(ctx, input, mode='NONE', inplace=False, scale=torch.tensor([1.0]), zero_point=torch.tensor([0.0]), quant_min=float(1.5258789E-05), quant_max=float(57344.0), blocknorm=False, blocksize=1):
+
+def _forward_per_channel(ctx,
+                         input,
+                         mode='NONE',
+                         inplace=False,
+                         scale=torch.tensor([1.0]),
+                         zero_point=torch.tensor([0.0]),
+                         quant_min=float(1.5258789E-05),
+                         quant_max=float(57344.0),
+                         blocknorm=False,
+                         blocksize=1):
 
     scale = float(scale.item())
-    if mode == 'NONE' :
+    if mode == 'NONE':
         ctx.mark_dirty(input)
         return input
-    else :
-        if input.is_sparse :
+    else:
+        if input.is_sparse:
             input = input.coalesce()
             size = input.values().nelement()
             if inplace == True:
-                outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace, scale, blocknorm, blocksize)
+                outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace,
+                                            scale, blocknorm, blocksize)
                 output = input
-            else :
-                outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace, scale, blocknorm, blocksize) 
+            else:
+                outputs = fpemu_cpp.forward(input._values().contiguous(), mode, size, inplace,
+                                            scale, blocknorm, blocksize)
                 output = torch.sparse.FloatTensor(input.indices(), outputs[0], input.size())
-        else :
+        else:
             input = input.cpu()
             size = input.nelement()
-            outputs = fpemu_cpp.forward(input.contiguous(), mode, size, inplace, scale, blocknorm, blocksize)
+            outputs = fpemu_cpp.forward(input.contiguous(), mode, size, inplace, scale, blocknorm,
+                                        blocksize)
             output = outputs[0]
 
         if inplace == True:
@@ -128,7 +170,16 @@ def _forward_per_channel(ctx, input, mode='NONE', inplace=False, scale=torch.ten
 class FPEmuOp_cpp_per_channel(Function):
 
     @staticmethod
-    def forward(ctx, X, mode='NONE', inplace=False, scale=torch.tensor([1.0]), zero_point=torch.tensor([0.0]), quant_min=float(1.5258789E-05), quant_max=float(57344.0), blocknorm=False, blocksize=1):
+    def forward(ctx,
+                X,
+                mode='NONE',
+                inplace=False,
+                scale=torch.tensor([1.0]),
+                zero_point=torch.tensor([0.0]),
+                quant_min=float(1.5258789E-05),
+                quant_max=float(57344.0),
+                blocknorm=False,
+                blocksize=1):
         tensor_q = torch.zeros_like(X)
         work_mode = "E5M2_RNE"
         scaling_method = "mean"
@@ -140,7 +191,7 @@ class FPEmuOp_cpp_per_channel(Function):
                 mean = torch.mean(abs(torch.flatten(X.detach())))
                 mean = abs(mean) if abs(mean) > 1e-5 else get_flt_min("e5m2")
                 if abs(mean) > 0.0:
-                        _scale = get_flt_min("e5m2") / abs(mean)
+                    _scale = get_flt_min("e5m2") / abs(mean)
             elif scaling_method.lower() == "max":
                 vmax = torch.max(abs(torch.flatten(X.detach())))
                 _scale = vmax / get_flt_max("e5m2")
@@ -148,7 +199,14 @@ class FPEmuOp_cpp_per_channel(Function):
             else:
                 _scale = torch.tensor(1.0)
             # self.scale.copy_(_scale)
-            sub_tensor = _forward_per_channel(ctx, sub_tensor, mode=work_mode, inplace=False, scale=torch.tensor([1.0]), zero_point=torch.tensor([0.0]), quant_min=quant_min, quant_max=quant_max)
+            sub_tensor = _forward_per_channel(ctx,
+                                              sub_tensor,
+                                              mode=work_mode,
+                                              inplace=False,
+                                              scale=torch.tensor([1.0]),
+                                              zero_point=torch.tensor([0.0]),
+                                              quant_min=quant_min,
+                                              quant_max=quant_max)
             tensor_q.select(1, c).data.copy_(sub_tensor)
 
         return tensor_q
@@ -159,8 +217,22 @@ class FPEmuOp_cpp_per_channel(Function):
         return output_grad, None, None, None, None
 
     @staticmethod
-    def symbolic(g, input, mode='NONE', inplace=False, scale=torch.tensor([1.0]), zero_point=torch.tensor([0.0]), quant_min=float(1.5258789E-05), quant_max=float(57344.0), blocknorm=False, blocksize=1):
-        output = g.op("Sophgo_custom::FPEmuOp_per_channel", input, scale, zero_point, quant_min_f=quant_min, quant_max_f=quant_max)
+    def symbolic(g,
+                 input,
+                 mode='NONE',
+                 inplace=False,
+                 scale=torch.tensor([1.0]),
+                 zero_point=torch.tensor([0.0]),
+                 quant_min=float(1.5258789E-05),
+                 quant_max=float(57344.0),
+                 blocknorm=False,
+                 blocksize=1):
+        output = g.op("Sophgo_custom::FPEmuOp_per_channel",
+                      input,
+                      scale,
+                      zero_point,
+                      quant_min_f=quant_min,
+                      quant_max_f=quant_max)
 
         input_shape = symbolic_helper._get_tensor_sizes(input)
         if input_shape is not None and hasattr(input.type(), 'with_sizes'):

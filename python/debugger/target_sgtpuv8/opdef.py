@@ -47,9 +47,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         core_id=0,
     ) -> None:
         assert param_fn is not None
-        super().__init__(
-            reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn
-        )
+        super().__init__(reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn)
         self.eu_name = tiu_cls[reg.OP_NAME]["tsk_eu_typ"][reg.tsk_eu_typ]
         self.cmd_id = cmd_id
         # cmd_id_dep of SYS_TR_ACC_reg will be assigned in merge_instruction
@@ -93,16 +91,10 @@ class TiuCmd(BaseTpuCmd, Tiu):
                 attribute = f" {tmp_attr}".replace(":", " =").replace("'", "")
                 if "msg_id" in tmp_attr:
                     msg_id = tmp_attr.pop("msg_id")
-                    return (
-                        f'%B{self.cmd_id}C{ci} = "{self.op_name}"'
-                        + f"(%D{self.cmd_id_dep}C{ci}, %msg{msg_id})"
-                        + attribute
-                    )
-                return (
-                    f'%B{self.cmd_id}C{ci} = "{self.op_name}"'
-                    + f"(%D{self.cmd_id_dep}C{ci})"
-                    + attribute
-                )
+                    return (f'%B{self.cmd_id}C{ci} = "{self.op_name}"' +
+                            f"(%D{self.cmd_id_dep}C{ci}, %msg{msg_id})" + attribute)
+                return (f'%B{self.cmd_id}C{ci} = "{self.op_name}"' + f"(%D{self.cmd_id_dep}C{ci})" +
+                        attribute)
             else:
                 return self.description
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
@@ -116,12 +108,9 @@ class TiuCmd(BaseTpuCmd, Tiu):
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
 
-        return (
-            f"{', '.join(res_name)}, %B{self.cmd_id}C{ci} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep}C{ci})"
-            + attribute
-            + f": ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
-        )
+        return (f"{', '.join(res_name)}, %B{self.cmd_id}C{ci} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %D{self.cmd_id_dep}C{ci})" + attribute +
+                f": ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)")
 
     def get_op_info(self) -> list:
         op_info_list = []
@@ -162,9 +151,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         core_id=0,
     ) -> None:
         assert param_fn is not None
-        super().__init__(
-            reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn
-        )
+        super().__init__(reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn)
         self.cmd_id = cmd_id
         # lazy assigned in merge_instruction
         self.cmd_id_dep = fix_cmd_id_dep(reg.cmd_id_dep)
@@ -189,11 +176,8 @@ class DmaCmd(BaseTpuCmd, Dma):
                 tmp_attr = self.attribute.copy()
                 msg_id = tmp_attr.pop("msg_id")
                 attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
-                return (
-                    f'%D{self.cmd_id}C{ci} = "{self.op_name}"'
-                    + f"(%B{self.cmd_id_dep}C{ci}, %msg{msg_id})"
-                    + attribute
-                )
+                return (f'%D{self.cmd_id}C{ci} = "{self.op_name}"' +
+                        f"(%B{self.cmd_id_dep}C{ci}, %msg{msg_id})" + attribute)
             else:
                 return self.description
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
@@ -208,12 +192,9 @@ class DmaCmd(BaseTpuCmd, Dma):
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
 
-        return (
-            f"{', '.join(res_name)}, %D{self.cmd_id}C{ci} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep}C{ci})"
-            + attribute
-            + f": ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
-        )
+        return (f"{', '.join(res_name)}, %D{self.cmd_id}C{ci} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %B{self.cmd_id_dep}C{ci})" + attribute +
+                f": ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)")
 
     @property
     def op_name(self):
@@ -482,7 +463,7 @@ class rqdq_op(TiuCmd):
     description = "RQ && DQ"
 
     def _set_op(self, reg):
-        return ([],) * 3
+        return ([], ) * 3
 
     def ops(self, is_arch):
         return 0
@@ -629,7 +610,7 @@ class tiu_sys(TiuCmd):
         return 1
 
     def _set_op(self, reg):
-        return ([],) * 3
+        return ([], ) * 3
 
 
 class rand_op(TiuCmd):

@@ -6,7 +6,6 @@
 # third-party components.
 #
 # ==============================================================================
-
 """
 This essentially simulates the engine synchronization mechanism of cmodel/hardware
 
@@ -68,11 +67,13 @@ class Status(Enum):
 
 
 class Msg:
+
     def __init__(self):
         self.sent_cnt = 0
 
 
 class MsgCore(Node):
+
     def __init__(
         self,
         msgcore_id,
@@ -159,13 +160,9 @@ class MsgCore(Node):
             elif self.msgcore_id == self.msgcore_num - 1:
                 msg_result = []
                 if isinstance(self.sys_cmds[1].reg, tiu_sys):
-                    msg_result = (
-                        f"%B{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}"
-                    )
+                    msg_result = (f"%B{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}")
                 elif isinstance(self.sys_cmds[1].reg, dma_sys):
-                    msg_result = (
-                        f"%D{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}"
-                    )
+                    msg_result = (f"%D{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}")
                 repr_head = f'{msg_result} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{\n'
             else:
                 repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{\n'
@@ -178,14 +175,9 @@ class MsgCore(Node):
                         match1 = re.search(r"=", str(x))
                         match2 = re.search(r",", str(x))
                         match3 = re.search(r"{", str(x))
-                        str_x = (
-                            str(x)[: match1.start() - 1]
-                            + f", %msg{self.out_msg_id} "
-                            + str(x)[match1.start() : match2.start()]
-                            + ") "
-                            + str(x)[match3.start() : -1]
-                            + f", status = {self.sys_rets[idx]}}}"
-                        )
+                        str_x = (str(x)[:match1.start() - 1] + f", %msg{self.out_msg_id} " +
+                                 str(x)[match1.start():match2.start()] + ") " +
+                                 str(x)[match3.start():-1] + f", status = {self.sys_rets[idx]}}}")
                     else:
                         str_x = str(x)[:-1] + f", status = {self.sys_rets[idx]}}}"
                 else:
@@ -198,6 +190,7 @@ class MsgCore(Node):
 
 
 class MultiCore(Node):
+
     def __init__(self, core_id, core_nums, mlir_cmds: List[BaseTpuCmd], indent=0):
         self.core_id = core_id
         self.core_nums = core_nums
@@ -228,11 +221,8 @@ class MultiCore(Node):
                 last_ret = ret
             else:
                 if in_sys:
-                    if (
-                        last_ret == Status.RECIEVING
-                        or last_ret == Status.CONSUMED
-                        or last_ret == Status.OP
-                    ):
+                    if (last_ret == Status.RECIEVING or last_ret == Status.CONSUMED
+                            or last_ret == Status.OP):
                         tmp_cmds.append(mlir_cmds[cmd_id])
                         tmp_rets.append(None)
                         last_ret = Status.OP
@@ -240,9 +230,7 @@ class MultiCore(Node):
                     if last_ret == Status.CONSUMED:
                         in_sys = False
                 else:
-                    self.not_sys_cmds[len(self.core_split_cmds)].append(
-                        mlir_cmds[cmd_id]
-                    )
+                    self.not_sys_cmds[len(self.core_split_cmds)].append(mlir_cmds[cmd_id])
 
             if cmd_id == len(mlir_cmds) - 1:
                 self.core_split_cmds.append(tmp_cmds)
@@ -259,8 +247,7 @@ class MultiCore(Node):
                 self.core_split_rets[msgcore_id],
                 self.not_sys_cmds[msgcore_id],
                 indent,
-            )
-            for msgcore_id in range(len(self.core_split_cmds))
+            ) for msgcore_id in range(len(self.core_split_cmds))
         ]
 
     @staticmethod

@@ -38,7 +38,9 @@ opparam_converter: Dict[
 
 
 def get_opparam_converter_with_context(context, opparam_converter: dict):
+
     def wrap(fn):
+
         def outer(cmd):
             return fn(context, cmd)
 
@@ -51,6 +53,7 @@ def get_opparam_converter_with_context(context, opparam_converter: dict):
 
 
 def opparam_converter_regitstry(sheet_name):
+
     def add_converter(fun):
         if sheet_name in opparam_converter:
             raise KeyError(f"{sheet_name} have already registered.")
@@ -82,6 +85,7 @@ def get_value(
             _layout = Layout(layout)
         return context.MemRef(address, shape, _dtype, stride, _layout)
 
+
 def add_lmem_addr_tag(opd):
     if isinstance(opd, dict):
         assert "address" in opd and 0 <= opd["address"] < 2**40
@@ -91,9 +95,11 @@ def add_lmem_addr_tag(opd):
             assert isinstance(x, dict)
             add_lmem_addr_tag(x)
     else:
-        assert 0,"add_lmem_addr_tag only support dict and list"
+        assert 0, "add_lmem_addr_tag only support dict and list"
+
 
 class TGCR:
+
     def __init__(self):
         self.regs = dict(
             T5=0,
@@ -826,10 +832,10 @@ def sRQ_sDQ_converter(context: "SG2380Context", reg: sRQ_sDQ_reg):
             opd3["address"] = reg.opd2_addr  # scale
             opd3["dtype"] = DType.si8
             opds = [opd0, opd1, opd3, opd2]
-    elif reg.tsk_eu_typ == 5: #dq_2
+    elif reg.tsk_eu_typ == 5:  #dq_2
         gsize = 0x1 << ((reg.opd2_n_str & 0x3) + 5)
         opd1["dtype"] = DType.si32
-        opd1["shape"] = (n, c, h, math.ceil(w/gsize))
+        opd1["shape"] = (n, c, h, math.ceil(w / gsize))
         opds = [opd0, opd1]
     else:
         raise KeyError("Should not be here.")
@@ -963,6 +969,7 @@ def sSGL_converter(context: "SG2380Context", reg: sSGL_reg):
 
 @opparam_converter_regitstry("SYS_TR_ACC")
 def SYS_TR_ACC_converter(context: "SG2380Context", reg):
+
     def int2bin(x, width):
         return np.binary_repr(x, width=width)
 
@@ -1018,8 +1025,8 @@ def SYS_converter(context: "SG2380Context", reg):
 def dma_addr(H, L):
     addr = H * 2**32 + L
     tag = (addr >> 40) & 0x1f
-    if tag == 0x0 :     # for workround
-        addr =  addr | (0x1 << 40)
+    if tag == 0x0:  # for workround
+        addr = addr | (0x1 << 40)
     return addr
 
 
@@ -1059,9 +1066,7 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     return res0, attr, opd0
 
@@ -1176,15 +1181,15 @@ def DMA_general_converter(context: "SG2380Context", reg: DMA_general_reg):
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h13, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
@@ -1193,9 +1198,7 @@ def DMA_general_converter(context: "SG2380Context", reg: DMA_general_reg):
         attr["lane_mask"] = hex(lane_mask)
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
     bc_size = reg.dst_csize
     if reg.cmd_special_function == 1:
         res0["shape"] = (bc_size, copy_len)
@@ -1231,9 +1234,7 @@ def DMA_cw_transpose_converter(context: "SG2380Context", reg: DMA_cw_transpose_r
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]

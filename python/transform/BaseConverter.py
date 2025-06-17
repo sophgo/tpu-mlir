@@ -7,6 +7,7 @@
 
 import numpy as np
 
+
 class BaseConverter(object):
 
     def __init__(self, no_save: bool = False):
@@ -15,7 +16,7 @@ class BaseConverter(object):
         self.shapes = dict()
         self.input_names = list()
         self.output_names = list()
-        self.no_save = no_save # do not save intermediate files in disk
+        self.no_save = no_save  # do not save intermediate files in disk
 
     def generate_mlir(self, mlir_file: str):
         raise NotImplementedError('generate_mlir')

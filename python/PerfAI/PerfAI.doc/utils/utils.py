@@ -38,12 +38,16 @@ def get_simulator_total_cycle(simulator_cycle_file):
 def get_total_time(tius, gdmas, sdmas=None, cdmas=None):
     start, end = sys.maxsize, 0
     for i in range(len(tius)):
-        start, end = (min(start, tius[i].start_time), max(end, tius[i].end_time)) if len(tius) > 0 else (start, end)
-        start, end = (min(start, gdmas[i].start_time), max(end, gdmas[i].end_time)) if len(gdmas) > 0 else (start, end)
+        start, end = (min(start, tius[i].start_time),
+                      max(end, tius[i].end_time)) if len(tius) > 0 else (start, end)
+        start, end = (min(start, gdmas[i].start_time),
+                      max(end, gdmas[i].end_time)) if len(gdmas) > 0 else (start, end)
         if sdmas is not None:
-            start, end = (min(start, sdmas[i].start_time), max(end, sdmas[i].end_time)) if len(sdmas) > 0 else (start, end)
+            start, end = (min(start, sdmas[i].start_time),
+                          max(end, sdmas[i].end_time)) if len(sdmas) > 0 else (start, end)
         if cdmas is not None:
-            start, end = (min(start, cdmas[i].start_time), max(end, cdmas[i].end_time)) if len(cdmas) > 0 else (start, end)
+            start, end = (min(start, cdmas[i].start_time),
+                          max(end, cdmas[i].end_time)) if len(cdmas) > 0 else (start, end)
     total_time = end - start
     return total_time if total_time > 0 else 0
 
@@ -105,14 +109,16 @@ def get_short_burst_length(reg_dict, data_size_dict, bl_threshold):
     data_size = data_size_dict[reg_dict['src_data_format']]
     short_bl = 0
     if src_trace == 'DDR':
-        if ((int(reg_dict['src_hstride']) - int(reg_dict['src_wsize'])) * data_size > bl_threshold or
-                (int(reg_dict['src_cstride']) - int(reg_dict['src_hsize']) * int(
-                    reg_dict['src_wsize'])) * data_size > bl_threshold):
+        if ((int(reg_dict['src_hstride']) - int(reg_dict['src_wsize'])) * data_size > bl_threshold
+                or
+            (int(reg_dict['src_cstride']) - int(reg_dict['src_hsize']) * int(reg_dict['src_wsize']))
+                * data_size > bl_threshold):
             short_bl = 1
     elif dst_trace == 'DDR':
-        if ((int(reg_dict['dst_hstride']) - int(reg_dict['dst_wsize'])) * data_size > bl_threshold or
-                (int(reg_dict['dst_cstride']) - int(reg_dict['dst_hsize']) * int(
-                    reg_dict['dst_wsize'])) * data_size > bl_threshold):
+        if ((int(reg_dict['dst_hstride']) - int(reg_dict['dst_wsize'])) * data_size > bl_threshold
+                or
+            (int(reg_dict['dst_cstride']) - int(reg_dict['dst_hsize']) * int(reg_dict['dst_wsize']))
+                * data_size > bl_threshold):
             short_bl = 1
     return short_bl
 
@@ -157,7 +163,8 @@ def remove_duplicate_path(paths):
 
 def get_dma_func_name(reg_dict):
     dma_func_name = ''
-    dma_cmd_type, dma_spec_func_name = int(reg_dict['cmd_type']), int(reg_dict['cmd_special_function'])
+    dma_cmd_type, dma_spec_func_name = int(reg_dict['cmd_type']), int(
+        reg_dict['cmd_special_function'])
     if (dma_cmd_type, dma_spec_func_name) in dma_func_name_dict.keys() and \
             dma_func_name_dict[(dma_cmd_type, dma_spec_func_name)] != reg_dict['Function Type']:
         dma_func_name = dma_func_name_dict[(dma_cmd_type, dma_spec_func_name)]
@@ -189,8 +196,8 @@ def get_instr_reg_list(reg_list, reg_cols):
         total_ref_dict = dict.fromkeys(reg_cols, '')
         total_ref_dict.update(reg_dict)
         instr_reg_list.append(total_ref_dict)
-    instr_reg_list.sort(
-        key=lambda x: (int(x['Start Cycle']), int(x['End Cycle']), int(x['Cmd Id']), int(x['Engine Id'])))
+    instr_reg_list.sort(key=lambda x: (int(x['Start Cycle']), int(x['End Cycle']), int(x['Cmd Id']),
+                                       int(x['Engine Id'])))
     return instr_reg_list
 
 
@@ -216,9 +223,7 @@ def load_module(filename, name=None):
 
 def load_arch_lib(arch):
     # Fix me, need parse CHIP_ARCH
-    archlib_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        arch.name + "_defs.py")
+    archlib_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), arch.name + "_defs.py")
     archlib_path = archlib_path.replace('utils', 'definition')
     return load_module(archlib_path)
 
@@ -271,8 +276,8 @@ def enum_cast(value, enum_type, default_val=-1):
     try:
         return enum_type(value)
     except:
-        logging.warning(
-            "{} is not a valid {} value, using default({}) instead. ".format(value, enum_type.__name__, default_val))
+        logging.warning("{} is not a valid {} value, using default({}) instead. ".format(
+            value, enum_type.__name__, default_val))
         return enum_type(default_val)
 
 
@@ -333,10 +338,12 @@ def get_ratio_str_2f_zero(x, y):
     y = int(y)
     return '%.2f%%' % (x / y * 100) if y != 0 else "0.00%"
 
+
 def get_ratio_str_2f_zero_f(x, y):
     x = float(x)
     y = float(y)
     return '%.2f%%' % (x / y * 100) if y != 0 else "0.00%"
+
 
 def get_ratio_float_2f(x, y):
     x = int(x)
@@ -348,7 +355,6 @@ def get_ratio_str_3f(x, y):
     x = int(x)
     y = int(y)
     return '%.3f%%' % (x / y * 100) if y != 0 else "--"
-
 
 
 def get_ratio_float_6f(x, y):

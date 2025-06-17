@@ -4,10 +4,13 @@ import numpy as np
 import torch
 import operator
 
+
 class State:
     TOP_F32 = 'TOP_F32'
 
+
 class FxMIIRImporter(object):
+
     def __init__(self, model_name, weight_file):
         self.model_name = model_name
         self.weight_file = weight_file
@@ -19,11 +22,7 @@ class FxMIIRImporter(object):
         self.weights_data = dict()
         self.load_weight = dict()
         # self.F32Type = F32Type.get()
-        self.mlir_type = {
-              "F32": F32Type.get(),
-              "F16": F32Type.get(),
-              "BF16": F32Type.get()
-          }
+        self.mlir_type = {"F32": F32Type.get(), "F16": F32Type.get(), "BF16": F32Type.get()}
 
     def __del__(self):
         import traceback
@@ -62,11 +61,11 @@ class FxMIIRImporter(object):
         assert (isinstance(output_shapes, list))
         assert (len(output_shapes) > 0)
         if not isinstance(output_shapes[0], list) and output_shapes[0] is not None:
-            return RankedTensorType.get(tuple(output_shapes), type) #why?
+            return RankedTensorType.get(tuple(output_shapes), type)  #why?
         # multi output
         out_types = []
         if isinstance(type, list):
-            for s,t in zip(output_shapes, type):
+            for s, t in zip(output_shapes, type):
                 if s == []:
                     out_types.append(UnrankedTensorType.get(t))
                 elif s is None:
@@ -82,7 +81,6 @@ class FxMIIRImporter(object):
                 else:
                     out_types.append(RankedTensorType.get(tuple(s), type))
         return out_types
-
 
     def get_dtype(self, type1):
         return F32Type.get()
@@ -104,8 +102,8 @@ class FxMIIRImporter(object):
     def get_output_dtypes(self, node):
         dtypes = []
         if 'val' in node.meta:
-            if isinstance(node.meta['val'], (tuple,list)):
-                dtypes = [i.dtype if i is not None else None for i in node.meta['val'] ]
+            if isinstance(node.meta['val'], (tuple, list)):
+                dtypes = [i.dtype if i is not None else None for i in node.meta['val']]
             else:
                 dtypes.append(node.meta['val'].dtype)
         # else:
@@ -115,9 +113,9 @@ class FxMIIRImporter(object):
         #     dtypes = dtypes[0]
         return dtypes
 
-    def get_output_shapes(self, node, exclude_num = 0):
+    def get_output_shapes(self, node, exclude_num=0):
         shapes = []
-        if isinstance(node.meta['val'], (tuple,list)):
+        if isinstance(node.meta['val'], (tuple, list)):
             shapes = [list(i.size()) if i is not None else None for i in node.meta['val']]
         else:
             shapes.append(list(node.meta['val'].size()))
@@ -169,7 +167,7 @@ class FxMIIRImporter(object):
             tensor_npz[name] = self.weights_data[name]
         np.savez(weight_file, **tensor_npz)
 
-    def create_weight_op(self, name, arg, data_type = 'F32'):
+    def create_weight_op(self, name, arg, data_type='F32'):
         arg_t = self.convert_scalar_param(arg)
         arg_shape = list(arg_t.shape)
         if name in self.load_weight:
@@ -187,12 +185,12 @@ class FxMIIRImporter(object):
         self.weights_data[name] = arg_t
         return result
 
-    def create_constant_weight_op(self,name,shape,val,data_type = 'F32'):
+    def create_constant_weight_op(self, name, shape, val, data_type='F32'):
         name = f'{name}_c'
         tensor_type = RankedTensorType.get(list(shape), self.mlir_type[data_type])
         op = Operation.create("top.Weight",
-                            results=[tensor_type],
-                            loc=Location.fused([Location.name(name)]))
+                              results=[tensor_type],
+                              loc=Location.fused([Location.name(name)]))
         shape = tuple(shape)
         if name in self.load_weight:
             _op, _shape, _type = self.load_weight[name]
@@ -202,14 +200,14 @@ class FxMIIRImporter(object):
         self.insert_point.insert(op)
         result = op.results[0]
         self.load_weight[name] = (result, shape, data_type)
-        self.weights_data[name] = np.full(shape,val,dtype = np.float32)
+        self.weights_data[name] = np.full(shape, val, dtype=np.float32)
         return result
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
         return mlir_format
 
-    def createMlirModuleAndInput(self,input_nodes,in_args_txt, output_args_txt,operands):
+    def createMlirModuleAndInput(self, input_nodes, in_args_txt, output_args_txt, operands):
         num_output = len(output_args_txt.split(','))
         result_var_name = "%1"
         result_types = output_args_txt
@@ -225,15 +223,15 @@ class FxMIIRImporter(object):
                 }} loc(unknown)
             }} loc(unknown)
         """.format(name=self.model_name,
-                    weight_file=self.weight_file,
-                    state= State.TOP_F32,
-                    chip="ALL",
-                    train='true',
-                    args=in_args_txt,
-                    last_output_num=num_output,
-                    result_var=result_var_name,
-                    result_types=result_types,
-                    output=output_args_txt)
+                   weight_file=self.weight_file,
+                   state=State.TOP_F32,
+                   chip="ALL",
+                   train='true',
+                   args=in_args_txt,
+                   last_output_num=num_output,
+                   result_var=result_var_name,
+                   result_types=result_types,
+                   output=output_args_txt)
         # print(f'main_func:\n{main_func}\nmain_func end')
         self.mlir_module = Module.parse(main_func, self.ctx)
         self.func = self.mlir_module.body.operations[0]

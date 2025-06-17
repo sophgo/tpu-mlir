@@ -5,6 +5,7 @@ import pycuda.autoinit
 from PIL import Image
 import numpy as np
 
+
 def load_imagenet_data(cali_data_loader):
     dataset = []
     for i, (data, label) in enumerate(cali_data_loader):
@@ -12,7 +13,9 @@ def load_imagenet_data(cali_data_loader):
         dataset.append(data)
     return dataset
 
+
 class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
+
     def __init__(self, cali_data_loader, cache_file):
         # Whenever you specify a custom constructor for a TensorRT class,
         # you MUST call the constructor of the parent explicitly.
@@ -43,7 +46,6 @@ class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
         self.current_index += 1
         print('Calibrate batch = {} / {}'.format(self.current_index, len(self.data)))
         return [self.device_input]
-
 
     def read_calibration_cache(self):
         # If there is a cache, use it instead of calibrating again. Otherwise, implicitly return None.

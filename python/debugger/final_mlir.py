@@ -53,10 +53,7 @@ def parse_zp_scale(type_str: str):
         zero_point = mlir_type.zero_point
 
     scale = 1
-    if (
-        isinstance(mlir_type, quant.CalibratedQuantizedType)
-        and "f8E4M3" in type_str
-    ):
+    if (isinstance(mlir_type, quant.CalibratedQuantizedType) and "f8E4M3" in type_str):
         scale = mlir_type.max / 448
 
     if isinstance(mlir_type, quant.UniformQuantizedType):
@@ -175,6 +172,7 @@ class TLValue:
 
 
 class Pickled_Value(TLValue):
+
     def __init__(self, value: TLValue, file_line, cmd_point, core_id):
         self.tlvalue = value
         self.file_line = file_line
@@ -183,7 +181,6 @@ class Pickled_Value(TLValue):
 
     def __repr__(self) -> str:
         return f"@{self.tlvalue.address}({{name={self.tlvalue.name}, layout={self.tlvalue.layout}, shape={self.tlvalue.shape}, slice={self.tlvalue.slice}, mlir_type={self.tlvalue.mlir_type_str}, memory_type={self.tlvalue.memory_type}, file_line={self.file_line}, cmd_point={self.cmd_point}, core_id={self.core_id}}})"
-
 
 
 class CMD:
@@ -218,20 +215,18 @@ class CMD:
         self.results = [TLValue.from_tldic(i) if len(i) > 0 else None for i in dic["results"]]
 
         operands_slice_all = results_slice_all = False
-        operands_slice_all = all(
-            operand.slice == "[...]" for operand in self.operands if self.operands if operand
-        )
-        results_slice_all = all(
-            result.slice == "[...]" for result in self.results if self.results if result
-        )
+        operands_slice_all = all(operand.slice == "[...]" for operand in self.operands
+                                 if self.operands if operand)
+        results_slice_all = all(result.slice == "[...]" for result in self.results if self.results
+                                if result)
         self.slice_all = operands_slice_all and results_slice_all
         return self
 
     @property
     def cmd_type(self) -> CMDType:
         if self.opcode in {
-            "tpu.Store",
-            "tpu.Load",
+                "tpu.Store",
+                "tpu.Load",
         }:
             return CMDType.dma
         else:
@@ -258,9 +253,7 @@ class TensorLoc:
     def from_tl_file(cls, tensor_loc_file: str):
         self = cls()
         with open(tensor_loc_file) as r:
-            self.tensor_loc = [
-                CMD.from_tldic(dic, index) for index, dic in enumerate(json.load(r))
-            ]
+            self.tensor_loc = [CMD.from_tldic(dic, index) for index, dic in enumerate(json.load(r))]
         return self
 
     def __repr__(self) -> str:
@@ -304,6 +297,7 @@ def iter_operations(op):
 
 
 class Location:
+
     def __init__(self, loc_id_str: str, loc_name: str, fused: List[str] = None) -> None:
         super().__init__()
         self.loc_ref = loc_id_str
@@ -327,9 +321,7 @@ class Location:
             loc_name = "unknown"
         elif "fused" in name_pos:
             fused_id = name_pos[10:-2].split(", ")
-            return Location(
-                loc_id_str=loc_id_str, loc_name=f"fused_{name_pos}", fused=fused_id
-            )
+            return Location(loc_id_str=loc_id_str, loc_name=f"fused_{name_pos}", fused=fused_id)
         else:
             loc_name = name_pos[4:-1].strip('"')
 

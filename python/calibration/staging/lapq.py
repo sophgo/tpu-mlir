@@ -28,8 +28,8 @@ from .utils import cosine_sim
 from .utils import lower_and_eval
 
 import pymlir
-pymlir.set_mem_mode("force_value_mem")
 
+pymlir.set_mem_mode("force_value_mem")
 
 LAPQ_OPERATION = [
     # 'top.Conv', 'top.MatMul'#
@@ -38,6 +38,7 @@ LAPQ_OPERATION = [
 
 
 class LossAwareQuant:
+
     def __init__(self, cali_table, args):
         self.cali_table = copy.deepcopy(cali_table)
         self.scales = cali_table.table.copy()
@@ -105,46 +106,55 @@ class LossAwareQuant:
         top_ops = {op.name: op for op in self.parser.ops}
         exclude = excepts.split(',')
         for op in top_ops:
-            if top_ops[op].type in LAPQ_OPERATION and top_ops[op].name not in exclude and self.included(top_ops[op].name):
+            if top_ops[op].type in LAPQ_OPERATION and top_ops[
+                    op].name not in exclude and self.included(top_ops[op].name):
                 if top_ops[op].type == 'top.Conv':
                     if int(top_ops[op].attrs['group'].split(':')[0]) > 1:
                         continue
-                if len(top_ops[op].opds) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
+                if len(top_ops[op].opds
+                       ) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
                     self.finetune_layers.append(op)
                     self.finetune_layer_weights[op] = top_ops[op].opds[1]
-                if len(top_ops[op].opds) > 2 and top_ops[op].opds[2] in self.module.all_weight_names:
+                if len(top_ops[op].opds
+                       ) > 2 and top_ops[op].opds[2] in self.module.all_weight_names:
                     self.finetune_layer_bias[op] = top_ops[op].opds[2]
 
     def backup_weights(self):
         for op in self.finetune_layers:
-            self.orig_weights[op] = copy.deepcopy(self.module.get_tensor(self.finetune_layer_weights[op]))
+            self.orig_weights[op] = copy.deepcopy(
+                self.module.get_tensor(self.finetune_layer_weights[op]))
             if op in self.finetune_layer_bias:
-                self.orig_bias[op] = copy.deepcopy(self.module.get_tensor(self.finetune_layer_bias[op]))
+                self.orig_bias[op] = copy.deepcopy(
+                    self.module.get_tensor(self.finetune_layer_bias[op]))
             oc = self.orig_weights[op].shape[0]
             if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
-                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op].reshape(oc, -1)), axis=1)
-                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8, self.weights_scales[op], 1e-8)
+                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op].reshape(oc, -1)),
+                                                 axis=1)
+                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8,
+                                                   self.weights_scales[op], 1e-8)
             elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
                 self.weights_scales[op] = np.max(np.abs(self.orig_weights[op]))
-                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8, self.weights_scales[op], 1e-8)
+                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8,
+                                                   self.weights_scales[op], 1e-8)
             else:
                 print("not support!")
                 sys.exit(1)
 
     def quant_weight(self, op, scale, bitwidth=8):
         tmpweight = self.orig_weights[op].copy()
-        step = scale / (2**(bitwidth-1)-1)
-        tmpweight = np.round(tmpweight/step)
-        tmpweight = np.clip(tmpweight, -2**(bitwidth-1)+1, 2**(bitwidth-1)-1)  # use -7 to 7 for right absmax
-        tmpweight = tmpweight*step
+        step = scale / (2**(bitwidth - 1) - 1)
+        tmpweight = np.round(tmpweight / step)
+        tmpweight = np.clip(tmpweight, -2**(bitwidth - 1) + 1,
+                            2**(bitwidth - 1) - 1)  # use -7 to 7 for right absmax
+        tmpweight = tmpweight * step
         self.module.set_tensor(self.finetune_layer_weights[op], tmpweight)
 
     def quant_active(self, active_name, scale, sample_idx, bitwidth=8):
         tmpactive = self.ref_tensors.get(active_name, sample_idx).copy()
-        step = scale / (2**(bitwidth-1)-1)
-        tmpactive = np.round(tmpactive/step)
-        tmpactive = np.clip(tmpactive, -2**(bitwidth-1), 2**(bitwidth-1)-1)
-        tmpactive = tmpactive*step
+        step = scale / (2**(bitwidth - 1) - 1)
+        tmpactive = np.round(tmpactive / step)
+        tmpactive = np.clip(tmpactive, -2**(bitwidth - 1), 2**(bitwidth - 1) - 1)
+        tmpactive = tmpactive * step
         self.module.set_tensor(active_name, tmpactive)
 
     def restore_weight(self, op):
@@ -156,26 +166,27 @@ class LossAwareQuant:
 
     def quant_tensor(self, tensor, scale, is_weight, bit_width=8):
         tmp = tensor.copy()
-        step = scale / (2**(bit_width-1)-1)
-        qmax = 2**(bit_width-1) - 1
+        step = scale / (2**(bit_width - 1) - 1)
+        qmax = 2**(bit_width - 1) - 1
         qmin = -qmax
         if is_weight:
             qmin = -qmax + 1
-        tmp = np.round(tmp/step)
+        tmp = np.round(tmp / step)
         tmp = np.clip(tmp, qmin, qmax)
-        tmp = tmp*step
+        tmp = tmp * step
         return tmp
 
     def lpnorm_loss(self, pred, ref, p):
-        return np.mean(np.abs(pred.flatten()-ref.flatten())**p)
+        return np.mean(np.abs(pred.flatten() - ref.flatten())**p)
 
     def lpnorm_quant_loss(self, tensor, scale, p, is_weight, bit_width=8):
         tmp = self.quant_tensor(tensor, scale, is_weight, bit_width)
         return self.lpnorm_loss(tensor, tmp, p)
 
     def lpnorm_quant(self, tensor, p, is_weight, bit_width=8):
-        opt_scale = opt.minimize_scalar(lambda scale: self.lpnorm_quant_loss(tensor, scale, p, is_weight, bit_width),
-                                        bounds=(0, np.max(np.abs(tensor)))).x
+        opt_scale = opt.minimize_scalar(
+            lambda scale: self.lpnorm_quant_loss(tensor, scale, p, is_weight, bit_width),
+            bounds=(0, np.max(np.abs(tensor)))).x
         return opt_scale
 
     def calculate_sim(self, pred, ref):
@@ -269,13 +280,13 @@ class LossAwareQuant:
                     self.trying_scales4[opdname] = opt_th
         tmp_cali = self.create_cali_table(False)
         self.create_weights(False)
-        preds = lower_and_eval(self.mlir_file, 'INT4', self.chip, tmp_cali.out_table,
-                               self.qtable, self.ref_tensors, eval_samples)
+        preds = lower_and_eval(self.mlir_file, 'INT4', self.chip, tmp_cali.out_table, self.qtable,
+                               self.ref_tensors, eval_samples)
         outputname = self.module.output_names[0]
         tmploss = 0
         for s in eval_samples:
             ref = self.ref_tensors.get(outputname, s)
-            pred = preds[s-self.num_sample//2]
+            pred = preds[s - self.num_sample // 2]
             loss = 1 - self.calculate_sim(pred, ref)
             tmploss += loss
             print(f'try one q loss of {s} is {loss}, total :{tmploss}')
@@ -315,7 +326,9 @@ class LossAwareQuant:
             for op_ in tmp_cali.table4:
                 if op_ == op:
                     if ifprint:
-                        print(f'change active {op} from {tmp_cali.table4[op][0]} to {self.trying_scales4[op]}')
+                        print(
+                            f'change active {op} from {tmp_cali.table4[op][0]} to {self.trying_scales4[op]}'
+                        )
                     tmp_cali.table4[op][0] = self.trying_scales4[op]
         tmp_cali.out_table = tmp_cali.out_table + '.opt'
         tmp_cali.write()
@@ -329,8 +342,10 @@ class LossAwareQuant:
             if opdname in self.finetune_layer_weight_best_ths:
                 if ifprint:
                     print(
-                        f'quant weight {opdname} orig {self.finetune_layer_weight_orig_ths[opdname]} to {self.finetune_layer_weight_best_ths[opdname]}')
-                tmp = self.quant_tensor(w[opdname], self.finetune_layer_weight_best_ths[opdname], True, 4)
+                        f'quant weight {opdname} orig {self.finetune_layer_weight_orig_ths[opdname]} to {self.finetune_layer_weight_best_ths[opdname]}'
+                    )
+                tmp = self.quant_tensor(w[opdname], self.finetune_layer_weight_best_ths[opdname],
+                                        True, 4)
                 ww[opdname] = tmp
             else:
                 ww[opdname] = w[opdname]
@@ -347,13 +362,13 @@ class LossAwareQuant:
         self.scatter_points(points)
         tmp_cali = self.create_cali_table(False)
         self.create_weights(False)
-        preds = lower_and_eval(self.mlir_file, 'INT4', self.chip, tmp_cali.out_table,
-                               self.qtable, self.ref_tensors, eval_samples)
+        preds = lower_and_eval(self.mlir_file, 'INT4', self.chip, tmp_cali.out_table, self.qtable,
+                               self.ref_tensors, eval_samples)
         outputname = self.module.output_names[0]  # or should get the lowerred module outputname
         tmploss = 0
         for s in eval_samples:
             ref = self.ref_tensors.get(outputname, s)
-            pred = preds[s-self.num_sample//2]
+            pred = preds[s - self.num_sample // 2]
             loss = 1 - self.calculate_sim(pred, ref)
             tmploss += loss
             # print(f'Orig loss of {s} is {loss}, total :{orig_loss}')
@@ -371,8 +386,8 @@ class LossAwareQuant:
         total = len(self.finetune_layers)
         outputname = self.module.output_names[0]
         orig_loss = 0
-        cali_samples = range(0, self.num_sample//2)
-        eval_samples = range(self.num_sample//2, self.num_sample)
+        cali_samples = range(0, self.num_sample // 2)
+        eval_samples = range(self.num_sample // 2, self.num_sample)
         '''
         preds = lower_and_eval(self.mlir_file, 'INT4', self.chip, self.calibration_table, self.qtable, self.ref_tensors, eval_samples)
         for s in eval_samples:
@@ -418,8 +433,11 @@ class LossAwareQuant:
         # method = coord_descent if min_method == 'CD' else min_method
         method = min_method
         opt_loop = 0
-        res = opt.minimize(lambda points: self.opt_lower_eval(points, cali_samples, eval_samples), points,
-                           method=method, options=min_options, callback=lambda opt_loop: self.opt_callback(opt_loop))
+        res = opt.minimize(lambda points: self.opt_lower_eval(points, cali_samples, eval_samples),
+                           points,
+                           method=method,
+                           options=min_options,
+                           callback=lambda opt_loop: self.opt_callback(opt_loop))
         print(res)
         self.scatter_points(points)
         tmp_cali = self.create_cali_table(True)

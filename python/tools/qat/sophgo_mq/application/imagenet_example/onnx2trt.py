@@ -1,5 +1,5 @@
 import onnx
-import pycuda.autoinit # noqa F401
+import pycuda.autoinit  # noqa F401
 import tensorrt as trt
 import torch
 import json
@@ -11,6 +11,7 @@ import numpy as np
 import argparse
 
 from main import AverageMeter, accuracy
+
 
 def onnx2trt(onnx_model,
              trt_path,
@@ -32,8 +33,7 @@ def onnx2trt(onnx_model,
     # create builder and network
     logger = trt.Logger(log_level)
     builder = trt.Builder(logger)
-    EXPLICIT_BATCH = 1 << (int)(
-        trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+    EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
     network = builder.create_network(EXPLICIT_BATCH)
 
     # parse onnx
@@ -77,16 +77,21 @@ def onnx2trt(onnx_model,
         else:
             from calibrator import ImagenetCalibrator
             calidir = os.path.join(dataset_path, 'cali')
-            dataset = datasets.ImageFolder(calidir, transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])]))
+            dataset = datasets.ImageFolder(
+                calidir,
+                transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ]))
             cali_num = min(len(dataset), batch_size * cali_batch)
             cali_dataset = torch.utils.data.Subset(dataset, indices=torch.arange(cali_num))
-            cali_loader = torch.utils.data.DataLoader(cali_dataset, batch_size=batch_size, shuffle=False,
-                                                      num_workers=1, pin_memory=False)
+            cali_loader = torch.utils.data.DataLoader(cali_dataset,
+                                                      batch_size=batch_size,
+                                                      shuffle=False,
+                                                      num_workers=1,
+                                                      pin_memory=False)
             calibrator = ImagenetCalibrator(cali_loader, cache_file='imagenet.cache')
             config.int8_calibrator = calibrator
             print(f'Calibration Set!')
@@ -98,10 +103,13 @@ def onnx2trt(onnx_model,
         f.write(bytearray(engine.serialize()))
     return engine
 
+
 def infer(engine, img, batch_size, context):
     h_input = img = img
-    h_input_mem = cuda.pagelocked_empty(batch_size * trt.volume(engine.get_binding_shape(0)[1:]), dtype=np.float32)
-    h_output_mem = cuda.pagelocked_empty(batch_size * trt.volume(engine.get_binding_shape(1)[1:]), dtype=np.float32)
+    h_input_mem = cuda.pagelocked_empty(batch_size * trt.volume(engine.get_binding_shape(0)[1:]),
+                                        dtype=np.float32)
+    h_output_mem = cuda.pagelocked_empty(batch_size * trt.volume(engine.get_binding_shape(1)[1:]),
+                                         dtype=np.float32)
     # import pdb; pdb.set_trace()
     # Allocate device memory for inputs and outputs.
     d_input = cuda.mem_alloc(h_input_mem.nbytes)
@@ -117,6 +125,7 @@ def infer(engine, img, batch_size, context):
 
     return h_output_mem.reshape(batch_size, *engine.get_binding_shape(1)[1:])
 
+
 def validate(trt_file, batch_size=64, dataset_path=None):
     # deserialize engine
     trt_logger = trt.Logger(trt.Logger.INFO)
@@ -128,16 +137,18 @@ def validate(trt_file, batch_size=64, dataset_path=None):
 
     # prepare dateset
     valdir = os.path.join(dataset_path, 'val')
-    val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
+    val_loader = torch.utils.data.DataLoader(datasets.ImageFolder(
+        valdir,
+        transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])),
-        batch_size=batch_size, shuffle=False,
-        num_workers=4, pin_memory=False)
+                                             batch_size=batch_size,
+                                             shuffle=False,
+                                             num_workers=4,
+                                             pin_memory=False)
 
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
@@ -151,7 +162,8 @@ def validate(trt_file, batch_size=64, dataset_path=None):
         top5.update(acc5[0], images.shape[0])
 
         if index % 100 == 0:
-            print(f' {index} ==> * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'.format(top1=top1, top5=top5))
+            print(f' {index} ==> * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'.format(top1=top1,
+                                                                                     top5=top5))
     print(f' Final ==> * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'.format(top1=top1, top5=top5))
 
 

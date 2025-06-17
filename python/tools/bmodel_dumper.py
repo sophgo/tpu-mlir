@@ -12,6 +12,7 @@ from debugger.plugins.data_dump import DataDump
 from tdb import TdbInterface
 import argparse
 
+
 def __parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -26,11 +27,7 @@ def __parse_args():
         "output",
         help="Output data",
     )
-    parser.add_argument(
-        "--excepts",
-        type=str,
-        help="List of tensors except from comparing"
-    )
+    parser.add_argument("--excepts", type=str, help="List of tensors except from comparing")
     parser.add_argument(
         "--ddr_size",
         type=int,
@@ -62,7 +59,7 @@ if __name__ == "__main__":
         tensor_loc_file=tensor_loc_file,
         input_data_fn=args.input,
         ddr_size=args.ddr_size,
-        extra_plugins = extra_plugins,
+        extra_plugins=extra_plugins,
     )
 
     if args.excepts:

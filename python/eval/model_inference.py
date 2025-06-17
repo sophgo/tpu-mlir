@@ -11,6 +11,7 @@ import importlib
 import numpy as np
 import argparse
 import pymlir
+
 pymlir.set_mem_mode("value_mem")
 import onnx
 import ast
@@ -22,8 +23,8 @@ from utils.misc import *
 from tools.model_runner import get_chip_from_model, round_away_from_zero
 
 
-
 class common_inference():
+
     def __init__(self, args):
         self.idx = 0
         self.postprocess_type = args.postprocess_type
@@ -33,7 +34,9 @@ class common_inference():
                 bmodel_mlir_file = ''.join(args.model_file.split('.')[:-1])
                 model_file = f'{bmodel_mlir_file}_tpu.mlir'
                 if not os.path.exists(model_file):
-                    print(f'the mlir file:{model_file} of {args.model_file} is not exist, can not extract preprocess para')
+                    print(
+                        f'the mlir file:{model_file} of {args.model_file} is not exist, can not extract preprocess para'
+                    )
                     exit(0)
             self.module = pymlir.module()
             self.module.load(model_file)
@@ -46,17 +49,18 @@ class common_inference():
             args.net_input_dims = self.img_proc.net_input_dims
         self.batched_labels = []
         self.batched_imgs = ''
-        exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(name = args.postprocess_type))
+        exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(
+            name=args.postprocess_type))
         self.score = eval('{}(args)'.format(args.postprocess_type))
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         print('batch_size:', self.batch_size)
 
-    def run(self, idx, img_path, target = None):
+    def run(self, idx, img_path, target=None):
         self.idx = idx
         self.batched_imgs += '{},'.format(img_path)
         if target is not None:
             self.batched_labels.append(target)
-        if (idx+1) % self.batch_size == 0:
+        if (idx + 1) % self.batch_size == 0:
             self.batched_imgs = self.batched_imgs[:-1]
             self.model_invoke()
 
@@ -80,13 +84,13 @@ class common_inference():
         if 'not_use_preprocess' in self.debug_cmd:
             self.x = self.score.preproc(self.batched_imgs)
         else:
-            self.x= self.img_proc.run(self.batched_imgs)
+            self.x = self.img_proc.run(self.batched_imgs)
             ratio_list = self.img_proc.get_config('ratio')
         outputs = self.invoke()
         if len(self.batched_labels) > 0:
-            self.score.update(self.idx, outputs, labels = self.batched_labels, ratios = ratio_list)
+            self.score.update(self.idx, outputs, labels=self.batched_labels, ratios=ratio_list)
         else:
-            self.score.update(self.idx, outputs, img_paths = self.batched_imgs, ratios = ratio_list)
+            self.score.update(self.idx, outputs, img_paths=self.batched_imgs, ratios=ratio_list)
         self.batched_labels.clear()
         self.batched_imgs = ''
         if (self.idx + 1) % 5 == 0:
@@ -95,7 +99,9 @@ class common_inference():
     def invoke(self):
         pass
 
+
 class bmodel_inference(common_inference):
+
     def __init__(self, args):
         super().__init__(args)
         self.args = args
@@ -159,7 +165,7 @@ class bmodel_inference(common_inference):
                         i.data.shape, input.shape))
             dyn_input_shapes.append(input.shape)
             input = np.concatenate([input.flatten(),
-                                        np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
+                                    np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
             zp = i.qzero_point
             if i.data.dtype == input.dtype:
                 i.data[:] = input.reshape(i.data.shape)
@@ -197,7 +203,7 @@ class bmodel_inference(common_inference):
                 else:
                     zp = i.qzero_point
                     output = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
-                                            dtype=np.float32)
+                                      dtype=np.float32)
             elif (i.dtype == 'u16'):
                 output = np.array(i.data.astype(np.float32))
             elif (i.dtype == "f16"):
@@ -208,13 +214,14 @@ class bmodel_inference(common_inference):
                 output = np.array(i.data)
             if output.shape != dyn_output_shapes[dyn_idx]:
                 dyn_len = np.prod(dyn_output_shapes[dyn_idx])
-                output = output.flatten()[:dyn_len].reshape(
-                    *dyn_output_shapes[dyn_idx])
+                output = output.flatten()[:dyn_len].reshape(*dyn_output_shapes[dyn_idx])
                 dyn_idx += 1
             outputs.append(output)
         return outputs
 
+
 class mlir_inference(common_inference):
+
     def __init__(self, args):
         super().__init__(args)
 
@@ -227,7 +234,9 @@ class mlir_inference(common_inference):
             outputs.append(all_tensors[i])
         return outputs
 
+
 class onnx_inference(object):
+
     def __init__(self, args):
         self.img_proc = preprocess()
         self.img_proc.config(**vars(args))
@@ -235,8 +244,9 @@ class onnx_inference(object):
         args.batch_size = self.img_proc.batch_size
         args.net_input_dims = self.img_proc.net_input_dims
         self.batched_imgs = ''
-        self.net = onnxruntime.InferenceSession(args.model_file,providers=['CPUExecutionProvider'])
-        exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(name = args.postprocess_type))
+        self.net = onnxruntime.InferenceSession(args.model_file, providers=['CPUExecutionProvider'])
+        exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(
+            name=args.postprocess_type))
         self.score = eval('{}(args)'.format(args.postprocess_type))
         self.batch_size = args.batch_size
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
@@ -244,11 +254,13 @@ class onnx_inference(object):
 
     def invoke(self):
         input_name = self.net.get_inputs()[0].name
-        outs = self.net.run(None, {input_name:self.x})
+        outs = self.net.run(None, {input_name: self.x})
         output = outs[0:1] if type(outs) == list else [outs]
         return output
 
+
 class model_inference(object):
+
     def __init__(self, parser):
         args, _ = parser.parse_known_args()
         if args.postprocess_type == 'topx':
@@ -258,9 +270,8 @@ class model_inference(object):
         else:
             print('postprocess_type error')
             exit(1)
-        new_parser = argparse.ArgumentParser(
-            parents=[parser, score_Parser().parser],
-            conflict_handler='resolve')
+        new_parser = argparse.ArgumentParser(parents=[parser, score_Parser().parser],
+                                             conflict_handler='resolve')
         args = new_parser.parse_args()
         if args.model_file.endswith('.mlir'):
             engine = mlir_inference(args)
@@ -276,7 +287,7 @@ class model_inference(object):
             exit(1)
         self.engine = engine
 
-    def run(self, idx, img_path, target = None):
+    def run(self, idx, img_path, target=None):
         self.engine.run(idx, img_path, target)
 
     def get_result(self):

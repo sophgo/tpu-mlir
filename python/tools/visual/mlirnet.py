@@ -5,9 +5,11 @@ from threading import Thread
 import pandas as pd
 import numpy as np
 import pymlir
+
 pymlir.set_mem_mode("value_mem")
 import sys
 import copy
+
 sys.path.append('../..')
 
 
@@ -45,11 +47,7 @@ def find_mlir_net(folder):
         else:
             return None
 
-    file_fp = (
-        ('f32_tpu.mlir', ),
-        ('int8_sym_tpu.mlir', ),
-        ('in_f32.npz',)
-    )
+    file_fp = (('f32_tpu.mlir', ), ('int8_sym_tpu.mlir', ), ('in_f32.npz', ))
 
     f_list = os.listdir(folder)
     for args_ in zip_longest(*file_fp):
@@ -58,11 +56,11 @@ def find_mlir_net(folder):
         if not any(id_t):
             return out_path
     index = id_t.index(True)
-    raise Exception('folder does not contain one and only one {}.'.format(
-        file_fp[index]))
+    raise Exception('folder does not contain one and only one {}.'.format(file_fp[index]))
 
 
 class mlir_net:
+
     def __init__(self, mlir_file, input):
         self.mlir_file = mlir_file
         self.mlir_parser = MlirParser(self.mlir_file)
@@ -83,15 +81,13 @@ class mlir_net:
             self.inputs = np.load(self.input)
             for i in self.mlir_module.input_names:
                 if not i in self.inputs.files:
-                    print("{}th input in npz not match mlir file {}".format(
-                        i, self.mlir_file))
+                    print("{}th input in npz not match mlir file {}".format(i, self.mlir_file))
             for name in self.mlir_module.input_names:
                 if self.inputs[name].dtype == np.int8 or self.inputs[name].dtype == np.uint8:
-                    self.mlir_module.set_tensor_from_int(
-                        name, self.inputs[name].astype(np.float32))
+                    self.mlir_module.set_tensor_from_int(name, self.inputs[name].astype(np.float32))
                 else:
-                    self.mlir_module.set_tensor(
-                        name, self.inputs[name].astype(np.float32), self.inputs[name].shape)
+                    self.mlir_module.set_tensor(name, self.inputs[name].astype(np.float32),
+                                                self.inputs[name].shape)
         else:
             from utils.preprocess import preprocess
             for i in np.arange(self.mlir_parser.get_input_num()):
@@ -99,15 +95,16 @@ class mlir_net:
                 pre_.load_config(self.mlir_parser.get_input_op_by_idx(i))
                 self.preprocess.append(pre_)
             inputs_ = self.input.split(",")
-            if len(inputs_) != self.mlir_parser.get_input_num() or len(inputs_) != len(self.preprocess):
+            if len(inputs_) != self.mlir_parser.get_input_num() or len(inputs_) != len(
+                    self.preprocess):
                 print("input number not match net input number!")
                 sys.exit(1)
             for i in np.arange(self.mlir_parser.get_input_num()):
                 i_name = self.mlir_module.input_names[i]
                 self.inputs[i_name] = self.preprocess[i].run(inputs_[i])
                 if self.inputs[i_name].dtype == np.int8 or self.inputs[i_name].dtype == np.uint8:
-                    self.mlir_module.set_tensor_from_int(
-                        i_name, self.inputs[i_name].astype(np.float32))
+                    self.mlir_module.set_tensor_from_int(i_name,
+                                                         self.inputs[i_name].astype(np.float32))
                 else:
                     self.mlir_module.set_tensor(
                         i_name, self.inputs[self.mlir_module.input_names[i]].astype(np.float32))
@@ -141,7 +138,9 @@ class mlir_net:
     def all_weight_names(self):
         return self.mlir_module.all_weight_names
 
+
 class analysis_data():
+
     def __init__(self, path, param_f32mlir, param_qmlir, param_input):
         if self.check_valid(param_f32mlir, param_qmlir, param_input):
             f32_mlir = param_f32mlir
@@ -174,13 +173,15 @@ class analysis_data():
     def check_valid(self, f32, quant, input):
         import os
 
-        def nval1(x): return True if x == "" or not os.path.isfile(
-            x) else False
+        def nval1(x):
+            return True if x == "" or not os.path.isfile(x) else False
+
         if nval1(f32) or nval1(quant):
             return False
 
-        def nval2(x): return True if x.lower().split(
-            ".")[-1] not in ['jpg', 'jpeg', 'png', 'npz'] else False
+        def nval2(x):
+            return True if x.lower().split(".")[-1] not in ['jpg', 'jpeg', 'png', 'npz'] else False
+
         if input == "" or nval2(input):
             return False
         if input.lower().endswith(".npz"):
@@ -212,8 +213,7 @@ class analysis_data():
     def clean_unused(self):
         for t in self.tensor_base['tensor']:
             if t not in self.quant_net.all_tensor_names():
-                row = self.tensor_base[self.tensor_base.tensor ==
-                                       t].index.tolist()
+                row = self.tensor_base[self.tensor_base.tensor == t].index.tolist()
                 self.tensor_base = self.tensor_base.drop(row)
 
     def forward(self):
@@ -262,8 +262,8 @@ class analysis_data():
         self.work.append(m_work)
 
     def __metrics(self):
-        if len(self.tensor_info) > 0 and (
-                self.forward_count in self.tensor_info.forward_index.values):
+        if len(self.tensor_info) > 0 and (self.forward_count
+                                          in self.tensor_info.forward_index.values):
             return
         from .metrics import metrics
         metrics_ = []
@@ -291,14 +291,8 @@ class analysis_data():
             else:
                 f32_tensor = quant_tensor
 
-            new_items.update({
-                'fp32net' + k: f(name)
-                for k, f in self.f32_net.tensor_att.items()
-            })
-            new_items.update({
-                'int8net' + k: f(name)
-                for k, f in self.quant_net.tensor_att.items()
-            })
+            new_items.update({'fp32net' + k: f(name) for k, f in self.f32_net.tensor_att.items()})
+            new_items.update({'int8net' + k: f(name) for k, f in self.quant_net.tensor_att.items()})
 
             #fp32_t, int8_t = self.tensor(name)
             new_items.update({

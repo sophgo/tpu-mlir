@@ -12,9 +12,11 @@ import os
 from ctypes import *
 
 cur_dir_path = os.path.join(os.path.dirname(__file__))
-bmodel_combine_path = os.path.join("/".join(cur_dir_path.split("/")[:-2]), "lib/libmodel_combine.so")
+bmodel_combine_path = os.path.join("/".join(cur_dir_path.split("/")[:-2]),
+                                   "lib/libmodel_combine.so")
 if not os.path.exists(bmodel_combine_path):
     bmodel_combine_path = "libmodel_combine.so"
+
 
 class BmodelCombine:
 
@@ -39,6 +41,7 @@ class BmodelCombine:
         self.lib.tpu_model_destroy(bmodel)
         return output
 
+
 def combine_bmodel(out_dir, dirs: list[str], is_dir=False):
     cmd_str = "model_tool --combine_coeff"
     if is_dir:
@@ -51,12 +54,13 @@ def combine_bmodel(out_dir, dirs: list[str], is_dir=False):
     import subprocess
     subprocess.call(cmd_str, shell=True)
 
+
 # combine bmodel to one, coeff will combine
 # combine bmodels to one bmodel, all models' coeff is same
 # mode = 0: input bmodel
 # mode = 1: input bmodel path
 # mode = 2: input bmodel data, size
-def combine(inputs: list, sizes: list[int] = None, output = None, mode = 0):
+def combine(inputs: list, sizes: list[int] = None, output=None, mode=0):
     if mode == 0:
         assert isinstance(inputs[0], str)
         assert inputs[0].split('.')[-1] == "bmodel"
@@ -72,7 +76,7 @@ def combine(inputs: list, sizes: list[int] = None, output = None, mode = 0):
         return output_data
     else:
         print("mode: {} do not support".format(mode))
-        assert(0)
+        assert (0)
 
 
 if __name__ == "__main__":
@@ -82,7 +86,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", default="bm_combined", type=str, help="output bmodel name")
     parser.add_argument("--inputs", default="", type=str, help="input bmodel names")
     parser.add_argument("--model_data", default=False, type=bool, help="inputs is model data")
-   # yapf: enable
+    # yapf: enable
     args = parser.parse_args()
     if args.model_data:
         inputs = [inp for inp in args.inputs]

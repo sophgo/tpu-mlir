@@ -21,13 +21,21 @@ class Embedding(nn.Embedding):
     """
     _FLOAT_MODULE = nn.Embedding
 
-    def __init__(self, num_embeddings, embedding_dim, padding_idx=None,
-                 max_norm=None, norm_type=2.0, scale_grad_by_freq=False,
-                 sparse=False, _weight=None, device=None, dtype=None, qconfig=None) -> None:
+    def __init__(self,
+                 num_embeddings,
+                 embedding_dim,
+                 padding_idx=None,
+                 max_norm=None,
+                 norm_type=2.0,
+                 scale_grad_by_freq=False,
+                 sparse=False,
+                 _weight=None,
+                 device=None,
+                 dtype=None,
+                 qconfig=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
-        super().__init__(num_embeddings, embedding_dim, padding_idx, max_norm,
-                         norm_type, scale_grad_by_freq, sparse, _weight,
-                         **factory_kwargs)
+        super().__init__(num_embeddings, embedding_dim, padding_idx, max_norm, norm_type,
+                         scale_grad_by_freq, sparse, _weight, **factory_kwargs)
         assert qconfig, 'qconfig must be provided for QAT module'
 
         self.qconfig = qconfig
@@ -39,8 +47,7 @@ class Embedding(nn.Embedding):
 
     def forward(self, input) -> Tensor:
         return F.embedding(input, self.weight_fake_quant(self.weight), self.padding_idx,
-                           self.max_norm, self.norm_type, self.scale_grad_by_freq,
-                           self.sparse)
+                           self.max_norm, self.norm_type, self.scale_grad_by_freq, self.sparse)
 
     @classmethod
     def from_float(cls, mod):
@@ -54,16 +61,23 @@ class Embedding(nn.Embedding):
         assert mod.qconfig, 'Input float module must have a valid qconfig'
 
         qconfig = mod.qconfig
-        qat_embedding_bag = cls(mod.num_embeddings, mod.embedding_dim, mod.padding_idx,
-                                mod.max_norm, mod.norm_type, mod.scale_grad_by_freq,
-                                mod.sparse, mod.weight, qconfig=qconfig)
+        qat_embedding_bag = cls(mod.num_embeddings,
+                                mod.embedding_dim,
+                                mod.padding_idx,
+                                mod.max_norm,
+                                mod.norm_type,
+                                mod.scale_grad_by_freq,
+                                mod.sparse,
+                                mod.weight,
+                                qconfig=qconfig)
 
         return qat_embedding_bag
 
     def to_float(self):
-        embedding_bag = torch.nn.Embedding(self.num_embeddings, self.embedding_dim, self.padding_idx,
-                                           self.max_norm, self.norm_type, self.scale_grad_by_freq,
-                                           self.sparse, None, self.device, self.dtype)
+        embedding_bag = torch.nn.Embedding(self.num_embeddings, self.embedding_dim,
+                                           self.padding_idx, self.max_norm, self.norm_type,
+                                           self.scale_grad_by_freq, self.sparse, None, self.device,
+                                           self.dtype)
         embedding_bag.weight = torch.nn.Parameter(self.weight.detach())
         embedding_bag.train(self.training)
         return embedding_bag

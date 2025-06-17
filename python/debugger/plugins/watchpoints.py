@@ -100,24 +100,20 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
                 return
 
             if get_tuple(cmd.core_id, cmd.operands[value_index]) not in self.watches:
-                self.watches[get_tuple(cmd.core_id, cmd.operands[value_index])] = (
-                    Watchpoint(
-                        index=self.watch_id,
-                        cmd_type=cmd.cmd_type,
-                        cmd_id=cmd.cmd_id,
-                        core_id=cmd.core_id,
-                        value=cmd.operands[value_index],
-                    )
-                )
+                self.watches[get_tuple(cmd.core_id, cmd.operands[value_index])] = (Watchpoint(
+                    index=self.watch_id,
+                    cmd_type=cmd.cmd_type,
+                    cmd_id=cmd.cmd_id,
+                    core_id=cmd.core_id,
+                    value=cmd.operands[value_index],
+                ))
                 self.watchid2value[self.watch_id] = [
                     get_tuple(cmd.core_id, cmd.operands[value_index]),
                     copy.deepcopy(data),
                 ]
                 self.watch_id += 1
             else:
-                self.tdb.message(
-                    f"The value {cmd.operands[value_index]} is already watching!"
-                )
+                self.tdb.message(f"The value {cmd.operands[value_index]} is already watching!")
         except (IndexError, SyntaxError, ValueError) as e:
             self.tdb.error(e)
 
@@ -136,24 +132,20 @@ class WatchPlugin(TdbPlugin, TdbPluginCmd):
                 return
 
             if get_tuple(cmd.core_id, cmd.results[value_index]) not in self.watches:
-                self.watches[get_tuple(cmd.core_id, cmd.results[value_index])] = (
-                    Watchpoint(
-                        index=self.watch_id,
-                        cmd_type=cmd.cmd_type,
-                        cmd_id=cmd.cmd_id,
-                        core_id=cmd.core_id,
-                        value=cmd.results[value_index],
-                    )
-                )
+                self.watches[get_tuple(cmd.core_id, cmd.results[value_index])] = (Watchpoint(
+                    index=self.watch_id,
+                    cmd_type=cmd.cmd_type,
+                    cmd_id=cmd.cmd_id,
+                    core_id=cmd.core_id,
+                    value=cmd.results[value_index],
+                ))
                 self.watchid2value[self.watch_id] = [
                     get_tuple(cmd.core_id, cmd.results[value_index]),
                     copy.deepcopy(data),
                 ]
                 self.watch_id += 1
             else:
-                self.tdb.message(
-                    f"The value {cmd.results[value_index]} is already watching!"
-                )
+                self.tdb.message(f"The value {cmd.results[value_index]} is already watching!")
         except (IndexError, SyntaxError, ValueError) as e:
             self.tdb.error(e)
 

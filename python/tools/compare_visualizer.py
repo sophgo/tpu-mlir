@@ -15,7 +15,9 @@ try:
     sys.path.append("..")
     from numpy_helper.tensor_compare import TensorCompare as tc
 except:
-    warnings.warn("Warning: npz_tool not available in your environment. Fall back to integrated compare.", Warning)
+    warnings.warn(
+        "Warning: npz_tool not available in your environment. Fall back to integrated compare.",
+        Warning)
     use_npz_tool = False
 
 from multiprocess import Pool
@@ -24,6 +26,7 @@ from pathlib import Path
 ###########################
 # Colored Print Functions #
 ###########################
+
 
 def color_str(text: str, color: str | None = None) -> str:
     if color is None or color.lower() == 'none':
@@ -40,6 +43,7 @@ def color_str(text: str, color: str | None = None) -> str:
     }
     color_code = color_code_dict[color.lower()]
     return f"\033[{color_code}m{text}\033[0m"
+
 
 ###################
 # Float Converter #
@@ -220,13 +224,15 @@ bfp16 = bfloat16
 
 
 class FloatConverter:
+
     def __init__(self, value=None, memory=None):
         if value is None and not memory is None:
             assert isinstance(memory, (int, np.integer))
         elif not value is None and memory is None:
             assert isinstance(value, (float, np.floating, int, np.integer))
             warnings.warn(
-                    "Warning: You are inputting an integer as value. If it is not intended, specify 'memory=' argument.", Warning)
+                "Warning: You are inputting an integer as value. If it is not intended, specify 'memory=' argument.",
+                Warning)
         else:
             raise ValueError
         self.memory = memory
@@ -251,24 +257,49 @@ class FloatConverter:
         self.fp16 = fp16_decode(self.fp16_memory)
 
     def print_results(self):
-        print("BF16: %10d     0x%04x" %
-              (self.bfp16_memory, self.bfp16_memory), "Value:", self.bfp16, )
-        print("FP16: %10d     0x%04x" %
-              (self.fp16_memory, self.fp16_memory), "Value:", self.fp16, )
-        print("FP32: %10d 0x%08x" %
-              (self.fp32_memory, self.fp32_memory), "Value:", self.fp32, )
+        print(
+            "BF16: %10d     0x%04x" % (self.bfp16_memory, self.bfp16_memory),
+            "Value:",
+            self.bfp16,
+        )
+        print(
+            "FP16: %10d     0x%04x" % (self.fp16_memory, self.fp16_memory),
+            "Value:",
+            self.fp16,
+        )
+        print(
+            "FP32: %10d 0x%08x" % (self.fp32_memory, self.fp32_memory),
+            "Value:",
+            self.fp32,
+        )
 
 
 ##########################
 # NPZ Compare Visualizer #
 ##########################
 
-default_tol = {'f32': {'abs_tol': 2 ** -126, 'rel_tol': 2 ** -23},
-               'f16': {'abs_tol': 2 ** -14, 'rel_tol': 2 ** -10},
-               'bf16': {'abs_tol': 2 ** -126, 'rel_tol': 2 ** -7},
-               'int8': {'abs_tol': 0., 'rel_tol': 0.}}
+default_tol = {
+    'f32': {
+        'abs_tol': 2**-126,
+        'rel_tol': 2**-23
+    },
+    'f16': {
+        'abs_tol': 2**-14,
+        'rel_tol': 2**-10
+    },
+    'bf16': {
+        'abs_tol': 2**-126,
+        'rel_tol': 2**-7
+    },
+    'int8': {
+        'abs_tol': 0.,
+        'rel_tol': 0.
+    }
+}
+
 
 class NPZTdbErrWrapper:
+
     def __init__(self, npz, role):
         assert isinstance(npz, np.lib.npyio.NpzFile)
         assert role in ['desired', 'actual']
@@ -279,7 +310,10 @@ class NPZTdbErrWrapper:
     @property
     def valid_keys(self):
         if self._valid_keys is None:
-            self._valid_keys = {name[:-len(self.role)-1] for name in self.npz.keys() if name.endswith(self.role)}
+            self._valid_keys = {
+                name[:-len(self.role) - 1]
+                for name in self.npz.keys() if name.endswith(self.role)
+            }
         assert isinstance(self._valid_keys, set)
         return self._valid_keys
 
@@ -306,6 +340,7 @@ class NPZTdbErrWrapper:
 
     def __len__(self):
         return len(self.valid_keys)
+
 
 def tdb_err_comparer(fn):
     if isinstance(fn, str):
@@ -337,13 +372,13 @@ def get_nchw(darray, mix_axis):
     if mix_axis is None:
         if dims > 4:
             for i in range(2):
-                reshaped[- i - 1] = shape[- i - 1]
+                reshaped[-i - 1] = shape[-i - 1]
             for i in range(1, dims - 2):
                 reshaped[1] *= shape[i]
             reshaped[0] = shape[0]
         else:
             for i in range(dims):
-                reshaped[- i - 1] = shape[- i - 1]
+                reshaped[-i - 1] = shape[-i - 1]
     else:
         assert dims - len(mix_axis) + 1 == 4
         dim = mix_axis[0]
@@ -400,7 +435,8 @@ def assign_new_shape(reshaped, resize_hw):
         pass
     else:
         assert 0, "Invalid param resize_hw=%s" % resize_hw
-    return np.array([1] * (h * w) + [0] * (reshaped[2] * reshaped[3] - h * w)).reshape((reshaped[2], reshaped[3]))
+    return np.array([1] * (h * w) + [0] * (reshaped[2] * reshaped[3] - h * w)).reshape(
+        (reshaped[2], reshaped[3]))
 
 
 def get_data_dist(darray, data_mask):
@@ -412,7 +448,14 @@ def get_data_dist(darray, data_mask):
     return real_mean, real_min, real_max
 
 
-def plot_2d_array(diff, data_mask=None, title="", figsize=6, vmin=-0.1, vmax=0.1, h_split=None, w_split=None):
+def plot_2d_array(diff,
+                  data_mask=None,
+                  title="",
+                  figsize=6,
+                  vmin=-0.1,
+                  vmax=0.1,
+                  h_split=None,
+                  w_split=None):
     figwidth = figsize
     figheight = 3 + figsize / diff.shape[1] * diff.shape[0]
     plt.figure(figsize=(figwidth, figheight))
@@ -430,10 +473,8 @@ def plot_2d_array(diff, data_mask=None, title="", figsize=6, vmin=-0.1, vmax=0.1
     plt.ylim(diff.shape[0] + 1, -2)
     ax = plt.gca()
     ax.set_facecolor('lightgrey')
-    ax.xaxis.set_tick_params(which='major', top=True,
-                             labeltop=True, labelbottom=True)
-    ax.yaxis.set_tick_params(which='major', right=True,
-                             labelleft=True, labelright=True)
+    ax.xaxis.set_tick_params(which='major', top=True, labeltop=True, labelbottom=True)
+    ax.yaxis.set_tick_params(which='major', right=True, labelleft=True, labelright=True)
 
     if h_split is None:
         h_split = max(1, int(diff.shape[0] / (figheight - 3) / 3 + 0.5))
@@ -458,8 +499,8 @@ def plot_2d_array(diff, data_mask=None, title="", figsize=6, vmin=-0.1, vmax=0.1
     for i in range(w_split, diff.shape[1], w_split):
         plt.axvline(i - 0.5, 0, diff.shape[0], color='lightgrey')
     title_len, title_line = len(title), figsize * 8
-    plt.title(title if title_len <= title_line else "\n".join(
-        [title[i: i + title_line] for i in range(0, title_len, title_line)]))
+    plt.title(title if title_len <= title_line else "\n".
+              join([title[i:i + title_line] for i in range(0, title_len, title_line)]))
     # plt.colorbar()
     plt.show()
 
@@ -481,6 +522,7 @@ def make_slice_object(something):
 
 
 class NPZWrapper:
+
     def __init__(self, npz, role="darray"):
         if isinstance(npz, (str, Path)):
             self.npz = np.load(npz)
@@ -529,11 +571,19 @@ class NPZWrapper:
         for key in tensors:
             print("tensor='%s'," % key, "#shape", self[key].shape)
 
-    def get_darray(self, tensor=None, slices=None, index=None, c_columns=32, resize_hw=None, transpose_hw=False, mix_axis=None, print_shape=True):
+    def get_darray(self,
+                   tensor=None,
+                   slices=None,
+                   index=None,
+                   c_columns=32,
+                   resize_hw=None,
+                   transpose_hw=False,
+                   mix_axis=None,
+                   print_shape=True):
         if tensor is None:
             tensor = list(self.keys())[0]
         slice_list = tuple(make_slice_object(e)
-                           for e in slices) if not slices is None else (slice(None),)
+                           for e in slices) if not slices is None else (slice(None), )
         if len(self[tensor].shape) == 0:
             darray = self[tensor].reshape(1).astype(float)
         else:
@@ -542,16 +592,15 @@ class NPZWrapper:
         if print_shape:
             if not slices is None:
                 print("sliced", end=" ")
-            print("shape %s, reshaped to %s" %
-                  (darray.shape, tuple(reshaped)), end=", ")
+            print("shape %s, reshaped to %s" % (darray.shape, tuple(reshaped)), end=", ")
         darray = np.reshape(darray, reshaped)
         data_mask_channel = assign_new_shape(reshaped, resize_hw)
         if transpose_hw:
             darray = np.transpose(darray, [0, 1, 3, 2])
             if resize_hw in {'none', None, 'rectangle', 'auto'}:
                 reshaped[2], reshaped[3] = reshaped[3], reshaped[2]
-                data_mask_channel = np.reshape(
-                    data_mask_channel.reshape(-1), data_mask_channel.shape[::-1])
+                data_mask_channel = np.reshape(data_mask_channel.reshape(-1),
+                                               data_mask_channel.shape[::-1])
             if print_shape:
                 print("with hw transposed data", end=" ")
         if print_shape:
@@ -562,28 +611,51 @@ class NPZWrapper:
 
         if not index is None:
             n, c = index
-            new_darray = np.resize(
-                darray[n // per_c][(n % per_c) * c_columns + c], data_mask_channel.shape)
+            new_darray = np.resize(darray[n // per_c][(n % per_c) * c_columns + c],
+                                   data_mask_channel.shape)
             data_mask = data_mask_channel
             h_, w_ = None, None
         else:
             frame_shape = [n_ * per_c, min(c_, c_columns)]
-            new_darray = np.block([[np.resize(darray[n // per_c][(n % per_c) * c_columns + c], data_mask_channel.shape) if 0 <= (n % per_c) *
-                                    c_columns + c < c_ else np.zeros_like(data_mask_channel) for c in range(frame_shape[1])] for n in range(frame_shape[0])])
-            data_mask = np.block([[data_mask_channel if 0 <= (n % per_c) *
-                                   c_columns + c < c_ else np.zeros_like(data_mask_channel) for c in range(frame_shape[1])] for n in range(frame_shape[0])])
+            new_darray = np.block([[
+                np.resize(darray[n // per_c][(n % per_c) * c_columns +
+                                             c], data_mask_channel.shape) if 0 <=
+                (n % per_c) * c_columns + c < c_ else np.zeros_like(data_mask_channel)
+                for c in range(frame_shape[1])
+            ] for n in range(frame_shape[0])])
+            data_mask = np.block([[
+                data_mask_channel if 0 <=
+                (n % per_c) * c_columns + c < c_ else np.zeros_like(data_mask_channel)
+                for c in range(frame_shape[1])
+            ] for n in range(frame_shape[0])])
 
-        attr = {'title': ' '.join([tensor, str(slices) if not slices is None else "", str(index) if not index is None else ""]).strip(),
-                'h_split': h_,
-                'w_split': w_,
-                }
+        attr = {
+            'title':
+            ' '.join([
+                tensor,
+                str(slices) if not slices is None else "",
+                str(index) if not index is None else ""
+            ]).strip(),
+            'h_split':
+            h_,
+            'w_split':
+            w_,
+        }
 
         return new_darray, data_mask, attr
 
-    def plot(self, tensor=None, abs_tol=None, rel_tol=None, figsize=6, vmin=None, vmax=None, **kwargs):
+    def plot(self,
+             tensor=None,
+             abs_tol=None,
+             rel_tol=None,
+             figsize=6,
+             vmin=None,
+             vmax=None,
+             **kwargs):
         if tensor is None:
             warnings.warn(
-                "Your are plotting all the tensors in the NPZ file. This may cause problems when the file is large.", Warning)
+                "Your are plotting all the tensors in the NPZ file. This may cause problems when the file is large.",
+                Warning)
             tensors = self.keys()
         else:
             if isinstance(tensor, list):
@@ -597,16 +669,14 @@ class NPZWrapper:
             print("tensor='%s'," % key)
             darray, data_mask, attr = self.get_darray(key, **kwargs)
             real_mean, real_min, real_max = get_data_dist(darray, data_mask)
-            print("data distribution: mean %s, min %s, max %s" %
-                  (real_mean, real_min, real_max))
+            print("data distribution: mean %s, min %s, max %s" % (real_mean, real_min, real_max))
 
             if abs_tol is None:
                 abs_tol_ = real_mean
             else:
                 abs_tol_ = abs_tol
             if rel_tol is None:
-                rel_tol_ = max(abs(real_max - abs_tol_),
-                               abs(real_min - abs_tol_))
+                rel_tol_ = max(abs(real_max - abs_tol_), abs(real_min - abs_tol_))
             else:
                 rel_tol_ = rel_tol
             if rel_tol_ == 0.:
@@ -618,11 +688,16 @@ class NPZWrapper:
             print(f"vmin {abs_tol_ - rel_tol_} zero point {abs_tol_} vmax {abs_tol_ + rel_tol_} ")
 
             attr['title'] = "%s: %s" % (self.role, attr['title'])
-            plot_2d_array((darray - abs_tol_) / rel_tol_, data_mask, figsize=figsize,
-                          vmin=vmin, vmax=vmax, **attr)
+            plot_2d_array((darray - abs_tol_) / rel_tol_,
+                          data_mask,
+                          figsize=figsize,
+                          vmin=vmin,
+                          vmax=vmax,
+                          **attr)
 
 
 class NPZComparer:
+
     def __init__(self, target, ref):
         self.target = NPZWrapper(target, 'Target')
         self.ref = NPZWrapper(ref, 'Ref')
@@ -639,25 +714,31 @@ class NPZComparer:
             for key in self.ref:
                 if key in self.target:
                     if self.target[key].size != self.ref[key].size:
-                        print(f"Error: Tensor {key} shape not same: {self.target[key].shape} vs {self.ref[key].shape}.")
+                        print(
+                            f"Error: Tensor {key} shape not same: {self.target[key].shape} vs {self.ref[key].shape}."
+                        )
                         self._error_keys[key] = 1
                     else:
                         self._keys[key] = 1
             assert len(self._keys) > 0, 'No common data.'
-        assert(isinstance(self._keys, dict) and isinstance(self._error_keys, dict)), "Keys not initialized!"
+        assert (isinstance(self._keys, dict)
+                and isinstance(self._error_keys, dict)), "Keys not initialized!"
         return self._keys
 
     @property
     def error_keys(self):
         if self._keys is None and self._error_keys is None:
             self.keys
-        assert(isinstance(self._keys, dict) and isinstance(self._error_keys, dict)), "Keys not initialized!"
+        assert (isinstance(self._keys, dict)
+                and isinstance(self._error_keys, dict)), "Keys not initialized!"
         return self._error_keys
 
     def info(self, tensor=None):
         if tensor is None:
             tensors = self.keys
-            print(f"Target tensors: {len(self.target)}, Ref tensors: {len(self.ref)}, Common tensors: {len(self.keys)}, Unmatched tensors:{len(self.error_keys)}")
+            print(
+                f"Target tensors: {len(self.target)}, Ref tensors: {len(self.ref)}, Common tensors: {len(self.keys)}, Unmatched tensors:{len(self.error_keys)}"
+            )
         else:
             if isinstance(tensor, list):
                 for ts in tensor:
@@ -672,7 +753,9 @@ class NPZComparer:
         if tensor is None:
             tensors = self.keys
             if verbose:
-                print(f"Target tensors: {len(self.target)}, Ref tensors: {len(self.ref)}, Common tensors: {len(self.keys)}, Unmatched tensors:{len(self.error_keys)}")
+                print(
+                    f"Target tensors: {len(self.target)}, Ref tensors: {len(self.ref)}, Common tensors: {len(self.keys)}, Unmatched tensors:{len(self.error_keys)}"
+                )
         else:
             if isinstance(tensor, list):
                 for ts in tensor:
@@ -687,7 +770,9 @@ class NPZComparer:
         results = {}
         with Pool() as pool:
             for key in tensors:
-                results[key] = pool.apply_async(calc_similarity, args=(self.target[key].reshape(self.ref[key].shape), self.ref[key]))
+                results[key] = pool.apply_async(calc_similarity,
+                                                args=(self.target[key].reshape(self.ref[key].shape),
+                                                      self.ref[key]))
             pool.close()
             pool.join()
 
@@ -701,26 +786,29 @@ class NPZComparer:
                     PASS = 0
                     ALL_PASS = 0
             if verbose and not summary:
-                print(color_str(f"tensor='{key}', #{self.ref[key].shape} {''.join(('%s: (%.6f, %.6f, %.6f)' % (k, *v) if isinstance(v, tuple) else '%s: %s' % (k, v)) for k, v in result.items())}{(' √' if PASS else ' ×') if tolerance != (-1., -1) else '' }", 'none' if tolerance == (-1., -1) else ('green' if PASS else 'red')))
+                print(
+                    color_str(
+                        f"tensor='{key}', #{self.ref[key].shape} {''.join(('%s: (%.6f, %.6f, %.6f)' % (k, *v) if isinstance(v, tuple) else '%s: %s' % (k, v)) for k, v in result.items())}{(' √' if PASS else ' ×') if tolerance != (-1., -1) else '' }",
+                        'none' if tolerance == (-1., -1) else ('green' if PASS else 'red')))
 
         if verbose:
-            print(color_str(f"min_similarity: {tuple(min_similarity)}{(' √' if ALL_PASS else ' ×') if tolerance != (-1., -1.) else ''}", 'none' if tolerance == (-1., -1.) else ('green' if ALL_PASS else 'red')))
+            print(
+                color_str(
+                    f"min_similarity: {tuple(min_similarity)}{(' √' if ALL_PASS else ' ×') if tolerance != (-1., -1.) else ''}",
+                    'none' if tolerance == (-1., -1.) else ('green' if ALL_PASS else 'red')))
         return bool(ALL_PASS)
 
     def get_diff(self, tensor=None, abs_tol=0, rel_tol=0, **kwargs):
         if tensor is None:
             tensor = list(self.keys())[0]
-        target, data_mask1, attr1 = self.target.get_darray(
-            tensor, print_shape=False, **kwargs)
-        ref, data_mask2, attr2 = self.ref.get_darray(
-            tensor, print_shape=False, **kwargs)
+        target, data_mask1, attr1 = self.target.get_darray(tensor, print_shape=False, **kwargs)
+        ref, data_mask2, attr2 = self.ref.get_darray(tensor, print_shape=False, **kwargs)
         if target.shape != ref.shape:
             assert target.size == ref.size
             target = target.reshape(ref.shape)
             data_mask1 = data_mask1.reshape(data_mask2.shape)
             attr1 = attr2
-        assert target.shape == ref.shape and np.all(
-            data_mask1 == data_mask2) and attr1 == attr2
+        assert target.shape == ref.shape and np.all(data_mask1 == data_mask2) and attr1 == attr2
         compare = calc_similarity(target, ref, data_mask1)
 
         mask = 1 - np.isclose(target, ref, atol=abs_tol, rtol=rel_tol)
@@ -736,10 +824,18 @@ class NPZComparer:
 
         return diff, data_mask1, attr1, compare
 
-    def plot_diff(self, tensor=None, abs_tol=0, rel_tol=0, figsize=6, vmin=None, vmax=None, **kwargs):
+    def plot_diff(self,
+                  tensor=None,
+                  abs_tol=0,
+                  rel_tol=0,
+                  figsize=6,
+                  vmin=None,
+                  vmax=None,
+                  **kwargs):
         if tensor is None:
             warnings.warn(
-                "Your are plotting all the tensors in the NPZ file. This may cause problems when the file is large.", Warning)
+                "Your are plotting all the tensors in the NPZ file. This may cause problems when the file is large.",
+                Warning)
             tensors = self.keys
         else:
             if isinstance(tensor, list):
@@ -751,43 +847,73 @@ class NPZComparer:
         print("abs tol %s, rel tol %s" % (abs_tol, rel_tol))
         for key in tensors:
             print("tensor='%s'," % key)
-            darray, data_mask, attr, compare = self.get_diff(
-                key, abs_tol=abs_tol, rel_tol=rel_tol,  **kwargs)
+            darray, data_mask, attr, compare = self.get_diff(key,
+                                                             abs_tol=abs_tol,
+                                                             rel_tol=rel_tol,
+                                                             **kwargs)
             real_mean, real_min, real_max = get_data_dist(darray, data_mask)
             abs_mean, abs_min, abs_max = get_data_dist(np.abs(darray), data_mask)
-            print("max diff neg %s, pos %s, mean %s\nabs diff min %s, max %s, mean %s" % (real_min, real_max, real_mean, abs_min, abs_max, abs_mean))
+            print("max diff neg %s, pos %s, mean %s\nabs diff min %s, max %s, mean %s" %
+                  (real_min, real_max, real_mean, abs_min, abs_max, abs_mean))
             print(*(f"{k}: {v}" for k, v in compare.items()))
             if vmin is None or vmax is None:
                 diff_max = max(abs(real_min), abs(real_max))
                 if diff_max == 0:
                     diff_max += 1
-                vmin_ = - diff_max
+                vmin_ = -diff_max
                 vmax_ = diff_max
             else:
                 vmin_ = vmin
                 vmax_ = vmax
             print("vmin %s vmax %s" % (vmin_, vmax_))
-            plot_2d_array(darray, data_mask, figsize=figsize,
-                          vmin=vmin_, vmax=vmax_, **attr)
+            plot_2d_array(darray, data_mask, figsize=figsize, vmin=vmin_, vmax=vmax_, **attr)
 
     def plot(self, *args, **kwargs):
         self.plot_diff(*args, **kwargs)
 
-    def plot_vs(self, tensor=None, abs_tol=0, rel_tol=0, figsize=6, vmin=None, vmax=None, zero_point=None,
-                slices=None, index=None, c_columns=32, resize_hw=None, transpose_hw=False, mix_axis=None,
-                dump=False, verbose=False):
+    def plot_vs(self,
+                tensor=None,
+                abs_tol=0,
+                rel_tol=0,
+                figsize=6,
+                vmin=None,
+                vmax=None,
+                zero_point=None,
+                slices=None,
+                index=None,
+                c_columns=32,
+                resize_hw=None,
+                transpose_hw=False,
+                mix_axis=None,
+                dump=False,
+                verbose=False):
         # archive the kwargs for next dump_vs
         self.archived_kwargs = {}
         self.archived_kwargs.update(
-            tensor=tensor, abs_tol=abs_tol, rel_tol=rel_tol,
-            slices=slices, index=index, c_columns=c_columns, resize_hw=resize_hw, transpose_hw=transpose_hw, mix_axis=mix_axis,
+            tensor=tensor,
+            abs_tol=abs_tol,
+            rel_tol=rel_tol,
+            slices=slices,
+            index=index,
+            c_columns=c_columns,
+            resize_hw=resize_hw,
+            transpose_hw=transpose_hw,
+            mix_axis=mix_axis,
         )
 
-        kwargs = {'slices': slices, 'index': index, 'c_columns': c_columns, 'resize_hw': resize_hw, 'transpose_hw': transpose_hw, 'mix_axis': mix_axis}
+        kwargs = {
+            'slices': slices,
+            'index': index,
+            'c_columns': c_columns,
+            'resize_hw': resize_hw,
+            'transpose_hw': transpose_hw,
+            'mix_axis': mix_axis
+        }
         tensors = []
         if tensor is None:
             warnings.warn(
-                "Your are plotting all the tensors in the NPZ file. This may cause problems when the file is large.", Warning)
+                "Your are plotting all the tensors in the NPZ file. This may cause problems when the file is large.",
+                Warning)
             tensors.extend(self.keys)
         else:
             if isinstance(tensor, list):
@@ -798,15 +924,15 @@ class NPZComparer:
                 tensors.append(tensor)
         if abs_tol != 0 or rel_tol != 0 or not vmin is None or not vmax is None:
             warnings.warn(
-                "In plot_vs, abs_tol, rel_tol, vmin, vmax only affect plot_diff. Set zero_point to affect plot_ref and plot_target.", Warning)
+                "In plot_vs, abs_tol, rel_tol, vmin, vmax only affect plot_diff. Set zero_point to affect plot_ref and plot_target.",
+                Warning)
         for key in tensors:
-            target_darray, data_mask1, attr1 = self.target.get_darray(
-                key, print_shape=False, **kwargs)
-            ref_darray, data_mask2, attr2 = self.ref.get_darray(
-                key, print_shape=False, **kwargs)
+            target_darray, data_mask1, attr1 = self.target.get_darray(key,
+                                                                      print_shape=False,
+                                                                      **kwargs)
+            ref_darray, data_mask2, attr2 = self.ref.get_darray(key, print_shape=False, **kwargs)
             assert np.all(data_mask1 == data_mask2) and attr1 == attr2
-            target_mean, target_min, target_max = get_data_dist(
-                target_darray, data_mask1)
+            target_mean, target_min, target_max = get_data_dist(target_darray, data_mask1)
             ref_mean, ref_min, ref_max = get_data_dist(ref_darray, data_mask2)
             zp = zero_point if not zero_point is None else (target_mean + ref_mean) / 2
             all_min = min(target_min, ref_min)
@@ -817,12 +943,27 @@ class NPZComparer:
             all_vmin = -1  # (all_min - zp) / scale
             all_vmax = 1  # (all_max - zp) / scale
 
-            self.target.plot(key, abs_tol=zp, rel_tol=scale,
-                             figsize=figsize, vmin=all_vmin, vmax=all_vmax, **kwargs)
-            self.ref.plot(key, abs_tol=zp, rel_tol=scale,
-                          figsize=figsize, vmin=all_vmin, vmax=all_vmax, **kwargs)
-            self.plot_diff(key, abs_tol=abs_tol, rel_tol=rel_tol,
-                           figsize=figsize, vmin=vmin, vmax=vmax, **kwargs)
+            self.target.plot(key,
+                             abs_tol=zp,
+                             rel_tol=scale,
+                             figsize=figsize,
+                             vmin=all_vmin,
+                             vmax=all_vmax,
+                             **kwargs)
+            self.ref.plot(key,
+                          abs_tol=zp,
+                          rel_tol=scale,
+                          figsize=figsize,
+                          vmin=all_vmin,
+                          vmax=all_vmax,
+                          **kwargs)
+            self.plot_diff(key,
+                           abs_tol=abs_tol,
+                           rel_tol=rel_tol,
+                           figsize=figsize,
+                           vmin=vmin,
+                           vmax=vmax,
+                           **kwargs)
         if dump:
             self.dump_vs_plot(verbose=verbose)
 
@@ -843,14 +984,31 @@ class NPZComparer:
             archived_kwargs['verbose'] = verbose
         self.dump_vs(**archived_kwargs)
 
-    def dump_vs(self, tensor=None, abs_tol=1e-8, rel_tol=1e-3,
-                slices=None, index=None, c_columns=32, resize_hw=None, transpose_hw=False, mix_axis=None,
-                verbose=False, **kwargs):
-        kwargs_plot = {'slices': slices, 'index': index, 'c_columns': c_columns, 'resize_hw': resize_hw, 'transpose_hw': transpose_hw, 'mix_axis': mix_axis}
+    def dump_vs(self,
+                tensor=None,
+                abs_tol=1e-8,
+                rel_tol=1e-3,
+                slices=None,
+                index=None,
+                c_columns=32,
+                resize_hw=None,
+                transpose_hw=False,
+                mix_axis=None,
+                verbose=False,
+                **kwargs):
+        kwargs_plot = {
+            'slices': slices,
+            'index': index,
+            'c_columns': c_columns,
+            'resize_hw': resize_hw,
+            'transpose_hw': transpose_hw,
+            'mix_axis': mix_axis
+        }
         tensors = []
         if tensor is None:
             warnings.warn(
-                "Your are dumping all the tensors in the NPZ file. This may cause problems when the file is large.", Warning)
+                "Your are dumping all the tensors in the NPZ file. This may cause problems when the file is large.",
+                Warning)
             tensors.extend(self.keys)
         else:
             if isinstance(tensor, list):
@@ -861,13 +1019,17 @@ class NPZComparer:
                 tensors.append(tensor)
         for key in tensors:
             print(f"tensor='{key}', # original shape {self.ref[key].shape}", end=", ")
-            target_darray, data_mask1, attr1 = self.target.get_darray(
-                key, print_shape=False, **kwargs_plot)
-            ref_darray, data_mask2, attr2 = self.ref.get_darray(
-                key, print_shape=True, **kwargs_plot)
+            target_darray, data_mask1, attr1 = self.target.get_darray(key,
+                                                                      print_shape=False,
+                                                                      **kwargs_plot)
+            ref_darray, data_mask2, attr2 = self.ref.get_darray(key,
+                                                                print_shape=True,
+                                                                **kwargs_plot)
             assert np.all(data_mask1 == data_mask2) and attr1 == attr2
 
-            print(f"{''.join(('%s: (%.6f, %.6f, %.6f)' % (k, *v) if isinstance(v, tuple) else '%s: %s' % (k, v)) for k, v in calc_similarity(target_darray, ref_darray, data_mask1).items())}", end=", ")
+            print(
+                f"{''.join(('%s: (%.6f, %.6f, %.6f)' % (k, *v) if isinstance(v, tuple) else '%s: %s' % (k, v)) for k, v in calc_similarity(target_darray, ref_darray, data_mask1).items())}",
+                end=", ")
             print("tolerance: abs %s, rel %s" % (abs_tol, rel_tol))
 
             diff = target_darray - ref_darray
@@ -875,25 +1037,32 @@ class NPZComparer:
             print("%20s %15s %15s %15s %15s" % ("index", "target", "ref", "diff", "rel_diff"))
 
             N, C, H, W = idx_to_nchw(np.array(target_darray.shape) - 1, attr1)
-            for n in range(N+1):
-                for c in range(C+1):
-                    for h in range(H+1):
-                        for w in range(W+1):
+            for n in range(N + 1):
+                for c in range(C + 1):
+                    for h in range(H + 1):
+                        for w in range(W + 1):
                             h_, w_ = nchw_to_idx((n, c, h, w), attr1)
                             if not data_mask1[h_][w_]:
                                 continue
                             error_mark_abs = int(min(100, abs(diff[h_][w_]) / (abs_tol + 1e-10)))
-                            error_mark_rel = int(min(100, abs(rel_diff[h_][w_]) / (rel_tol + 1e-10)))
+                            error_mark_rel = int(min(100,
+                                                     abs(rel_diff[h_][w_]) / (rel_tol + 1e-10)))
                             error_mark = min(error_mark_abs, error_mark_rel)
                             if verbose or error_mark >= 1:
-                                color = 'none' if diff[h_][w_] == 0 else ('blue' if diff[h_][w_] < 0 else 'red')
-                                print("%20s %#15.8g %#15.8g %s %s %s" % ((h, w) if attr1["h_split"] is None else (n, c, h, w),
-                                                                         target_darray[h_][w_],
-                                                                         ref_darray[h_][w_],
-                                                                         color_str("%#15.8g" % diff[h_][w_], 'green' if abs(diff[h_][w_]) <= abs_tol else color),
-                                                                         color_str("%#15.8g" % rel_diff[h_][w_], 'green' if abs(rel_diff[h_][w_]) <= rel_tol else color),
-                                                                         color_str("!" * error_mark, color)))
+                                color = 'none' if diff[h_][w_] == 0 else (
+                                    'blue' if diff[h_][w_] < 0 else 'red')
+                                print(
+                                    "%20s %#15.8g %#15.8g %s %s %s" %
+                                    ((h, w) if attr1["h_split"] is None else
+                                     (n, c, h, w), target_darray[h_][w_], ref_darray[h_][w_],
+                                     color_str("%#15.8g" % diff[h_][w_],
+                                               'green' if abs(diff[h_][w_]) <= abs_tol else color),
+                                     color_str(
+                                         "%#15.8g" % rel_diff[h_][w_],
+                                         'green' if abs(rel_diff[h_][w_]) <= rel_tol else color),
+                                     color_str("!" * error_mark, color)))
             print("")
+
 
 def idx_to_nchw(idx, attr):
     if attr['w_split'] is None and attr['h_split'] is None:
@@ -904,11 +1073,13 @@ def idx_to_nchw(idx, attr):
     w = idx[1] % attr['w_split']
     return (n, c, h, w)
 
+
 def nchw_to_idx(nchw, attr):
     n, c, h, w = nchw
     if attr['w_split'] is None and attr['h_split'] is None:
         return (h, w)
     return (n * attr['h_split'] + h, c * attr['w_split'] + w)
+
 
 def calc_similarity(target, ref, mask=None):
     if mask is None:
@@ -927,6 +1098,7 @@ def calc_similarity(target, ref, mask=None):
             return {"similarity": (sim["cosine"], sim["euclid"], sim["sqnr"])}
         raise ValueError("Invalid level %s" % level)
     else:
+
         def square_rooted(x):
             return np.sqrt(np.sum(np.power(x, 2)))
 
@@ -970,8 +1142,7 @@ def calc_similarity(target, ref, mask=None):
 
         def close_order(x, y):
             for order in range(5, 1, -1):
-                if (np.allclose(x, y, rtol=1 * 10**(-order), atol=1e-8,
-                                equal_nan=True)):
+                if (np.allclose(x, y, rtol=1 * 10**(-order), atol=1e-8, equal_nan=True)):
                     return order
             return 0
 

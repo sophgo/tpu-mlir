@@ -13,7 +13,7 @@ class TestMergeBN(unittest.TestCase):
     def test_case_1(self):
 
         def cos(a, b):
-            return (a * b).sum() / torch.sqrt((a ** 2).sum()) / torch.sqrt((b ** 2).sum())
+            return (a * b).sum() / torch.sqrt((a**2).sum()) / torch.sqrt((b**2).sum())
 
         dummy_input = torch.randn(1, 3, 224, 224, device='cpu')
         extra_qconfig_dict = {
@@ -44,7 +44,7 @@ class TestMergeBN(unittest.TestCase):
         def cos(a, b):
             a = a.flatten()
             b = b.flatten()
-            ans = (a * b).sum() / torch.sqrt((a ** 2).sum()) / torch.sqrt((b ** 2).sum())
+            ans = (a * b).sum() / torch.sqrt((a**2).sum()) / torch.sqrt((b**2).sum())
             return ans
 
         import torch.nn as nn
@@ -54,6 +54,7 @@ class TestMergeBN(unittest.TestCase):
             Test code from 
                 https://github.com/pgtgrly/Convolution-Deconvolution-Network-Pytorch
             '''
+
             def __init__(self):
                 super().__init__()
                 self.conv1 = nn.Conv2d(in_channels=3,
@@ -64,44 +65,32 @@ class TestMergeBN(unittest.TestCase):
                 nn.init.xavier_uniform(self.conv1.weight)
                 self.swish1 = nn.ReLU()
 
-                self.maxpool1 = nn.MaxPool2d(kernel_size=2,
-                                             return_indices=True)
+                self.maxpool1 = nn.MaxPool2d(kernel_size=2, return_indices=True)
 
-                self.conv2 = nn.Conv2d(in_channels=16,
-                                       out_channels=32,
-                                       kernel_size=5)
+                self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5)
                 nn.init.xavier_uniform(self.conv2.weight)
                 self.swish2 = nn.ReLU()
 
-                self.maxpool2 = nn.MaxPool2d(kernel_size=2,
-                                             return_indices=True)
+                self.maxpool2 = nn.MaxPool2d(kernel_size=2, return_indices=True)
 
-                self.conv3 = nn.Conv2d(in_channels=32,
-                                       out_channels=64,
-                                       kernel_size=3)
+                self.conv3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3)
                 nn.init.xavier_uniform(self.conv3.weight)
                 self.swish3 = nn.ReLU()
 
-                self.deconv1 = nn.ConvTranspose2d(in_channels=64,
-                                                  out_channels=32,
-                                                  kernel_size=3)
+                self.deconv1 = nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=3)
                 nn.init.xavier_uniform(self.deconv1.weight)
                 self.bn1 = nn.BatchNorm2d(32)
                 self.swish4 = nn.ReLU()
 
                 self.maxunpool1 = nn.MaxUnpool2d(kernel_size=2)
 
-                self.deconv2 = nn.ConvTranspose2d(in_channels=32,
-                                                  out_channels=16,
-                                                  kernel_size=5)
+                self.deconv2 = nn.ConvTranspose2d(in_channels=32, out_channels=16, kernel_size=5)
                 nn.init.xavier_uniform(self.deconv2.weight)
                 self.swish5 = nn.ReLU()
 
                 self.maxunpool2 = nn.MaxUnpool2d(kernel_size=2)
 
-                self.deconv3 = nn.ConvTranspose2d(in_channels=16,
-                                                  out_channels=3,
-                                                  kernel_size=4)
+                self.deconv3 = nn.ConvTranspose2d(in_channels=16, out_channels=3, kernel_size=4)
                 nn.init.xavier_uniform(self.deconv3.weight)
                 self.bn3 = nn.BatchNorm2d(3)
 

@@ -69,17 +69,13 @@ class BmodelEditor(TdbPlugin, TdbPluginCmd):
 
     def create_tiu_end(self, cmd_id=0, core_id=0):
         buf = bytearray(bm1688["tiu_end"])
-        sys_end = self.tdb.context.decoder.decode_tiu_cmd(
-            buf, cmd_id=cmd_id, core_id=core_id
-        )
+        sys_end = self.tdb.context.decoder.decode_tiu_cmd(buf, cmd_id=cmd_id, core_id=core_id)
         sys_end.reg.rsvd1 = 1
         return sys_end
 
     def create_dma_end(self, cmd_id=0, core_id=0):
         buf = bytearray(bm1688["dma_end"])
-        sys_end = self.tdb.context.decoder.decode_dma_cmd(
-            buf, cmd_id=cmd_id, core_id=core_id
-        )
+        sys_end = self.tdb.context.decoder.decode_dma_cmd(buf, cmd_id=cmd_id, core_id=core_id)
         sys_end.reg.reserved0 = 1
         return sys_end
 
@@ -93,7 +89,8 @@ class BmodelEditor(TdbPlugin, TdbPluginCmd):
         loc = index.get_loc_by_point()
         self.tdb.message(f"cut bmodel after {loc}")
 
-        indexs = self.tdb.index_df.loc[self.tdb.index_df.loc_index == loc.loc_index,"executed_id"].tolist()
+        indexs = self.tdb.index_df.loc[self.tdb.index_df.loc_index == loc.loc_index,
+                                       "executed_id"].tolist()
 
         index = max(indexs) + 1
 
@@ -105,18 +102,18 @@ class BmodelEditor(TdbPlugin, TdbPluginCmd):
                 if cmd.cmd_type == CMDType.tiu:
                     self.tdb.message(cmd)
                     cmd = self.create_tiu_end(cmd_id=cmd.cmd_id)
-                    old_buf = bytes(cmd.cmd.buf[: len(cmd.reg.buf)])
-                    cmd.cmd.buf[: len(cmd.reg.buf)] = bytes(cmd.reg)
+                    old_buf = bytes(cmd.cmd.buf[:len(cmd.reg.buf)])
+                    cmd.cmd.buf[:len(cmd.reg.buf)] = bytes(cmd.reg)
                 elif cmd.cmd_type == CMDType.dma:
                     self.tdb.message(cmd)
                     cmd = self.create_dma_end(cmd_id=cmd.cmd_id)
-                    old_buf = bytes(cmd.cmd.buf[: len(cmd.reg.buf)])
-                    cmd.cmd.buf[: len(cmd.reg.buf)] = bytes(cmd.reg)
+                    old_buf = bytes(cmd.cmd.buf[:len(cmd.reg.buf)])
+                    cmd.cmd.buf[:len(cmd.reg.buf)] = bytes(cmd.reg)
                 else:
                     index += 1
                     continue
                 hit_dic[(cmd.cmd_type, cmd.core_id)] = (
-                    bytes(cmd.cmd.buf[: len(cmd.reg.buf)]),
+                    bytes(cmd.cmd.buf[:len(cmd.reg.buf)]),
                     old_buf,
                 )
             index += 1

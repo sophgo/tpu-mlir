@@ -39,7 +39,10 @@ def predict(model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Flask API exposing YOLOv5 model")
     parser.add_argument("--port", default=5000, type=int, help="port number")
-    parser.add_argument('--model', nargs='+', default=['yolov5s'], help='model(s) to run, i.e. --model yolov5n yolov5s')
+    parser.add_argument('--model',
+                        nargs='+',
+                        default=['yolov5s'],
+                        help='model(s) to run, i.e. --model yolov5n yolov5s')
     opt = parser.parse_args()
 
     for m in opt.model:

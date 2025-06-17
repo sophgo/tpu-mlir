@@ -6,7 +6,6 @@
 # third-party components.
 #
 # ==============================================================================
-
 """
 regdef.py provide a wrap class for regdef.py,
 for better code struct and IDE auto-completation.
@@ -90,9 +89,7 @@ class Decoder(DecoderBase):
         super().__init__()
         self.context = context
 
-    def decode_tiu_cmd(
-        self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id
-    ) -> TiuCmd:
+    def decode_tiu_cmd(self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id) -> TiuCmd:
         assert cmd_id is not None, "SG2380 must assign cmd_id manully"
         for head_cls in TiuHeads:  # type: cmd_base_t
             head = head_cls.from_buffer(reg_buf, offset)  # type: TiuHead
@@ -101,12 +98,11 @@ class Decoder(DecoderBase):
                 break
         assert op_info is not None, (
             f"Unable to decode TIU code at offset {offset} out of {len(reg_buf)} total."
-            f" Potential head identified as {head}"
-        )
+            f" Potential head identified as {head}")
         # get op struct
         op_clazz = op_class_dic[op_info.name]
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
-        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
         cmd = op_info(
             reg,
@@ -118,21 +114,18 @@ class Decoder(DecoderBase):
         )
         return cmd
 
-    def decode_dma_cmd(
-        self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id
-    ) -> DmaCmd:
+    def decode_dma_cmd(self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id) -> DmaCmd:
         assert cmd_id is not None, "SG2380 must assign cmd_id manully"
         head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
         op_info = dma_index.get((head.cmd_short, head.cmd_type, head.cmd_sp_func), None)
         assert op_info is not None, (
             f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
-            f" Potential head identified as {head}"
-        )
+            f" Potential head identified as {head}")
         # get op struct
         op_clazz = op_class_dic[op_info.name]
 
         reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
-        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
         cmd = op_info(
             reg,
@@ -198,11 +191,7 @@ class Decoder(DecoderBase):
             cmd_id += 1
             offset += cmd.reg.length // 8
             res.append(cmd)
-            if (
-                isinstance(cmd.reg, tiu_sys)
-                and cmd.reg.tsk_eu_typ == 31
-                and cmd.reg.rsvd1 == 1
-            ):
+            if (isinstance(cmd.reg, tiu_sys) and cmd.reg.tsk_eu_typ == 31 and cmd.reg.rsvd1 == 1):
                 # rsvd0 = 1 to label manully modified cmd
                 break
 

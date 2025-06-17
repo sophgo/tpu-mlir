@@ -20,6 +20,7 @@ import itertools
 import glob
 from tqdm import tqdm
 
+
 def get_cmd_id(c):
     if hasattr(c, 'cmd_id'):
         cmd_id = c.cmd_id
@@ -27,13 +28,17 @@ def get_cmd_id(c):
         cmd_id = c.inst_id
     return cmd_id
 
+
 class DynCpuInfo(object):
+
     def __init__(self, begin_cycle, end_cycle, type, inst_id) -> None:
         self.end_cycle = end_cycle
         self.type = type
         self.inst_id = inst_id
 
+
 class BMProfileParserPerfAI(BMProfileParser):
+
     def __init__(self):
         super().__init__()
         self.gdma_pairs = []
@@ -61,14 +66,18 @@ class BMProfileParserPerfAI(BMProfileParser):
             des_cdma = []
             blocks_factory = {
                 BlockType.MONITOR_CDMA.value: (monitor_cdma, self.__parse_monitor_cdma),
-                BlockType.BLOCK_DES_CDMA.value: (des_cdma, lambda l, raw_data: l.extend(self.cdma_parser.parse(raw_data))),
+                BlockType.BLOCK_DES_CDMA.value:
+                (des_cdma, lambda l, raw_data: l.extend(self.cdma_parser.parse(raw_data))),
             }
             for block in blocks:
-                item_list, item_func = blocks_factory.get(
-                    block.type.value, (0, lambda x, y: 0))
+                item_list, item_func = blocks_factory.get(block.type.value, (0, lambda x, y: 0))
                 item_func(item_list, block.content)
-            self.cdma_pairs[idx] = self.make_pairs(self.cdma_cmd[idx], monitor_cdma[0], self.archlib.cdma_sys_code,
-                                                   des_cdma, is_cdma=True, mix_mode=mix_mode)
+            self.cdma_pairs[idx] = self.make_pairs(self.cdma_cmd[idx],
+                                                   monitor_cdma[0],
+                                                   self.archlib.cdma_sys_code,
+                                                   des_cdma,
+                                                   is_cdma=True,
+                                                   mix_mode=mix_mode)
 
     def parse_cmd(self, file_list):
         self.bdc_parser = self.archlib.BDCommandParser()
@@ -95,13 +104,15 @@ class BMProfileParserPerfAI(BMProfileParser):
                 BlockType.DYN_DATA.value: (item.dyn_data, self.__parse_dyn_data),
                 BlockType.COMMAND.value: (item.command_info, self.__parse_command_info),
                 BlockType.DYN_EXTRA.value: (item.dyn_extra, self.__parse_dyn_extra),
-                BlockType.BLOCK_DES_BDC.value: (item.des_bdc, lambda l, raw_data: l.extend(self.bdc_parser.parse(raw_data))),
-                BlockType.BLOCK_DES_GDMA.value: (item.des_gdma, lambda l, raw_data: l.extend(self.gdma_parser.parse(raw_data))),
-                BlockType.BLOCK_DES_SDMA.value: (item.des_sdma, lambda l, raw_data: l.extend(self.gdma_parser.parse(raw_data))),
+                BlockType.BLOCK_DES_BDC.value:
+                (item.des_bdc, lambda l, raw_data: l.extend(self.bdc_parser.parse(raw_data))),
+                BlockType.BLOCK_DES_GDMA.value:
+                (item.des_gdma, lambda l, raw_data: l.extend(self.gdma_parser.parse(raw_data))),
+                BlockType.BLOCK_DES_SDMA.value:
+                (item.des_sdma, lambda l, raw_data: l.extend(self.gdma_parser.parse(raw_data))),
             }
             for block in blocks:
-                item_list, item_func = blocks_factory.get(
-                    block.type.value, (0, lambda x, y: 0))
+                item_list, item_func = blocks_factory.get(block.type.value, (0, lambda x, y: 0))
                 item_func(item_list, block.content)
             if item.command_info:
                 self.__read_command_data(item)
@@ -109,9 +120,11 @@ class BMProfileParserPerfAI(BMProfileParser):
                 self.__read_dyn_command_data(item)
 
     def parse(self, in_dir):
+
         def sort_key_func(filename):
             numbers = re.findall(r'\d+', filename)
             return [int(num) for num in numbers]
+
         self.in_dir = in_dir
         if not os.path.exists(in_dir):
             logging.fatal("'{}' does not exist".format(in_dir))
@@ -194,24 +207,22 @@ class BMProfileParserPerfAI(BMProfileParser):
             with open(nfile.format(idx), fmode) as f:
                 if new_file:
                     f.write("__CHIP_ARCH_ARGS__\n")
-                    f.write("".join(f"\t{key}: {value}\n" for key,
-                            value in arch.items()))
+                    f.write("".join(f"\t{key}: {value}\n" for key, value in arch.items()))
                 for p in pairs:
                     info, extra = fn(p["monitor"], p["cmd"], idx, engine.value)
                     info["Global Idx"] = g_idx
                     g_idx += 1
                     info["Core Id"] = core_id
                     f.write(tag)
-                    f.write(
-                        "".join(f"\t{key}: {value}\n" for key, value in info.items()))
+                    f.write("".join(f"\t{key}: {value}\n" for key, value in info.items()))
                     if extra is not None:
                         f.write('{}:\n'.format(info["Function Type"]))
-                        f.write(
-                            "".join(f"\t{key}: {value}\n" for key, value in extra.items()))
+                        f.write("".join(f"\t{key}: {value}\n" for key, value in extra.items()))
 
     def __align_core_time(self):
-        assert(len(self.profile_sync_points) == len(self.bd_pairs))
-        for i, (bd_pair, gdma_pair, cycle) in enumerate(zip(self.bd_pairs, self.gdma_pairs, self.profile_sync_points)):
+        assert (len(self.profile_sync_points) == len(self.bd_pairs))
+        for i, (bd_pair, gdma_pair,
+                cycle) in enumerate(zip(self.bd_pairs, self.gdma_pairs, self.profile_sync_points)):
             if i == 0:
                 continue
             delta_cyle = cycle - self.profile_sync_points[0]
@@ -235,7 +246,8 @@ class BMProfileParserPerfAI(BMProfileParser):
     def __shift_time(self):
         start_cycle = math.inf
         # start_cycle = self.gdma_pairs[0][0]["monitor"].inst_start_time
-        for _, (bd_pair, gdma_pair, sdma_pair) in enumerate(zip(self.bd_pairs, self.gdma_pairs, self.sdma_pairs)):
+        for _, (bd_pair, gdma_pair,
+                sdma_pair) in enumerate(zip(self.bd_pairs, self.gdma_pairs, self.sdma_pairs)):
             if bd_pair:
                 start_cycle = min(bd_pair[0]["monitor"].inst_start_time, start_cycle)
             if gdma_pair:
@@ -246,12 +258,12 @@ class BMProfileParserPerfAI(BMProfileParser):
             for j1 in itertools.chain(bd_pair, gdma_pair):
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - start_cycle)
-                assert(j1["monitor"].inst_start_time >= 0 and j1["monitor"].inst_end_time >= 0)
+                assert (j1["monitor"].inst_start_time >= 0 and j1["monitor"].inst_end_time >= 0)
         for sdma_pair in self.sdma_pairs:
             for j1 in sdma_pair:
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
                 j1["monitor"].inst_end_time = int(j1["monitor"].inst_end_time - start_cycle)
-                assert(j1["monitor"].inst_start_time >= 0 and j1["monitor"].inst_end_time >= 0)
+                assert (j1["monitor"].inst_start_time >= 0 and j1["monitor"].inst_end_time >= 0)
         for cdma_pair in self.cdma_pairs:
             for j1 in cdma_pair:
                 j1["monitor"].inst_start_time = int(j1["monitor"].inst_start_time - start_cycle)
@@ -270,7 +282,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         last_id = 0
         for c in data:
             if last_id > 65000 and c.inst_id < 1000:
-                    delta_id += 65536
+                delta_id += 65536
             last_id = c.inst_id
             c.inst_id += delta_id
 
@@ -281,12 +293,12 @@ class BMProfileParserPerfAI(BMProfileParser):
         for c in data:
             current_time = c.inst_start_time + delta_time
             if current_time < last_time:
-                delta_time += uint32_max # uint32 max
+                delta_time += uint32_max  # uint32 max
             c.inst_start_time += delta_time
             c.inst_end_time += delta_time
             if c.inst_end_time < c.inst_start_time:
-               # start not overflow but end does
-               c.inst_end_time += uint32_max
+                # start not overflow but end does
+                c.inst_end_time += uint32_max
             last_time = c.inst_end_time
 
     def __veryfy_cdma_time(self, data):
@@ -298,12 +310,12 @@ class BMProfileParserPerfAI(BMProfileParser):
             current_st = c.inst_start_time + delta_time
             current_et = c.inst_end_time + delta_time
             if current_st < last_st and current_et < last_et:
-                delta_time += uint32_max # uint32 max
+                delta_time += uint32_max  # uint32 max
             c.inst_start_time += delta_time
             c.inst_end_time += delta_time
             if c.inst_end_time < c.inst_start_time:
-               # start not overflow but end does
-               c.inst_end_time += uint32_max
+                # start not overflow but end does
+                c.inst_end_time += uint32_max
             last_st = c.inst_start_time
             last_et = c.inst_end_time
 
@@ -336,8 +348,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         monitor_sdma.append(tmp)
 
     def __parse_command_info(self, command_info: List, raw_data):
-        command_info.append(
-            self._BMProfileParser__parse_command_info(raw_data))
+        command_info.append(self._BMProfileParser__parse_command_info(raw_data))
 
     def __parse_dyn_extra(self, dyn_extra_data: List, raw_data):
         tmp = parse_dyn_extra(raw_data, True)
@@ -359,25 +370,34 @@ class BMProfileParserPerfAI(BMProfileParser):
     def __read_command_data(self, item):
         # static cmd include hole cores cmd per iter.profile
         for core_num, cmd_info in enumerate(item.command_info):
-            bd_cmd = self.__base_read_command_data(cmd_info.bd_base,
-                                                cmd_info.bd_offset,
-                                                self.archlib.EngineType.BD,
-                                                core_num, self.bdc_parser)
-            gdma_cmd = self.__base_read_command_data(cmd_info.gdma_base,
-                                                    cmd_info.gdma_offset,
-                                                    self.archlib.EngineType.GDMA,
-                                                    core_num, self.gdma_parser)
-            sdma_cmd = self.__base_read_command_data(cmd_info.sdma_base,
-                                                    cmd_info.sdma_offset,
-            # TODO tpuv7-runtime/model-runtime/runtime/src/sgruntime_bmodel.cpp:576
-                                                    self.archlib.EngineType.VSDMA,
-                                                    core_num, self.gdma_parser)
-            bd_pair = self.make_pairs([], item.monitor_bd[core_num],
-                                      self.archlib.bd_sys_code, bd_cmd, mix_mode=False)
-            gdma_pair = self.make_pairs([], item.monitor_gdma[core_num],
-                                        self.archlib.dma_sys_code, gdma_cmd, mix_mode=False)
-            sdma_pair = self.make_pairs([], item.monitor_sdma[core_num],
-                                        self.archlib.dma_sys_code, sdma_cmd, mix_mode=False)
+            bd_cmd = self.__base_read_command_data(cmd_info.bd_base, cmd_info.bd_offset,
+                                                   self.archlib.EngineType.BD, core_num,
+                                                   self.bdc_parser)
+            gdma_cmd = self.__base_read_command_data(cmd_info.gdma_base, cmd_info.gdma_offset,
+                                                     self.archlib.EngineType.GDMA, core_num,
+                                                     self.gdma_parser)
+            sdma_cmd = self.__base_read_command_data(
+                cmd_info.sdma_base,
+                cmd_info.sdma_offset,
+                # TODO tpuv7-runtime/model-runtime/runtime/src/sgruntime_bmodel.cpp:576
+                self.archlib.EngineType.VSDMA,
+                core_num,
+                self.gdma_parser)
+            bd_pair = self.make_pairs([],
+                                      item.monitor_bd[core_num],
+                                      self.archlib.bd_sys_code,
+                                      bd_cmd,
+                                      mix_mode=False)
+            gdma_pair = self.make_pairs([],
+                                        item.monitor_gdma[core_num],
+                                        self.archlib.dma_sys_code,
+                                        gdma_cmd,
+                                        mix_mode=False)
+            sdma_pair = self.make_pairs([],
+                                        item.monitor_sdma[core_num],
+                                        self.archlib.dma_sys_code,
+                                        sdma_cmd,
+                                        mix_mode=False)
 
             if core_num <= len(self.bd_pairs):
                 if item.monitor_bd[core_num]:
@@ -429,11 +449,8 @@ class BMProfileParserPerfAI(BMProfileParser):
                     dp[i][j] = dp[i - 1][j - 1]
                     path[i][j] = (i - 1, j - 1)
                 else:
-                    options = [
-                        (dp[i - 1][j] + 1, (i - 1, j)),
-                        (dp[i][j - 1] + 1, (i, j - 1)),
-                        (dp[i - 1][j - 1] + 2, (i - 1, j - 1))
-                    ]
+                    options = [(dp[i - 1][j] + 1, (i - 1, j)), (dp[i][j - 1] + 1, (i, j - 1)),
+                               (dp[i - 1][j - 1] + 2, (i - 1, j - 1))]
                     dp[i][j], path[i][j] = min(options, key=lambda x: x[0])
 
         i, j = m, n
@@ -473,6 +490,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             if slice:
                 sections.append((last_idx - start_idx + 1, slice))
             return sections
+
         _monitor = get_sections(monitor)
         _cmd = get_sections(cmd)
 
@@ -490,8 +508,8 @@ class BMProfileParserPerfAI(BMProfileParser):
             if len(_cmd) == 1 and len(_monitor) == 1:
                 if _cmd[-1][0] != _monitor[-1][0]:
                     max_len = max(_cmd[-1][0], _monitor[-1][0])
-                    _cmd[-1] = (max_len,  _cmd[-1][1])
-                    _monitor[-1] = (max_len,  _monitor[-1][1])
+                    _cmd[-1] = (max_len, _cmd[-1][1])
+                    _monitor[-1] = (max_len, _monitor[-1][1])
         pairs = self.__match_sections(_monitor, _cmd)
         # des cmd
         _des_cmd = []
@@ -515,7 +533,6 @@ class BMProfileParserPerfAI(BMProfileParser):
         # print("pmu", [str(m[0]) for m in _monitor])
         return pairs
 
-
     def __make_pairs(self, cmd, monitor, sys_code, des_cmd, mix_mode):
         pairs = []
         if cmd == [] and des_cmd is None:
@@ -529,7 +546,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             if p_monitor is None:
                 continue
             if p_cmd is None:
-                if mix_mode: # mix mode for tpudnn, otherwise bmodel
+                if mix_mode:  # mix mode for tpudnn, otherwise bmodel
                     for m in p_monitor:
                         pairs.append({"monitor": m, "cmd": None})
                 continue
@@ -567,7 +584,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             # compatiable code for cdma pmu receive thread_id == 0
             if pre and m.inst_id < pre.inst_id and (pre.thread_id == 1 \
                                                     or (pre.inst_id - m.inst_id == 1 and m.inst_id)):
-                monitor[i], monitor[i-1] = monitor[i-1], monitor[i]
+                monitor[i], monitor[i - 1] = monitor[i - 1], monitor[i]
             pre = m
 
     def __rm_tx_wait_points(self, monitor):
@@ -584,7 +601,6 @@ class BMProfileParserPerfAI(BMProfileParser):
                 for j1 in monitor:
                     j1.inst_start_time = j1.inst_start_time - delta_cycle
                     j1.inst_end_time = j1.inst_end_time - delta_cycle
-
 
     def __rm_sync_points(self, monitor, record_time_stamp=False):
         # sync points (send, wait)
@@ -605,7 +621,7 @@ class BMProfileParserPerfAI(BMProfileParser):
     def omit_sys(self, pairs, sys_code):
         for p in pairs:
             self.__omit_sys(p, sys_code, end=True)
-            self.__omit_sys(p, sys_code, end=False) # omit sys at begin
+            self.__omit_sys(p, sys_code, end=False)  # omit sys at begin
 
     def __omit_sys(self, pairs, sys_code, end):
         extra_sys = []
@@ -617,7 +633,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             if pairs[i]["cmd"] is None:
                 if self.is_dyn:
                     break
-                else: # for bmodel
+                else:  # for bmodel
                     extra_sys.append(i)
                     continue
             tsk_type, _ = self.__get_cmd_type(pairs[i]["cmd"])
@@ -632,7 +648,7 @@ class BMProfileParserPerfAI(BMProfileParser):
             extra_sys.extend(part)
             extra_sys = extra_sys[::-1]
         for i in extra_sys:
-                pairs.pop(i)
+            pairs.pop(i)
 
     def __compatiable_make_pairs(self, cmd, monitor, sys_code, des_cmd, mix_mode):
         pairs = []
@@ -643,13 +659,13 @@ class BMProfileParserPerfAI(BMProfileParser):
             pairs = self.__make_pairs(cmd, monitor, sys_code, des_cmd, mix_mode)
         return pairs
 
-
     def make_pairs(self, cmd, monitor, sys_code, des_cmd=None, is_cdma=False, mix_mode=True):
         offset = self.archlib.profile_init_cmd_num
         if is_cdma:
             self.__rm_tx_wait_points(monitor)
             # tmp compatiable code cause pio mode pmu inst_id is not correct
-            pairs = self.__compatiable_make_pairs(cmd[offset:], monitor, sys_code, des_cmd, mix_mode) # todo support des
+            pairs = self.__compatiable_make_pairs(cmd[offset:], monitor, sys_code, des_cmd,
+                                                  mix_mode)  # todo support des
             return pairs
         else:
             self.__rm_sync_points(monitor, sys_code == self.archlib.bd_sys_code)
@@ -664,7 +680,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         bd_cmd = []
         if item.dyn_data:
             dyn_data = item.dyn_data
-            assert(len(dyn_data)>0)
+            assert (len(dyn_data) > 0)
             core_id = len(self.bd_pairs)
             for i, d in enumerate(dyn_data[1:]):  # skip init record
                 d.core_id = core_id
@@ -682,7 +698,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                     elif d.engine == self.archlib.EngineType.CDMA.value:
                         self.cdma_cmd[d.extra_info >> 7].append(d)
         bd_pair = self.make_pairs(bd_cmd, item.monitor_bd[0], self.archlib.bd_sys_code,
-                                    item.des_bdc)
+                                  item.des_bdc)
         gdma_pair = self.make_pairs(gdma_cmd, item.monitor_gdma[0], self.archlib.dma_sys_code,
                                     item.des_gdma)
         sdma_pair = self.make_pairs(sdma_cmd, item.monitor_sdma[0], self.archlib.dma_sys_code,
@@ -693,8 +709,7 @@ class BMProfileParserPerfAI(BMProfileParser):
 
     def __base_read_command_data(self, base, offset, engine_type, core_num, command_parser):
         basename = "cmd_%x_%d_%d.dat"
-        command_filename = os.path.join(
-            self.in_dir, basename % (base, core_num, engine_type.value))
+        command_filename = os.path.join(self.in_dir, basename % (base, core_num, engine_type.value))
         if not os.path.isfile(command_filename):
             return []
         with open(command_filename, "rb") as f:

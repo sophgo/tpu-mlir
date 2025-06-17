@@ -35,6 +35,7 @@ class RewriteName(ast.NodeTransformer):
 
 
 class RemoveImport(ast.NodeTransformer):
+
     def visit_Import(self, node):
         """Remove import statements."""
         return None
@@ -70,11 +71,10 @@ def merge_files(python_files):
                         name=func_def.name,
                         args=func_def.args,
                         body=[transformer.visit(node) for node in func_def.body],
-                        decorator_list=[ast.Name(id="staticmethod", ctx=ast.Load())]
-                        + func_def.decorator_list,
+                        decorator_list=[ast.Name(id="staticmethod", ctx=ast.Load())] +
+                        func_def.decorator_list,
                         returns=func_def.returns,
-                    )
-                    for func_def in func_defs
+                    ) for func_def in func_defs
                 ]
                 transformer = RemoveImport()
                 class_def.body = [transformer.visit(node) for node in class_def.body]
@@ -98,7 +98,6 @@ from flatbuffers.compat import import_numpy
 np = import_numpy()
 """
 
-
 if __name__ == "__main__":
     assert len(sys.argv) > 2 and "usage: merge_pyfbs.py ./python_fbs_folder output_file"
     directory = sys.argv[1]
@@ -106,9 +105,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:  # import some modules
         top_import += "\n" + sys.argv[3] + "\n"
 
-    python_files = [
-        os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".py")
-    ]
+    python_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".py")]
 
     merged_content = merge_files(python_files)
     with open(out_file, "w") as f:

@@ -6,7 +6,6 @@
 # third-party components.
 #
 # ==============================================================================
-
 """
 regdef.py provide a wrap class for regdef.py,
 for better code struct and IDE auto-completation.
@@ -25,7 +24,6 @@ from ..target_common import (
     HeadDef,
 )
 from .opdef import tiu_index, tiu_cls, dma_index, dma_cls, cdma_index, TiuCmd, DmaCmd
-
 
 if TYPE_CHECKING:
     from .context import BM1690Context
@@ -107,6 +105,7 @@ class DmaHead(HeadDef):
     def __hash__(self):
         return hash((bool(self.cmd_short), self.cmd_type, self.cmd_sp_func))
 
+
 class CDmaHead(HeadDef):
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -139,8 +138,7 @@ class Decoder(DecoderBase):
         super().__init__()
         self.context = context
 
-    def decode_tiu_cmd(
-        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
+    def decode_tiu_cmd(self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
         assert cmd_id is not None, "2260 must assign cmd_id manully"
         for head_cls in TiuHeads:  # type: cmd_base_t
             head = head_cls.from_buffer(reg_buf, offset)  # type: TiuHead
@@ -150,12 +148,11 @@ class Decoder(DecoderBase):
                 break
         assert op_info is not None, (
             f"Unable to decode TIU code at offset {offset} out of {len(reg_buf)} total."
-            f" Potential head identified as {head}"
-        )
+            f" Potential head identified as {head}")
         # get op struct
         op_clazz = op_class_dic[op_info.name]
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
-        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
         cmd = op_info(
             reg,
@@ -167,21 +164,19 @@ class Decoder(DecoderBase):
         )
         return cmd
 
-    def decode_dma_cmd(
-        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
+    def decode_dma_cmd(self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
         op_info = dma_index.get(head, None)
 
         assert op_info is not None, (
             f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
-            f" Potential head identified as {head}"
-        )
+            f" Potential head identified as {head}")
         # get op struct
         op_clazz = op_class_dic[op_info.name]
 
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
-        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
         cmd = op_info(
             reg,
@@ -193,21 +188,19 @@ class Decoder(DecoderBase):
         )
         return cmd
 
-    def decode_cdma_cmd(
-        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
+    def decode_cdma_cmd(self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         head = CDmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
         op_info = cdma_index.get(head, None)
 
         assert op_info is not None, (
             f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
-            f" Potential head identified as {head}"
-        )
+            f" Potential head identified as {head}")
         # get op struct
         op_clazz = op_class_dic[op_info.name]
 
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
-        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
         cmd = op_info(
             reg,
@@ -307,37 +300,25 @@ class Decoder(DecoderBase):
             return True
         return False
 
-    def decode_cmds(
-        self,
-        cmd_arry: bytes,
-        core_id: int,
-        cmd_id: int,
-        t: int
-    ) -> list:
+    def decode_cmds(self, cmd_arry: bytes, core_id: int, cmd_id: int, t: int) -> list:
         from ..pmu_support import EngineType
         res = []
-        if t == EngineType.TPU :
-            cmd = self.decode_tiu_cmd(
-                cmd_arry,
-                offset=0,
-                core_id=core_id,
-                subnet_id=0,
-                cmd_id=cmd_id
-            )
-        elif t == EngineType.GDMA :
-            cmd = self.decode_dma_cmd(
-                cmd_arry,
-                offset=0,
-                core_id=core_id,
-                subnet_id=0,
-                cmd_id=cmd_id
-            )
-        elif t == EngineType.SDMA :
-            cmd = self.decode_dma_cmd(
-                cmd_arry,
-                offset=0,
-                core_id=core_id,
-                subnet_id=0,
-                cmd_id=cmd_id
-            )
+        if t == EngineType.TPU:
+            cmd = self.decode_tiu_cmd(cmd_arry,
+                                      offset=0,
+                                      core_id=core_id,
+                                      subnet_id=0,
+                                      cmd_id=cmd_id)
+        elif t == EngineType.GDMA:
+            cmd = self.decode_dma_cmd(cmd_arry,
+                                      offset=0,
+                                      core_id=core_id,
+                                      subnet_id=0,
+                                      cmd_id=cmd_id)
+        elif t == EngineType.SDMA:
+            cmd = self.decode_dma_cmd(cmd_arry,
+                                      offset=0,
+                                      core_id=core_id,
+                                      subnet_id=0,
+                                      cmd_id=cmd_id)
         return cmd.get_op_info()

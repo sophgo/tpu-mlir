@@ -1,9 +1,10 @@
-import torch 
+import torch
 
 
 class QuantizeScheme(object):
     """Describe quantization scheme.
     """
+
     def __init__(self, symmetry=True, per_channel=False, pot_scale=False, bit=8, **kwargs):
         self.symmetry = symmetry
         self.per_channel = per_channel
@@ -22,13 +23,21 @@ class QuantizeScheme(object):
 
     def to_observer_params(self):
         naive_para = {
-            'quant_min': (-2 ** (self.bit - 1) + 1 if self.symmetric_range else -2 ** (self.bit - 1)) if self.symmetry else 0,
-            'quant_max': 2 ** (self.bit - 1) - 1 if self.symmetry else 2 ** self.bit - 1,
-            'dtype': torch.qint8 if self.symmetry else torch.quint8,
-            'pot_scale': self.pot_scale,
-            'qscheme': self.torch_qscheme,
-            'reduce_range': False,
-            'ch_axis': 0 if self.per_channel else -1
+            'quant_min':
+            (-2**(self.bit - 1) +
+             1 if self.symmetric_range else -2**(self.bit - 1)) if self.symmetry else 0,
+            'quant_max':
+            2**(self.bit - 1) - 1 if self.symmetry else 2**self.bit - 1,
+            'dtype':
+            torch.qint8 if self.symmetry else torch.quint8,
+            'pot_scale':
+            self.pot_scale,
+            'qscheme':
+            self.torch_qscheme,
+            'reduce_range':
+            False,
+            'ch_axis':
+            0 if self.per_channel else -1
         }
         naive_para.update(self.kwargs)
         return naive_para

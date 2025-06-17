@@ -23,6 +23,7 @@ from typing import List, Hashable
 
 
 class RefObj:
+
     def __hash__(self) -> int:
         return id(self)
 
@@ -296,6 +297,7 @@ class SerializableProfile:
 
 
 class Table:
+
     def __init__(self, type=None) -> None:
         self.table = {}
         self.unhashable = []
@@ -336,6 +338,7 @@ class Table:
 
 
 class TableEncoder(json.JSONEncoder):
+
     def tablToJson(self, o):
         rd = o.records()
         if len(rd) > 0:
@@ -491,15 +494,12 @@ class markerSchema:
     chartLabel: str  # ?
     display: List[str] = dc.field(default_factory=list)  #  // The locations to display
     data: List[dict] = dc.field(
-        default_factory=list
-    )  # dict {key, label, format, searchable} | {label, value}
+        default_factory=list)  # dict {key, label, format, searchable} | {label, value}
 
 
 @dataclass(eq=False)
 class Marker(RefObj):
-    str_table: Table = dc.field(
-        default_factory=list, repr=False, hash=None, compare=False
-    )
+    str_table: Table = dc.field(default_factory=list, repr=False, hash=None, compare=False)
     name: str = None
     startTime: float = None
     endTime: float = None
@@ -535,6 +535,7 @@ class Sample(RefObj):
     time: float
     weight: None = None
     weightType: WeightType = WeightType.tracing_ms
+
     # threadId: Thread
 
     def __post_init__(self):
@@ -612,9 +613,7 @@ class Thread(RefObj):
         return symbol
 
     def add_frame(self, *args, **kargs):
-        frame = Frame(
-            self.stringArray, self.funcTable, self.nativeSymbols, *args, **kargs
-        )
+        frame = Frame(self.stringArray, self.funcTable, self.nativeSymbols, *args, **kargs)
         self.frameTable.get_id(frame)
         return frame
 

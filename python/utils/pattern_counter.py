@@ -11,7 +11,9 @@
 import re
 import argparse
 
+
 class PatternCounter():
+
     def __init__(self, log_file):
         self.success_counter = {}
         self.log_file = log_file
@@ -32,6 +34,7 @@ class PatternCounter():
                         self.success_counter[last_pattern] += 1
                     last_pattern = None
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
@@ -42,6 +45,3 @@ if __name__ == "__main__":
     matcher = PatternCounter(args.log_file)
     matcher.count_matched_patterns()
     print(matcher.success_counter)
-
-
-

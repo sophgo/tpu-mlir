@@ -21,6 +21,7 @@ from definition.style import *
 
 
 class TiuNode:
+
     def __init__(self, reg):
         self.alg_ops = int(reg['Alg Ops'])
         self.uarch_ops = int(reg['uArch Ops'])
@@ -42,30 +43,29 @@ class Tiu(object):
         :param writer: the writer of Excel to write
         """
         self.writer = writer
-        self.columns = ['Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name', 'Function Type', 'Function Name',
-                        'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle', 'Avg Cycle Last 200', 'Alg Ops',
-                        'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
-                        'Initial Cycle Ratio', 'Data Type', 'Sim Power(W)', 'des_cmd_id_dep',
-                        'des_res0_n', 'des_res0_c', 'des_res0_h', 'des_res0_w',
-                        'des_res0_n_str', 'des_res0_c_str', 'des_res0_h_str', 'des_res0_w_str',
-                        'des_opd0_n', 'des_opd0_c', 'des_opd0_h', 'des_opd0_w',
-                        'des_opd0_n_str', 'des_opd0_c_str', 'des_opd0_h_str', 'des_opd0_w_str',
-                        'des_opd1_n', 'des_opd1_c', 'des_opd1_h', 'des_opd1_w', 'des_opd1_n_str', 'des_opd1_c_str', 'des_opd1_h_str',
-                        'des_opd1_w_str',
-                        'des_opd2_n_str', 'des_res0_addr', 'des_res1_addr', 'des_opd0_addr', 'des_opd1_addr',
-                        'des_opd2_addr',
-                        'des_opd3_addr', 'des_tsk_typ', 'des_tsk_eu_typ', 'des_cmd_short',
-                        'des_opt_res0_prec', 'des_opt_opd0_prec', 'des_opt_opd1_prec', 'des_opt_opd2_prec',
-                        'des_short_opd0_str',
-                        'des_opt_opd0_const', 'des_opt_opd1_const', 'des_opt_opd2_const', 'des_opt_opd3_const',
-                        'des_opt_opd4_const', 'des_opt_opd5_const',
-                        'des_opt_res_add', 'des_opt_res0_sign', 'des_opt_opd0_sign', 'des_opt_opd1_sign',
-                        'des_opt_opd2_sign',
-                        'des_opd0_rt_pad', 'des_opd1_x_ins0', 'des_opd0_up_pad', 'des_opd0_lf_pad', 'des_opt_left_tran',
-                        'des_pad_mode', 'des_opd0_y_ins0', 'des_opd1_y_ins0',
-                        'des_short_res0_str', 'des_short_opd1_str', 'des_sym_range', 'des_opt_rq', 'des_op_code',
-                        'des_opt_kernel_rotate', 'des_res_op_x_str', 'des_res_op_y_str', 'des_opd0_x_ins0',
-                        'des_tsk_opd_num', 'des_opd0_dn_pad', 'des_intr_en', 'des_opt_relu', 'des_pwr_step', 'Msg Id', 'Sd\Wt Count']
+        self.columns = [
+            'Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name',
+            'Function Type', 'Function Name', 'Alg Cycle', 'Asic Cycle', 'Start Cycle', 'End Cycle',
+            'Avg Cycle Last 200', 'Alg Ops', 'uArch Ops', 'uArch Rate', 'Bank Conflict Ratio',
+            'Initial Cycle Ratio', 'Data Type', 'Sim Power(W)', 'des_cmd_id_dep', 'des_res0_n',
+            'des_res0_c', 'des_res0_h', 'des_res0_w', 'des_res0_n_str', 'des_res0_c_str',
+            'des_res0_h_str', 'des_res0_w_str', 'des_opd0_n', 'des_opd0_c', 'des_opd0_h',
+            'des_opd0_w', 'des_opd0_n_str', 'des_opd0_c_str', 'des_opd0_h_str', 'des_opd0_w_str',
+            'des_opd1_n', 'des_opd1_c', 'des_opd1_h', 'des_opd1_w', 'des_opd1_n_str',
+            'des_opd1_c_str', 'des_opd1_h_str', 'des_opd1_w_str', 'des_opd2_n_str', 'des_res0_addr',
+            'des_res1_addr', 'des_opd0_addr', 'des_opd1_addr', 'des_opd2_addr', 'des_opd3_addr',
+            'des_tsk_typ', 'des_tsk_eu_typ', 'des_cmd_short', 'des_opt_res0_prec',
+            'des_opt_opd0_prec', 'des_opt_opd1_prec', 'des_opt_opd2_prec', 'des_short_opd0_str',
+            'des_opt_opd0_const', 'des_opt_opd1_const', 'des_opt_opd2_const', 'des_opt_opd3_const',
+            'des_opt_opd4_const', 'des_opt_opd5_const', 'des_opt_res_add', 'des_opt_res0_sign',
+            'des_opt_opd0_sign', 'des_opt_opd1_sign', 'des_opt_opd2_sign', 'des_opd0_rt_pad',
+            'des_opd1_x_ins0', 'des_opd0_up_pad', 'des_opd0_lf_pad', 'des_opt_left_tran',
+            'des_pad_mode', 'des_opd0_y_ins0', 'des_opd1_y_ins0', 'des_short_res0_str',
+            'des_short_opd1_str', 'des_sym_range', 'des_opt_rq', 'des_op_code',
+            'des_opt_kernel_rotate', 'des_res_op_x_str', 'des_res_op_y_str', 'des_opd0_x_ins0',
+            'des_tsk_opd_num', 'des_opd0_dn_pad', 'des_intr_en', 'des_opt_relu', 'des_pwr_step',
+            'Msg Id', 'Sd\Wt Count'
+        ]
         self.reg_list = []
         self.perf_dict = dict()
         self.stati_list = []
@@ -78,35 +78,39 @@ class Tiu(object):
         # The architecture parameters of the SG2260 are set to the initial values
         # It will be changed as the chip architecture parameters change
         self.detail_spec = {
-                            'Platform': ['simulator'],
-                            'CHIP ARCH': ['sg2260'],
-                            'Core Num': ['64'],
-                            'NPU Num': ['64'],
-                            'Cube IC Align(8bits)': ['32'],
-                            'Cube OHOW Align': ['8'],
-                            'Vector OHOW Align(8bits)': ['128'],
-                            'Tiu Frequency(MHz)': ['1000'],
-                            'DMA Frequency(MHz)': ['1000'],
-                            'Dram Bandwidth': ['8533'],
-                            'TPU Lmem Size(Bytes)': ['16777216']}
-        self.kpi_desc = pd.DataFrame({'Field': [
-            'uArch Rate',
-            'Bank Conflict Ratio',
-            'Initial Cycle Ratio',
-            'Data Type',
-            'Avg Cycle Last 200'],
-            'Description': [
-                'Alg Ops / uArch Ops, since the shape of tensor needs to be aligned in '
-                'micro-architecture, the actual ops will be greater than the algorithm value. '
-                "It's better to closer to 100%.",
-                'opd num with same address / opd num, probability of bank conflict '
-                "occurred. It's better to closer to 0%.",
-                'initial cycle / total cycle, proportion of initial cycle in the total '
-                'cycles, the meaning of initial cycle is that some initialization and '
-                "other operations will be performed before execution. It's better to closer to 0%.",
-                'Data type transform, usually represents opd0->res0.',
-                'The average cycle taken to execute the last 200 tiu commands. Consecutive short '
-                'commands will increase the burden on PMU, leading to a decrease in performance']}, index=None)
+            'Platform': ['simulator'],
+            'CHIP ARCH': ['sg2260'],
+            'Core Num': ['64'],
+            'NPU Num': ['64'],
+            'Cube IC Align(8bits)': ['32'],
+            'Cube OHOW Align': ['8'],
+            'Vector OHOW Align(8bits)': ['128'],
+            'Tiu Frequency(MHz)': ['1000'],
+            'DMA Frequency(MHz)': ['1000'],
+            'Dram Bandwidth': ['8533'],
+            'TPU Lmem Size(Bytes)': ['16777216']
+        }
+        self.kpi_desc = pd.DataFrame(
+            {
+                'Field': [
+                    'uArch Rate', 'Bank Conflict Ratio', 'Initial Cycle Ratio', 'Data Type',
+                    'Avg Cycle Last 200'
+                ],
+                'Description': [
+                    'Alg Ops / uArch Ops, since the shape of tensor needs to be aligned in '
+                    'micro-architecture, the actual ops will be greater than the algorithm value. '
+                    "It's better to closer to 100%.",
+                    'opd num with same address / opd num, probability of bank conflict '
+                    "occurred. It's better to closer to 0%.",
+                    'initial cycle / total cycle, proportion of initial cycle in the total '
+                    'cycles, the meaning of initial cycle is that some initialization and '
+                    "other operations will be performed before execution. It's better to closer to 0%.",
+                    'Data type transform, usually represents opd0->res0.',
+                    'The average cycle taken to execute the last 200 tiu commands. Consecutive short '
+                    'commands will increase the burden on PMU, leading to a decrease in performance'
+                ]
+            },
+            index=None)
         self.summary = dict()
         self.tiu_cycle = 0
         self.start_time = sys.maxsize
@@ -129,7 +133,7 @@ class Tiu(object):
         chip_arch_dict = None
         if os.path.exists(reg_info_file) and os.path.getsize(reg_info_file) != 0:
             last_underscore_index = reg_info_file.rfind('_')
-            core_id = int(reg_info_file[last_underscore_index + 1 : -4])
+            core_id = int(reg_info_file[last_underscore_index + 1:-4])
             with open(reg_info_file) as f:
                 rows = f.readlines()
                 field_set = set()
@@ -141,7 +145,8 @@ class Tiu(object):
                         attr = row.split(': ')[0][1:]
                         field_set.add(attr)
                 reg_count = 0
-                field_list = list(field_set) if len(field_set) >= len(self.columns) else self.columns
+                field_list = list(field_set) if len(field_set) >= len(
+                    self.columns) else self.columns
                 reg_dict = dict.fromkeys(field_list, '')
                 idx = 0
                 for row in rows:
@@ -196,7 +201,8 @@ class Tiu(object):
                     'TIU Frequency(MHz)': [chip_arch_dict['TIU Frequency(MHz)']],
                     'DMA Frequency(MHz)': [chip_arch_dict['DMA Frequency(MHz)']],
                     'DDR Frequency(MHz)': [chip_arch_dict['DDR Frequency(MHz)']],
-                    'TPU Lmem Size(Bytes)': [chip_arch_dict['TPU Lmem Size(Bytes)']]}
+                    'TPU Lmem Size(Bytes)': [chip_arch_dict['TPU Lmem Size(Bytes)']]
+                }
         self.height = len(self.reg_list)
         self.chip_arch_dict = chip_arch_dict
         return chip_arch_dict
@@ -209,10 +215,12 @@ class Tiu(object):
         for i in range(len(self.reg_list)):
             reg_dict = self.reg_list[i]
             continous_gap = 200
-            if i < continous_gap - 1 :
-                reg_dict['Avg Cycle Last 200'] = round(int(reg_dict['End Cycle']) / int(reg_dict['Cmd Id']))
+            if i < continous_gap - 1:
+                reg_dict['Avg Cycle Last 200'] = round(
+                    int(reg_dict['End Cycle']) / int(reg_dict['Cmd Id']))
             else:
-                reg_dict['Avg Cycle Last 200'] = round((reg_dict['End Cycle'] - self.reg_list[i-199]['Start Cycle']) / continous_gap)
+                reg_dict['Avg Cycle Last 200'] = round(
+                    (reg_dict['End Cycle'] - self.reg_list[i - 199]['Start Cycle']) / continous_gap)
             if not (reg_dict['des_tsk_typ'] == 15 and reg_dict['des_tsk_eu_typ'] == 9):
                 # wait msg time do not add to tiu cycles
                 self.tiu_cycle += int(reg_dict['Asic Cycle'])
@@ -227,8 +235,13 @@ class Tiu(object):
                                         ' -> ' + data_type_dict[reg_dict['des_opt_res0_prec']]
             if int(reg_dict['des_tsk_typ']) == 15 and int(reg_dict['des_tsk_eu_typ']) == 9:
                 self.wait_msg_time += int(reg_dict['Asic Cycle'])
-            self.start_time = min(self.start_time, get_time_by_cycle(reg_dict['Start Cycle'], self.chip_arch_dict['TIU Frequency(MHz)']))
-            self.end_time = max(self.start_time, get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['TIU Frequency(MHz)']))
+            self.start_time = min(
+                self.start_time,
+                get_time_by_cycle(reg_dict['Start Cycle'],
+                                  self.chip_arch_dict['TIU Frequency(MHz)']))
+            self.end_time = max(
+                self.start_time,
+                get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['TIU Frequency(MHz)']))
             self.total_power += float(reg_dict['Sim Power(W)'])
             if reg_dict['Function Type'] not in self.perf_dict.keys():
                 func_dict = {
@@ -257,7 +270,8 @@ class Tiu(object):
                 func_dict['Sim Power'] += float(reg_dict['Sim Power(W)'])
                 self.perf_dict[reg_dict['Function Type']] = func_dict
             self.total_instr += 1
-        self.tiu_time = get_time_by_cycle(self.tiu_cycle, self.chip_arch_dict['TIU Frequency(MHz)']) if self.chip_arch_dict else 0
+        self.tiu_time = get_time_by_cycle(
+            self.tiu_cycle, self.chip_arch_dict['TIU Frequency(MHz)']) if self.chip_arch_dict else 0
 
     def pop_data(self, core_id):
         tiu_instance_map = dict()
@@ -294,12 +308,18 @@ class Tiu(object):
         for func in self.perf_dict.keys():
             tmp_func_dict = self.perf_dict[func]
             tmp_func_dict['Function Name'] = func
-            tmp_func_dict['Alg Ops Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Ops'], self.alg_total_ops)
-            tmp_func_dict['Alg Cycle Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Cycle'], self.alg_total_cycle)
-            tmp_func_dict['uArch URate'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Ops'], tmp_func_dict['uArch Ops'])
-            tmp_func_dict['uArch Ops Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['uArch Ops'], self.uArch_total_ops)
-            tmp_func_dict['Asic Cycle Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Asic Cycle'], self.tiu_cycle)
-            tmp_func_dict['Sim Power Ratio'] = get_ratio_str_2f_zero_f(tmp_func_dict['Sim Power'], self.total_power)
+            tmp_func_dict['Alg Ops Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Ops'],
+                                                                   self.alg_total_ops)
+            tmp_func_dict['Alg Cycle Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Cycle'],
+                                                                     self.alg_total_cycle)
+            tmp_func_dict['uArch URate'] = get_ratio_str_2f_zero(tmp_func_dict['Alg Ops'],
+                                                                 tmp_func_dict['uArch Ops'])
+            tmp_func_dict['uArch Ops Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['uArch Ops'],
+                                                                     self.uArch_total_ops)
+            tmp_func_dict['Asic Cycle Ratio'] = get_ratio_str_2f_zero(tmp_func_dict['Asic Cycle'],
+                                                                      self.tiu_cycle)
+            tmp_func_dict['Sim Power Ratio'] = get_ratio_str_2f_zero_f(
+                tmp_func_dict['Sim Power'], self.total_power)
             self.perf_dict[func] = tmp_func_dict
             self.stati_list.append(tmp_func_dict)
         self.perf_dict['Overall'] = {
@@ -325,21 +345,41 @@ class Tiu(object):
             df.rename(columns={'Asic Cycle': 'Simulator Cycle'}, inplace=True)
         if len(df) > 0:
             content_start_rows = len(self.stati_list) + 8
-            pd.DataFrame(self.summary).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=0,
+            pd.DataFrame(self.summary).to_excel(self.writer,
+                                                index=False,
+                                                sheet_name=self.sheet_name,
+                                                startrow=0,
                                                 startcol=1,
-                                                engine='xlsxwriter', float_format='%g')
-            pd.DataFrame(self.detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=0,
+                                                engine='xlsxwriter',
+                                                float_format='%g')
+            pd.DataFrame(self.detail_spec).to_excel(self.writer,
+                                                    index=False,
+                                                    sheet_name=self.sheet_name,
+                                                    startrow=0,
                                                     startcol=15,
-                                                    engine='xlsxwriter', float_format='%g')
-            pd.DataFrame(self.kpi_desc).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=3,
+                                                    engine='xlsxwriter',
+                                                    float_format='%g')
+            pd.DataFrame(self.kpi_desc).to_excel(self.writer,
+                                                 index=False,
+                                                 sheet_name=self.sheet_name,
+                                                 startrow=3,
                                                  startcol=15,
-                                                 engine='xlsxwriter', float_format='%g')
-            pd.DataFrame(self.stati_list).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=5,
+                                                 engine='xlsxwriter',
+                                                 float_format='%g')
+            pd.DataFrame(self.stati_list).to_excel(self.writer,
+                                                   index=False,
+                                                   sheet_name=self.sheet_name,
+                                                   startrow=5,
                                                    startcol=1,
-                                                   engine='xlsxwriter', float_format='%g')
-            pd.DataFrame(df).to_excel(self.writer, index=False, sheet_name=self.sheet_name,
-                                      startrow=content_start_rows, startcol=0,
-                                      engine='xlsxwriter', float_format='%g')
+                                                   engine='xlsxwriter',
+                                                   float_format='%g')
+            pd.DataFrame(df).to_excel(self.writer,
+                                      index=False,
+                                      sheet_name=self.sheet_name,
+                                      startrow=content_start_rows,
+                                      startcol=0,
+                                      engine='xlsxwriter',
+                                      float_format='%g')
 
     @classmethod
     def set_style(cls, file_path, core_id, frozen=False):
@@ -411,7 +451,7 @@ class Tiu(object):
             cell.fill = detail_style.content_pattern
             cell.font = detail_style.title_header_font
         # set content style
-        offset = 1 # cause introduce global_id
+        offset = 1  # cause introduce global_id
         content_end_cols = 19 + offset
         content_start_rows = 8 + perf_df_len
         initial_cycle_pos = 17 + offset
@@ -459,7 +499,8 @@ class Tiu(object):
             ws.cell(h, w).fill = detail_style.yellow_light
             ws.cell(h, w).font = detail_style.title_font
             ws.cell(h, w).alignment = detail_style.center_align
-        for h, w in zip([content_start_rows, content_start_rows, content_start_rows], [uArch_ratio_pos, fp32_pos, avg_cycle_last_200_pos]):
+        for h, w in zip([content_start_rows, content_start_rows, content_start_rows],
+                        [uArch_ratio_pos, fp32_pos, avg_cycle_last_200_pos]):
             ws.cell(h, w).fill = detail_style.red_light
             ws.cell(h, w).font = detail_style.title_font
             ws.cell(h, w).alignment = detail_style.center_align

@@ -10,15 +10,7 @@
 from enum import Enum
 from typing import Any, List, Tuple
 from collections import namedtuple
-from debugger.disassembler import (
-    BModel,
-    Net,
-    Parameter,
-
-    SubNet,
-    Tensor,
-    CmdGroup
-)
+from debugger.disassembler import (BModel, Net, Parameter, SubNet, Tensor, CmdGroup)
 
 from debugger.target_common import (
     BModelContext,
@@ -71,6 +63,7 @@ def decode_cmdgroup(
 
 
 class _AtomicContext:
+
     def __call__(self, bmodel_net: BModel, bmodel_context: BModelContext) -> Any:
         self.bmodel_net = bmodel_net
         self.bmodel_context = bmodel_context
@@ -88,6 +81,7 @@ atomic_context = _AtomicContext()
 
 
 class Node:
+
     def __init__(self) -> None:
         self.parent = None
 
@@ -100,6 +94,7 @@ class Node:
 
 
 class Value(Node):
+
     def __init__(self, x: Tensor) -> None:
         super().__init__()
         self.memref = x.memref
@@ -145,9 +140,7 @@ class Block(Node):
         self.successor = subnet.next_subnet_ids
 
         if subnet.run_mode == subnet.run_mode.CPU:
-            self.cpu_cmds.extend(
-                [bmodel_net.decode_cpu_op(i) for i in subnet.cpu_param]
-            )
+            self.cpu_cmds.extend([bmodel_net.decode_cpu_op(i) for i in subnet.cpu_param])
             for cpu_cmd_id, cpu_x in enumerate(self.cpu_cmds):
                 # per cpuop, per subnet
                 self.operations.append(
@@ -158,8 +151,7 @@ class Block(Node):
                         output_memref=output_memref,
                         subnet_id=subnet.id,
                         cmd_id=cpu_cmd_id,
-                    )
-                )
+                    ))
             return
 
         if subnet.run_mode == subnet.run_mode.TPU_DYNAMIC:
@@ -173,16 +165,14 @@ class Block(Node):
                         output_memref=output_memref,
                         subnet_id=subnet.id,
                         cmd_id=ir_cmd_id,
-                    )
-                )
+                    ))
             return
 
         if subnet.run_mode == subnet.run_mode.TPU_STATIC:
             if bmodel_net.core_num > 1:
                 self.cmds = [
                     decode_cmdgroup(context, cmd, self.subnet_id, core_id)
-                    for core_id, x in enumerate(subnet.core_commands)
-                    for cmd in x.gdma_tiu_commands
+                    for core_id, x in enumerate(subnet.core_commands) for cmd in x.gdma_tiu_commands
                 ]
 
                 assert isinstance(context, BM1688Context)
@@ -212,10 +202,7 @@ class Block(Node):
                 return
 
             if subnet.cmd_group:
-                self.cmds = [
-                    decode_cmdgroup(context, x, self.subnet_id)
-                    for x in subnet.cmd_group
-                ]
+                self.cmds = [decode_cmdgroup(context, x, self.subnet_id) for x in subnet.cmd_group]
 
                 # if isinstance(context, BM1684Context):
                 #     # tricky make cmd_id of cmd groups after first but in the same subnet add offset from previou cmd_id
@@ -238,8 +225,7 @@ class Block(Node):
             else:
                 self.cmds = [
                     decode_cmdgroup(context, cmd, self.subnet_id, core_id)
-                    for core_id, x in enumerate(subnet.core_commands)
-                    for cmd in x.gdma_tiu_commands
+                    for core_id, x in enumerate(subnet.core_commands) for cmd in x.gdma_tiu_commands
                 ]
 
             for x in self.cmds:
@@ -274,12 +260,8 @@ class Block(Node):
 
         if all((x == -1 for x in self.successor)):
             tem = [Value(x) for x in self.terminator]
-            rets = (
-                "return "
-                + ", ".join((x.name for x in tem))
-                + ": "
-                + ", ".join((x.type_str for x in tem))
-            )
+            rets = ("return " + ", ".join((x.name for x in tem)) + ": " + ", ".join(
+                (x.type_str for x in tem)))
         else:
             rets = f"Successor {self.successor}"  # TODO
         rets = textwrap.indent(rets, INDENT_SPACE)
@@ -288,14 +270,13 @@ class Block(Node):
 
 
 class Region(Node):
+
     def __init__(self, net_stage: Parameter, indent=0):
         super().__init__()
         self.indent = indent
         self.ctx_addr = net_stage.ctx_addr
         self.ctx_size = net_stage.ctx_size
-        self.blocks = [
-            Block(x, indent, self.ctx_addr, self.ctx_size) for x in net_stage.sub_net
-        ]
+        self.blocks = [Block(x, indent, self.ctx_addr, self.ctx_size) for x in net_stage.sub_net]
         self.signature: Tuple[List[Tensor], List[Tensor]] = (
             net_stage.input_tensor,
             net_stage.output_tensor,
@@ -308,6 +289,7 @@ class Region(Node):
 
 
 class Function(Node):
+
     def __init__(self, net: Net, indent=0):
         super().__init__()
         self.indent = indent
@@ -325,6 +307,7 @@ class Function(Node):
         return f"func.func @{self.name}({operands}) -> ({returns}) ({{"
 
     def dump_tail(self):
+
         def fmt_names(x: List[Tensor]):
             names = (f'"{n.name}"' for n in x)
             return f"[{', '.join(names)}]"

@@ -84,9 +84,7 @@ def bmprofile_parse_perfAI(
                 ],
                 shell=True,
             )
-            shutil.move(
-                os.path.join(target_dir, "PerfWeb"), os.path.join(output_dir, "PerfWeb")
-            )
+            shutil.move(os.path.join(target_dir, "PerfWeb"), os.path.join(output_dir, "PerfWeb"))
         if doc:
             print("Generate doc...")
             subprocess.run(
@@ -97,6 +95,4 @@ def bmprofile_parse_perfAI(
                 shell=True,
             )
 
-            shutil.move(
-                os.path.join(target_dir, "PerfDoc"), os.path.join(output_dir, "PerfDoc")
-            )
+            shutil.move(os.path.join(target_dir, "PerfDoc"), os.path.join(output_dir, "PerfDoc"))

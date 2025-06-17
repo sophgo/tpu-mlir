@@ -10,6 +10,7 @@ from sophgo_mq.utils.logger import logger
 from sophgo_mq.utils.registry import register_model_quantizer
 from sophgo_mq.custom_quantizer import ModelQuantizer
 
+
 class AcademicQuantizer(ModelQuantizer):
     """Academic setting mostly do not merge BN and leave the first and last layer to higher bits.
     """
@@ -30,8 +31,8 @@ class AcademicQuantizer(ModelQuantizer):
         logger.info("Replace module to qat module.")
         wqconfig_8bit = copy.deepcopy(qconfig)
         wq_symmetry = True if is_symmetric_quant(qconfig.weight.p.keywords['qscheme']) else False
-        wqconfig_8bit.weight.p.keywords['quant_min'] = -2 ** (8 - 1) if wq_symmetry else 0
-        wqconfig_8bit.weight.p.keywords['quant_max'] = 2 ** (8 - 1) - 1 if wq_symmetry else 2 ** 8 - 1
+        wqconfig_8bit.weight.p.keywords['quant_min'] = -2**(8 - 1) if wq_symmetry else 0
+        wqconfig_8bit.weight.p.keywords['quant_max'] = 2**(8 - 1) - 1 if wq_symmetry else 2**8 - 1
         for name, module in model.named_modules():
             if name in self.io_module.keys():
                 logger.info("Set layer {} to 8 bit.".format(name))
@@ -84,9 +85,9 @@ class AcademicQuantizer(ModelQuantizer):
         g2node = getitem2node(model)
         for node in nodes:
             if ((node.op == "call_module" and node.target in self.exclude_module_name) or
-                ((node.op == 'call_function' or node.op == 'call_method') and
-                 node.target in self.exclude_function_type) or
-                    node.name in self.exclude_node_name) and node.name not in self.additional_node_name:
+                ((node.op == 'call_function' or node.op == 'call_method')
+                 and node.target in self.exclude_function_type) or node.name
+                    in self.exclude_node_name) and node.name not in self.additional_node_name:
                 logger.info("Exclude skip: {}".format(node.name))
                 continue
             if (node.op == "call_module" and isinstance(modules[node.target], self.module_type_to_quant_input)) or \
@@ -114,9 +115,10 @@ class AcademicQuantizer(ModelQuantizer):
         node_to_quantize_output = OrderedDict.fromkeys(node_to_quantize_output).keys()
 
         aqconfig_8bit = copy.deepcopy(qconfig.activation)
-        aq_symmetry = True if is_symmetric_quant(qconfig.activation.p.keywords['qscheme']) else False
-        aqconfig_8bit.p.keywords['quant_min'] = -2 ** (8 - 1) if aq_symmetry else 0
-        aqconfig_8bit.p.keywords['quant_max'] = 2 ** (8 - 1) - 1 if aq_symmetry else 2 ** 8 - 1
+        aq_symmetry = True if is_symmetric_quant(
+            qconfig.activation.p.keywords['qscheme']) else False
+        aqconfig_8bit.p.keywords['quant_min'] = -2**(8 - 1) if aq_symmetry else 0
+        aqconfig_8bit.p.keywords['quant_max'] = 2**(8 - 1) - 1 if aq_symmetry else 2**8 - 1
         for node in node_to_quantize_output:
             if node.name in self.post_act_8bit_node_name:
                 logger.info("Set {} post act quantize to 8 bit.".format(node.name))
@@ -127,7 +129,7 @@ class AcademicQuantizer(ModelQuantizer):
             setattr(model, quantizer_name, fake_quantizer)
             logger.info("Insert act quant {}".format(quantizer_name))
             with graph.inserting_after(node):
-                inserted_node = graph.create_node("call_module", quantizer_name, (node,), {})
+                inserted_node = graph.create_node("call_module", quantizer_name, (node, ), {})
                 for _node in nodes:
                     _node.args = self._fix_succ_recursivly(_node.args, node, inserted_node)
 

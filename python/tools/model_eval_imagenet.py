@@ -12,6 +12,7 @@ import numpy as np
 import time
 import argparse
 import pymlir
+
 pymlir.set_mem_mode("value_mem")
 import onnx
 import onnxruntime
@@ -25,6 +26,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from enum import Enum
 
+
 def mlir_validate(val_loader, module, ppa_list, count=-1):
     """https://github.com/pytorch/examples/blob/main/imagenet/main.py"""
 
@@ -34,21 +36,18 @@ def mlir_validate(val_loader, module, ppa_list, count=-1):
     losses = AverageMeter('Loss', ':.4e', Summary.NONE)
     top1 = AverageMeter('Acc@1', ':6.2f', Summary.AVERAGE)
     top5 = AverageMeter('Acc@5', ':6.2f', Summary.AVERAGE)
-    progress = ProgressMeter(
-        len(val_loader),
-        [top1, top5, losses, batch_time],
-        prefix='Test: ')
+    progress = ProgressMeter(len(val_loader), [top1, top5, losses, batch_time], prefix='Test: ')
 
     end = time.time()
     for i, item in enumerate(val_loader):
-        (images,target), (path,_) = item
+        (images, target), (path, _) = item
 
-        assert(input_num == 1)
+        assert (input_num == 1)
         x = ppa_list[0].run(path[0])
         module.set_tensor(ppa_list[0].input_name, x)
         module.invoke()
         tensors = module.get_all_tensor()
-        assert(len(module.output_names) == 1)
+        assert (len(module.output_names) == 1)
         output = torch.from_numpy(tensors[module.output_names[0]])
 
         loss = criterion(output, target)
@@ -69,6 +68,7 @@ def mlir_validate(val_loader, module, ppa_list, count=-1):
 
 
 class MyImageFolder(datasets.ImageFolder):
+
     def __getitem__(self, index):
         return super(MyImageFolder, self).__getitem__(index), self.imgs[index]
 
@@ -82,6 +82,7 @@ class Summary(Enum):
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self, name, fmt=':f', summary_type=Summary.AVERAGE):
         self.name = name
         self.fmt = fmt
@@ -127,6 +128,7 @@ class AverageMeter(object):
 
 
 class ProgressMeter(object):
+
     def __init__(self, num_batches, meters, prefix=""):
         self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
         self.meters = meters
@@ -148,7 +150,7 @@ class ProgressMeter(object):
         return '[' + fmt + '/' + fmt.format(num_batches) + ']'
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=(1, )):
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
         maxk = max(topk)
@@ -164,23 +166,28 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, required=True, help="mlir file.")
     parser.add_argument("--dataset", required=True, help="imagenet dataset")
-    parser.add_argument('--count', type=int, required=False, default=-1,
+    parser.add_argument('--count',
+                        type=int,
+                        required=False,
+                        default=-1,
                         help='num of images for eval')
     args = parser.parse_args()
 
-    val_dataset = MyImageFolder(
-        args.dataset,
-        transforms.Compose([
-            transforms.PILToTensor(),
-        ]))
+    val_dataset = MyImageFolder(args.dataset, transforms.Compose([
+        transforms.PILToTensor(),
+    ]))
 
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=1, shuffle=True,
-        num_workers=1, pin_memory=True, sampler=None)
+    val_loader = torch.utils.data.DataLoader(val_dataset,
+                                             batch_size=1,
+                                             shuffle=True,
+                                             num_workers=1,
+                                             pin_memory=True,
+                                             sampler=None)
 
     if args.model.endswith('.onnx'):
         raise RuntimeError("ONNX not supported yet, modle file:{}".format(args.model))

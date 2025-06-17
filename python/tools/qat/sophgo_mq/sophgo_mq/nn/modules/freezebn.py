@@ -1,6 +1,8 @@
 import torch
 
+
 class FrozenBatchNorm2d(torch.nn.BatchNorm2d):
+
     def __init__(self, *args, **kwargs):
         super(FrozenBatchNorm2d, self).__init__(*args, **kwargs)
         self.training = False

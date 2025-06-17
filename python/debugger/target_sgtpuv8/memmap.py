@@ -14,7 +14,9 @@ from functools import lru_cache
 if TYPE_CHECKING:
     from .context import SGTPUV8Context
 
+
 class SGTPUV8Info:
+
     def __init__(self) -> None:
         self.lib_name = "libcmodel_sgtpuv8.so"
         self._lib = None
@@ -98,14 +100,16 @@ class SGTPUV8Info:
         }
         return TYPED_CUBE_NUM[dtype]
 
+
 info = SGTPUV8Info()
 
 # TPU1688/sgtpuv8/spec/include/memmap.h
 memmap = {
-    MType.R: (0xc080000, 0xc080000 + 65536),    # local memory
-    MType.S: (0xc041000, 0xc041000 + 0x400),    # TODO: static memory 1KB
+    MType.R: (0xc080000, 0xc080000 + 65536),  # local memory
+    MType.S: (0xc041000, 0xc041000 + 0x400),  # TODO: static memory 1KB
     MType.G: (0x80000000, 0x80000000 + 2**28),  # global memory 256M
 }
+
 
 def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
     """
@@ -234,12 +238,10 @@ class MemRef(MemRefBase):
     def r_addr(self):
         if self.mtype in [MType.UNKNOWN, MType.G]:
             # print(self.address,"G r_addr",self.context.fix_addr(self.address) , self.context.memmap[self.mtype][0])
-            return (
-                self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
-            )
+            return (self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0])
 
         # r_addr = self.address & 0x7FFFFF
-        r_addr = self.address & 0xFFFFFFFFFF # remain 40 bit as local offset
+        r_addr = self.address & 0xFFFFFFFFFF  # remain 40 bit as local offset
         # print("r_addr",r_addr)
         return r_addr
 
@@ -268,7 +270,8 @@ class MemRef(MemRefBase):
 
         if self.layout == Layout.alignIC:
             cube_num = info.CUBE_NUM(self.dtype)
-            return 1, min(n, info.NPU_NUM), 1, div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num)
+            return 1, min(n,
+                          info.NPU_NUM), 1, div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num)
 
         if self.layout == Layout.matrix:
             w = self.layout.args[0]

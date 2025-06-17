@@ -5,8 +5,24 @@ from scipy.stats import norm
 from sophgo_mq.fake_quantize.quantize_base import QuantizeBase
 from sophgo_mq.utils.hook import PerChannelLoadHook
 
-
-INT4=[-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,]
+INT4 = [
+    -8,
+    -7,
+    -6,
+    -5,
+    -4,
+    -3,
+    -2,
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+]
 NF4 = [
     -1.0,
     -0.6961928009986877,
@@ -25,22 +41,23 @@ NF4 = [
     0.7229568362236023,
     1.0,
 ]
-AF4=[-1.0, 
-     -0.69441008, 
-     -0.51243739,
-      -0.3736951, 
-     -0.25607552, 
-     -0.14982478,
-     -0.04934812,  
-     0.0, 
-     0.04273164, 
-     0.12934483, 
-     0.21961274, 
-     0.31675666,
-     0.42563882,  
-     0.55496234,  
-     0.72424863,  
-     1.0,
+AF4 = [
+    -1.0,
+    -0.69441008,
+    -0.51243739,
+    -0.3736951,
+    -0.25607552,
+    -0.14982478,
+    -0.04934812,
+    0.0,
+    0.04273164,
+    0.12934483,
+    0.21961274,
+    0.31675666,
+    0.42563882,
+    0.55496234,
+    0.72424863,
+    1.0,
 ]
 FP4_BNB = [-12.0, -8.0, -6.0, -4.0, -3.0, -2.0, -0.0625, 0, 0.0625, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0]
 FP4_E2M1 = [-6.0, -4.0, -3.0, -2.0, -1.5, -1.0, -0.0625, 0, 0.0625, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0]
@@ -53,41 +70,60 @@ FP4_BNB_BIT = [-5, -6, -3, -4, -1, -2, -7, 0, 1, 6, 7, 4, 5, 2, 3]
 FP4_E2M1_BIT = [-1, -2, -3, -4, -5, -6, -7, 0, 1, 2, 3, 4, 5, 6, 7]
 
 #NF8 compute
-offset=(1-(1/(255*2))+1-(1/(256*2)))*(1/2) #0.9981
+offset = (1 - (1 / (255 * 2)) + 1 - (1 / (256 * 2))) * (1 / 2)  #0.9981
 v1 = norm.ppf(torch.linspace(offset, 0.5, 129)[:-1]).tolist()
 v3 = (-norm.ppf(torch.linspace(offset, 0.5, 128)[:-1])).tolist()
-v=v1+v3+[0]
+v = v1 + v3 + [0]
 NF8 = torch.Tensor(v)
 NF8 = NF8.sort().values
 NF8 /= NF8.max()
 
-FLOAT_MAPPING = {"nf4": NF4, "fp4": FP4_BNB, "fp4_e2m1_bnb": FP4_BNB, "fp4_e2m1": FP4_E2M1,"af4":AF4,"nf8":NF8,"int4":INT4}
-INT_MAPPING = {"nf4": NF4_BIT, "fp4": FP4_BNB_BIT, "fp4_e2m1_bnb": FP4_BNB_BIT, "fp4_e2m1": FP4_E2M1_BIT,"af4":AF4,"nf8":NF8,"int4":INT4}
+FLOAT_MAPPING = {
+    "nf4": NF4,
+    "fp4": FP4_BNB,
+    "fp4_e2m1_bnb": FP4_BNB,
+    "fp4_e2m1": FP4_E2M1,
+    "af4": AF4,
+    "nf8": NF8,
+    "int4": INT4
+}
+INT_MAPPING = {
+    "nf4": NF4_BIT,
+    "fp4": FP4_BNB_BIT,
+    "fp4_e2m1_bnb": FP4_BNB_BIT,
+    "fp4_e2m1": FP4_E2M1_BIT,
+    "af4": AF4,
+    "nf8": NF8,
+    "int4": INT4
+}
+
 
 class BitFakeQuantize(QuantizeBase):
     """This is 4bit and NF8 Quantization Emulator..
     """
+
     def __init__(self, observer, **observer_kwargs):
         super(BitFakeQuantize, self).__init__(observer, **observer_kwargs)
         self.register_buffer('scale', torch.tensor([1.0], dtype=torch.float))
         self.register_buffer('zero_point', torch.tensor([0], dtype=torch.int))
         self.load_state_dict_hook = PerChannelLoadHook(self)
-        self.data_type="fp4_e2m1"
-        self.quantile=1.0
-        self.return_int=False
-        self.group_size=8
+        self.data_type = "fp4_e2m1"
+        self.quantile = 1.0
+        self.return_int = False
+        self.group_size = 8
 
     def forward(self, X):
-        
+
         assert self.data_type in FLOAT_MAPPING, "unexpected data type."
-        allow_data = FLOAT_MAPPING[self.data_type]                 #float类型
-        allow_data_bit = INT_MAPPING[self.data_type]               #int类型
-        
+        allow_data = FLOAT_MAPPING[self.data_type]  #float类型
+        allow_data_bit = INT_MAPPING[self.data_type]  #int类型
+
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.calculate_qparams()
-            _scale = X.abs().max(1)[0] * self.quantile/ max(allow_data)
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale = X.abs().max(1)[0] * self.quantile / max(allow_data)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.scale.shape != _scale.shape:
                 self.scale.resize_(_scale.shape)
                 self.zero_point.resize_(_zero_point.shape)
@@ -95,11 +131,11 @@ class BitFakeQuantize(QuantizeBase):
             self.zero_point.copy_(_zero_point)
 
         if self.fake_quant_enabled[0] == 1:
-            Xs=X.shape[1]
-            X= X.reshape((-1, self.group_size))
-            _scale = X.abs().max(1)[0] * self.quantile/ max(allow_data)
+            Xs = X.shape[1]
+            X = X.reshape((-1, self.group_size))
+            _scale = X.abs().max(1)[0] * self.quantile / max(allow_data)
             _scale.unsqueeze_(dim=-1)
-            X = X/_scale
+            X = X / _scale
             # if self.data_type.lower=="nf4":
             #     cdf_values = [norm.cdf(x) for x in allow_data]
             #     intermediate_cdf_values = [(cdf_values[i] + cdf_values[i+1]) / 2 for i in range(len(allow_data) - 1)]
@@ -107,7 +143,7 @@ class BitFakeQuantize(QuantizeBase):
             # else:
             #     mid_data = [(allow_data[i] + allow_data[i + 1]) / 2 for i in range(len(allow_data) - 1)]
             mid_data = [(allow_data[i] + allow_data[i + 1]) / 2 for i in range(len(allow_data) - 1)]
-            q_X= torch.zeros_like(X)
+            q_X = torch.zeros_like(X)
             for i in range(len(allow_data)):
                 data = allow_data_bit[i] if self.return_int else allow_data[i]
                 if i == 0:
@@ -118,19 +154,19 @@ class BitFakeQuantize(QuantizeBase):
                     q_X += torch.where((mid_data[i - 1] < X) & (X <= mid_data[i]), data, 0)
             # if self.return_int:
             #     return q_X.type(torch.int8), _scale.type(torch.float), None
-            X=q_X * _scale
-            X=X.reshape((-1,Xs))
+            X = q_X * _scale
+            X = X.reshape((-1, Xs))
         return X
 
     @torch.jit.export
     def extra_repr(self):
-        allow_data = FLOAT_MAPPING[self.data_type] 
+        allow_data = FLOAT_MAPPING[self.data_type]
         return 'fake_quant_enabled={}, observer_enabled={}, ' \
                'quant_min={}, quant_max={}, dtype={}, qscheme={}, ch_axis={}, ' \
                'scale={}, zero_point={}'.format(
                    self.fake_quant_enabled, self.observer_enabled,
                    min(allow_data), max(allow_data),
-                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List', 
+                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List',
                    self.zero_point if self.ch_axis == -1 else 'List')
 
     def _save_to_state_dict(self, destination, prefix, keep_vars):
@@ -140,8 +176,8 @@ class BitFakeQuantize(QuantizeBase):
         destination[prefix + 'scale'] = self.scale
         destination[prefix + 'zero_point'] = self.zero_point
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         # Removing this function throws an error that the the size of the loaded tensor does not match the original size
         # i.e., These buffers start out with numel 0 and become numel 1 once they have their first forward pass.
         local_state = ['scale', 'zero_point']
@@ -168,5 +204,6 @@ class BitFakeQuantize(QuantizeBase):
                         self.zero_point.copy_(val)
             elif strict:
                 missing_keys.append(key)
-        super(BitFakeQuantize, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
-                                                             missing_keys, unexpected_keys, error_msgs)
+        super(BitFakeQuantize,
+              self)._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys,
+                                          unexpected_keys, error_msgs)

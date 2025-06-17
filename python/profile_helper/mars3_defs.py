@@ -19,6 +19,7 @@ BD_FREQ = 750
 # TODO: mars3 has more than three kinds of work freqs, need auto parse form pmu header
 arch_name = "MARS3"
 
+
 class EngineType(Enum):
     BD = 0
     GDMA = 1
@@ -35,6 +36,7 @@ class DATATYPE(Enum):
     INT16 = 3
     INT32 = 4
     BFP16 = 5
+
 
 class BDProfileFormat(dictStructure):
     _pack_ = 1
@@ -77,6 +79,7 @@ class GDMAProfileFormat(dictStructure):
 
 
 class GDMACommandParser():
+
     def __init__(self) -> None:
         self.ctx = get_target_context("MARS3")
 
@@ -86,6 +89,7 @@ class GDMACommandParser():
 
 
 class BDCommandParser():
+
     def __init__(self) -> None:
         self.ctx = get_target_context("MARS3")
 
@@ -114,7 +118,8 @@ DMA_ARCH = {
     "Cube OHOW Align(16bits)": 2,
     "Vector OHOW Align(8bits)": 8,
     "TIU Frequency(MHz)": BD_FREQ,
-    "DMA Frequency(MHz)": GDMA_FREQ}
+    "DMA Frequency(MHz)": GDMA_FREQ
+}
 
 TIU_ARCH = DMA_ARCH
 
@@ -142,10 +147,10 @@ def get_dma_info(monitor_info, reg_info):
         dma_info["src_start_addr_h13"] = 0
         dma_info["dst_start_addr_h13"] = 0
     else:
-        dma_info["dst_start_addr"] = (
-            int(dma_info["dst_start_addr_h13"]) << 32) + int(dma_info["dst_start_addr_l32"])
-        dma_info["src_start_addr"] = (
-            int(dma_info["src_start_addr_h13"]) << 32) + int(dma_info["src_start_addr_l32"])
+        dma_info["dst_start_addr"] = (int(dma_info["dst_start_addr_h13"]) << 32) + int(
+            dma_info["dst_start_addr_l32"])
+        dma_info["src_start_addr"] = (int(dma_info["src_start_addr_h13"]) << 32) + int(
+            dma_info["src_start_addr_l32"])
 
     # step2: get custom information
     src_type = MEMTYPE(dma_info['src_start_addr_l32'] >> 31).name
@@ -166,23 +171,23 @@ def get_dma_info(monitor_info, reg_info):
         monitor_info.inst_start_time + 1
     dma_info["Stall Cycle"] = monitor_info.gif_wr_rd_stall_cntr
     dma_info["gmem_xfer_bytes(B)"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
-    dma_info["gmem_bandwidth"] = round(dma_info["gmem_xfer_bytes(B)"] /
-                                       dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
+    dma_info["gmem_bandwidth"] = round(
+        dma_info["gmem_xfer_bytes(B)"] / dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
     # dma_info["gmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
     #                                         (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * getattr(reg_info,"dst_hsize", 0) * getattr(reg_info,"src_wsize", 0)) * data_type.prec()
     # dma_info["lmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
     #                                         (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * getattr(reg_info,"dst_hsize", 0) * getattr(reg_info,"src_wsize", 0)) * data_type.prec()
     dma_info["gmem_dma_data_size(B)"] = dma_info["gmem_xfer_bytes(B)"]
-    dma_info["gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
+    dma_info[
+        "gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
     dma_info["lmem_xfer_bytes"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
-    dma_info["lmem_bandwidth"] = round(dma_info["lmem_xfer_bytes"] /
-                                       dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
+    dma_info["lmem_bandwidth"] = round(
+        dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
     dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
     dma_info["lmem_xact_cnt"] = monitor_info.gif_wr_valid_cntr + monitor_info.gif_rd_valid_cntr
-    dma_info["DMA data size(B)"] = max(
-        dma_info["gmem_dma_data_size(B)"], dma_info["lmem_dma_data_size(B)"])
-    dma_info["DDR Bandwidth(GB/s)"] = max(
-        dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
+    dma_info["DMA data size(B)"] = max(dma_info["gmem_dma_data_size(B)"],
+                                       dma_info["lmem_dma_data_size(B)"])
+    dma_info["DDR Bandwidth(GB/s)"] = max(dma_info["lmem_bandwidth"], dma_info["gmem_bandwidth"])
 
     # not implemented
     dma_info["gmem_bl_sum"] = 0
@@ -233,12 +238,11 @@ def get_tiu_info(monitor_info, reg_info):
     tiu_info0["Alg Ops"] = _reg_info.ops(False)
     tiu_info0["uArch Ops"] = _reg_info.ops(True)
     tiu_info0["Alg Cycle"] = _reg_info.alg_cycle(tiu_info0["Alg Ops"])
-    tiu_info0["uArch Rate"] = "{:.1%}".format(
-        tiu_info0["Alg Ops"]/tiu_info0["uArch Ops"])
-    tiu_info0["Initial Cycle Ratio"] = "{:.1%}".format(
-        _reg_info.initial_cycle() / (tiu_info0["Asic Cycle"] + 1e-4))
-    tiu_info0["Bank Conflict Ratio"] = "{:.1%}".format(
-        _reg_info.bank_conflict_cycle() / (tiu_info0["Asic Cycle"] + 1e-4))
+    tiu_info0["uArch Rate"] = "{:.1%}".format(tiu_info0["Alg Ops"] / tiu_info0["uArch Ops"])
+    tiu_info0["Initial Cycle Ratio"] = "{:.1%}".format(_reg_info.initial_cycle() /
+                                                       (tiu_info0["Asic Cycle"] + 1e-4))
+    tiu_info0["Bank Conflict Ratio"] = "{:.1%}".format(_reg_info.bank_conflict_cycle() /
+                                                       (tiu_info0["Asic Cycle"] + 1e-4))
 
     # not implemented
     tiu_info0['Sim Power(W)'] = 0
@@ -247,26 +251,39 @@ def get_tiu_info(monitor_info, reg_info):
 
 def getDmaFunctionName(cmd_type, cmd_special_function, direction):
     dmaFunctionNameDict = {
-        (0, 0): 'DMA_tensor', (0, 1): 'NC trans', (0, 2): 'collect', (0, 3): 'broadcast', (0, 4): 'distribute', (0, 5): 'lmem 4 bank copy', (0, 6): 'lmem 4 bank broadcast',
-        (1, 0): 'DMA_matrix', (1, 1): 'matrix transpose',
-        (2, 0): 'DMA_masked_select', (2, 1): 'ncw mode',
-        (3, 0): 'DMA_general', (3, 1): 'broadcast',
+        (0, 0): 'DMA_tensor',
+        (0, 1): 'NC trans',
+        (0, 2): 'collect',
+        (0, 3): 'broadcast',
+        (0, 4): 'distribute',
+        (0, 5): 'lmem 4 bank copy',
+        (0, 6): 'lmem 4 bank broadcast',
+        (1, 0): 'DMA_matrix',
+        (1, 1): 'matrix transpose',
+        (2, 0): 'DMA_masked_select',
+        (2, 1): 'ncw mode',
+        (3, 0): 'DMA_general',
+        (3, 1): 'broadcast',
         (4, 0): 'cw transpose',
         (5, 0): 'DMA_nonzero',
-        (6, 0): 'chain end', (6, 1): 'nop', (6, 2): 'sys_tr_wr', (6, 3): 'sys_send', (6, 4): 'sys_wait',
+        (6, 0): 'chain end',
+        (6, 1): 'nop',
+        (6, 2): 'sys_tr_wr',
+        (6, 3): 'sys_send',
+        (6, 4): 'sys_wait',
         (7, 0): 'DMA_gather',
         (8, 0): 'DMA_scatter',
-        (9, 0): 'w reverse', (9, 1): 'h reverse', (9, 2): 'c reverse', (9, 3): 'n reverse',
-        (10, 0): 'non-random-access', (10, 1): 'random-access',
-        (11, 0): 'non-random-access', (11, 1): 'random-access'
+        (9, 0): 'w reverse',
+        (9, 1): 'h reverse',
+        (9, 2): 'c reverse',
+        (9, 3): 'n reverse',
+        (10, 0): 'non-random-access',
+        (10, 1): 'random-access',
+        (11, 0): 'non-random-access',
+        (11, 1): 'random-access'
     }
     functionType = dmaFunctionNameDict[(cmd_type, 0)]
-    direction_dict = {
-        "DDR->DDR": "Ld",
-        "DDR->LMEM": "Ld",
-        "LMEM->DDR": "St",
-        "LMEM->LMEM": "Mv"
-    }
+    direction_dict = {"DDR->DDR": "Ld", "DDR->LMEM": "Ld", "LMEM->DDR": "St", "LMEM->LMEM": "Mv"}
     functinName = dmaFunctionNameDict[(cmd_type, cmd_special_function)]
     if cmd_special_function == 0 and cmd_type <= 1:
         functinName = "tensor{}".format(direction_dict.get(direction, ""))

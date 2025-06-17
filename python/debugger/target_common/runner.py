@@ -23,7 +23,7 @@ def c_array_to_ndarray(x, shape):
     if isinstance(x, int):
         x = ctypes.c_void_p(x)
     if isinstance(shape, int):
-        shape = (shape,)
+        shape = (shape, )
     try:
         p = ctypes.cast(x, ctypes.POINTER(ctypes.c_uint8))
     except Exception:
@@ -71,6 +71,7 @@ class lib_wrapper:
     def __repr__(self) -> str:
         return f"wrap({self._lib})"
 
+
 class _lib_fn_wrapper(object):
     __slots__ = ["_cfn"]
 
@@ -100,9 +101,7 @@ class _lib_fn_wrapper(object):
 # @contextmanager
 def temp_position(file):
     os.makedirs(os.path.expanduser("~/.cache/tpu-mlir"), exist_ok=True)
-    tempdirname = tempfile.TemporaryDirectory(
-        dir=os.path.expanduser("~/.cache/tpu-mlir")
-    ).name
+    tempdirname = tempfile.TemporaryDirectory(dir=os.path.expanduser("~/.cache/tpu-mlir")).name
     # make sure
     os.makedirs(tempdirname, exist_ok=True)
     temp_fn = os.path.join(tempdirname, os.path.basename(file))
@@ -227,9 +226,8 @@ class Runner:
         return cpu_processer
 
     def cpu_compute(self, command: CpuCmd, core_id=0):
-        assert all(
-            [command.input_memref, command.output_memref]
-        ), "currently only support single cpuop for each subnet."
+        assert all([command.input_memref,
+                    command.output_memref]), "currently only support single cpuop for each subnet."
 
         input_tensors = []
         input_shapes = []
@@ -237,8 +235,7 @@ class Runner:
         output_shapes = []
         for ipt in command.input_memref:
             input_tensors.append(
-                self.memory.get_data(ipt.to_ref()).astype(np.float32).flatten().tolist()
-            )
+                self.memory.get_data(ipt.to_ref()).astype(np.float32).flatten().tolist())
             input_shapes.append(ipt.shape)
         for opt in command.output_memref:
             output_tensors.append(np.zeros(opt.shape, dtype=np.float32))
@@ -267,9 +264,7 @@ List[List[int]]"""
             raise TypeError(f"{base_expstr}\n\n but got: {failure_types}")
 
         for idx, opt in enumerate(command.output_memref):
-            opt.shape = new_output_shape[
-                idx
-            ]  # hack replace new shape of cpu operation, or assert?
+            opt.shape = new_output_shape[idx]  # hack replace new shape of cpu operation, or assert?
             data = np.array(output_tensors[idx], dtype=opt.dtype.np_dtype())
             assert self.memory.set_data(ValueRef(opt), data)
             self.memory.set_cpu_data(command.cmd_id, data)

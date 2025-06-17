@@ -93,11 +93,13 @@ if __name__ == '__main__':
             tune_ds.dump("./selected_tune_image_list.txt")
 
     if args.part_quantize == 'custom_mode' and not args.custom_operator:
-        parser.error("you have choose custom_mode, please use the --custom_operator parameter to specify the custom operator type.")
+        parser.error(
+            "you have choose custom_mode, please use the --custom_operator parameter to specify the custom operator type."
+        )
 
     log_level = "DEBUG" if args.debug_log else "INFO"
 
-    shape_ops=ShapeOps(args)
+    shape_ops = ShapeOps(args)
     shape_ops.run()
 
     # mix precision

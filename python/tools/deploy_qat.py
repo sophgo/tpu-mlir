@@ -6,18 +6,17 @@ import copy
 from numpy_helper.npz_compare import align_type_and_shape
 from numpy_helper.tensor_compare import TensorCompare, TensorCompareStats
 
-class FakeQuantNodelProcessor:
-    PERCHANNEL_FAKEQUANTIZER = ['FakeQuantizeLearnablePerchannelAffine',
-                                'FixedPerChannelAffine',
-                                'FakeQuantizeDSQPerchannel',
-                                'FPEmuOp_per_channel']
-    PERTENSOR_FAKEQUANTIZER = ['LearnablePerTensorAffine',
-                               'FixedPerTensorAffine',
-                               'FakeQuantizeDSQPertensor',
-                               'FakeQuantizeTqtAffine',
-                               'FPEmuOp_per_tensor']
-    ALL_FAKEQUANTIZER = PERCHANNEL_FAKEQUANTIZER + PERTENSOR_FAKEQUANTIZER
 
+class FakeQuantNodelProcessor:
+    PERCHANNEL_FAKEQUANTIZER = [
+        'FakeQuantizeLearnablePerchannelAffine', 'FixedPerChannelAffine',
+        'FakeQuantizeDSQPerchannel', 'FPEmuOp_per_channel'
+    ]
+    PERTENSOR_FAKEQUANTIZER = [
+        'LearnablePerTensorAffine', 'FixedPerTensorAffine', 'FakeQuantizeDSQPertensor',
+        'FakeQuantizeTqtAffine', 'FPEmuOp_per_tensor'
+    ]
+    ALL_FAKEQUANTIZER = PERCHANNEL_FAKEQUANTIZER + PERTENSOR_FAKEQUANTIZER
 
     def __init__(self, input_model_path, input_model_name):
         self.input_model_name = input_model_name
@@ -31,7 +30,6 @@ class FakeQuantNodelProcessor:
         self.weight_table = {}
         self.q_table = {}
 
-
     def check_onnx_for_fakequant_nodes(self, onnx_model_path):
         try:
             self.model = onnx.load(onnx_model_path)
@@ -44,7 +42,6 @@ class FakeQuantNodelProcessor:
         except Exception as e:
             print(f"load fakequant ONNX fail: {e}")
             return False
-
 
     def prepare_params(self):
 
@@ -80,7 +77,7 @@ class FakeQuantNodelProcessor:
                 raise Exception("ATTR Type [{}] Not Supported!".format(attr.type))
         return attrs
 
-    def update_inp2node_out2node(self,graph):
+    def update_inp2node_out2node(self, graph):
         out2node = {}
         inp2node = {}
         for node in graph.node:
@@ -92,7 +89,7 @@ class FakeQuantNodelProcessor:
                 inp2node[inp].append([node, idx])
         return out2node, inp2node
 
-    def prepare_data(self,graph):
+    def prepare_data(self, graph):
         params = {}
         for init in graph.initializer:
             params[init.name] = numpy_helper.to_array(init)
@@ -103,7 +100,7 @@ class FakeQuantNodelProcessor:
                         params[node.output[0]] = numpy_helper.to_array(attr.t)
         return params
 
-    def prepare_initializer(self,graph):
+    def prepare_initializer(self, graph):
         named_initializer = {}
         for init in graph.initializer:
             named_initializer[init.name] = init
@@ -146,6 +143,7 @@ class FakeQuantNodelProcessor:
         return redundant_nodes
 
     def weight_preprocess(self, target_tensor):
+
         def find_weight(tensor):
             if tensor not in self.named_initializer:
                 _node = self.out2node[tensor]
@@ -197,7 +195,6 @@ class FakeQuantNodelProcessor:
         new_data = numpy_helper.from_array(new_data)
         self.named_initializer[tensor_name].raw_data = new_data.raw_data
 
-
     def parse_qparams(self, node):
         tensor_name, scale, zero_point = node.input[:3]
         dtype = 'None'
@@ -214,7 +211,7 @@ class FakeQuantNodelProcessor:
                 qparams = self.parse_attrs(node.attribute)
                 dtype = qparams['dtype']
             else:
-                dtype='None'
+                dtype = 'None'
         elif len(node.attribute) > 0:
             qparams = self.parse_attrs(node.attribute)
             qmin = qparams['quant_min']
@@ -226,11 +223,11 @@ class FakeQuantNodelProcessor:
         if qmax == float(448.0) or qmax == float(57344.0):
             quant_type = 'FP8'
 
-        bit = int(np.log2(qmax-qmin+1))
+        bit = int(np.log2(qmax - qmin + 1))
         if (bit == 8 and qmin < 0):
             dtype = 'int'
             quant_type = 'INT8'
-        elif (bit == 8 and qmin ==0):
+        elif (bit == 8 and qmin == 0):
             dtype = 'uint'
             quant_type = 'UINT8'
         elif (bit == 4 and qmin < 0):
@@ -257,12 +254,9 @@ class FakeQuantNodelProcessor:
                     if tensor_name2 in self.cali_table:
                         finded = True
                         self.cali_table[tensor_name] = [
-                            tensor_name,
-                            *self.cali_table[tensor_name2][1:4]
+                            tensor_name, *self.cali_table[tensor_name2][1:4]
                         ]
-                        self.q_table[tensor_name] = [tensor_name,
-                            self.cali_table[tensor_name2][1]
-                        ]
+                        self.q_table[tensor_name] = [tensor_name, self.cali_table[tensor_name2][1]]
                         print(f'pre_op finded, transfer {tensor_name2} to {tensor_name}')
                         break
                     if pre_op.input[0] in self.out2node:
@@ -278,11 +272,10 @@ class FakeQuantNodelProcessor:
                             if tensor_name2 in self.cali_table:
                                 finded = True
                                 self.cali_table[tensor_name] = [
-                                    tensor_name,
-                                    *self.cali_table[tensor_name2][1:4]
+                                    tensor_name, *self.cali_table[tensor_name2][1:4]
                                 ]
-                                self.q_table[tensor_name] = [tensor_name,
-                                    self.cali_table[tensor_name2][1]
+                                self.q_table[tensor_name] = [
+                                    tensor_name, self.cali_table[tensor_name2][1]
                                 ]
                                 print(f'next_op finded, transfer {tensor_name2} to {tensor_name}')
                                 break
@@ -293,7 +286,6 @@ class FakeQuantNodelProcessor:
                                 break
                     else:
                         print(f'{node.name}\'s next_op not exist')
-
 
     def deal_with_activation_fakequant(self, node):
         next_nodes = self.inp2node[node.output[0]]
@@ -317,42 +309,46 @@ class FakeQuantNodelProcessor:
                 redundant_nodes = self.deal_with_weight_fakequant(node)
                 self.nodes_to_be_removed.extend(redundant_nodes)
                 self.clip_weight(node)
-                tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(node)
+                tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(
+                    node)
                 if len(next_nodes) == 1 and next_nodes[0][0].op_type in ['Gemm', 'Conv']:
                     next_node_output = next_nodes[0][0].output[0]
                     assert next_nodes[0][0].op_type in ['Gemm', 'Conv']
                     if self.inp2node[next_node_output][0][0].op_type == 'Relu':
-                        tensor_name = '{}_{}_weight'.format(self.inp2node[next_node_output][0][0].output[0], 'Relu')
+                        tensor_name = '{}_{}_weight'.format(
+                            self.inp2node[next_node_output][0][0].output[0], 'Relu')
                     else:
-                        tensor_name = '{}_{}_weight'.format(next_node_output, next_nodes[0][0].op_type)
+                        tensor_name = '{}_{}_weight'.format(next_node_output,
+                                                            next_nodes[0][0].op_type)
                     self.weight_table[tensor_name] = [
                         tensor_name,
-                        len(scale),
-                        *[float(f"{float(x):.7f}") for x in scale],
-                        len(zero_point),
-                        *[int(x) for x in zero_point]
-                        ]
-                    self.q_table[tensor_name] = [tensor_name,quant_type]
+                        len(scale), *[float(f"{float(x):.7f}") for x in scale],
+                        len(zero_point), *[int(x) for x in zero_point]
+                    ]
+                    self.q_table[tensor_name] = [tensor_name, quant_type]
 
             elif node.op_type in self.PERTENSOR_FAKEQUANTIZER:
-                if len(next_nodes) == 1 and next_nodes[0][1] == 1 and next_nodes[0][0].op_type in ['Gemm', 'Conv']:
+                if len(next_nodes) == 1 and next_nodes[0][1] == 1 and next_nodes[0][0].op_type in [
+                        'Gemm', 'Conv'
+                ]:
                     # fake quantize for weights
                     redundant_nodes = self.deal_with_weight_fakequant(node)
                     self.nodes_to_be_removed.extend(redundant_nodes)
                     self.clip_weight(node)
-                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(node)
+                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(
+                        node)
                     assert next_nodes[0][0].op_type in ['Gemm', 'Conv']
-                    tensor_name_new = '{}_{}_weight'.format(next_nodes[0][0].output[0], next_nodes[0][0].op_type)
+                    tensor_name_new = '{}_{}_weight'.format(next_nodes[0][0].output[0],
+                                                            next_nodes[0][0].op_type)
                     self.weight_table[tensor_name_new] = [
                         tensor_name_new,
-                        len(scale),
-                        *[float(f"{float(x):.7f}") for x in scale],
-                        len(zero_point),
-                        *[int(x) for x in zero_point]
-                        ]
-                    self.q_table[tensor_name_new] = [tensor_name_new,quant_type]
+                        len(scale), *[float(f"{float(x):.7f}") for x in scale],
+                        len(zero_point), *[int(x) for x in zero_point]
+                    ]
+                    self.q_table[tensor_name_new] = [tensor_name_new, quant_type]
                 else:
-                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(node)
+                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(
+                        node)
                     tensor_name = node.input[0]
                     if node.input[0] in self.out2node:
                         pre_node = self.out2node[tensor_name]
@@ -364,7 +360,7 @@ class FakeQuantNodelProcessor:
                         float(f"{float(scale * (qmin - zero_point)):.7f}"),
                         float(f"{float(scale * (qmax - zero_point)):.7f}")
                     ]
-                    self.q_table[tensor_name] = [tensor_name,quant_type]
+                    self.q_table[tensor_name] = [tensor_name, quant_type]
                     self.deal_with_activation_fakequant(node)
                     output_name = node.output[0]
                     for out in self.graph.output:
@@ -386,11 +382,12 @@ class FakeQuantNodelProcessor:
 
         self.post_process_clip_ranges()
 
-
     def export_tables(self):
         print("导出calitable")
         with open(self.calitable_name, 'w') as f:
-            f.write(f"#Automatically generated, do not modify, work_mode choice:[QAT_all_int8, int4_and_int8_mix, int4_and_int8_mix_no_fc]\n")
+            f.write(
+                f"#Automatically generated, do not modify, work_mode choice:[QAT_all_int8, int4_and_int8_mix, int4_and_int8_mix_no_fc]\n"
+            )
             f.write("# op_name    threshold    min    max\n")
             for entry in self.cali_table.values():
                 line = ' '.join(map(str, entry))
@@ -429,7 +426,7 @@ class FakeQuantNodelProcessor:
 
         return output_to_next_outputs, output_to_inputs
 
-    def align_final_opt(self, node_name_mapping,onnx_sim=""):
+    def align_final_opt(self, node_name_mapping, onnx_sim=""):
         self.opt_node_mapping = node_name_mapping
         # get onnx simplify activation name
         simplify_file = "{}_opt.onnx".format(self.input_model_name)
@@ -440,9 +437,9 @@ class FakeQuantNodelProcessor:
             onnx_sim_str = onnx_sim.split(',')
             skip_fuse_bn = "skip_fuse_bn" in onnx_sim_str
             simplify_model = onnxsim.simplify(self.model,
-                                             skip_fuse_bn=skip_fuse_bn,
-                                             skip_constant_folding=True,
-                                             skip_shape_inference=True)
+                                              skip_fuse_bn=skip_fuse_bn,
+                                              skip_constant_folding=True,
+                                              skip_shape_inference=True)
         else:
             simplify_model = onnx.load(simplify_file)
         sim_out2node, sim_inp2node = self.update_inp2node_out2node(simplify_model.graph)
@@ -496,28 +493,25 @@ class FakeQuantNodelProcessor:
                     # doesnt insert fakequant node by fuse mode, exsample conv + relu; avagepool + flatten
                     if ori_name in self.cali_table:
                         sim_node_mapping[ori_name] = sim_name
-                        self.creat_new_qat_item(ori_name,sim_name)
+                        self.creat_new_qat_item(ori_name, sim_name)
 
-        print("simplify onnx cant compare activation name list:",not_find_dict)
-        print("simplify onnx rename pair:",sim_node_mapping)
-        print("final opt onnx rename pair:",node_name_mapping)
+        print("simplify onnx cant compare activation name list:", not_find_dict)
+        print("simplify onnx rename pair:", sim_node_mapping)
+        print("final opt onnx rename pair:", node_name_mapping)
         self.sim_node_mapping = sim_node_mapping
         # created by onnx_opt: example, hardsigmoid + mul = hardswish
         for qat_act_name in node_name_mapping:
             finalopt_name = node_name_mapping[qat_act_name]
             if qat_act_name in self.cali_table:
-                self.creat_new_qat_item(qat_act_name,finalopt_name)
+                self.creat_new_qat_item(qat_act_name, finalopt_name)
 
         # self.export_tables()
-
-
 
     def creat_new_qat_item(self, oir_name, new_name):
         self.cali_table[new_name] = copy.deepcopy(self.cali_table[oir_name])
         self.cali_table[new_name][0] = new_name
         self.q_table[new_name] = copy.deepcopy(self.q_table[oir_name])
         self.q_table[new_name][0] = new_name
-
 
     def align_canonicalize(self, mlir_file, test_result):
         self.act_list = self.extract_activation_names_mlir(mlir_file)
@@ -529,7 +523,7 @@ class FakeQuantNodelProcessor:
             if "_r_" in key:
                 before_canonicalize = key[:key.index("_r_")]
                 if before_canonicalize in keys_qat:
-                    self.creat_new_qat_item(before_canonicalize,key)
+                    self.creat_new_qat_item(before_canonicalize, key)
                 else:
                     complete_match = False
             else:
@@ -537,34 +531,30 @@ class FakeQuantNodelProcessor:
         if complete_match:
             print("successfully get all mlir op_name by align_canonicalize.")
         else:
-            _,_,not_match = self.compare_npz_name_mapping(test_result)
+            _, _, not_match = self.compare_npz_name_mapping(test_result)
             keys_qat_after_align = set(self.cali_table.keys())
             unpair_keys = keys_mlir - keys_qat_after_align
             if unpair_keys:
-                print("remain this op name cant find in QAT calitable:",unpair_keys)
-                print("QAT calitable cont compare to mlir, please run run_calitable to get the available calitable!!")
+                print("remain this op name cant find in QAT calitable:", unpair_keys)
+                print(
+                    "QAT calitable cont compare to mlir, please run run_calitable to get the available calitable!!"
+                )
             else:
                 print("successfully get all mlir op_name.")
         self.export_tables()
 
-
-    def extract_activation_names_mlir(self,mlir_path):
+    def extract_activation_names_mlir(self, mlir_path):
         import re
         with open(mlir_path, 'r') as file:
             mlir_code = file.read()
         loc_dict = {}
-        loc_pattern = re.compile(
-            r'#loc(?P<id>\d+)\s*=\s*loc\((?P<content>.*?)\)',
-            re.MULTILINE
-        )
+        loc_pattern = re.compile(r'#loc(?P<id>\d+)\s*=\s*loc\((?P<content>.*?)\)', re.MULTILINE)
         loc_matches = loc_pattern.findall(mlir_code)
         loc_dict = {f"#loc{num}": name for num, name in loc_matches}
 
         op_pattern = re.compile(
-        r'^\s*((?:%\w+\s*,\s*)*%[\w\.]+)\s*=\s*"([^"]+)"\(([^)]*)\)'
-        r'.*?loc\((?P<loc>[^\)]+)\)',
-        re.MULTILINE | re.DOTALL
-        )
+            r'^\s*((?:%\w+\s*,\s*)*%[\w\.]+)\s*=\s*"([^"]+)"\(([^)]*)\)'
+            r'.*?loc\((?P<loc>[^\)]+)\)', re.MULTILINE | re.DOTALL)
         op_matches = op_pattern.findall(mlir_code)
         act_list = []
         for _, _type, inputs, loc in op_matches:
@@ -618,11 +608,11 @@ class FakeQuantNodelProcessor:
                             not_match.remove(key_b)
                         else:
                             double_match.append(key_b)
-        print("final mlir rename pair:",paired_keys)
-        print("final mlir double match:",double_match)
+        print("final mlir rename pair:", paired_keys)
+        print("final mlir double match:", double_match)
         for qat_act_name in paired_keys:
             mlir_name = paired_keys[qat_act_name]
             if qat_act_name in self.cali_table and qat_act_name not in double_match:
                 if mlir_name not in self.cali_table:
-                    self.creat_new_qat_item(qat_act_name,mlir_name)
-        return paired_keys,double_match,not_match
+                    self.creat_new_qat_item(qat_act_name, mlir_name)
+        return paired_keys, double_match, not_match

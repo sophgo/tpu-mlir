@@ -4,11 +4,11 @@ import numpy as np
 from onnx import numpy_helper
 from onnx import TensorProto
 
-
 from sophgo_mq.utils.logger import logger
 
 
 class ONNXGraph(object):
+
     def __init__(self, onnx_model_path):
         '''Describe onnx graph
         args: 
@@ -50,11 +50,12 @@ class ONNXGraph(object):
                 data_type = TensorProto.UINT8
             if value_tensor.dtype == np.int8:
                 data_type = TensorProto.INT8
-            initializer = onnx.helper.make_tensor(name=initializer_name,
-                                                  data_type=data_type,
-                                                  dims=[] if value_tensor.size == 1 else list(value_tensor.shape),
-                                                  vals=value_tensor,
-                                                  raw=False)
+            initializer = onnx.helper.make_tensor(
+                name=initializer_name,
+                data_type=data_type,
+                dims=[] if value_tensor.size == 1 else list(value_tensor.shape),
+                vals=value_tensor,
+                raw=False)
         initializer.name = initializer_name
         if idx is not None:
             self.graph.initializer.remove(self.graph.initializer[idx])
@@ -93,7 +94,7 @@ class ONNXGraph(object):
 
     def del_initializer(self, initializer_name):
         if initializer_name in self.initializer:
-            del(self.initializer[initializer_name])
+            del (self.initializer[initializer_name])
 
     def optimize_model(self):
         # Delete redundant nodes.
@@ -148,6 +149,7 @@ class ONNXGraph(object):
 
 
 class OnnxPreprocess(object):
+
     def replace_resize_op_with_upsample(self, graph, out2node):
         nodes_to_be_removed = []
         idx = 0
@@ -206,7 +208,7 @@ def update_inp2node_out2node(graph):
     return out2node, inp2node
 
 
-def prepare_data(graph): 
+def prepare_data(graph):
     params = {}
     for init in graph.initializer:
         params[init.name] = numpy_helper.to_array(init)
@@ -231,25 +233,25 @@ def parse_attrs(node_attrs):
         print(f'parse node attrs {attr}')
         if attr.type == onnx.AttributeProto.AttributeType.INTS:
             attrs[attr.name] = tuple(attr.ints)
-            attrs['dtype']='ints'
+            attrs['dtype'] = 'ints'
         elif attr.type == onnx.AttributeProto.AttributeType.INT:
             attrs[attr.name] = attr.i
-            attrs['dtype']='int'
+            attrs['dtype'] = 'int'
         elif attr.type == onnx.AttributeProto.AttributeType.FLOATS:
             attrs[attr.name] = tuple(attr.floats)
-            attrs['dtype']='floats'
+            attrs['dtype'] = 'floats'
         elif attr.type == onnx.AttributeProto.AttributeType.FLOAT:
             attrs[attr.name] = attr.f
-            attrs['dtype']='float'
+            attrs['dtype'] = 'float'
         elif attr.type == onnx.AttributeProto.AttributeType.TENSOR:
             attrs[attr.name] = numpy_helper.to_array(attr.t)
-            attrs['dtype']='t'
+            attrs['dtype'] = 't'
         elif attr.type == onnx.AttributeProto.AttributeType.STRING:
             attrs[attr.name] = str(attr.s)
-            attrs['dtype']='st'
+            attrs['dtype'] = 'st'
         elif attr.type == onnx.AttributeProto.AttributeType.STRINGS:
             attrs[attr.name] = tuple([str(x) for x in attr.strings])
-            attrs['dtype']='none'
+            attrs['dtype'] = 'none'
         else:
             raise Exception("ATTR Type [{}] Not Supported!".format(attr.type))
     return attrs

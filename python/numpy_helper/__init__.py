@@ -5,13 +5,14 @@
 #
 # ==============================================================================
 
-
 import numpy as np
 import sys
 import struct
 
+
 def bf16_to_fp32(bf16_value):
     return struct.unpack('<f', struct.pack('<HH', 0, bf16_value))[0]
+
 
 def get_npz_shape(args):
     if (len(args) < 2):
@@ -23,11 +24,12 @@ def get_npz_shape(args):
     dims = len(shape)
     for i in range(dims):
         ret += "{}".format(shape[i])
-        if i != dims-1:
+        if i != dims - 1:
             ret += ","
     ret += "]"
     print(ret)
     exit(0)
+
 
 def npz_rename(args):
     if len(args) < 2:
@@ -44,6 +46,7 @@ def npz_rename(args):
     npz_out[new_name] = d
     np.savez(args[0], **npz_out)
 
+
 def npz_extract(args):
     if len(args) < 3:
         print("Usage: {} extract in.npz out.npz arr1,arr2,arr3".format(sys.argv[0]))
@@ -56,6 +59,7 @@ def npz_extract(args):
         d = npz_in[s]
         npz_out[s] = d
     np.savez(args[1], **npz_out)
+
 
 def npz_remove(args):
     if len(args) < 2:
@@ -71,6 +75,7 @@ def npz_remove(args):
         npz_out.pop(s)
     np.savez(file, **npz_out)
 
+
 def npz_merge(args):
     if len(args) < 3:
         print("Usage: {} merge a.npz b.npz output.npz".format(sys.argv[0]))
@@ -78,10 +83,11 @@ def npz_merge(args):
         exit(-1)
     num = len(args)
     npz_out = {}
-    for i in range(num-1):
+    for i in range(num - 1):
         data = np.load(args[i])
         npz_out.update(data)
-    np.savez(args[num-1], **npz_out)
+    np.savez(args[num - 1], **npz_out)
+
 
 def npz_insert(args):
     if len(args) < 2:
@@ -94,9 +100,11 @@ def npz_insert(args):
         npz_out.update(data)
     np.savez(args[1], **npz_out)
 
+
 def npz_to_bin(args):
     if len(args) < 3:
-        print("Usage: {} filename.npz array_name filename.bin [int8|bf16|float32]".format(sys.argv[0]))
+        print("Usage: {} filename.npz array_name filename.bin [int8|bf16|float32]".format(
+            sys.argv[0]))
         exit(-1)
     npzfile = np.load(args[0])
     d = npzfile[args[1]]
@@ -115,6 +123,7 @@ def npz_to_bin(args):
             exit(-1)
     d.tofile(args[2])
 
+
 def npz_to_dat(args):
     if len(args) != 2:
         print("Usage: {} to_dat filename.npz filename.bin".format(sys.argv[0]))
@@ -123,6 +132,7 @@ def npz_to_dat(args):
     with open(args[1], "wb") as f:
         for i in datas:
             f.write(datas[i].tobytes())
+
 
 def npz_to_npy(args):
     if len(args) != 2:
@@ -134,6 +144,7 @@ def npz_to_npy(args):
         raise RuntimeError("{} not found in {}".format(name, args[0]))
     t = datas[name]
     np.save("{}.npy".format(name), t)
+
 
 def npz_bf16_to_fp32(args):
     if len(args) < 2:
@@ -153,6 +164,7 @@ def npz_bf16_to_fp32(args):
 
     np.savez(args[1], **npz_out)
 
+
 def npz_fp16_to_fp32(args):
     if len(args) < 2:
         print("Usage: {} fp16_to_fp32 in.npz out.npz".format(sys.argv[0]))
@@ -169,10 +181,13 @@ def npz_fp16_to_fp32(args):
             npz_out[s] = np.float32(value)
     np.savez(args[1], **npz_out)
 
+
 def npz_reshape(args):
     if len(args) < 3:
         print("Usage: {} reshape in.npz arr shape".format(sys.argv[0]))
-        print("       Reshape array `arr` in in.npz as `shape`, where shape should be of form e.g.'4,5,1'")
+        print(
+            "       Reshape array `arr` in in.npz as `shape`, where shape should be of form e.g.'4,5,1'"
+        )
         exit(-1)
     npz_in = np.load(args[0])
     name = args[1]
@@ -183,12 +198,17 @@ def npz_reshape(args):
     npz_out[name] = d
     np.savez(args[0], **npz_out)
 
+
 def npz_permute(args):
     if len(args) < 2:
         print("Usage: {} permute in.npz order".format(sys.argv[0]))
-        print("       Permute all arrays in in.npz by `order`, where order should be of form e.g.'0,2,1,3'")
+        print(
+            "       Permute all arrays in in.npz by `order`, where order should be of form e.g.'0,2,1,3'"
+        )
         print("Usage: {} permute in.npz arr order".format(sys.argv[0]))
-        print("       Permute array `arr` in in.npz by `order`, where order should be of form e.g.'0,2,1,3'")
+        print(
+            "       Permute array `arr` in in.npz by `order`, where order should be of form e.g.'0,2,1,3'"
+        )
         exit(-1)
     npz_in = np.load(args[0])
     npz_out = {}
@@ -204,6 +224,7 @@ def npz_permute(args):
         npz_out[name] = d
 
     np.savez(args[0], **npz_out)
+
 
 def npz_print_diff(args):
     if len(args) < 3:

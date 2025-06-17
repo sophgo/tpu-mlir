@@ -16,6 +16,7 @@ from plotly.subplots import make_subplots
 import ast
 import argparse
 
+
 def save_tensor_diff_subplot(tensor_ref, tensor_target, index_list, ref_name, target_name,
                              file_prefix):
     fig = make_subplots(rows=1,
@@ -151,6 +152,7 @@ def str2list(v):
         vars.remove('')
     return vars
 
+
 def str2dict(v):
     trimmed_str = v.strip("{}")
     pattern_pairs = trimmed_str.split(",")
@@ -159,6 +161,7 @@ def str2dict(v):
         key, value = pair.split(":")
         pattern_dict[key] = int(value) if value.isdigit() else float(value)
     return pattern_dict
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -203,6 +206,7 @@ def collect_process(processes: list, error_cases, timeout: int = 300):
             error_cases.append(p.name)
         elif p.exitcode != 0:
             error_cases.append(p.name)
+
 
 def dict_type(s):
     try:

@@ -14,7 +14,6 @@ from typing import Union
 from ..target_common import *
 from .memmap import *
 
-
 node_idx = 0
 
 
@@ -75,10 +74,8 @@ class BM1684Runner(CModelRunner):
     def init_memory(self, memory_size):
         self.lib.cmodel_init(node_idx, memory_size)
         DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
-        LMEM = c_array_to_ndarray(
-            self.lib.get_local_mem(0).contents.raw_ptr, (64, 8, 1024 * 64)
-        )
-        L2SRAM = c_array_to_ndarray(self.lib.get_l2_sram(0), (4096 * 1024,))
+        LMEM = c_array_to_ndarray(self.lib.get_local_mem(0).contents.raw_ptr, (64, 8, 1024 * 64))
+        L2SRAM = c_array_to_ndarray(self.lib.get_l2_sram(0), (4096 * 1024, ))
 
         self.memory = Memory(LMEM, DDR, L2SRAM)
 
@@ -86,7 +83,7 @@ class BM1684Runner(CModelRunner):
         self.DDR.fill(0)
         self.LMEM.fill(0)
         lut = np.array(self.gen_lookup_table(), np.uint32).view(np.uint8)
-        self.L2SRAM[: len(lut)] = lut[...]
+        self.L2SRAM[:len(lut)] = lut[...]
 
     def __del__(self):
         self.lib.cmodel_deinit(0)
@@ -125,7 +122,7 @@ class Memory(CModelMemory):
         self.DDR.fill(0)
         self.LMEM.fill(0)
         lut = np.array(BM1684Runner.gen_lookup_table(), np.uint32).view(np.uint8)
-        self.SMEM[: len(lut)] = lut[...]
+        self.SMEM[:len(lut)] = lut[...]
 
     def _local_mem_to_numpy(self, memref: MemRef):
         NPU_OFFSET = memref.npu_offset
@@ -134,7 +131,7 @@ class Memory(CModelMemory):
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                self.LMEM[offset:offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
@@ -145,14 +142,14 @@ class Memory(CModelMemory):
             n_s, c_s, h_s, w_s = stride
             _shape = [n, Ceil(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w]
             _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
-            return data_view(_shape, _stride).reshape(n, -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(_shape, _stride).reshape(n, -1, h, w)[:n,
+                                                                   NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_stride_data():
             return get_stride_data_base(memref.shape, memref.stride)
 
         def get_4n_2n_data(is_aligned=False):
+
             def func():
                 assert itemsize in (1, 2)
                 xn = 4 // itemsize
@@ -165,9 +162,8 @@ class Memory(CModelMemory):
                 lc = Ceil(c + NPU_OFFSET, NPU_NUM)
                 shape = (Ceil(n, xn), xn, lc, NPU_NUM, h, w)
                 stride = (lc * c_stride, 1, c_stride, LANE_SIZE // itemsize, xn * w, xn)
-                return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                    :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-                ]
+                return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
+                                                        w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
 
             return func
 
@@ -200,14 +196,14 @@ class Memory(CModelMemory):
             n, *dims = memref.shape
             shape, stride = self._get_xn_shape_stride(memref)
             return np.lib.stride_tricks.as_strided(
-                self.DDR[offset : offset + 4].view(memref.np_dtype),
+                self.DDR[offset:offset + 4].view(memref.np_dtype),
                 np.ctypeslib.as_array(shape),
                 np.ctypeslib.as_array(stride) * memref.itemsize,
                 writeable=False,
             ).reshape((-1, *dims))[:n]
 
         return np.lib.stride_tricks.as_strided(
-            self.DDR[offset : offset + 4].view(memref.np_dtype),
+            self.DDR[offset:offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
             writeable=False,
@@ -234,7 +230,7 @@ class Memory(CModelMemory):
                 assert value.stride is not None
                 shape, stride = self._get_xn_shape_stride(value)
                 ddr_view = np.lib.stride_tricks.as_strided(
-                    self.DDR[offset : offset + 4].view(value.np_dtype),
+                    self.DDR[offset:offset + 4].view(value.np_dtype),
                     np.ctypeslib.as_array(shape),
                     np.ctypeslib.as_array(stride) * value.itemsize,
                     writeable=True,
@@ -246,7 +242,7 @@ class Memory(CModelMemory):
 
             # continuous memory
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
-            self.DDR[offset : offset + src_u8.size] = src_u8.ravel()
+            self.DDR[offset:offset + src_u8.size] = src_u8.ravel()
             return True
 
         return False

@@ -27,22 +27,23 @@ NF4 = [
     0.7229568362236023,
     1.0,
 ]
-AF4=[-1.0, 
-     -0.69441008, 
-     -0.51243739,
-      -0.3736951, 
-     -0.25607552, 
-     -0.14982478,
-     -0.04934812,  
-     0.0, 
-     0.04273164, 
-     0.12934483, 
-     0.21961274, 
-     0.31675666,
-     0.42563882,  
-     0.55496234,  
-     0.72424863,  
-     1.0,
+AF4 = [
+    -1.0,
+    -0.69441008,
+    -0.51243739,
+    -0.3736951,
+    -0.25607552,
+    -0.14982478,
+    -0.04934812,
+    0.0,
+    0.04273164,
+    0.12934483,
+    0.21961274,
+    0.31675666,
+    0.42563882,
+    0.55496234,
+    0.72424863,
+    1.0,
 ]
 FP4_BNB = [-12.0, -8.0, -6.0, -4.0, -3.0, -2.0, -0.0625, 0, 0.0625, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0]
 FP4_E2M1 = [-6.0, -4.0, -3.0, -2.0, -1.5, -1.0, -0.0625, 0, 0.0625, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0]
@@ -55,42 +56,58 @@ FP4_BNB_BIT = [-5, -6, -3, -4, -1, -2, -7, 0, 1, 6, 7, 4, 5, 2, 3]
 FP4_E2M1_BIT = [-1, -2, -3, -4, -5, -6, -7, 0, 1, 2, 3, 4, 5, 6, 7]
 
 #NF8 compute
-offset=(1-(1/(255*2))+1-(1/(256*2)))*(1/2) #0.9981
+offset = (1 - (1 / (255 * 2)) + 1 - (1 / (256 * 2))) * (1 / 2)  #0.9981
 v1 = norm.ppf(torch.linspace(offset, 0.5, 129)[:-1]).tolist()
 v3 = (-norm.ppf(torch.linspace(offset, 0.5, 128)[:-1])).tolist()
-v=v1+v3+[0]
+v = v1 + v3 + [0]
 NF8 = torch.Tensor(v)
 NF8 = NF8.sort().values
 NF8 /= NF8.max()
 
-FLOAT_MAPPING = {"nf4": NF4, "fp4": FP4_BNB, "fp4_e2m1_bnb": FP4_BNB, "fp4_e2m1": FP4_E2M1,"af4":AF4,"nf8":NF8}
-INT_MAPPING = {"nf4": NF4_BIT, "fp4": FP4_BNB_BIT, "fp4_e2m1_bnb": FP4_BNB_BIT, "fp4_e2m1": FP4_E2M1_BIT,"af4":AF4,"nf8":NF8}
+FLOAT_MAPPING = {
+    "nf4": NF4,
+    "fp4": FP4_BNB,
+    "fp4_e2m1_bnb": FP4_BNB,
+    "fp4_e2m1": FP4_E2M1,
+    "af4": AF4,
+    "nf8": NF8
+}
+INT_MAPPING = {
+    "nf4": NF4_BIT,
+    "fp4": FP4_BNB_BIT,
+    "fp4_e2m1_bnb": FP4_BNB_BIT,
+    "fp4_e2m1": FP4_E2M1_BIT,
+    "af4": AF4,
+    "nf8": NF8
+}
+
 
 # 写一个获取FP8量化所能表示的最大值函数：
 def get_flt_max(mode):
     if mode.lower() == "e5m2":
-        return float(57344.0) # E5M2所能表示的最大值
+        return float(57344.0)  # E5M2所能表示的最大值
     elif mode.lower() == "e4m3":
-        return float(448.0) # E4M3所能表示的最大值
-    
+        return float(448.0)  # E4M3所能表示的最大值
+
+
 # 写一个获取FP8量化所能表示的最小值函数：
 def get_flt_min(mode):
-    if mode.lower() =="e5m2":
-        return float(1.5258789E-05) # E5M2所能表示的最小值
+    if mode.lower() == "e5m2":
+        return float(1.5258789E-05)  # E5M2所能表示的最小值
     elif mode.lower() == "e4m3":
-        return float(1.9531250E-03) #E4M3所能表示的最小值
+        return float(1.9531250E-03)  #E4M3所能表示的最小值
+
 
 # 写一个Int量化的转化函数（以支持INT8/INT4量化）：
 def quantize_to_integer(tensor, mode, inplace=False):
     # compute tensor min and max values
     min_val = torch.min(tensor)
     max_val = torch.max(tensor)
-    # int8 quantization range 
+    # int8 quantization range
 
-    nbits = int(mode.split("INT")[1])-1
-    q_min = -1*2**nbits
-    q_max = (2**nbits)-1
-
+    nbits = int(mode.split("INT")[1]) - 1
+    q_min = -1 * 2**nbits
+    q_max = (2**nbits) - 1
     """
     q_min = -128
     q_max = 127
@@ -98,7 +115,7 @@ def quantize_to_integer(tensor, mode, inplace=False):
         q_min = -8
         q_max = 7
     """
-    # compute scale and zero_point 
+    # compute scale and zero_point
     scale = (max_val - min_val) / (q_max - q_min)
     zero_point = q_min - (min_val / scale)
     # Quantize the input tensor using int8 representation
@@ -111,47 +128,51 @@ def quantize_to_integer(tensor, mode, inplace=False):
     if inplace is True:
         tensor.data.copy_(dqtensor)
         return tensor
-    
+
     return dqtensor
+
 
 #调用emulator函数计算量化后的权重：
 def fpemu_device_fn(tensor, mode, inplace=True, scale=1.0):
     #if "INT8" in mode or "INT4" in mode:
-    if "INT" in mode: # 如果输入的mode是INT类型，走这个循环进行整数的量化
+    if "INT" in mode:  # 如果输入的mode是INT类型，走这个循环进行整数的量化
         return quantize_to_integer(tensor, mode.split("_")[0], inplace=inplace)
 
-    if tensor.is_cuda : # 如果使用CUDA走这个循环，调用了pytquant中的CUDA函数
+    if tensor.is_cuda:  # 如果使用CUDA走这个循环，调用了pytquant中的CUDA函数
         from FP8_Emulator.pytquant.cuda import fpemu_cuda
         X = fpemu_cuda.FPEmuOp.apply(tensor, mode, inplace, scale)
 
-    else : # 如果使用CPU走这个循环，调用了pytquant中的CPP函数
+    else:  # 如果使用CPU走这个循环，调用了pytquant中的CPP函数
         from FP8_Emulator.pytquant.cpp import fpemu_cpp
         X = fpemu_cpp.FPEmuOp.apply(tensor, mode, inplace, scale)
 
     return X
 
+
 class FP4GROUPFakeQuantize1(QuantizeBase):
     """This is fp4 Quantization Emulator..
     """
+
     def __init__(self, observer, **observer_kwargs):
         super(FP4GROUPFakeQuantize1, self).__init__(observer, **observer_kwargs)
         self.register_buffer('scale', torch.tensor([1.0], dtype=torch.float))
         self.register_buffer('zero_point', torch.tensor([0], dtype=torch.int))
         self.load_state_dict_hook = PerChannelLoadHook(self)
-        self.data_type="fp4_e2m1"
-        self.quantile=1.0
-        self.return_int=False
-        self.group_size=64
+        self.data_type = "fp4_e2m1"
+        self.quantile = 1.0
+        self.return_int = False
+        self.group_size = 64
 
     def forward(self, X):
         assert self.data_type in FLOAT_MAPPING, "unexpected data type."
-        allow_data = FLOAT_MAPPING[self.data_type]                 #float类型
-        allow_data_bit = INT_MAPPING[self.data_type]               #int类型
+        allow_data = FLOAT_MAPPING[self.data_type]  #float类型
+        allow_data_bit = INT_MAPPING[self.data_type]  #int类型
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.calculate_qparams()
-            _scale = X.abs().max(1)[0] * self.quantile/ max(allow_data)
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale = X.abs().max(1)[0] * self.quantile / max(allow_data)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.scale.shape != _scale.shape:
                 self.scale.resize_(_scale.shape)
                 self.zero_point.resize_(_zero_point.shape)
@@ -160,19 +181,20 @@ class FP4GROUPFakeQuantize1(QuantizeBase):
 
         if self.fake_quant_enabled[0] == 1:
             work_mode = 'E4M3_RNE'
-            Xs=X.shape[1]
-            X= X.reshape((-1, self.group_size))
-            _scale = X.abs().max(1)[0] * self.quantile/ max(allow_data)
-            
+            Xs = X.shape[1]
+            X = X.reshape((-1, self.group_size))
+            _scale = X.abs().max(1)[0] * self.quantile / max(allow_data)
+
             #scale quantize
-            scalemax = torch.max(abs(torch.flatten(_scale.detach()))) #求出_scale的max
+            scalemax = torch.max(abs(torch.flatten(_scale.detach())))  #求出_scale的max
             _scale1 = get_flt_max("e4m3") / scalemax
             _scale1 = torch.tensor(6.55e+04) if _scale1.item() > 3.275e+04 else _scale1
             _scale1 = _scale1.to(self.scale.device)
-            _scale = fpemu_device_fn(_scale, mode=work_mode, inplace=False, scale=_scale1) #返回per tensor方式计算的量化权重
-            
+            _scale = fpemu_device_fn(_scale, mode=work_mode, inplace=False,
+                                     scale=_scale1)  #返回per tensor方式计算的量化权重
+
             _scale.unsqueeze_(dim=-1)
-            X = X/_scale
+            X = X / _scale
             # if self.data_type.lower=="nf4":
             #     cdf_values = [norm.cdf(x) for x in allow_data]
             #     intermediate_cdf_values = [(cdf_values[i] + cdf_values[i+1]) / 2 for i in range(len(allow_data) - 1)]
@@ -180,7 +202,7 @@ class FP4GROUPFakeQuantize1(QuantizeBase):
             # else:
             #     mid_data = [(allow_data[i] + allow_data[i + 1]) / 2 for i in range(len(allow_data) - 1)]
             mid_data = [(allow_data[i] + allow_data[i + 1]) / 2 for i in range(len(allow_data) - 1)]
-            q_X= torch.zeros_like(X)
+            q_X = torch.zeros_like(X)
             for i in range(len(allow_data)):
                 data = allow_data_bit[i] if self.return_int else allow_data[i]
                 if i == 0:
@@ -191,19 +213,19 @@ class FP4GROUPFakeQuantize1(QuantizeBase):
                     q_X += torch.where((mid_data[i - 1] < X) & (X <= mid_data[i]), data, 0)
             # if self.return_int:
             #     return q_X.type(torch.int8), _scale.type(torch.float), None
-            X=q_X * _scale
-            X=X.reshape((-1,Xs))
+            X = q_X * _scale
+            X = X.reshape((-1, Xs))
         return X
 
     @torch.jit.export
     def extra_repr(self):
-        allow_data = FLOAT_MAPPING[self.data_type] 
+        allow_data = FLOAT_MAPPING[self.data_type]
         return 'fake_quant_enabled={}, observer_enabled={}, ' \
                'quant_min={}, quant_max={}, dtype={}, qscheme={}, ch_axis={}, ' \
                'scale={}, zero_point={}'.format(
                    self.fake_quant_enabled, self.observer_enabled,
                    min(allow_data), max(allow_data),
-                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List', 
+                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List',
                    self.zero_point if self.ch_axis == -1 else 'List')
 
     def _save_to_state_dict(self, destination, prefix, keep_vars):
@@ -213,8 +235,8 @@ class FP4GROUPFakeQuantize1(QuantizeBase):
         destination[prefix + 'scale'] = self.scale
         destination[prefix + 'zero_point'] = self.zero_point
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         # Removing this function throws an error that the the size of the loaded tensor does not match the original size
         # i.e., These buffers start out with numel 0 and become numel 1 once they have their first forward pass.
         local_state = ['scale', 'zero_point']
@@ -241,5 +263,6 @@ class FP4GROUPFakeQuantize1(QuantizeBase):
                         self.zero_point.copy_(val)
             elif strict:
                 missing_keys.append(key)
-        super(FP4GROUPFakeQuantize1, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
-                                                             missing_keys, unexpected_keys, error_msgs)
+        super(FP4GROUPFakeQuantize1,
+              self)._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys,
+                                          unexpected_keys, error_msgs)

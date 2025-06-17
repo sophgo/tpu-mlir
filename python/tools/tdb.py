@@ -172,8 +172,7 @@ class TdbInterface(TdbCmdBackend):
             exit(0)
         try:
             res = input(
-                """The program being debugged has been started already.\nQuit? (y or any)"""
-            )
+                """The program being debugged has been started already.\nQuit? (y or any)""")
             if res.strip().lower().startswith("y"):
                 exit(0)
         except EOFError:
@@ -239,9 +238,8 @@ def get_tdb(args=None):
         final_mlir_fn = os.path.join(context_dir, "final.mlir")
         tensor_loc_file = os.path.join(context_dir, "tensor_location.json")
 
-    if final_mlir_fn is not None and (
-        not os.path.exists(final_mlir_fn) or not os.path.exists(tensor_loc_file)
-    ):
+    if final_mlir_fn is not None and (not os.path.exists(final_mlir_fn)
+                                      or not os.path.exists(tensor_loc_file)):
         final_mlir_fn = tensor_loc_file = None
 
     input_data_fn = args.inputs

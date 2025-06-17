@@ -98,9 +98,9 @@ class SGTPUV8Runner(CModelRunner):
 
         for i in range(self.core_num):
             base_addr = [
-                self.base_addr[0], #GMEM
-                self.base_addr[1], #GMEM
-                self.base_addr[2](i), ##LMEM
+                self.base_addr[0],  #GMEM
+                self.base_addr[1],  #GMEM
+                self.base_addr[2](i),  ##LMEM
             ]
             print("using base_addr:", base_addr)
             base_addr = (ctypes.c_uint64 * 3)(*base_addr)
@@ -111,9 +111,12 @@ class SGTPUV8Runner(CModelRunner):
             g_lmem_size_per_npu = self.lib.tpu_local_mem_size_per_npu()
             g_bank_num = self.lib.tpu_bank_num()
 
-            LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (g_npu_num, g_bank_num, g_lmem_size_per_npu // g_bank_num)))
-            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (2 * 1024,)))
-        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size) # memory_size:2**32
+            LMEM.append(
+                c_array_to_ndarray(
+                    self.lib.get_local_mem(i).contents.raw_ptr,
+                    (g_npu_num, g_bank_num, g_lmem_size_per_npu // g_bank_num)))
+            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (2 * 1024, )))
+        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)  # memory_size:2**32
         self.memory = Memory(LMEM, DDR, SMEM)
 
     def _compute(self, command: BaseTpuCmd, engine_type):

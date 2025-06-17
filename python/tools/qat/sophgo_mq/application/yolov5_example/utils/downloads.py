@@ -22,7 +22,8 @@ def is_url(url, check_online=True):
         url = str(url)
         result = urllib.parse.urlparse(url)
         assert all([result.scheme, result.netloc, result.path])  # check if is url
-        return (urllib.request.urlopen(url).getcode() == 200) if check_online else True  # check if exists online
+        return (urllib.request.urlopen(url).getcode()
+                == 200) if check_online else True  # check if exists online
     except (AssertionError, urllib.request.HTTPError):
         return False
 
@@ -46,7 +47,8 @@ def safe_download(file, url, url2=None, min_bytes=1E0, error_msg=''):
     except Exception as e:  # url2
         file.unlink(missing_ok=True)  # remove partial downloads
         LOGGER.info(f'ERROR: {e}\nRe-attempting {url2 or url} to {file}...')
-        os.system(f"curl -L '{url2 or url}' -o '{file}' --retry 3 -C -")  # curl download, retry and resume on fail
+        os.system(f"curl -L '{url2 or url}' -o '{file}' --retry 3 -C -"
+                  )  # curl download, retry and resume on fail
     finally:
         if not file.exists() or file.stat().st_size < min_bytes:  # check
             file.unlink(missing_ok=True)  # remove partial downloads
@@ -62,7 +64,8 @@ def attempt_download(file, repo='ultralytics/yolov5', release='v6.1'):
         # Return GitHub repo tag (i.e. 'v6.1') and assets (i.e. ['yolov5s.pt', 'yolov5m.pt', ...])
         if version != 'latest':
             version = f'tags/{version}'  # i.e. tags/v6.1
-        response = requests.get(f'https://api.github.com/repos/{repository}/releases/{version}').json()  # github api
+        response = requests.get(
+            f'https://api.github.com/repos/{repository}/releases/{version}').json()  # github api
         return response['tag_name'], [x['name'] for x in response['assets']]  # tag, assets
 
     file = Path(str(file).strip().replace("'", ''))
@@ -80,8 +83,9 @@ def attempt_download(file, repo='ultralytics/yolov5', release='v6.1'):
 
         # GitHub assets
         assets = [
-            'yolov5n.pt', 'yolov5s.pt', 'yolov5m.pt', 'yolov5l.pt', 'yolov5x.pt', 'yolov5n6.pt', 'yolov5s6.pt',
-            'yolov5m6.pt', 'yolov5l6.pt', 'yolov5x6.pt']
+            'yolov5n.pt', 'yolov5s.pt', 'yolov5m.pt', 'yolov5l.pt', 'yolov5x.pt', 'yolov5n6.pt',
+            'yolov5s6.pt', 'yolov5m6.pt', 'yolov5l6.pt', 'yolov5x6.pt'
+        ]
         try:
             tag, assets = github_assets(repo, release)
         except Exception:
@@ -89,7 +93,8 @@ def attempt_download(file, repo='ultralytics/yolov5', release='v6.1'):
                 tag, assets = github_assets(repo)  # latest release
             except Exception:
                 try:
-                    tag = subprocess.check_output('git tag', shell=True, stderr=subprocess.STDOUT).decode().split()[-1]
+                    tag = subprocess.check_output('git tag', shell=True,
+                                                  stderr=subprocess.STDOUT).decode().split()[-1]
                 except Exception:
                     tag = release
 
@@ -101,7 +106,9 @@ def attempt_download(file, repo='ultralytics/yolov5', release='v6.1'):
                 url=f'https://github.com/{repo}/releases/download/{tag}/{name}',
                 url2=f'https://storage.googleapis.com/{repo}/{tag}/{name}',  # backup url (optional)
                 min_bytes=1E5,
-                error_msg=f'{file} missing, try downloading from https://github.com/{repo}/releases/{tag} or {url3}')
+                error_msg=
+                f'{file} missing, try downloading from https://github.com/{repo}/releases/{tag} or {url3}'
+            )
 
     return str(file)
 

@@ -6,7 +6,6 @@
 # third-party components.
 #
 # ==============================================================================
-
 """
 cmodel.py provide a python interface of cmodel, which can compute cmd and access (global/local/smem) memory.
 """
@@ -79,9 +78,9 @@ class BM1684XRunner(CModelRunner):
         # self.lib.cmodel_multi_thread_cxt_deinit(0)
         DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
         LMEM = c_array_to_ndarray(
-            self.lib.get_local_mem(0).contents.raw_ptr, (info.NPU_NUM, info.BANK_NUM, info.BANK_SIZE)
-        )
-        SMEM = c_array_to_ndarray(self.lib.get_static_memaddr_by_node(0), (16 * 1024,))
+            self.lib.get_local_mem(0).contents.raw_ptr,
+            (info.NPU_NUM, info.BANK_NUM, info.BANK_SIZE))
+        SMEM = c_array_to_ndarray(self.lib.get_static_memaddr_by_node(0), (16 * 1024, ))
 
         self.memory = Memory(LMEM, DDR, SMEM)
 
@@ -260,7 +259,7 @@ class Memory(CModelMemory):
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * info.LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                self.LMEM[offset:offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
@@ -271,9 +270,8 @@ class Memory(CModelMemory):
             n_s, c_s, h_s, w_s = stride
             _shape = [n, div_up(NPU_OFFSET + c, info.NPU_NUM), info.NPU_NUM, h, w]
             _stride = (n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
-            return data_view(_shape, _stride).reshape(n, -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(_shape, _stride).reshape(n, -1, h, w)[:n,
+                                                                   NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_stride_data():
             return get_stride_data_base(memref.shape, memref.stride)
@@ -290,9 +288,8 @@ class Memory(CModelMemory):
                 cube_num * w,
                 cube_num,
             )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
+                                                    w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_matrix_data():
             r, c = memref.shape
@@ -314,12 +311,10 @@ class Memory(CModelMemory):
             return get_stride_data_base(shape, stride).reshape(r, c)
 
         def _lane_mask_filter(c, lane_mask):
-            lane_mask = np.unpackbits(
-                np.uint64([lane_mask]).view(np.uint8), bitorder="little"
-            )
+            lane_mask = np.unpackbits(np.uint64([lane_mask]).view(np.uint8), bitorder="little")
             _c = div_up(NPU_OFFSET + c, info.NPU_NUM)
             index = np.zeros(_c * info.NPU_NUM, bool)
-            index[NPU_OFFSET : NPU_OFFSET + c] = True
+            index[NPU_OFFSET:NPU_OFFSET + c] = True
             index = index.reshape(_c, info.NPU_NUM)
             index[:, lane_mask == 0] = False
             return index.flatten()
@@ -379,7 +374,7 @@ class Memory(CModelMemory):
         assert any(memref.stride)
         offset = memref.r_addr
         data = np.lib.stride_tricks.as_strided(
-            self.DDR[offset : offset + 4].view(memref.np_dtype),
+            self.DDR[offset:offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
             writeable=False,
@@ -393,7 +388,7 @@ class Memory(CModelMemory):
         self.DDR.fill(0)
         self.LMEM.fill(0)
         lut = np.array(BM1684XRunner.gen_lookup_table(), np.uint32).view(np.uint8)
-        self.SMEM[: len(lut)] = lut[...]
+        self.SMEM[:len(lut)] = lut[...]
 
     def get_data(self, value_ref: ValueRef):
         value = value_ref.value
@@ -413,6 +408,6 @@ class Memory(CModelMemory):
             offset = value.r_addr
             assert data.dtype == value.np_dtype
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
-            self.DDR[offset : offset + src_u8.size] = src_u8.flatten()
+            self.DDR[offset:offset + src_u8.size] = src_u8.flatten()
             return True
         return False

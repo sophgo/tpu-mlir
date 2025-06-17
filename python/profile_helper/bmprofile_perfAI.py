@@ -19,6 +19,7 @@ import itertools
 
 
 class BMProfileParserPerfAI(BMProfileParser):
+
     def __init__(self):
         super().__init__()
         self.gdma_cmd = []
@@ -38,7 +39,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         global_info = self.__parse_global_file(global_file_path)
         iter_count = 0
         while True:
-            block_filename = self.iter_prefix+str(iter_count)+".profile"
+            block_filename = self.iter_prefix + str(iter_count) + ".profile"
             iter_count += 1
             block_filename = os.path.join(in_dir, block_filename)
             blocks = parse_data_blocks(block_filename)
@@ -49,12 +50,10 @@ class BMProfileParserPerfAI(BMProfileParser):
             blocks_factory = {
                 BlockType.MONITOR_GDMA.value: (item.monitor_gdma, self.__parse_monitor_gdma),
                 BlockType.MONITOR_BD.value: (item.monitor_bd, self.__parse_monitor_tiu),
-                BlockType.COMMAND.value: (
-                    item.command_info, self.__parse_command_info)
+                BlockType.COMMAND.value: (item.command_info, self.__parse_command_info)
             }
             for block in blocks:
-                item_list, item_func = blocks_factory.get(
-                    block.type.value, (0, lambda x, y: 0))
+                item_list, item_func = blocks_factory.get(block.type.value, (0, lambda x, y: 0))
                 item_func(item_list, block.content)
             # print(item)
             for core_num, cmd_info in enumerate(item.command_info):
@@ -74,36 +73,34 @@ class BMProfileParserPerfAI(BMProfileParser):
         tiu_file = os.path.join(self.out_dir, "tiuRegInfo_{}.txt")
 
         # 2. write file
-        for idx, (bd, gdma, bd_cmd, gdma_cmd) in enumerate(zip(self.bd_monitor, self.gdma_monitor, self.bd_cmd, self.gdma_cmd)):
+        for idx, (bd, gdma, bd_cmd, gdma_cmd) in enumerate(
+                zip(self.bd_monitor, self.gdma_monitor, self.bd_cmd, self.gdma_cmd)):
             # wirte gdma
             with open(dma_file.format(idx), 'w') as f:
                 f.write("__CHIP_ARCH_ARGS__\n")
-                f.write("".join(f"\t{key}: {value}\n" for key,
-                        value in self.archlib.DMA_ARCH.items()))
+                f.write("".join(f"\t{key}: {value}\n"
+                                for key, value in self.archlib.DMA_ARCH.items()))
                 for gidx, j in enumerate(gdma, start=1):
                     reg_info = gdma_cmd[j.inst_id]
                     dma_info: dict = self._get_gdma_info(j, reg_info)
                     dma_info["Core Id"] = idx
                     dma_info["Global Idx"] = gidx
                     f.write("__TDMA_REG_INFO__\n")
-                    f.write(
-                        "".join(f"\t{key}: {value}\n" for key, value in dma_info.items()))
+                    f.write("".join(f"\t{key}: {value}\n" for key, value in dma_info.items()))
             # wirte tiu
             with open(tiu_file.format(idx), 'w') as f:
                 f.write("__CHIP_ARCH_ARGS__\n")
-                f.write("".join(f"\t{key}: {value}\n" for key,
-                        value in self.archlib.TIU_ARCH.items()))
+                f.write("".join(f"\t{key}: {value}\n"
+                                for key, value in self.archlib.TIU_ARCH.items()))
                 for gidx, j in enumerate(bd, start=1):
                     reg_info = bd_cmd[j.inst_id]
                     tiu_info0, tiu_info1 = self._get_tiu_info(j, reg_info)
                     tiu_info0["Core Id"] = idx
                     tiu_info1["Global Idx"] = gidx
                     f.write("__TIU_REG_INFO__\n")
-                    f.write(
-                        "".join(f"\t{key}: {value}\n" for key, value in tiu_info0.items()))
+                    f.write("".join(f"\t{key}: {value}\n" for key, value in tiu_info0.items()))
                     f.write('{}:\n'.format(tiu_info0["Function Type"]))
-                    f.write(
-                        "".join(f"\t{key}: {value}\n" for key, value in tiu_info1.items()))
+                    f.write("".join(f"\t{key}: {value}\n" for key, value in tiu_info1.items()))
                     # f.write("".join(f"\tdes_{key}: {value}\n" for key, value in dict(reg_info).items()))
                     # f.write("\tMsg Id: \n\tSd\Wt Count: \n")
 
@@ -119,30 +116,22 @@ class BMProfileParserPerfAI(BMProfileParser):
     def __cycle2time(self):
         for i in self.gdma_monitor:
             for j in i:
-                j.inst_start_time = int(
-                    j.inst_start_time / self.archlib.GDMA_FREQ * 1000)
-                j.inst_end_time = int(
-                    j.inst_end_time / self.archlib.GDMA_FREQ * 1000)
+                j.inst_start_time = int(j.inst_start_time / self.archlib.GDMA_FREQ * 1000)
+                j.inst_end_time = int(j.inst_end_time / self.archlib.GDMA_FREQ * 1000)
         for i in self.bd_monitor:
             for j in i:
-                j.inst_start_time = int(
-                    j.inst_start_time / self.archlib.BD_FREQ * 1000)
-                j.inst_end_time = int(
-                    j.inst_end_time / self.archlib.BD_FREQ * 1000)
+                j.inst_start_time = int(j.inst_start_time / self.archlib.BD_FREQ * 1000)
+                j.inst_end_time = int(j.inst_end_time / self.archlib.BD_FREQ * 1000)
 
     def __time2cycle(self):
         for i in self.gdma_monitor:
             for j in i:
-                j.inst_start_time = int(
-                    j.inst_start_time * self.archlib.GDMA_FREQ / 1000)
-                j.inst_end_time = int(
-                    j.inst_end_time * self.archlib.GDMA_FREQ / 1000)
+                j.inst_start_time = int(j.inst_start_time * self.archlib.GDMA_FREQ / 1000)
+                j.inst_end_time = int(j.inst_end_time * self.archlib.GDMA_FREQ / 1000)
         for i in self.bd_monitor:
             for j in i:
-                j.inst_start_time = int(
-                    j.inst_start_time * self.archlib.BD_FREQ / 1000)
-                j.inst_end_time = int(
-                    j.inst_end_time * self.archlib.BD_FREQ / 1000)
+                j.inst_start_time = int(j.inst_start_time * self.archlib.BD_FREQ / 1000)
+                j.inst_end_time = int(j.inst_end_time * self.archlib.BD_FREQ / 1000)
 
     def __align_core_time(self):
         first_wait_cmd_id = []
@@ -176,8 +165,7 @@ class BMProfileParserPerfAI(BMProfileParser):
     def __shift_time(self):
         start_cycle = self.gdma_monitor[0][0].inst_start_time
         for _, (bd, gdma) in enumerate(zip(self.bd_monitor, self.gdma_monitor)):
-            start_cycle = min(bd[0].inst_start_time,
-                              start_cycle, gdma[0].inst_start_time)
+            start_cycle = min(bd[0].inst_start_time, start_cycle, gdma[0].inst_start_time)
         for _, (bd, gdma) in enumerate(zip(self.bd_monitor, self.gdma_monitor)):
             for j1 in itertools.chain(bd, gdma):
                 j1.inst_start_time = int(j1.inst_start_time - start_cycle)
@@ -189,7 +177,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         last_id = 0
         for c in tmp:
             if last_id > 65000 and c.inst_id < 1000:
-                    delta_id += 65536
+                delta_id += 65536
             last_id = c.inst_id
             c.inst_id += delta_id
         self.bd_monitor.append(tmp)
@@ -217,8 +205,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         monitor_gdma.append(tmp)
 
     def __parse_command_info(self, command_info: List, raw_data):
-        command_info.append(
-            self._BMProfileParser__parse_command_info(raw_data))
+        command_info.append(self._BMProfileParser__parse_command_info(raw_data))
 
     def __parse_global_file(self, filename):
         assert os.path.isfile(filename)
@@ -241,21 +228,17 @@ class BMProfileParserPerfAI(BMProfileParser):
             bd_num += num_info[1]
         gdma_parser = self.archlib.GDMACommandParser()
         bd_parser = self.archlib.BDCommandParser()
-        gdma_cmd = self.__base_read_command_data(cmd_info.gdma_base,
-                                                 cmd_info.gdma_offset,
-                                                 self.archlib.EngineType.GDMA,
-                                                 core_num, gdma_parser)
-        bd_cmd = self.__base_read_command_data(cmd_info.bd_base,
-                                               cmd_info.bd_offset,
-                                               self.archlib.EngineType.BD,
-                                               core_num, bd_parser)
+        gdma_cmd = self.__base_read_command_data(cmd_info.gdma_base, cmd_info.gdma_offset,
+                                                 self.archlib.EngineType.GDMA, core_num,
+                                                 gdma_parser)
+        bd_cmd = self.__base_read_command_data(cmd_info.bd_base, cmd_info.bd_offset,
+                                               self.archlib.EngineType.BD, core_num, bd_parser)
         self.gdma_cmd.append(gdma_cmd)
         self.bd_cmd.append(bd_cmd)
 
     def __base_read_command_data(self, base, offset, engine_type, core_num, command_parser):
         basename = "cmd_%x_%d_%d.dat"
-        command_filename = os.path.join(
-            self.in_dir, basename % (base, core_num, engine_type.value))
+        command_filename = os.path.join(self.in_dir, basename % (base, core_num, engine_type.value))
         if not os.path.isfile(command_filename):
             return []
         with open(command_filename, "rb") as f:
@@ -274,6 +257,7 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 
 class BMProfileParserPerfAI_MARS3(BMProfileParserPerfAI):
+
     def __init__(self):
         super().__init__()
 

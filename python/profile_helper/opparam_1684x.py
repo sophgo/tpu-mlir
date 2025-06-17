@@ -22,7 +22,6 @@ except:
     from op_support import MType, DType, Scalar, ExtEnum, Layout
     from op_support import get_dtype, bf16_to_fp32
 
-
 # Value: MemRef | Scalar
 # Scalar: Number
 # Number: int | float
@@ -49,13 +48,16 @@ __eu_num_map = {
     DType.si8: __base_eu_num * 4,
 }
 
+
 def EU_NUM(dtype):
     return __eu_num_map[dtype]
+
 
 opparam_converter = {}
 
 
 def opparam_converter_regitstry(sheet_name):
+
     def add_converter(fun):
         if sheet_name in opparam_converter:
             raise KeyError(f"{sheet_name} have already registered.")
@@ -266,7 +268,7 @@ class Memory:
         def data_view(shape, stride):
             offset = memref.mtype.r_addr - NPU_OFFSET * LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                self.LMEM[offset:offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
             )
@@ -276,9 +278,8 @@ class Memory:
             n_s, c_s, h_s, w_s = stride
             _shape = [n, (NPU_OFFSET + c + 63) // 64, 64, h, w]
             _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
-            return data_view(_shape, _stride).reshape(n, -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(_shape, _stride).reshape(n, -1, h, w)[:n,
+                                                                   NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_stride_data():
             return get_stride_data_base(memref.shape, memref.stride)
@@ -294,9 +295,8 @@ class Memory:
                 64 * w,
                 64,
             )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
+                                                    w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_32ic_data():
             n, c, h, w = memref.shape
@@ -309,9 +309,8 @@ class Memory:
                 32 * w,
                 32,
             )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
+                                                    w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_1ic_data():
             n, c, h, w = memref.shape
@@ -323,9 +322,8 @@ class Memory:
                 w,
                 1,
             )
-            return data_view(shape, stride).reshape(-1, c, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(shape, stride).reshape(-1, c, h, w)[:n,
+                                                                 NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_matrix_data():
             r, c = memref.shape
@@ -347,12 +345,10 @@ class Memory:
             return get_stride_data_base(shape, stride).reshape(r, c)
 
         def _lane_mask_filter(c, lane_mask):
-            lane_mask = np.unpackbits(
-                np.uint64([lane_mask]).view(np.uint8), bitorder="little"
-            )
+            lane_mask = np.unpackbits(np.uint64([lane_mask]).view(np.uint8), bitorder="little")
             _c = (NPU_OFFSET + c + 63) // 64
             index = np.zeros(_c * 64, bool)
-            index[NPU_OFFSET : NPU_OFFSET + c] = True
+            index[NPU_OFFSET:NPU_OFFSET + c] = True
             index = index.reshape(_c, 64)
             index[:, lane_mask == 0] = False
             return index.flatten()
@@ -414,7 +410,7 @@ class Memory:
         assert any(memref.stride)
         offset = memref.mtype.r_addr
         data = np.lib.stride_tricks.as_strided(
-            self.DDR[offset : offset + 4].view(memref.np_dtype),
+            self.DDR[offset:offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
         )
@@ -1280,9 +1276,7 @@ def dma_reg_fmt_base(reg):
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     return res0, attr, opd0
 
@@ -1423,15 +1417,15 @@ def _converter(reg):
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
@@ -1440,9 +1434,7 @@ def _converter(reg):
         attr["lane_mask"] = hex(lane_mask)
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
     bc_size = reg.dst_csize
     if reg.cmd_special_function == 1:
         res0["shape"] = (bc_size, copy_len)
@@ -1480,9 +1472,7 @@ def _converter(reg):
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     operands = [get_value(**opd0)]
     results = [get_value(**res0)]
@@ -1545,9 +1535,8 @@ def dma_gather_base(reg):
         stride=(0, reg.index_cstride, reg.index_hstride, 1),
         layout=Layout.stride,
     )
-    const = get_value(
-        address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-    ).data
+    const = get_value(address=reg.constant_value, dtype=DType(reg.src_data_format),
+                      is_const=True).data
     attr = dict(const=const)
 
     operands = [get_value(**x) for x in (opd0, opd1)]

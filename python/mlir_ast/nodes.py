@@ -81,13 +81,13 @@ class Node:
     def context(self):
         if self._context is None:
             raise ValueError(
-                "missing mlir module context, should be created nodes by MlirASTParser"
-            )
+                "missing mlir module context, should be created nodes by MlirASTParser")
         return self._context
 
 
 @with_assert
 class OperationType(Node):
+
     def __init__(self, op_type_name: str, opds: List[str], subcall=False) -> None:
         super().__init__()
         self.op_type_name = op_type_name.strip()
@@ -132,6 +132,7 @@ class OperationType(Node):
 
 
 class NoneType(Node):
+
     @property
     def ir(self):
         return mlir.ir.Type.parse("none", self.context.ctx)
@@ -160,6 +161,7 @@ class Type(Node):
 
     @staticmethod
     def match_tensor_content(line: str) -> Union["Type", List["Type"]]:
+
         def match_tensor(tensor_start_idx):
             _start_idx = line.find("<", tensor_start_idx)
             tensor_end_idx = line.find(">", _start_idx)
@@ -185,7 +187,7 @@ class Type(Node):
                 types.append(line[start_idx:tensor_end_idx])
                 start_idx = tensor_end_idx
             else:
-                types.append(line[start_idx : start_idx + 4])
+                types.append(line[start_idx:start_idx + 4])
                 start_idx += 4
 
             match_res = Type.match_tensor.search(line)
@@ -210,7 +212,7 @@ class Type(Node):
             address_start_idx = tensor_str.rfind(",")
             tensor_str, address = (
                 tensor_str[:address_start_idx],
-                tensor_str[address_start_idx + 2 :],
+                tensor_str[address_start_idx + 2:],
             )
 
         quant_start_idx = tensor_str.find("!")
@@ -274,9 +276,7 @@ class Type(Node):
         match_tensor_start = Type.match_tensor.search(type_str)
         while match_tensor_start:
             tensor_start_idx = match_tensor_start.start()
-            match_tensor_end = Type.match_tensor.search(
-                type_str, pos=tensor_start_idx + 1
-            )
+            match_tensor_end = Type.match_tensor.search(type_str, pos=tensor_start_idx + 1)
             if match_tensor_end:
                 tensor_end_idx = match_tensor_end.start() - 2
             else:
@@ -327,6 +327,7 @@ class LocLabel(Node):
 
 @with_assert
 class Location(Node):
+
     def __init__(self, loc_id_str: str, loc_name: str, fused: List[str] = None) -> None:
         super().__init__()
         self.loc_id_str = loc_id_str
@@ -353,18 +354,14 @@ class Location(Node):
             loc_name = "unknown"
         elif "fused" in name_pos:
             fused_id = name_pos[10:-2].split(", ")
-            return Location(
-                loc_id_str=loc_id_str, loc_name=f"fused_{name_pos}", fused=fused_id
-            )
+            return Location(loc_id_str=loc_id_str, loc_name=f"fused_{name_pos}", fused=fused_id)
         else:
             loc_name = name_pos[4:-1].strip('"')
 
         return Location(loc_id_str=loc_id_str, loc_name=loc_name)
 
     def dump(self):
-        loc_name = (
-            f'"{self._loc_name}"' if self._loc_name != "unknown" else self._loc_name
-        )
+        loc_name = (f'"{self._loc_name}"' if self._loc_name != "unknown" else self._loc_name)
         if self.fused is not None:
             fused_name = ", ".join([f"{i}" for i in self.fused])
             return f"{self.loc_id_str} = loc(fused[{fused_name}])"
@@ -403,6 +400,7 @@ class Attributes(Node):
         return Attributes(arr_map)
 
     def dump(self):
+
         def dump_dict(dic: dict):
             inner_str = []
             for k, v in dic.items():
@@ -436,14 +434,14 @@ class Operation(Node):
 
     # lno: int
     def __init__(
-        self,
-        opd_ids: List[str],
-        op_type: OperationType,
-        input_types: List[Type],
-        output_types: List[Type],
-        loc_label: LocLabel,
-        attrs: Attributes = None,
-        const: str = None,  # tosa.const
+            self,
+            opd_ids: List[str],
+            op_type: OperationType,
+            input_types: List[Type],
+            output_types: List[Type],
+            loc_label: LocLabel,
+            attrs: Attributes = None,
+            const: str = None,  # tosa.const
     ) -> None:
         super().__init__()
         # <opd_ids> = <type_name> (<attr>) : <inputs> -> <outputs>
@@ -515,9 +513,7 @@ class Operation(Node):
 
     @property
     def opds(self) -> List[str]:
-        return [
-            self.context.get_op_name_by_op_id(i) for i in self.op_type.opds if i != "%0"
-        ]
+        return [self.context.get_op_name_by_op_id(i) for i in self.op_type.opds if i != "%0"]
 
     @property
     def outputs(self) -> List[str]:
@@ -577,9 +573,7 @@ class Operation(Node):
         if op_define.strip().startswith("call"):
             return CallFunc(opd_ids, op_type, input_types, output_types, loc_label)
 
-        return Operation(
-            opd_ids, op_type, input_types, output_types, loc_label, attr, const
-        )
+        return Operation(opd_ids, op_type, input_types, output_types, loc_label, attr, const)
 
     def dump(self):
         input_types_str = Type.dump_type_list(self.input_types, force_list=True)
@@ -605,9 +599,9 @@ class Operation(Node):
 
 @with_assert
 class Return(Operation):
-    def __init__(
-        self, output_ids: List[str], output_types: List[Type], loc_label: LocLabel
-    ) -> None:
+
+    def __init__(self, output_ids: List[str], output_types: List[Type],
+                 loc_label: LocLabel) -> None:
         super().__init__(
             [],
             OperationType("func.return", output_ids),
@@ -639,6 +633,7 @@ class Return(Operation):
 
 @with_assert
 class Yield(Operation):
+
     def __init__(
         self,
         op_type: OperationType,
@@ -668,13 +663,12 @@ class Yield(Operation):
 
     def dump(self):
         input_types_str = ", ".join([i.dump() for i in self.input_types])
-        return (
-            f"{self.op_type.dump()} : ({input_types_str}) -> () {self.loc_label.dump()}"
-        )
+        return (f"{self.op_type.dump()} : ({input_types_str}) -> () {self.loc_label.dump()}")
 
 
 @with_assert
 class CallFunc(Operation):
+
     def update_opd(self):
         prefix = self.opd_ids[0].split(":")[0]
         number = len(self.output_types)
@@ -731,9 +725,7 @@ class GroupOp(Operation):
         input_types_str = Type.dump_type_list(self.input_types, force_list=True)
         output_types_str = Type.dump_type_list(self.output_types)
         loc_label_str = self.loc_label.dump()
-        return (
-            f"}}) {attrs_str} : {input_types_str} -> {output_types_str} {loc_label_str}"
-        )
+        return (f"}}) {attrs_str} : {input_types_str} -> {output_types_str} {loc_label_str}")
 
     def dump(self):
         head = self.dump_head()
@@ -789,16 +781,13 @@ class Func(Node):
                     opdid2index[opd_id] = i
                     counter[opd_id] = 0
 
-            if not op.op_type.isa(
-                "top.Input", "top.Weight", "top.None"
-            ):  # no use of other data
+            if not op.op_type.isa("top.Input", "top.Weight", "top.None"):  # no use of other data
                 for opd in op.op_type.unique_opds:
                     counter[opd] -= 1
 
         less = counter.most_common(1)
-        while (
-            len(less) > 0 and less[0][1] == 0
-        ):  # while the count of some opd is 0, that operation can be erased
+        while (len(less) > 0 and less[0][1]
+               == 0):  # while the count of some opd is 0, that operation can be erased
             for opd, count in counter.most_common():
                 if count >= 0:
                     index = opdid2index[opd]
@@ -866,9 +855,7 @@ class Func(Node):
 
     def dump_head(self):
         input_inner_str = []
-        for arg_name, type, loc in zip(
-            self.input_names, self.input_types, self.input_locs
-        ):
+        for arg_name, type, loc in zip(self.input_names, self.input_types, self.input_locs):
             input_inner_str.append(f"{arg_name}: {type.dump()} {loc.dump()}")
         input_inner_str = ", ".join(input_inner_str)
         if self.attr is None:
@@ -888,6 +875,7 @@ class Func(Node):
 
 
 class Module(Node):
+
     def __init__(
         self,
         name: str,

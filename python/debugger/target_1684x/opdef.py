@@ -66,12 +66,9 @@ class TiuCmd(BaseTpuCmd, Tiu):
 
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
-        return (
-            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
-            + attribute
-            + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
-        )
+        return (f"{', '.join(res_name)}, %B{self.cmd_id} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %D{self.cmd_id_dep})" + attribute +
+                f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)")
 
     @property
     def op_name(self):
@@ -132,12 +129,9 @@ class DmaCmd(BaseTpuCmd, Dma):
         op_name = self.op_name
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
-        return (
-            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
-            + attribute
-            + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
-        )
+        return (f"{', '.join(res_name)}, %D{self.cmd_id} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %B{self.cmd_id_dep})" + attribute +
+                f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)")
 
     @property
     def op_name(self):
@@ -593,10 +587,10 @@ class transbc_op(TiuCmd):
             dtype = self.operands[0].dtype
             c = ALIGN(c, info.NPU_NUM)
             if self.eu_name in (
-                "tsbc.l_copy",
-                "tsbc.l_bc",
-                "tsbc.s_bc",
-                "tsbc.s_distribute",
+                    "tsbc.l_copy",
+                    "tsbc.l_bc",
+                    "tsbc.s_bc",
+                    "tsbc.s_distribute",
             ):
                 hw = ALIGN(h * w, info.EU_NUM(dtype))
             else:
@@ -747,7 +741,7 @@ class dma_sys(DmaCmd):
     description = "short DMA sys"
 
     def _set_op(self, reg):
-        return ([],) * 3
+        return ([], ) * 3
 
     def __repr__(self):
         return self.op_name

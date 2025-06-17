@@ -18,7 +18,6 @@ from sklearn.metrics import accuracy_score, top_k_accuracy_score
 import datasets
 import numpy as np
 
-
 _DESCRIPTION = """
 Accuracy is the proportion of correct predictions among the total number of cases processed. It can be computed with:
 Accuracy = (TP + TN) / (TP + TN + FP + FN)
@@ -28,7 +27,6 @@ TN: True negative
 FP: False positive
 FN: False negative
 """
-
 
 _KWARGS_DESCRIPTION = """
 Args:
@@ -61,7 +59,6 @@ Examples:
         {'accuracy': 0.8778625954198473}
 """
 
-
 _CITATION = """
 @article{scikit-learn,
   title={Scikit-learn: Machine Learning in {P}ython},
@@ -79,31 +76,38 @@ _CITATION = """
 
 @datasets.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
 class Accuracy(datasets.Metric):
+
     def _info(self):
         return datasets.MetricInfo(
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Sequence(datasets.Value("int32")),
-                    "references": datasets.Sequence(datasets.Value("int32")),
-                }
-                if self.config_name == "multilabel"
-                else {
-                    "predictions": datasets.Sequence(datasets.Value("float32")),
-                    "references": datasets.Value("int32"),
-                }
-            ),
-            reference_urls=["https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html"],
+            features=datasets.Features({
+                "predictions": datasets.Sequence(datasets.Value("int32")),
+                "references": datasets.Sequence(datasets.Value("int32")),
+            } if self.config_name == "multilabel" else {
+                "predictions": datasets.Sequence(datasets.Value("float32")),
+                "references": datasets.Value("int32"),
+            }),
+            reference_urls=[
+                "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html"
+            ],
         )
 
     def _compute(self, predictions, references, normalize=True, sample_weight=None):
         return {
-            "top-1_accuracy": float(
-                top_k_accuracy_score(references, predictions, k=1, normalize=normalize, sample_weight=sample_weight)
-            ),
-            "top-5_accuracy": float(
-                top_k_accuracy_score(references, predictions, k=5, normalize=normalize, sample_weight=sample_weight)
-            ),
+            "top-1_accuracy":
+            float(
+                top_k_accuracy_score(references,
+                                     predictions,
+                                     k=1,
+                                     normalize=normalize,
+                                     sample_weight=sample_weight)),
+            "top-5_accuracy":
+            float(
+                top_k_accuracy_score(references,
+                                     predictions,
+                                     k=5,
+                                     normalize=normalize,
+                                     sample_weight=sample_weight)),
         }

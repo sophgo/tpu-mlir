@@ -7,7 +7,6 @@
 #
 # ==============================================================================
 
-
 import numpy as np
 from typing import Callable, Dict, Union, Tuple, List, Any, TYPE_CHECKING
 from ..target_common import (
@@ -34,7 +33,9 @@ opparam_converter: Dict[
 
 
 def get_opparam_converter_with_context(context, opparam_converter: dict):
+
     def wrap(fn):
+
         def outer(cmd):
             return fn(context, cmd)
 
@@ -47,6 +48,7 @@ def get_opparam_converter_with_context(context, opparam_converter: dict):
 
 
 def opparam_converter_regitstry(sheet_name):
+
     def add_converter(fun):
         if sheet_name in opparam_converter:
             raise KeyError(f"{sheet_name} have already registered.")
@@ -81,6 +83,7 @@ def get_value(
 
 
 class TGCR:
+
     def __init__(self):
         self.regs = dict(
             T5=0,
@@ -164,9 +167,9 @@ def sCONV_converter(context: "BM1690Context", reg: sCONV_reg):
         layout=Layout.alignEU,
     )
     opds = [opd0, opd1, opd2, opd3, opd4, opd5]
-    if reg.opt_opd0_prec == INT8 and reg.opt_opd1_prec == INT8 :
+    if reg.opt_opd0_prec == INT8 and reg.opt_opd1_prec == INT8:
         opd1["layout"] = Layout._64IC
-    elif reg.opt_opd0_prec == FP8 and reg.opt_opd1_prec == FP8 :
+    elif reg.opt_opd0_prec == FP8 and reg.opt_opd1_prec == FP8:
         opd1["layout"] = Layout._64IC
     elif reg.opt_opd0_prec == FP16 or reg.opt_opd0_prec == BF16:
         opd1["layout"] = Layout._32IC
@@ -992,6 +995,7 @@ def sSGL_converter(context: "BM1690Context", reg: sSGL_reg):
 
 @opparam_converter_regitstry("SYS_TR_ACC")
 def SYS_TR_ACC_converter(context: "BM1690Context", reg):
+
     def int2bin(x, width):
         return np.binary_repr(x, width=width)
 
@@ -1035,8 +1039,8 @@ def SYS_converter(context: "BM1690Context", reg):
 def dma_addr(H, L):
     addr = H * 2**32 + L
     tag = (addr >> 40) & 0x1f
-    if tag == 0x0 :     # for workround
-        addr =  addr | (0x1 << 40)
+    if tag == 0x0:  # for workround
+        addr = addr | (0x1 << 40)
     return addr
 
 
@@ -1076,9 +1080,7 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     return res0, attr, opd0
 
@@ -1193,15 +1195,15 @@ def DMA_general_converter(context: "BM1690Context", reg: DMA_general_reg):
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h13, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
@@ -1210,9 +1212,7 @@ def DMA_general_converter(context: "BM1690Context", reg: DMA_general_reg):
         attr["lane_mask"] = hex(lane_mask)
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
     bc_size = reg.dst_csize
     if reg.cmd_special_function == 1:
         res0["shape"] = (bc_size, copy_len)
@@ -1248,9 +1248,7 @@ def DMA_cw_transpose_converter(context: "BM1690Context", reg: DMA_cw_transpose_r
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]

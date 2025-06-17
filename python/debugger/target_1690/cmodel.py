@@ -110,8 +110,9 @@ class BM1690Runner(CModelRunner):
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
 
-            LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (64, 16, 1024 * 16)))
-            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
+            LMEM.append(
+                c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (64, 16, 1024 * 16)))
+            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024, )))
         DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), GM_size)
         L2M = c_array_to_ndarray(self.lib.get_l2_sram(0), L2M_size)
         self.memory = Memory(LMEM, SMEM, DDR, L2M)

@@ -1,7 +1,6 @@
 import logging
 import sys
 
-
 SOPHGO_MQ_LOGGER_NAME = "SOPHGO_MQ"
 logger = logging.getLogger(SOPHGO_MQ_LOGGER_NAME)
 logger.propagate = False

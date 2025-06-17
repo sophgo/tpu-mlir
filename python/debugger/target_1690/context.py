@@ -81,9 +81,7 @@ class BM1690Context(BModelContext):
         return fixed_addr
 
     @classmethod
-    def merge_instruction(
-        cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]
-    ) -> List[BaseTpuCmd]:
+    def merge_instruction(cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]) -> List[BaseTpuCmd]:
         main_cmd, inserted_cmd = dma, tiu
 
         # remove the system command
@@ -100,16 +98,13 @@ class BM1690Context(BModelContext):
             for i, v in enumerate(tiu_cmd):
                 if isinstance(v.reg, SYS_TR_ACC_reg):
                     # same as v.op_code == 12, changed because short cmd do not have op_code
-                    v.cmd_id_dep = (
-                        tiu_cmd[i + 1].cmd_id_dep
-                        if tiu_cmd[i + 1].cmd_id_dep != None
-                        else tiu_cmd[i + 2].cmd_id_dep
-                    )
+                    v.cmd_id_dep = (tiu_cmd[i + 1].cmd_id_dep if tiu_cmd[i + 1].cmd_id_dep != None
+                                    else tiu_cmd[i + 2].cmd_id_dep)
 
-        fix_tgcr_cmd_id_dp(inserted_cmd[: get_end(inserted_cmd)])
+        fix_tgcr_cmd_id_dp(inserted_cmd[:get_end(inserted_cmd)])
         # remove system instruction
-        main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
-        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+        main_id = [(m.cmd_id, m) for m in main_cmd[:get_end(main_cmd)]]
+        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[:get_end(inserted_cmd)]]
         # "sorted" is stable, which keeps the inserted commands
         # after the main instructions.
         cmd = main_id + inserted_id

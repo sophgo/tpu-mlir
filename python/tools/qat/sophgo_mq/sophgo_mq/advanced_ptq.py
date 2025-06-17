@@ -30,8 +30,10 @@ from sophgo_mq.utils.state import enable_quantization, disable_all
 import sophgo_mq.nn.intrinsic.qat as qnniqat
 
 _ADAROUND_SUPPORT_TYPE = (torch.nn.Conv2d, torch.nn.Linear)
-_FUSED_TYPE = (nniqat.ConvBnReLU2d, nniqat.ConvBn2d, qnniqat.ConvFreezebn2d, qnniqat.ConvFreezebnReLU2d)
+_FUSED_TYPE = (nniqat.ConvBnReLU2d, nniqat.ConvBn2d, qnniqat.ConvFreezebn2d,
+               qnniqat.ConvFreezebnReLU2d)
 _WEIGHTS_MODULE_TYPE = (torch.nn.Conv2d, torch.nn.Linear)
+
 
 def node2modules(name2modules, nodes):
     modules = dict()
@@ -47,13 +49,14 @@ def qnode2fpnode(quant_modules, fp32_modules):
     qnode2fpnode_dict = {quant_named_nodes[key]: fp32_named_nodes[key] for key in quant_named_nodes}
     return qnode2fpnode_dict
 
+
 def layer_has_weights(nodes, modules):
     has_weights = False
     for node in nodes:
         if node in modules:
             if isinstance(modules[node], _WEIGHTS_MODULE_TYPE):
                 has_weights = True
-                break 
+                break
     return has_weights
 
 
@@ -92,7 +95,12 @@ def tensor_detach(data):
         return data
 
 
-def save_inp_oup_data(model: GraphModule, inp_module: Module, oup_module: Module, cali_data: list, store_inp=True, store_oup=True,
+def save_inp_oup_data(model: GraphModule,
+                      inp_module: Module,
+                      oup_module: Module,
+                      cali_data: list,
+                      store_inp=True,
+                      store_oup=True,
                       keep_gpu: bool = True):
     """
     Save input data and output data of a particular layer/block over calibration dataset.
@@ -105,7 +113,9 @@ def save_inp_oup_data(model: GraphModule, inp_module: Module, oup_module: Module
     device = next(model.parameters()).device
     if store_inp:
         assert inp_module is not None
-        inp_saver = DataSaverHook(store_input=store_inp, store_output=False, stop_forward=(not store_oup))
+        inp_saver = DataSaverHook(store_input=store_inp,
+                                  store_output=False,
+                                  stop_forward=(not store_oup))
         inp_handle = inp_module.register_forward_hook(inp_saver)
     if store_oup:
         assert oup_module is not None
@@ -122,7 +132,9 @@ def save_inp_oup_data(model: GraphModule, inp_module: Module, oup_module: Module
                 if keep_gpu:
                     cached[0].append([tensor_detach(inp) for inp in inp_saver.input_store])
                 else:
-                    cached[0].append([to_device(tensor_detach(inp), 'cpu') for inp in inp_saver.input_store])  # tuple/list one
+                    cached[0].append([
+                        to_device(tensor_detach(inp), 'cpu') for inp in inp_saver.input_store
+                    ])  # tuple/list one
             if store_oup:
                 if keep_gpu:
                     cached[1].append(tensor_detach(oup_saver.output_store))
@@ -137,6 +149,7 @@ def save_inp_oup_data(model: GraphModule, inp_module: Module, oup_module: Module
 
 
 class LinearTempDecay:
+
     def __init__(self, t_max=10000, warm_up=0.2, start_b=20, end_b=2):
         self.t_max = t_max
         self.start_decay = warm_up * t_max
@@ -154,6 +167,7 @@ class LinearTempDecay:
 
 
 class CosineTempDecay:
+
     def __init__(self, t_max=10000, warm_up=0.2, start_b=20, end_b=2):
         self.t_max = t_max
         self.start_decay = warm_up * t_max
@@ -174,6 +188,7 @@ class LossFunction:
     r'''loss function to calculate mse reconstruction loss and relaxation loss
     use some tempdecay to balance the two losses.
     '''
+
     def __init__(self,
                  subgraph: Module,
                  weight: float = 1.,
@@ -187,8 +202,10 @@ class LossFunction:
         self.loss_start = max_count * warm_up
         self.p = p
 
-        self.temp_decay = LinearTempDecay(max_count, warm_up=warm_up,
-                                          start_b=b_range[0], end_b=b_range[1])
+        self.temp_decay = LinearTempDecay(max_count,
+                                          warm_up=warm_up,
+                                          start_b=b_range[0],
+                                          end_b=b_range[1])
         self.count = 0
 
     def __call__(self, pred, tgt):
@@ -235,10 +252,8 @@ def _flatten_args(node):
 
 
 def find_used_times(nodes, target):
-    used = len([_node for _node in target.users if _node in nodes])    
+    used = len([_node for _node in target.users if _node in nodes])
     return used
-
-
 
 
 def find_cur_node(layer_node_list):
@@ -256,7 +271,10 @@ def find_cur_node(layer_node_list):
         q = [node]
         while True:
             now_args = sum([_flatten_args(_node.args) for _node in q], [])
-            p = [_node for _node in now_args if isinstance(_node, torch.fx.Node) and find_used_times(layer_node_list, _node) == 1]
+            p = [
+                _node for _node in now_args
+                if isinstance(_node, torch.fx.Node) and find_used_times(layer_node_list, _node) == 1
+            ]
             single_branch[node] = single_branch[node].union(set(p))
             if len(p) == 0:
                 break
@@ -270,7 +288,7 @@ def find_cur_node(layer_node_list):
     unwanted = set()
     for key in single_branch:
         if key is node:
-            continue 
+            continue
         else:
             unwanted = unwanted.union(single_branch[key])
     layer_node_list = [_node for _node in layer_node_list if _node not in unwanted]
@@ -294,19 +312,25 @@ def subgraph_reconstruction(subgraph, cached_inps, cached_oups, config):
             # assert isinstance(weight_quantizer, adaround_quantizer) is True
             weight_quantizer.init(layer.weight.data, config.round_mode)
             w_para += [weight_quantizer.alpha]
-        if isinstance(layer, torch.quantization.FakeQuantizeBase) and 'post_act_fake_quantize' in name:
+        if isinstance(layer,
+                      torch.quantization.FakeQuantizeBase) and 'post_act_fake_quantize' in name:
             if hasattr(config, 'scale_lr'):
                 logger.info('learn the scale for {}'.format(name))
                 a_para += [layer.scale]
             layer.prob = config.prob
     if len(a_para) != 0:
         a_opt = torch.optim.Adam(a_para, lr=config.scale_lr)
-        a_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(a_opt, T_max=config.max_count, eta_min=0.)
+        a_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(a_opt,
+                                                                 T_max=config.max_count,
+                                                                 eta_min=0.)
     else:
         a_opt, a_scheduler = None, None
     w_opt = torch.optim.Adam(w_para)
 
-    loss_func = LossFunction(subgraph=subgraph, weight=config.weight, max_count=config.max_count, b_range=config.b_range,
+    loss_func = LossFunction(subgraph=subgraph,
+                             weight=config.weight,
+                             max_count=config.max_count,
+                             b_range=config.b_range,
                              warm_up=config.warm_up)
 
     if any([USE_DDP, USE_LINK]):
@@ -359,22 +383,27 @@ def subgraph_reconstruction(subgraph, cached_inps, cached_oups, config):
         if a_scheduler:
             a_scheduler.step()
     torch.cuda.empty_cache()
-    for name, layer in subgraph.named_modules():        
+    for name, layer in subgraph.named_modules():
         if isinstance(layer, _FUSED_TYPE):
             # We need to do bn fold simulation here.
             weight_quantizer = layer.weight_fake_quant
             scale_factor = layer.bn.weight / torch.sqrt(layer.bn.running_var + layer.bn.eps)
             merged_rounded_weight = weight_quantizer.get_hard_value(
-                layer.weight.data * scale_factor.reshape([-1] + [1] * (len(layer.weight.shape) - 1)))
-            layer.weight.data = merged_rounded_weight / scale_factor.reshape([-1] + [1] * (len(merged_rounded_weight.shape) - 1))
+                layer.weight.data * scale_factor.reshape([-1] + [1] *
+                                                         (len(layer.weight.shape) - 1)))
+            layer.weight.data = merged_rounded_weight / scale_factor.reshape(
+                [-1] + [1] * (len(merged_rounded_weight.shape) - 1))
             weight_quantizer.adaround = False
         elif isinstance(layer, _ADAROUND_SUPPORT_TYPE):
-            assert not hasattr(layer, 'bn'), 'Layer {} with type {} has BN ! Should not reach here.'.format(name, type(layer))
+            assert not hasattr(
+                layer, 'bn'), 'Layer {} with type {} has BN ! Should not reach here.'.format(
+                    name, type(layer))
             weight_quantizer = layer.weight_fake_quant
             layer.weight.data = weight_quantizer.get_hard_value(layer.weight.data)
             weight_quantizer.adaround = False
-        if isinstance(layer, torch.quantization.FakeQuantizeBase) and 'post_act_fake_quantize' in name:
-            layer.prob = 1.0   # recover to promise that drop activation quantization only occurs at reconstruction phase
+        if isinstance(layer,
+                      torch.quantization.FakeQuantizeBase) and 'post_act_fake_quantize' in name:
+            layer.prob = 1.0  # recover to promise that drop activation quantization only occurs at reconstruction phase
 
 
 def extract_subgraph(orig_module: nn.Module, nodes: List[fx.Node], output: fx.Node, g2node: dict):
@@ -408,6 +437,7 @@ def extract_subgraph(orig_module: nn.Module, nodes: List[fx.Node], output: fx.No
     new_graph.lint()
     return fx.GraphModule(orig_module, new_graph)
 
+
 def find_num_nodes(nodes):
     num = 0
     for node in nodes:
@@ -429,13 +459,11 @@ def extract_layer(node, fp32_modules):
         for user in cur_node.users:
             if user.target == 'update':
                 continue
-            if user.op == 'call_module' and isinstance(
-                    fp32_modules[user], _ADAROUND_SUPPORT_TYPE):
+            if user.op == 'call_module' and isinstance(fp32_modules[user], _ADAROUND_SUPPORT_TYPE):
                 stop = True
             # TODO: only short-cut here, consider more here
             # TODO: can also use un/completed to check here.
-            if ('add' in user.name
-                    and user.op in ['call_function', 'call_method']):
+            if ('add' in user.name and user.op in ['call_function', 'call_method']):
                 stop = True
             if user.op == 'output':
                 is_next_block, stop = True, True
@@ -494,11 +522,13 @@ def extract_block(input_nodes, fp32_modules, depth=0):
     if is_block or is_next_block:
         return layer_node_list + exp_nodes
     else:
-        return layer_node_list + exp_nodes + extract_block(
-            [exp_nodes[-1]], fp32_modules, depth + 1)
+        return layer_node_list + exp_nodes + extract_block([exp_nodes[-1]], fp32_modules, depth + 1)
 
 
-def ptq_reconstruction(model: GraphModule, cali_data: list, config: dict, graph_module_list: list = None):
+def ptq_reconstruction(model: GraphModule,
+                       cali_data: list,
+                       config: dict,
+                       graph_module_list: list = None):
     r"""
     Reconsturction for AdaRound, BRECQ, QDrop.
     Basic optimization objective:
@@ -605,8 +635,7 @@ def ptq_reconstruction(model: GraphModule, cali_data: list, config: dict, graph_
                         src = n.args[0]
                         remove = True
                         for _idx in range(idx + 1, len(layer_node_list)):
-                            if src in _flatten_args(
-                                    layer_node_list[_idx].args):
+                            if src in _flatten_args(layer_node_list[_idx].args):
                                 remove = False
                                 break
                         if remove:
@@ -639,18 +668,36 @@ def ptq_reconstruction(model: GraphModule, cali_data: list, config: dict, graph_
             fp32_final_oups = None
             out_is_cached = False
             for _node in layer_node_list:
-                if all([arg in layer_node_list for arg in _flatten_args(_node.args) if isinstance(arg, torch.fx.Node)]):
+                if all([
+                        arg in layer_node_list for arg in _flatten_args(_node.args)
+                        if isinstance(arg, torch.fx.Node)
+                ]):
                     continue
                 else:
                     fp32_inp_module = fp32_modules[qnode2fpnode_dict[_node]]
                     quant_module = quant_modules[_node]
                     # fp32 inps: [out_b1, out_b2, ...]
-                    _, fp32_inps = save_inp_oup_data(fp32_model, None, fp32_inp_module, cali_data, 
-                                                     store_inp=False, store_oup=(config.prob < 1.0), keep_gpu=config.keep_gpu)
-                    _, fp32_oups = save_inp_oup_data(fp32_model, None, fp32_module, cali_data,
-                                                     store_inp=False, store_oup=(not out_is_cached), keep_gpu=config.keep_gpu)
-                    _, quant_inps = save_inp_oup_data(quant_model, None, quant_module, cali_data,
-                                                      store_inp=False, store_oup=True, keep_gpu=config.keep_gpu)
+                    _, fp32_inps = save_inp_oup_data(fp32_model,
+                                                     None,
+                                                     fp32_inp_module,
+                                                     cali_data,
+                                                     store_inp=False,
+                                                     store_oup=(config.prob < 1.0),
+                                                     keep_gpu=config.keep_gpu)
+                    _, fp32_oups = save_inp_oup_data(fp32_model,
+                                                     None,
+                                                     fp32_module,
+                                                     cali_data,
+                                                     store_inp=False,
+                                                     store_oup=(not out_is_cached),
+                                                     keep_gpu=config.keep_gpu)
+                    _, quant_inps = save_inp_oup_data(quant_model,
+                                                      None,
+                                                      quant_module,
+                                                      cali_data,
+                                                      store_inp=False,
+                                                      store_oup=True,
+                                                      keep_gpu=config.keep_gpu)
                     fp32_all_inps.append(fp32_inps)
                     quant_all_inps.append(quant_inps)
                     if not out_is_cached:
@@ -662,8 +709,8 @@ def ptq_reconstruction(model: GraphModule, cali_data: list, config: dict, graph_
             for node in layer_node_list:
                 if node.op == 'call_module':
                     quant_modules_by_name[node.target] = quant_modules[node]
-            subgraph = extract_subgraph(quant_modules_by_name, layer_node_list,
-                                        layer_node_list[-1], g2node)
+            subgraph = extract_subgraph(quant_modules_by_name, layer_node_list, layer_node_list[-1],
+                                        g2node)
             logger.info(subgraph.code)
             subgraph_reconstruction(subgraph, cached_inps, cached_oups, config)
             for x in layer_node_list:

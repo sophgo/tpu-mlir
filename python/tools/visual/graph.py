@@ -3,11 +3,13 @@ import collections
 import functools
 
 import sys
+
 sys.path.append('../..')
 from utils.mlir_parser import MlirParser
 
 
 class Graph():
+
     def __init__(self, mlir_file):
         self.parser = MlirParser(mlir_file)
         self.ops = self.parser.ops
@@ -83,6 +85,7 @@ class Graph():
         return nodes + f_node
 
     def cy_edges(self):
+
         def de_flow_edge(s, t):
             return self.de_flow_node(s) | self.de_flow_node(t)
 
@@ -128,10 +131,7 @@ class Graph():
 
         descendants = base_add(tps_g, self.graph.successors)
         ancestors = base_add(reversed(tps_g), self.graph.predecessors)
-        flow_node = {
-            n: descendants[n] | ancestors[n] | {n}
-            for n in self.graph.nodes
-        }
+        flow_node = {n: descendants[n] | ancestors[n] | {n} for n in self.graph.nodes}
         self.descendants = lambda x: descendants[x]
         self.ancestors = lambda x: ancestors[x]
         self.flow_node = lambda x: flow_node[x]

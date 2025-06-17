@@ -29,9 +29,7 @@ class BM1684XContext(BModelContext):
     local_layout_to_stride = local_layout_to_stride
 
     @classmethod
-    def merge_instruction(
-        cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]
-    ) -> List[BaseTpuCmd]:
+    def merge_instruction(cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]) -> List[BaseTpuCmd]:
         main_cmd, inserted_cmd = dma, tiu
 
         # remove the system command
@@ -45,8 +43,8 @@ class BM1684XContext(BModelContext):
                 return len(cmds)
 
         # remove system instruction
-        main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
-        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+        main_id = [(m.cmd_id, m) for m in main_cmd[:get_end(main_cmd)]]
+        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[:get_end(inserted_cmd)]]
         # "sorted" is stable, which keeps the inserted commands
         # after the main instructions.
         cmd = main_id + inserted_id

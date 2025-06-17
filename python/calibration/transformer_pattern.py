@@ -34,120 +34,201 @@ from .utils import *
 pymlir.set_mem_mode("force_value_mem")
 
 sub_blocks = {
-    "eva_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze',
-                 'top.Squeeze', 'top.Squeeze', 'top.Permute', 'top.Slice', 'top.Slice', 'top.Mul', 'top.Slice', 'top.MulConst',
-                 'top.Slice', 'top.Unsqueeze', 'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul', 'top.Add', 'top.Concat',
-                 'top.Permute', 'top.Slice', 'top.Slice', 'top.Mul', 'top.Slice', 'top.MulConst', 'top.Slice', 'top.Unsqueeze',
-                 'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul', 'top.Add', 'top.Concat', 'top.MulConst', 'top.Permute',
-                 'top.MatMul', 'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
-                 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.SiLU', 'top.Mul', 'top.MatMul'],
-    "bert_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape',
-                  'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul',
-                  'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'],
-    "bert_block_1":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute',
-                    'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul',
-                    'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'],
-    "insert_mul_bert_block":['top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape',
-                             'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst',
-                             'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm',
-                             'top.Mul', 'top.MatMul', 'top.GELU', 'top.MatMul'],
-    "insert_mul_bert_block_1":['top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.MatMul',
-                               'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst',
-                               'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
-                               'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.GELU', 'top.MatMul'],
-    "insert_mul_bert_block_2":['top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute',
-                               'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul',
-                               'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
-                               'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.GELU', 'top.MatMul'],
-    "deit_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Squeeze', 'top.Slice', 'top.Squeeze',
-                  'top.Slice', 'top.Squeeze', 'top.Permute', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Softmax',
-                  'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
-                  'top.GELU', 'top.MatMul'],
-    "swin_block":['top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice',
-                  'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute',
-                  'top.MatMul', 'top.Add', 'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
-                  'top.Permute', 'top.Reshape', 'top.Add', 'top.Reshape', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add',
-                  'top.Reshape', 'top.LayerNorm', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape',
-                  'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze',
-                  'top.Squeeze', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax', 'top.Permute',
-                  'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Slice', 'top.Slice',
-                  'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Add', 'top.Reshape', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
-                  'top.MatMul', 'top.Add'],
-    "_swin_block":['top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice',
-                  'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute',
-                  'top.MatMul', 'top.Add', 'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
-                  'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add',
-                  'top.Reshape', 'top.LayerNorm', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape',
-                  'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze',
-                  'top.Squeeze', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax', 'top.Permute',
-                  'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Slice', 'top.Slice',
-                  'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
-                  'top.MatMul', 'top.Add'],
-    "vit_block": ['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze',
-                  'top.Squeeze', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.Permute', 'top.MatMul',
-                  'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'],
-    "detr_block": ['top.Add', 'top.LayerNorm', 'top.Add', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape',
-                   'top.Reshape', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute',
-                   'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul'],
-    "detr_rc_50_block": ['top.Add', 'top.LayerNorm', 'top.Add', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MulConst',
-                        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
-                        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul'],
-    "swin_1_block": ['top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Permute',
-                     'top.Slice', 'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.MulConst', 'top.Reshape', 'top.Permute',
-                     'top.MatMul', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute',
-                     'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.Reshape',
-                     'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape', 'top.Permute', 'top.Reshape',
-                     'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.Slice', 'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape',
-                     'top.MulConst', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
-                     'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat',
-                     'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add'],
-    "_swin_1_block":['top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice',
-                     'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute',
-                     'top.MatMul', 'top.Add', 'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
-                     'top.Permute', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add',
-                     'top.LayerNorm', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape',
-                     'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze',
-                     'top.Squeeze', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax', 'top.Permute',
-                     'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Slice', 'top.Slice',
-                     'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
-                     'top.MatMul', 'top.Add'],
-    "_eva_block":['top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul',
-                  'top.Reshape', 'top.Permute', 'top.Slice', 'top.Slice', 'top.Mul', 'top.Slice', 'top.MulConst', 'top.Slice', 'top.Unsqueeze',
-                  'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul', 'top.Add', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Mul', 'top.Slice',
-                  'top.MulConst', 'top.Slice', 'top.Unsqueeze', 'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul', 'top.Add', 'top.Concat',
-                  'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
-                  'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.SiLU', 'top.Mul', 'top.LayerNorm', 'top.MatMul'],
-    "cswin_block":['top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.Slice',
-                   'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.Reshape', 'top.Permute',
-                   'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Conv', 'top.Reshape', 'top.Permute', 'top.Reshape',
-                   'top.Permute', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Add', 'top.Permute', 'top.Reshape',
-                   'top.Permute', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.Reshape',
-                   'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Conv', 'top.Reshape', 'top.Permute',
-                   'top.Reshape', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Add', 'top.Permute',
-                   'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Concat', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
-                   'top.MatMul', 'top.Add'],
-    "yolo_block":['top.MaxPool', 'top.MaxPool', 'top.MaxPool', 'top.Concat'],
-    "yolo_block_12":['top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul', 'top.Concat']
-
+    "eva_block": [
+        'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice',
+        'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute', 'top.Slice',
+        'top.Slice', 'top.Mul', 'top.Slice', 'top.MulConst', 'top.Slice', 'top.Unsqueeze',
+        'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul', 'top.Add', 'top.Concat',
+        'top.Permute', 'top.Slice', 'top.Slice', 'top.Mul', 'top.Slice', 'top.MulConst',
+        'top.Slice', 'top.Unsqueeze', 'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul',
+        'top.Add', 'top.Concat', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax',
+        'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
+        'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.SiLU', 'top.Mul', 'top.MatMul'
+    ],
+    "bert_block": [
+        'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul',
+        'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
+        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'
+    ],
+    "bert_block_1": [
+        'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul',
+        'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
+        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'
+    ],
+    "insert_mul_bert_block": [
+        'top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.Permute',
+        'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute',
+        'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul',
+        'top.GELU', 'top.MatMul'
+    ],
+    "insert_mul_bert_block_1": [
+        'top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.Reshape',
+        'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute',
+        'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute',
+        'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul',
+        'top.GELU', 'top.MatMul'
+    ],
+    "insert_mul_bert_block_2": [
+        'top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.Reshape',
+        'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute',
+        'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul',
+        'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.Mul',
+        'top.MatMul', 'top.GELU', 'top.MatMul'
+    ],
+    "deit_block": [
+        'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Squeeze',
+        'top.Slice', 'top.Squeeze', 'top.Slice', 'top.Squeeze', 'top.Permute', 'top.Permute',
+        'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Softmax', 'top.Permute', 'top.MatMul',
+        'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
+        'top.GELU', 'top.MatMul'
+    ],
+    "swin_block": [
+        'top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
+        'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze',
+        'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add',
+        'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Add', 'top.Reshape', 'top.LayerNorm',
+        'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add', 'top.Reshape', 'top.LayerNorm',
+        'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice',
+        'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute',
+        'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax',
+        'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice',
+        'top.Slice', 'top.Concat', 'top.Add', 'top.Reshape', 'top.LayerNorm', 'top.MatMul',
+        'top.GELU', 'top.MatMul', 'top.Add'
+    ],
+    "_swin_block": [
+        'top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
+        'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze',
+        'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add',
+        'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Add', 'top.LayerNorm',
+        'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add', 'top.Reshape', 'top.LayerNorm',
+        'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice',
+        'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute',
+        'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax',
+        'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice',
+        'top.Slice', 'top.Concat', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul',
+        'top.GELU', 'top.MatMul', 'top.Add'
+    ],
+    "vit_block": [
+        'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice',
+        'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute', 'top.MulConst',
+        'top.Permute', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.Permute', 'top.MatMul',
+        'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
+        'top.GELU', 'top.MatMul'
+    ],
+    "detr_block": [
+        'top.Add', 'top.LayerNorm', 'top.Add', 'top.MatMul', 'top.MatMul', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.MulConst',
+        'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
+        'top.MatMul', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul'
+    ],
+    "detr_rc_50_block": [
+        'top.Add', 'top.LayerNorm', 'top.Add', 'top.MatMul', 'top.MatMul', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.MulConst', 'top.Reshape', 'top.Permute', 'top.Reshape',
+        'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
+        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul'
+    ],
+    "swin_1_block": [
+        'top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
+        'top.Permute', 'top.Permute', 'top.Slice', 'top.Slice', 'top.Reshape', 'top.Slice',
+        'top.Reshape', 'top.MulConst', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Add',
+        'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
+        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.Reshape', 'top.Slice', 'top.Slice',
+        'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape', 'top.Permute',
+        'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.Slice',
+        'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.MulConst', 'top.Reshape',
+        'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute',
+        'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Slice',
+        'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape', 'top.Add',
+        'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul', 'top.Add'
+    ],
+    "_swin_1_block": [
+        'top.LayerNorm', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape',
+        'top.Slice', 'top.Slice', 'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze',
+        'top.Permute', 'top.MulConst', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add',
+        'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul',
+        'top.GELU', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.Reshape', 'top.Slice',
+        'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Slice', 'top.Slice',
+        'top.Slice', 'top.Squeeze', 'top.Squeeze', 'top.Squeeze', 'top.Permute', 'top.MulConst',
+        'top.Permute', 'top.Permute', 'top.MatMul', 'top.Add', 'top.Softmax', 'top.Permute',
+        'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute',
+        'top.Reshape', 'top.Slice', 'top.Slice', 'top.Concat', 'top.Slice', 'top.Slice',
+        'top.Concat', 'top.Reshape', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
+        'top.MatMul', 'top.Add'
+    ],
+    "_eva_block": [
+        'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Slice',
+        'top.Slice', 'top.Mul', 'top.Slice', 'top.MulConst', 'top.Slice', 'top.Unsqueeze',
+        'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul', 'top.Add', 'top.Concat',
+        'top.Slice', 'top.Slice', 'top.Mul', 'top.Slice', 'top.MulConst', 'top.Slice',
+        'top.Unsqueeze', 'top.Unsqueeze', 'top.Concat', 'top.Reshape', 'top.Mul', 'top.Add',
+        'top.Concat', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul',
+        'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
+        'top.MatMul', 'top.SiLU', 'top.Mul', 'top.LayerNorm', 'top.MatMul'
+    ],
+    "cswin_block": [
+        'top.LayerNorm', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Slice', 'top.Reshape',
+        'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.Permute', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.Reshape', 'top.Permute',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Conv',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.MulConst', 'top.Permute',
+        'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Add', 'top.Permute', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.Slice', 'top.Reshape', 'top.Slice', 'top.Reshape',
+        'top.Slice', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Conv', 'top.Reshape', 'top.Permute',
+        'top.Reshape', 'top.Permute', 'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax',
+        'top.MatMul', 'top.Add', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape',
+        'top.Concat', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
+        'top.MatMul', 'top.Add'
+    ],
+    "yolo_block": ['top.MaxPool', 'top.MaxPool', 'top.MaxPool', 'top.Concat'],
+    "yolo_block_12": [
+        'top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul',
+        'top.Concat'
+    ]
 }
 openclip_blocks = {
-    'openclip_vision_block': ['top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Permute',
-                              'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Softmax',
-                              'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
-                              'top.MulConst', 'top.Sigmoid', 'top.Mul', 'top.MatMul', 'top.Add'],
-    'openclip_text_block': ['top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Permute',
-                            'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape',
-                            'top.Add', 'top.Add', 'top.Reshape', 'top.Softmax', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.MatMul',
-                            'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MulConst', 'top.Sigmoid', 'top.Mul', 'top.MatMul', 'top.Add'],
+    'openclip_vision_block': [
+        'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape',
+        'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Reshape',
+        'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul',
+        'top.MulConst', 'top.Sigmoid', 'top.Mul', 'top.MatMul', 'top.Add'
+    ],
+    'openclip_text_block': [
+        'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.MatMul',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape',
+        'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Add', 'top.Add',
+        'top.Reshape', 'top.Softmax', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape',
+        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MulConst', 'top.Sigmoid',
+        'top.Mul', 'top.MatMul', 'top.Add'
+    ],
     'l2_norm_block': ['top.Abs', 'top.Mul', 'top.Reduce', 'top.Sqrt', 'top.Div'],
 }
 
 # "detr_pattern": ['top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Add']
 
-N_mode = ['top.Relu', 'top.MaxPool', 'top.Conv', 'top.MatMul', 'top.PRelu', 'top.AvgPool', 'top.Add', 'top.Sigmoid', 'top.Deconv']
+N_mode = [
+    'top.Relu', 'top.MaxPool', 'top.Conv', 'top.MatMul', 'top.PRelu', 'top.AvgPool', 'top.Add',
+    'top.Sigmoid', 'top.Deconv'
+]
 H_mode = ['top.Conv', 'top.MatMul', 'top.AvgPool', 'top.Deconv', 'top.MaxPool']
 
+
 class MatchPattern:
+
     def __init__(self, args):
         self.args = args
         self.fp32_mlir = args.mlir_file
@@ -179,7 +260,8 @@ class MatchPattern:
         else:
             self.mix_mode = args.fp_type
             if args.fp_type not in chip_support_mix_fp_type[self.chip]:
-                self.logger.print_info(f'parameter error, fp_type:{args.fp_type} not support by {self.chip}')
+                self.logger.print_info(
+                    f'parameter error, fp_type:{args.fp_type} not support by {self.chip}')
                 exit(1)
 
     def gen_qtable(self, fp_layer_list, flag):
@@ -215,23 +297,28 @@ class MatchPattern:
                 count = type_tensors_str.count(sub_str)
                 flag = 1
                 model_block_name = name
-                self.logger.print_info(f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
+                self.logger.print_info(
+                    f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
                 break
         else:
             openclip_block_counts = {
                 name: type_tensors_str.count(''.join(map(str, sub_block)))
                 for name, sub_block in openclip_blocks.items()
             }
-            if all(count for count in openclip_block_counts.values()) and openclip_block_counts['l2_norm_block'] == 2:
+            if all(count for count in
+                   openclip_block_counts.values()) and openclip_block_counts['l2_norm_block'] == 2:
                 flag = 1
                 model_block_name = 'openclip_block'
                 for name, sub_block in openclip_blocks.items():
                     count = openclip_block_counts[name]
-                    self.logger.print_info(f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
-                last_matmul_index = num_tensors - type_tensors_str[type_tensors_str.rfind('top.MatMul'):].count('top')
-                first_text_block_index = type_tensors_str[:type_tensors_str.index(''.join(openclip_blocks['openclip_text_block']))].count('top')
-                first_text_mlp_start_index = first_text_block_index + 27 # 27 is the index of the fisrt mlp matmul in openclip text block
-                first_text_mlp_end_index = first_text_block_index + 31 # 31 is the index of the second mlp matmul in openclip text block
+                    self.logger.print_info(
+                        f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
+                last_matmul_index = num_tensors - type_tensors_str[
+                    type_tensors_str.rfind('top.MatMul'):].count('top')
+                first_text_block_index = type_tensors_str[:type_tensors_str.index(''.join(
+                    openclip_blocks['openclip_text_block']))].count('top')
+                first_text_mlp_start_index = first_text_block_index + 27  # 27 is the index of the fisrt mlp matmul in openclip text block
+                first_text_mlp_end_index = first_text_block_index + 31  # 31 is the index of the second mlp matmul in openclip text block
         if flag == 1:
             if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
                 for op_name in all_tensors:
@@ -282,19 +369,23 @@ class MatchPattern:
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
                 if op_type == 'top.LayerNorm':
                     pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
-                    if len(pre_op) == 1 and self.parser.get_op_type_by_op_name(pre_op[0]) == 'top.Add':
+                    if len(pre_op) == 1 and self.parser.get_op_type_by_op_name(
+                            pre_op[0]) == 'top.Add':
                         fp_layer_list.append(pre_op[0])
                 if op_type == 'top.SiLU' or op_type == 'top.GELU':
                     fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'vit_block':
-                    first_ln_index = type_tensors_str[:type_tensors_str.find('top.LayerNorm')].count('top')
+                    first_ln_index = type_tensors_str[:type_tensors_str.find('top.LayerNorm'
+                                                                             )].count('top')
                     if op_type == 'top.GELU' and all_tensors[i] in fp_layer_list:
                         fp_layer_list.remove(all_tensors[i])
                     if i < first_ln_index and op_type != 'top.Input' and count >= 20:
                         if op_type == 'top.Add':
                             next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
-                            if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(next_ops[0]) != 'top.LayerNorm':
-                                fp_layer_list.append(all_tensors[i]) # avoid to add top.Add repeatedly
+                            if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(
+                                    next_ops[0]) != 'top.LayerNorm':
+                                fp_layer_list.append(
+                                    all_tensors[i])  # avoid to add top.Add repeatedly
                         else:
                             fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'eva_block':
@@ -314,9 +405,11 @@ class MatchPattern:
                 if model_block_name == 'swin_block' or model_block_name == '_swin_block' or model_block_name == 'swin_1_block':
                     if op_type == 'top.LayerNorm':
                         pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
-                        if len(pre_op) == 1 and self.parser.get_op_type_by_op_name(pre_op[0]) == 'top.Reshape':
+                        if len(pre_op) == 1 and self.parser.get_op_type_by_op_name(
+                                pre_op[0]) == 'top.Reshape':
                             _pre_op = self.parser.get_pre_op_by_op_name(pre_op[0])
-                            if len(_pre_op) == 1 and self.parser.get_op_type_by_op_name(_pre_op[0]) == 'top.Permute':
+                            if len(_pre_op) == 1 and self.parser.get_op_type_by_op_name(
+                                    _pre_op[0]) == 'top.Permute':
                                 fp_layer_list.append(_pre_op[0])
                     if op_type == 'top.Add':
                         fp_layer_list.append(all_tensors[i])
@@ -334,29 +427,35 @@ class MatchPattern:
                         fp_layer_list.remove(all_tensors[i])
                     elif op_type == 'top.Add':
                         next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
-                        if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(next_ops[0]) != 'top.LayerNorm':
+                        if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(
+                                next_ops[0]) != 'top.LayerNorm':
                             fp_layer_list.append(all_tensors[i])
                     elif op_type == 'top.Mul':
                         pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
-                        if len(pre_ops) == 1 and self.parser.get_op_type_by_op_name(pre_ops[0]) == 'top.LayerNorm':
+                        if len(pre_ops) == 1 and self.parser.get_op_type_by_op_name(
+                                pre_ops[0]) == 'top.LayerNorm':
                             fp_layer_list.append(all_tensors[i])
-                if model_block_name == 'detr_block' or  model_block_name == 'detr_rc_50_block':
-                    if op_type in ['top.Conv','top.Scale','top.Reshape']:
+                if model_block_name == 'detr_block' or model_block_name == 'detr_rc_50_block':
+                    if op_type in ['top.Conv', 'top.Scale', 'top.Reshape']:
                         pass
                     elif op_type == 'top.MatMul':
                         pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
                         pre_op_type = self.parser.get_op_type_by_op_name(pre_op[0])
-                        if len(pre_op) == 1 and (pre_op_type == 'top.LayerNorm' or pre_op_type == 'top.Reshape'):
+                        if len(pre_op) == 1 and (pre_op_type == 'top.LayerNorm'
+                                                 or pre_op_type == 'top.Reshape'):
                             pass
                         else:
                             fp_layer_list.append(all_tensors[i])
                     else:
                         fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'openclip_block':
-                    if i >= last_matmul_index or (first_text_mlp_start_index <= i <= first_text_mlp_end_index):
+                    if i >= last_matmul_index or (first_text_mlp_start_index <= i <=
+                                                  first_text_mlp_end_index):
                         fp_layer_list.append(all_tensors[i])
-                    elif op_type in ['top.Abs', 'top.Reduce', 'top.Sqrt', 'top.Softmax', 'top.Gather',
-                                     'top.Slice', 'top.Squeeze', 'top.Arg', 'top.Concat']:
+                    elif op_type in [
+                            'top.Abs', 'top.Reduce', 'top.Sqrt', 'top.Softmax', 'top.Gather',
+                            'top.Slice', 'top.Squeeze', 'top.Arg', 'top.Concat'
+                    ]:
                         fp_layer_list.append(all_tensors[i])
                     elif op_type == 'top.Div':
                         # Div op name will be changed by adding '_inv' suffix when deploying.
@@ -375,7 +474,9 @@ class MatchPattern:
                         next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
-                        pre_op_types = [self.parser.get_op_type_by_op_name(pre_op) for pre_op in pre_ops]
+                        pre_op_types = [
+                            self.parser.get_op_type_by_op_name(pre_op) for pre_op in pre_ops
+                        ]
                         if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
                             fp_layer_list.append(all_tensors[i])

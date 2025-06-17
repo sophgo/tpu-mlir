@@ -23,6 +23,7 @@ from utils.utils import *
 
 
 class DmaNode:
+
     def __init__(self, reg):
         self.datasize = int(reg['DMA data size(B)'])
         self.cycle = int(reg['Asic Cycle'])
@@ -30,25 +31,27 @@ class DmaNode:
 
 
 class Dma(object):
+
     def __init__(self, core_id, writer):
         """
         Initial DMA object, equals to a DMA sheet in Excel.
         :param core_id: the id of current core
         :param writer: the writer of Excel to write
         """
-        self.columns = ['Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name',
-                        'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
-                        'Asic Cycle', 'Stall Cycle', 'DDR Bandwidth(GB/s)', 'L2M Bandwidth(GB/s)', 'Direction', 'AvgBurstLength', 'Data Type', 'Non32ByteRatio',
-                        'MaskWriteRatio', 'cmd_id_dep', 'cmd_special_function', 'src_start_addr', 'dst_start_addr',
-                        'src_nsize', 'src_csize', 'src_hsize', 'src_wsize',
-                        'dst_nsize', 'dst_csize', 'dst_hsize', 'dst_wsize',
-                        'src_nstride', 'src_cstride', 'src_hstride', 'src_wstride',
-                        'dst_nstride', 'dst_cstride', 'dst_hstride', 'dst_wstride',
-                        'nchw_copy', 'stride_enable', 'src_data_format', 'cmd_type',
-                        'index_csize', 'index_hsize', 'index_cstride', 'index_hstride',
-                        'mask_start_addr_h8', 'mask_start_addr_l32', 'mask_data_format', 'localmem_mask_h32',
-                        'localmem_mask_l32',
-                        'fill_constant_en', 'constant_value', 'index', 'cmd_short', 'intr_en', 'Msg Id', 'Sd\Wt Count']
+        self.columns = [
+            'Engine Id', 'Core Id', 'Global Idx', 'Cmd Id', 'Layer Id', 'Layer Name',
+            'Function Type', 'Function Name', 'DMA data size(B)', 'Start Cycle', 'End Cycle',
+            'Asic Cycle', 'Stall Cycle', 'DDR Bandwidth(GB/s)', 'L2M Bandwidth(GB/s)', 'Direction',
+            'AvgBurstLength', 'Data Type', 'Non32ByteRatio', 'MaskWriteRatio', 'cmd_id_dep',
+            'cmd_special_function', 'src_start_addr', 'dst_start_addr', 'src_nsize', 'src_csize',
+            'src_hsize', 'src_wsize', 'dst_nsize', 'dst_csize', 'dst_hsize', 'dst_wsize',
+            'src_nstride', 'src_cstride', 'src_hstride', 'src_wstride', 'dst_nstride',
+            'dst_cstride', 'dst_hstride', 'dst_wstride', 'nchw_copy', 'stride_enable',
+            'src_data_format', 'cmd_type', 'index_csize', 'index_hsize', 'index_cstride',
+            'index_hstride', 'mask_start_addr_h8', 'mask_start_addr_l32', 'mask_data_format',
+            'localmem_mask_h32', 'localmem_mask_l32', 'fill_constant_en', 'constant_value', 'index',
+            'cmd_short', 'intr_en', 'Msg Id', 'Sd\Wt Count'
+        ]
         self.reg_list = []
         self.core_id = str(core_id)
         self.height = None
@@ -87,7 +90,7 @@ class Dma(object):
         """
         if os.path.exists(reg_info_file) and os.path.getsize(reg_info_file) != 0:
             last_underscore_index = reg_info_file.rfind('_')
-            core_id = int(reg_info_file[last_underscore_index + 1 : -4])
+            core_id = int(reg_info_file[last_underscore_index + 1:-4])
             with open(reg_info_file) as f:
                 rows = f.readlines()
                 field_set = set()
@@ -99,7 +102,8 @@ class Dma(object):
                         attr = row.split(': ')[0][1:]
                         field_set.add(attr)
                 reg_count = 0
-                field_list = list(field_set) if len(field_set) >= len(self.columns) else self.columns
+                field_list = list(field_set) if len(field_set) >= len(
+                    self.columns) else self.columns
                 reg_dict = dict.fromkeys(field_list, '')
                 idx = 0
                 for row in rows:
@@ -127,7 +131,8 @@ class Dma(object):
                         fields = row.split(': ')
                         attr = fields[0][1:]
                         val = fields[1][:-1]
-                        if val.isnumeric() and 'burst' not in attr.lower() and 'width' not in attr.lower():
+                        if val.isnumeric() and 'burst' not in attr.lower(
+                        ) and 'width' not in attr.lower():
                             val = int(val)
                         elif 'bandwidth' in attr.lower():
                             val = float(val)
@@ -178,16 +183,25 @@ class Dma(object):
             # if reg_dict['cmd_type'] == 6 and reg_dict['cmd_special_function'] == 4:
             #     self.wait_msg_total_time += reg_dict['Asic Cycle']
             if reg_dict['gmem_xact_cnt'] > 0:
-                reg_dict['AvgBurstLength'] = get_ratio_float_2f(reg_dict['gmem_bl_sum'], reg_dict['gmem_xact_cnt'])
-                reg_dict['Non32ByteRatio'] = get_ratio_float_2f(reg_dict['gmem_n32Ba_sa_cnt'], reg_dict['gmem_xact_cnt'])
-                reg_dict['MaskWriteRatio'] = get_ratio_float_2f(reg_dict['gmem_msk_wr_cnt'], reg_dict['gmem_xact_cnt'])
+                reg_dict['AvgBurstLength'] = get_ratio_float_2f(reg_dict['gmem_bl_sum'],
+                                                                reg_dict['gmem_xact_cnt'])
+                reg_dict['Non32ByteRatio'] = get_ratio_float_2f(reg_dict['gmem_n32Ba_sa_cnt'],
+                                                                reg_dict['gmem_xact_cnt'])
+                reg_dict['MaskWriteRatio'] = get_ratio_float_2f(reg_dict['gmem_msk_wr_cnt'],
+                                                                reg_dict['gmem_xact_cnt'])
             else:
                 reg_dict['AvgBurstLength'] = 0
                 reg_dict['Non32ByteRatio'] = 0
                 reg_dict['MaskWriteRatio'] = 0
-            self.start_time = min(self.start_time, get_time_by_cycle(reg_dict['Start Cycle'], self.chip_arch_dict['DMA Frequency(MHz)']))
-            self.end_time = max(self.start_time, get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['DMA Frequency(MHz)']))
-        self.dma_time = get_time_by_cycle(self.dma_cycle, self.chip_arch_dict['DMA Frequency(MHz)']) if self.chip_arch_dict else 0
+            self.start_time = min(
+                self.start_time,
+                get_time_by_cycle(reg_dict['Start Cycle'],
+                                  self.chip_arch_dict['DMA Frequency(MHz)']))
+            self.end_time = max(
+                self.start_time,
+                get_time_by_cycle(reg_dict['End Cycle'], self.chip_arch_dict['DMA Frequency(MHz)']))
+        self.dma_time = get_time_by_cycle(
+            self.dma_cycle, self.chip_arch_dict['DMA Frequency(MHz)']) if self.chip_arch_dict else 0
         self.working_cycle = self.dma_cycle - self.wait_msg_total_time
         self.ddr_avg_bandwidth = get_ratio_float_2f(self.ddr_total_datasize,
                                                     get_time_by_cycle(self.ddr_total_cycle, self.chip_arch_dict['DMA Frequency(MHz)'])) \
@@ -235,10 +249,19 @@ class Dma(object):
                     df[col] = int2Hex(df[col].values)
             if self.chip_arch_dict['Platform'].lower() == 'simulator':
                 df.rename(columns={'Asic Cycle': 'Simulator Cycle'}, inplace=True)
-            pd.DataFrame(self.perf_dict).to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=0,
+            pd.DataFrame(self.perf_dict).to_excel(self.writer,
+                                                  index=False,
+                                                  sheet_name=self.sheet_name,
+                                                  startrow=0,
                                                   startcol=2,
-                                                  engine='xlsxwriter', float_format='%g')
-            df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=5, engine='xlsxwriter', float_format='%g')
+                                                  engine='xlsxwriter',
+                                                  float_format='%g')
+            df.to_excel(self.writer,
+                        index=False,
+                        sheet_name=self.sheet_name,
+                        startrow=5,
+                        engine='xlsxwriter',
+                        float_format='%g')
 
     @classmethod
     def set_style(cls, file_path, core_id, engine_type, sheet_color, chip_arch, frozen=True):
@@ -276,7 +299,7 @@ class Dma(object):
             cell.fill = DetailsStyle.content_pattern
             cell.font = DetailsStyle.title_header_font
         # set content style
-        offset = 1 # cause introduce global_id
+        offset = 1  # cause introduce global_id
         content_end_cols = 19 + offset
         for w in range(1, content_end_cols + 1):
             for h in range(7, len(df) + 2):
@@ -298,7 +321,8 @@ class Dma(object):
             ddr_max_bd, l2_max_bd, ddr_max_bl, l2_max_bl = float(chip_arch['DDR Max BW(GB/s/Core)']),\
             float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst']), int(chip_arch['L2 Max Burst'])
             # bandwidth
-            if int(ws.cell(h + 2, tsk_typ_pos).value) == 6 or ws.cell(h + 2, direction_pos).value in [None, "-"]:
+            if int(ws.cell(h + 2, tsk_typ_pos).value) == 6 or ws.cell(
+                    h + 2, direction_pos).value in [None, "-"]:
                 # sys do not have bandwidth
                 continue
             else:
@@ -392,7 +416,9 @@ class Dma(object):
                     elif ws.cell(h, index + 1).value is not None:
                         collen = max(collen, len(str(ws.cell(h, index + 1).value)))
             ws.column_dimensions[letter].width = collen * 1.05
-        ws.cell(5, 1).value = '*Stall Cycle indicates the waiting time when TIU and DMA attempting to access a bank simultaneously.'
+        ws.cell(
+            5, 1
+        ).value = '*Stall Cycle indicates the waiting time when TIU and DMA attempting to access a bank simultaneously.'
         if frozen:
             _cell = ws.cell(7, 1)
             ws.freeze_panes = _cell
@@ -401,6 +427,7 @@ class Dma(object):
 
 
 class Gdma(Dma):
+
     def __init__(self, core_id, writer, sheet_name):
         """
         Inherited from the dma class, initialize a gdma object.
@@ -427,7 +454,13 @@ class Gdma(Dma):
         return self.chip_arch_dict
 
     @classmethod
-    def set_style(cls, file_path, core_id, engine_type='GDMA', sheet_color='FFA500', chip_arch = None, frozen=True):
+    def set_style(cls,
+                  file_path,
+                  core_id,
+                  engine_type='GDMA',
+                  sheet_color='FFA500',
+                  chip_arch=None,
+                  frozen=True):
         """
         Set gdma sheet style for output Excel
         :param frozen: freeze some statistics above the sheet
@@ -441,6 +474,7 @@ class Gdma(Dma):
 
 
 class Sdma(Dma):
+
     def __init__(self, core_id, writer, sheet_name):
         """
         Inherited from the dma class, initialize a sdma object.
@@ -467,7 +501,13 @@ class Sdma(Dma):
         return self.chip_arch_dict
 
     @classmethod
-    def set_style(cls, file_path, core_id, engine_type='SDMA', sheet_color='D0CECE', chip_arch=None, frozen=True):
+    def set_style(cls,
+                  file_path,
+                  core_id,
+                  engine_type='SDMA',
+                  sheet_color='D0CECE',
+                  chip_arch=None,
+                  frozen=True):
         """
         Set gdma sheet style for output Excel
         :param frozen: freeze some statistics above the sheet
@@ -481,6 +521,7 @@ class Sdma(Dma):
 
 
 class Cdma(Dma):
+
     def __init__(self, core_id, writer, sheet_name):
         """
         Inherited from the dma class, initialize a cdma object.
@@ -510,7 +551,8 @@ class Cdma(Dma):
                         attr = row.split(': ')[0][1:]
                         field_set.add(attr)
                 reg_count = 0
-                field_list = list(field_set) if len(field_set) >= len(self.columns) else self.columns
+                field_list = list(field_set) if len(field_set) >= len(
+                    self.columns) else self.columns
                 reg_dict = dict.fromkeys(field_list, '')
                 idx = 0
                 for row in rows:
@@ -535,7 +577,8 @@ class Cdma(Dma):
                         fields = row.split(': ')
                         attr = fields[0][1:]
                         val = fields[1][:-1]
-                        if val.isnumeric() and 'burst' not in attr.lower() and 'width' not in attr.lower():
+                        if val.isnumeric() and 'burst' not in attr.lower(
+                        ) and 'width' not in attr.lower():
                             val = int(val)
                         reg_dict[attr] = val
                         idx += 1
@@ -544,7 +587,13 @@ class Cdma(Dma):
         return self.chip_arch_dict
 
     @classmethod
-    def set_style(cls, file_path, core_id, engine_type='CDMA', sheet_color='C0504D', chip_arch=None, frozen=True):
+    def set_style(cls,
+                  file_path,
+                  core_id,
+                  engine_type='CDMA',
+                  sheet_color='C0504D',
+                  chip_arch=None,
+                  frozen=True):
         """
         Set cdma sheet style for output Excel
         :param frozen: freeze some statistics above the sheet

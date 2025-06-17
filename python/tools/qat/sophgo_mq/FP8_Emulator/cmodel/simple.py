@@ -1,5 +1,5 @@
-#------------------------------------------------------------------------------ 
-# Copyright (c) 2023, Intel Corporation - All rights reserved. 
+#------------------------------------------------------------------------------
+# Copyright (c) 2023, Intel Corporation - All rights reserved.
 # This file is part of FP8-Emulation-Toolkit
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -14,10 +14,11 @@ import sys
 
 import simple_gemm_dev
 import simple_conv2d_dev
-# backup the original torch functions 
+# backup the original torch functions
 fallback_addmm = torch.addmm
 fallback_matmul = torch.matmul
 fallback_mm = torch.mm
+
 
 def is_transposed(input):
     if input.is_contiguous():
@@ -26,6 +27,7 @@ def is_transposed(input):
         return input.t(), True
     else:
         return input.contiguous(), False
+
 
 def addmm(input, mat1, mat2, beta=1.0, alpha=1.0, out=None):
     if input.dtype == torch.float32 and mat1.dtype == torch.float32 and \
@@ -39,10 +41,12 @@ def addmm(input, mat1, mat2, beta=1.0, alpha=1.0, out=None):
         output = SimpleAddmm.apply(output, input, a_mat, b_mat, alpha, beta, a_trans, b_trans)
         ret = output
     else:
-        warnings.warn('simple.addmm does not support the input dimensions - input :{}, mat1: {}, mat2: {}, falling back to torch.addmm'.format(
-                              input.size(), mat1.size(), mat2.size()))
+        warnings.warn(
+            'simple.addmm does not support the input dimensions - input :{}, mat1: {}, mat2: {}, falling back to torch.addmm'
+            .format(input.size(), mat1.size(), mat2.size()))
         ret = fallback_addmm(input, mat1, mat2, beta=beta, alpha=alpha, out=out)
     return ret
+
 
 def matmul(input, other, out=None):
     if input.dtype == torch.float32 and other.dtype == torch.float32 and \
@@ -68,9 +72,11 @@ def matmul(input, other, out=None):
                                   for a_mat1, out1 in zip(a_mat, output)]))
         return output
     else:
-        warnings.warn('simple.matmul does not support the input dimensions - input :{}, other: {}, falling back to torch.matmul'.format(
-                              input.size(), other.size()))
+        warnings.warn(
+            'simple.matmul does not support the input dimensions - input :{}, other: {}, falling back to torch.matmul'
+            .format(input.size(), other.size()))
         return fallback_matmul(input, other, out=out)
+
 
 def mm(input, mat2, out=None):
     if input.dtype == torch.float32 and mat2.dtype == torch.float32 and \
@@ -84,9 +90,11 @@ def mm(input, mat2, out=None):
         output = SimpleMatmul.apply(output, a_mat, b_mat, 1.0, a_trans, b_trans)
         return output
     else:
-        warnings.warn('simple.mm does not support the input dimensions - input :{}, mat2: {}, falling back to torch.mm'.format(
-                              input.size(), mat2.size()))
+        warnings.warn(
+            'simple.mm does not support the input dimensions - input :{}, mat2: {}, falling back to torch.mm'
+            .format(input.size(), mat2.size()))
         return fallback_mm(input, mat2, out=out)
+
 
 def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
     N = input.size()[0]
@@ -97,21 +105,26 @@ def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
     C1 = weight.size()[1]
     R = weight.size()[2]
     S = weight.size()[3]
-  
+
     if dilation[0] > 1:
         sys.exit("ERROR: simple_conv2d does not support dilated convolutions.")
     if padding[0] != padding[1]:
-        sys.exit("ERROR: simple_conv2d does not support non-uniform padding; pad_h must be equal to pad_w.")
+        sys.exit(
+            "ERROR: simple_conv2d does not support non-uniform padding; pad_h must be equal to pad_w."
+        )
     if groups > 1:
         sys.exit("ERROR: simple_conv2d does not support grouped convolutions; set groups to 1.")
 
-    H_out = ((H + (2*padding[0]) - dilation[0] * (R-1) -1)/stride[0]) + 1
-    W_out = ((W + (2*padding[1]) - dilation[1] * (S-1) -1)/stride[1]) + 1
+    H_out = ((H + (2 * padding[0]) - dilation[0] * (R - 1) - 1) / stride[0]) + 1
+    W_out = ((W + (2 * padding[1]) - dilation[1] * (S - 1) - 1) / stride[1]) + 1
     output = torch.empty([N, K, int(H_out), int(W_out)])
-    output = SimpleConv2dFunction.apply(output, input, weight, bias, stride, padding, dilation, groups)
+    output = SimpleConv2dFunction.apply(output, input, weight, bias, stride, padding, dilation,
+                                        groups)
     return output
 
+
 class SimpleAddmm(Function):
+
     @staticmethod
     def forward(ctx, output, input, mat1, mat2, alpha, beta, a_trans, b_trans):
         ctx.save_for_backward(mat1, mat2)
@@ -120,7 +133,7 @@ class SimpleAddmm(Function):
         ctx.alpha = alpha
 
         simple_gemm_dev.gemm(output, mat1, mat2, alpha, a_trans, b_trans)
-        output += beta * input;
+        output += beta * input
         ctx.mark_dirty(output)
         return output
 
@@ -148,7 +161,9 @@ class SimpleAddmm(Function):
 
         return (grad_output, grad_output, grad_mat1, grad_mat2, None, None, None, None)
 
+
 class SimpleMatmul(Function):
+
     @staticmethod
     def forward(ctx, output, mat1, mat2, alpha, a_trans, b_trans):
         ctx.save_for_backward(mat1, mat2)
@@ -184,21 +199,23 @@ class SimpleMatmul(Function):
 
 
 class SimpleConv2dFunction(Function):
+
     @staticmethod
     def forward(ctx, output, inputs, weights, bias, stride, padding, dilation, groups):
         #print("### conv2d fwd called input size: ", inputs.size(), weights.size(), stride, padding, dilation, groups)
-        ctx.save_for_backward(inputs, weights)#, bias)
-        ctx.stride = stride#[0]
-        ctx.padding = padding#[0]
-        ctx.dilation = dilation#[0]
+        ctx.save_for_backward(inputs, weights)  #, bias)
+        ctx.stride = stride  #[0]
+        ctx.padding = padding  #[0]
+        ctx.dilation = dilation  #[0]
         ctx.groups = groups
 
         if bias is None:
-           bias_fw = torch.zeros(output.size()[1])
-        else :
-           bias_fw = bias
+            bias_fw = torch.zeros(output.size()[1])
+        else:
+            bias_fw = bias
 
-        simple_conv2d_dev.conv2d_fp(output, inputs, weights, bias_fw, stride[0], padding[0], dilation[0], groups)
+        simple_conv2d_dev.conv2d_fp(output, inputs, weights, bias_fw, stride[0], padding[0],
+                                    dilation[0], groups)
         ctx.mark_dirty(output)
         return output
 
@@ -214,6 +231,8 @@ class SimpleConv2dFunction(Function):
         grad_inp = torch.zeros_like(inputs)
         grad_wts = torch.zeros_like(weights)
 
-        simple_conv2d_dev.conv2d_bp(grad_inp, grad_output, weights, stride[0], padding[0], dilation[0], groups)
-        simple_conv2d_dev.conv2d_wu(grad_wts, grad_output, inputs,  stride[0], padding[0], dilation[0], groups)
+        simple_conv2d_dev.conv2d_bp(grad_inp, grad_output, weights, stride[0], padding[0],
+                                    dilation[0], groups)
+        simple_conv2d_dev.conv2d_wu(grad_wts, grad_output, inputs, stride[0], padding[0],
+                                    dilation[0], groups)
         return (grad_output, grad_inp, grad_wts, None, None, None, None, None)

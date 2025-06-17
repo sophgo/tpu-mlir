@@ -39,7 +39,7 @@ class LearnableFakeQuantize(QuantizeBase):
     def forward(self, X):
         x_ori = X
         # Learnable fake quantize have to zero_point.float() to make it learnable.
-        if self.observer_enabled[0] == 1:# or self.only_enable_observer:
+        if self.observer_enabled[0] == 1:  # or self.only_enable_observer:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.activation_post_process.calculate_qparams()
             _scale = _scale.to(self.scale.device)
@@ -55,7 +55,8 @@ class LearnableFakeQuantize(QuantizeBase):
             self.scale.data.abs_()
             self.scale.data.clamp_(min=self.eps.item())
 
-        if self.fake_quant_enabled[0] == 1:# and (not self.only_enable_observer or self.run_fquant_time > 0):
+        if self.fake_quant_enabled[
+                0] == 1:  # and (not self.only_enable_observer or self.run_fquant_time > 0):
             # if self.run_fquant_time > 0:
             #     print('wxc1 run_fquant_time')
             #     self.run_fquant_time -= 1
@@ -66,29 +67,29 @@ class LearnableFakeQuantize(QuantizeBase):
 
             if self.is_per_channel:
                 if self.use_grad_scaling:
-                    grad_factor = 1.0 / (X.numel() / X.shape[self.ch_axis] * self.quant_max) ** 0.5
+                    grad_factor = 1.0 / (X.numel() / X.shape[self.ch_axis] * self.quant_max)**0.5
                 else:
                     grad_factor = 1.0
                 if is_tracing_state():
-                    X = FakeQuantizeLearnablePerchannelAffine.apply(
-                        X, self.scale, self.zero_point, self.ch_axis,
-                        self.quant_min, self.quant_max, grad_factor)
+                    X = FakeQuantizeLearnablePerchannelAffine.apply(X, self.scale, self.zero_point,
+                                                                    self.ch_axis, self.quant_min,
+                                                                    self.quant_max, grad_factor)
                 else:
                     X = _fake_quantize_learnable_per_channel_affine_training(
-                        X, self.scale, self.zero_point, self.ch_axis,
-                        self.quant_min, self.quant_max, grad_factor)
+                        X, self.scale, self.zero_point, self.ch_axis, self.quant_min,
+                        self.quant_max, grad_factor)
                 x_ori = X
             else:
                 if self.use_grad_scaling:
-                    grad_factor = 1.0 / (X.numel() * self.quant_max) ** 0.5
+                    grad_factor = 1.0 / (X.numel() * self.quant_max)**0.5
                 else:
                     grad_factor = 1.0
                 scale, zero_point = self.scale, self.zero_point
                 # if self.only_enable_observer:
                 #     scale, zero_point = 1, 0
-                X = torch._fake_quantize_learnable_per_tensor_affine(
-                    x_ori, scale, zero_point,
-                    self.quant_min, self.quant_max, grad_factor)
+                X = torch._fake_quantize_learnable_per_tensor_affine(x_ori, scale, zero_point,
+                                                                     self.quant_min, self.quant_max,
+                                                                     grad_factor)
                 diff = x_ori - X
                 if self.only_enable_observer:
                     x_ori = X + diff.detach()
@@ -98,7 +99,8 @@ class LearnableFakeQuantize(QuantizeBase):
         return x_ori
 
 
-def _fake_quantize_learnable_per_channel_affine_training(x, scale, zero_point, ch_axis, quant_min, quant_max, grad_factor):
+def _fake_quantize_learnable_per_channel_affine_training(x, scale, zero_point, ch_axis, quant_min,
+                                                         quant_max, grad_factor):
     zero_point = (zero_point.round() - zero_point).detach() + zero_point
     new_shape = [1] * len(x.shape)
     new_shape[ch_axis] = x.shape[ch_axis]
@@ -115,14 +117,21 @@ def grad_scale(t, scale):
 
 
 class FakeQuantizeLearnablePerchannelAffine(torch.autograd.Function):
+
     @staticmethod
     def forward(ctx, x, scale, zero_point, ch_axis, quant_min, quant_max, grad_factor):
         return _fake_quantize_learnable_per_channel_affine_training(x, scale, zero_point, ch_axis,
-                                                                    quant_min, quant_max, grad_factor)
+                                                                    quant_min, quant_max,
+                                                                    grad_factor)
 
     @staticmethod
     def symbolic(g, x, scale, zero_point, ch_axis, quant_min, quant_max, grad_factor):
-        output = g.op("Sophgo_custom::FakeQuantizeLearnablePerchannelAffine", x, scale, zero_point, quant_min_i=quant_min, quant_max_i=quant_max)
+        output = g.op("Sophgo_custom::FakeQuantizeLearnablePerchannelAffine",
+                      x,
+                      scale,
+                      zero_point,
+                      quant_min_i=quant_min,
+                      quant_max_i=quant_max)
 
         input_shape = symbolic_helper._get_tensor_sizes(x)
         if input_shape is not None and hasattr(x.type(), 'with_sizes'):

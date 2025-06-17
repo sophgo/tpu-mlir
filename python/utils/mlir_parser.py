@@ -16,6 +16,7 @@ from mlir.ir import *
 from mlir.dialects import quant
 import mlir.ir
 
+
 class Operation:
     cache_map = {}
 
@@ -32,17 +33,8 @@ class Operation:
         self.op = op
 
     def __str__(self):
-        return (
-            self.name
-            + ","
-            + self.type
-            + ","
-            + self.loc
-            + ","
-            + str(self.shape)
-            + ","
-            + str(self.opds)
-        )
+        return (self.name + "," + self.type + "," + self.loc + "," + str(self.shape) + "," +
+                str(self.opds))
 
     @staticmethod
     def name(op):
@@ -126,7 +118,8 @@ class Operation:
         for result in op.results:
             if str(result.type) != "none":
                 shape_type = mlir.ir.ShapedType(result.type)
-                shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)] if shape_type.has_rank else []
+                shape = [shape_type.get_dim_size(i)
+                         for i in range(shape_type.rank)] if shape_type.has_rank else []
                 break
         return shape
 
@@ -138,10 +131,10 @@ class Operation:
                 prev_op = body.operations[j]
                 if prev_op.results[0] == opd:
                     if Operation.type(prev_op) not in [
-                        "tpu.None",
-                        "top.None",
-                        "tpu.load_weight",
-                        "tpu.weight_file",
+                            "tpu.None",
+                            "top.None",
+                            "tpu.load_weight",
+                            "tpu.weight_file",
                     ]:
                         opds.append(Operation.name(prev_op))
         return opds
@@ -160,6 +153,7 @@ class Operation:
 
 
 class MlirParser:
+
     def __init__(self, mlir_file):
         with open(mlir_file, "r") as f:
             context = f.read()
@@ -179,16 +173,12 @@ class MlirParser:
         cache_map = {}
         for i in range(len(self.body.operations)):
             prev_op = self.body.operations[i]
-            if (
-                Operation.type(prev_op)
-                not in [
+            if (Operation.type(prev_op) not in [
                     "tpu.None",
                     "top.None",
                     "tpu.load_weight",
                     "tpu.weight_file",
-                ]
-                and len(prev_op.results) > 0
-            ):
+            ] and len(prev_op.results) > 0):
                 skip_value = 0
                 for idx, r in enumerate(prev_op.results):
                     if str(r.type) == "none":
@@ -197,9 +187,7 @@ class MlirParser:
                     t = idx - skip_value
                     if t >= len(Operation.outputs(prev_op)):
                         t = len(Operation.outputs(prev_op)) - 1
-                    cache_map.setdefault(r, []).append(
-                        [i, Operation.outputs(prev_op)[t]]
-                    )
+                    cache_map.setdefault(r, []).append([i, Operation.outputs(prev_op)[t]])
         Operation.cache_map = cache_map
 
         for i in range(len(self.body.operations)):

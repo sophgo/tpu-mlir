@@ -55,6 +55,7 @@ class Compose(object):
         self.transforms = transforms
 
     def __repr__(self):
+
         def _indent(s_, numSpaces):
             """Indent string"""
             s = s_.split("\n")
@@ -66,14 +67,10 @@ class Compose(object):
             return s
 
         s = "{name}(\n{modstr}\n)"
-        modstr = "\n".join(
-            [
-                "  ({key}): {block}".format(
-                    key=func.__name__, block=_indent(func.__repr__(), 2)
-                )
-                for func in self.transforms
-            ]
-        )
+        modstr = "\n".join([
+            "  ({key}): {block}".format(key=func.__name__, block=_indent(func.__repr__(), 2))
+            for func in self.transforms
+        ])
         return s.format(name=self.__class__.__name__, modstr=modstr)
 
     def __getitem__(self, key):
@@ -233,7 +230,7 @@ class Resize:
             out = np.zeros((h_n, w_n, c))
             h_c = int(h_n / 2 - H / 2)
             w_c = int(w_n / 2 - W / 2)
-            out[h_c : h_c + H, w_c : w_c + W, :] = y
+            out[h_c:h_c + H, w_c:w_c + W, :] = y
             return out
 
         return cv2.resize(x, self._size, self._interpolation)
@@ -284,6 +281,7 @@ class CropResize:
         self._interpolation = interpolation
 
     def __call__(self, x):
+
         def crop(x, _x, _y, _w, _h):
             h, w, c = x.shape
             _start = np.array((_y, _x))
@@ -291,7 +289,7 @@ class CropResize:
             _end = np.min([_start + _shape, np.array((h, w))], axis=0)
             h, w = _end - _start
             out = np.zeros((_h, _w, c))
-            out[:h, :w, :] = x[_y : _y + h, _x : _x + w, :]
+            out[:h, :w, :] = x[_y:_y + h, _x:_x + w, :]
             return out
 
         out = crop(x, self._x, self._y, self._width, self._height)

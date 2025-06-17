@@ -184,7 +184,6 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
     return scores, boxes_xyxy
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Inference Yolo v5 network.')
     parser.add_argument("--model", type=str, required=True, help="Model definition file")

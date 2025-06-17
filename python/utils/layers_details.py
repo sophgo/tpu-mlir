@@ -129,7 +129,8 @@ def get_transpose_info(fixed_dim, left_dim, right_dim, type_len):
             if factor > 0 and factor != left_dim and fixed_dim == 1:
                 use_left_dim = True
 
-    if (use_left_dim == False and use_right_dim == False) or (fixed_dim >= left_dim and fixed_dim >= right_dim):
+    if (use_left_dim == False and use_right_dim == False) or (fixed_dim >= left_dim
+                                                              and fixed_dim >= right_dim):
         factor = get_optimized_factorization(fixed_dim)
         if factor > 0:
             n = 1
@@ -279,8 +280,8 @@ class OpParse(object):
         self.in_list = list(map(lambda x: str(getattr(x, "type")), self.op.operands))
         self.out_list = list(map(lambda x: str(getattr(x, "type")), self.op.results))
 
-        cal_type = re.search(r"(?<=\.)\S+$", self.type).group(
-            0).lower()  # match, for example:Top.Mul, "Mul" will be matched and trans into lower case
+        cal_type = re.search(r"(?<=\.)\S+$", self.type).group(0).lower(
+        )  # match, for example:Top.Mul, "Mul" will be matched and trans into lower case
         self.getLayerOps(cal_type)
         self.getTiuOps(cal_type)
         self.getTiuUtility()
@@ -325,8 +326,10 @@ class OpParse(object):
         return self.cur_tiu_utility, OpParse.total_tiu_utility
 
     def keys(self):
-        return ["name", "type", "loc", "in_list", "out_list", "cur_layer_ops", "total_layer_ops", "cur_tiu_ops",
-                "total_tiu_ops", "cur_tiu_utility", "total_tiu_utility"]
+        return [
+            "name", "type", "loc", "in_list", "out_list", "cur_layer_ops", "total_layer_ops",
+            "cur_tiu_ops", "total_tiu_ops", "cur_tiu_utility", "total_tiu_utility"
+        ]
 
     def values(self):
         return [getattr(self, k) for k in self.keys()]
@@ -340,6 +343,7 @@ class OpParse(object):
 
 
 class LayerOps(object):
+
     def __init__(self, op):
         self.op = op
         assert len(self.op.results) >= 1
@@ -731,6 +735,7 @@ class LayerOps(object):
 
 
 class TiuOps(object):  # currently only support input shape=(n,c,h,w)
+
     def __init__(self, op):
         self.op = op
         assert len(self.op.results) >= 1
@@ -751,7 +756,10 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
             shape = [prod(shape[:-3])] + shape[-3:]
         return shape
 
-    def atomic_ar(self, shape, in_type, atomic_op_name="arith.add"):  # for atomic_ar, shape is same before and after op
+    def atomic_ar(self,
+                  shape,
+                  in_type,
+                  atomic_op_name="arith.add"):  # for atomic_ar, shape is same before and after op
         n, c, h, w = shape
         factor = 1
         if atomic_op_name == "arith.div":
@@ -1081,9 +1089,8 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
             ow = 1
         in_shape = [n, c, h, w]
         out_shape = [on, oc, oh, ow]
-        return self.atomic_ar(in_shape, in_type, in_shape, self.dtype) * 2 + self.atomic_pord(in_shape, in_type,
-                                                                                              out_shape, self.dtype,
-                                                                                              "pord.maxpooling") * 2
+        return self.atomic_ar(in_shape, in_type, in_shape, self.dtype) * 2 + self.atomic_pord(
+            in_shape, in_type, out_shape, self.dtype, "pord.maxpooling") * 2
 
     def batchnorm(self):  # calculation according to the test case
         in_shape, in_type = OpParse.getShapeType(self.op.operands[0])
@@ -1159,7 +1166,8 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
     def gathernd(self):
         in_shape, in_type = OpParse.getShapeType(self.op.operands[0])
         in_shape = self.reshape_to_4d(in_shape)
-        return self.atomic_ar(in_shape, in_type) * 3 + self.atomic_transbc(in_type, self.out_shape, "tsbc.cw_ts")
+        return self.atomic_ar(in_shape, in_type) * 3 + self.atomic_transbc(
+            in_type, self.out_shape, "tsbc.cw_ts")
 
     def gelu(self):
         return self.active("gelu")
@@ -1204,12 +1212,15 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
     def relu(self):  # calculation according to the test case.
         return self.atomic_ar(self.out_shape, self.dtype, "arith.max")
 
-    def reshape(self):  # calculation according to the nodechip_reshape_local file , simply use a copy op
+    def reshape(
+            self
+    ):  # calculation according to the nodechip_reshape_local file , simply use a copy op
         in_shape, in_type = OpParse.getShapeType(self.op.operands[0])
         in_shape = self.reshape_to_4d(in_shape)
         return self.atomic_ar(in_shape, in_type)
 
     def reduce(self):
+
         def reduce_onedim(new_shape_onedim, in_type_onedim, method_onedim, axis_list_onedim,
                           shape_dims_onedim):
             ops_onedim = 0
@@ -1217,12 +1228,18 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
             if axis == 2:
                 pord_out = [new_shape_onedim[0], new_shape_onedim[1], 1, new_shape_onedim[3]]
                 if method_onedim.lower() == "reducemean" or method_onedim.lower() == "reducesum":
-                    ops_onedim += self.atomic_pord(pord_out, in_type_onedim, "pord.avgpooling", as_quotation=True,
+                    ops_onedim += self.atomic_pord(pord_out,
+                                                   in_type_onedim,
+                                                   "pord.avgpooling",
+                                                   as_quotation=True,
                                                    kernel_mul=new_shape_onedim[2])
                 elif method_onedim.lower() == "reducemax" or method_onedim.lower() == "reducemin":
                     if method_onedim.lower() == "reducemin":
                         ops_onedim += self.atomic_ar(new_shape_onedim, in_type_onedim) * 2
-                    ops_onedim += self.atomic_pord(pord_out, in_type_onedim, "pord.maxpooling", as_quotation=True,
+                    ops_onedim += self.atomic_pord(pord_out,
+                                                   in_type_onedim,
+                                                   "pord.maxpooling",
+                                                   as_quotation=True,
                                                    kernel_mul=new_shape_onedim[2])
                 return ops_onedim
 
@@ -1234,7 +1251,9 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
                     trans_order[i] = i + (i >= axis)
                 for i in range(shape_dims_onedim):
                     trans_shape[i] = new_shape_onedim[trans_order[i]]
-                permute_ops, permute_results = self.permute(new_shape_onedim, in_type_onedim, trans_order,
+                permute_ops, permute_results = self.permute(new_shape_onedim,
+                                                            in_type_onedim,
+                                                            trans_order,
                                                             as_quotation=True)
                 ops_onedim += permute_ops
                 axis_num = 1
@@ -1245,24 +1264,38 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
                     _, new_shape_onedim = process_shape(axis_list_onedim, axis_num, trans_shape, 4)
 
                     pord_out = [new_shape_onedim[0], new_shape_onedim[1], new_shape_onedim[2], 1]
-                    if method_onedim.lower() == "reducemean" or method_onedim.lower() == "reducesum":
-                        ops_onedim += self.atomic_pord(pord_out, in_type_onedim, "pord.avgpooling", as_quotation=True,
+                    if method_onedim.lower() == "reducemean" or method_onedim.lower(
+                    ) == "reducesum":
+                        ops_onedim += self.atomic_pord(pord_out,
+                                                       in_type_onedim,
+                                                       "pord.avgpooling",
+                                                       as_quotation=True,
                                                        kernel_mul=new_shape_onedim[3])
-                    elif method_onedim.lower() == "reducemax" or method_onedim.lower() == "reducemin":
+                    elif method_onedim.lower() == "reducemax" or method_onedim.lower(
+                    ) == "reducemin":
                         if method_onedim.lower() == "reducemin":
                             ops_onedim += self.atomic_ar(new_shape_onedim, in_type_onedim) * 2
-                        ops_onedim += self.atomic_pord(pord_out, in_type_onedim, "pord.maxpooling", as_quotation=True,
+                        ops_onedim += self.atomic_pord(pord_out,
+                                                       in_type_onedim,
+                                                       "pord.maxpooling",
+                                                       as_quotation=True,
                                                        kernel_mul=new_shape_onedim[3])
                 return ops_onedim
 
             pord_out = [new_shape_onedim[0], new_shape_onedim[1], new_shape_onedim[2], 1]
             if method_onedim.lower() == "reducemean" or method_onedim.lower() == "reducesum":
-                ops_onedim += self.atomic_pord(pord_out, in_type_onedim, "pord.avgpooling", as_quotation=True,
+                ops_onedim += self.atomic_pord(pord_out,
+                                               in_type_onedim,
+                                               "pord.avgpooling",
+                                               as_quotation=True,
                                                kernel_mul=new_shape_onedim[3])
             elif method_onedim.lower() == "reducemax" or method_onedim.lower() == "reducemin":
                 if method_onedim.lower() == "reducemin":
                     ops_onedim += self.atomic_ar(new_shape_onedim, in_type_onedim) * 2
-                ops_onedim += self.atomic_pord(pord_out, in_type_onedim, "pord.maxpooling", as_quotation=True,
+                ops_onedim += self.atomic_pord(pord_out,
+                                               in_type_onedim,
+                                               "pord.maxpooling",
+                                               as_quotation=True,
                                                kernel_mul=new_shape_onedim[3])
             return ops_onedim
 
@@ -1283,7 +1316,8 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
 
         new_shape_dims, new_shape = process_shape(axis_list, axis_num, in_shape, shape_dims_orig)
         if new_shape_dims < 4:
-            new_shape_dims, new_shape = process_shape(axis_list, axis_num, in_shape, shape_dims_orig)
+            new_shape_dims, new_shape = process_shape(axis_list, axis_num, in_shape,
+                                                      shape_dims_orig)
         elif new_shape_dims > 4:
             print("Not implement this process yet.")
             exit()
@@ -1313,7 +1347,11 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
 
         return ops
 
-    def active(self, active_type, in_shape=None, in_type=None, if_local_layer=False,
+    def active(self,
+               active_type,
+               in_shape=None,
+               in_type=None,
+               if_local_layer=False,
                as_quotation=False):  # need to consider the optimization for ACTIVE
         if in_shape is None and in_type is None:
             in_shape, in_type = OpParse.getShapeType(self.op.operands[0])
@@ -1322,8 +1360,9 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
             length = 1
             for i in range(len(in_shape)):
                 length *= in_shape[i]
-            tensor_w = int(max(DIV_UP(min(length, 16384), NPU_NUM),
-                               DIV_UP(128, eu_num_map[in_type] * tpu_data_type_size(in_type))))
+            tensor_w = int(
+                max(DIV_UP(min(length, 16384), NPU_NUM),
+                    DIV_UP(128, eu_num_map[in_type] * tpu_data_type_size(in_type))))
             slice = min(min(length, NPU_NUM * tensor_w), 16384)
             max_rows_per_time = int(bank_size / (tensor_w * tpu_data_type_size(in_type)))
             rows = int(DIV_UP(length, slice))
@@ -1395,13 +1434,19 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
                         elif active_type == "ln":  # log
                             ops += self.active("ln", new_cur_shape, in_type, as_quotation=True)
                         elif active_type == "log_sigmoid":
-                            ops += self.active("log_sigmoid", new_cur_shape, in_type, as_quotation=True)
+                            ops += self.active("log_sigmoid",
+                                               new_cur_shape,
+                                               in_type,
+                                               as_quotation=True)
                         elif active_type == "arcsinh" or active_type == "arccosh":
                             ops += self.active("arcsinh", new_cur_shape, in_type, as_quotation=True)
                         elif active_type == "arctanh":
                             ops += self.active("arctanh", new_cur_shape, in_type, as_quotation=True)
                         elif active_type == "soft_plus":
-                            ops += self.active("soft_plus", new_cur_shape, in_type, as_quotation=True)
+                            ops += self.active("soft_plus",
+                                               new_cur_shape,
+                                               in_type,
+                                               as_quotation=True)
                         elif active_type == "tan":
                             ops += self.active("tan", new_cur_shape, in_type, as_quotation=True)
                         elif active_type == "sin":
@@ -1498,7 +1543,7 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
             elif active_type == "log_sigmoid":
                 quotation_ops += ar_ops * 20 + taylor_ops + normalize_ops * 2 + taylor_ops + cmp_ops
             elif active_type == "arcsinh" or active_type == "arccosh":
-                quotation_ops += ar_ops * 12 + rsqrt_ops + cmp_ops * 2 + + normalize_ops * 2 + taylor_ops + cmp_ops
+                quotation_ops += ar_ops * 12 + rsqrt_ops + cmp_ops * 2 + +normalize_ops * 2 + taylor_ops + cmp_ops
             elif active_type == "arctanh":
                 quotation_ops += ar_ops * 11 + div_ops + normalize_ops * 2 + taylor_ops + cmp_ops
             elif active_type == "soft_plus":
@@ -1514,7 +1559,8 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
                 quotation_ops += self.active("sqrt", in_shape, in_type, as_quotation=True) * 2
                 quotation_ops += self.active("sign", in_shape, in_type, as_quotation=True)
             elif active_type == "arccos":
-                quotation_ops += self.active("arcsin", in_shape, in_type, as_quotation=True) + ar_ops
+                quotation_ops += self.active("arcsin", in_shape, in_type,
+                                             as_quotation=True) + ar_ops
 
             return quotation_ops
 
@@ -1553,11 +1599,10 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
 
         if inner_num == 1:
             in_shape = [1, outer_num, 1, c]
-            return self.atomic_ar(in_shape, in_type, "arith.sub") * 10 + self.atomic_ar(in_shape,
-                                                                                        in_type,
-                                                                                        "arith.div") + self.atomic_pord(
-                in_shape, in_type, "pord.maxpooling") * 2 + self.atomic_sfu(in_shape, in_type,
-                                                                            "sfu.taylor_4x")
+            return self.atomic_ar(in_shape, in_type, "arith.sub") * 10 + self.atomic_ar(
+                in_shape, in_type, "arith.div") + self.atomic_pord(
+                    in_shape, in_type, "pord.maxpooling") * 2 + self.atomic_sfu(
+                        in_shape, in_type, "sfu.taylor_4x")
         else:
             n, c, h, w = [c, outer_num, inner_num, 1]
             k = 1
@@ -1591,15 +1636,16 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
                 ops += self.atomic_ar(in_shape, in_type) * 2
 
             if self.attrs["log"] == "true":
-                ops += self.atomic_ar(in_shape, in_type) * 2 + self.atomic_ar(per_dim, in_type) + self.active("ln",
-                                                                                                              in_shape=per_dim,
-                                                                                                              in_type=in_type,
-                                                                                                              as_quotation=True)
+                ops += self.atomic_ar(in_shape, in_type) * 2 + self.atomic_ar(
+                    per_dim, in_type) + self.active(
+                        "ln", in_shape=per_dim, in_type=in_type, as_quotation=True)
             else:
-                ops += self.atomic_ar(per_dim, in_type, "arith.div") + self.atomic_ar(in_shape, in_type, "arith.mul")
+                ops += self.atomic_ar(per_dim, in_type, "arith.div") + self.atomic_ar(
+                    in_shape, in_type, "arith.mul")
 
             return self.atomic_pord(pord_out, in_type, "pord.maxpooling") * 2 + self.atomic_ar(
-                in_shape, in_type) + self.active("exp", in_shape=in_shape, in_type=in_type, as_quotation=True)
+                in_shape, in_type) + self.active(
+                    "exp", in_shape=in_shape, in_type=in_type, as_quotation=True)
 
     def slice(self):  # No nodechip file
         return 0
@@ -1659,8 +1705,8 @@ class TiuOps(object):  # currently only support input shape=(n,c,h,w)
                 raw_order[j] = tmp_order[j]
 
             if left_dim != 1 and right_dim != 1:
-                cur_shape, cur_trans_method, cur_max_trans_counts = get_transpose_info(fixed_dim, left_dim, right_dim,
-                                                                                       type_len)
+                cur_shape, cur_trans_method, cur_max_trans_counts = get_transpose_info(
+                    fixed_dim, left_dim, right_dim, type_len)
                 # print(shape)
                 # print(trans_method)
                 # print(max_trans_counts)
@@ -1780,7 +1826,10 @@ def out_layers_details(module_parsered, output_path=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mlir_file", type=str, required=True, help="mlir model file ready to be parsed")
+    parser.add_argument("--mlir_file",
+                        type=str,
+                        required=True,
+                        help="mlir model file ready to be parsed")
     parser.add_argument("--output_path", type=str, help="output path of the parsed csv")
     args = parser.parse_args()
     module_parsered = MlirParser(args.mlir_file)

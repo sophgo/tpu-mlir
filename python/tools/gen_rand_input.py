@@ -45,12 +45,11 @@ def generate_random_img(shapes, output_file):
     print(f"Image saved to {output_file}.")
 
 
-def run_from_mlir(
-    mlir: str,
-    ranges: list = [],
-    input_types: list = [],
-    img: bool = False,
-    output: str = "input.npz"):
+def run_from_mlir(mlir: str,
+                  ranges: list = [],
+                  input_types: list = [],
+                  img: bool = False,
+                  output: str = "input.npz"):
     module_parsered = MlirParser(mlir)
     mlir_shapes = module_parsered.get_input_shapes()
     mlir_types = input_types if input_types else module_parsered.get_input_types()

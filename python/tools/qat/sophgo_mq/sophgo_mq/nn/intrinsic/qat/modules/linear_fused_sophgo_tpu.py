@@ -16,17 +16,21 @@ class LinearBn1d_sophgo(Linear, _FusedModule):
     _version = 2
     _FLOAT_MODULE = LinearBn1d
 
-    def __init__(self,
-                 # ConvNd args
-                 in_features, out_features, bias,
-                 # BatchNormNd args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None):
+    def __init__(
+            self,
+            # ConvNd args
+            in_features,
+            out_features,
+            bias,
+            # BatchNormNd args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None):
         Linear.__init__(self, in_features, out_features, False)
         assert qconfig, 'qconfig must be provided for QAT module'
         self.qconfig = qconfig
@@ -73,22 +77,22 @@ class LinearBn1d_sophgo(Linear, _FusedModule):
     def freeze_bn_stats(self):
         self.freeze_bn = True
         self.bn.training = False
-        return self 
+        return self
 
     def bias_fake_quant(self, bias, scale_w, in_scale):
         if bias is not None:
-            scale = scale_w*in_scale
+            scale = scale_w * in_scale
             if torch.nonzero(scale).size()[0] != scale.numel():
                 print('Linear error! scale has 0, scale:', scale)
 
-            bias_q = bias/scale
-            bias = (bias_q.round()-bias_q).detach() + bias_q
-            bias = bias*scale
+            bias_q = bias / scale
+            bias = (bias_q.round() - bias_q).detach() + bias_q
+            bias = bias * scale
         return bias
 
     # def _forward(self, input):
     #     in_scale = self.input_fake_quantizer.scale #����һ��activation_fake_quant�ڵ��ȡscale
-    #     conv = F.linear(input, self.weight_fake_quant(self.weight), 
+    #     conv = F.linear(input, self.weight_fake_quant(self.weight),
     #         self.bias_fake_quant(self.bias, self.weight_fake_quant.scale, in_scale))
     #     return conv
 
@@ -114,18 +118,20 @@ class LinearBn1d_sophgo(Linear, _FusedModule):
         # Linear layer takes permuted input since the format is (batch_size, *, in_features)
         if self.bias is not None:
             zero_bias = torch.zeros_like(self.bias)
-            fc_bias = self.bias 
+            fc_bias = self.bias
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
             fc_bias = torch.zeros_like(zero_bias, device=scaled_weight.device)
         if self.bn.affine:
-            full_bias = (fc_bias - self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias 
+            full_bias = (fc_bias -
+                         self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias
         else:
-            full_bias = (fc_bias - self.bn.running_mean) / running_std 
-        in_scale = self.input_fake_quantizer.scale #����һ��activation_fake_quant�ڵ��ȡscale
+            full_bias = (fc_bias - self.bn.running_mean) / running_std
+        in_scale = self.input_fake_quantizer.scale  #����һ��activation_fake_quant�ڵ��ȡscale
         fquant_bias = self.bias_fake_quant(full_bias, self.weight_fake_quant.scale, in_scale)
         linear_out = F.linear(input, scaled_weight, fquant_bias)
-        linear_orig = (linear_out - full_bias) / scale_factor.reshape(bias_shape) + fc_bias.reshape(bias_shape)
+        linear_orig = (linear_out -
+                       full_bias) / scale_factor.reshape(bias_shape) + fc_bias.reshape(bias_shape)
         linear_out = self.bn(linear_orig)
         return linear_out
 
@@ -151,7 +157,8 @@ class LinearBn1d_sophgo(Linear, _FusedModule):
                 module.train(mode)
         return self
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         version = local_metadata.get('version', None)
         if version is None or version == 1:
             # BN related parameters and buffers were moved into the BN module for v2
@@ -179,8 +186,8 @@ class LinearBn1d_sophgo(Linear, _FusedModule):
                 elif strict:
                     missing_keys.append(prefix + v2_name)
 
-        super(LinearBn1d, self)._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+        super(LinearBn1d, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
+                                                      missing_keys, unexpected_keys, error_msgs)
 
     @classmethod
     def from_float(cls, mod):
@@ -195,10 +202,8 @@ class LinearBn1d_sophgo(Linear, _FusedModule):
         assert mod.qconfig, 'Input float module must have a valid qconfig'
         qconfig = mod.qconfig
         linear, bn = mod[0], mod[1]
-        qat_linearbn = cls(linear.in_features, linear.out_features, False,
-                           bn.eps, bn.momentum,
-                           False,
-                           qconfig)
+        qat_linearbn = cls(linear.in_features, linear.out_features, False, bn.eps, bn.momentum,
+                           False, qconfig)
         qat_linearbn.weight = linear.weight
         qat_linearbn.bias = linear.bias
         qat_linearbn.bn.weight = bn.weight
@@ -208,6 +213,7 @@ class LinearBn1d_sophgo(Linear, _FusedModule):
         # mypy error: Cannot determine type of 'num_batches_tracked'
         qat_linearbn.bn.num_batches_tracked = bn.num_batches_tracked  # type: ignore[has-type]
         return qat_linearbn
+
 
 class Linear_sophgo(nn.Linear):
     r"""
@@ -226,8 +232,13 @@ class Linear_sophgo(nn.Linear):
     """
     _FLOAT_MODULE = nn.Linear
 
-    def __init__(self, in_features, out_features, bias=True,
-                 qconfig=None, device=None, dtype=None) -> None:
+    def __init__(self,
+                 in_features,
+                 out_features,
+                 bias=True,
+                 qconfig=None,
+                 device=None,
+                 dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super().__init__(in_features, out_features, bias, **factory_kwargs)
         assert qconfig, 'qconfig must be provided for QAT module'
@@ -236,25 +247,25 @@ class Linear_sophgo(nn.Linear):
 
     def bias_fake_quant(self, bias, scale_w, in_scale):
         if bias is not None:
-            scale = scale_w*in_scale
+            scale = scale_w * in_scale
             if torch.nonzero(scale).size()[0] != scale.numel():
                 print('Linear error! scale has 0, scale:', scale)
                 scale[torch.abs(scale) < 1e-10] = 1e-10
                 print('new scale:', scale)
 
-            bias_q = bias/scale
-            bias = (bias_q.round()-bias_q).detach() + bias_q
-            bias = bias*scale
+            bias_q = bias / scale
+            bias = (bias_q.round() - bias_q).detach() + bias_q
+            bias = bias * scale
         return bias
 
     def _forward(self, input):
         assert hasattr(self, 'input_fake_quantizer')
-        in_scale = self.input_fake_quantizer.scale #����һ��activation_fake_quant�ڵ��ȡscale
+        in_scale = self.input_fake_quantizer.scale  #����һ��activation_fake_quant�ڵ��ȡscale
         # conv = F.linear(input, self.weight_fake_quant(self.weight),
-            # self.bias_fake_quant(self.bias, self.weight_fake_quant.scale, in_scale))
+        # self.bias_fake_quant(self.bias, self.weight_fake_quant.scale, in_scale))
         if self.bias is not None and self.weight_fake_quant.fake_quant_enabled[0] == 1:
             conv = F.linear(input, self.weight_fake_quant(self.weight),
-            self.bias_fake_quant(self.bias, self.weight_fake_quant.scale, in_scale))
+                            self.bias_fake_quant(self.bias, self.weight_fake_quant.scale, in_scale))
         else:
             conv = F.linear(input, self.weight_fake_quant(self.weight), self.bias)
 
@@ -279,7 +290,10 @@ class Linear_sophgo(nn.Linear):
             mod = mod[0]
 
         qconfig = mod.qconfig
-        qat_linear = cls(mod.in_features, mod.out_features, bias=mod.bias is not None, qconfig=qconfig)
+        qat_linear = cls(mod.in_features,
+                         mod.out_features,
+                         bias=mod.bias is not None,
+                         qconfig=qconfig)
         qat_linear.weight = mod.weight
         qat_linear.bias = mod.bias
         return qat_linear
@@ -317,8 +331,7 @@ class LinearReLU_sophgo(Linear_sophgo):
     """
     _FLOAT_MODULE = nni.LinearReLU
 
-    def __init__(self, in_features, out_features, bias=True,
-                 qconfig=None):
+    def __init__(self, in_features, out_features, bias=True, qconfig=None):
         super(LinearReLU_sophgo, self).__init__(in_features, out_features, bias, qconfig)
 
     def forward(self, input):

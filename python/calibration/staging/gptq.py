@@ -24,8 +24,8 @@ from .utils import quant_requant_active
 from .utils import cal_loss
 
 import pymlir
-pymlir.set_mem_mode("force_value_mem")
 
+pymlir.set_mem_mode("force_value_mem")
 
 LEARNING_WEIGHT_OPERATION = [
     # 'top.Conv', 'top.MatMul'#
@@ -34,12 +34,20 @@ LEARNING_WEIGHT_OPERATION = [
 
 
 class GptqQuantizer():
-    def __init__(self, shape, bits, perchannel=False, sym=True,
-                 mse=False, norm=2.4, grid=100, maxshrink=.8):
+
+    def __init__(self,
+                 shape,
+                 bits,
+                 perchannel=False,
+                 sym=True,
+                 mse=False,
+                 norm=2.4,
+                 grid=100,
+                 maxshrink=.8):
         self.maxq = []
         self.scale = np.zeros(shape[0])
         self.zero = np.zeros(shape[0])
-        self.maxq = 2 ** bits - 1
+        self.maxq = 2**bits - 1
         self.perchannel = perchannel
         self.sym = sym
         self.mse = mse
@@ -78,7 +86,7 @@ class GptqQuantizer():
 
         self.scale = (xmax - xmin) / self.maxq
         if self.sym:
-            self.zero = np.ones_like(self.scale)*((self.maxq + 1) / 2)
+            self.zero = np.ones_like(self.scale) * ((self.maxq + 1) / 2)
         else:
             self.zero = np.round(-xmin / self.scale)
 
@@ -91,7 +99,7 @@ class GptqQuantizer():
                 scale1 = (xmax1 - xmin1) / self.maxq
                 zero1 = np.round(-xmin1 / scale1) if not self.sym else self.zero
                 q = self.quantize(x)
-                q = np.power(np.abs(q-x, self.norm))
+                q = np.power(np.abs(q - x, self.norm))
                 err = np.sum(q, axis=1)
                 tmp = err < best
                 if np.any(tmp):
@@ -127,6 +135,7 @@ class GptqQuantizer():
 
 
 class LearningGptqWeight:
+
     def __init__(self, args):
         self.scales = None
         self.scales4 = None
@@ -174,7 +183,8 @@ class LearningGptqWeight:
                 if top_ops[op].type == 'top.Conv':
                     if int(top_ops[op].attrs['group'].split(':')[0]) > 1:
                         continue
-                if len(top_ops[op].opds) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
+                if len(top_ops[op].opds
+                       ) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
                     self.finetune_layers.append(op)
                     self.finetune_layer_weights[op] = top_ops[op].opds[1]
 
@@ -185,14 +195,18 @@ class LearningGptqWeight:
 
     def backup_weights(self):
         for op in self.finetune_layers:
-            self.orig_weights[op] = copy.deepcopy(self.module.get_tensor(self.finetune_layer_weights[op]))
+            self.orig_weights[op] = copy.deepcopy(
+                self.module.get_tensor(self.finetune_layer_weights[op]))
             oc = self.orig_weights[op].shape[0]
             if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
-                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op].reshape(oc, -1)), axis=1)
-                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8, self.weights_scales[op], 1e-8)
+                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op].reshape(oc, -1)),
+                                                 axis=1)
+                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8,
+                                                   self.weights_scales[op], 1e-8)
             elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
                 self.weights_scales[op] = np.max(np.abs(self.orig_weights[op]))
-                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8, self.weights_scales[op], 1e-8)
+                self.weights_scales[op] = np.where(self.weights_scales[op] > 1e-8,
+                                                   self.weights_scales[op], 1e-8)
             else:
                 print("not support!")
                 sys.exit(1)
@@ -200,7 +214,13 @@ class LearningGptqWeight:
     def restore_weight(self, op):
         self.module.set_tensor(self.finetune_layer_weights[op], self.orig_weights[op])
 
-    def quant_requant_weight(self, op, blocksize=128, percdamp=0.01, groupsize=-1, bitwidth=8, actorder=False):
+    def quant_requant_weight(self,
+                             op,
+                             blocksize=128,
+                             percdamp=0.01,
+                             groupsize=-1,
+                             bitwidth=8,
+                             actorder=False):
         W = torch.Tensor(self.orig_weights[op].copy())
 
         tick = time.time()
@@ -261,7 +281,7 @@ class LearningGptqWeight:
 
                 q = quanter.quantize(w.unsqueeze(1)).flatten()
                 Q1[:, i] = q
-                Losses1[:, i] = (w - q) ** 2 / d ** 2
+                Losses1[:, i] = (w - q)**2 / d**2
 
                 err1 = (w - q) / d
                 W1[:, i:] -= err1.unsqueeze(1).matmul(Hinv1[i, i:].unsqueeze(0))
@@ -281,22 +301,23 @@ class LearningGptqWeight:
             self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().reshape(shape))
         elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
             self.update_weight(op, Q.numpy().transpose().reshape(shape))
-            self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().transpose().reshape(shape_org))
+            self.module.set_tensor(self.finetune_layer_weights[op],
+                                   Q.numpy().transpose().reshape(shape_org))
 
     def quant_requant_weight_orig(self, op, bits=8):
         weight_tmp = copy.deepcopy(self.orig_weights[op])
-        scales = self.weights_scales[op]/(2**(bits-1)-1)
+        scales = self.weights_scales[op] / (2**(bits - 1) - 1)
         shape = weight_tmp.shape
         if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
-            weight_tmp = (weight_tmp.reshape(shape[0], -1)/scales[:, None]).reshape(shape)
+            weight_tmp = (weight_tmp.reshape(shape[0], -1) / scales[:, None]).reshape(shape)
         if self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
-            weight_tmp = weight_tmp/scales
-        weight = np.clip(np.round(weight_tmp), -(2**(bits-1)), (2**(bits-1)-1))
+            weight_tmp = weight_tmp / scales
+        weight = np.clip(np.round(weight_tmp), -(2**(bits - 1)), (2**(bits - 1) - 1))
         if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
-            self.module.set_tensor(self.finetune_layer_weights[op], (weight.reshape(
-                shape[0], -1)*scales[:, None]).reshape(shape))
+            self.module.set_tensor(self.finetune_layer_weights[op],
+                                   (weight.reshape(shape[0], -1) * scales[:, None]).reshape(shape))
         elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
-            self.module.set_tensor(self.finetune_layer_weights[op], weight*scales)
+            self.module.set_tensor(self.finetune_layer_weights[op], weight * scales)
         else:
             print("not support!")
             sys.exit(1)
@@ -403,9 +424,9 @@ class LearningGptqWeight:
             else:
                 print("not support!")
                 sys.exit(1)
-            self.H[op] *= self.samples[op]/(self.samples[op]+in_num)
-            self.samples[op] = self.samples[op]+in_num
-            inp = np.sqrt(2/self.samples[op])*inp
+            self.H[op] *= self.samples[op] / (self.samples[op] + in_num)
+            self.samples[op] = self.samples[op] + in_num
+            inp = np.sqrt(2 / self.samples[op]) * inp
             self.H[op] += np.matmul(inp, inp.transpose())
 
     def learning_one(self, epoch, op, total):
@@ -415,7 +436,7 @@ class LearningGptqWeight:
             sub_total += 1
         if epoch == self.epoch - 1:
             sub_total += 1
-        pbar_detail = tqdm(np.arange(self.num_sample*sub_total))
+        pbar_detail = tqdm(np.arange(self.num_sample * sub_total))
         pbar_detail.set_description("Learning Gptq Weight, op %s" % op)
 
         if self.chip == 'bm1688':
@@ -430,7 +451,8 @@ class LearningGptqWeight:
             self.quant_requant_weight_orig(op, bits=weight_bw)
             for loop in np.arange(self.num_sample):
                 pbar_detail.set_postfix_str(
-                    f"Cal orig loss {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
+                    f"Cal orig loss {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]"
+                )
                 pbar_detail.update()
                 self.set_op_inputs(op, loop, bitwidth=input_bw, quant=False)
                 outputs = self.module.invoke_at(op)
@@ -442,7 +464,10 @@ class LearningGptqWeight:
                     unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
                 if self.compare_quanted:
                     if self.support_unsigned:
-                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned, bits=output_bw)
+                        outputs[0] = quant_requant_active(outputs[0],
+                                                          scale,
+                                                          unsigned,
+                                                          bits=output_bw)
                     else:
                         outputs[0] = quant_requant_active(outputs[0], scale, False, bits=output_bw)
                 ref = self.ref_tensors.get(op, loop)
@@ -463,7 +488,7 @@ class LearningGptqWeight:
                 self.update_H(op, input, None)  # init H
             self.update_H(op, input, None)
 
-        if epoch == self.epoch-1:
+        if epoch == self.epoch - 1:
             self.quant_requant_weight(op, bitwidth=weight_bw)
             for loop in np.arange(self.num_sample):
                 pbar_detail.set_postfix_str(
@@ -480,7 +505,10 @@ class LearningGptqWeight:
                     unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
                 if self.compare_quanted:
                     if self.support_unsigned:
-                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned, bits=output_bw)
+                        outputs[0] = quant_requant_active(outputs[0],
+                                                          scale,
+                                                          unsigned,
+                                                          bits=output_bw)
                     else:
                         outputs[0] = quant_requant_active(outputs[0], scale, False, bits=output_bw)
                 ref = self.ref_tensors.get(op, loop)
@@ -492,9 +520,11 @@ class LearningGptqWeight:
                     self.post_loss[op] = post_loss
 
             if self.post_loss[op] <= self.pre_loss[op]:
-                self.loger.logging(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                self.loger.logging(
+                    f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
             else:
-                self.loger.logging(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                self.loger.logging(
+                    f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
             self.restore_weight(op)
 
     def save_weights(self):

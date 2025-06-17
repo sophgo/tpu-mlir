@@ -19,7 +19,7 @@ npz_tool_func = {
     "compare": npz_compare,
     "print_diff": npz_print_diff,
     "visualize_diff": npz_visualize_diff,
-    'dump':npz_dump,
+    'dump': npz_dump,
     "extract": npz_extract,
     "remove": npz_remove,
     "insert": npz_insert,
@@ -37,13 +37,14 @@ npz_tool_func = {
     "statistic": npz_statistic,
 }
 
+
 def main():
     args_list = sys.argv
     if len(args_list) < 2:
         funcs = npz_tool_func.keys()
         funcs_str = "["
         for idx, key in enumerate(npz_tool_func.keys()):
-            funcs_str += key + ("|" if idx != len(funcs)-1 else '')
+            funcs_str += key + ("|" if idx != len(funcs) - 1 else '')
         funcs_str += "]"
         print(f"Usage: {args_list[0]} " + funcs_str + " ...")
         exit(-1)

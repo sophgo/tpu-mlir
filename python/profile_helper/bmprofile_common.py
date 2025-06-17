@@ -15,6 +15,7 @@ import struct as st
 
 from bmprofile_utils import *
 
+
 class Arch(Enum):
     UNKNOWN = -1
     bm1684 = 1
@@ -22,6 +23,8 @@ class Arch(Enum):
     bm1688 = 4
     bm1690 = 5
     mars3 = 6
+
+
 class BlockType(Enum):
     UNKNOWN = -1
     SUMMARY = 1
@@ -41,10 +44,13 @@ class BlockType(Enum):
     BLOCK_DES_SDMA = 15
     BLOCK_DES_CDMA = 16
 
+
 class DynExtraType(Enum):
-    STRING=0
-    BINARY=1
-    CUSTOM=100
+    STRING = 0
+    BINARY = 1
+    CUSTOM = 100
+
+
 class BMLibExtraType(Enum):
     SEND_EXTRA = 0
     SYNC_EXTRA = 1
@@ -52,12 +58,14 @@ class BMLibExtraType(Enum):
     COPY_EXTRA = 3
     MEM_EXTRA = 4
 
+
 class SubnetType(Enum):
     UNKNOWN = -1
     TPU = 0
     CPU = 1
     MERGE = 2
     SWITCH = 3
+
 
 class IterSummary(ct.Structure):
     _pack_ = 1
@@ -70,6 +78,7 @@ class IterSummary(ct.Structure):
         ("extra_data", ct.c_uint64),
     ]
 
+
 class DynRecord(ct.Structure):
     _pack_ = 1
     _fields_ = [
@@ -80,10 +89,12 @@ class DynRecord(ct.Structure):
         ("end_cycle", ct.c_uint64),
     ]
 
+
 DynExtra = namedtuple("DynExtra", "profile_id type content")
 
+
 class BMLibApi(Enum):
-    UNKNOWN  = -1
+    UNKNOWN = -1
     RESERVED = 0
     MEM_SET = 1
     MEM_CPY = 2
@@ -312,6 +323,7 @@ class BMLibApi(Enum):
     A53LITE_GET_FUNC = 0x90000002
     A53LITE_LAUNCH_FUNC = 0x90000003
     A53LITE_UNLOAD_LIB = 0x90000004
+
     @staticmethod
     def will_run_kernel(id):
         return id not in [
@@ -332,11 +344,14 @@ class BMLibApi(Enum):
             BMLibApi.A53LITE_GET_FUNC,
             BMLibApi.A53LITE_UNLOAD_LIB,
         ]
+
+
 class BMLibMemDir(Enum):
     UNKNOWN = -1
-    HOST2CHIP=0
-    CHIP2HOST=1
-    CHIP2CHIP=2
+    HOST2CHIP = 0
+    CHIP2HOST = 1
+    CHIP2CHIP = 2
+
 
 class BMLibMemOpType(Enum):
     UNKNOWN = -1
@@ -344,6 +359,8 @@ class BMLibMemOpType(Enum):
     FREE = 1
     INVALIDATE = 2
     FLUSH = 3
+
+
 # used in static profile info
 class DataType(Enum):
     FP32 = 0
@@ -357,12 +374,14 @@ class DataType(Enum):
     BF16 = 8
     UNKNOWN = -1
 
+
 def get_dtype_size(dtype):
-    if dtype in [ DataType.FP32, DataType.INT32, DataType.UINT32]:
+    if dtype in [DataType.FP32, DataType.INT32, DataType.UINT32]:
         return 4
     elif dtype in [DataType.UINT16, DataType.INT16, DataType.FP16, DataType.BF16]:
         return 2
     return 1
+
 
 class LayerType(Enum):
     UNKNOWN = -1
@@ -532,6 +551,7 @@ class LayerType(Enum):
     NORMAL_SPARSE_CONV3D = 163
     SUBM_SPARSE_CONV3D = 164
 
+
 # used in dynamic profile info
 class FWDataType(Enum):
     UNKNOWN = -1
@@ -539,6 +559,7 @@ class FWDataType(Enum):
     WORD = 1
     BYTE = 2
     INT32 = 3
+
 
 class FWGDMAType(Enum):
     DEFAULT = -1
@@ -556,6 +577,7 @@ class FWGDMAType(Enum):
     LD_G2L2 = 11
     ST_OUTPUT_EXTEND_NEURON = 12
     LD_ITM_EXTEND_NEURON = 13
+
 
 class FWLayerType(Enum):
     UNKNOWN = -1
@@ -702,7 +724,7 @@ class FWLayerType(Enum):
     PIXEL_NORM = 140
     NORMAL_SPARSE_CONV3D = 141
     SUBM_SPARSE_CONV3D = 142
-    SHAPE_UNSQUEEZE= 143
+    SHAPE_UNSQUEEZE = 143
     UNSQUEEZE = 144
     DECONV3D = 145
     YOLOV5_DETECT_OUT = 146
@@ -728,6 +750,7 @@ class FWLayerType(Enum):
     SHAPE_POW = 166
     RANDNLIKE = 167
     SHAPE_TRANSPOSE = 168
+
 
 class CPULayerType(Enum):
     UNKNOWN = -1
@@ -793,6 +816,7 @@ class CPULayerType(Enum):
     PADDLE_BOX_CODER = 59
     DEBUG = 88888
 
+
 class GDMAOpType(Enum):
     LOAD = 0
     STORE = 1
@@ -800,7 +824,9 @@ class GDMAOpType(Enum):
     LD_G2L2 = 3
     UNKNOWN = -1
 
+
 class TensorInfo():
+
     def __init__(self):
         self.tensor_id = -1
         self.shape = None
@@ -821,9 +847,12 @@ class TensorInfo():
         slice_str = ""
         if self.nslice > 0 and self.hslice > 0:
             slice_str = "nslice={} hslice={}".format(self.nslice, self.hslice)
-        return "tensor_id={} [{}] {} {} {}".format(self.tensor_id, shape_str, self.dtype.name, const_str, slice_str)
+        return "tensor_id={} [{}] {} {} {}".format(self.tensor_id, shape_str, self.dtype.name,
+                                                   const_str, slice_str)
+
 
 class LayerInfo():
+
     def __init__(self):
         self.layer_id = -1
         self.layer_type = None
@@ -868,9 +897,9 @@ class LayerInfo():
             self.end_usec = max(end_usec, self.end_usec)
 
     def io_info(self):
-         ins_str ="ins=[" + (",".join([str(t) for t in self.in_tensors]))+"]"
-         outs_str = "outs=[" + (",".join([str(t) for t in self.out_tensors])) + "]"
-         return ins_str+"," + outs_str
+        ins_str = "ins=[" + (",".join([str(t) for t in self.in_tensors])) + "]"
+        outs_str = "outs=[" + (",".join([str(t) for t in self.out_tensors])) + "]"
+        return ins_str + "," + outs_str
 
     def info(self, sep='<br>'):
         all_info = []
@@ -879,10 +908,8 @@ class LayerInfo():
             prefix += ":{}".format(self.layer_name)
         all_info.append(prefix)
         if self.layer_type is not None:
-            all_info.append("==ins==" + sep +
-                            (sep.join([str(t) for t in self.in_tensors])))
-            all_info.append("==outs==" + sep +
-                            (sep.join([str(t) for t in self.out_tensors])))
+            all_info.append("==ins==" + sep + (sep.join([str(t) for t in self.in_tensors])))
+            all_info.append("==outs==" + sep + (sep.join([str(t) for t in self.out_tensors])))
         if self.gdma_op is not None:
             all_info.append("==gdma==")
             all_info.append(str(self.gdma_tensor))
@@ -896,16 +923,27 @@ class LayerInfo():
         if self.total_size >= 0:
             all_info.append("total_size={}".format(self.total_size))
         return sep + (sep.join(all_info))
+
     def __str__(self):
         prefix = "local" if self.is_local else "global"
         prefix += "-{}".format(str(self.layer_type).split(".")[-1])
         return prefix
 
+
 def enum_name(val):
     return str(val).split(".")[-1]
 
-BDSimRecord = namedtuple("BDSimRecord", " ".join(["layer_id", "op_type", "bd_id", "gdma_id", "start_time", "end_time", "cost_time"]))
-GDMASimRecord = namedtuple("GDMASimRecord", " ".join(["layer_id", "tensor_id", "op_type", "bd_id", "gdma_id", "start_time", "end_time", "cost_time", "byte_size", "direction", "bandwidth", "info"]))
+
+BDSimRecord = namedtuple(
+    "BDSimRecord",
+    " ".join(["layer_id", "op_type", "bd_id", "gdma_id", "start_time", "end_time", "cost_time"]))
+GDMASimRecord = namedtuple(
+    "GDMASimRecord", " ".join([
+        "layer_id", "tensor_id", "op_type", "bd_id", "gdma_id", "start_time", "end_time",
+        "cost_time", "byte_size", "direction", "bandwidth", "info"
+    ]))
+
+
 class StaticRunNode():
     __run_id = -1
 
@@ -922,19 +960,23 @@ class StaticRunNode():
         self.command = None
         self.sim_info = None
         self.pmu_info = None
+
     def __str__(self):
         prefix = ""
         if self.layer is not None:
-            prefix = str(self.layer)+", "
+            prefix = str(self.layer) + ", "
 
         if str(self.type) == "EngineType.BD":
-            return prefix + "type={}, bd_id={}, gdma_id={}, func={}" .format(
+            return prefix + "type={}, bd_id={}, gdma_id={}, func={}".format(
                 enum_name(self.type), self.bd_id, self.gdma_id, enum_name(self.bd_func))
         else:
-            return prefix + "type={}, bd_id={}, gdma_id={}, func={}" .format(
-                enum_name(self.type), self.bd_id, self.gdma_id, enum_name(self.gdma_func)+"-"+enum_name(self.gdma_dir))
+            return prefix + "type={}, bd_id={}, gdma_id={}, func={}".format(
+                enum_name(self.type), self.bd_id, self.gdma_id,
+                enum_name(self.gdma_func) + "-" + enum_name(self.gdma_dir))
+
 
 class SubnetInfo():
+
     def __init__(self):
         self.subnet_id = -1
         self.layer_list = []
@@ -944,19 +986,25 @@ class SubnetInfo():
         self.sim_info = None
 
     def __str__(self):
-        str_info = "subnet_id={} layer_num={} run_nodes={}".format(
-            self.subnet_id, len(self.layer_list), len(self.gdma_nodes), len(self.bd_nodes))
+        str_info = "subnet_id={} layer_num={} run_nodes={}".format(self.subnet_id,
+                                                                   len(self.layer_list),
+                                                                   len(self.gdma_nodes),
+                                                                   len(self.bd_nodes))
         return str_info
+
 
 def normal_fw_layer_type(fw_type: FWLayerType):
     name = fw_type.name
     return LayerType.__members__[name]
 
+
 MemBlock = namedtuple("MemBlock", "addr size alloc_time free_time type desc")
 
 MemRecord = namedtuple("MemRecord", "mem_type op_type addr size usage desc")
 
+
 class GlobalInfo():
+
     def __init__(self):
         self.subnet_list = []
         self.arch = Arch.UNKNOWN

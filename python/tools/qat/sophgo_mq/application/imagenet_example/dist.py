@@ -1,15 +1,19 @@
-import os 
+import os
 import torch
 import torch.distributed as dist
 from torch.nn import SyncBatchNorm
 import copy
 
+
 def link_dist(func):
+
     def wrapper(*args, **kwargs):
         dist_init()
         func(*args, **kwargs)
         dist_finalize()
+
     return wrapper
+
 
 def dist_init(method='slurm', device_id=0):
     if method == 'slurm':
@@ -26,8 +30,10 @@ def dist_init(method='slurm', device_id=0):
     rank = dist.get_rank()
     return rank, world_size
 
+
 def dist_finalize():
     pass
+
 
 def initialize(backend='nccl'):
     port = "36799"
@@ -56,7 +62,9 @@ def initialize(backend='nccl'):
     device = rank % torch.cuda.device_count()
     torch.cuda.set_device(device)
 
+
 class DistModule(torch.nn.Module):
+
     def __init__(self, module, sync=False):
         super(DistModule, self).__init__()
         self.module = module
@@ -79,9 +87,11 @@ class DistModule(torch.nn.Module):
                 self._grad_accs.append(grad_acc)
 
     def _make_hook(self, name, p, i):
+
         def hook(*ignore):
             # dist.allreduce_async(name, p.grad.data)
             dist.all_reduce(name, p.grad.data)
+
         return hook
 
     def sync_gradients(self):
@@ -97,5 +107,3 @@ class DistModule(torch.nn.Module):
         """ broadcast model parameters """
         for name, param in self.module.state_dict().items():
             dist.broadcast(param, 0)
-
-

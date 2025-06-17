@@ -40,12 +40,14 @@ def mape(ref_data, test_data):
     mape_sum = np.sum(mape_abs) + np.sum(mape_rela)
     return mape_sum / (mape_abs.size + mape_rela.size)
 
+
 @register
 def dist(a, b):
     return 1.0 / (1.0 + np.sqrt(np.sum(np.square(a - b))))
 
+
 @register
-def sqnr(ref_data, test_data, remove_zero = False):
+def sqnr(ref_data, test_data, remove_zero=False):
     import math
     raw = ref_data.flatten()
     dequant = test_data.flatten()
@@ -72,23 +74,25 @@ def sqnr(ref_data, test_data, remove_zero = False):
 
     return sqnr
 
+
 def kurtosis(data):
     import numpy as np
 
-    mean=np.mean(data)
-    n=data.size
+    mean = np.mean(data)
+    n = data.size
     if n <= 3:
         return 3
-    kuru=np.sum(np.power((data-mean),4))/n
-    kurd=np.power(np.sum(np.power((data-mean),2))/n,2)
-    kur=kuru/kurd
+    kuru = np.sum(np.power((data - mean), 4)) / n
+    kurd = np.power(np.sum(np.power((data - mean), 2)) / n, 2)
+    kur = kuru / kurd
     return kur
+
 
 def skewness(data):
     import numpy as np
 
-    mean=np.mean(data)
-    std=np.std(data)
-    n=data.size
-    ske=np.sum(np.power((data-mean)/std,3))/n/np.power(std,3)
+    mean = np.mean(data)
+    std = np.std(data)
+    n = data.size
+    ske = np.sum(np.power((data - mean) / std, 3)) / n / np.power(std, 3)
     return ske

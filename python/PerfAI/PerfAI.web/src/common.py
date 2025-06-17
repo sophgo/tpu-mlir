@@ -7,6 +7,7 @@
 #
 # ==============================================================================
 class GlobalInfo:
+
     def __init__(self):
         self.subnet_list = []
         # self.arch = Arch.UNKNOWN
@@ -23,7 +24,9 @@ class GlobalInfo:
             self.archlib = load_arch_lib(arch)
         assert self.archlib is not None
 
+
 class TensorInfo:
+
     def __init__(self):
         self.tensor_id = -1
         self.name = None
@@ -35,6 +38,7 @@ class TensorInfo:
 
 
 class LayerInfo:
+
     def __init__(self):
         self.layer_id = -1
         self.core_id = 0
@@ -71,16 +75,18 @@ class LayerInfo:
 
 
 class jsonObj:
+
     def __init__(self):
         self.file_line = -1
         self.subnet_id = 0
         self.core_id = 0
         self.opcode = None
-        self.bd_ids = None # (start_bd_id, end_bd_id]
-        self.dma_ids = None # (start_gdma_id, end_gdma_id]
+        self.bd_ids = None  # (start_bd_id, end_bd_id]
+        self.dma_ids = None  # (start_gdma_id, end_gdma_id]
         self.operands = []
         self.results = []
         self.is_local = False
+
 
 class StaticRunNode:
     __run_id = -1
@@ -100,7 +106,9 @@ class StaticRunNode:
         self.sim_info = None
         self.pmu_info = None
 
+
 class SubnetInfo:
+
     def __init__(self):
         self.subnet_id = -1
         self.layer_list = []

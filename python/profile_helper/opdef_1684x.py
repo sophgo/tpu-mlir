@@ -27,6 +27,7 @@ dma_cmd = dict()
 
 bank_size = 2**14
 
+
 # ------------------------------------------------------------
 # registry function
 # ------------------------------------------------------------
@@ -43,6 +44,7 @@ def base_registry(cmd_type, sheet_name, cls):
 
 
 def bdc_registry(sheet_name):
+
     def decorate(cls):
         return base_registry(bdc_cmd, sheet_name, cls)
 
@@ -50,6 +52,7 @@ def bdc_registry(sheet_name):
 
 
 def dma_registry(sheet_name):
+
     def decorate(cls):
         return base_registry(dma_cmd, sheet_name, cls)
 
@@ -83,9 +86,9 @@ class bdc_base(TIUBase):
             return False
         if self.short_cmd is not None and bool(cmd_reg[0]) != self.short_cmd:
             return False
-        if packbits(cmd_reg[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
+        if packbits(cmd_reg[self.opcode_bits[0]:self.opcode_bits[1]]) != self.opcode:
             return False
-        if packbits(cmd_reg[self.eu_bits[0] : self.eu_bits[1]]) not in self.eu_type:
+        if packbits(cmd_reg[self.eu_bits[0]:self.eu_bits[1]]) not in self.eu_type:
             return False
         return True
 
@@ -98,12 +101,10 @@ class bdc_base(TIUBase):
         if self.attribute:
             attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
-        return (
-            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{self.op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
-            + attribute
-            + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
-        )
+        return (f"{', '.join(res_name)}, %B{self.cmd_id} = \"{self.op_name}\"" +
+                f"({', '.join(opd_name)}, %D{self.cmd_id_dep})" + attribute +
+                f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)")
+
     def ops(self, is_arch):
         assert False, "Not implemented!"
 
@@ -129,7 +130,7 @@ class conv_op(bdc_base):
         if is_arch:
             dtype = self.operands[0].dtype
             ic = ALIGN(ic, NPU_NUM)
-            ow = ALIGN(oh*ow, EU_NUM(dtype))
+            ow = ALIGN(oh * ow, EU_NUM(dtype))
             oh = 1
             oc = ALIGN(oc, NPU_NUM)
             # iw = ALIGN(ih * iw, EU_NUM(dtype))
@@ -174,6 +175,7 @@ class smm_op(mm_op):
     short_cmd = True
     description = "short matrix multiply"
 
+
 @bdc_registry("MM2")
 class mm2_op(bdc_base):
     opcode = 2
@@ -198,7 +200,7 @@ class mm2_op(bdc_base):
             k = ALIGN(k, EU_NUM(dtype))
             m = ALIGN(m, NPU_NUM)
 
-        return m*n*(2*k-1 + has_bias)
+        return m * n * (2 * k - 1 + has_bias)
 
 
 @bdc_registry("sMM2")
@@ -253,7 +255,7 @@ class sfu_op(bdc_base):
         factor = 1
         res_num = len(self.results)
         if self.op_name == "sfu.taylor_4x" or self.op_name == "sfu.taylor":
-            factor = 2*self.reg.opd1_n - 1  # 2* table_len -1
+            factor = 2 * self.reg.opd1_n - 1  # 2* table_len -1
         elif self.op_name == "sfu.normalize":
             factor = 1
         elif self.op_name == "sfu.rsqrt":
@@ -303,13 +305,14 @@ class vc_op(bdc_base):
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
             w = ALIGN(w, EU_NUM(dtype))
-        return n*c*h*w
+        return n * c * h * w
 
 
 @bdc_registry("sVC")
 class svc_op(vc_op):
     short_cmd = True
     description = "short vector correlation"
+
     def ops(self, is_arch):
         n, c, h, w = self.operands[0].shape
 
@@ -327,7 +330,7 @@ class lin_op(bdc_base):
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
             w = ALIGN(w, EU_NUM(dtype))
-        return n*c*h*w*factor
+        return n * c * h * w * factor
 
 
 @bdc_registry("sLIN")
@@ -372,17 +375,18 @@ class ar_op(bdc_base):
         30: "arith.getFirstZero",
     }
     description = "arithmetic"
+
     def ops(self, is_arch):
         n, c, h, w = self.results[0].shape
         factor = 1
         hw = h * w
         if self.op_name == "arith.div":
-            factor = 5 # TODO: fix the factor
+            factor = 5  # TODO: fix the factor
         if is_arch:
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
             hw = ALIGN(w * h, EU_NUM(dtype))
-        return n*c*hw*factor
+        return n * c * hw * factor
 
 
 @bdc_registry("sAR")
@@ -396,7 +400,6 @@ class sar_op(ar_op):
 #     opcode = 3
 #     eu_type = [17, 24, 25]
 #     description = "arithmetic"
-
 
 # @bdc_registry("sSEG")
 # class sseg_op(seg_op):
@@ -417,12 +420,13 @@ class pord_op(bdc_base):
         7: "pord.roimaxpooling",
     }
     description = "depthwise or pooling"
+
     def ops(self, is_arch):
         n, c, h, w = self.results[0].shape
         kh, kw = self.reg.opd1_h, self.reg.opd1_w
         factor = 1
         if self.op_name == "pord.avgpooling" or self.op_name == "pord.maxpooling":
-            factor = len(self.results) # TODO: fix the factor
+            factor = len(self.results)  # TODO: fix the factor
         elif self.op_name == "pord.depthwise":
             factor = 2
         elif self.op_name == "pord.depthwiserelu":
@@ -431,13 +435,13 @@ class pord_op(bdc_base):
             # roi_pooling
             kh = 1
             kw = 1
-            factor = 2*4 -1 # bilinar, ignore coords generate
+            factor = 2 * 4 - 1  # bilinar, ignore coords generate
         if is_arch:
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
-            w = ALIGN(h*w, EU_NUM(dtype))
+            w = ALIGN(h * w, EU_NUM(dtype))
             h = 1
-        return n*c*h*w*(factor*kh*kw-1)
+        return n * c * h * w * (factor * kh * kw - 1)
 
 
 @bdc_registry("sPorD")
@@ -458,9 +462,10 @@ class rqdq_op(bdc_base):
         5: "quant.dq2",
     }
     description = "RQ && DQ"
+
     def ops(self, is_arch):
         n, c, h, w = self.results[0].shape
-        factor = 3 # mul, add, shift
+        factor = 3  # mul, add, shift
         hw = h * w
         if is_arch:
             dtype = self.operands[0].dtype
@@ -498,6 +503,7 @@ class sg_op(bdc_base):
         16: "sg.pe_s_nonzero_hzd",
     }
     description = "scatter_gather"
+
     def ops(self, is_arch):
         n, c, h, w = self.results[0].shape
         factor = 1
@@ -505,7 +511,7 @@ class sg_op(bdc_base):
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
             w = ALIGN(w, EU_NUM(dtype))
-        return n*c*h*w*factor
+        return n * c * h * w * factor
 
 
 @bdc_registry("sSG")
@@ -519,6 +525,7 @@ class sgl_op(bdc_base):
     opcode = 6
     eu_type = {17: "sgl.pe_s_gather_line", 18: "sgl.pe_s_scatter_line"}
     description = "scatter_gather_line"
+
     def ops(self, is_arch):
         n, c, h, w = self.results[0].shape
         factor = 1
@@ -526,7 +533,7 @@ class sgl_op(bdc_base):
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
             w = ALIGN(w, EU_NUM(dtype))
-        return n*c*h*w*factor
+        return n * c * h * w * factor
 
 
 @bdc_registry("sSGL")
@@ -556,10 +563,10 @@ class transbc_op(bdc_base):
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
             if self.op_name in (
-                "tsbc.l_copy",
-                "tsbc.l_bc",
-                "tsbc.s_bc",
-                "tsbc.s_distribute",
+                    "tsbc.l_copy",
+                    "tsbc.l_bc",
+                    "tsbc.s_bc",
+                    "tsbc.s_distribute",
             ):
                 hw = ALIGN(h * w, EU_NUM(dtype))
             else:
@@ -587,7 +594,7 @@ class lar_op(bdc_base):
             dtype = self.operands[0].dtype
             c = ALIGN(c, NPU_NUM)
             w = ALIGN(w, EU_NUM(dtype))
-        return n*c*h*w*factor
+        return n * c * h * w * factor
 
 
 # @bdc_registry("SYS")
@@ -613,11 +620,12 @@ class sysid_op(bdc_base):
         31: "sys.end",
     }
     description = "system"
+
     def ops(self, is_arch):
         return 1
 
     def _set_op(self, reg):
-        return ([],) * 3
+        return ([], ) * 3
 
     def __repr__(self):
         return self.op_name
@@ -645,9 +653,9 @@ class dma_base(DMABase):
             return False
         if self.short_cmd is not None and bool(cmd_reg[3]) != self.short_cmd:
             return False
-        if packbits(cmd_reg[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
+        if packbits(cmd_reg[self.opcode_bits[0]:self.opcode_bits[1]]) != self.opcode:
             return False
-        sp_fun_id = packbits(cmd_reg[self.fun_bits[0] : self.fun_bits[1]])
+        sp_fun_id = packbits(cmd_reg[self.fun_bits[0]:self.fun_bits[1]])
         if self.sp_fun and (sp_fun_id not in self.sp_fun):
             return False
         return True
@@ -661,16 +669,16 @@ class dma_base(DMABase):
         if self.attribute:
             attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
-        return (
-            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{self.op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
-            + attribute
-            + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
-        )
+        return (f"{', '.join(res_name)}, %D{self.cmd_id} = \"{self.op_name}\"" +
+                f"({', '.join(opd_name)}, %B{self.cmd_id_dep})" + attribute +
+                f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)")
+
     def alg_ops(self):
         return 0
+
     def arch_ops(self):
         return 0
+
 
 @dma_registry("DMA_tensor（0x000）")
 class dma_tensor(dma_base):
@@ -764,7 +772,7 @@ class sdma_sys(dma_base):
     description = "short DMA sys"
 
     def _set_op(self, reg):
-        return ([],) * 3
+        return ([], ) * 3
 
     def __repr__(self):
         return self.op_name

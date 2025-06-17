@@ -13,6 +13,7 @@ import os
 
 
 class file_helper:
+
     def __init__(self, file) -> None:
         if os.path.isfile(file):
             self.type = "file"
@@ -35,6 +36,7 @@ class file_helper:
 
 
 class SOCClient:
+
     def __init__(self, url="http://localhost:8000/") -> None:
         self.proxy = xmlrpc.client.ServerProxy(url, allow_none=True)
 

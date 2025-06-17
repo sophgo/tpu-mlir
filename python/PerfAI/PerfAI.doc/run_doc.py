@@ -24,7 +24,15 @@ from src.generator.summary import generate_summary
 from src.parser.exfile_parser import GlobalProfileParser
 from utils.utils import get_total_time
 
-def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=0, divided=0, layerinfo_dir=""):
+
+def run_doc(input,
+            cores,
+            output="PerAI_output.xlsx",
+            style=0,
+            speedup=1,
+            split=0,
+            divided=0,
+            layerinfo_dir=""):
     input_fold = input if input[-1] == '/' else input + '/'
     out_file = output if '/' in output else input_fold + output
     parser = GlobalProfileParser()
@@ -35,17 +43,23 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
     quant_type = global_info.quant_type if global_info and global_info.quant_type else '--'
     with pd.ExcelWriter(out_file) as writer:
         if divided == 0:
-            tiu_instance_map, gdma_instance_map, chip_arch = generate_details(input_fold, out_file, global_info, writer,
-                                                                core_num=cores, split_instr_world=speedup)
+            tiu_instance_map, gdma_instance_map, chip_arch = generate_details(
+                input_fold,
+                out_file,
+                global_info,
+                writer,
+                core_num=cores,
+                split_instr_world=speedup)
             chip_arch['network'] = network
             chip_arch['flops'] = flops
             chip_arch['quant_type'] = quant_type
             if global_info is not None:
-                layer_info_map = generate_layer(global_info, writer, out_file, tiu_instance_map, gdma_instance_map, chip_arch)
+                layer_info_map = generate_layer(global_info, writer, out_file, tiu_instance_map,
+                                                gdma_instance_map, chip_arch)
                 generate_summary(layer_info_map, writer, chip_arch)
         else:
-            tiu_instance_map, gdma_instance_map, chip_arch = generate_divided_details(input_fold, global_info,
-                                                                core_num=cores)
+            tiu_instance_map, gdma_instance_map, chip_arch = generate_divided_details(
+                input_fold, global_info, core_num=cores)
 
     if style == 1 and divided == 0:
         print('Setting style for ' + out_file)
@@ -104,6 +118,8 @@ def run_doc(input, cores, output="PerAI_output.xlsx", style=0, speedup=1, split=
     # for file in os.listdir(input_fold):
     #     if 'RegInfo' in file:
     #         shutil.move(os.path.join(input_fold, file), regInfo_dir)
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="The main entry of the PerfAI project")
@@ -111,13 +127,13 @@ if __name__ == "__main__":
         "input",
         type=str,
         default="",
-        help="The input file fold path, which contains tiuRegInfo、dmaRegInfo、simTotalCycle、globalProfile file.",
+        help=
+        "The input file fold path, which contains tiuRegInfo、dmaRegInfo、simTotalCycle、globalProfile file.",
     )
-    parser.add_argument(
-        '--layerinfo_dir',
-        type=str,
-        default='',
-        help='The folder path that contains tensor_location.json and final.mlir.')
+    parser.add_argument('--layerinfo_dir',
+                        type=str,
+                        default='',
+                        help='The folder path that contains tensor_location.json and final.mlir.')
     parser.add_argument(
         "cores",
         type=int,
@@ -140,7 +156,8 @@ if __name__ == "__main__":
         "--speedup",
         type=int,
         default=1,
-        help="If separate the instr world sheet into csv, which will increase the speed of the program.",
+        help=
+        "If separate the instr world sheet into csv, which will increase the speed of the program.",
     )
     parser.add_argument(
         "--split",
@@ -152,7 +169,9 @@ if __name__ == "__main__":
         "--divided",
         type=int,
         default=0,
-        help="If write the output Excel into several Excel files separately, which will solve the problem of excessive memory",
+        help=
+        "If write the output Excel into several Excel files separately, which will solve the problem of excessive memory",
     )
     args = parser.parse_args()
-    run_doc(args.input, args.cores, args.output, args.style, args.speedup, args.split, args.divided, args.layerinfo_dir)
+    run_doc(args.input, args.cores, args.output, args.style, args.speedup, args.split, args.divided,
+            args.layerinfo_dir)

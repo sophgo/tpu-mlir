@@ -1,5 +1,5 @@
-#------------------------------------------------------------------------------ 
-# Copyright (c) 2023, Intel Corporation - All rights reserved. 
+#------------------------------------------------------------------------------
+# Copyright (c) 2023, Intel Corporation - All rights reserved.
 # This file is part of FP8-Emulation-Toolkit
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -13,10 +13,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 from mpemu.cmodel import simple
 
-torch_conv2d = torch.nn.functional.conv2d 
-torch_addmm  = torch.addmm
-torch.addmm  = simple.addmm
+torch_conv2d = torch.nn.functional.conv2d
+torch_addmm = torch.addmm
+torch.addmm = simple.addmm
 torch.nn.functional.conv2d = simple.conv2d
+
 
 class Net(nn.Module):
 
@@ -56,7 +57,7 @@ params = list(net.parameters())
 input = torch.randn(1, 1, 32, 32, dtype=torch.float32, device="cpu")
 # create your optimizer
 optimizer = optim.SGD(net.parameters(), lr=0.1)
-optimizer.zero_grad()   # zero the gradient buffers
+optimizer.zero_grad()  # zero the gradient buffers
 
 output = net(input)
 
@@ -67,7 +68,7 @@ criterion = nn.MSELoss()
 
 loss = criterion(output, target)
 
-net.zero_grad()     # zeroes the gradient buffers of all parameters
+net.zero_grad()  # zeroes the gradient buffers of all parameters
 
 loss.backward()
-optimizer.step()    # Does the update
+optimizer.step()  # Does the update

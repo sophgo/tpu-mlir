@@ -52,9 +52,7 @@ def BModel2Reg(bmodel_file):
         for core_id, _cmds in enumerate(subnet.core_commands):
             for gid, cmds in enumerate(_cmds.gdma_tiu_commands):
                 formated_id = f"core({core_id}).subnet({subnet_id}).group({gid})"
-                yield formated_id, decode_cmdgroup(
-                    bmodel.context, cmds, subnet_id, core_id
-                )
+                yield formated_id, decode_cmdgroup(bmodel.context, cmds, subnet_id, core_id)
 
 
 def BModel2Bin(bmodel_file):
@@ -164,7 +162,8 @@ def __main():
         "bmodels",
         type=str,
         nargs="+",
-        help="The path of BModels. If one BModel is provided, the assemble code will be printed. Compare the Bmodels if two models provided.",
+        help=
+        "The path of BModels. If one BModel is provided, the assemble code will be printed. Compare the Bmodels if two models provided.",
     )
     parser.add_argument(
         "--format",
@@ -203,34 +202,26 @@ def __main():
             module = BModel2Reg(args.bmodels[0])
             outs = {
                 _id: {
-                    "tiu": [
-                        {
-                            "name": getattr(x, "op_name", x.name),
-                            "cmd": dict(x.reg),
-                            "extra": {
-                                "cmd_id": x.cmd_id,
-                                "cmd_type": x.cmd_type.name,
-                                "core_id": x.core_id,
-                                "subnet_id": x.subnet_id,
-                            },
-                        }
-                        for x in ops.tiu
-                        if not_visited(getattr(x, "op_name", x.name))
-                    ],
-                    "dma": [
-                        {
-                            "name": getattr(x, "op_name", x.name),
-                            "cmd": dict(x.reg),
-                            "extra": {
-                                "cmd_id": x.cmd_id,
-                                "cmd_type": x.cmd_type.name,
-                                "core_id": x.core_id,
-                                "subnet_id": x.subnet_id,
-                            },
-                        }
-                        for x in ops.dma
-                        if not_visited(getattr(x, "op_name", x.name))
-                    ],
+                    "tiu": [{
+                        "name": getattr(x, "op_name", x.name),
+                        "cmd": dict(x.reg),
+                        "extra": {
+                            "cmd_id": x.cmd_id,
+                            "cmd_type": x.cmd_type.name,
+                            "core_id": x.core_id,
+                            "subnet_id": x.subnet_id,
+                        },
+                    } for x in ops.tiu if not_visited(getattr(x, "op_name", x.name))],
+                    "dma": [{
+                        "name": getattr(x, "op_name", x.name),
+                        "cmd": dict(x.reg),
+                        "extra": {
+                            "cmd_id": x.cmd_id,
+                            "cmd_type": x.cmd_type.name,
+                            "core_id": x.core_id,
+                            "subnet_id": x.subnet_id,
+                        },
+                    } for x in ops.dma if not_visited(getattr(x, "op_name", x.name))],
                 }
                 for _id, ops in module
             }
@@ -249,8 +240,7 @@ def __main():
         is_same = True
         for (idx, cmd_a), (_, cmd_b) in zip(tpu_cmd_a.cmd, tpu_cmd_b.cmd):
             fmt_cmd = [
-                "\n" + x
-                for x in unified_diff(
+                "\n" + x for x in unified_diff(
                     cmd_a.all,
                     cmd_b.all,
                     args.bmodels[0],

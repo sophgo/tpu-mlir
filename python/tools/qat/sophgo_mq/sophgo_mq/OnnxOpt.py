@@ -59,6 +59,7 @@ def get_node_attrs(node) -> dict:
 
 
 class ConstantFolding(object):
+
     def __init__(self, model, test_input):
         self.test_input = test_input
         self.model = copy.deepcopy(model)
@@ -90,11 +91,11 @@ class ConstantFolding(object):
                                    "onnx".format(key, shape))
             elem_type = self.get_elem_type(key)
             elem_type = self.get_np_type_from_elem_type(elem_type)
-            if elem_type == np.bool_ :  # for mask
+            if elem_type == np.bool_:  # for mask
                 inputs.update({key: np.random.randint(0, 2, shape, dtype=elem_type)})
             # elif elem_type == np.int64:
             #     inputs.update({key: np.random.randint(0, 10, size=shape, dtype=elem_type)})
-            elif len(shape) == 0: # for idx
+            elif len(shape) == 0:  # for idx
                 inputs.update({key: np.array(0, dtype=elem_type)})
             else:
                 inputs.update({key: np.random.rand(*shape).astype(elem_type)})
@@ -125,9 +126,9 @@ class ConstantFolding(object):
 
     @staticmethod
     def get_np_type_from_elem_type(elem_type):
-        types = (None, np.float32, np.uint8, np.int8, np.uint16, np.int16, np.int32,
-                np.int64, str, np.bool_, np.float16, np.double, np.uint32, np.uint64,
-                np.complex64, np.complex128, np.float16)
+        types = (None, np.float32, np.uint8, np.int8, np.uint16, np.int16, np.int32, np.int64, str,
+                 np.bool_, np.float16, np.double, np.uint32, np.uint64, np.complex64, np.complex128,
+                 np.float16)
         assert len(types) == 17
         _type = types[elem_type]
         assert _type is not None
@@ -180,7 +181,8 @@ class ConstantFolding(object):
         const_nodes = []
         dynamic_tensors = []
         self.const_tensors = [x.name for x in self.model.graph.initializer]
-        self.const_tensors.extend([node.output[0] for node in self.model.graph.node if node.op_type == "Constant"])
+        self.const_tensors.extend(
+            [node.output[0] for node in self.model.graph.node if node.op_type == "Constant"])
         self.const_tensors.extend([''])
         for node in self.model.graph.node:
             if node.op_type == "Shape" and node.input[0] not in dynamic_tensors:
@@ -214,7 +216,8 @@ class ConstantFolding(object):
         sess_options.graph_optimization_level = rt.GraphOptimizationLevel(0)
         sess_options.log_severity_level = 3
         try:
-            sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
+            sess = rt.InferenceSession(model.SerializeToString(),
+                                       sess_options=sess_options,
                                        providers=["CPUExecutionProvider"])
         except ValueError:
             print("Waring: Try to convert through a temporary file.")
@@ -244,7 +247,6 @@ class ConstantFolding(object):
                 inputs[name] = inputs_npz[name].astype(elem_type)
         else:
             inputs.update(self.generate_specific_rand_input(input_shapes))
-
 
         outputs = [x.name for x in sess.get_outputs()]
         run_options = rt.RunOptions()
@@ -286,9 +288,7 @@ class ConstantFolding(object):
                     new_node.name = "node_" + output
                     new_node.op_type = "Constant"
                     new_attr = onnx.helper.make_attribute(
-                        "value",
-                        onnx.numpy_helper.from_array(res[output], name=output)
-                    )
+                        "value", onnx.numpy_helper.from_array(res[output], name=output))
                     del new_node.input[:]
                     del new_node.attribute[:]
                     del new_node.output[:]
@@ -320,7 +320,6 @@ class ConstantFolding(object):
             pass
         # self.model = onnx.shape_inference.infer_shapes(self.model, strict_mode =True, data_prop=True)
 
-
     def folding(self, infer_shapes=True):
         const_nodes = self.get_constant_nodes()
         res = self.forward_for_node_outputs(const_nodes)
@@ -331,6 +330,7 @@ class ConstantFolding(object):
         return do_eliminate
 
     def run(self):
+
         def fixed_point(fun):
             flag = fun()
             while True:
@@ -338,6 +338,7 @@ class ConstantFolding(object):
                     flag = fun()
                     continue
                 break
+
         fixed_point(self.folding)
         self.remove_unused_nodes()
         # dump_model(self.model, "constant_opt.onnx")
@@ -810,11 +811,10 @@ class ReForm(object):
                 return find_cast(cast_dict[node], cast_dict)
 
         def insert_identity(cur_node_out, out_name):
-            identity_node = onnx.helper.make_node(
-                                "Identity",
-                                name=cur_node_out + "_insert_Identity",
-                                inputs=[cur_node_out],
-                                outputs=[out_name])
+            identity_node = onnx.helper.make_node("Identity",
+                                                  name=cur_node_out + "_insert_Identity",
+                                                  inputs=[cur_node_out],
+                                                  outputs=[out_name])
             insert_idx, _ = self.get_node(out_name)
             self.nodes.insert(insert_idx, identity_node)
 
@@ -879,7 +879,6 @@ class ReForm(object):
         for op in delte_node_ops:
             self.nodes.remove(op)
 
-
     def graph_opt(self):
         replaced = False
         for reform_info in self.reform_info_list:
@@ -904,6 +903,7 @@ class ReForm(object):
 
 ############ torch.LayerNorm ############
 def TorchLayerNormPattern(patterns: list):
+
     def is_last_dims(x: list):
         return np.all(np.diff(x) == 1) and x[-1] == -1
 
@@ -958,8 +958,10 @@ def TorchLayerNormPattern(patterns: list):
                    src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1, _add_0, _sqrt, _div],
                    dst_nodes=[layernorm]))
 
+
 ############ torch.PixelNorm ############
 def TorchPixelNormPattern(patterns: list):
+
     def is_c_dim(x: list):
         return len(x) == 1 and x[0] == 1
 
@@ -1006,6 +1008,7 @@ def TorchPixelNormPattern(patterns: list):
         ReformInfo(name="pixelnorm",
                    src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1, _add_0, _sqrt, _div],
                    dst_nodes=[layernorm]))
+
 
 ############ torch.GELU ############
 def TorchGELUPattern(patterns: list):

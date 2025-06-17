@@ -3,6 +3,7 @@ from collections import OrderedDict
 from sophgo_mq.utils.registry import register_model_quantizer
 from sophgo_mq.custom_quantizer import ModelQuantizer
 
+
 @register_model_quantizer("Academic")
 class AcademicNLPQuantizer(ModelQuantizer):
     """
@@ -11,6 +12,7 @@ class AcademicNLPQuantizer(ModelQuantizer):
     We should quantize Linear / Embedding weights.
     Linear / Matmul layer inputs(activations).
     """
+
     @property
     def function_type_to_quant_input(self) -> list:
         return [
@@ -22,5 +24,4 @@ class AcademicNLPQuantizer(ModelQuantizer):
     def module_type_to_quant_input(self) -> tuple:
         return (
             # Linear
-            torch.nn.qat.modules.linear.Linear,
-        ) + self.additional_module_type
+            torch.nn.qat.modules.linear.Linear, ) + self.additional_module_type

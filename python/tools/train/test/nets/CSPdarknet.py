@@ -3,17 +3,28 @@ import torch.nn as nn
 
 
 class SiLU(nn.Module):
+
     @staticmethod
     def forward(x):
         return x * torch.sigmoid(x)
 
+
 def autopad(k, p=None):
     if p is None:
-        p = k // 2 if isinstance(k, int) else [x // 2 for x in k] 
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]
     return p
 
+
 class Focus(nn.Module):
-    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):  # ch_in, ch_out, kernel, stride, padding, groups
+
+    def __init__(self,
+                 c1,
+                 c2,
+                 k=1,
+                 s=1,
+                 p=None,
+                 g=1,
+                 act=True):  # ch_in, ch_out, kernel, stride, padding, groups
         super(Focus, self).__init__()
         self.conv = Conv(c1 * 4, c2, k, s, p, g, act)
 
@@ -21,22 +32,17 @@ class Focus(nn.Module):
         # 320, 320, 12 => 320, 320, 64
         return self.conv(
             # 640, 640, 3 => 320, 320, 12
-            torch.cat(
-                [
-                    x[..., ::2, ::2], 
-                    x[..., 1::2, ::2], 
-                    x[..., ::2, 1::2], 
-                    x[..., 1::2, 1::2]
-                ], 1
-            )
-        )
+            torch.cat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]],
+                      1))
+
 
 class Conv(nn.Module):
+
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):
         super(Conv, self).__init__()
-        self.conv   = nn.Conv2d(c1, c2, k, s, autopad(k, p), groups=g, bias=False)
-        self.bn     = nn.BatchNorm2d(c2, eps=0.001, momentum=0.03)
-        self.act    = SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
+        self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p), groups=g, bias=False)
+        self.bn = nn.BatchNorm2d(c2, eps=0.001, momentum=0.03)
+        self.act = SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
 
     def forward(self, x):
         return self.act(self.bn(self.conv(x)))
@@ -44,9 +50,15 @@ class Conv(nn.Module):
     def fuseforward(self, x):
         return self.act(self.conv(x))
 
+
 class Bottleneck(nn.Module):
     # Standard bottleneck
-    def __init__(self, c1, c2, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, shortcut, groups, expansion
+    def __init__(self,
+                 c1,
+                 c2,
+                 shortcut=True,
+                 g=1,
+                 e=0.5):  # ch_in, ch_out, shortcut, groups, expansion
         super(Bottleneck, self).__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
@@ -56,9 +68,16 @@ class Bottleneck(nn.Module):
     def forward(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
+
 class C3(nn.Module):
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self,
+                 c1,
+                 c2,
+                 n=1,
+                 shortcut=True,
+                 g=1,
+                 e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
         super(C3, self).__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
@@ -68,12 +87,8 @@ class C3(nn.Module):
         # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
 
     def forward(self, x):
-        return self.cv3(torch.cat(
-            (
-                self.m(self.cv1(x)), 
-                self.cv2(x)
-            )
-            , dim=1))
+        return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
+
 
 class SPP(nn.Module):
     # Spatial pyramid pooling layer used in YOLOv3-SPP
@@ -87,8 +102,10 @@ class SPP(nn.Module):
     def forward(self, x):
         x = self.cv1(x)
         return self.cv2(torch.cat([x] + [m(x) for m in self.m], 1))
-        
+
+
 class CSPDarknet(nn.Module):
+
     def __init__(self, base_channels, base_depth, phi, pretrained):
         super().__init__()
         #-----------------------------------------------#
@@ -100,8 +117,8 @@ class CSPDarknet(nn.Module):
         #   利用focus网络结构进行特征提取
         #   640, 640, 3 -> 320, 320, 12 -> 320, 320, 64
         #-----------------------------------------------#
-        self.stem       = Focus(3, base_channels, k=3)
-        
+        self.stem = Focus(3, base_channels, k=3)
+
         #-----------------------------------------------#
         #   完成卷积之后，320, 320, 64 -> 160, 160, 128
         #   完成CSPlayer之后，160, 160, 128 -> 160, 160, 128
@@ -112,7 +129,7 @@ class CSPDarknet(nn.Module):
             # 160, 160, 128 -> 160, 160, 128
             C3(base_channels * 2, base_channels * 2, base_depth),
         )
-        
+
         #-----------------------------------------------#
         #   完成卷积之后，160, 160, 128 -> 80, 80, 256
         #   完成CSPlayer之后，80, 80, 256 -> 80, 80, 256
@@ -134,7 +151,7 @@ class CSPDarknet(nn.Module):
             Conv(base_channels * 4, base_channels * 8, 3, 2),
             C3(base_channels * 8, base_channels * 8, base_depth * 3),
         )
-        
+
         #-----------------------------------------------#
         #   完成卷积之后，40, 40, 512 -> 20, 20, 1024
         #   完成SPP之后，20, 20, 1024 -> 20, 20, 1024
@@ -147,15 +164,21 @@ class CSPDarknet(nn.Module):
         )
         if pretrained:
             url = {
-                's' : 'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_s_backbone.pth',
-                'm' : 'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_m_backbone.pth',
-                'l' : 'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_l_backbone.pth',
-                'x' : 'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_x_backbone.pth',
+                's':
+                'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_s_backbone.pth',
+                'm':
+                'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_m_backbone.pth',
+                'l':
+                'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_l_backbone.pth',
+                'x':
+                'https://github.com/bubbliiiing/yolov5-pytorch/releases/download/v1.0/cspdarknet_x_backbone.pth',
             }[phi]
-            checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu", model_dir="./model_data")
+            checkpoint = torch.hub.load_state_dict_from_url(url=url,
+                                                            map_location="cpu",
+                                                            model_dir="./model_data")
             self.load_state_dict(checkpoint, strict=False)
             print("Load weights from ", url.split('/')[-1])
-            
+
     def forward(self, x):
         x = self.stem(x)
         x = self.dark2(x)

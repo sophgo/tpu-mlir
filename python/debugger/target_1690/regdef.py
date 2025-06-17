@@ -203,7 +203,6 @@ class CONV_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sCONV_reg(atomic_reg):
     OP_NAME = "sCONV"
     _fields_ = [
@@ -327,7 +326,6 @@ class sCONV_reg(atomic_reg):
     opd0_w_str: int
 
     length: int = 512
-
 
 
 class CONV_BW_reg(atomic_reg):
@@ -515,7 +513,6 @@ class CONV_BW_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sCONV_BW_reg(atomic_reg):
     OP_NAME = "sCONV_BW"
     _fields_ = [
@@ -639,7 +636,6 @@ class sCONV_BW_reg(atomic_reg):
     opd0_w_str: int
 
     length: int = 512
-
 
 
 class MM_reg(atomic_reg):
@@ -827,7 +823,6 @@ class MM_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sMM_reg(atomic_reg):
     OP_NAME = "sMM"
     _fields_ = [
@@ -917,7 +912,6 @@ class sMM_reg(atomic_reg):
     rsvd9: int
 
     length: int = 384
-
 
 
 class MM2_reg(atomic_reg):
@@ -1105,7 +1099,6 @@ class MM2_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sMM2_reg(atomic_reg):
     OP_NAME = "sMM2"
     _fields_ = [
@@ -1183,7 +1176,6 @@ class sMM2_reg(atomic_reg):
     opd2_addr: int
 
     length: int = 256
-
 
 
 class CMP_reg(atomic_reg):
@@ -1371,7 +1363,6 @@ class CMP_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sCMP_reg(atomic_reg):
     OP_NAME = "sCMP"
     _fields_ = [
@@ -1441,7 +1432,6 @@ class sCMP_reg(atomic_reg):
     opd3_addr: int
 
     length: int = 384
-
 
 
 class SFU_reg(atomic_reg):
@@ -1629,7 +1619,6 @@ class SFU_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sSFU_reg(atomic_reg):
     OP_NAME = "sSFU"
     _fields_ = [
@@ -1681,7 +1670,6 @@ class sSFU_reg(atomic_reg):
     opd1_addr: int
 
     length: int = 256
-
 
 
 class VC_reg(atomic_reg):
@@ -1869,7 +1857,6 @@ class VC_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sVC_reg(atomic_reg):
     OP_NAME = "sVC"
     _fields_ = [
@@ -1933,7 +1920,6 @@ class sVC_reg(atomic_reg):
     rsvd3: int
 
     length: int = 384
-
 
 
 class LIN_reg(atomic_reg):
@@ -2121,7 +2107,6 @@ class LIN_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sLIN_reg(atomic_reg):
     OP_NAME = "sLIN"
     _fields_ = [
@@ -2179,7 +2164,6 @@ class sLIN_reg(atomic_reg):
     opd2_addr: int
 
     length: int = 288
-
 
 
 class AR_reg(atomic_reg):
@@ -2367,7 +2351,6 @@ class AR_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sAR_reg(atomic_reg):
     OP_NAME = "sAR"
     _fields_ = [
@@ -2473,7 +2456,6 @@ class sAR_reg(atomic_reg):
     rsvd3: int
 
     length: int = 512
-
 
 
 class PorD_reg(atomic_reg):
@@ -2661,7 +2643,6 @@ class PorD_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sPorD_reg(atomic_reg):
     OP_NAME = "sPorD"
     _fields_ = [
@@ -2773,7 +2754,6 @@ class sPorD_reg(atomic_reg):
     rsvd3: int
 
     length: int = 512
-
 
 
 class RQ_DQ_reg(atomic_reg):
@@ -2961,7 +2941,6 @@ class RQ_DQ_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sRQ_sDQ_reg(atomic_reg):
     OP_NAME = "sRQ&sDQ"
     _fields_ = [
@@ -3019,7 +2998,6 @@ class sRQ_sDQ_reg(atomic_reg):
     opd2_addr: int
 
     length: int = 256
-
 
 
 class SG_reg(atomic_reg):
@@ -3207,7 +3185,6 @@ class SG_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sSG_reg(atomic_reg):
     OP_NAME = "sSG"
     _fields_ = [
@@ -3273,7 +3250,6 @@ class sSG_reg(atomic_reg):
     opd3_addr: int
 
     length: int = 384
-
 
 
 class SGL_reg(atomic_reg):
@@ -3461,7 +3437,6 @@ class SGL_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sSGL_reg(atomic_reg):
     OP_NAME = "sSGL"
     _fields_ = [
@@ -3523,7 +3498,6 @@ class sSGL_reg(atomic_reg):
     rsvd3: int
 
     length: int = 384
-
 
 
 class CW_BC_reg(atomic_reg):
@@ -3711,7 +3685,6 @@ class CW_BC_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sCW_sBC_reg(atomic_reg):
     OP_NAME = "sCW&sBC"
     _fields_ = [
@@ -3757,7 +3730,6 @@ class sCW_sBC_reg(atomic_reg):
     opd0_addr: int
 
     length: int = 256
-
 
 
 class LAR_reg(atomic_reg):
@@ -3817,7 +3789,6 @@ class LAR_reg(atomic_reg):
     length: int = 128
 
 
-
 class SYS_reg(atomic_reg):
     OP_NAME = "SYS"
     _fields_ = [
@@ -3849,7 +3820,6 @@ class SYS_reg(atomic_reg):
     length: int = 128
 
 
-
 class SYSID_reg(atomic_reg):
     OP_NAME = "SYSID"
     _fields_ = [
@@ -3875,7 +3845,6 @@ class SYSID_reg(atomic_reg):
     length: int = 128
 
 
-
 class SYS_TR_ACC_reg(atomic_reg):
     OP_NAME = "SYS_TR_ACC"
     _fields_ = [
@@ -3899,7 +3868,6 @@ class SYS_TR_ACC_reg(atomic_reg):
     imm1: int
 
     length: int = 128
-
 
 
 class RAND_reg(atomic_reg):
@@ -4087,7 +4055,6 @@ class RAND_reg(atomic_reg):
     length: int = 1024
 
 
-
 class DMA_tensor_0x000__reg(atomic_reg):
     OP_NAME = "DMA_tensor（0x000）"
     _fields_ = [
@@ -4191,7 +4158,6 @@ class DMA_tensor_0x000__reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_matrix_reg(atomic_reg):
     OP_NAME = "DMA_matrix"
     _fields_ = [
@@ -4287,7 +4253,6 @@ class DMA_matrix_reg(atomic_reg):
     localmem_mask_h32: int
 
     length: int = 768
-
 
 
 class DMA_masked_select_reg(atomic_reg):
@@ -4388,13 +4353,14 @@ class DMA_masked_select_reg(atomic_reg):
 
     length: int = 768
 
-
     @property
     def src_hsize_src_wsize_high(self) -> int:
         return self["src_hsize/src_wsize_high"]
+
     @property
     def dst_hsize_dst_wsize_high(self) -> int:
         return self["dst_hsize/dst_wsize_high"]
+
 
 class DMA_general_reg(atomic_reg):
     OP_NAME = "DMA_general"
@@ -4492,10 +4458,10 @@ class DMA_general_reg(atomic_reg):
 
     length: int = 768
 
-
     @property
     def src_cstride_move_length_(self) -> int:
         return self["src_cstride(move length)"]
+
 
 class DMA_cw_transpose_reg(atomic_reg):
     OP_NAME = "DMA_cw_transpose"
@@ -4592,7 +4558,6 @@ class DMA_cw_transpose_reg(atomic_reg):
     localmem_mask_h32: int
 
     length: int = 768
-
 
 
 class DMA_nonzero_reg(atomic_reg):
@@ -4693,10 +4658,10 @@ class DMA_nonzero_reg(atomic_reg):
 
     length: int = 768
 
-
     @property
     def dst_nstride_base_i_(self) -> int:
         return self["dst_nstride（base_i）"]
+
 
 class sDMA_sys_reg(atomic_reg):
     OP_NAME = "sDMA_sys"
@@ -4741,7 +4706,6 @@ class sDMA_sys_reg(atomic_reg):
     constant_value: int
 
     length: int = 128
-
 
 
 class DMA_gather_reg(atomic_reg):
@@ -4841,7 +4805,6 @@ class DMA_gather_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_scatter_reg(atomic_reg):
     OP_NAME = "DMA_scatter"
     _fields_ = [
@@ -4939,7 +4902,6 @@ class DMA_scatter_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_reverse_reg(atomic_reg):
     OP_NAME = "DMA_reverse"
     _fields_ = [
@@ -5035,7 +4997,6 @@ class DMA_reverse_reg(atomic_reg):
     localmem_mask_h32: int
 
     length: int = 768
-
 
 
 class DMA_compress_reg(atomic_reg):
@@ -5141,7 +5102,6 @@ class DMA_compress_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_decompress__reg(atomic_reg):
     OP_NAME = "DMA_decompress "
     _fields_ = [
@@ -5243,7 +5203,6 @@ class DMA_decompress__reg(atomic_reg):
     localmem_mask_h32: int
 
     length: int = 768
-
 
 
 class DMA_lossy_compress_reg(atomic_reg):
@@ -5349,7 +5308,6 @@ class DMA_lossy_compress_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_lossy_decompress_reg(atomic_reg):
     OP_NAME = "DMA_lossy_decompress"
     _fields_ = [
@@ -5453,7 +5411,6 @@ class DMA_lossy_decompress_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_randmask_reg(atomic_reg):
     OP_NAME = "DMA_randmask"
     _fields_ = [
@@ -5555,7 +5512,6 @@ class DMA_randmask_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_tansfer_reg(atomic_reg):
     OP_NAME = "DMA_tansfer"
     _fields_ = [
@@ -5652,6 +5608,7 @@ class DMA_tansfer_reg(atomic_reg):
 
     length: int = 768
 
+
 class CDMA_send_reg(atomic_reg):
     OP_NAME = "CDMA_send"
     _fields_ = [
@@ -5696,6 +5653,7 @@ class CDMA_send_reg(atomic_reg):
     src_start_addr_l32: int
 
     length: int = 256
+
 
 class CDMA_read_reg(atomic_reg):
     OP_NAME = "CDMA_read"
@@ -5760,6 +5718,7 @@ class CDMA_read_reg(atomic_reg):
     dst_start_addr_l32: int
 
     length: int = 512
+
 
 class CDMA_write_reg(atomic_reg):
     OP_NAME = "CDMA_write"
@@ -5838,11 +5797,11 @@ class CDMA_general_reg(atomic_reg):
         ("reserved", ctypes.c_uint64, 1),
         ("src_data_format", ctypes.c_uint64, 4),
         ("src_start_addr_h13", ctypes.c_uint64, 13),
-        ("reserved", ctypes.c_uint64, 3), # 32bit
+        ("reserved", ctypes.c_uint64, 3),  # 32bit
         ("dst_start_addr_h13", ctypes.c_uint64, 13),
         ("reserved", ctypes.c_uint64, 19),
         ("cmd_length", ctypes.c_uint64, 32),
-        ("src_start_addr_l32", ctypes.c_uint64, 32), # constant_value
+        ("src_start_addr_l32", ctypes.c_uint64, 32),  # constant_value
         ("dst_start_addr_l32", ctypes.c_uint64, 32),
         ("reserved", ctypes.c_uint64, 32),
         ("reserved", ctypes.c_uint64, 32),
@@ -5870,6 +5829,7 @@ class CDMA_general_reg(atomic_reg):
 
     length: int = 256
 
+
 class CDMA_receive_reg(atomic_reg):
     OP_NAME = "CDMA_receive"
     _fields_ = [
@@ -5881,7 +5841,7 @@ class CDMA_receive_reg(atomic_reg):
         ("cmd_special_function", ctypes.c_uint64, 3),
         ("reserved", ctypes.c_uint64, 5),
         ("dst_start_addr_h13", ctypes.c_uint64, 13),
-        ("reduce_op", ctypes.c_uint64, 3), # 32bit
+        ("reduce_op", ctypes.c_uint64, 3),  # 32bit
         ("dst_nstride", ctypes.c_uint64, 32),
         ("dst_cstride", ctypes.c_uint64, 32),
         ("dst_hstride", ctypes.c_uint64, 32),
@@ -5925,7 +5885,7 @@ class CDMA_lossy_compress_reg(atomic_reg):
         ("reserved", ctypes.c_uint64, 1),
         ("src_data_format", ctypes.c_uint64, 4),
         ("src_start_addr_h13", ctypes.c_uint64, 13),
-        ("reduce_op", ctypes.c_uint64, 3), # 32bit
+        ("reduce_op", ctypes.c_uint64, 3),  # 32bit
         ("src_nstride", ctypes.c_uint64, 32),
         ("src_cstride", ctypes.c_uint64, 32),
         ("src_hstride", ctypes.c_uint64, 32),
@@ -5973,7 +5933,7 @@ class CDMA_lossy_decompress_reg(atomic_reg):
         ("reserved", ctypes.c_uint64, 1),
         ("src_data_format", ctypes.c_uint64, 4),
         ("src_start_addr_h13", ctypes.c_uint64, 13),
-        ("reduce_op", ctypes.c_uint64, 3), # 32bit
+        ("reduce_op", ctypes.c_uint64, 3),  # 32bit
         ("src_nstride", ctypes.c_uint64, 32),
         ("src_cstride", ctypes.c_uint64, 32),
         ("src_hstride", ctypes.c_uint64, 32),
@@ -6017,7 +5977,7 @@ class sCDMA_sys_reg(atomic_reg):
         ("reserved", ctypes.c_uint64, 2),
         ("cmd_type", ctypes.c_uint64, 4),
         ("cmd_special_function", ctypes.c_uint64, 3),
-        ("reserved", ctypes.c_uint64, 21), # 32bit
+        ("reserved", ctypes.c_uint64, 21),  # 32bit
         ("constant_value_l32", ctypes.c_uint64, 32),
         ("constant_value_h32", ctypes.c_uint64, 32),
         ("reg_sel", ctypes.c_uint64, 4),
@@ -6037,6 +5997,7 @@ class sCDMA_sys_reg(atomic_reg):
 
     length: int = 128
 
+
 class CDMA_tcp_send_reg(atomic_reg):
     OP_NAME = "CDMA_tcp_send"
     _fields_ = [
@@ -6047,7 +6008,7 @@ class CDMA_tcp_send_reg(atomic_reg):
         ("cmd_type", ctypes.c_uint64, 4),
         ("buffer_length", ctypes.c_uint64, 16),
         ("breakpoint", ctypes.c_uint64, 1),
-        ("reserved", ctypes.c_uint64, 7), # 32bit
+        ("reserved", ctypes.c_uint64, 7),  # 32bit
         ("frame_length", ctypes.c_uint64, 16),
         ("reserved", ctypes.c_uint64, 16),
         ("buffer_addr_l32", ctypes.c_uint64, 32),
@@ -6071,6 +6032,7 @@ class CDMA_tcp_send_reg(atomic_reg):
 
     length: int = 128
 
+
 class CDMA_tcp_rcv_reg(atomic_reg):
     OP_NAME = "CDMA_tcp_rcv"
     _fields_ = [
@@ -6080,7 +6042,7 @@ class CDMA_tcp_rcv_reg(atomic_reg):
         ("cmd_type", ctypes.c_uint64, 4),
         ("buffer_length", ctypes.c_uint64, 16),
         ("breakpoint", ctypes.c_uint64, 1),
-        ("reserved", ctypes.c_uint64, 7), # 32bit
+        ("reserved", ctypes.c_uint64, 7),  # 32bit
         ("reserved", ctypes.c_uint64, 32),
         ("buffer_addr_l32", ctypes.c_uint64, 32),
         ("buffer_addr_h13", ctypes.c_uint64, 8),
@@ -6101,6 +6063,7 @@ class CDMA_tcp_rcv_reg(atomic_reg):
 
     length: int = 128
 
+
 class CDMA_tcp_send_wb_reg(atomic_reg):
     OP_NAME = "CDMA_tcp_send_wb"
     _fields_ = [
@@ -6108,7 +6071,7 @@ class CDMA_tcp_send_wb_reg(atomic_reg):
         ("own", ctypes.c_uint64, 1),
         ("FD", ctypes.c_uint64, 1),
         ("LD", ctypes.c_uint64, 1),
-        ("reserved", ctypes.c_uint64, 28), # 32bit
+        ("reserved", ctypes.c_uint64, 28),  # 32bit
         ("reserved", ctypes.c_uint64, 32),
         ("reserved", ctypes.c_uint64, 32),
         ("reserved", ctypes.c_uint64, 32),
@@ -6125,6 +6088,7 @@ class CDMA_tcp_send_wb_reg(atomic_reg):
 
     length: int = 128
 
+
 class CDMA_tcp_rcv_wb_reg(atomic_reg):
     OP_NAME = "CDMA_tcp_rcv_wb"
     _fields_ = [
@@ -6133,7 +6097,7 @@ class CDMA_tcp_rcv_wb_reg(atomic_reg):
         ("FD", ctypes.c_uint64, 1),
         ("LD", ctypes.c_uint64, 1),
         ("MAC_filter_status", ctypes.c_uint64, 18),
-        ("reserved", ctypes.c_uint64, 10), # 32bit
+        ("reserved", ctypes.c_uint64, 10),  # 32bit
         ("packet_status", ctypes.c_uint64, 9),
         ("error_summary", ctypes.c_uint64, 1),
         ("packet_length", ctypes.c_uint64, 14),
@@ -6159,7 +6123,6 @@ class CDMA_tcp_rcv_wb_reg(atomic_reg):
 
 
 op_class_dic: Dict[str, Type[atomic_reg]] = {
-
     "CONV": CONV_reg,
     "sCONV": sCONV_reg,
     "CONV_BW": CONV_BW_reg,

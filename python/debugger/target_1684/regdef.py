@@ -409,7 +409,6 @@ op_class_dic: Dict[str, Type[atomic_reg]] = {
     "dma_tensor": dma_tensor_reg,
 }
 
-
 _, _, dma_bitwidths = zip(*dma_cmd_reg._fields_)
 _, _, tiu_bitwidths = zip(*tiu_cmd_reg._fields_)
 

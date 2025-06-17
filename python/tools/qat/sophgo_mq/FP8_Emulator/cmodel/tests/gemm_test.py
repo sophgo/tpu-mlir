@@ -1,5 +1,5 @@
-#------------------------------------------------------------------------------ 
-# Copyright (c) 2023, Intel Corporation - All rights reserved. 
+#------------------------------------------------------------------------------
+# Copyright (c) 2023, Intel Corporation - All rights reserved.
 # This file is part of FP8-Emulation-Toolkit
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -10,17 +10,18 @@
 import torch
 from mpemu.cmodel import simple
 
+
 def get_grads(variables):
     return [var.grad.clone() for var in variables]
 
-m=128 #356320 #356305
-n=120 #256
-k=576 #128 #2020
+
+m = 128  #356320 #356305
+n = 120  #256
+k = 576  #128 #2020
 
 a = torch.rand((m, k), dtype=torch.float32)
 b = torch.rand((n, k), dtype=torch.float32)
 c = torch.zeros((m, n), dtype=torch.float32)
-
 
 a64 = a.to(dtype=torch.float64, copy=True)
 b64 = b.to(dtype=torch.float64, copy=True)

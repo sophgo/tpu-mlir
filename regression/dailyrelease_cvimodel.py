@@ -16,12 +16,14 @@ from main_entry import Status
 from run_model import MODEL_RUN
 from chip import *
 
+
 def move_model(dir, dst_model):
     files = os.listdir(dir)
     for file in files:
         if file.split(".")[-1] == "cvimodel":
             shutil.move(os.path.join(dir, file), dst_model)
             return
+
 
 def cmd_exec(cmd_str):
     print("[Running]: {}".format(cmd_str))
@@ -31,9 +33,12 @@ def cmd_exec(cmd_str):
     else:
         raise RuntimeError("[!Error]: {}".format(cmd_str))
 
+
 logger = logging.getLogger()
 
+
 class CviModelRegressor:
+
     def __init__(self, dest_dir, save_interval):
         self.disable_thread = False
         self.current_dir = os.getcwd()
@@ -73,9 +78,9 @@ class CviModelRegressor:
         regressor = MODEL_RUN(model_name,
                               chip,
                               self.test_type,
-                              save_log = True,
-                              disable_thread = self.disable_thread,
-                              debug = True)
+                              save_log=True,
+                              disable_thread=self.disable_thread,
+                              debug=True)
         ret = regressor.run_full()
         finished_list.append({
             "name": case_name,
@@ -137,9 +142,10 @@ class CviModelRegressor:
             if self.store_model and chip == "cv181x":
                 idx = self.cv182x_idx
 
-
-            temp_save_dir_bf16 = os.path.expandvars(f"$REGRESSION_PATH/regression_out/cvimodel_regression_bf16_{chip}")
-            temp_save_dir_int8 = os.path.expandvars(f"$REGRESSION_PATH/regression_out/cvimodel_regression_int8_{chip}")
+            temp_save_dir_bf16 = os.path.expandvars(
+                f"$REGRESSION_PATH/regression_out/cvimodel_regression_bf16_{chip}")
+            temp_save_dir_int8 = os.path.expandvars(
+                f"$REGRESSION_PATH/regression_out/cvimodel_regression_int8_{chip}")
             os.makedirs(temp_save_dir_int8, exist_ok=True)
             store_bf16 = False
             if chip == "cv182x" or chip == "cv183x":
@@ -157,26 +163,33 @@ class CviModelRegressor:
                     if file.split(".")[-1] == "cvimodel":
                         quant_type = file.split(f"_{chip}_")[-1].split(".cvimodel")[0]
                         if quant_type == "int8_sym":
-                            shutil.copy(os.path.join(reg_dir, file), os.path.join(temp_save_dir_int8, f"{model}_bs1.cvimodel"))
+                            shutil.copy(os.path.join(reg_dir, file),
+                                        os.path.join(temp_save_dir_int8, f"{model}_bs1.cvimodel"))
                         elif quant_type == "bf16":
                             if store_bf16:
-                                shutil.copy(os.path.join(reg_dir, file), os.path.join(temp_save_dir_bf16, f"{model}_bs1.cvimodel"))
+                                shutil.copy(
+                                    os.path.join(reg_dir, file),
+                                    os.path.join(temp_save_dir_bf16, f"{model}_bs1.cvimodel"))
                         else:
-                            assert(0 and f"unknown quant_type:{quant_type}")
+                            assert (0 and f"unknown quant_type:{quant_type}")
                 #copy input
                 input_npz = f"{model}_in_f32.npz"
                 if (os.path.exists(os.path.join(reg_dir, input_npz))):
-                    shutil.copy(os.path.join(reg_dir, input_npz), os.path.join(temp_save_dir_int8, input_npz))
+                    shutil.copy(os.path.join(reg_dir, input_npz),
+                                os.path.join(temp_save_dir_int8, input_npz))
                     if store_bf16:
-                        shutil.copy(os.path.join(reg_dir, input_npz), os.path.join(temp_save_dir_bf16, input_npz))
+                        shutil.copy(os.path.join(reg_dir, input_npz),
+                                    os.path.join(temp_save_dir_bf16, input_npz))
                 #copy output
                 output_int8_npz = f"{model}_{chip}_int8_sym_model_outputs.npz"
                 if (os.path.exists(os.path.join(reg_dir, output_int8_npz))):
-                    shutil.copy(os.path.join(reg_dir, output_int8_npz), os.path.join(temp_save_dir_int8, f"{model}_bs1_out_all.npz"))
+                    shutil.copy(os.path.join(reg_dir, output_int8_npz),
+                                os.path.join(temp_save_dir_int8, f"{model}_bs1_out_all.npz"))
                 if store_bf16:
                     output_bf16_npz = f"{model}_{chip}_bf16_model_outputs.npz"
                     if (os.path.exists(os.path.join(reg_dir, output_bf16_npz))):
-                        shutil.copy(os.path.join(reg_dir, output_bf16_npz), os.path.join(temp_save_dir_bf16, f"{model}_bs1_out_all.npz"))
+                        shutil.copy(os.path.join(reg_dir, output_bf16_npz),
+                                    os.path.join(temp_save_dir_bf16, f"{model}_bs1_out_all.npz"))
             des_gz_int8 = os.path.join(self.dest_dir, f"cvimodel_regression_int8_{chip}.tar.gz")
             tar_cmd_int8 = f"tar zcvf {des_gz_int8} cvimodel_regression_int8_{chip}"
             cmd_exec(tar_cmd_int8)
@@ -191,6 +204,7 @@ class CviModelRegressor:
         self.run_nets()
         if self.store_model:
             self.pack_models()
+
 
 class CviSampleGenerator:
 
@@ -214,7 +228,7 @@ class CviSampleGenerator:
         print(f"run_sample_net {info}")
         #set the file for saving output stream
         log_filename = f"sample_{chip}_{model}.log"
-        file_handler = logging.FileHandler(filename = log_filename, mode = "w")
+        file_handler = logging.FileHandler(filename=log_filename, mode="w")
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(logging.Formatter('%(message)s'))
         logger.addHandler(file_handler)
@@ -239,7 +253,6 @@ class CviSampleGenerator:
             shutil.rmtree(dir)
         else:
             raise RuntimeError("[!Error]: {}".format(f"{info} Failed."))
-
 
     def generate_chip_models(self, chip):
         tmp_dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/cvimodel_samples")
@@ -320,7 +333,7 @@ if __name__ == "__main__":
     t2 = time.time()
     print("Regression time cost(s):", t2 - t1)
     if count_err != 0:
-        assert(0 and "Regression Failed")
+        assert (0 and "Regression Failed")
     #clear
     shutil.rmtree(dir)
     os.makedirs(dir, exist_ok=True)

@@ -7,11 +7,12 @@
 #
 # ==============================================================================
 
-
 import abc
 
+
 class base_class(metaclass=abc.ABCMeta):
-    def __init__(self,args):
+
+    def __init__(self, args):
         self.init(args)
 
     @abc.abstractmethod
@@ -19,7 +20,7 @@ class base_class(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def update(self, idx, outputs, img_paths = None, labels = None, ratios = None):
+    def update(self, idx, outputs, img_paths=None, labels=None, ratios=None):
         pass
 
     @abc.abstractmethod

@@ -20,27 +20,38 @@ from bmprofile_utils import *
 
 import re
 
+
 class SendInfo:
+
     def __init__(self, api, begin_usec, gdma_data, bdc_data, dyn_data, dyn_extra, info=""):
-        self.api=api
+        self.api = api
         self.begin_usec = begin_usec
         self.gdma_data = gdma_data
         self.bdc_data = bdc_data
         self.dyn_data = dyn_data
         self.dyn_extra = dyn_extra
         self.info = info
+
+
 class SyncInfo:
+
     def __init__(self, begin_usec, end_usec, info=""):
         self.begin_usec = begin_usec
         self.end_usec = end_usec
         self.info = info
+
+
 class MarkInfo:
+
     def __init__(self, mark_id, begin_usec, end_usec, info=""):
         self.mark_id = mark_id
         self.begin_usec = begin_usec
         self.end_usec = end_usec
         self.info = info
+
+
 class CopyInfo:
+
     def __init__(self, src_addr, dst_addr, dir, size, begin_usec, end_usec, info=""):
         self.src_addr = src_addr
         self.dst_addr = dst_addr
@@ -49,7 +60,10 @@ class CopyInfo:
         self.begin_usec = begin_usec
         self.end_usec = end_usec
         self.info = info
+
+
 class MemInfo:
+
     def __init__(self, device_addr, size, type, begin_usec, end_usec, info=""):
         self.device_addr = device_addr
         self.size = size
@@ -60,24 +74,29 @@ class MemInfo:
 
 
 def parse_fixed_length_items(raw_data, FixedType):
+
     class FixedItemWrapper():
+
         def __str__(self):
-            kv_list=[f"{k}:{getattr(self, k)}" for k in self._fields_]
+            kv_list = [f"{k}:{getattr(self, k)}" for k in self._fields_]
             kv_list.sort()
             return ",".join(kv_list)
+
         def add_kv(self, k, v):
             self._fields_.append(k)
             setattr(self, k, v)
+
     tlen = ct.sizeof(FixedType)
     items = []
     while True:
         num_items = len(items)
-        if len(raw_data) - num_items*tlen == 0:
+        if len(raw_data) - num_items * tlen == 0:
             break
-        if len(raw_data)<(num_items+1)*tlen:
-            logging.warn("raw_data may be incomplete when parsing fixed length items: " + FixedType.__name__)
+        if len(raw_data) < (num_items + 1) * tlen:
+            logging.warn("raw_data may be incomplete when parsing fixed length items: " +
+                         FixedType.__name__)
             break
-        item_data = raw_data[num_items*tlen: (num_items+1)*tlen]
+        item_data = raw_data[num_items * tlen:(num_items + 1) * tlen]
         raw_item = ct.cast(item_data, ct.POINTER(FixedType)).contents
         item = FixedItemWrapper()
         for key in raw_item._fields_:
@@ -86,23 +105,29 @@ def parse_fixed_length_items(raw_data, FixedType):
         items.append(item)
     return items
 
+
 def parse_dyn_data(raw_data):
     return parse_fixed_length_items(raw_data, DynRecord)
+
 
 def parse_summary(raw_data):
     return parse_fixed_length_items(raw_data, IterSummary)[0]
 
+
 def parse_monitor_bd(raw_data, archlib):
     return parse_fixed_length_items(raw_data, archlib.BDProfileFormat)
+
 
 def parse_monitor_gdma(raw_data, archlib):
     return parse_fixed_length_items(raw_data, archlib.GDMAProfileFormat)
 
+
 def parse_monitor_cdma(raw_data, archlib):
     return parse_fixed_length_items(raw_data, archlib.CDMAProfileFormat)
 
+
 def parse_data_blocks(filename):
-    BlockItem=namedtuple("BlockItem", "type content")
+    BlockItem = namedtuple("BlockItem", "type content")
     if not os.path.isfile(filename):
         return None
     blocks = []
@@ -118,6 +143,7 @@ def parse_data_blocks(filename):
             blocks.append(BlockItem(block_type, block_content))
     return blocks
 
+
 def parse_dyn_extra(raw_data, serialize=False):
     extra_data = dict()
     if serialize:
@@ -126,14 +152,15 @@ def parse_dyn_extra(raw_data, serialize=False):
     while True:
         if len(raw_data) == 0:
             break
-        if len(raw_data)<head_len:
+        if len(raw_data) < head_len:
             logging.warn("raw_data may be incomplete when parsing extra header")
             break
         header_data = raw_data[:head_len]
         profile_id, extra_type, extra_len = st.unpack("III", header_data)
         raw_data = raw_data[head_len:]
-        if len(raw_data)<extra_len:
-            logging.warn("raw_data may be incomplete when parsing extra data: extra_len="+str(extra_len))
+        if len(raw_data) < extra_len:
+            logging.warn("raw_data may be incomplete when parsing extra data: extra_len=" +
+                         str(extra_len))
             break
         content = raw_data[:extra_len]
         raw_data = raw_data[extra_len:]
@@ -147,13 +174,14 @@ def parse_dyn_extra(raw_data, serialize=False):
                 extra_data[profile_id].append(extra_item)
     return extra_data
 
+
 def parse_bmlib_extra(raw_data):
     extra_data = []
     head_len = 12
     while True:
         if len(raw_data) == 0:
             break
-        if len(raw_data)<head_len:
+        if len(raw_data) < head_len:
             logging.warn("raw_data may be incomplete when parsing extra header")
             break
         header_data = raw_data[:head_len]
@@ -161,8 +189,9 @@ def parse_bmlib_extra(raw_data):
         if extra_len == 0:
             continue
         raw_data = raw_data[head_len:]
-        if len(raw_data)<extra_len:
-            logging.warn("raw_data may be incomplete when parsing extra data: extra_len="+str(extra_len))
+        if len(raw_data) < extra_len:
+            logging.warn("raw_data may be incomplete when parsing extra data: extra_len=" +
+                         str(extra_len))
             break
         content = str(raw_data[:extra_len], encoding="utf-8")
         raw_data = raw_data[extra_len:]
@@ -170,7 +199,9 @@ def parse_bmlib_extra(raw_data):
         extra_data.append([type, index, content])
     return extra_data
 
+
 class BMLibSummary:
+
     def merge(self, other):
         self.begin_usec = min(self.begin_usec, other.begin_usec)
         self.end_usec = max(self.end_usec, other.end_usec)
@@ -188,8 +219,7 @@ class BMLibSummary:
 
     def __init__(self, raw_data, infile, archlib):
         interval_len = 16
-        self.begin_usec, self.end_usec = st.unpack(
-            "QQ", raw_data[0:interval_len])
+        self.begin_usec, self.end_usec = st.unpack("QQ", raw_data[0:interval_len])
         raw_data = raw_data[interval_len:]
         self.send_info = []
         self.sync_info = []
@@ -211,7 +241,8 @@ class BMLibSummary:
             gdma_data = None
             bdc_data = None
             dyn_extra = None
-            self.send_info.append(SendInfo(api, begin_usec, gdma_data, bdc_data, dyn_data, dyn_extra))
+            self.send_info.append(
+                SendInfo(api, begin_usec, gdma_data, bdc_data, dyn_data, dyn_extra))
         num_sync = st.unpack("I", raw_data[0:4])[0]
         raw_data = raw_data[4:]
         for i in range(num_sync):
@@ -226,7 +257,6 @@ class BMLibSummary:
                 mark_id, begin_usec, end_usec = st.unpack("QQQ", raw_data[0:24])
                 self.mark_info.append(MarkInfo(mark_id, begin_usec, end_usec))
                 raw_data = raw_data[24:]
-
 
         if len(raw_data) > 0:
             num_copy = st.unpack("I", raw_data[0:4])[0]
@@ -252,10 +282,12 @@ class BMLibSummary:
             BMLibExtraType.MARK_EXTRA: self.mark_info,
             BMLibExtraType.MEM_EXTRA: self.mem_info,
         }
-        for t,i,v in extra:
+        for t, i, v in extra:
             data_dict[t][i].info = v
 
+
 class IterRecord():
+
     def __init__(self):
         self.dyn_data = []
         self.dyn_extra = dict()
@@ -267,23 +299,26 @@ class IterRecord():
         self.command_info = None
         self.subnet_info = None
         self.bmlib_extra = None
+
     def merge(self, other):
         self.summary.merge(other.summary)
         for key, value in other.dyn_extra.items():
             if key in self.dyn_data:
-                self.dyn_data[key]+= value
+                self.dyn_data[key] += value
             else:
                 self.dyn_data[key] = value
         self.monitor_bd += other.monitor_bd
         self.monitor_gdma += other.monitor_gdma
         self.monitor_sdma += other.monitor_sdma
         self.dyn_data = sorted(self.dyn_data, key=lambda i: i.begin_cycle)
-        self.monitor_bd= sorted(self.monitor_bd, key=lambda i: i.inst_start_time)
-        self.monitor_gdma= sorted(self.monitor_gdma, key=lambda i: i.inst_start_time)
-        self.monitor_sdma= sorted(self.monitor_sdma, key=lambda i: i.inst_start_time)
+        self.monitor_bd = sorted(self.monitor_bd, key=lambda i: i.inst_start_time)
+        self.monitor_gdma = sorted(self.monitor_gdma, key=lambda i: i.inst_start_time)
+        self.monitor_sdma = sorted(self.monitor_sdma, key=lambda i: i.inst_start_time)
+
 
 class NetStatParser:
     layer_prefix = "LAYER_"
+
     def __parse_gdma_item(self, line):
         # ST_5_N|GDMA_TENSOR|s:50216|b:3|g:5|e:52576|t:2361|dr:1|sz:96768|bw:38.17
         items = line.split("|")
@@ -295,17 +330,17 @@ class NetStatParser:
         else:
             tensor_id = int(re.search(r"\d+", line).group())
         op_type = items[1]
-        start_time = int(items[2].split(":")[-1])/1000.0 + self.time_offset
+        start_time = int(items[2].split(":")[-1]) / 1000.0 + self.time_offset
         bd_id = int(items[3].split(":")[-1])
         gdma_id = int(items[4].split(":")[-1])
-        end_time = int(items[5].split(":")[-1])/1000.0 + self.time_offset
-        cost_time = int(items[6].split(":")[-1])/1000.0
+        end_time = int(items[5].split(":")[-1]) / 1000.0 + self.time_offset
+        cost_time = int(items[6].split(":")[-1]) / 1000.0
         direction = int(items[7].split(":")[-1])
         byte_size = int(items[8].split(":")[-1])
-        if len(items)>9:
+        if len(items) > 9:
             bandwidth = float(items[9].split(":")[-1])
         else:
-            bandwidth = float(byte_size)/(1000*cost_time)
+            bandwidth = float(byte_size) / (1000 * cost_time)
         self.last_end_time = max(self.last_end_time, end_time)
         self.gdma_nodes.append(
             GDMASimRecord(
@@ -321,8 +356,7 @@ class NetStatParser:
                 direction=direction,
                 byte_size=byte_size,
                 bandwidth=bandwidth,
-            )
-        )
+            ))
 
     def __parse_bd_item(self, line):
         # LAYER_0|CONV|s:50216|b:4|g:4|e:83974|t:33759
@@ -330,25 +364,23 @@ class NetStatParser:
         layer_id = -1
         if items[0].startswith(self.layer_prefix):
             layer_id = int(items[0][len(self.layer_prefix):])
-        if len(items)<7:
+        if len(items) < 7:
             return
         op_type = items[1]
-        start_time = int(items[2].split(":")[-1])/1000.0 + self.time_offset
+        start_time = int(items[2].split(":")[-1]) / 1000.0 + self.time_offset
         bd_id = int(items[3].split(":")[-1])
         gdma_id = int(items[4].split(":")[-1])
-        end_time = int(items[5].split(":")[-1])/1000.0 + self.time_offset
-        cost_time = int(items[6].split(":")[-1])/1000.0
+        end_time = int(items[5].split(":")[-1]) / 1000.0 + self.time_offset
+        cost_time = int(items[6].split(":")[-1]) / 1000.0
         self.last_end_time = max(self.last_end_time, end_time)
         self.bd_nodes.append(
-            BDSimRecord(
-                layer_id=layer_id,
-                op_type=op_type,
-                bd_id=bd_id,
-                gdma_id=gdma_id,
-                start_time=start_time,
-                end_time=end_time,
-                cost_time=cost_time)
-            )
+            BDSimRecord(layer_id=layer_id,
+                        op_type=op_type,
+                        bd_id=bd_id,
+                        gdma_id=gdma_id,
+                        start_time=start_time,
+                        end_time=end_time,
+                        cost_time=cost_time))
 
     def __parse_line(self, line):
         if "dr" in line:
@@ -384,8 +416,8 @@ class NetStatParser:
                     start_time = min(start_time, sim_node.start_time)
                     end_time = max(end_time, sim_node.end_time)
                     gdma_idx += 1
-            if len(subnet.bd_nodes)>0 or len(subnet.gdma_nodes)>0:
-                subnet.sim_info=(start_time, end_time)
+            if len(subnet.bd_nodes) > 0 or len(subnet.gdma_nodes) > 0:
+                subnet.sim_info = (start_time, end_time)
 
     def parse(self, global_info, filename):
         # s: start_time, b: bd_id, g: gdma_id, e: end_time, t: cmd cost_time, dr: direction, sz: memsize, bw: bandwidth
@@ -417,7 +449,9 @@ class NetStatParser:
         self.__update_global_data(global_info, update_time)
         return global_info
 
+
 class BMProfileParser:
+
     def __init__(self):
         self.global_filename = "global.profile"
         self.mlir_filename = "final.mlir"
@@ -427,13 +461,17 @@ class BMProfileParser:
     def match(self, pattern):
         self.m = pattern.match(self.line)
         return self.m is not None
+
     def str_val(self, name):
         return self.m.group(name)
+
     def int_val(self, name):
         new_name = self.str_val(name).replace(",", "")
         return int(new_name)
+
     def enum_val(self, name, enum_type):
         return enum_cast(self.int_val(name), enum_type)
+
     def shape_val(self, name):
         shape_str = self.str_val(name)
         shape_str = shape_str.replace("x", ",")
@@ -456,14 +494,16 @@ class BMProfileParser:
     def __parse_global_file(self, filename):
         assert os.path.isfile(filename), filename
         re_subnet_info_start = re.compile(r'\[bmprofile\] subnet_id (?P<subnet_id>\d+) start')
-        re_group_start = re.compile(r'.*start local memory usage of group (?P<group_id>\d+) subnet_id (?P<subnet_id>\d+)')
+        re_group_start = re.compile(
+            r'.*start local memory usage of group (?P<group_id>\d+) subnet_id (?P<subnet_id>\d+)')
         re_layer_local_info = re_key_value("", "layer_id total_size feature_size weight_size")
         re_start_parellel = re.compile(r".*start parallel.")
         re_end_parellel = re.compile(r".*end parallel.")
         re_gdma_node = re_key_value("gdma cmd_id", "bd_id gdma_id gdma_dir gdma_func")
         re_bd_node = re_key_value("bd cmd_id", "bd_id gdma_id bd_func")
 
-        re_tensor_info = re_key_value("", "tensor_id is_in shape dtype is_const gaddr gsize loffset nslice hslice l2addr")
+        re_tensor_info = re_key_value(
+            "", "tensor_id is_in shape dtype is_const gaddr gsize loffset nslice hslice l2addr")
         re_local_layer = re_key_value("local_layer", "layer_id layer_type layer_name")
         re_global_layer = re_key_value("global_layer", "layer_id layer_type layer_name")
         re_gdma_layer = re_key_value("gdma_layer", "gdma_type")
@@ -489,7 +529,7 @@ class BMProfileParser:
         is_mlir = 0
         with open(filename) as f:
             for self.line in f:
-                if len(self.line)==0:
+                if len(self.line) == 0:
                     continue
                 if self.match(re_arch) and self.archlib is None:
                     ginfo.set_arch(self.enum_val("arch", Arch))
@@ -613,47 +653,50 @@ class BMProfileParser:
                     layer_info.is_local = True
                     layer_list.append(layer_info)
                 elif self.match(re_mem_info):
-                    mem_info.append(MemBlock(
-                        addr= self.int_val("addr"),
-                        size = self.int_val("size"),
-                        alloc_time = self.int_val("alloc"),
-                        free_time = self.int_val("free"),
-                        type = self.int_val("mtype"),
-                        desc = self.str_val("desc")
-                    ))
-                ginfo.tiu_period = ginfo.archlib.BDCyclePeriod if ginfo.freq is None or ginfo.archlib.PeriodFixed else 1.0/ginfo.freq
-                ginfo.gdma_period = ginfo.archlib.GDMACyclePeriod if ginfo.freq is None or ginfo.archlib.PeriodFixed else 1.0/ginfo.freq
+                    mem_info.append(
+                        MemBlock(addr=self.int_val("addr"),
+                                 size=self.int_val("size"),
+                                 alloc_time=self.int_val("alloc"),
+                                 free_time=self.int_val("free"),
+                                 type=self.int_val("mtype"),
+                                 desc=self.str_val("desc")))
+                ginfo.tiu_period = ginfo.archlib.BDCyclePeriod if ginfo.freq is None or ginfo.archlib.PeriodFixed else 1.0 / ginfo.freq
+                ginfo.gdma_period = ginfo.archlib.GDMACyclePeriod if ginfo.freq is None or ginfo.archlib.PeriodFixed else 1.0 / ginfo.freq
         return ginfo
 
     def __parse_command_info(self, raw_data):
         if self.archlib.arch_name == "BM1690":
-            header_len = 8*6+4
-            gdma_base, gdma_offset, bd_base, bd_offset, sdma_base, sdma_offset, group_num = st.unpack("QQQQQQI", raw_data[0:header_len])
+            header_len = 8 * 6 + 4
+            gdma_base, gdma_offset, bd_base, bd_offset, sdma_base, sdma_offset, group_num = st.unpack(
+                "QQQQQQI", raw_data[0:header_len])
             # basename = "gdma %x bd %x sdma %x sdma_offset %d group_num %d"
             # print(basename % (gdma_base, bd_base, sdma_base, sdma_offset, group_num))
-            CommandInfo = namedtuple("CommandInfo", "gdma_base gdma_offset bd_base bd_offset sdma_base sdma_offset")
+            CommandInfo = namedtuple(
+                "CommandInfo", "gdma_base gdma_offset bd_base bd_offset sdma_base sdma_offset")
             return CommandInfo(gdma_base, gdma_offset, bd_base, bd_offset, sdma_base, sdma_offset)
         else:
-            header_len = 8*4+4
-            gdma_base, gdma_offset, bd_base, bd_offset, group_num = st.unpack("QQQQI", raw_data[0:header_len])
+            header_len = 8 * 4 + 4
+            gdma_base, gdma_offset, bd_base, bd_offset, group_num = st.unpack(
+                "QQQQI", raw_data[0:header_len])
             group = []
             for i in range(group_num):
-                group.append(st.unpack("II", raw_data[header_len+i*8: header_len+(i+1)*8]))
-            CommandInfo = namedtuple("CommandInfo", "gdma_base gdma_offset bd_base bd_offset group_num group")
+                group.append(st.unpack("II", raw_data[header_len + i * 8:header_len + (i + 1) * 8]))
+            CommandInfo = namedtuple("CommandInfo",
+                                     "gdma_base gdma_offset bd_base bd_offset group_num group")
             return CommandInfo(gdma_base, gdma_offset, bd_base, bd_offset, group_num, group)
 
     def __base_read_command_data(self, base, offset, engine_type, command_num, command_parser):
         basename = "cmd_%x_%d.dat"
-        command_filename = os.path.join(self.in_dir, basename%(base, engine_type.value))
+        command_filename = os.path.join(self.in_dir, basename % (base, engine_type.value))
         if not os.path.isfile(command_filename):
             basename = "cmd_%x_0_%d.dat"
-            command_filename = os.path.join(self.in_dir, basename%(base, engine_type.value))
+            command_filename = os.path.join(self.in_dir, basename % (base, engine_type.value))
         byte_len = command_parser.command_byte_len()
         if not os.path.isfile(command_filename):
             return []
         with open(command_filename, "rb") as f:
             f.seek(offset)
-            raw_data = f.read(command_num*byte_len)
+            raw_data = f.read(command_num * byte_len)
             command_list = command_parser.parse(raw_data, command_num)
         return command_list
 
@@ -667,14 +710,12 @@ class BMProfileParser:
         bd_parser = self.archlib.BDCommandParser()
         gdma_command = self.__base_read_command_data(command_info.gdma_base,
                                                      command_info.gdma_offset,
-                                                     self.archlib.EngineType.GDMA,
-                                                     gdma_num, gdma_parser)
+                                                     self.archlib.EngineType.GDMA, gdma_num,
+                                                     gdma_parser)
         print(f"parsed gdma command num={len(gdma_command)}")
 
-        bd_command = self.__base_read_command_data(command_info.bd_base,
-                                                     command_info.bd_offset,
-                                                     self.archlib.EngineType.BD,
-                                                     bd_num, bd_parser)
+        bd_command = self.__base_read_command_data(command_info.bd_base, command_info.bd_offset,
+                                                   self.archlib.EngineType.BD, bd_num, bd_parser)
         print(f"parsed tiu command num={len(bd_command)}")
         return [gdma_command, bd_command]
 
@@ -686,7 +727,7 @@ class BMProfileParser:
             return next_id_by_width(raw_id, inc, self.archlib.ID_WIDTH)
 
         # fix command
-        if self.archlib.ID_WIDTH>16:
+        if self.archlib.ID_WIDTH > 16:
             delta_id = 0
             last_id = 0
             for c in commands:
@@ -724,7 +765,7 @@ class BMProfileParser:
         for i in range(dyn_idx, len(dyn_node)):
             if cmd_idx >= len(commands):
                 break
-            d = dyn_node[i]        # firmware profile data
+            d = dyn_node[i]  # firmware profile data
             c = commands[cmd_idx]  # perf_monitor data
             if node_id_func(d) == next_id(c.inst_id):
                 c.dynamic = d
@@ -732,7 +773,7 @@ class BMProfileParser:
                 d.pmu_info = c
                 cmd_idx += 1
 
-    def update_relation(self, item:IterRecord, global_data):
+    def update_relation(self, item: IterRecord, global_data):
         # relation between static set node and static command
         gdma_commands = []
         bd_commands = []
@@ -741,8 +782,10 @@ class BMProfileParser:
             if item.subnet_info is not None and item.subnet_info.command_info is None:
                 subnet_info = item.subnet_info
                 subnet_info.command_info = item.command_info
-                assert len(subnet_info.gdma_nodes) == len(command_data[0]) or len(command_data[0]) == 0
-                assert len(subnet_info.bd_nodes) == len(command_data[1]) or len(command_data[1]) == 0
+                assert len(subnet_info.gdma_nodes) == len(command_data[0]) or len(
+                    command_data[0]) == 0
+                assert len(subnet_info.bd_nodes) == len(command_data[1]) or len(
+                    command_data[1]) == 0
                 for i in range(len(command_data[0])):
                     subnet_info.gdma_nodes[i].command = command_data[0][i]
                 for i in range(len(command_data[1])):
@@ -762,7 +805,6 @@ class BMProfileParser:
                     c.command = c
                     c.layer = None
 
-
         # relation between dynamic set id node and dynamic command
         dyn_gdma = []
         dyn_bd = []
@@ -772,7 +814,7 @@ class BMProfileParser:
         monitor_start_time = 0
         if item.dyn_data:
             dyn_data = item.dyn_data
-            assert len(dyn_data)>0
+            assert len(dyn_data) > 0
             dyn_cycle_ns = dyn_data[0].end_cycle
             dyn_base_cycle = dyn_data[0].begin_cycle
             if len(dyn_data) > 1:
@@ -784,11 +826,11 @@ class BMProfileParser:
             for d in dyn_data[1:]:  # skip init record
                 d.pmu_info = None
                 d.sim_info = None
-                d.begin_usec = (d.begin_cycle - dyn_base_cycle)*dyn_cycle_ns/1000
+                d.begin_usec = (d.begin_cycle - dyn_base_cycle) * dyn_cycle_ns / 1000
                 if d.end_cycle == 0xFFFFFFFFFFFFFFFF or d.end_cycle == 0:
                     d.end_usec = d.begin_usec + 0.01
                 else:
-                    d.end_usec = (d.end_cycle - dyn_base_cycle)*dyn_cycle_ns/1000
+                    d.end_usec = (d.end_cycle - dyn_base_cycle) * dyn_cycle_ns / 1000
                 d.extra = extra_data.get(d.profile_id, [])
                 d.info = []
                 d.command = None
@@ -817,7 +859,9 @@ class BMProfileParser:
                     error_dir = "error_data"
                     if not os.path.exists(error_dir):
                         os.mkdir(error_dir)
-                    with open(os.path.join(error_dir, "{}_extra_{}.bin".format(etype, d.profile_id)), "wb") as f:
+                    with open(
+                            os.path.join(error_dir, "{}_extra_{}.bin".format(etype, d.profile_id)),
+                            "wb") as f:
                         f.write(e.content)
 
                 for e in d.extra:
@@ -825,7 +869,7 @@ class BMProfileParser:
                         d.info.append(str(e.content))
                     elif dyn_type == self.archlib.DynRecordType.NODE_SET:
                         if len(e.content) == 0:
-                           continue
+                            continue
                         if d.engine == self.archlib.EngineType.GDMA:
                             try:
                                 d.command = gdma_parser.parse(e.content, 1)[0]
@@ -841,6 +885,7 @@ class BMProfileParser:
 
             if hasattr(item.summary, "send_info"):
                 run_api = [s for s in item.summary.send_info if BMLibApi.will_run_kernel(s.api)]
+
                 def match_layer(layer, wait_node):
                     if hasattr(layer, "gdma_nodes") and layer.gdma_nodes:
                         layer.gdma_nodes += wait_node.gdma_nodes
@@ -881,14 +926,14 @@ class BMProfileParser:
         # calibrate time
         def reset_monitor_time(monitor_data, start_cycle=0):
             monitor_start = 0
-            if len(monitor_data)>0:
+            if len(monitor_data) > 0:
                 monitor_start = monitor_data[0].inst_start_time
             last_start_time = 0
             last_end_time = 0
             fixed_offset = start_cycle
             for n in monitor_data:
                 if n.inst_start_time < last_start_time or n.inst_end_time < last_end_time:
-                    fixed_offset += 1<<32
+                    fixed_offset += 1 << 32
                 last_start_time = n.inst_start_time
                 last_end_time = n.inst_end_time
                 n.add_kv("raw_inst_start_time", n.inst_start_time)
@@ -896,22 +941,23 @@ class BMProfileParser:
                 n.inst_start_time = int(n.inst_start_time - monitor_start + fixed_offset)
                 n.inst_end_time = int(n.inst_end_time - monitor_start + fixed_offset)
 
-        reset_monitor_time(item.monitor_gdma, monitor_start_time/global_data.gdma_period)
-        reset_monitor_time(item.monitor_bd, monitor_start_time/global_data.tiu_period)
+        reset_monitor_time(item.monitor_gdma, monitor_start_time / global_data.gdma_period)
+        reset_monitor_time(item.monitor_bd, monitor_start_time / global_data.tiu_period)
 
         if len(item.monitor_bd) == 0 or len(item.monitor_gdma) == 0:
             return
 
         # assert gdma is always first
-        if len(static_gdma) > 0 and len(static_bd) > 0: # use static info
+        if len(static_gdma) > 0 and len(static_bd) > 0:  # use static info
             for gdma_node in static_gdma:
                 if not hasattr(gdma_node, "pmu_info") or gdma_node.pmu_info is None:
                     continue
-                gdma_start = int(gdma_node.pmu_info.inst_end_time * global_data.gdma_period/global_data.tiu_period)
+                gdma_start = int(gdma_node.pmu_info.inst_end_time * global_data.gdma_period /
+                                 global_data.tiu_period)
                 bd_id = gdma_node.bd_id
                 offset = 0
                 for n in static_bd:
-                    if n.bd_id == bd_id+1 and n.pmu_info and n.gdma_id == gdma_node.gdma_id:
+                    if n.bd_id == bd_id + 1 and n.pmu_info and n.gdma_id == gdma_node.gdma_id:
                         offset = gdma_start - n.pmu_info.inst_start_time
                         break
                 if offset != 0:
@@ -919,16 +965,18 @@ class BMProfileParser:
                         n.inst_start_time += offset
                         n.inst_end_time += offset
                     break
-        elif len(dyn_gdma)>0 and len(dyn_bd)>0:
+        elif len(dyn_gdma) > 0 and len(dyn_bd) > 0:
             for gdma_node in dyn_gdma:
                 if gdma_node.pmu_info is None:
                     continue
-                gdma_start = int(gdma_node.pmu_info.inst_end_time * global_data.gdma_period/global_data.tiu_period)
+                gdma_start = int(gdma_node.pmu_info.inst_end_time * global_data.gdma_period /
+                                 global_data.tiu_period)
                 bd_id = gdma_node.bd_id
                 offset = 0
                 for n in dyn_bd:
-                    if n.bd_id == bd_id+1 and n.pmu_info and n.gdma_id == gdma_node.gdma_id:
-                        offset = max(gdma_start - n.pmu_info.inst_start_time, int(n.end_usec/global_data.tiu_period))
+                    if n.bd_id == bd_id + 1 and n.pmu_info and n.gdma_id == gdma_node.gdma_id:
+                        offset = max(gdma_start - n.pmu_info.inst_start_time,
+                                     int(n.end_usec / global_data.tiu_period))
                         break
                 if offset != 0:
                     for n in item.monitor_bd:
@@ -944,8 +992,8 @@ class BMProfileParser:
         if not os.path.exists(in_dir):
             logging.fatal("'{}' does not exist".format(in_dir))
             exit(-1)
-        global_file_path = os.path.join(in_dir,self.global_filename)
-        mlir_file_path = os.path.join(in_dir,self.mlir_filename)
+        global_file_path = os.path.join(in_dir, self.global_filename)
+        mlir_file_path = os.path.join(in_dir, self.mlir_filename)
         iter_data = []
 
         global_info = self.__parse_global_file(global_file_path)
@@ -954,7 +1002,7 @@ class BMProfileParser:
         no_perf_data = True
         iter_count = 0
         while True:
-            block_filename = self.iter_prefix+str(iter_count)+".profile"
+            block_filename = self.iter_prefix + str(iter_count) + ".profile"
             iter_count += 1
             block_filename = os.path.join(in_dir, block_filename)
             blocks = parse_data_blocks(block_filename)
@@ -978,7 +1026,7 @@ class BMProfileParser:
                             break
                 elif block.type == BlockType.COMMAND:
                     item.command_info = self.__parse_command_info(block.content)
-            if len(item.monitor_bd)>0 or len(item.monitor_gdma)>0:
+            if len(item.monitor_bd) > 0 or len(item.monitor_gdma) > 0:
                 no_perf_data = False
 
             assert item.summary is not None
@@ -986,10 +1034,10 @@ class BMProfileParser:
             iter_data.append(item)
 
         bmlib_data = []
-        iteration=0
+        iteration = 0
         for infile in glob.glob(in_dir + "/bmlib*.profile"):
             print("reading " + infile)
-        # while True:
+            # while True:
             # infile = os.path.join(in_dir, "bmlib_*.profile".format(iteration))
             iteration += 1
             if not os.path.exists(infile):
@@ -1015,23 +1063,27 @@ class BMProfileParser:
             assert item.summary is not None
             item.summary.iteration = os.path.basename(infile).split(".")[0]
             item.summary.add_extra(bmlib_extra)
-            if len(item.monitor_bd)>0 or len(item.monitor_gdma)>0:
+            if len(item.monitor_bd) > 0 or len(item.monitor_gdma) > 0:
                 no_perf_data = False
             self.update_relation(item, global_info)
             bmlib_data.append(item)
-        bmlib_data = sorted(bmlib_data, key = lambda v: v.summary.begin_usec)
+        bmlib_data = sorted(bmlib_data, key=lambda v: v.summary.begin_usec)
         global_info.no_perf_data = no_perf_data
         self.__parse_simulate(global_info, in_dir)
         return global_info, iter_data, bmlib_data
 
-    def parse_static_command(self, input_dir:str, output_dir:str, mark_str: str, arch="bm1684"):
+    def parse_static_command(self, input_dir: str, output_dir: str, mark_str: str, arch="bm1684"):
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
         for infile in glob.glob(input_dir + "/cmd_*.dat"):
             outfile = os.path.join(output_dir, os.path.basename(infile).replace(".dat", ".log"))
             self.__parse_static_command_file(infile, outfile, mark_str, arch)
 
-    def __parse_static_command_file(self, infile:str, outfile=None, mark_condition:str="", arch="bm1684"):
+    def __parse_static_command_file(self,
+                                    infile: str,
+                                    outfile=None,
+                                    mark_condition: str = "",
+                                    arch="bm1684"):
         ginfo = GlobalInfo()
         ginfo.set_arch(Arch[arch.lower()])
         engine_type = infile.replace(".dat", "").split("_")[-1]
@@ -1052,15 +1104,15 @@ class BMProfileParser:
             if mark_condition != "" and command.test(mark_condition):
                 print("--- Command #{}, mark for '{}' ---".format(i, mark_condition))
                 print(str(command))
-                print("--- Command #{}, mark for '{}' ---".format(i, mark_condition),file = out)
+                print("--- Command #{}, mark for '{}' ---".format(i, mark_condition), file=out)
             else:
-                print("--- Command #{}---".format(i),file = out)
+                print("--- Command #{}---".format(i), file=out)
             print(str(command), file=out)
         if outfile is not None:
             out.close()
         return command_list
 
-    def check_static_command(self, input_dir:str, output_dir:str, mark_str: str, arch="bm1684"):
+    def check_static_command(self, input_dir: str, output_dir: str, mark_str: str, arch="bm1684"):
         _, iter_info, _ = self.parse(input_dir)
 
         static_subnets = []
@@ -1073,14 +1125,16 @@ class BMProfileParser:
 
         for subnet in static_subnets:
             command_info, gdma_nodes, bd_nodes = subnet.command_info, subnet.gdma_nodes, subnet.bd_nodes
-            print("Analysing subnet_id={}, gdma_num={}, bd_num={}, group_num={}".format(subnet.subnet_id, len(gdma_nodes), len(bd_nodes), command_info.group_num))
+            print("Analysing subnet_id={}, gdma_num={}, bd_num={}, group_num={}".format(
+                subnet.subnet_id, len(gdma_nodes), len(bd_nodes), command_info.group_num))
             gdma_idx = 0
             bd_idx = 0
             for group_index in range(command_info.group_num):
-                gdma_num=command_info.group[group_index][0]
-                bd_num=command_info.group[group_index][1]
+                gdma_num = command_info.group[group_index][0]
+                bd_num = command_info.group[group_index][1]
                 print("  group {}: gdma={} bd={}".format(group_index, gdma_num, bd_num))
-                self.analyse_mem(gdma_nodes[gdma_idx:(gdma_idx+gdma_num)], bd_nodes[bd_idx:(bd_idx+bd_num)])
+                self.analyse_mem(gdma_nodes[gdma_idx:(gdma_idx + gdma_num)],
+                                 bd_nodes[bd_idx:(bd_idx + bd_num)])
                 gdma_idx = gdma_idx + gdma_num
                 bd_idx = bd_idx + bd_num
 
@@ -1097,13 +1151,14 @@ class BMProfileParser:
                     # print("{} has inplace operation: [{},{})".format(node, begin_waddr, end_waddr))
                 elif max(begin_waddr, begin_raddr) < min(end_waddr, end_raddr):
                     rw_pair.append((ri, wi))
-                    print("{} partial override: write=[{:x},{:x}), read=[{:x},{:x})".format(identity, begin_waddr,end_waddr+1, begin_raddr, end_raddr+1))
+                    print("{} partial override: write=[{:x},{:x}), read=[{:x},{:x})".format(
+                        identity, begin_waddr, end_waddr + 1, begin_raddr, end_raddr + 1))
         return rw_pair
 
     def __print_pair_mem(self, rw_pairs, read_mems, read_nodes, write_mems, write_nodes):
         for ri, wi in rw_pairs:
-            read_mem= read_mems[ri]
-            write_mem= write_mems[wi]
+            read_mem = read_mems[ri]
+            write_mem = write_mems[wi]
             read_node = None
             write_node = None
             for rnode in read_nodes:
@@ -1113,19 +1168,21 @@ class BMProfileParser:
                 if write_mem in wnode.command.mem_records:
                     write_node = wnode
             assert read_node is not None and write_node is not None
-            print("  --> read_node: {}, read[{:x},{:x}), {}".format(read_node, read_mem.addr, read_mem.addr+read_mem.cover_size, read_mem.desc))
-            print("  --> write_node: {} write[{:x},{:x}), {}".format(write_node, write_mem.addr, write_mem.addr+write_mem.cover_size, write_mem.desc))
+            print("  --> read_node: {}, read[{:x},{:x}), {}".format(
+                read_node, read_mem.addr, read_mem.addr + read_mem.cover_size, read_mem.desc))
+            print("  --> write_node: {} write[{:x},{:x}), {}".format(
+                write_node, write_mem.addr, write_mem.addr + write_mem.cover_size, write_mem.desc))
             print("")
 
     def analyse_mem(self, gdma_nodes, bd_nodes):
         gdma_num = len(gdma_nodes)
         bd_num = len(bd_nodes)
-        gdma_pos=0
-        bd_pos=0
-        time_point=0
+        gdma_pos = 0
+        bd_pos = 0
+        time_point = 0
         time_step = 1
-        mem_read_ranges=[]
-        mem_write_ranges=[]
+        mem_read_ranges = []
+        mem_write_ranges = []
         current_gdma_id = 0
         current_bd_id = 0
         run_groups = []
@@ -1133,27 +1190,27 @@ class BMProfileParser:
             gdma_run = []
             bd_run = []
 
-            if gdma_pos<gdma_num and gdma_nodes[gdma_pos].bd_id <= current_bd_id:
+            if gdma_pos < gdma_num and gdma_nodes[gdma_pos].bd_id <= current_bd_id:
                 gdma_run.append(gdma_nodes[gdma_pos])
                 gdma_pos = gdma_pos + 1
 
-            if bd_pos<bd_num and bd_nodes[bd_pos].gdma_id <= current_gdma_id:
+            if bd_pos < bd_num and bd_nodes[bd_pos].gdma_id <= current_gdma_id:
                 bd_run.append(bd_nodes[bd_pos])
                 bd_pos = bd_pos + 1
 
-            if len(gdma_run)>0 and len(bd_run)>0:
-                while gdma_pos<gdma_num and gdma_nodes[gdma_pos].bd_id <= current_bd_id:
+            if len(gdma_run) > 0 and len(bd_run) > 0:
+                while gdma_pos < gdma_num and gdma_nodes[gdma_pos].bd_id <= current_bd_id:
                     gdma_run.append(gdma_nodes[gdma_pos])
                     gdma_pos = gdma_pos + 1
 
-                while bd_pos<bd_num and bd_nodes[bd_pos].gdma_id <= current_gdma_id:
+                while bd_pos < bd_num and bd_nodes[bd_pos].gdma_id <= current_gdma_id:
                     bd_run.append(bd_nodes[bd_pos])
                     bd_pos = bd_pos + 1
 
             if len(gdma_run):
                 current_gdma_id = gdma_run[-1].gdma_id
                 # print("gdma: {} {}".format(gdma_run[-1].gdma_id, gdma_run[-1].bd_id))
-            if len(bd_run)>0:
+            if len(bd_run) > 0:
                 current_bd_id = bd_run[-1].bd_id
                 # print("  bd: {} {}".format(bd_run[-1].gdma_id, bd_run[-1].bd_id))
             # print(len(gdma_run), len(bd_run), current_gdma_id, current_bd_id)
@@ -1172,11 +1229,19 @@ class BMProfileParser:
                 gdma_write_mems = []
                 bd_read_mems = []
                 for node in gdma_group:
-                    gdma_read_mems = gdma_read_mems + [record for record in node.command.mem_records if not record.is_out]
-                    gdma_write_mems = gdma_write_mems + [record for record in node.command.mem_records if record.is_out]
+                    gdma_read_mems = gdma_read_mems + [
+                        record for record in node.command.mem_records if not record.is_out
+                    ]
+                    gdma_write_mems = gdma_write_mems + [
+                        record for record in node.command.mem_records if record.is_out
+                    ]
                 for node in bd_group:
-                    bd_read_mems = bd_read_mems + [record for record in node.command.mem_records if not record.is_out]
-                    bd_write_mems = bd_write_mems + [record for record in node.command.mem_records if record.is_out]
+                    bd_read_mems = bd_read_mems + [
+                        record for record in node.command.mem_records if not record.is_out
+                    ]
+                    bd_write_mems = bd_write_mems + [
+                        record for record in node.command.mem_records if record.is_out
+                    ]
 
                 rw_pair = self.__check_rw_mem("", gdma_read_mems, bd_write_mems)
                 self.__print_pair_mem(rw_pair, gdma_read_mems, gdma_group, bd_write_mems, bd_group)

@@ -5,6 +5,7 @@ from sophgo_mq.fake_quantize.quantize_base import QuantizeBase
 
 
 class PACTFakeQuantize(QuantizeBase):
+
     def __init__(self, observer, alpha=6.0, **observer_kwargs):
         super(PACTFakeQuantize, self).__init__(observer, **observer_kwargs)
         self.alpha = Parameter(torch.tensor([alpha]))
@@ -38,7 +39,8 @@ class PACTFakeQuantize(QuantizeBase):
                 self.activation_post_process.min_val.data.fill_(0.)
 
             _scale, _zero_point = self.activation_post_process.calculate_qparams()
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.scale.shape != _scale.shape:
                 self.scale.resize_(_scale.shape)
                 self.zero_point.resize_(_zero_point.shape)
@@ -46,7 +48,8 @@ class PACTFakeQuantize(QuantizeBase):
             self.zero_point.copy_(_zero_point)
 
         if self.fake_quant_enabled[0] == 1:
-            X = torch.fake_quantize_per_tensor_affine(
-                X, self.scale.item(), int(self.zero_point.item()), self.quant_min, self.quant_max)
+            X = torch.fake_quantize_per_tensor_affine(X, self.scale.item(),
+                                                      int(self.zero_point.item()), self.quant_min,
+                                                      self.quant_max)
 
         return X

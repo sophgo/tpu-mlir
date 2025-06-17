@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+
 sys.path.append(os.path.abspath('.'))
 print(sys.path)
 
@@ -30,67 +31,109 @@ from sophgo_mq.prepare_by_platform import prepare_by_platform
 from sophgo_mq.utils.state import enable_calibration, enable_quantization, disable_all
 from tools.model_runner import mlir_inference
 
-model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+model_names = sorted(
+    name for name in models.__dict__
+    if name.islower() and not name.startswith("__") and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--train_data', metavar='DIR',
-                    help='path to dataset', required=True)
-parser.add_argument('--val_data', metavar='DIR',
-                    help='path to dataset', required=True)
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+parser.add_argument('--train_data', metavar='DIR', help='path to dataset', required=True)
+parser.add_argument('--val_data', metavar='DIR', help='path to dataset', required=True)
+parser.add_argument('-a',
+                    '--arch',
+                    metavar='ARCH',
+                    default='resnet18',
                     choices=model_names,
-                    help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: resnet18)')
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+                    help='model architecture: ' + ' | '.join(model_names) + ' (default: resnet18)')
+parser.add_argument('-j',
+                    '--workers',
+                    default=4,
+                    type=int,
+                    metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
+parser.add_argument('--epochs',
+                    default=90,
+                    type=int,
+                    metavar='N',
                     help='number of total epochs to run')
-parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
+parser.add_argument('--start-epoch',
+                    default=0,
+                    type=int,
+                    metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch_size', default=256, type=int,
+parser.add_argument('-b',
+                    '--batch_size',
+                    default=256,
+                    type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
-                         'batch size of all GPUs on the current node when '
-                         'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
-                    metavar='LR', help='initial learning rate', dest='lr')
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum')
-parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)',
+                    'batch size of all GPUs on the current node when '
+                    'using Data Parallel or Distributed Data Parallel')
+parser.add_argument('--lr',
+                    '--learning-rate',
+                    default=0.1,
+                    type=float,
+                    metavar='LR',
+                    help='initial learning rate',
+                    dest='lr')
+parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
+parser.add_argument('--wd',
+                    '--weight-decay',
+                    default=1e-4,
+                    type=float,
+                    metavar='W',
+                    help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=100, type=int,
-                    metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
+parser.add_argument('-p',
+                    '--print-freq',
+                    default=100,
+                    type=int,
+                    metavar='N',
+                    help='print frequency (default: 10)')
+parser.add_argument('--resume',
+                    default='',
+                    type=str,
+                    metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+parser.add_argument('-e',
+                    '--evaluate',
+                    dest='evaluate',
+                    action='store_true',
                     help='evaluate model on validation set')
-parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+parser.add_argument('--pretrained',
+                    dest='pretrained',
+                    action='store_true',
                     help='use pre-trained model')
-parser.add_argument('--world-size', default=-1, type=int,
+parser.add_argument('--world-size',
+                    default=-1,
+                    type=int,
                     help='number of nodes for distributed training')
-parser.add_argument('--rank', default=-1, type=int,
-                    help='node rank for distributed training')
-parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
+parser.add_argument('--rank', default=-1, type=int, help='node rank for distributed training')
+parser.add_argument('--dist-url',
+                    default='tcp://224.66.41.62:23456',
+                    type=str,
                     help='url used to set up distributed training')
-parser.add_argument('--dist-backend', default='nccl', type=str,
-                    help='distributed backend')
-parser.add_argument('--seed', default=None, type=int,
-                    help='seed for initializing training. ')
-parser.add_argument('--cuda', default=None, type=int,
-                    help='GPU id to use.')
-parser.add_argument('--multiprocessing-distributed', action='store_true',
+parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
+parser.add_argument('--seed', default=None, type=int, help='seed for initializing training. ')
+parser.add_argument('--cuda', default=None, type=int, help='GPU id to use.')
+parser.add_argument('--multiprocessing-distributed',
+                    action='store_true',
                     help='Use multi-processing distributed training to launch '
-                         'N processes per node, which has N GPUs. This is the '
-                         'fastest way to use PyTorch for either single node or '
-                         'multi node data parallel training')
+                    'N processes per node, which has N GPUs. This is the '
+                    'fastest way to use PyTorch for either single node or '
+                    'multi node data parallel training')
 parser.add_argument('--model_path', type=str, default=None)
 parser.add_argument('--output_path', type=str, default=None)
-parser.add_argument('--chip', type=str, choices=['BM1688', 'BM1684X', 'BM1690', 'academic', 'MARS3', 'CV183X', 'CV182X', 'CV181X', 'CV180X', 'CV186X', 'SG2380', 'SGTPUV8'], default='BM1690')
-parser.add_argument('--quantmode', type=str, choices=['weight_activation', 'weight_only'], default='weight_activation')
+parser.add_argument('--chip',
+                    type=str,
+                    choices=[
+                        'BM1688', 'BM1684X', 'BM1690', 'academic', 'MARS3', 'CV183X', 'CV182X',
+                        'CV181X', 'CV180X', 'CV186X', 'SG2380', 'SGTPUV8'
+                    ],
+                    default='BM1690')
+parser.add_argument('--quantmode',
+                    type=str,
+                    choices=['weight_activation', 'weight_only'],
+                    default='weight_activation')
 parser.add_argument('--optim', type=str, default='sgd')
 parser.add_argument('--not-quant', action='store_true')
 parser.add_argument('--deploy', action='store_true')
@@ -106,6 +149,7 @@ parser.add_argument('--print_freq', default=5, type=int, help='print_freq')
 
 best_acc1 = 0
 
+
 def main():
     time_start = time.time()
     args = parser.parse_args()
@@ -113,11 +157,11 @@ def main():
     if args.output_path is None:
         args.output_path = './'
     if args.fp8_e4m3:
-        args.output_path=os.path.join(args.output_path, args.arch+'_fp8_e4m3')
+        args.output_path = os.path.join(args.output_path, args.arch + '_fp8_e4m3')
     elif args.fp8_e5m2:
-        args.output_path=os.path.join(args.output_path, args.arch+'_fp8_e5m2')
+        args.output_path = os.path.join(args.output_path, args.arch + '_fp8_e5m2')
     else:
-        args.output_path=os.path.join(args.output_path, args.arch)
+        args.output_path = os.path.join(args.output_path, args.arch)
     os.system('mkdir -p {}'.format(args.output_path))
 
     args.quant = not args.not_quant
@@ -154,7 +198,8 @@ def main():
         main_worker(args.cuda, ngpus_per_node, args)
 
     time_end = time.time()
-    print('totally time is ', time_end-time_start)
+    print('totally time is ', time_end - time_start)
+
 
 def generate_random_string(length):
     """
@@ -163,7 +208,10 @@ def generate_random_string(length):
     chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
     return ''.join(random.choices(chars, k=length))
 
+
 features_out_hook = {}
+
+
 def hook(module, fea_in, fea_out):
     name = generate_random_string(15)
     global features_out_hook
@@ -172,6 +220,7 @@ def hook(module, fea_in, fea_out):
     if isinstance(fea_out, torch.Tensor):
         features_out_hook[f'f_{name}'] = fea_out.cpu().numpy()
     return None
+
 
 def gen_test_ref_data(cali_loader, model, args):
     model.eval()
@@ -210,6 +259,7 @@ def gen_test_ref_data(cali_loader, model, args):
     print("End gen_test_ref_data.")
     return
 
+
 def main_worker(gpu, ngpus_per_node, args):
     global best_acc1
     args.cuda = gpu
@@ -224,8 +274,10 @@ def main_worker(gpu, ngpus_per_node, args):
             # For multiprocessing distributed training, rank needs to be the
             # global rank among all the processes
             args.rank = args.rank * ngpus_per_node + gpu
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
-                                world_size=args.world_size, rank=args.rank)
+        dist.init_process_group(backend=args.dist_backend,
+                                init_method=args.dist_url,
+                                world_size=args.world_size,
+                                rank=args.rank)
 
     # create model
     if args.pretrained:
@@ -242,7 +294,8 @@ def main_worker(gpu, ngpus_per_node, args):
         print(f'load pretrained checkpoint from: {args.model_path}')
         model.load_state_dict(state_dict)
 
-    train_loader, train_sampler, val_loader, cali_loader, bmodel_test_loader = prepare_dataloader(args)
+    train_loader, train_sampler, val_loader, cali_loader, bmodel_test_loader = prepare_dataloader(
+        args)
     criterion = nn.CrossEntropyLoss().cuda(args.cuda)
     if args.cuda is not None:
         model = model.cuda(args.cuda)
@@ -264,85 +317,96 @@ def main_worker(gpu, ngpus_per_node, args):
         # module_tmp = module_tmp.cpu()
         # convert_onnx(module_tmp.eval(), **kwargs)
         # del module_tmp
-        model = model.train() #prepare前一定要是train模式!!
+        model = model.train()  #prepare前一定要是train模式!!
 
     # quantize model
     if args.quant:
         extra_prepare_dict = {
             'quant_dict': {
-                        'chip': args.chip,
-                        'quantmode': args.quantmode,
-                        'strategy': 'CNN',
-                        'bf16_mix_prec': args.bf16_mix_prec
-                       },
+                'chip': args.chip,
+                'quantmode': args.quantmode,
+                'strategy': 'CNN',
+                'bf16_mix_prec': args.bf16_mix_prec
+            },
         }
         if args.fp8_e4m3:
             extra_prepare_dict["extra_qconfig_dict"] = {
-                                    'w_observer': 'MinMaxObserver',
-                                    'a_observer': 'EMAMinMaxObserver',
-                                    "w_fakequantize": 'E4M3FakeQuantize',
-                                    "a_fakequantize": 'E4M3FakeQuantize',
-                                    'w_qscheme': {  'bit': 8,
-                                                    'symmetry': True,
-                                                    'per_channel': False,
-                                                    'pot_scale': False },
-                                    'a_qscheme': {  'bit': 8,
-                                                    'symmetry': True,
-                                                    'per_channel': False,
-                                                    'pot_scale': False }
-                                }
+                'w_observer': 'MinMaxObserver',
+                'a_observer': 'EMAMinMaxObserver',
+                "w_fakequantize": 'E4M3FakeQuantize',
+                "a_fakequantize": 'E4M3FakeQuantize',
+                'w_qscheme': {
+                    'bit': 8,
+                    'symmetry': True,
+                    'per_channel': False,
+                    'pot_scale': False
+                },
+                'a_qscheme': {
+                    'bit': 8,
+                    'symmetry': True,
+                    'per_channel': False,
+                    'pot_scale': False
+                }
+            }
         if args.fp8_e5m2:
             extra_prepare_dict["extra_qconfig_dict"] = {
-                                    'w_observer': 'MinMaxObserver',
-                                    'a_observer': 'EMAMinMaxObserver',
-                                    "w_fakequantize": "E5M2FakeQuantize",
-                                    "a_fakequantize": 'E5M2FakeQuantize',
-                                    'w_qscheme': {  'bit': 8,
-                                                    'symmetry': True,
-                                                    'per_channel': False,
-                                                    'pot_scale': False },
-                                    'a_qscheme': {  'bit': 8,
-                                                    'symmetry': True,
-                                                    'per_channel': False,
-                                                    'pot_scale': False }
-                                }
+                'w_observer': 'MinMaxObserver',
+                'a_observer': 'EMAMinMaxObserver',
+                "w_fakequantize": "E5M2FakeQuantize",
+                "a_fakequantize": 'E5M2FakeQuantize',
+                'w_qscheme': {
+                    'bit': 8,
+                    'symmetry': True,
+                    'per_channel': False,
+                    'pot_scale': False
+                },
+                'a_qscheme': {
+                    'bit': 8,
+                    'symmetry': True,
+                    'per_channel': False,
+                    'pot_scale': False
+                }
+            }
 
         if "mobilenet_v3" in args.arch:
-            extra_prepare_dict["extra_quantizer_dict"] = {'module_only_enable_observer': [
-                                                                    'features.0.0.weight_fake_quant',
-                                                                    'features.1.block.0.0.weight_fake_quant',
-                                                                    'features.1.block.1.fc1.weight_fake_quant',
-                                                                    'features.1.block.1.fc2.weight_fake_quant',
-                                                                    'features.1.block.2.0.weight_fake_quant',
-                                                                    'features.2.block.0.0.weight_fake_quant',
-                                                                    'features.2.block.1.0.weight_fake_quant',
-                                                                    'features.2.block.2.0.weight_fake_quant',
-
-                                                                    'x_post_act_fake_quantizer',
-                                                                    'features_0_0_post_act_fake_quantizer',
-                                                                    'features_0_2_post_act_fake_quantizer',
-                                                                    'features_1_block_0_0_post_act_fake_quantizer',
-                                                                    'features_1_block_1_avgpool_post_act_fake_quantizer',
-                                                                    'features_1_block_1_fc1_post_act_fake_quantizer',
-                                                                    'features_1_block_1_fc2_post_act_fake_quantizer',
-                                                                    'features_1_block_1_scale_activation_post_act_fake_quantizer',
-                                                                    'mul_post_act_fake_quantizer',
-                                                                    'features_1_block_2_0_post_act_fake_quantizer',
-                                                                    'features_2_block_0_0_post_act_fake_quantizer',
-                                                                    'features_2_block_1_0_post_act_fake_quantizer',
-                                                                    ]
-                                                                }
+            extra_prepare_dict["extra_quantizer_dict"] = {
+                'module_only_enable_observer': [
+                    'features.0.0.weight_fake_quant',
+                    'features.1.block.0.0.weight_fake_quant',
+                    'features.1.block.1.fc1.weight_fake_quant',
+                    'features.1.block.1.fc2.weight_fake_quant',
+                    'features.1.block.2.0.weight_fake_quant',
+                    'features.2.block.0.0.weight_fake_quant',
+                    'features.2.block.1.0.weight_fake_quant',
+                    'features.2.block.2.0.weight_fake_quant',
+                    'x_post_act_fake_quantizer',
+                    'features_0_0_post_act_fake_quantizer',
+                    'features_0_2_post_act_fake_quantizer',
+                    'features_1_block_0_0_post_act_fake_quantizer',
+                    'features_1_block_1_avgpool_post_act_fake_quantizer',
+                    'features_1_block_1_fc1_post_act_fake_quantizer',
+                    'features_1_block_1_fc2_post_act_fake_quantizer',
+                    'features_1_block_1_scale_activation_post_act_fake_quantizer',
+                    'mul_post_act_fake_quantizer',
+                    'features_1_block_2_0_post_act_fake_quantizer',
+                    'features_2_block_0_0_post_act_fake_quantizer',
+                    'features_2_block_1_0_post_act_fake_quantizer',
+                ]
+            }
         if "extra_qconfig_dict" not in extra_prepare_dict:
             extra_prepare_dict["extra_qconfig_dict"] = {}
         extra_prepare_dict["extra_qconfig_dict"]['object_type'] = {
-                                    nn.Linear: {
-                                        'mode': 'weight',
-                                        'bit': 8,
-                                        'wfakequantize': 'LearnableFakeQuantize',
-                                        'wobserver': 'MinMaxObserver',
-                                        }
-                                    }
-        model = prepare_by_platform(model, input_shape_dict = {'data': [args.deploy_batch_size, 3, 224, 224]}, prepare_custom_config_dict=extra_prepare_dict)
+            nn.Linear: {
+                'mode': 'weight',
+                'bit': 8,
+                'wfakequantize': 'LearnableFakeQuantize',
+                'wobserver': 'MinMaxObserver',
+            }
+        }
+        model = prepare_by_platform(
+            model,
+            input_shape_dict={'data': [args.deploy_batch_size, 3, 224, 224]},
+            prepare_custom_config_dict=extra_prepare_dict)
         print('>>>>>prepared module:', model)
 
     if not torch.cuda.is_available():
@@ -382,12 +446,15 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # define loss function (criterion) and optimizer
     if args.optim == 'sgd':
-        optimizer = torch.optim.SGD(model.parameters(), args.lr,
+        optimizer = torch.optim.SGD(model.parameters(),
+                                    args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
     elif args.optim == 'adam':
-        optimizer = torch.optim.Adam(model.parameters(), args.lr,
-                                     betas=(0.9, 0.999), eps=1e-08,
+        optimizer = torch.optim.Adam(model.parameters(),
+                                     args.lr,
+                                     betas=(0.9, 0.999),
+                                     eps=1e-08,
                                      weight_decay=args.weight_decay,
                                      amsgrad=False)
 
@@ -396,11 +463,13 @@ def main_worker(gpu, ngpus_per_node, args):
         calibrate(cali_loader, model, args)
         # export graphmodule with fakequant node to onnx, so we can clearly see the positions of each fakequant node.
         if args.export_onnx_before_training:
-            os.system('mkdir -p {}'.format(args.output_path+'_export_onnx_before_training'))
-            export_onnx_with_fakequant_node(model.eval(), args.chip, input_shape_dict=
-                {'data': [args.deploy_batch_size, 3, 224, 224]},
+            os.system('mkdir -p {}'.format(args.output_path + '_export_onnx_before_training'))
+            export_onnx_with_fakequant_node(
+                model.eval(),
+                args.chip,
+                input_shape_dict={'data': [args.deploy_batch_size, 3, 224, 224]},
                 model_name='{}_with_fakequant_node'.format(args.arch),
-                output_path=args.output_path+'_export_onnx_before_training')
+                output_path=args.output_path + '_export_onnx_before_training')
     if args.quant:
         enable_quantization(model)
 
@@ -429,14 +498,15 @@ def main_worker(gpu, ngpus_per_node, args):
             # if args.cpu:
             #     model = torch.nn.DataParallel(model).cpu()
             model_dict = model.state_dict()
-            if 'module.' in list(state_dict.keys())[0] and 'module.' not in list(model_dict.keys())[0]:
+            if 'module.' in list(state_dict.keys())[0] and 'module.' not in list(
+                    model_dict.keys())[0]:
                 for k in list(state_dict.keys()):
                     state_dict[k[7:]] = state_dict.pop(k)
 
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {}), acc = {}"
-                  .format(args.resume, checkpoint['epoch'], best_acc1))
+            print("=> loaded checkpoint '{}' (epoch {}), acc = {}".format(
+                args.resume, checkpoint['epoch'], best_acc1))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
             exit(1)
@@ -449,8 +519,12 @@ def main_worker(gpu, ngpus_per_node, args):
             validate(val_loader, module_tmp2, criterion, args)
             del module_tmp2
             gen_test_ref_data(cali_loader, model, args)
-            convert_deploy(model.eval(), args.chip, val_loader, input_shape_dict={'data': [args.deploy_batch_size, 3, 224, 224]},
-                model_name='{}'.format(args.arch), output_path=args.output_path)
+            convert_deploy(model.eval(),
+                           args.chip,
+                           val_loader,
+                           input_shape_dict={'data': [args.deploy_batch_size, 3, 224, 224]},
+                           model_name='{}'.format(args.arch),
+                           output_path=args.output_path)
         exit(0)
 
     if args.fast_test:
@@ -474,17 +548,22 @@ def main_worker(gpu, ngpus_per_node, args):
     enable_quantization(model)
 
     net_type = 'CNN'
-    mlir_model_path = convert_deploy(model.eval(), args.chip, val_loader, net_type, input_shape_dict=
-        {'data': [args.deploy_batch_size, 3, 224, 224]},
+    mlir_model_path = convert_deploy(
+        model.eval(),
+        args.chip,
+        val_loader,
+        net_type,
+        input_shape_dict={'data': [args.deploy_batch_size, 3, 224, 224]},
         model_name='{}'.format(args.arch),
-        output_path=args.output_path, bf16_mix_prec = args.bf16_mix_prec)
+        output_path=args.output_path,
+        bf16_mix_prec=args.bf16_mix_prec)
     validate_for_chip_model(bmodel_test_loader, mlir_model_path, criterion, args)
+
 
 def prepare_dataloader(args):
     traindir = os.path.join(args.train_data, 'train')
     valdir = os.path.join(args.val_data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225] )
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     train_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose([
@@ -493,7 +572,9 @@ def prepare_dataloader(args):
             transforms.ToTensor(),
             normalize,
         ]))
-    val_dataset = datasets.ImageFolder(valdir, transforms.Compose([
+    val_dataset = datasets.ImageFolder(
+        valdir,
+        transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
@@ -504,40 +585,54 @@ def prepare_dataloader(args):
     else:
         train_sampler = None
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                                               batch_size=args.batch_size,
+                                               shuffle=(train_sampler is None),
+                                               num_workers=args.workers,
+                                               pin_memory=True,
+                                               sampler=train_sampler)
 
     cali_num = 200
     assert cali_num % args.deploy_batch_size == 0
     cali_dataset = torch.utils.data.Subset(train_dataset, indices=torch.arange(cali_num))
-    cali_loader = torch.utils.data.DataLoader(cali_dataset, batch_size=args.deploy_batch_size, shuffle=False,
-                                                num_workers=args.workers, pin_memory=True)
+    cali_loader = torch.utils.data.DataLoader(cali_dataset,
+                                              batch_size=args.deploy_batch_size,
+                                              shuffle=False,
+                                              num_workers=args.workers,
+                                              pin_memory=True)
 
-    bmodel_test_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.deploy_batch_size, shuffle=False,
-                                                num_workers=args.workers, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+    bmodel_test_loader = torch.utils.data.DataLoader(val_dataset,
+                                                     batch_size=args.deploy_batch_size,
+                                                     shuffle=False,
+                                                     num_workers=args.workers,
+                                                     pin_memory=True)
+    val_loader = torch.utils.data.DataLoader(val_dataset,
+                                             batch_size=args.batch_size,
+                                             shuffle=False,
+                                             num_workers=args.workers,
+                                             pin_memory=True)
     return train_loader, train_sampler, val_loader, cali_loader, bmodel_test_loader
+
 
 def prepare_dataloader_batch(args, batch_size):
     valdir = os.path.join(args.val_data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
-    val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
+    val_loader = torch.utils.data.DataLoader(datasets.ImageFolder(
+        valdir,
+        transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
             normalize,
         ])),
-        batch_size=batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+                                             batch_size=batch_size,
+                                             shuffle=False,
+                                             num_workers=args.workers,
+                                             pin_memory=True)
 
     return val_loader
+
 
 def calibrate(cali_loader, model, args):
     model.eval()
@@ -548,9 +643,10 @@ def calibrate(cali_loader, model, args):
             if args.cuda is not None:
                 images = images.cuda(args.cuda, non_blocking=True)
             output = model(images)
-            print("Calibration ==> ", i+1)
+            print("Calibration ==> ", i + 1)
     print("End calibration.")
     return
+
 
 def get_node_name_by_module_name(qname, model):
     nodes = list(model.graph.nodes)
@@ -558,6 +654,7 @@ def get_node_name_by_module_name(qname, model):
     for node in nodes:
         if node.target in modules and qname == node.target:
             return node.name
+
 
 def get_node_input_by_module_name(qname, model):
     nodes = list(model.graph.nodes)
@@ -581,9 +678,10 @@ def get_node_input_by_module_name(qname, model):
                     return 'data'
             break
     if scale_name is not None:
-        return scale_name[:len(scale_name)-len(post_str)]
+        return scale_name[:len(scale_name) - len(post_str)]
     else:
         return ''
+
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -591,10 +689,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
-        prefix="Epoch: [{}]".format(epoch))
+    progress = ProgressMeter(len(train_loader), [batch_time, data_time, losses, top1, top5],
+                             prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
     model.train()
@@ -640,15 +736,13 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             if i % 64 == 0:
                 break
 
+
 def validate(val_loader, model, criterion, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(val_loader),
-        [batch_time, losses, top1, top5],
-        prefix='Test: ')
+    progress = ProgressMeter(len(val_loader), [batch_time, losses, top1, top5], prefix='Test: ')
     print('args.print_freq:', args.print_freq)
     # switch to evaluate mode
     model.eval()
@@ -686,8 +780,7 @@ def validate(val_loader, model, criterion, args):
                     break
 
         # TODO: this should also be done with the ProgressMeter
-        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-            .format(top1=top1, top5=top5))
+        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'.format(top1=top1, top5=top5))
 
     return top1.avg
 
@@ -697,10 +790,8 @@ def validate_for_chip_model(bmodel_test_loader, mlir_model_path, criterion, args
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(bmodel_test_loader),
-        [batch_time, losses, top1, top5],
-        prefix='Test: ')
+    progress = ProgressMeter(len(bmodel_test_loader), [batch_time, losses, top1, top5],
+                             prefix='Test: ')
 
     # switch to evaluate mode
     end = time.time()
@@ -710,7 +801,7 @@ def validate_for_chip_model(bmodel_test_loader, mlir_model_path, criterion, args
         target = target.cpu()
         # compute output
         inputs['data'] = images.numpy()
-        output = mlir_inference(inputs, mlir_model_path, dump_all = False)
+        output = mlir_inference(inputs, mlir_model_path, dump_all=False)
         # print('output.names:', list(output.keys()))
         output = torch.from_numpy(list(output.values())[0])
         # print('output:', output.shape, ' target:', target.shape)
@@ -734,8 +825,7 @@ def validate_for_chip_model(bmodel_test_loader, mlir_model_path, criterion, args
         #         break
 
     # TODO: this should also be done with the ProgressMeter
-    print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-        .format(top1=top1, top5=top5))
+    print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'.format(top1=top1, top5=top5))
 
     return top1.avg
 
@@ -743,19 +833,17 @@ def validate_for_chip_model(bmodel_test_loader, mlir_model_path, criterion, args
 def validate_onnx(criterion, args):
     import onnxruntime as rt
     val_loader = prepare_dataloader_batch(args, args.deploy_batch_size)
-    model_path = os.path.join(args.output_path, '{}_deploy_model.onnx'.format('{}'.format(args.arch)))
-    sess = rt.InferenceSession(model_path, providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'])
+    model_path = os.path.join(args.output_path,
+                              '{}_deploy_model.onnx'.format('{}'.format(args.arch)))
+    sess = rt.InferenceSession(model_path,
+                               providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
     input_name = sess.get_inputs()[0].name
 
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(val_loader),
-        [batch_time, losses, top1, top5],
-        prefix='Test: ')
-
+    progress = ProgressMeter(len(val_loader), [batch_time, losses, top1, top5], prefix='Test: ')
 
     with torch.no_grad():
         end = time.time()
@@ -771,7 +859,7 @@ def validate_onnx(criterion, args):
 
             # compute output
             # output = model(images)
-            output = sess.run(None, {input_name:images.clone().detach().cpu().numpy()})
+            output = sess.run(None, {input_name: images.clone().detach().cpu().numpy()})
             output = torch.from_numpy(output[0]).cuda(args.cuda, non_blocking=True)
             loss = criterion(output, target)
 
@@ -794,8 +882,7 @@ def validate_onnx(criterion, args):
 
         # TODO: this should also be done with the ProgressMeter
         print('deploy_model.onnx完成所有处理后的onnxruntime测试精度:')
-        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-            .format(top1=top1, top5=top5))
+        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'.format(top1=top1, top5=top5))
 
     return top1.avg
 
@@ -803,11 +890,12 @@ def validate_onnx(criterion, args):
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, filename+'_best')
+        shutil.copyfile(filename, filename + '_best')
 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self, name, fmt=':f'):
         self.name = name
         self.fmt = fmt
@@ -831,6 +919,7 @@ class AverageMeter(object):
 
 
 class ProgressMeter(object):
+
     def __init__(self, num_batches, meters, prefix=""):
         self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
         self.meters = meters
@@ -849,12 +938,12 @@ class ProgressMeter(object):
 
 def adjust_learning_rate(optimizer, epoch, args):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 30))
+    lr = args.lr * (0.1**(epoch // 30))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=(1, )):
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
         maxk = max(topk)

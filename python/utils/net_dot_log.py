@@ -10,11 +10,13 @@
 import os
 import graphviz as gz
 
+
 # Automatically generate visual logs according to the network structure,
 # which can realize the association between node related logs and the
 # network structure, and facilitate the analysis and positioning of problems
 class net_dot_log:
-    def __init__(self, dot_log_path, parser = None, logger = None):
+
+    def __init__(self, dot_log_path, parser=None, logger=None):
         self.topo_idx = 0
         self.dot_log_path = dot_log_path
         self.node_info_map = {}
@@ -29,12 +31,12 @@ class net_dot_log:
                     op_type = f'{op_type}_depth'
                 self.append_input_edge_and_node(pre_ops, op.name, op_type)
 
-    def append_input_edge_and_node(self, input_edges, node:str, type:str, log_str:str = None):
+    def append_input_edge_and_node(self, input_edges, node: str, type: str, log_str: str = None):
         self.node_info_map[node] = [self.topo_idx, type, input_edges, log_str]
         self.node_attr_map[node] = {}
         self.topo_idx += 1
 
-    def add_node_label(self, node:str, log_str:str):
+    def add_node_label(self, node: str, log_str: str):
         if self.logger is not None:
             self.logger.print_dbg(log_str)
         else:
@@ -47,7 +49,7 @@ class net_dot_log:
         old_str += '\l{}'.format(log_str)
         self.node_info_map[node][-1] = old_str
 
-    def add_new_log_region(self, region_name = ''):
+    def add_new_log_region(self, region_name=''):
         if len(self.node_info_map) == 0:
             self.first_region_name = region_name if region_name != '' else 'first_log_region'
             return
@@ -55,12 +57,12 @@ class net_dot_log:
         for node in self.node_info_map:
             self.add_node_label(node, region_name)
 
-    def add_node_attr(self, node, attr_name:str, attr_value:str):
+    def add_node_attr(self, node, attr_name: str, attr_value: str):
         if node not in self.node_attr_map:
             return
         self.node_attr_map[node][attr_name] = attr_value
 
-    def gen_dot_graph(self, file_name = None):
+    def gen_dot_graph(self, file_name=None):
         dot = gz.Digraph()
         for node in self.node_info_map:
             info = self.node_info_map[node]

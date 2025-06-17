@@ -74,7 +74,8 @@ def get_constant(TorchNode: TorchNode, node: torch.Node):
         return None
     return name, value, is_tensor
 
+
 def get_attr_name(TorchNode: TorchNode):
-    name_native      = TorchNode.node_proto.output().debugName()
+    name_native = TorchNode.node_proto.output().debugName()
     name_with_MaskRCNN_prefix = TorchNode.outputs[0]
     return name_with_MaskRCNN_prefix

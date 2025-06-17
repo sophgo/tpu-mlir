@@ -32,11 +32,14 @@ class AsicSummary(object):
         :param sdmas: sdma instance list, it may be empty
         :param act_core_num: represents the actual number of cores to run since the input file may be empty
         """
-        self.columns = ['CoreId', 'TiuWorkingRatio', 'Parallelism', 'Concurrency',
-                        'totalTime(us)', 'totalTiuCycle', 'totalAlgCycle', 'totalAlgOps', 'totalUArchOps', 'uArchURate',
-                        'totalGdmaCycle', 'totalDdrDataSize', 'totalL2DataSize', 'ddrAvgBandwidth', 'l2AvgBandwidth', 'avgDdrBurstLength',
-                        'totalSdmaCycle', 'totalDdrDataSize', 'ddrAvgBandwidth', 'avgDdrBurstLength',
-                        'totalcdmaCycle', 'totalDdrDataSize', 'totalL2DataSize', 'ddrAvgBandwidth', 'l2AvgBandwidth', 'avgDdrBurstLength']
+        self.columns = [
+            'CoreId', 'TiuWorkingRatio', 'Parallelism', 'Concurrency', 'totalTime(us)',
+            'totalTiuCycle', 'totalAlgCycle', 'totalAlgOps', 'totalUArchOps', 'uArchURate',
+            'totalGdmaCycle', 'totalDdrDataSize', 'totalL2DataSize', 'ddrAvgBandwidth',
+            'l2AvgBandwidth', 'avgDdrBurstLength', 'totalSdmaCycle', 'totalDdrDataSize',
+            'ddrAvgBandwidth', 'avgDdrBurstLength', 'totalcdmaCycle', 'totalDdrDataSize',
+            'totalL2DataSize', 'ddrAvgBandwidth', 'l2AvgBandwidth', 'avgDdrBurstLength'
+        ]
         self.writer = writer
         self.tius = tius
         self.gdmas = gdmas
@@ -71,10 +74,16 @@ class AsicSummary(object):
                 prallelisms.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle\
                                                     + self.sdmas[core_id].working_cycle, total_time))
             else:
-                prallelisms.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle, total_time))
+                prallelisms.append(
+                    get_ratio_str_2f_zero(
+                        self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle,
+                        total_time))
             if self.tius[core_id].tiu_time > 0 and self.gdmas[core_id].working_cycle > 0:
-                concurrencys.append(get_ratio_str_2f_zero(self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle - total_time,
-                                                          min(self.tius[core_id].tiu_time, self.gdmas[core_id].working_cycle)))
+                concurrencys.append(
+                    get_ratio_str_2f_zero(
+                        self.tius[core_id].tiu_time + self.gdmas[core_id].working_cycle -
+                        total_time,
+                        min(self.tius[core_id].tiu_time, self.gdmas[core_id].working_cycle)))
             else:
                 concurrencys.append('0.00%')
             total_times.append(total_time)
@@ -82,16 +91,24 @@ class AsicSummary(object):
             alg_cycles.append(self.tius[core_id].alg_total_cycle)
             alg_opss.append(self.tius[core_id].alg_total_ops)
             uArch_opss.append(self.tius[core_id].uArch_total_ops)
-            uArch_rates.append(get_ratio_str_2f_zero(self.tius[core_id].alg_total_ops, self.tius[core_id].uArch_total_ops))
+            uArch_rates.append(
+                get_ratio_str_2f_zero(self.tius[core_id].alg_total_ops,
+                                      self.tius[core_id].uArch_total_ops))
 
             gdma_cycles.append(self.gdmas[core_id].working_cycle)
             gdma_ddr_datasizes.append(self.gdmas[core_id].ddr_total_datasize)
             gdma_l2_datasizes.append(self.gdmas[core_id].l2_total_datasize)
-            gdma_ddr_avg_bds.append(get_ratio_float_2f(self.gdmas[core_id].ddr_total_datasize,
-                                                     get_time_by_cycle(self.gdmas[core_id].ddr_total_cycle, dma_frequency)))
-            gdma_l2_avg_bds.append(get_ratio_float_2f(self.gdmas[core_id].l2_total_datasize,
-                                                     get_time_by_cycle(self.gdmas[core_id].l2_total_cycle, dma_frequency)))
-            gdma_ddr_avg_bls.append(get_ratio_float_2f(self.gdmas[core_id].ddr_burst_length_sum, self.gdmas[core_id].ddr_xact_cnt))
+            gdma_ddr_avg_bds.append(
+                get_ratio_float_2f(
+                    self.gdmas[core_id].ddr_total_datasize,
+                    get_time_by_cycle(self.gdmas[core_id].ddr_total_cycle, dma_frequency)))
+            gdma_l2_avg_bds.append(
+                get_ratio_float_2f(
+                    self.gdmas[core_id].l2_total_datasize,
+                    get_time_by_cycle(self.gdmas[core_id].l2_total_cycle, dma_frequency)))
+            gdma_ddr_avg_bls.append(
+                get_ratio_float_2f(self.gdmas[core_id].ddr_burst_length_sum,
+                                   self.gdmas[core_id].ddr_xact_cnt))
             gdma_ddr_cycles += self.gdmas[core_id].ddr_total_cycle
             gdma_l2_cycles += self.gdmas[core_id].l2_total_cycle
             gdma_bl_sum += self.gdmas[core_id].ddr_burst_length_sum
@@ -99,9 +116,13 @@ class AsicSummary(object):
 
             sdma_cycles.append(self.sdmas[core_id].working_cycle)
             sdma_ddr_datasizes.append(self.sdmas[core_id].ddr_total_datasize)
-            sdma_ddr_avg_bds.append(get_ratio_float_2f(self.sdmas[core_id].ddr_total_datasize,
-                                                     get_time_by_cycle(self.sdmas[core_id].ddr_total_cycle, dma_frequency)))
-            sdma_ddr_avg_bls.append(get_ratio_float_2f(self.sdmas[core_id].ddr_burst_length_sum, self.sdmas[core_id].ddr_xact_cnt))
+            sdma_ddr_avg_bds.append(
+                get_ratio_float_2f(
+                    self.sdmas[core_id].ddr_total_datasize,
+                    get_time_by_cycle(self.sdmas[core_id].ddr_total_cycle, dma_frequency)))
+            sdma_ddr_avg_bls.append(
+                get_ratio_float_2f(self.sdmas[core_id].ddr_burst_length_sum,
+                                   self.sdmas[core_id].ddr_xact_cnt))
             sdma_ddr_cycles += self.sdmas[core_id].ddr_total_cycle
             sdma_l2_cycles += self.sdmas[core_id].l2_total_cycle
             sdma_bl_sum += self.sdmas[core_id].ddr_burst_length_sum
@@ -110,26 +131,40 @@ class AsicSummary(object):
             cdma_cycles.append(self.cdmas[core_id].working_cycle)
             cdma_ddr_datasizes.append(self.cdmas[core_id].ddr_total_datasize)
             cdma_l2_datasizes.append(self.cdmas[core_id].l2_total_datasize)
-            cdma_ddr_avg_bds.append(get_ratio_float_2f(self.cdmas[core_id].ddr_total_datasize,
-                                                     get_time_by_cycle(self.cdmas[core_id].ddr_total_cycle, dma_frequency)))
-            cdma_l2_avg_bds.append(get_ratio_float_2f(self.cdmas[core_id].l2_total_datasize,
-                                                     get_time_by_cycle(self.cdmas[core_id].l2_total_cycle, dma_frequency)))
-            cdma_ddr_avg_bls.append(get_ratio_float_2f(self.cdmas[core_id].ddr_burst_length_sum, self.cdmas[core_id].ddr_xact_cnt))
+            cdma_ddr_avg_bds.append(
+                get_ratio_float_2f(
+                    self.cdmas[core_id].ddr_total_datasize,
+                    get_time_by_cycle(self.cdmas[core_id].ddr_total_cycle, dma_frequency)))
+            cdma_l2_avg_bds.append(
+                get_ratio_float_2f(
+                    self.cdmas[core_id].l2_total_datasize,
+                    get_time_by_cycle(self.cdmas[core_id].l2_total_cycle, dma_frequency)))
+            cdma_ddr_avg_bls.append(
+                get_ratio_float_2f(self.cdmas[core_id].ddr_burst_length_sum,
+                                   self.cdmas[core_id].ddr_xact_cnt))
             cdma_ddr_cycles += self.cdmas[core_id].ddr_total_cycle
             cdma_l2_cycles += self.cdmas[core_id].l2_total_cycle
             cdma_bl_sum += self.cdmas[core_id].ddr_burst_length_sum
             cdma_xact_sum += self.cdmas[core_id].ddr_xact_cnt
         core_ids.append('Overall')
-        tiu_work_ratios.append(get_ratio_str_2f_zero(get_time_by_cycle(max(tiu_cycles), tiu_frequency),  total_time))
+        tiu_work_ratios.append(
+            get_ratio_str_2f_zero(get_time_by_cycle(max(tiu_cycles), tiu_frequency), total_time))
         if self.act_core_num > 1:
-            prallelisms.append(get_ratio_str_2f_zero(get_time_by_cycle(max(tiu_cycles), tiu_frequency) +
-                                                     get_time_by_cycle(max(gdma_cycles) + max(sdma_cycles), dma_frequency), total_time))
+            prallelisms.append(
+                get_ratio_str_2f_zero(
+                    get_time_by_cycle(max(tiu_cycles), tiu_frequency) +
+                    get_time_by_cycle(max(gdma_cycles) + max(sdma_cycles), dma_frequency),
+                    total_time))
         else:
-            prallelisms.append(get_ratio_str_2f_zero(get_time_by_cycle(max(tiu_cycles), tiu_frequency) +
-                                                     get_time_by_cycle(max(gdma_cycles), dma_frequency), total_time))
+            prallelisms.append(
+                get_ratio_str_2f_zero(
+                    get_time_by_cycle(max(tiu_cycles), tiu_frequency) +
+                    get_time_by_cycle(max(gdma_cycles), dma_frequency), total_time))
         tiu_max_time = get_time_by_cycle(max(tiu_cycles), tiu_frequency)
         gdma_max_time = get_time_by_cycle(max(gdma_cycles), dma_frequency)
-        concurrencys.append(get_ratio_str_2f_zero(tiu_max_time + gdma_max_time - total_time, min(tiu_max_time, gdma_max_time)))
+        concurrencys.append(
+            get_ratio_str_2f_zero(tiu_max_time + gdma_max_time - total_time,
+                                  min(tiu_max_time, gdma_max_time)))
         uArch_rates.append(get_ratio_str_2f_zero(sum(alg_opss), sum(uArch_opss)))
         total_times.append(max(total_times))
         tiu_cycles.append(max(tiu_cycles))
@@ -139,26 +174,36 @@ class AsicSummary(object):
         gdma_cycles.append(max(gdma_cycles))
         gdma_ddr_datasizes.append(sum(gdma_ddr_datasizes))
         gdma_l2_datasizes.append(sum(gdma_l2_datasizes))
-        gdma_ddr_avg_bds.append(get_ratio_float_2f(gdma_ddr_datasizes[-1], get_time_by_cycle(gdma_ddr_cycles, dma_frequency)))
-        gdma_l2_avg_bds.append(get_ratio_float_2f(gdma_l2_datasizes[-1], get_time_by_cycle(gdma_l2_cycles, dma_frequency)))
+        gdma_ddr_avg_bds.append(
+            get_ratio_float_2f(gdma_ddr_datasizes[-1],
+                               get_time_by_cycle(gdma_ddr_cycles, dma_frequency)))
+        gdma_l2_avg_bds.append(
+            get_ratio_float_2f(gdma_l2_datasizes[-1],
+                               get_time_by_cycle(gdma_l2_cycles, dma_frequency)))
         gdma_ddr_avg_bls.append(get_ratio_float_2f(gdma_bl_sum, gdma_xact_sum))
 
         sdma_cycles.append(max(sdma_cycles))
         sdma_ddr_datasizes.append(sum(sdma_ddr_datasizes))
-        sdma_ddr_avg_bds.append(get_ratio_float_2f(sdma_ddr_datasizes[-1], get_time_by_cycle(sdma_ddr_cycles, dma_frequency)))
+        sdma_ddr_avg_bds.append(
+            get_ratio_float_2f(sdma_ddr_datasizes[-1],
+                               get_time_by_cycle(sdma_ddr_cycles, dma_frequency)))
         sdma_ddr_avg_bls.append(get_ratio_float_2f(sdma_bl_sum, sdma_xact_sum))
 
         cdma_cycles.append(max(cdma_cycles))
         cdma_ddr_datasizes.append(sum(cdma_ddr_datasizes))
         cdma_l2_datasizes.append(sum(cdma_l2_datasizes))
-        cdma_ddr_avg_bds.append(get_ratio_float_2f(cdma_ddr_datasizes[-1], get_time_by_cycle(cdma_ddr_cycles, dma_frequency)))
-        cdma_l2_avg_bds.append(get_ratio_float_2f(cdma_l2_datasizes[-1], get_time_by_cycle(cdma_l2_cycles, dma_frequency)))
+        cdma_ddr_avg_bds.append(
+            get_ratio_float_2f(cdma_ddr_datasizes[-1],
+                               get_time_by_cycle(cdma_ddr_cycles, dma_frequency)))
+        cdma_l2_avg_bds.append(
+            get_ratio_float_2f(cdma_l2_datasizes[-1],
+                               get_time_by_cycle(cdma_l2_cycles, dma_frequency)))
         cdma_ddr_avg_bls.append(get_ratio_float_2f(cdma_bl_sum, cdma_xact_sum))
         for idx in range(len(total_times)):
             total_times[idx] = cycle_to_us(total_times[idx], 1000)
         for idx in [len(total_times) - 1]:
-            tiu_cycles[idx]  = cycle_to_us(tiu_cycles[idx], tiu_frequency, with_unit=True)
-            alg_cycles[idx]  = cycle_to_us(alg_cycles[idx], tiu_frequency, with_unit=True)
+            tiu_cycles[idx] = cycle_to_us(tiu_cycles[idx], tiu_frequency, with_unit=True)
+            alg_cycles[idx] = cycle_to_us(alg_cycles[idx], tiu_frequency, with_unit=True)
             gdma_cycles[idx] = cycle_to_us(gdma_cycles[idx], dma_frequency, with_unit=True)
             sdma_cycles[idx] = cycle_to_us(sdma_cycles[idx], dma_frequency, with_unit=True)
             cdma_cycles[idx] = cycle_to_us(cdma_cycles[idx], dma_frequency, with_unit=True)
@@ -169,13 +214,13 @@ class AsicSummary(object):
             cdma_l2_datasizes[idx] = datasize_to_MB(cdma_l2_datasizes[idx])
         # if chip_arch['Chip Arch'].lower() == 'a2' and self.act_core_num == 1:
         #     chip_arch['DDR Max BW(GB/s)'] = int(chip_arch['DDR Max BW(GB/s)']) * 2
-        self.data = transpose([core_ids, tiu_work_ratios, prallelisms, concurrencys, total_times, tiu_cycles, alg_cycles,
-                            alg_opss, uArch_opss, uArch_rates, gdma_cycles,
-                            gdma_ddr_datasizes, gdma_l2_datasizes, gdma_ddr_avg_bds,
-                            gdma_l2_avg_bds, gdma_ddr_avg_bls, sdma_cycles, sdma_ddr_datasizes,
-                            sdma_ddr_avg_bds, sdma_ddr_avg_bls, cdma_cycles,
-                            cdma_ddr_datasizes, cdma_l2_datasizes, cdma_ddr_avg_bds,
-                            cdma_l2_avg_bds, cdma_ddr_avg_bls]).tolist()
+        self.data = transpose([
+            core_ids, tiu_work_ratios, prallelisms, concurrencys, total_times, tiu_cycles,
+            alg_cycles, alg_opss, uArch_opss, uArch_rates, gdma_cycles, gdma_ddr_datasizes,
+            gdma_l2_datasizes, gdma_ddr_avg_bds, gdma_l2_avg_bds, gdma_ddr_avg_bls, sdma_cycles,
+            sdma_ddr_datasizes, sdma_ddr_avg_bds, sdma_ddr_avg_bls, cdma_cycles, cdma_ddr_datasizes,
+            cdma_l2_datasizes, cdma_ddr_avg_bds, cdma_l2_avg_bds, cdma_ddr_avg_bls
+        ]).tolist()
 
     def write(self):
         """
@@ -183,35 +228,40 @@ class AsicSummary(object):
         :return: None
         """
         df = pd.DataFrame(self.data, columns=self.columns, index=None)
-        df.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=4, engine='xlsxwriter', float_format='%g')
+        df.to_excel(self.writer,
+                    index=False,
+                    sheet_name=self.sheet_name,
+                    startrow=4,
+                    engine='xlsxwriter',
+                    float_format='%g')
         para_desc = '(totalTiuCycle + totalGdmaCycle + totalSdmaCycle) / totalTime, presents the parallelism among all engines.'\
         if self.act_core_num > 1 else '(totalTiuCycle + totalGdmaCycle) / totalTime, presents the parallelism among all engines.'
         kpi_desc = pd.DataFrame(
-                {
-                    'Field': [
-                        'Tiu Working Ratio',
-                        'Parallelism(%)',
-                        'Concurrency(%)',
-                        'Total Alg Cycle',
-                        'Total Alg Ops',
-                        'Total uArch Ops',
-                        'uArch Urate'],
-                    'Description': [
-                        'totalTiuCycle / totalTime, indicates the percentage of time tiu execution takes.',
-                        para_desc,
-                        '(totalTiuCycle + totalGdmaCycle - totalTime) / min(totalTiuCycle, totalGdmaCycle), indicates the concurrency between tiu and gdma.',  # todo
-                        'The time required to execute tiu instructions theoretically.',
-                        'The theoretical OPs required to execute tiu instructions.',
-                        'The actual number of OPs accounting for microarchitecture.',
-                        'totalAlgOps / totalUArchOps, since the shape of tensor needs to be aligned in '
-                        'micro-architecture, the actual ops will be greater than the algorithm value. '
-                        "It's better to closer to 100%."
-                        ]
-                },
-                index=None
-            )
-        kpi_desc.to_excel(self.writer, index=False, sheet_name=self.sheet_name, startrow=9+self.act_core_num, startcol=0,
-                                        engine='xlsxwriter', float_format='%g')
+            {
+                'Field': [
+                    'Tiu Working Ratio', 'Parallelism(%)', 'Concurrency(%)', 'Total Alg Cycle',
+                    'Total Alg Ops', 'Total uArch Ops', 'uArch Urate'
+                ],
+                'Description': [
+                    'totalTiuCycle / totalTime, indicates the percentage of time tiu execution takes.',
+                    para_desc,
+                    '(totalTiuCycle + totalGdmaCycle - totalTime) / min(totalTiuCycle, totalGdmaCycle), indicates the concurrency between tiu and gdma.',  # todo
+                    'The time required to execute tiu instructions theoretically.',
+                    'The theoretical OPs required to execute tiu instructions.',
+                    'The actual number of OPs accounting for microarchitecture.',
+                    'totalAlgOps / totalUArchOps, since the shape of tensor needs to be aligned in '
+                    'micro-architecture, the actual ops will be greater than the algorithm value. '
+                    "It's better to closer to 100%."
+                ]
+            },
+            index=None)
+        kpi_desc.to_excel(self.writer,
+                          index=False,
+                          sheet_name=self.sheet_name,
+                          startrow=9 + self.act_core_num,
+                          startcol=0,
+                          engine='xlsxwriter',
+                          float_format='%g')
 
     @classmethod
     def set_style(cls, file_path, chip_arch):
@@ -286,14 +336,17 @@ class AsicSummary(object):
             if chip_arch['Chip Arch'].lower() in ["sg2260", 'a2', 'A2']:
                 if float(ws.cell(h, parallelismPos).value[:-1]) < 205:
                     ws.cell(h, parallelismPos).fill = DetailsStyle.yellow_light
-            elif chip_arch['Chip Arch'].lower() in ['cv186x', 'bm1684x', 'mars3', 'bm1688', 'sgtpuv8']:
+            elif chip_arch['Chip Arch'].lower() in [
+                    'cv186x', 'bm1684x', 'mars3', 'bm1688', 'sgtpuv8'
+            ]:
                 if float(ws.cell(h, parallelismPos).value[:-1]) < 105:
                     ws.cell(h, parallelismPos).fill = DetailsStyle.red_light
             else:
                 print('Not support chip arch')
-                assert(0)
+                assert (0)
             # gdma_ddr_bd_pos
-            ddr_max_bd, l2_max_bd, ddr_max_bl = float(chip_arch['DDR Max BW(GB/s/Core)']), float(chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst'])
+            ddr_max_bd, l2_max_bd, ddr_max_bl = float(chip_arch['DDR Max BW(GB/s/Core)']), float(
+                chip_arch['L2 Max BW(GB/s)']), float(chip_arch['Bus Max Burst'])
             if float(ws.cell(h, gdma_ddr_bd_pos).value) > 0:
                 if float(ws.cell(h, gdma_ddr_bd_pos).value) < (ddr_max_bd * 0.5):
                     ws.cell(h, gdma_ddr_bd_pos).fill = DetailsStyle.red_light
@@ -333,7 +386,7 @@ class AsicSummary(object):
             ws.cell(content_end_rows, parallelismPos).value = 'Parallelism<105%'
         else:
             print('Not support chip arch')
-            assert(0)
+            assert (0)
         ws.cell(content_end_rows, ratio_pos).value = 'Ratio<30%'
         ws.cell(content_end_rows + 1, ratio_pos).value = 'Ratio<15%'
         ws.cell(content_end_rows, uRate_pos).value = 'Urate<75%'
@@ -351,16 +404,25 @@ class AsicSummary(object):
         ws.cell(content_end_rows, cdma_l2_bd_pos).value = 'BW<' + str(l2_max_bd) + '*75%'
         ws.cell(content_end_rows + 1, cdma_l2_bd_pos).value = 'BW<' + str(l2_max_bd) + '*50%'
         ws.cell(content_end_rows, cdma_ddr_avg_bl_pos).value = 'Length<' + str(ddr_max_bl)
-        for h, w in zip([content_end_rows, content_end_rows, content_end_rows, content_end_rows,
-                         content_end_rows, content_end_rows, content_end_rows, content_end_rows],
-                        [ratio_pos, parallelismPos, uRate_pos, gdma_ddr_bd_pos, gdma_l2_bd_pos, sdma_ddr_bd_pos, cdma_ddr_bd_pos, cdma_l2_bd_pos]):
+        for h, w in zip([
+                content_end_rows, content_end_rows, content_end_rows, content_end_rows,
+                content_end_rows, content_end_rows, content_end_rows, content_end_rows
+        ], [
+                ratio_pos, parallelismPos, uRate_pos, gdma_ddr_bd_pos, gdma_l2_bd_pos,
+                sdma_ddr_bd_pos, cdma_ddr_bd_pos, cdma_l2_bd_pos
+        ]):
             ws.cell(h, w).fill = DetailsStyle.yellow_light
             ws.cell(h, w).font = DetailsStyle.title_font
             ws.cell(h, w).alignment = DetailsStyle.center_align
-        for h, w in zip([content_end_rows + 1, content_end_rows + 1, content_end_rows + 1, content_end_rows + 1, content_end_rows,
-                        content_end_rows + 1, content_end_rows, content_end_rows + 1, content_end_rows + 1, content_end_rows],
-                        [ratio_pos, uRate_pos, gdma_ddr_bd_pos, gdma_l2_bd_pos, gdma_ddr_avg_bl_pos, sdma_ddr_bd_pos, sdma_ddr_avg_bl_pos,
-                         cdma_ddr_bd_pos, cdma_l2_bd_pos, cdma_ddr_avg_bl_pos]):
+        for h, w in zip([
+                content_end_rows + 1, content_end_rows + 1, content_end_rows + 1,
+                content_end_rows + 1, content_end_rows, content_end_rows + 1, content_end_rows,
+                content_end_rows + 1, content_end_rows + 1, content_end_rows
+        ], [
+                ratio_pos, uRate_pos, gdma_ddr_bd_pos, gdma_l2_bd_pos, gdma_ddr_avg_bl_pos,
+                sdma_ddr_bd_pos, sdma_ddr_avg_bl_pos, cdma_ddr_bd_pos, cdma_l2_bd_pos,
+                cdma_ddr_avg_bl_pos
+        ]):
             ws.cell(h, w).fill = DetailsStyle.red_light
             ws.cell(h, w).font = DetailsStyle.title_font
             ws.cell(h, w).alignment = DetailsStyle.center_align

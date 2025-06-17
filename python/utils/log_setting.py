@@ -11,11 +11,11 @@ import os
 import sys
 import logging
 
-
 log_name = dict()
 
 
 def wrap_print(logger: logging.Logger):
+
     def log_print(*args, sep=" "):
         logger.info(sep.join([f"{arg}" for arg in args]))
 
@@ -29,10 +29,8 @@ def setup_logger(name, log_level="INFO", replace_root=False):
     logger = logging.getLogger(name)
     logger.setLevel(logging._nameToLevel[log_level])
 
-    formatter = logging.Formatter(
-        datefmt="%Y/%m/%d %H:%M:%S", fmt="%(asctime)s - %(levelname)s : %(message)s"
-    )
-
+    formatter = logging.Formatter(datefmt="%Y/%m/%d %H:%M:%S",
+                                  fmt="%(asctime)s - %(levelname)s : %(message)s")
 
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setLevel(logging.DEBUG)
@@ -48,6 +46,7 @@ def setup_logger(name, log_level="INFO", replace_root=False):
 
 
 class logger:
+
     def __init__(self, log_file_name: str, log_level: str = "DEBUG"):
         root_logger = logging.getLogger()
         for h in root_logger.handlers:

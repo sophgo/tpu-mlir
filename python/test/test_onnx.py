@@ -728,7 +728,6 @@ class ONNX_IR_TESTER(object):
             self.compare(origin_output.data.numpy().ravel(), onnx_outs[0].ravel())
         print("* Torch and Onnx result compared *")
 
-
     def torch_and_test(self,
                        inputs,
                        torch_model: nn.Module,
@@ -829,7 +828,7 @@ class ONNX_IR_TESTER(object):
                            static_shape=static_shape,
                            support_modes=support_modes,
                            dynamic=dynamic,
-                           dynamic_shape_input_names = dynamic_shape_input_names,
+                           dynamic_shape_input_names=dynamic_shape_input_names,
                            shape_influencing_input_names=shape_influencing_input_names,
                            matmul_perchannel=matmul_perchannel)
 
@@ -1002,7 +1001,9 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(x, Model(), case_name)
 
     def test_MLP(self, case_name, model_name=None):
+
         class Model(nn.Module):
+
             def __init__(self, k1, k2, n):
                 super(Model, self).__init__()
                 self.linear1 = nn.Linear(k1, k2)
@@ -1022,12 +1023,17 @@ class ONNX_IR_TESTER(object):
         elif model_name == "vit_L_8b":
             b, m, k1, k2, n = 8, 256, 1024, 4096, 1024
         x = torch.randn(b, m, k1).float()
-        self.torch_and_test(x, Model(k1, k2, n), case_name + "_" + model_name, matmul_perchannel=True)
+        self.torch_and_test(x,
+                            Model(k1, k2, n),
+                            case_name + "_" + model_name,
+                            matmul_perchannel=True)
 
     def test_MLP1(self, case_name):
         self.test_MLP(case_name, "vit_B")
+
     def test_MLP2(self, case_name):
         self.test_MLP(case_name, "bert_base")
+
     def test_MLP3(self, case_name):
         self.test_MLP(case_name, "vit_L_8b")
 
@@ -7252,7 +7258,11 @@ class ONNX_IR_TESTER(object):
 
             @staticmethod
             def symbolic(g, left_features, right_features, max_disp, num_groups):
-                return g.op("tpu_mlir::Correlation", left_features, right_features, max_disp_i=max_disp, num_groups_i=num_groups)
+                return g.op("tpu_mlir::Correlation",
+                            left_features,
+                            right_features,
+                            max_disp_i=max_disp,
+                            num_groups_i=num_groups)
 
         class Model(nn.Module):
 
@@ -7408,8 +7418,8 @@ if __name__ == "__main__":
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
     args = parser.parse_args()
-    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple,
-                            args.num_core, args.debug_cmd, args.cuda, args.concise_log)
+    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.num_core,
+                            args.debug_cmd, args.cuda, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

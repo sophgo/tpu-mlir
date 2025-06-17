@@ -242,8 +242,6 @@ def get_bboxes_single(cls_scores, bbox_preds, scale_factor, input_shape, rescale
         return np.array([]), np.array([]), np.array([])
 
 
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Inference Yolo v5 network.')
     parser.add_argument("--model", type=str, required=True, help="Model definition file")

@@ -25,6 +25,7 @@ from utils.cache_tool import CommandRecorder
 
 logger = setup_logger("transform")
 
+
 class ModelTransformer(object):
 
     def __init__(self, model_name, model_def):
@@ -60,22 +61,29 @@ class ModelTransformer(object):
         file_mark(mlir_origin)
         return mlir_origin
 
-    def model_transform(self, mlir_file: str, add_postprocess: str="", patterns_count: dict={}, pruning: str=""):
+    def model_transform(self,
+                        mlir_file: str,
+                        add_postprocess: str = "",
+                        patterns_count: dict = {},
+                        pruning: str = ""):
         self.set_mlir_file(mlir_file)
         mlir_origin = self.mlir_file.replace('.mlir', '_origin.mlir', 1)
         if self.converter:
             file_mark(mlir_origin)
             self.converter.generate_mlir(mlir_origin)
         else:
-            mlir_origin = self.model_def # skip frontend conversion if model_def is origin.mlir
+            mlir_origin = self.model_def  # skip frontend conversion if model_def is origin.mlir
 
-        patterns = mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess, True if patterns_count else False, pruning=pruning)
+        patterns = mlir_opt_for_top(mlir_origin,
+                                    self.mlir_file,
+                                    add_postprocess,
+                                    True if patterns_count else False,
+                                    pruning=pruning)
         if patterns_count:
             for k, v in patterns_count.items():
                 assert k in patterns and v == patterns[k], \
                 "The number of times {} was applied does not meet the requirements. Expected {}, got {}" \
                 .format(k, v, patterns.get(k))
-
 
         logger.info("Mlir file generated:{}".format(self.mlir_file))
 
@@ -210,8 +218,13 @@ class CaffeTransformer(ModelTransformer):
         super().__init__(model_name, model_def)
         self.model_data = model_data
         from transform.CaffeConverter import CaffeConverter
-        self.converter = CaffeConverter(self.model_name, self.model_def, model_data, input_shapes,
-                                        output_names, preprocessor, shape_influencing_input_names=shape_influencing_input_names)
+        self.converter = CaffeConverter(self.model_name,
+                                        self.model_def,
+                                        model_data,
+                                        input_shapes,
+                                        output_names,
+                                        preprocessor,
+                                        shape_influencing_input_names=shape_influencing_input_names)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import caffe_inference
@@ -230,8 +243,13 @@ class TFLiteTransformer(ModelTransformer):
         super().__init__(model_name, model_def)
         self.do_mlir_infer = False
         from transform.TFLiteConverter import TFLiteConverter
-        self.converter = TFLiteConverter(self.model_name, self.model_def, input_shapes,
-                                         output_names, preprocessor, shape_influencing_input_names=shape_influencing_input_names)
+        self.converter = TFLiteConverter(
+            self.model_name,
+            self.model_def,
+            input_shapes,
+            output_names,
+            preprocessor,
+            shape_influencing_input_names=shape_influencing_input_names)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import tflite_inference
@@ -260,17 +278,23 @@ class TorchTransformer(ModelTransformer):
                  shape_influencing_input_names: list = []):
         super().__init__(model_name, model_def)
         from transform.TorchConverter import TorchConverter
-        self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, input_types,
-                                        output_names, preprocessor, dynamic=dynamic, shape_influencing_input_names=shape_influencing_input_names)
+        self.converter = TorchConverter(self.model_name,
+                                        self.model_def,
+                                        input_shapes,
+                                        input_types,
+                                        output_names,
+                                        preprocessor,
+                                        dynamic=dynamic,
+                                        shape_influencing_input_names=shape_influencing_input_names)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import torch_inference
         return torch_inference(inputs, self.model_def)
 
+
 class MlirTransformer(ModelTransformer):
 
-    def __init__(self,
-                 model_name, model_def):
+    def __init__(self, model_name, model_def):
         super().__init__(model_name, model_def)
         parser = MlirParser(model_def)
         state = parser.module_state
@@ -278,36 +302,34 @@ class MlirTransformer(ModelTransformer):
         assert model_name == parser.module_name, f"model_name is inconsistent with module_name in {model_def}"
         weight_file = parser.module_weight_file
         assert os.path.exists(weight_file), f"{weight_file} not exist, please check!"
-        self.converter = None # origin.mlir model no need converter
+        self.converter = None  # origin.mlir model no need converter
+
 
 class MaskRCNNTransformer(ModelTransformer):
 
     def __init__(self,
                  *,
-                 model_name:   str  = None,
-                 model_def:    list = [],
+                 model_name: str = None,
+                 model_def: list = [],
                  model_extern: list = [],
                  input_shapes: list = [],
-                 input_types:  list = [],
+                 input_types: list = [],
                  output_names: list = [],
                  preprocessor: dict = {},
-                 path_yaml:    list = []):
+                 path_yaml: list = []):
         super().__init__(model_name, model_def)
         from transform.MaskRCNNConverter import MaskRCNNConverter
         if not self.model_def.endswith('.pt'):
-            raise RuntimeError("maskrcnn model only support torch.pt! unsupport model:{}".format(self.model_def))
+            raise RuntimeError("maskrcnn model only support torch.pt! unsupport model:{}".format(
+                self.model_def))
         if model_extern is not None:
             for model in model_extern:
-                if(not model.endswith('.pt')):
-                    raise RuntimeError("maskrcnn model only support torch.pt! unsupport model:{}".format(model))
+                if (not model.endswith('.pt')):
+                    raise RuntimeError(
+                        "maskrcnn model only support torch.pt! unsupport model:{}".format(model))
 
-        self.converter = MaskRCNNConverter(self.model_name,
-                                           self.model_def,
-                                           model_extern,
-                                           input_shapes,
-                                           input_types,
-                                           output_names,
-                                           preprocessor,
+        self.converter = MaskRCNNConverter(self.model_name, self.model_def, model_extern,
+                                           input_shapes, input_types, output_names, preprocessor,
                                            path_yaml)
         self.is_able_infer = model_extern is not None
 
@@ -315,7 +337,8 @@ class MaskRCNNTransformer(ModelTransformer):
         if (self.is_able_infer):
             from tools.model_runner import torch_inference
             return torch_inference(inputs, self.model_def)
-        assert 0,"[MaskRCNN] only support single torch inference!"
+        assert 0, "[MaskRCNN] only support single torch inference!"
+
 
 def get_model_transform(args):
     preprocessor = preprocess()
@@ -348,17 +371,29 @@ def get_model_transform(args):
                                replace_topk_indices=args.replace_topk_indices,
                                do_onnx_sim=args.do_onnx_sim)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
-        tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
-                                args.output_names, preprocessor.to_dict(),
+        tool = CaffeTransformer(args.model_name,
+                                args.model_def,
+                                args.model_data,
+                                args.input_shapes,
+                                args.output_names,
+                                preprocessor.to_dict(),
                                 shape_influencing_input_names=args.shape_influencing_input_names)
     elif args.model_def.endswith('.tflite'):
-        tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
-                                 args.output_names, preprocessor.to_dict(),
+        tool = TFLiteTransformer(args.model_name,
+                                 args.model_def,
+                                 args.input_shapes,
+                                 args.output_names,
+                                 preprocessor.to_dict(),
                                  shape_influencing_input_names=args.shape_influencing_input_names)
     elif args.model_def.endswith('.pt'):
-        tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
-                                args.input_types, args.output_names, preprocessor.to_dict(),
-                                dynamic=args.dynamic, shape_influencing_input_names=args.shape_influencing_input_names)
+        tool = TorchTransformer(args.model_name,
+                                args.model_def,
+                                args.input_shapes,
+                                args.input_types,
+                                args.output_names,
+                                preprocessor.to_dict(),
+                                dynamic=args.dynamic,
+                                shape_influencing_input_names=args.shape_influencing_input_names)
     elif args.model_def.endswith('.mlir'):
         tool = MlirTransformer(args.model_name, args.model_def)
     else:
@@ -368,17 +403,18 @@ def get_model_transform(args):
     tool.set_mlir_file(args.mlir)
     return tool
 
+
 def model_transform_func(model_name, model_def, input_shapes, mlir_scale, mlir_mean, output_mlir):
     preprocessor = preprocess()
-    preprocessor.config(mean=mlir_mean , scale=mlir_scale, pixel_format='rgb', keep_aspect_ratio=True)
+    preprocessor.config(mean=mlir_mean,
+                        scale=mlir_scale,
+                        pixel_format='rgb',
+                        keep_aspect_ratio=True)
     if not output_mlir.endswith('.mlir'):
         raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
-    tool = OnnxTransformer(model_name,
-                            model_def,
-                            input_shapes,
-                            [], '',
-                            preprocessor.to_dict())
+    tool = OnnxTransformer(model_name, model_def, input_shapes, [], '', preprocessor.to_dict())
     tool.model_transform(output_mlir)
+
 
 if __name__ == '__main__':
     logger.info("TPU-MLIR {}".format(pymlir.__version__))
@@ -419,10 +455,10 @@ if __name__ == '__main__':
                         help="name list of inputs with dynamic shape, like:input1,input2")
     parser.add_argument("--shape_influencing_input_names", type=str2list, default=list(),
                         help="name list of inputs which influencing other tensors\' shape during inference, like:input1,input2. \
-                            if set, test_input is required")
+                            if set, test_input is required"                                                           )
     parser.add_argument("--dynamic", action='store_true',
                         help='only valid for onnx model. if set, will automatically set inputs with dyanmic axis \
-                            as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names')
+                            as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names'                                                                                                             )
     parser.add_argument("--path_yaml", type=str, default=None, help="path of the yaml file")
     parser.add_argument("--not_inference", action='store_true', help='only do model transform, not inference')
     parser.add_argument("--op_custom_shape", type=str, help="set custom shape for some op, like:\'{\"Range\":{\"/Range_output_0\":[2048],\"/Range_1_output_0\":[2048]}}\'")
@@ -435,7 +471,9 @@ if __name__ == '__main__':
     parser = get_preprocess_parser(existed_parser=parser)
     args, unknown_args = parser.parse_known_args()
     if (args.enable_maskrcnn):
-        assert ((not args.test_input) and (not args.test_result)), "[Error] Please don't give input/output when enable_MaskRCNN!"
+        assert (
+            (not args.test_input) and
+            (not args.test_result)), "[Error] Please don't give input/output when enable_MaskRCNN!"
 
     if unknown_args:
         args.unknown_params += unknown_args
@@ -462,8 +500,8 @@ if __name__ == '__main__':
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
     if qat_tool.fakequant_model:
         node_name_mapping = tool.converter.node_name_mapping
-        qat_tool.align_final_opt(node_name_mapping,args.onnx_sim)
-        qat_tool.align_canonicalize(args.mlir,args.test_result)
+        qat_tool.align_final_opt(node_name_mapping, args.onnx_sim)
+        qat_tool.align_canonicalize(args.mlir, args.test_result)
     tool.file_recorder.dump()
     if not args.debug:
         tool.cleanup()

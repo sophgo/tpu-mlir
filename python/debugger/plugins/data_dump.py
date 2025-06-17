@@ -27,7 +27,9 @@ from ..target_1688.context import BM1688Context
 from ..target_1690.context import BM1690Context
 from ..target_2380.context import SG2380Context
 
+
 class IncNpzFile2:
+
     def __init__(self, file: str):
         """
         :param file: the ``npz`` file to write
@@ -49,9 +51,7 @@ class IncNpzFile2:
             "force_zip64": True,
         }
         if self.zip is None or self.zip.fp is None:
-            self.zip = zipfile.ZipFile(
-                self.fn, mode="a", compression=zipfile.ZIP_DEFLATED
-            )
+            self.zip = zipfile.ZipFile(self.fn, mode="a", compression=zipfile.ZIP_DEFLATED)
 
         with self.zip.open(key, **kwargs) as fid:
             val = np.asanyarray(data)
@@ -69,6 +69,7 @@ class IncNpzFile2:
     def return_npz(self):
         self.zip.close()
         return np.load(self.fn, allow_pickle=True)
+
 
 class DataDump(TdbPlugin, TdbPluginCmd):
     """
@@ -102,13 +103,11 @@ class DataDump(TdbPlugin, TdbPluginCmd):
 
         if is_operand:
             point_index += 1
-            values = tdb.index_df.loc[
-                tdb.index_df["executed_id"] == point_index, "operands"
-            ].tolist()
+            values = tdb.index_df.loc[tdb.index_df["executed_id"] == point_index,
+                                      "operands"].tolist()
         else:
-            values = tdb.index_df.loc[
-                tdb.index_df["executed_id"] == point_index, "results"
-            ].tolist()
+            values = tdb.index_df.loc[tdb.index_df["executed_id"] == point_index,
+                                      "results"].tolist()
 
         if values:
             values = values[0]
@@ -149,7 +148,7 @@ class DataDump(TdbPlugin, TdbPluginCmd):
         value_dict = value.__dict__
         if value_dict['slice'] != '[...]':
             import re
-            pattern = re.compile(r'(?<=[\<|x])\d+')   # 查找数字
+            pattern = re.compile(r'(?<=[\<|x])\d+')  # 查找数字
             glb_shape = [int(x) for x in pattern.findall(value_dict['reshape'])]
             assert glb_shape[2] == 1, "not support 3d shape"
             glb_shape.pop(2)
@@ -160,13 +159,11 @@ class DataDump(TdbPlugin, TdbPluginCmd):
             start.pop(2)
             end.pop(2)
 
-            if start != [0]*len(start) or end != glb_shape:
+            if start != [0] * len(start) or end != glb_shape:
                 if value.name not in self.buf_tensors:
                     self.buf_tensors[value.name] = np.zeros(glb_shape, dtype=new_data.dtype)
-                self.buf_tensors[value.name][start[0]:end[0],
-                                            start[1]:end[1],
-                                            start[2]:end[2],
-                                            start[3]:end[3]] = new_data
+                self.buf_tensors[value.name][start[0]:end[0], start[1]:end[1], start[2]:end[2],
+                                             start[3]:end[3]] = new_data
                 if end != glb_shape: return
                 new_data = self.buf_tensors[value.name]
                 self.buf_tensors.pop(value.name)

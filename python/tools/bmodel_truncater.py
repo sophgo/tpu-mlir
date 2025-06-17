@@ -17,9 +17,7 @@ from debugger.target_common import CMDType
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Truncate BModel and generate a new BModel."
-    )
+    parser = argparse.ArgumentParser(description="Truncate BModel and generate a new BModel.")
     parser.add_argument(
         "bmodel",
         help="The input BModel.",
@@ -119,11 +117,14 @@ def serialize(args, bmodel, func_id, reg_id, block_id, block):
                         int(target_cmd_id),
                         targt_cmd_type,
                     )
-                    new_all += core_cmds.msgcores[truncate_msgcore_id].no_sys_cmds[: target_index + 1]
+                    new_all += core_cmds.msgcores[truncate_msgcore_id].no_sys_cmds[:target_index +
+                                                                                   1]
 
             # truncate point in sys_cmds
             elif boundary_type == 1:
-                new_all = sum([msgcore.total_cmds for msgcore in core_cmds.msgcores[: truncate_msgcore_id + 1]],[])
+                new_all = sum([
+                    msgcore.total_cmds for msgcore in core_cmds.msgcores[:truncate_msgcore_id + 1]
+                ], [])
                 # add tiu/dma wait msg cmd
                 if truncate_msgcore_id < len(core_cmds.msgcores) - 1:
                     new_all += core_cmds.msgcores[truncate_msgcore_id + 1].total_cmds[:2]
@@ -155,10 +156,14 @@ def serialize(args, bmodel, func_id, reg_id, block_id, block):
             tiu_buf = padding_to_128_align(tiu_buf)
             dma_buf = padding_to_128_align(dma_buf)
 
-            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[core_id].gdma_tiu_commands[0].tiu_cmd.bytes = tiu_buf
-            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[core_id].gdma_tiu_commands[0].tiu_num = (len(new_tiu) + 1)
-            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[core_id].gdma_tiu_commands[0].dma_cmd.bytes = dma_buf
-            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[core_id].gdma_tiu_commands[0].dma_num = (len(new_dma) + 1)
+            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[
+                core_id].gdma_tiu_commands[0].tiu_cmd.bytes = tiu_buf
+            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[
+                core_id].gdma_tiu_commands[0].tiu_num = (len(new_tiu) + 1)
+            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[
+                core_id].gdma_tiu_commands[0].dma_cmd.bytes = dma_buf
+            bmodel.net[func_id].parameter[reg_id].sub_net[block_id].core_commands[
+                core_id].gdma_tiu_commands[0].dma_num = (len(new_dma) + 1)
     else:
         assert len(block.cmds) == 1
         new_tiu = []
@@ -195,9 +200,11 @@ def serialize(args, bmodel, func_id, reg_id, block_id, block):
         dma_buf = padding_to_128_align(dma_buf)
 
         bmodel.net[func_id].parameter[reg_id].sub_net[block_id].cmd_group[0].tiu_cmd.bytes = tiu_buf
-        bmodel.net[func_id].parameter[reg_id].sub_net[block_id].cmd_group[0].tiu_num = len(new_tiu) + 1
+        bmodel.net[func_id].parameter[reg_id].sub_net[block_id].cmd_group[0].tiu_num = len(
+            new_tiu) + 1
         bmodel.net[func_id].parameter[reg_id].sub_net[block_id].cmd_group[0].dma_cmd.bytes = dma_buf
-        bmodel.net[func_id].parameter[reg_id].sub_net[block_id].cmd_group[0].dma_num = len(new_dma) + 1
+        bmodel.net[func_id].parameter[reg_id].sub_net[block_id].cmd_group[0].dma_num = len(
+            new_dma) + 1
     return bmodel
 
 

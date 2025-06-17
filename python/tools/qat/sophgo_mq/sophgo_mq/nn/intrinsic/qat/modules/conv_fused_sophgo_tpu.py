@@ -9,8 +9,7 @@ from torch.nn.intrinsic import _FusedModule
 from torch.nn.parameter import Parameter
 from torch.nn.modules.utils import _pair
 
-from typing import TypeVar 
-
+from typing import TypeVar
 
 import sophgo_mq.nn.qat as qnnqat
 import torch.nn.qat.modules as nnqat
@@ -30,25 +29,33 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
     _version = 2
     _FLOAT_MODULE = MOD
 
-    def __init__(self,
-                 # ConvNd args
-                 in_channels, out_channels, kernel_size, stride,
-                 padding, dilation, transposed, output_padding,
-                 groups,
-                 bias,
-                 padding_mode,
-                 # BatchNormNd args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None,
-                 dim=2):
-        nn.modules.conv._ConvNd.__init__(self, in_channels, out_channels, kernel_size,
-                                         stride, padding, dilation, transposed,
-                                         output_padding, groups, False, padding_mode)
+    def __init__(
+            self,
+            # ConvNd args
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            transposed,
+            output_padding,
+            groups,
+            bias,
+            padding_mode,
+            # BatchNormNd args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None,
+            dim=2):
+        nn.modules.conv._ConvNd.__init__(self, in_channels, out_channels, kernel_size, stride,
+                                         padding, dilation, transposed, output_padding, groups,
+                                         False, padding_mode)
         assert qconfig, 'qconfig must be provided for QAT module'
         self.qconfig = qconfig
         self.freeze_bn = freeze_bn if self.training else True
@@ -97,6 +104,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
         self.bn.training = False
         return self
 
+
 # def _forward(self, input):
 #         assert self.bn.running_var is not None
 #         running_std = torch.sqrt(self.bn.running_var + self.bn.eps)
@@ -110,29 +118,28 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
 #         # will be added later
 #         if self.bias is not None:
 #             zero_bias = torch.zeros_like(self.bias)
-#             conv_bias = self.bias 
+#             conv_bias = self.bias
 #         else:
 #             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
 #             conv_bias = torch.zeros_like(zero_bias, device=scaled_weight.device)
 #         if self.bn.affine:
-#             full_bias = (conv_bias - self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias 
+#             full_bias = (conv_bias - self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias
 #         else:
-#             full_bias = (conv_bias - self.bn.running_mean) / running_std 
+#             full_bias = (conv_bias - self.bn.running_mean) / running_std
 #         quant_bias = self.bias_fake_quant(full_bias)
 #         conv_with_bias = self._conv_forward(input, scaled_weight, quant_bias)
 #         conv_orig = (conv_with_bias - full_bias.reshape(bias_shape)) / scale_factor.reshape(bias_shape) + conv_bias.reshape(bias_shape)
 #         conv = self.bn(conv_orig)
 #         return conv
 
-
     def bias_fake_quant_proc(self, bias, scale_w, in_scale):
-        scale = scale_w*in_scale
+        scale = scale_w * in_scale
         if torch.nonzero(scale).size()[0] != scale.numel():
             print('error! scale has 0, scale:', scale)
-        bias_q = bias/scale
-        bias = (bias_q.round()-bias_q).detach() + bias_q
+        bias_q = bias / scale
+        bias = (bias_q.round() - bias_q).detach() + bias_q
         # bias_q = torch.clamp(bias_q, -2147483648, 2147483647)
-        bias = bias*scale
+        bias = bias * scale
         return bias
 
     # def _forward(self, input):
@@ -186,22 +193,25 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
         # will be added later
         if self.bias is not None:
             zero_bias = torch.zeros_like(self.bias)
-            conv_bias = self.bias 
+            conv_bias = self.bias
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
             conv_bias = torch.zeros_like(zero_bias, device=scaled_weight.device)
         if self.bn.affine:
-            full_bias = (conv_bias - self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias 
+            full_bias = (conv_bias -
+                         self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias
         else:
-            full_bias = (conv_bias - self.bn.running_mean) / running_std 
+            full_bias = (conv_bias - self.bn.running_mean) / running_std
 
         if full_bias is not None and self.weight_fake_quant.fake_quant_enabled[0] == 1:
-            quant_bias = self.bias_fake_quant_proc(full_bias, self.weight_fake_quant.scale, self.input_fake_quantizer.scale)
+            quant_bias = self.bias_fake_quant_proc(full_bias, self.weight_fake_quant.scale,
+                                                   self.input_fake_quantizer.scale)
         else:
             quant_bias = full_bias
 
         conv_with_bias = self._conv_forward(input, scaled_weight, quant_bias)
-        conv_orig = (conv_with_bias - full_bias.reshape(bias_shape)) / scale_factor.reshape(bias_shape) + conv_bias.reshape(bias_shape)
+        conv_orig = (conv_with_bias - full_bias.reshape(bias_shape)
+                     ) / scale_factor.reshape(bias_shape) + conv_bias.reshape(bias_shape)
         conv = self.bn(conv_orig)
         return conv
 
@@ -246,7 +256,8 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
     #        |--- running_mean : Tensor (moved from v1.self.running_mean)
     #        |--- running_var : Tensor (moved from v1.self.running_var)
     #        |--- num_batches_tracked : Tensor (moved from v1.self.num_batches_tracked)
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         version = local_metadata.get('version', None)
         if version is None or version == 1:
             # BN related parameters and buffers were moved into the BN module for v2
@@ -274,8 +285,8 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
                 elif strict:
                     missing_keys.append(prefix + v2_name)
 
-        super(_ConvBnNd, self)._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+        super(_ConvBnNd, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
+                                                     missing_keys, unexpected_keys, error_msgs)
 
     @classmethod
     def from_float(cls, mod):
@@ -292,13 +303,9 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
         assert mod.qconfig, 'Input float module must have a valid qconfig'
         qconfig = mod.qconfig
         conv, bn = mod[0], mod[1]
-        qat_convbn = cls(conv.in_channels, conv.out_channels, conv.kernel_size,
-                         conv.stride, conv.padding, conv.dilation,
-                         conv.groups, conv.bias is not None,
-                         conv.padding_mode,
-                         bn.eps, bn.momentum,
-                         False,
-                         qconfig)
+        qat_convbn = cls(conv.in_channels, conv.out_channels, conv.kernel_size, conv.stride,
+                         conv.padding, conv.dilation, conv.groups, conv.bias is not None,
+                         conv.padding_mode, bn.eps, bn.momentum, False, qconfig)
         qat_convbn.weight = conv.weight
         qat_convbn.bias = conv.bias
         qat_convbn.bn.weight = bn.weight
@@ -313,15 +320,8 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
         modules = []
         cls = type(self)
         conv = cls._FLOAT_CONV_MODULE(  # type: ignore[attr-defined]
-            self.in_channels,
-            self.out_channels,
-            self.kernel_size,
-            self.stride,
-            self.padding,
-            self.dilation,
-            self.groups,
-            self.bias is not None,
-            self.padding_mode)
+            self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding,
+            self.dilation, self.groups, self.bias is not None, self.padding_mode)
         conv.weight = torch.nn.Parameter(self.weight.detach())
         if self.bias is not None:
             conv.bias = torch.nn.Parameter(self.bias.detach())
@@ -329,10 +329,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
 
         if cls._FLOAT_BN_MODULE:  # type: ignore[attr-defined]
             bn = cls._FLOAT_BN_MODULE(  # type: ignore[attr-defined]
-                self.bn.num_features,
-                self.bn.eps,
-                self.bn.momentum,
-                self.bn.affine,
+                self.bn.num_features, self.bn.eps, self.bn.momentum, self.bn.affine,
                 self.bn.track_running_stats)
             bn.weight = Parameter(self.bn.weight.detach())
             if self.bn.affine:
@@ -346,7 +343,6 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
         result = cls._FLOAT_MODULE(*modules)  # type: ignore[operator]
         result.train(self.training)
         return result
-
 
 
 class ConvBn2d_sophgo(_ConvBnNd, nn.Conv2d):
@@ -371,27 +367,49 @@ class ConvBn2d_sophgo(_ConvBnNd, nn.Conv2d):
     _FLOAT_BN_MODULE = nn.BatchNorm2d
     _FLOAT_RELU_MODULE = None
 
-    def __init__(self,
-                 # ConvNd args
-                 in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=None,
-                 padding_mode='zeros',
-                 # BatchNorm2d args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None):
+    def __init__(
+            self,
+            # ConvNd args
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            padding=0,
+            dilation=1,
+            groups=1,
+            bias=None,
+            padding_mode='zeros',
+            # BatchNorm2d args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
-        _ConvBnNd.__init__(self, in_channels, out_channels, kernel_size, stride,
-                           padding, dilation, False, _pair(0), groups, bias, padding_mode,
-                           eps, momentum, freeze_bn, qconfig, dim=2)
+        _ConvBnNd.__init__(self,
+                           in_channels,
+                           out_channels,
+                           kernel_size,
+                           stride,
+                           padding,
+                           dilation,
+                           False,
+                           _pair(0),
+                           groups,
+                           bias,
+                           padding_mode,
+                           eps,
+                           momentum,
+                           freeze_bn,
+                           qconfig,
+                           dim=2)
+
 
 class ConvBnReLU2d_sophgo(ConvBn2d_sophgo):
     r"""
@@ -415,25 +433,30 @@ class ConvBnReLU2d_sophgo(ConvBn2d_sophgo):
     _FLOAT_BN_MODULE = nn.BatchNorm2d
     _FLOAT_RELU_MODULE = nn.ReLU  # type: ignore[assignment]
 
-    def __init__(self,
-                 # Conv2d args
-                 in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=None,
-                 padding_mode='zeros',
-                 # BatchNorm2d args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None):
-        super(ConvBnReLU2d_sophgo, self).__init__(in_channels, out_channels, kernel_size, stride,
-                                           padding, dilation, groups, bias,
-                                           padding_mode, eps, momentum,
-                                           freeze_bn,
-                                           qconfig)
+    def __init__(
+            self,
+            # Conv2d args
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            padding=0,
+            dilation=1,
+            groups=1,
+            bias=None,
+            padding_mode='zeros',
+            # BatchNorm2d args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None):
+        super(ConvBnReLU2d_sophgo,
+              self).__init__(in_channels, out_channels, kernel_size, stride, padding, dilation,
+                             groups, bias, padding_mode, eps, momentum, freeze_bn, qconfig)
 
     def forward(self, input):
         return F.relu(ConvBn2d_sophgo._forward(self, input))
@@ -441,6 +464,7 @@ class ConvBnReLU2d_sophgo(ConvBn2d_sophgo):
     @classmethod
     def from_float(cls, mod):
         return super(ConvBnReLU2d_sophgo, cls).from_float(mod)
+
 
 class ConvReLU2d_sophgo(qnnqat.Conv2d_sophgo, _FusedModule):
     r"""A ConvReLU2d module is a fused module of Conv2d and ReLU, attached with
@@ -459,30 +483,51 @@ class ConvReLU2d_sophgo(qnnqat.Conv2d_sophgo, _FusedModule):
     _FLOAT_BN_MODULE = None
     _FLOAT_RELU_MODULE = nn.ReLU
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros',
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride=1,
+                 padding=0,
+                 dilation=1,
+                 groups=1,
+                 bias=True,
+                 padding_mode='zeros',
                  qconfig=None):
-        super(ConvReLU2d_sophgo, self).__init__(in_channels, out_channels, kernel_size,
-                                         stride=stride, padding=padding, dilation=dilation,
-                                         groups=groups, bias=bias, padding_mode=padding_mode,
-                                         qconfig=qconfig)
+        super(ConvReLU2d_sophgo, self).__init__(in_channels,
+                                                out_channels,
+                                                kernel_size,
+                                                stride=stride,
+                                                padding=padding,
+                                                dilation=dilation,
+                                                groups=groups,
+                                                bias=bias,
+                                                padding_mode=padding_mode,
+                                                qconfig=qconfig)
 
     def forward(self, input):
         return F.relu(qnnqat.Conv2d_sophgo.forward(self, input))
 
     @classmethod
     def from_float(cls, mod):
-        assert type(mod) == cls._FLOAT_MODULE, 'qat.' + cls.__name__ + '.from_float only works for ' + cls._FLOAT_MODULE.__name__
+        assert type(
+            mod
+        ) == cls._FLOAT_MODULE, 'qat.' + cls.__name__ + '.from_float only works for ' + cls._FLOAT_MODULE.__name__
         assert hasattr(mod, 'qconfig'), 'Input float module must have qconfig defined'
         assert mod.qconfig, 'Input float module must have a valid qconfig'
         if type(mod) == cls._FLOAT_MODULE:
             mod = mod[0]
         qconfig = mod.qconfig
-        qat_conv = cls(mod.in_channels, mod.out_channels, mod.kernel_size,
-                       stride=mod.stride, padding=mod.padding, dilation=mod.dilation,
-                       groups=mod.groups, bias=mod.bias is not None,
-                       padding_mode=mod.padding_mode, qconfig=qconfig)
+        qat_conv = cls(mod.in_channels,
+                       mod.out_channels,
+                       mod.kernel_size,
+                       stride=mod.stride,
+                       padding=mod.padding,
+                       dilation=mod.dilation,
+                       groups=mod.groups,
+                       bias=mod.bias is not None,
+                       padding_mode=mod.padding_mode,
+                       qconfig=qconfig)
         qat_conv.weight = mod.weight
         qat_conv.bias = mod.bias
         return qat_conv

@@ -40,7 +40,7 @@ def get_layer_nchw(layer, is_in):
     return shape
 
 
-def get_layer_fm(layer, is_in:bool):
+def get_layer_fm(layer, is_in: bool):
     total_bytes = 0
     tensors = layer.in_tensors if is_in else layer.out_tensors
     for tensor in tensors:
@@ -82,6 +82,7 @@ def get_layer_weight_size(layer):
         total_bytes += tensor_bytes
     return total_bytes
 
+
 def get_layer_feature_size(layer):
     total_bytes = 0
     tensors = layer.in_tensors
@@ -93,6 +94,7 @@ def get_layer_feature_size(layer):
             tensor_bytes *= s
         total_bytes += tensor_bytes
     return total_bytes
+
 
 def get_ratio_str(x, y):
     return '%.2f%%' % (x / y * 100) if y != 0 else "--"
@@ -126,7 +128,8 @@ def get_golden_slice(m, k, n, dtype):
         return '-', '-', '-', '-', '-', '-', '-'
     else:
         df.sort_values(by="Cost", inplace=True, ascending=True, ignore_index=True)
-        return df['Msecs_o'][0], df['Ksecs_o'][0], df['Nsecs_o'][0], df['Mslice'][0], df['Kslice'][0], df['Nslice'][0], df['Cost'][0]
+        return df['Msecs_o'][0], df['Ksecs_o'][0], df['Nsecs_o'][0], df['Mslice'][0], df['Kslice'][
+            0], df['Nslice'][0], df['Cost'][0]
 
 
 class Layer:
@@ -195,6 +198,7 @@ class Layer:
 
 
 class LayerInfo:
+
     def __init__(self):
         self.layer_id = -1
         self.core_id = 0
@@ -230,6 +234,7 @@ class LayerInfo:
 
 
 class TotalLayerInfo:
+
     def __init__(self, writer, layer_info_list):
         self.layer_infos = layer_info_list
         self.writer = writer
@@ -275,7 +280,8 @@ class TotalLayerInfo:
                 layer.feature_size = get_layer_feature_size(layer_info)
                 if len(layer_info.in_tensors) > 1:
                     for i in range(len(layer_info.in_tensors)):
-                        layer.other_info += "tensor_" + str(i) + ': ' + str(layer_info.in_tensors[i].shape)
+                        layer.other_info += "tensor_" + str(i) + ': ' + str(
+                            layer_info.in_tensors[i].shape)
                 for n in layer_info.bd_nodes:
                     if (n.bd_id, n.core_id) not in tiu_instances.keys():
                         continue
@@ -351,22 +357,27 @@ class TotalLayerInfo:
                     else:
                         layer_id_map[layer_info.layer_id].lmem_bytes += gdma_node.datasize
                 if 'matmul' in layer_id_map[layer_info.layer_id].layer_name.lower():
-                    layer_id_map[layer_info.layer_id] = get_trans_cost(layer_id_map[layer_info.layer_id].ddr_bytes,
-                                                                       layer_id_map[layer_info.layer_id].lmem_bytes, ddr_bw, l2_bw)
+                    layer_id_map[layer_info.layer_id] = get_trans_cost(
+                        layer_id_map[layer_info.layer_id].ddr_bytes,
+                        layer_id_map[layer_info.layer_id].lmem_bytes, ddr_bw, l2_bw)
         for k in layer_id_map.keys():
             layer = layer_id_map[k]
             layer.uarch_rate = get_ratio_str(layer.alg_ops, layer.uarch_ops)
             layer.sim_cycle += layer.load_cycles + layer.store_cycles
             layer.load_bandwidth = get_ratio(layer.load_bytes, layer.load_cycles)
             layer.store_bandwidth = get_ratio(layer.store_bytes, layer.store_cycles)
-            layer.alg_cycle_ratio = get_ratio_str(layer.alg_cycle, total_alg_cycles) if total_alg_cycles > 0 else 0
+            layer.alg_cycle_ratio = get_ratio_str(layer.alg_cycle,
+                                                  total_alg_cycles) if total_alg_cycles > 0 else 0
         total_sim_cycle = sum(layer.sim_cycle for layer in layer_id_map.values())
         self.custom_layers = layer_id_map.values()
         for layer in layer_id_map.values():
-            layer.sim_cycle_ratio = get_ratio_str(layer.sim_cycle, total_sim_cycle) if total_sim_cycle > 0 else 0
+            layer.sim_cycle_ratio = get_ratio_str(layer.sim_cycle,
+                                                  total_sim_cycle) if total_sim_cycle > 0 else 0
             tmp_dict = layer.__dict__
-            pop_field = ['input_shape', 'output_shape', 'load_bytes', 'load_cycles', 'store_bytes', 'store_cycles',
-                         'ddr_bytes', 'lmem_bytes', 'sim_cycle', 'sim_cycle_ratio']
+            pop_field = [
+                'input_shape', 'output_shape', 'load_bytes', 'load_cycles', 'store_bytes',
+                'store_cycles', 'ddr_bytes', 'lmem_bytes', 'sim_cycle', 'sim_cycle_ratio'
+            ]
             tmp_ddr_bytes = tmp_dict['ddr_bytes']
             tmp_lmem_bytes = tmp_dict['lmem_bytes']
             tmp_sim_cycle = tmp_dict['sim_cycle']
@@ -426,15 +437,29 @@ class TotalLayerInfo:
             'Pool OPs/s': [pooling_ops]
         }
 
-        pd.DataFrame(condition_dict).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter',
-                                              startrow=0, startcol=1, float_format='%g')
-        pd.DataFrame(detail_spec).to_excel(self.writer, index=False, sheet_name=self.sheet_name, engine='xlsxwriter',
-                                           startrow=3, startcol=1, float_format='%g')
+        pd.DataFrame(condition_dict).to_excel(self.writer,
+                                              index=False,
+                                              sheet_name=self.sheet_name,
+                                              engine='xlsxwriter',
+                                              startrow=0,
+                                              startcol=1,
+                                              float_format='%g')
+        pd.DataFrame(detail_spec).to_excel(self.writer,
+                                           index=False,
+                                           sheet_name=self.sheet_name,
+                                           engine='xlsxwriter',
+                                           startrow=3,
+                                           startcol=1,
+                                           float_format='%g')
 
         if len(self.custom_layer_info) > 0:
-            pd.DataFrame(self.custom_layer_info).to_excel(self.writer, index=False, sheet_name=self.sheet_name,
-                                                          startrow=8, startcol=0,
-                                                          engine='xlsxwriter', float_format='%g')
+            pd.DataFrame(self.custom_layer_info).to_excel(self.writer,
+                                                          index=False,
+                                                          sheet_name=self.sheet_name,
+                                                          startrow=8,
+                                                          startcol=0,
+                                                          engine='xlsxwriter',
+                                                          float_format='%g')
 
     @classmethod
     def set_style(cls, file_path):

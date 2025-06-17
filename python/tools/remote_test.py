@@ -25,17 +25,16 @@ import numpy as np
 #         data = yaml.safe_load(f)
 #     return data
 
+
 def progress_bar(finished, total):
     """显示上传/下载进度的函数"""
     done = int(50 * finished / total)
-    sys.stdout.write("\r[{}{}] {:.2f}%".format(
-        '█' * done,
-        '.' * (50-done),
-        float(finished)/total*100
-    ))
+    sys.stdout.write("\r[{}{}] {:.2f}%".format('█' * done, '.' * (50 - done),
+                                               float(finished) / total * 100))
     if finished >= total:
         sys.stdout.write('\n')
     sys.stdout.flush()
+
 
 def analysis_time(log_content):
     matches = re.findall(r'launch total time is (\d+) us', log_content)
@@ -45,13 +44,18 @@ def analysis_time(log_content):
     time_min = time_us.min()
     time_max = time_us.max()
     time_std = time_us.std()
-    print(f'total_time statistic: mean={time_mean:.2f} us, min={time_min:.2f} us, max={time_max:.2f} us, std={time_std:.2f} us\n')
+    print(
+        f'total_time statistic: mean={time_mean:.2f} us, min={time_min:.2f} us, max={time_max:.2f} us, std={time_std:.2f} us\n'
+    )
+
 
 # class LocalRunner:
 #     def __init__(self, opt):
 #         pass
 
+
 class RemoteRunner:
+
     def __init__(self, opt):
         self.hostname = opt.hostname
         self.username = opt.username
@@ -135,8 +139,9 @@ class RemoteRunner:
                 break
         file_size = os.path.getsize(self.opt.bmodel)
         print(f"== Start to send {self.local_file} to remote server.")
-        self.sftp_client.put(self.local_file, self.remote_file,
-                            callback=lambda x, y: progress_bar(x, file_size))
+        self.sftp_client.put(self.local_file,
+                             self.remote_file,
+                             callback=lambda x, y: progress_bar(x, file_size))
         print(f"== Finished.")
 
     def get_file(self):
@@ -150,10 +155,10 @@ class RemoteRunner:
         remote_file = os.path.join(self.opt.remote_path, filename)
         file_size = self.sftp_client.stat(remote_file).st_size
         print(f"== Start to receive {remote_file} from remote server.")
-        self.sftp_client.get(remote_file, local_file,
-                            callback=lambda x, y: progress_bar(x, file_size))
+        self.sftp_client.get(remote_file,
+                             local_file,
+                             callback=lambda x, y: progress_bar(x, file_size))
         print(f"== Finished.")
-
 
     def get_bmrt_cmd(self, remote_bmodel_file, debug='profile'):
         remote_path = os.path.dirname(remote_bmodel_file)
@@ -222,12 +227,14 @@ def parse_opt():
     opt = parser.parse_args()
     return opt
 
+
 def main(opt):
     runner = RemoteRunner(opt)
     runner.put_file()
     runner.run_command()
     runner.get_file()
     runner.close_connection()
+
 
 if __name__ == '__main__':
     opt = parse_opt()

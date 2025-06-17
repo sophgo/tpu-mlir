@@ -48,9 +48,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         core_id=0,
     ) -> None:
         assert param_fn is not None
-        super().__init__(
-            reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn
-        )
+        super().__init__(reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn)
         self.eu_name = tiu_cls[reg.OP_NAME]["tsk_eu_typ"][reg.tsk_eu_typ]
         self.cmd_id = cmd_id
         # cmd_id_dep of SYS_TR_ACC_reg will be assigned in merge_instruction
@@ -101,16 +99,10 @@ class TiuCmd(BaseTpuCmd, Tiu):
                 attribute = f" {tmp_attr}".replace(":", " =").replace("'", "")
                 if "msg_id" in tmp_attr:
                     msg_id = tmp_attr.pop("msg_id")
-                    return (
-                        f'%B{self.cmd_id}C{ci} = "{self.op_name}"'
-                        + f"(%D{self.cmd_id_dep}C{ci}, %msg{msg_id})"
-                        + attribute
-                    )
-                return (
-                    f'%B{self.cmd_id}C{ci} = "{self.op_name}"'
-                    + f"(%D{self.cmd_id_dep}C{ci})"
-                    + attribute
-                )
+                    return (f'%B{self.cmd_id}C{ci} = "{self.op_name}"' +
+                            f"(%D{self.cmd_id_dep}C{ci}, %msg{msg_id})" + attribute)
+                return (f'%B{self.cmd_id}C{ci} = "{self.op_name}"' + f"(%D{self.cmd_id_dep}C{ci})" +
+                        attribute)
             else:
                 return self.description
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
@@ -124,12 +116,9 @@ class TiuCmd(BaseTpuCmd, Tiu):
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
 
-        return (
-            f"{', '.join(res_name)}, %B{self.cmd_id}C{ci} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep}C{ci})"
-            + attribute
-            + f": ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
-        )
+        return (f"{', '.join(res_name)}, %B{self.cmd_id}C{ci} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %D{self.cmd_id_dep}C{ci})" + attribute +
+                f": ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)")
 
     def get_op_info(self) -> list:
         op_info_list = []
@@ -170,9 +159,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         core_id=0,
     ) -> None:
         assert param_fn is not None
-        super().__init__(
-            reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn
-        )
+        super().__init__(reg, buf=buf, subnet_id=subnet_id, core_id=core_id, param_fn=param_fn)
         self.cmd_id = cmd_id
         # lazy assigned in merge_instruction
         self.cmd_id_dep = fix_cmd_id_dep(reg.cmd_id_dep)
@@ -197,11 +184,8 @@ class DmaCmd(BaseTpuCmd, Dma):
                 tmp_attr = self.attribute.copy()
                 msg_id = tmp_attr.pop("msg_id")
                 attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
-                return (
-                    f'%D{self.cmd_id}C{ci} = "{self.op_name}"'
-                    + f"(%B{self.cmd_id_dep}C{ci}, %msg{msg_id})"
-                    + attribute
-                )
+                return (f'%D{self.cmd_id}C{ci} = "{self.op_name}"' +
+                        f"(%B{self.cmd_id_dep}C{ci}, %msg{msg_id})" + attribute)
             else:
                 return self.description
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
@@ -216,12 +200,9 @@ class DmaCmd(BaseTpuCmd, Dma):
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
 
-        return (
-            f"{', '.join(res_name)}, %D{self.cmd_id}C{ci} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep}C{ci})"
-            + attribute
-            + f": ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
-        )
+        return (f"{', '.join(res_name)}, %D{self.cmd_id}C{ci} = \"{op_name}\"" +
+                f"({', '.join(opd_name)}, %B{self.cmd_id_dep}C{ci})" + attribute +
+                f": ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)")
 
     @property
     def op_name(self):
@@ -299,6 +280,7 @@ class conv_op(TiuCmd):
         # borrowed from TPUPerf/c_model/src/tpu/tiuImpl.cc
         return 0
 
+
 class sconv_op(conv_op):
     name = "sCONV"
     short_cmd = True
@@ -350,6 +332,7 @@ class mm_op(TiuCmd):
     def bank_conflict_cycle(self) -> int:
         return 0
 
+
 class smm_op(mm_op):
     name = "sMM"
     short_cmd = True
@@ -383,11 +366,7 @@ class mm2_op(TiuCmd):
         return m * n * k * 2
 
     def initial_cycle(self) -> int:
-        init_cycle_dict = {
-            4: 37+44,
-            5: 37+19,
-            6: 37
-        }
+        init_cycle_dict = {4: 37 + 44, 5: 37 + 19, 6: 37}
         return init_cycle_dict.get(self.reg['tsk_eu_typ'], 0)
 
     def alg_cycle(self, alg_ops: int) -> int:
@@ -487,6 +466,7 @@ class sfu_op(TiuCmd):
     def bank_conflict_cycle(self) -> int:
         return 0
 
+
 class ssfu_op(sfu_op):
     name = "sSFU"
     short_cmd = True
@@ -519,6 +499,7 @@ class lin_op(TiuCmd):
 
     def bank_conflict_cycle(self) -> int:
         return 0
+
 
 class slin_op(lin_op):
     name = "sLIN"
@@ -577,6 +558,7 @@ class vc_op(TiuCmd):
 
     def bank_conflict_cycle(self) -> int:
         return 0
+
 
 class svc_op(vc_op):
     name = "sVC"
@@ -687,17 +669,13 @@ class pord_op(TiuCmd):
         return 10
 
     def alg_cycle(self, alg_ops: int) -> int:
-        switcher = {
-            0: 2,
-            1: 1,
-            2: 3,
-            4: 1
-        }
+        switcher = {0: 2, 1: 1, 2: 3, 4: 1}
         factor = switcher.get(self.reg["tsk_eu_typ"], 7)
         return DIV_UP(alg_ops, factor * info.EU_NUM(self.operands[0].dtype) * info.NPU_NUM)
 
     def bank_conflict_cycle(self) -> int:
         return 0
+
 
 class spord_op(pord_op):
     name = "sPorD"
@@ -717,7 +695,7 @@ class rqdq_op(TiuCmd):
     description = "RQ && DQ"
 
     def _set_op(self, reg):
-        return ([],) * 3
+        return ([], ) * 3
 
     def ops(self, is_arch):
         n, c, h, w = self.results[0].shape
@@ -744,6 +722,7 @@ class rqdq_op(TiuCmd):
         else:
             bankConflictRatio = 1
         return bankConflictRatio
+
 
 class srqdq_op(rqdq_op):
     name = "sRQ&sDQ"
@@ -789,6 +768,7 @@ class sg_op(TiuCmd):
     def bank_conflict_cycle(self) -> int:
         return 0
 
+
 class ssg_op(sg_op):
     name = "sSG"
     short_cmd = True
@@ -819,6 +799,7 @@ class sgl_op(TiuCmd):
     def bank_conflict_cycle(self) -> int:
         return 0
 
+
 class ssgl_op(sgl_op):
     name = "sSGL"
     short_cmd = True
@@ -846,10 +827,10 @@ class transbc_op(TiuCmd):
             dtype = self.operands[0].dtype
             c = ALIGN(c, info.NPU_NUM)
             if self.eu_name in (
-                "tsbc.l_copy",
-                "tsbc.l_bc",
-                "tsbc.s_bc",
-                "tsbc.s_distribute",
+                    "tsbc.l_copy",
+                    "tsbc.l_bc",
+                    "tsbc.s_bc",
+                    "tsbc.s_distribute",
             ):
                 hw = ALIGN(h * w, info.EU_NUM(dtype))
             else:
@@ -857,13 +838,7 @@ class transbc_op(TiuCmd):
         return n * c * hw * factor
 
     def initial_cycle(self) -> int:
-        init_cycle_dict = {
-            0: 30,
-            2: 27,
-            3: 27,
-            4: 3,
-            5: 3
-        }
+        init_cycle_dict = {0: 30, 2: 27, 3: 27, 4: 3, 5: 3}
         return init_cycle_dict.get(self.reg['tsk_eu_typ'], 0)
 
     def alg_cycle(self, alg_ops: int) -> int:
@@ -933,6 +908,7 @@ class tiu_sys_tr_acc(TiuCmd):
     def bank_conflict_cycle(self) -> int:
         return 0
 
+
 class tiu_sys(TiuCmd):
     name = "SYS"
     opcode = 15
@@ -955,10 +931,11 @@ class tiu_sys(TiuCmd):
         return 1
 
     def _set_op(self, reg):
-        return ([],) * 3
+        return ([], ) * 3
 
     def initial_cycle(self) -> int:
         return 0
+
 
 class rand_op(TiuCmd):
     name = "RAND"

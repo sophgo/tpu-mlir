@@ -16,9 +16,7 @@ import traceback
 try:
     ret = requests.post(
         "http://172.28.142.50:8502/gerrit",
-        data=json.dumps(
-            {"env": os.environ.copy()},
-        ),
+        data=json.dumps({"env": os.environ.copy()}, ),
     )
     pprint(json.loads(ret.content))
     for i in range(10):

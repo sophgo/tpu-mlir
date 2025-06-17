@@ -27,15 +27,27 @@ def palace_holder(writer, splited, g_info):
     if g_info is not None:
         sheet_name = 'Summary'
         df = pd.DataFrame()
-        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
+        df.to_excel(writer,
+                    index=False,
+                    sheet_name=sheet_name,
+                    engine='xlsxwriter',
+                    float_format='%g')
         sheet_name = 'Layer by Layer Info'
-        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
+        df.to_excel(writer,
+                    index=False,
+                    sheet_name=sheet_name,
+                    engine='xlsxwriter',
+                    float_format='%g')
     sheet_name = 'Engine Summary'
     df = pd.DataFrame()
     df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
     if not splited:
         sheet_name = 'Instr World'
-        df.to_excel(writer, index=False, sheet_name=sheet_name, engine='xlsxwriter', float_format='%g')
+        df.to_excel(writer,
+                    index=False,
+                    sheet_name=sheet_name,
+                    engine='xlsxwriter',
+                    float_format='%g')
 
 
 def get_engine_layer(g_info):
@@ -46,19 +58,19 @@ def get_engine_layer(g_info):
             for tiu_node in layer_info.bd_nodes:
                 k = tiu_node.bd_id
                 c = tiu_node.core_id
-                if (k,c) in tiu_layer_map.keys():
+                if (k, c) in tiu_layer_map.keys():
                     print('ERROR! Tiu id is not unique.')
                     assert 0
                 else:
-                    tiu_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_name]
+                    tiu_layer_map[(k, c)] = [layer_info.layer_id, layer_info.layer_name]
             for gdma_node in layer_info.gdma_nodes:
                 k = gdma_node.gdma_id
                 c = gdma_node.core_id
-                if (k,c) in gdma_layer_map.keys():
+                if (k, c) in gdma_layer_map.keys():
                     print('ERROR! Gdma id is not unique.')
                     assert 0
                 else:
-                    gdma_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_name]
+                    gdma_layer_map[(k, c)] = [layer_info.layer_id, layer_info.layer_name]
     return tiu_layer_map, gdma_layer_map
 
 
@@ -112,10 +124,10 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
         sdma_instance.add_kpi_field()
         sdma_instance.write()
         # cdma
-        if chip_arch['Chip Arch'] == 'sg2260' :
+        if chip_arch['Chip Arch'] == 'sg2260':
             reg_list += tiu_instance.reg_list + gdma_instance.reg_list + sdma_instance.reg_list
             cdma_instance = None
-            if  act_core_num and core_id == 7 and file_names:
+            if act_core_num and core_id == 7 and file_names:
                 for f in file_names:
                     port = eval(re.search(rf"{cdma_reg_file}_(\d+)\.txt", f).group(1))
                     cdma_instance = Cdma(port, writer, 'CDMA')
@@ -153,7 +165,8 @@ def generate_details(input_fold, out_file, g_info, writer, core_num=8, split_ins
         instr_instance = InstrWorld(instr_reg_list, instr_cols, writer, split_instr_world)
         instr_instance.write(out_file)
         # summary
-        summary_instance = AsicSummary(writer, tiu_instances, gdma_instances, sdma_instances, cdma_instances, act_core_num)
+        summary_instance = AsicSummary(writer, tiu_instances, gdma_instances, sdma_instances,
+                                       cdma_instances, act_core_num)
         summary_instance.load(chip_arch_act)
         summary_instance.write()
     chip_arch_act['concurrency'] = summary_instance.data[-1][3]
@@ -168,15 +181,15 @@ def generate_divided_details(input_fold, g_info, core_num=8):
     output_fold_sdma = input_fold + 'Sdma'
     output_fold_cdma = input_fold + 'Cdma'
     if not os.path.exists(output_fold_summary):
-            os.makedirs(output_fold_summary)
+        os.makedirs(output_fold_summary)
     if not os.path.exists(output_fold_tiu):
-            os.makedirs(output_fold_tiu)
+        os.makedirs(output_fold_tiu)
     if not os.path.exists(output_fold_gdma):
-            os.makedirs(output_fold_gdma)
+        os.makedirs(output_fold_gdma)
     if not os.path.exists(output_fold_sdma):
-            os.makedirs(output_fold_sdma)
+        os.makedirs(output_fold_sdma)
     if not os.path.exists(output_fold_cdma):
-            os.makedirs(output_fold_cdma)
+        os.makedirs(output_fold_cdma)
     output_file_summary = output_fold_summary + '/PerAI_output_summary.xlsx'
     tiu_reg_file = 'tiuRegInfo'
     dma_reg_file = 'tdmaRegInfo'
@@ -255,7 +268,8 @@ def generate_divided_details(input_fold, g_info, core_num=8):
         # instr_instance.write(out_file)
         # summary
         with pd.ExcelWriter(output_file_summary) as summary_writer:
-            summary_instance = AsicSummary(summary_writer, tiu_instances, gdma_instances, sdma_instances, cdma_instances, act_core_num)
+            summary_instance = AsicSummary(summary_writer, tiu_instances, gdma_instances,
+                                           sdma_instances, cdma_instances, act_core_num)
             summary_instance.load(chip_arch_act)
             summary_instance.write()
     return tiu_instance_map, gdma_instance_map, chip_arch_act

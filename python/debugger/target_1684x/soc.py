@@ -26,7 +26,8 @@ class BM1684XRunner(DeviceRunner):
     lib_name = "libatomic_exec_aarch64.so"
     soc_structs = []
     kernel_fn = os.path.join(
-        os.environ["PROJECT_ROOT"], "debugger/lib/libbm1684x_atomic_kernel.so" # do not use libbm1684x_kernel_module, which may cause nan error
+        os.environ["PROJECT_ROOT"],
+        "debugger/lib/libbm1684x_atomic_kernel.so"  # do not use libbm1684x_kernel_module, which may cause nan error
     )
 
     def __init__(self, _):
@@ -57,9 +58,8 @@ class BM1684XRunner(DeviceRunner):
             if engine_type == 1:  # dma
                 cmd_buf_array = (ctypes.c_uint32 * (len(cmd_buf) // 4))()
                 ctypes.memmove(ctypes.addressof(cmd_buf_array), cmd_buf, len(cmd_buf))
-                c_uint32_obj = (ctypes.c_uint32 * (len(cmd_buf) // 4)).from_buffer_copy(
-                    cmd_buf_array
-                )
+                c_uint32_obj = (ctypes.c_uint32 *
+                                (len(cmd_buf) // 4)).from_buffer_copy(cmd_buf_array)
                 self.lib.convert_addr(c_uint32_obj, self.reserved_offset)
                 cmd_buf = bytes(c_uint32_obj)
             buf_list.append(cmd_buf)
@@ -126,7 +126,7 @@ class Memory(DeviceMemory):
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * info.LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                self.LMEM[offset:offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
@@ -137,9 +137,8 @@ class Memory(DeviceMemory):
             n_s, c_s, h_s, w_s = stride
             _shape = [n, (NPU_OFFSET + c + 63) // 64, 64, h, w]
             _stride = (n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
-            return data_view(_shape, _stride).reshape(n, -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(_shape, _stride).reshape(n, -1, h, w)[:n,
+                                                                   NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_stride_data():
             return get_stride_data_base(memref.shape, memref.stride)
@@ -156,9 +155,8 @@ class Memory(DeviceMemory):
                 cube_num * w,
                 cube_num,
             )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
+                                                    w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_matrix_data():
             r, c = memref.shape
@@ -180,12 +178,10 @@ class Memory(DeviceMemory):
             return get_stride_data_base(shape, stride).reshape(r, c)
 
         def _lane_mask_filter(c, lane_mask):
-            lane_mask = np.unpackbits(
-                np.uint64([lane_mask]).view(np.uint8), bitorder="little"
-            )
+            lane_mask = np.unpackbits(np.uint64([lane_mask]).view(np.uint8), bitorder="little")
             _c = div_up(NPU_OFFSET + c, info.NPU_NUM)
             index = np.zeros(_c * info.NPU_NUM, bool)
-            index[NPU_OFFSET : NPU_OFFSET + c] = True
+            index[NPU_OFFSET:NPU_OFFSET + c] = True
             index = index.reshape(_c, info.NPU_NUM)
             index[:, lane_mask == 0] = False
             return index.flatten()

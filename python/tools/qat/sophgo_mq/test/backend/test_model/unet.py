@@ -7,10 +7,10 @@ import torch.nn.functional as F
 
 __all__ = ['UNet']
 
+
 class UNet(nn.Module):
-    def __init__(
-        self, num_channels, num_classes, depth=4, initial_filter_count=64, bilinear=True
-    ):
+
+    def __init__(self, num_channels, num_classes, depth=4, initial_filter_count=64, bilinear=True):
         super(UNet, self).__init__()
 
         self.num_channels = num_channels
@@ -36,9 +36,7 @@ class UNet(nn.Module):
         decoder_blocks = []
         for d in range(depth):
             if d < depth - 1:
-                decoder_blocks.append(
-                    Up(filter_count, filter_count // 2 // factor, bilinear)
-                )
+                decoder_blocks.append(Up(filter_count, filter_count // 2 // factor, bilinear))
             else:
                 decoder_blocks.append(Up(filter_count, filter_count // 2, bilinear))
             filter_count //= 2
@@ -66,9 +64,7 @@ class UNet(nn.Module):
 class DoubleConv(nn.Module):
     """Module combining Conv -> BN -> ReLU -> Conv -> BN -> ReLU."""
 
-    def __init__(
-        self, num_input_channels, num_output_channels, num_middle_channels=None
-    ):
+    def __init__(self, num_input_channels, num_output_channels, num_middle_channels=None):
         super().__init__()
 
         if not num_middle_channels:
@@ -105,9 +101,8 @@ class Down(nn.Module):
     def __init__(self, num_input_channels, num_output_channels):
         super().__init__()
 
-        self.maxpool_conv = nn.Sequential(
-            nn.MaxPool2d(2), DoubleConv(num_input_channels, num_output_channels)
-        )
+        self.maxpool_conv = nn.Sequential(nn.MaxPool2d(2),
+                                          DoubleConv(num_input_channels, num_output_channels))
 
     def forward(self, x):
         return self.maxpool_conv(x)
@@ -122,13 +117,12 @@ class Up(nn.Module):
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
-            self.conv = DoubleConv(
-                num_input_channels, num_output_channels, num_input_channels // 2
-            )
+            self.conv = DoubleConv(num_input_channels, num_output_channels, num_input_channels // 2)
         else:
-            self.up = nn.ConvTranspose2d(
-                num_input_channels, num_input_channels // 2, kernel_size=2, stride=2
-            )
+            self.up = nn.ConvTranspose2d(num_input_channels,
+                                         num_input_channels // 2,
+                                         kernel_size=2,
+                                         stride=2)
             self.conv = DoubleConv(num_input_channels, num_output_channels)
 
     def forward(self, x1, x2):
@@ -139,6 +133,7 @@ class Up(nn.Module):
 
 
 class OutputConvolution(nn.Module):
+
     def __init__(self, num_input_channels, num_output_channels):
         super(OutputConvolution, self).__init__()
 

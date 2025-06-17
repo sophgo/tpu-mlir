@@ -235,18 +235,19 @@ def make_label(op: OpView, **kwargs):
 def make_tooltips(op: Operation):
     # breakpoint()
     operands = [
-        get_opname(i) + "({})".format("x".join(map(str, i.type.shape)))
-        for i in op.operands
+        get_opname(i) + "({})".format("x".join(map(str, i.type.shape))) for i in op.operands
         if hasattr(i.type, "shape")
     ]
     results = [
-        get_opname(i) + "({})".format("x".join(map(str, i.type.shape)))
-        for i in op.results
+        get_opname(i) + "({})".format("x".join(map(str, i.type.shape))) for i in op.results
         if hasattr(i.type, "shape")
     ]
 
     attr_str = json.dumps(
-        [{"operands": operands, "results": results}, parse_attribute(op.attributes)],
+        [{
+            "operands": operands,
+            "results": results
+        }, parse_attribute(op.attributes)],
         ensure_ascii=False,
         indent=2,
     )
@@ -295,9 +296,9 @@ def get_opname(op):
 
 match_fused_loc = re.compile(r"""fused\["([^"]*)"(, "([^"]*)")+\]""")
 
-
 # 'fused["252_LayerNormalization", "263_LayerNormalization"]'
 counter = Counter()
+
 
 def avoid_duplicate_loc(loc):
     count = counter[loc]
@@ -306,12 +307,14 @@ def avoid_duplicate_loc(loc):
         return loc
     return f"{loc}_{count}"
 
+
 def is_op_in_group(op):
     if isinstance(op, OpView):
         return is_op_in_group(op.operation)
     elif isinstance(op, Operation):
         return is_opname(op.parent, "tpu.Group")
     return False
+
 
 def get_op_loc(op, raw=False):
     if isinstance(op, (OpView, Operation)):
@@ -382,6 +385,7 @@ def create_edge(pre_op_loc, op_loc, label, ltail=None, href=None, **kwargs):
 
 
 class MlirCluster(pydot.Cluster):
+
     def __init__(
         self,
         graph_name="subG",
@@ -435,9 +439,7 @@ def to_string(self):
         edge_obj_dicts.extend(self.obj_dict["edges"][k])
 
     if edge_obj_dicts:
-        edge_src_set, edge_dst_set = list(
-            zip(*[obj["points"] for obj in edge_obj_dicts])
-        )
+        edge_src_set, edge_dst_set = list(zip(*[obj["points"] for obj in edge_obj_dicts]))
         edge_src_set, edge_dst_set = set(edge_src_set), set(edge_dst_set)
     else:
         edge_src_set, edge_dst_set = set(), set()
@@ -450,10 +452,8 @@ def to_string(self):
     for k in self.obj_dict["subgraphs"]:
         sgraph_obj_dicts.extend(self.obj_dict["subgraphs"][k])
 
-    obj_list = [
-        (obj["sequence"], obj)
-        for obj in (edge_obj_dicts + node_obj_dicts + sgraph_obj_dicts)
-    ]
+    obj_list = [(obj["sequence"], obj)
+                for obj in (edge_obj_dicts + node_obj_dicts + sgraph_obj_dicts)]
     obj_list.sort(key=lambda x: x[0])
 
     for idx, obj in obj_list:
@@ -466,10 +466,7 @@ def to_string(self):
             node = Node(obj_dict=obj)
 
             if self.obj_dict.get("suppress_disconnected", False):
-                if (
-                    node.get_name() not in edge_src_set
-                    and node.get_name() not in edge_dst_set
-                ):
+                if (node.get_name() not in edge_src_set and node.get_name() not in edge_dst_set):
                     continue
 
             graph.append(node.to_string() + "\n")
@@ -538,7 +535,8 @@ if __name__ == "__main__":
         "--layer_group_cache",
         type=str,
         default=None,
-        help="for mlir file before final.mlir, a layer_group_cache will render different color for each group",
+        help=
+        "for mlir file before final.mlir, a layer_group_cache will render different color for each group",
     )
     parser.add_argument(
         "--failed_key_list",
@@ -701,16 +699,13 @@ if __name__ == "__main__":
                             href=f"#cluster_{pre_op_loc}",
                         )
                     else:
-                        edge = create_edge(
-                            pre_op_loc,
-                            oop_loc,
-                            label=iop.get_name(),
-                            href=f"#{pre_op_loc}",
-                            **edge_attr
-                        )
+                        edge = create_edge(pre_op_loc,
+                                           oop_loc,
+                                           label=iop.get_name(),
+                                           href=f"#{pre_op_loc}",
+                                           **edge_attr)
 
                     dot.add_edge(edge)
-
 
         for region in group.regions:
             draw_region(region)
@@ -718,6 +713,7 @@ if __name__ == "__main__":
 
     loc_seq = []
     first_func_graph = None
+
     def draw_func_op(func: FuncOp):
         global first_func_graph
         func_name = func.name.value
@@ -770,9 +766,7 @@ if __name__ == "__main__":
                 node_attrs["failed"] = op_loc in failed_keys
 
                 if op_loc in color_map:
-                    node_attrs["fillcolor"] = MAP_COLOR[
-                        color_map[op_loc] % len(MAP_COLOR)
-                    ]
+                    node_attrs["fillcolor"] = MAP_COLOR[color_map[op_loc] % len(MAP_COLOR)]
                     node_attrs["style"] = "filled"
                     node_attrs["suffix"] = f"group({color_map[op_loc]})"
 
@@ -804,16 +798,13 @@ if __name__ == "__main__":
                                 if isinstance(pre_op_loc, list):
                                     pre_subnet_name, pre_subnet_opd_index = pre_op_loc
                                     pre_op_loc = func_output_names[pre_subnet_name][
-                                        pre_subnet_opd_index
-                                    ]
+                                        pre_subnet_opd_index]
                         elif is_opname(iopd, "top.None", "tpu.Yield"):
                             continue
                         else:
                             pre_op_loc = get_op_loc(iopd)
                             if pre_op_loc == op_loc:
                                 continue
-
-
 
                         if pre_op_loc in skip_op:
                             continue
@@ -822,13 +813,11 @@ if __name__ == "__main__":
                         if not is_opname(iopd, "top.Weight") and args.force_order == 2:
                             edge_attr["constraint"] = "false"
 
-                        edge = create_edge(
-                            pre_op_loc,
-                            op_loc,
-                            label="",
-                            href=f"#{pre_op_loc}",
-                            **edge_attr
-                        )
+                        edge = create_edge(pre_op_loc,
+                                           op_loc,
+                                           label="",
+                                           href=f"#{pre_op_loc}",
+                                           **edge_attr)
 
                         dot.add_edge(edge)
 
@@ -839,7 +828,6 @@ if __name__ == "__main__":
                         for opd in op.operands:
                             func_output_names[func_name].append(get_op_loc(opd))
         dot.add_subgraph(func_graph)
-
 
         return func_graph
 
@@ -878,8 +866,7 @@ if __name__ == "__main__":
                 f"{mlir_state}_dot": f"{args.mlir}.dot",
                 f"{mlir_state}_svg": f"{args.mlir}.svg",
                 f"{mlir_state}_graph": f"{args.mlir}.graph",
-            }
-        )
+            })
         recorder.dump()
 
     print(os.path.abspath(f"{args.mlir}.dot"))

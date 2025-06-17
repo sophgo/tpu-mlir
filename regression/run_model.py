@@ -22,11 +22,12 @@ from utils.misc import *
 import re
 import sys
 
+
 def extract_profile_info(file_path):
     with open(file_path, 'rb') as f:
         f.seek(0, 2)
         fsize = f.tell()
-        f.seek(max(fsize-1024, 0), 0)
+        f.seek(max(fsize - 1024, 0), 0)
         lines = f.readlines()[-20:]
 
     text = ''.join(line.decode('utf-8') for line in lines)
@@ -36,9 +37,11 @@ def extract_profile_info(file_path):
 
     runtime = float(runtime_match.group(1)) if runtime_match else None
 
-    computation_ability = float(computation_ability_match.group(1)) if computation_ability_match else None
+    computation_ability = float(
+        computation_ability_match.group(1)) if computation_ability_match else None
 
     return runtime, computation_ability
+
 
 class MODEL_RUN(object):
 
@@ -158,7 +161,8 @@ class MODEL_RUN(object):
 
         self.do_dynamic = self.dyn_mode and ("do_dynamic" in self.ini_content and int(
             self.ini_content["do_dynamic"])) and chip_support[self.chip][-2]
-        self.compress_mode = config.get(self.arch, "compress_mode", fallback="none") if chip == 'bm1688' else "none"
+        self.compress_mode = config.get(self.arch, "compress_mode",
+                                        fallback="none") if chip == 'bm1688' else "none"
 
     def run_model_transform(self, model_name: str, dynamic: bool = False):
         '''transform from origin model to top mlir'''
@@ -267,7 +271,7 @@ class MODEL_RUN(object):
         '''tmp test script for f8 mode, bm1690, in order to control bmodel tolerance'''
 
         output_npz = f"{self.model_name}_bm1690_{quant_mode}_tpu_outputs.npz"
-        bmodel_file =  f"{self.model_name}_bm1690_{quant_mode}.bmodel"
+        bmodel_file = f"{self.model_name}_bm1690_{quant_mode}.bmodel"
         # inference bmodel
         model_npz = bmodel_file.replace(".bmodel", "_model_outputs.npz")
         cmd = [
@@ -284,7 +288,10 @@ class MODEL_RUN(object):
         elif "excepts" not in self.ini_content and "fp8_excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["fp8_excepts"])]
         elif "excepts" in self.ini_content and "fp8_excepts" in self.ini_content:
-            cmd += ["--excepts {}".format(','.join(self.ini_content["excepts"], self.ini_content["fp8_excepts"]))]
+            cmd += [
+                "--excepts {}".format(','.join(self.ini_content["excepts"],
+                                               self.ini_content["fp8_excepts"]))
+            ]
         cmd += ["-vv"]
         _os_system(cmd, self.save_log)
 
@@ -293,15 +300,14 @@ class MODEL_RUN(object):
 
         # generate tpu mlir
         tpu_mlir = f"{self.model_name}_bm1688_tpu_int4_sym.mlir"
-        if "use_quantize_table" in self.ini_content and int(
-                self.ini_content["use_quantize_table"]):
-            qtable=self.cali_table.replace("_cali_table","_qtable")
+        if "use_quantize_table" in self.ini_content and int(self.ini_content["use_quantize_table"]):
+            qtable = self.cali_table.replace("_cali_table", "_qtable")
             cmd = [
                 "tpuc-opt", f"{self.model_name}.mlir", "--processor-assign=\"chip=bm1688\"",
                 "--processor-top-optimize",
                 f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
-                f"--convert-top-to-tpu=\"mode=INT4 qtable={qtable} asymmetric=false\"", "--canonicalize",
-                f"-o {tpu_mlir}"
+                f"--convert-top-to-tpu=\"mode=INT4 qtable={qtable} asymmetric=false\"",
+                "--canonicalize", f"-o {tpu_mlir}"
             ]
         else:
             cmd = [
@@ -328,13 +334,16 @@ class MODEL_RUN(object):
         elif "excepts" not in self.ini_content and "int4_excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["int4_excepts"])]
         elif "excepts" in self.ini_content and "int4_excepts" in self.ini_content:
-            cmd += ["--excepts {}".format(','.join(self.ini_content["excepts"], self.ini_content["int4_excepts"]))]
+            cmd += [
+                "--excepts {}".format(','.join(self.ini_content["excepts"],
+                                               self.ini_content["int4_excepts"]))
+            ]
 
         _os_system(cmd, self.save_log)
 
     def test_input_copy(self, quant_mode):
         test_input = self.ini_content["test_input"] if self.fuse_pre else self.ini_content[
-           "input_npz"]
+            "input_npz"]
         new_test_input = ""
         if self.fuse_pre:
             new_test_input = test_input.replace(".jpg", f"_for_{quant_mode}.jpg").split("/")[-1]
@@ -386,7 +395,8 @@ class MODEL_RUN(object):
         cmd += [f"--compress_mode {self.compress_mode}"]
 
         # add for quant modes which require calibration
-        if (quant_mode.startswith("int8") or quant_mode.startswith("int4") or quant_mode.startswith("f8")):
+        if (quant_mode.startswith("int8") or quant_mode.startswith("int4")
+                or quant_mode.startswith("f8")):
             if self.do_cali:
                 if quant_mode.startswith("f8"):
                     cmd += [f"--calibration_table {self.cali_table_f8}"]
@@ -439,7 +449,10 @@ class MODEL_RUN(object):
             elif "excepts" not in self.ini_content and "fp8_excepts" in self.ini_content:
                 cmd += ["--excepts {}".format(self.ini_content["fp8_excepts"])]
             elif "excepts" in self.ini_content and "fp8_excepts" in self.ini_content:
-                cmd += ["--excepts {}".format(','.join(self.ini_content["excepts"], self.ini_content["fp8_excepts"]))]
+                cmd += [
+                    "--excepts {}".format(','.join(self.ini_content["excepts"],
+                                                   self.ini_content["fp8_excepts"]))
+                ]
         elif "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
         # add int4 someday
@@ -456,7 +469,6 @@ class MODEL_RUN(object):
         if do_sample and (quant_mode == "f32" or quant_mode == "int8_sym"):
             output_file = self.model_name + f"_{quant_mode}.jpg"
             self.run_sample(model_file, self.ini_content["test_input"], output_file)
-
 
     def run_dynamic(self, quant_mode: str):
         '''do dynamic regression
@@ -510,7 +522,8 @@ class MODEL_RUN(object):
     def run_full(self):
         '''run full process: model_transform, model_deploy, samples and dynamic mode'''
         try:
-            do_sample = "app" in self.ini_content and not self.chip.startswith("cv") and self.mode == "all"
+            do_sample = "app" in self.ini_content and not self.chip.startswith(
+                "cv") and self.mode == "all"
             if do_sample:
                 # origin model
                 self.run_sample(
@@ -520,13 +533,14 @@ class MODEL_RUN(object):
 
             self.run_model_transform(self.model_name)
             if (self.quant_modes["int4_sym"] or self.quant_modes["int8_sym"]
-                    or self.quant_modes["int8_asym"] or self.quant_modes['f8e4m3'] or self.quant_modes['f8e5m2']) and self.do_cali:
+                    or self.quant_modes["int8_asym"] or self.quant_modes['f8e4m3']
+                    or self.quant_modes['f8e5m2']) and self.do_cali:
                 self.make_calibration_table()
             for quant_mode, support in self.quant_modes.items():
                 if support:
                     result_queue = queue.Queue()
                     self.run_model_deploy_wrapper(quant_mode, self.model_name, do_sample,
-                                                    result_queue)
+                                                  result_queue)
                     _, success, error = result_queue.get()
                     if not success:
                         raise error
@@ -581,7 +595,8 @@ if __name__ == "__main__":
     os.chdir(dir)
     runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.merge_weight,
                        args.fuse_preprocess, args.customization_format, args.aligned_input,
-                       args.save_log, args.disable_thread, args.debug, args.num_core, args.cuda, args.compare_all)
+                       args.save_log, args.disable_thread, args.debug, args.num_core, args.cuda,
+                       args.compare_all)
     runner.run_full()
 
     for quant_mode in runner.time_record.keys():

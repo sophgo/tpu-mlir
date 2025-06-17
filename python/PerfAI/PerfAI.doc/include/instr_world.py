@@ -43,7 +43,12 @@ class InstrWorld(object):
             out_file = out_file.replace('xlsx', "csv")
             df.to_csv(out_file, index=False)
         else:
-            df.to_excel(self.writer, sheet_name=self.sheet_name, index=False, startrow=4, engine='xlsxwriter', float_format='%g')
+            df.to_excel(self.writer,
+                        sheet_name=self.sheet_name,
+                        index=False,
+                        startrow=4,
+                        engine='xlsxwriter',
+                        float_format='%g')
 
     @classmethod
     def set_style(cls, out_file, frozen=True):

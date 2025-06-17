@@ -12,6 +12,7 @@ def register(func):
 
 @register
 def forward_state(app):
+
     @app.callback(Output('forward', 'disabled'), Input('forward', 'n_clicks'),
                   Input('forward-N', 'children'))
     def callback(click, done):
@@ -27,6 +28,7 @@ def forward_state(app):
 
 @register
 def forward_net(app):
+
     @app.callback(Output('forward-N', 'children'),
                   Output('forward-interval', 'disabled'),
                   Input('forward', 'n_clicks'),
@@ -43,8 +45,7 @@ def forward_net(app):
         if 'forward-state' in button_id:
             if state == "Forward":
                 return dash.no_update, dash.no_update
-            app.Global.figure_cache = plot.figure_cache(
-                app.Global.analysis_data)
+            app.Global.figure_cache = plot.figure_cache(app.Global.analysis_data)
             app.Global.dist_cache = plot.figure_cache(app.Global.analysis_data)
             app.Global.weight_cache = plot.figure_cache(app.Global.analysis_data)
             if state == "Idle":
@@ -54,6 +55,7 @@ def forward_net(app):
 
 @register
 def forward_net_state(app):
+
     @app.callback(Output('forward-state', 'data'),
                   Output('forward-progress', 'value'),
                   Input('forward-interval', 'n_intervals'),
@@ -85,8 +87,8 @@ def forward_net_state(app):
 
 @register
 def change_layout(app):
-    @app.callback(Output('cytoscape-responsive-layout', 'layout'),
-                  Input('select-layout', 'value'))
+
+    @app.callback(Output('cytoscape-responsive-layout', 'layout'), Input('select-layout', 'value'))
     def callback(value):
         if value is None:
             return dash.no_update
@@ -142,6 +144,7 @@ def show_node_flow(app):
 
 @register
 def draggable_toolbox(app):
+
     @app.callback(Output('draggable-toolbox', 'style'),
                   Output('show-toolbox', 'children'),
                   Input('draggable-toolbox', 'layout'),
@@ -152,31 +155,20 @@ def draggable_toolbox(app):
         button_id = [x['prop_id'].split('.')[0] for x in ctx.triggered]
         app.Global.zIndex += 1
         if 'draggable-toolbox' in button_id:
-            return {
-                'position': 'absolute',
-                'zIndex': app.Global.zIndex
-            }, dash.no_update
+            return {'position': 'absolute', 'zIndex': app.Global.zIndex}, dash.no_update
         if 'show-toolbox' in button_id:
             if clicks % 2 == 0:
-                return {
-                    'position': 'absolute',
-                    'display': 'none'
-                }, "show toolbox"
+                return {'position': 'absolute', 'display': 'none'}, "show toolbox"
             else:
-                return {
-                    'position': 'absolute',
-                    'zIndex': app.Global.zIndex
-                }, "hide toolbox"
+                return {'position': 'absolute', 'zIndex': app.Global.zIndex}, "hide toolbox"
 
 
 @register
 def load_model(app):
     # show graph
     @app.callback(Output('cytoscape-responsive-layout', 'elements'),
-                  Output('top-label', 'children'),
-                  Output('top-label', 'style'),
-                  Output('forward', 'n_clicks'),
-                  Input('auto_load', 'interval'))
+                  Output('top-label', 'children'), Output('top-label', 'style'),
+                  Output('forward', 'n_clicks'), Input('auto_load', 'interval'))
     def callback(interval):
         import os
         path = os.getcwd()
@@ -184,8 +176,9 @@ def load_model(app):
         if path is None:
             return dash.no_update, dash.no_update, dash.no_update
         try:
-            app.Global.analysis_data = mlirnet.analysis_data(
-                path, app.Global.f32_mlir, app.Global.quant_mlir, app.Global.input)
+            app.Global.analysis_data = mlirnet.analysis_data(path, app.Global.f32_mlir,
+                                                             app.Global.quant_mlir,
+                                                             app.Global.input)
         except Exception as e:
             errmsg_style["color"] = "#e63946"
             return dash.no_update, str(e), errmsg_style, dash.no_update
@@ -193,11 +186,11 @@ def load_model(app):
         app.Global.analysis_data.build_blob_info(app.Global.graph)
         errmsg_style["color"] = 'blue'
         if app.Global.manual_run:
-            return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(
-            ), "{}: {} vs {}".format(path, app.Global.f32_mlir, app.Global.quant_mlir), errmsg_style, dash.no_update
+            return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(), "{}: {} vs {}".format(
+                path, app.Global.f32_mlir, app.Global.quant_mlir), errmsg_style, dash.no_update
         else:
-            return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(
-            ), "{}: {} vs {}".format(path, app.Global.f32_mlir, app.Global.quant_mlir), errmsg_style, 1
+            return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(), "{}: {} vs {}".format(
+                path, app.Global.f32_mlir, app.Global.quant_mlir), errmsg_style, 1
 
 
 @register
@@ -265,9 +258,9 @@ def show_dist(app):
 
         scale = app.Global.analysis_data.quant_net.tensor_scale(name)
         dtype = app.Global.analysis_data.quant_net.tensor_qtype(name)
-        fig = app.Global.dist_cache.get_figure(plot.dist_plot,
-                                               name=name, scale=scale, dtype=dtype)
+        fig = app.Global.dist_cache.get_figure(plot.dist_plot, name=name, scale=scale, dtype=dtype)
         return fig, name
+
 
 @register
 def show_weight(app):
@@ -284,31 +277,37 @@ def show_weight(app):
             return dash.no_update
         id = int(nodeData['id'])
         layer = app.Global.analysis_data.quant_net.layer_by_idx(id).name
-        top_opsq = {op.name:op for op in app.Global.analysis_data.f32_net.mlir_parser.ops}
+        top_opsq = {op.name: op for op in app.Global.analysis_data.f32_net.mlir_parser.ops}
         if layer not in top_opsq:
-            top_opsq = {op.name:op for op in app.Global.analysis_data.quant_net.mlir_parser.ops}
-            if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[1] in app.Global.analysis_data.quant_net.all_weight_names():
+            top_opsq = {op.name: op for op in app.Global.analysis_data.quant_net.mlir_parser.ops}
+            if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[
+                    1] in app.Global.analysis_data.quant_net.all_weight_names():
                 weight = top_opsq[layer].opds[1]
             else:
                 return dash.no_update
-            if len(top_opsq[layer].opds) > 2 and top_opsq[layer].opds[2] in app.Global.analysis_data.quant_net.all_weight_names():
+            if len(top_opsq[layer].opds) > 2 and top_opsq[layer].opds[
+                    2] in app.Global.analysis_data.quant_net.all_weight_names():
                 bias = top_opsq[layer].opds[2]
             else:
                 bias = None
         else:
-            if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[1] in app.Global.analysis_data.f32_net.all_weight_names():
+            if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[
+                    1] in app.Global.analysis_data.f32_net.all_weight_names():
                 weight = top_opsq[layer].opds[1]
             else:
                 return dash.no_update
-            if len(top_opsq[layer].opds) > 2 and top_opsq[layer].opds[2] in app.Global.analysis_data.f32_net.all_weight_names():
+            if len(top_opsq[layer].opds) > 2 and top_opsq[layer].opds[
+                    2] in app.Global.analysis_data.f32_net.all_weight_names():
                 bias = top_opsq[layer].opds[2]
             else:
                 bias = None
 
         fig = app.Global.weight_cache.get_figure(plot.param_plot,
                                                  name=weight,
-                                                 max_sampling=int(samples), bias=bias)
+                                                 max_sampling=int(samples),
+                                                 bias=bias)
         return fig, weight
+
 
 @register
 def show_layer_info(app):
@@ -348,13 +347,13 @@ def metrics_figure(app):
                   prevent_initial_call=True)
     def metrics_figure(state):
         if state == "Idle" and app.Global.analysis_data is not None:
-            if app.Global.analysis_data.tensor_info is None or len(app.Global.analysis_data.tensor_info) == 0:
+            if app.Global.analysis_data.tensor_info is None or len(
+                    app.Global.analysis_data.tensor_info) == 0:
                 return dash.no_update, dash.no_update
             tensor_info = app.Global.analysis_data.tensor_info
             tensor_info = tensor_info[tensor_info.forward_index.eq(
                 app.Global.analysis_data.forward_count)]
-            return plot.metrics_plot(tensor_info), component.update_edge_info(
-                tensor_info)
+            return plot.metrics_plot(tensor_info), component.update_edge_info(tensor_info)
         return dash.no_update, dash.no_update
 
 
@@ -367,7 +366,8 @@ def info_tab(app):
                   prevent_initial_call=True)
     def updata_table(state):
         if state == "Idle" and app.Global.analysis_data is not None:
-            if app.Global.analysis_data.tensor_info is None or len(app.Global.analysis_data.tensor_info) == 0:
+            if app.Global.analysis_data.tensor_info is None or len(
+                    app.Global.analysis_data.tensor_info) == 0:
                 return dash.no_update, dash.no_update
             tensor_info = app.Global.analysis_data.tensor_info
             tensor_info = tensor_info[tensor_info.forward_index.eq(
@@ -459,6 +459,7 @@ def sync_sample(app):
         Input('figure-sample', 'value'),
         prevent_initial_call=True,
     )
+
 
 @register
 def sync_wsample(app):

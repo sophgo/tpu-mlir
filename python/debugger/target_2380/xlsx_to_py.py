@@ -102,7 +102,6 @@ dma_sheet_name = [
     "DMA_tansfer",
 ]
 
-
 reg_bdc = pandas.read_excel(tiu_reg_a2, sheet_name=bdc_sheet_name)
 reg_dma = pandas.read_excel(dma_reg_a2, sheet_name=dma_sheet_name)
 
@@ -133,7 +132,6 @@ import ctypes
 from ..target_common import atomic_reg
 
 """
-
 
 tail_template_str = """
 
@@ -178,9 +176,7 @@ with open("regdef.py", "w") as fb:
         cmd_reg_def = cmd_reg[key]
 
         field_keys, high_bits = zip(*cmd_reg_def)
-        if not all(
-            64 * x in high_bits for x in range(1, math.ceil(high_bits[-1] / 64))
-        ):
+        if not all(64 * x in high_bits for x in range(1, math.ceil(high_bits[-1] / 64))):
             if key in {"SYS"}:
                 field_keys = list(field_keys)[:11]
                 high_bits = list(high_bits)[:11]
@@ -190,19 +186,14 @@ with open("regdef.py", "w") as fb:
             print(key)
 
         if key != "sLIN":
-            assert all(
-                64 * x in high_bits for x in range(1, math.ceil(high_bits[-1] / 64))
-            )
+            assert all(64 * x in high_bits for x in range(1, math.ceil(high_bits[-1] / 64)))
 
         bits_width = np.diff(high_bits, prepend=0)
         fields = [(k, l) for k, l in zip(field_keys, bits_width)]
 
         valid_key = [match_illegal.sub("_", key) for key in field_keys]
-        invalid_key = [
-            (key, match_illegal.sub("_", key))
-            for key in field_keys
-            if match_illegal.search(key)
-        ]
+        invalid_key = [(key, match_illegal.sub("_", key)) for key in field_keys
+                       if match_illegal.search(key)]
 
         # print(match_illegal.sub("_", key))
         ctype_py_str.append(
@@ -213,8 +204,7 @@ with open("regdef.py", "w") as fb:
                 valid_key=valid_key,
                 invalid_key=invalid_key,
                 length=high_bits[-1],
-            )
-        )
+            ))
         cmds.append((key, match_illegal.sub("_", key)))
 
     fb.write(("\n").join(ctype_py_str))

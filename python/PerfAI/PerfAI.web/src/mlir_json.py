@@ -10,12 +10,14 @@ import re
 import os
 from collections import namedtuple
 import json
-import  logging
+import logging
 
 from utils.utils import *
 from src.common import *
 
+
 class GlobalProfileParser:
+
     def __init__(self):
         self.in_dir = None
         self.json_filename = "tensor_location.json"
@@ -23,7 +25,6 @@ class GlobalProfileParser:
         self.subnet_list = []
         self.layer_list = []
         self.file_line_dict = {}
-
 
     def parse(self, filename):
         json_file = os.path.join(filename, 'tensor_location.json')
@@ -69,7 +70,7 @@ class GlobalProfileParser:
         subnet_dict = {}
         layer_list = []
         layer_ins = {}  # tensor_id -> layer_id
-        layer_outs = {} # tensor_id -> layer_id
+        layer_outs = {}  # tensor_id -> layer_id
         json_layer_list = []
         with open(self.json_filename, encoding='utf-8') as f:
             data = json.load(f)
@@ -90,16 +91,17 @@ class GlobalProfileParser:
             subnet_id = j_layer.subnet_id
             if subnet_id not in subnet_dict:
                 subnet_dict[subnet_id] = SubnetInfo()
-                subnet_dict[subnet_id].subnet_id = subnet_id #TOCHECK
+                subnet_dict[subnet_id].subnet_id = subnet_id  #TOCHECK
                 subnet_dict[subnet_id].layer_list = []
-            layer_info = self.get_layer_info(j_layer.file_line, j_layer,tensor_id,layer_ins,layer_outs)
+            layer_info = self.get_layer_info(j_layer.file_line, j_layer, tensor_id, layer_ins,
+                                             layer_outs)
             subnet_dict[subnet_id].layer_list.append(layer_info)
         for subnet_info in subnet_dict.values():
             ginfo.subnet_list.append(subnet_info)
 
         return ginfo, self.file_line_dict
 
-    def get_layer_info(self, layer_id, j_layer,tensor_id,layer_ins,layer_outs):
+    def get_layer_info(self, layer_id, j_layer, tensor_id, layer_ins, layer_outs):
         layer_info = LayerInfo()
         layer_info.layer_id = layer_id
         layer_info.core_id = j_layer.core_id
@@ -127,13 +129,13 @@ class GlobalProfileParser:
             layer_info.out_tensors.append(tensor)
             tensor_id += 1
 
-        for b_id in range(j_layer.bd_ids[0], j_layer.bd_ids[1]): #before, after
+        for b_id in range(j_layer.bd_ids[0], j_layer.bd_ids[1]):  #before, after
             bd_node = StaticRunNode()
             bd_node.bd_id = b_id
             bd_node.core_id = j_layer.core_id
             layer_info.bd_nodes.append(bd_node)
 
-        for g_id in range(j_layer.dma_ids[0], j_layer.dma_ids[1]): #before, after
+        for g_id in range(j_layer.dma_ids[0], j_layer.dma_ids[1]):  #before, after
             dma_node = StaticRunNode()
             dma_node.gdma_id = g_id
             dma_node.core_id = j_layer.core_id
@@ -142,6 +144,7 @@ class GlobalProfileParser:
         layer_info.is_local = j_layer.is_local
         # layer_list.append(layer_info)
         return layer_info
+
 
 def get_engine_layer(g_info):
     tiu_layer_map = dict()
@@ -154,17 +157,23 @@ def get_engine_layer(g_info):
                 for tiu_node in layer_info.bd_nodes:
                     k = tiu_node.bd_id
                     c = tiu_node.core_id
-                    if (k,c) in tiu_layer_map.keys():
+                    if (k, c) in tiu_layer_map.keys():
                         print('ERROR! Tiu id is not unique.')
                         assert 0
                     else:
-                        tiu_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line, layer_info.is_local]
+                        tiu_layer_map[(k, c)] = [
+                            layer_info.layer_id, layer_info.layer_type, subnet_id,
+                            layer_info.engine_type, layer_info.file_line, layer_info.is_local
+                        ]
                 for gdma_node in layer_info.gdma_nodes:
                     k = gdma_node.gdma_id
                     c = gdma_node.core_id
-                    if (k,c) in gdma_layer_map.keys():
+                    if (k, c) in gdma_layer_map.keys():
                         print('ERROR! Gdma id is not unique.')
                         assert 0
                     else:
-                        gdma_layer_map[(k,c)] = [layer_info.layer_id, layer_info.layer_type, subnet_id, layer_info.engine_type, layer_info.file_line, layer_info.is_local]
+                        gdma_layer_map[(k, c)] = [
+                            layer_info.layer_id, layer_info.layer_type, subnet_id,
+                            layer_info.engine_type, layer_info.file_line, layer_info.is_local
+                        ]
     return tiu_layer_map, gdma_layer_map

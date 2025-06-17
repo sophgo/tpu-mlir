@@ -19,8 +19,7 @@ data_type_dict = {
     '-': 'None'
 }
 
-
-data_size_dict = { #prec_map
+data_size_dict = {  #prec_map
     '0': 1,
     '1': 2,
     '2': 4,

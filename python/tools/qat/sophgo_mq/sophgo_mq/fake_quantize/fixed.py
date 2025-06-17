@@ -5,15 +5,17 @@ from sophgo_mq.utils.hook import PerChannelLoadHook
 
 from sophgo_mq.fake_quantize.quantize_base import _version_under_1100
 
+
 class FixedFakeQuantize(QuantizeBase):
     """This is actually torch.quantization.FakeQuantize.
     """
+
     def __init__(self, observer, **observer_kwargs):
         super(FixedFakeQuantize, self).__init__(observer, **observer_kwargs)
         self.register_buffer('scale', torch.tensor([1.0], dtype=torch.float))
         self.register_buffer('zero_point', torch.tensor([0], dtype=torch.int))
         self.load_state_dict_hook = PerChannelLoadHook(self)
-        self.flag=0
+        self.flag = 0
 
     def forward(self, X):
         # if type(X)==int:
@@ -25,7 +27,8 @@ class FixedFakeQuantize(QuantizeBase):
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.calculate_qparams()
-            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(self.zero_point.device)
+            _scale, _zero_point = _scale.to(self.scale.device), _zero_point.to(
+                self.zero_point.device)
             if self.scale.shape != _scale.shape:
                 self.scale.resize_(_scale.shape)
                 self.zero_point.resize_(_zero_point.shape)
@@ -39,14 +42,14 @@ class FixedFakeQuantize(QuantizeBase):
                     self.zero_point.long() if _version_under_1100 else self.zero_point,
                     self.ch_axis, self.quant_min, self.quant_max)
             else:
-                if X.dtype==torch.long:
-                    X=X.float()
-                    self.flag=1
-                X = torch.fake_quantize_per_tensor_affine(
-                    X, self.scale.item(), int(self.zero_point.item()),
-                    self.quant_min, self.quant_max)
-                if self.flag==1:
-                    X=X.long()
+                if X.dtype == torch.long:
+                    X = X.float()
+                    self.flag = 1
+                X = torch.fake_quantize_per_tensor_affine(X, self.scale.item(),
+                                                          int(self.zero_point.item()),
+                                                          self.quant_min, self.quant_max)
+                if self.flag == 1:
+                    X = X.long()
         return X
 
     @torch.jit.export
@@ -56,7 +59,7 @@ class FixedFakeQuantize(QuantizeBase):
                'scale={}, zero_point={}'.format(
                    self.fake_quant_enabled, self.observer_enabled,
                    self.quant_min, self.quant_max,
-                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List', 
+                   self.dtype, self.qscheme, self.ch_axis, self.scale if self.ch_axis == -1 else 'List',
                    self.zero_point if self.ch_axis == -1 else 'List')
 
     def _save_to_state_dict(self, destination, prefix, keep_vars):
@@ -66,8 +69,8 @@ class FixedFakeQuantize(QuantizeBase):
         destination[prefix + 'scale'] = self.scale
         destination[prefix + 'zero_point'] = self.zero_point
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         # Removing this function throws an error that the the size of the loaded tensor does not match the original size
         # i.e., These buffers start out with numel 0 and become numel 1 once they have their first forward pass.
         local_state = ['scale', 'zero_point']
@@ -94,5 +97,6 @@ class FixedFakeQuantize(QuantizeBase):
                         self.zero_point.copy_(val)
             elif strict:
                 missing_keys.append(key)
-        super(FixedFakeQuantize, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
-                                                             missing_keys, unexpected_keys, error_msgs)
+        super(FixedFakeQuantize,
+              self)._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys,
+                                          unexpected_keys, error_msgs)

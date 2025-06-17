@@ -203,7 +203,6 @@ class CONV_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sCONV_reg(atomic_reg):
     OP_NAME = "sCONV"
     _fields_ = [
@@ -327,7 +326,6 @@ class sCONV_reg(atomic_reg):
     opd0_w_str: int
 
     length: int = 512
-
 
 
 class MM_reg(atomic_reg):
@@ -515,7 +513,6 @@ class MM_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sMM_reg(atomic_reg):
     OP_NAME = "sMM"
     _fields_ = [
@@ -605,7 +602,6 @@ class sMM_reg(atomic_reg):
     rsvd9: int
 
     length: int = 384
-
 
 
 class MM2_reg(atomic_reg):
@@ -793,7 +789,6 @@ class MM2_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sMM2_reg(atomic_reg):
     OP_NAME = "sMM2"
     _fields_ = [
@@ -871,7 +866,6 @@ class sMM2_reg(atomic_reg):
     opd2_addr: int
 
     length: int = 256
-
 
 
 class CMP_reg(atomic_reg):
@@ -1059,7 +1053,6 @@ class CMP_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sCMP_reg(atomic_reg):
     OP_NAME = "sCMP"
     _fields_ = [
@@ -1127,7 +1120,6 @@ class sCMP_reg(atomic_reg):
     opd3_addr: int
 
     length: int = 384
-
 
 
 class SFU_reg(atomic_reg):
@@ -1315,7 +1307,6 @@ class SFU_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sSFU_reg(atomic_reg):
     OP_NAME = "sSFU"
     _fields_ = [
@@ -1367,7 +1358,6 @@ class sSFU_reg(atomic_reg):
     opd1_addr: int
 
     length: int = 256
-
 
 
 class VC_reg(atomic_reg):
@@ -1555,7 +1545,6 @@ class VC_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sVC_reg(atomic_reg):
     OP_NAME = "sVC"
     _fields_ = [
@@ -1617,7 +1606,6 @@ class sVC_reg(atomic_reg):
     rsvd3: int
 
     length: int = 384
-
 
 
 class LIN_reg(atomic_reg):
@@ -1805,7 +1793,6 @@ class LIN_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sLIN_reg(atomic_reg):
     OP_NAME = "sLIN"
     _fields_ = [
@@ -1853,7 +1840,6 @@ class sLIN_reg(atomic_reg):
     opd2_addr: int
 
     length: int = 256
-
 
 
 class AR_reg(atomic_reg):
@@ -2041,7 +2027,6 @@ class AR_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sAR_reg(atomic_reg):
     OP_NAME = "sAR"
     _fields_ = [
@@ -2145,7 +2130,6 @@ class sAR_reg(atomic_reg):
     rsvd3: int
 
     length: int = 512
-
 
 
 class PorD_reg(atomic_reg):
@@ -2333,7 +2317,6 @@ class PorD_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sPorD_reg(atomic_reg):
     OP_NAME = "sPorD"
     _fields_ = [
@@ -2445,7 +2428,6 @@ class sPorD_reg(atomic_reg):
     rsvd3: int
 
     length: int = 512
-
 
 
 class RQ_DQ_reg(atomic_reg):
@@ -2633,7 +2615,6 @@ class RQ_DQ_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sRQ_sDQ_reg(atomic_reg):
     OP_NAME = "sRQ&sDQ"
     _fields_ = [
@@ -2691,7 +2672,6 @@ class sRQ_sDQ_reg(atomic_reg):
     opd2_addr: int
 
     length: int = 256
-
 
 
 class SG_reg(atomic_reg):
@@ -2879,7 +2859,6 @@ class SG_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sSG_reg(atomic_reg):
     OP_NAME = "sSG"
     _fields_ = [
@@ -2945,7 +2924,6 @@ class sSG_reg(atomic_reg):
     opd3_addr: int
 
     length: int = 384
-
 
 
 class SGL_reg(atomic_reg):
@@ -3133,7 +3111,6 @@ class SGL_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sSGL_reg(atomic_reg):
     OP_NAME = "sSGL"
     _fields_ = [
@@ -3195,7 +3172,6 @@ class sSGL_reg(atomic_reg):
     rsvd3: int
 
     length: int = 384
-
 
 
 class CW_BC_reg(atomic_reg):
@@ -3383,7 +3359,6 @@ class CW_BC_reg(atomic_reg):
     length: int = 1024
 
 
-
 class sCW_sBC_reg(atomic_reg):
     OP_NAME = "sCW&sBC"
     _fields_ = [
@@ -3429,7 +3404,6 @@ class sCW_sBC_reg(atomic_reg):
     opd0_addr: int
 
     length: int = 256
-
 
 
 class LAR_reg(atomic_reg):
@@ -3489,7 +3463,6 @@ class LAR_reg(atomic_reg):
     length: int = 128
 
 
-
 class SYS_reg(atomic_reg):
     OP_NAME = "SYS"
     _fields_ = [
@@ -3519,7 +3492,6 @@ class SYS_reg(atomic_reg):
     length: int = 64
 
 
-
 class SYS_TR_ACC_reg(atomic_reg):
     OP_NAME = "SYS_TR_ACC"
     _fields_ = [
@@ -3543,7 +3515,6 @@ class SYS_TR_ACC_reg(atomic_reg):
     imm1: int
 
     length: int = 128
-
 
 
 class DMA_tensor_0x000__reg(atomic_reg):
@@ -3657,7 +3628,6 @@ class DMA_tensor_0x000__reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_matrix_reg(atomic_reg):
     OP_NAME = "DMA_matrix"
     _fields_ = [
@@ -3761,7 +3731,6 @@ class DMA_matrix_reg(atomic_reg):
     localmem_mask_h32: int
 
     length: int = 768
-
 
 
 class DMA_masked_select_reg(atomic_reg):
@@ -3870,13 +3839,14 @@ class DMA_masked_select_reg(atomic_reg):
 
     length: int = 768
 
-
     @property
     def src_hsize_src_wsize_high(self) -> int:
         return self["src_hsize/src_wsize_high"]
+
     @property
     def dst_hsize_dst_wsize_high(self) -> int:
         return self["dst_hsize/dst_wsize_high"]
+
 
 class DMA_general_reg(atomic_reg):
     OP_NAME = "DMA_general"
@@ -3982,10 +3952,10 @@ class DMA_general_reg(atomic_reg):
 
     length: int = 768
 
-
     @property
     def src_cstride_move_length_(self) -> int:
         return self["src_cstride(move length)"]
+
 
 class DMA_cw_transpose_reg(atomic_reg):
     OP_NAME = "DMA_cw_transpose"
@@ -4090,7 +4060,6 @@ class DMA_cw_transpose_reg(atomic_reg):
     localmem_mask_h32: int
 
     length: int = 768
-
 
 
 class DMA_nonzero_reg(atomic_reg):
@@ -4199,10 +4168,10 @@ class DMA_nonzero_reg(atomic_reg):
 
     length: int = 768
 
-
     @property
     def dst_nstride_base_i_(self) -> int:
         return self["dst_nstride（base_i）"]
+
 
 class sDMA_sys_reg(atomic_reg):
     OP_NAME = "sDMA_sys"
@@ -4255,7 +4224,6 @@ class sDMA_sys_reg(atomic_reg):
     constant_value: int
 
     length: int = 128
-
 
 
 class DMA_gather_reg(atomic_reg):
@@ -4363,7 +4331,6 @@ class DMA_gather_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_scatter_reg(atomic_reg):
     OP_NAME = "DMA_scatter"
     _fields_ = [
@@ -4469,7 +4436,6 @@ class DMA_scatter_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_reverse_reg(atomic_reg):
     OP_NAME = "DMA_reverse"
     _fields_ = [
@@ -4573,7 +4539,6 @@ class DMA_reverse_reg(atomic_reg):
     localmem_mask_h32: int
 
     length: int = 768
-
 
 
 class DMA_compress_reg(atomic_reg):
@@ -4687,7 +4652,6 @@ class DMA_compress_reg(atomic_reg):
     length: int = 768
 
 
-
 class DMA_decompress__reg(atomic_reg):
     OP_NAME = "DMA_decompress "
     _fields_ = [
@@ -4799,9 +4763,7 @@ class DMA_decompress__reg(atomic_reg):
     length: int = 768
 
 
-
 op_class_dic: Dict[str, Type[atomic_reg]] = {
-
     "CONV": CONV_reg,
     "sCONV": sCONV_reg,
     "MM": MM_reg,

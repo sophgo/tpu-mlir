@@ -75,22 +75,34 @@ class ABCSetSummary(object):
             real_total_cycle = end_cycle - start_cycle
             self.evb_cycles.extend([real_total_cycle, real_total_cycle])
             self.overalls.extend([compiler_total_cycle, sim_total_cycle])
-            self.diff1s.extend([str((Decimal(((compiler_total_cycle - real_total_cycle) / real_total_cycle) * 100)).
-                                    quantize(Decimal("0.00"))) + '%',
-                                str((Decimal(((sim_total_cycle - real_total_cycle) / real_total_cycle) * 100)).
-                                    quantize(Decimal("0.00"))) + '%'])
+            self.diff1s.extend([
+                str((Decimal(
+                    ((compiler_total_cycle - real_total_cycle) / real_total_cycle) * 100)).quantize(
+                        Decimal("0.00"))) + '%',
+                str((Decimal(
+                    ((sim_total_cycle - real_total_cycle) / real_total_cycle) * 100)).quantize(
+                        Decimal("0.00"))) + '%'
+            ])
             self.tiu_cycles.extend([compiler_tiu_cycle, simulator_tiu_cycle])
             self.tiu_evbs.extend([real_tiu_cycle, real_tiu_cycle])
-            self.diff2s.extend([str((Decimal(((compiler_tiu_cycle - real_tiu_cycle) / real_tiu_cycle) * 100)).
-                                    quantize(Decimal("0.00"))) + '%',
-                                str((Decimal(((simulator_tiu_cycle - real_tiu_cycle) / real_tiu_cycle) * 100)).
-                                    quantize(Decimal("0.00"))) + '%'])
+            self.diff2s.extend([
+                str((Decimal(
+                    ((compiler_tiu_cycle - real_tiu_cycle) / real_tiu_cycle) * 100)).quantize(
+                        Decimal("0.00"))) + '%',
+                str((Decimal(
+                    ((simulator_tiu_cycle - real_tiu_cycle) / real_tiu_cycle) * 100)).quantize(
+                        Decimal("0.00"))) + '%'
+            ])
             self.dma_evbs.extend([real_dma_cycle, real_dma_cycle])
             self.dma_cycles.extend([compiler_dma_cycle, simulator_dma_cycle])
-            self.diff3s.extend([str((Decimal(((compiler_dma_cycle - real_dma_cycle) / real_dma_cycle) * 100)).
-                                    quantize(Decimal("0.00"))) + '%',
-                                str((Decimal(((simulator_dma_cycle - real_dma_cycle) / real_dma_cycle) * 100)).
-                                    quantize(Decimal("0.00"))) + '%'])
+            self.diff3s.extend([
+                str((Decimal(
+                    ((compiler_dma_cycle - real_dma_cycle) / real_dma_cycle) * 100)).quantize(
+                        Decimal("0.00"))) + '%',
+                str((Decimal(
+                    ((simulator_dma_cycle - real_dma_cycle) / real_dma_cycle) * 100)).quantize(
+                        Decimal("0.00"))) + '%'
+            ])
             self.notes.extend(['', ''])
 
     def write(self):
@@ -108,7 +120,6 @@ class ABCSetSummary(object):
         total_table['Note'] = self.notes
         df = pd.DataFrame(total_table)
         df.to_excel(self.out_path, index=None)
-
 
     def set_style(self):
         tiuDf = pd.read_excel(self.out_path)

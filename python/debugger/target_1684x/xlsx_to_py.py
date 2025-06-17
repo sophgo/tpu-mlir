@@ -42,9 +42,7 @@ def pd_to_dict(df):
     valid = ~df.iloc[:, 1].isnull()
     df = df[valid].copy()
     fields = list(df.iloc[:, 0])
-    fields = [
-        i.replace("des_", "").replace("short_", "").replace("opt_", "") for i in fields
-    ]
+    fields = [i.replace("des_", "").replace("short_", "").replace("opt_", "") for i in fields]
     return list(zip(fields, numpy.cumsum(df.iloc[:, 1].astype(int))))
 
 
@@ -131,7 +129,6 @@ from ..target_common import cmd_base_reg
 
 """
 
-
 tail_template_str = """
 
 op_class_dic: Dict[str, Type[cmd_base_reg]] = {
@@ -140,7 +137,6 @@ op_class_dic: Dict[str, Type[cmd_base_reg]] = {
     {%- endfor %}
 }
 """
-
 
 with open("regdef.py", "w") as fb:
     fb.write(file_head)
@@ -161,11 +157,8 @@ with open("regdef.py", "w") as fb:
             fields = [(k, l) for k, l in zip(field_keys, bits_width)]
 
             valid_key = [match_illegal.sub("_", key) for key in field_keys]
-            invalid_key = [
-                (key, match_illegal.sub("_", key))
-                for key in field_keys
-                if match_illegal.search(key)
-            ]
+            invalid_key = [(key, match_illegal.sub("_", key)) for key in field_keys
+                           if match_illegal.search(key)]
 
             print(match_illegal.sub("_", key))
             ctype_py_str.append(
@@ -176,8 +169,7 @@ with open("regdef.py", "w") as fb:
                     valid_key=valid_key,
                     invalid_key=invalid_key,
                     length=high_bits[-1],
-                )
-            )
+                ))
             cmds.append((key, match_illegal.sub("_", key)))
 
     fb.write(("\n").join(ctype_py_str))

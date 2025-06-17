@@ -278,9 +278,8 @@ def fp8e4m3_to_fp16(d_fp8):
 
     exp_mask = ~nan_mask & (exponent == 0x2000)
     mantissa_mask = exp_mask & (mantissa != 0)
-    mantissa[exp_mask] = np.where(
-        mantissa[exp_mask] != 0, mantissa[exp_mask] << 1, mantissa[exp_mask]
-    )
+    mantissa[exp_mask] = np.where(mantissa[exp_mask] != 0, mantissa[exp_mask] << 1,
+                                  mantissa[exp_mask])
     exponent[exp_mask] = np.where(mantissa[exp_mask] != 0, exponent[exp_mask], 0)
 
     while np.any((mantissa[mantissa_mask] & 0x0400) == 0):
@@ -525,9 +524,7 @@ class atomic_reg(ctypes.Structure):
         return res
 
 
-ParamConvertFnType = Callable[
-    [atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]
-]
+ParamConvertFnType = Callable[[atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]]
 
 
 class CMDType(Enum):
@@ -542,6 +539,7 @@ class CMDType(Enum):
 
 
 class FileLineMixin:
+
     def pre_ln(self):
         raise NotImplementedError()
 
@@ -651,12 +649,14 @@ class Dma:
     # Mixin for detect cmd type
     pass
 
+
 class Cdma:
     # Mixin for detect cmd type
     pass
 
 
 class RegIndex:
+
     def __init__(self):
         self.storage = {}
 
@@ -665,7 +665,7 @@ class RegIndex:
         from collections.abc import Iterable
         from itertools import product
 
-        _tuple = lambda x: x if isinstance(x, Iterable) else (x,)
+        _tuple = lambda x: x if isinstance(x, Iterable) else (x, )
         keys_itr = (_tuple(x) for x in keys)
         for key in product(*keys_itr):
             self.storage[key] = value
@@ -787,6 +787,7 @@ def get_type_str(*args) -> str:
 
 
 class LazyInfo:
+
     def __init__(self, cls):
         self.cls = cls
         self.instance = None
@@ -801,6 +802,7 @@ class LazyInfo:
 
 
 class LazyDict:
+
     def __init__(self):
         self.dict = None
 
@@ -817,6 +819,7 @@ class LazyDict:
 
 
 class TPUInfo:
+
     def __init__(self, lib_name) -> None:
         self._lib = None
         self._lib_name = lib_name
@@ -824,13 +827,13 @@ class TPUInfo:
         if os.environ.get("TDB_CACHE_MODE") == "offline":
             self.load_lib_info_from_cache()
         elif os.environ.get("TDB_CACHE_MODE") == "auto":
-            if platform.machine()=="x86_64":
+            if platform.machine() == "x86_64":
                 self.load_lib_info()
                 self.dump_lib_info()
                 cur_dir = os.path.dirname(__file__)
                 tmp_cache_dir = os.path.join(cur_dir, "../soc_tools/tmp_cache")
                 os.makedirs(tmp_cache_dir, exist_ok=True)
-                self.copy_cache_file(os.path.join(tmp_cache_dir,"memmap_config.json"))
+                self.copy_cache_file(os.path.join(tmp_cache_dir, "memmap_config.json"))
             else:
                 cur_dir = os.path.dirname(__file__)
                 tmp_cache_dir = os.path.join(cur_dir, "../../tmp_cache/memmap_config.json")
@@ -854,9 +857,7 @@ class TPUInfo:
 
     @property
     def cache_file(self):
-        return os.path.join(
-            os.environ.get("BMODEL_ROOT", "./"), f"{self._lib_name}.tdb_cache.json"
-        )
+        return os.path.join(os.environ.get("BMODEL_ROOT", "./"), f"{self._lib_name}.tdb_cache.json")
 
     def dump_lib_info(self):
         with open(self.cache_file, "w") as w:

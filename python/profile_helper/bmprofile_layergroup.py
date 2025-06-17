@@ -53,7 +53,8 @@ def parse_profile_log(profile_log):
                 dic[k] = v
 
         if "final_group_idx" in dic:
-            cost_table[(dic["final_group_idx"], dic["start_idx"], dic["end_idx"])] = dic["group_cost"]
+            cost_table[(dic["final_group_idx"], dic["start_idx"],
+                        dic["end_idx"])] = dic["group_cost"]
 
     match_cut_results = re.compile(r"base group\[([0-9]+)\] cut results: (.*)")
     cut_results = match_cut_results.findall(total_content)

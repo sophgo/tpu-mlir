@@ -4050,7 +4050,7 @@ class sDMA_sys_reg(atomic_reg):
         ("stride_enable", ctypes.c_uint64, 1),
         ("nchw_copy", ctypes.c_uint64, 1),
         ("cmd_short", ctypes.c_uint64, 1),
-        ("reserved0", ctypes.c_uint64, 1), # for special use
+        ("reserved0", ctypes.c_uint64, 1),  # for special use
         ("reserved", ctypes.c_uint64, 4),
         ("reserved", ctypes.c_uint64, 20),
         ("Reserved", ctypes.c_uint64, 3),

@@ -62,7 +62,7 @@ def intToHex(dataList):
 
 
 def get_realtime_from_cycle(cycle, frequency):
-    return round(cycle / frequency * 1000,2) #ns
+    return round(cycle / frequency * 1000, 2)  #ns
 
 
 def get_memory_type(s):
@@ -74,15 +74,15 @@ def get_memory_type(s):
 
 
 def load_arch_lib(arch):
-    archlib_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        arch.name + "_defs.py")
+    archlib_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), arch.name + "_defs.py")
     return load_module(archlib_path)
+
 
 def get_layer_info_by_opcode(s):
     subnet_type = s.split('.')[0].upper()
     layer_name = s.split('.')[1]
     return subnet_type, layer_name
+
 
 def get_time_by_cycle(cycle, frequency):
     frequency = int(frequency)

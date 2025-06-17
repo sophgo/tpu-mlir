@@ -4,6 +4,7 @@ from numpy.lib import format
 
 
 class IncNpzFile:
+
     def __init__(self, file: str):
         """
         :param file: the ``npz`` file to write
@@ -24,9 +25,7 @@ class IncNpzFile:
             "force_zip64": True,
         }
         if self.zip is None or self.zip.fp is None:
-            self.zip = zipfile.ZipFile(
-                self.fn, mode="a", compression=zipfile.ZIP_DEFLATED
-            )
+            self.zip = zipfile.ZipFile(self.fn, mode="a", compression=zipfile.ZIP_DEFLATED)
 
         with self.zip.open(key, **kwargs) as fid:
             val = np.asanyarray(data)

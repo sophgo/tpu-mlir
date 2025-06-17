@@ -1,5 +1,5 @@
 import warnings
-import torch 
+import torch
 
 from . import cpp
 if torch.cuda.is_available():

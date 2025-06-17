@@ -29,7 +29,7 @@ from transformers.utils.fx import HFTracer, get_concrete_args
 from transformers.trainer_utils import get_last_checkpoint, EvalLoopOutput
 from sophgo_mq.convert_deploy import convert_deploy
 from sophgo_mq.prepare_by_platform import prepare_by_platform
-from sophgo_mq.utils.state import enable_quantization, enable_calibration_woquantization,enable_calibration,disable_all
+from sophgo_mq.utils.state import enable_quantization, enable_calibration_woquantization, enable_calibration, disable_all
 
 logger = logging.getLogger("transformer")
 
@@ -83,10 +83,14 @@ def quantize_model(model, config_quant):
             'quantmode': 'weight_activation'
         },
         'extra_qconfig_dict': {
-            'w_observer': config_quant.w_qconfig.observer,
-            'a_observer': config_quant.a_qconfig.observer,
-            'w_fakequantize': config_quant.w_qconfig.quantizer,
-            'a_fakequantize': config_quant.a_qconfig.quantizer,
+            'w_observer':
+            config_quant.w_qconfig.observer,
+            'a_observer':
+            config_quant.a_qconfig.observer,
+            'w_fakequantize':
+            config_quant.w_qconfig.quantizer,
+            'a_fakequantize':
+            config_quant.a_qconfig.quantizer,
             'w_qscheme': {
                 'bit': config_quant.w_qconfig.bit,
                 'symmetry': config_quant.w_qconfig.symmetric,
@@ -100,28 +104,40 @@ def quantize_model(model, config_quant):
                 'pot_scale': False,
             },
             'int4_op': [
-                'permute_3_post_act_fake_quantizer', 'transpose_1_post_act_fake_quantizer',
-                'permute_11_post_act_fake_quantizer','transpose_2_post_act_fake_quantizer',
-                'permute_18_post_act_fake_quantizer','transpose_3_post_act_fake_quantizer',
-                'permute_26_post_act_fake_quantizer','transpose_4_post_act_fake_quantizer',
-                'permute_33_post_act_fake_quantizer','transpose_5_post_act_fake_quantizer',
-                'permute_41_post_act_fake_quantizer','transpose_6_post_act_fake_quantizer',
-                'permute_48_post_act_fake_quantizer','transpose_7_post_act_fake_quantizer',
-                'permute_56_post_act_fake_quantizer','transpose_8_post_act_fake_quantizer',
-                'permute_63_post_act_fake_quantizer','transpose_9_post_act_fake_quantizer',
-                'permute_71_post_act_fake_quantizer','transpose_10_post_act_fake_quantizer',
-                'permute_78_post_act_fake_quantizer','transpose_11_post_act_fake_quantizer',
-                'permute_85_post_act_fake_quantizer','transpose_12_post_act_fake_quantizer',
+                'permute_3_post_act_fake_quantizer',
+                'transpose_1_post_act_fake_quantizer',
+                'permute_11_post_act_fake_quantizer',
+                'transpose_2_post_act_fake_quantizer',
+                'permute_18_post_act_fake_quantizer',
+                'transpose_3_post_act_fake_quantizer',
+                'permute_26_post_act_fake_quantizer',
+                'transpose_4_post_act_fake_quantizer',
+                'permute_33_post_act_fake_quantizer',
+                'transpose_5_post_act_fake_quantizer',
+                'permute_41_post_act_fake_quantizer',
+                'transpose_6_post_act_fake_quantizer',
+                'permute_48_post_act_fake_quantizer',
+                'transpose_7_post_act_fake_quantizer',
+                'permute_56_post_act_fake_quantizer',
+                'transpose_8_post_act_fake_quantizer',
+                'permute_63_post_act_fake_quantizer',
+                'transpose_9_post_act_fake_quantizer',
+                'permute_71_post_act_fake_quantizer',
+                'transpose_10_post_act_fake_quantizer',
+                'permute_78_post_act_fake_quantizer',
+                'transpose_11_post_act_fake_quantizer',
+                'permute_85_post_act_fake_quantizer',
+                'transpose_12_post_act_fake_quantizer',
             ],
         },
         'concrete_args': get_concrete_args(model, input_names),
-        'preserve_attr': {'': ['config', 'num_labels']},
+        'preserve_attr': {
+            '': ['config', 'num_labels']
+        },
     }
-    model = prepare_by_platform(
-        model=model,
-        prepare_custom_config_dict=prepare_custom_config_dict,
-        custom_tracer=tracer
-    )
+    model = prepare_by_platform(model=model,
+                                prepare_custom_config_dict=prepare_custom_config_dict,
+                                custom_tracer=tracer)
     model.eval()
     return model
 
@@ -161,7 +177,8 @@ def calibration(trainer, config_quant):
 def main(config_path):
     config = image_classification_utils.parse_config(config_path)
     set_seed(config.train.seed)
-    training_args = image_classification_utils.make_huggingface_training_args(config.train, config.progress)
+    training_args = image_classification_utils.make_huggingface_training_args(
+        config.train, config.progress)
     set_logger(config.progress)
     raw_datasets = image_classification_utils.load_image_dataset(config.data, config.model)
     # Prepare label mappings.
@@ -181,28 +198,25 @@ def main(config_path):
         """Computes accuracy on a batch of predictions"""
         return metric.compute(predictions=p.predictions, references=p.label_ids)
 
-    model, feature_extractor = image_classification_utils.load_model(config.model, len(labels), label2id, id2label)
+    model, feature_extractor = image_classification_utils.load_model(config.model, len(labels),
+                                                                     label2id, id2label)
 
     if hasattr(config, 'quant'):
         model = quantize_model(model, config.quant)
     # Define torchvision transforms to be applied to each image.
     normalize = Normalize(mean=feature_extractor.image_mean, std=feature_extractor.image_std)
-    _train_transforms = Compose(
-        [
-            RandomResizedCrop((224,224)),
-            RandomHorizontalFlip(),
-            ToTensor(),
-            normalize,
-        ]
-    )
-    _val_transforms = Compose(
-        [
-            Resize((224,224)),
-            CenterCrop((224,224)),
-            ToTensor(),
-            normalize,
-        ]
-    )
+    _train_transforms = Compose([
+        RandomResizedCrop((224, 224)),
+        RandomHorizontalFlip(),
+        ToTensor(),
+        normalize,
+    ])
+    _val_transforms = Compose([
+        Resize((224, 224)),
+        CenterCrop((224, 224)),
+        ToTensor(),
+        normalize,
+    ])
 
     def train_transforms(example_batch):
         """Apply _train_transforms across a batch."""
@@ -213,16 +227,17 @@ def main(config_path):
 
     def val_transforms(example_batch):
         """Apply _val_transforms across a batch."""
-        example_batch["pixel_values"] = [_val_transforms(pil_img.convert("RGB")) for pil_img in example_batch["image"]]
+        example_batch["pixel_values"] = [
+            _val_transforms(pil_img.convert("RGB")) for pil_img in example_batch["image"]
+        ]
         return example_batch
 
     if training_args.do_train or hasattr(config, 'quant'):
         if "train" not in raw_datasets:
             raise ValueError("--do_train requires a train dataset")
         if config.data.max_train_samples is not None:
-            raw_datasets["train"] = (
-                raw_datasets["train"].shuffle(seed=training_args.seed).select(range(config.data.max_train_samples))
-            )
+            raw_datasets["train"] = (raw_datasets["train"].shuffle(seed=training_args.seed).select(
+                range(config.data.max_train_samples)))
         # Set the training transforms
         raw_datasets["train"].set_transform(train_transforms)
 
@@ -230,9 +245,8 @@ def main(config_path):
         if "validation" not in raw_datasets:
             raise ValueError("--do_eval requires a validation dataset")
         if config.data.max_eval_samples is not None:
-            raw_datasets["validation"] = (
-                raw_datasets["validation"].shuffle(seed=training_args.seed).select(range(config.data.max_eval_samples))
-            )
+            raw_datasets["validation"] = (raw_datasets["validation"].shuffle(
+                seed=training_args.seed).select(range(config.data.max_eval_samples)))
         # Set the validation transforms
         raw_datasets["validation"].set_transform(val_transforms)
 
@@ -241,7 +255,8 @@ def main(config_path):
         model=model,
         args=training_args,
         train_dataset=raw_datasets["train"] if training_args.do_train else None,
-        eval_dataset=raw_datasets["validation"] if training_args.do_eval or hasattr(config, 'quant') else None,
+        eval_dataset=raw_datasets["validation"]
+        if training_args.do_eval or hasattr(config, 'quant') else None,
         compute_metrics=compute_metrics,
         tokenizer=feature_extractor,
         data_collator=collate_fn,
@@ -251,7 +266,7 @@ def main(config_path):
     # Calibration
     if hasattr(config, 'quant'):
         calibration(trainer, config.quant)
-    
+
     if hasattr(config, 'quant'):
         disable_all(trainer.model.cuda())
     metrics_ori = trainer.evaluate()
@@ -291,10 +306,8 @@ def main(config_path):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(
-        description='configuration',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description='configuration',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--config', default='config.yaml', type=str)
     args = parser.parse_args()
     main(args.config)

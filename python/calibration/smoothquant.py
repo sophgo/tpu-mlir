@@ -10,11 +10,13 @@ from utils.mlir_shell import _os_system
 from transform.MLIRImporter import MLIRImporter
 from mlir.ir import Location
 
+
 def linear(x, W, b=None):
     y = x @ W
     if b is not None:
         y += b
     return y
+
 
 def qdq_weight(W, perchannel=True):
     if perchannel:
@@ -25,15 +27,19 @@ def qdq_weight(W, perchannel=True):
     qdqW = np.clip(np.round(W / s), -127, 127) * s
     return qdqW
 
+
 def qdq_act(X, mxa):
     s = mxa / 127
     qdqX = np.clip(np.round(X / s), -127, 127) * s
     return qdqX
 
+
 def mse(x, y):
-    return np.mean((x - y) ** 2)
+    return np.mean((x - y)**2)
+
 
 class SmoothQuant:
+
     def __init__(self, args, data_selector: DataSelector):
         self.args = args
         self.module = pymlir.module()
@@ -85,9 +91,7 @@ class SmoothQuant:
                     n1 = x.files[0]
                     if n1 in batched_inputs:
                         batched_inputs[n1] = np.concatenate(
-                            [batched_inputs[n1], x[n1].astype(np.float32)],
-                            axis=0
-                        )
+                            [batched_inputs[n1], x[n1].astype(np.float32)], axis=0)
                     else:
                         batched_inputs[n1] = x[n1].astype(np.float32)
                     if batched_inputs[n1].shape[0] >= self.batch_size:
@@ -99,13 +103,12 @@ class SmoothQuant:
                         assert (input in x)
                         if input in batched_inputs:
                             batched_inputs[input] = np.concatenate(
-                                [batched_inputs[input], x[input].astype(np.float32)],
-                                axis=0
-                            )
+                                [batched_inputs[input], x[input].astype(np.float32)], axis=0)
                         else:
                             batched_inputs[input] = x[input].astype(np.float32)
                         real_batch_size = self.parser.get_op_by_op_name(input).shape[0]
-                        self.input_tensors[batch_idx][input] = batched_inputs[input][:real_batch_size]
+                        self.input_tensors[batch_idx][input] = batched_inputs[
+                            input][:real_batch_size]
                         batched_inputs[input] = batched_inputs[input][real_batch_size:]
 
             elif self.data_selector.all_image:
@@ -136,8 +139,8 @@ class SmoothQuant:
         assert self.args.input_num > 0
 
     def insert_mul_after_ln(self):
-        need_mul_lns = [] # layernorms that need to insert mul for smooth
-        matmul2ln = {} # matmul to layernorm mapping, used to replace matmul input
+        need_mul_lns = []  # layernorms that need to insert mul for smooth
+        matmul2ln = {}  # matmul to layernorm mapping, used to replace matmul input
         for op in self.parser.get_op_name_list():
             op_type = self.parser.get_op_type_by_op_name(op)
             if op_type == 'top.LayerNorm':
@@ -159,10 +162,15 @@ class SmoothQuant:
             elif self.input_tensors[0][n].dtype == np.int32:
                 input_types.append('INT32')
             else:
-                raise TypeError(f'input_name: {n}, sunknown input data type: {self.input_tensors[0][n]}')
+                raise TypeError(
+                    f'input_name: {n}, sunknown input data type: {self.input_tensors[0][n]}')
 
-        new_mlir = MLIRImporter(input_shapes, output_shapes, self.parser.module_name,
-                                "ONNX", input_types, run_mode='STATIC',
+        new_mlir = MLIRImporter(input_shapes,
+                                output_shapes,
+                                self.parser.module_name,
+                                "ONNX",
+                                input_types,
+                                run_mode='STATIC',
                                 weight_file=self.parser.module_weight_file)
         self.unranked_type = new_mlir.get_tensor_type([])
 
@@ -170,7 +178,7 @@ class SmoothQuant:
         idx2name = {0: ''}
         # create input ops
         for i, name in enumerate(self.module.input_names):
-            op = self.parser.body.operations[i+1]
+            op = self.parser.body.operations[i + 1]
             attrs = op.attributes
             name = Operation.name(op)
             kwargs = {}
@@ -180,16 +188,14 @@ class SmoothQuant:
                 else:
                     kwargs[a.name] = [_.value for _ in a.attr]
             input_ = new_mlir.create_input_op(
-                Location.fused([Location.name(name)], context=new_mlir.ctx),
-                i, kwargs
-            )
-            idx2operand[i+1] = input_
-            idx2name[i+1] = name
+                Location.fused([Location.name(name)], context=new_mlir.ctx), i, kwargs)
+            idx2operand[i + 1] = input_
+            idx2name[i + 1] = name
 
-        ln2mulout = {} # layernorm to mul output mapping, used to replace matmul input
+        ln2mulout = {}  # layernorm to mul output mapping, used to replace matmul input
         return_idx = []
         # insert other ops
-        for i in range(len(self.module.input_names)+1, len(self.parser.body.operations)-1):
+        for i in range(len(self.module.input_names) + 1, len(self.parser.body.operations) - 1):
             op = self.parser.body.operations[i]
             op_type = Operation.type(op)
             attrs = op.attributes
@@ -199,7 +205,7 @@ class SmoothQuant:
             kwargs['loc'] = Location.fused([Location.name(name)], context=new_mlir.ctx)
             pre_op_ids = [int(_.get_name().strip('%')) for _ in op.operands]
             args = [idx2operand[j] for j in pre_op_ids]
-            if name in matmul2ln: # replace matmul input with inserted mul output
+            if name in matmul2ln:  # replace matmul input with inserted mul output
                 args[0] = ln2mulout[matmul2ln[name]]
 
             if op_type == 'top.Weight':
@@ -208,16 +214,17 @@ class SmoothQuant:
                 self.module_weights[name] = self.module_weights[name].reshape(weight_shape)
             else:
                 new_out = self.insert_origin_op(new_mlir, op_type, args, kwargs)
-            if new_out is None: return # fail to insert, stop inserting mul
+            if new_out is None: return  # fail to insert, stop inserting mul
 
-            if name in need_mul_lns: # insert mul after layernorm
+            if name in need_mul_lns:  # insert mul after layernorm
                 mul_shape = self.module_weights[idx2name[pre_op_ids[1]]].shape
                 mulW_name = name + "_scaled_weight"
                 self.module_weights[mulW_name] = np.ones(mul_shape).astype(np.float32)
                 mulW_out = new_mlir.create_weight_op(mulW_name, mul_shape)
                 mul_name = "Mul_after_" + name
                 mul_out = top.MulOp(self.unranked_type, [new_out, mulW_out],
-                                    loc=Location.fused([Location.name(mul_name)], context=new_mlir.ctx),
+                                    loc=Location.fused([Location.name(mul_name)],
+                                                       context=new_mlir.ctx),
                                     ip=new_mlir.insert_point).output
                 ln2mulout[name] = mul_out
 
@@ -253,31 +260,30 @@ class SmoothQuant:
                 for user in users:
                     if self.parser.get_op_type_by_op_name(user) != 'top.MatMul':
                         break
-                else: # all user is top.MatMul
+                else:  # all user is top.MatMul
                     self.smooth_op_names.append(op)
             elif op_type == 'top.Mul':
                 mul_op = self.parser.get_op_by_op_name(op)
                 if mul_op.opds[1] not in self.module_weights:
-                    continue # opds[1] is not weight op
+                    continue  # opds[1] is not weight op
                 if self.module_weights[mul_op.opds[1]].shape[-1] != mul_op.shape[-1]:
-                    continue # weight shape is different from act shape
+                    continue  # weight shape is different from act shape
                 users = self.skip_reshape_like_users(op)
                 for user in users:
                     if self.parser.get_op_type_by_op_name(user) != 'top.MatMul':
                         break
-                else: # all user is top.MatMul
+                else:  # all user is top.MatMul
                     self.smooth_op_names.append(op)
-            elif self.is_vproj_matmul(op): # smooth between v proj and o proj, now only support bert model
+            elif self.is_vproj_matmul(
+                    op):  # smooth between v proj and o proj, now only support bert model
                 self.smooth_op_names.append(op)
         for i, op_name in enumerate(self.smooth_op_names):
             print(f"smooth op {i} {op_name}")
 
     def skip_reshape_like_users(self, op):
         candidates = self.parser.get_next_op_by_op_name(op)
-        candidates = sorted(
-            candidates,
-            key=lambda x: self.parser.get_op_type_by_op_name(x) != 'top.Concat'
-        )
+        candidates = sorted(candidates,
+                            key=lambda x: self.parser.get_op_type_by_op_name(x) != 'top.Concat')
         seen = set()
         users = []
 
@@ -393,16 +399,15 @@ class SmoothQuant:
             if output not in self.activation_scales:
                 self.activation_scales[output] = scales
             else:
-                self.activation_scales[output] = np.maximum(
-                    scales,
-                    self.activation_scales[output]
-                )
+                self.activation_scales[output] = np.maximum(scales, self.activation_scales[output])
 
     def collect_activation_scales(self):
         self.activation_scales = {}
         self.activation_collection = {}
         pbar = tqdm([i for i in range(self.args.input_num)],
-                    total=self.args.input_num, position=0, leave=True)
+                    total=self.args.input_num,
+                    position=0,
+                    leave=True)
         for idx in range(self.args.input_num):
             pbar.set_description(f"collect activations for sample {idx}")
             for name in self.module.input_names:
@@ -430,10 +435,8 @@ class SmoothQuant:
                     if op_name not in self.weight_scales:
                         self.weight_scales[op_name] = user_weight_scale
                     else:
-                        self.weight_scales[op_name] = np.maximum(
-                            user_weight_scale,
-                            self.weight_scales[op_name]
-                        )
+                        self.weight_scales[op_name] = np.maximum(user_weight_scale,
+                                                                 self.weight_scales[op_name])
 
             elif op_type == 'top.MatMul':
                 users = self.get_next_matmul_ops(op_name)
@@ -446,10 +449,8 @@ class SmoothQuant:
                 if op_name not in self.weight_scales:
                     self.weight_scales[op_name] = oproj_weight_scale
                 else:
-                    self.weight_scales[op_name] = np.maximum(
-                        oproj_weight_scale,
-                        self.weight_scales[op_name]
-                    )
+                    self.weight_scales[op_name] = np.maximum(oproj_weight_scale,
+                                                             self.weight_scales[op_name])
 
     def search_opt_scale(self, op_name):
         # search the best smooth scale by minimizing the mse loss
@@ -480,7 +481,7 @@ class SmoothQuant:
         # smoothquant search space
         for alpha in np.arange(0, 1.05, 0.05):
             loss = 0
-            smooth_scale = activation_scale ** alpha / weight_scale ** (1 - alpha)
+            smooth_scale = activation_scale**alpha / weight_scale**(1 - alpha)
             smooth_scale[np.isinf(smooth_scale)] = 1
             smooth_scale[np.isnan(smooth_scale)] = 1
             scaled_mxa = (activation_scale / smooth_scale).max()
@@ -489,9 +490,7 @@ class SmoothQuant:
                 scaled_inputs.append(qdq_act(x / smooth_scale, scaled_mxa))
             for user in users:
                 scaled_weight = user_weights[user] * smooth_scale.reshape(-1, 1)
-                scaled_weight = qdq_weight(
-                    scaled_weight,
-                )
+                scaled_weight = qdq_weight(scaled_weight, )
                 for i, scaled_x in enumerate(scaled_inputs):
                     scaled_output = linear(scaled_x, scaled_weight)
                     loss += mse(scaled_output, fp32_outputs[user][i])
@@ -514,9 +513,7 @@ class SmoothQuant:
                 scaled_inputs.append(qdq_act(x / smooth_scale, scaled_mxa))
             for user in users:
                 scaled_weight = user_weights[user] * smooth_scale.reshape(-1, 1)
-                scaled_weight = qdq_weight(
-                    scaled_weight,
-                )
+                scaled_weight = qdq_weight(scaled_weight, )
                 for i, scaled_x in enumerate(scaled_inputs):
                     scaled_output = linear(scaled_x, scaled_weight)
                     loss += mse(scaled_output, fp32_outputs[user][i])
@@ -536,12 +533,14 @@ class SmoothQuant:
                 ori_weight_shape = self.module_weights[opds[1]].shape
                 self.module_weights[opds[1]] /= smooth_scale
                 new_weight_shape = self.module_weights[opds[1]].shape
-                assert np.all(ori_weight_shape == new_weight_shape), f"{op_name} weight {ori_weight_shape} {new_weight_shape}"
+                assert np.all(ori_weight_shape == new_weight_shape
+                              ), f"{op_name} weight {ori_weight_shape} {new_weight_shape}"
                 if len(opds) > 2:
                     ori_weight_shape = self.module_weights[opds[2]].shape
                     self.module_weights[opds[2]] /= smooth_scale
                     new_weight_shape = self.module_weights[opds[2]].shape
-                    assert np.all(ori_weight_shape == new_weight_shape), f"{op_name} bias {ori_weight_shape} {new_weight_shape}"
+                    assert np.all(ori_weight_shape == new_weight_shape
+                                  ), f"{op_name} bias {ori_weight_shape} {new_weight_shape}"
                 smooth_scale = smooth_scale.reshape(-1, 1)
 
                 if op_type in ['top.LayerNorm', 'top.Mul']:
@@ -557,13 +556,15 @@ class SmoothQuant:
                     user_opds = self.parser.get_opds_by_op_name(user)
                     ori_weight_shape = self.module_weights[user_opds[1]].shape
                     if self.module_weights[user_opds[1]].ndim == 1:
-                        repeat_num = self.module_weights[user_opds[1]].shape[0] // smooth_scale.shape[0]
+                        repeat_num = self.module_weights[
+                            user_opds[1]].shape[0] // smooth_scale.shape[0]
                         tmp_scale = np.repeat(smooth_scale, repeat_num, axis=1).flatten()
                         self.module_weights[user_opds[1]] *= tmp_scale
                     else:
                         self.module_weights[user_opds[1]] *= smooth_scale
                     new_weight_shape = self.module_weights[user_opds[1]].shape
-                    assert np.all(ori_weight_shape == new_weight_shape), f"{op_name} {user} {ori_weight_shape} {new_weight_shape}"
+                    assert np.all(ori_weight_shape == new_weight_shape
+                                  ), f"{op_name} {user} {ori_weight_shape} {new_weight_shape}"
         print(f"save weights to {self.parser.module_weight_file}")
         os.system(f'rm -f {self.parser.module_weight_file}')
         np.savez(self.parser.module_weight_file, **self.module_weights)
@@ -862,5 +863,5 @@ class SmoothQuant:
         else:
             # unknown op type, stop inserting mul and return
             print(f"not support inserting mul in models with {op_type}")
-            return None # insert failed
-        return new_out # insert success
+            return None  # insert failed
+        return new_out  # insert success

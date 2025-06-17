@@ -6,7 +6,9 @@ from torch.fx.graph_module import GraphModule
 from torch.fx.node import _get_qualified_name
 from torch.fx.passes.operator_support import OperatorSupport
 from typing import Dict, List, Optional, Sequence
+
 MIN_BLOCK_SIZE = 5
+
 
 class TpuMlirPartitioner(CapabilityBasedPartitioner):
     """Partitioner to split an FX graph into subgraphs based on operator support
@@ -21,6 +23,7 @@ class TpuMlirPartitioner(CapabilityBasedPartitioner):
     Returns:
         torch.fx.GraphModule
     """
+
     def __init__(
         self,
         graph_module: GraphModule,
@@ -49,11 +52,11 @@ class TpuMlirPartitioner(CapabilityBasedPartitioner):
             print(f'{i}th partitions: {partitions[i]}')
 
         partitions_to_remove = {}
-        if len(initial_proposed_partitions) == 1: #整个图只有1个划分
+        if len(initial_proposed_partitions) == 1:  #整个图只有1个划分
             invalid = False
             for node in self.graph_module.graph.nodes:
                 if node not in initial_proposed_partitions[0].nodes:
-                    invalid = True #原始图有节点不在这唯一的划分中，该划分无效，原始问题是?
+                    invalid = True  #原始图有节点不在这唯一的划分中，该划分无效，原始问题是?
                     break
             if invalid:
                 partitions_to_remove[0] = 0
@@ -68,17 +71,12 @@ class TpuMlirPartitioner(CapabilityBasedPartitioner):
             compute_node_count = 0
             for node in partition.nodes:
                 # Partitions are exempted from min_block_size if they contain an allowed single-node op
-                if (
-                    node.op == "call_function"
-                    and _get_qualified_name(node.target)
-                    in self.allowed_single_node_partition_ops
-                ):
+                if (node.op == "call_function" and _get_qualified_name(node.target)
+                        in self.allowed_single_node_partition_ops):
                     exempted_partition = True
                     break
-                elif (
-                    node.op == "call_function"
-                    and _get_qualified_name(node.target) not in non_compute_ops
-                ):
+                elif (node.op == "call_function"
+                      and _get_qualified_name(node.target) not in non_compute_ops):
                     compute_node_count += 1
 
             if compute_node_count < self.min_block_size and not exempted_partition:
@@ -102,6 +100,7 @@ class TpuMlirPartitioner(CapabilityBasedPartitioner):
         fused_gm = self.fuse_partitions(partitions)
         return fused_gm
 
+
 class TpuMlirOperatorSupport(OperatorSupport):
     """Class to determine whether operators within a module are supported"""
 
@@ -113,15 +112,11 @@ class TpuMlirOperatorSupport(OperatorSupport):
         self.unsupported_operators = set()
         self.torch_executed_ops = torch_executed_ops
 
-    def is_node_supported(
-        self, submodules: Dict[str, torch.nn.Module], node: torch.fx.Node
-    ) -> bool:
+    def is_node_supported(self, submodules: Dict[str, torch.nn.Module],
+                          node: torch.fx.Node) -> bool:
         return True
-        node_name = (
-            _get_qualified_name(node.target)
-            if not isinstance(node.target, str)
-            else node.target
-        )
+        node_name = (_get_qualified_name(node.target)
+                     if not isinstance(node.target, str) else node.target)
 
         if node_name == 'torch.ops.aten.nll_loss_forward':
             print('aten.nll_loss_forward not support')
@@ -154,10 +149,10 @@ class TpuMlirOperatorSupport(OperatorSupport):
 
 
 def partition(
-    gm: torch.fx.GraphModule,
-    verbose: bool = True,
-    min_block_size: int = MIN_BLOCK_SIZE,
-    torch_executed_ops: Sequence[str] = set(),
+        gm: torch.fx.GraphModule,
+        verbose: bool = True,
+        min_block_size: int = MIN_BLOCK_SIZE,
+        torch_executed_ops: Sequence[str] = set(),
 ) -> torch.fx.GraphModule:
     """Partition an FX GraphModule with aten ops into TRT engines
     Partitioning is based on converter operator support

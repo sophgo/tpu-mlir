@@ -21,8 +21,11 @@ from .opparam import get_opparam_converter_with_context, opparam_converter
 
 def GET_LMEM_START_ADDR(core_id):
     return 0xc080000
+
+
 def GET_SMEM_START_ADDR(core_id):
     return 0xc041000
+
 
 class SGTPUV8Context(BModelContext):
     device = Target.SGTPUV8
@@ -33,7 +36,9 @@ class SGTPUV8Context(BModelContext):
 
     local_layout_to_stride = local_layout_to_stride
     valid_tag = {1: 0, 2: 1}  # {tag : corresponding index in self.base_addr}
-    base_addr = [0x80000000, 0x80000000 + 2**27, GET_LMEM_START_ADDR] # GLOBAL_MEM_START_ADDR GLOBAL_MEM_START_ADDR+max_coeff_size LOCAL_MEM_START_ADDR
+    base_addr = [
+        0x80000000, 0x80000000 + 2**27, GET_LMEM_START_ADDR
+    ]  # GLOBAL_MEM_START_ADDR GLOBAL_MEM_START_ADDR+max_coeff_size LOCAL_MEM_START_ADDR
 
     def __init__(self) -> None:
         super().__init__()
@@ -57,28 +62,27 @@ class SGTPUV8Context(BModelContext):
         assert 0 <= reg_address < 2**64
         tag = (reg_address >> 40) & 0x1F
 
-        if tag == 31 or tag ==0:
+        if tag == 31 or tag == 0:
             return MType.R
         else:
             return MType.G
 
     def fix_addr(self, reg_address: int) -> int:
         assert 0 <= reg_address < 2**64
-        tag = (reg_address >> 40) & 0x1F # bit[44:40], 5 bit, memory tag
+        tag = (reg_address >> 40) & 0x1F  # bit[44:40], 5 bit, memory tag
         offset = reg_address & ((1 << 40) - 1)
 
-        if tag == 31 or tag ==0: # LMEM : LOCAL_MEM_START_ADDR + reg_address[0:39]
-            if (((offset >> 22) & 0x1) == 0) :
+        if tag == 31 or tag == 0:  # LMEM : LOCAL_MEM_START_ADDR + reg_address[0:39]
+            if (((offset >> 22) & 0x1) == 0):
                 fixed_addr = offset | GET_LMEM_START_ADDR(0)
-            else :
+            else:
                 fixed_addr = offset | GET_SMEM_START_ADDR(0)
-
 
             # fixed_addr = 0xc080000 + (
             #     reg_address & 0xFFFFFFFFFF
             # )
 
-        else: #(tag=0-30) GMEM : GLOBAL_MEM_START_ADDR + reg_address[0:39]
+        else:  #(tag=0-30) GMEM : GLOBAL_MEM_START_ADDR + reg_address[0:39]
             fixed_addr = self.base_addr[self.valid_tag[tag]] + (
                 reg_address & 0xFFFFFFFFFF  #offset addr[39:0]
             )
@@ -103,16 +107,13 @@ class SGTPUV8Context(BModelContext):
             for i, v in enumerate(tiu_cmd):
                 if isinstance(v.reg, SYS_TR_ACC_reg):
                     # same as v.op_code == 12, changed because short cmd do not have op_code
-                    v.cmd_id_dep = (
-                        tiu_cmd[i + 1].cmd_id_dep
-                        if tiu_cmd[i + 1].cmd_id_dep != None
-                        else tiu_cmd[i + 2].cmd_id_dep
-                    )
+                    v.cmd_id_dep = (tiu_cmd[i + 1].cmd_id_dep if tiu_cmd[i + 1].cmd_id_dep != None
+                                    else tiu_cmd[i + 2].cmd_id_dep)
 
-        fix_tgcr_cmd_id_dp(inserted_cmd[: get_end(inserted_cmd)])
+        fix_tgcr_cmd_id_dp(inserted_cmd[:get_end(inserted_cmd)])
         # remove system instruction
-        main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
-        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+        main_id = [(m.cmd_id, m) for m in main_cmd[:get_end(main_cmd)]]
+        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[:get_end(inserted_cmd)]]
         # "sorted" is stable, which keeps the inserted commands
         # after the main instructions.
 

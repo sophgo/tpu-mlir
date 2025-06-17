@@ -107,8 +107,9 @@ class SG2380Runner(CModelRunner):
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
 
-            LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (32, 16, 1024 * 8)))
-            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
+            LMEM.append(
+                c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (32, 16, 1024 * 8)))
+            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024, )))
         DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
         self.memory = Memory(LMEM, DDR, SMEM)
 

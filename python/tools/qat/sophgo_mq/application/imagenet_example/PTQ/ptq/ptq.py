@@ -31,23 +31,25 @@ def load_calibrate_data(train_loader, cali_batchsize):
 def get_quantize_model(model, config):
     backend_type = BackendType.Academic if not hasattr(
         config.quantize, 'backend') else backend_dict[config.quantize.backend]
-    extra_prepare_dict = {} if not hasattr(
-        config, 'extra_prepare_dict') else config.extra_prepare_dict
-    return prepare_by_platform(
-        model, backend_type, prepare_custom_config_dict=extra_prepare_dict)
+    extra_prepare_dict = {} if not hasattr(config,
+                                           'extra_prepare_dict') else config.extra_prepare_dict
+    return prepare_by_platform(model, backend_type, prepare_custom_config_dict=extra_prepare_dict)
 
 
 def deploy(model, config):
     backend_type = BackendType.Academic if not hasattr(
         config.quantize, 'backend') else backend_dict[config.quantize.backend]
-    output_path = './' if not hasattr(
-        config.quantize, 'deploy') else config.quantize.deploy.output_path
+    output_path = './' if not hasattr(config.quantize,
+                                      'deploy') else config.quantize.deploy.output_path
     model_name = config.quantize.deploy.model_name
     deploy_to_qlinear = False if not hasattr(
         config.quantize.deploy, 'deploy_to_qlinear') else config.quantize.deploy.deploy_to_qlinear
 
-    convert_deploy(model, backend_type, {
-                   'input': [1, 3, 224, 224]}, output_path=output_path, model_name=model_name, deploy_to_qlinear=deploy_to_qlinear)
+    convert_deploy(model,
+                   backend_type, {'input': [1, 3, 224, 224]},
+                   output_path=output_path,
+                   model_name=model_name,
+                   deploy_to_qlinear=deploy_to_qlinear)
 
 
 if __name__ == '__main__':
@@ -82,8 +84,7 @@ if __name__ == '__main__':
             model(cali_data[0].cuda())
         print('begin advanced PTQ now!')
         if hasattr(config.quantize, 'reconstruction'):
-            model = ptq_reconstruction(
-                model, cali_data, config.quantize.reconstruction)
+            model = ptq_reconstruction(model, cali_data, config.quantize.reconstruction)
         enable_quantization(model)
         evaluate(val_loader, model)
         if hasattr(config.quantize, 'deploy'):

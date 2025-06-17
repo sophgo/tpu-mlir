@@ -1,32 +1,17 @@
 import copy
 import operator
 from collections import OrderedDict
-from typing import (
-    List, Dict, Any, Callable
-)
+from typing import (List, Dict, Any, Callable)
 
 import torch
-from torch.fx import (
-    GraphModule
-)
-from torch.quantization import (
-    propagate_qconfig_,
-    swap_module
-)
-from torch.nn.intrinsic import (
-    _FusedModule
-)
-from torch.quantization.quantization_mappings import (
-    get_default_qat_module_mappings,
-    get_default_static_quant_module_mappings
-)
-from torch.quantization.utils import (
-    get_combined_dict
-)
+from torch.fx import (GraphModule)
+from torch.quantization import (propagate_qconfig_, swap_module)
+from torch.nn.intrinsic import (_FusedModule)
+from torch.quantization.quantization_mappings import (get_default_qat_module_mappings,
+                                                      get_default_static_quant_module_mappings)
+from torch.quantization.utils import (get_combined_dict)
 
-from torch.quantization.quantize_fx import (
-    _fuse_fx
-)
+from torch.quantization.quantize_fx import (_fuse_fx)
 
 from sophgo_mq.utils import get_flattened_qconfig_dict
 from sophgo_mq.utils import getitem2node
@@ -34,6 +19,7 @@ from sophgo_mq.utils.logger import logger
 from sophgo_mq.utils.registry import register_model_quantizer
 import sophgo_mq.nn.intrinsic.qat as qnniqat
 import sophgo_mq.nn.qat as qnnqat
+
 
 class ModelQuantizer(object):
     """General model quantizer class.
@@ -45,39 +31,39 @@ class ModelQuantizer(object):
     since it is next layer's input.
     """
 
-    def __init__(self, extra_quantizer_dict, extra_fuse_dict,quant_dict):
+    def __init__(self, extra_quantizer_dict, extra_fuse_dict, quant_dict):
         self.additional_function_type = extra_quantizer_dict.get('additional_function_type', [])
         self.additional_module_type = extra_quantizer_dict.get('additional_module_type', ())
-        self.additional_fuser_method_mapping = extra_fuse_dict.get('additional_fuser_method_mapping', {})
+        self.additional_fuser_method_mapping = extra_fuse_dict.get(
+            'additional_fuser_method_mapping', {})
         self.additional_fusion_pattern = extra_fuse_dict.get('additional_fusion_pattern', {})
-        self.additional_qat_module_mapping = extra_fuse_dict.get('additional_qat_module_mapping', {})
+        self.additional_qat_module_mapping = extra_fuse_dict.get('additional_qat_module_mapping',
+                                                                 {})
         self.additional_node_name = extra_quantizer_dict.get('additional_node_name', [])
         self.exclude_module_name = extra_quantizer_dict.get('exclude_module_name', [])
         self.exclude_function_type = extra_quantizer_dict.get('exclude_function_type', [])
         self.exclude_node_name = extra_quantizer_dict.get('exclude_node_name', [])
-        self.module_only_enable_observer = extra_quantizer_dict.get('module_only_enable_observer', [])
-        self.quantmode=quant_dict.get('quantmode', 'weight_activation')
-        self.strategy=quant_dict.get('strategy', 'CNN')
+        self.module_only_enable_observer = extra_quantizer_dict.get('module_only_enable_observer',
+                                                                    [])
+        self.quantmode = quant_dict.get('quantmode', 'weight_activation')
+        self.strategy = quant_dict.get('strategy', 'CNN')
         self.extra_fuse_dict = extra_fuse_dict
 
     def prepare(self, model: GraphModule, qconfig):
         model = _fuse_fx(model, self.extra_fuse_dict)
         model = self._weight_quant(model, qconfig)
-        if self.quantmode=="weight_activation":
+        if self.quantmode == "weight_activation":
             model = self._insert_fake_quantize_for_act_quant(model, qconfig)
         return model
-    
+
     def prepare_swint(self, model: GraphModule, qconfig):
         model = _fuse_fx(model, self.extra_fuse_dict)
         model = self._weight_quant(model, qconfig)
-        if self.quantmode=="weight_activation":
+        if self.quantmode == "weight_activation":
             model = self._insert_fake_quantize_for_act_quant_swint(model, qconfig)
-        return model    
-    
-    def _insert_fake_quantize_for_act_quant_swint(
-            self,
-            model: GraphModule,
-            qconfig: Any):
+        return model
+
+    def _insert_fake_quantize_for_act_quant_swint(self, model: GraphModule, qconfig: Any):
         graph = model.graph
         nodes = list(model.graph.nodes)
         quantizer_prefix = "_post_act_fake_quantizer"
@@ -87,7 +73,7 @@ class ModelQuantizer(object):
         qconfig2 = {}
 
         if 'module_name' in qconfig:
-            qconfig2 = qconfig['module_name']    
+            qconfig2 = qconfig['module_name']
         for node in node_to_quantize_output:
             quantizer_name = node.name + quantizer_prefix
             if quantizer_name in qconfig2:
@@ -97,13 +83,13 @@ class ModelQuantizer(object):
             setattr(model, quantizer_name, fake_quantizer)
             logger.info("Insert act quant {}".format(quantizer_name))
             with graph.inserting_after(node):
-                inserted_node = graph.create_node("call_module", quantizer_name, (node,), {})
+                inserted_node = graph.create_node("call_module", quantizer_name, (node, ), {})
                 for _node in nodes:
                     _node.args = self._fix_succ_recursivly(_node.args, node, inserted_node)
         model.recompile()
         model.graph.lint()
         return model
-    
+
     def _find_act_quants_swint(self, model: GraphModule, qconfig) -> List:
         nodes = list(model.graph.nodes)
         modules = dict(model.named_modules())
@@ -113,9 +99,9 @@ class ModelQuantizer(object):
             if "matmul" in node.name:
                 node_need_to_quantize_output.append(node)
             if ((node.op == "call_module" and node.target in self.exclude_module_name) or
-                ((node.op == 'call_function' or node.op == 'call_method') and
-                    node.target in self.exclude_function_type) or
-                    node.name in self.exclude_node_name) and node.name not in self.additional_node_name:
+                ((node.op == 'call_function' or node.op == 'call_method')
+                 and node.target in self.exclude_function_type) or node.name
+                    in self.exclude_node_name) and node.name not in self.additional_node_name:
                 logger.info("Exclude skip: {}".format(node.name))
                 continue
             if (node.op == "call_module" and isinstance(modules[node.target], self.module_type_to_quant_input)) or \
@@ -147,10 +133,7 @@ class ModelQuantizer(object):
                     continue
         return node_need_to_quantize_output
 
-    def _insert_fake_quantize_for_act_quant(
-            self,
-            model: GraphModule,
-            qconfig: Any):
+    def _insert_fake_quantize_for_act_quant(self, model: GraphModule, qconfig: Any):
         graph = model.graph
         nodes = list(model.graph.nodes)
 
@@ -164,7 +147,7 @@ class ModelQuantizer(object):
             setattr(model, quantizer_name, fake_quantizer)
             logger.info("Insert act quant {}".format(quantizer_name))
             with graph.inserting_after(node):
-                inserted_node = graph.create_node("call_module", quantizer_name, (node,), {})
+                inserted_node = graph.create_node("call_module", quantizer_name, (node, ), {})
                 for _node in nodes:
                     _node.args = self._fix_succ_recursivly(_node.args, node, inserted_node)
 
@@ -202,7 +185,7 @@ class ModelQuantizer(object):
 
     def _weight_quant(self, model: GraphModule, qconfig):
         logger.info("Replace module to qat module.")
-        flattened_qconfig_dict = get_flattened_qconfig_dict(qconfig)#torch�ӿ�
+        flattened_qconfig_dict = get_flattened_qconfig_dict(qconfig)  #torch�ӿ�
         print('flattened_qconfig_dict:', flattened_qconfig_dict)
         propagate_qconfig_(model, flattened_qconfig_dict)
         self._qat_swap_modules(model, self.additional_qat_module_mapping)
@@ -212,9 +195,7 @@ class ModelQuantizer(object):
     def implicit_merge_patterns(self) -> list:
         # Layers which do not need quantize among them.
         # In reversed order!
-        return [
-            (operator.add, operator.mul)
-        ]
+        return [(operator.add, operator.mul)]
 
     def _on_merge_chain(self, modules, pattern, pair, p_pos=0, v_pos=0):
         if v_pos == len(pair):
@@ -251,16 +232,12 @@ class ModelQuantizer(object):
 
     @property
     def function_type_to_update_data_struct(self) -> list:
-        return [
-            'update'
-        ]
+        return ['update']
 
     @property
     def function_type_to_quant_input(self) -> list:
         return [
-            operator.add,
-            operator.mul,
-            torch.nn.functional.adaptive_avg_pool2d,
+            operator.add, operator.mul, torch.nn.functional.adaptive_avg_pool2d,
             torch.nn.functional.interpolate
         ] + self.additional_function_type
 
@@ -284,8 +261,7 @@ class ModelQuantizer(object):
             # Prelu mostly do not merge.
             torch.nn.PReLU,
             # Upsample
-            torch.nn.Upsample
-        ) + self.additional_module_type
+            torch.nn.Upsample) + self.additional_module_type
 
     def _flatten_args(self, node):
         flattned_args = []
@@ -305,12 +281,12 @@ class ModelQuantizer(object):
         node_need_to_quantize_output = []
         g2node = getitem2node(model)
         for node in nodes:
-            if node.name=="bert_encoder_layer_11_output_layer_norm":
+            if node.name == "bert_encoder_layer_11_output_layer_norm":
                 node_need_to_quantize_output.append(node)
             if ((node.op == "call_module" and node.target in self.exclude_module_name) or
-                ((node.op == 'call_function' or node.op == 'call_method') and
-                 node.target in self.exclude_function_type) or
-                    node.name in self.exclude_node_name) and node.name not in self.additional_node_name:
+                ((node.op == 'call_function' or node.op == 'call_method')
+                 and node.target in self.exclude_function_type) or node.name
+                    in self.exclude_node_name) and node.name not in self.additional_node_name:
                 logger.info("Exclude skip: {}".format(node.name))
                 continue
             if (node.op == 'call_function' and node.target in self._passed_func_type) or \
@@ -324,11 +300,14 @@ class ModelQuantizer(object):
                 if not all([isinstance(_node, torch.fx.node.Node) for _node in input_node_list]):
                     continue
                 for _node in input_node_list:
-                    if _node.target in ["type_as","long"] or _node.name in ['arange','pixel_values'] or _node.target in [operator.mod,operator.floordiv]:#,"expand","to","long"]:
+                    if _node.target in ["type_as", "long"] or _node.name in [
+                            'arange', 'pixel_values'
+                    ] or _node.target in [operator.mod, operator.floordiv
+                                          ]:  #,"expand","to","long"]:
                         continue
                     if _node.op == 'call_function' and 'getitem' in _node.name:
-                        if _node.args[0].target=="size":
-                            continue   
+                        if _node.args[0].target == "size":
+                            continue
                     if self._is_implicit_merge(modules, (node, _node)):
                         logger.info("Implicit merge: {} + {}".format(_node.name, node.name))
                         continue
@@ -342,9 +321,10 @@ class ModelQuantizer(object):
                     node_need_to_quantize_output.append(_node)
         return node_need_to_quantize_output
 
-    def _qat_swap_modules(self, root: GraphModule, additional_qat_module_mapping: Dict[Callable, Callable]):
-        all_mappings = get_combined_dict(
-            get_default_qat_module_mappings(), additional_qat_module_mapping)
+    def _qat_swap_modules(self, root: GraphModule, additional_qat_module_mapping: Dict[Callable,
+                                                                                       Callable]):
+        all_mappings = get_combined_dict(get_default_qat_module_mappings(),
+                                         additional_qat_module_mapping)
         root = self._convert(root, all_mappings, inplace=True)
         return root
 

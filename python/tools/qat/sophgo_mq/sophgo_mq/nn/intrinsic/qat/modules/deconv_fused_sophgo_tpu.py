@@ -14,7 +14,6 @@ import sophgo_mq.nn.intrinsic as qnni
 import sophgo_mq.nn.qat as qnnqat
 from sophgo_mq.utils.fusion import fuse_deconv_bn_weights
 
-
 _BN_CLASS_MAP = {
     1: nn.BatchNorm1d,
     2: nn.BatchNorm2d,
@@ -59,11 +58,9 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
         padding = _single(padding)
         dilation = _single(dilation)
         output_padding = _single(output_padding)
-        nn.modules.conv._ConvTransposeNd.__init__(self, in_channels,
-                                                  out_channels, kernel_size,
-                                                  stride, padding, dilation,
-                                                  transposed, output_padding,
-                                                  groups, False, padding_mode)
+        nn.modules.conv._ConvTransposeNd.__init__(self, in_channels, out_channels, kernel_size,
+                                                  stride, padding, dilation, transposed,
+                                                  output_padding, groups, False, padding_mode)
         assert qconfig, 'qconfig must be provided for a QAT module'
         self.qconfig = qconfig
         self.freeze_bn = freeze_bn if self.training else True
@@ -136,13 +133,13 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
     #     return deconv
 
     def bias_fake_quant_proc(self, bias, scale_w, in_scale):
-        scale = scale_w*in_scale
+        scale = scale_w * in_scale
         if torch.nonzero(scale).size()[0] != scale.numel():
             print('error! scale has 0, scale:', scale)
-        bias_q = bias/scale
-        bias = (bias_q.round()-bias_q).detach() + bias_q
+        bias_q = bias / scale
+        bias = (bias_q.round() - bias_q).detach() + bias_q
         # bias_q = torch.clamp(bias_q, -2147483648, 2147483647)
-        bias = bias*scale
+        bias = bias * scale
         return bias
 
     # def _forward(self, input):
@@ -174,7 +171,6 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
     #         conv -= diff_fused_bias.reshape(bias_shape) #这里从推导看应该是减
     #     return conv
 
-
     def _forward(self, input):
         assert self.bn.running_var is not None
         running_std = torch.sqrt(self.bn.running_var + self.bn.eps)
@@ -188,25 +184,27 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
         # will be added later
         if self.bias is not None:
             zero_bias = torch.zeros_like(self.bias)
-            conv_bias = self.bias 
+            conv_bias = self.bias
         else:
             zero_bias = torch.zeros(self.out_channels, device=scaled_weight.device)
             conv_bias = torch.zeros_like(zero_bias, device=scaled_weight.device)
         if self.bn.affine:
-            full_bias = (conv_bias - self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias 
+            full_bias = (conv_bias -
+                         self.bn.running_mean) / running_std * self.bn.weight + self.bn.bias
         else:
-            full_bias = (conv_bias - self.bn.running_mean) / running_std 
+            full_bias = (conv_bias - self.bn.running_mean) / running_std
         # quant_bias = self.bias_fake_quant(full_bias)
-        quant_bias = self.bias_fake_quant_proc(full_bias, self.weight_fake_quant.scale, self.input_fake_quantizer.scale)
+        quant_bias = self.bias_fake_quant_proc(full_bias, self.weight_fake_quant.scale,
+                                               self.input_fake_quantizer.scale)
         conv_with_bias = self._convtransposed_forward(input, scaled_weight, quant_bias)
-        deconv_orig = (conv_with_bias - full_bias.reshape(bias_shape)) / scale_factor.reshape(bias_shape) + conv_bias.reshape(bias_shape)
+        deconv_orig = (conv_with_bias - full_bias.reshape(bias_shape)
+                       ) / scale_factor.reshape(bias_shape) + conv_bias.reshape(bias_shape)
         deconv = self.bn(deconv_orig)
         return deconv
 
     def _convtransposed_forward(self, x, w, b):
         raise NotImplementedError(
-            'The sub-class must implement this function to forward in the needed dim-version!'
-        )
+            'The sub-class must implement this function to forward in the needed dim-version!')
 
     def extra_repr(self):
         # TODO(jerryzh): extend
@@ -249,8 +247,8 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
     #        |--- running_mean : Tensor (moved from v1.self.running_mean)
     #        |--- running_var : Tensor (moved from v1.self.running_var)
     #        |--- num_batches_tracked : Tensor (moved from v1.self.num_batches_tracked)
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         version = local_metadata.get('version', None)
         if version is None or version == 1:
             # BN related parameters and buffers were moved into the BN module for v2
@@ -279,8 +277,7 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
                     missing_keys.append(prefix + v2_name)
 
         super(_ConvTransposeBnNd,
-              self)._load_from_state_dict(state_dict, prefix, local_metadata,
-                                          strict, missing_keys,
+              self)._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys,
                                           unexpected_keys, error_msgs)
 
     @classmethod
@@ -292,17 +289,14 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
         """
         assert type(mod) == cls._FLOAT_MODULE, 'qat.' + cls.__name__ + '.from_float only works for ' + \
             cls._FLOAT_MODULE.__name__
-        assert hasattr(
-            mod, 'qconfig'), 'Input float module must have qconfig defined'
+        assert hasattr(mod, 'qconfig'), 'Input float module must have qconfig defined'
         assert mod.qconfig, 'Input float module must have a valid qconfig'
         qconfig = mod.qconfig
         deconv, bn = mod[0], mod[1]
-        qat_deconvbn = cls(deconv.in_channels, deconv.out_channels,
-                           deconv.kernel_size, deconv.stride, deconv.bias
-                           is not None, deconv.transposed, deconv.padding,
-                           deconv.output_padding, deconv.groups,
-                           deconv.dilation, deconv.padding_mode, bn.eps,
-                           bn.momentum, False, qconfig)
+        qat_deconvbn = cls(deconv.in_channels, deconv.out_channels, deconv.kernel_size,
+                           deconv.stride, deconv.bias is not None, deconv.transposed,
+                           deconv.padding, deconv.output_padding, deconv.groups, deconv.dilation,
+                           deconv.padding_mode, bn.eps, bn.momentum, False, qconfig)
         qat_deconvbn.weight = deconv.weight
         qat_deconvbn.bias = deconv.bias
         qat_deconvbn.bn.weight = bn.weight
@@ -345,18 +339,15 @@ class ConvTransposeBn2d_sophgo(_ConvTransposeBnNd, nn.ConvTranspose2d):
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
-        _ConvTransposeBnNd.__init__(self, in_channels, out_channels,
-                                    kernel_size, stride, bias, transposed,
-                                    padding, output_padding, groups, dilation,
-                                    padding_mode, eps, momentum, freeze_bn,
-                                    qconfig)
+        _ConvTransposeBnNd.__init__(self, in_channels, out_channels, kernel_size, stride, bias,
+                                    transposed, padding, output_padding, groups, dilation,
+                                    padding_mode, eps, momentum, freeze_bn, qconfig)
 
     def _convtransposed_forward(self, x, w, b):
-        output_padding = self._output_padding(x, None, self.stride,
-                                              self.padding, self.kernel_size,
+        output_padding = self._output_padding(x, None, self.stride, self.padding, self.kernel_size,
                                               self.dilation)
-        return F.conv_transpose2d(x, w, b, self.stride, self.padding,
-                                  output_padding, self.groups, self.dilation)
+        return F.conv_transpose2d(x, w, b, self.stride, self.padding, output_padding, self.groups,
+                                  self.dilation)
 
 
 class ConvTransposeBnReLU2d_sophgo(ConvTransposeBn2d_sophgo):
@@ -391,22 +382,21 @@ class ConvTransposeBnReLU2d_sophgo(ConvTransposeBn2d_sophgo):
         #                                             padding_mode, eps, momentum,
         #                                             freeze_bn,
         #                                             qconfig)
-        super(ConvTransposeBnReLU2d_sophgo,
-              self).__init__(in_channels,
-                             out_channels,
-                             kernel_size,
-                             stride=stride,
-                             bias=bias,
-                             transposed=transposed,
-                             padding=padding,
-                             output_padding=output_padding,
-                             groups=groups,
-                             dilation=dilation,
-                             padding_mode=padding_mode,
-                             eps=eps,
-                             momentum=momentum,
-                             freeze_bn=freeze_bn,
-                             qconfig=qconfig)
+        super(ConvTransposeBnReLU2d_sophgo, self).__init__(in_channels,
+                                                           out_channels,
+                                                           kernel_size,
+                                                           stride=stride,
+                                                           bias=bias,
+                                                           transposed=transposed,
+                                                           padding=padding,
+                                                           output_padding=output_padding,
+                                                           groups=groups,
+                                                           dilation=dilation,
+                                                           padding_mode=padding_mode,
+                                                           eps=eps,
+                                                           momentum=momentum,
+                                                           freeze_bn=freeze_bn,
+                                                           qconfig=qconfig)
 
     def forward(self, input):
         return F.relu(ConvTransposeBn2d_sophgo._forward(self, input))
@@ -438,18 +428,17 @@ class ConvTransposeReLU2d_sophgo(qnnqat.ConvTranspose2d_sophgo):
             padding_mode='zeros',
             qconfig=None):
 
-        super(ConvTransposeReLU2d_sophgo,
-              self).__init__(in_channels,
-                             out_channels,
-                             kernel_size,
-                             stride=stride,
-                             bias=bias,
-                             padding=padding,
-                             output_padding=output_padding,
-                             groups=groups,
-                             dilation=dilation,
-                             padding_mode=padding_mode,
-                             qconfig=qconfig)
+        super(ConvTransposeReLU2d_sophgo, self).__init__(in_channels,
+                                                         out_channels,
+                                                         kernel_size,
+                                                         stride=stride,
+                                                         bias=bias,
+                                                         padding=padding,
+                                                         output_padding=output_padding,
+                                                         groups=groups,
+                                                         dilation=dilation,
+                                                         padding_mode=padding_mode,
+                                                         qconfig=qconfig)
         assert qconfig, 'qconfig must be provided for QAT module'
 
     def forward(self, input, output_size=None):

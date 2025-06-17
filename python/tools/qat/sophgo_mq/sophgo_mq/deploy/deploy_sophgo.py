@@ -2,44 +2,36 @@ import json
 import os
 import copy
 
-
 import onnx
 import numpy as np
 from onnx import numpy_helper
 
 from sophgo_mq.utils.logger import logger
-from sophgo_mq.deploy.common import (
-    update_inp2node_out2node,
-    prepare_initializer,
-    prepare_data,
-    OnnxPreprocess,
-    get_constant_inputs,
-    parse_attrs
-)
+from sophgo_mq.deploy.common import (update_inp2node_out2node, prepare_initializer, prepare_data,
+                                     OnnxPreprocess, get_constant_inputs, parse_attrs)
 
-
-PERCHANNEL_FAKEQUANTIZER = ['FakeQuantizeLearnablePerchannelAffine', 
-                            'FixedPerChannelAffine',
-                            'FakeQuantizeDSQPerchannel',
-                            'FPEmuOp_per_channel']
-PERTENSOR_FAKEQUANTIZER = ['LearnablePerTensorAffine', 
-                           'FixedPerTensorAffine',
-                           'FakeQuantizeDSQPertensor',
-                           'FakeQuantizeTqtAffine',
-                           'FPEmuOp_per_tensor',
-                           'Cast']
+PERCHANNEL_FAKEQUANTIZER = [
+    'FakeQuantizeLearnablePerchannelAffine', 'FixedPerChannelAffine', 'FakeQuantizeDSQPerchannel',
+    'FPEmuOp_per_channel'
+]
+PERTENSOR_FAKEQUANTIZER = [
+    'LearnablePerTensorAffine', 'FixedPerTensorAffine', 'FakeQuantizeDSQPertensor',
+    'FakeQuantizeTqtAffine', 'FPEmuOp_per_tensor', 'Cast'
+]
 ALL_FAKEQUANTIZER = PERCHANNEL_FAKEQUANTIZER + PERTENSOR_FAKEQUANTIZER
 
 
 class LinearQuantizer_process(object):
     # some method like dorefa need pre-compute weights
     def weight_preprocess(self, target_tensor, out2node, inp2node, named_initializer):
+
         def find_weight(tensor):
             if tensor not in named_initializer:
                 _node = out2node[tensor]
                 for inp in _node.input:
                     return find_weight(inp)
             return tensor
+
         weight = find_weight(target_tensor)
 
         # TODO need more general method, like onnxruntime infer
@@ -60,6 +52,7 @@ class LinearQuantizer_process(object):
                     redundant_nodes.append(node)
                     redundant_nodes.extend(get_constant_inputs(node, out2node))
                 find_redundant_nodes(node.output[0])
+
         find_redundant_nodes(weight)
         return weight, redundant_nodes
 
@@ -103,7 +96,7 @@ class LinearQuantizer_process(object):
                 qparams = parse_attrs(node.attribute)
                 dtype = qparams['dtype']
             else:
-                dtype='None' 
+                dtype = 'None'
         elif len(node.attribute) > 0:
             qparams = parse_attrs(node.attribute)
             qmin = qparams['quant_min']
@@ -115,15 +108,16 @@ class LinearQuantizer_process(object):
         if qmax == float(448.0) or qmax == float(57344.0):
             quant_type = 'FP8'
         if dtype == 'None' or dtype == 'biased':
-            bit = int(np.log2(qmax-qmin+1))
+            bit = int(np.log2(qmax - qmin + 1))
             if (bit == 8 and qmin < 0) or (bit == 4):
                 dtype = 'int'
-            elif (bit == 8 and qmin ==0):
+            elif (bit == 8 and qmin == 0):
                 dtype = 'uint'
         return tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type
 
     def clip_weight(self, node, name2data, inp2node, named_initializer, quant_type_dict):
-        tensor_name, scale, zero_point, qmin, qmax, dtype1, quant_type= self.parse_qparams(node, name2data, quant_type_dict)
+        tensor_name, scale, zero_point, qmin, qmax, dtype1, quant_type = self.parse_qparams(
+            node, name2data, quant_type_dict)
         data = name2data[tensor_name]
         clip_range_min = ((qmin - zero_point) * scale).astype(data.dtype)
         clip_range_max = ((qmax - zero_point) * scale).astype(data.dtype)
@@ -142,11 +136,15 @@ class LinearQuantizer_process(object):
             logger.info(f'Clip weights <{tensor_name}> to per-channel ranges.')
         else:
             new_data = np.clip(data, clip_range_min, clip_range_max)
-            logger.info(f'Clip weights <{tensor_name}> to range [{clip_range_min}, {clip_range_max}].')
+            logger.info(
+                f'Clip weights <{tensor_name}> to range [{clip_range_min}, {clip_range_max}].')
         new_data = numpy_helper.from_array(new_data)
         named_initializer[tensor_name].raw_data = new_data.raw_data
-    
-    def get_correct_sophgo_tpu_input_tensor_name(self, node, out2node, have_int4=False): #和tpu-mlir的命名风格一致
+
+    def get_correct_sophgo_tpu_input_tensor_name(self,
+                                                 node,
+                                                 out2node,
+                                                 have_int4=False):  #和tpu-mlir的命名风格一致
         input_0 = node.input[0]
         op_type = ''
         if input_0 in out2node:
@@ -161,6 +159,7 @@ class LinearQuantizer_process(object):
         return tensor_name
 
     def post_process_clip_ranges(self, clip_ranges, graph, inp2node, out2node):
+
         def find_the_closest_clip_range(node):
             tensor_name = self.get_correct_sophgo_tpu_input_tensor_name(node, out2node)
             if tensor_name in clip_ranges:
@@ -176,11 +175,13 @@ class LinearQuantizer_process(object):
                 if tensor_name:
                     new_name = self.get_correct_sophgo_tpu_input_tensor_name(node, out2node)
                     clip_ranges[new_name] = copy.deepcopy(clip_ranges[tensor_name])
-                    clip_ranges[new_name]['ori_name'] =  new_name
-                    logger.info(f'Pass <{tensor_name}> clip range to <{node.name}> input <{node.input[0]}>.')
+                    clip_ranges[new_name]['ori_name'] = new_name
+                    logger.info(
+                        f'Pass <{tensor_name}> clip range to <{node.name}> input <{node.input[0]}>.'
+                    )
         return clip_ranges
 
-    def post_process_clip_ranges2(self, clip_ranges, graph, inp2node, out2node, have_int4 = False):
+    def post_process_clip_ranges2(self, clip_ranges, graph, inp2node, out2node, have_int4=False):
         op_type_inAndOutShouldSameClipRange = ['Flatten', 'Resize', 'Reshape', 'Transpose']
         for node in graph.node:
             tensor_name = f'{node.output[0]}_{node.op_type}'
@@ -189,7 +190,8 @@ class LinearQuantizer_process(object):
                 pre_op = node
                 finded = False
                 while pre_op.op_type in op_type_inAndOutShouldSameClipRange:
-                    tensor_name2 = self.get_correct_sophgo_tpu_input_tensor_name(pre_op, out2node, have_int4)
+                    tensor_name2 = self.get_correct_sophgo_tpu_input_tensor_name(
+                        pre_op, out2node, have_int4)
                     if tensor_name2 in clip_ranges:
                         finded = True
                         clip_ranges[tensor_name] = clip_ranges[tensor_name2]
@@ -205,7 +207,9 @@ class LinearQuantizer_process(object):
                         next_op = inp2node[node.output[0]][0][0]
                         while next_op.op_type in op_type_inAndOutShouldSameClipRange:
                             tensor_name2 = f'{next_op.output[0]}_{next_op.op_type}'
-                            tensor_name2 += '_4' if have_int4 and next_op.op_type in ['Conv', "Gemm"] else '_8'
+                            tensor_name2 += '_4' if have_int4 and next_op.op_type in [
+                                'Conv', "Gemm"
+                            ] else '_8'
                             if tensor_name2 in clip_ranges:
                                 finded = True
                                 clip_ranges[tensor_name] = clip_ranges[tensor_name2]
@@ -229,7 +233,7 @@ class LinearQuantizer_process(object):
                 pre_name = out2node[i].input[0]
                 if pre_name in out2node:
                     pre_name = '{}_{}'.format(pre_name, out2node[pre_name].op_type)
-            if  out2node[i].op_type not in ['LearnablePerTensorAffine', 'Sub']:
+            if out2node[i].op_type not in ['LearnablePerTensorAffine', 'Sub']:
                 return False, pre_name
         return True, pre_name
 
@@ -241,13 +245,13 @@ class LinearQuantizer_process(object):
                 if isQdqAdd:
                     for i in node.input:
                         if i.op_type == 'Sub':
-                            nodes_to_be_removed.append(out2node[i]) 
+                            nodes_to_be_removed.append(out2node[i])
                         else:
                             fake_quant_output = i
                     next_nodes = inp2node[node.output[0]]
                     for next_node, idx in next_nodes:
-                        next_node.input[idx] = fake_quant_output                                 
-                    nodes_to_be_removed.append(node)         
+                        next_node.input[idx] = fake_quant_output
+                    nodes_to_be_removed.append(node)
                     nodes_to_be_removed.extend(get_constant_inputs(node, out2node))
         for node in nodes_to_be_removed:
             graph.node.remove(node)
@@ -272,7 +276,7 @@ class LinearQuantizer_process(object):
         have_int4 = False
         pre_op_is_cast = False
         tensor_name_to_node_name = {}
-        
+
         for node in graph.node:
             print(f'process node:{node.name}, type:{node.op_type}')
             if node.op_type in ALL_FAKEQUANTIZER:
@@ -284,48 +288,61 @@ class LinearQuantizer_process(object):
             next_nodes = inp2node[node.output[0]]
             if node.op_type in PERCHANNEL_FAKEQUANTIZER:
                 # fake quantize for weights, suppose per-channel quantize only for weight
-                redundant_nodes = self.deal_with_weight_fakequant(node, out2node, inp2node, named_initializer)
+                redundant_nodes = self.deal_with_weight_fakequant(node, out2node, inp2node,
+                                                                  named_initializer)
                 nodes_to_be_removed.extend(redundant_nodes)
                 self.clip_weight(node, name2data, inp2node, named_initializer, quant_type_dict)
-                tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(node, name2data, quant_type_dict)
+                tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(
+                    node, name2data, quant_type_dict)
                 #卷积权重per-channel量化参数，bias的per-chan量化参数没有去调优
-                if len(next_nodes) == 1 and next_nodes[0][0].op_type in ['Gemm', 'Conv']:#当前伪量化节点只有1个后继，且第1个后继节点为conv类型
+                if len(next_nodes) == 1 and next_nodes[0][0].op_type in [
+                        'Gemm', 'Conv'
+                ]:  #当前伪量化节点只有1个后继，且第1个后继节点为conv类型
                     next_node_output = next_nodes[0][0].output[0]
-                    if inp2node[next_node_output][0][0].op_type == 'Relu':##伪量化节点的第1个后继conv节点的第1个后继节点为Relu(fake->conv->relu)
+                    if inp2node[next_node_output][0][
+                            0].op_type == 'Relu':  ##伪量化节点的第1个后继conv节点的第1个后继节点为Relu(fake->conv->relu)
                         #若是fake->conv->relu,因为relu会融合到前面conv，故用relu的输出tensor名+Relu作为量化参数保存tensor名
-                        tensor_name = '{}_{}'.format(inp2node[next_node_output][0][0].output[0], 'Relu')
+                        tensor_name = '{}_{}'.format(inp2node[next_node_output][0][0].output[0],
+                                                     'Relu')
                     else:
                         #若是fake->conv->not_relu_type,直接用conv的输出tensor名+conv作为量化参数保存tensor名
                         tensor_name = '{}_{}'.format(next_node_output, next_nodes[0][0].op_type)
-                    tensor_name += '_{}'.format('weight' if next_nodes[0][1] == 1 else 'bias'  )
-                    clip_ranges[tensor_name] = {'step': [float(x) for x in scale],
-                                                'zero_point': [int(x) for x in zero_point],
-                                                'min': [float(x) for x in scale * (qmin - zero_point)],
-                                                'max': [float(x) for x in scale * (qmax - zero_point)],
-                                                'bit': int(np.log2(qmax - qmin + 1)),
-                                                'type': dtype,
-                                                'quant_type': quant_type
-						}
+                    tensor_name += '_{}'.format('weight' if next_nodes[0][1] == 1 else 'bias')
+                    clip_ranges[tensor_name] = {
+                        'step': [float(x) for x in scale],
+                        'zero_point': [int(x) for x in zero_point],
+                        'min': [float(x) for x in scale * (qmin - zero_point)],
+                        'max': [float(x) for x in scale * (qmax - zero_point)],
+                        'bit': int(np.log2(qmax - qmin + 1)),
+                        'type': dtype,
+                        'quant_type': quant_type
+                    }
                     tensor_name_to_node_name[tensor_name] = {node.name: node.input}
 
             elif node.op_type in PERTENSOR_FAKEQUANTIZER:
-                if len(next_nodes) == 1 and next_nodes[0][1] == 1 and next_nodes[0][0].op_type in ['Gemm', 'Conv']:
+                if len(next_nodes) == 1 and next_nodes[0][1] == 1 and next_nodes[0][0].op_type in [
+                        'Gemm', 'Conv'
+                ]:
                     # fake quantize for weights
-                    redundant_nodes = self.deal_with_weight_fakequant(node, out2node, inp2node, named_initializer)
-                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(node, name2data, quant_type_dict)
+                    redundant_nodes = self.deal_with_weight_fakequant(node, out2node, inp2node,
+                                                                      named_initializer)
+                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(
+                        node, name2data, quant_type_dict)
                     nodes_to_be_removed.extend(redundant_nodes)
                     self.clip_weight(node, name2data, inp2node, named_initializer, quant_type_dict)
                     assert next_nodes[0][0].op_type in ['Gemm', 'Conv']
-                    tensor_name_new = '{}_{}_weight'.format(next_nodes[0][0].output[0], next_nodes[0][0].op_type)
-                    clip_ranges[tensor_name_new] = {'step': [float(x) for x in scale],
-                                                'zero_point': [int(x) for x in zero_point],
-                                                'min': [float(x) for x in scale * (qmin - zero_point)],
-                                                'max': [float(x) for x in scale * (qmax - zero_point)],
-                                                'bit': int(np.log2(qmax - qmin + 1)),
-                                                'type': dtype,
-                                                'ori_name': 'none',
-                                                'quant_type': quant_type
-                                                }
+                    tensor_name_new = '{}_{}_weight'.format(next_nodes[0][0].output[0],
+                                                            next_nodes[0][0].op_type)
+                    clip_ranges[tensor_name_new] = {
+                        'step': [float(x) for x in scale],
+                        'zero_point': [int(x) for x in zero_point],
+                        'min': [float(x) for x in scale * (qmin - zero_point)],
+                        'max': [float(x) for x in scale * (qmax - zero_point)],
+                        'bit': int(np.log2(qmax - qmin + 1)),
+                        'type': dtype,
+                        'ori_name': 'none',
+                        'quant_type': quant_type
+                    }
                     tensor_name_to_node_name[tensor_name_new] = {node.name: node.input}
                 else:
                     # fake quantize for activations
@@ -339,7 +356,7 @@ class LinearQuantizer_process(object):
                         # if node.name.endswith('_post_act_fake_quantizer/Cast'):
                         #     tensor_name = node.input[0]
                         #     tensor_name_new = f'{tensor_name}_{out2node[tensor_name].op_type}' if tensor_name in out2node else tensor_name
-                        #     clip_ranges[tensor_name_new] = {'threshold':0.0, 
+                        #     clip_ranges[tensor_name_new] = {'threshold':0.0,
                         #                                 'min': 0.0,
                         #                                 'max': 0.0,
                         #                                 'bit': 16,
@@ -348,7 +365,8 @@ class LinearQuantizer_process(object):
                         #                                 'quant_type': 'BF16'
                         #                                 }
                         continue
-                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(node, name2data, quant_type_dict)
+                    tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(
+                        node, name2data, quant_type_dict)
                     bits = 4 if qmax == 7 else 8
                     if bits == 4:
                         have_int4 = True
@@ -368,25 +386,26 @@ class LinearQuantizer_process(object):
                         #         tensor_name_new += '_4'
                     if pre_op_is_cast:
                         quant_type = 'BF16_to_INT8'
-                    clip_ranges[tensor_name_new+f'_{bits}'] = {'threshold':float(scale * max(-qmin, qmax)), #对称量化时这个参数生效
-                                                'min': float(scale * (qmin - zero_point)),
-                                                'max': float(scale * (qmax - zero_point)),
-                                                'bit': int(np.log2(qmax - qmin + 1)),
-                                                'type': dtype,
-                                                'ori_name': 'none',
-                                                'quant_type': quant_type
-                                                }
-                    tensor_name_to_node_name[tensor_name_new+f'_{bits}'] = {node.name: node.input}
+                    clip_ranges[tensor_name_new + f'_{bits}'] = {
+                        'threshold': float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                        'min': float(scale * (qmin - zero_point)),
+                        'max': float(scale * (qmax - zero_point)),
+                        'bit': int(np.log2(qmax - qmin + 1)),
+                        'type': dtype,
+                        'ori_name': 'none',
+                        'quant_type': quant_type
+                    }
+                    tensor_name_to_node_name[tensor_name_new + f'_{bits}'] = {node.name: node.input}
             pre_op_is_cast = False
 
         ### show relation between tensor name in clip_ranges with fake quant node name
         print(">>>>> print tensor name to node name dict")
-        for key,subdict in tensor_name_to_node_name.items():
-            print(key," : ", list(subdict.keys()))
+        for key, subdict in tensor_name_to_node_name.items():
+            print(key, " : ", list(subdict.keys()))
             print("input is :", list(subdict.values()))
             print("\n")
         print(">>>>> end")
- 
+
         for node in nodes_to_be_removed:
             graph.node.remove(node)
         # delete initializer
@@ -396,9 +415,10 @@ class LinearQuantizer_process(object):
             if name in (out2node.keys() | inp2node.keys()):
                 continue
             graph.initializer.remove(initial_data)
-        
+
         # clip_ranges = self.post_process_clip_ranges(clip_ranges, graph, inp2node, out2node)
-        clip_ranges = self.post_process_clip_ranges2(clip_ranges, graph, inp2node, out2node, have_int4)
+        clip_ranges = self.post_process_clip_ranges2(clip_ranges, graph, inp2node, out2node,
+                                                     have_int4)
         context = {'sophgo_tpu': clip_ranges}
         context['w_qscheme'] = ''
         context['a_qscheme'] = ''
@@ -411,4 +431,6 @@ class LinearQuantizer_process(object):
         onnx.save(model_onnx, onnx_filename)
         logger.info("Finish deploy process.")
 
-remove_fakequantize_and_collect_params_sophgo = LinearQuantizer_process().remove_fakequantize_and_collect_params
+
+remove_fakequantize_and_collect_params_sophgo = LinearQuantizer_process(
+).remove_fakequantize_and_collect_params

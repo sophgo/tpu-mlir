@@ -24,13 +24,16 @@ def construct_dataset(clearml_info_string):
     dataset_root_path = Path(dataset.get_local_copy())
 
     # We'll search for the yaml file definition in the dataset
-    yaml_filenames = list(glob.glob(str(dataset_root_path / "*.yaml")) + glob.glob(str(dataset_root_path / "*.yml")))
+    yaml_filenames = list(
+        glob.glob(str(dataset_root_path / "*.yaml")) + glob.glob(str(dataset_root_path / "*.yml")))
     if len(yaml_filenames) > 1:
-        raise ValueError('More than one yaml file was found in the dataset root, cannot determine which one contains '
-                         'the dataset definition this way.')
+        raise ValueError(
+            'More than one yaml file was found in the dataset root, cannot determine which one contains '
+            'the dataset definition this way.')
     elif len(yaml_filenames) == 0:
-        raise ValueError('No yaml definition found in dataset root path, check that there is a correct yaml file '
-                         'inside the dataset root path.')
+        raise ValueError(
+            'No yaml definition found in dataset root path, check that there is a correct yaml file '
+            'inside the dataset root path.')
     with open(yaml_filenames[0]) as f:
         dataset_definition = yaml.safe_load(f)
 
@@ -40,11 +43,14 @@ def construct_dataset(clearml_info_string):
 
     data_dict = dict()
     data_dict['train'] = str(
-        (dataset_root_path / dataset_definition['train']).resolve()) if dataset_definition['train'] else None
+        (dataset_root_path /
+         dataset_definition['train']).resolve()) if dataset_definition['train'] else None
     data_dict['test'] = str(
-        (dataset_root_path / dataset_definition['test']).resolve()) if dataset_definition['test'] else None
+        (dataset_root_path /
+         dataset_definition['test']).resolve()) if dataset_definition['test'] else None
     data_dict['val'] = str(
-        (dataset_root_path / dataset_definition['val']).resolve()) if dataset_definition['val'] else None
+        (dataset_root_path /
+         dataset_definition['val']).resolve()) if dataset_definition['val'] else None
     data_dict['nc'] = dataset_definition['nc']
     data_dict['names'] = dataset_definition['names']
 
@@ -132,12 +138,15 @@ class ClearmlLogger:
         class_names (dict): dict containing mapping of class int to class name
         image (Tensor): A torch tensor containing the actual image data
         """
-        if len(self.current_epoch_logged_images) < self.max_imgs_to_log_per_epoch and self.current_epoch >= 0:
+        if len(self.current_epoch_logged_images
+               ) < self.max_imgs_to_log_per_epoch and self.current_epoch >= 0:
             # Log every bbox_interval times and deduplicate for any intermittend extra eval runs
             if self.current_epoch % self.bbox_interval == 0 and image_path not in self.current_epoch_logged_images:
-                im = np.ascontiguousarray(np.moveaxis(image.mul(255).clamp(0, 255).byte().cpu().numpy(), 0, 2))
+                im = np.ascontiguousarray(
+                    np.moveaxis(image.mul(255).clamp(0, 255).byte().cpu().numpy(), 0, 2))
                 annotator = Annotator(im=im, pil=True)
-                for i, (conf, class_nr, box) in enumerate(zip(boxes[:, 4], boxes[:, 5], boxes[:, :4])):
+                for i, (conf, class_nr,
+                        box) in enumerate(zip(boxes[:, 4], boxes[:, 5], boxes[:, :4])):
                     color = colors(i)
 
                     class_name = class_names[int(class_nr)]

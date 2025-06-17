@@ -80,7 +80,7 @@ def get_value(
 
 # @opparam_converter_regitstry("__default__")
 def default_converter(_):
-    return ([],) * 3
+    return ([], ) * 3
 
 
 @opparam_converter_regitstry("sCONV")
@@ -918,9 +918,7 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     return res0, attr, opd0
 
@@ -1061,15 +1059,15 @@ def DMA_general_t_converter(reg: DMA_general_reg):
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
@@ -1078,9 +1076,7 @@ def DMA_general_t_converter(reg: DMA_general_reg):
         attr["lane_mask"] = hex(lane_mask)
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
     bc_size = reg.dst_csize
     if reg.cmd_special_function == 1:
         res0["shape"] = (bc_size, copy_len)
@@ -1118,9 +1114,7 @@ def DMA_cw_transpose_t_converter(reg: DMA_cw_transpose_reg):
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     operands = [get_value(**opd0)]
     results = [get_value(**res0)]
@@ -1184,9 +1178,8 @@ def dma_gather_base(reg: DMA_gather_reg):
         stride=(0, reg.index_cstride, reg.index_hstride, 1),
         layout=Layout.stride,
     )
-    const = get_value(
-        address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-    ).data
+    const = get_value(address=reg.constant_value, dtype=DType(reg.src_data_format),
+                      is_const=True).data
     attr = dict(const=const)
 
     operands = [get_value(**x) for x in (opd0, opd1)]

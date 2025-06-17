@@ -19,6 +19,7 @@ AST_CONTEXT: "MlirAST" = None
 
 
 class MlirASTParser:
+
     def __init__(self, mlir_file) -> None:
         with open(mlir_file) as r:
             self.mlir_fn = mlir_file
@@ -147,9 +148,7 @@ class MlirASTParser:
             ops.append(op)
             line = self.next_line()
 
-        func = Func(
-            func_name, arg_names, arg_types, arg_locs, func_output_types, attr, ops
-        )
+        func = Func(func_name, arg_names, arg_types, arg_locs, func_output_types, attr, ops)
         return func
 
     def parse_groupop(self, operation_line) -> GroupOp:
@@ -221,6 +220,7 @@ class MlirASTParser:
 
 
 class MlirAST:
+
     def __init__(self) -> None:
         self.mlir_file = None
         self.ctx = mlir.ir.Context()
@@ -334,9 +334,7 @@ class MlirAST:
                     continue
                 visited.add(iop)
 
-                nextops = self.opname2nextop.setdefault(
-                    self.get_op_name_by_op_id(ns_iop), []
-                )
+                nextops = self.opname2nextop.setdefault(self.get_op_name_by_op_id(ns_iop), [])
                 nextops.append(op)
             try:
                 pass
@@ -393,6 +391,7 @@ class MlirAST:
 
 
 class MlirParserV2:
+
     def __init__(self, mlir_file):
         self.ctx = mlir.ir.Context()
         self.ctx.allow_unregistered_dialects = True
@@ -463,14 +462,10 @@ class MlirParserV2:
         return self.get_input_op_by_idx(0).input_types[0].shape[0]
 
     def get_pre_op_by_op_name(self, op_name: str) -> List[str]:
-        return [
-            self.get_op_name_by_op(op) for op in self.ast.opname2preop.get(op_name, [])
-        ]
+        return [self.get_op_name_by_op(op) for op in self.ast.opname2preop.get(op_name, [])]
 
     def get_next_op_by_op_name(self, op_name: str) -> List[str]:
-        return [
-            self.get_op_name_by_op(op) for op in self.ast.opname2nextop.get(op_name, [])
-        ]
+        return [self.get_op_name_by_op(op) for op in self.ast.opname2nextop.get(op_name, [])]
 
     def get_all_next_ops_by_op_name(self, op_name: str) -> List[str]:
         queue = [op_name]
@@ -538,8 +533,7 @@ class MlirParserV2:
         if op.op_type.isa("top.Input"):
             return []
         return [
-            self.get_op_name_by_op_id(iop)
-            for iop in op.op_type.opds
+            self.get_op_name_by_op_id(iop) for iop in op.op_type.opds
             if not self.ast.opid2op[iop].op_type.isa("top.None")
         ]
 
@@ -563,9 +557,7 @@ class MlirParserV2:
                 if op.op_type.isa("top.None", "top.Input", "func.return"):
                     continue
                 op_name = self.get_op_name_by_op(op)
-                middles[op_name] = mlir.ir.ShapedType.parse(
-                    op.output_types[0].dump(), self.ctx
-                )
+                middles[op_name] = mlir.ir.ShapedType.parse(op.output_types[0].dump(), self.ctx)
 
         return middles
 
@@ -576,9 +568,7 @@ class MlirParserV2:
                 if not op.op_type.isa("top.Weight"):
                     continue
                 op_name = self.get_op_name_by_op(op)
-                middles[op_name] = mlir.ir.ShapedType.parse(
-                    op.output_types[0].dump(), self.ctx
-                )
+                middles[op_name] = mlir.ir.ShapedType.parse(op.output_types[0].dump(), self.ctx)
 
         return middles
 
@@ -642,11 +632,8 @@ class MlirParserV2:
             branch_map[top] = branch_id
             counter.update([top])
             pre_ops = self.get_pre_op_by_op_name(top)
-            pre_ops = [
-                (pre_op, unique_branch(pre_op, branch_id, i), distance + 1)
-                for i, pre_op in enumerate(pre_ops)
-                if pre_op not in counter
-            ]
+            pre_ops = [(pre_op, unique_branch(pre_op, branch_id, i), distance + 1)
+                       for i, pre_op in enumerate(pre_ops) if pre_op not in counter]
 
             for pre_op_tuple in pre_ops:
                 if top not in a_parent and pre_op_tuple[0] in a_parent:

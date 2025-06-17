@@ -5,6 +5,7 @@ from sophgo_mq.utils import is_symmetric_quant
 
 
 class TqtFakeQuantize(QuantizeBase):
+
     def __init__(self, observer, scale=1., zero_point=0., **observer_kwargs):
         super(TqtFakeQuantize, self).__init__(observer, **observer_kwargs)
         self.register_buffer('scale', torch.tensor([scale]))
@@ -47,7 +48,8 @@ class TqtFakeQuantize(QuantizeBase):
             self.zero_point.data.zero_()
             assert self.is_per_channel is False
             "TQT is a per-tensor quantization FakeQuantize Op."
-            X = FakeQuantizeTqtAffine.apply(X, self.scale, self.zero_point, self.quant_min, self.quant_max, self.mth)
+            X = FakeQuantizeTqtAffine.apply(X, self.scale, self.zero_point, self.quant_min,
+                                            self.quant_max, self.mth)
         return X
 
     def set_quant_type(self, quant_type):
@@ -61,13 +63,14 @@ class TqtFakeQuantize(QuantizeBase):
     def set_forward_method(self):
         self.mth = torch.tensor(3) if self.quant_type == 'param' else torch.tensor(2)
 
+
 def _fake_quantize_tqt_affine_training(x, scale, zero_point, quant_min, quant_max, mth):
-    if scale < 2 ** -15:
+    if scale < 2**-15:
         max_scale = 0
     else:
         max_scale = 1 / scale
         max_scale = torch.floor(max_scale.log2())
-    scale = 1 / (2 ** max_scale)
+    scale = 1 / (2**max_scale)
     if mth == 3:
         new_x = torch.clamp(scale_round(x / scale), quant_min, quant_max) * scale
     elif mth == 2:
@@ -82,13 +85,17 @@ def _fake_quantize_tqt_affine_training(x, scale, zero_point, quant_min, quant_ma
 def scale_round(t):
     return (torch.round(t) - t).detach() + t
 
+
 def scale_floor_ceil(t):
     return (torch.where((t < 0) & (t - t.floor() == 0.5), t.ceil(), t.round()) - t).detach() + t
+
 
 def _t(x, t):
     return torch.tensor(x).type_as(t)
 
+
 class FakeQuantizeTqtAffine(torch.autograd.Function):
+
     @staticmethod
     def forward(ctx, x, scale, zero_point, quant_min, quant_max, mth):
         qx = _fake_quantize_tqt_affine_training(x, scale, zero_point, quant_min, quant_max, mth)
@@ -99,10 +106,8 @@ class FakeQuantizeTqtAffine(torch.autograd.Function):
     def backward(ctx, grad_outputs):
         x, s, qmin, qmax = ctx.saved_tensors
         scaled_x = x / s
-        rounded_scaled_x = torch.where(
-            (scaled_x < 0) & (scaled_x - torch.floor(scaled_x) == 0.5),
-            torch.ceil(scaled_x), torch.round(scaled_x)
-        )
+        rounded_scaled_x = torch.where((scaled_x < 0) & (scaled_x - torch.floor(scaled_x) == 0.5),
+                                       torch.ceil(scaled_x), torch.round(scaled_x))
 
         is_lt_min = rounded_scaled_x < qmin
         is_gt_max = rounded_scaled_x > qmax
@@ -114,4 +119,9 @@ class FakeQuantizeTqtAffine(torch.autograd.Function):
 
     @staticmethod
     def symbolic(g, x, scale, zero_point, quant_min, quant_max, mth):
-        return g.op("::FakeQuantizeTqtAffine", x, scale, zero_point, quant_min_i=quant_min, quant_max_i=quant_max)
+        return g.op("::FakeQuantizeTqtAffine",
+                    x,
+                    scale,
+                    zero_point,
+                    quant_min_i=quant_min,
+                    quant_max_i=quant_max)

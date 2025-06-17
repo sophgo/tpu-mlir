@@ -330,7 +330,6 @@ def postprocess(outputs,
     return boxes, categories, confidences
 
 
-
 def parse_args():
     # yapf: disable
     parser = argparse.ArgumentParser(description='Inference Keras Yolo3 network.')
@@ -378,7 +377,7 @@ def main():
         image_size = np.array([origin_image.size[1], origin_image.size[0]],
                               dtype=np.float32).reshape(1, 2)
         data = {}
-        data["input_1"] = image_data # input name from the model
+        data["input_1"] = image_data  # input name from the model
 
         output = dict()
         boxes, confidences, categories, dets = [], [], [], []

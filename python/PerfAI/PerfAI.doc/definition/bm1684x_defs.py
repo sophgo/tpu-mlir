@@ -791,19 +791,36 @@ dma_func_type_dict = {
 }
 
 dma_func_name_dict = {
-    (0, 0): 'DMA_tensor', (0, 1): 'NC transpose', (0, 2): 'collect', (0, 3): 'broadcast',
-    (0, 4): 'distribute', (0, 5): 'lmem 4 bank copy', (0, 6): 'lmem 4 bank broadcast',
-    (1, 0): 'DMA_matrix', (1, 1): 'matrix transpose',
-    (2, 0): 'DMA_masked_select', (2, 1): 'ncw mode',
-    (3, 0): 'DMA_general', (3, 1): 'broadcast',
+    (0, 0): 'DMA_tensor',
+    (0, 1): 'NC transpose',
+    (0, 2): 'collect',
+    (0, 3): 'broadcast',
+    (0, 4): 'distribute',
+    (0, 5): 'lmem 4 bank copy',
+    (0, 6): 'lmem 4 bank broadcast',
+    (1, 0): 'DMA_matrix',
+    (1, 1): 'matrix transpose',
+    (2, 0): 'DMA_masked_select',
+    (2, 1): 'ncw mode',
+    (3, 0): 'DMA_general',
+    (3, 1): 'broadcast',
     (4, 0): 'cw transpose',
     (5, 0): 'DMA_nonzero',
-    (6, 0): 'chain end', (6, 1): 'nop', (6, 2): 'sys_tr_wr', (6, 3): 'sys_send', (6, 4): 'sys_wait',
+    (6, 0): 'chain end',
+    (6, 1): 'nop',
+    (6, 2): 'sys_tr_wr',
+    (6, 3): 'sys_send',
+    (6, 4): 'sys_wait',
     (7, 0): 'DMA_gather',
     (8, 0): 'DMA_scatter',
-    (9, 0): 'w reverse', (9, 1): 'h reverse', (9, 2): 'c reverse', (9, 3): 'n reverse',
-    (10, 0): 'non-random-access', (10, 1): 'random-access',
-    (11, 0): 'non-random-access', (11, 1): 'random-access'
+    (9, 0): 'w reverse',
+    (9, 1): 'h reverse',
+    (9, 2): 'c reverse',
+    (9, 3): 'n reverse',
+    (10, 0): 'non-random-access',
+    (10, 1): 'random-access',
+    (11, 0): 'non-random-access',
+    (11, 1): 'random-access'
 }
 
 data_type_dict = {

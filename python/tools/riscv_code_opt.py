@@ -13,6 +13,7 @@ import argparse
 import os
 import shutil
 
+
 def split_code_blocks(code):
     pattern = re.compile(r'^\s*//\s*"?([^"\n]+_gen_cmd)"?\s*$', re.MULTILINE)
     matches = list(pattern.finditer(code))
@@ -23,7 +24,8 @@ def split_code_blocks(code):
     for match in matches:
         if start < match.start():
             blocks.append(code[start:match.start()])
-        end = matches[matches.index(match) + 1].start() if matches.index(match) + 1 < len(matches) else len(code)
+        end = matches[matches.index(match) +
+                      1].start() if matches.index(match) + 1 < len(matches) else len(code)
         blocks.append(code[match.start():end])
         start = end
     return blocks
@@ -35,12 +37,14 @@ def extract_asm_name(asm_line):
         return match.group(1).split()[0]
     return None
 
+
 def extract_val_assignments(config):
     val_assignments = []
     for line in config:
         if 'val =' in line:
             val_assignments.append(line.strip())
     return val_assignments
+
 
 def can_merge(last_asm1, last_asm2, config1, config2):
     # 提取汇编指令的名称
@@ -56,6 +60,7 @@ def can_merge(last_asm1, last_asm2, config1, config2):
 
     return True
 
+
 def generate_loop_code(loop_blocks):
     loop_code = loop_blocks[0].strip().split('\n')[:-1]
     loop_asm = loop_blocks[0].strip().split('\n')[-1]
@@ -65,6 +70,7 @@ def generate_loop_code(loop_blocks):
     loop_code.append('    }')
 
     return '\n'.join(loop_code) + '\n'
+
 
 def identify_loops(blocks):
     optimized_blocks = []
@@ -83,7 +89,8 @@ def identify_loops(blocks):
             next_block_lines = next_block.strip().split('\n')
             next_last_asm = next_block_lines[-1]
 
-            if can_merge(current_last_asm, next_last_asm, current_block_lines[:-1], next_block_lines[:-1]):
+            if can_merge(current_last_asm, next_last_asm, current_block_lines[:-1],
+                         next_block_lines[:-1]):
                 loop_blocks.append(next_block)
                 j += 1
             else:
@@ -99,8 +106,10 @@ def identify_loops(blocks):
 
     return optimized_blocks
 
+
 def generate_code(optimized_blocks):
     return '\n'.join(optimized_blocks)
+
 
 def extract_last_asm_instruction(code_block):
     asm_pattern = re.compile(r'asm\s+volatile\s*\(\s*"([^"]+)"')
@@ -110,11 +119,13 @@ def extract_last_asm_instruction(code_block):
         return last_instruction
     return None
 
+
 def remanage_blocks(blocks):
     return_blocks = []
     for block in blocks:
         return_blocks.append([extract_last_asm_instruction(block), block])
     return return_blocks
+
 
 def remove_pure_gdma(index_arr, arr):
     new_index_arr = []
@@ -132,6 +143,7 @@ def remove_pure_gdma(index_arr, arr):
             start_set.add(index[0])
             new_index_arr.append(index)
     return new_index_arr
+
 
 def find_repeated_subarrays(arr):
     n = len(arr)
@@ -156,7 +168,8 @@ def find_repeated_subarrays(arr):
         # try different length
         for length in range(1, n - i + 1):
             count = 1
-            while i + count * length < n and arr[i:i+length] == arr[i+length*count:i+length*(count+1)]:
+            while i + count * length < n and arr[i:i + length] == arr[i + length * count:i +
+                                                                      length * (count + 1)]:
                 count += 1
             if count > 1 and length * count > max_length * max_count:
                 if not is_overlapping(i, length, count):
@@ -171,6 +184,7 @@ def find_repeated_subarrays(arr):
 
         i += 1
     return remove_pure_gdma(result, arr)
+
 
 def seize_addr(group_blocks, size, freq_, id_seq):
     group_blocks = [block[1] for block in group_blocks]
@@ -205,6 +219,7 @@ def seize_addr(group_blocks, size, freq_, id_seq):
     values_conf_str += '\n' + template + '\n  }'
     return values_conf_str
 
+
 def replace_code_blocks(pure_code_block, index_arr, forloop_codes):
     # create a new code block list
     updated_code_block = []
@@ -228,6 +243,7 @@ def replace_code_blocks(pure_code_block, index_arr, forloop_codes):
     updated_code_block.extend(pure_code_block[last_end:])
 
     return updated_code_block
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Optimize code blocks.')

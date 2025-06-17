@@ -38,6 +38,7 @@ class FileRecorder:
     _max_capacity = 2**31
     _age = 2.0**1023
     __slots__ = ("record", "size")
+
     # {md5, {name, date, size, query}}
     def __init__(self) -> None:
         if os.path.exists(self._recorder):

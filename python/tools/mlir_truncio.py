@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 
+
 def mlir_truncio(compare_result_file: str, input_mlir_file: str, output_mlir_file: str):
     import pandas as pd
     df = pd.read_csv(compare_result_file, sep=', ', header=0, engine='python')
@@ -43,4 +44,3 @@ if __name__ == '__main__':
     # yapf: enable
     args = parser.parse_args()
     mlir_truncio(args.comp_file, args.input_mlir_file, args.output_mlir_file)
-

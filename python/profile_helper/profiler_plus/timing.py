@@ -15,11 +15,12 @@ import os, itertools
 
 
 class BlockTimelineRecord:
+
     def _get_ct_items(self, buffer, ctype=ct.c_void_p):
         tlen = ct.sizeof(ctype)
         for i in range(0, len(buffer), tlen):
             obj = ctype()
-            ct.memmove(ct.addressof(obj), buffer[i : i + tlen], tlen)
+            ct.memmove(ct.addressof(obj), buffer[i:i + tlen], tlen)
             yield obj
 
     def _adapter(self, fun=None, ctype=None):
@@ -56,16 +57,12 @@ class BlockTimelineRecord:
     def _command_info(self, raw_data):
         header_len = 8 * 4 + 4
         gdma_base, gdma_offset, bd_base, bd_offset, group_num = st.unpack(
-            "QQQQI", raw_data[0:header_len]
-        )
+            "QQQQI", raw_data[0:header_len])
         group = []
         for i in range(group_num):
-            group.append(
-                st.unpack("II", raw_data[header_len + i * 8 : header_len + (i + 1) * 8])
-            )
-        CommandInfo = namedtuple(
-            "CommandInfo", "gdma_base gdma_offset bd_base bd_offset group_num group"
-        )
+            group.append(st.unpack("II", raw_data[header_len + i * 8:header_len + (i + 1) * 8]))
+        CommandInfo = namedtuple("CommandInfo",
+                                 "gdma_base gdma_offset bd_base bd_offset group_num group")
         return CommandInfo(gdma_base, gdma_offset, bd_base, bd_offset, group_num, group)
 
     def _read_data_blocks(self, filename):

@@ -18,7 +18,6 @@ from typing import List, Union, Dict
 import argparse
 import onnx
 
-
 sh_template = r"""
 
 model_transform.py \
@@ -202,28 +201,31 @@ def shape_list_to_str(shape_list: List[List[int]]) -> List[str]:
         shape_str = ",".join([str(i) for i in shape])
         res.append(f"[{shape_str}]")
     if any(dim == 0 for dim in shape):
-      shapes = ",".join(shape_str for shape_str in res)
-      assert False, f"Input shapes [{shapes}] contains 0. Please use '--input_shapes' set a valid input shapes."
+        shapes = ",".join(shape_str for shape_str in res)
+        assert False, f"Input shapes [{shapes}] contains 0. Please use '--input_shapes' set a valid input shapes."
     return res
 
 
-def generate_shell(
-    model_name: str, shape_list: List[List[int]], workspace_root: str, suf: str = "pt"
-):
+def generate_shell(model_name: str,
+                   shape_list: List[List[int]],
+                   workspace_root: str,
+                   suf: str = "pt"):
     shape_str = ",".join(shape_list_to_str(shape_list))
     sh = sh_template.format(model_name=model_name, shape_str=f"[{shape_str}]", suf=suf)
     with open(os.path.join(workspace_root, f"convert.sh"), "w") as w:
         w.write(sh)
 
 
-def generate_yaml(
-    model_name: str, shape_list: List[List[int]], workspace_root: str, suf: str = "pt"
-):
+def generate_yaml(model_name: str,
+                  shape_list: List[List[int]],
+                  workspace_root: str,
+                  suf: str = "pt"):
     shape_str = ",".join(shape_list_to_str(shape_list))
     shape_list_str = shape_list_str = f" - {shape_str}"
-    yaml = yaml_template.format(
-        model_name=model_name, gops=[1, 1], shape_list=shape_list_str, suf=suf
-    )
+    yaml = yaml_template.format(model_name=model_name,
+                                gops=[1, 1],
+                                shape_list=shape_list_str,
+                                suf=suf)
     with open(os.path.join(workspace_root, f"{model_name}.mlir.config.yaml"), "w") as w:
         w.write(yaml)
 
@@ -298,8 +300,8 @@ def generate(
         model,  # model being run
         tuple(input_lis),  # model input (or a tuple for multiple inputs)
         os.path.join(
-            workspace_root, f"{model_name}.onnx"
-        ),  # where to save the model (can be a file or file-like object)
+            workspace_root,
+            f"{model_name}.onnx"),  # where to save the model (can be a file or file-like object)
         export_params=True,  # store the trained parameter weights inside the model file
         opset_version=10,  # the ONNX version to export the model to
         do_constant_folding=True,
@@ -332,7 +334,10 @@ def generate_onnx(
     if fake_npz and not os.path.exists(os.path.join(workspace_root, "data.npz")):
         np.savez(
             os.path.join(workspace_root, "data.npz"),
-            **{k.name: np.random.rand(*shape) for k, shape in zip(inputs, shape_list)},
+            **{
+                k.name: np.random.rand(*shape)
+                for k, shape in zip(inputs, shape_list)
+            },
         )
         print(shape_list)
 
@@ -357,4 +362,3 @@ if __name__ == "__main__":
             fake_npz=True,
             input_shapes=input_shapes,
         )
-

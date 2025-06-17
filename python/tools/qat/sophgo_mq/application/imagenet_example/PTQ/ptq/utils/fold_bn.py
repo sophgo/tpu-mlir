@@ -4,6 +4,7 @@ import torch.nn.init as init
 
 
 class StraightThrough(nn.Module):
+
     def __int__(self):
         super().__init__()
 
@@ -43,13 +44,13 @@ def fold_bn_into_conv(conv_module, bn_module):
     conv_module.weight.data = w
     # set bn running stats
     bn_module.running_mean = bn_module.bias.data
-    bn_module.running_var = bn_module.weight.data ** 2
+    bn_module.running_var = bn_module.weight.data**2
 
 
 def reset_bn(module: nn.BatchNorm2d):
     if module.track_running_stats:
         module.running_mean.zero_()
-        module.running_var.fill_(1-module.eps)
+        module.running_var.fill_(1 - module.eps)
         # we do not reset numer of tracked batches here
         # self.num_batches_tracked.zero_()
     if module.affine:
@@ -90,4 +91,3 @@ def search_fold_and_reset_bn(model):
         else:
             search_fold_and_reset_bn(m)
         prev = m
-

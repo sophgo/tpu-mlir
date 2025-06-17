@@ -25,6 +25,7 @@ task_to_keys = {
     "wnli": ("sentence1", "sentence2"),
 }
 
+
 def parse_config(config_file):
     with open(config_file) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
@@ -41,6 +42,7 @@ def parse_config(config_file):
                 cur_config = root_config
     config = EasyDict(config)
     return config
+
 
 def make_huggingface_training_args(config_train, config_progress):
     training_args = TrainingArguments(
@@ -62,11 +64,11 @@ def make_huggingface_training_args(config_train, config_progress):
         disable_tqdm=config_progress.disable_tqdm,
         metric_for_best_model=config_progress.metric_for_best_model,
         greater_is_better=config_progress.greater_is_better,
-        label_names = ['labels']
-    )
-    
+        label_names=['labels'])
+
     config_progress.log_level = training_args.get_process_log_level()
     return training_args
+
 
 def set_seed(seed):
     random.seed(seed)
@@ -78,11 +80,12 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
+
 def load_dataset_labels(config_data):
     # datasets
     raw_datasets = load_dataset("glue", config_data.task_name)
     # num_labels
-    if config_data.task_name=='stsb':
+    if config_data.task_name == 'stsb':
         num_labels = 1
         label_list = None
     else:
@@ -129,9 +132,8 @@ def preprocess_dataset(config_data, training_args, raw_datasets, label_to_id, to
     max_seq_length = config_data.max_seq_length
 
     def preprocess_function(examples):
-        args = (
-            (examples[sentence1_key],) if sentence2_key is None else (examples[sentence1_key], examples[sentence2_key])
-        )
+        args = ((examples[sentence1_key], ) if sentence2_key is None else
+                (examples[sentence1_key], examples[sentence2_key]))
         result = tokenizer(*args, padding=padding, max_length=max_seq_length, truncation=True)
         # Map labels to IDs (not necessary for GLUE tasks)
         if label_to_id is not None and "label" in examples:

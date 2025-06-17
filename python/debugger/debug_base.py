@@ -34,6 +34,7 @@ class SkipTask(Exception):
 
 
 class TaskDep:
+
     def __init__(self) -> None:
         self.verbose = 0
         self.ignore = False
@@ -52,6 +53,7 @@ class TaskDep:
         properties: List[PropertyCheck] = None,
         force: bool = False,
     ):
+
         def wrapper(func: Callable):
             if gen_files:
                 for file in gen_files:
@@ -61,11 +63,7 @@ class TaskDep:
             def inner(self, target_file: str, *args, **kwargs):
                 recorder = CommandRecorder(target_file, read=True)
                 target = RefFile(**recorder.dic)
-                logger.info(
-                    textwrap.indent(
-                        f"check [{func.__name__}] context", "  " * that._DEPTH
-                    )
-                )
+                logger.info(textwrap.indent(f"check [{func.__name__}] context", "  " * that._DEPTH))
 
                 should_run = False
 
@@ -79,9 +77,7 @@ class TaskDep:
                 def check_depend_tasks():
                     if not depend_tasks:
                         return False
-                    logger.info(
-                        textwrap.indent("run dependent tasks", "  " * that._DEPTH)
-                    )
+                    logger.info(textwrap.indent("run dependent tasks", "  " * that._DEPTH))
                     ret = False
                     that._DEPTH += 1
                     for task in depend_tasks:
@@ -154,16 +150,10 @@ class TaskDep:
                 if should_run:
                     if force:
                         logger.info(
-                            textwrap.indent(
-                                f"-> force run [{func.__name__}]", "  " * that._DEPTH
-                            )
-                        )
+                            textwrap.indent(f"-> force run [{func.__name__}]", "  " * that._DEPTH))
                     else:
-                        logger.info(
-                            textwrap.indent(
-                                f"-> run [{func.__name__}]", "  " * that._DEPTH
-                            )
-                        )
+                        logger.info(textwrap.indent(f"-> run [{func.__name__}]",
+                                                    "  " * that._DEPTH))
                     that._DEPTH += 1
                     try:
                         that.in_check = False
@@ -172,10 +162,7 @@ class TaskDep:
                         that.in_check = True
                         logger.debug(f"open skip raise after {func.__name__}")
                         logger.info(
-                            textwrap.indent(
-                                f" * run {func.__name__} success", "  " * that._DEPTH
-                            )
-                        )
+                            textwrap.indent(f" * run {func.__name__} success", "  " * that._DEPTH))
                     except SkipTask:
                         ret = None
                         logger.debug(f"skip some tasks in {func.__name__}")
@@ -183,9 +170,7 @@ class TaskDep:
                     that._DEPTH -= 1
                     return ret
                 else:
-                    logger.info(
-                        textwrap.indent(f"skip [{func.__name__}]", "  " * that._DEPTH)
-                    )
+                    logger.info(textwrap.indent(f"skip [{func.__name__}]", "  " * that._DEPTH))
                     if that._DEPTH > 0 and that.in_check:
                         raise SkipTask()
 
@@ -307,10 +292,10 @@ def _fno2cmd_ids(tl_df):
     for filn, subdf in tl_df.groupby("file-line"):
         core_cmd_ids = {}
         for _, core_id, (tiu0, dma0), (tiu1, dma1) in zip(
-            list(subdf.index),
-            list(subdf["core_id"]),
-            list(subdf["tiu_dma_id(before)"]),
-            list(subdf["tiu_dma_id(after)"]),
+                list(subdf.index),
+                list(subdf["core_id"]),
+                list(subdf["tiu_dma_id(before)"]),
+                list(subdf["tiu_dma_id(after)"]),
         ):
             tiu, dma = core_cmd_ids.setdefault(core_id, ([], []))
 
@@ -432,12 +417,7 @@ def _parse_groups(final_mlir):
         elif len(group_line) > 0:
             groups[len(groups)] = group_line.copy()
             group_line.clear()
-        elif all(
-            [
-                i not in line
-                for i in ["tpu.Weight", "top.None", "top.Input", "tpu.Buffer"]
-            ]
-        ):
+        elif all([i not in line for i in ["tpu.Weight", "top.None", "top.Input", "tpu.Buffer"]]):
             if "tpu." in line and line.startswith("      %"):
                 # print(line)
                 group_with_line.setdefault(len(groups), []).append(line)
@@ -458,9 +438,7 @@ def _file_modified(file: FileFlag):
         if os.path.isfile(file.path):
             return os.path.getmtime(file.path) != file.last_modify
         else:
-            return (
-                os.path.getmtime(os.path.join(file.path, ".modify")) != file.last_modify
-            )
+            return (os.path.getmtime(os.path.join(file.path, ".modify")) != file.last_modify)
     return False
 
 
@@ -475,14 +453,9 @@ def _all_file_no_change(*files: FileFlag):
         if not os.path.exists(file.path):
             return False
 
-        if (
-            os.path.getmtime(
-                file.path
-                if os.path.isfile(file.path)
-                else os.path.join(file.path, ".modify")
-            )
-            != file.last_modify
-        ):
+        if (os.path.getmtime(
+                file.path if os.path.isfile(file.path) else os.path.join(file.path, ".modify"))
+                != file.last_modify):
 
             return False
 
@@ -498,6 +471,7 @@ entry = {}
 
 
 class DebugBase:
+
     def __init__(self):
         for func in dir(self):
             if func.startswith("task_"):
@@ -524,12 +498,10 @@ class DebugBase:
             "2",
         ]
         if _all_file_no_change(target.files.bmodel_failed_tensor):
-            cmd.extend(
-                [
-                    "--bmodel_checker_data",
-                    target.files.bmodel_failed_tensor.path,
-                ]
-            )
+            cmd.extend([
+                "--bmodel_checker_data",
+                target.files.bmodel_failed_tensor.path,
+            ])
 
         if _all_file_no_change(target.files.history_compare_file):
             cmd.extend(["--failed_key_list", target.files.history_compare_file.path])
@@ -559,15 +531,11 @@ class DebugBase:
         if top_mlir is None:
             raise RuntimeError("top_mlir not found")
 
-        base_dir = os.path.join(
-            os.path.dirname(top_mlir.path), BASE_DIAGNOSITIC_NAME, "mlirs"
-        )
+        base_dir = os.path.join(os.path.dirname(top_mlir.path), BASE_DIAGNOSITIC_NAME, "mlirs")
         os.makedirs(base_dir, exist_ok=True)
         for file in [top_mlir, tpu_mlir, tpu_opt_mlir, final_mlir]:
             if file and os.path.exists(file.path):
-                shutil.copy2(
-                    file.path, os.path.join(base_dir, os.path.basename(file.path))
-                )
+                shutil.copy2(file.path, os.path.join(base_dir, os.path.basename(file.path)))
         logger.info(f"mlir files are saved in {base_dir}")
 
     @check()
@@ -584,9 +552,7 @@ class DebugBase:
         if tpu_mlir is None:
             raise RuntimeError("tpu_mlir not found")
 
-        base_dir = os.path.join(
-            os.path.dirname(tpu_mlir.path), BASE_DIAGNOSITIC_NAME, "vis_onnx"
-        )
+        base_dir = os.path.join(os.path.dirname(tpu_mlir.path), BASE_DIAGNOSITIC_NAME, "vis_onnx")
         os.makedirs(base_dir, exist_ok=True)
 
         if top_mlir:
@@ -617,9 +583,7 @@ class DebugBase:
             cmd.extend(["--layer_group_cache", target.files.layer_group_cache.path])
 
         if _all_file_no_change(target.files.bmodel_failed_tensor):
-            cmd.extend(
-                ["--bmodel_checker_data", target.files.bmodel_failed_tensor.path]
-            )
+            cmd.extend(["--bmodel_checker_data", target.files.bmodel_failed_tensor.path])
 
         if _all_file_no_change(target.files.history_compare_file):
             cmd.extend(["--failed_key_list", target.files.history_compare_file.path])
@@ -706,34 +670,22 @@ class DebugBase:
         # locrefs = match_locref.findall(content)
 
         failed_key = set()
-        if use_bmodel_checker_data and _all_file_no_change(
-            target.files.bmodel_failed_tensor
-        ):
+        if use_bmodel_checker_data and _all_file_no_change(target.files.bmodel_failed_tensor):
             bmodel_checker_data = target.files.bmodel_failed_tensor.path
             if bmodel_checker_data.endswith("npz"):
                 failed_arr = np.load(bmodel_checker_data)
                 failed_key.update(
-                    {
-                        k.split("_asm_")[0]
-                        for k in list(failed_arr.files)
-                        if "actual" in k
-                    }
-                )
+                    {k.split("_asm_")[0]
+                     for k in list(failed_arr.files) if "actual" in k})
             else:
                 failed_key.update(
-                    [
-                        i.strip()
-                        for i in Path(bmodel_checker_data).read_text().splitlines()
-                    ]
-                )
+                    [i.strip() for i in Path(bmodel_checker_data).read_text().splitlines()])
 
         failed_key = [f'"{i}"' for i in failed_key]
         loceq = match_loceq.findall(content)
         for locref, locname in loceq:
             if locname in failed_key:
-                content = content.replace(
-                    f"loc({locref})", f"loc({locref})({locname})(failed)"
-                )
+                content = content.replace(f"loc({locref})", f"loc({locref})({locname})(failed)")
             else:
                 content = content.replace(f"loc({locref})", f"loc({locref})({locname})")
 
@@ -753,7 +705,7 @@ class DebugBase:
                 left = line.find("{")
                 right = line.rfind("}")
                 if left > 0 and right > 0 and left < right:
-                    line = line[:left] + line[right + 1 :]
+                    line = line[:left] + line[right + 1:]
                 new_lines.append(line)
             lines = new_lines
 
@@ -765,9 +717,7 @@ class DebugBase:
             while "tpu.Split" in lines[tgt_no]:
                 tgt_no -= 1
 
-            lines[tgt_no] = re.sub(
-                "^(\s*)%", f"\\1group({group_no}) :{tgt_no}%", lines[tgt_no]
-            )
+            lines[tgt_no] = re.sub("^(\s*)%", f"\\1group({group_no}) :{tgt_no}%", lines[tgt_no])
 
         for rlino in sorted(fno2cmd_ids, reverse=True):
 
@@ -825,22 +775,19 @@ class DebugMetric(DebugBase):
         recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
 
-        if _all_file_no_change(
-            target.files.mlir_input, target.files.tpu_mlir, target.files.tpu_output
-        ):
+        if _all_file_no_change(target.files.mlir_input, target.files.tpu_mlir,
+                               target.files.tpu_output):
             getstatusoutput_v2(
-                " ".join(
-                    [
-                        "model_runner.py",
-                        "--input",
-                        target.files.mlir_input.path,
-                        "--model",
-                        target.files.tpu_mlir.path,
-                        "--output",
-                        target.files.tpu_output.path,
-                        "--dump_all_tensors",
-                    ]
-                ),
+                " ".join([
+                    "model_runner.py",
+                    "--input",
+                    target.files.mlir_input.path,
+                    "--model",
+                    target.files.tpu_mlir.path,
+                    "--output",
+                    target.files.tpu_output.path,
+                    "--dump_all_tensors",
+                ]),
                 shell=True,
                 check=True,
                 cwd=os.path.dirname(target.files.tpu_mlir.path),
@@ -891,8 +838,7 @@ class DebugMetric(DebugBase):
 
         if target.files.tpu_output is None:
             raise RuntimeError(
-                "tpu_output not found, you should run `redeploy` command to generate debug files"
-            )
+                "tpu_output not found, you should run `redeploy` command to generate debug files")
 
         from tools.bmodel_checker import main
         from debugger.tdb_support import CACHE_MODE_VERSION
@@ -912,12 +858,10 @@ class DebugMetric(DebugBase):
                 raise RuntimeError(
                     f"cache_mode mismatch: {CACHE_MODE_VERSION} != {target.properties.cache_mode}, you should try to re-run bmodel_checker_cache command to generate cache data"
                 )
-            argv.extend(
-                [
-                    "--cache_mode",
-                    "offline",
-                ]
-            )
+            argv.extend([
+                "--cache_mode",
+                "offline",
+            ])
         main(argv)
 
     @check()
@@ -927,9 +871,8 @@ class DebugMetric(DebugBase):
         target = RefFile(**target_recorder.dic)
         reference = RefFile(**CommandRecorder(reference_file, read=True)._dic)
 
-        save_file = os.path.join(
-            os.path.dirname(target.files.bmodel_inference.path), "history_compare.log"
-        )
+        save_file = os.path.join(os.path.dirname(target.files.bmodel_inference.path),
+                                 "history_compare.log")
 
         cmd = [
             "npz_tool.py",
@@ -985,9 +928,7 @@ class DebugPerformance(DebugBase):
         command = target.commands.final
 
         left, right = command.split(" -o ")
-        lg_dir = Path(target.files.final_mlir.path).parent.joinpath(
-            BASE_DIAGNOSITIC_NAME, "logs"
-        )
+        lg_dir = Path(target.files.final_mlir.path).parent.joinpath(BASE_DIAGNOSITIC_NAME, "logs")
         lg_dir.mkdir(exist_ok=True)
         lg_file = lg_dir.joinpath("lg.log")
         logger.info(f"will write log to {lg_file.absolute()}")
@@ -1056,8 +997,7 @@ class DebugPerformance(DebugBase):
         recorder = CommandRecorder(target_file, read=True)
         target = RefFile(**recorder.dic)
         if _all_file_no_change(target.files.bmprofile_dir) and _all_file_no_change(
-            target.files.simulation_dir
-        ):
+                target.files.simulation_dir):
             raise RuntimeError("bmprofile_dir or simulation_dir both generate failed.")
 
     @check(depend_tasks=[task_profile_raw], gen_files=["profile_web"])
@@ -1084,9 +1024,11 @@ class DebugPerformance(DebugBase):
         if os.path.exists(perfweb_dir):
             shutil.rmtree(perfweb_dir)
         if target.properties.chip.upper() in ["BM1688", "CV186X", "BM1690"]:
-            bmprofile_parse_perfAI(
-                raw_dir, output_dir, target.properties.chip.upper(), web=True, doc=False
-            )
+            bmprofile_parse_perfAI(raw_dir,
+                                   output_dir,
+                                   target.properties.chip.upper(),
+                                   web=True,
+                                   doc=False)
             recorder.add_file(profile_web=perfweb_dir)
         else:
             bmprofile_analyze(raw_dir, output_dir, "html")
@@ -1124,9 +1066,7 @@ class DebugPerformance(DebugBase):
                 web=False,
             )
 
-            recorder.add_file(
-                profile_csv=os.path.join(output_dir, "PerfDoc", "PerfAI_output.csv")
-            )
+            recorder.add_file(profile_csv=os.path.join(output_dir, "PerfDoc", "PerfAI_output.csv"))
         else:
             output_dir = os.path.join(output_dir, "PerfDoc")
             os.makedirs(output_dir, exist_ok=True)
@@ -1210,15 +1150,11 @@ class DebugPerformance(DebugBase):
             if "Core Id" not in perfdf.columns:
                 perfdf["Core Id"] = 0
             if "category" in perfdf.columns:
-                perfdf = perfdf[
-                    perfdf["category"].apply(lambda x: "BD" in x or "GDMA" in x)
-                ].reset_index(drop=True)
-                perfdf["Engine Id"] = perfdf["category"].apply(
-                    lambda x: 0 if "TPU_BD" in x else 1
-                )
+                perfdf = perfdf[perfdf["category"].apply(
+                    lambda x: "BD" in x or "GDMA" in x)].reset_index(drop=True)
+                perfdf["Engine Id"] = perfdf["category"].apply(lambda x: 0 if "TPU_BD" in x else 1)
                 perfdf["Cmd Id"] = (
-                    perfdf["func_type"].apply(lambda x: x.split("=")[-1]).apply(float)
-                )
+                    perfdf["func_type"].apply(lambda x: x.split("=")[-1]).apply(float))
                 perfdf["Stall Cycle"] = 0
                 # breakpoint()
 
@@ -1253,16 +1189,13 @@ class DebugPerformance(DebugBase):
             #     print("skip", vv[0], lines[vv[0] - 1])
             min_core_dic = min_id[k]
             max_core_dic = max_id[k]
+
             # tiu, dma, tiu1, dma1 = min_id[k]
             # tium, dmam, tium1, dmam1 = max_id[k]
 
             def parse_group(core_id):
-                dmadf = perfdf[
-                    (perfdf["Engine Id"] == 1) & (perfdf["Core Id"] == core_id)
-                ]
-                tiudf = perfdf[
-                    (perfdf["Engine Id"] == 0) & (perfdf["Core Id"] == core_id)
-                ]
+                dmadf = perfdf[(perfdf["Engine Id"] == 1) & (perfdf["Core Id"] == core_id)]
+                tiudf = perfdf[(perfdf["Engine Id"] == 0) & (perfdf["Core Id"] == core_id)]
                 _tiu, _dma = min_core_dic[core_id]
                 _tium, _dmam = max_core_dic[core_id]
 
@@ -1326,18 +1259,16 @@ class DebugPerformance(DebugBase):
                 cycle_dma_acc += max_key("dma_cycle_range")
                 cycle_tiu_acc += max_key("dma_cycle_range")
                 while left < accu:
-                    all_ret.append(
-                        {
-                            "group_idx": k,
-                            "op_idx": left,
-                            "max_dma_cycle_range": max_key("dma_cycle_range"),
-                            "cycle_dma_acc": cycle_dma_acc,
-                            "max_tiu_cycle_range": max_key("tiu_cycle_range"),
-                            "cycle_tiu_acc": cycle_tiu_acc,
-                            "dma_repr": dma_repr,
-                            "tiu_repr": tiu_repr,
-                        }
-                    )
+                    all_ret.append({
+                        "group_idx": k,
+                        "op_idx": left,
+                        "max_dma_cycle_range": max_key("dma_cycle_range"),
+                        "cycle_dma_acc": cycle_dma_acc,
+                        "max_tiu_cycle_range": max_key("tiu_cycle_range"),
+                        "cycle_tiu_acc": cycle_tiu_acc,
+                        "dma_repr": dma_repr,
+                        "tiu_repr": tiu_repr,
+                    })
 
                     left += 1
 
@@ -1386,9 +1317,8 @@ class DebugPerformance(DebugBase):
                 # check lg profile vs. real/perfai profile
                 left_acc_col = _find_op_cycle_col_name(left)
                 right_acc_col = _find_op_cycle_col_name(right)
-                ret["ratio"] = (left[left_acc_col] - right[right_acc_col] / 100) / (
-                    right[right_acc_col] / 100
-                )
+                ret["ratio"] = (left[left_acc_col] -
+                                right[right_acc_col] / 100) / (right[right_acc_col] / 100)
                 return ret
 
             else:
@@ -1435,9 +1365,9 @@ class DebugPerformance(DebugBase):
 
         target_ret.update(self.task_parse_lglog2table(target_file))
         target_ret.update(self.task_parse_profile2df(target_file))
-        target_ret["target lg vs. perf"] = _merge_lgdf(
-            target_ret["lg_profile"], target_ret["perf_profile"], same_commit=True
-        )
+        target_ret["target lg vs. perf"] = _merge_lgdf(target_ret["lg_profile"],
+                                                       target_ret["perf_profile"],
+                                                       same_commit=True)
 
         reference_ret = {}
         if reference_file and os.path.exists(reference_file):
@@ -1450,14 +1380,12 @@ class DebugPerformance(DebugBase):
             )
 
         if "lg_profile" in reference_ret:
-            target_ret["target lg vs. ref lg"] = _merge_lgdf(
-                target_ret["lg_profile"], reference_ret["lg_profile"]
-            )
+            target_ret["target lg vs. ref lg"] = _merge_lgdf(target_ret["lg_profile"],
+                                                             reference_ret["lg_profile"])
 
         if "perf_profile" in reference_ret:
-            target_ret["target perf vs. ref perf"] = _merge_lgdf(
-                target_ret["perf_profile"], reference_ret["perf_profile"]
-            )
+            target_ret["target perf vs. ref perf"] = _merge_lgdf(target_ret["perf_profile"],
+                                                                 reference_ret["perf_profile"])
 
         target_xlsx = os.path.join(os.path.dirname(target_file), "debugit_perf.xlsx")
         with pd.ExcelWriter(target_xlsx) as writer:

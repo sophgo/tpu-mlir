@@ -11,6 +11,7 @@ from numpy_helper.npz_compare import npz_compare
 from torch import autocast
 import torch_tpu
 
+
 def enable_dynamo_debug_info():
     import torch._dynamo as td
     td.config.log_level = logging.DEBUG
@@ -18,9 +19,12 @@ def enable_dynamo_debug_info():
     td.config.output_code = True
     os.environ["TORCHDYNAMO_PRINT_GUARDS"] = "1"
 
+
 layer_names = []
 features_out_hook = {}
 i = 0
+
+
 def hook(module, fea_in, fea_out):
     global i
     name = layer_names[i]
@@ -28,6 +32,7 @@ def hook(module, fea_in, fea_out):
     global features_out_hook
     features_out_hook[name] = fea_out.detach().numpy()
     return None
+
 
 # if __name__ == '__main__':
 #     parser = argparse.ArgumentParser()
@@ -149,15 +154,13 @@ def hook(module, fea_in, fea_out):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--chip", default="bm1690", choices=['bm1684x', 'bm1690'],
-                        help="chip name")
-    parser.add_argument("--debug", default="",
-                        help="debug")
-    parser.add_argument("--cmp", action='store_true',
-                        help="enable cmp")
-    parser.add_argument("--skip_module_num", default=0, type=int,
-                        help='skip_module_num')
-    parser.add_argument("--num_core", default=1, type=int,
+    parser.add_argument("--chip", default="bm1690", choices=['bm1684x', 'bm1690'], help="chip name")
+    parser.add_argument("--debug", default="", help="debug")
+    parser.add_argument("--cmp", action='store_true', help="enable cmp")
+    parser.add_argument("--skip_module_num", default=0, type=int, help='skip_module_num')
+    parser.add_argument("--num_core",
+                        default=1,
+                        type=int,
                         help='The numer of TPU cores used for parallel computation')
     args = parser.parse_args()
     if args.chip == 'bm1690':
@@ -215,7 +218,7 @@ if __name__ == '__main__':
     model_opt = torch.compile(mod, backend=aot_backend)
     # forward
     scaler = torch.tpu.amp.GradScaler()
-    with autocast(device_type = device, dtype = torch.float16):
+    with autocast(device_type=device, dtype=torch.float16):
         input_d = input.to(device, dtype=torch.float16)
         res = model_opt(input_d)
         loss = res.sum()

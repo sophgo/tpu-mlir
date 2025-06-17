@@ -32,7 +32,7 @@ class BM1688Context(BModelContext):
     tiu_sys = tiu_sys
 
     local_layout_to_stride = local_layout_to_stride
-    valid_tag = {1: 0, 2: 1, 3:2}  # {tag : corresponding index in self.base_addr}
+    valid_tag = {1: 0, 2: 1, 3: 2}  # {tag : corresponding index in self.base_addr}
     base_addr = [2**32, 0x5F11000 + 2**32, GET_LMEM_START_ADDR]
 
     def __init__(self) -> None:
@@ -63,9 +63,7 @@ class BM1688Context(BModelContext):
         assert 0 <= reg_address < 2**40
         if reg_address & (1 << 39):  # GMEM
             tag = (reg_address >> 36) & 0x7
-            fixed_addr = self.base_addr[self.valid_tag[tag]] + (
-                reg_address & 0x7FFFFFFFF
-            )
+            fixed_addr = self.base_addr[self.valid_tag[tag]] + (reg_address & 0x7FFFFFFFF)
         else:
             fixed_addr = reg_address & (0xFFFFFF)
         return fixed_addr
@@ -88,16 +86,13 @@ class BM1688Context(BModelContext):
             for i, v in enumerate(tiu_cmd):
                 if isinstance(v.reg, SYS_TR_ACC_reg):
                     # same as v.op_code == 12, changed because short cmd do not have op_code
-                    v.cmd_id_dep = (
-                        tiu_cmd[i + 1].cmd_id_dep
-                        if tiu_cmd[i + 1].cmd_id_dep != None
-                        else tiu_cmd[i + 2].cmd_id_dep
-                    )
+                    v.cmd_id_dep = (tiu_cmd[i + 1].cmd_id_dep if tiu_cmd[i + 1].cmd_id_dep != None
+                                    else tiu_cmd[i + 2].cmd_id_dep)
 
-        fix_tgcr_cmd_id_dp(inserted_cmd[: get_end(inserted_cmd)])
+        fix_tgcr_cmd_id_dp(inserted_cmd[:get_end(inserted_cmd)])
         # remove system instruction
-        main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
-        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+        main_id = [(m.cmd_id, m) for m in main_cmd[:get_end(main_cmd)]]
+        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[:get_end(inserted_cmd)]]
         # "sorted" is stable, which keeps the inserted commands
         # after the main instructions.
 

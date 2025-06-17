@@ -16,6 +16,7 @@ from PIL import Image
 from pathlib import Path
 from model import BayerNet
 
+
 def BayerBGGR2RGB(img: torch.Tensor) -> torch.Tensor:
     # BGGR -> RGB
     assert img.shape[1] == 1
@@ -30,13 +31,7 @@ def BayerBGGR2RGB(img: torch.Tensor) -> torch.Tensor:
         B: [
             img[x][y],
             (img[x][y - 1] + img[x - 1][y] + img[x + 1][y] + img[x][y + 1]) / 4,
-            (
-                img[x - 1][y - 1]
-                + img[x + 1][y - 1]
-                + img[x - 1][y + 1]
-                + img[x + 1][y + 1]
-            )
-            / 4,
+            (img[x - 1][y - 1] + img[x + 1][y - 1] + img[x - 1][y + 1] + img[x + 1][y + 1]) / 4,
         ],
         G0: [
             (img[x - 1][y] + img[x + 1][y]) / 2,
@@ -49,13 +44,7 @@ def BayerBGGR2RGB(img: torch.Tensor) -> torch.Tensor:
             (img[x - 1][y] + img[x + 1][y]) / 2,
         ],
         R: [
-            (
-                img[x - 1][y - 1]
-                + img[x + 1][y - 1]
-                + img[x - 1][y + 1]
-                + img[x + 1][y + 1]
-            )
-            / 4,
+            (img[x - 1][y - 1] + img[x + 1][y - 1] + img[x - 1][y + 1] + img[x + 1][y + 1]) / 4,
             (img[x][y - 1] + img[x - 1][y] + img[x + 1][y] + img[x][y + 1]) / 4,
             img[x][y],
         ],

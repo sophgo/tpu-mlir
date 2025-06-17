@@ -6,24 +6,28 @@ import random
 import json
 import subprocess
 
+
 class MyMatMul(nn.Module):
+
     def __init__(self, in_f, hidden_f, out_f):
         super().__init__()
         self.weight1 = nn.Parameter(torch.randn(in_f, hidden_f))
         self.weight2 = nn.Parameter(torch.randn(hidden_f, out_f))
+
     def forward(self, x):
-        y = x.matmul(self.weight1)   # 第一次 matmul
-        z = y.matmul(self.weight2)   # 第二次 matmul
+        y = x.matmul(self.weight1)  # 第一次 matmul
+        z = y.matmul(self.weight2)  # 第二次 matmul
         return z
+
 
 matmul = MyMatMul(1536, 8960, 1536)
 # np.savez("matmul_weight.npz", matmul.weight.detach().numpy())
 matmul.eval()
 
-prun_dim = 1 # random.randint(0, 1)
+prun_dim = 1  # random.randint(0, 1)
 print("prun_dim:", prun_dim)
 rand_pchl = random.randint(1, 10) * 64
-dummy_input = torch.randn(960, 1536)      # batch_size=1，in_f=128
+dummy_input = torch.randn(960, 1536)  # batch_size=1，in_f=128
 mask_1 = torch.ones_like(matmul.weight1)
 mask_2 = torch.ones_like(matmul.weight2)
 
@@ -40,14 +44,14 @@ mask_2[mask_channel, :] = 0
 
 # 调用 torch.onnx.export 导出
 torch.onnx.export(
-    matmul,                           # 要导出的模型
-    dummy_input,                      # 模型输入（示例 tensor）
-    "mymatmul.onnx",                  # 输出文件名
-    export_params=True,               # 是否导出所有参数到 ONNX 文件
-    opset_version=11,                 # ONNX 版本
-    do_constant_folding=True,         # 是否做常量折叠以优化图
-    input_names=['input'],            # 输入 tensor 名
-    output_names=['output'],          # 输出 tensor 名
+    matmul,  # 要导出的模型
+    dummy_input,  # 模型输入（示例 tensor）
+    "mymatmul.onnx",  # 输出文件名
+    export_params=True,  # 是否导出所有参数到 ONNX 文件
+    opset_version=11,  # ONNX 版本
+    do_constant_folding=True,  # 是否做常量折叠以优化图
+    input_names=['input'],  # 输入 tensor 名
+    output_names=['output'],  # 输出 tensor 名
 )
 print("✅ 导出完成： mymatmul.onnx")
 
@@ -90,7 +94,6 @@ mm_dic["MatMul"].append(mm_dic_2)
 with open('test_pruning.json', 'w', encoding='utf-8') as f:
     json.dump(mm_dic, f, ensure_ascii=False, indent=4)
 
-
 # # gen block input_npz
 # input_states = torch.rand((1, 960, 1536), dtype=torch.float32)
 # position_ids = torch.randn(1, 960).clamp(0, 100)
@@ -126,4 +129,3 @@ with open('test_pruning.json', 'w', encoding='utf-8') as f:
 # mm_dic["MatMul"].append(mm_dic_3)
 # with open('block_pruning_config.json', 'w', encoding='utf-8') as f:
 #     json.dump(mm_dic, f, ensure_ascii=False, indent=4)
-

@@ -23,8 +23,8 @@ from src.common.common import *
 import mlir.ir as ir
 
 
-
 class GlobalProfileParser:
+
     def __init__(self):
         self.in_dir = None
         self.json_filename = "tensor_location.json"
@@ -62,7 +62,7 @@ class GlobalProfileParser:
         subnet_info = None
         layer_list = []
         layer_ins = {}  # tensor_id -> layer_id
-        layer_outs = {} # tensor_id -> layer_id
+        layer_outs = {}  # tensor_id -> layer_id
         json_layer_list = []
         with open(self.json_filename, encoding='utf-8') as f:
             data = json.load(f)
@@ -90,7 +90,7 @@ class GlobalProfileParser:
                 tensor = TensorInfo()
                 tensor.tensor_id = tensor_id
                 tensor.shape, tensor.dtype = get_memory_type(in_tensor['memory_type'])
-                tensor.is_const = 1 if idx > 1 else 0 # Todo, Needs to infer from MLIR.
+                tensor.is_const = 1 if idx > 1 else 0  # Todo, Needs to infer from MLIR.
                 tensor.address = in_tensor['address']
                 # tensor.gsize = self.int_val("gsize")
                 # tensor.nslice = self.int_val("nslice")
@@ -107,14 +107,14 @@ class GlobalProfileParser:
                 tensor = TensorInfo()
                 tensor.tensor_id = tensor_id
                 tensor.shape, tensor.dtype = get_memory_type(out_tensor['memory_type'])
-                tensor.is_const = 0 # Todo, Needs to infer from MLIR.
+                tensor.is_const = 0  # Todo, Needs to infer from MLIR.
                 tensor.address = out_tensor['address']
                 # tensor.gsize = self.int_val("gsize")
                 # tensor.nslice = self.int_val("nslice")
                 # tensor.hslice = self.int_val("hslice")
                 # Todo, global tensor slice info should diliverd by backend.
                 if out_tensor['layout'] == 'continuous' and layer_info.is_local is True:
-                    j_layer.is_local = False #Todo
+                    j_layer.is_local = False  #Todo
                 layer_outs[tensor_id] = layer_info.layer_id
                 layer_info.out_tensors.append(tensor)
                 tensor_id += 1

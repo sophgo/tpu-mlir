@@ -31,6 +31,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 
 class ShapeOps:
+
     def __init__(self, args):
         self.args = args
         self.fp32_mlir = args.mlir_file
@@ -38,7 +39,7 @@ class ShapeOps:
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.parser = MlirParser(args.mlir_file)
-        self.quantize_table = self.parser.module_name+"_shape_ops"
+        self.quantize_table = self.parser.module_name + "_shape_ops"
         if args.fp_type == 'auto':
             self.mix_mode = FLOAT_MAP[self.chip]
         else:
@@ -82,17 +83,21 @@ class ShapeOps:
 
         shape_generator = ['top.Shape', 'top.Size']
         shape_consumer = ['top.Reshape', 'top.Interp']
-        transparent_ops = ['top.Concat', 'top.Slice', 'top.Tile', 'top.Split', 'top.Pack', 'top.Repeat']
-        is_generator = lambda op_name: self.parser.get_op_type_by_op_name(op_name) in shape_generator
+        transparent_ops = [
+            'top.Concat', 'top.Slice', 'top.Tile', 'top.Split', 'top.Pack', 'top.Repeat'
+        ]
+        is_generator = lambda op_name: self.parser.get_op_type_by_op_name(op_name
+                                                                          ) in shape_generator
         is_consumer = lambda op_name: self.parser.get_op_type_by_op_name(op_name) in shape_consumer
-        is_transparent = lambda op_name: self.parser.get_op_type_by_op_name(op_name) in transparent_ops
+        is_transparent = lambda op_name: self.parser.get_op_type_by_op_name(op_name
+                                                                            ) in transparent_ops
 
-        inputs = self.parser.inputs #list of operation
+        inputs = self.parser.inputs  #list of operation
         outputs = self.parser.get_output_op_names_n_shapes()  #dict of name and shape
         is_input = lambda op_name: op_name in [op.name for op in inputs]
         is_output = lambda op_name: op_name in outputs
 
-        shape_ops = [x.name for x in self.parser.ops if is_generator(x.name)] #op names
+        shape_ops = [x.name for x in self.parser.ops if is_generator(x.name)]  #op names
 
         while True:
             no_new_shape_op = True

@@ -15,17 +15,21 @@ class LinearBn1d(Linear, _FusedModule):
     _version = 2
     _FLOAT_MODULE = LinearBn1d
 
-    def __init__(self,
-                 # ConvNd args
-                 in_features, out_features, bias,
-                 # BatchNormNd args
-                 # num_features: out_channels
-                 eps=1e-05, momentum=0.1,
-                 # affine: True
-                 # track_running_stats: True
-                 # Args for this module
-                 freeze_bn=False,
-                 qconfig=None):
+    def __init__(
+            self,
+            # ConvNd args
+            in_features,
+            out_features,
+            bias,
+            # BatchNormNd args
+            # num_features: out_channels
+            eps=1e-05,
+            momentum=0.1,
+            # affine: True
+            # track_running_stats: True
+            # Args for this module
+            freeze_bn=False,
+            qconfig=None):
         Linear.__init__(self, in_features, out_features, False)
         assert qconfig, 'qconfig must be provided for QAT module'
         self.qconfig = qconfig
@@ -72,7 +76,7 @@ class LinearBn1d(Linear, _FusedModule):
     def freeze_bn_stats(self):
         self.freeze_bn = True
         self.bn.training = False
-        return self 
+        return self
 
     def _forward(self, input):
         assert self.bn.running_var is not None
@@ -119,7 +123,8 @@ class LinearBn1d(Linear, _FusedModule):
                 module.train(mode)
         return self
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys,
+                              unexpected_keys, error_msgs):
         version = local_metadata.get('version', None)
         if version is None or version == 1:
             # BN related parameters and buffers were moved into the BN module for v2
@@ -147,8 +152,8 @@ class LinearBn1d(Linear, _FusedModule):
                 elif strict:
                     missing_keys.append(prefix + v2_name)
 
-        super(LinearBn1d, self)._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+        super(LinearBn1d, self)._load_from_state_dict(state_dict, prefix, local_metadata, strict,
+                                                      missing_keys, unexpected_keys, error_msgs)
 
     @classmethod
     def from_float(cls, mod):
@@ -163,10 +168,8 @@ class LinearBn1d(Linear, _FusedModule):
         assert mod.qconfig, 'Input float module must have a valid qconfig'
         qconfig = mod.qconfig
         linear, bn = mod[0], mod[1]
-        qat_linearbn = cls(linear.in_features, linear.out_features, False,
-                           bn.eps, bn.momentum,
-                           False,
-                           qconfig)
+        qat_linearbn = cls(linear.in_features, linear.out_features, False, bn.eps, bn.momentum,
+                           False, qconfig)
         qat_linearbn.weight = linear.weight
         qat_linearbn.bias = linear.bias
         qat_linearbn.bn.weight = bn.weight

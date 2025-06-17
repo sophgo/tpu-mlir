@@ -31,8 +31,7 @@ class TORCH_IR_TESTER(object):
     CURRENT_CASE = ""
 
     # This class is built for testing single operator transform.
-    def __init__(self,
-                 enable_thread: bool = False):
+    def __init__(self, enable_thread: bool = False):
         # yapf: disable
         self.test_cases = {
             "Conv2d":           self.test_Conv2d,
@@ -140,6 +139,7 @@ class TORCH_IR_TESTER(object):
         self.multithread = enable_thread
 
     class Desc():
+
         def __init__(self, dtype, min=-10, max=10) -> None:
             self.dtype = dtype
             self.min = min
@@ -173,7 +173,7 @@ class TORCH_IR_TESTER(object):
                     self.generate_random(shapes[i], descs[i].dtype, descs[i].min, descs[i].max))
         inputs = [torch.from_numpy(inp).to(device) for inp in inputs]
         for i in inputs:
-            i.requires_grad=True
+            i.requires_grad = True
         return inputs
 
     def trace_and_test(self, in_shapes, torch_model: nn.Module, descs: List[Desc] = []):
@@ -332,11 +332,27 @@ class TORCH_IR_TESTER(object):
     def test_ConvMerge(self):
         """Conv Merge"""
         test = self._test_Conv()
-        test["case3"](F.conv2d, (1, 3, 4, 4), (1, 1), 2, (3, 3), 4, has_bias_0=False,  padding_0=0, has_bias_1=False, padding_1=0)
-        test["case3"](F.conv2d, (2, 32, 16, 16), (1, 1), 64, (3, 3), 16, has_bias_0=True,  padding_0=0, has_bias_1=True, padding_1=0)
-        test["case3"](F.conv2d, (2, 32, 32, 32), (1, 1), 12, (3, 3), 64, has_bias_0=True,  padding_0=1, has_bias_1=True, padding_1=1)
-
-
+        test["case3"](F.conv2d, (1, 3, 4, 4), (1, 1),
+                      2, (3, 3),
+                      4,
+                      has_bias_0=False,
+                      padding_0=0,
+                      has_bias_1=False,
+                      padding_1=0)
+        test["case3"](F.conv2d, (2, 32, 16, 16), (1, 1),
+                      64, (3, 3),
+                      16,
+                      has_bias_0=True,
+                      padding_0=0,
+                      has_bias_1=True,
+                      padding_1=0)
+        test["case3"](F.conv2d, (2, 32, 32, 32), (1, 1),
+                      12, (3, 3),
+                      64,
+                      has_bias_0=True,
+                      padding_0=1,
+                      has_bias_1=True,
+                      padding_1=1)
 
     #######################################################################
     # Transposed Convolution
@@ -558,6 +574,7 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_Add2(self):
         """Add2"""
+
         class Model(nn.Module):
 
             def __init__(self):
@@ -613,6 +630,7 @@ class TORCH_IR_TESTER(object):
             self._test_binary(torch.div, (1, 3, 32, 31), (1, 3, 32, 1), min=0)
             self._test_binary(torch.div, (32, 32), (32), min=0)
         self._test_binary(torch.div, (2, 32, 16), (2, 1, 16), min=0)
+
     #######################################################################
     # Compare
     # ------------
@@ -685,6 +703,7 @@ class TORCH_IR_TESTER(object):
         eps = 1e-5
 
         class Model(torch.nn.Module):
+
             def __init__(self):
                 super(Model, self).__init__()
                 self.weight = torch.nn.Parameter(torch.randn(normalize_shape))
@@ -700,7 +719,6 @@ class TORCH_IR_TESTER(object):
 
         input_shape = [14, 25, 40] + normalize_shape
         self.trace_and_test([input_shape], Model())
-
 
     #######################################################################
     # Chunk
@@ -782,8 +800,9 @@ class TORCH_IR_TESTER(object):
                 y = torch.softmax(x, -1)
                 return y
 
-        self.trace_and_test([(1, 32, 128, 128), (1, 1, 128, 128)], Model(),
-                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
+        self.trace_and_test(
+            [(1, 32, 128, 128), (1, 1, 128, 128)], Model(),
+            [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
 
     #######################################################################
     # MatMul
@@ -995,12 +1014,12 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     dim2 = x.size(dim=2)
                     dim3 = x.size(dim=3)
-                    in0 = torch.arange(0,dim2,1)
-                    in1 = torch.arange(0,dim3*2,2)
+                    in0 = torch.arange(0, dim2, 1)
+                    in1 = torch.arange(0, dim3 * 2, 2)
                     y0, y1 = torch.meshgrid(in0, in1, indexing=indexing)
                     if indexing == 'xy':
-                        y0 = y0.transpose(0,1)
-                        y1 = y1.transpose(0,1)
+                        y0 = y0.transpose(0, 1)
+                        y1 = y1.transpose(0, 1)
                     y = torch.stack([y0 + x, y1 - x], dim=0)
                     return y
 
@@ -1009,7 +1028,6 @@ class TORCH_IR_TESTER(object):
         _test_mesh_grid((1, 3, 64, 32), 'ij')
         _test_mesh_grid((1, 3, 32, 64))
         _test_mesh_grid((1, 3, 64, 4), 'xy')
-
 
     #######################################################################
     # NewZeros
@@ -1325,6 +1343,7 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x, y):
                     return torch.gather(x, 2, y)
+
             self.trace_and_test([in0_shape, in1_shape], Model(), [input_1, input_2])
 
         _test_gather((10, 349, 5538), (10, 349, 1))
@@ -1365,6 +1384,7 @@ class TORCH_IR_TESTER(object):
                     return y1
 
             self.trace_and_test([in_shape], Model())
+
         # cv183x regression falure
         #_test_permute((2, 3, 16, 16), (3, 2, 1, 0))
 
@@ -1389,6 +1409,7 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape], Model())
 
         _test_permute((2, 3, 16, 16), (3, 2, 1, 0))
+
     #######################################################################
     # T
     # ------------
@@ -1418,7 +1439,9 @@ class TORCH_IR_TESTER(object):
     # MaskedFill
     # ------------
     def test_MaskedFill(self):
+
         def _test_masked_fill(in_shape, mask_shape, is_local):
+
             class Model(nn.Module):
 
                 def __init__(self):
@@ -1435,13 +1458,14 @@ class TORCH_IR_TESTER(object):
                         x += 1
                     return x
 
-            self.trace_and_test([in_shape, mask_shape], Model(),
-                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
+            self.trace_and_test(
+                [in_shape, mask_shape], Model(),
+                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
 
         dims = [3, 4, 5]
         shape = [1, 3, 128, 300, 2]
         for dim in dims:
-            shapes = [shape[: dim], shape[: dim]]
+            shapes = [shape[:dim], shape[:dim]]
             odd = True
             for i in range(dim):
                 shapes[odd][i] = 1
@@ -1666,24 +1690,24 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    self.q_w = torch.randn((shape[2], d*head)) / np.sqrt(d)
-                    self.q_b = torch.randn((1, 1, d*head))
-                    self.k_w = torch.randn((shape[2], d*head)) / np.sqrt(d)
-                    self.k_b = torch.randn((1, 1, d*head))
-                    self.v_w = torch.randn((shape[2], d*head)) / np.sqrt(d)
-                    self.v_b = torch.randn((1, 1, d*head))
-                    self.o_w = torch.randn((d*head, shape[2])) / np.sqrt(d)
+                    self.q_w = torch.randn((shape[2], d * head)) / np.sqrt(d)
+                    self.q_b = torch.randn((1, 1, d * head))
+                    self.k_w = torch.randn((shape[2], d * head)) / np.sqrt(d)
+                    self.k_b = torch.randn((1, 1, d * head))
+                    self.v_w = torch.randn((shape[2], d * head)) / np.sqrt(d)
+                    self.v_b = torch.randn((1, 1, d * head))
+                    self.o_w = torch.randn((d * head, shape[2])) / np.sqrt(d)
                     self.o_b = torch.randn((1, 1, shape[2]))
-                    self.mask = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 10000)
+                    self.mask = -((torch.randn((shape[0], 1, 1, shape[1])) > 0) * 10000)
 
                 def forward(self, x):
                     q = torch.matmul(x, self.q_w) + self.q_b
                     q = q.reshape((shape[0], shape[1], head, d))
-                    q = q.transpose(1,2)
+                    q = q.transpose(1, 2)
                     k = torch.matmul(x, self.k_w) + self.k_b
                     k = k.reshape((shape[0], shape[1], head, d))
-                    k = k.transpose(1,2)
-                    k = k.transpose(3,2)
+                    k = k.transpose(1, 2)
+                    k = k.transpose(3, 2)
                     m0 = torch.matmul(q, k)
                     m0 = m0 / np.sqrt(d)
                     if has_mask:
@@ -1691,10 +1715,10 @@ class TORCH_IR_TESTER(object):
                     m0 = torch.softmax(m0, 3)
                     v = torch.matmul(x, self.v_w) + self.v_b
                     v = v.reshape((shape[0], shape[1], head, d))
-                    v = v.transpose(1,2)
+                    v = v.transpose(1, 2)
                     m1 = torch.matmul(m0, v)
-                    m1 = m1.transpose(1,2)
-                    m1 = m1.reshape(shape[0], shape[1], head*d)
+                    m1 = m1.transpose(1, 2)
+                    m1 = m1.reshape(shape[0], shape[1], head * d)
                     y = torch.matmul(m1, self.o_w) + self.o_b
                     y = y + 1
                     return y
@@ -1707,13 +1731,13 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    self.q_w = torch.randn((shape0[2], d*head)) / np.sqrt(d)
-                    self.q_b = torch.randn((1, 1, d*head)) * 0.1
-                    self.k_w = torch.randn((shape1[2], d*head)) / np.sqrt(d)
-                    self.k_b = torch.randn((1, 1, d*head)) * 0.1
-                    self.v_w = torch.randn((shape1[2], d*head)) / np.sqrt(d)
-                    self.v_b = torch.randn((1, 1, d*head)) * 0.1
-                    self.o_w = torch.randn((d*head, shape0[2])) / np.sqrt(d)
+                    self.q_w = torch.randn((shape0[2], d * head)) / np.sqrt(d)
+                    self.q_b = torch.randn((1, 1, d * head)) * 0.1
+                    self.k_w = torch.randn((shape1[2], d * head)) / np.sqrt(d)
+                    self.k_b = torch.randn((1, 1, d * head)) * 0.1
+                    self.v_w = torch.randn((shape1[2], d * head)) / np.sqrt(d)
+                    self.v_b = torch.randn((1, 1, d * head)) * 0.1
+                    self.o_w = torch.randn((d * head, shape0[2])) / np.sqrt(d)
                     self.o_b = torch.randn((1, 1, shape0[2])) * 0.1
 
                 def forward(self, x, x1):
@@ -1721,13 +1745,13 @@ class TORCH_IR_TESTER(object):
                     if has_bias:
                         q = q + self.q_b
                     q = q.reshape((shape0[0], shape0[1], head, d))
-                    q = q.transpose(1,2)
+                    q = q.transpose(1, 2)
                     k = torch.matmul(x1, self.k_w)
                     if has_bias:
                         k = k + self.k_b
                     k = k.reshape((shape1[0], shape1[1], head, d))
-                    k = k.transpose(1,2)
-                    k = k.transpose(3,2)
+                    k = k.transpose(1, 2)
+                    k = k.transpose(3, 2)
                     m0 = torch.matmul(q, k)
                     m0 = m0 / np.sqrt(d)
                     m0 = torch.softmax(m0, 3)
@@ -1735,15 +1759,17 @@ class TORCH_IR_TESTER(object):
                     if has_bias:
                         v = v + self.v_b
                     v = v.reshape((shape1[0], shape1[1], head, d))
-                    v = v.transpose(1,2)
+                    v = v.transpose(1, 2)
                     m1 = torch.matmul(m0, v)
-                    m1 = m1.transpose(1,2)
-                    m1 = m1.reshape(shape0[0], shape0[1], head*d)
+                    m1 = m1.transpose(1, 2)
+                    m1 = m1.reshape(shape0[0], shape0[1], head * d)
                     y = torch.matmul(m1, self.o_w) + self.o_b
                     y = y + 1
                     return y
 
-            self.trace_and_test([shape0, shape1], Model(), [self.Desc('float32', -1, 1), self.Desc('float32', -1, 1)])
+            self.trace_and_test([shape0, shape1], Model(),
+                                [self.Desc('float32', -1, 1),
+                                 self.Desc('float32', -1, 1)])
 
         # _test_attention0((1, 4096, 128), 64, 2)
         _test_attention0((1, 384, 768), 64, 12)
@@ -1770,8 +1796,7 @@ class TORCH_IR_TESTER(object):
                 def __init__(self):
                     super(Model, self).__init__()
                     self.const = torch.randn(in0_shape, dtype=torch.float32)
-                    self.shape_checker = torch.select(
-                        self.const, dim=dim, index=index)
+                    self.shape_checker = torch.select(self.const, dim=dim, index=index)
 
                 def forward(self, x):
                     y = torch.select(x, dim=dim, index=index)
@@ -2504,7 +2529,6 @@ class TORCH_IR_TESTER(object):
                     input_tensor = torch.randn(in_shape, dtype=torch.float32)
                     grid = torch.rand(grid_shape, dtype=torch.float32)
 
-
                 def forward(self, input_tensor, grid):
                     output_tensor = torch.grid_sampler(input_tensor,
                                                        grid,
@@ -2513,8 +2537,9 @@ class TORCH_IR_TESTER(object):
                                                        align_corners=align_corners)
                     return output_tensor
 
-            self.trace_and_test([in_shape, grid_shape], Model(), [
-                                self.Desc('float32', -10, 10), self.Desc('float32', -1, 1)])
+            self.trace_and_test([in_shape, grid_shape], Model(),
+                                [self.Desc('float32', -10, 10),
+                                 self.Desc('float32', -1, 1)])
 
         mode_list = [0, 1]
         padding_mode_list = [0, 1]
@@ -2523,12 +2548,12 @@ class TORCH_IR_TESTER(object):
         for mode in mode_list:
             for padding_mode in padding_mode_list:
                 for align_corners in align_corners_list:
-                    _test_grid_sampler((1, 3, 100, 150), (1, 100, 150, 2), mode,
-                                       padding_mode, align_corners)
-                    _test_grid_sampler((1, 3, 100, 150), (1, 40, 80, 2), mode,
-                                       padding_mode, align_corners)
-                    _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
-                                       padding_mode, align_corners)
+                    _test_grid_sampler((1, 3, 100, 150), (1, 100, 150, 2), mode, padding_mode,
+                                       align_corners)
+                    _test_grid_sampler((1, 3, 100, 150), (1, 40, 80, 2), mode, padding_mode,
+                                       align_corners)
+                    _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode, padding_mode,
+                                       align_corners)
 
     #######################################################################
     # Deformable Convolution
@@ -2596,7 +2621,7 @@ class TORCH_IR_TESTER(object):
     def test_Remainder(self):
         """Remainder"""
 
-        def _test_remainder(op_type,in0_shape,in1_shape):
+        def _test_remainder(op_type, in0_shape, in1_shape):
 
             class Model(nn.Module):
 
@@ -2611,6 +2636,7 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in0_shape], Model(), [self.Desc('float32')])
 
         _test_remainder(torch.remainder, (1, 16, 32, 32), (1, 16, 32, 32))
+
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:
@@ -2631,7 +2657,8 @@ def test_all(tester: TORCH_IR_TESTER):
         error_cases = multiprocessing.Manager().list()
         success_cases = multiprocessing.Manager().list()
         for case in tester.test_cases:
-            p = multiprocessing.Process(target=test_one_case_in_all, name = case,
+            p = multiprocessing.Process(target=test_one_case_in_all,
+                                        name=case,
                                         args=(tester, case, error_cases, success_cases))
             processes.append(p)
             if len(processes) == process_number:

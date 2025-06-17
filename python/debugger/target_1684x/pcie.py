@@ -6,7 +6,6 @@
 # third-party components.
 #
 # ==============================================================================
-
 """
 cmodel.py provide a python interface of cmodel, which can compute cmd and access (global/local/smem) memory.
 """
@@ -23,6 +22,7 @@ from .memmap import *
 
 
 class soc_launch_struct:
+
     def __init__(self, tiu_num, dma_num, tiu_buf, dma_buf, core_ids=set({0})):
         self.tiu_num = tiu_num
         self.dma_num = dma_num
@@ -36,7 +36,8 @@ class soc_launch_struct:
 class BM1684XRunner(DeviceRunner):
     lib_name = "libatomic_exec.so"
     soc_structs = []
-    kernel_fn = os.path.join(os.environ["TPUC_ROOT"], "lib/libbm1684x_atomic_kernel.so") # do not use libbm1684x_kernel_module, which may cause nan error
+    kernel_fn = os.path.join(os.environ["TPUC_ROOT"], "lib/libbm1684x_atomic_kernel.so"
+                             )  # do not use libbm1684x_kernel_module, which may cause nan error
 
     def __init__(self, memory_size):
         super().__init__()
@@ -129,9 +130,7 @@ class BM1684XRunner(DeviceRunner):
         tiu_buf = self.trans_cmds_to_buf_soc(tiu, 0)
         dma_buf = self.trans_cmds_to_buf_soc(dma, 1)
 
-        BM1684XRunner.soc_structs.append(
-            soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf)
-        )
+        BM1684XRunner.soc_structs.append(soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf))
         return len(tiu) + len(dma)
 
     def fast_compute_soc(self, command: BaseTpuCmd):
@@ -147,9 +146,7 @@ class BM1684XRunner(DeviceRunner):
             dma_buf = self.trans_cmds_to_buf_soc(dma, 1)
         assert len(tiu) + len(dma) == 1
 
-        BM1684XRunner.soc_structs.append(
-            soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf)
-        )
+        BM1684XRunner.soc_structs.append(soc_launch_struct(len(tiu), len(dma), tiu_buf, dma_buf))
         return 1
 
     def checker_fast_compute(self, cmd_group: StaticCmdGroup):
@@ -245,7 +242,7 @@ class Memory(DeviceMemory):
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * info.LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                self.LMEM[offset:offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
@@ -256,9 +253,8 @@ class Memory(DeviceMemory):
             n_s, c_s, h_s, w_s = stride
             _shape = [n, (NPU_OFFSET + c + 63) // 64, 64, h, w]
             _stride = (n_s, c_s, info.LANE_SIZE // itemsize, h_s, w_s)
-            return data_view(_shape, _stride).reshape(n, -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(_shape, _stride).reshape(n, -1, h, w)[:n,
+                                                                   NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_stride_data():
             return get_stride_data_base(memref.shape, memref.stride)
@@ -275,9 +271,8 @@ class Memory(DeviceMemory):
                 cube_num * w,
                 cube_num,
             )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h,
+                                                    w)[:n, NPU_OFFSET:NPU_OFFSET + c, :, :]
 
         def get_matrix_data():
             r, c = memref.shape
@@ -299,12 +294,10 @@ class Memory(DeviceMemory):
             return get_stride_data_base(shape, stride).reshape(r, c)
 
         def _lane_mask_filter(c, lane_mask):
-            lane_mask = np.unpackbits(
-                np.uint64([lane_mask]).view(np.uint8), bitorder="little"
-            )
+            lane_mask = np.unpackbits(np.uint64([lane_mask]).view(np.uint8), bitorder="little")
             _c = div_up(NPU_OFFSET + c, info.NPU_NUM)
             index = np.zeros(_c * info.NPU_NUM, bool)
-            index[NPU_OFFSET : NPU_OFFSET + c] = True
+            index[NPU_OFFSET:NPU_OFFSET + c] = True
             index = index.reshape(_c, info.NPU_NUM)
             index[:, lane_mask == 0] = False
             return index.flatten()

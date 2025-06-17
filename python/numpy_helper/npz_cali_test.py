@@ -62,5 +62,6 @@ def npz_cali_test(args_list):
     args_compare = ["requant.npz", args.npz_file, "--tolerance", "0.95,0.85", "-vv"]
     npz_compare(args_compare)
 
+
 if __name__ == '__main__':
     npz_cali_test(sys.argv)

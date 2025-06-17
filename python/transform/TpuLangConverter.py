@@ -16,8 +16,8 @@ import logging
 
 logger = logging.getLogger("root")
 
-
 supported_dtypes = ["float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"]
+
 
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     """Indent string"""
@@ -32,10 +32,12 @@ def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     s = "\n".join([line.__repr__() for line in sOrIt_])
     return _indent(s, numSpaces)
 
+
 def generate_name(op_name):
     import uuid
     unique_name = str(uuid.uuid4())
     return f"{op_name}_{unique_name}"
+
 
 def auto_name(kwarg_name='out_name'):
     """
@@ -43,6 +45,7 @@ def auto_name(kwarg_name='out_name'):
     """
 
     def wrapper(func):
+
         def decorate(*args, **kwargs):
             if kwarg_name in kwargs:
                 need_gen_name = kwargs[kwarg_name] is None
@@ -53,12 +56,15 @@ def auto_name(kwarg_name='out_name'):
             return func(*args, **kwargs)
 
         return decorate
+
     return wrapper
+
 
 def to_scalar(num):
     """
         convert `int` or `float` to `Scalar` type
     """
+
     def wrapper(func):
 
         def __to_scalar(data):
@@ -86,12 +92,15 @@ def to_scalar(num):
 
         decorate.__name__ = func.__name__
         return decorate
+
     return wrapper
+
 
 def annotation_check(func):
     """
         check python types of function arguments as annotations
     """
+
     def __type_instance(type0, type1):
         if get_origin(type1) is Union:
             ret = False
@@ -112,11 +121,15 @@ def annotation_check(func):
                 if k in kwargs:
                     if kwargs[k] is None:
                         continue
-                    assert __type_instance(kwargs[k], v), "code {} type error, {} expected type: {}".format(func.__code__, k, v)
+                    assert __type_instance(kwargs[k],
+                                           v), "code {} type error, {} expected type: {}".format(
+                                               func.__code__, k, v)
             else:
                 if args[idx] is None:
                     continue
-                assert __type_instance(args[idx], v), "code {} type error, input #{} expected type: {}".format(func.__code__, idx, v)
+                assert __type_instance(args[idx],
+                                       v), "code {} type error, input #{} expected type: {}".format(
+                                           func.__code__, idx, v)
             idx += 1
 
         return func(*args, **kwargs)
@@ -124,11 +137,14 @@ def annotation_check(func):
     decorate.__name__ = func.__name__
     return decorate
 
+
 def check_dtype(dtype: str):
     assert dtype.lower() in supported_dtypes
 
+
 # the decorator should stay behind auto_name()
 def assert_with_out_name(func):
+
     def wrapper(*args, **kwargs):
         out_name = kwargs.get('out_name', '')
         out_names = kwargs.get('out_names', [''])
@@ -136,12 +152,14 @@ def assert_with_out_name(func):
             return func(*args, **kwargs)
         except AssertionError as e:
             raise AssertionError(f"{e}. out_name: {out_name if out_name else ', '.join(out_names)}")
+
     wrapper.__name__ = func.__name__
     return wrapper
 
+
 class Scalar:
 
-    def __init__(self, value, dtype: str ='float32'):
+    def __init__(self, value, dtype: str = 'float32'):
         check_dtype(dtype)
         self.value = value
         self.dtype = dtype
@@ -151,13 +169,14 @@ class Scalar:
         modstr = [self.value, self.dtype]
         return s.format(modstr=_indent(modstr, 2))
 
+
 class Tensor:
     ID = 0
 
     def __init__(self,
                  shape: list = [],
                  name: str = None,
-                 ttype: str ="neuron",
+                 ttype: str = "neuron",
                  data: np.ndarray = None,
                  dtype: str = "float32",
                  scale: Union[float, List[float]] = None,
@@ -182,7 +201,7 @@ class Tensor:
                 data = data.reshape(shape)
             else:
                 raise Exception("Tensor shape is ambiguous! '{t_s}' vs '{b_s}'".format(
-                                t_s=shape, b_s=data.shape))
+                    t_s=shape, b_s=data.shape))
         self.buffer = data
         self.is_quantized: bool = False
         self.quantization(scale=scale, zero_point=zero_point)
@@ -219,23 +238,23 @@ class Tensor:
                 assert self.zero_point == zero_point
 
     def preprocess(self,
-                   mean : List[float] = [0, 0, 0],
-                   scale : List[float] = [1.0, 1.0, 1.0],
-                   pixel_format : str = 'bgr',
-                   channel_format : str = 'nchw',
-                   resize_dims : List[int] = None,
-                   keep_aspect_ratio : bool = False,
-                   keep_ratio_mode : str = 'letterbox',
-                   pad_value : int = 0,
-                   pad_type : str = 'center'):
+                   mean: List[float] = [0, 0, 0],
+                   scale: List[float] = [1.0, 1.0, 1.0],
+                   pixel_format: str = 'bgr',
+                   channel_format: str = 'nchw',
+                   resize_dims: List[int] = None,
+                   keep_aspect_ratio: bool = False,
+                   keep_ratio_mode: str = 'letterbox',
+                   pad_value: int = 0,
+                   pad_type: str = 'center'):
         self.mean = mean
         self.scale = scale
-        assert pixel_format in ['rgb', 'bgr', 'gray', 'rgba', 'gbrg', 'grbg', 'bggr', 'rggb' ]
+        assert pixel_format in ['rgb', 'bgr', 'gray', 'rgba', 'gbrg', 'grbg', 'bggr', 'rggb']
         assert channel_format in ['nhwc', 'nchw']
         self.pixel_format = pixel_format
         self.channel_format = channel_format
         if resize_dims == None:
-            self.resize_dims = self.shape[-2:] if channel_format == 'nchw' else self.shape[-3 : -1]
+            self.resize_dims = self.shape[-2:] if channel_format == 'nchw' else self.shape[-3:-1]
         self.keep_aspect_ratio = keep_aspect_ratio
         self.keep_ratio_mode = keep_ratio_mode
         self.pad_value = pad_value
@@ -264,6 +283,7 @@ class Tensor:
             modstr += [self.scale, self.zero_point]
         return s.format(modstr=_indent(modstr, 2))
 
+
 class Operator:
 
     def __init__(self,
@@ -288,6 +308,7 @@ class Operator:
         del self.inputs
         del self.outputs
 
+
 class Graph:
 
     def __init__(self, name="main"):
@@ -305,7 +326,8 @@ class Graph:
             if tensor is None:
                 continue
             if tensor.name in self.tensors_dict.keys():
-                assert tensor.id == self.tensors_dict[tensor.name], "Tensor name must be uinque. {} has been used".format(tensor.name)
+                assert tensor.id == self.tensors_dict[
+                    tensor.name], "Tensor name must be uinque. {} has been used".format(tensor.name)
             else:
                 self.tensors_dict[tensor.name] = tensor.id
 
@@ -342,12 +364,14 @@ class Graph:
                       "Unsqueeze", "Unsqueeze", "Expand", "Slice", "Copy", \
                       "LeakyRelu", "Abs", "Pad"]
         for op in self.operators:
-            if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(op.outputs) == 1 and op.inputs[0].is_quantized:
+            if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(
+                    op.outputs) == 1 and op.inputs[0].is_quantized:
                 input = op.inputs[0]
                 output = op.outputs[0]
                 output.quantization(scale=input.scale, zero_point=input.zero_point)
         for op in list(reversed(self.operators)):
-            if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(op.outputs) == 1 and op.outputs[0].is_quantized:
+            if op.op_name.split('.')[1] in assign_ops and len(op.inputs) == 1 and len(
+                    op.outputs) == 1 and op.outputs[0].is_quantized:
                 input = op.inputs[0]
                 output = op.outputs[0]
                 input.quantization(scale=output.scale, zero_point=output.zero_point)
@@ -358,6 +382,7 @@ class Graph:
                            ["outputs (\n{}\n)".format(_indent(self.outputs, 2))] +
                            ["body (\n{}\n)".format(_indent(self.operators, 2))])
         return s.format(name=self.name, modstr=_indent(modstr, 2))
+
 
 class TpuLangConverter(BaseConverter):
     MLIRImporterTypeStr = {
@@ -413,7 +438,7 @@ class TpuLangConverter(BaseConverter):
             self.output_names.append(tensor.name)
             self.addShape(tensor.name, tensor.shape)
 
-    def init_MLIRImporter(self, state:State):
+    def init_MLIRImporter(self, state: State):
         input_shapes = list()
         for _name in self.input_names:
             input_shapes.append(self.getShape(_name))
@@ -442,13 +467,13 @@ class TpuLangConverter(BaseConverter):
             attrs["inline_bytes"] = StringAttr.get(tensor.buffer.tobytes())
         else:
             self.constant[tensor.name] = tensor.buffer
-        op = Operation.create("top.Weight", results=[tensor_type], loc=name_loc,
-                              attributes=attrs)
+        op = Operation.create("top.Weight", results=[tensor_type], loc=name_loc, attributes=attrs)
         self.mlir.insert_point.insert(op)
         return op.results[0]
 
     def attr_to_mlir(self, params: dict):
         attrs = {}
+
         def _attr_convert(attr):
             if attr[2] is False:
                 return self.mlir.ArrayAttr(attr[0], self.MLIRImporterTypeStr[attr[1]])
@@ -505,15 +530,17 @@ class TpuLangConverter(BaseConverter):
         flags = 1 if is_signed else 0
         scale = tensor.scale if tensor.scale is not None else 1.0
         zero_point = tensor.zero_point if tensor.zero_point != None else 0
-        is_perchannel = (isinstance(scale, List) and len(scale) > 1) or (isinstance(zero_point, List) and len(zero_point) > 1)
+        is_perchannel = (isinstance(scale, List)
+                         and len(scale) > 1) or (isinstance(zero_point, List)
+                                                 and len(zero_point) > 1)
         if is_perchannel:
             length = len(scale) if isinstance(scale, List) else len(zero_point)
-            zero_point = zero_point if isinstance(zero_point, List) or zero_point == None else [zero_point] * length
+            zero_point = zero_point if isinstance(
+                zero_point, List) or zero_point == None else [zero_point] * length
             return quant.UniformQuantizedPerAxisType.get(  # type: ignore
                 flags, storage_type, self.type_to_mlir["float32"],
-                scale if isinstance(scale, List) else [scale] * length,
-                zero_point, 1,
-                storage_min, storage_max)
+                scale if isinstance(scale, List) else [scale] * length, zero_point, 1, storage_min,
+                storage_max)
         else:
             scale = scale[0] if isinstance(scale, List) else scale
             zero_point = zero_point[0] if isinstance(zero_point, List) else zero_point
@@ -609,14 +636,14 @@ class TpuLangConverter(BaseConverter):
             self.mlir.insert_point.insert(op)
             for x, res in zip(operation.outputs, op.results):
                 if x is not None:
-                    symbol_table.update({x.id : res})
+                    symbol_table.update({x.id: res})
                 else:
-                    symbol_table.update({-1 : res})
+                    symbol_table.update({-1: res})
 
         return_op = []
         graph_outs = dict()
         for op in subgraph.operators:
-            try :
+            try:
                 add_operation(op)
             except:
                 raise Exception("Error: Convert operation {} failed!".format(op.op_name))
@@ -641,7 +668,7 @@ class TpuLangConverter(BaseConverter):
             f.write(mlir_txt)
             if log_level != "quiet":
                 logger.info("Save mlir file: {}".format(mlir_file))
-        for k,v in self.constant.items():
+        for k, v in self.constant.items():
             if v.dtype == 'float16':
                 self.constant[k] = v.view('uint16')
         np.savez(self.weight_file, **self.constant)

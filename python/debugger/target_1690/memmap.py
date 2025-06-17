@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 
 class BM1690Info:
+
     def __init__(self) -> None:
         self.lib_name = "libtpuv7_emulator.so"
         self._lib = None
@@ -128,6 +129,7 @@ info = LazyInfo(BM1690Info)
 
 
 class LazyMemmap(LazyDict):
+
     def get_dict(self):
         return {
             MType.R: (
@@ -261,9 +263,7 @@ class MemRef(MemRefBase):
     @functools.lru_cache()
     def r_addr(self):
         if self.mtype in [MType.UNKNOWN, MType.G, MType.L]:
-            return (
-                self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
-            )
+            return (self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0])
 
         r_addr = self.address & 0x3FFFFFF  # remain 26 bit as local offset
         return r_addr
@@ -384,6 +384,7 @@ class MemRef(MemRefBase):
             return t5_stride()
 
         return self.stride
+
 
 CubeOutputHeightWidthAlignNum = 4
 ExecutionUnitNumber = 64 * 256 // 2 // 8

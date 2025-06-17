@@ -21,13 +21,14 @@ unit_test = False
 
 run_on_cmodel = True
 
+
 def print_config_info():
-  print('config_info:')
-  print('  chip:', chip)
-  print('  debug_cmd:', debug_cmd)
-  print('  only_compile_graph_id:', only_compile_graph_id)
-  print('  num_core:', num_core)
-  print('  compile_opt:', compile_opt)
-  print('  cmp:', cmp)
-  print('  unit_test:', unit_test)
-  print('  run_on_cmodel:', run_on_cmodel)
+    print('config_info:')
+    print('  chip:', chip)
+    print('  debug_cmd:', debug_cmd)
+    print('  only_compile_graph_id:', only_compile_graph_id)
+    print('  num_core:', num_core)
+    print('  compile_opt:', compile_opt)
+    print('  cmp:', cmp)
+    print('  unit_test:', unit_test)
+    print('  run_on_cmodel:', run_on_cmodel)

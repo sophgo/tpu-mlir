@@ -50,13 +50,18 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
             break
     global CHIP_ARCH
     CHIP_ARCH = chipArchArgs['Chip Arch']
-    print("CHIP_ARCH:",CHIP_ARCH)
+    print("CHIP_ARCH:", CHIP_ARCH)
     # core_num = int(chipArchArgs['Core Num'])
-    core_num = max(tiuProcessor.actual_corenum, gdmaProcessor.actual_corenum, sdmaProcessor.actual_corenum, cdmaProcessor.actual_corenum)
+    core_num = max(tiuProcessor.actual_corenum, gdmaProcessor.actual_corenum,
+                   sdmaProcessor.actual_corenum, cdmaProcessor.actual_corenum)
     ddrBw = pd.to_numeric(chipArchArgs['DDR Max BW(GB/s/Core)'])
     L2Bw = pd.to_numeric(chipArchArgs['L2 Max BW(GB/s)'])
     dependCmds = parse_cmdgroups(file_path)
-    time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", "global_idx", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
+    time_header = [
+        "category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height",
+        "cmd", "func_name", "global_idx", "uArchRate/BW", "Data Type", "Info", "Msg_Id",
+        "Sd/Wt_Count"
+    ]
     filter_cols = [time_header.index(c) for c in ["category", "func_type"]]
     # time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type',"uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count"]
     # filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
@@ -71,36 +76,48 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
         include_layer = True
         categories.append("TPU_LAYER")
         categories.append("TPU_GROUP_LAYER")
-        time_header = ["category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height", "cmd", "func_name", 'layer_id','layer_name','subnet_id','subnet_type', "global_idx", "uArchRate/BW", "Data Type", "Info","Msg_Id","Sd/Wt_Count","is_local"]
-        filter_cols.extend([time_header.index(c) for c in ['layer_id','layer_name','subnet_id','subnet_type']])
+        time_header = [
+            "category", "begin_time", "end_time", "Duration", "stall_time", "func_type", "height",
+            "cmd", "func_name", 'layer_id', 'layer_name', 'subnet_id', 'subnet_type', "global_idx",
+            "uArchRate/BW", "Data Type", "Info", "Msg_Id", "Sd/Wt_Count", "is_local"
+        ]
+        filter_cols.extend(
+            [time_header.index(c) for c in ['layer_id', 'layer_name', 'subnet_id', 'subnet_type']])
     lmem_size = int(chipArchArgs['TPU Lmem Size(Bytes)'])
     lane_num = int(chipArchArgs['NPU Num'])
-    lane_size  = lmem_size // lane_num
-    lmem_partition = generate_partition(lmem_size,lane_num,'BANK')
+    lane_size = lmem_size // lane_num
+    lmem_partition = generate_partition(lmem_size, lane_num, 'BANK')
 
     cycle_data_dict = {f"time_data{i}": [] for i in range(0, core_num)}
     lmem_op_dict = {f"lmem_op_record{i}": [] for i in range(0, core_num)}
 
-    max_corenum = max(len(tiu_instance), len(gdma_instances), len(sdma_instances), len(cdma_instances))
+    max_corenum = max(len(tiu_instance), len(gdma_instances), len(sdma_instances),
+                      len(cdma_instances))
     for idx in range(max_corenum):
         if idx < len(tiu_instance):
             tiudf = tiu_instance[idx]
-            prepare_data(include_layer, tiudf, tiuProcessor.frequency, idx, 0, [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
+            prepare_data(include_layer, tiudf, tiuProcessor.frequency, idx, 0, [ddrBw, L2Bw],
+                         lane_num, cycle_data_dict, lmem_op_dict, lane_size)
 
         if idx < len(gdma_instances):
             gdmadf = gdma_instances[idx]
-            prepare_data(include_layer, gdmadf, gdmaProcessor.frequency, idx, 1, [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
+            prepare_data(include_layer, gdmadf, gdmaProcessor.frequency, idx, 1, [ddrBw, L2Bw],
+                         lane_num, cycle_data_dict, lmem_op_dict, lane_size)
 
         if idx < len(sdma_instances):
             sdmadf = sdma_instances[idx]
             if not sdmadf.empty:
-                prepare_data(include_layer, sdmadf, sdmaProcessor.frequency, idx, categories.index("TPU_SDMA"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
+                prepare_data(include_layer, sdmadf, sdmaProcessor.frequency, idx,
+                             categories.index("TPU_SDMA"), [ddrBw, L2Bw], lane_num, cycle_data_dict,
+                             lmem_op_dict, lane_size)
 
         # if idx < len(cdma_instances):
         if idx == 7:
             for i in range(len(cdma_instances)):
                 cdmadf = cdma_instances[i]
-                prepare_data(include_layer, cdmadf, cdmaProcessor.frequency,idx, categories.index(f"TPU_CDMA_PORT{cdmadf.port}"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
+                prepare_data(include_layer, cdmadf, cdmaProcessor.frequency, idx,
+                             categories.index(f"TPU_CDMA_PORT{cdmadf.port}"), [ddrBw, L2Bw],
+                             lane_num, cycle_data_dict, lmem_op_dict, lane_size)
                 # if i == 1:
                 #     prepare_data(include_layer, cdmadf, cdmaProcessor.frequency,idx, categories.index("TPU_CDMA"), [ddrBw, L2Bw], lane_num, cycle_data_dict, lmem_op_dict, lane_size)
                 # else:
@@ -109,9 +126,10 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
     cycle_data_dict = merge_layer_data(cycle_data_dict, categories)
     cycle_data_dict = merge_group_layer_data(cycle_data_dict, categories, file_line_dict)
 
-    summary = SummaryProcessor(tiuProcessor, gdmaProcessor, sdmaProcessor,cdmaProcessor)
+    summary = SummaryProcessor(tiuProcessor, gdmaProcessor, sdmaProcessor, cdmaProcessor)
     summarydf = summary.make_summary()
-    summary_data =[[str(x) if isinstance(x,Decimal) else x for x in lst] for lst in summarydf.values.tolist()]
+    summary_data = [[str(x) if isinstance(x, Decimal) else x for x in lst]
+                    for lst in summarydf.values.tolist()]
 
     # if CHIP_ARCH == 'sg2260':
     #     ddr_ratios, l2m_ratios = calculate_ratios(cycle_data_dict)
@@ -146,36 +164,45 @@ def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):
                 js_content += f"{sublist},\n"
             js.write(f'window.{keyname} = [{js_content}]\n')
 
-def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycle_data_dict, lmem_op_dict, lane_size):
+
+def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycle_data_dict,
+                 lmem_op_dict, lane_size):
     if data is None or data.empty:
         return
-    read_directions = ['DDR->LMEM'] + [f'DDR->LMEM{i}' for i in range(8)] + [f'L2M->LMEM{i}' for i in range(8)] + [f'L2M{i}->LMEM{i}' for i in range(8)]
-    write_directions = ['LMEM->DDR'] + [f'LMEM{i}->DDR' for i in range(8)] + [f'LMEM{i}->L2M' for i in range(8)] + [f'LMEM{i}->L2M{i}' for i in range(8)]
+    read_directions = ['DDR->LMEM'] + [f'DDR->LMEM{i}' for i in range(8)] + [
+        f'L2M->LMEM{i}' for i in range(8)
+    ] + [f'L2M{i}->LMEM{i}' for i in range(8)]
+    write_directions = ['LMEM->DDR'] + [f'LMEM{i}->DDR' for i in range(8)] + [
+        f'LMEM{i}->L2M' for i in range(8)
+    ] + [f'LMEM{i}->L2M{i}' for i in range(8)]
     # lmem_direction = [f'LMEM{i}->LMEM{i}' for i in range(8)]
     lmem_temp = []
     frequency = int(frequency)
     if 'DDR Bandwidth(GB/s)' in data:
-        data['DDR Bandwidth(GB/s)'] = data['DDR Bandwidth(GB/s)'].apply(lambda x: str(x) if isinstance(x, Decimal) else x)
-        data['L2M Bandwidth(GB/s)'] = data['L2M Bandwidth(GB/s)'].apply(lambda x: str(x) if isinstance(x, Decimal) else x)
+        data['DDR Bandwidth(GB/s)'] = data['DDR Bandwidth(GB/s)'].apply(
+            lambda x: str(x) if isinstance(x, Decimal) else x)
+        data['L2M Bandwidth(GB/s)'] = data['L2M Bandwidth(GB/s)'].apply(
+            lambda x: str(x) if isinstance(x, Decimal) else x)
     for i in range(len(data)):
-        uarch_rate = pd.to_numeric(data['uArch Rate'][i][:-1]) if 'uArch Rate' in data.columns else None
+        uarch_rate = pd.to_numeric(
+            data['uArch Rate'][i][:-1]) if 'uArch Rate' in data.columns else None
         cmd = int(data['Cmd Id'][i])
         if 'DDR Bandwidth(GB/s)' in data:
             if 'L2M' in data['Direction'][i]:
                 height = round(pd.to_numeric(data['L2M Bandwidth(GB/s)'][i]) / bwlist[1], 2)
             else:
-                height = round(pd.to_numeric(data['DDR Bandwidth(GB/s)'][i]) / (bwlist[0] +1e-6), 2)
+                height = round(
+                    pd.to_numeric(data['DDR Bandwidth(GB/s)'][i]) / (bwlist[0] + 1e-6), 2)
         else:
-            height = round(uarch_rate/100, 2)
+            height = round(uarch_rate / 100, 2)
         tmp = [
             ip_type,
             get_realtime_from_cycle(data['Start Cycle'][i], frequency),
             get_realtime_from_cycle(data['End Cycle'][i], frequency),
             get_realtime_from_cycle(data['Asic Cycle'][i], frequency),
-            int(data['Stall Cycle'][i]) if 'Stall Cycle' in data and data['Stall Cycle'][i] is not None else '',
-            data['Function Type'][i] if 'Function Type' in data else '',
-            height,
-            cmd,
+            int(data['Stall Cycle'][i])
+            if 'Stall Cycle' in data and data['Stall Cycle'][i] is not None else '',
+            data['Function Type'][i] if 'Function Type' in data else '', height, cmd,
             data['Function Name'][i]
         ]
         if if_layer:
@@ -185,12 +212,14 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
                 data['Subnet Id'][i],
                 data['Subnet Type'][i],
                 data['File Line'][i],
-        ])
+            ])
         tmp.extend([
             data['Global Idx'][i],
-            data['uArch Rate'][i] if 'uArch Rate' in data else f"DDR:{data['DDR Bandwidth(GB/s)'][i]},L2M:{data['L2M Bandwidth(GB/s)'][i]}",
+            data['uArch Rate'][i] if 'uArch Rate' in data else
+            f"DDR:{data['DDR Bandwidth(GB/s)'][i]},L2M:{data['L2M Bandwidth(GB/s)'][i]}",
             data['Data Type'][i],
-            f"Direction:{data['Direction'][i]}" if 'Direction' in data else f"Bank Conflict Ratio:{data['Bank Conflict Ratio'][i]}",
+            f"Direction:{data['Direction'][i]}"
+            if 'Direction' in data else f"Bank Conflict Ratio:{data['Bank Conflict Ratio'][i]}",
             data['Msg Id'][i],
             data['Sd\Wt Count'][i],
             data['is_local'][i],
@@ -198,7 +227,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
         cycle_data_dict[f'time_data{idx}'].append(tmp)
 
         ## prepare the data for the mem graph
-        if 'Direction' in data: #
+        if 'Direction' in data:  #
             direction = data['Direction'][i]
             src = data['src_start_addr'][i]
             dst = data['dst_start_addr'][i]
@@ -207,13 +236,20 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             if direction in read_directions:
                 size = datasize / lane_num  #c维除以lane_num
                 info = f'{type}{cmd},physical start addr:{dst}<br>{direction},{data["dst_shape"][i]}'
-                lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, dst, size, info])
+                lmem_temp.append([
+                    int(data['Start Cycle'][i]),
+                    int(data['End Cycle'][i]), op_type, dst, size, info
+                ])
             elif direction in write_directions:
-                size = datasize / lane_num #c维除以lane num
+                size = datasize / lane_num  #c维除以lane num
                 info = f'{type}{cmd},physical start addr:{src}<br>{direction},{data["src_shape"][i]}'
-                lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), op_type, src, size, info])
+                lmem_temp.append([
+                    int(data['Start Cycle'][i]),
+                    int(data['End Cycle'][i]), op_type, src, size, info
+                ])
         # import pdb; pdb.set_trace()
-        if 'des_res0_c' in data and data['des_res0_c'][i] and int(data['des_res0_c'][i]) and int(data['des_res0_c'][i]) < lane_num:
+        if 'des_res0_c' in data and data['des_res0_c'][i] and int(data['des_res0_c'][i]) and int(
+                data['des_res0_c'][i]) < lane_num:
             worklane = int(data['des_res0_c'][i])
         else:
             worklane = lane_num
@@ -221,15 +257,24 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             #the memory address reads the result tensor: op=0
             size = data['des_res0_size'][i] / worklane
             info = f'{type}{cmd},physical start addr:{data["des_res0_addr"][i]}'
-            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 0, data['des_res0_addr'][i], size, info])
+            lmem_temp.append([
+                int(data['Start Cycle'][i]),
+                int(data['End Cycle'][i]), 0, data['des_res0_addr'][i], size, info
+            ])
         if 'des_opd0_size' in data and data['des_opd0_size'][i] is not None:
-            size = (data['des_opd0_size'][i]+data['des_opd1_size'][i] if data['des_opd1_size'][i] is not None else data['des_opd0_size'][i]) / worklane
+            size = (data['des_opd0_size'][i] + data['des_opd1_size'][i] if data['des_opd1_size'][i]
+                    is not None else data['des_opd0_size'][i]) / worklane
             info = f'{type}{cmd},physical start addr:{data["des_opd0_addr"][i]}'
-            lmem_temp.append([int(data['Start Cycle'][i]), int(data['End Cycle'][i]), 1, data['des_opd0_addr'][i], size, info])
+            lmem_temp.append([
+                int(data['Start Cycle'][i]),
+                int(data['End Cycle'][i]), 1, data['des_opd0_addr'][i], size, info
+            ])
     process_lmem = processAddr(lmem_temp, lane_size) if len(lmem_temp) > 0 else lmem_temp
     lmem_op_dict[f'lmem_op_record{idx}'].extend(process_lmem)
-    lmem_op_dict[f'lmem_op_record{idx}'] = deduplicate_ordered_list(lmem_op_dict[f'lmem_op_record{idx}'])
-    cycle_data_dict[f'time_data{idx}'] = deduplicate_ordered_list(cycle_data_dict[f'time_data{idx}'])
+    lmem_op_dict[f'lmem_op_record{idx}'] = deduplicate_ordered_list(
+        lmem_op_dict[f'lmem_op_record{idx}'])
+    cycle_data_dict[f'time_data{idx}'] = deduplicate_ordered_list(
+        cycle_data_dict[f'time_data{idx}'])
 
 
 def merge_layer_data(cycle_data_dict, categories):
@@ -266,13 +311,12 @@ def merge_layer_data(cycle_data_dict, categories):
                 duration = latest_end - earliest_start
 
                 merged_entry = [
-                    ip_type, earliest_start, latest_end, duration, '', layer_name, height,
-                    '', layer_name, layer_id, layer_name, subnet_id, subnet_type,
-                    '', '', '', '',''
-                ] ##info: to be filled
+                    ip_type, earliest_start, latest_end, duration, '', layer_name, height, '',
+                    layer_name, layer_id, layer_name, subnet_id, subnet_type, '', '', '', '', ''
+                ]  ##info: to be filled
                 data.append(merged_entry)
             else:
-                entries.sort(key = lambda x: int(x[7]))
+                entries.sort(key=lambda x: int(x[7]))
                 merged_ranges = []
                 curr_range = [int(entries[0][1]), int(entries[0][2])]
                 prev_cmd = int(entries[0][7])
@@ -290,10 +334,9 @@ def merge_layer_data(cycle_data_dict, categories):
                 for start_time, end_time in merged_ranges:
                     duration = end_time - start_time
                     merged_entry = [
-                        ip_type, start_time, end_time, duration, '', layer_name, height,
-                        '', layer_name, layer_id, layer_name, subnet_id, subnet_type,
-                        '', '', '', '',''
-                    ] ##info: to be filled
+                        ip_type, start_time, end_time, duration, '', layer_name, height, '',
+                        layer_name, layer_id, layer_name, subnet_id, subnet_type, '', '', '', '', ''
+                    ]  ##info: to be filled
                     data.append(merged_entry)
 
         cycle_data_dict[key] = data
@@ -331,10 +374,9 @@ def merge_group_layer_data(cycle_data_dict, categories, file_line_dict):
             group_num += 1
 
             merged_entry = [
-                ip_type, earliest_start, latest_end, duration, '', layer_name, 0.5,
-                '', '', '', '', subnet_id, subnet_type,
-                '', '', '', '',''
-            ] ##info: to be filled
+                ip_type, earliest_start, latest_end, duration, '', layer_name, 0.5, '', '', '', '',
+                subnet_id, subnet_type, '', '', '', '', ''
+            ]  ##info: to be filled
             data.append(merged_entry)
 
         cycle_data_dict[key] = data
@@ -354,13 +396,17 @@ def parse_cmdgroups(file_path):
                 lines = file.readlines()
                 for line in lines:
                     components = line.strip().split()
-                    mapped_components = [component.replace('T', 'TIU').replace('G', 'GDMA').replace('S', 'SDMA') for component in components]
+                    mapped_components = [
+                        component.replace('T', 'TIU').replace('G', 'GDMA').replace('S', 'SDMA')
+                        for component in components
+                    ]
                     mapped_lines.append(mapped_components)
                 return mapped_lines
         except FileNotFoundError:
             raise FileNotFoundError("The specified file does not exist. Please check the path.")
     else:
         return mapped_lines
+
 
 def generate_partition(lmem_size, lane_num, type_name):
     partition = []
@@ -374,10 +420,12 @@ def generate_partition(lmem_size, lane_num, type_name):
         start_value += partition_size
     return partition
 
+
 def multiply_non_zero_numbers(input_str):
     nums = input_str.split(')')[0][1:].split(',')
     result = reduce(lambda x, y: x * y, [int(n) for n in nums if int(n) != 0])
     return result
+
 
 def deduplicate_ordered_list(lst):
     seen = set()
@@ -389,17 +437,18 @@ def deduplicate_ordered_list(lst):
             deduped.append(item)
     return deduped
 
+
 def processAddr(lst, lane_size):
     dec_addr = [int(sublist[3], 16) for sublist in lst]
     new_lst = []
-    min_value = min(dec_addr) # Aling the address for different cores
+    min_value = min(dec_addr)  # Aling the address for different cores
     for i, sublist in enumerate(lst):
         # Calculate the converted address value
         shifted_addr = dec_addr[i] - min_value
         new_shifted_addr = shifted_addr % lane_size
         lane_occupied = math.ceil(shifted_addr / lane_size)
         sublist[3] = new_shifted_addr
-        sublist[-1] += f"<br>Occupied Lane#:{lane_occupied}" # add the num of lane used
+        sublist[-1] += f"<br>Occupied Lane#:{lane_occupied}"  # add the num of lane used
         new_lst.append(sublist)
         # new_lst.append(lane_occupied) #modify the javascript
     return new_lst
@@ -414,8 +463,7 @@ def calculate_ratios(cycle_data_dict):
     for data in cycle_data_dict.values():
         # 使用生成器表达式进行过滤
         filtered_data = (
-            record for record in data
-            if record[0] in [1, 2] and "SYS" not in record[5] #GDMA/SDMA
+            record for record in data if record[0] in [1, 2] and "SYS" not in record[5]  #GDMA/SDMA
         )
 
         for record in filtered_data:

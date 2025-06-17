@@ -42,7 +42,9 @@ from dataclasses import dataclass
 from .common import FinalMlirIndexPlugin, ValueView
 from enum import Enum
 
+
 class IncNpzFile:
+
     def __init__(self, file: str):
         """
         :param file: the ``npz`` file to write
@@ -63,9 +65,7 @@ class IncNpzFile:
             "force_zip64": True,
         }
         if self.zip is None or self.zip.fp is None:
-            self.zip = zipfile.ZipFile(
-                self.fn, mode="a", compression=zipfile.ZIP_DEFLATED
-            )
+            self.zip = zipfile.ZipFile(self.fn, mode="a", compression=zipfile.ZIP_DEFLATED)
 
         with self.zip.open(key, **kwargs) as fid:
             val = np.asanyarray(data)
@@ -148,9 +148,7 @@ class TensorCompare(_TensorCompare):
         diff = np.abs(_d1 - _d2)
         k = min(_d1.size, 10)
         idx = np.argpartition(diff, -k)[-k:]
-        idx = [
-            x[0] for x in sorted(zip(idx, diff[idx]), key=lambda x: x[1], reverse=True)
-        ]
+        idx = [x[0] for x in sorted(zip(idx, diff[idx]), key=lambda x: x[1], reverse=True)]
         return {"x": _d1[idx], "y": _d2[idx]}
 
     def close(self, actual, desired):
@@ -161,9 +159,7 @@ class TensorCompare(_TensorCompare):
             int8_tensor_close=True,
         )[0]
 
-    def assert_allclose(
-        self, actual: np.ndarray, desired: np.ndarray, dump_mode: DumpMode
-    ):
+    def assert_allclose(self, actual: np.ndarray, desired: np.ndarray, dump_mode: DumpMode):
         from functools import partial
         from numpy.core import array_repr
 
@@ -172,11 +168,8 @@ class TensorCompare(_TensorCompare):
         msg = ""
         if not state:
             metric = metric
-            header = (
-                "Not equal to tolerance "
-                + f"cos={self.cosine_similarity_tol}"
-                + f", euc={self.euclidean_similarity_tol}"
-            )
+            header = ("Not equal to tolerance " + f"cos={self.cosine_similarity_tol}" +
+                      f", euc={self.euclidean_similarity_tol}")
 
             remarks = [
                 f"cosine similarity: {metric['cosine']:.6f}",
@@ -189,43 +182,32 @@ class TensorCompare(_TensorCompare):
                 max_line_width=get_console().size.width,
             )
             msg.append("top10_diff:")
-            msg.extend(
-                f" {n}: {r_func(r.astype(float))[6:-1]}" for n, r in details.items()
-            )
-            msg.extend(
-                (
-                    "0:10_data:",
-                    f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
-                    f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
-                )
-            )
+            msg.extend(f" {n}: {r_func(r.astype(float))[6:-1]}" for n, r in details.items())
+            msg.extend((
+                "0:10_data:",
+                f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
+                f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
+            ))
             try:
-                np.testing.assert_allclose(
-                    actual, desired, rtol=1e-3, atol=1e-1, verbose=False
-                )
+                np.testing.assert_allclose(actual, desired, rtol=1e-3, atol=1e-1, verbose=False)
             except AssertionError as e:
                 msg.append(str(e))
 
             msg = "\n".join(msg)
         elif dump_mode == DumpMode.ALL:
-            header = (
-                "Succeed comparasion: "
-                + f"cos={self.cosine_similarity_tol}"
-                + f", euc={self.euclidean_similarity_tol}"
-            )
+            header = ("Succeed comparasion: " + f"cos={self.cosine_similarity_tol}" +
+                      f", euc={self.euclidean_similarity_tol}")
             msg = ["\n" + header, ""]
             r_func = partial(
                 array_repr,
                 precision=6,
                 max_line_width=get_console().size.width,
             )
-            msg.extend(
-                (
-                    "0:10_data:",
-                    f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
-                    f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
-                )
-            )
+            msg.extend((
+                "0:10_data:",
+                f" act: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
+                f" ref: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
+            ))
             msg = "\n".join(msg)
 
         return cmp_res, msg
@@ -337,9 +319,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             self.dump_mode = mode
             self.tdb.message(f"enable {mode}")
         else:
-            self.tdb.message(
-                f"Unknown dump mode {arg}, support {DumpMode._member_names_}"
-            )
+            self.tdb.message(f"Unknown dump mode {arg}, support {DumpMode._member_names_}")
 
     def reduce_summary(self):
         summary: Dict[int, List[List[str]]] = {}
@@ -420,9 +400,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         pd.set_option("display.expand_frame_repr", False)
 
         data_str = self.index.index_df.to_string()
-        with open(
-            os.path.join(path, "dumped_dataframe.txt"), "w+", encoding="utf-8"
-        ) as f:
+        with open(os.path.join(path, "dumped_dataframe.txt"), "w+", encoding="utf-8") as f:
             f.write(data_str)
 
         # reset debug option
@@ -446,12 +424,12 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             if select_index == -1:
                 table = Table(f"{arg}", show_lines=True)
                 for col in [
-                    "loc_index",
-                    "owner",
-                    "value name",
-                    "value type",
-                    "compare",
-                    "index",
+                        "loc_index",
+                        "owner",
+                        "value name",
+                        "value type",
+                        "compare",
+                        "index",
                 ]:
                     table.add_column(col, no_wrap=True)
                 for index, v in enumerate(self.index_record[lino]):
@@ -488,9 +466,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 if vv.state == CmpState.Fail or self.dump_mode == DumpMode.ALL:
                     err_msg = Panel(vv.msg, title="data-error", style="red")
                     asm_codes = Panel(
-                        codelike_format(
-                            self.tdb.get_op_context(2, 2, vv.value_view.cmd_point), 2
-                        ),
+                        codelike_format(self.tdb.get_op_context(2, 2, vv.value_view.cmd_point), 2),
                         title="asm",
                     )
                     msg = Panel(Group(table, err_msg, asm_codes))
@@ -502,9 +478,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             self.tdb.error(e)
 
     def complete_data(self, text="", line="", begidx=0, endidx=0) -> List[str]:
-        return list(
-            filter(lambda x: x.startswith(text), map(str, self.index_record.keys()))
-        )
+        return list(filter(lambda x: x.startswith(text), map(str, self.index_record.keys())))
 
     def complete_summary(self, text="", line="", begidx=0, endidx=0) -> List[str]:
         cand = ["reduce", "table", "failed"]
@@ -537,11 +511,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         # The data in HW has a transposed collapsed shape.
         # To align the Bmodel with TPU.mlir, we need to transpose the reference data.
         if operand.layout in (
-            "continuous_group3d",
-            "eu_align_group3d",
-            "compact_group3d",
-            "eu_align_xn_group3d",
-            "compact_xn_group3d",
+                "continuous_group3d",
+                "eu_align_group3d",
+                "compact_group3d",
+                "eu_align_xn_group3d",
+                "compact_xn_group3d",
         ):
             n, c, d, h, w = 0, 1, 2, 3, 4
             data = data.transpose((d, n, c, h, w))
@@ -580,11 +554,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             else:
                 slice_list = _slice[1:-1].split(",")
                 sliced_shape = tuple(
-                    [
-                        int(slice.split(":")[1]) - int(slice.split(":")[0])
-                        for slice in slice_list
-                    ]
-                )
+                    [int(slice.split(":")[1]) - int(slice.split(":")[0]) for slice in slice_list])
                 slices = [
                     slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
                     for s in slice_list
@@ -592,11 +562,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             actual = actual.reshape(desired.shape)
 
             if operand.layout in (
-                "continuous_group3d",
-                "eu_align_group3d",
-                "compact_group3d",
-                "eu_align_xn_group3d",
-                "compact_xn_group3d",
+                    "continuous_group3d",
+                    "eu_align_group3d",
+                    "compact_group3d",
+                    "eu_align_xn_group3d",
+                    "compact_xn_group3d",
             ):
                 d, n, c, h, w = 0, 1, 2, 3, 4
                 actual = actual.transpose((n, c, d, h, w))
@@ -611,25 +581,21 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             if operand.name not in self.ref_data_from_inference:
                 tmp = np.zeros(reshape)
                 tmp[tuple(slices)] = actual
-                self.ref_data_from_inference[operand.name] = tmp.reshape(
-                    origin_shape
-                )
+                self.ref_data_from_inference[operand.name] = tmp.reshape(origin_shape)
             else:
                 tmp = self.ref_data_from_inference[operand.name]
                 tmp = tmp.reshape(reshape)
                 tmp[tuple(slices)] = actual
-                self.ref_data_from_inference[operand.name] = tmp.reshape(
-                    origin_shape
-                )
+                self.ref_data_from_inference[operand.name] = tmp.reshape(origin_shape)
             return
 
     def cal_desired_shape(self, sliced_shape: Tuple[int], layout: str):
         if layout in (
-            "continuous_group3d",
-            "eu_align_group3d",
-            "compact_group3d",
-            "eu_align_xn_group3d",
-            "compact_xn_group3d",
+                "continuous_group3d",
+                "eu_align_group3d",
+                "compact_group3d",
+                "eu_align_xn_group3d",
+                "compact_xn_group3d",
         ):
             n, c, d, h, w = 0, 1, 2, 3, 4
             # data = data.transpose((d, n, c, h, w))
@@ -654,11 +620,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         else:
             slice_list = _slice[1:-1].split(",")
             sliced_shape = tuple(
-                [
-                    int(slice.split(":")[1]) - int(slice.split(":")[0])
-                    for slice in slice_list
-                ]
-            )
+                [int(slice.split(":")[1]) - int(slice.split(":")[0]) for slice in slice_list])
             slices = [
                 slice(int(s.strip().split(":")[0]), int(s.strip().split(":")[1]))
                 for s in slice_list
@@ -666,11 +628,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         actual = actual.reshape(self.cal_desired_shape(sliced_shape, operand.layout))
 
         if operand.layout in (
-            "continuous_group3d",
-            "eu_align_group3d",
-            "compact_group3d",
-            "eu_align_xn_group3d",
-            "compact_xn_group3d",
+                "continuous_group3d",
+                "eu_align_group3d",
+                "compact_group3d",
+                "eu_align_xn_group3d",
+                "compact_xn_group3d",
         ):
             d, n, c, h, w = 0, 1, 2, 3, 4
             actual = actual.transpose((n, c, d, h, w))
@@ -704,9 +666,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def do_display_cmd(self, args):
         self.tdb.message(self.tdb.cmditer[int(args)])
 
-    def check_data(
-        self, point_index, is_operand, value_view: ValueView
-    ) -> ComparedResult:
+    def check_data(self, point_index, is_operand, value_view: ValueView) -> ComparedResult:
         value = value_view.value
         if value.name in self.excepts:
             value_res = ComparedResult(value_view, None, msg="ignore")
@@ -733,9 +693,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         # only used for soc mode
         if self.is_soc:
             if is_operand:
-                DataCheck.soc_values_in[point_index].append(Pickled_Value(value, value_view.file_line, value_view.cmd_point, cmd.core_id))
+                DataCheck.soc_values_in[point_index].append(
+                    Pickled_Value(value, value_view.file_line, value_view.cmd_point, cmd.core_id))
             else:
-                DataCheck.soc_values_out.append(Pickled_Value(value, value_view.file_line, value_view.cmd_point, cmd.core_id))
+                DataCheck.soc_values_out.append(
+                    Pickled_Value(value, value_view.file_line, value_view.cmd_point, cmd.core_id))
             return ComparedResult(value_view, None, msg="ignore")
         # breakpoint()
         raw_data = context.memory.get_data(ValueRef(memref, core_id=cmd.core_id))
@@ -752,13 +714,15 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 raw_desired = desired.astype(raw_data.dtype) if desired is not None else None
             else:
                 actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
-                raw_desired = (desired / value.scale + value.zero_point).astype(raw_data.dtype) if desired is not None else None
+                raw_desired = (desired / value.scale + value.zero_point).astype(
+                    raw_data.dtype) if desired is not None else None
             if raw_desired is not None:
                 if not context.memory.set_data(ValueRef(memref, core_id=cmd.core_id), raw_desired):
                     # self.tdb.debug(f"set data {value.name} failed")
                     pass
 
-        if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL} or self.dump_mode == DumpMode.TPULANG:
+        if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL
+                              } or self.dump_mode == DumpMode.TPULANG:
             self.collect_infer_data(value, actual, desired)
 
         if self.skip_check:  # CModel mode or Pcie mode
@@ -774,9 +738,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         if desired is not None:
             actual = actual.reshape(desired.shape)
-            cmp_res, msg = list(
-                self.tc.assert_allclose(actual, desired, dump_mode=self.dump_mode)
-            )
+            cmp_res, msg = list(self.tc.assert_allclose(actual, desired, dump_mode=self.dump_mode))
             value_res = ComparedResult(
                 value_view,
                 cmp=cmp_res,
@@ -798,19 +760,17 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         if dump_desired:
             self.failed_tensor[f"{name}_desired"] = desired
         if dump_actual or dump_desired:
-            self.failed_summary_info.append(
-                {
-                    "loc": value.name,
-                    "cmd_point": value_view.cmd_point,
-                    "cmd_id": cmd.cmd_id,
-                    "core_id": cmd.core_id,
-                    "subnet_id": cmd.subnet_id,
-                    "loc_index": value_view.loc_index,
-                    "operand": is_operand,
-                    "value": value.to_dict(),
-                    "cmp_failed": cmp_failed,
-                }
-            )
+            self.failed_summary_info.append({
+                "loc": value.name,
+                "cmd_point": value_view.cmd_point,
+                "cmd_id": cmd.cmd_id,
+                "core_id": cmd.core_id,
+                "subnet_id": cmd.subnet_id,
+                "loc_index": value_view.loc_index,
+                "operand": is_operand,
+                "value": value.to_dict(),
+                "cmp_failed": cmp_failed,
+            })
 
         return value_res
 
@@ -821,13 +781,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         if is_operand:
             point_index += 1
-            values = tdb.index_df.loc[
-                tdb.index_df["executed_id"] == point_index, "operands"
-            ].tolist()
+            values = tdb.index_df.loc[tdb.index_df["executed_id"] == point_index,
+                                      "operands"].tolist()
         else:
-            values = tdb.index_df.loc[
-                tdb.index_df["executed_id"] == point_index, "results"
-            ].tolist()
+            values = tdb.index_df.loc[tdb.index_df["executed_id"] == point_index,
+                                      "results"].tolist()
 
         if values:
             values = values[0]
@@ -851,9 +809,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 success = False
 
             reports.setdefault(value_view.loc_index, []).append(cmp_res)
-            lino = index_plugin.tdb.index_df.loc[
-                self.tdb.index_df["executed_id"] == value_view.cmd_point, "line-num"
-            ].item()
+            lino = index_plugin.tdb.index_df.loc[self.tdb.index_df["executed_id"] ==
+                                                 value_view.cmd_point, "line-num"].item()
             self.index_record.setdefault(lino, []).append(cmp_res)
 
         return success
@@ -874,14 +831,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
             for ret in self.watch.results:
                 self.watch_data.append(
-                    self.tdb.context.memory.get_data(
-                        ret.to_ref(core_id=self.watch.core_id)
-                    ).copy()
-                )
+                    self.tdb.context.memory.get_data(ret.to_ref(core_id=self.watch.core_id)).copy())
                 if len(self.watch_data) > 1:
-                    np.savez(
-                        f"watch_data_{len(self.watch_data)}.npz", self.watch_data[-1]
-                    )
+                    np.savez(f"watch_data_{len(self.watch_data)}.npz", self.watch_data[-1])
                     if not (self.watch_data[-2] == self.watch_data[-1]).all():
                         self.tdb.message("change")
                         raise BreakpointStop()
@@ -896,9 +848,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def after_stop(self, tdb: TdbCmdBackend):
         # make sure npz file is valid
         if self.dump_mode in {DumpMode.COMB, DumpMode.COMB_ALL}:
-            comb_infer_path = os.path.join(
-                self.tdb.bmodel_dir, f"bmodel_inference.npz"
-            )
+            comb_infer_path = os.path.join(self.tdb.bmodel_dir, f"bmodel_inference.npz")
             self.tdb.save_npz(comb_infer_path, self.ref_data_from_inference, "bmodel_inference")
 
         if self._failed_tensor:
@@ -934,9 +884,7 @@ class CheckLMem(TdbPlugin):
             runner.runner_p,
             runner.memory.LMEM[0].ctypes.data_as(ctypes.c_void_p),
         )
-        self.RET.append(
-            [str(tdb.get_cmd()), tdb.cmd_point, runner.memory.LMEM[0].copy()]
-        )
+        self.RET.append([str(tdb.get_cmd()), tdb.cmd_point, runner.memory.LMEM[0].copy()])
 
         if tdb.cmd_point == 11:
             with open(f"{platform.machine()}.npz", "wb") as w:

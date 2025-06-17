@@ -32,7 +32,9 @@ if __name__ == "__main__":
     dbg = DebugIt()
     if len(sys.argv) == 1:
         code, out = getstatusoutput_v2("find . -name ref_files.json", shell=True)
-        print("debugit.py COMMAND path/to/ref_files.json\n use --help to get more command information\n\nfiles can be used in current directory:")
+        print(
+            "debugit.py COMMAND path/to/ref_files.json\n use --help to get more command information\n\nfiles can be used in current directory:"
+        )
         print(textwrap.indent(out, "    "))
     else:
         fire.Fire(entry)

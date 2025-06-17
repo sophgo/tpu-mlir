@@ -7,7 +7,6 @@
 #
 # ==============================================================================
 
-
 import numpy as np
 from typing import Callable, Dict, Union, Tuple, List, Any, TYPE_CHECKING
 from ..target_common import (
@@ -34,7 +33,9 @@ opparam_converter: Dict[
 
 
 def get_opparam_converter_with_context(context, opparam_converter: dict):
+
     def wrap(fn):
+
         def outer(cmd):
             return fn(context, cmd)
 
@@ -47,6 +48,7 @@ def get_opparam_converter_with_context(context, opparam_converter: dict):
 
 
 def opparam_converter_regitstry(sheet_name):
+
     def add_converter(fun):
         if sheet_name in opparam_converter:
             raise KeyError(f"{sheet_name} have already registered.")
@@ -81,6 +83,7 @@ def get_value(
 
 
 class TGCR:
+
     def __init__(self):
         self.regs = dict(
             T5=0,
@@ -978,6 +981,7 @@ def sSGL_converter(context: "BM1690Context", reg: sSGL_reg):
 
 @opparam_converter_regitstry("SYS_TR_ACC")
 def SYS_TR_ACC_converter(context: "BM1690Context", reg):
+
     def int2bin(x, width):
         return np.binary_repr(x, width=width)
 
@@ -1021,8 +1025,8 @@ def SYS_converter(context: "BM1690Context", reg):
 def dma_addr(H, L):
     addr = H * 2**32 + L
     tag = (addr >> 40) & 0x1f
-    if tag == 0x0 :     # for workround
-        addr =  addr | (0x1 << 40)
+    if tag == 0x0:  # for workround
+        addr = addr | (0x1 << 40)
     return addr
 
 
@@ -1062,9 +1066,7 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     return res0, attr, opd0
 
@@ -1179,15 +1181,15 @@ def DMA_general_converter(context: "BM1690Context", reg: DMA_general_reg):
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h13, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
@@ -1196,9 +1198,7 @@ def DMA_general_converter(context: "BM1690Context", reg: DMA_general_reg):
         attr["lane_mask"] = hex(lane_mask)
 
     if reg.fill_constant_en:
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
     bc_size = reg.dst_csize
     if reg.cmd_special_function == 1:
         res0["shape"] = (bc_size, copy_len)
@@ -1234,9 +1234,7 @@ def DMA_cw_transpose_converter(context: "BM1690Context", reg: DMA_cw_transpose_r
 
     if reg.fill_constant_en:
         attr = {}
-        opd0 = dict(
-            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
-        )
+        opd0 = dict(address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True)
 
     operands = [get_value(context, **opd0)]
     results = [get_value(context, **res0)]
@@ -1402,6 +1400,7 @@ def cdma_base(context, reg):
 
     return (results, attr, operands)
 
+
 def cdma_operand_base(context, reg):
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     sn, sc, sh = (reg[f"src_{d}stride"] for d in "nch")
@@ -1416,6 +1415,7 @@ def cdma_operand_base(context, reg):
     attr = dict()
     operands = [get_value(context, **opd0)]
     return ([], attr, operands)
+
 
 def cdma_result_base(context, reg):
     n, c, h, w = (reg[f"dst_{d}size"] for d in "nchw")
@@ -1439,13 +1439,16 @@ def CDMA_send_converter(context: "BM1690Context", reg: CDMA_send_reg):
     rao[1]["psum_op"] = "rd+wr" if reg.psum_op else "wo"
     return rao
 
+
 @opparam_converter_regitstry("CDMA_read")
 def CDMA_read_converter(context: "BM1690Context", reg: CDMA_read_reg):
     return cdma_base(context, reg)
 
+
 @opparam_converter_regitstry("CDMA_write")
 def CDMA_write_converter(context: "BM1690Context", reg: CDMA_write_reg):
     return cdma_base(context, reg)
+
 
 @opparam_converter_regitstry("CDMA_general")
 def CDMA_general_converter(context: "BM1690Context", reg: CDMA_general_reg):
@@ -1453,15 +1456,15 @@ def CDMA_general_converter(context: "BM1690Context", reg: CDMA_general_reg):
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h13, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(copy_len,),
-        stride=(1,),
+        shape=(copy_len, ),
+        stride=(1, ),
         layout=Layout.DMAlinear,
     )
     # attr = dict(base=reg.dst_nstride)
@@ -1470,12 +1473,14 @@ def CDMA_general_converter(context: "BM1690Context", reg: CDMA_general_reg):
     results = [get_value(context, **res0)]
     return (results, attr, operands)
 
+
 @opparam_converter_regitstry("CDMA_receive")
 def CDMA_receive_converter(context: "BM1690Context", reg: CDMA_receive_reg):
-    reduce_type = {0: "nop", 1:"mul", 2:"max", 3:"min", 4:"add"}
+    reduce_type = {0: "nop", 1: "mul", 2: "max", 3: "min", 4: "add"}
     rao = cdma_result_base(context, reg)
     rao[1]["reduce_op"] = reduce_type[reg.reduce_op]
     return rao
+
 
 @opparam_converter_regitstry("CDMA_lossy_compress")
 def CDMA_lossy_compress_converter(context: "BM1690Context", reg: CDMA_lossy_compress_reg):
@@ -1483,11 +1488,13 @@ def CDMA_lossy_compress_converter(context: "BM1690Context", reg: CDMA_lossy_comp
     rao[1]["psum_op"] = "rd+wr" if reg.psum_op else "wo"
     return rao
 
+
 @opparam_converter_regitstry("CDMA_lossy_decompress")
 def CDMA_lossy_decompress_converter(context: "BM1690Context", reg: CDMA_lossy_decompress_reg):
     rao = cdma_operand_base(context, reg)
     rao[1]["psum_op"] = "rd+wr" if reg.psum_op else "wo"
     return rao
+
 
 @opparam_converter_regitstry("sCDMA_sys")
 def sCDMA_sys_converter(context: "BM1690Context", reg: sCDMA_sys_reg):
@@ -1498,7 +1505,7 @@ def sCDMA_sys_converter(context: "BM1690Context", reg: sCDMA_sys_reg):
         cnt = (constant_value_l32 >> 16) & 0x7F
         attr = dict(msg_id=msg_id, cnt=cnt)
     elif reg.cmd_special_function == 2:
-        const_value = reg.constant_value_h32<<32|constant_value_l32
+        const_value = reg.constant_value_h32 << 32 | constant_value_l32
         reg_sel = reg.reg_sel
         if reg_sel == 0:
             reg_sel = "current_id"
@@ -1509,9 +1516,11 @@ def sCDMA_sys_converter(context: "BM1690Context", reg: sCDMA_sys_reg):
         attr = dict(const=const_value, reg_sel=reg_sel)
     return ([], attr, [])
 
+
 @opparam_converter_regitstry("CDMA_tcp_send ")
 def CDMA_tcp_send_converter(context: "BM1690Context", reg: CDMA_tcp_send_reg):
     return [] * 3
+
 
 @opparam_converter_regitstry("CDMA_tcp_rcv ")
 def CDMA_tcp_rcv_converter(context: "BM1690Context", reg: CDMA_tcp_rcv_reg):

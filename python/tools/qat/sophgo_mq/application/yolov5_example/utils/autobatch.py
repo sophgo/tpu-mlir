@@ -42,7 +42,9 @@ def autobatch(model, imgsz=640, fraction=0.9, batch_size=16):
     r = torch.cuda.memory_reserved(device) / gb  # GiB reserved
     a = torch.cuda.memory_allocated(device) / gb  # GiB allocated
     f = t - (r + a)  # GiB free
-    LOGGER.info(f'{prefix}{d} ({properties.name}) {t:.2f}G total, {r:.2f}G reserved, {a:.2f}G allocated, {f:.2f}G free')
+    LOGGER.info(
+        f'{prefix}{d} ({properties.name}) {t:.2f}G total, {r:.2f}G reserved, {a:.2f}G allocated, {f:.2f}G free'
+    )
 
     # Profile batch sizes
     batch_sizes = [1, 2, 4, 8, 16]
@@ -62,5 +64,7 @@ def autobatch(model, imgsz=640, fraction=0.9, batch_size=16):
             b = batch_sizes[max(i - 1, 0)]  # select prior safe point
 
     fraction = np.polyval(p, b) / t  # actual fraction predicted
-    LOGGER.info(f'{prefix}Using batch-size {b} for {d} {t * fraction:.2f}G/{t:.2f}G ({fraction * 100:.0f}%) ✅')
+    LOGGER.info(
+        f'{prefix}Using batch-size {b} for {d} {t * fraction:.2f}G/{t:.2f}G ({fraction * 100:.0f}%) ✅'
+    )
     return b

@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
+
 class Quant_Bert(nn.Module):
+
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -17,7 +19,8 @@ class Quant_Bert(nn.Module):
             if self.config.problem_type is None:
                 if self.num_labels == 1:
                     self.config.problem_type = "regression"
-                elif self.num_labels > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
+                elif self.num_labels > 1 and (labels.dtype == torch.long
+                                              or labels.dtype == torch.int):
                     self.config.problem_type = "single_label_classification"
                 else:
                     self.config.problem_type = "multi_label_classification"
@@ -35,5 +38,3 @@ class Quant_Bert(nn.Module):
                 loss_fct = BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
         return {"loss": loss, "logits": logits}
-
-

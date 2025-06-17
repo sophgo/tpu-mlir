@@ -35,12 +35,14 @@ from classify import val as validate
 from models.experimental import attempt_load
 from models.yolo import ClassificationModel, DetectionModel
 from utils.dataloaders import create_classification_dataloader
-from utils.general import (DATASETS_DIR, LOGGER, WorkingDirectory, check_git_status, check_requirements, colorstr,
-                           download, increment_path, init_seeds, print_args, yaml_save)
+from utils.general import (DATASETS_DIR, LOGGER, WorkingDirectory, check_git_status,
+                           check_requirements, colorstr, download, increment_path, init_seeds,
+                           print_args, yaml_save)
 from utils.loggers import GenericLogger
 from utils.plots import imshow_cls
-from utils.torch_utils import (ModelEMA, model_info, reshape_classifier_output, select_device, smart_DDP,
-                               smart_optimizer, smartCrossEntropyLoss, torch_distributed_zero_first)
+from utils.torch_utils import (ModelEMA, model_info, reshape_classifier_output, select_device,
+                               smart_DDP, smart_optimizer, smartCrossEntropyLoss,
+                               torch_distributed_zero_first)
 
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
 RANK = int(os.getenv('RANK', -1))
@@ -72,7 +74,9 @@ def train(opt, device):
             LOGGER.info(f'\nDataset not found ⚠️, missing path {data_dir}, attempting download...')
             t = time.time()
             if str(data) == 'imagenet':
-                subprocess.run(f"bash {ROOT / 'data/scripts/get_imagenet.sh'}", shell=True, check=True)
+                subprocess.run(f"bash {ROOT / 'data/scripts/get_imagenet.sh'}",
+                               shell=True,
+                               check=True)
             else:
                 url = f'https://github.com/ultralytics/yolov5/releases/download/v1.0/{data}.zip'
                 download(url, dir=data_dir.parent)
@@ -89,7 +93,8 @@ def train(opt, device):
                                                    rank=LOCAL_RANK,
                                                    workers=nw)
 
-    test_dir = data_dir / 'test' if (data_dir / 'test').exists() else data_dir / 'val'  # data/test or data/val
+    test_dir = data_dir / 'test' if (data_dir /
+                                     'test').exists() else data_dir / 'val'  # data/test or data/val
     if RANK in {-1, 0}:
         testloader = create_classification_dataloader(path=test_dir,
                                                       imgsz=imgsz,
@@ -104,13 +109,18 @@ def train(opt, device):
         if Path(opt.model).is_file() or opt.model.endswith('.pt'):
             model = attempt_load(opt.model, device='cpu', fuse=False)
         elif opt.model in torchvision.models.__dict__:  # TorchVision models i.e. resnet50, efficientnet_b0
-            model = torchvision.models.__dict__[opt.model](weights='IMAGENET1K_V1' if pretrained else None)
+            model = torchvision.models.__dict__[opt.model](
+                weights='IMAGENET1K_V1' if pretrained else None)
         else:
             m = hub.list('ultralytics/yolov5')  # + hub.list('pytorch/vision')  # models
-            raise ModuleNotFoundError(f'--model {opt.model} not found. Available models are: \n' + '\n'.join(m))
+            raise ModuleNotFoundError(f'--model {opt.model} not found. Available models are: \n' +
+                                      '\n'.join(m))
         if isinstance(model, DetectionModel):
-            LOGGER.warning("WARNING: pass YOLOv5 classifier model with '-cls' suffix, i.e. '--model yolov5s-cls.pt'")
-            model = ClassificationModel(model=model, nc=nc, cutoff=opt.cutoff or 10)  # convert to classification model
+            LOGGER.warning(
+                "WARNING: pass YOLOv5 classifier model with '-cls' suffix, i.e. '--model yolov5s-cls.pt'"
+            )
+            model = ClassificationModel(model=model, nc=nc, cutoff=opt.cutoff
+                                        or 10)  # convert to classification model
         reshape_classifier_output(model, nc)  # update class count
     for p in model.parameters():
         p.requires_grad = True  # for training
@@ -157,11 +167,13 @@ def train(opt, device):
     best_fitness = 0.0
     scaler = amp.GradScaler(enabled=cuda)
     val = test_dir.stem  # 'val' or 'test'
-    LOGGER.info(f'Image sizes {imgsz} train, {imgsz} test\n'
-                f'Using {nw * WORLD_SIZE} dataloader workers\n'
-                f"Logging results to {colorstr('bold', save_dir)}\n"
-                f'Starting {opt.model} training on {data} dataset with {nc} classes for {epochs} epochs...\n\n'
-                f"{'Epoch':>10}{'GPU_mem':>10}{'train_loss':>12}{f'{val}_loss':>12}{'top1_acc':>12}{'top5_acc':>12}")
+    LOGGER.info(
+        f'Image sizes {imgsz} train, {imgsz} test\n'
+        f'Using {nw * WORLD_SIZE} dataloader workers\n'
+        f"Logging results to {colorstr('bold', save_dir)}\n"
+        f'Starting {opt.model} training on {data} dataset with {nc} classes for {epochs} epochs...\n\n'
+        f"{'Epoch':>10}{'GPU_mem':>10}{'train_loss':>12}{f'{val}_loss':>12}{'top1_acc':>12}{'top5_acc':>12}"
+    )
     for epoch in range(epochs):  # loop over the dataset multiple times
         tloss, vloss, fitness = 0.0, 0.0, 0.0  # train loss, val loss, fitness
         model.train()
@@ -169,7 +181,9 @@ def train(opt, device):
             trainloader.sampler.set_epoch(epoch)
         pbar = enumerate(trainloader)
         if RANK in {-1, 0}:
-            pbar = tqdm(enumerate(trainloader), total=len(trainloader), bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')
+            pbar = tqdm(enumerate(trainloader),
+                        total=len(trainloader),
+                        bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')
         for i, (images, labels) in pbar:  # progress bar
             images, labels = images.to(device, non_blocking=True), labels.to(device)
 
@@ -192,7 +206,8 @@ def train(opt, device):
             if RANK in {-1, 0}:
                 # Print
                 tloss = (tloss * i + loss.item()) / (i + 1)  # update mean losses
-                mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
+                mem = '%.3gG' % (
+                    torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
                 pbar.desc = f"{f'{epoch + 1}/{epochs}':>10}{mem:>10}{tloss:>12.3g}" + ' ' * 36
 
                 # Test
@@ -218,7 +233,8 @@ def train(opt, device):
                 f"{val}/loss": vloss,
                 "metrics/accuracy_top1": top1,
                 "metrics/accuracy_top5": top5,
-                "lr/0": optimizer.param_groups[0]['lr']}  # learning rate
+                "lr/0": optimizer.param_groups[0]['lr']
+            }  # learning rate
             logger.log_metrics(metrics, epoch)
 
             # Save model
@@ -232,7 +248,8 @@ def train(opt, device):
                     'updates': ema.updates,
                     'optimizer': None,  # optimizer.state_dict(),
                     'opt': vars(opt),
-                    'date': datetime.now().isoformat()}
+                    'date': datetime.now().isoformat()
+                }
 
                 # Save last, best and delete
                 torch.save(ckpt, last)
@@ -242,18 +259,24 @@ def train(opt, device):
 
     # Train complete
     if RANK in {-1, 0} and final_epoch:
-        LOGGER.info(f'\nTraining complete ({(time.time() - t0) / 3600:.3f} hours)'
-                    f"\nResults saved to {colorstr('bold', save_dir)}"
-                    f"\nPredict:         python classify/predict.py --weights {best} --source im.jpg"
-                    f"\nValidate:        python classify/val.py --weights {best} --data {data_dir}"
-                    f"\nExport:          python export.py --weights {best} --include onnx"
-                    f"\nPyTorch Hub:     model = torch.hub.load('ultralytics/yolov5', 'custom', '{best}')"
-                    f"\nVisualize:       https://netron.app\n")
+        LOGGER.info(
+            f'\nTraining complete ({(time.time() - t0) / 3600:.3f} hours)'
+            f"\nResults saved to {colorstr('bold', save_dir)}"
+            f"\nPredict:         python classify/predict.py --weights {best} --source im.jpg"
+            f"\nValidate:        python classify/val.py --weights {best} --data {data_dir}"
+            f"\nExport:          python export.py --weights {best} --include onnx"
+            f"\nPyTorch Hub:     model = torch.hub.load('ultralytics/yolov5', 'custom', '{best}')"
+            f"\nVisualize:       https://netron.app\n")
 
         # Plot examples
         images, labels = (x[:25] for x in next(iter(testloader)))  # first 25 images and labels
         pred = torch.max(ema.ema((images.half() if cuda else images.float()).to(device)), 1)[1]
-        file = imshow_cls(images, labels, pred, names, verbose=False, f=save_dir / 'test_images.jpg')
+        file = imshow_cls(images,
+                          labels,
+                          pred,
+                          names,
+                          verbose=False,
+                          f=save_dir / 'test_images.jpg')
 
         # Log results
         meta = {"epochs": epochs, "top1_acc": best_fitness, "date": datetime.now().isoformat()}
@@ -264,26 +287,59 @@ def train(opt, device):
 def parse_opt(known=False):
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='yolov5s-cls.pt', help='initial weights path')
-    parser.add_argument('--data', type=str, default='mnist', help='cifar10, cifar100, mnist, imagenet, etc.')
+    parser.add_argument('--data',
+                        type=str,
+                        default='mnist',
+                        help='cifar10, cifar100, mnist, imagenet, etc.')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64, help='total batch size for all GPUs')
-    parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=128, help='train, val image size (pixels)')
+    parser.add_argument('--imgsz',
+                        '--img',
+                        '--img-size',
+                        type=int,
+                        default=128,
+                        help='train, val image size (pixels)')
     parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')
-    parser.add_argument('--cache', type=str, nargs='?', const='ram', help='--cache images in "ram" (default) or "disk"')
+    parser.add_argument('--cache',
+                        type=str,
+                        nargs='?',
+                        const='ram',
+                        help='--cache images in "ram" (default) or "disk"')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--workers', type=int, default=8, help='max dataloader workers (per RANK in DDP mode)')
+    parser.add_argument('--workers',
+                        type=int,
+                        default=8,
+                        help='max dataloader workers (per RANK in DDP mode)')
     parser.add_argument('--project', default=ROOT / 'runs/train-cls', help='save to project/name')
     parser.add_argument('--name', default='exp', help='save to project/name')
-    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-    parser.add_argument('--pretrained', nargs='?', const=True, default=True, help='start from i.e. --pretrained False')
-    parser.add_argument('--optimizer', choices=['SGD', 'Adam', 'AdamW', 'RMSProp'], default='Adam', help='optimizer')
+    parser.add_argument('--exist-ok',
+                        action='store_true',
+                        help='existing project/name ok, do not increment')
+    parser.add_argument('--pretrained',
+                        nargs='?',
+                        const=True,
+                        default=True,
+                        help='start from i.e. --pretrained False')
+    parser.add_argument('--optimizer',
+                        choices=['SGD', 'Adam', 'AdamW', 'RMSProp'],
+                        default='Adam',
+                        help='optimizer')
     parser.add_argument('--lr0', type=float, default=0.001, help='initial learning rate')
-    parser.add_argument('--label-smoothing', type=float, default=0.1, help='Label smoothing epsilon')
-    parser.add_argument('--cutoff', type=int, default=None, help='Model layer cutoff index for Classify() head')
+    parser.add_argument('--label-smoothing',
+                        type=float,
+                        default=0.1,
+                        help='Label smoothing epsilon')
+    parser.add_argument('--cutoff',
+                        type=int,
+                        default=None,
+                        help='Model layer cutoff index for Classify() head')
     parser.add_argument('--dropout', type=float, default=None, help='Dropout (fraction)')
     parser.add_argument('--verbose', action='store_true', help='Verbose mode')
     parser.add_argument('--seed', type=int, default=0, help='Global training seed')
-    parser.add_argument('--local_rank', type=int, default=-1, help='Automatic DDP Multi-GPU argument, do not modify')
+    parser.add_argument('--local_rank',
+                        type=int,
+                        default=-1,
+                        help='Automatic DDP Multi-GPU argument, do not modify')
     return parser.parse_known_args()[0] if known else parser.parse_args()
 
 
@@ -305,7 +361,8 @@ def main(opt):
         dist.init_process_group(backend="nccl" if dist.is_nccl_available() else "gloo")
 
     # Parameters
-    opt.save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)  # increment run
+    opt.save_dir = increment_path(Path(opt.project) / opt.name,
+                                  exist_ok=opt.exist_ok)  # increment run
 
     # Train
     train(opt, device)

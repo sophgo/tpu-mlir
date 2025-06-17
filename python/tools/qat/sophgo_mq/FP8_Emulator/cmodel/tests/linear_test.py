@@ -1,5 +1,5 @@
-#------------------------------------------------------------------------------ 
-# Copyright (c) 2023, Intel Corporation - All rights reserved. 
+#------------------------------------------------------------------------------
+# Copyright (c) 2023, Intel Corporation - All rights reserved.
 # This file is part of FP8-Emulation-Toolkit
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from mpemu.cmodel import simple
+
 
 class Net(nn.Module):
 
@@ -30,6 +31,7 @@ class Net(nn.Module):
             num_features *= s
         return num_features
 
+
 net = Net()
 net1 = Net()
 print(net)
@@ -43,11 +45,10 @@ target = torch.randn(120, dtype=torch.float32, device="cpu")  # a dummy target, 
 target = target.view(1, -1)  # make it the same shape as output
 criterion = nn.MSELoss()
 loss = criterion(output, target)
-net.zero_grad()     # zeroes the gradient buffers of all parameters
+net.zero_grad()  # zeroes the gradient buffers of all parameters
 #loss.backward(retain_graph=True)
 loss.backward()
 print("fc weight grads:", net.fc.weight.grad)
-
 
 torch.addmm_back = torch.addmm
 torch.matmul_back = torch.matmul
@@ -58,7 +59,7 @@ output1 = net1(input_new)
 #print("fc output:", output1.size(), output1)
 
 loss1 = criterion(output1, target)
-net1.zero_grad()     # zeroes the gradient buffers of all parameters
+net1.zero_grad()  # zeroes the gradient buffers of all parameters
 loss1.backward()
 print("fc weight grads:", net1.fc.weight.grad)
 

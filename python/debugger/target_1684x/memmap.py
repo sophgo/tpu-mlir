@@ -13,12 +13,13 @@ import functools
 from typing import Tuple
 from functools import lru_cache
 
+
 class BM1684XInfo:
+
     def __init__(self) -> None:
         self.lib_name = (
-            "libcmodel_1684x.so"
-            if platform.machine() == "x86_64"
-            else "libbm1684x_atomic_kernel.so" # do not use libbm1684x_kernel_module, which may cause nan error
+            "libcmodel_1684x.so" if platform.machine() == "x86_64" else
+            "libbm1684x_atomic_kernel.so"  # do not use libbm1684x_kernel_module, which may cause nan error
         )
         self._lib = None
 
@@ -101,8 +102,8 @@ class BM1684XInfo:
         }
         return TYPED_CUBE_NUM[dtype]
 
-info = BM1684XInfo()
 
+info = BM1684XInfo()
 
 # TPU1688/bm1688/spec/include/memmap.h
 memmap = {
@@ -235,7 +236,8 @@ class MemRef(MemRefBase):
 
         if self.layout == Layout.alignIC:
             cube_num = info.CUBE_NUM(self.dtype)
-            return 1, min(n, info.NPU_NUM), 1, div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num)
+            return 1, min(n,
+                          info.NPU_NUM), 1, div_up(n, info.NPU_NUM) * h * w * align_up(c, cube_num)
 
         if self.layout == Layout.matrix:
             w = self.layout.args[0]

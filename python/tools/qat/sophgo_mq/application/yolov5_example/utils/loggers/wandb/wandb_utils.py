@@ -49,10 +49,10 @@ def check_wandb_dataset(data_file):
     if check_file(data_file) and data_file.endswith('.yaml'):
         with open(data_file, errors='ignore') as f:
             data_dict = yaml.safe_load(f)
-        is_trainset_wandb_artifact = isinstance(data_dict['train'],
-                                                str) and data_dict['train'].startswith(WANDB_ARTIFACT_PREFIX)
-        is_valset_wandb_artifact = isinstance(data_dict['val'],
-                                              str) and data_dict['val'].startswith(WANDB_ARTIFACT_PREFIX)
+        is_trainset_wandb_artifact = isinstance(
+            data_dict['train'], str) and data_dict['train'].startswith(WANDB_ARTIFACT_PREFIX)
+        is_valset_wandb_artifact = isinstance(
+            data_dict['val'], str) and data_dict['val'].startswith(WANDB_ARTIFACT_PREFIX)
     if is_trainset_wandb_artifact or is_valset_wandb_artifact:
         return data_dict
     else:
@@ -75,7 +75,8 @@ def check_wandb_resume(opt):
             if RANK not in [-1, 0]:  # For resuming DDP runs
                 entity, project, run_id, model_artifact_name = get_run_info(opt.resume)
                 api = wandb.Api()
-                artifact = api.artifact(entity + '/' + project + '/' + model_artifact_name + ':latest')
+                artifact = api.artifact(entity + '/' + project + '/' + model_artifact_name +
+                                        ':latest')
                 modeldir = artifact.download()
                 opt.weights = str(Path(modeldir) / "last.pt")
             return True
@@ -159,14 +160,15 @@ class WandbLogger():
                                             allow_val_change=True)
                 opt.resume = model_artifact_name
         elif self.wandb:
-            self.wandb_run = wandb.init(config=opt,
-                                        resume="allow",
-                                        project='YOLOv5' if opt.project == 'runs/train' else Path(opt.project).stem,
-                                        entity=opt.entity,
-                                        name=opt.name if opt.name != 'exp' else None,
-                                        job_type=job_type,
-                                        id=run_id,
-                                        allow_val_change=True) if not wandb.run else wandb.run
+            self.wandb_run = wandb.init(
+                config=opt,
+                resume="allow",
+                project='YOLOv5' if opt.project == 'runs/train' else Path(opt.project).stem,
+                entity=opt.entity,
+                name=opt.name if opt.name != 'exp' else None,
+                job_type=job_type,
+                id=run_id,
+                allow_val_change=True) if not wandb.run else wandb.run
         if self.wandb_run:
             if self.job_type == 'Training':
                 if opt.upload_dataset:
@@ -188,7 +190,8 @@ class WandbLogger():
                     self.wandb_artifact_data_dict = self.wandb_artifact_data_dict or self.data_dict
 
                     # write data_dict to config. useful for resuming from artifacts. Do this only when not resuming.
-                    self.wandb_run.config.update({'data_dict': self.wandb_artifact_data_dict}, allow_val_change=True)
+                    self.wandb_run.config.update({'data_dict': self.wandb_artifact_data_dict},
+                                                 allow_val_change=True)
                 self.setup_training(opt)
 
             if self.job_type == 'Dataset Creation':
@@ -206,8 +209,9 @@ class WandbLogger():
         Updated dataset info dictionary where local dataset paths are replaced by WAND_ARFACT_PREFIX links.
         """
         assert wandb, 'Install wandb to upload dataset'
-        config_path = self.log_dataset_artifact(opt.data, opt.single_cls,
-                                                'YOLOv5' if opt.project == 'runs/train' else Path(opt.project).stem)
+        config_path = self.log_dataset_artifact(
+            opt.data, opt.single_cls,
+            'YOLOv5' if opt.project == 'runs/train' else Path(opt.project).stem)
         with open(config_path, errors='ignore') as f:
             wandb_data_dict = yaml.safe_load(f)
         return wandb_data_dict
@@ -292,7 +296,8 @@ class WandbLogger():
         opt (namespace) -- Commandline arguments for this run
         """
         if opt.resume.startswith(WANDB_ARTIFACT_PREFIX):
-            model_artifact = wandb.use_artifact(remove_prefix(opt.resume, WANDB_ARTIFACT_PREFIX) + ":latest")
+            model_artifact = wandb.use_artifact(
+                remove_prefix(opt.resume, WANDB_ARTIFACT_PREFIX) + ":latest")
             assert model_artifact is not None, 'Error: W&B model artifact doesn\'t exist'
             modeldir = model_artifact.download()
             # epochs_trained = model_artifact.metadata.get('epochs_trained')
@@ -321,10 +326,14 @@ class WandbLogger():
                                             'save period': opt.save_period,
                                             'project': opt.project,
                                             'total_epochs': opt.epochs,
-                                            'fitness_score': fitness_score})
+                                            'fitness_score': fitness_score
+                                        })
         model_artifact.add_file(str(path / 'last.pt'), name='last.pt')
         wandb.log_artifact(model_artifact,
-                           aliases=['latest', 'last', 'epoch ' + str(self.current_epoch), 'best' if best_model else ''])
+                           aliases=[
+                               'latest', 'last', 'epoch ' + str(self.current_epoch),
+                               'best' if best_model else ''
+                           ])
         LOGGER.info(f"Saving model artifact on epoch {epoch + 1}")
 
     def log_dataset_artifact(self, data_file, single_cls, project, overwrite_config=False):
@@ -350,21 +359,23 @@ class WandbLogger():
 
         # log train set
         if not log_val_only:
-            self.train_artifact = self.create_dataset_table(LoadImagesAndLabels(data['train'], rect=True, batch_size=1),
-                                                            names,
-                                                            name='train') if data.get('train') else None
+            self.train_artifact = self.create_dataset_table(
+                LoadImagesAndLabels(data['train'], rect=True, batch_size=1), names,
+                name='train') if data.get('train') else None
             if data.get('train'):
                 data['train'] = WANDB_ARTIFACT_PREFIX + str(Path(project) / 'train')
 
         self.val_artifact = self.create_dataset_table(
-            LoadImagesAndLabels(data['val'], rect=True, batch_size=1), names, name='val') if data.get('val') else None
+            LoadImagesAndLabels(data['val'], rect=True,
+                                batch_size=1), names, name='val') if data.get('val') else None
         if data.get('val'):
             data['val'] = WANDB_ARTIFACT_PREFIX + str(Path(project) / 'val')
 
         path = Path(data_file)
         # create a _wandb.yaml file with artifacts links if both train and test set are logged
         if not log_val_only:
-            path = (path.stem if overwrite_config else path.stem + '_wandb') + '.yaml'  # updated data.yaml path
+            path = (path.stem if overwrite_config else path.stem +
+                    '_wandb') + '.yaml'  # updated data.yaml path
             path = ROOT / 'data' / path
             data.pop('download', None)
             data.pop('path', None)
@@ -395,7 +406,10 @@ class WandbLogger():
         for i, data in enumerate(tqdm(self.val_table.data)):
             self.val_table_path_map[data[3]] = data[0]
 
-    def create_dataset_table(self, dataset: LoadImagesAndLabels, class_to_id: Dict[int, str], name: str = 'dataset'):
+    def create_dataset_table(self,
+                             dataset: LoadImagesAndLabels,
+                             class_to_id: Dict[int, str],
+                             name: str = 'dataset'):
         """
         Create and return W&B artifact containing W&B Table of the dataset.
 
@@ -409,7 +423,9 @@ class WandbLogger():
         """
         # TODO: Explore multiprocessing to slpit this loop parallely| This is essential for speeding up the the logging
         artifact = wandb.Artifact(name=name, type="dataset")
-        img_files = tqdm([dataset.path]) if isinstance(dataset.path, str) and Path(dataset.path).is_dir() else None
+        img_files = tqdm([
+            dataset.path
+        ]) if isinstance(dataset.path, str) and Path(dataset.path).is_dir() else None
         img_files = tqdm(dataset.im_files) if not img_files else img_files
         for img_file in img_files:
             if Path(img_file).is_dir():
@@ -431,12 +447,20 @@ class WandbLogger():
                     "position": {
                         "middle": [xywh[0], xywh[1]],
                         "width": xywh[2],
-                        "height": xywh[3]},
+                        "height": xywh[3]
+                    },
                     "class_id": cls,
-                    "box_caption": "%s" % (class_to_id[cls])})
+                    "box_caption": "%s" % (class_to_id[cls])
+                })
                 img_classes[cls] = class_to_id[cls]
-            boxes = {"ground_truth": {"box_data": box_data, "class_labels": class_to_id}}  # inference-space
-            table.add_data(si, wandb.Image(paths, classes=class_set, boxes=boxes), list(img_classes.values()),
+            boxes = {
+                "ground_truth": {
+                    "box_data": box_data,
+                    "class_labels": class_to_id
+                }
+            }  # inference-space
+            table.add_data(si, wandb.Image(paths, classes=class_set, boxes=boxes),
+                           list(img_classes.values()),
                            Path(paths).name)
         artifact.add(table, name)
         return artifact
@@ -462,12 +486,15 @@ class WandbLogger():
                         "minX": xyxy[0],
                         "minY": xyxy[1],
                         "maxX": xyxy[2],
-                        "maxY": xyxy[3]},
+                        "maxY": xyxy[3]
+                    },
                     "class_id": cls,
                     "box_caption": f"{names[cls]} {conf:.3f}",
                     "scores": {
-                        "class_score": conf},
-                    "domain": "pixel"})
+                        "class_score": conf
+                    },
+                    "domain": "pixel"
+                })
                 avg_conf_per_class[cls] += conf
 
                 if cls in pred_class_count:
@@ -476,13 +503,15 @@ class WandbLogger():
                     pred_class_count[cls] = 1
 
         for pred_class in pred_class_count.keys():
-            avg_conf_per_class[pred_class] = avg_conf_per_class[pred_class] / pred_class_count[pred_class]
+            avg_conf_per_class[
+                pred_class] = avg_conf_per_class[pred_class] / pred_class_count[pred_class]
 
         boxes = {"predictions": {"box_data": box_data, "class_labels": names}}  # inference-space
         id = self.val_table_path_map[Path(path).name]
-        self.result_table.add_data(self.current_epoch, id, self.val_table.data[id][1],
-                                   wandb.Image(self.val_table.data[id][1], boxes=boxes, classes=class_set),
-                                   *avg_conf_per_class)
+        self.result_table.add_data(
+            self.current_epoch, id, self.val_table.data[id][1],
+            wandb.Image(self.val_table.data[id][1], boxes=boxes, classes=class_set),
+            *avg_conf_per_class)
 
     def val_one_image(self, pred, predn, path, names, im):
         """
@@ -503,13 +532,21 @@ class WandbLogger():
                         "minX": xyxy[0],
                         "minY": xyxy[1],
                         "maxX": xyxy[2],
-                        "maxY": xyxy[3]},
+                        "maxY": xyxy[3]
+                    },
                     "class_id": int(cls),
                     "box_caption": f"{names[int(cls)]} {conf:.3f}",
                     "scores": {
-                        "class_score": conf},
-                    "domain": "pixel"} for *xyxy, conf, cls in pred.tolist()]
-                boxes = {"predictions": {"box_data": box_data, "class_labels": names}}  # inference-space
+                        "class_score": conf
+                    },
+                    "domain": "pixel"
+                } for *xyxy, conf, cls in pred.tolist()]
+                boxes = {
+                    "predictions": {
+                        "box_data": box_data,
+                        "class_labels": names
+                    }
+                }  # inference-space
                 self.bbox_media_panel_images.append(wandb.Image(im, boxes=boxes, caption=path.name))
 
     def log(self, log_dict):
@@ -550,13 +587,15 @@ class WandbLogger():
                 wandb.log_artifact(self.result_artifact,
                                    aliases=[
                                        'latest', 'last', 'epoch ' + str(self.current_epoch),
-                                       ('best' if best_result else '')])
+                                       ('best' if best_result else '')
+                                   ])
 
                 wandb.log({"evaluation": self.result_table})
                 columns = ["epoch", "id", "ground truth", "prediction"]
                 columns.extend(self.data_dict['names'])
                 self.result_table = wandb.Table(columns)
-                self.result_artifact = wandb.Artifact("run_" + wandb.run.id + "_progress", "evaluation")
+                self.result_artifact = wandb.Artifact("run_" + wandb.run.id + "_progress",
+                                                      "evaluation")
 
     def finish_run(self):
         """

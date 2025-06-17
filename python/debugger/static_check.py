@@ -21,6 +21,7 @@ checks: Dict[str, Type[Check]] = {}
 
 
 class Checker:
+
     def __init__(self, tdb: TdbCmdBackend) -> None:
         self.tdb = tdb
 
