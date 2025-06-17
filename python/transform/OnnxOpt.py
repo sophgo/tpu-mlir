@@ -324,15 +324,26 @@ class ConstantFolding(object):
         return do_eliminate
 
     def remove_unused_nodes(self):
+        # find subgraph nodes
+        def collect_subgraph_tensors(graph):
+            tensors = set()
+            for node in graph.node:
+                tensors.update(node.input)
+            return tensors
         node_inputs = []
         unused_node = []
+        subgraph_nodes = set()
         for n in self.model.graph.node:
             node_inputs.extend(n.input)
+            if n.op_type in ["If", "Loop", "Scan"]:
+                for attr in n.attribute:
+                    if attr.type == onnx.AttributeProto.GRAPH:
+                        subgraph_nodes.update(collect_subgraph_tensors(attr.g))
         node_inputs.extend([out.name for out in self.model.graph.output])
         node_inputs = set(node_inputs)
 
         for n in self.model.graph.node:
-            if len(set(n.output).intersection(node_inputs)) == 0:
+            if len(set(n.output).intersection(node_inputs)) == 0 and len(set(n.output).intersection(subgraph_nodes)) == 0:
                 unused_node.append(n)
         for n in unused_node:
             self.model.graph.node.remove(n)
@@ -366,6 +377,10 @@ class ConstantFolding(object):
         fixed_point(self.folding)
         self.remove_unused_nodes()
         # dump_model(self.model, "constant_opt.onnx")
+        try:
+            onnx.checker.check_model(self.model)
+        except:
+            print("WARNING: onnx model check failed")
         return self.model
 
 
