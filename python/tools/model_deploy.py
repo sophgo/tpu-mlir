@@ -288,7 +288,7 @@ class DeployTool:
                     data = np.load(infile)
                     self.tpu_inputs[op.name] = data
                     if gen_ref:
-                        gen_input_f32[op.name] = self.tpu_inputs
+                        gen_input_f32[op.name] = self.tpu_inputs[op.name]
                 else:
                     raise TypeError("Unsupport input type *{}".format(os.path.splitext(infile)))
         if self.aligned_input and not self.fuse_preprocess:
