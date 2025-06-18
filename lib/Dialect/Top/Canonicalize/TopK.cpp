@@ -216,7 +216,94 @@ private:
   }
 };
 
+struct TopKTranspose : public OpRewriterPatternEx<TopKOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  TopKTranspose(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<TopKOp>(context, "TopKTranspose") {}
+
+  LogicalResult matchAndRewriteImpl(TopKOp op,
+                                    PatternRewriter &rewriter) const override {
+    // examine axis
+    auto axis = op.getAxis();
+    auto input = op.getInput();
+    auto input_shape = module::getShape(input);
+    int64_t rank = input_shape.size();
+
+    // support axis < 0
+    if (axis < 0) {
+      axis += rank;
+      op.setAxis(axis);
+    }
+
+    if (axis == rank - 1) {
+      return failure();
+    }
+
+    // create permute
+    std::vector<int64_t> perm;
+    for (int64_t i = 0; i < rank; ++i) {
+      if (i != axis)
+        perm.push_back(i);
+    }
+    perm.push_back(axis); // 将目标轴移到末尾
+
+    // create invert permute
+    std::vector<int64_t> inv_perm(rank);
+    for (int64_t i = 0; i < rank; ++i) {
+      inv_perm[perm[i]] = i;
+    }
+
+    // insert permuteOp
+    rewriter.setInsertionPoint(op);
+    auto perm_loc =
+        NameLoc::get(rewriter.getStringAttr("transpose_before_topk"));
+    auto perm_attr = rewriter.getI64ArrayAttr(perm);
+    auto transpose_input =
+        rewriter.create<PermuteOp>(perm_loc, input.getType(), input, perm_attr);
+
+    // create new topk with axis == -1
+    std::vector<Location> locs = {};
+    std::string value_name = module::getName(op.getResult(0)).str();
+    std::string indice_name = module::getName(op.getResult(1)).str();
+
+    auto topk_value_loc =
+        NameLoc::get(rewriter.getStringAttr(value_name + "_transpose"));
+    auto topk_indice_loc =
+        NameLoc::get(rewriter.getStringAttr(indice_name + "_transpose"));
+
+    locs.push_back(topk_indice_loc);
+    locs.push_back(topk_value_loc);
+    auto fused_loc = FusedLoc::get(getContext(), locs);
+
+    std::vector<Type> output_types{op.getValues().getType(),
+                                   op.getIndices().getType()};
+    auto new_topk = rewriter.create<TopKOp>(
+        fused_loc, output_types, ValueRange{transpose_input.getOutput()},
+        op->getAttrs());
+    new_topk.setAxis(rank - 1); // axis = -1
+
+    // permute values
+    auto value_loc = NameLoc::get(rewriter.getStringAttr(value_name));
+    auto transpose_values = rewriter.create<PermuteOp>(
+        value_loc, op.getValues().getType(), new_topk.getValues(),
+        rewriter.getI64ArrayAttr(inv_perm));
+
+    // permute indices
+    auto indice_loc = NameLoc::get(rewriter.getStringAttr(indice_name));
+    auto transpose_indices = rewriter.create<PermuteOp>(
+        indice_loc, op.getIndices().getType(), new_topk.getIndices(),
+        rewriter.getI64ArrayAttr(inv_perm));
+
+    rewriter.replaceOp(
+        op, {transpose_values.getOutput(), transpose_indices.getOutput()});
+
+    return success();
+  }
+};
+
 void TopKOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
   results.insert<TopKWithSlice>(context);
+  results.insert<TopKTranspose>(context);
 }
