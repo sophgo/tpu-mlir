@@ -106,8 +106,12 @@ static void core_match(PatternRewriter &rewriter,
 }
 
 // check if there is a dataFlow from a to b.
-bool isReachable(Operation *a, Operation *b) {
-  if (a && a == b)
+bool isReachable(Operation *a, Operation *b,
+                 llvm::DenseSet<Operation *> &visited) {
+  if (!a || visited.count(a))
+    return false;
+  visited.insert(a);
+  if (a == b)
     return true;
   if (b->getNumOperands() == 0)
     return false;
@@ -116,9 +120,10 @@ bool isReachable(Operation *a, Operation *b) {
       return false;
   }
   if (!isa<FuncOp>(a->getParentOp()) || isa<tpu::YieldOp, top::YieldOp>(a))
-    return isReachable(a->getParentOp(), b);
-  return llvm::any_of(a->getUsers(),
-                      [b](Operation *op) { return isReachable(op, b); });
+    return isReachable(a->getParentOp(), b, visited);
+  return llvm::any_of(a->getUsers(), [&](Operation *op) {
+    return isReachable(op, b, visited);
+  });
 }
 
 bool isReachable_for_training(Operation *a, Operation *b,
@@ -187,7 +192,8 @@ bool isCircularDependency(std::vector<Operation *> &beginOps,
   } else {
     for (auto uOp : usedByOutside) {
       for (auto dOp : definedInOutside) {
-        if (isReachable(uOp, dOp)) {
+        llvm::DenseSet<Operation *> visited;
+        if (isReachable(uOp, dOp, visited)) {
           return true;
         }
       }
