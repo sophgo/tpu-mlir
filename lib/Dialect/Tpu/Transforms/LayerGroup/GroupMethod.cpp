@@ -436,6 +436,10 @@ static bool group_cslice_check(const LgInfo &lg_info) {
 bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
   auto res = true;
   if (runmode_ == RunMode::TPU_DYNAMIC && lg_info.group_ops.size() > 1) {
+    auto disable_dynamic_layer_group =
+        std::getenv("DISABLE_DYNAMIC_LAYER_GROUP");
+    if (disable_dynamic_layer_group)
+      return false;
     // return false;
     // Condition 1
     // Dynamic Backend will choose the first op's batch as the whole group's
@@ -659,12 +663,13 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   }
 
   *group_cost = lmem_allocator->get_min_group_cost();
-//   if (calc_cost) {
-// // remove it after pid_node is extractedb
-// #pragma omp critical(get_cycle)
-//     *group_cost =
-//         cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
-//   }
+  //   if (calc_cost) {
+  // // remove it after pid_node is extractedb
+  // #pragma omp critical(get_cycle)
+  //     *group_cost =
+  //         cycle_calculator_->getGroupCycle(time_step, shape_secs,
+  //         lg_info.type);
+  //   }
   PROFILE_LOG("is_layer_group_valid", false);
   lg_info.is_valid = VALID;
   lg_info.shape_secs = shape_secs;
@@ -847,7 +852,8 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
     return group_cost;
   };
 
-  LAYER_GROUP_LOG_DEBUG_BLOCK({llvm::outs() << "get clusters using dynamic programming...\n"; });
+  LAYER_GROUP_LOG_DEBUG_BLOCK(
+      { llvm::outs() << "get clusters using dynamic programming...\n"; });
   auto single_group_costs = std::vector<std::vector<int64_t>>(
       group_layer_num, std::vector<int64_t>(group_layer_num, MAX_COST));
   progressbar bar(max_cluster_size - 1);
@@ -855,13 +861,14 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
   for (size_t len = 2; len <= max_cluster_size; ++len) {
 #pragma omp critical(flush_progress_bar)
     bar.update();
-    for (int64_t start_idx = 0; start_idx <= group_layer_num - len; ++start_idx) {
+    for (int64_t start_idx = 0; start_idx <= group_layer_num - len;
+         ++start_idx) {
       int64_t end_idx = start_idx + len - 1;
       get_layer_group(lg_info, base_group, start_idx, end_idx, group_idx,
                       idx_offset);
       int64_t cost = LgCostCache::getInstance().cache_enabled
-                     ? calc_group_cost_with_cache(lg_info)
-                     : calc_group_cost(lg_info);
+                         ? calc_group_cost_with_cache(lg_info)
+                         : calc_group_cost(lg_info);
       single_group_costs[start_idx][end_idx] = cost;
     }
   }
@@ -895,20 +902,21 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
   }
   // extract clusters from cut_points and cost_table.
   std::function<void(int64_t, int64_t)> extract_clusters =
-       [&clusters, &cut_points, &extract_clusters] (int64_t start, int64_t end) {
-    int64_t opt_cut = cut_points[start][end];
-    if (opt_cut != end){
-      extract_clusters(start, opt_cut);
-      extract_clusters(opt_cut + 1, end);
-    } else {
-      clusters.push_back(std::make_pair(start, end - start + 1));
-    }
-  };
+      [&clusters, &cut_points, &extract_clusters](int64_t start, int64_t end) {
+        int64_t opt_cut = cut_points[start][end];
+        if (opt_cut != end) {
+          extract_clusters(start, opt_cut);
+          extract_clusters(opt_cut + 1, end);
+        } else {
+          clusters.push_back(std::make_pair(start, end - start + 1));
+        }
+      };
 
   extract_clusters(0, group_layer_num - 1);
-  std::sort(clusters.begin(), clusters.end(), [](const std::pair<int64_t, int64_t> &a, const std::pair<int64_t, int64_t> &b) {
-    return a.first < b.first;
-  });
+  std::sort(
+      clusters.begin(), clusters.end(),
+      [](const std::pair<int64_t, int64_t> &a,
+         const std::pair<int64_t, int64_t> &b) { return a.first < b.first; });
 }
 
 void GroupMethod::sweep_for_min_cost(
@@ -997,7 +1005,7 @@ void GroupMethod::dynamic_programming_kernel(
   };
 
   auto single_group_costs = std::vector<std::vector<int64_t>>(
-          cluster_num, std::vector<int64_t>(cluster_num, MAX_COST));
+      cluster_num, std::vector<int64_t>(cluster_num, MAX_COST));
 #pragma omp parallel for private(lg_info) schedule(dynamic, 1)
   for (size_t len = 2; len <= cluster_num; ++len) {
 #pragma omp critical(flush_progress_bar)
@@ -1198,7 +1206,8 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
                    << "\n";
     });
     // get_group_clusters(clusters, base_groups[i], i, idx_offset);
-    get_group_clusters_with_dynamic_programming(clusters, base_groups[i], i, idx_offset);
+    get_group_clusters_with_dynamic_programming(clusters, base_groups[i], i,
+                                                idx_offset);
     size_t cluster_num = clusters.size();
     LAYER_GROUP_LOG_DEBUG_BLOCK({
       llvm::outs() << llvm::format(
