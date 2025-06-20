@@ -61,10 +61,10 @@ def run_from_mlir(mlir: str,
         generate_random_img(mlir_shapes, output)
         return
     if len(ranges) == 0:
-        for i in range(input_num):
-            ranges.append([-1.0, 1.0])
+        ranges = [[-1.0, 1.0] for _ in range(input_num)]
 
     create_and_save_tensors_to_npz(tensor_names, mlir_shapes, mlir_types, ranges, output)
+    ranges.clear()
 
 
 if __name__ == "__main__":

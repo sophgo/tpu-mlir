@@ -420,7 +420,7 @@ class fx2mlir(object):
                       tpu_mlir=self.tpu_mlir,
                       mode="F16",
                       chip=self.chip,
-                      num_core=config.num_core)
+                      num_core=config.get_num_core(self.chip))
         mlir_to_model(tpu_mlir=self.tpu_mlir,
                       bmodel_path=self.bmodel_path,
                       final_mlir=f"{self.model_name}_{self.chip}_f16_final.mlir",

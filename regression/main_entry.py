@@ -235,10 +235,17 @@ class MAIN_ENTRY(object):
         del maskrcnn_tester
         # send 1690 fx
         import test_fx
-        fx_tester = test_fx.FX_IR_TESTER()
-        for case in fx_tester.test_cases.keys():
-            self.commands.append(f"test_fx.py --case {case} > {self.log_dir}/test_fx_{case}.log\n")
-        del fx_tester
+        for chip in ["bm1684x", "bm1688", "bm1690"]:
+            fx_tester = test_fx.FX_IR_TESTER(chip=chip)
+            for case in fx_tester.test_cases.keys():
+                if fx_tester.check_support(case):
+                    self.commands.append(
+                        f"test_fx.py --case {case} --chip {chip}> {self.log_dir}/test_fx_{chip}_{case}.log\n"
+                    )
+                else:
+                    continue
+
+            del fx_tester
 
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)

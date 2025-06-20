@@ -34,11 +34,11 @@ class FX_IR_TESTER(object):
             #########################################
             # case: (test, bm1684x_support, bm1688_support, bm1690_support)
             "Convolution":              (self.test_Conv,                    N, N, Y),
-            "Convbackward":             (self.test_Conv_backward,           N, N, Y),
+            "Convbackward":             (self.test_Conv_backward,           N, Y, Y),
             "batchnormbwd":             (self.test_batchnormbwd,            N, N, Y),
             "batchnormfwd":             (self.test_batchnormfwd,            N, N, Y),
             "maxpoolwithmask":          (self.test_maxpoolwithmask,         N, N, Y),
-            "maxpoolwithmask_bwd":      (self.test_maxpoolwithmask_bwd,     N, N, Y),#indices need real data
+            "maxpoolwithmask_bwd":      (self.test_maxpoolwithmask_bwd,     N, Y, Y),#indices need real data
             "maxpoolwithmask_fwd_bwd":  (self.test_maxpoolwithmask_fwd_bwd, N, N, Y),
             "where_batchnormbwd":       (self.test_where_batchnormbwd,      N, N, Y),
         }
@@ -135,29 +135,52 @@ class FX_IR_TESTER(object):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self, stride=[1, 1], padding=[0, 0], dilation=[1, 1]):
                 super(Model, self).__init__()
+                self.stride = stride
+                self.padding = padding
+                self.dilation = dilation
 
             def forward(self, x, y, z):
                 #convolution_backward(Tensor grad_output, Tensor input, Tensor weight, SymInt[]? bias_sizes, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups, bool[3] output_mask) -> (Tensor, Tensor, Tensor)
                 out0, out1, out2 = torch.ops.aten.convolution_backward(
-                    x, y, z, [0], [1, 1], [0, 0], [1, 1], False, [0, 0], 1, [True, True, False])
+                    x, y, z, [0], self.stride, self.padding, self.dilation, False, [0, 0], 1,
+                    [True, True, False])
                 out2 = None
                 return [out0, out1]
 
-        self.trace_and_test([[8, 256, 56, 56], [8, 64, 56, 56], [256, 64, 1, 1]], Model())
+        if self.chip == "bm1690":
+            for batch, oc, ic, oh, ow, ih, iw, kh, kw in [(8, 128, 256, 56, 56, 56, 56, 1, 1),
+                                                          (128, 128, 256, 56, 56, 56, 56, 1, 1)]:
+                self.trace_and_test([[batch, oc, oh, ow], [batch, ic, ih, iw], [oc, ic, kh, kw]],
+                                    Model())
+        if self.chip == "bm1688":
+            for batch, oc, ic, oh, ow, ih, iw, kh, kw in [(8, 64, 64, 224, 224, 224, 224, 3, 3)]:
+                self.trace_and_test([[batch, oc, oh, ow], [batch, ic, ih, iw], [oc, ic, kh, kw]],
+                                    Model(padding=[1, 1]))
 
     def test_Conv(self):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self,
+                         stride=[1, 1],
+                         padding=[1, 1],
+                         dilation=[1, 1],
+                         output_padding=[0, 0],
+                         groups=1):
                 super(Model, self).__init__()
+                self.stride = stride
+                self.padding = padding
+                self.dilation = dilation
+                self.output_padding = output_padding
+                self.groups = groups
 
             def forward(self, x, y):
                 #convolution(Tensor input, Tensor weight, Tensor? bias, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups) -> Tensor
-                res = torch.ops.aten.convolution.default(x, y, None, [1, 1], [1, 1], [1, 1], False,
-                                                         [0, 0], 1)
+                res = torch.ops.aten.convolution.default(x, y, None, self.stride, self.padding,
+                                                         self.dilation, False, self.output_padding,
+                                                         self.groups)
                 return res
 
         self.trace_and_test([[1, 3, 16, 16], [3, 3, 3, 3]], Model())
@@ -166,16 +189,22 @@ class FX_IR_TESTER(object):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self, kernel_size=[3, 3], stride=[2, 2], padding=[0, 0], dilation=[1, 1]):
                 super(Model, self).__init__()
+                self.kernel_size = kernel_size
+                self.stride = stride
+                self.padding = padding
+                self.dilation = dilation
 
             def forward(self, x):
                 #max_pool2d_with_indices(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False) -> (Tensor, Tensor)
-                out0, out1 = torch.ops.aten.max_pool2d_with_indices(x, [3, 3], [2, 2], [0, 0],
-                                                                    [1, 1], False)
+                out0, out1 = torch.ops.aten.max_pool2d_with_indices(x, self.kernel_size,
+                                                                    self.stride, self.padding,
+                                                                    self.dilation, False)
                 return [out0, out1]
 
-        self.trace_and_test([[8, 64, 64, 64]], Model())
+        for batch, ch, h, w, kernel_size in [(8, 64, 64, 64, [3, 3]), (8, 64, 224, 224, [2, 2])]:
+            self.trace_and_test([[batch, ch, h, w]], Model(kernel_size=kernel_size))
 
     def test_maxpoolwithmask_bwd(self):
 
@@ -188,6 +217,7 @@ class FX_IR_TESTER(object):
                 #max_pool2d_with_indices_backward(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, int[2] dilation, bool ceil_mode, Tensor indices) -> Tensor
                 out0 = torch.ops.aten.max_pool2d_with_indices_backward(
                     x, y, [2, 2], [2, 2], [0, 0], [1, 1], False, z)
+                # out0 = torch.ops.aten.max_pool2d_with_indices_backward(x,y,[3,3],[2,2],[1,1],[1,1],False,z)
                 return [out0]
 
         class Model_fwd(torch.nn.Module):
@@ -199,15 +229,24 @@ class FX_IR_TESTER(object):
                 #max_pool2d_with_indices(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False) -> (Tensor, Tensor)
                 out0, out1 = torch.ops.aten.max_pool2d_with_indices(x, [2, 2], [2, 2], [0, 0],
                                                                     [1, 1], False)
+                # out0,out1 = torch.ops.aten.max_pool2d_with_indices(x,[3,3],[2,2],[1,1],[1,1],False)
+
                 return [out0, out1]
 
-        x = torch.randn(8, 3, 112, 112)
-        fwd_out = Model_fwd()(torch.randn(8, 3, 112, 112))
-        grad = torch.randn(8, 3, 56, 56)
-        inputs = [grad, x, fwd_out[1]]
-        self.trace_and_test([[8, 8, 56, 56], [8, 3, 112, 112], [8, 3, 56, 56]],
-                            Model(),
-                            real_data=inputs)
+        # bm1688 f32 0.99,0.92
+        # bm1684x f32 1.0 1.0
+        ch = 64
+        batch = 1
+
+        for isize, osize in [(112, 56), (224, 112)]:
+            x = torch.randn(batch, ch, isize, isize)
+            fwd_out = Model_fwd()(torch.randn(batch, ch, isize, isize))
+            grad = torch.randn(batch, ch, osize, osize)
+            inputs = [grad, x, fwd_out[1]]
+            self.trace_and_test(
+                [[batch, ch, osize, osize], [batch, ch, isize, isize], [batch, ch, osize, osize]],
+                Model(),
+                real_data=inputs)
 
     def test_maxpoolwithmask_fwd_bwd(self):
 
@@ -242,13 +281,9 @@ class FX_IR_TESTER(object):
                     x, y, z, w, a, b, c, True, 1e-5, [True, True, True])
                 return [out0, out1, out2]
 
-        self.trace_and_test(
-            [[8, 2048, 7, 7], [8, 2048, 7, 7], [2048], [2048], [2048], [2048], [2048]], Model())
-        c = 512
-        self.trace_and_test([[8, c, 7, 7], [8, c, 7, 7], [c], [c], [c], [c], [c]], Model())
-        h = 14
-        w = 14
-        self.trace_and_test([[8, c, h, w], [8, c, h, w], [c], [c], [c], [c], [c]], Model())
+        for batch, c, h, w in [(8, 64, 112, 112), (8, 512, 7, 7), (128, 512, 14, 14)]:
+            self.trace_and_test([[batch, c, h, w], [batch, c, h, w], [c], [c], [c], [c], [c]],
+                                Model())
 
     def test_where_batchnormbwd(self):
 
@@ -263,12 +298,18 @@ class FX_IR_TESTER(object):
                     conv, weight, bias, running_mean, running_var, True, 0.1, 1e-5)
                 relu_out = torch.nn.functional.relu(fwd_out[0])
                 threshold_backward = torch.ops.aten.threshold_backward.default(grad, relu_out, 0)
+                # np.savez('threshold_backward.npz', threshold_backward=threshold_backward.detach().cpu().numpy())
                 out0, out1, out2 = torch.ops.aten.native_batch_norm_backward(
                     threshold_backward, conv, weight, running_mean, running_var, fwd_out[1],
                     fwd_out[2], True, 1e-5, [True, True, True])
                 return [relu_out, out0, out1, out2]
 
-        shapes = [[8, 32, 7, 7], [32], [32], [32], [32], [8, 32, 7, 7], [8, 32, 7, 7]]
+        batch = 8
+        c = 32
+        h = 7
+        w = 7
+
+        shapes = [[batch, c, h, w], [c], [c], [c], [c], [batch, c, h, w], [batch, c, h, w]]
         inputs = [torch.randn(s) for s in shapes]
         self.trace_and_test(shapes, Model(), real_data=inputs)
         # c = 512
@@ -302,9 +343,12 @@ class FX_IR_TESTER(object):
 
 def test_one_case_in_all(tester: FX_IR_TESTER, case, error_cases, success_cases):
     t = Timer()
+    original_dir = os.getcwd()  # fx_test_{chip_name}
     try:
         tester.test_single(case)
+        os.chdir(original_dir)  # back to fx_test_{chip_name}
     except:
+        os.chdir(original_dir)
         error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
         return
     success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
