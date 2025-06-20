@@ -125,8 +125,13 @@ class FX_IR_TESTER(object):
                 i += 1
         np.savez('input_ref.npz', **input_ref)
         output_ref = {}
-        for i in range(len(res)):
-            output_ref[str(i)] = res[i].detach().numpy()
+        if isinstance(res, (list, tuple)):
+            for i in range(len(res)):
+                tensor = res[i].detach().cpu().numpy()
+                output_ref[str(i)] = tensor
+        elif isinstance(res, torch.Tensor):
+            tensor = res.detach().cpu().numpy()
+            output_ref["0"] = tensor
         np.savez('output_ref.npz', **output_ref)
         config.unit_test = True
         self.convert_module_fx(submodule_name=model_name, module=fx_module)

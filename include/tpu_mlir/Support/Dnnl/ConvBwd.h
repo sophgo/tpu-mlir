@@ -23,9 +23,9 @@ public:
              float *grad_input, float *grad_weight, float *grad_bias,
              int batch_size, int in_channels, int out_channels, int height,
              int width, int kernel_h, int kernel_w, int out_h, int out_w,
-             int stride_h, int stride_w, int pad_h, int pad_w,
-             bool compute_grad_input, bool compute_grad_weight,
-             bool compute_grad_bias);
+             int stride_h, int stride_w, int pad_h_t, int pad_w_l, int pad_h_b,
+             int pad_w_r, bool compute_grad_input, bool compute_grad_weight,
+             bool compute_grad_bias, int dilation_h, int dilation_w);
 
   void run();
 
@@ -39,6 +39,7 @@ private:
   memory::dims strides;
   memory::dims padding_l;
   memory::dims padding_r;
+  memory::dims dilation;
 
   memory src_mem;
   memory weights_mem;

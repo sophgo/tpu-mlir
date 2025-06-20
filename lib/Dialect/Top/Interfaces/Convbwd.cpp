@@ -61,7 +61,8 @@ LogicalResult top::ConvbwdOp::inference(InferenceParameter &p) {
   conv_bwd.setup(input, kernel, gradout, gradinput, gradweight, gradbias,
                  attr.n, attr.ic, attr.oc, attr.ih, attr.iw, attr.kh, attr.kw,
                  attr.oh, attr.ow, attr.sh, attr.sw, attr.pht, attr.pwl,
-                 cal_grad_input, cal_grad_weight, cal_grad_bias);
+                 attr.phb, attr.pwr, cal_grad_input, cal_grad_weight,
+                 cal_grad_bias, attr.dh, attr.dw);
   conv_bwd.run();
 
   return success();
