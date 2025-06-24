@@ -308,7 +308,7 @@ class Qwen2_5VLConverter(LlmConverter):
         mask_shape = [1, 1, self.num_patches, self.num_patches]
         out_dim = self.num_patches // (self.spatial_merge_size**2)
         out_shape = [out_dim, self.hidden_size]
-        input_shapes = [in_shape, position_shape, mask_shape, mask_shape, out_dim]
+        input_shapes = [in_shape, position_shape, mask_shape, mask_shape, [out_dim]]
         input_types = ['F32', 'INT32', 'F32', 'F32', 'INT32']
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
