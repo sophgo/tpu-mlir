@@ -272,4 +272,18 @@ int64_t tpu::Conv3DOp::DynForwardHeight(int64_t in_height) {
   return in_height;
 }
 
-bool tpu::Conv3DOp::support_multi_core() { return false; }
+bool tpu::Conv3DOp::support_multi_core() {
+  auto in_dtype = backend::BM168x::getDataType(getInput());
+  if (!(in_dtype == DTYPE_FP32 || in_dtype == DTYPE_FP16 ||
+        in_dtype == DTYPE_BFP16)) {
+    return false;
+  }
+
+  auto output_c = getOutput().getType().cast<RankedTensorType>().getShape()[1];
+  if (output_c > 1) {
+    if (module::isBM1690Family()) {
+      return true;
+    }
+  }
+  return false;
+}

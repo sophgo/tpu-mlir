@@ -50,6 +50,11 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
   spec.output_dtype = BM168x::getDataType(getOutput());
   spec.do_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
+  if (supportMultiCore(*this)) {
+    spec.using_multicore = true;
+  } else {
+    spec.using_multicore = false;
+  }
   if (module::getStorageType(getInput()).isIntOrIndex()) {
     auto out_etype = module::getStorageType(getOutput());
     spec.do_relu = out_etype.isUnsignedInteger();

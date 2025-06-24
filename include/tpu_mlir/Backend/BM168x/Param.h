@@ -471,6 +471,7 @@ typedef struct {
   int32_t kzp_val;
   int32_t pad_val;
   int32_t kzp_dtype;
+  bool using_multicore;
 } conv3d_global_spec_t;
 
 typedef struct conv3d_local_param {
