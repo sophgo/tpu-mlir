@@ -739,11 +739,19 @@ bool tpu::MatMulOp::support_multi_core() {
       }
     }
   }
-  if (!module::isBM1690Family()) {
-    return false;
-  }
-
   auto p = parseParam();
+  if (module::isBM1690Family()) {
+    auto in_type = module::getStorageType(getOperand(0));
+    if (in_type.isInteger(8)) {
+      if (p.left_transpose) {
+        return false;
+      }
+      if (p.batch > 1) {
+        return false;
+      }
+      return true;
+    }
+  }
 
   if (p.hdim_is_batch || p.batch != 1 || p.do_relu ||
       module::getMode() == module::Mode::F8E4M3 ||
