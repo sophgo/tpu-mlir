@@ -64,8 +64,14 @@ mkdir -p ${release_archive}/lib/capi/
 cp ${PROJECT_ROOT}/capi/lib/* ${release_archive}/lib/capi/
 
 mkdir -p ${release_archive}/python/
+
+cp -rf ${PROJECT_ROOT}/python/* ${release_archive}/python/
+# batch convert import path -> absolute path
+python3 ${PROJECT_ROOT}/release_tools/import_rewriter.py --project-root ${release_archive} --module-type tools
+python3 ${PROJECT_ROOT}/release_tools/import_rewriter.py --project-root ${release_archive} --module-type utils
+
 cp -rf /usr/local/python_packages/caffe/ ${release_archive}/python/caffe/
-cp ${PROJECT_ROOT}/release_tools/{__init__.py,entryconfig.py,batch_convert.py} ${release_archive}
+cp ${PROJECT_ROOT}/release_tools/{__init__.py,entryconfig.py} ${release_archive}
 cp ${PROJECT_ROOT}/release_tools/{setup.py,MANIFEST.in} ${PROJECT_ROOT}
 
 # collect_caffe_dependence
@@ -119,10 +125,6 @@ cp -L /usr/local/lib/libdnnl.so.3 ${release_archive}/lib/third_party/
 
 # collect_capi_dependence
 cp -rf ${PROJECT_ROOT}/capi/lib/* ${release_archive}/lib/third_party/
-
-# batch convert import path -> absolute path
-python3 ${release_archive}/batch_convert.py
-cp -rf ${PROJECT_ROOT}/python/* ${release_archive}/python/
 
 # automic entries gen for entry.py and set for setup.py
 python ${release_archive}/entryconfig.py --execute_path bin/ python/tools/ python/samples/ python/test/ python/PerfAI/ --execute_file customlayer/test/test_custom_tpulang.py
