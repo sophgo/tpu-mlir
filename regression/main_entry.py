@@ -252,15 +252,23 @@ class MAIN_ENTRY(object):
 
     def run_llm_test(self):
         NNMODELS_PATH = os.getenv('NNMODELS_PATH')
-        LLM_MODELS = [
-            "Qwen2.5-0.5B-Instruct", "Qwen2.5-0.5B-Instruct-AWQ", "Qwen2.5-0.5B-Instruct-GPTQ-Int4"
-        ]
+        LLM_MODELS = ["Qwen2.5-VL-3B-Instruct-GPTQ-Int4", "InternVL3-1B-AWQ"]
         for model in LLM_MODELS:
             MODEL_PATH = os.path.join(NNMODELS_PATH, "llm_models", model)
             self.run_command([
-                "llm_convert.py", "-m", MODEL_PATH, "-s", "384", "-q", "w4bf16", "-g", "128", "-c",
-                "bm1684x", "--out_dir", "qwen2.5_0.5b"
+                "llm_convert.py", "-m", MODEL_PATH, "-s", "2048", "-q", "w4bf16", "-c", "bm1684x",
+                "--out_dir", "llm_output", "--max_pixels", "672,896"
             ])
+            # check result
+            input_ref = os.path.join(MODEL_PATH, "block_cache_0_input.npz")
+            output_ref = os.path.join(MODEL_PATH, "block_cache_0_output.npz")
+            bmodel = os.path.join("llm_output",
+                                  model.lower() + "_w4bf16_seq2048_bm1684x_1dev",
+                                  "block_cache_0.bmodel")
+            self.run_command([
+                "model_runner.py", "--input", input_ref, "--model", bmodel, "--output", "output.npz"
+            ])
+            self.run_command(["npz_tool.py", "compare", output_ref, "output.npz"])
 
     def run_all(self, test_set):
         for test in test_set:
