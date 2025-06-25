@@ -529,7 +529,11 @@ public:
   }
 
   // pre encode each local op. Results stored as u64 strings.
-  void init(const std::vector<std::vector<Operation *>> &base_groups) {
+  void init(const std::vector<std::vector<Operation *>> &base_groups, bool dynamic_mode) {
+    if (dynamic_mode) {
+      cache_enabled = false;
+      return;
+    }
     cache_enabled = true;
     base_group_op_hash.resize(base_groups.size());
     for (size_t idx_group = 0; idx_group < base_groups.size(); ++idx_group) {
@@ -545,6 +549,10 @@ public:
 
   /// get sub-graph cost from cache
   bool get_cost_from_cache(const uint64_t key, int64_t &cost) {
+    if (!cache_enabled) {
+      llvm::errs() << "LgCostCache is not enabled.\n";
+      return false;
+    }
     auto it = cost_cache.find(key);
     if (it != cost_cache.end()) {
       cost = it->second;
@@ -560,6 +568,20 @@ public:
 
   /// gen hash key for sub-graph
   uint64_t get_graph_hash(const LgInfo &lginfo) {
+    /// use relative value-id to serialize sub-graph topo structure.
+    llvm::DenseMap<mlir::Value, int> value_id;
+    for (auto v : lginfo.group_ins) {
+      value_id[v] = value_id.size();
+    }
+    for (auto v : lginfo.group_outs) {
+      value_id[v] = value_id.size();
+    }
+    for (auto v : lginfo.group_op_outs) {
+      if (value_id.find(v) == value_id.end()) {
+        value_id[v] = value_id.size();
+      }
+    }
+
     const int64_t base_group_idx = lginfo.base_group_idx;
     assert(base_group_idx >= 0); /// -1 for init value.
     const int64_t start_idx = lginfo.start_idx, end_idx = lginfo.end_idx;
@@ -577,7 +599,17 @@ public:
     }
     os << "\ngroup_ops[" << lginfo.group_ops.size() << "]: ";
     for (int idx = start_idx; idx <= end_idx; ++idx) {
-      os << base_group_op_hash[base_group_idx][idx] << "; ";
+      os << "op: " << base_group_op_hash[base_group_idx][idx]
+         << "; operand_relative_ids:";
+      // add topo info.
+      for (auto v : lginfo.group_ops[idx-start_idx]->getOperands()) {
+        if (value_id.find(v) != value_id.end()) {
+          os << value_id[v] << " ";
+        } else {
+          os << "-1 ";
+        }
+      }
+      os << "; ";
     }
     os.flush();
     // std::cout << "\n" << buffer << "\n\n";

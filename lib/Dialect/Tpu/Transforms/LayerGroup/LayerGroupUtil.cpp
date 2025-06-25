@@ -1922,18 +1922,22 @@ static bool backward_update_slice(
         if (module::isCV18xx() || mode == RunMode::TPU_DYNAMIC || !pre_op) {
           return false;
         }
-        // "tpu.store" MAY not support storing a tensor with margins to GMEM.
-        auto isa_intermediate_op = [&lg_info](Operation *op) -> bool {
+        /* "tpu.store" now not support storing a tensor with margins to GMEM. */
+        auto followed_by_store_op = [&lg_info](Operation *op) -> bool {
+          if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(), op)
+                        == lg_info.group_ops.end()) {
+            return false; // do not need to a store_op.
+          }
           for (auto user : op->getUsers()) {
             if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                           user) == lg_info.group_ops.end())
-              return false;
+              return true;
           }
-          return true;
+          return false;
         };
         // Whether backend func can accept input tensor with margins. (NOTE: LUT
         // has no backend support.)
-        auto tpukernel_allow_HWmargins = [&lg_info](Operation *op) -> bool {
+        auto tpukernel_support_HWmargins = [&lg_info](Operation *op) -> bool {
           if (isa<tpu::Conv2DOp>(op) &&
               op->getAttrOfType<IntegerAttr>("group").getInt() > 1) {
             // Note: backend function is incomplete, feel free to complete it
@@ -1948,11 +1952,11 @@ static bool backward_update_slice(
           }
         };
 
-        if (!isa_intermediate_op(pre_op)) {
+        if (followed_by_store_op(pre_op)) {
           return false;
         }
         for (auto user : pre_op->getUsers()) {
-          if (!(tpukernel_allow_HWmargins(user) ||
+          if (!(tpukernel_support_HWmargins(user) ||
                 isa<tpu::LutOp, tpu::CastOp>(user)) ||
               module::isF8Modes()) {
             return false;
@@ -2006,11 +2010,11 @@ static bool backward_update_slice(
               // For now, LutOp has no backend support for HW-margins, so
               // HW-margins must insteadly be passed to && processed by its
               // child Operator.
-              if (!isa_intermediate_op(user)) {
+              if (followed_by_store_op(user)) {
                 return false;
               }
               for (auto lut_user : user->getUsers()) {
-                if (!tpukernel_allow_HWmargins(lut_user))
+                if (!tpukernel_support_HWmargins(lut_user))
                   return false;
               }
               auto val = user->getResult(0);

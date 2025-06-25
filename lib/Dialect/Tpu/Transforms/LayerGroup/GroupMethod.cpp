@@ -1177,8 +1177,8 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
     llvm::outs() << llvm::format("total num of base_group is %d\n",
                                  base_groups.size());
   });
-  LgCostCache::getInstance().init(
-      base_groups); // To disable cache, just comment this line.
+  LgCostCache::getInstance().init(base_groups,
+      runmode_ == RunMode::TPU_DYNAMIC); // To disable cache, comment this line.
   int64_t idx_offset = 0;
   for (size_t i = 0; i < base_groups.size();
        idx_offset += base_groups[i].size(), ++i) {
