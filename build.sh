@@ -84,11 +84,13 @@ bash lib/PplBackend/build.sh
 # Clean up some files for release build
 if [ "$1" != "DEBUG" ]; then
   # build doc
+  echo "check document ..."
   ./release_doc.sh >doc.log 2>&1
   if grep -i 'error' doc.log; then
     exit 1
   fi
   rm doc.log
+  echo "document check passed."
 
   # strip mlir tools
   pushd $INSTALL_PATH
