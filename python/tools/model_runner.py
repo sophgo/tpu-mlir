@@ -19,7 +19,7 @@ import fcntl
 import time
 
 from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
-from transform.OnnxOpt import *
+# from transform.OnnxOpt import *
 
 TPUC_ROOT = os.getenv("TPUC_ROOT")
 
@@ -483,6 +483,7 @@ def free_mlir_module():
 def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     import onnx
     import onnxruntime
+    from onnxruntime_extensions import PyOrtFunction
 
     def generate_onnx_with_all(onnx_file: str):
         # for dump all activations
