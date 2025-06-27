@@ -41,6 +41,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 
 #bm1690 sha256: bcef3199c8acca8d01a8d97ed6040c51d80edce5
 # i8 mm bugfix: + a9171a779a2635654e12094783975e5b99bd232c
+# wan2.1 vae decoder concat bugfix: + 26408da625d95118927708eaaf807c3e27d54b11
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
