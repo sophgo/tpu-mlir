@@ -110,6 +110,7 @@ class TORCH_IR_TESTER(object):
             "GridSampler":      (self.test_GridSampler,       N, Y, N, Y, N),
             "GridSampler3D":    (self.test_GridSampler3D,     N, N, N, N, N), # bm1684x has random error casued by 2.18 commit
             "GridSampler3DPermute": (self.test_GridSampler3DPermute,     N, N, N, N, N), # bm1684x has random error casued by 2.18 commit
+            "SplitGridSampler":(self.test_SplitGridSampler,   N, Y, Y, N, N),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N, Y),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y, N),
             "IndexPut":         (self.test_IndexPut,          N, Y, Y, N, Y),
@@ -3600,6 +3601,44 @@ class TORCH_IR_TESTER(object):
                                  self.Desc('float32', -1, 1)])
 
         _test_grid_sampler((1, 15, 17, 17, 17), (1, 3, 1, 1440, 2560), 0, 1, True)
+
+    #######################################################################
+    # SplitGridSampler
+    # ------------
+    def test_SplitGridSampler(self):
+
+        def _test_grid_sampler(in_shape, disp_shape):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.radius = 4
+
+                def forward(self, input_tensor, disp):
+                    input_tensor = input_tensor.permute(3, 1, 0, 2)
+                    in_W = input_tensor.shape[-1]
+                    _, _, h, w = disp.shape
+                    r = self.radius
+                    step = (2 * r) / (2 * r)  # 计算步长
+                    x0 = torch.arange(-r, r + step, step).view(1, 1, 2 * r + 1, 1).to(disp.device)
+                    gridx = x0 + disp.reshape(h * w, 1, 1, 1) / 2
+                    gridx = 2 * gridx / (in_W - 1) + (-1)
+                    gridy = torch.zeros_like(gridx)
+                    grid = torch.cat([gridx, gridy], dim=-1)
+                    out = torch.grid_sampler(input_tensor,
+                                             grid,
+                                             interpolation_mode=0,
+                                             padding_mode=0,
+                                             align_corners=True)
+                    out = out.permute(2, 1, 3, 0)
+                    return out + 0.5
+
+            self.trace_and_test([in_shape, disp_shape], Model(),
+                                [self.Desc('float32', -10, 10),
+                                 self.Desc('float32', -1, 1)])
+
+        _test_grid_sampler((1, 8, 48, 8320), (1, 1, 104, 80))
 
     #######################################################################
     # Deformable Convolution

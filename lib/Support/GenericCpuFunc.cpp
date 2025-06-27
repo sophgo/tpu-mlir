@@ -3452,8 +3452,8 @@ void GridSamplerFunc::invoke() {
             }
           } break;
           case GridSamplerNearest: {
-            int x = INT(std::round(fx));
-            int y = INT(std::round(fy));
+            int x = INT(std::nearbyint(fx));
+            int y = INT(std::nearbyint(fy));
             const float *iiter = input + y * IW + x;
             float *oiter = output;
             for (int c = 0; c < C; ++c) {

@@ -2670,6 +2670,363 @@ private:
   }
 };
 
+// permute -> reshape -> avgpool -> gridsampler1
+//                    -> gridsampler2
+//                    =>
+// reshape -> avgpool -> permute -> gridsampler1
+//         -> permute -> gridsampler2
+
+struct PermuteBeforeGridSampler : public OpRewriterPatternEx<top::PermuteOp> {
+public:
+  PermuteBeforeGridSampler(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::PermuteOp>(context, "PermuteBeforeGridSampler",
+                                            benefit) {}
+
+protected:
+  LogicalResult matchAndRewriteImpl(top::PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
+
+    if (!op.getOutput().hasOneUse() ||
+        module::getShape(op.getInput()).size() != 5)
+      return failure();
+
+    auto next_op = *op.getOutput().user_begin();
+    auto reshape = dyn_cast<top::ReshapeOp>(next_op);
+    if (!reshape)
+      return failure();
+
+    SmallVector<Operation *> grid_samplers;
+    auto reshape_users = reshape->getResult(0).getUsers();
+    for (auto user : reshape_users) {
+      if (isa<top::AvgPoolOp>(user)) {
+        for (auto avgpool_user : user->getResult(0).getUsers()) {
+          if (auto grid_sampler = dyn_cast<top::GridSamplerOp>(avgpool_user)) {
+            std::vector<int64_t> grid_sampler_shape =
+                module::getShape(grid_sampler);
+            if (grid_sampler_shape.size() != 4 || grid_sampler_shape[2] != 1)
+              return failure();
+            grid_samplers.push_back(grid_sampler);
+          } else {
+            return failure();
+          }
+        }
+      } else if (auto grid_sampler = dyn_cast<top::GridSamplerOp>(user)) {
+        std::vector<int64_t> grid_sampler_shape =
+            module::getShape(grid_sampler);
+        if (grid_sampler_shape.size() != 4 || grid_sampler_shape[2] != 1)
+          return failure();
+        grid_samplers.push_back(grid_sampler);
+      } else {
+        return failure();
+      }
+    }
+
+    rewriter.updateRootInPlace(reshape, [&]() {
+      auto reshape_loc = module::getName(reshape.getOutput()).str();
+      auto in_shape = module::getShape(op.getInput());
+      std::vector<int64_t> reshape_shape{in_shape[0], in_shape[1], in_shape[2],
+                                         in_shape[3] * in_shape[4]};
+      auto reshape_type = RankedTensorType::get(
+          reshape_shape, module::getElementType(op.getInput()));
+      reshape->setOperand(0, op.getInput());
+      reshape->setLoc(
+          NameLoc::get(rewriter.getStringAttr(reshape_loc + "_permute")));
+      reshape.getResult().setType(reshape_type);
+      reshape->setAttr("shape", rewriter.getI64ArrayAttr(reshape_shape));
+    });
+
+    for (auto user : reshape_users) {
+      if (auto avg_pool = dyn_cast<top::AvgPoolOp>(user)) {
+        auto input_type =
+            avg_pool.getInput().getType().cast<RankedTensorType>();
+        auto input_shape = input_type.getShape();
+
+        SmallVector<int64_t> old_kernel;
+        for (auto dim : avg_pool.getKernelShape().getValue()) {
+          old_kernel.push_back(dim.cast<IntegerAttr>().getInt());
+        }
+
+        SmallVector<int64_t> kernel = {old_kernel[1], old_kernel[0]};
+        SmallVector<int64_t> strides = kernel;
+
+        int64_t in_height = input_shape[2];
+        int64_t kernel_height = kernel[0];
+        int64_t strides_height = strides[0];
+        int64_t out_height = (in_height - kernel_height) / strides_height + 1;
+
+        SmallVector<int64_t> output_shape{input_shape[0], input_shape[1],
+                                          out_height, input_shape[3]};
+
+        auto output_type =
+            RankedTensorType::get(output_shape, input_type.getElementType());
+        auto avg_pool_loc = module::getName(avg_pool.getOutput()).str();
+        rewriter.updateRootInPlace(avg_pool, [&]() {
+          // auto avg_pool_type =
+          //   reshape.getOutput().getType().cast<RankedTensorType>();
+          avg_pool->setLoc(
+              NameLoc::get(rewriter.getStringAttr(avg_pool_loc + "_hwtrans")));
+          avg_pool->setAttr("kernel_shape", rewriter.getI64ArrayAttr(kernel));
+          avg_pool->setAttr("strides", rewriter.getI64ArrayAttr(strides));
+          avg_pool.getResult().setType(output_type);
+        });
+      }
+    }
+    std::vector<int64_t> permute_order{3, 1, 0, 2};
+    for (auto user : grid_samplers) {
+      auto grid_sampler = dyn_cast<top::GridSamplerOp>(user);
+      rewriter.setInsertionPoint(grid_sampler);
+      auto grid_sampler_loc = module::getName(grid_sampler.getOutput()).str();
+
+      auto input_value = grid_sampler.getOperand(0);
+      auto input_type = input_value.getType().cast<RankedTensorType>();
+      auto input_shape = input_type.getShape();
+      SmallVector<int64_t> output_shape;
+      for (auto dim : permute_order) {
+        output_shape.push_back(input_shape[dim]);
+      }
+      auto output_type =
+          RankedTensorType::get(output_shape, input_type.getElementType());
+      auto permute_op = rewriter.create<top::PermuteOp>(
+          NameLoc::get(rewriter.getStringAttr(grid_sampler_loc + "_permute")),
+          output_type, input_value,
+          rewriter.getNamedAttr("order",
+                                rewriter.getI64ArrayAttr(permute_order)));
+      grid_sampler->setOperand(0, permute_op.getOutput());
+    }
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+// gridsampler1 -> reshape -> concat -> permute
+// girdsampler2 -> reshape
+//                        =>
+// gridsampler1 -> permute -> reshape -> concat
+// girdsampler2 -> permute -> reshape
+
+class PermuteAfterGridSampler : public OpRewriterPatternEx<top::PermuteOp> {
+public:
+  PermuteAfterGridSampler(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::PermuteOp>(context, "PermuteAfterGridSampler",
+                                            benefit) {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(top::PermuteOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    auto in_op = op.getInput().getDefiningOp();
+    if (!in_op || !isa<top::ConcatOp>(in_op)) {
+      return failure();
+    }
+    auto concat_op = cast<top::ConcatOp>(in_op);
+    if (concat_op.getInputs().size() != 2) {
+      return failure();
+    }
+
+    SmallVector<top::GridSamplerOp> gridsample_ops;
+    SmallVector<top::ReshapeOp> reshape_ops;
+    SmallVector<Type> reshape_output_types;
+
+    for (auto input : concat_op.getInputs()) {
+      auto def_op = input.getDefiningOp();
+      if (!def_op || !isa<top::ReshapeOp>(def_op)) {
+        return failure();
+      }
+      auto reshape_op = cast<top::ReshapeOp>(def_op);
+      reshape_ops.push_back(reshape_op);
+      reshape_output_types.push_back(reshape_op.getOutput().getType());
+
+      auto reshape_input = reshape_op.getInput().getDefiningOp();
+      if (!reshape_input || !isa<top::GridSamplerOp>(reshape_input)) {
+        return failure();
+      }
+      auto grid_sampler = dyn_cast<top::GridSamplerOp>(reshape_input);
+      std::vector<int64_t> grid_sampler_shape = module::getShape(grid_sampler);
+      if (grid_sampler_shape.size() != 4 || grid_sampler_shape[2] != 1)
+        return failure();
+      gridsample_ops.push_back(grid_sampler);
+    }
+
+    rewriter.startRootUpdate(op);
+    auto out_shape = module::getShape(op.getOutput());
+
+    auto in_shape_1 = module::getShape(gridsample_ops[0].getOutput());
+    auto in_shape_2 = module::getShape(gridsample_ops[1].getOutput());
+    if (in_shape_1 != in_shape_2) {
+      return failure();
+    }
+
+    auto permute_loc = module::getName(op.getOutput()).str();
+    std::vector<int64_t> permute_order{2, 1, 3, 0};
+    auto grid_output_type =
+        gridsample_ops[0].getOutput().getType().cast<RankedTensorType>();
+    auto grid_shape = grid_output_type.getShape();
+    SmallVector<int64_t> permuted_shape = {
+        grid_shape[permute_order[0]],
+        grid_shape[permute_order[1]],
+        grid_shape[permute_order[2]],
+        grid_shape[permute_order[3]],
+    };
+    auto permuted_type = RankedTensorType::get(
+        permuted_shape, grid_output_type.getElementType());
+
+    SmallVector<int64_t> new_reshape_shape = {
+        1, permuted_shape[0] * permuted_shape[1] * permuted_shape[2],
+        out_shape[2], out_shape[3]};
+    auto reshape_output_type =
+        reshape_ops[0].getOutput().getType().cast<RankedTensorType>();
+    auto new_reshape_type = RankedTensorType::get(
+        new_reshape_shape, reshape_output_type.getElementType());
+    for (int i = 0; i < 2; ++i) {
+      rewriter.setInsertionPointAfter(gridsample_ops[i]);
+      auto new_permute = rewriter.create<top::PermuteOp>(
+          NameLoc::get(rewriter.getStringAttr(permute_loc + "_Reshape_" +
+                                              std::to_string(i))),
+          permuted_type, gridsample_ops[i].getOutput(),
+          rewriter.getNamedAttr("order",
+                                rewriter.getI64ArrayAttr(permute_order)));
+      auto reshape_loc = module::getName(reshape_ops[i].getOutput()).str();
+      ;
+      reshape_ops[i]->setLoc(
+          NameLoc::get(rewriter.getStringAttr(reshape_loc + "_Concat")));
+      reshape_ops[i].getInputMutable().assign(new_permute.getOutput());
+      reshape_ops[i].setShapeAttr(rewriter.getI64ArrayAttr(new_reshape_shape));
+      reshape_ops[i].getResult().setType(new_reshape_type);
+    }
+    auto concat_loc = module::getName(op.getOutput()).str();
+    concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(concat_loc)));
+    concat_op.setAxisAttr(rewriter.getSI32IntegerAttr(1));
+    concat_op.getResult().setType(op.getOutput().getType());
+    rewriter.replaceOp(op, concat_op.getOutput());
+    rewriter.finalizeRootUpdate(op);
+
+    return success();
+  }
+};
+
+class ReshapeBeforeGridSampler : public OpRewriterPatternEx<top::ReshapeOp> {
+public:
+  ReshapeBeforeGridSampler(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ReshapeOp>(context, "ReshapeBeforeGridSampler",
+                                            benefit) {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(top::ReshapeOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+
+    for (auto next_op : op->getUsers()) {
+      Operation *add_op = nullptr;
+      if (isa<top::AddOp>(next_op)) {
+        add_op = next_op;
+      } else if (isa<top::MulConstOp>(next_op)) {
+        auto users = next_op->getUsers();
+        if (users.empty())
+          return failure();
+        add_op = *users.begin();
+      } else {
+        return failure();
+      }
+
+      auto add_user = add_op->getUsers();
+      if (add_user.empty())
+        return failure();
+      auto scale_op = *add_user.begin();
+      if (!isa<top::MulConstOp>(scale_op))
+        return failure();
+
+      auto mulconst_user = scale_op->getUsers();
+      if (mulconst_user.empty())
+        return failure();
+      auto mean_op = *mulconst_user.begin();
+      if (!isa<top::AddConstOp>(mean_op))
+        return failure();
+
+      auto addconst_user = mean_op->getUsers();
+      if (addconst_user.empty())
+        return failure();
+      auto concat_op = *addconst_user.begin();
+      if (!isa<top::ConcatOp>(concat_op))
+        return failure();
+
+      auto concat_user = concat_op->getUsers();
+      if (concat_user.empty())
+        return failure();
+      auto grid_op = *concat_user.begin();
+      if (!isa<top::GridSamplerOp>(grid_op))
+        return failure();
+    }
+
+    std::vector<int64_t> reshape_shape = module::getShape(op);
+    if (reshape_shape.size() != 4 || reshape_shape[2] != 1)
+      return failure();
+
+    auto eleType = module::getElementType(op.getInput());
+    auto reshape_loc = module::getName(op.getOutput()).str();
+    std::vector<int64_t> new_shape = {reshape_shape[3], reshape_shape[1],
+                                      reshape_shape[2], reshape_shape[0]};
+    auto new_reshape = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(reshape_loc + "_nwtrans")),
+        RankedTensorType::get(new_shape, eleType), op.getInput(),
+        rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(new_shape)));
+
+    auto new_reshape_out = new_reshape.getOutput();
+    rewriter.replaceOp(op, new_reshape_out);
+    SmallVector<top::MulConstOp, 4> mulconsts;
+    SmallVector<top::AddOp, 4> adds;
+    for (Operation *user : new_reshape_out.getUsers()) {
+      if (auto mul = dyn_cast<top::MulConstOp>(user)) {
+        mulconsts.push_back(mul);
+        auto add = dyn_cast<top::AddOp>(*mul->getResult(0).getUsers().begin());
+        adds.push_back(add);
+      } else if (auto add = dyn_cast<top::AddOp>(user)) {
+        adds.push_back(add);
+      }
+    }
+    for (auto old_mulconst : mulconsts) {
+      auto inTy = new_reshape_out.getType().cast<RankedTensorType>();
+      Type eltTy = inTy.getElementType();
+      SmallVector<int64_t, 4> new_shape({inTy.getDimSize(0), inTy.getDimSize(1),
+                                         inTy.getDimSize(2),
+                                         inTy.getDimSize(3)});
+      rewriter.setInsertionPoint(old_mulconst);
+      auto mulconst_loc = module::getName(old_mulconst.getOutput()).str();
+      auto const_val = old_mulconst.getConstVal().convertToDouble();
+      auto new_mulconst = rewriter.create<top::MulConstOp>(
+          NameLoc::get(rewriter.getStringAttr(mulconst_loc + "_nwtrans")),
+          RankedTensorType::get(new_shape, eltTy), new_reshape_out,
+          rewriter.getNamedAttr("const_val",
+                                rewriter.getF64FloatAttr(const_val)));
+      old_mulconst.replaceAllUsesWith(new_mulconst.getResult());
+      rewriter.eraseOp(old_mulconst);
+      new_reshape_out = new_mulconst.getResult();
+    }
+
+    std::vector<int64_t> permute_order = {3, 1, 2, 0};
+    for (auto add : adds) {
+      auto oldTy = add.getResult().getType().cast<RankedTensorType>();
+      Type eltTy = oldTy.getElementType();
+
+      SmallVector<int64_t, 4> outshape;
+      for (int idx : permute_order)
+        outshape.push_back(oldTy.getDimSize(idx));
+      auto addResTy = RankedTensorType::get(outshape, eltTy);
+      auto add_loc = module::getName(add.getOutput()).str();
+      add.getResult().setType(addResTy);
+      add->setLoc(NameLoc::get(rewriter.getStringAttr(add_loc + "_nwtrans")));
+
+      rewriter.setInsertionPointAfter(add);
+      auto perm = rewriter.create<top::PermuteOp>(
+          NameLoc::get(rewriter.getStringAttr(add_loc)), oldTy, add.getResult(),
+          rewriter.getNamedAttr("order",
+                                rewriter.getI64ArrayAttr(permute_order)));
+      add.getResult().replaceAllUsesExcept(perm.getResult(), perm);
+    }
+
+    return success();
+  }
+};
+
 } // namespace bm1684x
 
 namespace top {
@@ -2683,8 +3040,9 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner,
             //  ConcatWithReduceSum2SliceWithAdd,
             ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
-            ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt>(
-          patterns->getContext(), 8);
+            ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt,
+            PermuteBeforeGridSampler, PermuteAfterGridSampler,
+            ReshapeBeforeGridSampler>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir

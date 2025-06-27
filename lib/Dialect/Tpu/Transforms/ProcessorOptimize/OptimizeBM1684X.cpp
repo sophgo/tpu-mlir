@@ -4323,6 +4323,79 @@ struct GridSamplerFusePattern : public OpRewriterPatternEx<tpu::GridSamplerOp> {
   }
 };
 
+// Some special gridsampler with a large batch size and H = 1
+//
+// input_data -> permute            ->
+//         mulconst                    gridsample -> permute
+// grid -> addconst (Normalization) ->
+//         concat
+struct CanCutGridSamplerFusePattern
+    : public OpRewriterPatternEx<tpu::GridSamplerOp> {
+
+  CanCutGridSamplerFusePattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::GridSamplerOp>(
+            context, "CanCutGridSamplerFusePattern", benifit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::GridSamplerOp op,
+                                    PatternRewriter &rewriter) const override {
+    if (!op.getOutput().hasOneUse()) {
+      return failure();
+    }
+    auto before_op = op.getInput().getDefiningOp();
+    auto next_op = *op.getOutput().user_begin();
+    if (!isa<tpu::PermuteOp>(before_op) && !isa<tpu::PermuteOp>(next_op)) {
+      return failure();
+    }
+    auto grid = op.getGrid();
+    auto concat_op = grid.getDefiningOp<tpu::ConcatOp>();
+    if (concat_op.getInputs().size() != 2) {
+      return failure();
+    }
+    bool is_weight = false;
+    Value concat_input;
+
+    for (auto input : concat_op.getInputs()) {
+      if (isa<top::WeightOp>(input.getDefiningOp())) {
+        is_weight = true;
+      } else {
+        concat_input = input;
+      }
+    }
+    if (!is_weight) {
+      return failure();
+    }
+    auto addconst = concat_input.getDefiningOp<tpu::AddConstOp>();
+    if (!addconst) {
+      return failure();
+    }
+    auto mulconst = addconst.getInput().getDefiningOp<tpu::MulConstOp>();
+    if (!mulconst) {
+      return failure();
+    }
+    auto permute = mulconst.getInput().getDefiningOp<tpu::PermuteOp>();
+    if (!permute) {
+      return failure();
+    }
+
+    if (!next_op->getResult(0).use_empty()) {
+      auto next_next_op = *next_op->getResult(0).user_begin();
+      next_next_op->setOperand(0, op.getOutput());
+    }
+    op->setOperand(0, before_op->getOperand(0));
+    op->setOperand(1, permute.getInput());
+    op->getResult(0).setType(next_op->getResult(0).getType());
+    op->setAttr("need_permute", rewriter.getBoolAttr(true));
+    rewriter.replaceOp(before_op, before_op->getOperand(0));
+    rewriter.replaceOp(next_op, ArrayRef<Value>{op.getResult()});
+
+    rewriter.eraseOp(concat_op);
+    rewriter.eraseOp(addconst);
+    rewriter.eraseOp(mulconst);
+    rewriter.eraseOp(permute);
+    return success();
+  }
+};
+
 // MatMul  +  RequantIntAxis ->  MatMul
 class MatMulRequantIntFusion : public OpRewriterPatternEx<tpu::MatMulOp> {
 public:
@@ -5409,6 +5482,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 Reduce2AxesPattern,
                 SplitMatmulPattern,
                 GridSamplerFusePattern,
+                CanCutGridSamplerFusePattern,
                 TryInsertTileBinaryPattern<tpu::AddOp>,
                 TryInsertTileBinaryPattern<tpu::MulOp>,
                 Concat5dto4d,
