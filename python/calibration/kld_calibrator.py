@@ -998,8 +998,10 @@ class ActivationCalibrator(BaseKldCalibrator):
 
     def get_no_fused_tensors(self, all_tensors):
         tensor_list = []
+        fused_pattern = re.compile(r'^fused\[(.*?)\]$')
         for op in all_tensors:
-            if "fused" in op:
+            match = fused_pattern.match(op)
+            if match:
                 fused_ops = op.split('["')[1].split('"]')[0].split(', ')
                 tensor_list.extend([fused_op.strip('"') for fused_op in fused_ops])
                 has_next = False
