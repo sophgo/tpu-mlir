@@ -33,6 +33,11 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.20.0
+     - 2025.06.30
+     - Support IO_RELOC;
+       Deconv3D INT8 bugfix;
+       BatchNorm and Conv backward operators support 128 batch training
    * - v1.19.0
      - 2025.05.30
      - Support AWQ and GPTQ models;
