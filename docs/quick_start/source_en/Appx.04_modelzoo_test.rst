@@ -1,6 +1,14 @@
 Appendix.04: Model-zoo test
 ===================================================
 
+Test Notification
+~~~~~~~~~~~~~~~~~~~~~
+
+If the test time exceeds the following time limit, it will be considered abnormal:
+
+* Compilation test: 48 hours
+* Performance test: 24 hours
+* Accuracy test: 24 hours (currently only BM1684X PCIE needs to perform accuracy test)
 
 Configure the system environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
