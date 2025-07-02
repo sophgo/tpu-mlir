@@ -27,6 +27,9 @@ class LlmConverter(BaseConverter):
         super().__init__()
         self.model_path = os.path.normpath(args.model_path)
         self.seq_length = args.seq_length
+        self.max_input_length = args.max_input_length if (
+            args.max_input_length > 0 and args.max_input_length < self.seq_length
+            and not args.dynamic) else self.seq_length
         self.quantize = args.quantize
         self.num_device = args.num_device
         self.q_group_size = args.q_group_size
@@ -37,8 +40,8 @@ class LlmConverter(BaseConverter):
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
         self.debug = args.debug
+        self.position_shape = [1, self.max_input_length]
         self.num_core = args.num_core
-        self.position_shape = [1, self.seq_length]
         if self.num_core == 0:
             self.num_core = 1 if args.chip != "bm1688" else 2
         self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
@@ -437,7 +440,7 @@ class LlmConverter(BaseConverter):
                 f.write(mlir_txt)
 
         if not self.embedding_disk:
-            gen_embedding_by_length("embedding", self.seq_length)
+            gen_embedding_by_length("embedding", self.max_input_length)
             gen_embedding_by_length("embedding_cache", 1)
         gen_lm_head()
 
@@ -690,7 +693,7 @@ class LlmConverter(BaseConverter):
                          rotary_cos: str,
                          rotary_sin: str,
                          decode: bool = False):
-        dim = 1 if decode else self.seq_length
+        dim = 1 if decode else self.max_input_length
         weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
                                               [self.seq_length, 1, self.head_dim])
         cos_op = top.GatherOp(mlir_gen.get_tensor_type([1, dim, 1, self.head_dim]),
@@ -854,12 +857,13 @@ class LlmConverter(BaseConverter):
         # create block mlir
         def gen_block():
             name = f"block_{idx}"
-            input_shape = [1, self.seq_length, self.hidden_size]
+            input_len = self.max_input_length
+            input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
-            mask_shape = [1, 1, self.seq_length, self.seq_length]
+            mask_shape = [1, 1, input_len, input_len]
 
-            q_shape = [1, self.seq_length, self.num_attention_heads, self.head_dim]
-            kv_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
+            q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
+            kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
@@ -883,17 +887,17 @@ class LlmConverter(BaseConverter):
             # q_proj
             q_dim = self.num_attention_heads * self.head_dim
             q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, q_dim],
-                               [1, self.seq_length, q_dim])
+                               [1, input_len, q_dim])
             # k_proj
             k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, self.seq_length, self.kv_dim])
+                               [1, input_len, self.kv_dim])
 
             # v_proj
             v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, self.seq_length, self.kv_dim])
+                               [1, input_len, self.kv_dim])
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshpae"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshape"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
             if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
                 q_op = self.rms_norm(block_mlir, q_op, q_norm)
@@ -905,7 +909,7 @@ class LlmConverter(BaseConverter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
-            fa_op = top.FAttentionOp(T([1, self.seq_length, q_dim]),
+            fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
@@ -916,8 +920,8 @@ class LlmConverter(BaseConverter):
                                      q_head=self.num_attention_heads,
                                      kv_head=self.num_key_value_heads,
                                      dim=self.head_dim,
-                                     mq=self.seq_length,
-                                     mk=self.seq_length,
+                                     mq=input_len,
+                                     mk=input_len,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)

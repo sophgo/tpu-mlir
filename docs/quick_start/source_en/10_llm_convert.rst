@@ -7,7 +7,7 @@ Overview
 --------
 
 ``llm_convert.py`` is a tool for converting large language models (LLM) into the bmodel format. It converts the original model weights to the bmodel format, enabling efficient inference on chip platforms such as BM1684X, BM1688, and CV186AH.
-Currently supported LLM types include qwen2 and llama, for example, Qwen2-7B-Instruct, Llama-2-7b-chat-hf, etc.
+Currently supported LLM types include qwen3/qwen2/qwen2.5vl/internvl3/llama, etc.
 
 Command-Line Arguments
 ------------------------
@@ -49,6 +49,9 @@ Below is an explanation of the command-line arguments supported by this tool:
 
 - ``--symmetric``
   Set this flag to use symmetric quantization.
+
+- ``--max_input_length`` (integer, default: 0)
+  Specify the maximum input length. A value of 0 means using ``seq_length`` as the maximum length.
 
 - ``--embedding_disk``
   Set this flag to export the word_embedding as a binary file and run inference on the CPU.

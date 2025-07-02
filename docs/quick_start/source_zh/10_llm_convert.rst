@@ -7,7 +7,7 @@
 ----
 
 ``llm_convert.py`` 是一个用于将大语言模型（LLM）转换成bmodel的工具，将原始模型权重转换为 bmodel 格式，以便在 BM1684X、BM1688 和 CV186AH 等芯片平台上进行高效推理。
-目前支持的LLM类型包括qwen2和llama，比如Qwen2-7B-Instruct、Llama-2-7b-chat-hf等。
+目前支持的LLM类型包括qwen2/qwen3/qwen2.5vl/internvl3/llama等等。
 
 
 
@@ -50,6 +50,9 @@
 
 - ``--symmetric``
   如果设置该标志，则使用对称量化。
+
+- ``--max_input_length`` (integer, 默认值: 0)
+  指定最大输入长度，0表示使用 ``seq_length`` 作为最大长度。
 
 - ``--embedding_disk``
   如果设置该标志，则将word_embedding导出为二进制文件，并通过 CPU 进行推理。

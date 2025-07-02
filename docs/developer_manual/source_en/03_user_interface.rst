@@ -632,6 +632,9 @@ Convert the LLM model into bmodel, the parameters are as follows:
    * - num_core
      - No
      - Specifies the number of cores for bmodel deployment; 0 means use the maximum available cores
+   * - max_input_length
+     - No
+     - Specifies the maximum input length, default is seq_length
    * - embedding_disk
      - No
      - If set, exports the word embeddings to a binary file and runs inference on the CPU

@@ -58,7 +58,7 @@ class Qwen2VLConverter(LlmConverter):
         return cos.numpy(), sin.numpy()  #[seq, 1, 64]
 
     def mrope(self, mlir_gen, in_op, name: str):
-        mrope_section = self.config.rope_scaling['mrope_section']
+        mrope_section = getattr(self.config.rope_scaling, 'mrope_section', [16, 24, 24])
         in_shape = in_op.type.shape
         t_dim, h_dim, w_dim = mrope_section  # 16,24,24
         dim = in_shape[1]

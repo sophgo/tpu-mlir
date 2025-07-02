@@ -643,6 +643,9 @@ llm_convert.py
    * - num_core
      - 否
      - 指定 bmodel 部署使用的核数, 0表示采用最大核数
+   * - max_input_length
+     - 否
+     - 指定最大输入长度, 默认为seq_length
    * - embedding_disk
      - 否
      - 如果设置该标志, 则将word_embedding导出为二进制文件, 并通过 CPU 进行推理
