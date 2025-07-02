@@ -114,6 +114,7 @@ struct MergeSlicePattern : public OpRewriterPatternEx<SliceOp> {
     auto cur_steps = module::getI64Array(op.getSteps());
     auto op_axes = module::getI64Array(op.getHasparamConvertAxesAttr());
     auto in_offset = module::getI64Array(in_slice.getOffset());
+    auto in_ends = module::getI64Array(in_slice.getEnds());
     auto in_steps = module::getI64Array(in_slice.getSteps());
     auto in_axes = module::getI64Array(in_slice.getHasparamConvertAxesAttr());
     auto in_axes_num = in_axes->size();
@@ -134,10 +135,13 @@ struct MergeSlicePattern : public OpRewriterPatternEx<SliceOp> {
       auto cur_s = cur_steps->at(i);
       assert(cur_s > 0);
       auto in_off = in_offset->at(i);
+      auto in_end = in_ends->at(i);
       auto in_s = in_steps->at(i);
       assert(in_s > 0);
       new_offset[i] = in_off + cur_off * in_s;
-      new_ends[i] = new_offset[i] + (cur_end - cur_off) * in_s;
+      new_ends[i] = in_end < cur_end
+                        ? in_end
+                        : new_offset[i] + (cur_end - cur_off) * in_s;
       new_steps[i] = in_s * cur_s;
     }
     op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
@@ -301,6 +305,8 @@ struct ConvSlice : public OpRewriterPatternEx<SliceOp> {
     auto conv_out = (dyn_cast<ConvOp>(in_op)).getResult();
     auto conv_oshape = module::getShape(conv_out);
     if (in_shape.size() != 4)
+      return failure();
+    if (in_shape[1] != out_shape[1])
       return failure();
     if (Steps->at(2) != 1 || Steps->at(3) != 1)
       return failure();
