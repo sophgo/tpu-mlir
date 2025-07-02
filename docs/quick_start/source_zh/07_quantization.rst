@@ -312,10 +312,21 @@ search_qtable
 ------------------
 
 .. include:: get_resource.rst
+单输入模型校准数据集准备与使用说明（以mobilenet-v2为例）：
 
-建立 ``mobilenet-v2`` 目录, 并把模型文件和图片文件都放入 ``mobilenet-v2`` 目录中。
+1.建立目录结构
+  建立 ``mobilenet-v2`` 目录, 并把模型文件和图片文件都放入 ``mobilenet-v2`` 目录中。
+2.准备校准数据集
+  --dataset使用ILSVRC2012数据集, 其中包含1000类图片, 每类1000张图片, 这里仅使用其中的100张图片进行校准
+3.数据集格式
+  用户可以自行创建 dataset 目录，并直接将图片文件（如 JPEG、PNG 等）放入该目录。
+  run_calibration.py 会自动读取图片，并根据模型输入 shape、mean、scale 等参数，自动完成预处理和格式转换为 numpy 数组，作为模型的输入。
+  而多输入模型必须用结构化数据（如 npz），因为只有这些格式能明确区分每个输入的名字、shape、dtype。
 
 操作如下:
+
+单输入：
+
 
 .. code-block:: shell
   :linenos:
@@ -323,6 +334,28 @@ search_qtable
    $ mkdir mobilenet-v2 && cd mobilenet-v2
    $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
    $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
+   $ mkdir workspace && cd workspace
+
+
+多输入模型校准数据集准备与使用说明（以bert_base_squad_uncased-2.11.0为例）：
+
+1.建立目录结构
+  建立 ``bert_base_squad_uncased-2.11.0`` 目录, 并把模型文件和图片文件都放入 ``bert_base_squad_uncased-2.11.0`` 目录中。
+2.准备校准数据集
+  --dataset使用SQuAD数据集, 其中包含多个样本, 每个样本包含多个输入数据。
+3.数据集格式
+  用户可以自行创建 dataset 目录，目录下必须放置 npz 文件，每个 npz 文件代表一个样本，包含所有输入的 key（名字、shape、dtype都要和模型输入一致）。
+  不能直接放图片。
+
+多输入：
+
+.. code-block:: shell
+  :linenos:
+
+   $ mkdir bert_base_squad_uncased-2.11.0 && cd bert_base_squad_uncased-2.11.0
+   download bert_base_squad_uncased-2.11.0.onnx
+   download SQuAD/mlir
+   download squad_uncased_data.npz
    $ mkdir workspace && cd workspace
 
 测试Float和INT8对称量化模型分类效果
@@ -345,6 +378,21 @@ search_qtable
        --pixel_format rgb \
        --mlir mobilenet_v2.mlir
 
+
+多输入：
+
+.. code-block:: shell
+
+    $ model_transform.py \
+        --model_name bert_base_squad_uncased-2.11.0 \
+        --model_def ../bert_base_squad_uncased-2.11.0.onnx \
+        --test_input ../squad_uncased_data.npz \
+        --input_shapes '[[1, 384], [1, 384], [1, 384]]' \
+        --test_result bert_base_squad_uncased-2.11.0_top_outputs.npz \
+        --mlir bert_base_squad_uncased-2.11.0.mlir
+
+
+
 步骤2: 生成calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -358,6 +406,16 @@ search_qtable
        --cali_method use_mse \
        -o mobilenet_v2_cali_table
 
+多输入：
+
+.. code-block:: shell
+
+   $ run_calibration.py bert_base_squad_uncased-2.11.0.mlir \
+        --dataset ../SQuAD/mlir \
+        --input_num 10 \
+        --tune_num 0 \
+        --debug_cmd use_mse \
+        -o bert_base_squad_uncased-2.11.0.calitable
 步骤3: 转FP32 bmodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

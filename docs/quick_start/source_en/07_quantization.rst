@@ -330,10 +330,20 @@ Prepare working directory
 ---------------------------
 
 .. include:: get_resource.rst
+Preparation and Usage Instructions for Single-Input Model Calibration Dataset (Taking mobilenet-v2 as an Example) :
 
-Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory.
+1. Establish a directory structure
+  Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory.
+2. Prepare the calibration dataset
+  --dataset uses the ILSVRC2012 dataset, which contains 1000 types of images, with 1000 images in each type. Here, only 100 images from these are used for calibration
+3. Dataset format
+  Users can create a dataset directory by themselves and directly place image files (such as JPEG, PNG, etc.) into this directory.
+  run_calibration.py will automatically read the image and, based on the model input parameters such as shape, mean, and scale, automatically complete the preprocessing and format conversion into a numpy array as the model input.
+  However, multi-input models must use structured data (such as npz), because only these formats can clearly distinguish the name, shape, and dtype of each input.
 
 The operation is as follows:
+
+Single-Input Model:
 
 .. code-block:: shell
   :linenos:
@@ -341,6 +351,27 @@ The operation is as follows:
    $ mkdir mobilenet-v2 && cd mobilenet-v2
    $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
    $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
+   $ mkdir workspace && cd workspace
+
+Preparation and Usage Instructions for multi-input Model Calibration Dataset (taking bert_base_squad_uncased-2.11.0 as an example) :
+
+1. Establish a directory structure
+  Create the directory 'bert_base_squad_uncased-2.11.0' and put both the model file and the image file into the directory 'bert_base_squad_uncased-2.11.0'.
+2. Prepare the calibration dataset
+  The --dataset uses the SQuAD dataset, which contains multiple samples, and each sample contains multiple input data.
+3. Dataset format
+  Users can create a dataset directory by themselves. Under the directory, npz files must be placed. Each npz file represents a sample and contains all the input keys (the name, shape, and dtype must be consistent with the model input).
+  Pictures cannot be placed directly.
+
+multi-input Model:
+
+.. code-block:: shell
+  :linenos:
+
+   $ mkdir bert_base_squad_uncased-2.11.0 && cd bert_base_squad_uncased-2.11.0
+   download bert_base_squad_uncased-2.11.0.onnx
+   download SQuAD/mlir
+   download squad_uncased_data.npz
    $ mkdir workspace && cd workspace
 
 Accuracy test of float anf int8 models
@@ -361,6 +392,18 @@ Step 1: To F32 mlir
        --pixel_format rgb \
        --mlir mobilenet_v2.mlir
 
+multi-input Model:
+
+.. code-block:: shell
+
+    $ model_transform.py \
+        --model_name bert_base_squad_uncased-2.11.0 \
+        --model_def ../bert_base_squad_uncased-2.11.0.onnx \
+        --test_input ../squad_uncased_data.npz \
+        --input_shapes '[[1, 384], [1, 384], [1, 384]]' \
+        --test_result bert_base_squad_uncased-2.11.0_top_outputs.npz \
+        --mlir bert_base_squad_uncased-2.11.0.mlir
+
 Step 2: Gen calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -373,6 +416,17 @@ Here, we use the ``use_mse`` method for calibration.
        --input_num 100 \
        --cali_method use_mse \
        -o mobilenet_v2_cali_table
+
+multi-input Model:
+
+.. code-block:: shell
+
+   $ run_calibration.py bert_base_squad_uncased-2.11.0.mlir \
+        --dataset ../SQuAD/mlir \
+        --input_num 10 \
+        --tune_num 0 \
+        --debug_cmd use_mse \
+        -o bert_base_squad_uncased-2.11.0.calitable
 
 Step 3: To F32 bmodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
