@@ -97,6 +97,14 @@ class LlmConverter(BaseConverter):
                         dirs_exist_ok=True)
 
     def gen_all_mlir(self):
+        if self.debug:
+            self.gen_vit_mlir()
+            self.gen_embedding_lmhead_mlir()
+            self.gen_sample_head_mlir()
+            for i in range(self.num_layers):
+                self.gen_block_mlir(i)
+            return
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = []
 
@@ -294,6 +302,8 @@ class LlmConverter(BaseConverter):
                 assert self.quantization_config["version"] == "gemm", (
                     "AWQ only support gemm version for now")
                 assert self.quant_bits == 4, ("AWQ only support quant bits == 4 for now")
+        if self.q_group_size < 0:
+            self.q_group_size = 0
 
     def get_loc(self, names, mlir):
         if isinstance(names, str):
@@ -612,10 +622,10 @@ class LlmConverter(BaseConverter):
             qweight_op = mlir_gen.create_weight_op(
                 proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)],
                 'UINT8')
-            scale_op = mlir_gen.create_weight_op(
-                proj + ".scales", [weight_shape[1], weight_shape[0] // self.q_group_size])
-            zp_op = mlir_gen.create_weight_op(
-                proj + ".qzeros", [weight_shape[1], weight_shape[0] // self.q_group_size], 'UINT8')
+            scale_shape = [weight_shape[1], weight_shape[0] //
+                           self.q_group_size] if self.q_group_size > 0 else [weight_shape[1], 1]
+            scale_op = mlir_gen.create_weight_op(proj + ".scales", scale_shape)
+            zp_op = mlir_gen.create_weight_op(proj + ".qzeros", scale_shape, 'UINT8')
             return top.A16MatMulOp(mlir_gen.get_tensor_type(out_shape),
                                    input_op,
                                    qweight_op,
@@ -623,6 +633,7 @@ class LlmConverter(BaseConverter):
                                    zp_op,
                                    bias_op,
                                    right_transpose=True,
+                                   q_group_size=self.q_group_size,
                                    weight_bits=self.quant_bits,
                                    loc=self.get_loc(proj, mlir_gen),
                                    ip=mlir_gen.insert_point).output
@@ -733,11 +744,11 @@ class LlmConverter(BaseConverter):
             zp_path = path + ".qzeros"
             bias_path = path + ".bias"
             if self.model.is_exist(qweight_path):
-                qweigth_data = self.model.read(qweight_path)
+                qweight_data = self.model.read(qweight_path)
                 scale_data = self.model.read(scale_path)
                 zp_data = self.model.read(zp_path)
-                unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweigth_data, zp_data, self.quant_bits, self.quant_mode)
+                _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
+                    qweight_data, zp_data, self.quant_bits, self.quant_mode)
                 weight_dict[qweight_path] = np.ascontiguousarray(
                     np.transpose(pack_int8_weights, (1, 0)))
                 weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
@@ -1073,8 +1084,8 @@ class LlmConverter(BaseConverter):
             f.writelines(self.commands)
         self.commands.clear()
         parallel_cmd = [
-            "parallel", f"-j {self.max_workers}", "--progress", f"--joblog {task_file}.log",
-            f"< {task_file}"
+            "parallel", f"-j {self.max_workers}", "--halt now,fail=1", "--progress",
+            f"--joblog {task_file}.log", f"< {task_file}"
         ]
         self.run_command(['bash', '-c', ' '.join(parallel_cmd)])
 

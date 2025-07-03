@@ -73,7 +73,7 @@ class DeployTool:
         self.quantize = args.quantize.lower()
         self.tolerance = args.tolerance
         if not self.tolerance:
-            if self.quantize in ["int8","w8f16","w8bf16","w4f16","w4bf16"]:
+            if self.quantize in ["int8", "w8f16", "w8bf16", "w4f16", "w4bf16"]:
                 self.tolerance = "0.90,0.80"
             elif self.quantize in ["f16", "bf16"]:
                 self.tolerance = "0.99,0.90"
@@ -82,8 +82,8 @@ class DeployTool:
             elif self.quantize in ["f8e4m3", "f8e5m2"]:
                 self.tolerance = "0.80,0.50"
             else:
-                raise RuntimeError(
-                    "Please set the tolerance for quantization type: {}".format(self.quantize))
+                raise RuntimeError("Please set the tolerance for quantization type: {}".format(
+                    self.quantize))
         self.test_input = args.test_input
         self.asymmetric = args.asymmetric
         self.cali_table = args.calibration_table
@@ -253,7 +253,7 @@ class DeployTool:
         gen_ref = True if len(self.ref_npz) == 0 else False
 
         if self.fuse_preprocess:
-            assert (self.test_input[0].endswith(('.jpg', '.jpeg', '.png','.yuv')))
+            assert (self.test_input[0].endswith(('.jpg', '.jpeg', '.png', '.yuv')))
         if num_inputs == 1 and self.test_input[0].endswith(".npz"):
             x = np.load(self.test_input[0])
             for name in x.files:
@@ -264,7 +264,7 @@ class DeployTool:
             assert (len(self.test_input) == len(self.module.inputs))
             for infile, op in zip(self.test_input, self.module.inputs):
 
-                if infile.endswith(('.jpg', '.jpeg', '.png','.yuv')):
+                if infile.endswith(('.jpg', '.jpeg', '.png', '.yuv')):
                     ppa = preprocess()
                     input_op = op.op
                     input_shape = [Operation.shape(input_op)]
@@ -523,6 +523,7 @@ if __name__ == '__main__':
     parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
     parser.add_argument("--disable_gdma_check", action='store_true', help='disable gdma addr check')
     parser.add_argument("--trunc_final", nargs="*", help="assign op to be trunced in final mlir.")
+    parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     # ========== Other Options ==============
     # for cv18xx
     parser.add_argument("--op_divide", action="store_true", help="if do large global op divide.")

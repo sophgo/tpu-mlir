@@ -9,6 +9,7 @@
 # ==============================================================================
 
 import argparse
+import pymlir
 
 
 def parse_max_pixels(value):
@@ -46,7 +47,7 @@ if __name__ == '__main__':
                         choices=["bf16", "w8bf16", "w4bf16", "f16", "w8f16", "w4f16"],
                         help="quantize type for bmodel")
     parser.add_argument('-g', "--q_group_size", default=64, type=int,
-                        help="group size for per-group quant, only used in W4A16 quant mode")
+                        help="group size for per-group quant, only used in quant mode")
     parser.add_argument('-c', '--chip', type=str, default="bm1684x",
                         choices=["bm1684x", "bm1688", "cv186x"],
                         help="chip type for bmodel")
@@ -66,6 +67,7 @@ if __name__ == '__main__':
                         help='enable dynamic compiling for prefill, not recommended')
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
+    parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
                         help='output mlir/bmodel path, default `./tmp`')
     args = parser.parse_args()

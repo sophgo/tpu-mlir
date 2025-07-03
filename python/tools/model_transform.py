@@ -116,7 +116,8 @@ class ModelTransformer(object):
                     assert (name in npz_in.files)
                     batch_size = self.converter.getShape(name)[0]
                     inputs[name] = self.ensure_batch_size(npz_in[name], batch_size)
-        elif file_list[0].endswith(('.jpg', '.jpeg', '.png', '.JPEG', '.yuv')):  #todo add isPicture in util
+        elif file_list[0].endswith(
+            ('.jpg', '.jpeg', '.png', '.JPEG', '.yuv')):  #todo add isPicture in util
             if file_list[0].endswith('.yuv'):
                 assert yuv_type, "yuv_type must be set when input is yuv file"
             ppa = preprocess()
@@ -449,6 +450,7 @@ if __name__ == '__main__':
                         help="pass options of onnx-sim, sep by quote without space")
     parser.add_argument("--do_onnx_sim", default=True, type=bool, help="whether do onnx sim for onnx")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
@@ -456,11 +458,9 @@ if __name__ == '__main__':
     parser.add_argument("--dynamic_shape_input_names", type=str2list, default=list(),
                         help="name list of inputs with dynamic shape, like:input1,input2")
     parser.add_argument("--shape_influencing_input_names", type=str2list, default=list(),
-                        help="name list of inputs which influencing other tensors\' shape during inference, like:input1,input2. \
-                            if set, test_input is required"                                                           )
+                        help="name list of inputs which influencing other tensors\' shape during inference, like:input1,input2. if set, test_input is required")
     parser.add_argument("--dynamic", action='store_true',
-                        help='only valid for onnx model. if set, will automatically set inputs with dyanmic axis \
-                            as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names'                                                                                                             )
+                        help='only valid for onnx model. if set, will automatically set inputs with dyanmic axis as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names')
     parser.add_argument("--path_yaml", type=str, default=None, help="path of the yaml file")
     parser.add_argument("--not_inference", action='store_true', help='only do model transform, not inference')
     parser.add_argument("--op_custom_shape", type=str, help="set custom shape for some op, like:\'{\"Range\":{\"/Range_output_0\":[2048],\"/Range_1_output_0\":[2048]}}\'")
@@ -501,7 +501,8 @@ if __name__ == '__main__':
     tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count, args.pruning)
     if (not args.not_inference) and args.test_input:
         assert (args.test_result)
-        tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result,args.yuv_type)
+        tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result,
+                            args.yuv_type)
     if qat_tool.fakequant_model:
         node_name_mapping = tool.converter.node_name_mapping
         qat_tool.align_final_opt(node_name_mapping, args.onnx_sim)

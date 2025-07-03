@@ -48,19 +48,10 @@ a16matmul_attr_t top::A16MatMulOp::parseParam() {
     p.L_shape.push_back(a_s[i]);
   }
 
-  int k_dim = p.right_transpose ? 1 : 0;
   for (int i = 0; i < w_dims; i++) {
-    if (i == k_dim) {
-      p.R_shape.push_back(w_s[i] * 8 / weight_bits);
-      p.scale_shape.push_back(s_s[i] * q_group_size);
-      p.zp_shape.push_back(z_s[i] * q_group_size);
-    } else {
-      p.R_shape.push_back(w_s[i]);
-      p.scale_shape.push_back(s_s[i]);
-      p.zp_shape.push_back(z_s[i]);
-    }
-    ASSERT_THIS(p.R_shape[i] == p.scale_shape[i] &&
-                p.scale_shape[i] == p.zp_shape[i]);
+    p.R_shape.push_back(w_s[i]);
+    p.scale_shape.push_back(s_s[i]);
+    p.zp_shape.push_back(z_s[i]);
   }
 
   p.N = p.right_transpose ? w_s[w_dims - 2] : w_s[w_dims - 1];
