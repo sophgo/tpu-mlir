@@ -4692,6 +4692,7 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
                If true, will have the same number of dimensions as the input tensor.;
     mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
     select_last_index: select the last index of the minimum or maximum value when multiple  along the specified axis.;
+    use_int_input: choose if use i32/i16 as input, due to BF16 chip arch limit.;
   }];
 
   let arguments = (ins
@@ -4699,7 +4700,8 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
     I64Attr:$axis,
     BoolAttr:$keepdims,
     ArgModeAttr:$mode,
-    DefaultValuedAttr<BoolAttr, "true">:$select_last_index
+    DefaultValuedAttr<BoolAttr, "true">:$select_last_index,
+    DefaultValuedAttr<BoolAttr, "false">:$use_int_input
   );
 
   let results = (outs

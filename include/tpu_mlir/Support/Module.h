@@ -184,6 +184,7 @@ bool isShapeRelatedOp(Value v);
 bool isAllWeight(Operation *op);
 bool isNone(Value v);
 bool isGlobalBuffer(Value v);
+bool isTypeIndependent(Operation *op);
 FuncOp getMainFuncOp(ModuleOp module);
 i32_array_t getI32Array(ArrayAttr arrayAttr);
 i32_array_t getI32Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,

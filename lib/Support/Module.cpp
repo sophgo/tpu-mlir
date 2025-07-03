@@ -1087,6 +1087,12 @@ bool isGlobalBuffer(Value v) {
   return isa<tpu::BufferOp>(op);
 }
 
+bool isTypeIndependent(Operation *op) {
+  return (isa<tpu::PermuteOp, tpu::ReshapeOp, tpu::SliceOp, tpu::TileOp,
+              tpu::ConcatOp, top::PermuteOp, top::ReshapeOp, top::SliceOp,
+              top::TileOp, top::ConcatOp>(op));
+}
+
 int64_t getCoeffSize(ModuleOp s) {
   return s->getAttrOfType<IntegerAttr>(Attr::COEFF_SIZE).getInt();
 }

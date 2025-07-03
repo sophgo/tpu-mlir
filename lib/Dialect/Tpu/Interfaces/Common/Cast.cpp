@@ -80,7 +80,11 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
       if (is_cv18xx) {
         v = bf16_mul(BF16(p.inputs[0][i], false), BF16(1. / qtype.getScale()));
       } else {
-        v = requant(p.inputs[0][i], qtype);
+        if (in_type.isBF16()) {
+          v = requant(BF16(p.inputs[0][i], false), qtype);
+        } else {
+          v = requant(p.inputs[0][i], qtype);
+        }
       }
       p.outputs[0][i] = saturate(v, out_type, round_mode);
     }

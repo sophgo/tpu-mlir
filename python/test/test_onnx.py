@@ -3936,10 +3936,7 @@ class ONNX_IR_TESTER(object):
                 return a, b
 
         # generate data with duplicate values
-        if (self.chip == "mars3"):
-            x = np.random.randint(1, 666, size=(2, 32, 40, 80)).astype(np.float32)
-        else:
-            x = np.random.randint(-666, 666, size=(2, 32, 40, 80)).astype(np.float32)
+        x = np.random.randint(-666, 666, size=(2, 32, 40, 80)).astype(np.float32)
         x = torch.from_numpy(x)
         self.torch_and_test(x, Model(), case_name)
 
