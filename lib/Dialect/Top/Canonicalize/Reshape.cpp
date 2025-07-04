@@ -441,16 +441,17 @@ struct TopReshapeFuse2 : public OpRewriterPatternEx<ReshapeOp> {
       return failure();
     }
     int32_t index = 0;
-    for (auto nextOp : pre_op.getResult().getUsers()) {
-      std::string in_name =
-          module::getName(in).str() + "_r_" + std::to_string(index++);
+    for (auto &use : llvm::make_early_inc_range(pre_op.getResult().getUses())) {
+      auto *nextOp = use.getOwner();
+      std::string in_name = module::getName(in).str() + "_reshape_fuse_" +
+                            std::to_string(index++);
       auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
       rewriter.setInsertionPoint(pre_op);
       auto reshape_op = rewriter.create<ReshapeOp>(
           loc, pre_op.getOutput().getType(), ValueRange{pre_op.getInput()});
-      nextOp->setOperand(0, reshape_op.getOutput());
+      nextOp->setOperand(use.getOperandNumber(), reshape_op.getOutput());
     }
-    // rewriter.eraseOp(pre_op);
+    rewriter.eraseOp(pre_op);
     return success();
   }
 };
