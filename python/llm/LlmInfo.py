@@ -112,6 +112,24 @@ COMMON_INFO = ModelInfo(
         LlmList.LMHEAD: "lm_head",
     })
 
+# Phi3
+PHI3_INFO = ModelInfo(
+    ModelConfig(),
+    weights={
+        LlmList.LAYERS: "model.layers",
+        LlmList.EMBEDING: "model.embed_tokens",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.QKV_WB: "self_attn.qkv_proj",
+        LlmList.ATT_D: "self_attn.o_proj",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.MLP_UP: "mlp.gate_up_proj",
+        LlmList.MLP_DOWN: "mlp.down_proj",
+        # ================================
+        LlmList.NORM: "model.norm",
+        LlmList.LMHEAD: "lm_head",
+    })
+
 # chatglm3
 CHATGLM3_INFO = ModelInfo(
     ModelConfig(intermediate_size="ffn_hidden_size",

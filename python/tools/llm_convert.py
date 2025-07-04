@@ -80,6 +80,9 @@ if __name__ == '__main__':
     elif config.model_type in ["chatglm"]:
         from llm.Chatglm3Converter import Chatglm3Converter
         converter = Chatglm3Converter(args, config)
+    elif config.model_type in ["phi3"]:
+        from llm.Phi3Converter import Phi3Converter
+        converter = Phi3Converter(args, config)
     elif config.model_type in ['qwen2_vl']:
         from llm.Qwen2VLConverter import Qwen2VLConverter
         converter = Qwen2VLConverter(args, config)
