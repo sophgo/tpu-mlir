@@ -2057,6 +2057,9 @@ static bool backward_update_slice(
                   return false;
               }
               auto val = user->getResult(0);
+              if (tensor_infos.find(val) == tensor_infos.end()) {
+                continue;
+              }
               for (int i = 0; i < shape_secs.hsecs; i++) {
                 tensor_infos[val].slice_info.h[i].first =
                     tensor_infos[in].slice_info.h[i].first;
