@@ -70,9 +70,10 @@ if __name__ == '__main__':
     parser.add_argument('--custom_operator', nargs='*', default=[],
                         help="When custom_mode is selected, it is used to specify a custom operator type")
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
-    parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8'],
+    parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
                         help='Specify the bit width for automatic mixed precision')
     parser.add_argument('--fast',help='faster search_qtable', action='store_true')
+    parser.add_argument('--pre_qtable',help='path to initial qtable for search_qtable')
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
     parser.add_argument('-o', '--calibration_table', type=str,
                         help='output threshold table')
@@ -108,6 +109,8 @@ if __name__ == '__main__':
         searcherQ = SearchQtable(args, selector, tune_ds)
         if args.mix_mode == '4_8':
             searcherQ.run_4_8()
+        elif args.mix_mode == 'w4a8':
+            searcherQ.run_w4a8()
         else:
             if args.fast:
                 searcherQ.run_fast()
