@@ -60,8 +60,12 @@ void RopeLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto mul2_round_mode = get_round_mode(op.getMul2RoundModeAttr().str());
   auto add_round_mode = get_round_mode(op.getAddRoundModeAttr().str());
   Operation *newOp;
-  newOp = lowering_common<tpu::RopeOp>(rewriter, op.getOperation(),
-                                       op.getOutput().getType());
+  // redundant processing to prevent uniform quant input but si8/ui8 output
+  auto new_type = (module::isUniformQuantized(op.getInput1()) &&
+                   !module::isUniformQuantized(op.getOutput()))
+                      ? op.getInput1().getType()
+                      : op.getOutput().getType();
+  newOp = lowering_common<tpu::RopeOp>(rewriter, op.getOperation(), new_type);
   newOp->setAttr("mul1_round_mode",
                  tpu::RoundModeAttr::get(op.getContext(), mul1_round_mode));
   newOp->setAttr("mul2_round_mode",
