@@ -62,7 +62,7 @@ public:
       }
 
       // no need preprocess, just verify argument
-      if (inputOp.getResult().getType().getShape().size() < 4) {
+      if (!(inputOp.getChannelFormat() || inputOp.getPixelFormat())) {
         std::vector<int64_t> input_shape;
         for (int i = 0; i < inputOp.getResult().getType().getShape().size();
              ++i) {
