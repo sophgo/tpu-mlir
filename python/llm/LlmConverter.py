@@ -72,6 +72,9 @@ class LlmConverter(BaseConverter):
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.config_dir = os.path.join(self.out_dir, "config")
         self.commands = []
+        self.extern_gen_mlirs = []
+        self.extern_compiles = []
+        self.extern_bmodels = []
 
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
@@ -101,6 +104,8 @@ class LlmConverter(BaseConverter):
     def gen_all_mlir(self):
         if self.debug:
             self.gen_vit_mlir()
+            for func in self.extern_gen_mlirs:
+                func()
             self.gen_embedding_lmhead_mlir()
             self.gen_sample_head_mlir()
             for i in range(self.num_layers):
@@ -112,6 +117,9 @@ class LlmConverter(BaseConverter):
 
             if self.do_vit:
                 futures.append(executor.submit(self.gen_vit_mlir))
+
+            for func in self.extern_gen_mlirs:
+                futures.append(executor.submit(func))
 
             futures.append(executor.submit(self.gen_embedding_lmhead_mlir))
 
@@ -294,7 +302,10 @@ class LlmConverter(BaseConverter):
         self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', False)
         # whether to merge lm_head and embedding in bmodel
         self.do_lmhead_merge = self.tie_word_embeddings and not self.embedding_disk and self.num_device < 2
-        # specify quant config
+        self.init_quantization()
+
+    def init_quantization(self):
+        c = self.model_info.config
         self.quantization_config = getattr(self.llm_config, c.quantization_config, None)
         if self.quantization_config:
             self.quant_mode = self.quantization_config["quant_method"]
@@ -1335,6 +1346,9 @@ class LlmConverter(BaseConverter):
         if self.do_vit:
             bmodel_list += ["vit.bmodel"]
             total_bytes += os.path.getsize("vit.bmodel")
+        for bmodel in self.extern_bmodels:
+            bmodel_list += [bmodel]
+            total_bytes += os.path.getsize(bmodel)
         bmodel_list += ["lm_head.bmodel"]
         total_bytes += os.path.getsize("lm_head.bmodel")
 
@@ -1367,6 +1381,9 @@ class LlmConverter(BaseConverter):
         for i in range(self.num_layers):
             self.compile_block(i)
             self.compile_block_cache(i)
+
+        for func in self.extern_compiles:
+            func()
 
         self.execute_tasks()
 

@@ -22,6 +22,10 @@ class Qwen2_5VLConverter(LlmConverter):
             )
         self.do_vit = True
         # vision config
+        self.init_vconfig()
+        self.vit_path = "visual"
+
+    def init_vconfig(self):
         self.vconfig = self.config.vision_config
         self.patch_size = self.vconfig.patch_size
         self.temporal_patch_size = self.vconfig.temporal_patch_size
@@ -36,6 +40,7 @@ class Qwen2_5VLConverter(LlmConverter):
         self.vintermediate_size = self.vconfig.intermediate_size
         self.position_shape = [3, self.max_input_length]
         self.fullatt_block_indexes = self.vconfig.fullatt_block_indexes
+        self.mrope_section = getattr(self.config.rope_scaling, 'mrope_section', [16, 24, 24])
 
     @override
     def load_pretrained(self, config):
@@ -45,7 +50,7 @@ class Qwen2_5VLConverter(LlmConverter):
     @override
     def rotary_embedding(self):
         from transformers.models.qwen2_vl.modeling_qwen2_vl import Qwen2VLRotaryEmbedding
-        rotary_embed = Qwen2VLRotaryEmbedding(self.config)
+        rotary_embed = Qwen2VLRotaryEmbedding(self.llm_config)
         position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
             1, 1, self.seq_length).expand(3, 1, self.seq_length)
         x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
@@ -69,8 +74,7 @@ class Qwen2_5VLConverter(LlmConverter):
                              axis=0,
                              loc=self.get_loc(name, mlir_gen),
                              ip=mlir_gen.insert_point).output
-        mrope_section = getattr(self.config.rope_scaling, 'mrope_section', [16, 24, 24])
-        t_dim, h_dim, w_dim = mrope_section  # 16,24,24
+        t_dim, h_dim, w_dim = self.mrope_section  # 16,24,24
         # slice cos_op = [1, dim 1, t_dim] + [1, dim, 1, h_dim] + [1, dim, 1, w_dim]
         t_op = top.SliceOp(mlir_gen.get_tensor_type([1, dim, 1, t_dim]),
                            in_op,
@@ -135,12 +139,12 @@ class Qwen2_5VLConverter(LlmConverter):
         return freqs.cos().numpy(), freqs.sin().numpy()
 
     def vision_block(self, vit_mlir, id: int, in_op, cos_op, sin_op, mask_op):
-        norm1 = f"visual.blocks.{id}.norm1"
-        attn_q = f"visual.blocks.{id}.attn.q"
-        attn_k = f"visual.blocks.{id}.attn.k"
-        attn_v = f"visual.blocks.{id}.attn.v"
-        attn_proj = f"visual.blocks.{id}.attn.proj"
-        norm2 = f"visual.blocks.{id}.norm2"
+        norm1 = f"{self.vit_path}.blocks.{id}.norm1"
+        attn_q = f"{self.vit_path}.blocks.{id}.attn.q"
+        attn_k = f"{self.vit_path}.blocks.{id}.attn.k"
+        attn_v = f"{self.vit_path}.blocks.{id}.attn.v"
+        attn_proj = f"{self.vit_path}.blocks.{id}.attn.proj"
+        norm2 = f"{self.vit_path}.blocks.{id}.norm2"
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -187,11 +191,11 @@ class Qwen2_5VLConverter(LlmConverter):
                                      dim=self.vhead_dim,
                                      mq=self.num_patches,
                                      mk=self.num_patches,
-                                     loc=L(f"visual.blocks.{id}.fattention"),
+                                     loc=L(f"{self.vit_path}.blocks.{id}.fattention"),
                                      ip=ip).output
             fa_op = top.ReshapeOp(T(hidden_shape),
                                   fa_op,
-                                  loc=L(f"visual.blocks.{id}.fattention.reshape"),
+                                  loc=L(f"{self.vit_path}.blocks.{id}.fattention.reshape"),
                                   ip=ip).output
             out_op = self.linear(vit_mlir,
                                  attn_proj,
@@ -204,9 +208,9 @@ class Qwen2_5VLConverter(LlmConverter):
 
         def vision_mlp(in_op):
             in_shape = [self.num_patches, self.embed_dim]
-            mlp_gate = f"visual.blocks.{id}.mlp.gate_proj"
-            mlp_up = f"visual.blocks.{id}.mlp.up_proj"
-            mlp_down = f"visual.blocks.{id}.mlp.down_proj"
+            mlp_gate = f"{self.vit_path}.blocks.{id}.mlp.gate_proj"
+            mlp_up = f"{self.vit_path}.blocks.{id}.mlp.up_proj"
+            mlp_down = f"{self.vit_path}.blocks.{id}.mlp.down_proj"
 
             new_op = self.rms_norm(vit_mlir, in_op, norm2)
 
@@ -234,12 +238,12 @@ class Qwen2_5VLConverter(LlmConverter):
         tqdm.write(f"generate vit mlir ...")
         # create weights file
         vit_npz = "vit_top_weights.npz"
-        patch_embed = "visual.patch_embed.proj"
-        rotary_cos = "visual.rotary.cos"
-        rotary_sin = "visual.rotary.sin"
-        merger_ln_q = "visual.merger.ln_q"
-        merger_mlp0 = "visual.merger.mlp.0"
-        merger_mlp2 = "visual.merger.mlp.2"
+        patch_embed = f"{self.vit_path}.patch_embed.proj"
+        rotary_cos = f"{self.vit_path}.rotary.cos"
+        rotary_sin = f"{self.vit_path}.rotary.sin"
+        merger_ln_q = f"{self.vit_path}.merger.ln_q"
+        merger_mlp0 = f"{self.vit_path}.merger.mlp.0"
+        merger_mlp2 = f"{self.vit_path}.merger.mlp.2"
 
         def save_weights():
             cos, sin = self.vision_rotary()
@@ -254,18 +258,18 @@ class Qwen2_5VLConverter(LlmConverter):
             self.set_linear_weight(merger_mlp0, weights_dict)
             self.set_linear_weight(merger_mlp2, weights_dict)
             for i in range(self.depth):
-                self.set_common_weight(f"visual.blocks.{i}.norm1", weights_dict)
-                self.set_common_weight(f"visual.blocks.{i}.norm2", weights_dict)
-                self.set_linear_weight(f"visual.blocks.{i}.attn.proj", weights_dict)
-                self.set_linear_weight(f"visual.blocks.{i}.mlp.gate_proj", weights_dict)
-                self.set_linear_weight(f"visual.blocks.{i}.mlp.up_proj", weights_dict)
-                self.set_linear_weight(f"visual.blocks.{i}.mlp.down_proj", weights_dict)
+                self.set_common_weight(f"{self.vit_path}.blocks.{i}.norm1", weights_dict)
+                self.set_common_weight(f"{self.vit_path}.blocks.{i}.norm2", weights_dict)
+                self.set_linear_weight(f"{self.vit_path}.blocks.{i}.attn.proj", weights_dict)
+                self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.gate_proj", weights_dict)
+                self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.up_proj", weights_dict)
+                self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.down_proj", weights_dict)
                 # split qkv
                 # self.set_linear_weight(f"visual.blocks.{i}.attn.qkv", weights_dict)
-                weight = self.model.read(f"visual.blocks.{i}.attn.qkv.weight").reshape(
+                weight = self.model.read(f"{self.vit_path}.blocks.{i}.attn.qkv.weight").reshape(
                     3 * self.embed_dim, self.embed_dim)
-                bias = self.model.read(f"visual.blocks.{i}.attn.qkv.bias").reshape(3 *
-                                                                                   self.embed_dim)
+                bias = self.model.read(f"{self.vit_path}.blocks.{i}.attn.qkv.bias").reshape(
+                    3 * self.embed_dim)
                 q_w = weight[:self.embed_dim, :]
                 k_w = weight[self.embed_dim:2 * self.embed_dim, :]
                 v_w = weight[2 * self.embed_dim:, :]
@@ -275,12 +279,12 @@ class Qwen2_5VLConverter(LlmConverter):
                 q_w = np.ascontiguousarray(np.transpose(q_w, (1, 0)))
                 k_w = np.ascontiguousarray(np.transpose(k_w, (1, 0)))
                 v_w = np.ascontiguousarray(np.transpose(v_w, (1, 0)))
-                weights_dict[f"visual.blocks.{i}.attn.q.weight"] = q_w
-                weights_dict[f"visual.blocks.{i}.attn.k.weight"] = k_w
-                weights_dict[f"visual.blocks.{i}.attn.v.weight"] = v_w
-                weights_dict[f"visual.blocks.{i}.attn.q.bias"] = q_b
-                weights_dict[f"visual.blocks.{i}.attn.k.bias"] = k_b
-                weights_dict[f"visual.blocks.{i}.attn.v.bias"] = v_b
+                weights_dict[f"{self.vit_path}.blocks.{i}.attn.q.weight"] = q_w
+                weights_dict[f"{self.vit_path}.blocks.{i}.attn.k.weight"] = k_w
+                weights_dict[f"{self.vit_path}.blocks.{i}.attn.v.weight"] = v_w
+                weights_dict[f"{self.vit_path}.blocks.{i}.attn.q.bias"] = q_b
+                weights_dict[f"{self.vit_path}.blocks.{i}.attn.k.bias"] = k_b
+                weights_dict[f"{self.vit_path}.blocks.{i}.attn.v.bias"] = v_b
             # save weights
             np.savez(vit_npz, **weights_dict)
 

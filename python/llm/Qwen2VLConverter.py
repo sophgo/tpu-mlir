@@ -43,7 +43,7 @@ class Qwen2VLConverter(LlmConverter):
     @override
     def rotary_embedding(self):
         from transformers.models.qwen2_vl.modeling_qwen2_vl import Qwen2VLRotaryEmbedding
-        rotary_embed = Qwen2VLRotaryEmbedding(self.config)
+        rotary_embed = Qwen2VLRotaryEmbedding(self.llm_config)
         position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
             1, 1, self.seq_length).expand(3, 1, self.seq_length)
         x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
