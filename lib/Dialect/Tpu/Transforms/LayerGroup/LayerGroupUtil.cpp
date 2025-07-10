@@ -1426,6 +1426,45 @@ bool is_matmul_right_tensor(Operation *op, Value v) {
   return res;
 }
 
+bool is_broadcast_rope_with_permute_optimize(Operation *op) {
+  if (auto rope_op = dyn_cast<tpu::RopeOp>(op)) {
+    if (!rope_op.getIsPermuteOptimize()) {
+      return false;
+    }
+    auto rope_input1 = rope_op.getInput1();
+    auto rope_input2 = rope_op.getInput2();
+    auto rope_input3 = rope_op.getInput3();
+    auto input1_shape =
+        rope_input1.getType().cast<RankedTensorType>().getShape();
+    auto input2_shape =
+        rope_input2.getType().cast<RankedTensorType>().getShape();
+    auto input3_shape =
+        rope_input3.getType().cast<RankedTensorType>().getShape();
+    if (input1_shape.size() != 4 || input2_shape.size() != 4 ||
+        input3_shape.size() != 4) {
+      return false;
+    }
+    if (input1_shape[1] != input2_shape[1] ||
+        input1_shape[1] != input3_shape[1]) {
+      return false;
+    }
+    if (input1_shape[3] != input2_shape[3] ||
+        input1_shape[3] != input3_shape[3]) {
+      return false;
+    }
+    if ((input1_shape[0] != input2_shape[0] && input2_shape[0] != 1) ||
+        (input1_shape[0] != input3_shape[0] && input3_shape[0] != 1)) {
+      return false;
+    }
+    if ((input1_shape[2] != input2_shape[2] && input2_shape[2] != 1) ||
+        (input1_shape[2] != input3_shape[2] && input3_shape[2] != 1)) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
 bool is_attention_not_input_tensor(Operation *op, Value v) {
   bool res = false;
   if (auto attention_op = dyn_cast<tpu::AttentionOp>(op)) {
@@ -1510,6 +1549,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   bool is_broadcast_tensor = is_broadcast_binary(op, in);
   bool is_right_matrix = is_matmul_right_tensor(op, in);
   bool is_no_input_attention = is_attention_not_input_tensor(op, in);
+  bool is_broadcast_rope = is_broadcast_rope_with_permute_optimize(op);
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
@@ -1517,10 +1557,8 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   } else {
     for (auto &s : out_si.n) {
       auto ret = lg_op.BackwardN(idx, slice, s.first, s.second);
-      if (is_broadcast_tensor && n == 1) {
-        idx = 0;
-        slice = 1;
-      } else if (is_right_matrix && n == 1) {
+      if ((is_broadcast_tensor || is_right_matrix || is_broadcast_rope) &&
+          n == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -1605,7 +1643,8 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
       // llvm::errs()  <<"  i:"<<i<< ", out_idx:"<<s.first<< ", out_slice:"
       //               <<s.second<< " >>> in_idx:"<<idx<< ", in_slice:"<<slice
       //               << "\n";
-      if ((is_right_matrix || is_broadcast_tensor) && h == 1) {
+      if ((is_right_matrix || is_broadcast_tensor || is_broadcast_rope) &&
+          h == 1) {
         idx = 0;
         slice = 1;
       } else {
@@ -1924,8 +1963,8 @@ static bool backward_update_slice(
         }
         /* "tpu.store" now not support storing a tensor with margins to GMEM. */
         auto followed_by_store_op = [&lg_info](Operation *op) -> bool {
-          if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(), op)
-                        == lg_info.group_ops.end()) {
+          if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
+                        op) == lg_info.group_ops.end()) {
             return false; // do not need to a store_op.
           }
           for (auto user : op->getUsers()) {
@@ -2370,7 +2409,28 @@ void set_weight_allow_split_attr(Operation *op) {
     auto out_shape = module::getShape(weight_op.getResult());
     std::vector<int64_t> AllowSplitVector(out_shape.size(), 1);
     weight_op.setAllowSplitAttr(builder.getI64ArrayAttr(AllowSplitVector));
+  } else if (isa<tpu::RopeOp>(op) && (module::isWeight(op->getOperand(1)) ||
+                                      module::isWeight(op->getOperand(2)))) {
+    if (module::isWeight(op->getOperand(1))) {
+      auto weight_op =
+          dyn_cast<top::WeightOp>(op->getOperand(1).getDefiningOp());
+      if (weight_op.getAllowSplit() == std::nullopt) {
+        auto out_shape = module::getShape(weight_op.getResult());
+        std::vector<int64_t> AllowSplitVector(out_shape.size(), 1);
+        weight_op.setAllowSplitAttr(builder.getI64ArrayAttr(AllowSplitVector));
+      }
+    }
+    if (module::isWeight(op->getOperand(2))) {
+      auto weight_op =
+          dyn_cast<top::WeightOp>(op->getOperand(2).getDefiningOp());
+      if (weight_op.getAllowSplit() == std::nullopt) {
+        auto out_shape = module::getShape(weight_op.getResult());
+        std::vector<int64_t> AllowSplitVector(out_shape.size(), 1);
+        weight_op.setAllowSplitAttr(builder.getI64ArrayAttr(AllowSplitVector));
+      }
+    }
   }
+  return;
 }
 
 void delete_weight_allow_split_attr(Operation *op) {

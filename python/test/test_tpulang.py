@@ -224,6 +224,7 @@ class TPULANG_IR_TESTER(object):
             "MeanStdScale": (self.test_MeanStdScale, Y, N),
             "MeanStdScaleConv": (self.test_MeanStdScale_Conv, Y, N),
             "Rope": (self.test_Rope, Y, N),
+            "RopeMulConst": (self.test_RopeMulConst, Y, Y),
             "ConcattoRope": (self.test_ConcattoRope, Y, N),
             #### error case ####
             "ErrorCase": (self.test_ErrorCase, Y, Y),
@@ -5290,6 +5291,57 @@ class TPULANG_IR_TESTER(object):
                         updates=[[[5, 5, 5, 5], [6, 6, 6, 6], [7, 7, 7, 7], [8, 8, 8, 8]],
                                  [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]]],
                         dtype="float16")
+
+    def test_RopeMulConst(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_rope_mulconst(input_shape,
+                                weight_shape,
+                                dtype="float32",
+                                is_quantized=False,
+                                is_permute_optimize: bool = False,
+                                mul1_round_mode: str = 'half_up',
+                                mul2_round_mode: str = 'half_up',
+                                add_round_mode: str = 'half_up',
+                                mul1_shift: int = 0,
+                                mul2_shift: int = 0,
+                                add_shift: int = 0,
+                                mul1_saturation: bool = True,
+                                mul2_saturation: bool = True,
+                                add_saturation: bool = True,
+                                out_name: str = None):
+            input = rand_data(input_shape, dtype)
+            weight0 = self.coeff_tensor(list(weight_shape), dtype)
+            weight1 = self.coeff_tensor(list(weight_shape), dtype)
+            x = tpul.Tensor(dtype=dtype, shape=list(input_shape), data=input)
+            y = tpul.rope(x,
+                          weight0,
+                          weight1,
+                          is_permute_optimize=is_permute_optimize,
+                          mul1_round_mode=mul1_round_mode,
+                          mul2_round_mode=mul2_round_mode,
+                          add_round_mode=add_round_mode,
+                          mul1_shift=mul1_shift,
+                          mul2_shift=mul2_shift,
+                          add_shift=add_shift,
+                          mul1_saturation=mul1_saturation,
+                          mul2_saturation=mul2_saturation,
+                          add_saturation=add_saturation,
+                          out_name=out_name)
+            outputs = tpul.mul(y, 0.125)
+            self.compile_and_check(self.unique_name(case_name), [x], [outputs],
+                                   is_quantized=is_quantized)
+
+        _test_rope_mulconst((4, 3680, 16, 64), (3680, 64),
+                            dtype="float16",
+                            is_quantized=False,
+                            is_permute_optimize=True,
+                            mul1_round_mode='half_up',
+                            mul2_round_mode='half_up',
+                            add_round_mode='half_up',
+                            mul1_saturation=True,
+                            mul2_saturation=True,
+                            add_saturation=True)
 
     def test_Rope(self, case_name):
         """Rope"""
