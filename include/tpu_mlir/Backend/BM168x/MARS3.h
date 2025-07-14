@@ -78,6 +78,11 @@ private:
     TAG_USERS = 0,
     TAG_WEIGHT = (1ul << 40),
     TAG_ACTIVATION = (2ul << 40),
+    TAG_IO0 = (3ul << 40),
+    TAG_IO1 = (4ul << 40),
+    TAG_IO2 = (5ul << 40),
+    TAG_IO3 = (6ul << 40),
+    TAG_IO4 = (7ul << 40),
   };
 
 protected:
@@ -94,6 +99,11 @@ protected:
     GMEM_START_ADDR = 0x80000000UL;
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
+    IO_ADDR[0] = TAG_IO0;
+    IO_ADDR[1] = TAG_IO1;
+    IO_ADDR[2] = TAG_IO2;
+    IO_ADDR[3] = TAG_IO3;
+    IO_ADDR[4] = TAG_IO4;
     SUPPORT_MEM_TAG = true;
     LIB_BACKEND_NAME = "libbackend_mars3.so";
     // GDMA format

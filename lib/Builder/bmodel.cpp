@@ -1010,6 +1010,9 @@ static size_t get_tensor_buffer_size(const bmodel::Tensor *tensor) {
   // use sizeof(int) instead of the concrete data type byte size
   //   to guarantee the size is proper for any case
   auto mem_size = sizeof(int);
+  if (tensor->data_type() == 2 || tensor->data_type() == 3) {
+    mem_size = sizeof(char);
+  }
   for (size_t i = 0; i < dims; i++) {
     mem_size *= tensor->shape()->Get(0)->dim()->Get(i);
   }

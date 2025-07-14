@@ -322,23 +322,23 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
   }
   auto io_limit = getIOLimit(m);
   if (module::isAddrMode(module::AddrMode::IO_TAG)) {
-    assert(module::isBM1688());
-    std::vector<Value> ios;
-    module::getInputsOutputs(m, ios, ios);
-    // fix input and output address to IO_TAG
-    int io_index = 0;
-    int tag_max = 5;
-    if (ios.size() > tag_max) {
-      // select IO with max 5 data size
-      sort_ios(ios);
-      for (io_index = 0; io_index < tag_max; io_index++) {
-        module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
-      }
-    } else {
-      for (auto &io : ios) {
-        module::setAddress(io, BM168x::IO_ADDR[io_index++]);
-      }
-    }
+    // // assert(module::isBM1688());
+    // std::vector<Value> ios;
+    // module::getInputsOutputs(m, ios, ios);
+    // // fix input and output address to IO_TAG
+    // int io_index = 0;
+    // int tag_max = 5;
+    // if (ios.size() > tag_max) {
+    //   // select IO with max 5 data size
+    //   sort_ios(ios);
+    //   for (io_index = 0; io_index < tag_max; io_index++) {
+    //     module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
+    //   }
+    // } else {
+    // for (auto &io : ios) {
+    //   module::setAddress(io, BM168x::IO_ADDR[io_index++]);
+    // }
+    // }
     // fix other address
     module::setNeuronAddr(m, start_addr);
     module::setNeuronSize(m, addr_limit - start_addr);
@@ -427,6 +427,10 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
         if (auto rop = dyn_cast<tpu::ReshapeOp>(input.getDefiningOp())) {
           module::setAddress(input, addr + offset);
           input = rop.getInput();
+        }
+        if (module::isAddrMode(module::AddrMode::IO_TAG) &&
+            module::getAddress(input) >= BM168x::IO_ADDR[0]) {
+          continue;
         }
         module::setAddress(input, addr + offset);
         offset += module::getBytes(input);
@@ -797,6 +801,33 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
   }
 
+  // 0. assign io-tag addrs before common_ops.
+  if (module::isAddrMode(module::AddrMode::IO_TAG)) {
+    auto erase_vinfo = [](std::vector<ValueInfo> &ops,
+                          const ValueInfo &v_info) {
+      auto iter = ops.begin();
+      while (iter != ops.end()) {
+        if (*iter == v_info) {
+          iter = ops.erase(iter);
+        } else {
+          ++iter;
+        }
+      }
+    };
+    std::vector<Value> ios;
+    module::getInputsOutputs(m, ios, ios);
+    sort_ios(ios);
+    int n_tags = ios.size() < 5 ? ios.size() : 5;
+    for (int io_index = 0; io_index < n_tags; io_index++) {
+      module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
+      ValueInfo v_info(ios[io_index].getDefiningOp(),
+                       ios[io_index].cast<OpResult>().getResultNumber());
+      erase_vinfo(common_ops, v_info);
+      erase_vinfo(inplace_ops, v_info);
+      liveRange.erase(v_info);
+    }
+  }
+
   // 1.assign common_ops
   // key: the operation pointer + output index, convert the result to type
   // int64_t
@@ -958,7 +989,6 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       if (isa<top::InputOp>(opd) ||
           (isa<ReturnOp>(op) &&
            (module::isAddrMode(module::AddrMode::IO_ALONE) ||
-            module::isAddrMode(module::AddrMode::IO_TAG) ||
             module::isAddrMode(module::AddrMode::IO_RELOC)))) {
         liveRange[v_info].start = 0;
         liveRange[v_info].end = 0xFFFFFFFF;

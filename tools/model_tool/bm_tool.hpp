@@ -254,6 +254,9 @@ void bm_show(const string &filename, bool all) {
        << ", runtime: "
        << mem_info.neuron_mem_size + mem_info.middle_buffer_size << ")"
        << std::endl;
+  cout << "\t(coeff size: " << mem_info.coeff_mem_size
+       << "; middle buffer size: " << mem_info.middle_buffer_size
+       << "; neuron size: " << mem_info.neuron_mem_size << ")" << std::endl;
   cout << "host mem size: "
        << mem_info.host_coeff_mem_size + mem_info.host_neuron_mem_size
        << " (weight: " << mem_info.host_coeff_mem_size

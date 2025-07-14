@@ -59,7 +59,7 @@ release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#mars3 sha256: 0e0e949501da02784caf2d253a548cf48bf954ef
+#mars3 sha256: 800f08bd7df50ddbc4dcf7baef08fbd70efe67b0
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
@@ -81,7 +81,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 
 ## tpu-runtime 2025-1-17
 
-build from tpu-runtime 0004f3e0236832afb4bdeae677d6a489b77a9d2d
+build from tpu-runtime 2a1ecf74d667b26b86d094ef073b286141cdcfb1
 
 ```bash
 pushd libsophon

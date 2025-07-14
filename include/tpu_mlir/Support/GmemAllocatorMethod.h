@@ -33,6 +33,9 @@ struct ValueInfo {
       return false;
     }
   }
+  bool operator==(const ValueInfo &rhs) const {
+    return op == rhs.op && index == rhs.index;
+  }
 };
 
 struct GmemBlock {
