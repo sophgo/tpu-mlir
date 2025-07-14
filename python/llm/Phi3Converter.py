@@ -57,6 +57,52 @@ class Phi3Converter(Chatglm3Converter):
         self.model_info = PHI3_INFO
 
     @override
+    def linear(self,
+               mlir_gen,
+               proj: str,
+               input_op,
+               weight_shape: list,
+               out_shape: list,
+               force_bias: bool = False):
+        if 'qkv_proj' in proj or 'gate_up_proj' in proj:
+            proj_i = proj.rsplit('_', 1)[0]
+        else:
+            proj_i = proj
+        if self.model.is_exist(proj_i + ".bias") or force_bias:
+            bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
+            bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
+        else:
+            bias_op = mlir_gen.none_op
+        if self.quant_mode and self.model.is_exist(proj_i + ".qweight"):
+            qweight_op = mlir_gen.create_weight_op(
+                proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)],
+                'UINT8')
+            scale_shape = [weight_shape[1], weight_shape[0] //
+                           self.q_group_size] if self.q_group_size > 0 else [weight_shape[1], 1]
+            scale_op = mlir_gen.create_weight_op(proj + ".scales", scale_shape)
+            zp_op = mlir_gen.create_weight_op(proj + ".qzeros", scale_shape, 'UINT8')
+            return top.A16MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                                   input_op,
+                                   qweight_op,
+                                   scale_op,
+                                   zp_op,
+                                   bias_op,
+                                   right_transpose=True,
+                                   q_group_size=self.q_group_size,
+                                   weight_bits=self.quant_bits,
+                                   loc=self.get_loc(proj, mlir_gen),
+                                   ip=mlir_gen.insert_point).output
+
+        weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
+        return top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                            input_op,
+                            weight_op,
+                            bias_op,
+                            do_relu=False,
+                            loc=self.get_loc(proj, mlir_gen),
+                            ip=mlir_gen.insert_point).output
+
+    @override
     def rotary_pos(self, mlir_gen, in_op, cos_op, sin_op, out_name: str):
         in_shape = in_op.type.shape
         prefix = f"{out_name}.rotary_pos"
@@ -209,18 +255,57 @@ class Phi3Converter(Chatglm3Converter):
                 zp_data = self.model.read(zp_path)
                 unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(
                     qweigth_data, zp_data, self.quant_bits, self.quant_mode)
-                weight_dict[qweight_path] = np.ascontiguousarray(
-                    np.transpose(pack_int8_weights, (1, 0)))
-                weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
-                weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
+
+                if 'qkv_proj' in qweight_path:
+                    weight_dict[path + '_q.qweight'] = np.ascontiguousarray(
+                        np.transpose(pack_int8_weights[:, :self.hidden_size], (1, 0)))
+                    weight_dict[path + '_k.qweight'] = np.ascontiguousarray(
+                        np.transpose(
+                            pack_int8_weights[:, self.hidden_size:self.hidden_size + self.kv_dim],
+                            (1, 0)))
+                    weight_dict[path + '_v.qweight'] = np.ascontiguousarray(
+                        np.transpose(pack_int8_weights[:, self.hidden_size + self.kv_dim:], (1, 0)))
+                    weight_dict[path + '_q.scales'] = np.ascontiguousarray(
+                        np.transpose(scale_data[:, :self.hidden_size], (1, 0)))
+                    weight_dict[path + '_k.scales'] = np.ascontiguousarray(
+                        np.transpose(scale_data[:, self.hidden_size:self.hidden_size + self.kv_dim],
+                                     (1, 0)))
+                    weight_dict[path + '_v.scales'] = np.ascontiguousarray(
+                        np.transpose(scale_data[:, self.hidden_size + self.kv_dim:], (1, 0)))
+                    weight_dict[path + '_q.qzeros'] = np.ascontiguousarray(
+                        np.transpose(unpacked_zeros[:, :self.hidden_size], (1, 0)))
+                    weight_dict[path + '_k.qzeros'] = np.ascontiguousarray(
+                        np.transpose(
+                            unpacked_zeros[:, self.hidden_size:self.hidden_size + self.kv_dim],
+                            (1, 0)))
+                    weight_dict[path + '_v.qzeros'] = np.ascontiguousarray(
+                        np.transpose(unpacked_zeros[:, self.hidden_size + self.kv_dim:], (1, 0)))
+                elif 'gate_up_proj' in qweight_path:
+                    weight_dict[path + '_gate.qweight'] = np.ascontiguousarray(
+                        np.transpose(pack_int8_weights[:, :self.intermediate_size], (1, 0)))
+                    weight_dict[path + '_up.qweight'] = np.ascontiguousarray(
+                        np.transpose(pack_int8_weights[:, self.intermediate_size:], (1, 0)))
+                    weight_dict[path + '_gate.scales'] = np.ascontiguousarray(
+                        np.transpose(scale_data[:, :self.intermediate_size], (1, 0)))
+                    weight_dict[path + '_up.scales'] = np.ascontiguousarray(
+                        np.transpose(scale_data[:, self.intermediate_size:], (1, 0)))
+                    weight_dict[path + '_gate.qzeros'] = np.ascontiguousarray(
+                        np.transpose(unpacked_zeros[:, :self.intermediate_size], (1, 0)))
+                    weight_dict[path + '_up.qzeros'] = np.ascontiguousarray(
+                        np.transpose(unpacked_zeros[:, self.intermediate_size:], (1, 0)))
+                else:
+                    weight_dict[qweight_path] = np.ascontiguousarray(
+                        np.transpose(pack_int8_weights, (1, 0)))
+                    weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
+                    weight_dict[zp_path] = np.ascontiguousarray(np.transpose(
+                        unpacked_zeros, (1, 0)))
             else:
                 raise RuntimeError("Can't find key: {}".format(weight_path))
-        if self.model.is_exist(bias_path + '.bias'):
-            b_data = self.model.read(bias_path + '.bias')
-            weight_dict[bias_path + '_q.bias'] = b_data[:self.hidden_size]
-            weight_dict[bias_path + '_k.bias'] = b_data[self.hidden_size:self.hidden_size +
-                                                        self.kv_dim]
-            weight_dict[bias_path + '_v.bias'] = b_data[self.hidden_size + self.kv_dim:]
+        if self.model.is_exist(path + '.bias'):
+            b_data = self.model.read(path + '.bias')
+            weight_dict[path + '_q.bias'] = b_data[:self.hidden_size]
+            weight_dict[path + '_k.bias'] = b_data[self.hidden_size:self.hidden_size + self.kv_dim]
+            weight_dict[path + '_v.bias'] = b_data[self.hidden_size + self.kv_dim:]
 
     @override
     def gen_block_mlir(self, idx: int):
