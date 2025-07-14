@@ -59,6 +59,8 @@ if __name__ == '__main__':
                         help='export embedding as bin file and inference by cpu')
     parser.add_argument('--do_sample', action='store_true',
                         help='Add sample head and separate greedy head from lmhead')
+    parser.add_argument('--use_block_with_kv', action='store_true',
+                        help='use history kv for prefill, default is False')
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
@@ -72,6 +74,15 @@ if __name__ == '__main__':
                         help='output mlir/bmodel path, default `./tmp`')
     args = parser.parse_args()
     # yapf: enable
+    if args.use_block_with_kv:
+        if args.max_input_length <= 0:
+            args.max_input_length = args.seq_length // 4
+            print("Warning: max_input_length is not set, use seq_length // 4 as default value: {}".
+                  format(args.max_input_length))
+        elif args.max_input_length > args.seq_length // 2:
+            raise ValueError(
+                "max_input_length should not be larger than seq_length // 2, got: {}".format(
+                    args.max_input_length))
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
     if config.model_type in ["qwen3", "qwen2", "llama", "minicpm"]:

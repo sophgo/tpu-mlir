@@ -33,7 +33,7 @@ class Qwen2VLConverter(LlmConverter):
         self.embed_dim = self.vconfig.embed_dim
         self.vnum_heads = self.vconfig.num_heads
         self.vhead_dim = self.embed_dim // self.vnum_heads
-        self.position_shape = [3, self.seq_length]
+        self.position_shape = [3, self.max_input_length]
 
     @override
     def load_pretrained(self, config):
@@ -114,7 +114,7 @@ class Qwen2VLConverter(LlmConverter):
                          rotary_cos: str,
                          rotary_sin: str,
                          decode: bool = False):
-        dim = 1 if decode else self.seq_length
+        dim = 1 if decode else self.max_input_length
 
         weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
                                               [self.seq_length, 1, self.head_dim // 2])

@@ -34,7 +34,7 @@ class Qwen2_5VLConverter(LlmConverter):
         self.vnum_heads = self.vconfig.num_heads
         self.vhead_dim = self.embed_dim // self.vnum_heads
         self.vintermediate_size = self.vconfig.intermediate_size
-        self.position_shape = [3, self.seq_length]
+        self.position_shape = [3, self.max_input_length]
         self.fullatt_block_indexes = self.vconfig.fullatt_block_indexes
 
     @override
@@ -116,7 +116,7 @@ class Qwen2_5VLConverter(LlmConverter):
                          rotary_cos: str,
                          rotary_sin: str,
                          decode: bool = False):
-        dim = 1 if decode else self.seq_length
+        dim = 1 if decode else self.max_input_length
 
         weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
                                               [self.seq_length, 1, self.head_dim // 2])

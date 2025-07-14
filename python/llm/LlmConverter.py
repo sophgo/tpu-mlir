@@ -39,6 +39,7 @@ class LlmConverter(BaseConverter):
         self.chip = args.chip
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
+        self.use_block_with_kv = args.use_block_with_kv
         self.debug = args.debug
         self.position_shape = [1, self.max_input_length]
         self.num_core = args.num_core
@@ -996,8 +997,8 @@ class LlmConverter(BaseConverter):
             v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
                                [1, 1, self.kv_dim])
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshpae"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshpae"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshape"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
             if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
                 q_op = self.rms_norm(block_mlir, q_op, q_norm)
@@ -1051,7 +1052,113 @@ class LlmConverter(BaseConverter):
             with open(f"{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
-        gen_block()
+        def gen_block_with_kv():
+            # Generate block with kv cache related operations
+            name = f"block_{idx}"
+            input_len = self.max_input_length
+            input_shape = [1, input_len, self.hidden_size]
+            id_shape = list(self.position_shape)
+            mask_shape = [1, 1, self.max_input_length, self.seq_length]
+            history_shape = [
+                1, self.seq_length - input_len, self.num_key_value_heads, self.head_dim
+            ]
+
+            q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
+            kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
+
+            block_mlir = MLIRImporter(
+                [input_shape, id_shape, mask_shape, history_shape, history_shape],
+                [input_shape, kv_shape, kv_shape],
+                name,
+                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                weight_file=weight_file)
+
+            def T(shape: list):
+                return block_mlir.get_tensor_type(shape)
+
+            def L(name: str):
+                return self.get_loc(name, block_mlir)
+
+            ip = block_mlir.insert_point
+
+            in0_op = block_mlir.create_input_op(L("input_states"), 0)
+            in1_op = block_mlir.create_input_op(L("position_ids"), 1)
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
+            in3_op = block_mlir.create_input_op(L("history_k"), 3)
+            in4_op = block_mlir.create_input_op(L("history_v"), 4)
+            return_ops = []
+            ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
+
+            # q_proj
+            q_dim = self.num_attention_heads * self.head_dim
+            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, q_dim],
+                               [1, input_len, q_dim])
+            # k_proj
+            k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
+                               [1, input_len, self.kv_dim])
+            # v_proj
+            v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
+                               [1, input_len, self.kv_dim])
+            # reshape q,k,v
+            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshape"), ip=ip).output
+            v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
+            if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
+                q_op = self.rms_norm(block_mlir, q_op, q_norm)
+                k_op = self.rms_norm(block_mlir, k_op, k_norm)
+            # rotary cos/sin
+            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
+                                               rotary_sin, False)
+            return_ops.append(k_op)
+            return_ops.append(v_op)
+            # ====== kv concat ========
+            k_op = top.ConcatOp(T([1, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                                [in3_op, k_op],
+                                axis=1,
+                                loc=L(k_proj + ".concat"),
+                                ip=ip).output
+            v_op = top.ConcatOp(T([1, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                                [in4_op, v_op],
+                                axis=1,
+                                loc=L(v_proj + ".concat"),
+                                ip=ip).output
+            # ======= fattention =========
+            fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
+                                     q_op,
+                                     k_op,
+                                     v_op,
+                                     in2_op,
+                                     block_mlir.none_op,
+                                     scale=self.head_dim**-0.5,
+                                     batch=1,
+                                     q_head=self.num_attention_heads,
+                                     kv_head=self.num_key_value_heads,
+                                     dim=self.head_dim,
+                                     mq=input_len,
+                                     mk=self.seq_length,
+                                     loc=L(TOP_PATH + "fattention"),
+                                     ip=ip).output
+            o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
+            if self.llm_type == LlmType.GEMMA3:
+                o_op = self.rms_norm(block_mlir, o_op, post_attn_ln)
+            if self.llm_type == LlmType.MINICPM4:
+                o_op = top.MulConstOp(T(input_shape),
+                                      o_op,
+                                      const_val=self.scale_depth / np.sqrt(self.num_layers),
+                                      loc=L(o_proj + ".scale0"),
+                                      ip=ip).output
+            o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
+            # ========== mlp =============
+            new_op = gen_mlp(block_mlir, input_shape, o_op)
+            block_mlir.create_return_op([new_op] + return_ops)
+            mlir_txt = block_mlir.print_module()
+            with open(f"{name}.mlir", "w") as f:
+                f.write(mlir_txt)
+
+        if self.use_block_with_kv:
+            gen_block_with_kv()
+        else:
+            gen_block()
         gen_block_cache()
 
     def gen_vit_mlir(self):
