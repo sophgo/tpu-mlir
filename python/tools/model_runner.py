@@ -204,8 +204,11 @@ def _model_inference(inputs: dict,
     pyruntime = "pyruntime_"
     is_cv18xx = False
     if model_file.endswith(".bmodel"):
-        pyruntime = pyruntime + "bm"
         chip = get_chip_from_model(model_file)
+        if chip == "BM1690" or chip == "SG2262":
+            pyruntime = pyruntime + "tpuv7"
+        else:
+            pyruntime = pyruntime + "bm"
         with FileLock("/tmp/cmodel_so.lock"):
             link_cmodel_so(chip)
             link_custom_so(chip)
