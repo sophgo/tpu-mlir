@@ -95,6 +95,40 @@ class TdbInterface(TdbCmdBackend):
                 self.message("End of Execution")
                 break
 
+    @add_callback("end_execution", TdbStatus.END)
+    @add_callback("stop")
+    @add_callback("run")
+    def do_run_ref(self, start_point=0, ends_point=None):
+        """run from begining"""
+        if not self.status.NO_CAND:
+            try:
+                res = input(
+                    """The program being debugged has been started already.\nStart it from the beginning? (y or any)"""
+                )
+                if not res.strip().lower().startswith("y"):
+                    self.message("Program not restarted.")
+                    return False
+            except KeyboardInterrupt:
+                self.message("Cancel")
+                return False
+        self._reset()
+
+        self.status = TdbStatus.RUNNING
+        cmdpoint = -1
+        self.cmd_point = start_point
+        if ends_point == None:
+            ends_point = len(self.cmditer)
+        while cmdpoint < ends_point:
+            try:
+                cmdpoint = self.step_ref(start_point)
+            except (KeyboardInterrupt, BreakpointStop):
+                self.status = TdbStatus.IDLE
+                break
+            except StopIteration:
+                self.status = TdbStatus.END
+                self.message("End of Execution")
+                break
+
     do_r = do_run
 
     @add_callback("start")

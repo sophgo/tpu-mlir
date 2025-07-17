@@ -258,12 +258,13 @@ class Memory(CModelMemory):
 
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * info.LANE_SIZE
-            return np.lib.stride_tricks.as_strided(
+            data = np.lib.stride_tricks.as_strided(
                 self.LMEM[offset:offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
             )
+            return data
 
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
@@ -408,6 +409,14 @@ class Memory(CModelMemory):
             offset = value.r_addr
             assert data.dtype == value.np_dtype
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
-            self.DDR[offset:offset + src_u8.size] = src_u8.flatten()
+
+            data_ = np.lib.stride_tricks.as_strided(
+                self.DDR[offset:offset + 4].view(value.np_dtype),
+                np.ctypeslib.as_array(value.shape),
+                np.ctypeslib.as_array(value.stride) * value.itemsize,
+                writeable=True,
+            )
+            data_[:] = data.reshape(value.shape)
+
             return True
         return False

@@ -489,6 +489,7 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
                     [--report REPORT] [--fail_fast]
                     [--quiet] [--no_interactive]
                     [--dump_mode {failed,all,never}]
+                    [--ref]
                     context_dir reference_data
 
 
@@ -516,6 +517,9 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
    * - dump_mode
      - 否
      - 指定dump命令下载的数据，默认为failed，还可以是all或never
+   * - ref
+     - 否
+     - 指定用reference数据（来自tpu_output.npz）对每个算子进行推理，默认为false
    * - tolerance
      - 否
      - 指定比较容差，默认为 "0.99,0.90"
@@ -580,6 +584,25 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 
 .. figure:: ../assets/tdb_check_data_3.png
 
+**check ref**
+
+使用 ``check ref`` 命令可以重新使用reference数据触发模型推理，以此查看网络中所以存在问题的算子：
+
+.. code-block:: shell
+
+   (tdb) check ref
+
+重新推理之后可正常使用其它等功能查看数据结果。
+
+**check diff**
+
+使用 ``check diff`` 命令可以可视化数据的差异：
+
+.. code-block:: shell
+
+   (tdb) check diff [file-line] [index]
+
+将真实数据、参考数据、差值数据的可视化结果保存为./*actual.png、./*ref.png、./*diff.png。
 
 **SoC 设备**
 

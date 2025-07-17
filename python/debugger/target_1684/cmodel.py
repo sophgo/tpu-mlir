@@ -242,6 +242,13 @@ class Memory(CModelMemory):
 
             # continuous memory
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
+            data_ = np.lib.stride_tricks.as_strided(
+                self.DDR[offset:offset + 4].view(value.np_dtype),
+                np.ctypeslib.as_array(value.shape),
+                np.ctypeslib.as_array(value.stride) * value.itemsize,
+                writeable=True,
+            )
+            data_[:] = data.reshape(value.shape)
             self.DDR[offset:offset + src_u8.size] = src_u8.ravel()
             return True
 

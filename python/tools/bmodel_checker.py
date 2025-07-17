@@ -23,6 +23,8 @@ def parse_args(argv=None):
         "reference_data",
         help="The reference data used for checking this BModel.",
     )
+
+    parser.add_argument("--ref", action="store_true", help="inference with reference data.")
     parser.add_argument("--tolerance", default="0.99,0.99", help="tolerance for compare.")
     parser.add_argument(
         "--dump_mode",
@@ -54,6 +56,7 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
     context_dir = args.context_dir
+    do_ref = args.ref
     assert os.path.isdir(context_dir)
     bmodel_file = os.path.join(context_dir, "compilation.bmodel")
     final_mlir_fn = os.path.join(context_dir, "final.mlir")
@@ -105,7 +108,10 @@ def main(argv=None):
 
     tdb.message(f"dump mode = {plugin.dump_mode}")
 
-    tdb.do_run("")
+    if do_ref:
+        tdb.do_run_ref()
+    else:
+        tdb.do_run("")
     tdb.message("(<file-line>:\[operands]|\[results])")
     plugin.do_summary("table")
     if args.dump_dataframe:
@@ -117,6 +123,8 @@ def main(argv=None):
     - `check summary table|reduce` to view report of check results.
     - `check data <file-line> <index>` to review value details
     - `check dump` or `check dump <file-name>` to dump tensor that failed in comparison into npz files
+    - `check ref` to use ref data to inference again
+    - `check diff <file-line> <index>` to visualize the difference of two tensors
     """
     tdb.message(msg)
     if args.no_interactive:

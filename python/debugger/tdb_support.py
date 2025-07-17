@@ -121,7 +121,7 @@ def add_callback(name=None, *filter):
                 res = func(self, *args, **kwargs)
             else:
                 res = None
-                if call_name == 'step':
+                if call_name.startwith('step'):
                     self.cmd_point += 1
 
             try:
@@ -360,6 +360,7 @@ class TdbCmdBackend(cmd.Cmd):
         self.atomic_mlir = BModel2MLIR(bmodel)
         self.cmditer = self.atomic_mlir.create_cmdlist()
         self.cmd_point = 0
+        self.start_cmd = 0
 
     def _load_runner(self):
         # cmd_point point at the cmd that to be executed (but not)
@@ -481,6 +482,7 @@ class TdbCmdBackend(cmd.Cmd):
         op_df["executed_id"] = op_df["executed_id"].astype(int)
 
         index_counter = Counter(op_df.index)
+        # op_df.to_csv("cmd_records.csv")
         if index_counter.most_common(1)[0][1] == 1:
             self.op_df = op_df.set_index("cmd_index", drop=False)
             return
@@ -650,6 +652,39 @@ class TdbCmdBackend(cmd.Cmd):
             self.error(e)
             raise BreakpointStop()
         self.cmd_point += forward_cmds
+
+    @add_callback("step_ref")
+    def step_ref(self, start_cmd: int = 0):
+        """
+        every do_<func> used next() should catch BreakpointStop Exception
+        and stop to wait user interaction
+        """
+
+        if self.start_cmd <= start_cmd:
+            self.start_cmd = start_cmd
+        cmd = self.cmditer[self.start_cmd]
+
+        try:
+            if not self.static_mode:
+                cmd_type = cmd.cmd_type
+                if cmd_type.is_static():
+                    if not self.context.is_sys(cmd):
+                        cmds = self.get_stack_cmds()
+                        forward_cmds = len(cmds.all)
+                        self.runner.cmds_compute(cmds)
+                elif cmd_type == CMDType.cpu:
+                    self.runner.cpu_compute(cmd)
+                elif cmd_type == CMDType.dyn_ir:
+                    self.runner.dynamic_compute(cmd)
+                else:
+                    self.error("skip unknown CMDType")
+        except ValueError as e:
+            self.error(e)
+            raise BreakpointStop()
+        # breakpoint()
+        self.start_cmd += forward_cmds
+        self.cmd_point = self.start_cmd
+        return self.start_cmd
 
     def set_inputs_dict(self, inputs):
         args = self.atomic_mlir.functions[0].signature[0]

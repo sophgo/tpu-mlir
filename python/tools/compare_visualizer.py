@@ -455,7 +455,8 @@ def plot_2d_array(diff,
                   vmin=-0.1,
                   vmax=0.1,
                   h_split=None,
-                  w_split=None):
+                  w_split=None,
+                  save_path=None):
     figwidth = figsize
     figheight = 3 + figsize / diff.shape[1] * diff.shape[0]
     plt.figure(figsize=(figwidth, figheight))
@@ -503,6 +504,8 @@ def plot_2d_array(diff,
               join([title[i:i + title_line] for i in range(0, title_len, title_line)]))
     # plt.colorbar()
     plt.show()
+    if save_path is not None:
+        plt.savefig(save_path)
 
 
 def make_slice_object(something):
@@ -651,6 +654,7 @@ class NPZWrapper:
              figsize=6,
              vmin=None,
              vmax=None,
+             save_path=None,
              **kwargs):
         if tensor is None:
             warnings.warn(
@@ -693,6 +697,7 @@ class NPZWrapper:
                           figsize=figsize,
                           vmin=vmin,
                           vmax=vmax,
+                          save_path=save_path,
                           **attr)
 
 
@@ -831,6 +836,7 @@ class NPZComparer:
                   figsize=6,
                   vmin=None,
                   vmax=None,
+                  save_path=None,
                   **kwargs):
         if tensor is None:
             warnings.warn(
@@ -866,7 +872,13 @@ class NPZComparer:
                 vmin_ = vmin
                 vmax_ = vmax
             print("vmin %s vmax %s" % (vmin_, vmax_))
-            plot_2d_array(darray, data_mask, figsize=figsize, vmin=vmin_, vmax=vmax_, **attr)
+            plot_2d_array(darray,
+                          data_mask,
+                          figsize=figsize,
+                          vmin=vmin_,
+                          vmax=vmax_,
+                          **attr,
+                          save_path=save_path)
 
     def plot(self, *args, **kwargs):
         self.plot_diff(*args, **kwargs)
@@ -886,7 +898,8 @@ class NPZComparer:
                 transpose_hw=False,
                 mix_axis=None,
                 dump=False,
-                verbose=False):
+                verbose=False,
+                save_path=None):
         # archive the kwargs for next dump_vs
         self.archived_kwargs = {}
         self.archived_kwargs.update(
@@ -942,13 +955,20 @@ class NPZComparer:
                 scale += 1E-10
             all_vmin = -1  # (all_min - zp) / scale
             all_vmax = 1  # (all_max - zp) / scale
-
+            target_path, ref_path, diff_path = None, None, None
+            if save_path is not None:
+                import os
+                filename, ext = os.path.splitext(save_path)
+                target_path = f"{filename}_actual{ext}"
+                ref_path = f"{filename}_ref{ext}"
+                diff_path = f"{filename}_diff{ext}"
             self.target.plot(key,
                              abs_tol=zp,
                              rel_tol=scale,
                              figsize=figsize,
                              vmin=all_vmin,
                              vmax=all_vmax,
+                             save_path=target_path,
                              **kwargs)
             self.ref.plot(key,
                           abs_tol=zp,
@@ -956,6 +976,7 @@ class NPZComparer:
                           figsize=figsize,
                           vmin=all_vmin,
                           vmax=all_vmax,
+                          save_path=ref_path,
                           **kwargs)
             self.plot_diff(key,
                            abs_tol=abs_tol,
@@ -963,6 +984,7 @@ class NPZComparer:
                            figsize=figsize,
                            vmin=vmin,
                            vmax=vmax,
+                           save_path=diff_path,
                            **kwargs)
         if dump:
             self.dump_vs_plot(verbose=verbose)

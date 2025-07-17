@@ -178,6 +178,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
         tdb.index_df["loc_index"] = tdb.index_df["loc_index"].fillna(-1)
         # convert 'loc_index' column from float to integer
         tdb.index_df["loc_index"] = tdb.index_df["loc_index"].astype(int)
+        # tdb.index_df.to_csv("cmd_index.csv", index=False)
         FinalMlirIndexPlugin.data_frame = tdb.index_df
 
     def _build_mlir_loc(self, tdb: TdbCmdBackend):
@@ -189,11 +190,11 @@ class FinalMlirIndexPlugin(TdbPlugin):
             ret = index_dic[key]
             return ret['executed_id']
 
-        def assemble_tuple_key(subnet_id, core_id, cmd_id, cmd_type):
+        def assemble_tuple_key(subnet_ids, core_id, cmd_id, cmd_type):
             if cmd_type == CMDType.tiu:
-                return (subnet_id, cmd_id, None, core_id)
+                return (subnet_ids, cmd_id, None, core_id)
             elif cmd_type == CMDType.dma:
-                return (subnet_id, None, cmd_id, core_id)
+                return (subnet_ids, None, cmd_id, core_id)
             else:
                 raise RuntimeError("Not Supported CMDType!")
 
@@ -204,6 +205,14 @@ class FinalMlirIndexPlugin(TdbPlugin):
 
         loc_records = []
         global_layer_line = collections.Counter()
+        self.operands_tmp = collections.defaultdict(list)
+        self.results_tmp = collections.defaultdict(list)
+        self.op_infos = collections.defaultdict(lambda: {
+            'operands': [],
+            'results': [],
+            'cmd_point': int
+        })
+
         for loc_index, loc in enumerate(final_mlir.loc.tensor_loc):
             if loc.slice_all:
                 global_layer_line[loc.file_line] += 1
@@ -216,13 +225,13 @@ class FinalMlirIndexPlugin(TdbPlugin):
             # we need to find the pointer
 
             (
-                subnet_id,
+                subnet_ids,
                 tiu_before,
                 dma_before,
                 core_id,
             ) = loc.tuple_key_before
             (
-                subnet_id,
+                subnet_ids,
                 tiu_after,
                 dma_after,
                 core_id,
@@ -232,51 +241,71 @@ class FinalMlirIndexPlugin(TdbPlugin):
 
             tiu_point = dma_point = None
             if tiu_before > 0:
-                tiu_point = find_point((subnet_id, tiu_before, None, core_id))
+                tiu_point = find_point((subnet_ids, tiu_before, None, core_id))
             if dma_before > 0:
-                dma_point = find_point((subnet_id, None, dma_before, core_id))
+                dma_point = find_point((subnet_ids, None, dma_before, core_id))
             bf_point = max_with_none(tiu_point, dma_point, last_af_point) + 1
-            operands_tmp = collections.defaultdict(list)
-            operands_tmp[tdb.cmditer[bf_point - 1].tuple_key].extend(
+            operands = [
                 Operand(opd, opd_index, loc_index, opd.name, bf_point, loc.file_line)
-                for opd_index, opd in enumerate(loc.operands) if opd)
+                for opd_index, opd in enumerate(loc.operands) if opd
+            ]
+            self.operands_tmp[tdb.cmditer[bf_point - 1].tuple_key].extend(operands)
 
             tiu_point = dma_point = None
             if tiu_after > 0:
-                tiu_point = find_point((subnet_id, tiu_after, None, core_id))
+                tiu_point = find_point((subnet_ids, tiu_after, None, core_id))
             if dma_after > 0:
-                dma_point = find_point((subnet_id, None, dma_after, core_id))
+                dma_point = find_point((subnet_ids, None, dma_after, core_id))
             last_af_point = af_point = max_with_none(tiu_point, dma_point)
-            results_tmp = collections.defaultdict(list)
-            results_tmp[tdb.cmditer[af_point - 1].tuple_key].extend(
+            results = [
                 Result(opd, opd_index, loc_index, opd.name, af_point, loc.file_line)
-                for opd_index, opd in enumerate(loc.results) if opd)
+                for opd_index, opd in enumerate(loc.results) if opd
+            ]
+            self.results_tmp[tdb.cmditer[af_point - 1].tuple_key].extend(results)
+
+            self.op_infos[loc.file_line]['operands'].extend(operands)
+            self.op_infos[loc.file_line]['results'].extend(results)
+            # self.op_infos[loc.file_line]['cmd_point'] = i
 
             for i in range(tiu_before + 1, tiu_after + 1):
                 record = {
-                    "loc_index": loc.loc_index,
-                    "line-num": loc.file_line,
-                    "subnet_id": subnet_id,
-                    "core_id": core_id,
-                    "cmd_id": i,
-                    "cmd_type": CMDType.tiu,
-                    "operands": operands_tmp[assemble_tuple_key(subnet_id, core_id, i,
-                                                                CMDType.tiu)],
-                    "results": results_tmp[assemble_tuple_key(subnet_id, core_id, i, CMDType.tiu)],
+                    "loc_index":
+                    loc.loc_index,
+                    "line-num":
+                    loc.file_line,
+                    "subnet_ids":
+                    subnet_ids,
+                    "core_id":
+                    core_id,
+                    "cmd_id":
+                    i,
+                    "cmd_type":
+                    CMDType.tiu,
+                    "operands":
+                    self.operands_tmp[assemble_tuple_key(subnet_ids, core_id, i, CMDType.tiu)],
+                    "results":
+                    self.results_tmp[assemble_tuple_key(subnet_ids, core_id, i, CMDType.tiu)],
                 }
                 loc_records.append(record)
 
             for j in range(dma_before + 1, dma_after + 1):
                 record = {
-                    "loc_index": loc.loc_index,
-                    "line-num": loc.file_line,
-                    "subnet_id": subnet_id,
-                    "core_id": core_id,
-                    "cmd_id": j,
-                    "cmd_type": CMDType.dma,
-                    "operands": operands_tmp[assemble_tuple_key(subnet_id, core_id, j,
-                                                                CMDType.dma)],
-                    "results": results_tmp[assemble_tuple_key(subnet_id, core_id, j, CMDType.dma)],
+                    "loc_index":
+                    loc.loc_index,
+                    "line-num":
+                    loc.file_line,
+                    "subnet_ids":
+                    subnet_ids,
+                    "core_id":
+                    core_id,
+                    "cmd_id":
+                    j,
+                    "cmd_type":
+                    CMDType.dma,
+                    "operands":
+                    self.operands_tmp[assemble_tuple_key(subnet_ids, core_id, j, CMDType.dma)],
+                    "results":
+                    self.results_tmp[assemble_tuple_key(subnet_ids, core_id, j, CMDType.dma)],
                 }
                 loc_records.append(record)
 
@@ -712,10 +741,10 @@ class ProgressPlugin(TdbPlugin):
             return
 
         self.progress.start()
-        (subnet_id, tiu_id, dma_id, core_id) = tdb.get_cmd().tuple_key
-        if subnet_id not in self.visited_subnet:
-            self.progress.print(f"run subnet {subnet_id}")
-            self.visited_subnet.add(subnet_id)
+        (subnet_ids, tiu_id, dma_id, core_id) = tdb.get_cmd().tuple_key
+        if subnet_ids not in self.visited_subnet:
+            self.progress.print(f"run subnet {subnet_ids}")
+            self.visited_subnet.add(subnet_ids)
 
         if tiu_id is None:
             tiu_id = "-"

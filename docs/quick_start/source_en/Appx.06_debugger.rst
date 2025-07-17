@@ -473,6 +473,7 @@ The usage is as follows:
                     [--report REPORT] [--fail_fast]
                     [--quiet] [--no_interactive]
                     [--dump_mode {failed,all,never}]
+                    [--ref]
                     context_dir reference_data
 
 
@@ -500,6 +501,9 @@ The main parameters of ``bmodel_checker`` are described as follows:
    * - dump_mode
      - N
      - Specifies the data to be downloaded by the dump command, the default value is failed, it can also be all or never
+   * - ref
+     - N
+     - Specifies using reference data(from tpu_output.npz) to inference all op. Default is false
    * - tolerance
      - N
      - Specify comparison tolerances, default is "0.99,0.90"
@@ -564,6 +568,25 @@ An example of comparison error data is shown below:
 
 .. figure:: ../assets/tdb_check_data_3.png
 
+**check ref**
+
+To use ``check ref`` command using reference data to inference again, which allows inspecting all problematic operators in the network。
+
+.. code-block:: shell
+
+   (tdb) check ref
+
+After re-inference, you can normally use other functions such as viewing the data results.
+
+**check diff**
+
+To use ``check diff`` command can visualize the difference of data.
+
+.. code-block:: shell
+
+   (tdb) check diff [file-line] [index]
+
+Save the visualization results of the actual data, reference data, and difference data as ./*actual.png、./*ref.png、./*diff.png。
 
 **SoC Devices**
 

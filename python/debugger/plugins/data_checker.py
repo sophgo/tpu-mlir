@@ -16,6 +16,7 @@ import os
 import json
 import zipfile
 import pandas as pd
+import sys
 
 from rich import get_console
 from rich.console import Group
@@ -522,6 +523,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         return data
 
     def get_ref_data(self, operand: TLValue):
+        # Check if the operand is in the reference data
         for ref in self.ref_data:
             name = operand.name
             if name not in ref and name.startswith("load_"):
@@ -533,6 +535,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             return self.format_data(operand, ref_data)
 
         return None
+
+    def after_ref(self):
+        pass
 
     def collect_infer_data(self, operand: TLValue, actual, desired):
         if self.desire_op and operand.name not in self.desire_op:
@@ -666,6 +671,19 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
     def do_display_cmd(self, args):
         self.tdb.message(self.tdb.cmditer[int(args)])
 
+    def data_replace(self, lino, core_id=0):
+        op_infos = self.tdb.get_plugin(FinalMlirIndexPlugin).op_infos
+        memrefs = []
+        desired_datas = []
+        context = self.tdb.context
+        op_info = op_infos[lino]
+        for operand in op_info['operands']:
+            memrefs.append(operand.value.get_memref(context))
+            desired_datas.append(self.get_ref_data(operand.value))
+        for mem, desired in zip(memrefs, desired_datas):
+            if desired is not None:
+                context.memory.set_data(ValueRef(mem, core_id=core_id), desired)
+
     def check_data(self, point_index, is_operand, value_view: ValueView) -> ComparedResult:
         value = value_view.value
         if value.name in self.excepts:
@@ -771,8 +789,73 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 "value": value.to_dict(),
                 "cmp_failed": cmp_failed,
             })
-
         return value_res
+
+    def do_ref(self, arg: str):
+        self.start_cmd_point = 0
+        self.cmd_point = len(self.tdb.cmditer)
+        try:
+            lino = 0 if arg == '' else int(arg)
+            cmd_point = self.cmd_point
+
+            point_index = cmd_point
+            values = self.tdb.index_df.loc[self.tdb.index_df["executed_id"] == point_index,
+                                           "results"].tolist()
+
+            cmd = self.tdb.cmditer[0]
+            self.data_replace(lino, cmd.core_id)
+
+            self.tdb.do_run_ref(self.start_cmd_point, cmd_point)
+            plugin: DataCheck = self.tdb.get_plugin(DataCheck)
+            plugin.do_summary("table")
+
+            self.after_ref()
+        except Exception as e:
+            self.tdb.error(e)
+
+    def do_diff(self, arg: str):
+        from pathlib import Path
+        PROJECT_ROOT = Path(__file__).resolve().parents[3]
+        sys.path.append(str(PROJECT_ROOT / "python/tools"))
+        from compare_visualizer import NPZComparer
+        if arg == "":
+            self.tdb.message("Please enter <file-line> and <index>")
+            return
+
+        try:
+            parg = list(map(int, arg.split(" ")))
+            select_index = -1
+            if len(parg) == 1:
+                lino = parg[0]
+            else:
+                lino, select_index = parg
+
+            vv = self.index_record[lino][select_index]
+            valueview = vv.value_view
+            desired = self.get_ref_data(valueview.value)
+
+            name = f"{valueview.value.name}_asm_{valueview.file_line}_{valueview.loc_index}_{valueview.cmd_point}"
+            failed_npz = np.load(self.failed_tensor.fn)
+            name_santized = name.replace('/', '_').replace('\\', '_')
+            if f"{name}_actual" not in failed_npz or f"{name}_desired" not in failed_npz:
+                self.tdb.message("This tensor is not in failed_bmodel_outputs.npz")
+                return
+            actual = failed_npz[f"{name}_actual"]
+            desired = failed_npz[f"{name}_desired"]
+
+            comparer = NPZComparer(actual, desired)
+            comparer.plot_vs(abs_tol=0.001,
+                             vmin=-0.01,
+                             vmax=0.01,
+                             figsize=16,
+                             c_columns=32,
+                             save_path=f"{name_santized}.png")
+            self.tdb.message(f"Visualizaton of actual data saved as {name_santized}_target.png")
+            self.tdb.message(f"Visualizaton of desired data saved as {name_santized}_ref.png")
+            self.tdb.message(f"Visualizaton of differece saved as {name_santized}_diff.png")
+
+        except:
+            return
 
     def compare(self, tdb: TdbCmdBackend, is_operand):
         index_plugin = self.index
@@ -827,6 +910,52 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             raise StopIteration()
 
     def after_step(self, tdb: TdbCmdBackend):
+        if self.watch is not None:
+
+            for ret in self.watch.results:
+                self.watch_data.append(
+                    self.tdb.context.memory.get_data(ret.to_ref(core_id=self.watch.core_id)).copy())
+                if len(self.watch_data) > 1:
+                    np.savez(f"watch_data_{len(self.watch_data)}.npz", self.watch_data[-1])
+                    if not (self.watch_data[-2] == self.watch_data[-1]).all():
+                        self.tdb.message("change")
+                        raise BreakpointStop()
+
+        if self.ref_data is None or not self.enabled:
+            return
+
+        ret = self.compare(tdb, False)
+        if not ret and self.break_when_fail:
+            raise BreakpointStop()
+
+    def before_step_ref(self, tdb: TdbCmdBackend):
+        context = tdb.context
+
+        if self.ref_data is None or not self.enabled:
+            return
+
+        point_index = tdb.cmd_point
+        ret = self.compare(tdb, True)
+        values = None
+        context = tdb.context
+
+        point_index += 1
+        values = tdb.index_df.loc[tdb.index_df["executed_id"] == point_index, "operands"].tolist()
+        if values:
+            values = values[0]
+            for value in values:
+                memref = value.value.get_memref(context)
+                ref_data = self.get_ref_data(value.value)
+                if ref_data is not None and memref.mtype in {MType.G}:
+                    context.memory.set_data(ValueRef(memref, core_id=0), ref_data)
+
+        if tdb.cache_mode == "generate":
+            raise BufferError()
+
+        if not ret and self.break_when_fail:
+            raise StopIteration()
+
+    def after_step_ref(self, tdb: TdbCmdBackend):
         if self.watch is not None:
 
             for ret in self.watch.results:
