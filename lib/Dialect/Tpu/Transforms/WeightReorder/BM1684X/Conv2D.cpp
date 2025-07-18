@@ -183,7 +183,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
              (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
     use_3ic_optimize = 2; // merge kw to ic
-  } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
+  } else if (attr.ic * attr.kh <= Arch::NPU_NUM && attr.kh > 1) {
     use_3ic_optimize = 1; // merge kh to ic
   } else {
     use_3ic_optimize = 0;
@@ -616,7 +616,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
       } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
                  (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
         use_3ic_optimize = 2; // merge kw to ic
-      } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
+      } else if (attr.ic * attr.kh <= Arch::NPU_NUM && attr.kh > 1) {
         use_3ic_optimize = 1; // merge kh to ic
       } else {
         use_3ic_optimize = 0;

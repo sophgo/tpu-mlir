@@ -26,12 +26,15 @@ int64_t tpu::ReduceOp::getBufferSize_bm1684x(
     int64_t eu_num = Arch::eu_num(dtype_size);
     auto axes = module::getI64Array(getAxes());
     assert(axes->size() == 1);
+    auto dims = module::getShape(getInput()).size();
     if (axes->at(0) == 3) {
       // NOTE: NOW,  INT8 uses 3-stage reduce-w optimize, while FP16/FP32 uses
       // 2-stage reduce-w. INT8 reduce ==> in_wslice -> npu_num -> 2 -> 1
       // FP16/FP32 reduce ==> in_wslice -> npu_num -> 1
       buffer_size += 2 * ceiling_func(in_cslice, npu_num) * in_hslice * eu_num *
                      dtype_size;
+    } else if (dims == 3 && axes->at(0) == 2) {
+      buffer_size += 2 * ceiling_func(in_cslice, npu_num) * eu_num * dtype_size;
     }
     return buffer_size;
   }
@@ -52,7 +55,7 @@ void tpu::ReduceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   assert(axes->size() == 1);
   assert(axes->at(0) == 2 || axes->at(0) == 3);
   auto shape = module::getShape(getInput());
-  assert(shape.size() == 4);
+  assert(shape.size() == 4 || (shape.size() == 3 && axes->at(0) == 2));
 
   reduce_full_local_param_t param = {0};
   param.spec.common.axis_num = 1;

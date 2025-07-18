@@ -234,7 +234,9 @@ LogicalResult tpu::ReduceOp::LocalGenSupport() {
     return failure();
   }
   auto axes = module::getI64Array(getAxes());
-  if (module::getShape(getInput()).size() != 4) {
+  auto dims = module::getShape(getInput()).size();
+  bool is_valid = (dims == 4 || (dims == 3 && axes->at(0) == 2));
+  if (!is_valid) {
     return failure();
   }
   // Note: support other REDUCE-MODE may need to change getBufferSize().
