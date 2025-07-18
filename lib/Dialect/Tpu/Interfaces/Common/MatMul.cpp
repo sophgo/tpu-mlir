@@ -447,9 +447,9 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
   bool is_cv18xx = module::isCV18xx();
   if (out_type.isa<FloatType>()) {
-    if (out_type.isBF16()) {
-      BF16(p.outputs[0], p.outputs[0], num_elem);
-    } else if (out_type.isFloat8E4M3FN()) {
+    if (out_type.isFloat8E4M3FN() ||
+        ((out_type.isF16() || out_type.isBF16()) &&
+         module::getStorageType(getInput()).isFloat8E4M3FN())) {
       if (!getOutF8Scales().has_value())
         llvm_unreachable("should have out scale for MatMul in f8 mode");
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
@@ -472,6 +472,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isBF16()) {
+      BF16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (module::isUniformQuantized(getOutput())) {
     auto qmode = getQuantMode();
@@ -607,7 +609,24 @@ LogicalResult tpu::MatMulOp::AllowDataSplit(int64_t axis,
 
 mlir::Type tpu::MatMulOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (opd_idx == 0 || opd_idx == 1) {
-    return type_verify_case_i16_or_i32(getOperation(), opd_idx, mode);
+    auto out = getOperation()->getResult(0);
+    auto stype = module::getStorageType(out);
+    if (stype.isInteger(16) || stype.isInteger(32)) {
+      if (getOperation()->hasAttr("cal_i4")) {
+        return type_verify_case_type(getOperation(), opd_idx,
+                                     Builder(getOperation()).getI4Type(), mode);
+      }
+      return type_verify_case_i16_or_i32(getOperation(), opd_idx, mode);
+    } else if (stype.isF16() || stype.isBF16() || stype.isF32()) {
+      if (getOperation()->hasAttr("cal_e4")) {
+        auto toType = Builder(getOperation()).getFloat8E4M3FNType();
+        return type_verify_case_type(getOperation(), opd_idx, toType, mode);
+      } else {
+        return type_verify_case_same(getOperation(), opd_idx, mode);
+      }
+    } else {
+      return type_verify_case_same(getOperation(), opd_idx, mode);
+    }
   }
   return type_verify_case_same(getOperation(), opd_idx, mode);
 }

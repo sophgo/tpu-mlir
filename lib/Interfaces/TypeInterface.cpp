@@ -169,24 +169,4 @@ mlir::Type type_verify_case_i16_or_i32(mlir::Operation *op, uint64_t opd_idx,
   return type_verify_case_same(op, opd_idx, mode);
 }
 
-// this is for matmul in f8 mode, that output is fp32 and input needed is fp8
-mlir::Type type_verify_case_f32(mlir::Operation *op, uint64_t opd_idx,
-                                TypeCastMode &mode, bool isE4 = true) {
-  auto in = op->getOperand(opd_idx);
-  auto out = op->getResult(0);
-  assert(module::getStorageType(out).isF32());
-  auto stype = module::getStorageType(in);
-  if (isE4 && stype.isFloat8E4M3FN()) {
-    return do_nothing(mode);
-  } else if (!isE4 && stype.isFloat8E5M2()) {
-    return do_nothing(mode);
-  } else {
-    mode = TypeCastMode::DO_QUANTIZE;
-    if (isE4)
-      return Builder(op).getFloat8E4M3FNType();
-    else
-      return Builder(op).getFloat8E5M2Type();
-  }
-}
-
 }; // namespace tpu_mlir

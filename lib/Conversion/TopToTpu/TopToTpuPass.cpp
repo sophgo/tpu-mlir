@@ -1334,6 +1334,32 @@ void ConvertTopToTpu::runOnOperation() {
     calibration_process();
   }
 
+  if (module::isBM1690Family() && !LoweringConfig::isQuantized &&
+      module::getMode() == module::Mode::F8E4M3) {
+    mainFunc_.walk([&](Operation *op) {
+      auto users = op->getUsers();
+      auto users_len = std::distance(users.begin(), users.end());
+      if (isa<top::MatMulOp>(op) && users_len == 1) {
+        for (auto user : users) {
+          if (isa<top::AddOp>(user)) {
+            auto name = module::getName(user).str();
+            if (LoweringConfig::quantize_map.find(name) !=
+                    LoweringConfig::quantize_map.end() &&
+                (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
+                 LoweringConfig::quantize_map[name] == module::Mode::BF16)) {
+              mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+              if (LoweringConfig::quantize_map[name] == module::Mode::F16)
+                op->setAttr("output_f16", tmp);
+              else
+                op->setAttr("output_bf16", tmp);
+              break;
+            }
+          }
+        }
+      }
+    });
+  }
+
   if ((module::isBM1684X() || module::isBM1688() || module::isMARS3()) &&
       !LoweringConfig::isQuantized &&
       (module::getMode() == module::Mode::INT8 ||
@@ -1363,7 +1389,15 @@ void ConvertTopToTpu::runOnOperation() {
                 (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
                  LoweringConfig::quantize_map[name] == module::Mode::BF16)) {
               mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
-              op->setAttr("output_int16", tmp);
+              if (module::getMode() == module::Mode::INT8 ||
+                  module::getMode() == module::Mode::INT4) {
+                op->setAttr("output_int16", tmp);
+              } else if (module::getMode() == module::Mode::F8E4M3) {
+                if (LoweringConfig::quantize_map[name] == module::Mode::F16)
+                  op->setAttr("output_f16", tmp);
+                else
+                  op->setAttr("output_bf16", tmp);
+              }
               break;
             }
           }

@@ -17,6 +17,11 @@ void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::MatMulOp>(rewriter, op, 5);
 }
 
+static void set_cal_attr(Operation *op, std::string cal_type) {
+  mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+  op->setAttr(cal_type, tmp);
+}
+
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                                   bool asymmetric) const {
   // refer quantize_convlike_layer_int8
@@ -342,6 +347,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   if (fuse_rq) {
     newmm.setFuseRqAttr(rewriter.getBoolAttr(true));
   }
+  set_cal_attr(newmm.getOperation(), "cal_i8");
   // trick for Img2Col
   eliminateInvalidOp(righIsReshapeOp, rightReshapeOp);
   eliminateInvalidOp(biasIsReshapeOp, biasReshapeOp);
@@ -617,6 +623,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       }
     }
     rewriter.replaceOp(op, matmul_int32_out);
+    set_cal_attr(matmul_int32_out.getOperation(), "cal_i4");
   } else {
     attrs.push_back(
         rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shift)));
@@ -634,6 +641,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     auto newOp =
         rewriter.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
     rewriter.replaceOp(op, {newOp.getOutput()});
+    set_cal_attr(newOp.getOperation(), "cal_i4");
   }
 }
 void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -757,6 +765,9 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   auto out = op.getOutput();
   double in_scale = 1.0, out_scale = 1.0;
 
+  bool output_f16 = op->hasAttr("output_f16");
+  bool output_bf16 = op->hasAttr("output_bf16");
+
   if (module::getMode() == module::Mode::F8E5M2) {
     operands.push_back(op.getInput());
     if (auto weight = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
@@ -783,6 +794,9 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   auto out_max = qtype_out.getMax();
   in_scale = qtype_in.getMax() / get_f8e4m3_max();
   out_scale = out_max / get_f8e4m3_max();
+  if (output_f16 || output_bf16) {
+    out_scale = 1.0;
+  }
 
   if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = module::getNumElements(op.getBias());
@@ -864,8 +878,24 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   operands.push_back(noneOp_multi);
   // buffer
   operands.push_back(module::getNoneOp(op));
-  auto newType = getQuantF8E4M3Type(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  if (output_f16) {
+    auto newType = RankedTensorType::get(module::getShape(op.getOutput()),
+                                         rewriter.getF16Type());
+    auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType,
+                                                            operands, attrs);
+    set_cal_attr(newOp.getOperation(), "cal_e4");
+  } else if (output_bf16) {
+    auto newType = RankedTensorType::get(module::getShape(op.getOutput()),
+                                         rewriter.getBF16Type());
+    auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType,
+                                                            operands, attrs);
+    set_cal_attr(newOp.getOperation(), "cal_e4");
+  } else {
+    auto newType = getQuantF8E4M3Type(op.getOutput());
+    auto newOp = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType,
+                                                            operands, attrs);
+    set_cal_attr(newOp.getOperation(), "cal_e4");
+  }
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
