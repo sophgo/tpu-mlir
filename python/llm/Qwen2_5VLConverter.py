@@ -60,10 +60,17 @@ class Qwen2_5VLConverter(LlmConverter):
         return cos.numpy(), sin.numpy()  #[seq, 1, 64]
 
     def mrope(self, mlir_gen, in_op, name: str):
+        dim = in_op.type.shape[-1]
+        weight_op = mlir_gen.create_weight_op(name + ".weight",
+                                              [self.seq_length, 1, self.head_dim // 2])
+        in_op = top.GatherOp(mlir_gen.get_tensor_type([3, dim, 1, self.head_dim // 2]),
+                             weight_op,
+                             in_op,
+                             axis=0,
+                             loc=self.get_loc(name, mlir_gen),
+                             ip=mlir_gen.insert_point).output
         mrope_section = getattr(self.config.rope_scaling, 'mrope_section', [16, 24, 24])
-        in_shape = in_op.type.shape
         t_dim, h_dim, w_dim = mrope_section  # 16,24,24
-        dim = in_shape[1]
         # slice cos_op = [1, dim 1, t_dim] + [1, dim, 1, h_dim] + [1, dim, 1, w_dim]
         t_op = top.SliceOp(mlir_gen.get_tensor_type([1, dim, 1, t_dim]),
                            in_op,
@@ -108,36 +115,11 @@ class Qwen2_5VLConverter(LlmConverter):
         return tile_op
 
     @override
-    def apply_rotary_pos(self,
-                         mlir_gen,
-                         pos_op,
-                         q_op,
-                         k_op,
-                         rotary_cos: str,
-                         rotary_sin: str,
-                         decode: bool = False):
-        dim = 1 if decode else self.max_input_length
-
-        weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
-                                              [self.seq_length, 1, self.head_dim // 2])
-        cos_op = top.GatherOp(mlir_gen.get_tensor_type([3, dim, 1, self.head_dim // 2]),
-                              weight_op,
-                              pos_op,
-                              axis=0,
-                              loc=self.get_loc(rotary_cos, mlir_gen),
-                              ip=mlir_gen.insert_point).output
+    def apply_rotary_pos(self, mlir_gen, pos_op, q_op, k_op, rotary_cos: str, rotary_sin: str):
         # cos MROPE
-        cos_op = self.mrope(mlir_gen, cos_op, rotary_cos)
-        weight_op = mlir_gen.create_weight_op(rotary_sin + ".weight",
-                                              [self.seq_length, 1, self.head_dim // 2])
-        sin_op = top.GatherOp(mlir_gen.get_tensor_type([3, dim, 1, self.head_dim // 2]),
-                              weight_op,
-                              pos_op,
-                              axis=0,
-                              loc=self.get_loc(rotary_sin, mlir_gen),
-                              ip=mlir_gen.insert_point).output
+        cos_op = self.mrope(mlir_gen, pos_op, rotary_cos)
         # sin MROPE
-        sin_op = self.mrope(mlir_gen, sin_op, rotary_sin)
+        sin_op = self.mrope(mlir_gen, pos_op, rotary_sin)
         # ===== q_proj rotary ========
         q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
 

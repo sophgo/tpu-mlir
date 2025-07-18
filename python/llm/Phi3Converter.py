@@ -153,14 +153,8 @@ class Phi3Converter(Chatglm3Converter):
         return new_q
 
     @override
-    def apply_rotary_pos(self,
-                         mlir_gen,
-                         pos_op,
-                         q_op,
-                         k_op,
-                         rotary_inv_freq: str,
-                         decode: bool = False):
-        dim = 1 if decode else self.seq_length
+    def apply_rotary_pos(self, mlir_gen, pos_op, q_op, k_op, rotary_inv_freq: str):
+        dim = pos_op.type.shape[-1]
 
         pos_unsq = top.UnsqueezeOp(mlir_gen.get_tensor_type([1, 1, dim]),
                                    pos_op,
@@ -431,8 +425,7 @@ class Phi3Converter(Chatglm3Converter):
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
 
             # rotary cos/sin
-            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_inv_freq,
-                                               False)
+            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_inv_freq)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
@@ -511,8 +504,7 @@ class Phi3Converter(Chatglm3Converter):
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
 
             # rotary cos/sin
-            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_inv_freq,
-                                               True)
+            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_inv_freq)
 
             return_ops.append(k_op)
             return_ops.append(v_op)

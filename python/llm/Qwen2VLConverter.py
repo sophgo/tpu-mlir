@@ -106,15 +106,8 @@ class Qwen2VLConverter(LlmConverter):
         return tile_op
 
     @override
-    def apply_rotary_pos(self,
-                         mlir_gen,
-                         pos_op,
-                         q_op,
-                         k_op,
-                         rotary_cos: str,
-                         rotary_sin: str,
-                         decode: bool = False):
-        dim = 1 if decode else self.max_input_length
+    def apply_rotary_pos(self, mlir_gen, pos_op, q_op, k_op, rotary_cos: str, rotary_sin: str):
+        dim = pos_op.type.shape[-1]
 
         weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
                                               [self.seq_length, 1, self.head_dim // 2])

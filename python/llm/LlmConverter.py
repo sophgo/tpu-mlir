@@ -697,15 +697,8 @@ class LlmConverter(BaseConverter):
                           ip=mlir_gen.insert_point).output
         return new_q
 
-    def apply_rotary_pos(self,
-                         mlir_gen,
-                         pos_op,
-                         q_op,
-                         k_op,
-                         rotary_cos: str,
-                         rotary_sin: str,
-                         decode: bool = False):
-        dim = 1 if decode else self.max_input_length
+    def apply_rotary_pos(self, mlir_gen, pos_op, q_op, k_op, rotary_cos: str, rotary_sin: str):
+        dim = pos_op.type.shape[-1]
         weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
                                               [self.seq_length, 1, self.head_dim])
         cos_op = top.GatherOp(mlir_gen.get_tensor_type([1, dim, 1, self.head_dim]),
@@ -917,7 +910,7 @@ class LlmConverter(BaseConverter):
 
             # rotary cos/sin
             q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
-                                               rotary_sin, False)
+                                               rotary_sin)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
@@ -1005,7 +998,7 @@ class LlmConverter(BaseConverter):
                 k_op = self.rms_norm(block_mlir, k_op, k_norm)
             # rotary cos/sin
             q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
-                                               rotary_sin, True)
+                                               rotary_sin)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ====== kv concat ========
@@ -1108,7 +1101,7 @@ class LlmConverter(BaseConverter):
                 k_op = self.rms_norm(block_mlir, k_op, k_norm)
             # rotary cos/sin
             q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
-                                               rotary_sin, False)
+                                               rotary_sin)
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ====== kv concat ========
