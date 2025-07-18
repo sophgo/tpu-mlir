@@ -22,7 +22,7 @@ void tpu::MatMulLutOp::codegen_global_bm1684x() {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   int offset_table = 1;
-  if (module::isMARS3()) {
+  if (module::isCV184X()) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {

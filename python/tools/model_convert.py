@@ -45,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_name", required=True, help="model name")
     parser.add_argument("--model_def", required=True, help="model definition file.")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
-                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380',
+                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'cv184x', 'sgtpuv8', 'sg2380',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--input_shapes", type=str2shape, default=list(),

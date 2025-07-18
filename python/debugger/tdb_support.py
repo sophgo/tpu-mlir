@@ -402,12 +402,12 @@ class TdbCmdBackend(cmd.Cmd):
             from .target_1688.context import BM1688Context
             from .target_1690.context import BM1690Context
             from .target_2380.context import SG2380Context
-            from .target_mars3.context import MARS3Context
+            from .target_cv184x.context import CV184XContext
             from .target_sgtpuv8.context import SGTPUV8Context
             if isinstance(self.context, BM1688Context) or isinstance(
                     self.context,
                     BM1690Context) or isinstance(self.context, SG2380Context) or isinstance(
-                        self.context, MARS3Context) or isinstance(self.context, SGTPUV8Context):
+                        self.context, CV184XContext) or isinstance(self.context, SGTPUV8Context):
                 address = self.context.fix_addr(address)
             addr_offset_ddr = address - self.context.memmap[MType.G][0]
             # load constant data

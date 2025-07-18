@@ -26,7 +26,7 @@ from ..target_common import (
 from .opdef import tiu_cls, dma_cls, TiuCmd, DmaCmd, tiu_index, dma_index
 
 if TYPE_CHECKING:
-    from .context import MARS3Context
+    from .context import CV184XContext
 
 
 class TiuHead(HeadDef):
@@ -91,12 +91,12 @@ class Decoder(DecoderBase):
     tiu_head_length = 50
     dma_head_length = 40
 
-    def __init__(self, context: "MARS3Context") -> None:
+    def __init__(self, context: "CV184XContext") -> None:
         super().__init__()
         self.context = context
 
     def decode_tiu_cmd(self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id) -> TiuCmd:
-        assert cmd_id is not None, "mars3 must assign cmd_id manully"
+        assert cmd_id is not None, "cv184x must assign cmd_id manully"
         for head_cls in TiuHeads:  # type: cmd_base_t
             head = head_cls.from_buffer(reg_buf, offset)  # type: TiuHead
             op_info = tiu_index.get(head, None)
@@ -121,7 +121,7 @@ class Decoder(DecoderBase):
         return cmd
 
     def decode_dma_cmd(self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id) -> DmaCmd:
-        assert cmd_id is not None, "mars3 must assign cmd_id manully"
+        assert cmd_id is not None, "cv184x must assign cmd_id manully"
         head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
         op_info = dma_index.get((head.cmd_short, head.cmd_type, head.cmd_sp_func), None)
         assert op_info is not None, (

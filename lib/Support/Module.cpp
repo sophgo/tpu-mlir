@@ -1471,14 +1471,14 @@ bool isCV18xx() {
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
-          chip == Chip::CV186X || chip == Chip::MARS3 || chip == Chip::SG2380 ||
-          chip == Chip::SGTPUV8);
+          chip == Chip::CV186X || chip == Chip::CV184X ||
+          chip == Chip::SG2380 || chip == Chip::SGTPUV8);
 }
 bool isBM1690Family() { return (chip == Chip::BM1690 || chip == Chip::SG2262); }
 bool isSG2380() { return (chip == Chip::SG2380); }
 bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
-bool isMARS3() { return (chip == Chip::MARS3); }
+bool isCV184X() { return (chip == Chip::CV184X); }
 bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 bool isSG2262() { return (chip == Chip::SG2262); }
 

@@ -527,7 +527,7 @@ public:
       seperate = true;
       return RunMode::LOOP;
     } else if (dynamic || force_dynamic_run(op)) {
-      if (module::isMARS3()) {
+      if (module::isCV184X()) {
         UNREACHABLE_THIS("Arch not support dynamic subnet, please do constant "
                          "folding and use static mode");
       }

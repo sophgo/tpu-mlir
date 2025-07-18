@@ -47,13 +47,13 @@ void LoweringArg(PatternRewriter &rewriter, top::ArgOp op, Type type) {
   new_types.push_back(new_type);
 
   bool use_int = false;
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     Type elementType = getEffectiveElementType(op.getInput());
     use_int = elementType.isa<IntegerType>();
   }
 
   if (!module::isNone(op.getValues())) {
-    if (module::isMARS3() || module::isSGTPUV8()) {
+    if (module::isCV184X() || module::isSGTPUV8()) {
       auto shape_value = module::getShape(op.getValues());
       if (use_int) {
         new_types.push_back(

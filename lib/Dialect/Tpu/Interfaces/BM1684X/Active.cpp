@@ -67,9 +67,9 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     // | tensor_size | tensor_size |     32     |
     buffer_size = 2 * align_up(tensor_size, Arch::EU_BYTES);
     buffer_size += align_up(32 * dtype_len, Arch::EU_BYTES);
-    if (module::isMARS3() || module::isSGTPUV8() &&
-                                 getMode() == ActiveMode::QGELU &&
-                                 stype.isBF16()) {
+    if (module::isCV184X() || module::isSGTPUV8() &&
+                                  getMode() == ActiveMode::QGELU &&
+                                  stype.isBF16()) {
       /* fast_gelu-----> BF16
           |    work1    |    work0    |    work2     |  coeff  |   table_size |
           | tensor_size | tensor_size | tensor_size  |   32    |     128      |
@@ -94,7 +94,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     // eu_bytes
     buffer_size += align_up(32 * dtype_len, Arch::EU_BYTES) +
                    align_up(10 * dtype_len, Arch::EU_BYTES);
-    if (module::isMARS3() || module::isSGTPUV8() && stype.isBF16()) {
+    if (module::isCV184X() || module::isSGTPUV8() && stype.isBF16()) {
       buffer_size += align_up(128 * dtype_len, Arch::EU_BYTES);
     }
     break;

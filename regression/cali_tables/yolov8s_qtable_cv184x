@@ -1,6 +1,6 @@
 # genetated time: 2024-09-12 11:13:20.517744
 # sample number: 10
-# chip: mars3  mix_mode: BF16
+# chip: cv184x  mix_mode: BF16
 # number of BF16 layer: 25
 ###
 # op_name   quantize_mode

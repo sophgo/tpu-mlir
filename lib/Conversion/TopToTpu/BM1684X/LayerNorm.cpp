@@ -64,7 +64,7 @@ void LayerNormLowering::LoweringF32(PatternRewriter &rewriter,
 void LayerNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::LayerNormOp op,
                                      bool asymmetric) const {
-  if (!module::isMARS3() && !module::isSGTPUV8()) {
+  if (!module::isCV184X() && !module::isSGTPUV8()) {
     LoweringLayerNorm(rewriter, op, rewriter.getF16Type());
   } else {
     LoweringLayerNorm(rewriter, op, rewriter.getBF16Type());

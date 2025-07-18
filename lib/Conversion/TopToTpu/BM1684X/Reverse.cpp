@@ -30,7 +30,7 @@ void ReverseTryLowering::Lowering(PatternRewriter &rewriter,
                                                    op.getOperand(), attrs);
 }
 
-// ReverseOp to GatherOp in Mars3
+// ReverseOp to GatherOp in CV184X
 void LoweringReverse(PatternRewriter &rewriter, top::ReverseOp op, Type type) {
   auto in_shape = module::getShape(op.getInput());
   int gather_dim = op.getAxis();
@@ -69,7 +69,7 @@ void ReverseLowering::LoweringF32(PatternRewriter &rewriter,
 
 void ReverseLowering::LoweringINT8(PatternRewriter &rewriter, top::ReverseOp op,
                                    bool asymmetric) const {
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     auto new_type = getQuantInt8Type(op.getOutput());
     LoweringReverse(rewriter, op, new_type);
   } else
@@ -81,7 +81,7 @@ void ReverseLowering::LoweringINT4(PatternRewriter &rewriter, top::ReverseOp op,
 }
 void ReverseLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::ReverseOp op) const {
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     auto new_type = getQuantFloatType<mlir::BFloat16Type>(op.getOutput());
     LoweringReverse(rewriter, op, new_type);
   } else

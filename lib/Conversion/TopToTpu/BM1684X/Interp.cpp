@@ -88,7 +88,7 @@ void InterpLowering::LoweringINT4(PatternRewriter &rewriter, top::InterpOp op,
 void InterpLowering::LoweringINT8(PatternRewriter &rewriter, top::InterpOp op,
                                   bool asymmetric) const {
 
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     LoweringInterp(rewriter, op, rewriter.getBF16Type());
   else
     LoweringInterp(rewriter, op, rewriter.getF16Type());

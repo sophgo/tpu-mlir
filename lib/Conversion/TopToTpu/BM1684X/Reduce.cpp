@@ -41,7 +41,7 @@ void ReduceLowering::LoweringINT4(PatternRewriter &rewriter, top::ReduceOp op,
 }
 void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
                                   bool asymmetric) const {
-  if (!module::isMARS3() && !module::isSGTPUV8()) {
+  if (!module::isCV184X() && !module::isSGTPUV8()) {
     LoweringF16(rewriter, op);
   } else {
     LoweringBF16(rewriter, op);

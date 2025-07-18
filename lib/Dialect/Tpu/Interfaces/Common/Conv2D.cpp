@@ -317,9 +317,9 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
-      int64_t shift = per_axis
-                          ? rshift_v->at(ic)
-                          : use_winograd ? rshift_v->at(1) : rshift_v->at(0);
+      int64_t shift = per_axis       ? rshift_v->at(ic)
+                      : use_winograd ? rshift_v->at(1)
+                                     : rshift_v->at(0);
       int64_t multi = 1;
       if (qmode != tpu::RequantMode::OnlyShift) {
         multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
@@ -500,7 +500,7 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
     }
   } else {
     auto attr = parseParam();
-    if (module::isMARS3() &&
+    if (module::isCV184X() &&
         (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15)) {
       return failure();
     }

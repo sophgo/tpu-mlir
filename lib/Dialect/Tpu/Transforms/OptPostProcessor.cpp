@@ -24,7 +24,7 @@ public:
   void runOnOperation() override {
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
-    if (module::isMARS3()) {
+    if (module::isCV184X()) {
       populateOptPostProcessorBM1684XPatterns(&patterns);
     }
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));

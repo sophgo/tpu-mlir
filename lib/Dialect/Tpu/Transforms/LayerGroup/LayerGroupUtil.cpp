@@ -1199,7 +1199,7 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
     }
   } else {
     // split depth and height
-    if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+    if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
         module::isSGTPUV8()) {
       float d_len = 0.f, h_len = 0.f;
       for (auto out : group_out_tensors) {
@@ -2557,7 +2557,8 @@ bool is_eu_align_bm168x(Value opd) {
         return false;
       }
     } else if (module::isBM1688() || module::isBM1690Family() ||
-               module::isSG2380() || module::isMARS3() || module::isSGTPUV8()) {
+               module::isSG2380() || module::isCV184X() ||
+               module::isSGTPUV8()) {
       if (isa<tpu::RequantIntAxisOp>(op)) {
         if ((opd == op->getOperand(1))) {
           return false;
@@ -2601,7 +2602,7 @@ bool is_value_dont_split(Value opd) {
       return true;
     }
   } else if (module::isBM1688() || module::isBM1690Family() ||
-             module::isSG2380() || module::isMARS3() || module::isSGTPUV8()) {
+             module::isSG2380() || module::isCV184X() || module::isSGTPUV8()) {
     if (isa<tpu::RequantIntAxisOp>(op)) {
       if ((opd == op->getOperand(1))) {
         return true;

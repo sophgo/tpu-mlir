@@ -23,18 +23,18 @@ typedef void (*tpu_core_context_setup)(int, int, int);
 namespace tpu_mlir {
 namespace backend {
 #define BUFFER_SIZE (4 * 1024 * 1024)
-class MARS3 : public BM1684X {
+class CV184X : public BM1684X {
 public:
   static constexpr llvm::StringRef LIB_KERNEL_NAME =
-      "libmars3_kernel_module.so";
+      "libcv184x_kernel_module.so";
   static bool classof(const BM168x *bm168x) {
-    return bm168x->getTypeID() == TypeID::get<MARS3>();
+    return bm168x->getTypeID() == TypeID::get<CV184X>();
   }
 
-  static MARS3 &instance(int frequency) {
-    static MARS3 MARS3;
-    // MARS3.set_simulation_freq(frequency);
-    return MARS3;
+  static CV184X &instance(int frequency) {
+    static CV184X CV184X;
+    // CV184X.set_simulation_freq(frequency);
+    return CV184X;
   }
   virtual void before_codegen() override;
   virtual void after_codegen(int64_t flops = 0) override;
@@ -86,8 +86,8 @@ private:
   };
 
 protected:
-  MARS3() {
-    typeID = TypeID::get<MARS3>();
+  CV184X() {
+    typeID = TypeID::get<CV184X>();
     code = std::make_unique<BM168x::Code>();
     NPU_NUM = 8;
     EU_BYTES = 16;
@@ -105,7 +105,7 @@ protected:
     IO_ADDR[3] = TAG_IO3;
     IO_ADDR[4] = TAG_IO4;
     SUPPORT_MEM_TAG = true;
-    LIB_BACKEND_NAME = "libbackend_mars3.so";
+    LIB_BACKEND_NAME = "libbackend_cv184x.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;
     GDMA_VALUE_FORMAT_FLOAT16 = 1;
@@ -120,7 +120,7 @@ protected:
     dl_tpu_set_id_node(code->cmdid_node);
   };
   virtual void load_functions() override;
-  virtual ~MARS3(){};
+  virtual ~CV184X(){};
 };
 
 } // namespace backend

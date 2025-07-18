@@ -60,7 +60,7 @@ void InstanceNormLowering::LoweringF32(PatternRewriter &rewriter,
 void InstanceNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                         top::InstanceNormOp op,
                                         bool asymmetric) const {
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     LoweringInstanceNorm(rewriter, op, rewriter.getBF16Type());
   else
     LoweringInstanceNorm(rewriter, op, rewriter.getF32Type());

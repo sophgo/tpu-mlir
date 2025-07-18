@@ -52,7 +52,7 @@ void CompareLowering::LoweringINT8(PatternRewriter &rewriter, top::CompareOp op,
     module::getScaleAndZeroPoint(op.getRhs(), r_scale, r_zp, asymmetric);
   }
   if (l_scale != r_scale || l_zp != r_zp) {
-    if (module::isMARS3() || module::isSGTPUV8()) {
+    if (module::isCV184X() || module::isSGTPUV8()) {
       lowering_common_bf16<tpu::CompareOp>(rewriter, op_);
     } else {
       lowering_common_f32<tpu::CompareOp>(rewriter, op_);

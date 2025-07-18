@@ -149,8 +149,8 @@ def get_cmodel_so(chip: str):
         return 'libcmodel_1684.so'
     elif chip == "BM1690":
         return 'libtpuv7_emulator.so'
-    elif chip == "MARS3":
-        return 'libcmodel_mars3.so'
+    elif chip == "CV184X":
+        return 'libcmodel_cv184x.so'
     elif chip == "SGTPUV8":
         return 'libcmodel_sgtpuv8.so'
     elif chip == "SG2380":
@@ -167,8 +167,8 @@ def link_custom_so(chip: str):
     #     lib_so = 'libcmodel_custom_1684.so'
     # elif chip == "BM1690":
     #     lib_so = 'libcmodel_custom_bm1690.so'
-    # elif chip == "MARS3":
-    #     lib_so = 'libcmodel_custom_mars3.so'
+    # elif chip == "CV184X":
+    #     lib_so = 'libcmodel_custom_cv184x.so'
     custom_path = os.path.join(TPUC_ROOT, "lib", custom_so)
     custom_link = os.path.join(TPUC_ROOT, "lib", "libcmodel_custom.so")
     if os.path.exists(custom_path):

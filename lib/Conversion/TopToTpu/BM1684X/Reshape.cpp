@@ -25,7 +25,7 @@ static void LoweringReshapeToShapeAssign(PatternRewriter &rewriter,
 }
 
 static bool check_unlowering(mlir::Operation *op) {
-  if (!(module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+  if (!(module::isBM1688() || module::isSG2380() || module::isCV184X() ||
         module::isSGTPUV8()))
     return false;
 

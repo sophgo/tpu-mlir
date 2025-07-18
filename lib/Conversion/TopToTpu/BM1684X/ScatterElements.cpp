@@ -98,7 +98,7 @@ void ScatterElementsLowering::LoweringINT8(PatternRewriter &rewriter,
   // Please implent lowering quant for weight if necessary
   if (module::isWeight(op.getInput()) || module::isWeight(op.getIndices()) ||
       module::isWeight(op.getUpdates())) {
-    if (module::isMARS3() || module::isSGTPUV8())
+    if (module::isCV184X() || module::isSGTPUV8())
       LoweringBF16(rewriter, op);
     else
       LoweringF32(rewriter, op);

@@ -58,8 +58,8 @@ def bmprofile_parse_perfAI(
 
         core_num = 8
         style = 0
-    elif arch == "MARS3":
-        from bmprofile_perfAI import BMProfileParserPerfAI_MARS3 as ParserIns
+    elif arch == "CV184X":
+        from bmprofile_perfAI import BMProfileParserPerfAI_CV184X as ParserIns
         core_num = 1
     else:
         from bmprofile_perfAI import BMProfileParserPerfAI as ParserIns

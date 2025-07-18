@@ -39,7 +39,7 @@ int64_t tpu::TriluOp::getBufferSize_bm1684x(
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
 
   int64_t idx_dtype_size;
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     idx_dtype_size = sizeof(int16_t);
   } else {
     idx_dtype_size = sizeof(int32_t);

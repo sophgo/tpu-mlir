@@ -21,14 +21,14 @@ from numpy import ndarray
 from typing import List
 
 
-class MARS3Runner(CModelRunner):
-    lib_name = "libcmodel_mars3.so"
+class CV184XRunner(CModelRunner):
+    lib_name = "libcmodel_cv184x.so"
     # tag, range from 0 to 31, set as defined in /nntoolchain/TPU1686/bm1686/firmware_base/src/fullnet/nodechip_multi_fullnet.c
     TAG_WEIGHT = 1  # coeff
     TAG_ACTIVATION = 2  # neuron
     TAG_LMEM = 31  # lmem
 
-    # ENGINE code, must same as defined in /nntoolchain/TPU1686/mars3/spec/include/engine_type.h
+    # ENGINE code, must same as defined in /nntoolchain/TPU1686/cv184x/spec/include/engine_type.h
     ENGINE_GDMA = 1
     ENGINE_HAU = 2
 
@@ -326,7 +326,7 @@ class Memory(CModelMemory):
         NPU_OFFSET = memref.npu_offset
         itemsize = memref.itemsize
 
-        # referece: TPU1688/mars3/cmodel/src/cmodel_common.cpp
+        # referece: TPU1688/cv184x/cmodel/src/cmodel_common.cpp
         # improve me: use cmodel interface to get data
         def data_view_int4(shape, stride):
             result = np.zeros(shape, dtype=np.uint8).reshape([shape[0], shape[1], -1])
@@ -556,7 +556,7 @@ class Memory(CModelMemory):
         for lmem in self.LMEM:
             lmem.fill(0)
 
-        lut = np.array(MARS3Runner.gen_lookup_table(), np.uint32).view(np.uint8)
+        lut = np.array(CV184XRunner.gen_lookup_table(), np.uint32).view(np.uint8)
         for smem in self.SMEM:
             smem[: len(lut)] = lut[...]
 

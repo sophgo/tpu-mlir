@@ -58,7 +58,7 @@ void RMSNormLowering::LoweringF32(PatternRewriter &rewriter,
 
 void RMSNormLowering::LoweringINT8(PatternRewriter &rewriter, top::RMSNormOp op,
                                    bool asymmetric) const {
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     LoweringBF16(rewriter, op);
   else
     LoweringF16(rewriter, op);

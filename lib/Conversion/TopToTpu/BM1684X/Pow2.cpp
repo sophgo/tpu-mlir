@@ -52,7 +52,7 @@ void Pow2Lowering::LoweringINT4(PatternRewriter &rewriter, top::Pow2Op op,
 }
 void Pow2Lowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::Pow2Op op) const {
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     auto name = module::getName(op.getOutput());
     auto type = getQuantFloatType<BFloat16Type>(op.getOutput());
     rewriter.setInsertionPointAfter(op);

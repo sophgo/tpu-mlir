@@ -56,7 +56,7 @@
      - 2025.04.03
      - LLM模型编译速度大幅提升;
        TPULang支持PPL算子接入;
-       修复Trilu bf16在Mars3上随机出错问题
+       修复Trilu bf16在CV184X上随机出错问题
    * - v1.16.0
      - 2025.03.03
      - TPULang ROI_Extractor支持;

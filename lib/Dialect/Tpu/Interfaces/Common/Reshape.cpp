@@ -87,7 +87,7 @@ LogicalResult tpu::ReshapeOp::AllowDataSplit(int64_t axis,
                                              group_type_t group_type) {
   // temp code for prevent not-inplace reshape
   // has to fix LmemAllocator in the future
-  if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+  if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
       module::isSGTPUV8()) {
     return failure();
   }

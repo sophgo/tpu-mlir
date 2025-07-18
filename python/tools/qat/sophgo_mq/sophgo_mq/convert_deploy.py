@@ -557,7 +557,7 @@ def convert_deploy(model: GraphModule,
             quantize_mode = 'BF16'
             quantize_str = 'bf16'
         bmodel_ext = 'cvimodel' if chip in [
-            'MARS3', 'CV183X', 'CV182X', 'CV181X', 'CV180X', 'CV186X', 'SGTPUV8'
+            'CV184X', 'CV183X', 'CV182X', 'CV181X', 'CV180X', 'CV186X', 'SGTPUV8'
         ] else 'bmodel'
         os.system(f"model_deploy.py \
         --mlir {model_name}_qat.mlir \

@@ -232,7 +232,7 @@ bool isBM1690Family();
 bool isSG2380();
 bool isBM1688();
 bool isBM1684X();
-bool isMARS3();
+bool isCV184X();
 bool isSGTPUV8();
 bool isSG2262();
 

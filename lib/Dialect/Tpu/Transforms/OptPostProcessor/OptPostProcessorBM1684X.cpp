@@ -33,7 +33,7 @@ public:
                                         benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::AddOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();
@@ -109,7 +109,7 @@ public:
                                             benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::ReshapeOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();
@@ -164,7 +164,7 @@ public:
             context, "FuseDequantLayerNormPattern", benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::LayerNormOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();
@@ -234,7 +234,7 @@ public:
             context, "FuseLayerNormCastPattern", benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::LayerNormOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();
@@ -306,7 +306,7 @@ public:
                                            benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();
@@ -355,7 +355,7 @@ public:
                                            benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();
@@ -402,7 +402,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::CastOp castOp,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (castOp->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();
@@ -452,7 +452,7 @@ public:
                                             benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::SoftmaxOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isMARS3())
+    if (!module::isCV184X())
       return failure();
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
       return failure();

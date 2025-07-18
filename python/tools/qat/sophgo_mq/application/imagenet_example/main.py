@@ -126,7 +126,7 @@ parser.add_argument('--output_path', type=str, default=None)
 parser.add_argument('--chip',
                     type=str,
                     choices=[
-                        'BM1688', 'BM1684X', 'BM1690', 'academic', 'MARS3', 'CV183X', 'CV182X',
+                        'BM1688', 'BM1684X', 'BM1690', 'academic', 'CV184X', 'CV183X', 'CV182X',
                         'CV181X', 'CV180X', 'CV186X', 'SG2380', 'SGTPUV8'
                     ],
                     default='BM1690')

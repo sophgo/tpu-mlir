@@ -1360,7 +1360,7 @@ void ConvertTopToTpu::runOnOperation() {
     });
   }
 
-  if ((module::isBM1684X() || module::isBM1688() || module::isMARS3()) &&
+  if ((module::isBM1684X() || module::isBM1688() || module::isCV184X()) &&
       !LoweringConfig::isQuantized &&
       (module::getMode() == module::Mode::INT8 ||
        module::getMode() == module::Mode::UINT8)) {
@@ -1493,7 +1493,7 @@ void ConvertTopToTpu::runOnOperation() {
       });
     }
   }
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     mainFunc_.walk([&](Operation *op) {
       if (isa<top::WeightOp, top::NoneOp, top::InputOp, ModuleOp, FuncOp,
               ReturnOp>(op)) {

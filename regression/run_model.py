@@ -405,8 +405,8 @@ class MODEL_RUN(object):
                 if "use_quantize_table" in self.ini_content and int(
                         self.ini_content["use_quantize_table"]):
                     qtable = self.cali_table.replace("_cali_table", "_qtable")
-                    if self.chip == 'mars3':
-                        qtable = qtable + "_mars3"
+                    if self.chip == 'cv184x':
+                        qtable = qtable + "_cv184x"
                     if self.chip == 'sgtpuv8':
                         qtable = qtable + "_sgtpuv8"
                     cmd += [f"--quantize_table {qtable}"]

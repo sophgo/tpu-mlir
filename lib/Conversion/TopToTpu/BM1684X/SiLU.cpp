@@ -22,7 +22,7 @@ static inline Operation *set_mode(top::SiLUOp op) {
 void SiLULowering::LoweringF32(PatternRewriter &rewriter,
                                top::SiLUOp op) const {
   auto op_ = set_mode(op);
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
@@ -45,7 +45,7 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
 
 void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SiLUOp op) const {
-  if (module::isBM1690Family() || module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isBM1690Family() || module::isCV184X() || module::isSGTPUV8()) {
     auto op_ = set_mode(op);
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   } else

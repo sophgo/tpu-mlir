@@ -9,7 +9,7 @@
 
 # This file contains some functions to convert the reg information to MLIR IR
 # It is dirty and heavy.
-# mars3
+# cv184x
 
 import numpy as np
 from typing import Callable, Dict, Union, Tuple, List, Any, TYPE_CHECKING
@@ -28,7 +28,7 @@ from .regdef import *
 from .memmap import *
 
 if TYPE_CHECKING:
-    from .context import MARS3Context
+    from .context import CV184XContext
 
 opparam_converter: Dict[
     str,
@@ -63,7 +63,7 @@ def opparam_converter_regitstry(sheet_name):
 
 
 def get_value(
-    context: "MARS3Context",
+    context: "CV184XContext",
     address=-1,
     shape=None,
     stride=None,
@@ -107,7 +107,7 @@ tgcr = TGCR()
 
 
 @opparam_converter_regitstry("sCONV")
-def sCONV_converter(context: "MARS3Context", reg: sCONV_reg):
+def sCONV_converter(context: "CV184XContext", reg: sCONV_reg):
     INT8 = 0
     FP32 = 2
     INT16 = 3
@@ -201,7 +201,7 @@ def sCONV_converter(context: "MARS3Context", reg: sCONV_reg):
 
 
 @opparam_converter_regitstry("sMM")
-def sMM_converter(context: "MARS3Context", reg: sMM_reg):
+def sMM_converter(context: "CV184XContext", reg: sMM_reg):
     L_row = reg.opd0_n
     L_col = reg.opd0_w * (reg.opd0_c - 1) + reg.opd1_w
     R_col = reg.res0_c * reg.res0_w
@@ -256,7 +256,7 @@ def sMM_converter(context: "MARS3Context", reg: sMM_reg):
 
 
 @opparam_converter_regitstry("sMM2")
-def sMM2_converter(context: "MARS3Context", reg: sMM2_reg):
+def sMM2_converter(context: "CV184XContext", reg: sMM2_reg):
     L_row = reg.res0_c
     L_col = reg.opd1_c
     l_trans, r_trans = False, False
@@ -347,7 +347,7 @@ def sMM2_converter(context: "MARS3Context", reg: sMM2_reg):
 
 
 @opparam_converter_regitstry("sCMP")
-def sCMP_converter(context: "MARS3Context", reg: sCMP_reg):
+def sCMP_converter(context: "CV184XContext", reg: sCMP_reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -406,7 +406,7 @@ def sCMP_converter(context: "MARS3Context", reg: sCMP_reg):
 
 
 @opparam_converter_regitstry("sSFU")
-def sSFU_converter(context: "MARS3Context", reg: sSFU_reg):
+def sSFU_converter(context: "CV184XContext", reg: sSFU_reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -441,7 +441,7 @@ def sSFU_converter(context: "MARS3Context", reg: sSFU_reg):
 
 
 @opparam_converter_regitstry("sLIN")
-def sLIN_converter(context: "MARS3Context", reg: sLIN_reg):
+def sLIN_converter(context: "CV184XContext", reg: sLIN_reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     c = shape[1]
     opd0 = dict(
@@ -482,7 +482,7 @@ def sLIN_converter(context: "MARS3Context", reg: sLIN_reg):
 
 
 @opparam_converter_regitstry("sVC")
-def sVC_converter(context: "MARS3Context", reg: sVC_reg):
+def sVC_converter(context: "CV184XContext", reg: sVC_reg):
     n = (reg.opd0_c - 1) * reg.opd0_w + reg.opd1_w
     opd0 = dict(
         address=reg.opd0_addr,
@@ -525,7 +525,7 @@ def restore_org_shape(operand_def):
 
 
 @opparam_converter_regitstry("sAR")
-def sAR_converter(context: "MARS3Context", reg: sAR_reg):
+def sAR_converter(context: "CV184XContext", reg: sAR_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     # round mm
     opd0 = dict(
@@ -578,7 +578,7 @@ def sAR_converter(context: "MARS3Context", reg: sAR_reg):
 
 
 @opparam_converter_regitstry("sPorD")
-def sPorD_converter(context: "MARS3Context", reg: sPorD_reg):
+def sPorD_converter(context: "CV184XContext", reg: sPorD_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     # round mm
     opd0 = dict(
@@ -720,7 +720,7 @@ def bc_reg_format(context, reg: sCW_sBC_reg):
 
 
 @opparam_converter_regitstry("sCW&sBC")
-def sCW_sBC_converter(context: "MARS3Context", reg: sCW_sBC_reg):
+def sCW_sBC_converter(context: "CV184XContext", reg: sCW_sBC_reg):
     if reg.tsk_eu_typ in (0, 1):
         return cw_trans_reg_format(context, reg)
     else:
@@ -728,7 +728,7 @@ def sCW_sBC_converter(context: "MARS3Context", reg: sCW_sBC_reg):
 
 
 @opparam_converter_regitstry("sRQ&sDQ")
-def sRQ_sDQ_converter(context: "MARS3Context", reg: sRQ_sDQ_reg):
+def sRQ_sDQ_converter(context: "CV184XContext", reg: sRQ_sDQ_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -787,7 +787,7 @@ def sRQ_sDQ_converter(context: "MARS3Context", reg: sRQ_sDQ_reg):
 
 
 @opparam_converter_regitstry("sSG")
-def sSG_converter(context: "MARS3Context", reg: sSG_reg):
+def sSG_converter(context: "CV184XContext", reg: sSG_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -858,7 +858,7 @@ def sSG_converter(context: "MARS3Context", reg: sSG_reg):
 
 
 @opparam_converter_regitstry("sSGL")
-def sSGL_converter(context: "MARS3Context", reg: sSGL_reg):
+def sSGL_converter(context: "CV184XContext", reg: sSGL_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -901,7 +901,7 @@ def sSGL_converter(context: "MARS3Context", reg: sSGL_reg):
 
 
 @opparam_converter_regitstry("SYS_TR_ACC")
-def SYS_TR_ACC_converter(context: "MARS3Context", reg):
+def SYS_TR_ACC_converter(context: "CV184XContext", reg):
 
     def int2bin(x, width):
         return np.binary_repr(x, width=width)
@@ -926,7 +926,7 @@ def SYS_TR_ACC_converter(context: "MARS3Context", reg):
 
 
 @opparam_converter_regitstry("SYS")
-def SYS_converter(context: "MARS3Context", reg):
+def SYS_converter(context: "CV184XContext", reg):
     """
     0: intr barrier
     1: spb -- software power boot
@@ -997,7 +997,7 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
 
 
 @opparam_converter_regitstry("DMA_tensor（0x000）")
-def DMA_tensor_0x000__converter(context: "MARS3Context", reg: DMA_tensor_0x000__reg):
+def DMA_tensor_0x000__converter(context: "CV184XContext", reg: DMA_tensor_0x000__reg):
     NONE = 0
     TRANS = 1  # NC Transpose or Matrix Transpose
     COLLECT = 2  # CW Transpose from lmem to gmem
@@ -1033,7 +1033,7 @@ def DMA_tensor_0x000__converter(context: "MARS3Context", reg: DMA_tensor_0x000__
 
 
 @opparam_converter_regitstry("DMA_matrix")
-def DMA_matrix_converter(context: "MARS3Context", reg: DMA_matrix_reg):
+def DMA_matrix_converter(context: "CV184XContext", reg: DMA_matrix_reg):
     res0, attr, opd0 = dma_reg_fmt_base(reg)
     l, r = memmap[MType.R]
     s_addr = opd0["address"]
@@ -1071,7 +1071,7 @@ def DMA_matrix_converter(context: "MARS3Context", reg: DMA_matrix_reg):
 
 
 @opparam_converter_regitstry("DMA_masked_select")
-def DMA_masked_select_converter(context: "MARS3Context", reg: DMA_masked_select_reg):
+def DMA_masked_select_converter(context: "CV184XContext", reg: DMA_masked_select_reg):
     shape = tuple(reg[f"src_{d}size"] for d in "nchw")
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
@@ -1100,7 +1100,7 @@ def DMA_masked_select_converter(context: "MARS3Context", reg: DMA_masked_select_
 
 
 @opparam_converter_regitstry("DMA_general")
-def DMA_general_converter(context: "MARS3Context", reg: DMA_general_reg):
+def DMA_general_converter(context: "CV184XContext", reg: DMA_general_reg):
     copy_len = reg.src_cstride
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
@@ -1131,7 +1131,7 @@ def DMA_general_converter(context: "MARS3Context", reg: DMA_general_reg):
 
 
 @opparam_converter_regitstry("DMA_cw_transpose")
-def DMA_cw_transpose_converter(context: "MARS3Context", reg: DMA_cw_transpose_reg):
+def DMA_cw_transpose_converter(context: "CV184XContext", reg: DMA_cw_transpose_reg):
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
@@ -1158,7 +1158,7 @@ def DMA_cw_transpose_converter(context: "MARS3Context", reg: DMA_cw_transpose_re
 
 
 @opparam_converter_regitstry("DMA_nonzero")
-def DMA_nonzero_converter(context: "MARS3Context", reg: DMA_nonzero_reg):
+def DMA_nonzero_converter(context: "CV184XContext", reg: DMA_nonzero_reg):
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     stride = (c * h * w, h * w, w, 1)
     opd0 = dict(
@@ -1226,11 +1226,11 @@ def dma_gather_base(context, reg: DMA_gather_reg):
 
 
 @opparam_converter_regitstry("DMA_gather")
-def DMA_gather_converter(context: "MARS3Context", reg: DMA_gather_reg):
+def DMA_gather_converter(context: "CV184XContext", reg: DMA_gather_reg):
     return dma_gather_base(context, reg)
 
 
-def DMA_scatter_converter(context: "MARS3Context", reg: DMA_scatter_reg):
+def DMA_scatter_converter(context: "CV184XContext", reg: DMA_scatter_reg):
     results, _, operands = dma_gather_base(context, reg)
 
     return (results, {}, operands)
@@ -1241,7 +1241,7 @@ opparam_converter_regitstry("DMA_scatter")(DMA_scatter_converter)
 
 
 @opparam_converter_regitstry("DMA_reverse")
-def DMA_reverse_converter(context: "MARS3Context", reg: DMA_reverse_reg):
+def DMA_reverse_converter(context: "CV184XContext", reg: DMA_reverse_reg):
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     stride = (c * h * w, h * w, w, 1)
     opd0 = dict(
@@ -1267,7 +1267,7 @@ def DMA_reverse_converter(context: "MARS3Context", reg: DMA_reverse_reg):
 
 
 @opparam_converter_regitstry("sDMA_sys")
-def sDMA_sys_converter(context: "MARS3Context", reg: sDMA_sys_reg):
+def sDMA_sys_converter(context: "CV184XContext", reg: sDMA_sys_reg):
     """
     000: chain end +
     001: nop

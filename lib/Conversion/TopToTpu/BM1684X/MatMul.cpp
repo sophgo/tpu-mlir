@@ -51,7 +51,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   int64_t left_num_dims = module::getShape(op.getInput()).size();
   if (module::isWeight(op.getInput())) {
-    if (module::isMARS3() || module::isSGTPUV8())
+    if (module::isCV184X() || module::isSGTPUV8())
       LoweringBF16(rewriter, op);
     else
       LoweringF16(rewriter, op);
@@ -589,7 +589,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       // requant
       std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
-      if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+      if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
           module::isSGTPUV8()) {
         quant_w_size = 2;
         quant.resize(quant_w_size, 0);

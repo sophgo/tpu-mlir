@@ -14,7 +14,7 @@ from .memmap import *
 from .cmodel import MemRef
 from .decoder import Decoder
 from typing import List, Type
-from .cmodel import MARS3Runner
+from .cmodel import CV184XRunner
 from ..target_common import *
 from .opparam import get_opparam_converter_with_context, opparam_converter
 
@@ -27,8 +27,8 @@ def GET_SMEM_START_ADDR(core_id):
     return 0xc041000
 
 
-class MARS3Context(BModelContext):
-    device = Target.MARS3
+class CV184XContext(BModelContext):
+    device = Target.CV184X
     memmap = memmap
 
     dma_sys = dma_sys
@@ -127,7 +127,7 @@ class MARS3Context(BModelContext):
         return isinstance(cmd.reg, (dma_sys, tiu_sys))
 
     def get_runner(self, memory_size: int) -> CModelRunner:
-        assert self.using_cmodel, "MARS3 currently only support cmodel mode"
+        assert self.using_cmodel, "CV184X currently only support cmodel mode"
         if self._runner is None:
-            self._runner = MARS3Runner(memory_size, self.base_addr)
+            self._runner = CV184XRunner(memory_size, self.base_addr)
         return self._runner

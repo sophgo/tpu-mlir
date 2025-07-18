@@ -58,7 +58,7 @@ class TORCH_IR_TESTER(object):
             ##################################
             # Torch Test Case, Alphabetically
             ##################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, mars3_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, cv184x_support)
             "Abs":              (self.test_Abs,               N, Y, Y, Y, Y),
             "Activation":       (self.test_Activation,        Y, Y, Y, Y, N),
             "AdaptiveAvgPool1d":(self.test_AdaptiveAvgPool1d, N, Y, N, N, Y),
@@ -208,7 +208,7 @@ class TORCH_IR_TESTER(object):
             self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
         # self.dynamic = dynamic
-        if self.chip.startswith("cv18") and self.chip != "cv186x":
+        if self.chip.startswith("cv18") and self.chip != "cv186x" and self.chip != "cv184x":
             self.support_quant_modes = ["bf16", "int8"]
             self.support_asym = [False]
             self.model_file = ".cvimodel"
@@ -216,7 +216,7 @@ class TORCH_IR_TESTER(object):
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
-        elif self.chip == "mars3":
+        elif self.chip == "cv184x":
             self.support_quant_modes = ["bf16", "int8"]
             self.support_asym = [False]
         self.mode = mode.lower()
@@ -251,7 +251,7 @@ class TORCH_IR_TESTER(object):
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, mars3_support = self.test_cases[
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, cv184x_support = self.test_cases[
             case]
         if self.is_cv18xx and cv183x_support:
             return True
@@ -261,7 +261,7 @@ class TORCH_IR_TESTER(object):
             return True
         if self.chip in ["bm1688", "cv186x"] and bm1688_support:
             return True
-        if self.chip == "mars3" and mars3_support:
+        if self.chip == "cv184x" and cv184x_support:
             return True
         return False
 
@@ -790,7 +790,7 @@ class TORCH_IR_TESTER(object):
                     else:
                         return max_values, max_indices
 
-            if (self.chip == "mars3"):
+            if (self.chip == "cv184x"):
                 self.trace_and_test([shape], Model(), [self.Desc('int', 1, 100)])
             else:
                 self.trace_and_test([shape], Model())
@@ -840,7 +840,7 @@ class TORCH_IR_TESTER(object):
                     else:
                         return min_values, min_indices
 
-            if (self.chip == "mars3"):
+            if (self.chip == "cv184x"):
                 self.trace_and_test([shape], Model(), [self.Desc('int', 1, 100)])
             else:
                 self.trace_and_test([shape], Model())
@@ -2113,7 +2113,7 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([(4, 3, 16, 16)], Model())
 
-        if (self.chip == "mars3"):
+        if (self.chip == "cv184x"):
             for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.exp]:
                 _test_math(f)
         else:
@@ -2208,7 +2208,7 @@ class TORCH_IR_TESTER(object):
                     y = func(x, axis, keepdim=keepdim)
                     return y
 
-            if (self.chip == "mars3"):
+            if (self.chip == "cv184x"):
                 self.trace_and_test([(4, 3, 16, 16)], Model(), [self.Desc('int', 1, 100)])
             else:
                 self.trace_and_test([(4, 3, 16, 16)], Model())
@@ -3966,7 +3966,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3', 'cv186x', 'bm1690', 'sgtpuv8'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv184x', 'cv186x', 'bm1690', 'sgtpuv8'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")

@@ -50,7 +50,7 @@ LogicalResult tpu::CastAddOp::inference(InferenceParameter &p) {
   for (int64_t i = 0; i < num_elem_in1; i++) {
     temp_input_1[i] = p.inputs[1][i];
   }
-  if (module::isMARS3()) {
+  if (module::isCV184X()) {
     auto in0_type = module::getStorageType(getInputs()[0]);
     auto in1_type = module::getStorageType(getInputs()[1]);
     bool flagPatternA =

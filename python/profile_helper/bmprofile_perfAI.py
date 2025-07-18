@@ -256,18 +256,18 @@ class BMProfileParserPerfAI(BMProfileParser):
         return get_tiu_info_bm1688(monitor_info, reg_info)
 
 
-class BMProfileParserPerfAI_MARS3(BMProfileParserPerfAI):
+class BMProfileParserPerfAI_CV184X(BMProfileParserPerfAI):
 
     def __init__(self):
         super().__init__()
 
     def _get_gdma_info(self, monitor_info, reg_info):
-        from profile_helper.mars3_defs import get_dma_info as get_dma_info_mars3
-        return get_dma_info_mars3(monitor_info, reg_info)
+        from profile_helper.cv184x_defs import get_dma_info as get_dma_info_cv184x
+        return get_dma_info_cv184x(monitor_info, reg_info)
 
     def _get_tiu_info(self, monitor_info, reg_info):
-        from profile_helper.mars3_defs import get_tiu_info as get_tiu_info_mars3
-        return get_tiu_info_mars3(monitor_info, reg_info)
+        from profile_helper.cv184x_defs import get_tiu_info as get_tiu_info_cv184x
+        return get_tiu_info_cv184x(monitor_info, reg_info)
 
 
 if __name__ == "__main__":

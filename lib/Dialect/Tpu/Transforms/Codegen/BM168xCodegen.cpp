@@ -13,8 +13,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
-#include "tpu_mlir/Backend/BM168x/MARS3.h"
 #include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
+#include "tpu_mlir/Backend/CV18xx/CV184X.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/MemoryBuffer.h>
@@ -86,14 +86,14 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
   model_gen->AddChip(chip);
   model_gen->AddNumDevice(num_device);
   if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family() ||
-      module::isMARS3() || module::isSGTPUV8()) {
+      module::isCV184X() || module::isSGTPUV8()) {
     std::string kernel_name;
     if (module::isBM1684X())
       kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
     else if (module::isBM1688())
       kernel_name = backend::BM1688::LIB_KERNEL_NAME.str();
-    else if (module::isMARS3())
-      kernel_name = backend::MARS3::LIB_KERNEL_NAME.str();
+    else if (module::isCV184X())
+      kernel_name = backend::CV184X::LIB_KERNEL_NAME.str();
     else if (module::isSGTPUV8())
       kernel_name = backend::SGTPUV8::LIB_KERNEL_NAME.str();
     else
@@ -101,7 +101,7 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
     std::string root_path = getenv("TPUC_ROOT");
     std::string kernel_path = root_path + std::string("/lib/") + kernel_name;
     // lite build does not need kernel module
-    if (!module::isMARS3()) {
+    if (!module::isCV184X()) {
       bmodel::Binary kernel_module =
           CreateBinaryFromFile(&(*model_gen), kernel_path);
       model_gen->AddKernelModule(kernel_name, kernel_module);

@@ -9,8 +9,8 @@
 
 #include "BMAddressAssign.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Backend/BM168x/MARS3.h"
 #include "tpu_mlir/Backend/BM168x/SG2380.h"
+#include "tpu_mlir/Backend/CV18xx/CV184X.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
 #include "llvm/Support/Debug.h"

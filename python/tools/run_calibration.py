@@ -51,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_layer_cos', type=float, default=0.99, help='minimum cos of layer')
     parser.add_argument('--max_float_layers', type=int, default=5, help='num of float layers in search qtable')
     parser.add_argument('--chip', '--processor', default='bm1684x', type=str,
-                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1688', 'bm1690', 'mars3', 'sgtpuv8'],
+                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1688', 'bm1690', 'cv184x', 'sgtpuv8'],
                         help='chip platform name')
     parser.add_argument('--fp_type', default='auto', type=str,choices=['auto', 'F16', 'F32', 'BF16'],
                         help='float type of mix precision')

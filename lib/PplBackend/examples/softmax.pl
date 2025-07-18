@@ -2,7 +2,7 @@
 #include "ppl_wrapper_func.h"
 
 using namespace ppl;
-#ifdef __mars3__
+#ifdef __cv184x__
 #define DTYPE bf16
 #else
 #define DTYPE fp32

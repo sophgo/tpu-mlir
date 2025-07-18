@@ -55,7 +55,7 @@
      - 2025.04.03
      - Significant improvement in LLM model compilation speed;
        TPULang supports PPL operator integration;
-       Fixed random error issue with Trilu bf16 on Mars3
+       Fixed random error issue with Trilu bf16 on CV184X
    * - v1.16.0
      - 2025.03.03
      - TPULang ROI_Extractor support;

@@ -272,7 +272,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
       !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
-    if (module::isMARS3() && groups != 1 && !is_depthwise) {
+    if (module::isCV184X() && groups != 1 && !is_depthwise) {
       tpu::reshape_coeff_for_broadcast_channel_ext(bias_new, bias_shape, true,
                                                    isINT4Conv);
     } else {
@@ -307,7 +307,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
     int64_t quant_w_size = 0;
     bool align = true;
     if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
-        module::isMARS3() || module::isSGTPUV8()) {
+        module::isCV184X() || module::isSGTPUV8()) {
       align = false;
       quant_w_size = 2;
       for (int i = 0; i < attr.oc; i++) {
@@ -325,7 +325,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
       }
     }
     quant_shape = {1, attr.oc, 1, quant_w_size};
-    if (!module::isMARS3() || groups == 1 || is_depthwise) {
+    if (!module::isCV184X() || groups == 1 || is_depthwise) {
       tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align,
                                                isINT4Conv);
     } else {
@@ -380,13 +380,13 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   int64_t align_bytes = BM168x::EU_BYTES;
   if (attr.is_dw) {
     if (!module::isBM1688() && !module::isBM1690Family() &&
-        !module::isSG2380() && !module::isMARS3() && !module::isSGTPUV8()) {
+        !module::isSG2380() && !module::isCV184X() && !module::isSGTPUV8()) {
       align_bytes = 1;
     }
   }
 
   if (attr.has_bias) {
-    if (module::isMARS3() && groups != 1 && !is_depthwise) {
+    if (module::isCV184X() && groups != 1 && !is_depthwise) {
       bias_offset = align_up(quant_offset + quant_w_bytes, align_bytes);
     } else {
       // for fp8 bias is fp32, same size with float
@@ -623,8 +623,8 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
     // Allow 3IC optimize by default
     int use_3ic_optimize = 0;
     if (module::isBM1684X() || module::isBM1688()) {
-      // mars3's f16 backend need further repaired, because CMDs such as
-      // tpu_bdc_arithmetic_sequence_distribute are not supported on mars3.
+      // cv184x's f16 backend need further repaired, because CMDs such as
+      // tpu_bdc_arithmetic_sequence_distribute are not supported on cv184x.
       // bm1690 is well supported now, but 3ic-opt is not opened here by
       // default.
       if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
@@ -650,7 +650,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
 
     /////////////// this branch is speical for stride > 15
     if (strideh_gt_15 || stridew_gt_15) {
-      if (module::isMARS3() &&
+      if (module::isCV184X() &&
           (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 &&
            attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 &&
            attr.pwr == 0)) {
@@ -963,7 +963,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewriteImpl(
   std::vector<int64_t> filter_shape = {1, output_c, gic, kh * kw};
   if (out_type.isF32()) {
     if (strideh_gt_15 || stridew_gt_15) {
-      if (module::isMARS3() &&
+      if (module::isCV184X() &&
           (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 &&
            attr.dw == 1 && attr.pht == 0 && attr.phb == 0 && attr.pwl == 0 &&
            attr.pwr == 0)) {

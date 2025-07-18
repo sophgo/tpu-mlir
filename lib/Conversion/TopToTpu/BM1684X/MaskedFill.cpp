@@ -20,7 +20,7 @@ void MaskedFillLowering::LoweringF32(PatternRewriter &rewriter,
 void MaskedFillLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::MaskedFillOp op,
                                       bool asymmetric) const {
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     lowering_common_bf16<tpu::MaskedFillOp>(rewriter, op);
   else
     lowering_common_f32<tpu::MaskedFillOp>(rewriter, op);

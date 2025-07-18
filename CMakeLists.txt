@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-# These parameters only used for mars3
+# These parameters only used for cv184x
 macro(variable_test)
     set(${ARGV0} ${ARGV1} CACHE STRING "")
     message(STATUS "variable_test ${ARGV0}=${${ARGV0}}, default=${ARGV1}")

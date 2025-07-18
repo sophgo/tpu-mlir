@@ -46,7 +46,7 @@ void ClipLowering::LoweringINT4(PatternRewriter &rewriter, top::ClipOp op,
 void ClipLowering::LoweringINT8(PatternRewriter &rewriter, top::ClipOp op,
                                 bool asymmetric) const {
   // nodechip fix8b to be implemented,
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     LoweringBF16(rewriter, op);
   else
     LoweringF16(rewriter, op);

@@ -22,7 +22,7 @@ class Arch(Enum):
     bm1684x = 3
     bm1688 = 4
     bm1690 = 5
-    mars3 = 6
+    cv184x = 6
 
 
 class BlockType(Enum):

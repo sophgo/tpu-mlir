@@ -121,11 +121,11 @@ class MAIN_ENTRY(object):
         import test_onnx
         # send onnx test
         onnx_tester = test_onnx.ONNX_IR_TESTER()
-        chips = ["bm1684x", "bm1688", "bm1684", "cv183x", "mars3"]
+        chips = ["bm1684x", "bm1688", "bm1684", "cv183x", "cv184x"]
         simple = "--simple" if self.is_basic else ""
         for chip in chips:
             for case, (_, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,
-                       bm1690_support, mars3_support) in onnx_tester.test_cases.items():
+                       bm1690_support, cv184x_support) in onnx_tester.test_cases.items():
                 if chip == "bm1684" and not bm1684_support:
                     continue
                 if chip == "bm1684x" and not bm1684x_support:
@@ -134,7 +134,7 @@ class MAIN_ENTRY(object):
                     continue
                 if chip == "cv183x" and not cv183x_support:
                     continue
-                if chip == "mars3" and not mars3_support:
+                if chip == "cv184x" and not cv184x_support:
                     continue
                 self.commands.append(
                     f"test_onnx.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_onnx_{case}_{chip}.log\n"
@@ -152,11 +152,11 @@ class MAIN_ENTRY(object):
         import test_custom_tpulang
         # send torch test
         torch_tester = test_torch.TORCH_IR_TESTER()
-        chips = ["bm1684", "bm1684x", "bm1688", "cv183x", "mars3"]
+        chips = ["bm1684", "bm1684x", "bm1688", "cv183x", "cv184x"]
         simple = "--simple" if self.is_basic else ""
         for chip in chips:
             for case, (_, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,
-                       mars3_support) in torch_tester.test_cases.items():
+                       cv184x_support) in torch_tester.test_cases.items():
                 if chip == "bm1684" and not bm1684_support:
                     continue
                 if chip == "bm1684x" and not bm1684x_support:
@@ -165,7 +165,7 @@ class MAIN_ENTRY(object):
                     continue
                 if chip == "cv183x" and not cv183x_support:
                     continue
-                if chip == "mars3" and not mars3_support:
+                if chip == "cv184x" and not cv184x_support:
                     continue
                 self.commands.append(
                     f"test_torch.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_torch_{case}_{chip}.log\n"

@@ -45,7 +45,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y, Y, Y),
             "AddConst":     (self.test_AddConst,      N, N, N, N, N, N),
@@ -234,7 +234,7 @@ class ONNX_IR_TESTER(object):
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,mars3_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,cv184x_support)
             "TorchActivation":      (self.test_TorchActivation,     N, Y, Y, Y, Y, N),
             "TorchArg":             (self.test_TorchArg,            N, Y, Y, N, Y, Y),
             "TorchBatchNorm":       (self.test_TorchBatchNorm,      Y, Y, Y, Y, Y, Y),
@@ -271,7 +271,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Special Pass test case, Alphabetically
             #########################################
-            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
+            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
             "ArgError":         (self.test_ArgError,        N, Y, Y, Y, Y, Y),
             "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, Y, N, Y, Y),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y, Y, Y),
@@ -322,7 +322,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Dynamic test case, Alphabetically
             #########################################
-            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
+            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
             "DynamicSlice":     (self.test_DynamicSlice,    N, Y, N, N, N, N),
             "DynamicPad":     (self.test_DynamicPad,        N, Y, Y, N, N, N),
             "DynamicAdd":       (self.test_DynamicAdd,      N, Y, N, N, N, N),
@@ -350,7 +350,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # custom op test case, Alphabetically
             #########################################
-            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,mars3_support)
+            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N),
             ## only for test
@@ -384,13 +384,13 @@ class ONNX_IR_TESTER(object):
             self.support_quant_modes.append("f8e4m3")
             if not self.simple:
                 self.support_quant_modes.append("f8e5m2")
-        if self.chip.startswith("cv18") and self.chip != "cv186x":
+        if self.chip.startswith("cv18") and self.chip != "cv186x" and self.chip != "cv184x":
             self.support_quant_modes = ["bf16", "int8"]
             self.model_file = ".cvimodel"
             self.is_cv18xx = True
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
-        elif self.chip == "mars3":
+        elif self.chip == "cv184x":
             self.support_quant_modes = ["bf16", "int8"]
         self.mode = mode.lower()
         if self.mode == "" or self.mode == "all":
@@ -415,7 +415,7 @@ class ONNX_IR_TESTER(object):
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, mars3_support = self.test_cases[
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, cv184x_support = self.test_cases[
             case]
         if self.is_cv18xx and cv183x_support:
             return True
@@ -427,7 +427,7 @@ class ONNX_IR_TESTER(object):
             return True
         if self.chip == "bm1690" and bm1690_support:
             return True
-        if self.chip == "mars3" and mars3_support:
+        if self.chip == "cv184x" and cv184x_support:
             return True
         return False
 
@@ -2933,7 +2933,7 @@ class ONNX_IR_TESTER(object):
                 """ % (case_name, keep, input_shape, output_shape, output_shape, 1 if keep else 0,
                        1 if keep else 0)
             graph_def = onnx.parser.parse_graph(graph_txt)
-            if (self.chip == "mars3"):
+            if (self.chip == "cv184x"):
                 input_data = {
                     "input": np.random.randint(0,
                                                np.iinfo(np.int16).max, input_shape).astype(np.int64)
@@ -4460,7 +4460,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
-        if self.chip in ['bm1684x', 'bm1690', 'mars3']:
+        if self.chip in ['bm1684x', 'bm1690', 'cv184x']:
             # samples too large for regression is commented
             # but all samples following should be passed
             input_data = [
@@ -4525,7 +4525,7 @@ class ONNX_IR_TESTER(object):
                 indices_,
             )
 
-            if self.chip in ['bm1684x', 'bm1690', 'mars3']:
+            if self.chip in ['bm1684x', 'bm1690', 'cv184x']:
                 graph_txt = """
                     %s (float%s data) => (float%s gather_output)
                     <int64%s indices>
@@ -5667,7 +5667,7 @@ class ONNX_IR_TESTER(object):
             """ % (case_name, input_shape, reduce_output_shape, transpose_order, arg_keepdims,
                    arg_axis)
         graph_def = onnx.parser.parse_graph(graph_txt)
-        if (self.chip == "mars3"):
+        if (self.chip == "cv184x"):
             input_data = {
                 "input": np.random.randint(0,
                                            np.iinfo(np.int16).max, input_shape).astype(np.int64)
@@ -5704,7 +5704,7 @@ class ONNX_IR_TESTER(object):
             """ % (case_name, input_shape, output_shape, output_shape, output_shape, arg_axis,
                    reduce_axes, reduce_axes)
         graph_def = onnx.parser.parse_graph(graph_txt)
-        if (self.chip == "mars3"):
+        if (self.chip == "cv184x"):
             input_data = {
                 "input": np.random.randint(0,
                                            np.iinfo(np.int16).max, input_shape).astype(np.int64)
@@ -7401,7 +7401,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1690', 'sg2380', 'mars3', 'sgtpuv8'],
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2'],

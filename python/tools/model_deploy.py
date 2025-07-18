@@ -405,13 +405,11 @@ class DeployTool:
                     opt_post_processor=self.opt_post_processor,
                     gdma_check=self.gdma_check,
                     lg_debugger=self.lg_debugger,
-                    time_fixed_subnet = self.time_fixed_subnet,
-                    subnet_params = self.subnet_params,
-                    layer_group_cache = (
-                        f"{self.prefix}.layer_group_cache.json"
-                        if self.quantize != "int8"
-                        else f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json")
-                )
+                    time_fixed_subnet=self.time_fixed_subnet,
+                    subnet_params=self.subnet_params,
+                    layer_group_cache=(
+                        f"{self.prefix}.layer_group_cache.json" if self.quantize != "int8" else
+                        f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json"))
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -467,7 +465,7 @@ if __name__ == '__main__':
     # ========== Basic Options ===========
     parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
-                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380',
+                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'cv184x', 'sgtpuv8', 'sg2380',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'sg2262', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
@@ -566,7 +564,7 @@ if __name__ == '__main__':
     # for bm1684x and bm1688
     parser.add_argument("--matmul_perchannel", action="store_true", default=False,
                         help="if quantize matmul in per-channel mode for BM1684x and BM1688")
-    # for mars3
+    # for cv184x
     parser.add_argument("--opt_post_processor", action="store_true", default=False,
                         help="opt_post_processor")
     # regression test only, not for users
@@ -614,7 +612,9 @@ if __name__ == '__main__':
     lowering_patterns = tool.lowering()
     # generate model
     if args.time_fixed_subnet == 'custom' and not args.subnet_params:
-        parser.error("time_fixed_subnet is custom, please use --subnet_params to set the frequency(MHZ) and duration(ms) of the subnet.")
+        parser.error(
+            "time_fixed_subnet is custom, please use --subnet_params to set the frequency(MHZ) and duration(ms) of the subnet."
+        )
     if args.not_gen_bmodel:
         exit(0)
     tpu_patterns = tool.build_model()

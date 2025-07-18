@@ -139,12 +139,12 @@ void PowLowering::LoweringINT4(PatternRewriter &rewriter, top::PowOp op,
 }
 
 void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
-  // support mars3 bf16
+  // support cv184x bf16
   auto replace_pow = [&rewriter](top::PowOp &op, double n) -> Value {
     auto name = module::getName(op.getOutput());
     // auto type = op.getOutput().getType();
-    // if(module::isMARS3() || module::isSGTPUV8())
-    auto type = module::isMARS3() || module::isSGTPUV8()
+    // if(module::isCV184X() || module::isSGTPUV8())
+    auto type = module::isCV184X() || module::isSGTPUV8()
                     ? getQuantBF16Type(op->getResult(0))
                     : op.getOutput().getType();
     rewriter.setInsertionPointAfter(op);

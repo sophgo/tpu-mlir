@@ -958,7 +958,7 @@ protected:
   matchAndRewriteImpl(top::MatMulOp op,
                       mlir::PatternRewriter &rewriter) const override {
     if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
-        module::isMARS3() || module::isSGTPUV8()) {
+        module::isCV184X() || module::isSGTPUV8()) {
       return failure();
     }
     if (module::isHighPrecision()) {
@@ -1061,7 +1061,7 @@ protected:
     auto len_weight0 = module::getNumElements(matmul_queries.getRight());
     auto len_weight1 = module::getNumElements(matmul_keys.getRight());
     auto len_weight2 = module::getNumElements(matmul_values.getRight());
-    if (module::isBM1688() || module::isMARS3() || module::isSGTPUV8()) {
+    if (module::isBM1688() || module::isCV184X() || module::isSGTPUV8()) {
       // TODO: do not suppose attention when size greater than [batch, 2048,
       // 320]
       if (len / n > 2048 * 320 ||
@@ -1480,7 +1480,7 @@ protected:
     // made concerning the CLIP model.Further improvements will be considered
     // later
     if ((module::isBM1688() || module::isSGTPUV8() || module::isSG2380() ||
-         module::isMARS3()) &&
+         module::isCV184X()) &&
         !(kh < 29 && kw < 29)) {
       return failure();
     }

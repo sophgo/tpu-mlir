@@ -12,13 +12,13 @@ from typing import Tuple, TYPE_CHECKING
 import functools
 from functools import lru_cache
 if TYPE_CHECKING:
-    from .context import MARS3Context
+    from .context import CV184XContext
 
 
-class MARS3Info:
+class CV184XInfo:
 
     def __init__(self) -> None:
-        self.lib_name = "libcmodel_mars3.so"
+        self.lib_name = "libcmodel_cv184x.so"
         self._lib = None
 
     @property
@@ -101,9 +101,9 @@ class MARS3Info:
         return TYPED_CUBE_NUM[dtype]
 
 
-info = MARS3Info()
+info = CV184XInfo()
 
-# TPU1688/mars3/spec/include/memmap.h
+# TPU1688/cv184x/spec/include/memmap.h
 memmap = {
     MType.R: (0xc080000, 0xc080000 + 65536),  # local memory
     MType.S: (0xc041000, 0xc041000 + 0x400),  # TODO: static memory 1KB
@@ -195,7 +195,7 @@ class MemRef(MemRefBase):
     A description of tensor in memory.
     """
 
-    device = Target.MARS3
+    device = Target.CV184X
 
     def __init__(
         self,
@@ -204,7 +204,7 @@ class MemRef(MemRefBase):
         dtype: DType,
         stride=None,
         layout=None,
-        context: "MARS3Context" = None,
+        context: "CV184XContext" = None,
     ):
         assert context is not None
         self.context = context

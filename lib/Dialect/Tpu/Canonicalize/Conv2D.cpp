@@ -1,4 +1,4 @@
-#include "tpu_mlir/Backend/BM168x/MARS3.h"
+#include "tpu_mlir/Backend/CV18xx/CV184X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
@@ -26,7 +26,7 @@ public:
 
     auto inputShape = module::getShape(input);
     auto filterShape = module::getShape(filter);
-    if (!(module::isMARS3() || module::isSGTPUV8()))
+    if (!(module::isCV184X() || module::isSGTPUV8()))
       return failure();
     // is depthwise conv
     int64_t groups = op.getGroup();

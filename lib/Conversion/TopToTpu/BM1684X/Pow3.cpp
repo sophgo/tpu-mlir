@@ -43,7 +43,7 @@ void Pow3Lowering::LoweringF32(PatternRewriter &rewriter,
 
 void Pow3Lowering::LoweringINT8(PatternRewriter &rewriter, top::Pow3Op op,
                                 bool asymmetric) const {
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     LoweringBF16(rewriter, op);
   } else
     LoweringF32(rewriter, op);
@@ -56,7 +56,7 @@ void Pow3Lowering::LoweringINT4(PatternRewriter &rewriter, top::Pow3Op op,
 
 void Pow3Lowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::Pow3Op op) const {
-  if (module::isMARS3() || module::isSGTPUV8()) {
+  if (module::isCV184X() || module::isSGTPUV8()) {
     auto name = module::getName(op.getOutput());
     auto type = getQuantFloatType<BFloat16Type>(op.getOutput());
     rewriter.setInsertionPointAfter(op);

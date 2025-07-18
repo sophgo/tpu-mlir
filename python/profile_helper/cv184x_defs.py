@@ -16,8 +16,8 @@ from debugger.target_common import DType
 
 GDMA_FREQ = 650
 BD_FREQ = 750
-# TODO: mars3 has more than three kinds of work freqs, need auto parse form pmu header
-arch_name = "MARS3"
+# TODO: cv184x has more than three kinds of work freqs, need auto parse form pmu header
+arch_name = "CV184X"
 
 
 class EngineType(Enum):
@@ -81,7 +81,7 @@ class GDMAProfileFormat(dictStructure):
 class GDMACommandParser():
 
     def __init__(self) -> None:
-        self.ctx = get_target_context("MARS3")
+        self.ctx = get_target_context("CV184X")
 
     def parse(self, raw_data):
         tmp = bytearray(raw_data)
@@ -91,7 +91,7 @@ class GDMACommandParser():
 class BDCommandParser():
 
     def __init__(self) -> None:
-        self.ctx = get_target_context("MARS3")
+        self.ctx = get_target_context("CV184X")
 
     def parse(self, raw_data):
         tmp = bytearray(raw_data)
@@ -99,7 +99,7 @@ class BDCommandParser():
 
 
 DMA_ARCH = {
-    "Chip Arch": "MARS3",
+    "Chip Arch": "CV184X",
     "Platform": "ASIC",
     "Core Num": 1,
     "NPU Num": 8,

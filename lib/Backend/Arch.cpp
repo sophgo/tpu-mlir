@@ -9,9 +9,9 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
-#include "tpu_mlir/Backend/BM168x/MARS3.h"
 #include "tpu_mlir/Backend/BM168x/SG2380.h"
 #include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
+#include "tpu_mlir/Backend/CV18xx/CV184X.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <filesystem>
@@ -53,8 +53,8 @@ void Arch::init(uint64_t freq) {
       inst = &CV18xx::instance(chip);
     } else if (chip == module::Chip::BM1690) {
       inst = &BM1690::instance();
-    } else if (chip == module::Chip::MARS3) {
-      inst = &MARS3::instance(A2_1::value);
+    } else if (chip == module::Chip::CV184X) {
+      inst = &CV184X::instance(A2_1::value);
     } else if (chip == module::Chip::SGTPUV8) {
       inst = &SGTPUV8::instance(A2_1::value);
     } else if (chip == module::Chip::SG2380) {
@@ -77,8 +77,8 @@ void Arch::init(uint64_t freq) {
     case module::Chip::BM1690:
       chip_str = PPL_BM1690;
       break;
-    case module::Chip::MARS3:
-      chip_str = PPL_MARS3;
+    case module::Chip::CV184X:
+      chip_str = PPL_CV184X;
       break;
     default:
       // llvm::errs() << "ppl unsupport this chip\n";

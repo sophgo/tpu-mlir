@@ -24,7 +24,7 @@ static inline Operation *set_mode(top::SigmoidOp op) {
 void SigmoidLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::SigmoidOp op) const {
   auto op_ = set_mode(op);
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
@@ -49,7 +49,7 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SigmoidOp op) const {
   auto op_ = set_mode(op);
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
@@ -58,7 +58,7 @@ void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
 void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::SigmoidOp op) const {
   auto op_ = set_mode(op);
-  if (module::isMARS3() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);

@@ -3716,7 +3716,7 @@ public:
       auto requant =
           dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
-      if (module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+      if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
           module::isSGTPUV8()) {
         for (int i = 0; i < shape[1]; ++i) {
           multiplier_v.push_back(data->data()[i * 2]);
@@ -4061,7 +4061,7 @@ public:
                                     PatternRewriter &rewriter) const override {
     /* ReduceL2(1x4x256x256,axes[2,3],keep_dims=false)->ReduceL2(1x4x256x256)+ReduceL2(1x4x256)
      */
-    if (!(module::isBM1688() || module::isSG2380() || module::isMARS3() ||
+    if (!(module::isBM1688() || module::isSG2380() || module::isCV184X() ||
           module::isSGTPUV8())) {
       return failure();
     }
@@ -4740,7 +4740,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::SwapDimInnerOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!(module::isMARS3() || module::isSGTPUV8())) {
+    if (!(module::isCV184X() || module::isSGTPUV8())) {
       return failure();
     }
 
@@ -5240,7 +5240,7 @@ public:
                                            benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::DeconvOp op,
                                     PatternRewriter &rewriter) const override {
-    if (module::isMARS3())
+    if (module::isCV184X())
       return failure();
     auto in_shape = module::getShape(op.getInput());
     int dims = in_shape.size() - 2;

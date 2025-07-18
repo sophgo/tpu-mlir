@@ -167,12 +167,12 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int use_3ic_optimize = getUse_3icOptimize();
   int64_t IC_PARALLEL = BM168x::ic_num(1);
   bool is_depthwise = p.groups == p.ic && p.groups == p.oc && p.groups > 1;
-  if ((module::isBM1688() || module::isMARS3() || module::isSGTPUV8()) &&
+  if ((module::isBM1688() || module::isCV184X() || module::isSGTPUV8()) &&
       getCoeffMerged()) {
     if (module::getStorageType(getInput()).isIntOrIndex() && p.kernel_zp != 0)
       return int32_size * 2;
     if (p.groups > 1) {
-      if (module::isMARS3() && !is_depthwise) {
+      if (module::isCV184X() && !is_depthwise) {
         // inputs
         sz += in_nslice * p.ic / p.groups *
               align_up(in_hslice * in_wslice, eu_num) * in_type_len;
@@ -239,7 +239,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
           ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) * in_type_len;
   }
   if (use_3ic_optimize) {
-    if ((module::isMARS3() || module::isSGTPUV8())) {
+    if ((module::isCV184X() || module::isSGTPUV8())) {
       sz += align_up(align_up(dw_out_size, eu_num) *
                          ceiling_func(in_cslice * kernel_len, Arch::NPU_NUM) *
                          in_nslice,
