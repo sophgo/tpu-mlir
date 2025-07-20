@@ -80,7 +80,7 @@ class Qwen2VLConverter(LlmConverter):
                            mlir_gen.none_op,
                            offset=[1, 0, 0, t_dim],
                            steps=[1, 1, 1, 1],
-                           ends=[1, dim, 1, t_dim + h_dim],
+                           ends=[2, dim, 1, t_dim + h_dim],
                            loc=self.get_loc(name + ".slice.h", mlir_gen),
                            ip=mlir_gen.insert_point).output
         w_op = top.SliceOp(mlir_gen.get_tensor_type([1, dim, 1, w_dim]),
@@ -90,7 +90,7 @@ class Qwen2VLConverter(LlmConverter):
                            mlir_gen.none_op,
                            offset=[2, 0, 0, t_dim + h_dim],
                            steps=[1, 1, 1, 1],
-                           ends=[1, dim, 1, t_dim + h_dim + w_dim],
+                           ends=[3, dim, 1, t_dim + h_dim + w_dim],
                            loc=self.get_loc(name + ".slice.w", mlir_gen),
                            ip=mlir_gen.insert_point).output
         concat_op = top.ConcatOp(mlir_gen.get_tensor_type([1, dim, 1, t_dim + h_dim + w_dim]),

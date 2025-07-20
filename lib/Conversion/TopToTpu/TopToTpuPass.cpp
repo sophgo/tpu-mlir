@@ -473,8 +473,9 @@ public:
   LogicalResult matchAndRewriteImpl(OpTy op,
                                     PatternRewriter &rewriter) const override {
     auto pre_op = op->getOperand(0).getDefiningOp();
-    if (isa<top::InputOp>(pre_op))
+    if (isa<top::InputOp>(pre_op)) {
       return failure();
+    }
     Value in = op.getInput();
     Value out = op.getOutput();
     auto in_type = in.getType().cast<RankedTensorType>();
@@ -1189,6 +1190,108 @@ public:
   bool shouldPrint(tpu::ActiveOp op) const override { return false; }
 };
 
+// Input(i32) + cast + slice/reshape/... + cast+ Gather
+// -> Input + slice/reshape + Gather
+struct InputGatherPattern : public OpRewriterPatternEx<top::InputOp> {
+public:
+  InputGatherPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::InputOp>(context, "InputGatherPattern") {}
+
+  LogicalResult matchAndRewriteImpl(top::InputOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto stype = module::getStorageType(op);
+    bool is_success = false;
+    if (!stype.isInteger(32)) {
+      return failure();
+    }
+    auto next_op = op.getOperation();
+    std::vector<Operation *> middle_casts;
+    while (next_op->hasOneUse()) {
+      next_op = *next_op->getUsers().begin();
+      if (isa<tpu::CastOp>(next_op)) {
+        // skip cast
+        middle_casts.push_back(next_op);
+        continue;
+      }
+      break;
+    }
+    std::vector<Operation *> users(next_op->user_begin(), next_op->user_end());
+    for (auto user : users) {
+      auto next_op = user;
+      std::vector<Operation *> middle_ops;
+      middle_ops.push_back(op.getOperation()); // add input op to middle ops
+      while (next_op->hasOneUse()) {
+        if (isa<tpu::SliceOp, tpu::ReshapeOp, tpu::SqueezeOp, tpu::UnsqueezeOp>(
+                next_op)) {
+          middle_ops.push_back(next_op);
+          next_op = *next_op->getUsers().begin();
+          continue;
+        }
+        if (isa<tpu::CastOp>(next_op)) {
+          // skip cast
+          next_op = *next_op->getUsers().begin();
+          middle_casts.push_back(next_op);
+          continue;
+        }
+        break;
+      }
+      std::vector<Operation *> next_users(next_op->user_begin(),
+                                          next_op->user_end());
+      // all users is GatherOp ?
+      bool is_all_gather = true;
+      for (auto next_user : next_users) {
+        if (!isa<tpu::GatherOp>(next_user)) {
+          is_all_gather = false;
+          break;
+        }
+        auto g_op = dyn_cast<tpu::GatherOp>(next_user);
+        if (g_op.getIndices() != next_op->getResult(0)) {
+          is_all_gather = false;
+          break;
+        }
+      }
+      if (!is_all_gather) {
+        continue;
+      }
+      auto num = middle_ops.size();
+      if (num < 2) {
+        continue;
+      }
+      // bingo !!!
+      is_success = true;
+      for (int i = 1; i < num; i++) {
+        auto prev_value = middle_ops[i - 1]->getResult(0);
+        if (i != 1) {
+          auto shape = module::getShape(prev_value);
+          auto new_type = module::getTypeLike(op, shape);
+          prev_value.setType(new_type);
+        }
+        // set input to previous value
+        middle_ops[i]->setOperand(0, prev_value);
+      }
+      auto pre_value = middle_ops[num - 1]->getResult(0);
+      auto shape = module::getShape(pre_value);
+      auto new_type = module::getTypeLike(op, shape);
+      pre_value.setType(new_type);
+      for (auto next_user : next_users) {
+        next_user->setOperand(1, pre_value);
+      }
+    }
+    if (is_success) {
+      // remove all middle casts
+      int num_cast = middle_casts.size();
+      for (int i = num_cast - 1; i >= 0; i--) {
+        auto cast_op = middle_casts[i];
+        if (cast_op->use_empty()) {
+          rewriter.eraseOp(cast_op);
+        }
+      }
+    }
+    return is_success ? success() : failure();
+  }
+  bool shouldPrint(top::InputOp op) const override { return false; }
+};
+
 void ConvertTopToTpu::runOnOperation() {
   module_ = getOperation();
   ctx_ = &getContext();
@@ -1436,11 +1539,6 @@ void ConvertTopToTpu::runOnOperation() {
       ForwardInt32TypePattern<tpu::ShapeReduceOp>>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   cast_process();
-  if (module::isBM1684XFamily()) {
-    patterns.clear();
-    patterns.add<CastActivePattern>(ctx_);
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-  }
   relu_process();
   if (module::isCV18xx()) {
     patterns.clear();
@@ -1676,6 +1774,13 @@ void ConvertTopToTpu::cast_process() {
       }
     }
   });
+  // process cast related patterns
+  module::applyPatternOnce<InputGatherPattern>(module_);
+  if (module::isBM1684XFamily()) {
+    RewritePatternSet patterns(ctx_);
+    patterns.add<CastActivePattern>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  }
 }
 
 void ConvertTopToTpu::set_add_before_softmax_fp32() {

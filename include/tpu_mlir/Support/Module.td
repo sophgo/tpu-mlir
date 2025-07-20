@@ -82,6 +82,7 @@ def Module_Platform: I32EnumAttr<"Platform", "module platform",[
       I32EnumAttrCase<"CAFFE",   3>,
       I32EnumAttrCase<"TPULANG", 4>,
       I32EnumAttrCase<"FX", 5>,
+      I32EnumAttrCase<"LLM", 6>,
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";
