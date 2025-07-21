@@ -126,6 +126,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   bool strideh_gt_15 = stride_h > 15;
   bool stridew_gt_15 = stride_w > 15;
   bool stride_hw_gt_15 = strideh_gt_15 || stridew_gt_15;
+  bool is_depthwise = groups == input_c && groups == output_c && groups > 1;
   int cell_h = kh, cell_w = kw;
   int64_t IC_PARALLEL = BM168x::ic_num(1);
 
@@ -271,8 +272,13 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
       !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
-    tpu::reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false,
-                                             isINT4Conv);
+    if (module::isMARS3() && groups != 1 && !is_depthwise) {
+      tpu::reshape_coeff_for_broadcast_channel_ext(bias_new, bias_shape, true,
+                                                   isINT4Conv);
+    } else {
+      tpu::reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false,
+                                               isINT4Conv);
+    }
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
   }
@@ -319,8 +325,15 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
       }
     }
     quant_shape = {1, attr.oc, 1, quant_w_size};
-    tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align,
-                                             isINT4Conv);
+    if (!module::isMARS3() || groups == 1 || is_depthwise) {
+      tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align,
+                                               isINT4Conv);
+    } else {
+      // Mars3 local only sopport align = true, in ordre to fit
+      // tpu_bdc_cpy_cross_npu in backend
+      tpu::reshape_coeff_for_broadcast_channel_ext(quant_data, quant_shape,
+                                                   true, isINT4Conv);
+    }
     assert(new_oc == quant_shape[1]);
     quant_w_bytes = quant_shape[3] * sizeof(int32_t);
   } else if (merge_with_requant && filter_stype.isFloat8E4M3FN()) {
@@ -364,21 +377,25 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
 
   // merge
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
-  int64_t filter_align = BM168x::EU_BYTES;
+  int64_t align_bytes = BM168x::EU_BYTES;
   if (attr.is_dw) {
     if (!module::isBM1688() && !module::isBM1690Family() &&
         !module::isSG2380() && !module::isMARS3() && !module::isSGTPUV8()) {
-      filter_align = 1;
+      align_bytes = 1;
     }
   }
 
   if (attr.has_bias) {
-    // for fp8 bias is fp32, same size with float
-    bias_offset =
-        align_up(quant_offset + quant_w_bytes, (int64_t)sizeof(int32_t));
-    filter_offset = align_up(bias_offset + bias_w_bytes, filter_align);
+    if (module::isMARS3() && groups != 1 && !is_depthwise) {
+      bias_offset = align_up(quant_offset + quant_w_bytes, align_bytes);
+    } else {
+      // for fp8 bias is fp32, same size with float
+      bias_offset =
+          align_up(quant_offset + quant_w_bytes, (int64_t)sizeof(int32_t));
+    }
+    filter_offset = align_up(bias_offset + bias_w_bytes, align_bytes);
   } else {
-    filter_offset = align_up(quant_offset + quant_w_bytes, filter_align);
+    filter_offset = align_up(quant_offset + quant_w_bytes, align_bytes);
   }
   int64_t merge_w = filter_offset + filter_w_bytes;
   if (merge_w > MAX_TPU_DIM && !attr.is_dw) {

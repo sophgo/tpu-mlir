@@ -165,14 +165,36 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int ic_per_npu = ceiling_func(p.ic / p.groups, BM168x::NPU_NUM);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
   int use_3ic_optimize = getUse_3icOptimize();
+  int64_t IC_PARALLEL = BM168x::ic_num(1);
+  bool is_depthwise = p.groups == p.ic && p.groups == p.oc && p.groups > 1;
   if ((module::isBM1688() || module::isMARS3() || module::isSGTPUV8()) &&
       getCoeffMerged()) {
     if (module::getStorageType(getInput()).isIntOrIndex() && p.kernel_zp != 0)
       return int32_size * 2;
     if (p.groups > 1) {
-      sz += in_nslice * ic_per_npu * align_up(in_hslice * in_wslice, eu_num) *
-            in_type_len;
-      sz += ic_per_npu * 2 * in_type_len;
+      if (module::isMARS3() && !is_depthwise) {
+        // inputs
+        sz += in_nslice * p.ic / p.groups *
+              align_up(in_hslice * in_wslice, eu_num) * in_type_len;
+        sz += ic_per_npu * 2 * in_type_len;
+        // outputs
+        sz += p.oc / p.groups * align_up(out_hslice * out_wslice, eu_num) *
+              out_type_len;
+        // weights
+        sz += p.oc / p.groups * p.kh * p.kw *
+              align_up(p.ic / p.groups, IC_PARALLEL) * sizeof(int8_t);
+        // rq
+        int w_align = BM168x::eu_num(sizeof(int32_t));
+        sz += p.oc / p.groups * w_align * sizeof(int32_t);
+        // bias
+        if (p.has_bias) {
+          sz += p.oc / p.groups * w_align * sizeof(int32_t);
+        }
+      } else {
+        sz += in_nslice * ic_per_npu * align_up(in_hslice * in_wslice, eu_num) *
+              in_type_len;
+        sz += ic_per_npu * 2 * in_type_len;
+      }
       return sz;
     }
     if (use_3ic_optimize == 0)

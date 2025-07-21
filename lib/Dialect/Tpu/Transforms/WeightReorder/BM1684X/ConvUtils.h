@@ -56,6 +56,52 @@ static void reshape_coeff_for_broadcast_channel(
 }
 
 template <typename T>
+static void reshape_coeff_for_broadcast_channel_ext(
+    std::shared_ptr<std::vector<T>> &coeff, std::vector<int64_t> &shape,
+    bool align = false, bool isINT4Conv = false) {
+  int64_t n, c, h, w, eu_num;
+  module::getNCHW(shape, n, c, h, w);
+
+  if (n != 1 || h != 1 || c <= BM168x::NPU_NUM) {
+    return;
+  }
+  eu_num = BM168x::eu_num(isINT4Conv ? 0.5 : sizeof(T));
+  auto old_w_align = align_up(w, eu_num);
+  int64_t new_c = BM168x::NPU_NUM;
+  // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
+  auto c2w = ceiling_func(c, new_c);
+  int64_t new_w = (align ? old_w_align : w) * (c2w - 1) + w;
+  auto coeff_new = std::make_shared<std::vector<T>>(new_w * new_c, 0);
+  for (uint i = 0; i < c2w; i++) {
+    for (uint j = 0; j < new_c; j++) {
+      if (i * new_c + j >= c) {
+        break;
+      }
+      for (uint k = 0; k < w; k++) {
+        uint src_idx = (i * new_c + j) * w + k;
+        uint dst_idx = j * new_w + i * (align ? old_w_align : w) + k;
+        coeff_new->at(dst_idx) = coeff->at(src_idx);
+        if (align) {
+          if (i > 0) {
+            uint dst_idx_copy =
+                j * new_w + i * old_w_align + k - (old_w_align - w);
+            coeff_new->at(dst_idx_copy) = coeff->at(src_idx);
+            // printf("*************** src_idx: %d; dst_idx: %d; dst_idx_copy:
+            // %d***************\n", src_idx, dst_idx, dst_idx_copy);
+          }
+        }
+      }
+    }
+  }
+
+  coeff = coeff_new;
+  assert(shape.size() > 2);
+  shape.assign(shape.size(), 1);
+  shape[1] = new_c;
+  shape.back() = new_w;
+}
+
+template <typename T>
 static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
                            std::vector<int64_t> &shape,
                            bool isINT4Conv = false) {
