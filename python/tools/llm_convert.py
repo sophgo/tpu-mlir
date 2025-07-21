@@ -63,6 +63,8 @@ if __name__ == '__main__':
                         help='use history kv for prefill, default is False')
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
+    parser.add_argument('--max_prefill_kv_length', type=int, default=0,
+                        help='max prefill kv length, default 0 means the same as seq_length')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
                         help="max pixels for vit, for example: 240,420 or 100800")
     parser.add_argument('--dynamic', action='store_true',
@@ -83,6 +85,13 @@ if __name__ == '__main__':
             raise ValueError(
                 "max_input_length should not be larger than seq_length // 2, got: {}".format(
                     args.max_input_length))
+    if args.max_prefill_kv_length <= 0:
+        args.max_prefill_kv_length = args.seq_length
+    elif args.max_prefill_kv_length > args.seq_length:
+        raise ValueError(
+            "max_prefill_kv_length should not be larger than seq_length, got: {}".format(
+                args.max_prefill_kv_length))
+
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
     if config.model_type in ["qwen3", "qwen2", "llama", "minicpm"]:

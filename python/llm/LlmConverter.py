@@ -28,8 +28,9 @@ class LlmConverter(BaseConverter):
         self.model_path = os.path.normpath(args.model_path)
         self.seq_length = args.seq_length
         self.max_input_length = args.max_input_length if (
-            args.max_input_length > 0 and args.max_input_length < self.seq_length
-            and not args.dynamic) else self.seq_length
+            args.max_input_length > 0
+            and args.max_input_length < self.seq_length) else self.seq_length
+        self.max_prefill_kv_length = args.max_prefill_kv_length
         self.quantize = args.quantize
         self.num_device = args.num_device
         self.q_group_size = args.q_group_size
@@ -1051,10 +1052,9 @@ class LlmConverter(BaseConverter):
             input_len = self.max_input_length
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
-            mask_shape = [1, 1, self.max_input_length, self.seq_length]
-            history_shape = [
-                1, self.seq_length - input_len, self.num_key_value_heads, self.head_dim
-            ]
+            max_kv_len = self.max_prefill_kv_length + self.max_input_length
+            mask_shape = [1, 1, self.max_input_length, max_kv_len]
+            history_shape = [1, self.max_prefill_kv_length, self.num_key_value_heads, self.head_dim]
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
@@ -1105,12 +1105,12 @@ class LlmConverter(BaseConverter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ====== kv concat ========
-            k_op = top.ConcatOp(T([1, self.seq_length, self.num_key_value_heads, self.head_dim]),
+            k_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
                                 [in3_op, k_op],
                                 axis=1,
                                 loc=L(k_proj + ".concat"),
                                 ip=ip).output
-            v_op = top.ConcatOp(T([1, self.seq_length, self.num_key_value_heads, self.head_dim]),
+            v_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
                                 [in4_op, v_op],
                                 axis=1,
                                 loc=L(v_proj + ".concat"),
@@ -1128,7 +1128,7 @@ class LlmConverter(BaseConverter):
                                      kv_head=self.num_key_value_heads,
                                      dim=self.head_dim,
                                      mq=input_len,
-                                     mk=self.seq_length,
+                                     mk=max_kv_len,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
