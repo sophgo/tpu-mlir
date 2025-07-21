@@ -21,6 +21,28 @@
 
 namespace tpu_mlir {
 namespace tpu {
+struct group_cycle_info_t {
+  int64_t out_addr;
+  int64_t out_size;
+  int64_t buffer_addr;
+  int64_t buffer_size;
+  int64_t n_idx;
+  int64_t n_slice;
+  int64_t c_idx;
+  int64_t c_slice;
+  int64_t h_idx;
+  int64_t h_slice;
+  int64_t d_idx;
+  int64_t d_slice;
+  int64_t w_idx;
+  int64_t w_slice;
+  int64_t h_idx_offset;
+  int64_t id;
+  int64_t stage;
+  int64_t type;
+  bool eu_align;
+  bool overstepped;
+};
 
 class CycleCalculator {
 public:
@@ -28,8 +50,9 @@ public:
   CycleCalculator(int num_core) : num_core_(num_core){};
   virtual ~CycleCalculator(){};
   virtual int64_t getGlobalLayerCycle(Operation *op) = 0;
-  int64_t getGroupCycle(BasicTimeStepPtr &time_step, shape_secs_t &shape_secs,
-                        group_type_t group_type);
+  virtual int64_t getGroupCycle(BasicTimeStepPtr &time_step,
+                                shape_secs_t &shape_secs,
+                                group_type_t group_type);
   virtual int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
                                      group_type_t group_type,
                                      bool calc_bdc_slack) = 0;
@@ -53,6 +76,8 @@ public:
   Bm168xCycleCalculator() {}
   Bm168xCycleCalculator(int num_core) : CycleCalculator(num_core) {}
   ~Bm168xCycleCalculator() {}
+  int64_t getGroupCycle(BasicTimeStepPtr &time_step, shape_secs_t &shape_secs,
+                        group_type_t group_type) override;
   int64_t getGlobalLayerCycle(Operation *op) override;
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
 
@@ -66,6 +91,23 @@ public:
                        Operation *owner_op = nullptr) override;
   int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info,
                         group_type_t group_type) override;
+  group_cycle_info_t getGdmaGroupInfo(Value v, tensor_info_t &tensor_info,
+                                      group_type_t group_type, int64_t n_step,
+                                      int64_t c_step, int64_t d_step,
+                                      int64_t h_step, int64_t w_step,
+                                      int64_t l_addr);
+  int64_t getLoadCycleOpt(Value v, tensor_info_t &tensor_info,
+                          group_type_t group_type, group_cycle_info_t &ginfo);
+  int64_t getStoreCycleOpt(Value v, tensor_info_t &tensor_info,
+                           group_type_t group_type, group_cycle_info_t &ginfo);
+  int64_t getGdmaCycleOpt(Value v, tensor_info_t &tensor_info,
+                          group_type_t group_type, group_cycle_info_t &ginfo);
+  int64_t getLocalLayerCycleOpt(BasicTimeStepPtr &time_step, Operation *op,
+                                TensorInfo &tensor_infos,
+                                group_type_t group_type, bool calc_bdc_slack,
+                                int64_t n_step = 0, int64_t c_step = 0,
+                                int64_t d_step = 0, int64_t h_step = 0,
+                                int64_t w_step = 0);
 };
 
 class Cv18xxCycleCalculator : public CycleCalculator {

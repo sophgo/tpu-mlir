@@ -584,15 +584,14 @@ def tpu_ada_options(
     future_update_list: str = "",
     trunc_final: list = None,
     opt_post_processor: bool = False,
-    lg_debugger: bool = False,
+    lg_debugger: int = 0,
     disable_group_overlap: bool = False,
 ):
     lg_param = ''
     disable_group_overlap = "true" if disable_group_overlap else "false"
     if not disable_layer_group:
-        debugger = 1 if lg_debugger else 0
         lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={}"'.format(
-            opt, group_by_cores, compress_mode, debugger, disable_group_overlap)
+            opt, group_by_cores, compress_mode, lg_debugger, disable_group_overlap)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     if merge_weight:
@@ -851,7 +850,7 @@ def mlir_to_model(
     quant_output_bf16: bool = False,
     opt_post_processor: bool = False,
     gdma_check: bool = True,
-    lg_debugger: bool = False,
+    lg_debugger: int = 0,
     time_fixed_subnet: str = None,
     subnet_params: str = None,
     layer_group_cache: str = ""

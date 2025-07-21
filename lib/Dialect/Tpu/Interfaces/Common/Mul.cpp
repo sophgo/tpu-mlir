@@ -125,10 +125,10 @@ LogicalResult tpu::MulOp::LocalGenSupport() {
   return BroadCastBinaryLocalGenSupport(getOperation());
 }
 
-void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
-                                 int64_t d_step, int64_t w_step,
-                                 group_type_t group_type,
-                                 local_sec_info_t &sec_info) {
+void tpu::MulOp::assign_sec_info_kernel(
+    group_type_t group_type, local_sec_info_t &sec_info,
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
   int64_t n0, c0, d0, h0, w0, n1, c1, d1, h1, w1, on, oc, od, oh, ow;
@@ -138,11 +138,9 @@ void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
   module::getNCDHW(input0, n0, c0, d0, h0, w0, group_type);
   module::getNCDHW(input1, n1, c1, d1, h1, w1, group_type);
   module::getNCDHW(output, on, oc, od, oh, ow, group_type);
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in0_gi = LocalGenInterface::getGroupInfo(input0, n_step, h_step, d_step,
-                                                w_step, c_step);
-  auto in1_gi = LocalGenInterface::getGroupInfo(input1, n_step, h_step, d_step,
-                                                w_step, c_step);
+  auto gi = out_group_infos[0];
+  auto in0_gi = in_group_infos[0];
+  auto in1_gi = in_group_infos[1];
   sec_info.n_slice = std::max(in0_gi.n_slice, in1_gi.n_slice);
   sec_info.c_slice = std::max(in0_gi.c_slice, in1_gi.c_slice);
   sec_info.d_slice = std::max(in0_gi.d_slice, in1_gi.d_slice);
@@ -172,7 +170,8 @@ void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
 void tpu::MulOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
   for (auto attr : getOperation()->getAttrs()) {
     auto attr_name = attr.getName().str();
-    if (attr_name == "ginfo" || attr_name == "rshift" || attr_name == "multiplier") {
+    if (attr_name == "ginfo" || attr_name == "rshift" ||
+        attr_name == "multiplier") {
       continue;
     }
     os << attr_name << "=";

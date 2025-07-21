@@ -139,6 +139,34 @@ public:
            conditional_debug_groups_.end();
   }
 
+  void add_manual_group_cost(int64_t start, int64_t end, int64_t cost) {
+    manual_group_cost_[std::make_pair(start, end)] = cost;
+    // llvm::dbgs() << LOG_ACTION("debugger")
+    //             << LOG_STEP("manual_group_cost_")
+    //             << LOG_KV("func_start_idx", start)
+    //             << LOG_KV("func_end_idx", end) << LOG_KV("cost", cost) <<
+    //             "\n";
+  }
+
+  int64_t get_manual_group_cost(LgInfo &lg_info) {
+    auto it = manual_group_cost_.find(
+        std::make_pair(lg_info.func_start_idx, lg_info.func_end_idx));
+    if (it != manual_group_cost_.end()) {
+      return it->second;
+      // llvm::dbgs() << LOG_ACTION("debugger")
+      //             << LOG_STEP("manual_group_cost_")
+      //             << LOG_KV("func_start_idx", lg_info.func_start_idx)
+      //             << LOG_KV("func_end_idx", lg_info.func_end_idx)
+      //             << LOG_KV("cost", it->second) << "\n";
+    }
+    // llvm::dbgs() << LOG_ACTION("debugger")
+    //             << LOG_STEP("manual_group_cost_")
+    //             << LOG_KV("func_start_idx", lg_info.func_start_idx)
+    //             << LOG_KV("func_end_idx", lg_info.func_end_idx)
+    //             << LOG_KV("cost", "not found") << "\n";
+    return -1; // return -1 if not found
+  }
+
   std::unordered_set<std::string> get_conditional_debug_types() {
     return conditional_debug_types_;
   }
@@ -245,6 +273,8 @@ private:
   std::unordered_set<std::string> conditional_debug_types_;
   std::unordered_set<std::pair<int64_t, int64_t>, PairHash>
       conditional_debug_groups_;
+  std::unordered_map<std::pair<int64_t, int64_t>, int64_t, PairHash>
+      manual_group_cost_;
   std::vector<LgDebuggerInfo> lg_debugger_infos_;
 };
 

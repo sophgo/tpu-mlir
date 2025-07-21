@@ -11,6 +11,7 @@
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/OpDefinition.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 
 namespace tpu_mlir {
 
@@ -41,7 +42,7 @@ typedef struct {
 } group_info_t;
 
 typedef struct local_sec_info {
-  int32_t group_type;
+  group_type_t group_type;
 
   int32_t n_slice;
   int32_t out_n_slice;
@@ -71,6 +72,8 @@ typedef struct local_sec_info {
 
   int32_t n_idx;
   int32_t d_idx;
+
+  int64_t out_addr;
 
   void print() {
     llvm::errs() << llvm::format(

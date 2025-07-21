@@ -25,6 +25,95 @@ void LocalGenInterface::fixSlice(int64_t &in_idx, int64_t &in_slice,
   in_slice = end_idx - in_idx;
 }
 
+group_info_t LocalGenInterface::getGroupInfoLg(
+    std::shared_ptr<tpu::BasicTimeStep> &time_step, mlir::Value v,
+    group_type_t group_type, int64_t n_step, int64_t h_step, int64_t d_step,
+    int64_t w_step, int64_t c_step) {
+  group_info_t ginfo = {0};
+  auto op = v.getDefiningOp();
+  if (op != nullptr && isa<top::NoneOp>(op)) {
+    return ginfo;
+  }
+
+  tpu::mem_buffer_key_t buffer_key = {tpu::LMEM_OPERATION, v, op};
+  auto &imm_buffer_value = time_step->get_lmem_buffer_value(buffer_key);
+
+  buffer_key.type =
+      module::isWeight(v) ? tpu::LMEM_WEIGHT : tpu::LMEM_ACTIVATION;
+  auto &out_buffer_value = time_step->get_lmem_buffer_value(buffer_key);
+  ginfo.out_addr = out_buffer_value.addr;
+  ginfo.out_size = out_buffer_value.size;
+  ginfo.buffer_addr = imm_buffer_value.addr;
+  ginfo.buffer_size = imm_buffer_value.size;
+
+  auto &tensor_infos = time_step->get_tensor_infos();
+  auto &tensor_info = tensor_infos[v];
+  auto si = tensor_info.slice_info;
+  auto n_slice_v = si.n;
+  auto c_slice_v = si.c;
+  auto h_slice_v = si.h;
+  auto d_slice_v = si.d;
+  auto w_slice_v = si.w;
+  if (n_slice_v.empty() && c_slice_v.empty() && h_slice_v.empty() &&
+      d_slice_v.empty() && w_slice_v.empty()) {
+    int64_t n, c, d, h, w;
+    ginfo.overstepped = !(n_step == 0 && c_step == 0 && d_step == 0 &&
+                          h_step == 0 && w_step == 0);
+    module::getNCDHW(v, n, c, d, h, w, group_type);
+    ginfo.n_idx = 0;
+    ginfo.c_idx = 0;
+    ginfo.d_idx = 0;
+    ginfo.h_idx = 0;
+    ginfo.w_idx = 0;
+    ginfo.n_slice = n;
+    ginfo.c_slice = c;
+    ginfo.d_slice = d;
+    ginfo.h_slice = h;
+    ginfo.w_slice = w;
+  } else {
+    if (n_step >= (int64_t)n_slice_v.size() ||
+        c_step >= (int64_t)c_slice_v.size() ||
+        h_step >= (int64_t)h_slice_v.size() ||
+        d_step >= (int64_t)d_slice_v.size() ||
+        w_step >= (int64_t)w_slice_v.size()) {
+      ginfo.overstepped = true;
+      ginfo.n_idx = n_slice_v[n_step % n_slice_v.size()].first;
+      ginfo.c_idx = c_slice_v[c_step % c_slice_v.size()].first;
+      ginfo.d_idx = d_slice_v[d_step % d_slice_v.size()].first;
+      ginfo.h_idx = h_slice_v[h_step % h_slice_v.size()].first;
+      ginfo.w_idx = w_slice_v[w_step % w_slice_v.size()].first;
+      ginfo.n_slice = n_slice_v[n_step % n_slice_v.size()].second;
+      ginfo.c_slice = c_slice_v[c_step % c_slice_v.size()].second;
+      ginfo.d_slice = d_slice_v[d_step % d_slice_v.size()].second;
+      ginfo.h_slice = h_slice_v[h_step % h_slice_v.size()].second;
+      ginfo.w_slice = w_slice_v[w_step % w_slice_v.size()].second;
+    } else {
+      ginfo.overstepped = false;
+      ginfo.n_idx = n_slice_v[n_step].first;
+      ginfo.c_idx = c_slice_v[c_step].first;
+      ginfo.h_idx = h_slice_v[h_step].first;
+      ginfo.d_idx = d_slice_v[d_step].first;
+      ginfo.w_idx = w_slice_v[w_step].first;
+      ginfo.n_slice = n_slice_v[n_step].second;
+      ginfo.c_slice = c_slice_v[c_step].second;
+      ginfo.d_slice = d_slice_v[d_step].second;
+      ginfo.h_slice = h_slice_v[h_step].second;
+      ginfo.w_slice = w_slice_v[w_step].second;
+    }
+  }
+  // llvm::dbgs() << "ginfo: "
+  //              << "n_idx = " << ginfo.n_idx << ", c_idx = " << ginfo.c_idx
+  //              << ", h_idx = " << ginfo.h_idx << ", d_idx = " << ginfo.d_idx
+  //              << ", w_idx = " << ginfo.w_idx << ", n_slice = " <<
+  //              ginfo.n_slice
+  //              << ", c_slice = " << ginfo.c_slice
+  //              << ", h_slice = " << ginfo.h_slice
+  //              << ", d_slice = " << ginfo.d_slice
+  //              << ", w_slice = " << ginfo.w_slice
+  //              << ", overstepped = " << ginfo.overstepped << "\n";
+  return ginfo;
+}
+
 group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
                                              int64_t h_step, int64_t d_step,
                                              int64_t w_step, int64_t c_step,

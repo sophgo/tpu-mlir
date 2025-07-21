@@ -95,7 +95,7 @@ class DeployTool:
         self.quant_output_bf16 = args.quant_output_bf16
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
-        self.lg_debugger = args.debug
+        self.lg_debugger = args.lg_debugger
         self.debug_cmd = args.debug_cmd
         self.bmodel_path = args.model
         self.ref_npz = args.test_reference
@@ -545,6 +545,14 @@ if __name__ == '__main__':
     parser.add_argument("--disable_gdma_check", action='store_true', help='disable gdma addr check')
     parser.add_argument("--trunc_final", nargs="*", help="assign op to be trunced in final mlir.")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
+    parser.add_argument("--lg_debugger", default=0, type=int, choices=[0, 1, 2, 3, 4],
+                        help="lg_debugger level for layer group pass. \
+                        0: do nothing; \
+                        1: do LayerGroup and create debugger file; \
+                        2: only create debugger file; \
+                        3: do LayerGroup with debugger file; \
+                        4: do partial LayerGroup with debugger file."
+                        )
     # ========== Other Options ==============
     # for cv18xx
     parser.add_argument("--op_divide", action="store_true", help="if do large global op divide.")

@@ -127,22 +127,19 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(
   }
 }
 
-void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                        int64_t h_step, int64_t d_step,
-                                        int64_t w_step, group_type_t group_type,
-                                        local_sec_info_t &sec_info) {
-  int64_t n, c, d, h, w;
-  module::getNCDHW(getInput(), n, c, d, h, w, group_type);
-  auto op = getOperation();
+void tpu::CastOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
   auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());
   bool fInput = in_type.isIntOrIndex() == false;
   bool fOutput = out_type.isIntOrIndex() == false;
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step, c_step);
+  auto gi = out_group_infos[0];
+  auto in_gi = in_group_infos[0];
 
   if (!(qInput && fOutput) && !(fInput && qOutput)) {
     cast_local_spec_t spec = {0};
@@ -150,10 +147,6 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
     spec.common.round_mode = ROUND_INF;
 
-    auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step,
-                                             d_step, w_step, c_step);
-    auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step,
-                                               d_step, w_step, c_step);
     BM168x::call_local_func("backend_api_cast_local", &spec, sizeof(spec),
                             &sec_info, input_spec->data(), output_spec->data());
   } else {

@@ -76,16 +76,13 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                            int64_t h_step, int64_t d_step,
-                                            int64_t w_step,
-                                            group_type_t group_type,
-                                            local_sec_info_t &sec_info) {
-  int64_t n, c, d, h, w;
-  module::getNCDHW(getInput(), n, c, d, h, w, group_type);
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step, c_step);
+void tpu::MulShiftOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
+  auto gi = out_group_infos[0];
+  auto in_gi = in_group_infos[0];
 
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());

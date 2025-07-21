@@ -1536,7 +1536,7 @@ class fx2mlir(object):
         mean_shape = [1, list(node.meta['val'][3].size())[0], 1, 1]
         n, c, h, w = node.meta['val'][0].size()[0], node.meta['val'][0].size(
         )[1], node.meta['val'][0].size()[2], node.meta['val'][0].size()[3]
-        if self.args.chip == 'bm1688' and h * w > 8192:
+        if self.chip == 'bm1688' and h * w > 8192:
             h0 = 2
             h1 = int(h / h0)
             op0_nch0h1w = top.ReshapeOp(self.mlir.get_tensor_type([]),

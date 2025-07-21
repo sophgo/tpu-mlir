@@ -21,10 +21,10 @@ typedef unsigned char u8;
   val = (val <= min) ? min : val;                                              \
   val = (val >= max) ? max : val
 
-typedef enum {
-  FLOAT32,
-  UINT8,
-} image_data_format_ext;
+// typedef enum {
+//   FLOAT32,
+//   UINT8,
+// } image_data_format_ext;
 
 typedef enum {
   FORMAT_MAPPING_YUV420P_YU12,
@@ -35,10 +35,10 @@ typedef enum {
   FORMAT_MAPPING_BGR,
 } kernel_image_format_t;
 
-typedef enum {
-  _601_limited,
-  _601_full,
-} formula_mode;
+// typedef enum {
+//   _601_limited,
+//   _601_full,
+// } formula_mode;
 
 inline void YCrCb2RGB_601_limited(u8 y, u8 u, u8 v, float *r, float *g,
                                   float *b, bool isUINT8,

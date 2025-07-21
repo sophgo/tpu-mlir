@@ -11,6 +11,7 @@
 #include "progressbar.hpp"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CostCache.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/Debugger.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/IlpTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
@@ -939,6 +940,7 @@ void GroupMethod::dynamic_programming_kernel(
     std::vector<std::vector<int64_t>> &cost_table,
     std::vector<std::vector<int64_t>> &cut_points, int64_t base_group_idx,
     int64_t idx_offset) {
+  auto &lg_debugger = LgDebugger::getInstance();
   auto cluster_num = clusters.size();
   // auto cost_table = std::vector<std::vector<int64_t>>(
   //     cluster_num, std::vector<int64_t>(cluster_num, 0));
@@ -987,6 +989,12 @@ void GroupMethod::dynamic_programming_kernel(
     // }
     int64_t group_cost = MAX_COST;
     is_layer_group_valid(lg_info, true, &group_cost);
+    if (lg_debugger.get_do_debug()) {
+      int64_t manual_group_cost = lg_debugger.get_manual_group_cost(lg_info);
+      if (manual_group_cost != -1) {
+        return manual_group_cost;
+      }
+    }
     return group_cost;
   };
 
@@ -997,6 +1005,14 @@ void GroupMethod::dynamic_programming_kernel(
 #pragma omp critical(layer_group_cost_cache)
     cache_hit =
         LgCostCache::getInstance().get_cost_from_cache(hash_key, group_cost);
+    if (lg_debugger.get_do_debug()) {
+
+      group_cost = lg_debugger.get_manual_group_cost(lg_info);
+      if (group_cost != -1) {
+        LgCostCache::getInstance().add_cache(hash_key, group_cost);
+        return group_cost;
+      }
+    }
     if (!cache_hit) {
       group_cost = calc_group_cost(lg_info);
 #pragma omp critical(layer_group_cost_cache)
@@ -1803,6 +1819,7 @@ void GroupMethod::process(LgPassIR *pass_ir) {
 void GroupMethod::get_final_groups(
     std::vector<LgInfo> &lg_infos,
     const std::vector<std::vector<Operation *>> &base_groups) {
+  // llvm::dbgs() << "========== get_final_groups ==========\n";
   int64_t start_idx, end_idx;
   LgInfo lg_info;
   int64_t idx_offset = 0;

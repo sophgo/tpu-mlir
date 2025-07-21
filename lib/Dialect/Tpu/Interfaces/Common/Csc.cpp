@@ -16,7 +16,7 @@ static inline int align_up(int x, int n) {
   return ((x + n - 1) / n) * n;
 }
 
-static inline float UINT8(float data) {
+static inline float _uint8(float data) {
   return static_cast<float>(to_uint8(data, ROUNDING_HALF_TO_EVEN));
 }
 
@@ -98,9 +98,9 @@ void yuv_csc(float *input, float *output, int n, int c, int h, int w,
           g = BF16(BF16(y + BF16(-0.813f) * v) + BF16(-0.391f) * u);
           b = BF16(y + BF16(2.018f) * u);
         }
-        r = UINT8(r);
-        g = UINT8(g);
-        b = UINT8(b);
+        r = _uint8(r);
+        g = _uint8(g);
+        b = _uint8(b);
 
         float color[3] = {b, g, r};
         int c0_idx = idx_n * 3 * h * w + idx_h * w + idx_w;

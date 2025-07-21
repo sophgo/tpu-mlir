@@ -259,18 +259,13 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                          int64_t h_step, int64_t d_step,
-                                          int64_t w_step,
-                                          group_type_t group_type,
-                                          local_sec_info_t &sec_info) {
+void tpu::MatMulOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   auto p = parseParam();
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step,
-                                           d_step, w_step, c_step);
-  auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step,
-                                             d_step, w_step, c_step);
-  const auto &gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  const auto &gi = out_group_infos[0];
 
   batch_matmul_local_spec_t param{0};
   param.buffer_addr = gi.buffer_addr;
@@ -308,11 +303,11 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     common.mul_val = *(int *)&scale;
   }
 
-  if (module::isDebugCmdEnable("codegen_debug")) {
-    llvm::errs() << "n_step:" << n_step << ", c_step:" << c_step
-                 << ", h_step:" << h_step << "\n";
-    sec_info.print();
-  }
+  // if (module::isDebugCmdEnable("codegen_debug")) {
+  //   llvm::errs() << "n_step:" << n_step << ", c_step:" << c_step
+  //                << ", h_step:" << h_step << "\n";
+  //   sec_info.print();
+  // }
 
   BM168x::call_local_func("backend_api_batch_matmul_local", &param,
                           sizeof(param), &sec_info, input_spec->data(),

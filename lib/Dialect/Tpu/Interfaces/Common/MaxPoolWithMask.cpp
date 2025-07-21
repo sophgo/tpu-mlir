@@ -117,18 +117,16 @@ LogicalResult tpu::MaxPoolWithMaskOp::BackwardW(int64_t &in_idx,
   return success();
 }
 
-void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t c_step,
-                                             int64_t h_step, int64_t d_step,
-                                             int64_t w_step,
-                                             group_type_t group_type,
-                                             local_sec_info_t &sec_info) {
+void tpu::MaxPoolWithMaskOp::assign_sec_info_kernel(
+    group_type_t group_type, local_sec_info_t &sec_info,
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
 
   auto attr = parseParam();
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step, c_step);
+  auto gi = out_group_infos[0];
+  auto in_gi = in_group_infos[0];
   int64_t pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
   int64_t pad_w_r =

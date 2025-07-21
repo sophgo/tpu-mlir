@@ -75,14 +75,11 @@ int64_t tpu::PixelNormOp::getBufferSize_bm1684x(
                                       input_spec->data(), output_spec->data());
 }
 
-void tpu::PixelNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                             int64_t h_step, int64_t d_step,
-                                             int64_t w_step,
-                                             group_type_t group_type,
-                                             local_sec_info_t &sec_info) {
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op);
-  auto output_spec = BM168x::get_output_spec(op);
+void tpu::PixelNormOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   pixel_norm_local_spec_t param = {0};
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
@@ -92,7 +89,7 @@ void tpu::PixelNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     auto qtype = module::getUniformQuantizedType(getInput());
     param.common.scale = qtype.getScale();
   }
-  const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
+  const auto &gi = out_group_infos[0];
   param.buffer_addr = gi.buffer_addr;
   BM168x::call_local_func("backend_api_pixel_norm_local", &param, sizeof(param),
                           &sec_info, input_spec->data(), output_spec->data());

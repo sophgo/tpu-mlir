@@ -62,11 +62,10 @@ LogicalResult tpu::BinaryConstShiftOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void tpu::BinaryConstShiftOp ::assign_sec_info(int64_t n_step, int64_t c_step,
-                                               int64_t h_step, int64_t d_step,
-                                               int64_t w_step,
-                                               group_type_t group_type,
-                                               local_sec_info_t &sec_info) {
+void tpu::BinaryConstShiftOp ::assign_sec_info_kernel(
+    group_type_t group_type, local_sec_info_t &sec_info,
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
   int64_t n, c, d, h, w, on, oc, od, oh, ow;
@@ -74,9 +73,8 @@ void tpu::BinaryConstShiftOp ::assign_sec_info(int64_t n_step, int64_t c_step,
   auto output = getResult();
   module::getNCDHW(input, n, c, d, h, w, group_type);
   module::getNCDHW(output, on, oc, od, oh, ow, group_type);
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input, n_step, h_step, d_step,
-                                               w_step, c_step);
+  auto gi = out_group_infos[0];
+  auto in_gi = in_group_infos[0];
   sec_info.n_slice = in_gi.n_slice;
   sec_info.d_slice = in_gi.d_slice;
   sec_info.h_slice = gi.h_slice;

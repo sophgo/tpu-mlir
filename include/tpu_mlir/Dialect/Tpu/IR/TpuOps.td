@@ -460,7 +460,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface,
-      ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info"]>,
+      ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info_kernel", "codegen_local_bm1684x_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface,
       ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "convolution 2d operator";
@@ -573,7 +573,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
 def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface,
-      ["LocalGenSupport", "BackwardH", "BackwardW", "BackwardD", "assign_sec_info"]>,
+      ["codegen_local_bm1684x_kernel", "LocalGenSupport", "BackwardH", "BackwardW", "BackwardD", "assign_sec_info_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface,
       ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "convolution 2d operator";
@@ -647,7 +647,7 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
 
 class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   !listconcat(traits, [SupportFuseRelu,
-   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
+   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info_kernel"]>,
    DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>,
    DeclareOpInterfaceMethods<IndexingMapsInterface>])> {
   let summary = "pool operator";
@@ -723,10 +723,12 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   }];
 }
 
-def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D">;
-def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
+def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D",[
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>]>;
+def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D",[
+  DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info_kernel", "codegen_local_bm1684x_kernel"]>]>;
 def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardD"]>]>{
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "BackwardD"]>]>{
 
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -755,7 +757,7 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
 
 def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   [SupportFuseRelu,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max pool with operator";
 
@@ -830,7 +832,7 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu, SupportEarlyStride,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info", "DumpQuantAgnosticAttrs"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info_kernel", "DumpQuantAgnosticAttrs", "codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
@@ -888,7 +890,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
 
 def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<TypeInterface>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
@@ -939,7 +941,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
 
 def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "Binary with shift operator";
@@ -984,7 +986,7 @@ def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
 def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
     InOutSameShape, SupportElementwise,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "assign_sec_info_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "Binary Const with shift operator";
@@ -1028,7 +1030,7 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
 
 def Tpu_RopeOp: Tpu_Op<"Rope", [
     SupportElementwise,
-    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "Rope Operator";
@@ -1122,7 +1124,7 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
 }
 
 def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale",
-  [DeclareOpInterfaceMethods<TypeInterface>,DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  [DeclareOpInterfaceMethods<TypeInterface>,DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>]> {
   let summary = "MeanStdScale, it's for preprocess.";
   let description = [{
     1.Op Introduction
@@ -1307,7 +1309,7 @@ def Tpu_Mmap2RgbmapOp: Tpu_Op<"Mmap2Rgbmap"> {
 
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel", "DumpQuantAgnosticAttrs"]>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub operator";
@@ -1359,7 +1361,7 @@ def Tpu_SubOp: Tpu_Op<"Sub",
 
 def Tpu_SubConstOp: Tpu_Op<"SubConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub const operator";
@@ -1407,7 +1409,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
 
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel", "DumpQuantAgnosticAttrs"]>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul operator";
@@ -1454,7 +1456,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
 }
 
 def Tpu_MaxOp: Tpu_Op<"Max", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max operator";
@@ -1500,7 +1502,7 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
 }
 
 def Tpu_MinOp: Tpu_Op<"Min", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min operator";
@@ -1548,7 +1550,7 @@ def Tpu_MinOp: Tpu_Op<"Min", [
 def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
    InOutSameShape, SupportElementwise,
    DeclareOpInterfaceMethods<IndexingMapsInterface>,
-   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+   DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max_const operator";
 
@@ -1594,7 +1596,7 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
 def Tpu_MinConstOp: Tpu_Op<"MinConst", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min_const operator";
 
@@ -1640,7 +1642,7 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
 def Tpu_ActiveOp: Tpu_Op<"Active",[
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Active operator";
 
@@ -1676,7 +1678,7 @@ def Tpu_ActiveOp: Tpu_Op<"Active",[
 }
 
 def Tpu_ClipOp: Tpu_Op<"Clip",
-  [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
    DeclareOpInterfaceMethods<IndexingMapsInterface>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Clip operator";
@@ -1781,7 +1783,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<TypeInterface>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul const operator";
 
@@ -1828,7 +1830,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
 def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "ConstantBinary (Div) operator";
 
@@ -1922,7 +1924,7 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
 def Tpu_LutOp: Tpu_Op<"Lut", [
     InOutSameShape, SupportElementwise,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>]>{
   let summary = "Lut operator";
@@ -1957,7 +1959,7 @@ def Tpu_LutOp: Tpu_Op<"Lut", [
 
 def Tpu_LutBF16Op: Tpu_Op<"LutBF16", [
     InOutSameShape, SupportElementwise,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]>{
   let summary = "LutBF16 operator";
 
@@ -1999,7 +2001,7 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16", [
 
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "DumpQuantAgnosticAttrs"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
@@ -2125,7 +2127,7 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
 
 def Tpu_AttentionOp: Tpu_Op<"Attention", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "DumpQuantAgnosticAttrs"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Attention operator";
@@ -2298,7 +2300,7 @@ def Tpu_RangeOp: Tpu_Op<"Range", [
 def Tpu_ReluOp: Tpu_Op<"Relu", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]>{
   let summary = "Relu operator";
 
@@ -2329,7 +2331,7 @@ def Tpu_ReluOp: Tpu_Op<"Relu", [
 }
 
 def Tpu_ReshapeOp:Tpu_Op<"Reshape", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Reshape operation";
   let description = [{
@@ -2464,7 +2466,7 @@ def Tpu_ShapeReverseOp:Tpu_Op<"ShapeReverse", [
 def Tpu_CastOp:Tpu_Op<"Cast", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "assign_sec_info_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Cast operation";
@@ -2549,7 +2551,7 @@ def Tpu_ShapeCastOp:Tpu_Op<"ShapeCast", [
 }
 
 def Tpu_LoadOp:Tpu_Op<"Load",
-  [DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
@@ -2584,7 +2586,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
 }
 
 def Tpu_LoadToL2MOp:Tpu_Op<"LoadToL2M",
-  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
@@ -2613,7 +2615,7 @@ def Tpu_LoadToL2MOp:Tpu_Op<"LoadToL2M",
 }
 
 def Tpu_StoreOp:Tpu_Op<"Store",
-  [DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Store operation";
   let description = [{
@@ -2646,7 +2648,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["DumpQuantAgnosticAttrs"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "DumpQuantAgnosticAttrs"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "requant operation";
@@ -2679,7 +2681,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
 }
 
 def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant operation";
@@ -2716,7 +2718,7 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
 def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "requant float operation";
@@ -2751,7 +2753,7 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
 }
 
 def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant float operation";
@@ -2788,7 +2790,7 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
 def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "dequant operation";
@@ -2823,7 +2825,7 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
 }
 
 def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "dequant operation";
@@ -3155,7 +3157,7 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield",
 
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]> {
@@ -3204,7 +3206,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
 def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
    InOutSameShape, SupportElementwise,
    DeclareOpInterfaceMethods<IndexingMapsInterface>,
-   DeclareOpInterfaceMethods<LocalGenInterface>,
+   DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "leakyrelu operation";
   let description = [{
@@ -3248,7 +3250,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
 
 def Tpu_ConcatOp:Tpu_Op<"Concat", [
     DeclareOpInterfaceMethods<InplaceInterface, ["SupportInplace"]>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Concatate operation";
   let description = [{
@@ -3342,7 +3344,7 @@ def Tpu_ShapePowOp : Tpu_Op<"ShapePow" , [
 def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     InOutSameShape, SupportElementwise,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "MulShift operator";
@@ -3476,7 +3478,7 @@ def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
 
 def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Upsample operation";
   let description = [{
@@ -3510,7 +3512,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
 }
 
 def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]>  {
   let summary = "MaxUnpool operation";
   let description = [{
@@ -3543,7 +3545,7 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
 }
 
 def Tpu_PadOp:Tpu_Op<"Pad", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Pad operation";
   let description = [{
@@ -3595,7 +3597,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
 }
 
 def Tpu_DivOp: Tpu_Op<"Div", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "div operator";
@@ -3640,7 +3642,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [
 }
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>
   ]> {
@@ -3809,7 +3811,7 @@ def Tpu_UnsqueezeOp: Tpu_Op<"Unsqueeze"> {
 }
 
 def Tpu_SqueezeOp: Tpu_Op<"Squeeze", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>]> {
   let summary = "Onnx-Style Squeeze operator";
 
   let description = [{
@@ -3952,7 +3954,7 @@ def Tpu_NonZeroOp:Tpu_Op<"NonZero", [
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport", "AllowDataSplit"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "deconvolution operator";
 
@@ -4024,7 +4026,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
 def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>]> {
   let summary = "3D deconvolution operator";
 
   let description = [{
@@ -4087,7 +4089,7 @@ def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
 
 def Tpu_ScaleOp: Tpu_Op<"Scale", [
   SupportFuseRelu, InOutSameShape,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Scale operator";
@@ -4130,7 +4132,7 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
 
 def Tpu_LRNOp: Tpu_Op<"LRN", [
   InOutSameShape,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>]> {
   let summary = "Local Response Normalization";
 
   let description = [{
@@ -4344,7 +4346,7 @@ def Tpu_MatchTemplateOp: Tpu_Op<"MatchTemplate", [
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Tile operation";
   let description = [{
@@ -4476,7 +4478,7 @@ def Tpu_GatherNDOp: Tpu_Op<"GatherND", [
 }
 
 def Tpu_PReluOp : Tpu_Op<"PReluOp", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   InOutSameShape]> {
@@ -4579,7 +4581,7 @@ def Tpu_InterpOp: Tpu_Op<"Interp",[DeclareOpInterfaceMethods<TypeInterface>]> {
 }
 
 def Tpu_ReduceOp: Tpu_Op<"Reduce", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>]> {
   let summary = "Reduce operator";
   let description = [{
     1.Op Introduction
@@ -4712,7 +4714,7 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
 
 def Tpu_WhereOp: Tpu_Op<"Where", [
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Where operator";
   let description = [{
@@ -4750,7 +4752,7 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
 }
 
 def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "MaskedFill operator";
   let description = [{
@@ -4787,7 +4789,7 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
 
 def Tpu_CompareOp: Tpu_Op<"Compare", [
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Compare operator";
   let description = [{
@@ -4820,7 +4822,7 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
 def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "CompareConst operator";
   let description = [{
@@ -4853,7 +4855,7 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
 }
 
 def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
@@ -4938,7 +4940,7 @@ def Tpu_IndexPutOp : Tpu_Op<"IndexPut", [
 }
 
 def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
   let summary = "InstanceNorm operation";
@@ -4976,7 +4978,7 @@ def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
 }
 
 def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
@@ -5062,7 +5064,7 @@ def Tpu_GridSamplerOp : Tpu_Op<"GridSampler"> {
 
 
 def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<TypeInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
@@ -5171,7 +5173,7 @@ def Tpu_CscOp : Tpu_Op<"Csc"> {
 }
 
 def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   InOutSameShape]> {
   let summary = "scale lut operator.";
 
@@ -5212,7 +5214,7 @@ def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
 }
 
 def TPU_SwapChannelOp: Tpu_Op<"SwapChannel" ,[
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   InOutSameShape]> {
   let summary = "SwapChannel operator.";
 
@@ -5245,7 +5247,7 @@ def TPU_SwapChannelOp: Tpu_Op<"SwapChannel" ,[
 }
 
 def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   InOutSameShape]> {
   let summary = "SwapDimInner operator.";
 
@@ -5746,7 +5748,7 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
 
 def Tpu_CustomOp: Tpu_Op<"Custom", [
   DeclareOpInterfaceMethods<TypeInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "AllowDataSplit"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "BackwardH", "BackwardW", "AllowDataSplit"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Custom operator";
   let description = [{
@@ -5930,7 +5932,7 @@ def Tpu_NmsOp : Tpu_Op<"Nms"> {
 
 
 def Tpu_RMSNormOp : Tpu_Op<"RMSNorm", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "RMSNorm operation";
   let description = [{
@@ -6246,7 +6248,7 @@ def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain", [
 
 
 def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd" ,[
-  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>
 ]> {
   let summary = "BatchNormalization operation";
   let description = [{
@@ -6436,7 +6438,7 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight", [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface,
-      ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info"]>,
+      ["BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface,
       ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "Convolution Backward operator";
@@ -6485,7 +6487,7 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight", [SupportFuseRelu,
 }
 
 def Tpu_TriluOp:Tpu_Op<"Trilu", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
   let summary = "Trilu operation";
