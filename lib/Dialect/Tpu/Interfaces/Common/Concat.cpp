@@ -213,6 +213,9 @@ bool tpu::ConcatOp::supportInplace() {
     } else if (isa<tpu::ConcatOp>(in_op)) {
       return false;
     } else if (auto rshape = dyn_cast<tpu::ReshapeOp>(in_op)) {
+      if (in != this->getOperand(0)) {
+        return false;
+      }
       auto in2 = rshape.getInput();
       if (in2.getDefiningOp() == nullptr || in2.hasOneUse() == false) {
         return false;
