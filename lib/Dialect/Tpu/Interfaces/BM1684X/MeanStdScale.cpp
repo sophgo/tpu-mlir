@@ -64,21 +64,17 @@ int64_t tpu::MeanStdScaleOp::get_fw_type_bm1684() { return FW_LAYER_UNKNOWN; }
 
 void tpu::MeanStdScaleOp::codegen_global_cv18xx(int64_t layer_id) {}
 
-void tpu::MeanStdScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                                int64_t h_step, int64_t d_step,
-                                                int64_t w_step,
-                                                group_type_t group_type,
-                                                local_sec_info_t &sec_info) {
+void tpu::MeanStdScaleOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   auto zero_points = module::getF64Array(getZeroPoints());
   auto round_mode =
       round_mode_convert(symbolizeRoundMode(getRoundingMode()).value());
 
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type);
-  auto output_spec = BM168x::get_output_spec(op, group_type);
-  auto f32_param_spec = LocalGenInterface::getGroupInfo(
-      getF32Param(), n_step, h_step, d_step, w_step, c_step);
-  auto grp_info = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto f32_param_spec = in_group_infos[1];
+  auto grp_info = out_group_infos[0];
 
   mean_std_scale_local_param_t param{0};
   param.buffer_addr = (uint32_t)grp_info.buffer_addr;

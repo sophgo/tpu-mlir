@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
@@ -272,22 +273,18 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   return sz;
 }
 
-void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                          int64_t h_step, int64_t d_step,
-                                          int64_t w_step,
-                                          group_type_t group_type,
-                                          local_sec_info_t &sec_info) {
+void tpu::Conv2DOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   auto attr = parseParam();
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op);
-  auto output_spec = BM168x::get_output_spec(op);
   if (attr.dims == 1) {
     BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
     BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
   }
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step, c_step);
+  auto gi = out_group_infos[0];
+  auto in_gi = in_group_infos[0];
   conv_local_param_t p;
   memset(&p, 0, sizeof(p));
   p.spec.buffer_local_addr = gi.buffer_addr;

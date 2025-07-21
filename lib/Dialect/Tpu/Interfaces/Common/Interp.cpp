@@ -11,16 +11,16 @@
 
 #define MIN(x, y) (((x)) < ((y)) ? (x) : (y))
 #define MAX(x, y) (((x)) > ((y)) ? (x) : (y))
-typedef enum {
-  CAFFE_SUPPORT = 0,
-  TENSORFLOW_SUPPORT = 1,
-  CAFFE_NEAREST = 2,
-  TENSORFLOW_NEAREST = 3,
-  PYTORCH_SUPPORT = 4,
-  PYTORCH_NEAREST = 5,
-  OPENCV_BILINEAR = 6,
-  ONNX_NEAREST = 7,
-} PLATFORM_SUPPORT;
+// typedef enum {
+//   CAFFE_SUPPORT = 0,
+//   TENSORFLOW_SUPPORT = 1,
+//   CAFFE_NEAREST = 2,
+//   TENSORFLOW_NEAREST = 3,
+//   PYTORCH_SUPPORT = 4,
+//   PYTORCH_NEAREST = 5,
+//   OPENCV_BILINEAR = 6,
+//   ONNX_NEAREST = 7,
+// } PLATFORM_SUPPORT;
 
 static inline float calc_resize_scale(int in_size, int out_size,
                                       bool align_corners,

@@ -25,14 +25,11 @@ int64_t tpu::ReshapeOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::ReshapeOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                           int64_t h_step, int64_t d_step,
-                                           int64_t w_step,
-                                           group_type_t group_type,
-                                           local_sec_info_t &sec_info) {
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type);
-  auto output_spec = BM168x::get_output_spec(op, group_type);
+void tpu::ReshapeOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   if (input_spec->at(0).addr == output_spec->at(0).addr) {
     return;
   }
@@ -43,11 +40,37 @@ void tpu::ReshapeOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   for (size_t i = 0; i < shape.size(); ++i) {
     spec.shape[i] = shape[i];
   }
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  // auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto gi = out_group_infos[0];
   spec.eu_align = gi.eu_align;
   BM168x::call_local_func("backend_api_reshape_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
 }
+
+// void tpu::ReshapeOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+//                                            int64_t h_step, int64_t d_step,
+//                                            int64_t w_step,
+//                                            group_type_t group_type,
+//                                            local_sec_info_t &sec_info) {
+//   auto op = getOperation();
+//   auto input_spec = BM168x::get_input_spec(op, group_type);
+//   auto output_spec = BM168x::get_output_spec(op, group_type);
+//   if (input_spec->at(0).addr == output_spec->at(0).addr) {
+//     return;
+//   }
+
+//   auto shape = module::getShape(getOutput());
+//   reshape_spec_t spec;
+//   spec.dims = shape.size();
+//   for (size_t i = 0; i < shape.size(); ++i) {
+//     spec.shape[i] = shape[i];
+//   }
+//   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+//   spec.eu_align = gi.eu_align;
+//   BM168x::call_local_func("backend_api_reshape_local", &spec, sizeof(spec),
+//                           &sec_info, input_spec->data(),
+//                           output_spec->data());
+// }
 
 // dynamic codegen
 int64_t tpu::ReshapeOp::dyn_codegen_local_bm1684x(void *buffer) {

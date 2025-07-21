@@ -44,15 +44,11 @@ int64_t tpu::CompareConstOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::CompareConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                                int64_t h_step, int64_t d_step,
-                                                int64_t w_step,
-                                                group_type_t group_type,
-                                                local_sec_info_t &sec_info) {
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type);
-  auto output_spec = BM168x::get_output_spec(op, group_type);
-
+void tpu::CompareConstOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   constbinary_local_spec_t spec = {0};
   spec.common.B_const_val = getConstVal().convertToDouble();
   spec.common.inversed = getInversed();

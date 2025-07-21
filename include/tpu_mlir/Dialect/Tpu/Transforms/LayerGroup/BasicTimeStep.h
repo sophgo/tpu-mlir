@@ -11,7 +11,6 @@
 
 #include "mlir/Support/LLVM.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include <list>
 #include <map>

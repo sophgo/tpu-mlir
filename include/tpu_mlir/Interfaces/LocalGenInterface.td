@@ -58,10 +58,10 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"assign_sec_info",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$c_step, "int64_t":$h_step, "int64_t":$d_step, "int64_t":$w_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info),
-        [{}],
-        [{
+        /*methodName=*/"assign_sec_info_kernel",
+        /*args=*/(ins "group_type_t":$group_type, "local_sec_info_t &":$sec_info, "std::vector<group_info_t> &":$in_group_infos, "std::vector<group_info_t> &":$out_group_infos),
+        /*methodBody=*/"",
+        /*defaultImplementation=*/[{
             memset(&sec_info, 0, sizeof(local_sec_info_t));
             sec_info.group_type = group_type;
             int64_t n, c, d, h, w, on, oc, od, oh, ow;
@@ -69,8 +69,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
             auto output = $_op->getResult(0);
             module::getNCDHW(input, n, c, d, h, w, group_type);
             module::getNCDHW(output, on, oc, od, oh, ow, group_type);
-            auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
-            auto in_gi = LocalGenInterface::getGroupInfo(input, n_step, h_step, d_step, w_step, c_step);
+            auto gi = out_group_infos[0];
+            auto in_gi = in_group_infos[0];
             sec_info.n_slice = in_gi.n_slice;
             sec_info.d_slice = in_gi.d_slice;
             sec_info.h_slice = in_gi.h_slice;
@@ -94,14 +94,152 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
+        /*methodName=*/"assign_sec_info",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$c_step, "int64_t":$h_step, "int64_t":$d_step, "int64_t":$w_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info),
+        [{}],
+        [{
+            std::vector<group_info_t> in_group_infos;
+            std::vector<group_info_t> out_group_infos;
+            auto op = $_op.getOperation();
+            for (auto opd : op->getOperands()) {
+              if (module::isNone(opd)) {
+                continue; // skip NoneType operands
+              }
+              in_group_infos.push_back(LocalGenInterface::getGroupInfo(opd, n_step,
+              h_step,
+                                                                      d_step, w_step,
+                                                                      c_step));
+            }
+            for (auto res : op->getResults()) {
+              if (module::isNone(res)) {
+                continue; // skip NoneType operands
+              }
+              out_group_infos.push_back(LocalGenInterface::getGroupInfo(res, n_step,
+              h_step,
+                                                                        d_step, w_step,
+                                                                        c_step));
+            }
+            $_op.assign_sec_info_kernel(group_type, sec_info, in_group_infos,
+            out_group_infos);
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
+        /*methodName=*/"lg_assign_sec_info",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$c_step, "int64_t":$h_step, "int64_t":$d_step, "int64_t":$w_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info, "std::shared_ptr<tpu::BasicTimeStep> &":$time_step),
+        [{}],
+        [{
+            std::vector<group_info_t> in_group_infos;
+            std::vector<group_info_t> out_group_infos;
+            auto op = $_op.getOperation();
+            for (auto opd : op->getOperands()) {
+              if (module::isNone(opd)) {
+                continue; // skip NoneType operands
+              }
+              in_group_infos.push_back(LocalGenInterface::getGroupInfoLg(
+                  time_step, opd, group_type, n_step, h_step, d_step, w_step, c_step));
+            }
+            for (auto res : op->getResults()) {
+              if (module::isNone(res)) {
+                continue; // skip NoneType operands
+              }
+              out_group_infos.push_back(LocalGenInterface::getGroupInfoLg(
+                  time_step, res, group_type, n_step, h_step, d_step, w_step, c_step));
+            }
+            $_op.assign_sec_info_kernel(group_type, sec_info, in_group_infos,
+            out_group_infos);
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
         /*methodName=*/"codegen_local_bm1684",
         /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
+        /*methodName=*/"codegen_local_bm1684x_kernel",
+        /*args=*/(ins "std::vector<group_info_t> &":$in_group_infos, "std::vector<group_info_t> &":$out_group_infos, "local_sec_info_t &":$sec_info, "std::shared_ptr<std::vector<tensor_spec_t>>":$input_spec, "std::shared_ptr<std::vector<tensor_spec_t>>":$output_spec),
+        /*methodBody=*/"",
+        /*defaultImplementation=*/[{
+          return;
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
         /*methodName=*/"codegen_local_bm1684x",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$c_step, "int64_t":$h_step, "int64_t":$d_step, "int64_t":$w_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info)
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$c_step, "int64_t":$h_step, "int64_t":$d_step, "int64_t":$w_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info),
+        /*methodBody=*/"",
+        /*defaultImplementation=*/[{
+          std::vector<group_info_t> in_group_infos;
+          std::vector<group_info_t> out_group_infos;
+          auto op = $_op.getOperation();
+          for (auto opd : op->getOperands()) {
+            if (module::isNone(opd)) {
+              continue; // skip NoneType operands
+            }
+            in_group_infos.push_back(LocalGenInterface::getGroupInfo(opd, n_step, h_step,
+                                                                    d_step, w_step, c_step));
+          }
+          for (auto res : op->getResults()) {
+            if (module::isNone(res)) {
+              continue; // skip NoneType operands
+            }
+            out_group_infos.push_back(LocalGenInterface::getGroupInfo(res, n_step, h_step,
+                                                                      d_step, w_step, c_step));
+          }
+          auto input_spec = backend::BM168x::get_input_spec(op, group_type);
+          auto output_spec = backend::BM168x::get_output_spec(op, group_type);
+          assert(in_group_infos.size() == input_spec->size() &&
+                out_group_infos.size() == output_spec->size());
+          for (size_t i = 0; i < in_group_infos.size(); ++i) {
+            input_spec->at(i).addr = in_group_infos[i].out_addr;
+          }
+          for (size_t i = 0; i < out_group_infos.size(); ++i) {
+            output_spec->at(i).addr = out_group_infos[i].out_addr;
+          }
+          $_op.codegen_local_bm1684x_kernel(in_group_infos, out_group_infos, sec_info, input_spec, output_spec);
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
+        /*methodName=*/"lg_codegen_local_bm1684x",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$c_step, "int64_t":$h_step, "int64_t":$d_step, "int64_t":$w_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info, "std::shared_ptr<tpu::BasicTimeStep> &":$time_step),
+        /*methodBody=*/"",
+        /*defaultImplementation=*/[{
+          std::vector<group_info_t> in_group_infos;
+          std::vector<group_info_t> out_group_infos;
+          auto op = $_op.getOperation();
+          for (auto opd : op->getOperands()) {
+            if (module::isNone(opd)) {
+              continue; // skip NoneType operands
+            }
+            in_group_infos.push_back(LocalGenInterface::getGroupInfoLg(
+                time_step, opd, group_type, n_step, h_step, d_step, w_step, c_step));
+          }
+          for (auto res : op->getResults()) {
+            if (module::isNone(res)) {
+              continue; // skip NoneType operands
+            }
+            out_group_infos.push_back(LocalGenInterface::getGroupInfoLg(
+                time_step, res, group_type, n_step, h_step, d_step, w_step, c_step));
+          }
+          auto input_spec = backend::BM168x::get_input_spec(op, group_type);
+          auto output_spec = backend::BM168x::get_output_spec(op, group_type);
+          assert(in_group_infos.size() == input_spec->size() &&
+                out_group_infos.size() == output_spec->size());
+          for (size_t i = 0; i < in_group_infos.size(); ++i) {
+            input_spec->at(i).addr = in_group_infos[i].out_addr;
+          }
+          for (size_t i = 0; i < out_group_infos.size(); ++i) {
+            output_spec->at(i).addr = out_group_infos[i].out_addr;
+          }
+          $_op.codegen_local_bm1684x_kernel(in_group_infos, out_group_infos, sec_info, input_spec, output_spec);
+        }]
       >,
       InterfaceMethod<
         /*desc=*/[{}],
@@ -251,6 +389,7 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
   static void fixSlice(int64_t &in_idx, int64_t &in_slice, int64_t in_length, bool last = false);
   static tpu_mlir::group_info_t getGroupInfo(mlir::Operation * op, int64_t n_step = 0, int64_t h_step = 0, int64_t d_step = 0, int64_t w_step = 0, int64_t c_step = 0, mlir::Operation *user_op = nullptr);
   static tpu_mlir::group_info_t getGroupInfo(mlir::Value, int64_t n_step = 0, int64_t h_step = 0, int64_t d_step = 0, int64_t w_step = 0, int64_t c_step = 0, mlir::Operation *user_op = nullptr);
+  static tpu_mlir::group_info_t getGroupInfoLg(std::shared_ptr<tpu::BasicTimeStep> &time_step, mlir::Value v, group_type_t group_type, int64_t n_step = 0, int64_t h_step = 0, int64_t d_step = 0, int64_t w_step = 0, int64_t c_step = 0);
   }];
 }
 #endif // TPU_MLIR_LOCAL_CODEGEN_INTERFACE

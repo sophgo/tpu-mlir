@@ -56,17 +56,16 @@ int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                              int64_t h_step, int64_t d_step,
-                                              int64_t w_step,
-                                              group_type_t group_type,
-                                              local_sec_info_t &sec_info) {
+void tpu::DequantIntOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   int64_t n, c, d, h, w;
-  module::getNCDHW(getInput(), n, c, d, h, w, group_type);
+  module::getNCDHW(getInput(), n, c, d, h, w, sec_info.group_type);
   dequant_int_param_t param = {0};
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step, c_step);
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = in_group_infos[0];
+  auto gi = out_group_infos[0];
   param.input_addr = (uint32_t)in_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;

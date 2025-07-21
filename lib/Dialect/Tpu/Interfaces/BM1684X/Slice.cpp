@@ -96,18 +96,13 @@ int64_t tpu::SliceOp::getBufferSize_bm1684x(
                                       input_spec->data(), output_spec->data());
 }
 
-void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
-                                         int64_t h_step, int64_t d_step,
-                                         int64_t w_step,
-                                         group_type_t group_type,
-                                         local_sec_info_t &sec_info) {
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step,
-                                           d_step, w_step, c_step);
-  auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step,
-                                             d_step, w_step, c_step);
+void tpu::SliceOp::codegen_local_bm1684x_kernel(
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos, local_sec_info_t &sec_info,
+    std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
+    std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   strideslice_local_spec_t spec = {0};
-  const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
+  const auto &gi = out_group_infos[0];
   spec.buffer_addr = gi.buffer_addr;
   auto &common = spec.common;
   common.begin_mask = 0;
@@ -125,7 +120,7 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
   for (int i = 0; i < num_dims; i++) {
-    if (group_type == GROUP_MM_OPT3) {
+    if (sec_info.group_type == GROUP_MM_OPT3) {
       common.begin_index[i] = offset->at(i) < 0
                                   ? offset->at(i) + (*input_spec)[0].shape[i]
                                   : offset->at(i);
@@ -134,7 +129,7 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
     }
     common.strides[i] = steps->at(i);
-    if (group_type == GROUP_MM_OPT3) {
+    if (sec_info.group_type == GROUP_MM_OPT3) {
       common.end_index[i] = common.begin_index[i] +
                             (*output_spec)[0].shape[i] * common.strides[i];
     } else {
@@ -146,6 +141,59 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   BM168x::call_local_func("backend_api_strideslice_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
 }
+
+// void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+//                                          int64_t h_step, int64_t d_step,
+//                                          int64_t w_step,
+//                                          group_type_t group_type,
+//                                          local_sec_info_t &sec_info) {
+//   auto op = getOperation();
+//   auto input_spec = BM168x::get_input_spec(op, group_type, n_step, h_step,
+//                                            d_step, w_step, c_step);
+//   auto output_spec = BM168x::get_output_spec(op, group_type, n_step, h_step,
+//                                              d_step, w_step, c_step);
+//   strideslice_local_spec_t spec = {0};
+//   const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
+//   spec.buffer_addr = gi.buffer_addr;
+//   auto &common = spec.common;
+//   common.begin_mask = 0;
+//   common.end_mask = 0;
+//   auto input_shape = SmallVector<int64_t>(module::getShape(getInput()));
+//   auto output_shape = SmallVector<int64_t>(module::getShape(getOutput()));
+//   const int num_dims = output_shape.size();
+//   output_shape[0] = sec_info.out_n_slice;
+//   if (num_dims > 2) {
+//     output_shape[2] = sec_info.out_h_slice;
+//   }
+//   if (num_dims > 3) {
+//     output_shape[3] = sec_info.out_w_slice;
+//   }
+//   const auto offset = module::getI64Array(getOffset());
+//   const auto steps = module::getI64Array(getSteps());
+//   for (int i = 0; i < num_dims; i++) {
+//     if (group_type == GROUP_MM_OPT3) {
+//       common.begin_index[i] = offset->at(i) < 0
+//                                   ? offset->at(i) + (*input_spec)[0].shape[i]
+//                                   : offset->at(i);
+//     } else {
+//       common.begin_index[i] =
+//           offset->at(i) < 0 ? offset->at(i) + input_shape[i] : offset->at(i);
+//     }
+//     common.strides[i] = steps->at(i);
+//     if (group_type == GROUP_MM_OPT3) {
+//       common.end_index[i] = common.begin_index[i] +
+//                             (*output_spec)[0].shape[i] * common.strides[i];
+//     } else {
+//       common.end_index[i] =
+//           common.begin_index[i] + output_shape[i] * common.strides[i];
+//     }
+//   }
+
+//   BM168x::call_local_func("backend_api_strideslice_local", &spec,
+//   sizeof(spec),
+//                           &sec_info, input_spec->data(),
+//                           output_spec->data());
+// }
 
 // ======================================
 // Dynamic GlobalGenInterface

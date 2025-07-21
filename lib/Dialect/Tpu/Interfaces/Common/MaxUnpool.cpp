@@ -63,10 +63,10 @@ LogicalResult tpu::MaxUnpoolOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-void tpu::MaxUnpoolOp::assign_sec_info(int64_t n_step, int64_t c_step,
-                                       int64_t h_step, int64_t d_step,
-                                       int64_t w_step, group_type_t group_type,
-                                       local_sec_info_t &sec_info) {
+void tpu::MaxUnpoolOp::assign_sec_info_kernel(
+    group_type_t group_type, local_sec_info_t &sec_info,
+    std::vector<group_info_t> &in_group_infos,
+    std::vector<group_info_t> &out_group_infos) {
   UNREACHABLE_THIS("Not Implemented");
 }
 
