@@ -714,7 +714,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
         bytes = ceiling_func(bytes, 8l);
 
         DEBUG_WITH_TYPE("gmem_allocator", {
-          llvm::dbgs() << "; action = assignGaddr" << "; step = weight_static"
+          llvm::dbgs() << "; action = assignGaddr"
+                       << "; step = weight_static"
                        << "; start_addr = " << addr
                        << "; end_addr = " << addr + bytes
                        << "; live_start = " << 0
@@ -843,9 +844,14 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                             << gmemUsed / (1 << 20) << " MB\n");
   }
 
+  std::vector<ValueInfo> part_inplace_ops;
   for (auto &op_value : gaddrMap) {
     auto op = static_cast<Operation *>(op_value.first.op);
     module::setAddress(op->getResult(op_value.first.index), op_value.second);
+    auto result_index = getInplaceOperandIndex(op, op_value.first.index);
+    if (result_index >= 0) {
+      part_inplace_ops.emplace_back(op_value.first);
+    }
   }
 
   // update io address by basic and io_tag
@@ -856,6 +862,12 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
 
   assignAfter(m, inplace_ops);
 
+  for (auto value_info : part_inplace_ops) {
+    auto op = static_cast<Operation *>(value_info.op);
+    module::setAddress(op->getResult(value_info.index),
+                       module::getAddress(op->getOperand(
+                           getInplaceOperandIndex(op, value_info.index))));
+  }
   module::updateModuleTypes();
 
   // update io address by io_alone
@@ -879,7 +891,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     int alignment) {
   auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
     DEBUG_WITH_TYPE("on_live_range", {
-      llvm::dbgs() << "\n; action = updateOperandsLiveRange" << "; step = begin"
+      llvm::dbgs() << "\n; action = updateOperandsLiveRange"
+                   << "; step = begin"
                    << "; op = " << module::getName(op)
                    << "; endPosition = " << endPosition << "\n";
     });
@@ -896,7 +909,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       if (noNeedAddress(operand)) {
         DEBUG_WITH_TYPE("on_live_range", {
           llvm::dbgs() << "; action = updateOperandsLiveRange"
-                       << "; step = opd_skip" << "\n";
+                       << "; step = opd_skip"
+                       << "\n";
         });
         continue;
       }
@@ -976,12 +990,42 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         });
         liveRange[v_info].end =
             std::max(liveRange[op_info].end, liveRange[v_info].end);
+
         DEBUG_WITH_TYPE("live_range", {
           llvm::dbgs() << "; action = live_range"
                        << "; step = inplace_op_reset_after"
                        << "; loc = " << module::getName(operand)
                        << "; live_start = " << liveRange[v_info].start
                        << "; live_end = " << liveRange[v_info].end << "; "
+                       << "\n";
+        });
+      }
+
+      auto out_index = getInplaceResultIndex(op, i);
+      if (out_index >= 0) {
+        ValueInfo op_info(op, out_index);
+        liveRange[op_info].tensor_size = 0; // inplace result tensor size is 0
+        DEBUG_WITH_TYPE("on_live_range", {
+          llvm::dbgs() << "; action = update_live_range"
+                       << "; step = opd_second_meet_after"
+                       << "; live_start = " << liveRange[op_info].start
+                       << "; live_end = " << liveRange[op_info].end
+                       << "; loc = "
+                       << module::getName(op->getResult(out_index))
+                       << "; op = " << op->getName()
+                       << "; tensor_size = " << liveRange[op_info].tensor_size
+                       << "\n";
+        });
+        liveRange[v_info].end =
+            std::max(liveRange[op_info].end, liveRange[v_info].end);
+
+        DEBUG_WITH_TYPE("on_live_range", {
+          llvm::dbgs() << "; action = live_range"
+                       << "; step = inplace_op_reset_after"
+                       << "; loc = " << module::getName(operand)
+                       << "; live_start = " << liveRange[v_info].start
+                       << "; live_end = " << liveRange[v_info].end
+                       << "; tensor_size = " << liveRange[v_info].tensor_size
                        << "\n";
         });
       }
@@ -1078,13 +1122,15 @@ void BMAddressAssign::updateLiveRangeofBMOps(
 
       DEBUG_WITH_TYPE("on_live_range", {
         llvm::dbgs() << "; action = updateOperandsLiveRange"
-                     << "; step = opd_end" << "; opd_type = " << opd->getName()
+                     << "; step = opd_end"
+                     << "; opd_type = " << opd->getName()
                      << "; opd_loc = " << module::getName(operand)
                      << "; opd_index = " << i << "\n";
       });
     }
     DEBUG_WITH_TYPE("on_live_range", {
-      llvm::dbgs() << "; action = updateOperandsLiveRange" << "; step = end"
+      llvm::dbgs() << "; action = updateOperandsLiveRange"
+                   << "; step = end"
                    << "; op = " << module::getName(op) << "\n";
     });
   };
@@ -1096,7 +1142,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         getTensorGmemSize(op, v_info.index, alignment);
 
     DEBUG_WITH_TYPE("live_range", {
-      llvm::dbgs() << "; action = live_range" << "; step = update_solo"
+      llvm::dbgs() << "; action = live_range"
+                   << "; step = update_solo"
                    << "; live_start = " << liveRange[v_info].start
                    << "; live_end = " << liveRange[v_info].end
                    << "; loc = " << module::getName(v_info.op)
@@ -1183,7 +1230,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         }
 
         DEBUG_WITH_TYPE("live_range", {
-          llvm::dbgs() << "; action = live_range" << "; step = inplace_concat"
+          llvm::dbgs() << "; action = live_range"
+                       << "; step = inplace_concat"
                        << "; live_start = " << liveRange[pre_v].start
                        << "; live_end = " << liveRange[pre_v].end
                        << "; loc = " << module::getName(pre_v.op)

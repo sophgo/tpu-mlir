@@ -26,7 +26,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!op.supportInplace()) {
+    if (!op.SupportInplace()) {
       return failure();
     }
     op.setOnlyMerge(true);

@@ -56,6 +56,7 @@ add_llvm_library(TPUMLIRTpu
   MLIRTransforms
   MLIRInferenceInterface
   MLIRGlobalGenInterface
+  MLIRInplaceInterface
   MLIRLocalGenInterface
   MLIRDynLocalGenInterface
   MLIRDynGlobalGenInterface

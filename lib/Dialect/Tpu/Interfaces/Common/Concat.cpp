@@ -155,7 +155,7 @@ LogicalResult tpu::ConcatOp::AllowDataSplit(int64_t axis,
 }
 
 bool tpu::ConcatOp::support_multi_core() { return false; }
-bool tpu::ConcatOp::supportInplace() {
+bool tpu::ConcatOp::SupportInplace() {
   if (tpu::getRunMode(getOperation()) == tpu::RunMode::TPU_DYNAMIC) {
     return false;
   }

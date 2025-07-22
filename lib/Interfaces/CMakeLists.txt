@@ -6,6 +6,7 @@ set(
   FlopsInterface.cpp
   LocalGenInterface.cpp
   DynLocalGenInterface.cpp
+  InplaceInterface.cpp
   DynGlobalGenInterface.cpp
   TypeInterface.cpp
   ShapeInterface.cpp
@@ -32,6 +33,7 @@ add_mlir_interface_library(InferenceInterface)
 add_mlir_interface_library(GlobalGenInterface)
 add_mlir_interface_library(FlopsInterface)
 add_mlir_interface_library(LocalGenInterface)
+add_mlir_interface_library(InplaceInterface)
 add_mlir_interface_library(DynLocalGenInterface)
 add_mlir_interface_library(DynGlobalGenInterface)
 add_mlir_interface_library(TypeInterface)

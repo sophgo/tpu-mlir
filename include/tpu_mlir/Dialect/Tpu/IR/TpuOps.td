@@ -3247,7 +3247,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
 }
 
 def Tpu_ConcatOp:Tpu_Op<"Concat", [
-    DeclareOpInterfaceMethods<InplaceInterface>,
+    DeclareOpInterfaceMethods<InplaceInterface, ["SupportInplace"]>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Concatate operation";
@@ -6194,7 +6194,9 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
 }
 
 
-def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain"> {
+def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain", [
+  DeclareOpInterfaceMethods<InplaceInterface, ["get_inplace_result_index", "get_inplace_operand_index"]>
+  ]> {
   let summary = "BatchNormalization operation";
   let description = [{
     1.Op Introduction

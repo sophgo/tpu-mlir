@@ -525,7 +525,7 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
   // SmallVector<Operation *> splitedOps;
 
   if (auto inplaceOp = dyn_cast<InplaceInterface>(op)) {
-    if (inplaceOp.supportInplace()) {
+    if (inplaceOp.SupportInplace()) {
       return 0;
     }
   }

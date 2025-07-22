@@ -208,3 +208,21 @@ uint32_t tpu::BatchNormTrainOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 int64_t tpu::BatchNormTrainOp::get_fw_type_bm1684() { return -1; }
 
 bool tpu::BatchNormTrainOp::support_multi_core() { return true; }
+
+int64_t tpu::BatchNormTrainOp::get_inplace_result_index(int64_t opd_index) {
+  // mean -> running_mean
+  // var -> running_var
+  if (opd_index < 1 || opd_index > 2) {
+    return -1;
+  }
+  return opd_index + 2;
+}
+
+int64_t tpu::BatchNormTrainOp::get_inplace_operand_index(int64_t result_index) {
+  // running_mean -> mean
+  // running_var -> var
+  if (result_index < 3) {
+    return -1;
+  }
+  return result_index - 2;
+}

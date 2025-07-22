@@ -13,7 +13,9 @@
 
 namespace tpu_mlir {
 
-// bool supportInplace(mlir::Operation *op);
+int64_t getInplaceResultIndex(mlir::Operation *op, int64_t opd_index);
+
+int64_t getInplaceOperandIndex(mlir::Operation *op, int64_t result_index);
 
 } // namespace tpu_mlir
 
