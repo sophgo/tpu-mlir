@@ -33,6 +33,10 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.21.0
+     - 2025.07.31
+     - BM1688 supports yolov8 post-processing
+       bmodel_checker supports replacing wrong output as reference data
    * - v1.20.0
      - 2025.06.30
      - Support IO_RELOC;
