@@ -24,6 +24,7 @@ class Operation:
         self.name = Operation.name(op)
         self.type = Operation.type(op)
         self.loc = Operation.loc(op)
+        self.in_shapes = Operation.in_shapes(op)
         self.shape = Operation.shape(op)
         self.opds = Operation.operands_v2(op, body, idx)
 
@@ -111,6 +112,18 @@ class Operation:
     @staticmethod
     def loc(op):
         return op.get_asm().split("=")[0].strip("% ")
+
+    @staticmethod
+    def in_shapes(op):
+        shapes = []
+        for opd in op.operands:
+
+            if str(opd.type) != "none":
+                shape_type = mlir.ir.ShapedType(opd.type)
+                shape = [shape_type.get_dim_size(i)
+                         for i in range(shape_type.rank)] if shape_type.has_rank else []
+                shapes.append(shape)
+        return shapes
 
     @staticmethod
     def shape(op):

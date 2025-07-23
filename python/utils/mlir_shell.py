@@ -875,21 +875,19 @@ def mlir_to_model(
         command_mem["tpu_opt"] = " ".join(cmd)
         cmd = ["tpuc-opt", tpu_opt_mlir]
 
-    options = tpu_ada_options(
-        dynamic=dynamic,
-        disable_layer_group=disable_layer_group,
-        opt=opt,
-        merge_weight=merge_weight,
-        op_divide=op_divide,
-        group_by_cores=group_by_cores,
-        compress_mode=compress_mode,
-        future_update_rank=future_update_rank,
-        future_update_list=future_update_list,
-        trunc_final=trunc_final,
-        opt_post_processor=opt_post_processor,
-        lg_debugger=lg_debugger,
-        disable_group_overlap=(time_fixed_subnet!=None)
-    )
+    options = tpu_ada_options(dynamic=dynamic,
+                              disable_layer_group=disable_layer_group,
+                              opt=opt,
+                              merge_weight=merge_weight,
+                              op_divide=op_divide,
+                              group_by_cores=group_by_cores,
+                              compress_mode=compress_mode,
+                              future_update_rank=future_update_rank,
+                              future_update_list=future_update_list,
+                              trunc_final=trunc_final,
+                              opt_post_processor=opt_post_processor,
+                              lg_debugger=lg_debugger,
+                              disable_group_overlap=(time_fixed_subnet != None))
     cmd.extend(options)
 
     cmd.extend(["-o", final_mlir])

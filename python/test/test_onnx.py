@@ -353,8 +353,6 @@ class ONNX_IR_TESTER(object):
             # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N),
-            ## only for test
-            "user_define_net":   (self.user_define_net,    Y, Y, Y, Y, Y, N)
         }
         # yapf: enable
         self.cases_int4 = ["Conv2d", "MatMul", "MatMul2"]  # only bm1688
@@ -7282,89 +7280,6 @@ class ONNX_IR_TESTER(object):
                             Model(max_disp, num_groups),
                             case_name,
                             support_modes=["f16", "bf16"])
-
-    def user_define_net(self, case_name):
-        """user_define_net"""
-
-        self.opt = 2
-        # from tools.train.resnet import resnet18
-        # model = resnet18()
-        # from tools.train.resnet import resnet50
-        # model = resnet50()
-
-        # print('start test mobilenet_v2')
-        # import torchvision.models as models
-        # x = torch.randn(1,3,224,224).float()
-        # model = models.mobilenet_v2()
-        # self.torch_and_test(x, model, "mobilenet_v2")
-
-        # print('start test resnet50')
-        # x = torch.randn(4,3,224,224).float()
-        # from tools.train.resnet import resnet50
-        # model = resnet50()
-        # self.torch_and_test(x, model, "user_define_net")
-
-        # print('start test resnet18')
-        # x = torch.randn(1,3,224,224).float()
-        # from tools.train.resnet import resnet18
-        # model = resnet18()
-        # self.torch_and_test(x, model, "user_define_net")
-
-        # print('start test test_model0')
-        # x = torch.randn(4,3,224,224).float()
-        # from tools.train.test_model import test_model0
-        # model = test_model0()
-        # self.torch_and_test(x, model, "user_define_net")
-
-        # print('start test test_model1')
-        # x = torch.randn(4,3,110,110).float()
-        # from tools.train.test_model import test_model1
-        # model = test_model1()
-        # self.torch_and_test(x, model, "user_define_net")
-
-        # x = torch.randn(1,3,224,224).float()
-        # from tools.train.test_model import test_model1
-        # model = test_model1()
-        # self.torch_and_test(x, model, "user_define_net")
-
-        # print('start test test_model2')
-        # x = torch.randn(1,3,224,224).float()
-        # from tools.train.test_model import test_model2
-        # model = test_model2()
-        # self.torch_and_test(x, model, "user_define_net")
-
-        # print('start test test_model3')
-        # x = torch.randn(1,3,224,224).float() #中间输出功能有误
-        # from tools.train.test_model import test_model3
-        # model = test_model3()
-        # self.torch_and_test(x, model, "test_model3")
-
-        # print('start test test_model4')
-        # from tools.train.test_model import test_model4
-        # x = torch.randn(1,3,224,224).float()
-        # model = test_model4()
-        # self.torch_and_test(x, model, "test_model4")
-
-        print('start test test_model5')
-        from tools.train.test_model import test_model5
-        x = torch.randn(1, 3, 224, 224).float()
-        model = test_model5()
-        self.torch_and_test(x, model, "test_model5")
-
-        # print('start test test_model6')
-        # from tools.train.test_model import test_model6
-        # model = test_model6()
-        # self.trace_and_test([(1,3,224,224)], model)
-
-        # print('start test test_model7')
-        # from tools.train.test_model import test_model7
-        # model = test_model7()
-        # self.trace_and_test([(1,3,224,224), (1,3,224,224)], model)
-
-        # d_model=10 #768  #test ok at 0918
-        # from tools.train.gpt2 import TransformerBlocks #backward can not use this
-        # mod = TransformerBlocks(d_model=d_model, nlayers=2) #.train()
-        # self.trace_and_test([(1,4,d_model)], mod)
 
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):

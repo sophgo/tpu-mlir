@@ -13,7 +13,6 @@ MIN_BLOCK_SIZE = 5
 import tpu_mlir
 from mlir.ir import *
 import mlir.dialects.top as top
-from tools.train.TpuMlirModule import TpuMlirModule
 from utils.mlir_shell import mlir_opt_for_top, mlir_lowering, mlir_to_model, f32_blobs_compare
 from tools.model_runner import mlir_inference, free_mlir_module, model_inference
 from tools.gen_rand_input import run_from_mlir
@@ -434,14 +433,6 @@ class fx2mlir(object):
             self.mlir = None
         if self.cmp:
             self.model_validate()
-        if not config.unit_test:
-            mlir_mod = TpuMlirModule(self.bmodel_path, self.output_count,
-                                     scalar_tensor_new_fx_graph, output_tensor_names,
-                                     self.all_output_dtypes, self.output_shapes,
-                                     self.ori_output_nodes)
-            return mlir_mod
-        else:
-            return None
 
     def fix(self):
         run_from_mlir(mlir=self.top_mlir, output="tmp_input.npz")
@@ -1543,28 +1534,86 @@ class fx2mlir(object):
         momentum = node.args[6]
         eps = node.args[7]
         mean_shape = [1, list(node.meta['val'][3].size())[0], 1, 1]
-        out = top.BatchNormTrainOp(self.mlir.get_tensor_type([]),
-                                   self.mlir.get_tensor_type([]),
-                                   self.mlir.get_tensor_type([]),
-                                   self.mlir.get_tensor_type([]),
-                                   self.mlir.get_tensor_type([]),
-                                   op0,
-                                   mean=mean,
-                                   var=var,
-                                   gamma=weight,
-                                   beta=bias,
-                                   epsilon=eps,
-                                   momentum=momentum,
-                                   loc=self.get_loc([
-                                       node.name, node.name + '_mean', node.name + '_rstd',
-                                       node.name + "_running_mean_update",
-                                       node.name + "_running_var_update"
-                                   ]),
-                                   ip=self.mlir.insert_point)
+        n, c, h, w = node.meta['val'][0].size()[0], node.meta['val'][0].size(
+        )[1], node.meta['val'][0].size()[2], node.meta['val'][0].size()[3]
+        if self.args.chip == 'bm1688' and h * w > 8192:
+            h0 = 2
+            h1 = int(h / h0)
+            op0_nch0h1w = top.ReshapeOp(self.mlir.get_tensor_type([]),
+                                        op0,
+                                        shape=[n, c, h0, h1, w],
+                                        loc=self.get_loc(node.name + "_in_nch0h1w"),
+                                        ip=self.mlir.insert_point)
+            op0_nh0ch1w = top.PermuteOp(self.mlir.get_tensor_type([]),
+                                        op0_nch0h1w.output,
+                                        order=[0, 2, 1, 3, 4],
+                                        loc=self.get_loc(node.name + "_in_nh0ch1w"),
+                                        ip=self.mlir.insert_point)
+            op0_nh0_ch1w = top.ReshapeOp(self.mlir.get_tensor_type([]),
+                                         op0_nh0ch1w.output,
+                                         shape=[n * h0, c, h1, w],
+                                         loc=self.get_loc(node.name + "_in_nh0_ch1w"),
+                                         ip=self.mlir.insert_point)
+            out = top.BatchNormTrainOp(self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       op0_nh0_ch1w.output,
+                                       mean=mean,
+                                       var=var,
+                                       gamma=weight,
+                                       beta=bias,
+                                       epsilon=eps,
+                                       momentum=momentum,
+                                       loc=self.get_loc([
+                                           node.name, node.name + '_mean', node.name + '_rstd',
+                                           node.name + "_running_mean_update",
+                                           node.name + "_running_var_update"
+                                       ]),
+                                       ip=self.mlir.insert_point)
+            out_nh0ch1w = top.ReshapeOp(self.mlir.get_tensor_type([]),
+                                        out.output,
+                                        shape=[n, h0, c, h1, w],
+                                        loc=self.get_loc(node.name + "_out_nh0ch1w"),
+                                        ip=self.mlir.insert_point)
+            out_nch0h1w = top.PermuteOp(self.mlir.get_tensor_type([]),
+                                        out_nh0ch1w.output,
+                                        order=[0, 2, 1, 3, 4],
+                                        loc=self.get_loc(node.name + "_out_nch0h1w"),
+                                        ip=self.mlir.insert_point)
+            out_nchw = top.ReshapeOp(self.mlir.get_tensor_type([]),
+                                     out_nch0h1w.output,
+                                     shape=[n, c, h0 * h1, w],
+                                     loc=self.get_loc(node.name + "_out_nchw"),
+                                     ip=self.mlir.insert_point)
+            self.operands[node] = [
+                out_nchw.output, out.mean_out, out.saved_invstd, out.running_mean, out.running_var
+            ]
 
-        self.operands[node] = [
-            out.output, out.mean_out, out.saved_invstd, out.running_mean, out.running_var
-        ]
+        else:
+            out = top.BatchNormTrainOp(self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       self.mlir.get_tensor_type([]),
+                                       op0,
+                                       mean=mean,
+                                       var=var,
+                                       gamma=weight,
+                                       beta=bias,
+                                       epsilon=eps,
+                                       momentum=momentum,
+                                       loc=self.get_loc([
+                                           node.name, node.name + '_mean', node.name + '_rstd',
+                                           node.name + "_running_mean_update",
+                                           node.name + "_running_var_update"
+                                       ]),
+                                       ip=self.mlir.insert_point)
+
+            self.operands[node] = [
+                out.output, out.mean_out, out.saved_invstd, out.running_mean, out.running_var
+            ]
 
     def convert_batchnorm_decomp_op(self, node):
         dtype = self.mlir.get_output_dtypes(node)

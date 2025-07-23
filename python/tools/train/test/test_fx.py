@@ -19,13 +19,19 @@ from torch.fx.passes.fake_tensor_prop import FakeTensorProp
 import torch.nn.functional as F
 from utils.regression_logger import run_in_log_wrapper
 from tools.train import config
+import json
 
 
 class FX_IR_TESTER(object):
     ID = 0
     CURRENT_CASE = ""
 
-    def __init__(self, chip: str = "bm1690", concise_log: bool = False, disable_cmp: bool = False):
+    def __init__(self,
+                 chip: str = "bm1690",
+                 concise_log: bool = False,
+                 disable_cmp: bool = False,
+                 json_file: str = "",
+                 case_id: int = -1):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -33,19 +39,28 @@ class FX_IR_TESTER(object):
             # FX Test Case, Alphabetically
             #########################################
             # case: (test, bm1684x_support, bm1688_support, bm1690_support)
-            "Convolution":              (self.test_Conv,                    N, N, Y),
-            "Convbackward":             (self.test_Conv_backward,           N, Y, Y),
-            "batchnormbwd":             (self.test_batchnormbwd,            N, N, Y),
-            "batchnormfwd":             (self.test_batchnormfwd,            N, N, Y),
-            "maxpoolwithmask":          (self.test_maxpoolwithmask,         N, N, Y),
-            "maxpoolwithmask_bwd":      (self.test_maxpoolwithmask_bwd,     N, Y, Y),#indices need real data
-            "maxpoolwithmask_fwd_bwd":  (self.test_maxpoolwithmask_fwd_bwd, N, N, Y),
-            "where_batchnormbwd":       (self.test_where_batchnormbwd,      N, N, Y),
+            "BatchNormTrain":             (self.test_bn_fwd,                         N, N, Y),
+            "BatchNormBwd":             (self.test_bn_bwd,                         N, N, Y),
+            "Conv":              (self.test_conv_fwd,                   N, N, Y),
+            "Convbwd":             (self.test_conv_bwd,                    N, Y, Y),
+            "MaxPoolWithMask":          (self.test_maxpool_fwd,                 N, N, Y),
+            "MaxPoolingIndicesBwd":      (self.test_maxpool_bwd,                     N, Y, Y),#indices need real data
+            # "Maxpool_fwd_bwd":  (self.test_maxpool_fwd_bwd,                 N, N, Y),
+            # "Where_BNbwd":       (self.test_where_bnbwd,                    N, N, Y),
         }
         # yapf: enable
         self.chip = chip
         self.concise_log = concise_log
         self.cmp = not disable_cmp
+        self.json_file = json_file
+        self.json_cases = {}
+        self.failed_cases = []
+        self.case_id = case_id
+        if self.json_file:
+            assert not self.json_file or os.path.exists(
+                self.json_file), f"Path {self.json_file} does not exist"
+            with open(self.json_file, 'r', encoding='utf-8') as file:
+                self.json_cases = json.load(file)
 
     def convert_module_fx(
         self,
@@ -87,7 +102,24 @@ class FX_IR_TESTER(object):
             os.makedirs(case, exist_ok=True)
             os.chdir(case)
             func, _, _, _ = self.test_cases[case]
-            func()
+            if self.json_cases:
+                assert self.json_cases["operator"] == case, \
+                f"json_cases operator {self.json_cases['operator']} not match case {case}"
+                for json_case in self.json_cases["cases"]:
+                    if self.case_id >= 0 and json_case["id"] != self.case_id:
+                        continue
+                    try:
+                        func(json_case=json_case)
+                    except:
+                        self.failed_cases.append(
+                            [json_case["id"], json_case["input_shapes"], json_case["model_params"]])
+                if self.failed_cases:
+                    for failed_case in self.failed_cases:
+                        print(failed_case)
+                    print("====== TEST {} Failed ======".format(case))
+                    return
+            else:
+                func()
             print("====== TEST {} Success ======".format(case))
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
@@ -136,124 +168,199 @@ class FX_IR_TESTER(object):
         config.unit_test = True
         self.convert_module_fx(submodule_name=model_name, module=fx_module)
 
-    def test_Conv_backward(self):
-
-        class Model(torch.nn.Module):
-
-            def __init__(self, stride=[1, 1], padding=[0, 0], dilation=[1, 1]):
-                super(Model, self).__init__()
-                self.stride = stride
-                self.padding = padding
-                self.dilation = dilation
-
-            def forward(self, x, y, z):
-                #convolution_backward(Tensor grad_output, Tensor input, Tensor weight, SymInt[]? bias_sizes, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups, bool[3] output_mask) -> (Tensor, Tensor, Tensor)
-                out0, out1, out2 = torch.ops.aten.convolution_backward(
-                    x, y, z, [0], self.stride, self.padding, self.dilation, False, [0, 0], 1,
-                    [True, True, False])
-                out2 = None
-                return [out0, out1]
-
-        if self.chip == "bm1690":
-            for batch, oc, ic, oh, ow, ih, iw, kh, kw in [(8, 128, 256, 56, 56, 56, 56, 1, 1),
-                                                          (128, 128, 256, 56, 56, 56, 56, 1, 1)]:
-                self.trace_and_test([[batch, oc, oh, ow], [batch, ic, ih, iw], [oc, ic, kh, kw]],
-                                    Model())
-        if self.chip == "bm1688":
-            for batch, oc, ic, oh, ow, ih, iw, kh, kw in [(8, 64, 64, 224, 224, 224, 224, 3, 3)]:
-                self.trace_and_test([[batch, oc, oh, ow], [batch, ic, ih, iw], [oc, ic, kh, kw]],
-                                    Model(padding=[1, 1]))
-
-    def test_Conv(self):
+    def test_conv_bwd(self, json_case=None):
 
         class Model(torch.nn.Module):
 
             def __init__(self,
                          stride=[1, 1],
-                         padding=[1, 1],
-                         dilation=[1, 1],
-                         output_padding=[0, 0],
-                         groups=1):
+                         padding=[0, 0],
+                         dilations=[1, 1],
+                         groups=1,
+                         grad_input_enable=True,
+                         grad_weight_enable=True,
+                         grad_bias_enable=False):
                 super(Model, self).__init__()
                 self.stride = stride
-                self.padding = padding
-                self.dilation = dilation
-                self.output_padding = output_padding
+                self.padding = padding if len(padding) <= 2 else padding[0:-1:2]
+                if len(padding) >= 2:
+                    for idx, pad in enumerate(padding[:int(len(padding) / 2)]):
+                        assert pad == padding[-(idx + 1)], "Only support symmetric padding for now"
+                self.dilations = dilations
+                self.output_mask = [grad_input_enable, grad_weight_enable, grad_bias_enable]
                 self.groups = groups
+
+            def forward(self, x, y, z):
+                outs = torch.ops.aten.convolution_backward(x, y, z, [0], self.stride, self.padding,
+                                                           self.dilations, False, [0, 0],
+                                                           self.groups, self.output_mask)
+                grads = []
+                if self.output_mask[0]:  # grad_input
+                    grads.append(outs[0])
+                if self.output_mask[1]:  # grad_weight
+                    grads.append(outs[1])
+                if self.output_mask[2]:  # grad_bias
+                    grads.append(outs[2])
+                return grads
+
+        if json_case:
+            self.trace_and_test(json_case['input_shapes'], Model(**json_case['model_params']))
+        else:
+            for batch, oc, ic, oh, ow, ih, iw, kh, kw in [(8, 128, 256, 56, 56, 56, 56, 1, 1),
+                                                          (128, 128, 256, 56, 56, 56, 56, 1, 1)]:
+                self.trace_and_test([[batch, oc, oh, ow], [batch, ic, ih, iw], [oc, ic, kh, kw]],
+                                    Model())
+
+    def test_conv_fwd(self, json_case=None):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self, strides=[1, 1], pads=[1, 1], dilations=[1, 1], group=1):
+                super(Model, self).__init__()
+                self.strides = strides
+                self.pads = pads if len(pads) <= 2 else pads[0:-1:2]
+                if len(pads) >= 2:
+                    for idx, pad in enumerate(pads[:int(len(pads) / 2)]):
+                        assert pad == pads[-(idx + 1)], "Only support symmetric padding for now"
+                self.dilations = dilations
+                self.group = group
 
             def forward(self, x, y):
                 #convolution(Tensor input, Tensor weight, Tensor? bias, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups) -> Tensor
-                res = torch.ops.aten.convolution.default(x, y, None, self.stride, self.padding,
-                                                         self.dilation, False, self.output_padding,
-                                                         self.groups)
+                res = torch.ops.aten.convolution.default(x, y, None, self.strides, self.pads,
+                                                         self.dilations, False, [0, 0], self.group)
                 return res
 
-        self.trace_and_test([[1, 3, 16, 16], [3, 3, 3, 3]], Model())
+        if json_case:
+            self.trace_and_test(json_case['input_shapes'], Model(**json_case['model_params']))
+        else:
+            self.trace_and_test([[1, 3, 16, 16], [3, 3, 3, 3]], Model())
 
-    def test_maxpoolwithmask(self):
+    def test_maxpool_fwd(self, json_case=None):
 
         class Model(torch.nn.Module):
 
-            def __init__(self, kernel_size=[3, 3], stride=[2, 2], padding=[0, 0], dilation=[1, 1]):
+            def __init__(self,
+                         kernel_shape=[3, 3],
+                         strides=[2, 2],
+                         pads=[0, 0],
+                         ceil_mode=False,
+                         dilation=[1, 1],
+                         do_relu=False):
                 super(Model, self).__init__()
-                self.kernel_size = kernel_size
-                self.stride = stride
-                self.padding = padding
+                self.kernel_shape = kernel_shape
+                self.strides = strides
+                self.pads = pads if len(pads) <= 2 else pads[0:-1:2]
+                if len(pads) >= 2:
+                    for idx, pad in enumerate(pads[:int(len(pads) / 2)]):
+                        assert pad == pads[-(idx + 1)], "Only support symmetric padding for now"
                 self.dilation = dilation
+                self.ceil_mode = ceil_mode
+                self.do_relu = do_relu
 
             def forward(self, x):
                 #max_pool2d_with_indices(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False) -> (Tensor, Tensor)
-                out0, out1 = torch.ops.aten.max_pool2d_with_indices(x, self.kernel_size,
-                                                                    self.stride, self.padding,
-                                                                    self.dilation, False)
+                out0, out1 = torch.ops.aten.max_pool2d_with_indices(x, self.kernel_shape,
+                                                                    self.strides, self.pads,
+                                                                    self.dilation, self.ceil_mode)
+                if self.do_relu:
+                    out0 = torch.nn.functional.relu(out0)
                 return [out0, out1]
 
-        for batch, ch, h, w, kernel_size in [(8, 64, 64, 64, [3, 3]), (8, 64, 224, 224, [2, 2])]:
-            self.trace_and_test([[batch, ch, h, w]], Model(kernel_size=kernel_size))
+        if json_case:
+            self.trace_and_test(json_case['input_shapes'], Model(**json_case['model_params']))
+        else:
+            for batch, ch, h, w, kernel_shape in [(8, 64, 64, 64, [3, 3]), (8, 64, 224, 224, [2,
+                                                                                              2])]:
+                self.trace_and_test([[batch, ch, h, w]], Model(kernel_shape=kernel_shape))
 
-    def test_maxpoolwithmask_bwd(self):
+    def test_maxpool_bwd(self, json_case=None):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self,
+                         kernel_shape=[2, 2],
+                         strides=[2, 2],
+                         dilations=[1, 1],
+                         pads=[0, 0],
+                         ceil_mode=False,
+                         input_shape=None):
                 super(Model, self).__init__()
+                self.kernel_shape = kernel_shape
+                self.strides = strides
+                self.pads = pads if len(pads) <= 2 else pads[0:-1:2]
+                if len(pads) >= 2:
+                    for idx, pad in enumerate(pads[:int(len(pads) / 2)]):
+                        assert pad == pads[-(idx + 1)], "Only support symmetric padding for now"
+                self.dilations = dilations[0:-1:2]
+                self.ceil_mode = ceil_mode
 
             def forward(self, x, y, z):
                 #max_pool2d_with_indices_backward(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, int[2] dilation, bool ceil_mode, Tensor indices) -> Tensor
                 out0 = torch.ops.aten.max_pool2d_with_indices_backward(
-                    x, y, [2, 2], [2, 2], [0, 0], [1, 1], False, z)
+                    x, y, self.kernel_shape, self.strides, self.pads, self.dilations,
+                    self.ceil_mode, z)
                 # out0 = torch.ops.aten.max_pool2d_with_indices_backward(x,y,[3,3],[2,2],[1,1],[1,1],False,z)
                 return [out0]
 
         class Model_fwd(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self,
+                         kernel_shape=[2, 2],
+                         strides=[2, 2],
+                         dilations=[1, 1],
+                         pads=[0, 0],
+                         ceil_mode=False,
+                         input_shape=None):
                 super(Model_fwd, self).__init__()
+                self.kernel_shape = kernel_shape
+                self.strides = strides
+                self.pads = pads if len(pads) <= 2 else pads[0:-1:2]
+                if len(pads) >= 2:
+                    for idx, pad in enumerate(pads[:int(len(pads) / 2)]):
+                        assert pad == pads[-(idx + 1)], "Only support symmetric padding for now"
+                self.dilations = dilations[0:-1:2]
+                self.ceil_mode = ceil_mode
 
             def forward(self, x):
                 #max_pool2d_with_indices(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False) -> (Tensor, Tensor)
-                out0, out1 = torch.ops.aten.max_pool2d_with_indices(x, [2, 2], [2, 2], [0, 0],
-                                                                    [1, 1], False)
+                out0, out1 = torch.ops.aten.max_pool2d_with_indices(x, self.kernel_shape,
+                                                                    self.strides, self.pads,
+                                                                    self.dilations, self.ceil_mode)
                 # out0,out1 = torch.ops.aten.max_pool2d_with_indices(x,[3,3],[2,2],[1,1],[1,1],False)
 
                 return [out0, out1]
 
         # bm1688 f32 0.99,0.92
         # bm1684x f32 1.0 1.0
-        ch = 64
-        batch = 1
-
-        for isize, osize in [(112, 56), (224, 112)]:
-            x = torch.randn(batch, ch, isize, isize)
-            fwd_out = Model_fwd()(torch.randn(batch, ch, isize, isize))
-            grad = torch.randn(batch, ch, osize, osize)
+        if json_case:
+            batch = json_case['input_shapes'][0][0]
+            ch = json_case['input_shapes'][0][1]
+            oh = json_case['input_shapes'][0][2]
+            ow = json_case['input_shapes'][0][3]
+            ih = json_case['model_params']['input_shape'][2]
+            iw = json_case['model_params']['input_shape'][3]
+            x = torch.randn(batch, ch, ih, iw)
+            fwd_out = Model_fwd(**json_case["model_params"])(torch.randn(batch, ch, ih, iw))
+            grad = torch.randn(batch, ch, oh, ow)
             inputs = [grad, x, fwd_out[1]]
-            self.trace_and_test(
-                [[batch, ch, osize, osize], [batch, ch, isize, isize], [batch, ch, osize, osize]],
-                Model(),
-                real_data=inputs)
+            self.trace_and_test([[batch, ch, oh, ow], [batch, ch, ih, iw], [batch, ch, oh, ow]],
+                                Model(**json_case["model_params"]),
+                                real_data=inputs)
+        else:
+            ch = 64
+            batch = 1
+            for isize, osize in [(112, 56)]:
+                x = torch.randn(batch, ch, isize, isize)
+                fwd_out = Model_fwd()(torch.randn(batch, ch, isize, isize))
+                grad = torch.randn(batch, ch, osize, osize)
+                inputs = [grad, x, fwd_out[1]]
+                self.trace_and_test([[batch, ch, osize, osize], [batch, ch, isize, isize],
+                                     [batch, ch, osize, osize]],
+                                    Model(),
+                                    real_data=inputs)
 
-    def test_maxpoolwithmask_fwd_bwd(self):
+    def test_maxpool_fwd_bwd(self, json_case=None):
 
         class Model(torch.nn.Module):
 
@@ -273,24 +380,28 @@ class FX_IR_TESTER(object):
 
         self.trace_and_test([[8, 64, 112, 112], [8, 64, 56, 56], [8, 64, 56, 56]], Model())
 
-    def test_batchnormbwd(self):
+    def test_bn_bwd(self, json_case=None):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self, epsilon=1e-5):
                 super(Model, self).__init__()
+                self.epsilon = epsilon
 
             def forward(self, x, y, z, w, a, b, c):
-                #native_batch_norm_backward(Tensor grad_out, Tensor input, Tensor? weight, Tensor? running_mean, Tensor? running_var, Tensor? save_mean, Tensor? save_invstd, bool train, float eps, bool[3] output_mask) -> (Tensor, Tensor, Tensor)
                 out0, out1, out2 = torch.ops.aten.native_batch_norm_backward(
-                    x, y, z, w, a, b, c, True, 1e-5, [True, True, True])
+                    x, y, z, w, a, b, c, True, self.epsilon, [True, True, True])
                 return [out0, out1, out2]
 
-        for batch, c, h, w in [(8, 64, 112, 112), (8, 512, 7, 7), (128, 512, 14, 14)]:
-            self.trace_and_test([[batch, c, h, w], [batch, c, h, w], [c], [c], [c], [c], [c]],
-                                Model())
+        if json_case:
+            self.trace_and_test(json_case['input_shapes'][:2] + [json_case['input_shapes'][2]] * 5,
+                                Model(**json_case['model_params']))
+        else:
+            for batch, c, h, w in [(8, 64, 112, 112), (8, 512, 7, 7), (128, 512, 14, 14)]:
+                self.trace_and_test([[batch, c, h, w], [batch, c, h, w], [c], [c], [c], [c], [c]],
+                                    Model())
 
-    def test_where_batchnormbwd(self):
+    def test_where_bnbwd(self, json_case=None):
 
         class Model(torch.nn.Module):
 
@@ -323,27 +434,36 @@ class FX_IR_TESTER(object):
         # w = 14
         # self.trace_and_test([[8,c,h,w],[8,c,h,w],[c],[c],[c],[c],[c],[8,c,h,w],[8,c,h,w]], Model())
 
-    def test_batchnormfwd(self):
+    def test_bn_fwd(self, json_case=None):
 
         class Model(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self, do_relu=False, epsilon=1e-5, momentum=0.1):
                 super(Model, self).__init__()
+                self.do_relu = do_relu
+                self.epsilon = epsilon
+                self.momentum = momentum
 
             def forward(self, conv, weight, bias, running_mean, running_var):
                 #_native_batch_norm_legit(Tensor input, Tensor? weight, Tensor? bias, Tensor(a!) running_mean, Tensor(b!) running_var, bool training, float momentum, float eps) -> (Tensor, Tensor, Tensor)
                 res = torch.ops.aten._native_batch_norm_legit_functional.default(
-                    conv, weight, bias, running_mean, running_var, True, 0.1, 1e-5)
+                    conv, weight, bias, running_mean, running_var, True, self.momentum,
+                    self.epsilon)
                 y = res[0]
+                if self.do_relu:
+                    y = torch.nn.functional.relu(y)
                 mean = res[1]
                 invstd = res[2]
                 running_mean_update = res[3]
                 running_var_update = res[4]
                 return [y, mean, invstd, running_mean_update, running_var_update]
 
-        n = 8
-        for c, h, w in [(2048, 7, 7), (512, 14, 14)]:
-            self.trace_and_test([[n, c, h, w], [c], [c], [c], [c]], Model())
+        if json_case:
+            self.trace_and_test(json_case['input_shapes'], Model(**json_case['model_params']))
+        else:
+            n = 8
+            for c, h, w in [(2048, 7, 7), (512, 14, 14)]:
+                self.trace_and_test([[n, c, h, w], [c], [c], [c], [c]], Model())
 
 
 def test_one_case_in_all(tester: FX_IR_TESTER, case, error_cases, success_cases):
@@ -386,12 +506,23 @@ if __name__ == "__main__":
                         default="bm1690",
                         choices=['bm1684x', 'bm1688', 'bm1690'],
                         help="chip name")
-    parser.add_argument("--case", default="all", help="test case")
+    parser.add_argument("--case", default="all", help="test case name")
     parser.add_argument("--disable_cmp", action="store_true", help='do data compare')
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
-    parser.add_argument("--debug", default="", help="debug")
+    parser.add_argument("--debug", default="", help="debug mode to keep all files")
+    parser.add_argument("--json_file",
+                        default="",
+                        help="load json file for test cases, only for single op test")
+    parser.add_argument("--case_id",
+                        default=-1,
+                        type=int,
+                        help="load the specific id case from json file, only for single op test")
     args = parser.parse_args()
-    tester = FX_IR_TESTER(args.chip, args.concise_log, args.disable_cmp)
+    tester = FX_IR_TESTER(chip=args.chip,
+                          concise_log=args.concise_log,
+                          disable_cmp=args.disable_cmp,
+                          json_file=args.json_file,
+                          case_id=args.case_id)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
@@ -401,6 +532,7 @@ if __name__ == "__main__":
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     if args.case == "" or args.case == "all":
+        assert args.json_file == "", "json_cases should not be set when running full test"
         test_all(tester)
     else:
         tester.test_single(args.case)
