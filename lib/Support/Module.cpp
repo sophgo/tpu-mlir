@@ -2124,7 +2124,18 @@ void bindShapeTensorValue(const Value &v, const std::vector<int64_t> &shape) {
 }
 
 std::vector<int64_t> getShapeTensorValue(const Value &v) {
-  return ShapeHelper::getInstance().getShapeInfo(v);
+  if (module::isWeight(v)) {
+    auto weight_op = dyn_cast<top::WeightOp>(v.getDefiningOp());
+    auto weight_data = weight_op.read_as_float();
+    std::vector<int64_t> int_data;
+    int_data.reserve(weight_data->size());
+    for (float f : *weight_data) {
+      int_data.push_back(static_cast<int64_t>(f));
+    }
+    return int_data;
+  } else {
+    return ShapeHelper::getInstance().getShapeInfo(v);
+  }
 }
 
 bool isShape(const Value &v) { return ShapeHelper::getInstance().isShape(v); }

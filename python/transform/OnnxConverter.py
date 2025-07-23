@@ -2298,7 +2298,8 @@ class OnnxConverter(BaseConverter):
                 k_op = self.getOperand(onnx_node.inputs[1])
         axis = onnx_node.attrs.get('axis', -1)
         largest = onnx_node.attrs.get('largest', True)
-        sorted = onnx_node.attrs.get('sorted', True)
+        # sorted = onnx_node.attrs.get('sorted', True)
+        sorted = True
         loc_names = [onnx_node.name + '_TopK_indices', onnx_node.name + "_TopK_values"]
         out_shapes = [None, None]
         out_needs = [False, False]
@@ -2968,6 +2969,8 @@ class OnnxConverter(BaseConverter):
             coord_transf_mode = "output_half_pixel"
         else:
             coord_transf_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
+            if isinstance(coord_transf_mode, bytes):
+                coord_transf_mode = coord_transf_mode.decode('utf-8')
         align_corners = coord_transf_mode == "half_pixel"
         batch_indices_xpd = top.UnsqueezeOp(self.unranked_type,
                                             batch_indices,

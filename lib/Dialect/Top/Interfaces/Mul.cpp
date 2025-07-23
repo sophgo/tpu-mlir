@@ -15,6 +15,8 @@ int64_t top::MulOp::getFLOPs() {
 }
 
 LogicalResult top::MulOp::init(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   auto binary = new Binary();
   auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);

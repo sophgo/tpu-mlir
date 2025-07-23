@@ -71,8 +71,8 @@ void top::ScatterElementsOp::shape_inference() {
   if (module::isShape(getInput())) {
     std::vector<std::vector<int64_t>> input_shapes_v;
     for (const auto &input : getOperands()) {
-      if (module::isShape(input)) {
-        input_shapes_v.push_back(module::getShapeTensorValue(getInput()));
+      if (module::isShape(input) || module::isWeight(input)) {
+        input_shapes_v.push_back(module::getShapeTensorValue(input));
       }
     }
     auto output_shape_v =

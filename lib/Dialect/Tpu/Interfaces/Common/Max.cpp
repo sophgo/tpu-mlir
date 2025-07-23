@@ -12,6 +12,8 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 LogicalResult tpu::MaxOp::init(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   auto binary = new Binary();
   auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
@@ -34,10 +36,18 @@ void tpu::MaxOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MaxOp::inference(InferenceParameter &p) {
-  if (p.handle == nullptr) {
-    return failure();
-  }
-  auto binary = (Binary *)p.handle;
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
+  auto binary = new Binary();
+  auto lhs_shape = module::getShape(getInputs()[0]);
+  auto rhs_shape = module::getShape(getInputs()[1]);
+
+  (*binary)
+      .hs(p.inputs[0], p.inputs[1], lhs_shape, rhs_shape)
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .algorithem(algorithm::binary_max)
+      .setup();
+
   binary->run();
   return success();
 }

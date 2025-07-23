@@ -348,6 +348,11 @@ class ONNX_IR_TESTER(object):
             "DynamicRelu":      (self.test_DynamicRelu,     N, Y, N, N, N, N),
             "DynamicReduce":   (self.test_DynamicReduce,    N, Y, N, N, N, N),
             #########################################
+            # Shape Op test case, Alphabetically
+            #########################################
+            "ShapeTile":            (self.test_ShapeTile,            N, Y, N, N, N, N),
+            "ShapeScatterElements": (self.test_ShapeScatterElements, N, Y, N, N, N, N),
+            #########################################
             # custom op test case, Alphabetically
             #########################################
             # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
@@ -7233,6 +7238,85 @@ class ONNX_IR_TESTER(object):
             for axis in [1]:
                 for keepdim in [True, False]:
                     _test_arg(f, axis, keepdim)
+
+    def test_ShapeTile(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+
+                from torch.onnx import operators
+                shape_tensor = operators.shape_as_tensor(x)
+
+                tiled_shape = shape_tensor.repeat(2)
+                tiled_shape_list = [tiled_shape[i] for i in range(tiled_shape.size(0))]
+
+                y = torch.zeros(tiled_shape_list[0] * tiled_shape_list[1])
+                output = torch.reshape(y, tiled_shape_list)
+                return output
+
+        x = torch.randn(5)
+
+        dynamic_in_names = ["x"]
+        dynamic_shape_input_names = ['x']
+        dynamic_axes = {'x': {0: 'input'}}
+
+        try:
+            self.dynamic = True
+            self.torch_and_test((x),
+                                Model(),
+                                case_name,
+                                support_modes=["f32"],
+                                dynamic_in_names=dynamic_in_names,
+                                dynamic_shape_input_names=dynamic_shape_input_names,
+                                dynamic_axes=dynamic_axes)
+        finally:
+            self.dynamic = False
+
+    def test_ShapeScatterElements(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                from torch.onnx import operators
+                shape_tensor = operators.shape_as_tensor(x)
+
+                src_value = shape_tensor.repeat(2)
+                indices = torch.tensor([0, 1], dtype=torch.int64)
+                updates = src_value
+
+                new_shape = torch.scatter(src_value, 0, indices, updates)
+                shape_list = tuple(new_shape.tolist())
+
+                total_elements = new_shape[0] * new_shape[1]
+                y = torch.zeros(total_elements)
+
+                output = torch.reshape(y, shape_list)
+                return output
+
+        x = torch.randn(5)
+
+        dynamic_in_names = ["x"]
+        dynamic_shape_input_names = ['x']
+        dynamic_axes = {'x': {0: 'input'}}
+
+        try:
+            self.dynamic = True
+            self.torch_and_test((x),
+                                Model(),
+                                case_name,
+                                support_modes=["f32"],
+                                dynamic_in_names=dynamic_in_names,
+                                dynamic_shape_input_names=dynamic_shape_input_names,
+                                dynamic_axes=dynamic_axes)
+        finally:
+            self.dynamic = False
 
     def test_Correlation(self, case_name):
 

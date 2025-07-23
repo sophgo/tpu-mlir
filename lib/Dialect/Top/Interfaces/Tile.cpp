@@ -27,6 +27,11 @@ LogicalResult top::TileOp::inference(InferenceParameter &p) {
     }
   }
 
+  std::vector<int64_t> out_shape(in_shape.size());
+  std::transform(tile_vec.begin(), tile_vec.end(), in_shape.begin(),
+                 out_shape.begin(), [](int a, int b) { return a * b; });
+  module::setShape(getOutput(), out_shape);
+
   int last_i = tile_vec.size() - 1;
   // tile(p.inputs[0], p.outputs[0], in_shape, getAxis(), tile_vec);
   for (int i = 0; i < tile_vec.size(); ++i) {
@@ -78,7 +83,8 @@ void top::TileOp::shape_inference() {
                  out_shape.begin(), [](int a, int b) { return a * b; });
   module::setShapeOrVerify(getOutput(), out_shape);
 
-  if (module::isShape(getInput())) {
+  if (module::isShape(getInput()) ||
+      (module::isWeight(getInput()) && module::isShape(getTileT()))) {
     std::vector<std::vector<int64_t>> input_shapes_v;
     auto input_shape_v = module::getShapeTensorValue(getInput());
     input_shapes_v.push_back(input_shape_v);

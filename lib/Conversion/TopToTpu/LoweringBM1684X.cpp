@@ -87,6 +87,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       PowTryLowering,
       PermuteTryLowering,
       ReshapeTryLowering,
+      TileTryLowering,
+      ScatterElementsTryLowering,
       ReverseTryLowering
       // clang-format on
       >(patterns->getContext());

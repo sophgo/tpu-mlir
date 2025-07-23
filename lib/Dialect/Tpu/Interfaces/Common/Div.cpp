@@ -13,6 +13,8 @@
 #include "tpu_mlir/Support/Float16.h"
 
 LogicalResult tpu::DivOp::init(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   auto binary = new Binary();
   int index0 = 0, index1 = 1;
   if (getIsReverse()) {
@@ -46,7 +48,24 @@ LogicalResult tpu::DivOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
-  auto binary = (Binary *)p.handle;
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
+  auto binary = new Binary();
+  int index0 = 0, index1 = 1;
+  if (getIsReverse()) {
+    index0 = 1, index1 = 0;
+  }
+  auto lhs_shape = module::getShape(getInputs()[index0]);
+  auto rhs_shape = module::getShape(getInputs()[index1]);
+
+  (*binary)
+      .hs(p.inputs[index0], p.inputs[index1], lhs_shape, rhs_shape)
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .do_relu(getDoRelu())
+      .relu_limit(getReluLimit().convertToDouble())
+      .algorithem(algorithm::binary_div)
+      .setup();
+
   binary->run();
   auto out_type = module::getStorageType(getOutput());
   auto dst = p.outputs[0];

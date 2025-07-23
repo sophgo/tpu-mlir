@@ -28,6 +28,11 @@ LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
     }
   }
 
+  std::vector<int64_t> out_shape(in_shape.size());
+  std::transform(tile_vec.begin(), tile_vec.end(), in_shape.begin(),
+                 out_shape.begin(), [](int a, int b) { return a * b; });
+  module::setShape(getOutput(), out_shape);
+
   int last_i = tile_vec.size() - 1;
   for (int i = 0; i < tile_vec.size(); ++i) {
     last_i = tile_vec.size() - i - 1;

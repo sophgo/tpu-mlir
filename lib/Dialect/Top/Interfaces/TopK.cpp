@@ -96,7 +96,7 @@ void top::TopKOp::shape_inference() {
   setAxis(axis);
   std::vector<int64_t> output_shape(input_shape.size());
   for (int i = 0; i < input_shape.size(); i++) {
-    if (i == axis) {
+    if (i == axis && K != -1) {
       output_shape[i] = K;
     } else {
       output_shape[i] = input_shape[i];

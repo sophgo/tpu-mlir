@@ -188,6 +188,14 @@ void WeightFolder(Operation *op) {
       out.replaceAllUsesWith(new_op);
     } else {
       auto new_op = top::WeightOp::create(op, "folder", datas[i], out_type);
+      if (module::isShape(out)) {
+        std::vector<int64_t> int_data;
+        int_data.reserve(datas[i].size());
+        for (float f : datas[i]) {
+          int_data.push_back(static_cast<int64_t>(f));
+        }
+        module::bindShapeTensorValue(new_op, int_data);
+      }
       out.replaceAllUsesWith(new_op);
     }
   }

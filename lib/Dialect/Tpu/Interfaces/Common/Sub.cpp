@@ -14,6 +14,8 @@
 #include "tpu_mlir/Support/Float8.h"
 
 LogicalResult tpu::SubOp::init(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   int index0 = 0, index1 = 1;
   if (getIsReverse()) {
     index0 = 1, index1 = 0;

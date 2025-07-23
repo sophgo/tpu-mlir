@@ -2317,7 +2317,7 @@ def Top_SoftplusOp:Top_Op<"Softplus"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_FloorOp:Top_Op<"Floor"> {
+def Top_FloorOp:Top_Op<"Floor", [ScalarProducer, ScalarConsumer]> {
   let summary = "Floor operation";
   let description = [{
     1.Op Introduction
@@ -2332,7 +2332,8 @@ def Top_FloorOp:Top_Op<"Floor"> {
     input(act.): input tensor.;
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
   );
   let results = (outs AnyTensor:$output);
 }

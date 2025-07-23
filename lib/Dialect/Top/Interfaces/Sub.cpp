@@ -15,6 +15,8 @@ int64_t top::SubOp::getFLOPs() {
 }
 
 LogicalResult top::SubOp::init(InferenceParameter &p) {
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
   auto binary = new Binary();
   int index0 = 0, index1 = 1;
   if (getIsReverse()) {

@@ -15,8 +15,26 @@ LogicalResult top::ExpandOp::init(InferenceParameter &p) { return success(); }
 void top::ExpandOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ExpandOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Should be convert to other ops in it's canonicalize pass.");
-  return success();
+
+  auto in_shape = module::getShape(getInput());
+  float *input_data = p.inputs[0];
+
+  auto out_shape = module::getShape(getOutput());
+  float *output_data = p.outputs[0];
+  int64_t num_elements = module::getNumElements(getOutput());
+
+  int dim_in = in_shape.size();
+  int dim_out = out_shape.size();
+  int dim_pad = dim_out - dim_in;
+  ASSERT_THIS(dim_pad >= 0);
+
+  if ((in_shape.size() == 1) && in_shape[0] == 1) {
+    for (int64_t i = 0; i < num_elements; i++) {
+      output_data[i] = input_data[0];
+    }
+    return success();
+  }
+  return failure();
 }
 
 void top::ExpandOp::shape_inference() {
@@ -49,14 +67,13 @@ void top::ExpandOp::shape_inference() {
   }
   module::setShapeOrVerify(getOutput(), out_shape);
 
-  // if (module::isShape(getInput())) {
-  //   std::vector<std::vector<int64_t>> input_shapes_v;
-  //   auto input_shape_v = module::getShapeTensorValue(getInput());
-  //   input_shapes_v.push_back(input_shape_v);
-  //   input_shapes_v.push_back(expand_shape);
-  //   auto output_shape_v =
-  //       module::commonShapeValInfer(getOperation(), input_shapes_v,
-  //       out_shape);
-  //   module::bindShapeTensorValue(getOutput(), output_shape_v);
-  // }
+  if (module::isShape(getInput())) {
+    std::vector<std::vector<int64_t>> input_shapes_v;
+    auto input_shape_v = module::getShapeTensorValue(getInput());
+    input_shapes_v.push_back(input_shape_v);
+    input_shapes_v.push_back(expand_shape);
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

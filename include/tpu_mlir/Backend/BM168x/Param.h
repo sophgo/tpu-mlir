@@ -807,6 +807,13 @@ typedef struct scatter_elements_global_spec {
   int replace_add;
 } scatter_elements_global_spec_t;
 
+typedef struct {
+  int data_dims;
+  int indices_dims;
+  int updates_dims;
+  int axis;
+} shape_scatterelements_spec_t;
+
 typedef struct index_select_common_spec {
   int axis;
   int index_is_coeff; // use for dyn
@@ -1529,6 +1536,10 @@ typedef struct {
   int input_dims;
   int dtype;
 } tile_global_param_t;
+
+typedef struct {
+  int tile_coeff[MAX_SHAPE_DIMS];
+} shape_tile_param_t;
 
 typedef struct {
   int tile_axis;

@@ -4380,6 +4380,39 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
   }];
 }
 
+def Tpu_ShapeTileOp:Tpu_Op<"ShapeTile", [
+    ShapeProducer, ShapeConsumer]> {
+  let summary = "Shape Tile operation";
+  let description = [{
+    1.Op Introduction
+    Returns a tensor with the same type as the input, with a new shape
+    specified by the shape argument.
+
+    2.Math formula
+    ```math
+            output[i_1, i_2, i_3,...i_k] = input[i_1 mod d_1, i_2 mod d_2, i_3 mod d_3,..., i_k mod d_k]
+    ```
+    where d_j represents the corresponding dimension size of the input tensor after tiling.
+
+    3.activation and weight
+    input(act.): input tensor.;
+    tileT(w.): how many times to replicate the input tensor along each dimension.;
+    buffer(w.): temporary storage of intermediate results or states during the computation.;
+
+    4.attributes
+    tile: the number of times to replicate the input tensor along each dimension.;
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    Optional<AnyTensor>:$tileT,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$tile
+  );
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
+}
+
 def Tpu_GatherOp: Tpu_Op<"Gather", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Gather operator";
@@ -5308,6 +5341,44 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
     AnyRankedTensor:$updates,
     AnyTensorOrNone:$indices_coeff,
     AnyTensorOrNone:$buffer,
+    I64Attr:$axis,
+    DefaultValuedAttr<I64Attr, "0">:$reduction,
+    DefaultValuedAttr<BoolAttr, "false">:$nc_can_split
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_ShapeScatterElementsOp: Tpu_Op<"ShapeScatterElements", [
+  ShapeProducer, ShapeConsumer]>  {
+  let summary = "ScatterElements op";
+  let description = [{
+    1.Op Introduction
+    ScatterElements takes three inputs data, updates, and indices of the same rank r >= 1 and an optional attribute axis that
+    identifies an axis of data (by default, the outer-most axis, that is axis 0). The output of the operation is produced by
+    creating a copy of the input data, and then updating its value to values specified by updates at specific index
+    positions specified by indices. Its output shape is the same as the shape of data.
+
+    2.Math formula
+    ```math
+            output = ScatterElements(input[axis], updates, indices)
+    ```
+    3.activation and weight
+    input(act.): input tensor;
+    indices(w.): Tensor of int32/int64 indices, of r >= 1 (same rank as input).
+             All index values are expected to be within bounds [-s, s-1] along axis of size s.
+    updates(w.): Tensor of rank r >=1 (same rank and shape as indices).
+    indices_coeff(w.): a scaling or modifying factor for the indices.;
+    buffer(w.): temporary storage of intermediate results or states during the LSTM computation.;
+
+    4.attributes
+    axis: the dimension of the input tensor.;
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+    AnyTensor:$updates,
     I64Attr:$axis,
     DefaultValuedAttr<I64Attr, "0">:$reduction,
     DefaultValuedAttr<BoolAttr, "false">:$nc_can_split
