@@ -347,9 +347,11 @@ BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 std::shared_ptr<bmodel::RelEntry>
 BMCodegen::CreateTensorRelentry(const uint64_t &addr, const uint64_t &bytes) {
   for (u32 id = 0; id < fullnet_io_addrs.size(); id++) {
-    if (addr >= fullnet_io_addrs[id].first && addr < fullnet_io_addrs[id].second) {
+    if (addr >= fullnet_io_addrs[id].first &&
+        addr < fullnet_io_addrs[id].second) {
       assert(addr + bytes <= fullnet_io_addrs[id].second);
-      return std::make_shared<bmodel::RelEntry>(id, (u32)(addr - fullnet_io_addrs[id].first), 0);
+      return std::make_shared<bmodel::RelEntry>(
+          id, (u32)(addr - fullnet_io_addrs[id].first), 0);
     }
   }
   return nullptr;
@@ -449,7 +451,8 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values, int devid) {
     }
     tb.add_device_addr(module::getAddress(v));
     tb.add_size(Arch::get_gmem_bytes(v));
-    auto relentry = CreateTensorRelentry(module::getAddress(v), module::getBytes(v));
+    auto relentry =
+        CreateTensorRelentry(module::getAddress(v), module::getBytes(v));
     if (relentry) {
       tb.add_relentry(relentry.get());
     }
@@ -460,16 +463,14 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values, int devid) {
 }
 
 bool BMCodegen::getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
-                                   uint64_t coeff_size, uint64_t &offset,
-                                   uint64_t &size) {
-  offset = 0;
-  size = 0;
+                                   uint64_t coeff_size,
+                                   std::vector<location_t> &locations) {
+  locations.clear();
   if (op == nullptr || op->getNumOperands() == 0 ||
       op->getName().getDialect()->getNamespace() != "tpu" ||
       isa<tpu::LoadOp, tpu::GroupOp>(op)) {
     return false;
   }
-  uint64_t addr = 0;
   // coeff should be continuos
   for (auto opd : op->getOperands()) {
     auto in_op = opd.getDefiningOp();
@@ -482,22 +483,14 @@ bool BMCodegen::getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
     if (!module::isWeight(opd)) {
       continue;
     }
-    auto a_ = module::getAddress(opd);
-    auto s_ = align_up(module::getBytes(opd), BM168x::ALIGNMENT);
-    if (addr == 0 && size == 0) {
-      addr = a_;
-      size = s_;
-    } else if (addr + size == a_) {
-      size += s_;
-    } else {
-      return false;
-    }
+
+    auto addr = module::getAddress(opd);
+    auto size = align_up(module::getBytes(opd), BM168x::ALIGNMENT);
+    if (size == 0 || addr < coeff_addr ||
+        (addr + size) > (coeff_addr + coeff_size))
+      continue;
+    locations.emplace_back(location_t(addr - coeff_addr, size));
   }
-  if (size == 0 || addr < coeff_addr ||
-      (addr + size) > (coeff_addr + coeff_size)) {
-    return false;
-  }
-  offset = addr - coeff_addr;
   return true;
 }
 
@@ -508,17 +501,28 @@ Offset<bmodel::CoeffMem> BMCodegen::CreateCoeffMem(ModuleOp s,
     return 0;
   }
   auto &builder = model_gen->Builder();
+  std::vector<location_t> added_locations;
   std::vector<Offset<bmodel::Location>> locations;
   for (auto func : s.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
-      uint64_t offset = 0, size = 0;
-      auto ret = getOpCoeffLocation(op, coeff_addr, coeff_size, offset, size);
-      if (ret) {
+      std::vector<location_t> coeff_infos;
+      getOpCoeffLocation(op, coeff_addr, coeff_size, coeff_infos);
+      for (auto info : coeff_infos) {
+        auto iter = std::find_if(
+            added_locations.begin(), added_locations.end(),
+            [&info](location_t &loc) { return loc.offset == info.offset; });
+        (void)(iter);
+        if (iter != added_locations.end()) {
+          assert(info.size == iter->size);
+          continue;
+        }
+        added_locations.push_back(info);
+
         auto name = builder.CreateString(op->getName().getStringRef().str());
         bmodel::LocationBuilder lb(builder);
         lb.add_name(name);
-        lb.add_offset(offset);
-        lb.add_size(size);
+        lb.add_offset(info.offset);
+        lb.add_size(info.size);
         locations.push_back(lb.Finish());
       }
     });
@@ -567,14 +571,16 @@ BMCodegen::CreateCmdGroupVector() {
     std::shared_ptr<std::vector<bmodel::RelEntry>> cmd_reloc_entries;
     if (gdma_num != 0) {
       binary_gdma = model_gen->WriteBinary(gdma_len, gdma_ptr + gdma_offset);
-      cmd_reloc_entries = CreateGdmaRelEntryVector(gdma_num, gdma_ptr + gdma_offset);
+      cmd_reloc_entries =
+          CreateGdmaRelEntryVector(gdma_num, gdma_ptr + gdma_offset);
       gdma_offset += gdma_len;
     }
     Offset<Vector<const bmodel::RelEntry *>> reloc_entries_v;
     if (cmd_reloc_entries) {
       reloc_entries_v = model_gen->Builder().CreateVectorOfStructs(
-                        cmd_reloc_entries->data(), cmd_reloc_entries->size());
-      llvm::outs() << "[io_reloc] TOTALLY " << cmd_reloc_entries->size() << " reloc entries\n";
+          cmd_reloc_entries->data(), cmd_reloc_entries->size());
+      llvm::outs() << "[io_reloc] TOTALLY " << cmd_reloc_entries->size()
+                   << " reloc entries\n";
     }
     bmodel::CmdGroupBuilder cgb(model_gen->Builder());
     cgb.add_bdc_num(bdc_num);
@@ -605,12 +611,17 @@ BMCodegen::CreateGdmaRelEntryVector(u32 cmd_num, u8 *cmd_buffer) {
     return nullptr;
   using RelEntryVec = std::vector<bmodel::RelEntry>;
   auto reloc_entries_v = std::make_shared<RelEntryVec>();
-  auto get_gdma_cmd_len = []() -> u32 { return 96; }; // for 1684x, except sys-end cmd.
-  auto try_add_reloc_entry = [this](std::shared_ptr<RelEntryVec> reloc_entries_v,
-                                    u64 ori_addr, u64 cmd_offset) -> bool {
+  auto get_gdma_cmd_len = []() -> u32 {
+    return 96;
+  }; // for 1684x, except sys-end cmd.
+  auto try_add_reloc_entry =
+      [this](std::shared_ptr<RelEntryVec> reloc_entries_v, u64 ori_addr,
+             u64 cmd_offset) -> bool {
     for (u32 id = 0; id < fullnet_io_addrs.size(); id++) {
-      if (ori_addr >= fullnet_io_addrs[id].first && ori_addr < fullnet_io_addrs[id].second) {
-        bmodel::RelEntry rel_entry(id, (u32)(ori_addr - fullnet_io_addrs[id].first), cmd_offset);
+      if (ori_addr >= fullnet_io_addrs[id].first &&
+          ori_addr < fullnet_io_addrs[id].second) {
+        bmodel::RelEntry rel_entry(
+            id, (u32)(ori_addr - fullnet_io_addrs[id].first), cmd_offset);
         reloc_entries_v->push_back(rel_entry);
         return true; // success.
       }
@@ -619,7 +630,7 @@ BMCodegen::CreateGdmaRelEntryVector(u32 cmd_num, u8 *cmd_buffer) {
   };
   // walk through each cmd (except sys-end cmd).
   u32 cmd_cur = 0;
-  for (u32 cmd_idx = 0; cmd_idx < cmd_num -1; cmd_idx++) {
+  for (u32 cmd_idx = 0; cmd_idx < cmd_num - 1; cmd_idx++) {
     u32 cmd_bytes = get_gdma_cmd_len();
     u32 *cmd = reinterpret_cast<u32 *>(cmd_buffer + cmd_cur);
     u64 src_addr = (u64)(cmd[17] & 0xff) << 32 | ((u64)cmd[16]);
@@ -627,7 +638,7 @@ BMCodegen::CreateGdmaRelEntryVector(u32 cmd_num, u8 *cmd_buffer) {
     u64 dst_addr = (u64)(cmd[19] & 0xff) << 32 | ((u64)cmd[18]);
     try_add_reloc_entry(reloc_entries_v, dst_addr, cmd_cur + 72);
     u32 cmd_type = cmd[1] & 0xf;
-    if (cmd_type == 2 || cmd_type == 7 || cmd_type ==8) {
+    if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8) {
       u64 index_addr = ((u64)(cmd[21] & 0xff) << 32 | ((u64)cmd[20]));
       try_add_reloc_entry(reloc_entries_v, index_addr, cmd_cur + 80);
     }

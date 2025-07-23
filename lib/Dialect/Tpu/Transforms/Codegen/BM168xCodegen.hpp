@@ -25,6 +25,13 @@ public:
   void run(ModuleOp s, bool embed_debug_info = false, bool gdma_check = true);
   void store();
 
+  struct location_t {
+    uint64_t offset;
+    uint64_t size;
+    location_t(uint64_t offset_, uint64_t size_)
+        : offset(offset_), size(size_) {}
+  };
+
 private:
   Offset<Vector<Offset<bmodel::Shape>>>
   CreateShapeVector(const ArrayRef<int64_t> &shape);
@@ -39,11 +46,14 @@ private:
   Offset<bmodel::SubNet> CreateMergeSubNet(ModuleOp s, func::CallOp call);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   std::shared_ptr<std::vector<bmodel::Binary>> CreateCmdVector(const char *);
-  std::shared_ptr<std::vector<bmodel::RelEntry>> CreateGdmaRelEntryVector(u32 gdma_cmd_num, u8 *gdma_cmd_buffer);
-  std::shared_ptr<bmodel::RelEntry> CreateTensorRelentry(const uint64_t &tensor_addr, const uint64_t &tensor_bytes);
+  std::shared_ptr<std::vector<bmodel::RelEntry>>
+  CreateGdmaRelEntryVector(u32 gdma_cmd_num, u8 *gdma_cmd_buffer);
+  std::shared_ptr<bmodel::RelEntry>
+  CreateTensorRelentry(const uint64_t &tensor_addr,
+                       const uint64_t &tensor_bytes);
   bool getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
-                          uint64_t coeff_size, uint64_t &offset,
-                          uint64_t &size);
+                          uint64_t coeff_size,
+                          std::vector<location_t> &locations);
   Offset<bmodel::CoeffMem> CreateCoeffMem(ModuleOp s, uint64_t coeff_addr,
                                           uint64_t coeff_size);
   Offset<Vector<Offset<bmodel::StageIR>>>
@@ -87,7 +97,7 @@ private:
   std::vector<StringRef> hidden_names;
   std::vector<StringRef> special_in_names;
   std::vector<StringRef> special_out_names;
-  //cmd-io-addrs, saved as pair: [StartAddr, EndAddr)
+  // cmd-io-addrs, saved as pair: [StartAddr, EndAddr)
   std::vector<std::pair<uint64_t, uint64_t>> fullnet_io_addrs;
   uint32_t current_step = 0;
   uint32_t current_device = 0;
