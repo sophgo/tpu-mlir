@@ -312,9 +312,7 @@ public:
     auto out = op.getOutput();
     auto out_qtype = module::getCalibratedType(out);
     double min = out_qtype.getMin();
-    if (is_sign && min >= 0) {
-      min = -out_qtype.getMax() * 0.1;
-    } else if (is_sign == false && min < 0) {
+    if (is_sign == false && min < 0) {
       min = 0;
     } else {
       return failure();
@@ -1609,7 +1607,7 @@ void ConvertTopToTpu::calibration_process() {
     // keep sign for some ops, keep sign before backward speading to check the sign consistency in backward
     // backend not support in out not the same sign
     patterns.clear();
-    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
+    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, KeepAddSignPattern,
                  KeepSignPattern<top::AbsOp>,
                  SetSubConstSignPattern>(ctx_);
 
