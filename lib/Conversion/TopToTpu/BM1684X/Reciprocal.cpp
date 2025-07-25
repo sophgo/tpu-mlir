@@ -14,6 +14,7 @@ namespace bm1684x {
 
 void ReciprocalLowering::LoweringF32(PatternRewriter &rewriter,
                                      top::ReciprocalOp op) const {
+  try_insert_host2device(op, 0);
   lowering_common_f32<tpu::ReciprocalOp>(rewriter, op);
 }
 void ReciprocalLowering::LoweringINT4(PatternRewriter &rewriter,

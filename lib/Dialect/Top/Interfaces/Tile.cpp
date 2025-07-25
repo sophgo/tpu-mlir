@@ -39,8 +39,8 @@ LogicalResult top::TileOp::inference(InferenceParameter &p) {
   std::vector<int64_t> tmp_shape(in_shape.begin(), in_shape.end());
 
   for (int i = 0; i < last_i + 1; ++i) {
-    if (tile_vec[i] == 1)
-      continue;
+    // if (tile_vec[i] == 1)
+    //   continue;
     int len = std::accumulate(tmp_shape.begin(), tmp_shape.end(), 1,
                               std::multiplies<int64_t>());
     float *cur_input = new float[len];
