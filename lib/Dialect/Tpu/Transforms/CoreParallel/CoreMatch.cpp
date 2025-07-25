@@ -279,8 +279,15 @@ static void group_distribute(PatternRewriter &rewriter,
     auto body = new Block();
     subgraph.push_back(body);
     rewriter.setInsertionPointToStart(body);
+    auto results = opEnd->getResults();
+    SmallVector<Value> filteredResults;
+    for (auto result : results) {
+      if (!result.getType().isa<NoneType>()) {
+        filteredResults.push_back(result);
+      }
+    }
     auto yieldOp =
-        rewriter.create<tpu::YieldOp>(opEnd->getLoc(), opEnd->getResults());
+        rewriter.create<tpu::YieldOp>(opEnd->getLoc(), filteredResults);
     opEnd->moveBefore(yieldOp);
     for (; it != opEnd; it = *it->getUsers().begin()) {
       it->moveBefore(opEnd);
