@@ -1694,9 +1694,9 @@ void ConvertTopToTpu::calibration_process() {
   // keep sign for some ops
   // backend not support in out not the same sign
   patterns.clear();
-  patterns.add<KeepSignPattern<top::AvgPoolOp>,
-               KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
-               KeepSignPattern<top::AbsOp>, SetSubConstSignPattern>(ctx_);
+  patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>,
+               KeepAddSignPattern, KeepSignPattern<top::AbsOp>,
+               SetSubConstSignPattern>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   patterns.clear();
   patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);
