@@ -568,7 +568,9 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
 
     for (uint32_t i = 0; i < input_num; ++i) {
       auto w_shape = module::getShape(concat_op.getOperand(i));
-      assert(3 == w_shape.size());
+      if (w_shape.size() != 3){
+        return failure();
+      }
       h = w_shape[1];
       w = w_shape[2];
 

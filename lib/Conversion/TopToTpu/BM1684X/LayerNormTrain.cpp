@@ -14,7 +14,6 @@ namespace bm1684x {
 
 static void LoweringLayerNorm(PatternRewriter &rewriter,
                               top::LayerNormTrainOp op, Type type) {
-  printf("xxxx6\n");
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
   opds.reserve(3);
@@ -53,7 +52,6 @@ static void LoweringLayerNorm(PatternRewriter &rewriter,
     }
   }
 
-  printf("xxxx6, len:%d\n", (int)opds.size());
   rewriter.replaceOpWithNewOp<tpu::LayerNormTrainOp>(op, new_types, opds,
                                                      attrs);
   return;

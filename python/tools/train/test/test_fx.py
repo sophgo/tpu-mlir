@@ -40,12 +40,13 @@ class FX_IR_TESTER(object):
             # FX Test Case, Alphabetically
             #########################################
             # case: (test, bm1684x_support, bm1688_support, bm1690_support)
-            "BatchNormTrain":             (self.test_bn_fwd,                         N, N, Y),
-            "BatchNormBwd":             (self.test_bn_bwd,                         N, N, Y),
-            "Conv":              (self.test_conv_fwd,                   N, N, Y),
-            "Convbwd":             (self.test_conv_bwd,                    N, Y, Y),
+            "BatchNormTrain":           (self.test_bn_fwd,                      N, N, Y),
+            "BatchNormBwd":             (self.test_bn_bwd,                      N, N, Y),
+            "Conv":                     (self.test_conv_fwd,                    N, N, Y),
+            "Convbwd":                  (self.test_conv_bwd,                    N, Y, Y),
             "MaxPoolWithMask":          (self.test_maxpool_fwd,                 N, N, Y),
-            "MaxPoolingIndicesBwd":      (self.test_maxpool_bwd,                     N, Y, Y),#indices need real data
+            "MaxPoolingIndicesBwd":     (self.test_maxpool_bwd,                 N, Y, Y),#indices need real data
+            "IndexPut":                 (self.test_index_put,                   N, Y, Y),
             # "Maxpool_fwd_bwd":  (self.test_maxpool_fwd_bwd,                 N, N, Y),
             # "Where_BNbwd":       (self.test_where_bnbwd,                    N, N, Y),
         }
@@ -474,6 +475,28 @@ class FX_IR_TESTER(object):
             n = 8
             for c, h, w in [(2048, 7, 7), (512, 14, 14)]:
                 self.trace_and_test([[n, c, h, w], [c], [c], [c], [c]], Model())
+
+    def test_index_put(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, updates, axis_h, axis_w, values):
+                #index_put(Tensor self, Tensor?[] indices, Tensor values, bool accumulate=False) -> Tensor
+                res = torch.ops.aten._unsafe_index_put.default(
+                    updates, [None, None, axis_h, axis_w], values, True)
+                return res
+
+        ##inplace_add case
+        updates = torch.zeros((1, 1280, 32, 32))
+        axis_h = (torch.arange(64) // 2).long().unsqueeze(-1)
+        axis_w = (torch.arange(64) // 2).long()
+        values = torch.randn(1, 1280, 64, 64)
+        self.trace_and_test([[1, 1280, 32, 32], [64, 1], [64], [1, 1280, 64, 64]],
+                            Model(),
+                            real_data=[updates, axis_h, axis_w, values])
 
 
 def test_one_case_in_all(tester: FX_IR_TESTER, case, error_cases, success_cases):
