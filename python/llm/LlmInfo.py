@@ -35,6 +35,7 @@ class ModelConfig:
 class LlmType:
     QWEN2 = "qwen2"
     LLAMA = "llama"
+    MLLAMA = "mllama"
     QWEN3 = "qwen3"
     CHATGLM3 = "chatglm"
     GEMMA3 = "gemma3_text"
@@ -69,6 +70,15 @@ class LlmList:
     K_NORM = "K_NORM"  # qwen3
     V_PROJ = "V_PROJ"
     O_PROJ = "O_PROJ"
+    C_Q_PROJ = "C_Q_PROJ"
+    C_Q_NORM = "C_Q_NORM"  # mllama
+    C_K_PROJ = "C_K_PROJ"
+    C_K_NORM = "C_K_NORM"  # mllama
+    C_V_PROJ = "C_V_PROJ"
+    C_O_PROJ = "C_O_PROJ"
+    C_ATTN_GATE = "C_ATTN_GATE"
+    C_MLP_GATE = "C_MLP_GATE"
+    POST_ATTN_LN = "POST_ATTN_LN"
     QKV_WB = "QKV_WB"  # chatglm
     ATT_D = "ATT_D"  # chatglm
     POST_ATTN_LN = "POST_ATTN_LN"
@@ -113,6 +123,35 @@ COMMON_INFO = ModelInfo(
         # ================================
         LlmList.NORM: "model.norm",
         LlmList.LMHEAD: "lm_head",
+    })
+
+# mllama
+MLLAMA_INFO = ModelInfo(
+    ModelConfig(),
+    weights={
+        LlmList.LAYERS: "language_model.model.layers",
+        LlmList.EMBEDING: "language_model.model.embed_tokens",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.O_PROJ: "self_attn.o_proj",
+        LlmList.C_Q_PROJ: "cross_attn.q_proj",
+        LlmList.C_Q_NORM: "cross_attn.q_norm",  # mllama
+        LlmList.C_K_PROJ: "cross_attn.k_proj",
+        LlmList.C_K_NORM: "cross_attn.k_norm",  # mllama
+        LlmList.C_V_PROJ: "cross_attn.v_proj",
+        LlmList.C_O_PROJ: "cross_attn.o_proj",
+        LlmList.C_ATTN_GATE: "cross_attn_attn_gate",
+        LlmList.C_MLP_GATE: "cross_attn_mlp_gate",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.MLP_GATE: "mlp.gate_proj",
+        LlmList.MLP_UP: "mlp.up_proj",
+        LlmList.MLP_DOWN: "mlp.down_proj",
+        # ================================
+        LlmList.NORM: "language_model.model.norm",
+        LlmList.LMHEAD: "language_model.lm_head",
     })
 
 # Phi3

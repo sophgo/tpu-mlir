@@ -54,7 +54,8 @@ class LlmConverter(BaseConverter):
         # init config
         self.load_pretrained(config)
         self.llm_config.max_position_embeddings = self.seq_length
-        self.llm_config.rope_scaling = None  # no need rope scaling
+        if self.config.model_type not in [LlmType.MLLAMA]:
+            self.llm_config.rope_scaling = None  # no need rope scaling
         # get attributes
         self.init_config()
         self.do_vit = False

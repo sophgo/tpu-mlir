@@ -106,9 +106,13 @@ if __name__ == '__main__':
 
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
+
     if config.model_type in ["qwen3", "qwen2", "llama", "minicpm"]:
         from llm.LlmConverter import LlmConverter
         converter = LlmConverter(args, config)
+    elif config.model_type in ["mllama"]:
+        from llm.Llama3_2VConverter import Llama3_2VConverter
+        converter = Llama3_2VConverter(args, config)
     elif config.model_type in ["chatglm"]:
         from llm.Chatglm3Converter import Chatglm3Converter
         converter = Chatglm3Converter(args, config)
