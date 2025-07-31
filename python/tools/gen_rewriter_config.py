@@ -113,13 +113,62 @@ def gen_rewriter_config(model_name: str = "",
         split_num=(8, "int"),
     )
 
+    # SelfAttnTileHeadPattern (tile Head)
+    # ------------
+    rule_SelfAttnTileHeadPattern_1 = generate_rewriter_rules(
+        "SelfAttnTileHeadPattern",
+        out_feature_shape=([1, 257, 16, 257], "vector<int>"),
+        head_per_tile_attn=(2, "int"),
+        head_per_tile_mlp=(16, "int"),
+    )
+    rule_SelfAttnTileHeadPattern_2 = generate_rewriter_rules(
+        "SelfAttnTileHeadPattern",
+        out_feature_shape=([-1, 257, 16, 257], "vector<int>"),
+        head_per_tile_attn=(1, "int"),
+        head_per_tile_mlp=(16, "int"),
+    )
+    # TileTrVPattern (tile N)
+    # ------------
+    rule_TileTrVPattern = generate_rewriter_rules(
+        "TileTrVPattern",
+        out_feature_shape=([-1, 257, 2730], "vector<int>"),
+        mm_weight_shape=([1024, 2730], "vector<int>"),
+        tile_len=(512, "int"),
+    )
+    # MatmulTileKPattern (tile K)
+    # ------------
+    rule_MatmulTileKPattern = generate_rewriter_rules(
+        "MatmulTileKPattern",
+        out_feature_shape=([-1, 257, 1024], "vector<int>"),
+        mm_weight_shape=([2730, 1024], "vector<int>"),
+        tile_len=(512, "int"),
+    )
+    # TileLayerNormPattern (tile C)
+    # ------------
+    rule_TileLayerNormPattern_1 = generate_rewriter_rules(
+        "TileLayerNormPattern",
+        out_feature_shape=([-1, 257, 1024], "vector<int>"),
+        tile_len=(64, "int"),
+    )
+    rule_TileLayerNormPattern_2 = generate_rewriter_rules(
+        "TileLayerNormPattern",
+        out_feature_shape=([-1, 257, 2730], "vector<int>"),
+        tile_len=(64, "int"),
+    )
+
     # Create config with the rewrite rules
     config = create_config(
         # rule_SplitQuantizedMLP2Pattern_template,
         rule_SplitQuantizedMLP2Pattern_1,
         rule_SplitQuantizedMLP2Pattern_2,
         rule_SplitQuantizedMLP2Pattern_3,
-    )
+        # rule for eva-02
+        rule_SelfAttnTileHeadPattern_1,
+        rule_SelfAttnTileHeadPattern_2,
+        rule_TileTrVPattern,
+        # rule_MatmulTileKPattern,
+        rule_TileLayerNormPattern_1,
+        rule_TileLayerNormPattern_2)
 
     # Save the config to a file
     save_config(config, config_filename, silence=silence)

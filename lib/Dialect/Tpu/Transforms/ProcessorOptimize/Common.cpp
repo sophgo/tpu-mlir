@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 namespace tpu_mlir {
 namespace tpu {
+#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
 
 LogicalResult
 LargePadConvPattern::matchAndRewriteImpl(tpu::Conv2DOp op,
@@ -516,6 +517,292 @@ Value createSplitQuantizedMLP2(mlir::PatternRewriter &rewriter,
   }
   return rq_out;
 }
+
+namespace tpu_dialect_tiling_primitives {
+
+llvm::SmallVector<Value> split_value(Value in_value, int axis,
+                                     std::vector<int64_t> &tile_lens,
+                                     std::string suffix,
+                                     PatternRewriter &rewriter) {
+  if (in_value.getType().isa<NoneType>()) {
+    return llvm::SmallVector<Value, 8>();
+  }
+  auto in_shape = module::getShape(in_value);
+  auto dims = in_shape.size();
+  axis = axis < 0 ? dims + axis : axis;
+  assert(std::accumulate(tile_lens.begin(), tile_lens.end(), 0) ==
+         in_shape[axis]);
+  llvm::SmallVector<Value> split_values;
+  if (module::isWeight(in_value)) {
+    auto weight_op = dyn_cast<top::WeightOp>(in_value.getDefiningOp());
+    for (int i = 0; i < tile_lens.size(); i++) {
+      int begin = std::accumulate(tile_lens.begin(), tile_lens.begin() + i, 0);
+      int end = begin + tile_lens[i];
+      split_values.push_back(
+          weight_op.split(begin, end, axis, module::getStorageType(in_value),
+                          suffix + "_tile" + std::to_string(i)));
+    }
+  } else {
+    std::vector<int64_t> offset(dims, 0);
+    std::vector<int64_t> steps(dims, 1);
+    std::vector<int64_t> ends(dims, std::numeric_limits<int64_t>::max());
+    for (int i = 0; i < tile_lens.size(); i++) {
+      int begin = std::accumulate(tile_lens.begin(), tile_lens.begin() + i, 0);
+      int end = begin + tile_lens[i];
+      offset[axis] = begin;
+      ends[axis] = end;
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(
+          rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(offset)));
+      attrs.push_back(
+          rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
+      attrs.push_back(
+          rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
+      attrs.push_back(
+          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({axis})));
+      auto none = module::getNoneOp(in_value.getDefiningOp());
+      std::vector<Value> operands = {in_value, none, none, none, none};
+      auto slice_op = rewriter.create<tpu::SliceOp>(
+          module::getLocLike(in_value, suffix + "_tile" + std::to_string(i)),
+          in_value.getType(), operands, attrs);
+      std::vector<int64_t> out_shape = in_shape;
+      out_shape[axis] = tile_lens[i];
+      module::setShape(slice_op.getOutput(), out_shape);
+      split_values.push_back(slice_op.getOutput());
+    }
+  }
+  return split_values;
+}
+
+llvm::SmallVector<Value> split_value(Value in_value, int axis, int tile_len,
+                                     std::string suffix,
+                                     PatternRewriter &rewriter) {
+  if (in_value.getType().isa<NoneType>()) {
+    return llvm::SmallVector<Value, 8>();
+  }
+  auto in_shape = module::getShape(in_value);
+  auto dim = in_shape.size();
+  axis = axis < 0 ? dim + axis : axis;
+  int num_tiles = DIV_UP(in_shape[axis], tile_len);
+  std::vector<int64_t> tile_lens(num_tiles, tile_len);
+  tile_lens[num_tiles - 1] = in_shape[axis] - (num_tiles - 1) * tile_len;
+  return split_value(in_value, axis, tile_lens, suffix, rewriter);
+}
+
+Value clone_matmul(tpu::MatMulOp op, Value input, Value right, Value bias,
+                   Value multi, PatternRewriter &rewriter, std::string suffix) {
+  auto new_matmul = rewriter.clone(*op);
+  new_matmul->setOperand(0, input);
+  new_matmul->setOperand(1, right);
+  if (bias)
+    new_matmul->setOperand(2, bias);
+  if (multi)
+    new_matmul->setOperand(3, multi);
+  module::setLocSuffix(new_matmul, suffix);
+  auto left_shape = module::getShape(input);
+  auto right_shape = module::getShape(right);
+  auto o_feat_len =
+      op.getRightTranspose()
+          ? (op.getHdimIsBatch() ? right_shape[right_shape.size() - 3]
+                                 : right_shape[right_shape.size() - 2])
+          : right_shape[right_shape.size() - 1];
+  std::vector<int64_t> new_shape = left_shape;
+  new_shape[left_shape.size() - 1] = o_feat_len;
+  module::setShape(new_matmul->getResult(0), new_shape);
+  return new_matmul->getResult(0);
+}
+
+Value clone_splitK_matmul(tpu::MatMulOp matMulOp, Value input, Value weight,
+                          Value bias, PatternRewriter &rewriter,
+                          std::string suffix) {
+  auto new_loc = module::getLocLike(matMulOp.getOutput(), suffix);
+  auto out_shape = module::getShape(matMulOp.getOutput());
+  Type new_type;
+  if (module::getStorageType(matMulOp.getOutput()).isInteger(8)) {
+    new_type = RankedTensorType::get(out_shape, rewriter.getI32Type());
+  } else {
+    new_type = matMulOp.getOutput().getType();
+    if (!module::isWeight(matMulOp.getOutput()))
+      llvm::WithColor::warning()
+          << "unsafe data type for matmul split K pattern." << "\n";
+  }
+  auto none = module::getNoneOp(matMulOp);
+  auto new_matmul = rewriter.create<tpu::MatMulOp>(
+      new_loc, new_type, ValueRange{input, weight, bias, none, none},
+      matMulOp->getAttrs());
+  new_matmul.setRshiftsAttr(rewriter.getI64ArrayAttr({0}));
+  new_matmul.setFuseRqAttr(rewriter.getBoolAttr(false));
+  return new_matmul.getResult();
+}
+
+Value clone_reshape(tpu::ReshapeOp op, Value input,
+                    std::vector<int64_t> &oshape, PatternRewriter &rewriter,
+                    std::string suffix) {
+  auto new_reshape = rewriter.clone(*op);
+  new_reshape->setOperand(0, input);
+  module::setLocSuffix(new_reshape, suffix);
+  new_reshape->setAttr("shape", rewriter.getI64ArrayAttr(oshape));
+  module::setShape(new_reshape->getResult(0), oshape);
+  assert(module::getNumElements(new_reshape->getResult(0)) ==
+             module::getNumElements(new_reshape->getOperand(0)) &&
+         "wrong shape.");
+  return new_reshape->getResult(0);
+}
+
+Value clone_common_op(Operation *op, Value input, PatternRewriter &rewriter,
+                      std::string suffix) {
+  auto new_op = rewriter.clone(*op);
+  new_op->setOperand(0, input);
+  module::setShape(new_op->getResult(0), module::getShape(input));
+  module::setLocSuffix(new_op, suffix);
+  return new_op->getResult(0);
+}
+
+Value clone_common_ops_between(Operation *beg_op, Operation *end_op,
+                               Value input, PatternRewriter &rewriter,
+                               std::string suffix, int max_depth) {
+  if (max_depth <= 0) {
+    llvm::errs() << "Warning: [clone_common_ops] max depth reached.\n";
+  }
+  assert(beg_op->hasOneUse() && "use wrong api.");
+  Operation *next_op = *beg_op->getUsers().begin();
+  if (next_op == end_op) {
+    return input;
+  }
+  Value new_input = clone_common_op(next_op, input, rewriter, suffix);
+  return clone_common_ops_between(next_op, end_op, new_input, rewriter, suffix,
+                                  max_depth - 1);
+}
+
+StringRef findLongestCommonPrefix(ArrayRef<StringRef> strs) {
+  if (strs.empty())
+    return StringRef();
+  StringRef prefix = strs[0];
+  for (size_t i = 1; i < strs.size(); ++i) {
+    while (!strs[i].startswith(prefix)) {
+      prefix = prefix.drop_back();
+      if (prefix.empty())
+        return StringRef();
+    }
+  }
+  return prefix;
+}
+
+std::string concatNameLocsWithCommonPrefix(llvm::SmallVector<Value> values) {
+  if (values.empty())
+    return "";
+  if (values.size() == 1)
+    return module::getName(values[0]).str();
+  llvm::SmallVector<StringRef, 8> strs;
+  for (auto value : values) {
+    strs.push_back(module::getName(value));
+  }
+  StringRef commonPrefix = findLongestCommonPrefix(strs);
+  size_t prefixLen = commonPrefix.size();
+  std::string result;
+  for (size_t i = 0; i < strs.size(); ++i) {
+    if (i != 0) {
+      result += "_AND_";
+    }
+    result += strs[i].substr(prefixLen).str();
+  }
+  return (commonPrefix.str() + result);
+}
+
+Value concat_values(llvm::SmallVector<Value> values, int axis,
+                    PatternRewriter &rewriter) {
+  assert(values.size() > 0);
+  if (values.size() == 1)
+    return values[0];
+  std::vector<int64_t> out_shape = module::getShape(values[0]);
+  axis = axis < 0 ? out_shape.size() + axis : axis;
+  for (int i = 1; i < values.size(); i++) {
+    out_shape[axis] += module::getShape(values[i])[axis];
+  }
+  auto new_loc = NameLoc::get(rewriter.getStringAttr(
+      concatNameLocsWithCommonPrefix(values) + "_concat"));
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(axis)));
+  auto concat_op = rewriter.create<tpu::ConcatOp>(
+      new_loc, module::getTypeLike(values[0], out_shape), values, attrs);
+  return concat_op.getResult();
+}
+
+Value reduce_add(Value input1, Value input2, PatternRewriter &rewriter) {
+  // reduce sum.
+  auto element_type = module::getStorageType(input1);
+  bool is_float_type =
+      element_type.isF32() || element_type.isF16() || element_type.isBF16();
+  bool is_integer_type =
+      element_type.isInteger(8) || element_type.isInteger(32);
+  auto new_loc = NameLoc::get(rewriter.getStringAttr(
+      concatNameLocsWithCommonPrefix({input1, input2}) + "_ReduceSum"));
+  if (is_integer_type) {
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(0)));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("Add")));
+    std::vector<Value> operands = {input1, input2};
+    auto binary_op = rewriter.create<tpu::BinaryShiftOp>(
+        new_loc, input1.getType(), operands, attrs);
+    return binary_op.getResult();
+  } else if (is_float_type) {
+    std::vector<Value> operands = {input1, input2};
+    std::vector<NamedAttribute> attrs;
+    auto add_op =
+        rewriter.create<tpu::AddOp>(new_loc, input1.getType(), operands, attrs);
+    return add_op.getResult();
+  } else {
+    assert(0 && "not implemented.");
+    return nullptr;
+  };
+}
+
+Value apply_multipliers(Value input, Value multipliers, int scale, int rshift,
+                        PatternRewriter &rewriter) {
+
+  if (!module::isNone(multipliers)) {
+    if (scale != 1)
+      llvm::errs() << "not support yet." << "\n";
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(rshift)));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("Mul")));
+    Value result = rewriter.create<tpu::BinaryShiftOp>(
+        module::getLocLike(input, "_multi"), input.getType(),
+        ValueRange{input, multipliers}, attrs);
+    return result;
+  } else if (scale != 1 || rshift != 0) {
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("scale", rewriter.getSI32IntegerAttr(scale)));
+    attrs.push_back(
+        rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(rshift)));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("Mul")));
+    Value result = rewriter.create<tpu::BinaryConstShiftOp>(
+        module::getLocLike(input, "_binaryconstshift"), input.getType(),
+        ValueRange{input}, attrs);
+    return result;
+  }
+  return input;
+}
+
+bool is_same_shape(const std::vector<int64_t> &shape1,
+                   std::vector<int> exp_shape) {
+  if (shape1.size() != exp_shape.size())
+    return false;
+  for (int i = 0; i < shape1.size(); i++) {
+    if (shape1[i] != exp_shape[i] && exp_shape[i] != -1)
+      return false;
+  }
+  return true;
+}
+
+} // namespace tpu_dialect_tiling_primitives
 
 // reshape (in == out)
 LogicalResult RemoveReshape::matchAndRewrite(tpu::ReshapeOp op,

@@ -140,7 +140,7 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
              ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp, WhereOp,
              BatchNormBwdOp, LutOp, BinaryConstShiftOp, BinaryShiftOp,
-             AddConstOp, ReduceOp, ClipOp, DivOp>(op)) {
+             AddConstOp, ReduceOp, ClipOp, DivOp, RopeOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -1285,34 +1285,36 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
   show_cut_results();
   // some post process for cluster
-  LAYER_GROUP_LOG_DEBUG_BLOCK({
-    llvm::outs() << "-------------------------------------------------------\n";
-    llvm::outs() << "Consider redundant computation and gdma cost\n";
-    llvm::outs() << "-------------------------------------------------------\n";
-  });
-  consider_redundant_computation_and_gdma_cost(base_groups);
-  show_cut_results();
+  // LAYER_GROUP_LOG_DEBUG_BLOCK({
+  //   llvm::outs() <<
+  //   "-------------------------------------------------------\n"; llvm::outs()
+  //   << "Consider redundant computation and gdma cost\n"; llvm::outs() <<
+  //   "-------------------------------------------------------\n";
+  // });
+  // consider_redundant_computation_and_gdma_cost(base_groups);
+  // show_cut_results();
 
-  LAYER_GROUP_LOG_DEBUG_BLOCK({
-    llvm::outs() << "-------------------------------------------------------\n";
-    llvm::outs() << "Merge cut idx to reduce gdma cost\n";
-    llvm::outs() << "-------------------------------------------------------\n";
-  });
-  bool take_effective = merge_cut_idx_to_reduce_gdma_cost(base_groups);
-  show_cut_results();
+  // LAYER_GROUP_LOG_DEBUG_BLOCK({
+  //   llvm::outs() <<
+  //   "-------------------------------------------------------\n"; llvm::outs()
+  //   << "Merge cut idx to reduce gdma cost\n"; llvm::outs() <<
+  //   "-------------------------------------------------------\n";
+  // });
+  // bool take_effective = merge_cut_idx_to_reduce_gdma_cost(base_groups);
+  // show_cut_results();
 
-  if (take_effective) {
-    LAYER_GROUP_LOG_DEBUG_BLOCK({
-      llvm::outs()
-          << "-------------------------------------------------------\n";
-      llvm::outs() << "Consider redundant computation and gdma cost again\n"
-                   << "due to cut idx merged in the previous step\n";
-      llvm::outs()
-          << "-------------------------------------------------------\n";
-    });
-    consider_redundant_computation_and_gdma_cost(base_groups);
-    show_cut_results();
-  }
+  // if (take_effective) {
+  //   LAYER_GROUP_LOG_DEBUG_BLOCK({
+  //     llvm::outs()
+  //         << "-------------------------------------------------------\n";
+  //     llvm::outs() << "Consider redundant computation and gdma cost again\n"
+  //                  << "due to cut idx merged in the previous step\n";
+  //     llvm::outs()
+  //         << "-------------------------------------------------------\n";
+  //   });
+  //   consider_redundant_computation_and_gdma_cost(base_groups);
+  //   show_cut_results();
+  // }
 
   // for debug, fix cut results
   // std::vector<int64_t> override_is = {8, 10, 12, 16, 24, 26, 36, 42, 77, 91,
