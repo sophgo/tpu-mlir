@@ -27,7 +27,7 @@ def parse_max_pixels(value):
             height = int(parts[1].strip())
         except ValueError:
             raise argparse.ArgumentTypeError("The input values must be integers, e.g., 128,124")
-        return int(width * height)
+        return int(width * height), [width, height]
     else:
         try:
             return int(value)
@@ -97,6 +97,12 @@ if __name__ == '__main__':
         raise ValueError(
             "max_prefill_kv_length should not be larger than seq_length, got: {}".format(
                 args.max_prefill_kv_length))
+    if isinstance(args.max_pixels, tuple):
+        max_pixels, max_shape = args.max_pixels
+        args.max_pixels = max_pixels
+        args.max_shape = max_shape
+    else:
+        args.max_shape = None
 
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
@@ -124,6 +130,9 @@ if __name__ == '__main__':
     elif config.model_type in ['gemma3']:
         from llm.Gemma3Converter import Gemma3Converter
         converter = Gemma3Converter(args, config)
+    elif config.model_type in ['glm4v']:
+        from llm.GLM4VConverter import GLM4VConverter
+        converter = GLM4VConverter(args, config)
     else:
         raise RuntimeError("Unsupported model type: {}".format(config.model_type))
     converter.run()

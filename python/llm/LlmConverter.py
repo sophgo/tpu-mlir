@@ -79,6 +79,8 @@ class LlmConverter(BaseConverter):
         self.extern_gen_mlirs = []
         self.extern_compiles = []
         self.extern_bmodels = []
+        # store all weights name because some weights like qkv.weights may be splitted
+        self.weights = []
 
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
@@ -653,7 +655,8 @@ class LlmConverter(BaseConverter):
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
         else:
             bias_op = mlir_gen.none_op
-        if self.quant_mode and self.model.is_exist(proj + ".qweight"):
+        if self.quant_mode and (self.model.is_exist(proj + ".qweight") or
+                                (proj + ".qweight" in self.weights)):
             qweight_op = mlir_gen.create_weight_op(
                 proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)],
                 'UINT8')
@@ -682,6 +685,8 @@ class LlmConverter(BaseConverter):
                             loc=self.get_loc(proj, mlir_gen),
                             ip=mlir_gen.insert_point).output
 
+    # q_embed = (q * cos) + (rotate_half(q) * sin)
+    # k_embed = (k * cos) + (rotate_half(k) * sin)
     def rotary_pos(self, mlir_gen, in_op, cos_op, sin_op, out_name: str):
         in_shape = in_op.type.shape
         prefix = f"{out_name}.rotary_pos"
@@ -782,7 +787,7 @@ class LlmConverter(BaseConverter):
                 weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
                 weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
             else:
-                raise RuntimeError("Can't find key: {}".format(weight_path))
+                raise RuntimeError("Can't find key: {}".format(qweight_path))
         if self.model.is_exist(bias_path):
             weight_dict[bias_path] = self.model.read(bias_path)
 
@@ -1379,6 +1384,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--quant_output')
         if self.high_precision:
             deploy_args.append('--high_precision')
+        if self.debug:
+            deploy_args.append('--debug')
         self.add_task(deploy_args, f"{name}.log")
 
     def combine(self):

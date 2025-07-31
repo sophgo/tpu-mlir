@@ -32,7 +32,7 @@ if __name__ == '__main__':
                         help="num device for bmodel")
     parser.add_argument('--num_core', type=int, default=1,
                         help="num cores for bmodel")
-    parser.add_argument('--quant_lmhead', type=bool, default=False,
+    parser.add_argument('--quant_lmhead', action='store_true',
                         help="quantize lmhead based on quant type")
     args = parser.parse_args()
     # yapf: enable
