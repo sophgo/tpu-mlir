@@ -31,7 +31,8 @@ class FX_IR_TESTER(object):
                  concise_log: bool = False,
                  disable_cmp: bool = False,
                  json_file: str = "",
-                 case_id: int = -1):
+                 case_id: int = -1,
+                 mode: str = "f16"):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -56,6 +57,7 @@ class FX_IR_TESTER(object):
         self.json_cases = {}
         self.failed_cases = []
         self.case_id = case_id
+        self.mode = mode
         if self.json_file:
             assert not self.json_file or os.path.exists(
                 self.json_file), f"Path {self.json_file} does not exist"
@@ -67,7 +69,11 @@ class FX_IR_TESTER(object):
         submodule_name: str,
         module: torch.fx.GraphModule,
     ):
-        c = fx2mlir(submodule_name=submodule_name, chip=self.chip, bwd_graph=False, cmp=self.cmp)
+        c = fx2mlir(submodule_name=submodule_name,
+                    chip=self.chip,
+                    bwd_graph=False,
+                    cmp=self.cmp,
+                    mode=self.mode)
         return c.convert(module)
 
     def generate_random(self, shape, dtype='float32', min=-1, max=1):
@@ -210,6 +216,10 @@ class FX_IR_TESTER(object):
                                                           (128, 128, 256, 56, 56, 56, 56, 1, 1)]:
                 self.trace_and_test([[batch, oc, oh, ow], [batch, ic, ih, iw], [oc, ic, kh, kw]],
                                     Model())
+            if self.chip == "bm1690":
+                # bm1690 support grad_bias
+                self.trace_and_test([[8, 255, 40, 40], [8, 256, 40, 40], [255, 256, 1, 1]],
+                                    Model(grad_bias_enable=True))
 
     def test_conv_fwd(self, json_case=None):
 
@@ -517,12 +527,18 @@ if __name__ == "__main__":
                         default=-1,
                         type=int,
                         help="load the specific id case from json file, only for single op test")
+    parser.add_argument("--mode",
+                        default="f16",
+                        choices=['f16', 'f32'],
+                        type=str.lower,
+                        help="quantize mode, f16 or f32")
     args = parser.parse_args()
     tester = FX_IR_TESTER(chip=args.chip,
                           concise_log=args.concise_log,
                           disable_cmp=args.disable_cmp,
                           json_file=args.json_file,
-                          case_id=args.case_id)
+                          case_id=args.case_id,
+                          mode=args.mode)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

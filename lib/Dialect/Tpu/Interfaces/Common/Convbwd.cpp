@@ -107,12 +107,14 @@ mlir::Type tpu::ConvbwdOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
     return do_nothing(mode);
   }
-  auto stype = module::getStorageType(opd);
-  if (stype.isF16()) {
+  auto opd_stype = module::getStorageType(opd);
+  auto result_stype = module::getStorageType(op->getResult(0));
+
+  if (opd_stype == result_stype) {
     return do_nothing(mode);
   }
   mode = TypeCastMode::DO_CAST;
-  return Builder(op).getF16Type();
+  return result_stype;
 }
 
 uint32_t tpu::ConvbwdOp::dyn_codegen_global_bm1684(void *ir_layer_info) {

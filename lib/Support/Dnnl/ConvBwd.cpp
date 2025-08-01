@@ -33,23 +33,37 @@ void ConvBwd::setup(float *src_data, float *weights_data, float *dst_data,
       memory::desc(src_shape, memory::data_type::f32, memory::format_tag::nchw);
   auto weights_md = memory::desc(weights_shape, memory::data_type::f32,
                                  memory::format_tag::oihw);
+
   auto dst_md =
       memory::desc(dst_shape, memory::data_type::f32, memory::format_tag::nchw);
-
-  // Create forward convolution primitive descriptor
-  conv_fwd_pd = convolution_forward::primitive_desc(
-      eng, prop_kind::forward_training, algorithm::convolution_auto, src_md,
-      weights_md, dst_md, strides, dilation, padding_l, padding_r);
+  auto bias_md = memory::desc({out_channels}, memory::data_type::f32,
+                              memory::format_tag::x);
+  if (compute_grad_bias) {
+    // Create forward convolution primitive descriptor
+    conv_fwd_pd = convolution_forward::primitive_desc(
+        eng, prop_kind::forward_training, algorithm::convolution_auto, src_md,
+        weights_md, bias_md, dst_md, strides, dilation, padding_l, padding_r);
+  } else {
+    conv_fwd_pd = convolution_forward::primitive_desc(
+        eng, prop_kind::forward_training, algorithm::convolution_auto, src_md,
+        weights_md, dst_md, strides, dilation, padding_l, padding_r);
+  }
 
   // Create backward data convolution primitive descriptor
   conv_bwd_data_pd = convolution_backward_data::primitive_desc(
       eng, algorithm::convolution_direct, src_md, weights_md, dst_md, strides,
       dilation, padding_l, padding_r, conv_fwd_pd);
 
-  // Create backward weights convolution primitive descriptor
-  conv_bwd_weights_pd = convolution_backward_weights::primitive_desc(
-      eng, algorithm::convolution_direct, src_md, weights_md, dst_md, strides,
-      dilation, padding_l, padding_r, conv_fwd_pd);
+  if (compute_grad_bias) {
+    // Create backward weights convolution primitive descriptor
+    conv_bwd_weights_pd = convolution_backward_weights::primitive_desc(
+        eng, algorithm::convolution_auto, src_md, weights_md, bias_md, dst_md,
+        strides, dilation, padding_l, padding_r, conv_fwd_pd);
+  } else {
+    conv_bwd_weights_pd = convolution_backward_weights::primitive_desc(
+        eng, algorithm::convolution_auto, src_md, weights_md, dst_md, strides,
+        dilation, padding_l, padding_r, conv_fwd_pd);
+  }
 
   // Create memory objects
   src_mem = memory(src_md, eng, src_data);
@@ -59,9 +73,7 @@ void ConvBwd::setup(float *src_data, float *weights_data, float *dst_data,
   // Create gradient memory objects
   grad_input_mem = memory(src_md, eng, grad_input);
   grad_weight_mem = memory(weights_md, eng, grad_weight);
-  grad_bias_mem =
-      memory({{out_channels}, memory::data_type::f32, memory::format_tag::x},
-             eng, grad_bias);
+  grad_bias_mem = memory(bias_md, eng, grad_bias);
 
   // Create backward data primitive
   conv_bwd_data_prim = convolution_backward_data(conv_bwd_data_pd);

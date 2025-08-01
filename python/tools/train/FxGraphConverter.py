@@ -67,7 +67,12 @@ def convert_to_nCHW(weight_nIC, oc, ic, kh, kw, N):
 
 class fx2mlir(object):
 
-    def __init__(self, submodule_name: str, chip: str, bwd_graph: bool = False, cmp: bool = None):
+    def __init__(self,
+                 submodule_name: str,
+                 chip: str,
+                 bwd_graph: bool = False,
+                 cmp: bool = None,
+                 mode: str = "f16"):
         self.work_dir = submodule_name.split('_')[0]
         os.makedirs(os.path.join(os.getcwd(), self.work_dir), exist_ok=True)
         self.model_name = f'{submodule_name}'
@@ -81,6 +86,9 @@ class fx2mlir(object):
         self.operands = dict()
         self.name_map = dict()
         self.init_fxmlirimporter()
+        self.mode = mode.lower()
+        assert self.mode in ['f16',
+                             'f32'], f"invalid mode {self.mode}, only support f16 and f32 now"
 
         self.processed_op = []
         self.pattern_matchers = {
@@ -412,17 +420,17 @@ class fx2mlir(object):
 
         mlir_opt_for_top(mlir_origin, self.top_mlir)
 
-        self.tpu_mlir = f"{self.model_name}_{self.chip}_f16_tpu.mlir"
+        self.tpu_mlir = f"{self.model_name}_{self.chip}_{self.mode}_tpu.mlir"
         self.bmodel_path = os.path.join(self.work_dir,
-                                        f"{self.model_name}_{self.chip}_f16_tpu.bmodel")
+                                        f"{self.model_name}_{self.chip}_{self.mode}_tpu.bmodel")
         mlir_lowering(top_mlir=self.top_mlir,
                       tpu_mlir=self.tpu_mlir,
-                      mode="F16",
+                      mode=self.mode.upper(),
                       chip=self.chip,
                       num_core=config.get_num_core(self.chip))
         mlir_to_model(tpu_mlir=self.tpu_mlir,
                       bmodel_path=self.bmodel_path,
-                      final_mlir=f"{self.model_name}_{self.chip}_f16_final.mlir",
+                      final_mlir=f"{self.model_name}_{self.chip}_{self.mode}_final.mlir",
                       quant_input=True,
                       quant_output=not self.bwd_graph,
                       opt=config.compile_opt,
