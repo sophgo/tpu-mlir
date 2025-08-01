@@ -2,6 +2,7 @@ build/
 build_ap/
 build_en/
 build_zh/
+build_bm*/
 install/
 tmp/
 work_dir/

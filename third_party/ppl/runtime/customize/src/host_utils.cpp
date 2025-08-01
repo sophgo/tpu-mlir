@@ -18,6 +18,8 @@ int get_chip() {
       chip = PplChip::bm1690;
     } else if (chip_str == "sg2262") {
       chip = PplChip::sg2262;
+    } else if (chip_str == "sg2262rv") {
+      chip = PplChip::sg2262rv;
     } else if (chip_str == "sg2380") {
       chip = PplChip::sg2380;
     } else if (chip_str == "mars3") {

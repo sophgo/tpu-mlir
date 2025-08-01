@@ -78,8 +78,7 @@ cmake --build $BUILD_PATH --target install -j${cpu_num}
 cmake --build $BUILD_PATH --target passes_json_files builder_python install_passes_files
 
 # build ppl code
-rm -rf lib/PplBackend/build
-bash lib/PplBackend/build.sh
+bash lib/PplBackend/build.sh "$1" conditional
 
 # Clean up some files for release build
 if [ "$1" != "DEBUG" ]; then

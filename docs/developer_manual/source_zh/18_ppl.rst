@@ -8,9 +8,9 @@ PPL 后端算子的实现位于 ``tpu-mlir/lib/PplBackend/src`` 目录；如果�
 如何编写和调用后端算子
 ----------------------------
 
-第一步：实现三个源码文件
+第一步：实现源码文件
 
-需要创建三个源码文件，一个是设备端的 ``pl`` 源码，一个是主机端的接口 ``cpp`` 源码， 另一个是主机端的tiling函数 ``cpp`` 源码。以 ``add_const_fp`` 为例，文件名分别为：
+一个是设备端的 ``pl`` 源码，一个是主机端的接口 ``cpp`` 源码， 另一个是主机端的tiling函数 ``cpp`` 源码， 对于动态算子还需实现动态shape推导函数。以 ``add_const_fp`` 为例，文件名分别为：
 
 - ``add_const_fp.pl``：实现 ``add_const_f32`` ， ``add_const_f16`` 及 ``add_const_bf16`` 等 kernel 接口。
 - ``add_const_fp_tile.cpp``：实现 ``add_tiling`` 函数以调用这些 kernel 接口。
@@ -33,7 +33,7 @@ PPL 后端算子的实现位于 ``tpu-mlir/lib/PplBackend/src`` 目录；如果�
                                bool);
     // 添加入口函数，输入参数由用户自定义
     int add_tiling(gaddr_t ptr_dst, gaddr_t ptr_src, float rhs, int N, int C, int H,
-                   int W, bool relu, int dtype) {
+                   int W, bool relu, int dtype, int &block_w) {
       KernelFunc func;
       // 根据输入数据类型，选择合适的算子
       if (dtype == DTYPE_FP32) {
@@ -49,7 +49,7 @@ PPL 后端算子的实现位于 ``tpu-mlir/lib/PplBackend/src`` 目录；如果�
       // 计算block size，可以将block size对齐到EU_NUM，
       // 这样可以减少内存分配失败的次数，并且因为TPU上的内存大部分是按照EU_NUM对齐的，
       // 所以不会影响到内存分配
-      int block_w = align_up(N * C * H * W, EU_NUM);
+      block_w = align_up(N * C * H * W, EU_NUM);
       int ret = -1;
       while (block_w > 1) {
         ret = func(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, relu);
@@ -130,6 +130,7 @@ PPL 后端算子的实现位于 ``tpu-mlir/lib/PplBackend/src`` 目录；如果�
 
 第二步：调用 Kernel 接口
 
+**静态模式**：
 在 ``lib/Dialect/Tpu/Interfaces/BM1684X/AddConst.cpp`` 的 ``void tpu::AddConstOp::codegen_global_bm1684x()`` 函数中，调用 ``api_add_const_fp_global``，代码如下：
 
 .. code-block:: cpp
@@ -146,7 +147,28 @@ PPL 后端算子的实现位于 ``tpu-mlir/lib/PplBackend/src`` 目录；如果�
                                 &sec_info, input_spec->data(),
                                 output_spec->data());
 
+**动态模式（option）**：
+在``lib/PplBackend/include/ppl_dyn_fw.h`` 的ppl_fw_layer_type 和 ``include/tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynCompileCommon.hpp`` 的fw_layer_type，添加动态算子id，命名方式为：
+``PPL_FW_{kenel_name}``
+在``lib/PplBackend/src_dyn/dyn_layer_ctrl.c``中添加shape推导与参数更新函数dynamic_xxxx_layer_ctrl 并在fw_init_ppl_func_map中进行注册，流程与TPU1686中添加动态算子一致
+在 ``lib/Dialect/Tpu/Interfaces/BM1684X/AddConst.cpp`` 的 ``int64_t tpu::AddConstOp::get_fw_type_bm1684x()`` 函数中，返回layer type， layer type为lib/PplBackend/include/ppl_dyn_fw.h中自定义的PPL_FW_LAYER_TYPE_T。
+在 ``lib/Dialect/Tpu/Interfaces/BM1684X/AddConst.cpp`` 的 ``void tpu::AddConstOp::dyn_codegen_global_bm1684x()`` 函数中，调用 ``api_dyn_add_const_fp_global``，代码如下：
+
+.. code-block:: cpp
+
+    BM168x::call_ppl_dyn_func("api_dyn_add_const_fp_global", &param,
+                              input_spec->data(), output_spec->data(), buffer);
+
+如果该算子支持局部执行，则实现 ``api_dyn_xxxxOp_local``，并使用 ``BM168x::call_ppl_dyn_func`` 进行调用。
+
+.. code-block:: cpp
+
+    BM168x::call_ppl_dyn_func("api_dyn_xxxx_local", &param,
+                              input_spec->data(), output_spec->data(), buffer);
+
 以上便完成了后端算子的实现。
+
+最后执行 lib/PplBackend/build.sh 完成算子的编译
 
 PPL 集成到 TPU-MLIR 的流程
 ----------------------------

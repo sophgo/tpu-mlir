@@ -23,6 +23,7 @@ enum PplChip {
   sg2380 = 4,
   mars3 = 5,
   bm1684xe = 6,
+  sg2262rv = 7,
 };
 
 enum PplErrorCode_t {

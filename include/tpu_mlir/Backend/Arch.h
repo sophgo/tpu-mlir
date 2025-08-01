@@ -32,6 +32,7 @@ public:
   static int64_t LMEM_BANKS;
   static int64_t LMEM_BANK_BYTES;
   static llvm::StringRef LIB_BACKEND_NAME;
+  static llvm::StringRef LIB_PPL_DYN_HOST_NAME;
   static bool ALIGN_4N;
   static module::Chip chip;
   static uint64_t FREQ;
@@ -65,15 +66,16 @@ public:
   }
 
   template <typename FPtrTy>
-  FPtrTy PplCastToFPtr(const char *symbolName) {
-    if (!PPL_DL.isValid()) {
-      load_ppl();
+  FPtrTy PplCastToFPtr(const char *symbolName, bool is_dyn = false) {
+    llvm::sys::DynamicLibrary &DLRef = is_dyn ? PPL_DYN_DL : PPL_DL;
+    if (!DLRef.isValid()) {
+      load_ppl(is_dyn);
     }
-    if (!PPL_DL.isValid()) {
+    if (!DLRef.isValid()) {
       llvm::errs() << "ppl can't be loaded!!\n";
       llvm_unreachable(symbolName);
     }
-    auto fPtr = PPL_DL.getAddressOfSymbol(symbolName);
+    auto fPtr = DLRef.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
       llvm::errs() << "can't find symbol: " << symbolName << "\n";
       llvm_unreachable(symbolName);
@@ -133,11 +135,11 @@ public:
 
 protected:
   static Arch *inst;
-  llvm::sys::DynamicLibrary DL, PPL_DL;
+  llvm::sys::DynamicLibrary DL, PPL_DL, PPL_DYN_DL;
   Arch(){};
   virtual ~Arch() = 0;
   void load_library();
-  void load_ppl();
+  void load_ppl(bool is_dyn);
 };
 } // namespace backend
 } // namespace tpu_mlir

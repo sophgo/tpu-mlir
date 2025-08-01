@@ -1,28 +1,125 @@
 #!/bin/bash
-
-set -ex
-
+set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-pushd "$DIR"
+CPU_NUM=$(cat /proc/stat | grep cpu[0-9] -c)
 
-# clear cache
-CACHE_PATH=${PPL_CACHE_PATH}
-if [ x${CACHE_PATH} = x ];then
-  CACHE_PATH=${HOME}"/.ppl/cache"
+usage() {
+  echo "Usage: $0 [RELEASE|DEBUG] [force|conditional]"
+}
+
+if [[ -z "$INSTALL_PATH" ]]; then
+  echo "${RED}ERROR${NC}: Please source envsetup.sh firstly."
+  exit 1
 fi
 
-rm -rf $CACHE_PATH
-rm -rf build
+DEBUG_FLAG=""
+UPDATE_POLICY="force"
+if [ -n "$1" ]; then
+    if [ "$1" = "DEBUG" ]; then
+        DEBUG_FLAG="-DDEBUG=ON"
+    elif [ "$1" != "RELEASE" ]; then
+        echo "Invalid build mode: $1"
+        usage
+        exit 1
+    fi
+fi
+# update policy
+if [ -n "$2" ]; then
+    if [ "$2" = "conditional" ]; then
+        UPDATE_POLICY=$2
+    elif [ "$1" != "force" ]; then
+        echo "Invalid update policy: $2"
+        usage
+        exit 1
+    fi
+fi
+# func
+clean_up() {
+  local build_dir=${1:-build}
+  # clear cache
+	CACHE_PATH=${PPL_CACHE_PATH}
+  if [ x${CACHE_PATH} = x ];then
+    CACHE_PATH=${HOME}"/.ppl/cache"
+  fi
+  rm -rf $CACHE_PATH
+  rm -rf $build_dir
+  mkdir -p $build_dir
+}
 
-mkdir -p build
-cd build
+extract_sha() {
+    grep -oP ".*$1 sha256: \w{40}.*" "$2"
+}
+# get latest nntoolchain version
+NNTC_VER_PATH=${PROJECT_ROOT}/third_party/nntoolchain/README.md
+PPL_VER_PATH=${PROJECT_ROOT}/third_party/ppl/version
+VER_FILE=${PROJECT_ROOT}/third_party/nntoolchain/ppl/version
+if [ ! -f "$NNTC_VER_PATH" ]; then
+  exit 0
+fi
+bm1684x_sha=$(extract_sha "#bm1684x" "${NNTC_VER_PATH}")
+bm1688_sha=$(extract_sha "#bm1688" "${NNTC_VER_PATH}")
+read -r ppl_ver < $PPL_VER_PATH
+content="$(printf '%s\n%s\n%s' "$bm1684x_sha" "$bm1688_sha" "$ppl_ver")"
+# check whether the third_party/nntoolchain/lib or ppl is updated
+if [ "$UPDATE_POLICY" = "conditional" ] && 
+   [ -f "$VER_FILE" ] &&
+   grep -Fxq -- "$bm1684x_sha" "$VER_FILE" &&
+   grep -Fxq -- "$bm1688_sha" "$VER_FILE" &&
+   grep -Fxq -- "$ppl_ver" "$VER_FILE"; then
+  exit 0
+fi
+# build third_party/nntoolchain/ppl lib
+echo "rebuilding ppl..."
+pushd "$DIR"
+# dyn
+chips=("bm1684x" "bm1688")
+for chip in "${chips[@]}"; do
+  build_dir="build_${chip}_dyn"
+  clean_up "$build_dir"
+  pushd "$build_dir"
+  for file in `ls ../src/*.pl`
+  do
+    ppl-compile $file --chip $chip --mode 5 --O2 --o .
+  done
+  cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}
+  make -j${CPU_NUM} install
+  cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=OFF -DBUILD_DIR=${build_dir} -DBUILD_DYN_HOST=ON
+  make -j${CPU_NUM} install 
+  popd
+done
 
+# static
+clean_up
+pushd build
 for file in `ls ../src/*.pl`
 do
   ppl-compile $file --I $PPL_PROJECT_ROOT/inc  --desc --O2 --o .
 done
-
-cmake ../ -DDEBUG=ON -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}"
+cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=ON
 make install
-
 popd
+
+# Check if each PPL_FW_LAYER_TYPE_T enum already exists in FW_LAYER_TYPE_T
+header_file="${PROJECT_ROOT}/include/tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynCompileCommon.hpp"
+ppl_header_file="${DIR}/include/ppl_dyn_fw.h"
+
+awk '/typedef enum fw_layer_type {/,/} FW_LAYER_TYPE_T;/' "$header_file" | 
+grep -Eo '^[[:space:]]*PPL_[A-Z0-9_]+[[:space:]]*=[[:space:]]*[0-9]+' | 
+sort -u > existing_enums.tmp
+missing_count=0
+while read -r new_enum; do
+  if ! grep -q "^[[:space:]]*${new_enum}$" existing_enums.tmp; then
+    echo "$new_enum,"
+    (( missing_count++ ))
+  fi
+done < <(
+  grep -Eo '^[[:space:]]*PPL_[A-Z0-9_]+[[:space:]]*=[[:space:]]*[0-9]+' "$ppl_header_file"
+)
+rm -f existing_enums.tmp
+if [ "$missing_count" -gt 0 ]; then
+    echo -e "\n\033[1;35mTotal missing definitions: $missing_count\033[0m"
+    echo -e "\033[1;31mERROR: Add above definitions to $header_file and rebuild tpu-mlir\033[0m"
+    exit 1 
+fi
+# write nntc and ppl version to VER_FILE
+printf '%s\n' "$content" > "$VER_FILE"

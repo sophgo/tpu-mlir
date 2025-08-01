@@ -4,22 +4,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 #include "ppl_defs.h"
 #include "ppl_tpu.h"
 #include "ppl_types.h"
 #include "ppl_utils.h"
+#include <inttypes.h>
 
 namespace ppl {
 namespace tiu {
 
 template <typename DataType>
-void arange_broadcast(tensor<DataType> &dst, int start, int step, int num);
-
-template <typename DataType>
-void broadcast(tensor<DataType> &dst, tensor<DataType> &src,
-               int num = 0);
+void broadcast(tensor<DataType> &dst, tensor<DataType> &src, int num = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
@@ -191,23 +187,23 @@ void rq0(tensor<DataType0> &dst, tensor<DataType1> &src, tensor<float> &quant,
 
 template <typename DataType0, typename DataType1>
 void rq1(tensor<DataType0> &dst, tensor<DataType1> &src, int multiplier,
-         int shift, int offset, rounding_mode_t round_mode);
+         int8_t shift, int16_t offset, rounding_mode_t round_mode);
 
-template <typename DataType0, typename DataType1>
-void rq1(tensor<DataType0> &dst, tensor<DataType1> &src, tensor<float> &quant,
-         rounding_mode_t round_mode);
+template <typename DataType0, typename DataType1, typename DataType2>
+void rq1(tensor<DataType0> &dst, tensor<DataType1> &src,
+         tensor<DataType2> &quant, rounding_mode_t round_mode);
 
-template <typename DataType0, typename DataType1>
-void dq0(tensor<DataType0> &dst, tensor<DataType1> &src, short offset,
+template <typename DataType0>
+void dq0(tensor<float> &dst, tensor<DataType0> &src, int16_t offset,
          float scale, rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1>
-void dq0(tensor<DataType0> &dst, tensor<DataType1> &src, tensor<int> &quant,
+void dq0(tensor<float> &dst, tensor<DataType0> &src, tensor<DataType1> &quant,
          rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1>
-void dq1(tensor<DataType0> &dst, tensor<DataType1> &src, short offset,
-         int multiplier, char shift, rounding_mode_t round_mode);
+void dq1(tensor<DataType0> &dst, tensor<DataType1> &src, int16_t offset,
+         int multiplier, int8_t shift, rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1>
 void dq1(tensor<DataType0> &dst, tensor<DataType1> &src, tensor<int> &quant,
@@ -515,24 +511,26 @@ template <typename DataType0, typename DataType1>
 void fmax(tensor<DataType0> &dst, tensor<DataType0> &src, DataType1 C);
 
 template <typename DataType>
-void fadd(tensor<DataType> &dst, tensor<DataType> &src0,
-          tensor<DataType> &src1);
+void fadd(tensor<DataType> &dst, tensor<DataType> &src0, tensor<DataType> &src1,
+          bool saturation = 0);
 template <typename DataType>
-void fadd(tensor<DataType> &dst, tensor<DataType> &src, float C);
+void fadd(tensor<DataType> &dst, tensor<DataType> &src, float C,
+          bool saturation = 0);
 
 template <typename DataType>
-void fsub(tensor<DataType> &dst, tensor<DataType> &src0,
-          tensor<DataType> &src1);
+void fsub(tensor<DataType> &dst, tensor<DataType> &src0, tensor<DataType> &src1,
+          bool saturation = 0);
 template <typename DataType>
-void fsub(tensor<DataType> &dst, tensor<DataType> &src, float C);
+void fsub(tensor<DataType> &dst, tensor<DataType> &src, float C, int satu = 0);
 template <typename DataType>
-void fsub(tensor<DataType> &dst, float C, tensor<DataType> &src);
+void fsub(tensor<DataType> &dst, float C, tensor<DataType> &src, int satu = 0);
 
 template <typename DataType>
-void fmul(tensor<DataType> &dst, tensor<DataType> &src0,
-          tensor<DataType> &src1);
+void fmul(tensor<DataType> &dst, tensor<DataType> &src0, tensor<DataType> &src1,
+          bool saturation = 0);
 template <typename DataType>
-void fmul(tensor<DataType> &dst, tensor<DataType> &src, float C);
+void fmul(tensor<DataType> &dst, tensor<DataType> &src, float C,
+          bool saturation = 0);
 
 template <typename DataType>
 void fsub_abs(tensor<DataType> &dst, tensor<DataType> &src0,
@@ -541,109 +539,161 @@ template <typename DataType>
 void fsub_abs(tensor<DataType> &dst, tensor<DataType> &src, float C);
 
 //=================== mm2 fp32 ===================
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2_base(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-               DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
-               bool do_relu, bool result_add, data_type_t out_dtype,
-               bool has_bias,
-               bool saturate = false); // MM2FpOp
+template <typename DataType0, typename DataTyp1, typename DataType2,
+          typename DataType3, typename DataType4>
+void fmm2_nn(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right,
+             DataType3 &bias, bool result_add, data_type_t out_dtype,
+             bool do_relu, bool saturate, DataType4 &requant);
+template <typename DataType0, typename DataTyp1, typename DataType2>
+void fmm2_nn(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right) {
+  int bias = 0;
+  bool result_add = false;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  bool saturate = false;
+  int requant = 0;
+  fmm2_nn(dst, left, right, bias, result_add, out_dtype, do_relu, saturate,
+          requant);
+}
 
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2_common(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-                 DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
-                 bool do_relu, bool result_add, data_type_t out_dtype,
-                 bool has_bias, bool saturate = false) {
-#if defined(__bm1684x__) || defined(__bm1688__)
-  tensor<DataType0> *null = nullptr;
-  bool do_relu_false = false;
-  fmm2_base(dst, left, right, *null, ltrans, rtrans, rst_trans, do_relu_false,
-            result_add, out_dtype, false, saturate);
-  if (has_bias) {
-    if constexpr (!std::is_same<tensor<DataType0>, DataType3>::value) {
-      tensor<DataType0> bias_cast;
-      cast(bias_cast, bias);
-      fadd(dst, dst, bias_cast);
-    } else {
-      fadd(dst, dst, bias);
-    }
-  }
-  if (do_relu) {
-    max(dst, dst, 0);
-  }
-#else
-  fmm2_base(dst, left, right, bias, ltrans, rtrans, rst_trans, do_relu,
-            result_add, out_dtype, has_bias, saturate);
-#endif
+template <typename DataType0, typename DataTyp1, typename DataType2>
+void fmm2_nn(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right,
+             bool result_add) {
+  int bias = 0;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  bool saturate = false;
+  int requant = 0;
+  fmm2_nn(dst, left, right, bias, result_add, out_dtype, do_relu, saturate,
+          requant);
+}
+
+template <typename DataType0, typename DataTyp1, typename DataType2,
+          typename DataType3, typename DataType4>
+void fmm2_nt(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right,
+             DataType3 &bias, bool result_add, data_type_t out_dtype,
+             bool do_relu, bool saturate, DataType4 &requant);
+template <typename DataType0, typename DataTyp1, typename DataType2>
+void fmm2_nt(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right) {
+  int bias = 0;
+  bool result_add = false;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  bool saturate = false;
+  int requant = 0;
+  fmm2_nt(dst, left, right, bias, result_add, out_dtype, do_relu, saturate,
+          requant);
+}
+
+template <typename DataType0, typename DataTyp1, typename DataType2>
+void fmm2_nt(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right,
+             bool result_add) {
+  int bias = 0;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  bool saturate = false;
+  int requant = 0;
+  fmm2_nt(dst, left, right, bias, result_add, out_dtype, do_relu, saturate,
+          requant);
+}
+
+template <typename DataType0, typename DataTyp1, typename DataType2,
+          typename DataType3, typename DataType4>
+void fmm2_tt(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right,
+             DataType3 &bias, bool result_add, data_type_t out_dtype,
+             bool do_relu, bool saturate, DataType4 &requant);
+template <typename DataType0, typename DataTyp1, typename DataType2>
+void fmm2_tt(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right) {
+  int bias = 0;
+  bool result_add = false;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  bool saturate = false;
+  int requant = 0;
+  fmm2_tt(dst, left, right, bias, result_add, out_dtype, do_relu, saturate,
+          requant);
+}
+
+template <typename DataType0, typename DataTyp1, typename DataType2>
+void fmm2_tt(tensor<DataType0> &dst, DataTyp1 &left, DataType2 &right,
+             bool result_add) {
+  int bias = 0;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  bool saturate = false;
+  int requant = 0;
+  fmm2_tt(dst, left, right, bias, result_add, out_dtype, do_relu, saturate,
+          requant);
 }
 
 template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
-          bool do_relu, bool result_add, data_type_t out_dtype, bool has_bias,
-          bool saturate = false) {
-  fmm2_common(dst, left, right, bias, ltrans, rtrans, rst_trans, do_relu,
-              result_add, out_dtype, has_bias, saturate);
-}
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_nn(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+            DataType3 &bias, bool result_add, data_type_t out_dtype,
+            bool do_relu, DataType4 &r_zp, DataType5 &requant, int multiplier,
+            int8 shift, int16 offset, bool saturate,
+            rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          DataType3 &bias, bool result_add, data_type_t out_dtype,
-          bool has_bias, bool saturate = false) {
-  fmm2_common(dst, left, right, bias, false, false, false, false, result_add,
-              out_dtype, has_bias, saturate);
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_nn(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+            bool result_add, bool saturate, rounding_mode_t round_mode) {
+  int bias = 0;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  int r_zp = 0;
+  int requant = 0;
+  int multiplier = 1;
+  int8 shift = 0;
+  int16 offset = 0;
+  mm2_nn(rst, left, right, bias, result_add, out_dtype, do_relu, r_zp, requant,
+         multiplier, shift, offset, saturate, round_mode);
 }
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_nt(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+            DataType3 &bias, bool result_add, data_type_t out_dtype,
+            bool do_relu, DataType4 &r_zp, DataType5 &requant, int multiplier,
+            int8 shift, int16 offset, bool saturate,
+            rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          DataType3 &bias) {
-  fmm2_common(dst, left, right, bias, false, false, false, false, false,
-              convert_dtype<DataType0>(), true, false);
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_nt(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+            bool result_add, bool saturate, rounding_mode_t round_mode) {
+  int bias = 0;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  int r_zp = 0;
+  int requant = 0;
+  int multiplier = 1;
+  int8 shift = 0;
+  int16 offset = 0;
+  mm2_nt(rst, left, right, bias, result_add, out_dtype, do_relu, r_zp, requant,
+         multiplier, shift, offset, saturate, round_mode);
 }
-
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          bool ltrans, bool rtrans, bool rst_trans, bool do_relu,
-          bool result_add, data_type_t out_dtype, bool saturate = false) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2_common(dst, left, right, *bias, ltrans, rtrans, rst_trans, do_relu,
-              result_add, out_dtype, false, saturate);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          bool ltrans, bool rtrans, bool rst_trans) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2_common(dst, left, right, *bias, ltrans, rtrans, rst_trans, false, false,
-              convert_dtype<DataType0>(), false, false);
-}
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_tt(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+            DataType3 &bias, bool result_add, data_type_t out_dtype,
+            bool do_relu, DataType4 &r_zp, DataType5 &requant, int multiplier,
+            int8 shift, int16 offset, bool saturate,
+            rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans) {
-  fmm2_common(dst, left, right, bias, ltrans, rtrans, rst_trans, false, false,
-              convert_dtype<DataType0>(), true, false);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
-          bool result_add, data_type_t out_dtype) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2_common(dst, left, right, *bias, false, false, false, false, result_add,
-              out_dtype, false, false);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right) {
-  tensor<DataType0> *bias = nullptr;
-  fmm2_common(dst, left, right, *bias, false, false, false, false, false,
-              convert_dtype<DataType0>(), false, false);
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_tt(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+            bool result_add, bool saturate, rounding_mode_t round_mode) {
+  int bias = 0;
+  data_type_t out_dtype = DT_NONE;
+  bool do_relu = false;
+  int r_zp = 0;
+  int requant = 0;
+  int multiplier = 1;
+  int8 shift = 0;
+  int16 offset = 0;
+  mm2_tt(rst, left, right, bias, result_add, out_dtype, do_relu, r_zp, requant,
+         multiplier, shift, offset, saturate, round_mode);
 }
 
 // dst += src0 * src1
@@ -652,184 +702,70 @@ void fmac(tensor<float> &dst, tensor<float> &src, float C);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void add(tensor<DataType0> &dst, tensor<DataType1> &src0,
-         tensor<DataType2> &src1, char shift, rounding_mode_t round_mode,
+         tensor<DataType2> &src1, int8_t shift, rounding_mode_t round_mode,
          bool saturation);
 template <typename DataType0, typename DataType1, typename DataType2>
 void add(tensor<DataType0> &dst, tensor<DataType1> &src0,
          tensor<DataType2> &src1) {
-  char shift = 0;
+  int8_t shift = 0;
   rounding_mode_t round_mode = RM_HALF_UP;
   bool saturation = false;
   add(dst, src0, src1, shift, round_mode, saturation);
 }
 template <typename DataType0, typename DataType1, typename DataType2>
 void add(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 C,
-         char shift, rounding_mode_t round_mode, bool saturation);
+         int8_t shift, rounding_mode_t round_mode, bool saturation);
 template <typename DataType0, typename DataType1, typename DataType2>
 void add(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 C) {
-  char shift = 0;
+  int8_t shift = 0;
   rounding_mode_t round_mode = RM_HALF_UP;
   bool saturation = false;
   add(dst, src, C, shift, round_mode, saturation);
 }
 
-//=================== mm2 int ===================
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5>
-void mm2_base(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-              DataType3 &bias, DataType4 &r_zp, DataType5 &requant,
-              int multiplier, int8 rshift, int16 y_zp, bool ltrans, bool rtrans,
-              bool rst_trans, bool result_add, data_type_t out_dtype,
-              bool has_bias, bool do_relu, bool do_rq, bool saturate,
-              rounding_mode_t round_mode); // MM2Op
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5>
-void mm2_common(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-                DataType3 &bias, DataType4 &r_zp, DataType5 &requant,
-                int multiplier, int8 rshift, int16 y_zp, bool ltrans,
-                bool rtrans, bool rst_trans, bool result_add,
-                data_type_t out_dtype, bool has_bias, bool do_relu, bool do_rq,
-                bool saturate, rounding_mode_t round_mode) {
-#if defined(__bm1684x__) || defined(__bm1688__)
-  tensor<DataType0> *null = nullptr;
-  bool do_relu_false = false;
-  mm2_base(rst, left, right, *null, r_zp, requant, multiplier, rshift, y_zp,
-           ltrans, rtrans, rst_trans, result_add, out_dtype, false, do_relu_false,
-           do_rq, saturate, round_mode);
-  if (has_bias) {
-    if constexpr (!std::is_same<tensor<DataType0>, DataType3>::value) {
-      tensor<DataType0> bias_cast;
-      cast(bias_cast, bias);
-      add(rst, rst, bias_cast);
-    } else {
-      add(rst, rst, bias);
-    }
-  }
-  if (do_relu) {
-    max(rst, rst, 0);
-  }
-#else
-  mm2_base(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp,
-           ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias, do_relu,
-           do_rq, saturate, round_mode);
-#endif
-}
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-         DataType3 &bias, DataType4 &r_zp, bool ltrans, bool rtrans,
-         bool rst_trans, bool result_add, data_type_t out_dtype,
-         bool has_bias = false, bool do_relu = false) {
-  tensor<int32> *requant = nullptr;
-  int multiplier = 0;
-  int8 rshift = 0;
-  int16 y_zp = 0;
-  bool do_rq = false;
-  bool saturate = false;
-  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
-  mm2_common(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp,
-             ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias,
-             do_relu, do_rq, saturate, round_mode);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-         DataType3 &r_zp, bool ltrans, bool rtrans,
-         bool rst_trans, bool result_add,
-         data_type_t out_dtype, bool has_bias) {
-  tensor<int32> *bias = nullptr;
-  tensor<int32> *requant = nullptr;
-  int multiplier = 0;
-  int8 rshift = 0;
-  int16 y_zp = 0;
-  bool do_relu = false;
-  bool do_rq = false;
-  bool saturate = false;
-  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
-  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
-             ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias,
-             do_relu, do_rq, saturate, round_mode);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right, bool ltrans,
-         bool rtrans, bool rst_trans) {
-  int8 r_zp = 0;
-  tensor<int32> *bias = nullptr;
-  bool has_bias = false;
-  tensor<int32> *requant = nullptr;
-  int multiplier = 0;
-  int8 rshift = 0;
-  int16 y_zp = 0;
-  bool do_relu = false;
-  bool do_rq = false;
-  bool saturate = false;
-  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
-  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
-             ltrans, rtrans, rst_trans, false, DT_NONE, has_bias, do_relu,
-             do_rq, saturate, round_mode);
-}
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right) {
-  int8 r_zp = 0;
-  tensor<int32> *bias = nullptr;
-  tensor<int32> *requant = nullptr;
-  int multiplier = 0;
-  int8 rshift = 0;
-  int16 y_zp = 0;
-  bool do_relu = false;
-  bool do_rq = false;
-  bool saturate = false;
-  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
-  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
-             false, false, false, false, DT_NONE, false, do_relu, do_rq,
-             saturate, round_mode);
-}
-
-// tpu_bdc_int8_zp_mm
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3>
-void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
-         DataType3 r_zp, bool result_add, data_type_t out_dtype) {
-  tensor<int32> *bias = nullptr;
-  bool ltrans = false;
-  bool rtrans = false;
-  bool rst_trans = false;
-  tensor<int32> *requant = nullptr;
-  int multiplier = 0;
-  int8 rshift = 0;
-  int16 y_zp = 0;
-  bool do_relu = false;
-  bool do_rq = false;
-  bool saturate = false;
-  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
-  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
-             ltrans, rtrans, rst_trans, result_add, out_dtype, false, do_relu,
-             do_rq, saturate, round_mode);
-}
-
 template <typename DataType0, typename DataType1, typename DataType2>
 void mul(tensor<DataType0> &dst, tensor<DataType1> &src0,
-         tensor<DataType2> &src1, char shift, rounding_mode_t round_mode,
+         tensor<DataType2> &src1, int8_t shift, rounding_mode_t round_mode,
          bool saturation);
 template <typename DataType0, typename DataType1, typename DataType2>
+void mul(tensor<DataType0> &dst, tensor<DataType1> &src0,
+         tensor<DataType2> &src1) {
+  mul(dst, src0, src1, 0, RM_HALF_UP, false);
+}
+template <typename DataType0, typename DataType1, typename DataType2>
 void mul(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 C,
-         char shift, rounding_mode_t round_mode, bool saturation);
+         int8_t shift, rounding_mode_t round_mode, bool saturation);
+template <typename DataType0, typename DataType1, typename DataType2>
+void mul(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 C) {
+  int8_t shift = 0;
+  rounding_mode_t round_mode = RM_HALF_UP;
+  bool saturation = false;
+  mul(dst, src, C, shift, round_mode, saturation);
+}
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void sub(tensor<DataType0> &dst, tensor<DataType1> &src0,
-         tensor<DataType2> &src1, char shift, rounding_mode_t round_mode,
+         tensor<DataType2> &src1, int8_t shift, rounding_mode_t round_mode,
          bool saturation);
 template <typename DataType0, typename DataType1, typename DataType2>
+void sub(tensor<DataType0> &dst, tensor<DataType1> &src0,
+         tensor<DataType2> &src1) {
+  sub(dst, src0, src1, 0, RM_HALF_UP, false);
+}
+template <typename DataType0, typename DataType1, typename DataType2>
 void sub(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 C,
-         char shift, rounding_mode_t round_mode, bool saturation);
+         int8_t shift, rounding_mode_t round_mode, bool saturation);
+template <typename DataType0, typename DataType1, typename DataType2>
+void sub(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 C) {
+  sub(dst, src, C, 0, RM_HALF_UP, false);
+}
 template <typename DataType0, typename DataType1, typename DataType2>
 void sub(tensor<DataType0> &dst, DataType1 C, tensor<DataType2> &src,
-         char shift, rounding_mode_t round_mode, bool saturation);
+         int8_t shift, rounding_mode_t round_mode, bool saturation);
+template <typename DataType0, typename DataType1, typename DataType2>
+void sub(tensor<DataType0> &dst, DataType1 C, tensor<DataType2> &src) {
+  sub(dst, C, src, 0, RM_HALF_UP, false);
+}
 /*
  * Note:
  * 1. the shape of shift must be [1, shape->c, 1, 1]
@@ -927,6 +863,9 @@ void min_lt_select(tensor<DataType0> &dst0, tensor<DataType1> &dst1,
                    DataType2 &src0, DataType3 &src1, DataType4 &src2,
                    DataType5 &src3);
 
+template <typename DataType>
+void reduce(tensor<DataType> &dst, tensor<DataType> &src,
+            all_reduce_opcode_t opcode, bool saturation = false);
 /*
  * Note:
  * 1. l_shift ∈ [0, 31], r_shift ∈ [0, 31]
@@ -1046,19 +985,15 @@ void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, dim2 *kernel,
 template <typename DataType>
 void move(tensor<DataType> &dst, tensor<DataType> &src);
 
+template <typename DataType>
+void move_cross_lane(tensor<DataType> &dst, tensor<DataType> &src);
+
 template <typename DataType0, typename DataType1>
 void fill(tensor<DataType0> &dst, DataType1 scalar);
 
 template <typename DataType> void zero(tensor<DataType> &data) {
   fill(data, 0);
 }
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void shift(tensor<DataType0> &dst, tensor<DataType1> &src,
-           tensor<DataType2> &shift, rounding_mode_t round_mode);
-template <typename DataType0, typename DataType1>
-void shift(tensor<DataType0> &dst, tensor<DataType1> &src, char shift_c,
-           rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3, typename DataType4, typename DataType5,
@@ -1328,23 +1263,26 @@ void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
 }
 
 template <typename DataType0, typename DataType1, typename DataType2>
+void shift(tensor<DataType0> &dst, tensor<DataType1> &src,
+           tensor<DataType2> &shift, rounding_mode_t round_mode);
+template <typename DataType0, typename DataType1>
+void shift(tensor<DataType0> &dst, tensor<DataType1> &src, int8_t shift_c,
+           rounding_mode_t round_mode);
+template <typename DataType0, typename DataType1, typename DataType2>
 void logical_shift(tensor<DataType0> &dst, tensor<DataType1> &src,
                    tensor<DataType2> &shift, rounding_mode_t round_mode);
 template <typename DataType0, typename DataType1>
-void logical_shift(tensor<DataType0> &dst, tensor<DataType1> &src, char shift_c,
-                   rounding_mode_t round_mode);
+void logical_shift(tensor<DataType0> &dst, tensor<DataType1> &src,
+                   int8_t shift_c, rounding_mode_t round_mode);
 
 template <typename DataType0, typename DataType1>
 void circular_shift(tensor<DataType0> &dst, tensor<DataType1> &src,
                     tensor<char> &shift, rounding_mode_t round_mode);
 template <typename DataType0, typename DataType1>
 void circular_shift(tensor<DataType0> &dst, tensor<DataType1> &src,
-                    char shift_c, rounding_mode_t round_mode);
+                    int8_t shift_c, rounding_mode_t round_mode);
 
 template <typename d> d scalar_cast(float scalar, int mode);
-
-template <typename DataType>
-void smem_bcast(tensor<DataType> &dst, coeff_table_mode_t static_mem_mode);
 
 template <typename DataType>
 void smem_dist(tensor<DataType> &dst, coeff_table_mode_t static_mem_mode);
@@ -1355,7 +1293,7 @@ void smem_dist(tensor<DataType> &dst, coeff_table_mode_t static_mem_mode);
 
 // template <typename DataType>
 // void load_fp_exp_coeff(tensor<DataType> &coeff, int len) {
-//   npu_bcast_from_static(coeff, NPU_NUM, len, EXP);
+//   npu_bcast_from_static(coeff, LANE_NUM, len, EXP);
 // }
 
 template <typename DataType>
@@ -1385,16 +1323,13 @@ void flog_base(tensor<DataType> &dst, tensor<DataType> &src);
 template <typename DataType>
 void taylor(tensor<DataType> &dst, tensor<DataType> &src,
             tensor<DataType> &coeff_addr, int len);
-// int fp_get_coeff_len(coeff_table_mode_t mode);
+// int fp_get_coeff_len(coeff_tablele_mode_t mode);
 
 template <typename DataType>
-void fp_load_coeff(tensor<DataType> &coeff, coeff_table_mode_t mode);
+void load_coeff(tensor<DataType> &coeff, coeff_table_mode_t mode);
 
 template <typename DataType0, typename DataType1>
 void fexp_part(tensor<DataType0> &dst, tensor<DataType1> &src);
-
-template <typename DataType>
-void fsqrt(tensor<DataType> &dst, tensor<DataType> &src, int num_iter = 3);
 
 template <typename DataType>
 void frsqrt(tensor<DataType> &dst, tensor<DataType> &src, int num_iter = 3);
@@ -1462,6 +1397,312 @@ void clo(tensor<DataType0> &dst, tensor<DataType1> &src);
 template <typename DataType0, typename DataType1>
 void mask_select(tensor<DataType0> &dst, tensor<uint16> &dst_cnt,
                  tensor<DataType0> &src, tensor<DataType1> &mask);
+
+template <typename DataType>
+void clamp(tensor<DataType> &dst, tensor<DataType> &src, DataType min_val, DataType max_val);
+template <typename DataType>
+void clamp(tensor<DataType> &dst, DataType src, DataType min_val, DataType max_val);
+
+template <typename DataType>
+void sfu_exp(tensor<DataType> &out_pld, tensor<DataType> &out, tensor<DataType> &a,
+    tensor<DataType> &bias, tensor<DataType> &coeff, int num_iter, int start, int end);
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void fmm2_dq2_nt(tensor<DataType0> &dst, DataType1 &x, tensor<DataType2> &w,
+                   DataType3 &ws, DataType4 &os, int gsize, bool result_add, bool saturate = false);
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void fmm2_dq2_tt(tensor<DataType0> &dst, DataType1 &x, tensor<DataType2> &w,
+                   DataType3 &ws, DataType4 &os, int gsize, bool result_add, bool saturate = false);
+
+template <typename DataType0, typename DataType1>
+void qt0(tensor<DataType0> &out_scale, tensor<DataType1> &out, tensor<DataType0> &a,
+         float range_val, float r_range_val, bool saturation = false);
+
+/************************************************************************************
+ */
+/************************************************************************************
+ */
+/*        deprecated */
+/**************************************************************************************/
+/**************************************************************************************/
+
+// Use arange_broadcast in ppl_wrapper_func.h instead
+template <typename DataType>
+void arange_broadcast(tensor<DataType> &dst, int start, int step, int num);
+
+// Use load_coeff instead
+template <typename DataType>
+void smem_bcast(tensor<DataType> &dst, coeff_table_mode_t static_mem_mode);
+
+// Use fsqrt in ppl_wrapper_func.h instead
+template <typename DataType>
+void fsqrt(tensor<DataType> &dst, tensor<DataType> &src, int num_iter = 3);
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4 = int>
+void fmm2_base(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+               DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
+               bool do_relu, bool result_add, data_type_t out_dtype,
+               bool has_bias, bool saturate = false, bool do_requant = false,
+               DataType4 &&quant = 0); // MM2FpOp
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4 = int>
+void fmm2_common(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+                 DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
+                 bool do_relu, bool result_add, data_type_t out_dtype,
+                 bool has_bias, bool saturate = false, bool do_requant = false,
+                 DataType4 &&quant = 0) {
+  // #if defined(__bm1684x__) || defined(__bm1688__)
+  //   tensor<DataType0> *null = nullptr;
+  //   bool do_relu_false = false;
+  //   fmm2_base(dst, left, right, *null, ltrans, rtrans, rst_trans,
+  //   do_relu_false,
+  //             result_add, out_dtype, false, saturate, do_requant, quant);
+  //   if (has_bias) {
+  //     if constexpr (!std::is_same<tensor<DataType0>, DataType3>::value) {
+  //       tensor<DataType0> bias_cast;
+  //       cast(bias_cast, bias);
+  //       fadd(dst, dst, bias_cast);
+  //     } else {
+  //       fadd(dst, dst, bias);
+  //     }
+  //   }
+  //   if (do_relu) {
+  //     max(dst, dst, 0);
+  //   }
+  // #else
+  fmm2_base(dst, left, right, bias, ltrans, rtrans, rst_trans, do_relu,
+            result_add, out_dtype, has_bias, saturate, do_requant, quant);
+  // #endif
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
+          bool do_relu, bool result_add, data_type_t out_dtype, bool has_bias,
+          bool saturate = false, bool do_requant = false,
+          DataType4 &&quant = 0) {
+  fmm2_common(dst, left, right, bias, ltrans, rtrans, rst_trans, do_relu,
+              result_add, out_dtype, has_bias, saturate, do_requant, quant);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias, bool result_add, data_type_t out_dtype,
+          bool has_bias, bool saturate = false, bool do_requant = false,
+          DataType4 &&quant = 0) {
+  fmm2_common(dst, left, right, bias, false, false, false, false, result_add,
+              out_dtype, has_bias, saturate, do_requant, quant);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias, bool saturate = false, bool do_requant = false,
+          DataType4 &&quant = 0) {
+  fmm2_common(dst, left, right, bias, false, false, false, false, false,
+              convert_dtype<DataType0>(), true, saturate, do_requant, quant);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool ltrans, bool rtrans, bool rst_trans, bool do_relu,
+          bool result_add, data_type_t out_dtype, bool saturate = false,
+          bool do_requant = false, DataType3 &&quant = 0) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, ltrans, rtrans, rst_trans, do_relu,
+              result_add, out_dtype, false, saturate, do_requant, quant);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool ltrans, bool rtrans, bool rst_trans, bool saturate = false,
+          bool do_requant = false, DataType3 &&quant = 0) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, ltrans, rtrans, rst_trans, false, false,
+              convert_dtype<DataType0>(), false, saturate, do_requant, quant);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          DataType3 &bias, bool ltrans, bool rtrans, bool rst_trans,
+          bool saturate = false, bool do_requant = false,
+          DataType4 &&quant = 0) {
+  fmm2_common(dst, left, right, bias, ltrans, rtrans, rst_trans, false, false,
+              convert_dtype<DataType0>(), true, saturate, do_requant, quant);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool result_add, data_type_t out_dtype, bool saturate = false,
+          bool do_requant = false, DataType3 &&quant = 0) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, false, false, false, false, result_add,
+              out_dtype, false, saturate, do_requant, quant);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3 = int>
+void fmm2(tensor<DataType0> &dst, DataType1 &left, DataType2 &right,
+          bool saturate = false, bool do_requant = false,
+          DataType3 &&quant = 0) {
+  tensor<DataType0> *bias = nullptr;
+  fmm2_common(dst, left, right, *bias, false, false, false, false, false,
+              convert_dtype<DataType0>(), false, saturate, do_requant, quant);
+}
+
+//=================== mm2 int ===================
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_base(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+              DataType3 &bias, DataType4 &r_zp, DataType5 &requant,
+              int multiplier, int8 rshift, int16 y_zp, bool ltrans, bool rtrans,
+              bool rst_trans, bool result_add, data_type_t out_dtype,
+              bool has_bias, bool do_relu, bool do_rq, bool saturate,
+              rounding_mode_t round_mode); // MM2Op
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5>
+void mm2_common(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+                DataType3 &bias, DataType4 &r_zp, DataType5 &requant,
+                int multiplier, int8 rshift, int16 y_zp, bool ltrans,
+                bool rtrans, bool rst_trans, bool result_add,
+                data_type_t out_dtype, bool has_bias, bool do_relu, bool do_rq,
+                bool saturate, rounding_mode_t round_mode) {
+#if 0
+#if defined(__bm1684x__) || defined(__bm1688__)
+  tensor<DataType0> *null = nullptr;
+  bool do_relu_false = false;
+  mm2_base(rst, left, right, *null, r_zp, requant, multiplier, rshift, y_zp,
+           ltrans, rtrans, rst_trans, result_add, out_dtype, false,
+           do_relu_false, do_rq, saturate, round_mode);
+  if (has_bias) {
+    if constexpr (!std::is_same<tensor<DataType0>, DataType3>::value) {
+      tensor<DataType0> bias_cast;
+      cast(bias_cast, bias);
+      add(rst, rst, bias_cast);
+    } else {
+      add(rst, rst, bias);
+    }
+  }
+  if (do_relu) {
+    max(rst, rst, 0);
+  }
+  mm2_base(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp,
+           ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias, do_relu,
+           do_rq, saturate, round_mode);
+#endif
+#else
+  mm2_base(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp,
+           ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias, do_relu,
+           do_rq, saturate, round_mode);
+#endif
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+         DataType3 &bias, DataType4 &r_zp, bool ltrans, bool rtrans,
+         bool rst_trans, bool result_add, data_type_t out_dtype,
+         bool has_bias = false, bool do_relu = false) {
+  tensor<int32> *requant = nullptr;
+  int multiplier = 1;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias,
+             do_relu, do_rq, saturate, round_mode);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+         DataType3 &r_zp, bool ltrans, bool rtrans, bool rst_trans,
+         bool result_add, data_type_t out_dtype, bool has_bias) {
+  tensor<int32> *bias = nullptr;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 1;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, result_add, out_dtype, has_bias,
+             do_relu, do_rq, saturate, round_mode);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right, bool ltrans,
+         bool rtrans, bool rst_trans) {
+  int8 r_zp = 0;
+  tensor<int32> *bias = nullptr;
+  bool has_bias = false;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 1;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, false, DT_NONE, has_bias, do_relu,
+             do_rq, saturate, round_mode);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right) {
+  int8 r_zp = 0;
+  tensor<int32> *bias = nullptr;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 1;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             false, false, false, false, DT_NONE, false, do_relu, do_rq,
+             saturate, round_mode);
+}
+
+// tpu_bdc_int8_zp_mm
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void mm2(tensor<DataType0> &rst, DataType1 &left, DataType2 &right,
+         DataType3 r_zp, bool result_add, data_type_t out_dtype) {
+  tensor<int32> *bias = nullptr;
+  bool ltrans = false;
+  bool rtrans = false;
+  bool rst_trans = false;
+  tensor<int32> *requant = nullptr;
+  int multiplier = 1;
+  int8 rshift = 0;
+  int16 y_zp = 0;
+  bool do_relu = false;
+  bool do_rq = false;
+  bool saturate = false;
+  rounding_mode_t round_mode = RM_HALF_AWAY_FROM_ZERO;
+  mm2_common(rst, left, right, *bias, r_zp, requant, multiplier, rshift, y_zp,
+             ltrans, rtrans, rst_trans, result_add, out_dtype, false, do_relu,
+             do_rq, saturate, round_mode);
+}
 
 } // namespace tiu
 } // namespace ppl

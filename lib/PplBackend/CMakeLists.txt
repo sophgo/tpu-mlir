@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(PplJitHost LANGUAGES C CXX)
 
+option(BUILD_STATIC "Build as static library (default)" ON)
+option(BUILD_DYN_HOST "Build as static library (default)" OFF)
+set(BUILD_DIR "build" CACHE STRING "Build directory")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -8,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--no-undefined")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-undefined")
+set(NNTOOLCHAIN_DIRECTORY $ENV{PROJECT_ROOT}/third_party/nntoolchain)
 
 if(NOT DEFINED ENV{PPL_PROJECT_ROOT})
   message(FATAL_ERROR "Please set environ PPL_PROJECT_ROOT to ppl release path")
@@ -25,24 +29,37 @@ else()
     add_definitions(-O3)
   endif()
 endif()
-
-
 set(KERNEL_TOP ${PPL_TOP}/runtime/kernel)
 set(CUS_TOP ${PPL_TOP}/runtime/customize)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/build/include)
 include_directories(${TPUKERNEL_TOP}/kernel/include)
 include_directories(${KERNEL_TOP})
 include_directories(${CUS_TOP}/include)
 include_directories($ENV{TPUC_ROOT}/include)
 include_directories(include)
-
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_DIR}/include)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_DIR}/host PL_SRC)
 
 # compile cpp
 aux_source_directory(src TILING_SRC)
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/build/host PL_SRC)
-set(ADDITIONAL_SRC ${CUS_TOP}/src/ppl_jit.cpp
-                   ${CUS_TOP}/src/host_utils.cpp)
-add_library(ppl_host SHARED ${TILING_SRC} ${PL_SRC} ${ADDITIONAL_SRC})
+if(BUILD_STATIC)
+  set(ADDITIONAL_SRC ${CUS_TOP}/src/ppl_jit.cpp
+                    ${CUS_TOP}/src/host_utils.cpp)
+  add_library(ppl_host SHARED ${TILING_SRC} ${PL_SRC} ${ADDITIONAL_SRC})
 
-install(TARGETS ppl_host DESTINATION lib)
+  install(TARGETS ppl_host DESTINATION lib)
+  install(FILES  $<TARGET_FILE:ppl_host> DESTINATION ${NNTOOLCHAIN_DIRECTORY}/ppl)
+else()
+  if(DEFINED DEV_MODE)
+    message(NOTICE "DEV_MODE: ${DEV_MODE}")
+  endif()
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
+  include(Dynkernel)
+  if(BUILD_DYN_HOST)
+    set(DYN_HOST_NAME ppl_dyn_host_${CHIP})
+    set(ADDITIONAL_SRC ${CUS_TOP}/src/host_utils.cpp)
+    add_library(${DYN_HOST_NAME} SHARED ${TILING_SRC} ${PL_SRC} ${ADDITIONAL_SRC})
+    install(TARGETS ${DYN_HOST_NAME} DESTINATION lib)
+    install(FILES  $<TARGET_FILE:${DYN_HOST_NAME}> DESTINATION ${NNTOOLCHAIN_DIRECTORY}/ppl)
+  endif()
+endif()

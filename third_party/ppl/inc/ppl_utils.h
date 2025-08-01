@@ -36,17 +36,17 @@ void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode,
     stride->h = shape->w;
     stride->c = shape->h * stride->h;
     stride->c = align(stride->c, eu_num);
-    stride->n = div_up(start_idx + shape->c, NPU_NUM) * stride->c;
+    stride->n = div_up(start_idx + shape->c, LANE_NUM) * stride->c;
     stride->w = 1;
 
   } else if (mode == TPU_COMPACT) {
     stride->h = shape->w;
     stride->c = shape->h * stride->h;
-    stride->n = div_up(start_idx + shape->c, NPU_NUM) * stride->c;
+    stride->n = div_up(start_idx + shape->c, LANE_NUM) * stride->c;
     stride->w = 1;
 
   } else if (mode == TPU_ROW_ALIGN) {
-    stride->n = div_up(start_idx + shape->c, NPU_NUM) * stride->c;
+    stride->n = div_up(start_idx + shape->c, LANE_NUM) * stride->c;
     stride->c = shape->h * stride->h;
     stride->h = div_up(shape->w, eu_num);
     stride->w = 1;
@@ -65,7 +65,7 @@ void aligned_stride_4d(dim4 *aligned_stride, dim4 *shape, U start_idx,
   aligned_stride->h = shape->w;
   aligned_stride->c = shape->h * aligned_stride->h;
   aligned_stride->c = align(aligned_stride->c, eu_num);
-  aligned_stride->n = div_up(start_idx + shape->c, NPU_NUM) * aligned_stride->c;
+  aligned_stride->n = div_up(start_idx + shape->c, LANE_NUM) * aligned_stride->c;
   aligned_stride->w = 1;
 }
 
@@ -167,6 +167,26 @@ gtensor<dtype> &make_gtensor_permute(dim4 &mem_shape, tensor_mode_t mode,
   return make_gtensor_permute(mem_shape, mode, addr, default_order);
 }
 
+template <typename DataType> int get_data_size() {
+  if constexpr (std::is_same_v<DataType, fp32> ||
+                std::is_same_v<DataType, int32> ||
+                std::is_same_v<DataType, uint32>) {
+    return 4;
+  } else if constexpr (std::is_same_v<DataType, fp16> ||
+                       std::is_same_v<DataType, bf16> ||
+                       std::is_same_v<DataType, int16> ||
+                       std::is_same_v<DataType, uint16>) {
+    return 2;
+  } else if constexpr (std::is_same_v<DataType, int8> ||
+                       std::is_same_v<DataType, uint8> ||
+                       std::is_same_v<DataType, fp8e4m3> ||
+                       std::is_same_v<DataType, fp8e5m2>) {
+    return 1;
+  } else {
+    static_assert(false, "unsupported data type");
+  }
+}
+
 template <typename DataType> int get_nic() {
   if constexpr (std::is_same_v<DataType, fp32>) {
     return 1;
@@ -174,7 +194,7 @@ template <typename DataType> int get_nic() {
                        std::is_same_v<DataType, uint4>) {
     return LANE_NUM * 2;
   } else {
-    return LANE_NUM / sizeof(DataType);
+    return LANE_NUM / get_data_size<DataType>();
   }
 }
 

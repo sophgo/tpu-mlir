@@ -4,7 +4,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 #include "ppl_types.h"
 #include "ppl_utils.h"
@@ -28,11 +27,12 @@ template <typename DataType> int64 get_gmem_addr(gtensor<DataType> &src);
 
 template <typename DataType> DataType get_value(int64 gaddr);
 
-
-
 /******************************/
 /*       for host           */
 /******************************/
+
+template <typename DataType> DataType *malloc(dim4 *shape);
+
 /*
  * Note:
  * 1. The random number generation interval is [min_val, max_val)
@@ -54,61 +54,32 @@ void rand(DataType0 *ptr, dim4 *shape, DataType1 min_val, DataType1 max_val) {
 
 // malloc and rand with result
 template <typename DataType0, typename DataType1>
-DataType0 *rand(dim4 *shape, dim4 *stride, dim4 *offset, DataType1 min_val,
-                DataType1 max_val);
-
-template <typename DataType0, typename DataType1>
-DataType0 *rand(dim4 *shape, dim4 *stride, DataType1 min_val,
-                DataType1 max_val) {
-  return rand<DataType0>(shape, stride, (dim4 *)nullptr, min_val, max_val);
-}
-
-template <typename DataType0, typename DataType1>
-DataType0 *rand(dim4 *shape, DataType1 min_val, DataType1 max_val) {
-  return rand<DataType0>(shape, (dim4 *)nullptr, (dim4 *)nullptr, min_val,
-                         max_val);
-}
+DataType0 *rand(dim4 *shape, DataType1 min_val, DataType1 max_val);
 
 template <typename DataType> DataType *rand(dim4 *shape) {
-  return rand<DataType>(shape, (dim4 *)nullptr, (dim4 *)nullptr, 0, 0);
+  return malloc<DataType>(shape);
 }
-
-template <typename DataType> DataType *malloc(dim4 *shape);
 
 template <typename DataType> void assert(DataType condition);
 
-template <typename DstType>
-void read_npy(DstType *dst, const char *file_path);
+template <typename DstType> void read_npy(DstType *dst, const char *file_path);
 
-template <typename DstType, typename FileType>
-void read_npy(DstType *dst, const char *file_path, FileType *file_dtype);
-template <typename DstType, typename FileType>
-void read_npy(DstType *dst, const char *file_path) {
-  FileType *file_dtype = (FileType *)0;
-  read_npy(dst, file_path, file_dtype);
+template <typename DstType>
+void read_file(DstType *dst, const char *file_path, int file_mode,
+               data_type_t file_dtype, const char *tensor_name);
+
+template <typename DstType> void read_npy(DstType *dst, const char *file_path) {
+  read_file(dst, file_path, 1, DT_NONE, "");
 }
 
 template <typename DstType>
-void read_npz(DstType *dst, const char *file_path, const char *tensor_name);
-
-template <typename DstType, typename FileType>
-void read_npz(DstType *dst, const char *file_path, const char *tensor_name,
-              FileType *file_dtype);
-template <typename DstType, typename FileType>
 void read_npz(DstType *dst, const char *file_path, const char *tensor_name) {
-  FileType *file_dtype = (FileType *)0;
-  read_npz(dst, file_path, tensor_name, file_dtype);
+  read_file(dst, file_path, 2, DT_NONE, tensor_name);
 }
 
-template <typename DstType>
-void read_bin(DstType *dst, const char *file_path);
-
-template <typename DstType, typename FileType>
-void read_bin(DstType *dst, const char *file_path, FileType *file_dtype);
-template <typename DstType, typename FileType>
+template <typename FileType, typename DstType>
 void read_bin(DstType *dst, const char *file_path) {
-  FileType *file_dtype = (FileType *)0;
-  read_bin(dst, file_path, file_dtype);
+  read_file(dst, file_path, 0, convert_dtype<FileType>(), "");
 }
 
 /*****************************************/

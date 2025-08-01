@@ -48,6 +48,7 @@ enum coeff_table_mode_t {
   TAN = 4,
   ARCSIN = 5,
   ERF_TAYLOR = 6,
+  SERIAL_NUMBER = 30, // int32 uint32
 };
 
 enum transpose_mode_t {
@@ -95,6 +96,9 @@ enum all_reduce_opcode_t {
   ALL_REDUCE_MAX = 2,
   ALL_REDUCE_MIN = 3,
   ALL_REDUCE_ADD = 4,
+  ALL_REDUCE_AMAX = 5,
+  ALL_REDUCE_SUM = 6,
+  ALL_REDUCE_POWERSUM = 7,
 };
 
 enum all_reduce_psum_t {
@@ -143,6 +147,7 @@ public:
   explicit tensor(dimT &_shape, align_mode_t align_mode = TPU_ALIGN,
                   long long address = -1);
   template <typename dtype2> tensor<dtype2> &view();
+  tensor<dtype> &view(align_mode_t align_mode);
   template <typename dtype2, typename dimT> tensor<dtype2> &view(dimT &_shape);
   template <typename dtype2, typename dimT>
   tensor<dtype2> &view(dimT &_shape, dimT &_stride);

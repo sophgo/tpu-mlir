@@ -217,7 +217,12 @@ typedef enum fw_layer_type {
   FW_BMNET_ROI_EXTRACTOR = 169,
   FW_BMNET_SHAPE_SCATTERELEMENTS = 170,
   // global_dynamic step -2: declare FW_BMNET_XXXX
-  FW_LAYER_UNKNOWN
+  FW_LAYER_UNKNOWN,
+  // ppl declare
+  PPL_FW_ADD_CONST = 10000,
+  PPL_FW_FLASH_ATTENTION = 10001,
+  PPL_FW_FLASH_ATTENTION_HEIGH_PRECISION = 10002,
+  PPL_FW_LAYER_TYPE_UNKNOWN,
 } FW_LAYER_TYPE_T;
 
 // There is this data size enum in 1684, which didn't go well. We replace  data

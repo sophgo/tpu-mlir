@@ -99,10 +99,10 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
                       gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm, int kvm,
                       int d, int q_head, int kv_head, float sqrt_d,
                       int has_mask, int core_num, int dtype,
-                      bool high_precision) {
+                      bool high_precision, int &block_m, int &block_k,
+                      int &block_h) {
   int ret = 0;
   int dmax = align_up(d, 32 /*eu num*/);
-  int block_m, block_k, block_h;
   std::string chip_str = get_chip_str();
   bool is_mha = q_head == kv_head;
   bool is_decode = qm == 1;

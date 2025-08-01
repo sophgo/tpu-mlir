@@ -26,6 +26,8 @@ int64_t Arch::LMEM_BANKS = 0;
 int64_t Arch::LMEM_BANK_BYTES = 0;
 bool Arch::ALIGN_4N = false;
 llvm::StringRef Arch::LIB_BACKEND_NAME = "";
+llvm::StringRef Arch::LIB_PPL_DYN_HOST_NAME = "";
+
 module::Chip Arch::chip;
 uint64_t Arch::FREQ = 0;
 Arch *Arch::inst = nullptr;
@@ -186,13 +188,15 @@ void Arch::load_library() {
   }
 }
 
-void Arch::load_ppl() {
-  if (!PPL_DL.isValid()) {
+void Arch::load_ppl(bool is_dyn) {
+  llvm::sys::DynamicLibrary &DLRef = is_dyn ? PPL_DYN_DL : PPL_DL;
+  if (!DLRef.isValid()) {
     std::string Err;
-    std::string ppl_so_name = "libppl_host.so";
-    PPL_DL = llvm::sys::DynamicLibrary::getPermanentLibrary(ppl_so_name.c_str(),
-                                                            &Err);
-    if (PPL_DL.isValid() == false) {
+    std::string ppl_so_name =
+        is_dyn ? LIB_PPL_DYN_HOST_NAME.data() : "libppl_host.so";
+    DLRef = llvm::sys::DynamicLibrary::getPermanentLibrary(ppl_so_name.c_str(),
+                                                           &Err);
+    if (DLRef.isValid() == false) {
       llvm_unreachable(Err.c_str());
     }
   }

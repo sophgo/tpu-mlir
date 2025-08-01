@@ -162,6 +162,8 @@ public:
   static void call_ppl_local_func(const char *symbolName, void *params,
                                   int param_size, void *info, void *input,
                                   void *output);
+  static int64_t call_ppl_dyn_func(const char *symbolName, void *params,
+                                   void *input, void *output, void *buffer);
 
   static int64_t call_global_bfsz_func(const char *symbolName, void *params,
                                        int param_size, void *input,

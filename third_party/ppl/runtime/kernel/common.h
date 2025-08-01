@@ -60,11 +60,73 @@ typedef union {
 } fp32;
 
 typedef union {
+  uint32_t bits;
+  struct {
+    uint32_t frac : 10; // mantissa
+    uint32_t exp  : 8;  // exponent
+    uint32_t sign : 1;  // sign
+  } format;
+} tf32;
+
+typedef union {
+  uint32_t bits;
+  struct {
+    uint32_t frac : 11; // mantissa
+    uint32_t exp  : 8;  // exponent
+    uint32_t sign : 1;  // sign
+  } format;
+} fp20;
+
+typedef union {
   double double_val;
   uint64_t bits;
 } Double;
 
+typedef struct {
+  int8_t val : 4;
+} int4_t;
+
+typedef struct {
+  uint8_t val : 4;
+} uint4_t;
+
 typedef union {
+  uint8_t bits;
+  struct {
+    uint8_t frac : 2; // mantissa
+    uint8_t exp  : 5; // exponent
+    uint8_t sign : 1; // sign
+  };
+} fp8e5m2;
+// 8-bit floating point number mostly following IEEE-754 conventions with
+// bit layout S1E4M3 as described in https://arxiv.org/abs/2209.05433.
+// Unlike IEEE-754 types, there are no infinity values, and NaN is
+// represented with the exponent and mantissa bits set to all 1s.
+// This is may be defined as FP8E4M3FN in other framwork.
+typedef union {
+  uint8_t bits;
+  struct {
+    uint8_t frac : 3; // mantissa
+    uint8_t exp  : 4; // exponent
+    uint8_t sign : 1; // sign
+  };
+} fp8e4m3;
+
+typedef union {
+  uint8_t bits;
+  struct {
+    uint8_t frac : 1; // mantissa
+    uint8_t exp  : 2; // exponent
+    uint8_t sign : 1; // sign
+  };
+} fp4;
+
+typedef int4_t  s4;
+typedef uint4_t  u4;
+
+typedef union {
+  unsigned long long u64val;
+  long long i64val;
   float f32val;
   signed int i32val;
   unsigned int u32val;
@@ -72,8 +134,15 @@ typedef union {
   unsigned short u16val;
   signed char i8val;
   unsigned char u8val;
+  int4_t  i4val;
+  uint4_t u4val;
   fp16 f16val;
   bf16 bf16val;
+  fp20 fp20val;
+  fp8e4m3 f8e4m3val;
+  fp8e5m2 f8e5m2val;
+  fp4 fp4val;
+  fp32 fp32val;
 } DataUnion;
 
 

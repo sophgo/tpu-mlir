@@ -406,10 +406,15 @@ void BM168x::call_local_func(const char *symbolName, void *params,
   auto func = instance()->CastToFPtr<local_backend_api_t>(symbolName);
   func(params, param_size, info, input, output, (*instance())->bdc_node);
 }
-
+// define ppl func ptr
 typedef int (*ppl_set_node)(void *cmdid_node);
 typedef int (*ppl_global_backend_api_t)(void *params, int param_size,
                                         void *input, void *output);
+typedef int (*ppl_local_backend_api_t)(void *params, int param_size,
+                                       void *input, void *info, void *output);
+typedef int64_t (*ppl_dyn_backend_api_t)(void *params, void *input,
+                                         void *output, void *buffer);
+// ppl call func
 void BM168x::call_ppl_global_func(const char *symbolName, void *params,
                                   int param_size, void *input, void *output) {
   auto set_node_chip = instance()->PplCastToFPtr<ppl_set_node>("ppl_set_node");
@@ -419,8 +424,6 @@ void BM168x::call_ppl_global_func(const char *symbolName, void *params,
   kernel_func(params, param_size, input, output);
 }
 
-typedef int (*ppl_local_backend_api_t)(void *params, int param_size,
-                                       void *input, void *info, void *output);
 void BM168x::call_ppl_local_func(const char *symbolName, void *params,
                                  int param_size, void *info, void *input,
                                  void *output) {
@@ -428,6 +431,14 @@ void BM168x::call_ppl_local_func(const char *symbolName, void *params,
   auto func = instance()->PplCastToFPtr<ppl_local_backend_api_t>(symbolName);
   set_node_chip((*instance())->cmdid_node);
   func(params, param_size, info, input, output);
+}
+
+int64_t BM168x::call_ppl_dyn_func(const char *symbolName, void *params,
+                                  void *input_spec, void *output_spec,
+                                  void *buffer) {
+  auto kernel_func =
+      instance()->PplCastToFPtr<ppl_dyn_backend_api_t>(symbolName, true);
+  return kernel_func(params, input_spec, output_spec, buffer);
 }
 
 typedef bool (*force_dynamic_run_func_t)(void *params, int param_size);

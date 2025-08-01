@@ -22,6 +22,27 @@ typedef unsigned int u32;
 #define THREAD
 #endif
 
+#ifdef __sg2262__
+typedef enum {
+    DT_INT8   = (0 << 1) | 1,
+    DT_UINT8  = (0 << 1) | 0,
+    DT_INT16  = (3 << 1) | 1,
+    DT_UINT16 = (3 << 1) | 0,
+    DT_F16   = (1 << 1) | 1,
+    DT_FP4  = (5 << 1) | 1,
+    DT_INT32  = (4 << 1) | 1,
+    DT_UINT32 = (4 << 1) | 0,
+    DT_FP32   = (2 << 1) | 1,
+    DT_INT4   = (6 << 1) | 1,
+    DT_UINT4  = (6 << 1) | 0,
+    DT_FP8E5M2 = (0 << 5) | (7 << 1) | 1,
+    DT_FP8E4M3 = (1 << 5) | (7 << 1) | 1,
+    DT_FP20   = (8 << 1) | 1,
+    DT_TF32   = (9 << 1) | 1,
+    DT_FP16   = (10 << 1) | 1,
+    DT_BFP16  = (11 << 1) | 1,
+} data_type_t;
+#else
 typedef enum {
     DT_INT8   = (0 << 1) | 1,
     DT_UINT8  = (0 << 1) | 0,
@@ -39,6 +60,7 @@ typedef enum {
     DT_FP20   = (8 << 1) | 1,
     DT_TF32   = (9 << 1) | 1,
 } data_type_t;
+#endif
 typedef enum {
     RM_HALF_TO_EVEN        = 0,
     RM_HALF_AWAY_FROM_ZERO = 1,
@@ -65,6 +87,9 @@ typedef struct {
 typedef struct {
     int n, c, h, w;
 } dim4;
+typedef struct {
+    int d, h, w;
+} dim3;
 typedef struct {
     int h, w;
 } dim2;

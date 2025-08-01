@@ -16,6 +16,33 @@ typedef unsigned int u32;
 #define TENSOR_H_DIM 2
 #define TENSOR_W_DIM 3
 
+#ifdef USING_CMODEL
+#define THREAD __thread
+#else
+#define THREAD
+#endif
+
+#ifdef __sg2262__
+typedef enum {
+    DT_INT8   = (0 << 1) | 1,
+    DT_UINT8  = (0 << 1) | 0,
+    DT_INT16  = (3 << 1) | 1,
+    DT_UINT16 = (3 << 1) | 0,
+    DT_F16   = (1 << 1) | 1,
+    DT_FP4  = (5 << 1) | 1,
+    DT_INT32  = (4 << 1) | 1,
+    DT_UINT32 = (4 << 1) | 0,
+    DT_FP32   = (2 << 1) | 1,
+    DT_INT4   = (6 << 1) | 1,
+    DT_UINT4  = (6 << 1) | 0,
+    DT_FP8E5M2 = (0 << 5) | (7 << 1) | 1,
+    DT_FP8E4M3 = (1 << 5) | (7 << 1) | 1,
+    DT_FP20   = (8 << 1) | 1,
+    DT_TF32   = (9 << 1) | 1,
+    DT_FP16   = (10 << 1) | 1,
+    DT_BFP16  = (11 << 1) | 1,
+} data_type_t;
+#else
 typedef enum {
     DT_INT8   = (0 << 1) | 1,
     DT_UINT8  = (0 << 1) | 0,
@@ -33,6 +60,7 @@ typedef enum {
     DT_FP20   = (8 << 1) | 1,
     DT_TF32   = (9 << 1) | 1,
 } data_type_t;
+#endif
 typedef enum {
     RM_HALF_TO_EVEN        = 0,
     RM_HALF_AWAY_FROM_ZERO = 1,
@@ -59,6 +87,9 @@ typedef struct {
 typedef struct {
     int n, c, h, w;
 } dim4;
+typedef struct {
+    int d, h, w;
+} dim3;
 typedef struct {
     int h, w;
 } dim2;
@@ -128,21 +159,11 @@ typedef union {
     float20        f20;
 } scalar_t;
 
-typedef struct
-{
-    int addr_num;
-    int base_idx[30];
-    u64 base_addr[30];
-    u64 bdc_cmd_offset;
-    u64 gdma_cmd_offset;
-    u64 hau_cmd_addr;
-    u64 sdma_cmd_addr;
-    int bdc_cmd_num[8];
-    int gdma_cmd_num[8];
-    int hau_cmd_len;
-    int sdma_cmd_len;
-    u64 tiu_len[8];
-    u64 gdma_len[8];
-} launch_cache_multicore_t;
+typedef struct {
+    u32 engine_type;
+    u32 command_num;
+    u64 command_addr;
+    u64 command_bytes;
+} tpu_engine_command_info_t;
 
 #endif /* _OK_DEFS_ */

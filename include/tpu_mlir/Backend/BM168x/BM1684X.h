@@ -127,6 +127,7 @@ protected:
     GDMA_VALUE_FORMAT_INT4 = 6;
     GDMA_VALUE_FORMAT_NUM = 7;
     LIB_BACKEND_NAME = "libbackend_1684x.so";
+    LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1684x.so";
     core_num = module::getCoreNum();
     start_env();
     load_custom_functions();

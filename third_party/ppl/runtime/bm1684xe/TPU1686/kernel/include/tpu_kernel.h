@@ -8,64 +8,71 @@ extern "C" {
 #include <stdbool.h>
 #include "tpu_defs.h"
 
-typedef void (*tpu_kernel_func_t)(const void *);
-void tpu_register_kernel_func(const char *name, tpu_kernel_func_t func);
+typedef enum {
+    FUNC_TYPE_1,
+    FUNC_TYPE_2
+} func_type_t;
+typedef void (*tpu_kernel_func_1_t)(const void *);
+typedef void (*tpu_kernel_func_2_t)(void *, int);
+void tpu_register_kernel_func(const char *name, void* func, func_type_t type);
 void tpu_dump_registered_kernel_funcs();
 #define TPUKERNEL_FUNC_REGISTER(func)                              \
 void func##_wrapper(const void *arg) { func(arg); }                \
 __attribute__((constructor)) void tpu_kernel_register_##func() {   \
-    tpu_register_kernel_func(#func, func##_wrapper);               \
+    tpu_register_kernel_func(#func, func##_wrapper, FUNC_TYPE_1);  \
+}
+#define TPUKERNEL_FUNC2_REGISTER(func)                             \
+void func##_wrapper(void *arg, int sz) { func(arg, sz); }                \
+__attribute__((constructor)) void tpu_kernel_register_##func() {   \
+    tpu_register_kernel_func(#func, func##_wrapper, FUNC_TYPE_2);  \
 }
 
 #if defined(USING_CMODEL)
   #include <stdlib.h>
-  extern void __print_trace();
-  extern int get_atomic_cmodel_assert_enable();
-  #define TPUKERNEL_LOG(format, ...) printf(format, ##__VA_ARGS__)
-#define TPUKERNEL_ASSERT_INFO(assertion, fmt, args...)                       \
-    do                                                                       \
-    {                                                                        \
-        if (get_atomic_cmodel_assert_enable())                               \
-        {                                                                    \
-            if (!(assertion))                                                \
-            {                                                                \
-                TPUKERNEL_LOG("[ERR] " fmt, ##args);                         \
-                TPUKERNEL_LOG("%s:%d: %s: Assertion \"%s\" failed.\n",       \
-                              __FILE__, __LINE__, __FUNCTION__, #assertion); \
-                __print_trace();                                             \
-                exit(233);                                                   \
-            }                                                                \
-        }                                                                    \
-    } while (0)
+  #define TPUKERNEL_LOG(format, ...) printf("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
 #elif defined(USING_FW_DEBUG) && !defined(USING_FAKE_DDR_MODE)
   extern void fw_log(char *fmt, ...);
-  #define TPUKERNEL_LOG(format, ...) fw_log(format, ##__VA_ARGS__)
-#define TPUKERNEL_ASSERT_INFO(assertion, fmt, args...)                   \
-    do                                                                   \
-    {                                                                    \
-        if (!(assertion))                                                \
-        {                                                                \
-            TPUKERNEL_LOG("[ERR] " fmt, ##args);                         \
-            TPUKERNEL_LOG("%s:%d: %s: Assertion \"%s\" failed.\n",       \
-                          __FILE__, __LINE__, __FUNCTION__, #assertion); \
-            while (1)                                                    \
-                ;                                                        \
-        }                                                                \
-    } while (0)
+  #define TPUKERNEL_LOG(format, ...) fw_log("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
 #else
   #define TPUKERNEL_LOG(format, ...)
-#define TPUKERNEL_ASSERT_INFO(assertion, fmt, args...)                   \
-    do                                                                   \
-    {                                                                    \
-        if (!(assertion))                                                \
-        {                                                                \
-            TPUKERNEL_LOG("[ERR] " fmt, ##args);                         \
-            TPUKERNEL_LOG("%s:%d: %s: Assertion \"%s\" failed.\n",       \
-                          __FILE__, __LINE__, __FUNCTION__, #assertion); \
-            while (1)                                                    \
-                ;                                                        \
-        }                                                                \
-    } while (0)
+#endif
+
+
+extern void __print_trace();
+#if defined(USING_CMODEL)
+extern int get_atomic_cmodel_assert_enable();
+#define ASSERT_LOG(format, ...) printf("[%d]" format, tpu_core_index(), ##__VA_ARGS__)
+#define TPUKERNEL_ASSERT_INFO(assertion, fmt, args...)                  \
+  do                                                                    \
+  {                                                                     \
+      if (get_atomic_cmodel_assert_enable())                            \
+      {                                                                 \
+          if (!(assertion))                                             \
+          {                                                             \
+              ASSERT_LOG("[ERR] " fmt, ##args);                         \
+              ASSERT_LOG("%s:%d: %s: Assertion \"%s\" failed.\n",       \
+                         __FILE__, __LINE__, __FUNCTION__, #assertion); \
+              __print_trace();                                          \
+              exit(233);                                                \
+          }                                                             \
+      }                                                                 \
+  } while (0)
+#else
+extern void fw_log(char *fmt, ...);
+#define ASSERT_LOG(format, ...) fw_log("[%d]" format, tpu_core_index(), ##__VA_ARGS__)
+#define TPUKERNEL_ASSERT_INFO(assertion, fmt, args...)            \
+do                                                                \
+{                                                                 \
+    if (!(assertion))                                             \
+    {                                                             \
+        ASSERT_LOG("[ERR] " fmt, ##args);                         \
+        ASSERT_LOG("%s:%d: %s: Assertion \"%s\" failed.\n",       \
+                   __FILE__, __LINE__, __FUNCTION__, #assertion); \
+        __print_trace();                                          \
+        while (1)                                                 \
+            ;                                                     \
+    }                                                             \
+} while (0)
 #endif
 
 #define TPUKERNEL_ASSERT(assertion) TPUKERNEL_ASSERT_INFO(assertion, "")
@@ -198,6 +205,13 @@ typedef struct {
   };
 } optional_info_t;
 
+typedef struct {
+    u32 clk;
+    u32 read_cnt;
+    u32 write_cnt;
+    u32 write_bytes;
+} bw_info_t;
+
 // ALL REDUCE CODE should sync with *dma_reg_value.h
 typedef enum {
     ALL_REDUCE_PSUM_WO = 0,
@@ -252,6 +266,10 @@ void tpu_cdma_poll();
 void tpu_cdma_all_port_nop();
 
 void tpu_cdma_port_poll(int port);
+
+void tpu_cdma_perf_port_poll(int *chips, int *ports, int* actions, u64 *info_addr);
+
+void tpu_cdma_perf_poll(int *chips, int *ports, int* actions, u64 *info_addr);
 
 void tpu_vsdma_poll();
 
@@ -1092,6 +1110,40 @@ void tpu_bdc_clamp(
     int Sign,
     data_type_t dtype);
 
+void tpu_bdc_fp16_dequant(
+    local_addr_t     dst_addr,
+    local_addr_t     src_addr,
+    const dim4      *shape,
+    scalar_t         offset,
+    uint16_t         scale_fp16,
+    data_type_t      src_dtype,
+    rounding_mode_t  rounding_mode);
+
+void tpu_bdc_fp16_pc_dequant(
+    local_addr_t     dst_addr,
+    local_addr_t     src_addr,
+    local_addr_t     quant_addr,
+    const dim4      *shape,
+    data_type_t      src_dtype,
+    rounding_mode_t  rounding_mode);
+
+void tpu_bdc_bf16_dequant(
+    local_addr_t     dst_addr,
+    local_addr_t     src_addr,
+    const dim4      *shape,
+    scalar_t         offset,
+    uint16_t         scale_bf16,
+    data_type_t      src_dtype,
+    rounding_mode_t  rounding_mode);
+
+void tpu_bdc_bf16_pc_dequant(
+    local_addr_t     dst_addr,
+    local_addr_t     src_addr,
+    local_addr_t     quant_addr,
+    const dim4      *shape,
+    data_type_t      src_dtype,
+    rounding_mode_t  rounding_mode);
+
 void tpu_bdc_fp_frexp(
     local_addr_t  dst0_addr,
     local_addr_t  dst1_addr,
@@ -1104,6 +1156,83 @@ void tpu_bdc_fp_sfu_reciprocal(
     local_addr_t  src_addr,
     const dim4   *shape,
     data_type_t   dtype);
+
+void tpu_bdc_fuse_mul_cast(
+    local_addr_t A_addr,
+    local_addr_t B_addr,
+    local_addr_t R_addr,
+    const dim4 *shape,
+    const dim4 *B_stride,
+    int B_is_const,
+    int B_short_str,
+    int R_sign,
+    data_type_t itype,
+    data_type_t otype,
+    rounding_mode_t round,
+    int saturate);
+
+void tpu_bdc_fuse_sub_clamp(
+    local_addr_t A_addr,
+    local_addr_t B_addr,
+    local_addr_t R_addr,
+    u32 B_const_val,
+    u32 C_const_val,
+    const dim4 *shape,
+    const dim4 *B_stride,
+    int B_is_const,
+    int B_short_str,
+    data_type_t dtype,
+    int saturate);
+
+void tpu_bdc_fuse_madd(
+    local_addr_t A_addr,
+    local_addr_t B_addr,
+    local_addr_t C_addr,
+    local_addr_t R_addr,
+    const dim4 *shape,
+    const dim4 *B_stride,
+    int B_is_const,
+    int B_short_str,
+    data_type_t dtype,
+    int saturate);
+
+void tpu_bdc_fuse_taylor_mul(
+    local_addr_t A_addr,
+    local_addr_t B_addr,
+    local_addr_t table_start_addr,
+    local_addr_t R_addr,
+    const dim4 *shape,
+    const dim4 *B_stride,
+    int iter_w,
+    int B_is_const,
+    int B_short_str,
+    data_type_t dtype,
+    int saturate);
+
+void tpu_bdc_fuse_exp(
+    local_addr_t A_addr,
+    local_addr_t B_addr,
+    local_addr_t table_start_addr,
+    local_addr_t R_addr,
+    local_addr_t R1_addr,
+    const dim4 *shape,
+    const dim4 *B_stride,
+    int iter_w,
+    int B_is_const,
+    int B_short_str,
+    data_type_t dtype);
+
+void tpu_bdc_reduce(
+    local_addr_t A_addr,
+    local_addr_t R_addr,
+    const dim4 *shape,
+    int A_short_str,
+    int B_short_str,
+    int A_sign,
+    data_type_t idtype,
+    data_type_t odtype,
+    int reduce_op,
+    int saturate);
 
 #endif
 
@@ -1468,7 +1597,14 @@ void tpu_cdma_write(
     int             const_val,
     data_type_t     dtype,
     int             stride_enable,
+#if defined(__sg2260e__) || defined(__sg2262__)
+    int             nchw_copy,
+    u32             msg_en,
+    u32             msg_id, 
+    u32             wcnt);
+#else
     int             nchw_copy);
+#endif
 
 #if defined(__sg2260__) && defined(USING_CMODEL)
 void tpu_cdma_fake_all_reduce(
@@ -5720,6 +5856,22 @@ u32 tpu_engine_num();
 // low-level interface for inner use
 void tpu_reset_base_addr();
 void tpu_set_base_addr(const int *base_idx, const u64 *base_addr, int num);
+
+// bw performance monitor
+void read_bw_registers(bw_info_t *info);
+void show_bw_info(double freq);
+void enable_bw_perf();
+void disable_bw_perf(double freq);
+
+// memcheck
+void tpu_mem_record_add(system_addr_t addr, u64 size, u64 info);
+void tpu_mem_record_del(system_addr_t addr, u64 size);
+void tpu_mem_check_tensor(system_addr_t addr, const dim4 *shape, const dim4 *stride, data_type_t dtype, int is_read);
+void tpu_mem_check_matrix(system_addr_t addr, u32 rows, u32 cols, u32 row_stride, data_type_t dtype, int is_read);
+void tpu_mem_check_range(system_addr_t addr, u64 size, int is_read);
+
+// remove the global mem addr tag, and return the real addr with base addr regs
+system_addr_t tpu_global_mem_real_addr(system_addr_t addr);
 
 #ifdef __cplusplus
 }

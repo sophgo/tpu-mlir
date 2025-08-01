@@ -4,7 +4,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 #include "ppl_dma_func.h"
 #include "ppl_func.h"
@@ -18,9 +17,8 @@ using namespace ppl;
 template <typename T> auto getSignMask() {
   if constexpr (std::is_same<T, float>::value) {
     return static_cast<int32>(0x80000000);
-  } else if constexpr (std::is_same<T, fp16>::value) {
-    return static_cast<int16>(0x8000);
-  } else if constexpr (std::is_same<T, bf16>::value) {
+  } else if constexpr (std::is_same<T, fp16>::value ||
+                       std::is_same<T, bf16>::value) {
     return static_cast<int16>(0x8000);
   } else if constexpr (std::is_same<T, int8>::value) {
     return static_cast<int8>(0x80);
@@ -31,38 +29,22 @@ template <typename T> auto getSignMask() {
   }
 }
 
-template<typename T>
-double log_approximation(T x) {
-    if (x <= 0) {
-        return -1;
-    }
-    double sum = 0.0;
-    int n = 1000;
-    double term = (x - 1) / (x + 1);
-    double term_sq = term * term;
-    double numerator = term;
-    double denominator = 1.0;
-    for (int i = 1; i <= n; i += 2) {
-        sum += numerator / denominator;
-        numerator *= term_sq;
-        denominator += 2.0;
-    }
-    return 2 * sum;
-}
-
-template<typename T>
-void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input,
-                  dim4 *shape) {
-  auto local_input_exp = tensor<T>(*shape);
-  tiu::fexp(local_input_exp, local_input);
-
-  auto local_input_exp_reciprocal = tensor<T>(*shape);
-  tiu::fdiv(local_input_exp_reciprocal, 1, local_input_exp, 3);
-
-  auto local_output_pre = tensor<T>(*shape);
-  tiu::fadd(local_output_pre, local_input_exp_reciprocal, 1);
-
-  tiu::fdiv(local_output, 1, local_output_pre, 3);
+template <typename T> double log_approximation(T x) {
+  if (x <= 0) {
+    return -1;
+  }
+  double sum = 0.0;
+  int n = 1000;
+  double term = (x - 1) / (x + 1);
+  double term_sq = term * term;
+  double numerator = term;
+  double denominator = 1.0;
+  for (int i = 1; i <= n; i += 2) {
+    sum += numerator / denominator;
+    numerator *= term_sq;
+    denominator += 2.0;
+  }
+  return 2 * sum;
 }
 
 template <typename DataType>
@@ -98,10 +80,8 @@ void fsqrt(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   if constexpr (std::is_same<DataType, float>::value) {
     zero = 0;
     neg_zero = 0x80000000;
-  } else if constexpr (std::is_same<DataType, fp16>::value) {
-    zero = 0;
-    neg_zero = 0x8000;
-  } else if constexpr (std::is_same<DataType, bf16>::value) {
+  } else if constexpr (std::is_same<DataType, fp16>::value ||
+                       std::is_same<DataType, bf16>::value) {
     zero = 0;
     neg_zero = 0x8000;
   } else {
@@ -149,17 +129,6 @@ void fcos(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
 template <typename DataType>
 void farcsin(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
              dim4 *real_shape) {
-  auto sign_mask = getSignMask<DataType>();
-  if constexpr (std::is_same<DataType, float>::value) {
-    sign_mask = 0x80000000;
-  } else if constexpr (std::is_same<DataType, fp16>::value) {
-    sign_mask = 0x8000;
-  } else if constexpr (std::is_same<DataType, bf16>::value) {
-    sign_mask = 0x8000;
-  } else {
-    static_assert(false, "Unsupported DataType");
-  }
-
   auto t_square = make_tensor<DataType>(shape, real_shape);
   auto t_mul025 = make_tensor<DataType>(shape, real_shape);
   auto t_025sub = make_tensor<DataType>(shape, real_shape);
@@ -173,13 +142,32 @@ void farcsin(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fmul(t_square, in, in);
   tiu::fmul(t_mul025, t_square, 0.25);
   tiu::fsub(t_025sub, 0.25, t_mul025);
-  tiu::fsqrt(t_sqrt1, t_025sub);
+  fsqrt(t_sqrt1, t_025sub, shape, real_shape);
   tiu::fsub(t_05sub, 0.5, t_sqrt1);
-  tiu::fsqrt(t_sqrt2, t_05sub);
+  fsqrt(t_sqrt2, t_05sub, shape, real_shape);
   tiu::farcsin_base(t_arcsin, t_sqrt2);
   tiu::fmul(t_mul2, t_arcsin, 2.0);
-  tiu::bitwise_and(t_sign, in, sign_mask);
-  tiu::bitwise_or(out, t_sign, t_mul2);
+  auto sign_mask = getSignMask<DataType>();
+  if constexpr (std::is_same<DataType, float>::value) {
+    sign_mask = 0x80000000;
+    auto t_sign_int = t_sign.template view<int32>();
+    auto in_int = in.template view<int32>();
+    auto t_mul2_int = t_mul2.template view<int32>();
+    auto out_int = out.template view<int32>();
+    tiu::bitwise_and(t_sign_int, in_int, sign_mask);
+    tiu::bitwise_or(out_int, t_sign_int, t_mul2_int);
+  } else if constexpr (std::is_same<DataType, fp16>::value ||
+                       std::is_same<DataType, bf16>::value) {
+    sign_mask = 0x8000;
+    auto t_sign_int = t_sign.template view<int16>();
+    auto in_int = in.template view<int16>();
+    auto t_mul2_int = t_mul2.template view<int16>();
+    auto out_int = out.template view<int16>();
+    tiu::bitwise_and(t_sign_int, in_int, sign_mask);
+    tiu::bitwise_or(out_int, t_sign_int, t_mul2_int);
+  } else {
+    static_assert(false, "Unsupported DataType");
+  }
 }
 
 template <typename DataType>
@@ -198,17 +186,6 @@ void ftan(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   float C025 = 0.25;
   float C1 = 1;
   float C2 = 2;
-
-  auto sign_mask = getSignMask<DataType>();
-  if constexpr (std::is_same<DataType, float>::value) {
-    sign_mask = 0x80000000;
-  } else if constexpr (std::is_same<DataType, fp16>::value) {
-    sign_mask = 0x8000;
-  } else if constexpr (std::is_same<DataType, bf16>::value) {
-    sign_mask = 0x8000;
-  } else {
-    static_assert(false, "Unsupported DataType");
-  }
 
   auto t_mul = make_tensor<DataType>(shape, real_shape);
   auto t_round = make_tensor<DataType>(shape, real_shape);
@@ -230,8 +207,27 @@ void ftan(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fsub(t_sub, C1, t_tanx_sub_025pi);
   tiu::fdiv(t_c_div, C2, t_sub);
   tiu::fsub(t_sub_c, t_c_div, C1);
-  tiu::bitwise_and(t_and, t_rem, sign_mask);
-  tiu::bitwise_or(out, t_and, t_sub_c);
+  auto sign_mask = getSignMask<DataType>();
+  if constexpr (std::is_same<DataType, float>::value) {
+    sign_mask = 0x80000000;
+    auto t_and_int = t_and.template view<int32>();
+    auto t_rem_int = t_rem.template view<int32>();
+    auto out_int = out.template view<int32>();
+    auto t_sub_c_int = t_sub_c.template view<int32>();
+    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
+    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
+  } else if constexpr (std::is_same<DataType, fp16>::value ||
+                       std::is_same<DataType, bf16>::value) {
+    sign_mask = 0x8000;
+    auto t_and_int = t_and.template view<int16>();
+    auto t_rem_int = t_rem.template view<int16>();
+    auto out_int = out.template view<int16>();
+    auto t_sub_c_int = t_sub_c.template view<int16>();
+    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
+    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
+  } else {
+    static_assert(false, "Unsupported DataType");
+  }
 }
 
 template <typename DataType>
@@ -245,16 +241,6 @@ void fcot(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   float C2 = 2;
 
   auto sign_mask = getSignMask<DataType>();
-  if constexpr (std::is_same<DataType, float>::value) {
-    sign_mask = 0x80000000;
-  } else if constexpr (std::is_same<DataType, fp16>::value) {
-    sign_mask = 0x8000;
-  } else if constexpr (std::is_same<DataType, bf16>::value) {
-    sign_mask = 0x8000;
-  } else {
-    static_assert(false, "Unsupported DataType");
-  }
-
   auto t_mul = make_tensor<DataType>(shape, real_shape);
   auto t_csub = make_tensor<DataType>(shape, real_shape);
   auto t_round = make_tensor<DataType>(shape, real_shape);
@@ -277,8 +263,26 @@ void fcot(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fsub(t_sub, C1, t_tanx_sub_025pi);
   tiu::fdiv(t_c_div, C2, t_sub);
   tiu::fsub(t_sub_c, t_c_div, C1);
-  tiu::bitwise_and(t_and, t_rem, sign_mask);
-  tiu::bitwise_or(out, t_and, t_sub_c);
+  if constexpr (std::is_same<DataType, float>::value) {
+    sign_mask = 0x80000000;
+    auto t_and_int = t_and.template view<int32>();
+    auto t_rem_int = t_rem.template view<int32>();
+    auto t_sub_c_int = t_sub_c.template view<int32>();
+    auto out_int = out.template view<int32>();
+    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
+    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
+  } else if constexpr (std::is_same<DataType, fp16>::value ||
+                       std::is_same<DataType, bf16>::value) {
+    sign_mask = 0x8000;
+    auto t_and_int = t_and.template view<int16>();
+    auto t_rem_int = t_rem.template view<int16>();
+    auto out_int = out.template view<int16>();
+    auto t_sub_c_int = t_sub_c.template view<int16>();
+    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
+    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
+  } else {
+    static_assert(false, "Unsupported DataType");
+  }
 }
 
 template <typename DataType>
@@ -383,6 +387,22 @@ void exp_no_overflow(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape) {
   exp_no_overflow(out, in, shape, shape);
 }
 
+template <typename T>
+void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input,
+                  dim4 *shape) {
+  auto local_input_exp = tensor<T>(*shape);
+  // tiu::fexp(local_input_exp, local_input);
+  exp_no_overflow(local_input_exp, local_input, shape, shape);
+
+  auto local_input_exp_reciprocal = tensor<T>(*shape);
+  tiu::fdiv(local_input_exp_reciprocal, 1, local_input_exp, 3);
+
+  auto local_output_pre = tensor<T>(*shape);
+  tiu::fadd(local_output_pre, local_input_exp_reciprocal, 1);
+
+  tiu::fdiv(local_output, 1, local_output_pre, 3);
+}
+
 template <typename DataType>
 void flog(tensor<DataType> &out, tensor<DataType> &in, dim4 *block_shape,
           dim4 *real_shape) {
@@ -475,9 +495,8 @@ void flog(tensor<DataType> &out, tensor<DataType> &in, dim4 *block_shape,
   }
 }
 
-template<typename T>
-void mish_f32(tensor<T> &out, tensor<T> &in, dim4 *shape,
-              dim4 *real_shape) {
+template <typename T>
+void mish_f32(tensor<T> &out, tensor<T> &in, dim4 *shape, dim4 *real_shape) {
   auto t_exp = tensor<T>(shape);
   auto t_fill_max = tensor<T>(shape);
   auto t_sel_max = tensor<T>(shape);
@@ -497,7 +516,8 @@ void mish_f32(tensor<T> &out, tensor<T> &in, dim4 *shape,
   // tiu::fill(t_fill_max, float_sqrt_max_);
   tiu::gt_select(t_sel_max, t_exp, float_sqrt_max, float_sqrt_max, t_exp);
   // tiu::fill(t_fill_min, float_sqrt_min_);
-  tiu::lt_select(t_sel_min, t_sel_max, float_sqrt_min, float_sqrt_min, t_sel_max);
+  tiu::lt_select(t_sel_min, t_sel_max, float_sqrt_min, float_sqrt_min,
+                 t_sel_max);
   tiu::fadd_sqr(t_add_sqr, t_sel_min, C1);
   tiu::fadd(t_add_c, t_add_sqr, C1);
   tiu::fdiv(t_div, in, t_add_c);
@@ -505,9 +525,9 @@ void mish_f32(tensor<T> &out, tensor<T> &in, dim4 *shape,
   tiu::fadd(out, in, t_mul_c);
 }
 
-template<typename T>
-void pow_f32(tensor<T> &out, tensor<T> &in1, tensor<T> &in2,
-             dim4 *shape, dim4 *real_shape) {
+template <typename T>
+void pow_f32(tensor<T> &out, tensor<T> &in1, tensor<T> &in2, dim4 *shape,
+             dim4 *real_shape) {
   auto t_log = tensor<T>(shape);
   auto t_mul = tensor<T>(shape);
   flog(t_log, in1, shape, real_shape);
@@ -515,7 +535,7 @@ void pow_f32(tensor<T> &out, tensor<T> &in1, tensor<T> &in2,
   exp_no_overflow(out, t_mul, shape, real_shape);
 }
 
-template<typename T>
+template <typename T>
 void pow_f32(tensor<T> &out, tensor<T> &in1, float in2, dim4 *shape,
              dim4 *real_shape) {
   auto t_log = tensor<T>(shape);
@@ -525,7 +545,7 @@ void pow_f32(tensor<T> &out, tensor<T> &in1, float in2, dim4 *shape,
   exp_no_overflow(out, t_mul, shape, real_shape);
 }
 
-template<typename T>
+template <typename T>
 void pow_f32(tensor<T> &out, float in1, tensor<T> &in2, dim4 *shape,
              dim4 *real_shape) {
   auto t_mul = tensor<T>(shape);
@@ -585,7 +605,7 @@ void arcsinh_fp32(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   auto sqrt_res = make_tensor<DataType>(shape, real_shape);
   tiu::fmul(mul_res, in, in);
   tiu::fadd(add_res, mul_res, 1.0f);
-  tiu::fsqrt(sqrt_res, add_res);
+  fsqrt(sqrt_res, add_res, shape, real_shape);
   tiu::fadd(add_res, sqrt_res, in);
   flog(out, add_res, shape, real_shape);
 }
@@ -611,7 +631,7 @@ void arccosh_fp32(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   auto add_res = make_tensor<DataType>(shape, real_shape);
   tiu::fmul(mul_res, in, in);
   tiu::fsub(sub_res, mul_res, 1.0f);
-  tiu::fsqrt(sqrt_res, sub_res);
+  fsqrt(sqrt_res, sub_res, shape, real_shape);
   tiu::fadd(add_res, sqrt_res, in);
   flog(out, add_res, shape, real_shape);
 }
@@ -807,5 +827,29 @@ void fp_avg_pool_2d_count_include_padding(tensor<DataType> &dst,
       auto sub_tensor = dst.sub_view(shape4, offset4);
       tiu::fmul(sub_tensor, sub_tensor, scale4);
     }
+  }
+}
+
+template <typename DataType>
+void arange_broadcast(tensor<DataType> &dst, int c, int start, int step,
+                      int num) {
+  int max_len = 64;
+  int num_treated = min(max_len, num);
+  dim4 table_real_shape = {1, c, 1, num_treated};
+  auto table_real = dst.view(table_real_shape);
+  tiu::load_coeff(table_real, SERIAL_NUMBER);
+  for (int i = num_treated; i < num; i += num_treated) {
+    int val = i;
+    int cur_w = min(num_treated, num - i);
+    dim4 cur_shape = {1, c, 1, cur_w};
+    dim4 offset = {0, 0, 0, i};
+    auto sub_tensor = dst.sub_view(cur_shape, offset);
+    tiu::add(sub_tensor, table_real, val);
+  }
+  if (step != 1) {
+    tiu::mul(dst, dst, step);
+  }
+  if (start != 0) {
+    tiu::add(dst, dst, start);
   }
 }

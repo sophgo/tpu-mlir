@@ -231,9 +231,6 @@ uint nonzero(gtensor<DataType0> &dst, tensor<DataType1> &src);
 template <typename DataType0, typename DataType1>
 uint nonzero(gtensor<DataType0> &dst, gtensor<DataType1> &src);
 
-template <typename DataType>
-void move_cross_lane(tensor<DataType> &dst, tensor<DataType> &src);
-
 template <typename DataType0, typename DataType1>
 unsigned int mask_select(gtensor<DataType0> &dst, tensor<DataType0> &src,
                          tensor<DataType1> &mask);
