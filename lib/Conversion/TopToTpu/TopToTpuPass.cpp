@@ -71,6 +71,38 @@ static void ForwardSign(Value out) {
   }
 }
 
+static Value createCastViaF32(OpBuilder &builder, Value v, Type to,
+                              StringRef name) {
+  auto ctx = builder.getContext();
+  auto shape = module::getShape(v);
+  auto f32_type = Float32Type::get(ctx);
+  auto to_stype = module::getStorageType(to);
+
+  // Step 1: v (f16/bf16) → intermediate (f32)
+  auto interm_type = RankedTensorType::get(shape, f32_type);
+  auto loc1 = NameLoc::get(builder.getStringAttr(name + "_to_f32"));
+
+  Value interm_val;
+  auto ori_op = module::getOriValue(v).getDefiningOp();
+  if (ori_op && ori_op->hasTrait<trait::ShapeProducer>()) {
+    auto castOp =
+        builder.create<tpu::ShapeCastOp>(loc1, interm_type, ValueRange{v});
+    interm_val = castOp.getOutput();
+  } else {
+    auto castOp = builder.create<tpu::CastOp>(loc1, interm_type, ValueRange{v});
+    interm_val = castOp.getOutput();
+  }
+
+  // Step 2: intermediate (f32) → target (bf16/f16)
+  auto target_type = RankedTensorType::get(shape, to_stype);
+  auto loc2 =
+      NameLoc::get(builder.getStringAttr(name + "_" + type_string(to_stype)));
+  auto final_cast =
+      builder.create<tpu::CastOp>(loc2, target_type, ValueRange{interm_val});
+
+  return final_cast.getOutput();
+}
+
 template <typename OpTy>
 struct ForwardCalibartion : public OpRewriterPatternEx<OpTy> {
 public:
@@ -2000,6 +2032,16 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
     name += "_" + type_string(to_stype);
     auto newType = RankedTensorType::get(module::getShape(v), to_stype);
     auto loc = NameLoc::get(builder.getStringAttr(name));
+    auto from_stype = module::getStorageType(v.getType());
+    auto to_stype = module::getStorageType(to);
+    bool cast_use_fp32 = module::isBM1688();
+    if (cast_use_fp32) {
+      if (((from_stype.isF16() && to_stype.isBF16()) ||
+           (from_stype.isBF16() && to_stype.isF16()))) {
+        Value result = createCastViaF32(builder, v, to, name);
+        return result;
+      }
+    }
     if (module::getOriValue(v)
             .getDefiningOp()
             ->hasTrait<trait::ShapeProducer>()) {
@@ -2058,6 +2100,14 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
         if (isa<top::InputOp>(parentOp)) {
           return insert_18xx_cpu_cast(builder, v, loc, newType);
         }
+      }
+      auto from_stype = module::getStorageType(v.getType());
+      auto to_stype = module::getStorageType(to);
+      bool cast_use_fp32 = module::isBM1688();
+      if (cast_use_fp32 && ((from_stype.isF16() && to_stype.isBF16()) ||
+                            (from_stype.isBF16() && to_stype.isF16()))) {
+        Value result = createCastViaF32(builder, v, to, name);
+        return result;
       }
       auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
       return castOp.getOutput();

@@ -34,6 +34,21 @@ public:
       return failure();
     }
     auto pre_cast_in = castInputOp.getInput();
+    bool cast_use_fp32 = module::isBM1688();
+    if (cast_use_fp32) {
+      auto mid_type =
+          op->getOperand(0).getType().cast<mlir::TensorType>().getElementType();
+      auto in_type =
+          pre_cast_in.getType().cast<mlir::TensorType>().getElementType();
+      auto out_type =
+          op->getResult(0).getType().cast<mlir::TensorType>().getElementType();
+      if ((isa<Float16Type>(in_type) && isa<Float32Type>(mid_type) &&
+           isa<BFloat16Type>(out_type)) ||
+          (isa<BFloat16Type>(in_type) && isa<Float32Type>(mid_type) &&
+           isa<Float16Type>(out_type))) {
+        return failure();
+      }
+    }
     if (out_type == pre_cast_in.getType()) {
       // for example, int32 cast f16 cast int32 => remove these two cast
       rewriter.replaceOp(op, {pre_cast_in});
