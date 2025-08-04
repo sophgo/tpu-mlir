@@ -108,8 +108,14 @@ mlir::Type tpu::ConvbwdOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     return do_nothing(mode);
   }
   auto opd_stype = module::getStorageType(opd);
-  auto result_stype = module::getStorageType(op->getResult(0));
-
+  mlir::Type result_stype = nullptr;
+  for (auto result : op->getResults()) {
+    if (!module::isNone(result)) {
+      result_stype =  module::getStorageType(result);
+      break;
+    }
+  }
+  ASSERT_THIS(result_stype != nullptr);
   if (opd_stype == result_stype) {
     return do_nothing(mode);
   }

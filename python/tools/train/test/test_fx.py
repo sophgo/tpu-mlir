@@ -212,10 +212,10 @@ class FX_IR_TESTER(object):
         if json_case:
             self.trace_and_test(json_case['input_shapes'], Model(**json_case['model_params']))
         else:
-            for batch, oc, ic, oh, ow, ih, iw, kh, kw in [(8, 128, 256, 56, 56, 56, 56, 1, 1),
-                                                          (128, 128, 256, 56, 56, 56, 56, 1, 1)]:
+            for batch, oc, ic, oh, ow, ih, iw, kh, kw, grad_input_enable in [(8, 128, 256, 56, 56, 56, 56, 1, 1, True),
+                                                          (128, 128, 256, 56, 56, 56, 56, 1, 1, True)]:
                 self.trace_and_test([[batch, oc, oh, ow], [batch, ic, ih, iw], [oc, ic, kh, kw]],
-                                    Model())
+                                    Model(grad_input_enable=grad_input_enable))
             if self.chip == "bm1690":
                 # bm1690 support grad_bias
                 self.trace_and_test([[8, 255, 40, 40], [8, 256, 40, 40], [255, 256, 1, 1]],
