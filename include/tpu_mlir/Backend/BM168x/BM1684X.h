@@ -108,6 +108,7 @@ protected:
     EU_BYTES = 64;
     LMEM_BYTES = 1 << 18; // 256KB
     LMEM_BANKS = 16;
+    DMA_ALGN_BYTES = 512;
     IC_PARALLEL = 64;
     ALIGNMENT = 0x1000;
     GMEM_START_ADDR = 0x100000000ull;

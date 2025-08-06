@@ -24,6 +24,7 @@ int64_t Arch::EU_BYTES = 0;
 int64_t Arch::LMEM_BYTES = 0;
 int64_t Arch::LMEM_BANKS = 0;
 int64_t Arch::LMEM_BANK_BYTES = 0;
+int64_t Arch::DMA_ALGN_BYTES = 512;
 bool Arch::ALIGN_4N = false;
 llvm::StringRef Arch::LIB_BACKEND_NAME = "";
 llvm::StringRef Arch::LIB_PPL_DYN_HOST_NAME = "";

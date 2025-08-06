@@ -101,6 +101,7 @@ protected:
     EU_BYTES = 64;        // vector length 512bit
     LMEM_BYTES = 1 << 18; // 256KB
     LMEM_BANKS = 16;
+    DMA_ALGN_BYTES = 256;
     IC_PARALLEL = 64;
     ALIGNMENT = 0x1000;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;

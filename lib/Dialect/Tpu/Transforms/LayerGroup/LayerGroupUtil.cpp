@@ -697,8 +697,8 @@ get_group_max_secs(const LgInfo &lg_info,
                                         lg_info.type))) {
         // make min_wslice >= 256 to avoid gdma performance drop
         max_wsecs = std::min(max_wsecs, w);
-        // avoid A2 chip ddr interleave
-        if (w * dtype_bytes == 512 && module::isBM1688()) {
+        // avoid Dma unaligned move
+        if (w * dtype_bytes <= Arch::DMA_ALGN_BYTES) {
           max_wsecs = 1;
         }
         total_secs *= w;

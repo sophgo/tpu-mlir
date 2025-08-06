@@ -465,6 +465,7 @@ protected:
     EU_BYTES = 128;       // only for int8; 128 for fp32
     LMEM_BYTES = 1 << 19; // 512KB
     LMEM_BANKS = 8;
+    DMA_ALGN_BYTES = 512;
     ALIGNMENT = 0x1000;
     GMEM_START_ADDR = 0x100000000ull;
     L2_SRAM_START_ADDR = 0x10000000 + 0x22000 + 0x80000;

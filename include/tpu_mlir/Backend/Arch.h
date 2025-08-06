@@ -31,6 +31,7 @@ public:
   static int64_t LMEM_BYTES;
   static int64_t LMEM_BANKS;
   static int64_t LMEM_BANK_BYTES;
+  static int64_t DMA_ALGN_BYTES;
   static llvm::StringRef LIB_BACKEND_NAME;
   static llvm::StringRef LIB_PPL_DYN_HOST_NAME;
   static bool ALIGN_4N;
