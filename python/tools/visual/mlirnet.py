@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import pymlir
 
-pymlir.set_mem_mode("value_mem")
+pymlir.set_mem_mode("force_value_mem")
 import sys
 import copy
 
