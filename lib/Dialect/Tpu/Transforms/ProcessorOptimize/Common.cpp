@@ -337,7 +337,10 @@ PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
     if (nextOp->getResults().size() != 1) {
       return failure();
     }
-
+    if (nextOp->getOperands().size() == 2 &&
+        !module::isWeight(nextOp->getOperand(1))) {
+      return failure();
+    }
     moveUnaryPermute(op, nextOp, rewriter);
     return success();
   }
