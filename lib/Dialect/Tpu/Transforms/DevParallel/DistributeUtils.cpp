@@ -116,6 +116,11 @@ static bool isRotaryEmbed(Operation *op, std::vector<Operation *> &begin_ops) {
   }
 
   auto reshape = left_mul->getOperand(0).getDefiningOp();
+  Operation *rmsnorm = nullptr;
+  if (isa<tpu::RMSNormOp>(reshape)) {
+    rmsnorm = reshape;
+    reshape = rmsnorm->getOperand(0).getDefiningOp();
+  }
   if (!isa<tpu::ReshapeOp>(reshape)) {
     LLVM_DEBUG(llvm::dbgs()
                << "3. This Op is not ReshapeOp: " << *reshape << "\n");
@@ -209,13 +214,13 @@ static bool isRotaryEmbed(Operation *op, std::vector<Operation *> &begin_ops) {
                << *slice1 << "\n");
     return false;
   }
-
-  if (reshape != slice0->getOperand(0).getDefiningOp() ||
-      reshape != slice1->getOperand(0).getDefiningOp()) {
+  auto checkop = rmsnorm != nullptr ? rmsnorm : reshape;
+  if (checkop != slice0->getOperand(0).getDefiningOp() ||
+      checkop != slice1->getOperand(0).getDefiningOp()) {
     LLVM_DEBUG({
       llvm::dbgs()
           << "11. The input of the two SliceOp is not from the reshape\n";
-      reshape->dump();
+      checkop->dump();
       slice0->dump();
       slice1->dump();
     });
@@ -1523,7 +1528,11 @@ std::vector<Operation *> cloneOpWithWeight(PatternRewriter &rewriter,
       new_op->setOperand(idx, cur_out);
     }
   }
+  auto new_shape = module::getShape(cur_out);
   cur_out = new_op->getResult(0);
+  if (!isa<tpu::GatherOp>(next_op)) {
+    module::setShape(cur_out, new_shape);
+  }
   std::vector<Operation *> next_ops(next_op->user_begin(), next_op->user_end());
   return next_ops;
 }
@@ -1760,9 +1769,16 @@ cloneRotaryEmbedOp(PatternRewriter &rewriter, Operation *next_op,
                    Value &cur_out, int axis, std::vector<Value> pos_ids,
                    int num_devices, int cur_device, int num_head) {
   auto suffix = std::to_string(cur_device);
-  auto users = next_op->getUsers();
   cloneCommonAxisOp(rewriter, next_op, cur_out, axis, num_devices, cur_device,
                     num_head);
+  if (next_op->hasOneUse()) {
+    auto *_op = *next_op->user_begin();
+    if (isa<tpu::RMSNormOp>(_op)) {
+      cloneOpWithWeight(rewriter, _op, cur_out, suffix);
+      next_op = _op;
+    }
+  }
+  auto users = next_op->getUsers();
   std::vector<Value> cat_operands;
   std::vector<Value> add_operands;
   auto start_out = cur_out;

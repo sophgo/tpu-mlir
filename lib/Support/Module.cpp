@@ -1319,6 +1319,11 @@ bool isQuantSymmetric() {
   return false;
 }
 
+void setQuantGroupSize(int q_group_size) {
+  auto intType = IntegerType::get(ctx, 64);
+  m->setAttr(Attr::QUANT_GROUP_SIZE, IntegerAttr::get(intType, q_group_size));
+}
+
 void setGroupQuantInfo(int q_group_size, bool q_symmetric) {
   auto intType = IntegerType::get(ctx, 64);
   m->setAttr(Attr::QUANT_GROUP_SIZE, IntegerAttr::get(intType, q_group_size));

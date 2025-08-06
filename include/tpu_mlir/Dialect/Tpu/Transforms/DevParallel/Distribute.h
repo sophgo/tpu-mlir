@@ -119,6 +119,16 @@ public:
                                     PatternRewriter &rewriter) const override;
 };
 
+class AdjustGroupSizePattern : public OpRewriterPatternEx<tpu::A16MatMulOp> {
+public:
+  AdjustGroupSizePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::A16MatMulOp>(context,
+                                              "AdjustGroupSizePattern") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
+                                    PatternRewriter &rewriter) const override;
+};
+
 template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
                      tpu::DevBeginOp op, int64_t num_devices);

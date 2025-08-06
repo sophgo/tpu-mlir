@@ -341,6 +341,38 @@ private:
 class DevParallelPass : public DevParallelBase<DevParallelPass> {
 public:
   DevParallelPass() {}
+  void checkIfNeedUpdateGroupSize(ModuleOp mOp) {
+    auto num_device = module::getDeviceNum();
+    if (num_device <= 1) {
+      return;
+    }
+    if (module::getMode() != module::Mode::W4F16 &&
+        module::getMode() != module::Mode::W4BF16) {
+      return;
+    }
+    auto mainFunc = module::getMainFuncOp(mOp);
+    auto fOps = mainFunc.getOps<tpu::FAttentionOp>();
+    if (fOps.empty()) {
+      return;
+    }
+    auto fOp = *mainFunc.getOps<tpu::FAttentionOp>().begin();
+    auto kv_head = fOp.getKvHead();
+    auto q_group_size = module::getQuantGroupSize();
+    auto dim = fOp.getDim();
+    if (kv_head * dim >= num_device * q_group_size * 2) {
+      return;
+    }
+    // Need update group size
+    if (kv_head * dim % (num_device * 2) != 0) {
+      UNREACHABLE_OP("kv_head * dim should be divisible by num_device * 2",
+                     fOp);
+      return;
+    }
+    auto new_size = (kv_head * dim) / (num_device * 2);
+    module::setQuantGroupSize(new_size);
+    module::applyPatternOnce<AdjustGroupSizePattern>(mOp);
+  }
+
   void runOnOperation() override {
     if (module::getNumSubModule() > 0) {
       return;
@@ -350,6 +382,7 @@ public:
     auto mainFunc = module::getMainFuncOp(mOp);
     auto mode = module::getMode();
     if (num_device > 1) {
+      checkIfNeedUpdateGroupSize(mOp);
       if (mode == module::Mode::F16 || mode == module::Mode::BF16) {
         module::applyPatternOnce<MatMulSliceMerge3>(mOp);
         module::applyPatternOnce<MatMulSliceMerge<tpu::MatMulOp>>(mOp);

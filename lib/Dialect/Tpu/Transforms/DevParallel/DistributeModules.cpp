@@ -72,6 +72,58 @@ struct OpReorderPattern : public OpRewriterPatternEx3 {
   bool shouldPrint(Operation *op) const override { return false; }
 };
 
+LogicalResult
+AdjustGroupSizePattern::matchAndRewriteImpl(tpu::A16MatMulOp op,
+                                            PatternRewriter &rewriter) const {
+  auto new_group_size = module::getQuantGroupSize();
+  auto group_size = op.getQGroupSize();
+  if (new_group_size == group_size) {
+    return failure();
+  }
+  if (op.getWeightBits() != 4) {
+    return failure();
+  }
+  if (group_size % new_group_size != 0) {
+    UNREACHABLE_OP("group size cannot be adjusted", op);
+  }
+  auto tile = group_size / new_group_size;
+  auto scaleOp = op.getScale().getDefiningOp<top::WeightOp>();
+  std::vector<int64_t> scale_shape = module::getShape(scaleOp.getResult());
+  auto zpOp = op.getZp().getDefiningOp<top::WeightOp>();
+  std::vector<int64_t> zp_shape = module::getShape(zpOp.getResult());
+  auto scale = scaleOp.read<uint16_t>();
+  auto zp = zpOp.read<uint8_t>();
+  int scale_num = scale->size();
+  int zp_num = zp->size();
+  std::vector<uint16_t> new_scale(scale_num * tile, 0);
+  std::vector<uint8_t> new_zp(zp_num * tile, 0);
+#pragma omp parallel for schedule(static, omp_schedule(scale_num))
+  for (int i = 0; i < scale_num; i++) {
+    for (int j = 0; j < tile; j++) {
+      new_scale[i * tile + j] = scale->at(i);
+    }
+  }
+#pragma omp parallel for schedule(static, omp_schedule(zp_num))
+  for (int i = 0; i < zp_num; i++) {
+    for (int j = 0; j < tile; j++) {
+      new_zp[i * tile + j] = zp->at(i);
+    }
+  }
+  scale_shape[1] = scale_shape[1] * tile;
+  zp_shape[1] = zp_shape[1] * tile;
+  auto newScaleType = module::getTypeLike(scaleOp.getResult(), scale_shape);
+  auto newScaleOp =
+      top::WeightOp::create(op, "scale_new", new_scale, newScaleType);
+  auto newZpType = module::getTypeLike(zpOp.getResult(), zp_shape);
+  auto newZpOp = top::WeightOp::create(op, "zp_new", new_zp, newZpType);
+  op->setOperand(2, newScaleOp);
+  op->setOperand(3, newZpOp);
+  op.setQGroupSize(new_group_size);
+  rewriter.eraseOp(scaleOp);
+  rewriter.eraseOp(zpOp);
+  return success();
+}
+
 static void getInputsOutputs(std::vector<Operation *> &ops,
                              std::vector<Value> &inputs,
                              std::vector<Value> &outputs) {
