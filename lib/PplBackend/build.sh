@@ -4,7 +4,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CPU_NUM=$(cat /proc/stat | grep cpu[0-9] -c)
 
 usage() {
-  echo "Usage: $0 [RELEASE|DEBUG] [force|conditional]"
+  echo "Usage: $0 [RELEASE|DEBUG]"
 }
 
 if [[ -z "$INSTALL_PATH" ]]; then
@@ -13,22 +13,11 @@ if [[ -z "$INSTALL_PATH" ]]; then
 fi
 
 DEBUG_FLAG=""
-UPDATE_POLICY="force"
 if [ -n "$1" ]; then
     if [ "$1" = "DEBUG" ]; then
         DEBUG_FLAG="-DDEBUG=ON"
     elif [ "$1" != "RELEASE" ]; then
         echo "Invalid build mode: $1"
-        usage
-        exit 1
-    fi
-fi
-# update policy
-if [ -n "$2" ]; then
-    if [ "$2" = "conditional" ]; then
-        UPDATE_POLICY=$2
-    elif [ "$1" != "force" ]; then
-        echo "Invalid update policy: $2"
         usage
         exit 1
     fi
@@ -46,10 +35,35 @@ clean_up() {
   mkdir -p $build_dir
 }
 
+generate_md5_list() {
+  for dir in "$@"; do
+    while IFS= read -r -d '' file; do
+      rel=${file#"$dir"/}
+      md5=$(md5sum "$file" | awk '{print $1}')
+      printf '%s %s\n' "$rel" "$md5"
+    done < <(find "$dir" -type f -print0)
+  done
+}
+# check if files under PplBackend changed
+MD5FILE=$DIR/.md5
+file_changed=false
+mapfile -t md5_list < <(generate_md5_list "$DIR/src" "$DIR/src_dyn")
+# printf '>> %s\n' "${md5_list[@]}"
+if [ ! -f "$MD5FILE" ]; then
+  file_changed=true
+else
+  for entry in "${md5_list[@]}"; do
+    if ! grep -Fqx "$entry" "$MD5FILE"; then
+      file_changed=true
+      break
+    fi
+  done
+fi
+# get latest nntoolchain version
+lib_changed=false
 extract_sha() {
     grep -oP ".*$1 sha256: \w{40}.*" "$2"
 }
-# get latest nntoolchain version
 NNTC_VER_PATH=${PROJECT_ROOT}/third_party/nntoolchain/README.md
 PPL_VER_PATH=${PROJECT_ROOT}/third_party/ppl/version
 VER_FILE=${PROJECT_ROOT}/third_party/nntoolchain/ppl/version
@@ -61,11 +75,13 @@ bm1688_sha=$(extract_sha "#bm1688" "${NNTC_VER_PATH}")
 read -r ppl_ver < $PPL_VER_PATH
 content="$(printf '%s\n%s\n%s' "$bm1684x_sha" "$bm1688_sha" "$ppl_ver")"
 # check whether the third_party/nntoolchain/lib or ppl is updated
-if [ "$UPDATE_POLICY" = "conditional" ] && 
-   [ -f "$VER_FILE" ] &&
-   grep -Fxq -- "$bm1684x_sha" "$VER_FILE" &&
-   grep -Fxq -- "$bm1688_sha" "$VER_FILE" &&
-   grep -Fxq -- "$ppl_ver" "$VER_FILE"; then
+if [ -f "$VER_FILE" ] &&
+   ! grep -Fxq -- "$bm1684x_sha" "$VER_FILE" ||
+   ! grep -Fxq -- "$bm1688_sha" "$VER_FILE" ||
+   ! grep -Fxq -- "$ppl_ver" "$VER_FILE"; then
+  lib_changed=true
+fi
+if [ "$lib_changed" = false ] && [ "$file_changed" = false ]; then
   exit 0
 fi
 # build third_party/nntoolchain/ppl lib
@@ -122,4 +138,9 @@ if [ "$missing_count" -gt 0 ]; then
     exit 1 
 fi
 # write nntc and ppl version to VER_FILE
-printf '%s\n' "$content" > "$VER_FILE"
+if [ "$file_changed" = true ]; then
+  printf '%s\n' "${md5_list[@]}" > "$MD5FILE"
+fi
+if [ "$lib_changed" = true ]; then
+  printf '%s\n' "$content" > "$VER_FILE"
+fi

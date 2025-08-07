@@ -14,3 +14,7 @@ build script: /workspace/tpu-mlir/lib/PplBackend/build.sh [RELEASE|DEBUG] [force
         DEBUG：（option）Build type for all above mentiond libs
         force：（default）Compile regardless of whether the library has been updated or not
         conditional（option）：Compile when the nntc or ppl libraries are updated
+
+***NOTICE***
+make sure build release type by using:
+/workspace/tpu-mlir/lib/PplBackend/build.sh

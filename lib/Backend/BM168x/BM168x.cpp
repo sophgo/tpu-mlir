@@ -429,7 +429,7 @@ void BM168x::call_ppl_local_func(const char *symbolName, void *params,
                                  void *output) {
   auto set_node_chip = instance()->PplCastToFPtr<ppl_set_node>("ppl_set_node");
   auto func = instance()->PplCastToFPtr<ppl_local_backend_api_t>(symbolName);
-  set_node_chip((*instance())->cmdid_node);
+  set_node_chip((*instance())->bdc_node);
   func(params, param_size, info, input, output);
 }
 

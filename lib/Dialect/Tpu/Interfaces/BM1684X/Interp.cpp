@@ -153,50 +153,85 @@ void tpu::InterpOp::codegen_local_bm1684x_kernel(std::vector<group_info_t> &in_g
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer)
-    return sizeof(interp_global_param_t);
   interp_global_param_t param = {0};
-  param.if_getting_buffer_size = false;
-  if (module::isBM1684XFamily()) {
-    param.spec.buffer_addr = module::getAddress(getBuffer());
-  } else {
-    param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
-  }
   auto &common = param.spec.common;
-  common.pad_bag = 0;
-  common.pad_end = 0;
   int coord = 0;
-  if (getCoordMode() == tpu::ResizeCoordMode::half_pixel)
-    coord = 0;
-  else if (getCoordMode() == tpu::ResizeCoordMode::pytorch_half_pixel)
-    coord = 1;
-  else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
-    coord = 2;
-  else if (getCoordMode() == tpu::ResizeCoordMode::asymmetric)
-    coord = 3;
-  else
-    llvm_unreachable("Unsupport coord mode.");
+  if (buffer) {
+    param.if_getting_buffer_size = false;
+    if (module::isBM1684XFamily()) {
+      param.spec.buffer_addr = module::getAddress(getBuffer());
+    } else {
+      param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
+    }
+    common.pad_bag = 0;
+    common.pad_end = 0;
+    if (getCoordMode() == tpu::ResizeCoordMode::half_pixel)
+      coord = 0;
+    else if (getCoordMode() == tpu::ResizeCoordMode::pytorch_half_pixel)
+      coord = 1;
+    else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
+      coord = 2;
+    else if (getCoordMode() == tpu::ResizeCoordMode::asymmetric)
+      coord = 3;
+    else
+      llvm_unreachable("Unsupport coord mode.");
+    if (module::isNone(getShapeT())) {
+      auto out_shape = module::getShape(getOutput());
+      param.spec.dims = out_shape.size();
+      for (int i = 0; i < param.spec.dims; i++)
+        param.spec.shape[i] = out_shape[i];
+      param.spec.shape_is_fixed = true;
+    } else {
+      param.spec.shape_is_fixed = false;
+    }
+  }
+  auto platform = module::getPlatform();
   if (getMode() == tpu::ResizeMode::nearest) {
-    common.platform_sp = ONNX_NEAREST;
+    if (platform == module::Platform::TORCH)
+      common.platform_sp = PYTORCH_NEAREST;
+    else
+      common.platform_sp = ONNX_NEAREST;
     common.align_corners = true;
     common.half_pixel_centers = false;
     if (coord == 3)
       common.align_corners = false;
   } else if (getMode() == tpu::ResizeMode::linear) {
-    common.platform_sp = PYTORCH_SUPPORT;
+    if (platform == module::Platform::CAFFE)
+      common.platform_sp = CAFFE_SUPPORT;
+    else
+      common.platform_sp = PYTORCH_SUPPORT;
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-  if (module::isNone(getShapeT())) {
-    auto out_shape = module::getShape(getOutput());
-    param.spec.dims = out_shape.size();
-    for (int i = 0; i < param.spec.dims; i++)
-      param.spec.shape[i] = out_shape[i];
-    param.spec.shape_is_fixed = true;
-  } else {
-    param.spec.shape_is_fixed = false;
+  int mode_flag = (common.platform_sp == ONNX_NEAREST) ||
+                  (common.platform_sp == PYTORCH_SUPPORT);
+  if (getPplFlag() && mode_flag) {
+    auto op = getOperation();
+    auto input_spec = BM168x::get_input_spec(op);
+    auto output_spec = BM168x::get_output_spec(op);
+    param.spec.buffer_addr = module::getAddress(getBuffer());
+    return BM168x::call_ppl_dyn_func("api_dyn_interp_global", &param,
+                                     input_spec->data(), output_spec->data(),
+                                     buffer);
+  }
+  if (!buffer) {
+    return sizeof(interp_global_param_t);
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::InterpOp::get_fw_type_bm1684x() { return FW_BMNET_INTERP; }
+int64_t tpu::InterpOp::get_fw_type_bm1684x() {
+  auto mode = getMode();
+  auto platform = module::getPlatform();
+  int mode_flag =
+      (mode == tpu::ResizeMode::nearest &&
+       platform != module::Platform::TORCH) ||
+      (mode == tpu::ResizeMode::linear && platform != module::Platform::CAFFE);
+  if (getPplFlag() && mode_flag) {
+    if (mode == tpu::ResizeMode::nearest)
+      return PPL_FW_INTERP_NEAREST;
+    else if (mode == tpu::ResizeMode::linear)
+      return PPL_FW_INTERP_LINEAR;
+  }
+  return FW_BMNET_INTERP;
+}

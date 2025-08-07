@@ -37,7 +37,7 @@ else()  # soc pcie
   if(NOT DEFINED ENV{CROSS_TOOLCHAINS})
       message("CROSS_TOOLCHAINS was not defined, try source download_toolchain.sh")
       execute_process(
-          COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source $ENV{PPL_PROJECT_ROOT}/samples/scripts/download_toolchain.sh && env"
+          COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source  ${CMAKE_CURRENT_LIST_DIR}/download_toolchain.sh && env"
           RESULT_VARIABLE result
           OUTPUT_VARIABLE output
       )
@@ -54,7 +54,17 @@ else()  # soc pcie
     set(CMAKE_C_COMPILER $ENV{CROSS_TOOLCHAINS}/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc)
   endif()
   if(NOT EXISTS ${CMAKE_C_COMPILER})
-    message(FATAL_ERROR "Compiler not found: ${CMAKE_C_COMPILER}")
+    message("CROSS_TOOLCHAINS was not defined, try source download_toolchain.sh")
+    execute_process(
+        COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source  ${CMAKE_CURRENT_LIST_DIR}/download_toolchain.sh && env"
+        RESULT_VARIABLE result
+        OUTPUT_VARIABLE output
+    )
+    if(NOT result EQUAL "0")
+        message(FATAL_ERROR "Not able to source download_toolchain.sh: ${output}")
+    endif()
+    string(REGEX MATCH "CROSS_TOOLCHAINS=([^\n]*)" _ ${output})
+    set(ENV{CROSS_TOOLCHAINS} "${CMAKE_MATCH_1}")
   endif()
 endif()
 

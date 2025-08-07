@@ -2,7 +2,7 @@
 #include "fattention_fp16.h"
 #include "fattention_v2.h"
 #include "helper.h"
-#include "tpu_mlir/Backend/BM168x/Param.h"
+#include "ppl_static_host.h"
 #include <assert.h>
 #include <cstdio>
 #include <functional>
