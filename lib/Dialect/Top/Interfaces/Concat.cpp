@@ -137,31 +137,36 @@ void top::ConcatOp::shape_inference() {
         input_shapes_v.push_back(input_shape_v);
       }
     }
-    ASSERT_THIS(out_shape.size() == 1 || out_shape.size() == 0);
-    auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
-    InferenceParameter p;
-    std::vector<std::vector<float_t>> input_datas;
-    for (auto &in_shape_v : input_shapes_v) {
-      std::vector<float_t> input_data(in_shape_v.size());
-      std::transform(in_shape_v.begin(), in_shape_v.end(), input_data.begin(),
-                     [](auto &i) { return static_cast<float_t>(i); });
-      input_datas.push_back(input_data);
+    if (out_shape.size() == 1 || out_shape.size() == 0) {
+      auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
+      InferenceParameter p;
+      std::vector<std::vector<float_t>> input_datas;
+      for (auto &in_shape_v : input_shapes_v) {
+        std::vector<float_t> input_data(in_shape_v.size());
+        std::transform(in_shape_v.begin(), in_shape_v.end(), input_data.begin(),
+                       [](auto &i) { return static_cast<float_t>(i); });
+        input_datas.push_back(input_data);
+      }
+      std::transform(input_datas.begin(), input_datas.end(),
+                     std::back_inserter(p.inputs),
+                     [](auto &i) { return i.data(); });
+      std::vector<float_t> output_data(real_out_size);
+      p.outputs.push_back(output_data.data());
+      auto inf_op = dyn_cast<InferenceInterface>(getOperation());
+      inf_op.init(p);
+      ASSERT_THIS(inf_op);
+      auto ret = inf_op.inference(p);
+      ASSERT_THIS(mlir::succeeded(ret));
+      inf_op.deinit(p);
+      std::vector<int64_t> output_shape_v(real_out_size);
+      std::transform(output_data.begin(), output_data.end(),
+                     output_shape_v.begin(),
+                     [](float_t i) { return static_cast<int64_t>(i); });
+      module::bindShapeTensorValue(getOutput(), output_shape_v);
+    } else {
+      dump();
+      llvm::errs() << "WARNING: Shape Type Tensor is calculating with a Tensor "
+                      "dimension > 1\n";
     }
-    std::transform(input_datas.begin(), input_datas.end(),
-                   std::back_inserter(p.inputs),
-                   [](auto &i) { return i.data(); });
-    std::vector<float_t> output_data(real_out_size);
-    p.outputs.push_back(output_data.data());
-    auto inf_op = dyn_cast<InferenceInterface>(getOperation());
-    inf_op.init(p);
-    ASSERT_THIS(inf_op);
-    auto ret = inf_op.inference(p);
-    ASSERT_THIS(mlir::succeeded(ret));
-    inf_op.deinit(p);
-    std::vector<int64_t> output_shape_v(real_out_size);
-    std::transform(output_data.begin(), output_data.end(),
-                   output_shape_v.begin(),
-                   [](float_t i) { return static_cast<int64_t>(i); });
-    module::bindShapeTensorValue(getOutput(), output_shape_v);
   }
 }
