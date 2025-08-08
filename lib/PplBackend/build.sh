@@ -2,9 +2,9 @@
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CPU_NUM=$(cat /proc/stat | grep cpu[0-9] -c)
-
+BUILD_MODE="${1:-RELEASE}" 
 usage() {
-  echo "Usage: $0 [RELEASE|DEBUG]"
+  echo "Usage: $0 [RELEASE|DEBUG] [force]"
 }
 
 if [[ -z "$INSTALL_PATH" ]]; then
@@ -13,11 +13,19 @@ if [[ -z "$INSTALL_PATH" ]]; then
 fi
 
 DEBUG_FLAG=""
-if [ -n "$1" ]; then
-    if [ "$1" = "DEBUG" ]; then
-        DEBUG_FLAG="-DDEBUG=ON"
-    elif [ "$1" != "RELEASE" ]; then
-        echo "Invalid build mode: $1"
+if [ "$BUILD_MODE" = "DEBUG" ]; then
+    DEBUG_FLAG="-DDEBUG=ON"
+elif [ "$BUILD_MODE" != "RELEASE" ]; then
+    echo "Invalid build mode: $BUILD_MODE"
+    usage
+    exit 1
+fi
+FORCE_BUILD=false
+if [ -n "$2" ]; then
+    if [ "$2" = "force" ]; then
+       FORCE_BUILD=true
+    else
+        echo "Invalid param: $2"
         usage
         exit 1
     fi
@@ -47,6 +55,7 @@ generate_md5_list() {
 # check if files under PplBackend changed
 MD5FILE=$DIR/.md5
 file_changed=false
+build_mode_changed=false
 mapfile -t md5_list < <(generate_md5_list "$DIR/src" "$DIR/src_dyn")
 # printf '>> %s\n' "${md5_list[@]}"
 if [ ! -f "$MD5FILE" ]; then
@@ -81,7 +90,10 @@ if [ -f "$VER_FILE" ] &&
    ! grep -Fxq -- "$ppl_ver" "$VER_FILE"; then
   lib_changed=true
 fi
-if [ "$lib_changed" = false ] && [ "$file_changed" = false ]; then
+if [ "$FORCE_BUILD" = false ] && 
+   [ "$build_mode_changed" = false ] && 
+   [ "$lib_changed" = false ] && 
+   [ "$file_changed" = false ]; then
   exit 0
 fi
 # build third_party/nntoolchain/ppl lib
@@ -135,12 +147,16 @@ rm -f existing_enums.tmp
 if [ "$missing_count" -gt 0 ]; then
     echo -e "\n\033[1;35mTotal missing definitions: $missing_count\033[0m"
     echo -e "\033[1;31mERROR: Add above definitions to $header_file and rebuild tpu-mlir\033[0m"
-    exit 1 
+    exit 1
 fi
 # write nntc and ppl version to VER_FILE
+if [ "$BUILD_MODE" = "DEBUG" ];then
+  exit 0
+fi
 if [ "$file_changed" = true ]; then
   printf '%s\n' "${md5_list[@]}" > "$MD5FILE"
 fi
 if [ "$lib_changed" = true ]; then
-  printf '%s\n' "$content" > "$VER_FILE"
+  printf '%s\n' "$BUILD_MODE" > "$VER_FILE"
+  printf '%s\n' "$content" >> "$VER_FILE"
 fi
