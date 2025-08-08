@@ -1354,6 +1354,7 @@ void ConvertTopToTpu::runOnOperation() {
   LoweringConfig::doWinograd =
       doWinograd.hasValue() ? doWinograd.getValue() : false;
   init_qtable();
+  set_add_before_softmax_fp32();
 
   if (module::isState(module::State::TOP_QUANTIZED)) {
     module::setAsymmetric(true);

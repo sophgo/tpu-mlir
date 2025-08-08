@@ -1852,7 +1852,7 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
       zeropoint = 0;
       auto th = std::max(std::abs(max), std::abs(min));
       scale = getScale(th, sign, bitwidth);
-      if (auto cop = dyn_cast<top::CompareOp>(v.getDefiningOp())) {
+      if (isa<top::CompareOp, top::CompareConstOp>(v.getDefiningOp())) {
         scale = 1.0;
       }
     }
@@ -1864,6 +1864,10 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
   } else if (auto ccop = dyn_cast<top::CompareConstOp>(v.getDefiningOp())) {
     if (ccop.getMode().str() == "And")
       llvm_unreachable("calibration info not set for compareconst And");
+    scale = 1.0;
+    zeropoint = 0;
+    sign = 0;
+  } else if (auto ccop = dyn_cast<top::CompareOp>(v.getDefiningOp())) {
     scale = 1.0;
     zeropoint = 0;
     sign = 0;
