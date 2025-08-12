@@ -57,6 +57,7 @@ class LlmConverter(BaseConverter):
         # get attributes
         self.init_config()
         self.do_vit = False
+        self.again = args.again
         self.cos, self.sin = self.rotary_embedding()
         cpu_count = os.cpu_count()
         self.max_workers = max(cpu_count, 4)
@@ -81,7 +82,8 @@ class LlmConverter(BaseConverter):
         self.gen_config()
         ori_path = os.getcwd()
         os.chdir(self.bmodel_dir)
-        self.gen_all_mlir()
+        if not self.again:
+            self.gen_all_mlir()
         del self.model
         self.compile_all()
         os.chdir(ori_path)

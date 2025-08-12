@@ -71,6 +71,8 @@ if __name__ == '__main__':
                         help='enable dynamic compiling for prefill, not recommended')
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
+    parser.add_argument("--again", action='store_true',
+                        help='continue to convert the model, default is False')
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
                         help='output mlir/bmodel path, default `./tmp`')
