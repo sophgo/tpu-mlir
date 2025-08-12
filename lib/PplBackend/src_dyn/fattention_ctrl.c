@@ -81,7 +81,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
   }
 }
 
-void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
+void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(void *ctx,
     void *param, global_tensor_spec_t *input_spec,
     global_tensor_spec_t *output_spec) {
   output_spec->dtype = input_spec->dtype;

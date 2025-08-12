@@ -2,7 +2,7 @@
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CPU_NUM=$(cat /proc/stat | grep cpu[0-9] -c)
-BUILD_MODE="${1:-RELEASE}" 
+BUILD_MODE="${1:-RELEASE}"
 usage() {
   echo "Usage: $0 [RELEASE|DEBUG] [force]"
 }
@@ -52,47 +52,48 @@ generate_md5_list() {
     done < <(find "$dir" -type f -print0)
   done
 }
+
+has_md5_changes() {
+  local md5file=$1
+  shift
+  local entry
+  [[ -f $md5file ]] || return 0
+  for entry in "$@"; do
+    if ! grep -Fqx "$entry" "$md5file"; then
+      echo "grep -Fqx "$entry" "$md5file""
+      return 0
+    fi
+  done
+  return 1
+}
 # check if files under PplBackend changed
 MD5FILE=$DIR/.md5
 file_changed=false
-build_mode_changed=false
 mapfile -t md5_list < <(generate_md5_list "$DIR/src" "$DIR/src_dyn")
 # printf '>> %s\n' "${md5_list[@]}"
-if [ ! -f "$MD5FILE" ]; then
+if [ ! -f "$MD5FILE" ] || has_md5_changes "$MD5FILE" "${md5_list[@]}"; then
   file_changed=true
-else
-  for entry in "${md5_list[@]}"; do
-    if ! grep -Fqx "$entry" "$MD5FILE"; then
-      file_changed=true
-      break
-    fi
-  done
 fi
 # get latest nntoolchain version
 lib_changed=false
-extract_sha() {
-    grep -oP ".*$1 sha256: \w{40}.*" "$2"
-}
-NNTC_VER_PATH=${PROJECT_ROOT}/third_party/nntoolchain/README.md
+NNTC_LIB_PATH=${PROJECT_ROOT}/third_party/nntoolchain/lib
 PPL_VER_PATH=${PROJECT_ROOT}/third_party/ppl/version
 VER_FILE=${PROJECT_ROOT}/third_party/nntoolchain/ppl/version
-if [ ! -f "$NNTC_VER_PATH" ]; then
-  exit 0
-fi
-bm1684x_sha=$(extract_sha "#bm1684x" "${NNTC_VER_PATH}")
-bm1688_sha=$(extract_sha "#bm1688" "${NNTC_VER_PATH}")
-read -r ppl_ver < $PPL_VER_PATH
-content="$(printf '%s\n%s\n%s' "$bm1684x_sha" "$bm1688_sha" "$ppl_ver")"
+LIBS=("libcmodel_1684x.a" "libbm1684x_kernel_module.a" "libcmodel_1688.a" "libbmtpulv60_kernel_module.a")
+mapfile -t libs_md5_list < <(
+  for lib in "${LIBS[@]}"; do
+    rel="$NNTC_LIB_PATH/$lib"
+    [[ -f "$rel" ]] || continue
+    md5=$(md5sum "$rel" | awk '{print $1}')
+    printf '%s %s\n' "$lib" "$md5"
+  done
+)
 # check whether the third_party/nntoolchain/lib or ppl is updated
-if [ -f "$VER_FILE" ] &&
-   ! grep -Fxq -- "$bm1684x_sha" "$VER_FILE" ||
-   ! grep -Fxq -- "$bm1688_sha" "$VER_FILE" ||
-   ! grep -Fxq -- "$ppl_ver" "$VER_FILE"; then
+if [ ! -f "$VER_FILE" ] || has_md5_changes "$VER_FILE" "${libs_md5_list[@]}" || ! grep -Fxq -f "$PPL_VER_PATH" "$VER_FILE"; then
   lib_changed=true
 fi
-if [ "$FORCE_BUILD" = false ] && 
-   [ "$build_mode_changed" = false ] && 
-   [ "$lib_changed" = false ] && 
+if [ "$FORCE_BUILD" = false ] &&
+   [ "$lib_changed" = false ] &&
    [ "$file_changed" = false ]; then
   exit 0
 fi
@@ -112,7 +113,7 @@ for chip in "${chips[@]}"; do
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}
   make -j${CPU_NUM} install
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=OFF -DBUILD_DIR=${build_dir} -DBUILD_DYN_HOST=ON
-  make -j${CPU_NUM} install 
+  make -j${CPU_NUM} install
   popd
 done
 
@@ -131,8 +132,8 @@ popd
 header_file="${PROJECT_ROOT}/include/tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynCompileCommon.hpp"
 ppl_header_file="${DIR}/include/ppl_dyn_fw.h"
 
-awk '/typedef enum fw_layer_type {/,/} FW_LAYER_TYPE_T;/' "$header_file" | 
-grep -Eo '^[[:space:]]*PPL_[A-Z0-9_]+[[:space:]]*=[[:space:]]*[0-9]+' | 
+awk '/typedef enum fw_layer_type {/,/} FW_LAYER_TYPE_T;/' "$header_file" |
+grep -Eo '^[[:space:]]*PPL_[A-Z0-9_]+[[:space:]]*=[[:space:]]*[0-9]+' |
 sort -u > existing_enums.tmp
 missing_count=0
 while read -r new_enum; do
@@ -158,5 +159,6 @@ if [ "$file_changed" = true ]; then
 fi
 if [ "$lib_changed" = true ]; then
   printf '%s\n' "$BUILD_MODE" > "$VER_FILE"
-  printf '%s\n' "$content" >> "$VER_FILE"
+  cat "$PPL_VER_PATH" >> "$VER_FILE"
+  printf '%s\n' "${libs_md5_list[@]}" >> "$VER_FILE"
 fi

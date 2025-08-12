@@ -54,8 +54,9 @@ int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   flash_attention_global_spec_t param = {0};
+  auto &common = param.common;
+  common.high_precision = module::isHighPrecision();
   if (buffer) {
-    auto &common = param.common;
     // get_param(op, common);
     common.batch = getBatch();
     common.q_head = getQHead();
