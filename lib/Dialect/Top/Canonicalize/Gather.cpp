@@ -63,11 +63,15 @@ struct TopGatherToSlice : public OpRewriterPatternEx<GatherOp> {
       auto new_loc = module::getLocLike(op.getOutput(), "slice");
       auto slice_op =
           rewriter.create<SliceOp>(new_loc, new_type, operands, attrs);
-      if (slice_shape.size() != 1 && !op.getKeepdims()) {
+      if (!op.getKeepdims()) {
         std::vector<int64_t> axes(1, ax);
         std::vector<NamedAttribute> squeeze_attrs;
         squeeze_attrs.push_back(
             rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axes)));
+        if (slice_shape.size() == 1) {
+          squeeze_attrs.push_back(
+              rewriter.getNamedAttr("is_scalar", rewriter.getBoolAttr(true)));
+        }
         auto squeeze_op = rewriter.create<SqueezeOp>(
             op.getLoc(), op.getType(), ValueRange{slice_op.getOutput()},
             squeeze_attrs);

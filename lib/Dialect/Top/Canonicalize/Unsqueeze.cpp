@@ -205,5 +205,6 @@ struct TopUnsqueezeErase : public OpRewriterPatternEx<UnsqueezeOp> {
 void UnsqueezeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
   results.insert<TopRemoveReshapeAndUnsqueezeWhenScalar, TopFuseUnsqueeze,
-                 TopGatherToSliceByUnsqueeze, TopUnsqueezeErase>(context);
+                 //  TopGatherToSliceByUnsqueeze,
+                 TopUnsqueezeErase>(context);
 }

@@ -29,8 +29,8 @@ public:
         //  #todo : print opname,no save mode has bug need to solve,this is a
         //  temporary solution
         PASS_LOG_DEBUG_BLOCK({
-          llvm::outs() << patternName << " : " << op.getOperationName()
-                       << " succeed!";
+          llvm::dbgs() << patternName << " : " << op.getOperationName()
+                       << " succeed!\n";
         });
       }
     }

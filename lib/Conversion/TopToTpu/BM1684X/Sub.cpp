@@ -12,6 +12,19 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void SubTryLowering::Lowering(PatternRewriter &rewriter, top::SubOp op) const {
+  if (!isa_shape_subnet_op(op))
+    return;
+
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Sub")));
+  Type new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()),
+                            IntegerType::get(op.getOutput().getContext(), 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, op.getOperands(),
+                                                 attrs);
+}
+
 void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
                                bool asymmetric) const {
   if (asymmetric) {
@@ -90,6 +103,9 @@ void SubLowering::LoweringINT4(PatternRewriter &rewriter, top::SubOp op,
   LoweringINT8(rewriter, op, asymmetric);
 }
 void SubLowering::LoweringF32(PatternRewriter &rewriter, top::SubOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f32<tpu::SubOp>(rewriter, op);
 }
 

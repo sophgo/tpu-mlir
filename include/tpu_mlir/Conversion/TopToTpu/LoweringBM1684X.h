@@ -25,6 +25,7 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
   };
 
 SHAPE_LOWERING_BM1684X(Add)
+SHAPE_LOWERING_BM1684X(Sub)
 SHAPE_LOWERING_BM1684X(Shape)
 SHAPE_LOWERING_BM1684X(Concat)
 SHAPE_LOWERING_BM1684X(Unsqueeze)

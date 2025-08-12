@@ -13,22 +13,22 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void DivTryLowering::Lowering(PatternRewriter &rewriter, top::DivOp op) const {
-  auto opds = op->getOperands();
-  auto with_shape = std::any_of(opds.begin(), opds.end(), [](Value opd) {
-    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>();
-  });
-  auto all_shape_wight = std::all_of(opds.begin(), opds.end(), [](Value opd) {
-    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>() ||
-           module::isWeight(opd);
-  });
-  if (with_shape && !all_shape_wight) {
-    for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
-      try_insert_host2device(op, idx);
-    }
-  }
+  if (!isa_shape_subnet_op(op))
+    return;
+
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Div")));
+  Type new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()),
+                            IntegerType::get(op.getOutput().getContext(), 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, op.getOperands(),
+                                                 attrs);
 }
 
 void DivLowering::LoweringF32(PatternRewriter &rewriter, top::DivOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f32<tpu::DivOp>(rewriter, op);
 }
 

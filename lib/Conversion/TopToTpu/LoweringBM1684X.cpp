@@ -78,6 +78,7 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       MulTryLowering,
       DivTryLowering,
       AddTryLowering,
+      SubTryLowering,
       AddConstTryLowering,
       SubConstTryLowering,
       MulConstTryLowering,
