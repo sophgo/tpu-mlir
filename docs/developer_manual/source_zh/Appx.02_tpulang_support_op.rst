@@ -1652,6 +1652,159 @@ tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
 
+and
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def and_op(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+张量和张量的按元素与运算。 :math:`tensor\_o = tensor\_i0 AND tensor\_i1`。
+该操作支持广播。
+tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* tensor_i0：Tensor类型，表示输入左操作Tensor, 所有元素的数值大小必须是0或1。
+* tensor_i1：Tensor类型，表示输入右操作Tensor, 所有元素的数值大小必须是0或1。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+
+xor
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def xor_op(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+张量和张量的按元素异或运算。 :math:`tensor\_o = tensor\_i0 XOR tensor\_i1`。
+该操作支持广播。
+tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* tensor_i0：Tensor类型，表示输入左操作Tensor。
+* tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+
+or
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def or_op(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+张量和张量的按元素或运算。 :math:`tensor\_o = tensor\_i0 OR tensor\_i1`。
+该操作支持广播。
+tensor_i0或者tensor_i1可以被指定为COEFF_TENSOR。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* tensor_i0：Tensor类型，表示输入左操作Tensor。
+* tensor_i1：Tensor类型，表示输入右操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的scale。tensor_i0与tensor_i1的scale必须一致。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为3，分别为tensor_i0，tensor_i1，output的zero_point。tensor_i0与tensor_i1的zero_point必须一致。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。tensor_i0与tensor_i1的数据类型必须一致。
+
+not
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def not_op(tensor_i0: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+张量的取反运算。 :math:`tensor\_o = NOT tensor\_i0`。
+tensor_i0可以被指定为COEFF_TENSOR。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* tensor_i0：Tensor类型，表示输入操作Tensor。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。
+
 gts
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -1856,6 +2009,117 @@ nes
 功能描述
 """"""""""""""""""""""""""""""""""""""""""""""
 张量和标量的按元素不等于比较运算。 :math:`tensor\_o = tensor\_i0 != scalar\_i1 ? 1 : 0`。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* tensor_i0：Tensor类型，表示输入左操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+
+ands
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def ands(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+张量和标量的按元素与运算。 :math:`tensor\_o = tensor\_i0 AND scalar\_i1`。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* tensor_i0：Tensor类型，表示输入左操作数, 所有元素的数值大小必须为0或1。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数, 数值大小必须为0或1。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+
+xors
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def xors(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+张量和标量的按元素异或运算。 :math:`tensor\_o = tensor\_i0 XOR scalar\_i1`。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* tensor_i0：Tensor类型，表示输入左操作数。
+* scalar_i1：Scalar，int或float类型，表示输入右操作数。
+* scale：List[float]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的scale。
+* zero_point：List[int]类型或None，量化参数。取None代表非量化计算。若为List，长度为2，分别为tensor_i0，output的zero_point。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16/INT8/UINT8。scalar_i1数据类型为FLOAT32。
+
+ors
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def ors(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+张量和标量的按元素或运算。 :math:`tensor\_o = tensor\_i0 OR scalar\_i1`。
 该操作属于 **本地操作** 。
 
 参数说明

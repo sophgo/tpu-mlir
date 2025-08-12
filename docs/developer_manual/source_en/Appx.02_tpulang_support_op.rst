@@ -1699,6 +1699,159 @@ Processor support
 * BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 * BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
 
+and
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def and_op(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""
+Element-wise AND operation between tensors. :math:`tensor\_o = tensor\_i0 AND tensor\_i1`.
+This operation supports broadcasting.
+tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor type, representing the left operand input Tensor, all elements must have a value of 0 or 1.
+* tensor_i1: Tensor type, representing the right operand input Tensor, all elements must have a value of 0 or 1.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+
+xor
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def xor_op(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""
+Element-wise XOR operation between tensors. :math:`tensor\_o = tensor\_i0 XOR tensor\_i1`.
+This operation supports broadcasting.
+tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor type, representing the left operand input Tensor.
+* tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+
+or
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def or_op(tensor_i0: Tensor,
+            tensor_i1: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""
+Element-wise OR operation between tensors. :math:`tensor\_o = tensor\_i0 OR tensor\_i1`.
+This operation supports broadcasting.
+tensor_i0 or tensor_i1 can be assigned as COEFF_TENSOR.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor type, representing the left operand input Tensor.
+* tensor_i1: Tensor type, representing the right operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three floats corresponding to the scales of tensor_i0, tensor_i1, and the output; the scales of tensor_i0 and tensor_i1 must be identical.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of three integers corresponding to the zero_points of tensor_i0, tensor_i1, and the output; the zero_points of tensor_i0 and tensor_i1 must be identical.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data types of tensor_i0 and tensor_i1 must be consistent.
+
+not
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def not_op(tensor_i0: Tensor,
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""
+Returns the negation of the input tensor element-wise. :math:`tensor\_o = NOT tensor\_i0`.
+tensor_i0 can be assigned as COEFF_TENSOR.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor type, representing the left operand input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats corresponding to the scales of tensor_i0 and the output.
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers corresponding to the zero_points of tensor_i0 and the output.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+
 gts
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -1722,7 +1875,7 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
-* scalar_i1: Tensor type, representing the right operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
 * scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
 * zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -1760,7 +1913,7 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
-* scalar_i1: Tensor type, representing the right operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
 * scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
 * zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -1797,7 +1950,7 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
-* scalar_i1: Tensor type, representing the right operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
 * scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
 * zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -1834,7 +1987,7 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
-* scalar_i1: Tensor type, representing the right operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
 * scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
 * zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -1871,7 +2024,7 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
-* scalar_i1: Tensor type, representing the right operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
 * scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
 * zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -1908,7 +2061,118 @@ This operation belongs to **local operations**.
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * tensor_i0: Tensor type, representing the left operand input.
-* scalar_i1: Tensor type, representing the right operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+
+ands
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def ands(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The element-wise AND operation between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 AND scalar\_i1`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor type, representing the left operand input, all elements must have a value of 0 or 1.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input, must have a value of 0 or 1.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+
+xors
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def xors(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The element-wise XOR operation between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 XOR scalar\_i1`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor type, representing the left operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8. The data type of scalar_i1 is FLOAT32.
+
+ors
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def ors(tensor_i0: Tensor,
+            scalar_i1: Union[Scalar, int, float],
+            scale: List[float]=None,
+            zero_point: List[int]=None,
+            out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The element-wise OR operation between a tensor and a scalar. :math:`tensor\_o = tensor\_i0 OR scalar\_i1`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor_i0: Tensor type, representing the left operand input.
+* scalar_i1: Scalar, Int or Float type, representing the right operand input.
 * scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
 * zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.

@@ -143,7 +143,7 @@ void AddConstLowering::LoweringF8(PatternRewriter &rewriter,
 
 void AddConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::AddConstOp op) const {
-  UNREACHABLE_OP("Not Implemented", op);
+  LoweringINT8(rewriter, op, false);
 }
 
 } // namespace bm1684x

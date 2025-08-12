@@ -103,6 +103,8 @@ class TPULANG_IR_TESTER(object):
             "Abs": (self.test_Abs, Y, Y),
             "Add": (self.test_Add, Y, Y),
             "AddShift": (self.test_AddShift, Y, Y),
+            "And": (self.test_And, Y, Y),
+            "Ands": (self.test_Ands, Y, Y),
             "Arccos": (self.test_Arccos, Y, Y),
             "Arctanh": (self.test_Arctanh, Y, Y),
             "Arg": (self.test_Arg, Y, Y),
@@ -168,6 +170,9 @@ class TPULANG_IR_TESTER(object):
             "Nonzero": (self.test_Nonzero, Y, Y),
             "Normalize": (self.test_normalize, Y, Y),
             "NoSave": (self.test_NoSave, Y, Y),
+            "Not": (self.test_Not, Y, Y),
+            "Or": (self.test_Or, Y, Y),
+            "Ors": (self.test_Ors, Y, Y),
             "Pad": (self.test_Pad, Y, Y),
             "Permute": (self.test_Permute, Y, Y),
             "Prelu": (self.test_PRelu, Y, Y),
@@ -205,6 +210,8 @@ class TPULANG_IR_TESTER(object):
             "TopK": (self.test_TopK, Y, Y),
             "Upsample": (self.test_Upsample, Y, Y),
             "Unsqueeze": (self.test_Unsqueeze, Y, Y),
+            "Xor": (self.test_Xor, Y, Y),
+            "Xors": (self.test_Xors, Y, Y),
             "Yuv2rgb": (self.test_Yuv2rgb, Y, Y),
             #### model ####
             "AttenQuantBlock": (self.test_AttenQuant, Y, Y),
@@ -4115,6 +4122,10 @@ class TPULANG_IR_TESTER(object):
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = self.coeff_tensor(shape_y, dtype, scale=4.0)
+            if case_name == "And":
+                x.buffer = x.buffer.astype(np.bool_).astype(dtype)
+                y = self.coeff_tensor(shape_y, dtype, scale=1.0)
+                y.buffer = y.buffer.astype(np.bool_).astype(dtype)
             out = func(y, x, scale=scale)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
 
@@ -4124,6 +4135,9 @@ class TPULANG_IR_TESTER(object):
             y_data = rand_data(shape_y, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
             y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            if case_name == "And":
+                x.buffer = x.buffer.astype(np.bool_).astype(dtype)
+                y.buffer = y.buffer.astype(np.bool_).astype(dtype)
             out = func(x, y, scale=scale)
             self.compile_and_check(self.unique_name(case_name), [x, y], [out], is_quantized=True)
 
@@ -4290,6 +4304,114 @@ class TPULANG_IR_TESTER(object):
                                      dtype="float16")
 
     #######################################################################
+    # Xor
+    # ------------
+    def xor_op(self, input_0, input_1):
+        xor = tpul.xor_op(input_0, input_1)
+        return xor
+
+    def test_Xor(self, case_name):
+        """Xor"""
+
+        @tpulang(self.chip)
+        def _test_xor(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            xor = self.xor_op(x, y)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [xor])
+
+        _test_xor([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_xor([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.xor_op, [1, 3, 32, 32], [1, 3, 32, 32],
+                                     [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name,
+                                     tpul.xor_op, [1, 3, 32, 32], [1, 3, 32, 32],
+                                     dtype="float16")
+
+    #######################################################################
+    # Or
+    # ------------
+    def or_op(self, input_0, input_1):
+        or_ = tpul.or_op(input_0, input_1)
+        return or_
+
+    def test_Or(self, case_name):
+        """Or"""
+
+        @tpulang(self.chip)
+        def _test_or(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            or_ = self.or_op(x, y)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [or_])
+
+        _test_or([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_or([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.or_op, [1, 3, 32, 32], [1, 3, 32, 32],
+                                     [4.0, 4.0, 4.0], "int8")
+        self.test_base_compare_quant(case_name,
+                                     tpul.or_op, [1, 3, 32, 32], [1, 3, 32, 32],
+                                     dtype="float16")
+
+    #######################################################################
+    # And
+    # ------------
+    def and_op(self, input_0, input_1):
+        and_ = tpul.and_op(input_0, input_1)
+        return and_
+
+    def test_And(self, case_name):
+        """And"""
+
+        @tpulang(self.chip)
+        def _test_and(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype).astype(np.bool_).astype(dtype)
+            y_data = rand_data(shape_y, dtype).astype(np.bool_).astype(dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            and_ = self.and_op(x, y)
+            self.compile_and_check(self.unique_name(case_name), [x, y], [and_])
+
+        _test_and([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_and([1, 3, 32, 32], [1, 3, 32, 32])
+        self.test_base_compare_quant(case_name, tpul.and_op, [1, 3, 32, 32], [1, 3, 32, 32],
+                                     [1.0, 1.0, 1.0], "int8")
+        self.test_base_compare_quant(case_name,
+                                     tpul.and_op, [1, 3, 32, 32], [1, 3, 32, 32],
+                                     dtype="float16")
+
+    #######################################################################
+    # Not
+    # ------------
+    def not_op(self, input_0, scale=None):
+        not_ = tpul.not_op(input_0, scale)
+        return not_
+
+    def test_Not(self, case_name):
+        """Not"""
+
+        @tpulang(self.chip)
+        def _test_not(shape_x: List[int], scale=None, dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            not_ = self.not_op(x, scale)
+            if dtype in ["int8", "float16"]:
+                is_quantized = True
+            else:
+                is_quantized = False
+            self.compile_and_check(self.unique_name(case_name), [x], [not_],
+                                   is_quantized=is_quantized)
+
+        _test_not([1, 3, 28, 28])
+        _test_not([1, 3, 32, 32])
+        _test_not([1, 3, 32, 32], [0.5, 0.5], dtype="int8")
+        _test_not([1, 3, 32, 32], None, dtype="float16")
+
+    #######################################################################
     # Gts
     # ------------
     def test_compare_scalar_quant(self,
@@ -4303,7 +4425,11 @@ class TPULANG_IR_TESTER(object):
         def binary_scalar():
             x_data = rand_data(shape_x, dtype)
             x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
-            out = func(x, tpul.Scalar(2, "float32"), scale=scale)
+            scalar = tpul.Scalar(2, "float32")
+            if case_name == "Ands":
+                x.buffer = x.buffer.astype(np.bool_).astype(dtype)
+                scalar.value = 1
+            out = func(x, scalar, scale=scale)
             self.compile_and_check(self.unique_name(case_name), [x], [out], is_quantized=True)
 
         binary_scalar()
@@ -4435,6 +4561,72 @@ class TPULANG_IR_TESTER(object):
         _test_nes([1, 3, 32, 32])
         self.test_compare_scalar_quant(case_name, tpul.nes, [1, 3, 32, 32], [4.0, 4.0], "int8")
         self.test_compare_scalar_quant(case_name, tpul.nes, [1, 3, 32, 32], dtype="float16")
+
+    #######################################################################
+    # Ands
+    # ------------
+    def ands_op(self, input_0):
+        ands = tpul.ands(input_0, 1)
+        return ands
+
+    def test_Ands(self, case_name):
+        """Ands"""
+
+        @tpulang(self.chip)
+        def _test_ands(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype).astype(np.bool_).astype(dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            ands = self.ands_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [ands])
+
+        _test_ands([1, 3, 28, 28])
+        _test_ands([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.ands, [1, 3, 32, 32], [1.0, 1.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.ands, [1, 3, 32, 32], dtype="float16")
+
+    #######################################################################
+    # Xors
+    # ------------
+    def xors_op(self, input_0):
+        xors = tpul.xors(input_0, 0)
+        return xors
+
+    def test_Xors(self, case_name):
+        """Xors"""
+
+        @tpulang(self.chip)
+        def _test_xors(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            xors = self.xors_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [xors])
+
+        _test_xors([1, 3, 28, 28])
+        _test_xors([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.xors, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.xors, [1, 3, 32, 32], dtype="float16")
+
+    #######################################################################
+    # Ors
+    # ------------
+    def ors_op(self, input_0):
+        ors = tpul.ors(input_0, 0)
+        return ors
+
+    def test_Ors(self, case_name):
+        """Ors"""
+
+        @tpulang(self.chip)
+        def _test_ors(shape_x: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            ors = self.ors_op(x)
+            self.compile_and_check(self.unique_name(case_name), [x], [ors])
+
+        _test_ors([1, 3, 28, 28])
+        _test_ors([1, 3, 32, 32])
+        self.test_compare_scalar_quant(case_name, tpul.ors, [1, 3, 32, 32], [4.0, 4.0], "int8")
+        self.test_compare_scalar_quant(case_name, tpul.ors, [1, 3, 32, 32], dtype="float16")
 
     #######################################################################
     # Resnet50 like model case

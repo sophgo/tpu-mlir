@@ -93,8 +93,8 @@ def compile(
         bmodel_inference=True,
         log_level: str = 'normal',
         embed_debug_info=False,
-        addr_mode = 'auto',
-        gdma_check = False):
+        addr_mode='auto',
+        gdma_check=False):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -4991,7 +4991,9 @@ def __compare(tensor_i0: Tensor,
               scale: List[float] = None,
               zero_point: List[int] = None,
               out_name: str = None):
-    assert type in ["Greater", "Less", "GreaterOrEqual", "LessOrEqual", "Equal", "NotEqual"]
+    assert type in [
+        "Greater", "Less", "GreaterOrEqual", "LessOrEqual", "Equal", "NotEqual", "And", "Xor"
+    ]
     o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
     assert tensor_i0.dtype in ["float32", "float16", "int8", "uint8"]
     if out_name is None:
@@ -5077,6 +5079,68 @@ def ne(tensor_i0: Tensor,
        zero_point: List[int] = None,
        out_name: str = None):
     return __compare(tensor_i0, tensor_i1, "NotEqual", scale, zero_point, out_name)
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def and_op(tensor_i0: Tensor,
+           tensor_i1: Tensor,
+           scale: List[float] = None,
+           zero_point: List[int] = None,
+           out_name: str = None):
+    assert (np.all((tensor_i0.buffer == 0) | (tensor_i0.buffer == 1)))
+    assert (np.all((tensor_i1.buffer == 0) | (tensor_i1.buffer == 1)))
+    if scale:
+        assert (len(scale) == 3)
+        assert (scale[0] == 1 and scale[1] == 1 and scale[2] == 1)
+    return __compare(tensor_i0, tensor_i1, "And", scale, zero_point, out_name)
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def xor_op(tensor_i0: Tensor,
+           tensor_i1: Tensor,
+           scale: List[float] = None,
+           zero_point: List[int] = None,
+           out_name: str = None):
+    return __compare(tensor_i0, tensor_i1, "Xor", scale, zero_point, out_name)
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def not_op(tensor_i0: Tensor,
+           scale: List[float] = None,
+           zero_point: List[int] = None,
+           out_name: str = None):
+    return __compare_const(tensor_i0, 0, "Not", scale, zero_point, out_name)
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def or_op(tensor_i0: Tensor,
+          tensor_i1: Tensor,
+          scale: List[float] = None,
+          zero_point: List[int] = None,
+          out_name: str = None):
+    o_dtype = same_dtype_check(tensor_i0.dtype, tensor_i1.dtype)
+    assert tensor_i0.dtype in ["float32", "float16", "int8", "uint8"]
+    if out_name is None:
+        out_name = generate_name("or")
+    tensor_tmp = _base_binary(tensor_i0,
+                              tensor_i1,
+                              "top.Add",
+                              scale,
+                              zero_point,
+                              out_dtype=o_dtype,
+                              out_name=out_name + "_add")
+    if scale:
+        return __compare_const(tensor_tmp, 0, "Greater", [scale[2], scale[2]], zero_point, out_name)
+    else:
+        return __compare_const(tensor_tmp, 0, "Greater", scale, zero_point, out_name)
 
 
 @to_scalar(2)
@@ -5168,6 +5232,70 @@ def nes(tensor_i0: Tensor,
         zero_point: List[int] = None,
         out_name: str = None):
     return __compare_const(tensor_i0, scalar_i1, "NotEqual", scale, zero_point, out_name)
+
+
+@to_scalar(2)
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def ands(tensor_i0: Tensor,
+         scalar_i1: Union[Scalar, int, float],
+         scale: List[float] = None,
+         zero_point: List[int] = None,
+         out_name: str = None):
+    assert (np.all((tensor_i0.buffer == 0) | (tensor_i0.buffer == 1)))
+    assert ((scalar_i1.value == 0) | (scalar_i1.value == 1))
+    if scale:
+        assert (len(scale) == 2)
+        assert (scale[0] == 1 and scale[1] == 1)
+    return __compare_const(tensor_i0, scalar_i1, "And", scale, zero_point, out_name)
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def xors(tensor_i0: Tensor,
+         scalar_i1: Union[Scalar, int, float],
+         scale: List[float] = None,
+         zero_point: List[int] = None,
+         out_name: str = None):
+    return __compare_const(tensor_i0, scalar_i1, "Xor", scale, zero_point, out_name)
+
+
+@to_scalar(2)
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def ors(tensor_i0: Tensor,
+        scalar_i1: Union[Scalar, int, float],
+        scale: List[float] = None,
+        zero_point: List[int] = None,
+        out_name: str = None):
+    assert tensor_i0.dtype in ["float32", "float16", "int8", "uint8"]
+    if out_name is None:
+        out_name = generate_name("ors")
+    add_output = Tensor(dtype=tensor_i0.dtype, name=out_name + "_add")
+    final_output = Tensor(dtype=tensor_i0.dtype, name=out_name)
+
+    if scale != None:
+        zero_point = zero_point if zero_point is not None else [0, 0]
+        assert len(scale) == 2 and len(zero_point) == 2
+        add_output.quantization(scale=scale[1], zero_point=zero_point[1])
+        final_output.quantization(scale=scale[1], zero_point=zero_point[1])
+        tensor_i0.quantization(scale=scale[0], zero_point=zero_point[0])
+
+    attr = {
+        "const_val": Attr(scalar_i1.value, "float64"),
+    }
+    TpuLang.insert_op("top.AddConst", inputs=[tensor_i0], outputs=[add_output], params=attr)
+
+    attr = {
+        "mode": Attr("Greater", "string"),
+        "const_val": Attr(float(0), 'float64'),
+        "inversed": Attr(False, "bool"),
+    }
+    TpuLang.insert_op("top.CompareConst", inputs=[add_output], outputs=[final_output], params=attr)
+    return final_output
 
 
 ######### Shape-Related Operator ############

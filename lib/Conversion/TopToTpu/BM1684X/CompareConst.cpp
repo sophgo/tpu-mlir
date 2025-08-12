@@ -76,7 +76,8 @@ void CompareConstLowering::LoweringINT4(PatternRewriter &rewriter,
 void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                         top::CompareConstOp op,
                                         bool asymmetric) const {
-  if (op.getMode().str() == "And") {
+  auto is_tpulang = module::isPlatform(module::Platform::TPULANG);
+  if ((!is_tpulang) and op.getMode().str() == "And") {
     if (module::isCV184X() || module::isSGTPUV8()) {
       lowering_common_bf16<tpu::CompareConstOp>(rewriter, op);
     } else {
