@@ -3,23 +3,68 @@
 RED='\033[0;31m'
 NC='\033[0m'
 
-# get current commit message
-commit_msg=$(cat .git/COMMIT_EDITMSG)
+COMMIT_MSG_FILE=$(git rev-parse --git-path COMMIT_EDITMSG)
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
 
-# extract content before Change-Id
-body_content=$(echo "$commit_msg" | sed -n '1,/Change-Id:/p' | head -n -1)
+TITLE_LINE=$(echo "$COMMIT_MSG" | head -n1)
 
-# get content after first line as body
-subject=$(echo "$body_content" | head -n 1)
-body=$(echo "$body_content" | tail -n +3 | grep -v '^$' | tr -d '[:space:]')
+REGEX="^(feat|fix|docs|style|refactor|perf|test|build|chore|revert): .+$"
 
-# check body is empty
-if [ -z "$body" ]; then
-    echo -e "${RED}ERROR${NC}: A detailed commit message is required."
-    echo "Your commit message must explain why this change is necessary and how it was implemented."
-    echo "  Use 'git commit --amend' to add or edit the body of your commit message."
+if ! echo "$TITLE_LINE" | grep -qE "$REGEX"; then
+    echo -e "${RED}ERROR${NC}: Invalid commit message title format."
+
+    cat <<-EOF
+
+Commit message title must follow the format:
+
+<type>: <description>
+
+Allowed types:
+feat:     A new feature
+fix:      A bug fix
+docs:     Documentation changes
+style:    Code style changes
+refactor: Code refactoring
+perf:     Performance improvements
+test:     Test related changes
+build:    Build system changes
+chore:    Other maintenance changes (including regular backend update)
+revert:   Revert a previous commit
+
+Example:
+feat: add BM1688 yolov8 postprocess support
+
+Your commit message title:
+$TITLE_LINE
+EOF
     exit 1
 fi
 
-echo "Success: commit message body check ok"
+if [[ $(echo "$COMMIT_MSG" | wc -l) -gt 1 ]]; then
+    SECOND_LINE=$(echo "$COMMIT_MSG" | sed -n '2p')
+    if [[ -n "$SECOND_LINE" ]]; then
+        echo -e "${RED}ERROR${NC}: There must be a blank line between title and body"
+        exit 1
+    fi
+fi
+
+if [[ $(echo "$COMMIT_MSG" | wc -l) -gt 2 ]]; then
+    BODY_START=3
+    BODY=$(echo "$COMMIT_MSG" | tail -n +$BODY_START)
+
+    FIRST_BODY_LINE=$(echo "$BODY" | head -n1)
+    if [[ ! $FIRST_BODY_LINE =~ ^- ]]; then
+        echo -e "${RED}ERROR${NC}: Body must start with bullet points (using '-')"
+        exit 1
+    fi
+
+    if [[ $COMMIT_MSG == *"BREAKING CHANGE"* ]]; then
+        if [[ $COMMIT_MSG != *"BREAKING CHANGE:"* ]]; then
+            echo "${RED}ERROR${NC}: Breaking changes must include 'BREAKING CHANGE:' prefix"
+            exit 1
+        fi
+    fi
+fi
+echo "Success: commit message format check ok"
+
 exit 0
