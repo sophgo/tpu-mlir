@@ -2,8 +2,12 @@
 
 c_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(lib|include|tools)/.*\.(cpp|h|hpp)$')
 py_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(python|regression)/.*\.(py)$')
+doc_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(rst|md)$')
 RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
+
 
 if ! command -v clang-format &> /dev/null
 then
@@ -28,7 +32,8 @@ if [ -n "$c_files" ]; then
         exit 1
     fi
 fi
-echo "Success: clang-format check ok"
+echo -e "${GREEN}Success: clang-format check ok${NC}"
+
 
 if [ -n "$py_files" ]; then
     echo "Running yapf on staged files..."
@@ -44,7 +49,8 @@ if [ -n "$py_files" ]; then
         exit 1
     fi
 fi
-echo "Success: yapf check ok"
+echo -e "${GREEN}Success: yapf check ok${NC}"
+
 
 PROJECT_ROOT=$(git rev-parse --show-toplevel)
 LIB_DIR="${PROJECT_ROOT}/third_party/nntoolchain/lib"
@@ -57,7 +63,156 @@ if git diff --cached --name-only | grep -qE "^third_party/nntoolchain/lib/.*\.(s
         exit 1
     fi
 fi
+echo -e "${GREEN}Success: backend version update info check ok${NC}"
 
-echo "Success: README.md update check ok"
+
+check_sensitive_words() {
+    local file="$1"
+    local errors=0
+
+    # Forbidden words (case insensitive)
+    declare -A forbidden_words=(
+        ["wafer"]="forbidden word"
+        ["晶圆"]="forbidden word"
+        ["nm"]="forbidden word"
+        ["纳米"]="forbidden word"
+        ["工艺"]="forbidden word"
+        ["制程"]="forbidden word"
+        ["tsmc"]="forbidden word"
+        ["台积电"]="forbidden word"
+        ["詹克团"]="forbidden word"
+        ["比特大陆"]="forbidden word"
+        ["bitmain"]="forbidden word"
+        ["aisc"]="forbidden word"
+        ["集成电路"]="forbidden word"
+    )
+
+    # Replacement words (case insensitive)
+    declare -A replace_words=(
+        ["芯片"]="replace with '处理器'"
+        ["ai"]="replace with 'Deep Learning'"
+        ["人工智能"]="replace with '深度学习'"
+        ["chip"]="replace with 'processor'"
+        ["gpu"]="replace with 'graphic'"
+        ["cpu"]="replace with 'processor'"
+        ["tpu"]="replace with '智能视觉深度学习处理器/Tensor Computing Processor'"
+    )
+
+    # Case-sensitive words (must match exactly)
+    declare -A case_sensitive_words=(
+        ["SOPHON"]="SOPHON"
+        ["SOPHGO"]="SOPHGO"
+        ["PCIe"]="PCIe"
+        ["SoC"]="SoC"
+    )
+
+    # Contexts to skip (URLs, paths, etc.)
+    local skip_patterns=(
+        "http" "https" "www\\." "/" "./" "../"
+        "[a-zA-Z0-9-]+\\.(com|org|net|io|cn)"
+    )
+
+    # Check forbidden words (case insensitive)
+    for word_lower in "${!forbidden_words[@]}"; do
+        while IFS= read -r line; do
+            local line_num="${line%%:*}"
+            local content="${line#*:}"
+
+            # Skip if in URL/path context
+            local skip=0
+            for pattern in "${skip_patterns[@]}"; do
+                if [[ "$content" =~ $pattern ]]; then
+                    skip=1
+                    break
+                fi
+            done
+
+            if [[ "$skip" -eq 0 ]]; then
+                if [[ "${content,,}" =~ (^|[^a-zA-Z0-9_-])"${word_lower}"([^a-zA-Z0-9_-]|$) ]] ||
+                   [[ "${content,,}" == "${word_lower}" ]]; then
+                    actual_word=$(echo "$content" | grep -o -i -w -E "\b${word_lower}\b" | head -1)
+                    echo -e "${RED}ERROR${NC}: ${forbidden_words[$word_lower]} '${RED}$actual_word${NC}'"
+                    echo -e "  ${YELLOW}Line $line_num${NC}: $content"
+                    errors=$((errors+1))
+                fi
+            fi
+        done < <(grep -n -i -w -E "\b${word_lower}\b" "$file" || true)
+    done
+
+    # Check replacement words (case insensitive)
+    for word_lower in "${!replace_words[@]}"; do
+        while IFS= read -r line; do
+            local line_num="${line%%:*}"
+            local content="${line#*:}"
+
+            local skip=0
+            for pattern in "${skip_patterns[@]}"; do
+                if [[ "$content" =~ $pattern ]]; then
+                    skip=1
+                    break
+                fi
+            done
+
+            if [[ "$skip" -eq 0 ]]; then
+                if [[ "${content,,}" =~ (^|[^a-zA-Z0-9_-])"${word_lower}"([^a-zA-Z0-9_-]|$) ]] ||
+                   [[ "${content,,}" == "${word_lower}" ]]; then
+                    actual_word=$(echo "$content" | grep -o -i -w -E "\b${word_lower}\b" | head -1)
+                    echo -e "${YELLOW}WARNING${NC}: ${replace_words[$word_lower]} '${YELLOW}$actual_word${NC}'"
+                    echo -e "  ${YELLOW}Line $line_num${NC}: $content"
+                fi
+            fi
+        done < <(grep -n -i -w -E "\b${word_lower}\b" "$file" || true)
+    done
+
+    # Check case-sensitive words (must match exactly)
+    for standard_word in "${!case_sensitive_words[@]}"; do
+        # Find all lines containing case-insensitive match of the word
+        while IFS= read -r line; do
+            local line_num="${line%%:*}"
+            local content="${line#*:}"
+
+            # Skip if in URL/path context
+            local skip=0
+            for pattern_skip in "${skip_patterns[@]}"; do
+                if [[ "$content" =~ $pattern_skip ]]; then
+                    skip=1
+                    break
+                fi
+            done
+
+            if [[ "$skip" -eq 0 ]]; then
+                # Find all occurrences of the word (case insensitive)
+                while read -r matched_word; do
+                    # Check if the actual word matches the standard exactly
+                    if [[ "$matched_word" != "$standard_word" ]]; then
+                        echo -e "${RED}ERROR${NC}: Incorrect capitalization '${RED}$matched_word${NC}'"
+                        echo -e "  Standard spelling: ${GREEN}$standard_word${NC}"
+                        echo -e "  ${YELLOW}Line $line_num${NC}: $content"
+                        errors=$((errors+1))
+                    fi
+                done < <(echo "$content" | grep -o -i -w -E "\b${standard_word}\b" | sort -u)
+            fi
+        done < <(grep -n -i -w -E "\b${standard_word}\b" "$file" || true)
+    done
+
+    return $errors
+}
+
+# Main execution
+error_count=0
+
+if [ -n "$doc_files" ]; then
+    for file in $doc_files; do
+        echo -e "Checking file: ${YELLOW}$file${NC}"
+        check_sensitive_words "$file"
+        error_count=$((error_count + $?))
+    done
+
+    if [ $error_count -gt 0 ]; then
+        echo -e "\n${RED}Found $error_count issues with sensitive words${NC}."
+        exit 1
+    fi
+fi
+
+echo -e "${GREEN}Success: document sensitive words check passed${NC}"
 exit 0
-
