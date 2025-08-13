@@ -57,6 +57,8 @@ static std::map<Operation *, slice_attr_t> group_slice_attrs;
 
 template <typename OpTy, typename AttrTy>
 const AttrTy &getOpParam(OpTy &op, std::map<Operation *, AttrTy> &map) {
+#pragma omp critical(get_op_param)
+{
   auto op_ = op.getOperation();
   auto iter = map.find(op_);
   if (iter != map.end()) {
@@ -64,6 +66,7 @@ const AttrTy &getOpParam(OpTy &op, std::map<Operation *, AttrTy> &map) {
   }
   map[op_] = op.parseParam();
   return map[op_];
+}
 }
 
 const conv_attr_t &getConv2DParam(tpu::Conv2DOp &op) {
