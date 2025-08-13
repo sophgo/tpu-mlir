@@ -1,0 +1,50 @@
+{
+  "rewriter_rules": [
+    {
+      "pattern_name": "ConvertRemovePermuteBeforeLayerNormPattern",
+      "params_dtype": {
+        "enable": "bool"
+      },
+      "params": {
+        "enable": true
+      }
+    },
+    {
+      "pattern_name": "ConvertRemovePermuteBetweenAddGatherPattern",
+      "params_dtype": {
+        "enable": "bool"
+      },
+      "params": {
+        "enable": true
+      }
+    },
+    {
+      "pattern_name": "ConvertFuseAttentionSlicePattern",
+      "params_dtype": {
+        "enable": "bool"
+      },
+      "params": {
+        "enable": true
+      }
+    },
+    {
+      "pattern_name": "ConvertOptimizeReshapePermuteChainPattern",
+      "params_dtype": {
+        "enable": "bool"
+      },
+      "params": {
+        "enable": true
+      }
+    },
+    {
+      "pattern_name": "ConvertPermuteReshapeChainFixPattern",
+      "params_dtype": {
+        "enable": "bool"
+      },
+      "params": {
+        "enable": true
+      }
+    }
+  ]
+}
+

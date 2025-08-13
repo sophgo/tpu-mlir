@@ -283,6 +283,9 @@ model_transform.py
    * - yuv_type
      - 否
      - 采用'.yuv'文件作为输入时指定其类型
+   * - struct_optimize
+     - 否
+     - 指定输入特定模型的结构预处理, 例如'0'默认不处理，'1'表示对CLIP模型进行结构预处理
 
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。

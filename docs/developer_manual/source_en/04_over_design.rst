@@ -28,6 +28,8 @@ The overall flow is shown in the (:ref:`main_flow`) diagram, where the model is 
 Top Pass
 ------------
 
+struct-optimize
+   Graph optimization for specific model structures, for CLIP and other models to perform structural pre-optimization.
 shape-infer
    Do shape inference, and constant folder
 canonicalize

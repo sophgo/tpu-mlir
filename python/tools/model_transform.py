@@ -22,6 +22,7 @@ from utils.log_setting import setup_logger
 import pymlir
 import warnings
 from utils.cache_tool import CommandRecorder
+from tools.gen_rewriter_config import gen_struct_optimize_config
 
 logger = setup_logger("transform")
 
@@ -404,6 +405,21 @@ def get_model_transform(args):
         raise RuntimeError("unsupport model:{}".format(args.model_def))
 
     tool.set_mlir_file(args.mlir)
+
+    # After the tool is created, if --use_rewriter_config or --struct_optimize is specified,
+    # the struct_optimize config file will be generated immediately.
+    if args.use_rewriter_config or (args.struct_optimize and args.struct_optimize > 0):
+        gen_struct_optimize_config(
+            model_name=args.model_name,
+            pass_type="struct_optimize",
+            chip="",
+            quantize="",
+            overwrite=True,
+            silence=True,
+            struct_optimize_id=(args.struct_optimize if
+                                (args.struct_optimize and args.struct_optimize > 0) else 0),
+        )
+
     return tool
 
 
@@ -470,7 +486,10 @@ if __name__ == '__main__':
     parser.add_argument("--replace_topk_indices", default=False, type=str2bool, help="replace topk indices with the correct onnx topk indices")
     parser.add_argument("--yuv_type", default='', type=str.upper,choices=supported_yuv_type,
                         help="pixel format of yuv file")
-
+    parser.add_argument("--use_rewriter_config", action="store_true",
+                        help="use rewriter config to do model transform.")
+    parser.add_argument("--struct_optimize", type=int, default=0,
+                        help="enable struct optimize presets by id: 1=clip, 2+=future models")
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args, unknown_args = parser.parse_known_args()

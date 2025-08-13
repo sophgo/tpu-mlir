@@ -179,7 +179,7 @@ class DeployTool:
         if args.use_rewriter_config:
             gen_rewriter_config(
                 model_name=self.module_name,
-                dialect="tpu",
+                pass_type="tpu_processor_optimize",
                 chip=self.chip,
                 quantize=self.quantize,
                 overwrite=True,

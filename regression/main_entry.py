@@ -101,7 +101,7 @@ class MAIN_ENTRY(object):
         print("======= script test ======")
         self.script_basic = [
             "test1", "test2", "test5", "test9", "test_llm0", "test12", 'test_modelzoo',
-            'test_encrypt', "test_pruning", "test_mlir_cut"
+            'test_encrypt', "test_pruning", "test_mlir_cut", "struct_optimize_pattern_test"
         ]
         self.script_extend = [
             "test3", "test4", "test6", "test7", "test8", "test10", "test_llm1", "test_tdb"

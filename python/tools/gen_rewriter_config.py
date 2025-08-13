@@ -47,31 +47,116 @@ def save_config(config: Dict[str, Any],
     print(json.dumps(config, indent=2))
 
 
+def gen_struct_optimize_config(model_name: str = "",
+                               pass_type: str = "struct_optimize",
+                               chip: str = "",
+                               quantize: str = "",
+                               overwrite: bool = False,
+                               output: str = "",
+                               silence: bool = False,
+                               struct_optimize_id: int = 0) -> None:
+    """Generate struct_optimize specific configuration
+
+    struct_optimize_id mapping:
+      0 -> no rules (do nothing)
+      1 -> CLIP model rules
+      2,3... -> reserved for future model family
+    """
+    config_filename = ""
+
+    if not output:
+        if not model_name:
+            print("[ERROR] '--model_name' must be set if '--output' or '-o' is not set.")
+            exit(1)
+
+    if output:
+        config_filename = output
+    else:
+        # TOP pass allows using default values
+        if not chip or not quantize:
+            print(
+                "[WARNING] chip or quantize not set for struct_optimize pass, using default values")
+            chip = chip or "ALL"
+            quantize = quantize or "f32"
+        config_filename = "{}_{}_{}.struct_optimize.json".format(model_name, chip.lower(),
+                                                                 quantize.lower())
+
+    # check if file exists
+    if os.path.exists(config_filename) and not overwrite:
+        print(
+            f"[ERROR] Config file \'{config_filename}\' already exists, do nothing to avoid overwriting. "
+            "If you want to overwrite it, please use \'--overwrite\' option.")
+        exit(1)
+
+    # Build rules based on struct_optimize_id
+    # ------------
+    if struct_optimize_id == 1:
+        # CLIP model specific rules
+        rule_ConvertRemovePermuteBeforeLayerNormPattern = generate_rewriter_rules(
+            "ConvertRemovePermuteBeforeLayerNormPattern", enable=(True, "bool"))
+        rule_ConvertRemovePermuteBetweenAddGatherPattern = generate_rewriter_rules(
+            "ConvertRemovePermuteBetweenAddGatherPattern", enable=(True, "bool"))
+        rule_ConvertFuseAttentionSlicePattern = generate_rewriter_rules(
+            "ConvertFuseAttentionSlicePattern", enable=(True, "bool"))
+        rule_ConvertOptimizeReshapePermuteChainPattern = generate_rewriter_rules(
+            "ConvertOptimizeReshapePermuteChainPattern", enable=(True, "bool"))
+        rule_ConvertPermuteReshapeChainFixPattern = generate_rewriter_rules(
+            "ConvertPermuteReshapeChainFixPattern", enable=(True, "bool"))
+
+        struct_optimize_id_1_rules = (rule_ConvertRemovePermuteBeforeLayerNormPattern +
+                                      rule_ConvertRemovePermuteBetweenAddGatherPattern +
+                                      rule_ConvertFuseAttentionSlicePattern +
+                                      rule_ConvertOptimizeReshapePermuteChainPattern +
+                                      rule_ConvertPermuteReshapeChainFixPattern)
+    else:
+        struct_optimize_id_1_rules = []
+
+    # Generate config based on optimize_id
+    # ------------
+    if struct_optimize_id == 0:
+        if not silence:
+            print("[Info] struct_optimize_id=0: no struct optimization rules (no-op).")
+        config = create_config([])
+    elif struct_optimize_id == 1:
+        if not silence:
+            print("[Info] struct_optimize_id=1: applying CLIP-specific rules.")
+        config = create_config(struct_optimize_id_1_rules)
+    else:
+        if not silence:
+            print(f"[Info] struct_optimize_id={struct_optimize_id}: no rules yet.")
+        config = create_config([])
+
+    # Save the config to a file
+    save_config(config, config_filename, silence=silence)
+
+
 def gen_rewriter_config(model_name: str = "",
-                        dialect: str = "tpu",
+                        pass_type: str = "tpu_processor_optimize",
                         chip: str = "",
                         quantize: str = "",
                         overwrite: bool = False,
                         output: str = "",
                         silence: bool = False) -> None:
+
     config_filename = ""
+
     if not output:
-        if not model_name or not dialect or not chip or not quantize:
+        if not model_name or not pass_type or not chip or not quantize:
             print(
-                "[ERROR] \'--model_name\', \'--dialect\', \'--chip\', \'--quantize\' must be set if \'--output\' or \'-o\' is not set."
+                "[ERROR] \'--model_name\', \'--pass_type\', \'--chip\', \'--quantize\' must be set if \'--output\' or \'-o\' is not set."
             )
             exit(1)
     if output:
         config_filename = output
     else:
-        if dialect == "tpu":
-            assert chip, "chip must be set when dialect is tpu"
-            assert quantize, "quantize must be set when dialect is tpu"
+        if pass_type == "tpu_processor_optimize":
+            assert chip, "chip must be set when pass_type is tpu_processor_optimize"
+            assert quantize, "quantize must be set when pass_type is tpu_processor_optimize"
             config_filename = "{}_{}_{}.tpu_processor_optimize.json".format(
                 model_name, chip.lower(), quantize.lower())
         else:
             # not implemented
-            assert False, "[ERROR] Only tpu dialect is supported in this script."
+            assert False, "[ERROR] Only tpu_processor_optimize pass type is supported in this script."
 
     # check if file exists
     if os.path.exists(config_filename) and not overwrite:
@@ -177,27 +262,31 @@ def gen_rewriter_config(model_name: str = "",
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, help="model name form \'model_transform\' step")
-    parser.add_argument("--dialect",
+    parser.add_argument("--pass_type",
                         type=str,
-                        default="tpu",
-                        choices=['tpu', 'top'],
-                        help="dialect needs rewriter config")
-    parser.add_argument("--chip",
-                        type=str,
-                        default="",
-                        choices=[
-                            'bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380',
-                            'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'
-                        ],
-                        help="if dialect is \'tpu\', set quantize type as \'model_deploy\' step")
-    parser.add_argument("--quantize",
-                        type=str,
-                        default="",
-                        choices=[
-                            'F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16', 'W4F16',
-                            'W4BF16', "F8E4M3", "F8E5M2", 'QDQ'
-                        ],
-                        help="if dialect is \'tpu\', set quantize type as \'model_deploy\' step")
+                        default="tpu_processor_optimize",
+                        choices=['tpu_processor_optimize', 'struct_optimize'],
+                        help="pass type needs rewriter config")
+
+    parser.add_argument(
+        "--chip",
+        type=str,
+        default="",
+        choices=[
+            'bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380', 'cv183x',
+            'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'
+        ],
+        help="if pass_type is \'tpu_processor_optimize\', set chip type as \'model_deploy\' step")
+    parser.add_argument(
+        "--quantize",
+        type=str,
+        default="",
+        choices=[
+            'F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16', 'W4F16', 'W4BF16', "F8E4M3",
+            "F8E5M2", 'QDQ'
+        ],
+        help="if pass_type is \'tpu_processor_optimize\', set quantize type as \'model_deploy\' step"
+    )
     parser.add_argument("--overwrite",
                         action='store_true',
                         help="overwrite the config file if it exists")
@@ -206,7 +295,21 @@ if __name__ == "__main__":
                         type=str,
                         default="",
                         help="output file name, default is empty")
+    parser.add_argument("--struct_optimize_id",
+                        type=int,
+                        default=0,
+                        help="struct_optimize_id for struct_optimize pass")
     args = parser.parse_args()
 
-    gen_rewriter_config(args.model_name, args.dialect, args.chip, args.quantize, args.overwrite,
-                        args.output)
+    if args.pass_type == "struct_optimize":
+        gen_struct_optimize_config(args.model_name,
+                                   args.pass_type,
+                                   args.chip,
+                                   args.quantize,
+                                   args.overwrite,
+                                   args.output,
+                                   silence=False,
+                                   struct_optimize_id=args.struct_optimize_id)
+    else:
+        gen_rewriter_config(args.model_name, args.pass_type, args.chip, args.quantize,
+                            args.overwrite, args.output)

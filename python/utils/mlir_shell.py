@@ -448,7 +448,7 @@ def get_matched_patterns(log_file: str = ""):
 
 
 def top_opt_options(add_postprocess: str = "", pruning: str = ""):
-    options = ["--shape-infer"]
+    options = ["--struct-optimize", "--shape-infer"]
     if len(pruning) > 0:
         options = [f"--pruning=\"config={pruning}\"", "--shape-infer"]
     if len(add_postprocess) > 0:

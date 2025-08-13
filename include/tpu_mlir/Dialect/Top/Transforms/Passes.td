@@ -127,4 +127,11 @@ def AddPostprocess : Pass<"add-postprocess", "ModuleOp"> {
              "type of add-postprocess.">
   ];
 }
+
+def StructOptimize : Pass<"struct-optimize", "ModuleOp"> {
+  let summary = "struct optimization";
+  let constructor = "createStructOptimizePass()";
+  let dependentDialects = ["top::TopDialect"];
+}
+
 #endif

@@ -285,6 +285,9 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
    * - yuv_type
      - N
      - Specify its type when using the '.yuv' file as input
+   * - struct_optimize
+     - N
+     - Specify structural preprocessing for specific models, e.g., '1' means structural preprocessing for CLIP models
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 

@@ -29,6 +29,8 @@ Tpu Dialect
 Top Passes
 ------------
 
+struct-optimize
+   针对特定模型结构的图优化, 目前针对CLIP等模型进行结构层面的预优化, 支持配置文件驱动的规则化优化。
 shape-infer
    做shape推导, 包括常量折叠。对于shape不确定的op, 在这里确定shape。
 canonicalize
