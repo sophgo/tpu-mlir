@@ -957,6 +957,9 @@ protected:
   LogicalResult
   matchAndRewriteImpl(top::MatMulOp op,
                       mlir::PatternRewriter &rewriter) const override {
+    if (module::isDynamic()) {
+      return failure();
+    }
     if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
         module::isCV184X() || module::isSGTPUV8()) {
       return failure();
