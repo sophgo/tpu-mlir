@@ -1281,11 +1281,10 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
   }
 
   update_tensor_infos(lg_info, tensor_infos, shape_secs);
-  auto status_str = status ? "success" : "failed";
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
     llvm::dbgs()
         << DEBUGGER_DEFAULT_INFO(
-               "updata_data_split_result", status_str,
+               "updata_data_split_result", (status ? "success" : "failed"),
                "try to find more appropriate shape_secs than the initial one")
         << "\n";
   });
