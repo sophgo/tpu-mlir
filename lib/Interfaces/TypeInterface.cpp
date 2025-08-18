@@ -17,6 +17,10 @@ namespace tpu_mlir {
 bool type_need_cast(Type from, Type to) {
   auto f_sType = module::getStorageType(from);
   auto t_sType = module::getStorageType(to);
+  if (f_sType.getIntOrFloatBitWidth() == t_sType.getIntOrFloatBitWidth() &&
+      f_sType.isSignlessInteger() && t_sType.isSignedInteger()) {
+    return true;
+  }
   if (f_sType == t_sType) {
     return false;
   }
