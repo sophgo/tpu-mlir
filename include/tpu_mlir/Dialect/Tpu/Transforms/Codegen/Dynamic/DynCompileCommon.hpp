@@ -216,6 +216,7 @@ typedef enum fw_layer_type {
   FW_BMNET_SHAPE_TRANSPOSE = 168,
   FW_BMNET_ROI_EXTRACTOR = 169,
   FW_BMNET_SHAPE_SCATTERELEMENTS = 170,
+  FW_BMNET_SELECTIVESCAN = 171,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN,
   // ppl declare

@@ -824,6 +824,19 @@ typedef struct index_select_global_spec {
   index_select_common_spec_t common;
 } index_select_global_spec_t;
 
+typedef struct selective_scan_common_spec {
+  uint64_t output_addr;
+  uint64_t Cs_addr;
+  uint64_t deltaA_addr;
+  uint64_t deltaB_u_addr;
+  uint64_t us_addr;
+  uint64_t Ds_addr;
+  int Batch;
+  int KC_dim;
+  int L;
+  int dtype;
+} selective_scan_common_spec_t;
+
 typedef struct index_put_spec {
   int mode;
   int accumulate;

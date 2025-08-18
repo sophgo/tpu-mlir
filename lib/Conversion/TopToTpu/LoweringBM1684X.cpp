@@ -207,6 +207,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       HardSigmoidLowering,
       HardSwishLowering,
       LayerNormLowering,
+      SelectiveScanLowering,
       TanLowering,
       TanhLowering,
       TopKLowering,

@@ -358,6 +358,7 @@ class ONNX_IR_TESTER(object):
             # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N),
+            "SelectiveScan":   (self.test_SelectiveScan,    N, Y, N, N, N, N),
         }
         # yapf: enable
         self.cases_int4 = ["Conv2d", "MatMul", "MatMul2"]  # only bm1688
@@ -7362,6 +7363,71 @@ class ONNX_IR_TESTER(object):
 
         self.torch_and_test((left, right),
                             Model(max_disp, num_groups),
+                            case_name,
+                            support_modes=["f16", "bf16"])
+
+    def test_SelectiveScan(self, case_name):
+
+        class custom(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, c, deltaA, deltaB_u, u, D):
+
+                N, Kcdim, L, Batch = map(int, deltaA.shape)
+                Cdim_plus_2 = Kcdim // 2
+
+                deltaA_up = deltaA[:, :Cdim_plus_2, :, :]
+                deltaA_down = deltaA[:, Cdim_plus_2:, :, :]
+                deltaB_u_up = deltaB_u[:, :Cdim_plus_2, :, :]
+                deltaB_u_down = deltaB_u[:, Cdim_plus_2:, :, :]
+
+                c_up = c[:, :Cdim_plus_2, :, :]
+                c_down = c[:, Cdim_plus_2:, :, :]
+
+                x_up = c.new_zeros((N, Cdim_plus_2, Batch))  # [N, Cdim_plus_2, Batch]
+                x_down = c.new_zeros((N, Cdim_plus_2, Batch))  # [N, Cdim_plus_2, Batch]
+                y_up = c.new_zeros((L, Cdim_plus_2, Batch))  # [L, Cdim_plus_2, Batch]
+                y_down = c.new_zeros((L, Cdim_plus_2, Batch))  # [L, Cdim_plus_2, Batch]
+
+                for i in range(L):
+                    x_up = deltaA_up[:, :, i, :] * x_up + deltaB_u_up[:, :, i, :]
+                    x_down = deltaA_down[:, :, L - 1 - i, :] * x_down + deltaB_u_down[:, :,
+                                                                                      L - 1 - i, :]
+
+                    y_up[i, :, :] = torch.mul(x_up[0, :, :], c_up[i, :, 0, :])
+                    y_down[L - 1 - i, :, :] = torch.mul(x_down[0, :, :], c_down[L - 1 - i, :, 0, :])
+
+                y = torch.cat((y_up, y_down), dim=1)
+
+                out = y if D is None else y + u * D.unsqueeze(-1)
+
+                return out
+
+            @staticmethod
+            def symbolic(g, Cs, deltaA, deltaB_u, us, Ds):
+                return g.op("tpu_mlir::SelectiveScan", Cs, deltaA, deltaB_u, us, Ds)
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, Cs, deltaA, deltaB_u, us, Ds):
+                out = custom.apply(Cs, deltaA, deltaB_u, us, Ds)
+                return out
+
+        L = 49 * 4
+        Batch = 16
+        N = 1
+        KCdim = 64 * 4
+        us = torch.randn([L, KCdim, Batch]).float()
+        Cs = torch.randn([L, KCdim, N, Batch]).float()
+        Ds = torch.randn([KCdim]).float()
+        deltaA = torch.randn([N, KCdim, L, Batch]).float()
+        deltaB_u = torch.randn([N, KCdim, L, Batch]).float()
+
+        self.torch_and_test((Cs, deltaA, deltaB_u, us, Ds),
+                            Model(),
                             case_name,
                             support_modes=["f16", "bf16"])
 

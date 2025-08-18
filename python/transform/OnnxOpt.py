@@ -330,6 +330,7 @@ class ConstantFolding(object):
             for node in graph.node:
                 tensors.update(node.input)
             return tensors
+
         node_inputs = []
         unused_node = []
         subgraph_nodes = set()
@@ -343,7 +344,8 @@ class ConstantFolding(object):
         node_inputs = set(node_inputs)
 
         for n in self.model.graph.node:
-            if len(set(n.output).intersection(node_inputs)) == 0 and len(set(n.output).intersection(subgraph_nodes)) == 0:
+            if len(set(n.output).intersection(node_inputs)) == 0 and len(
+                    set(n.output).intersection(subgraph_nodes)) == 0:
                 unused_node.append(n)
         for n in unused_node:
             self.model.graph.node.remove(n)
@@ -1161,6 +1163,76 @@ def correlation(left_features, right_features, max_disp, num_groups):
         else:
             cost_volume[:, i, :, :] = (left_features * right_features).mean(axis=1)
     return cost_volume
+
+
+############ SelectiveScan ############
+@onnx_op(
+    op_type="tpu_mlir::SelectiveScan",
+    inputs=[
+        PyOp.dt_float,  # 0: c
+        PyOp.dt_float,  # 1: deltaA
+        PyOp.dt_float,  # 2: deltaB_u
+        PyOp.dt_float,  # 3: u
+        PyOp.dt_float,  # 4: D
+    ],
+    outputs=[PyOp.dt_float],
+    attrs={})
+def SelectiveScan(c, deltaA, deltaB_u, u, D):
+    """
+    NumPy implementation of SelectiveScan
+
+    Parameters:
+        u:          input tensor [N, Kcdim, L, Batch]
+        deltaA:     ΔA tensor [N, Kcdim, L, Batch]
+        deltaB_u:   ΔB ⊙ u tensor [N, Kcdim, L, Batch]
+        c:          context tensor [L, Kcdim, N, Batch]
+        D:          residual parameter tensor [Kdim] or None
+
+    Returns:
+        out:        output tensor [L, Kcdim, Batch]
+    """
+    N, Kcdim, L, Batch = deltaA.shape
+    Cdim_plus_2 = Kcdim // 2
+
+    deltaA_up = deltaA[:, :Cdim_plus_2, :, :]
+    deltaA_down = deltaA[:, Cdim_plus_2:, :, :]
+
+    deltaB_u_up = deltaB_u[:, :Cdim_plus_2, :, :]
+    deltaB_u_down = deltaB_u[:, Cdim_plus_2:, :, :]
+
+    c_up = c[:, :Cdim_plus_2, :, :]
+    c_down = c[:, Cdim_plus_2:, :, :]
+
+    dtype = c.dtype
+    x_up = np.zeros((N, Cdim_plus_2, Batch), dtype=dtype)
+    x_down = np.zeros((N, Cdim_plus_2, Batch), dtype=dtype)
+
+    y_up = np.zeros((L, Cdim_plus_2, Batch), dtype=dtype)
+    y_down = np.zeros((L, Cdim_plus_2, Batch), dtype=dtype)
+
+    for i in range(L):
+        # x(t) = ΔA * x(t-1) + ΔB ⊙ u
+        x_up = deltaA_up[:, :, i, :] * x_up + deltaB_u_up[:, :, i, :]
+
+        y_up[i, :, :] = x_up[0, :, :] * c_up[i, :, 0, :]
+
+    for i in range(L):
+        rev_i = L - 1 - i
+
+        # x(t) = ΔA * x(t+1) + ΔB ⊙ u
+        x_down = deltaA_down[:, :, rev_i, :] * x_down + deltaB_u_down[:, :, rev_i, :]
+
+        y_down[rev_i, :, :] = x_down[0, :, :] * c_down[rev_i, :, 0, :]
+
+    y = np.concatenate([y_up, y_down], axis=1)  # 结果形状 [L, Kcdim, Batch]
+
+    if D is not None:
+        residual = u * D[np.newaxis, :, np.newaxis]
+        out = y + residual
+    else:
+        out = y
+
+    return out
 
 
 def remove_tensor_from_input(model):

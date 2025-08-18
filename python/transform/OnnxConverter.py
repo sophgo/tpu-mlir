@@ -268,6 +268,7 @@ class OnnxConverter(BaseConverter):
             "Round": lambda node: self.convert_round_op(node),
             "ScatterElements": lambda node: self.convert_scatter_elements_op(node),
             "ScatterND": lambda node: self.convert_scatternd_op(node),
+            "SelectiveScan": lambda node: self.convert_selective_scan(node),
             "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
             "Sign": lambda node: self.convert_sign_op(node),
@@ -1448,6 +1449,29 @@ class OnnxConverter(BaseConverter):
                                                                    onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, range_op)
+
+    def convert_selective_scan(self, onnx_node):
+        assert (onnx_node.op_type == "SelectiveScan")
+        Cs = self.getOp(onnx_node.inputs[0])
+        DeltaA = self.getOp(onnx_node.inputs[1])
+        DeltaB_u = self.getOp(onnx_node.inputs[2])
+        us = self.getOp(onnx_node.inputs[3])
+        Ds = self.getOp(onnx_node.inputs[4])
+
+        operands = list()
+        operands.append(Cs)
+        operands.append(DeltaA)
+        operands.append(DeltaB_u)
+        operands.append(us)
+        operands.append(Ds)
+
+        ss2d_op = top.SelectiveScanOp(self.unranked_type,
+                                      *operands,
+                                      loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                      onnx_node.op_type)),
+                                      ip=self.mlir.insert_point).output
+
+        self.addOperand(onnx_node.name, ss2d_op)
 
     def convert_sigmoid_op(self, onnx_node):
         assert (onnx_node.op_type == "Sigmoid")

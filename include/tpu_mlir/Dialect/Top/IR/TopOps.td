@@ -635,6 +635,60 @@ def Top_CorrelationOp:Top_Op<"Correlation"> {
   let results = (outs AnyTensor:$output);
 }
 
+
+def Top_SelectiveScanOp: Top_Op<"SelectiveScan"> {
+  let summary = "2D Selective Scan Operator (specialized for VMamba)";
+  let description = [{
+    1. Op Introduction
+    Performs structured state space modeling (SSM) on 2D image data using a bidirectional scanning mechanism.
+    Core component of the VMamba architecture that enables efficient long-range dependency modeling in visual data.
+
+    2. Math formula
+    For each scanning direction:
+    ```
+    h_t = δA_t ⊙ h_{t-1} + δB_t ⊙ u_t
+    y_t = c_t ⊙ h_t
+    ```
+    Final output:
+    ```
+    output = concat(y_forward, y_backward) + u ⊙ D
+    ```
+    code:
+
+    for i in range(L):
+        x_up = deltaA_up[:, :, i, :] * x_up + deltaB_u_up[:, :, i, :]
+        x_down = deltaA_down[:, :, L - 1 - i, :] * x_down + deltaB_u_down[:, :, L - 1 - i, :]
+        y_up[i, :, :] = x_up[0, :, :] * c_up[i, :, 0, :]
+        y_down[L - 1 - i, :, :] = x_down[0, :, :] * c_down[L - 1 - i, :, 0, :]
+
+    y = concat((y_up, y_down), dim=1)
+    out = y if D is None else y + u * D
+
+    3. Input parameters:
+    u: Input feature map tensor (after linear projection) [N, C, L, Batch]
+    c: State-to-output projection weights [N, C, L, Batch]
+    D: Residual connection weights (optional) [N, C]
+    δA: Discretized state transition matrix [N, C, L, Batch]
+    δB_u: Combined input projection and discretized control matrix [N, C, L, Batch]
+
+    4. Attributes:
+    direction: Bidirectional scanning scheme (forward & reverse)
+    time_dim: Sequence length dimension (L = H × W)
+    channel_split: Channel dimension partitioning factor (C → C//2)
+    residual: Whether to apply residual connection (D term)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$Cs,
+    AnyTensor:$deltaA,
+    AnyTensor:$deltaB_u,
+    AnyTensor:$us,
+    AnyTensorOrNone:$Ds
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
   let summary = "pool operator";
 
