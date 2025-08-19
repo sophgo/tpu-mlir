@@ -922,11 +922,18 @@ void AddPostprocessPass::insertYolosegOp(OpBuilder &builder) {
   auto sigmoid_op1 = builder.create<SigmoidOp>(new_loc, new_type,
                                                matmul_op1.getOutput(), attrs);
 
-  new_type =
-      module::getTypeLike(predication_op.getOutput(), {max_boxes, mh, mw});
+  attrs.clear();
+  attrs.push_back(
+      builder.getNamedAttr("const_val", builder.getF64FloatAttr(255)));
+  new_loc = NameLoc::get(builder.getStringAttr("yolo_seg_post_mulconst4"));
+  auto mulconst_op4 = builder.create<MulConstOp>(
+      new_loc, new_type, sigmoid_op1.getOutput(), attrs);
+  new_type = module::getTypeLike(sigmoid_op1.getOutput(), {max_boxes, mh, mw});
+  attrs.clear();
+
   new_loc = NameLoc::get(builder.getStringAttr("masks_uncrop_uncompare"));
   auto masks_uncrop_uncompare_op = builder.create<ReshapeOp>(
-      new_loc, new_type, sigmoid_op1.getOutput(), attrs);
+      new_loc, new_type, mulconst_op4.getOutput(), attrs);
 
   operands.clear();
   operands.push_back(gather_op1.getOutput());
