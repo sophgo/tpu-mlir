@@ -47,6 +47,8 @@ typedef struct {
 typedef struct {
   uint64_t bd_cmd_mem_size;      // bd instruction total size
   uint64_t gdma_cmd_mem_size;    // gdma instruction total size
+  uint64_t hau_cmd_mem_size;     // hau instruction total size
+  uint64_t sdma_cmd_mem_size;    // sdma instruction totoal size
   uint64_t dynamic_ir_mem_size;  // dynamic ir total size
   uint64_t neuron_mem_size;      // total neuron mem
   uint64_t coeff_mem_size;       // total coeff size

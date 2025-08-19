@@ -195,8 +195,10 @@ void bm_show(const string &filename, bool all) {
     for (uint32_t i = 0; i < parameter->size(); i++) {
       auto net_param = parameter->Get(i);
       auto subnet = net_param->sub_net();
+      const int core_num =
+          net_param->core_num() == 0 ? 1 : net_param->core_num();
       cout << "------------" << endl;
-      cout << "stage " << i << ":" << endl;
+      cout << "stage " << i << ", core num: " << core_num << endl;
       if (subnet != NULL && subnet->size() > 1) {
         cout << "subnet number: " << subnet->size() << endl;
       }
@@ -247,16 +249,18 @@ void bm_show(const string &filename, bool all) {
   cout << "device mem size: "
        << mem_info.coeff_mem_size + mem_info.neuron_mem_size +
               mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
-              mem_info.middle_buffer_size + mem_info.dynamic_ir_mem_size
+              mem_info.middle_buffer_size + mem_info.dynamic_ir_mem_size +
+              mem_info.hau_cmd_mem_size + mem_info.sdma_cmd_mem_size
        << " (weight: " << mem_info.coeff_mem_size << ", instruct: "
        << mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
-              mem_info.dynamic_ir_mem_size
+              mem_info.dynamic_ir_mem_size + mem_info.hau_cmd_mem_size +
+              mem_info.sdma_cmd_mem_size
        << ", runtime: "
        << mem_info.neuron_mem_size + mem_info.middle_buffer_size << ")"
        << std::endl;
-  cout << "\t(coeff size: " << mem_info.coeff_mem_size
-       << "; middle buffer size: " << mem_info.middle_buffer_size
-       << "; neuron size: " << mem_info.neuron_mem_size << ")" << std::endl;
+  // cout << "\t(coeff size: " << mem_info.coeff_mem_size
+  //      << "; middle buffer size: " << mem_info.middle_buffer_size
+  //      << "; neuron size: " << mem_info.neuron_mem_size << ")" << std::endl;
   cout << "host mem size: "
        << mem_info.host_coeff_mem_size + mem_info.host_neuron_mem_size
        << " (weight: " << mem_info.host_coeff_mem_size

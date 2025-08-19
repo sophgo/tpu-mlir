@@ -1082,10 +1082,17 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
           if (subnet->is_dynamic()) {
             info.dynamic_ir_mem_size += subnet->ir_len() * sizeof(uint32_t);
           } else {
-            if (subnet->cmd_group() != nullptr) {
-              int group_num = subnet->cmd_group()->size();
+            auto core_num =
+                subnet->core_commands() ? subnet->core_commands()->size() : 1;
+            for (uint32_t core_idx = 0; core_idx < core_num; ++core_idx) {
+              const auto cmd_groups = subnet->cmd_group()
+                                          ? subnet->cmd_group()
+                                          : subnet->core_commands()
+                                                ->Get(core_idx)
+                                                ->gdma_tiu_commands();
+              int group_num = cmd_groups->size();
               for (int group_idx = 0; group_idx < group_num; group_idx++) {
-                auto cmd_group = subnet->cmd_group()->Get(group_idx);
+                auto cmd_group = cmd_groups->Get(group_idx);
                 // just for bm1684. bm1684x instructions may be of variable
                 // length
                 if (model()->chip()->str() == "BM1682") {
@@ -1099,6 +1106,21 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
                   info.gdma_cmd_mem_size += cmd_group->binary_gdma()->size();
                 }
               }
+              if (model()->chip()->str() == "BM1690") {
+                auto core_cmd = subnet->core_commands()->Get(core_idx);
+                if (core_cmd->hau_commands()) {
+                  for (unsigned int j = 0; j < core_cmd->hau_commands()->size();
+                       ++j)
+                    info.hau_cmd_mem_size +=
+                        core_cmd->hau_commands()->Get(j)->size();
+                }
+                if (core_cmd->sdma_commands()) {
+                  for (unsigned int j = 0;
+                       j < core_cmd->sdma_commands()->size(); ++j)
+                    info.sdma_cmd_mem_size +=
+                        core_cmd->sdma_commands()->Get(j)->size();
+                }
+              }
             }
           }
         }
@@ -1106,18 +1128,20 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
 
       info.host_neuron_mem_size += param->cpu_mem_size() * sizeof(float);
 
-      for (size_t i = 0; i < param->input_tensor()->size(); i++) {
-        auto tensor = param->input_tensor()->Get(i);
-        auto tensor_buffer_size = get_tensor_buffer_size(tensor);
-        if (info.middle_buffer_size < tensor_buffer_size) {
-          info.middle_buffer_size = tensor_buffer_size;
+      if (model()->chip()->str() == "BM1684") { // 1N to 4N buffer
+        for (size_t i = 0; i < param->input_tensor()->size(); i++) {
+          auto tensor = param->input_tensor()->Get(i);
+          auto tensor_buffer_size = get_tensor_buffer_size(tensor);
+          if (info.middle_buffer_size < tensor_buffer_size) {
+            info.middle_buffer_size = tensor_buffer_size;
+          }
         }
-      }
-      for (size_t i = 0; i < param->output_tensor()->size(); i++) {
-        auto tensor = param->output_tensor()->Get(i);
-        auto tensor_buffer_size = get_tensor_buffer_size(tensor);
-        if (info.middle_buffer_size < tensor_buffer_size) {
-          info.middle_buffer_size = tensor_buffer_size;
+        for (size_t i = 0; i < param->output_tensor()->size(); i++) {
+          auto tensor = param->output_tensor()->Get(i);
+          auto tensor_buffer_size = get_tensor_buffer_size(tensor);
+          if (info.middle_buffer_size < tensor_buffer_size) {
+            info.middle_buffer_size = tensor_buffer_size;
+          }
         }
       }
     }
