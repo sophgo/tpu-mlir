@@ -144,7 +144,7 @@ class PostProcess:
         boxes[..., [0, 2]] = boxes[:, [0, 2]].clip(0, im0_shape[:2][1])
         boxes[..., [1, 3]] = boxes[:, [1, 3]].clip(0, im0_shape[:2][0])
         masks = self.crop_mask(masks_uncrop, boxes)
-        masks = np.greater(masks, 0.5)
+        masks = np.greater(masks, 127.5)
         return masks, seg_out
 
     def get_mask_distrubute(self, x, im0_shape, ratio, pad_w, pad_h, protos):
