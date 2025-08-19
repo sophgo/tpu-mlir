@@ -491,7 +491,7 @@ void get_sec_per_cores(
 //   return std::move(tmp);
 // }
 
-std::vector<op_var_pos_info> createOverlapStrategy(const LgInfo &lg_info,
+std::vector<op_var_pos_info> createOverlapStrategy(LgInfo &lg_info,
                                                    int slice_num, int type = 0,
                                                    int overlap = 2,
                                                    int fix_gap = 4) {

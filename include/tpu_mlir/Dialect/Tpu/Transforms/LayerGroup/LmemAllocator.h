@@ -69,12 +69,11 @@ static inline std::string search_result_to_string(search_result_t result) {
 class LmemAllocator {
 public:
   LmemAllocator(const LgOptions &options) { options_ = options; }
-  bool assignLmemAddrWithSecs(const LgInfo &lg_info,
-                              BasicTimeStepPtr &time_step,
+  bool assignLmemAddrWithSecs(LgInfo &lg_info, BasicTimeStepPtr &time_step,
                               shape_secs_t &shape_secs,
                               bool allow_bank_conflict = false,
                               bool just_check_validation = false);
-  bool assignLmemAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
+  bool assignLmemAddr(LgInfo &lg_info, BasicTimeStepPtr &time_step,
                       const shape_secs_t &shape_secs,
                       bool allow_bank_conflict = false);
 
@@ -101,13 +100,13 @@ public:
   MemBlock find_avail_lmem_location(avail_space_t &avail_space,
                                     const mem_buffer_key_t &buffer_key,
                                     const mem_buffer_value_t &buffer_value,
-                                    const LgInfo &lg_info,
+                                    LgInfo &lg_info,
                                     bool allow_bank_conflit = false);
 
   MemBlock global_find_avail_lmem_localtion(
       avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
       const mem_buffer_key_t &recent_buffer_allocated,
-      BasicTimeStepPtr &time_step, bool one_loop, const LgInfo &lg_info,
+      BasicTimeStepPtr &time_step, bool one_loop, LgInfo &lg_info,
       bool allow_bank_conflict = false, bool allow_hold_in_lmem = false);
 
   int64_t get_min_group_cost() { return min_group_costs_; }
@@ -117,19 +116,28 @@ protected:
   bool consider_inplace_;
   shape_secs_t max_shape_secs_;
   int64_t min_total_secs_;
-  void sc_method_brute_force(const LgInfo &lg_info, shape_secs_t &shape_secs,
+  void sc_method_use_best_shape_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
+                                     bool allow_bank_conflict,
+                                     BasicTimeStepPtr &time_step);
+  void sc_method_brute_force(LgInfo &lg_info, shape_secs_t &shape_secs,
                              bool allow_bank_conflict,
                              BasicTimeStepPtr &time_step);
-  void sc_method_quick_search(const LgInfo &lg_info, shape_secs_t &shape_secs,
+  void sc_method_search_better_v1(LgInfo &lg_info, shape_secs_t &shape_secs,
+                                  bool allow_bank_conflict,
+                                  BasicTimeStepPtr &time_step);
+  void sc_method_search_better_v2(LgInfo &lg_info, shape_secs_t &shape_secs,
+                                  bool allow_bank_conflict,
+                                  BasicTimeStepPtr &time_step);
+  void sc_method_quick_search(LgInfo &lg_info, shape_secs_t &shape_secs,
                               bool allow_bank_conflict,
                               BasicTimeStepPtr &time_step);
-  void sc_method_multi_core(const LgInfo &lg_info, shape_secs_t &shape_secs,
+  void sc_method_multi_core(LgInfo &lg_info, shape_secs_t &shape_secs,
                             bool allow_bank_conflict,
                             BasicTimeStepPtr &time_step);
-  void sc_method_multi_core_v2(const LgInfo &lg_info, shape_secs_t &shape_secs,
+  void sc_method_multi_core_v2(LgInfo &lg_info, shape_secs_t &shape_secs,
                                bool allow_bank_conflict,
                                BasicTimeStepPtr &time_step);
-  void sc_method_multi_core_v3(const LgInfo &lg_info, shape_secs_t &shape_secs,
+  void sc_method_multi_core_v3(LgInfo &lg_info, shape_secs_t &shape_secs,
                                bool allow_bank_conflict,
                                BasicTimeStepPtr &time_step);
   // mem_buffer_key_t recent_buffer_allocated_;
@@ -138,8 +146,7 @@ protected:
    * true means cost is less than min_group_costs_
    * false means cost is more than min_group_costs_ or lg is invalid
    */
-  search_result_t try_this_shape_secs(const LgInfo &lg_info,
-                                      shape_secs_t &shape_secs,
+  search_result_t try_this_shape_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
                                       bool allow_bank_conflict,
                                       BasicTimeStepPtr &time_step);
 

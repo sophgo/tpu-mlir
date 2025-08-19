@@ -616,12 +616,13 @@ def tpu_ada_options(
     opt_post_processor: bool = False,
     lg_debugger: int = 0,
     disable_group_overlap: bool = False,
+    layer_group_config: str = "",
 ):
     lg_param = ''
     disable_group_overlap = "true" if disable_group_overlap else "false"
     if not disable_layer_group:
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={}"'.format(
-            opt, group_by_cores, compress_mode, lg_debugger, disable_group_overlap)
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={} config_filename={}"'.format(
+            opt, group_by_cores, compress_mode, lg_debugger, disable_group_overlap, layer_group_config)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     if merge_weight:
@@ -883,7 +884,8 @@ def mlir_to_model(
     lg_debugger: int = 0,
     time_fixed_subnet: str = None,
     subnet_params: str = None,
-    layer_group_cache: str = ""
+    layer_group_cache: str = "",
+    layer_group_config: str = "",
 ):
     if command_mem is None:
         command_mem = {}
@@ -916,7 +918,8 @@ def mlir_to_model(
                               trunc_final=trunc_final,
                               opt_post_processor=opt_post_processor,
                               lg_debugger=lg_debugger,
-                              disable_group_overlap=(time_fixed_subnet != None))
+                              disable_group_overlap=(time_fixed_subnet != None),
+                              layer_group_config=layer_group_config)
     cmd.extend(options)
 
     cmd.extend(["-o", final_mlir])

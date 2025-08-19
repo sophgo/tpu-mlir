@@ -265,7 +265,7 @@ void conv3d_stride_gt_15_weightreorder(Operation *op) {
   op->setOperand(1, new_filter);
 }
 
-static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
+static void conv3d_post_transform(Operation *op, LgInfo &lg_info) {
   auto conv3d_op = dyn_cast<tpu::Conv3DOp>(op);
   auto attr = conv3d_op.parseParam();
   auto filter_op = conv3d_op.getFilter().getDefiningOp<top::WeightOp>();
@@ -513,7 +513,7 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
   return;
 }
 
-static void _3D_group_post_transform(const LgInfo &lg_info) {
+static void _3D_group_post_transform(LgInfo &lg_info) {
   if (lg_info.group_ops.size() > 1 && lg_info.type == GROUP_NORMAL)
     return;
   for (auto op : lg_info.group_ops) {
@@ -524,7 +524,7 @@ static void _3D_group_post_transform(const LgInfo &lg_info) {
 }
 /// The pass of group post transform
 
-static void matmul_left_reuse_setting(const LgInfo &lg_info) {
+static void matmul_left_reuse_setting(LgInfo &lg_info) {
   for (auto op : lg_info.group_ops) {
     if (isa<tpu::MatMulOp>(op)) {
       auto malmul_op = dyn_cast<tpu::MatMulOp>(op);
@@ -596,7 +596,7 @@ void getCompressParameter(const uint8_t *ibuf, int32_t isz, bool &signedness,
   }
 }
 
-static void nnvlc_transform(const LgInfo &lg_info) {
+static void nnvlc_transform(LgInfo &lg_info) {
   if (lg_info.group_ops.size() < 2)
     return;
   for (auto op : lg_info.group_ops) {

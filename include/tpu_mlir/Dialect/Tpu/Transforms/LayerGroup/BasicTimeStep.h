@@ -31,7 +31,7 @@ public:
   virtual ~BasicTimeStep() {}
   void clear();
 
-  bool assignTimeStep(const LgInfo &lg_info, const shape_secs_t &shape_secs,
+  bool assignTimeStep(LgInfo &lg_info, const shape_secs_t &shape_secs,
                       bool gen_idx);
   void add_tpu0_ts_field(const TpuTsField &field);
   void add_gdma0_ts_field(const GdmaTsField &field);
@@ -85,7 +85,7 @@ public:
   void set_lmem_occupy(int64_t occupy) { lmem_occupy_ = occupy; }
 
   void gen_all_mem_buffer_ts();
-  void update_all_mem_buffer_size(const LgInfo &lg_info);
+  void update_all_mem_buffer_size(LgInfo &lg_info);
   void gen_hold_coeff();
   bool is_tensor_hold_in_lmem(Value v);
   void cancel_tensor_hold_in_lmem(Value v);

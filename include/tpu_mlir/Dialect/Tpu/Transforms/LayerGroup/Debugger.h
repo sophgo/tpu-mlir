@@ -153,17 +153,16 @@ public:
         std::make_pair(lg_info.func_start_idx, lg_info.func_end_idx));
     if (it != manual_group_cost_.end()) {
       return it->second;
-      // llvm::dbgs() << LOG_ACTION("debugger")
-      //             << LOG_STEP("manual_group_cost_")
-      //             << LOG_KV("func_start_idx", lg_info.func_start_idx)
-      //             << LOG_KV("func_end_idx", lg_info.func_end_idx)
-      //             << LOG_KV("cost", it->second) << "\n";
+      // llvm::dbgs() << LOG_ACTION("debugger") <<
+      // LOG_STEP("manual_group_cost_")
+      //              << LOG_KV("func_start_idx", lg_info.func_start_idx)
+      //              << LOG_KV("func_end_idx", lg_info.func_end_idx)
+      //              << LOG_KV("cost", it->second) << "\n";
     }
-    // llvm::dbgs() << LOG_ACTION("debugger")
-    //             << LOG_STEP("manual_group_cost_")
-    //             << LOG_KV("func_start_idx", lg_info.func_start_idx)
-    //             << LOG_KV("func_end_idx", lg_info.func_end_idx)
-    //             << LOG_KV("cost", "not found") << "\n";
+    // llvm::dbgs() << LOG_ACTION("debugger") << LOG_STEP("manual_group_cost_")
+    //              << LOG_KV("func_start_idx", lg_info.func_start_idx)
+    //              << LOG_KV("func_end_idx", lg_info.func_end_idx)
+    //              << LOG_KV("cost", "not found") << "\n";
     return -1; // return -1 if not found
   }
 
@@ -203,7 +202,7 @@ public:
   }
 
   template <typename F>
-  void debug_with_type(const char *debug_type, const LgInfo &lg_info,
+  void debug_with_type(const char *debug_type, LgInfo &lg_info,
                        const char *file, const int64_t line, const char *func,
                        F &&callback) {
     if (!do_debug_)

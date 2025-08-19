@@ -347,8 +347,7 @@ void GroupOps::buildMlir() {
   DEBUG_WITH_TYPE("dominate_bug", { module::getModuleOp().dump(); });
 }
 
-void GroupOps::buildGroupOp(const LgInfo &lg_info,
-                            const shape_secs_t &shape_secs,
+void GroupOps::buildGroupOp(LgInfo &lg_info, const shape_secs_t &shape_secs,
                             const int64_t group_idx) {
   auto builder = OpBuilder(ctx_);
   llvm::SmallVector<Value, 8> operands;

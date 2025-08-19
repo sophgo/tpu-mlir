@@ -34,8 +34,8 @@ void find_used_banks(std::set<int64_t> &used_banks, int64_t lmem_addr,
 static std::vector<int64_t>
 up_overlap_depth(BasicTimeStepPtr &up_time_step,
                  const std::vector<MemBlock> &overlap_buffer,
-                 const std::vector<Value> &overlap_tensor,
-                 const LgInfo &up_group, const shape_secs_t &up_shape_secs) {
+                 const std::vector<Value> &overlap_tensor, LgInfo &up_group,
+                 const shape_secs_t &up_shape_secs) {
   int64_t up_ts_num = up_time_step->get_timestep_num();
   std::vector<int64_t> up_timestep_depth(overlap_buffer.size(), up_ts_num);
   // If the loop number of the up group is <= 2 and the software
@@ -269,10 +269,10 @@ static bool buffer_conflict_with_layer(BasicTimeStepPtr &cur_time_step,
 
 static void assign_down_to_up_overlap_timestep(
     // up group
-    const LgInfo &up_group, const shape_secs_t &up_secs,
+    LgInfo &up_group, const shape_secs_t &up_secs,
     BasicTimeStepPtr &up_time_step,
     // down group
-    const LgInfo &down_group, const shape_secs_t &down_secs,
+    LgInfo &down_group, const shape_secs_t &down_secs,
     BasicTimeStepPtr &down_time_step,
     std::vector<std::pair<Value, int64_t>> &down_group_overlap_op,
     std::vector<int64_t> &down_to_up_depth,
@@ -388,10 +388,10 @@ static void assign_down_to_up_overlap_timestep(
 
 static void assign_up_to_down_overlap_timestep(
     // up group
-    const LgInfo &up_group, const shape_secs_t &up_secs,
+    LgInfo &up_group, const shape_secs_t &up_secs,
     BasicTimeStepPtr &up_time_step,
     // down group
-    const LgInfo &down_group, const shape_secs_t &down_secs,
+    LgInfo &down_group, const shape_secs_t &down_secs,
     BasicTimeStepPtr &down_time_step,
     std::vector<std::pair<Value, int64_t>> &up_group_overlap_op,
     std::vector<int64_t> &up_to_down_depth,
@@ -539,11 +539,11 @@ static bool connect_neuron_overlap_valid(Value tensor,
 
 static void find_alter_overlap_op(
     // up group
-    const LgInfo &up_group, const BasicTimeStepPtr &up_time_step,
+    LgInfo &up_group, const BasicTimeStepPtr &up_time_step,
     const shape_secs_t up_secs,
     std::vector<std::pair<Value, int64_t>> &up_group_overlap_op,
     // down group
-    const LgInfo &down_group, const BasicTimeStepPtr &down_time_step,
+    LgInfo &down_group, const BasicTimeStepPtr &down_time_step,
     const shape_secs_t down_secs,
     std::vector<std::pair<Value, int64_t>> &down_group_overlap_op,
     bool dynamic_compile) {
@@ -601,11 +601,9 @@ static void find_alter_overlap_op(
   }
 }
 
-static void
-direct_group_overlap_schd(std::vector<BasicTimeStepPtr> &time_steps,
-                          const std::vector<LgInfo> &lg_infos,
-                          const std::vector<shape_secs_t> &shape_secs,
-                          bool dynamic_compile) {
+static void direct_group_overlap_schd(
+    std::vector<BasicTimeStepPtr> &time_steps, std::vector<LgInfo> &lg_infos,
+    const std::vector<shape_secs_t> &shape_secs, bool dynamic_compile) {
   int64_t group_num = lg_infos.size();
   BasicTimeStepPtr up_time_step;
   BasicTimeStepPtr down_time_step;
@@ -628,8 +626,8 @@ direct_group_overlap_schd(std::vector<BasicTimeStepPtr> &time_steps,
     }
     up_time_step = time_steps[i - 1];
     down_time_step = time_steps[i];
-    const LgInfo &up_group = lg_infos[i - 1];
-    const LgInfo &down_group = lg_infos[i];
+    LgInfo &up_group = lg_infos[i - 1];
+    LgInfo &down_group = lg_infos[i];
     const shape_secs_t &up_secs = shape_secs[i - 1];
     const shape_secs_t &down_secs = shape_secs[i];
     up_group_overlap_op.clear();
@@ -682,7 +680,7 @@ direct_group_overlap_schd(std::vector<BasicTimeStepPtr> &time_steps,
 // Algorithm about group overlap
 //===================================
 static void layer_group_overlap(std::vector<BasicTimeStepPtr> &time_steps,
-                                const std::vector<LgInfo> &lg_infos,
+                                std::vector<LgInfo> &lg_infos,
                                 const std::vector<shape_secs_t> &shape_secs) {
   direct_group_overlap_schd(time_steps, lg_infos, shape_secs, false);
 }

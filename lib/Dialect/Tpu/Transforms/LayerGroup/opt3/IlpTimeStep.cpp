@@ -853,7 +853,7 @@ std::vector<int> lmem_alloc::get_bank(const std::string &name) {
   return tmp;
 }
 
-ILPTimeStep::ILPTimeStep(const LgInfo &group_info,
+ILPTimeStep::ILPTimeStep(LgInfo &group_info,
                          std::shared_ptr<dot_graph> tmp_dot_graph_log,
                          int sec_per_core)
     : _group_info(group_info), solver(MPSolver::CreateSolver("SCIP")),

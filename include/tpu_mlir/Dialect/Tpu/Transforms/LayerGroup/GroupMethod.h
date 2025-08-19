@@ -57,6 +57,9 @@ public:
   void
   get_final_groups(std::vector<LgInfo> &lg_infos,
                    const std::vector<std::vector<Operation *>> &base_groups);
+  void get_final_groups_by_cache(
+      std::vector<LgInfo> &lg_infos,
+      const std::vector<std::vector<Operation *>> &base_groups);
 
   void get_base_groups(std::vector<std::vector<Operation *>> &base_groups,
                        const llvm::SetVector<Operation *> &subnet_ops);
@@ -71,17 +74,17 @@ public:
                           const std::vector<Operation *> &base_group,
                           int group_idx, int64_t idx_offset = 0);
   void get_group_clusters_with_dynamic_programming(
-                        std::vector<std::pair<int64_t, int64_t>> &clusters,
-                        const std::vector<Operation *> &base_group, int group_idx,
-                        int64_t idx_offset = 0);
+      std::vector<std::pair<int64_t, int64_t>> &clusters,
+      const std::vector<Operation *> &base_group, int group_idx,
+      int64_t idx_offset = 0);
   bool is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                             int64_t *group_cost);
-  bool group_one_layer_proc(const LgInfo &lg_info, bool calc_cost,
+  bool group_one_layer_proc(LgInfo &lg_info, bool calc_cost,
                             int64_t *group_cost);
 
-  bool group_valid_pre_check(const LgInfo &lg_info);
+  bool group_valid_pre_check(LgInfo &lg_info);
 
-  bool dynamic_group_valid_check(const LgInfo &lg_info);
+  bool dynamic_group_valid_check(LgInfo &lg_info);
 
   int64_t cost_add(int64_t cost0, int64_t cost1);
 

@@ -24,7 +24,8 @@ public:
   }
 
   // pre encode each local op. Results stored as u64 strings.
-  void init(const std::vector<std::vector<Operation *>> &base_groups, bool dynamic_mode) {
+  void init(const std::vector<std::vector<Operation *>> &base_groups,
+            bool dynamic_mode) {
     if (dynamic_mode) {
       cache_enabled = false;
       return;
@@ -43,26 +44,76 @@ public:
   }
 
   /// get sub-graph cost from cache
-  bool get_cost_from_cache(const uint64_t key, int64_t &cost) {
+  bool get_info_from_cache(const uint64_t key, int64_t &cost,
+                           shape_secs_t &shape_secs) {
     if (!cache_enabled) {
       llvm::errs() << "LgCostCache is not enabled.\n";
       return false;
     }
-    auto it = cost_cache.find(key);
-    if (it != cost_cache.end()) {
-      cost = it->second;
+    auto cost_it = cost_cache.find(key);
+    if (cost_it != cost_cache.end()) {
+      cost = cost_it->second;
+      auto shape_secs_it = shape_secs_cache.find(key);
+      if (shape_secs_it != shape_secs_cache.end()) {
+        shape_secs = shape_secs_it->second;
+      } else {
+        shape_secs.clear();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  bool get_cost_from_cache(const uint64_t key, int64_t &cost,
+                           int shape_secs_search_level) {
+    if (!cache_enabled) {
+      llvm::errs() << "LgCostCache is not enabled.\n";
+      return false;
+    }
+    auto search_level_it = search_level_cache.find(key);
+    if (search_level_it == search_level_cache.end() ||
+        search_level_it->second < shape_secs_search_level) {
+      // llvm::dbgs() << "shape_secs_search_level: " << shape_secs_search_level
+      // << "\n"; llvm::dbgs() << "cache miss\n";
+      return false;
+    }
+    auto cost_it = cost_cache.find(key);
+    if (cost_it != cost_cache.end()) {
+      cost = cost_it->second;
+      // llvm::dbgs() << "cache hit\n";
+      return true;
+    }
+    // llvm::dbgs() << "cache miss\n";
+    return false;
+  }
+
+  bool get_shape_secs_from_cache(const uint64_t key, shape_secs_t &shape_secs) {
+    if (!cache_enabled) {
+      llvm::errs() << "LgCostCache is not enabled.\n";
+      return false;
+    }
+    auto shape_secs_it = shape_secs_cache.find(key);
+    if (shape_secs_it != shape_secs_cache.end()) {
+      shape_secs = shape_secs_it->second;
       return true;
     }
     return false;
   }
 
   /// add sub-graph cost to cache
-  void add_cache(const uint64_t key, const int64_t cost) {
-    cost_cache[key] = cost;
+  void add_cache(const uint64_t key, const LgInfo &lg_info) {
+    cost_cache[key] = lg_info.group_cost;
+    shape_secs_cache[key] = lg_info.shape_secs;
+    search_level_cache[key] = lg_info.shape_secs_search_level;
+    // llvm::dbgs() << "add_cache: key = " << key
+    //              << "; cost = " << lg_info.group_cost
+    //              << "; shape_secs_search_level = " <<
+    //              lg_info.shape_secs_search_level
+    //              << "\n";
   }
 
   /// gen hash key for sub-graph
-  uint64_t get_graph_hash(const LgInfo &lginfo) {
+  bool get_graph_hash(LgInfo &lginfo, uint64_t &hash_key) {
     /// use relative value-id to serialize sub-graph topo structure.
     llvm::DenseMap<mlir::Value, int> value_id;
     for (auto v : lginfo.group_ins) {
@@ -78,7 +129,13 @@ public:
     }
 
     const int64_t base_group_idx = lginfo.base_group_idx;
-    assert(base_group_idx >= 0); /// -1 for init value.
+    if (base_group_idx < 0) {
+      /// -1 for init value.
+      return false;
+    }
+    if (base_group_op_hash.size() <= base_group_idx) {
+      return false;
+    }
     const int64_t start_idx = lginfo.start_idx, end_idx = lginfo.end_idx;
 
     std::string buffer;
@@ -97,7 +154,7 @@ public:
       os << "op: " << base_group_op_hash[base_group_idx][idx]
          << "; operand_relative_ids:";
       // add topo info.
-      for (auto v : lginfo.group_ops[idx-start_idx]->getOperands()) {
+      for (auto v : lginfo.group_ops[idx - start_idx]->getOperands()) {
         if (value_id.find(v) != value_id.end()) {
           os << value_id[v] << " ";
         } else {
@@ -108,9 +165,8 @@ public:
     }
     os.flush();
     // std::cout << "\n" << buffer << "\n\n";
-    uint64_t key =
-        llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
-    return key;
+    hash_key = llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
+    return true;
   }
 
   /// gen hash key for single op
@@ -169,6 +225,8 @@ public:
   /// group cost cache
   bool cache_enabled = false;
   std::unordered_map<uint64_t, int64_t> cost_cache;
+  std::unordered_map<uint64_t, int> search_level_cache;
+  std::unordered_map<uint64_t, shape_secs_t> shape_secs_cache;
 
 private:
   LgCostCache() = default;

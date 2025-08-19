@@ -43,7 +43,7 @@ protected:
   // create MLIR GroupOp
   void buildMlir();
   void buildMlir_for_opt3();
-  void buildGroupOp(const LgInfo &lg_info, const shape_secs_t &shape_secs,
+  void buildGroupOp(LgInfo &lg_info, const shape_secs_t &shape_secs,
                     int64_t group_idx);
   void CreateLoadOp(GdmaElt &tensor, int64_t id,
                     const std::vector<Operation *> &ops,
@@ -65,7 +65,7 @@ protected:
   void CreateLoadOp2(
       int64_t ts, ts_var_t &ts_var, int64_t pipe_id,
       const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
-      const LgInfo &lgInfo, bool can_merge,
+      LgInfo &lgInfo, bool can_merge,
       std::map<Value, Value, value_compare> &map_old_v_to_new_v_in_group_in);
   void CreateLoadToL2mOp(int64_t ts, l2m_value_info &it, int64_t pipe_id,
                          l2mem_alloc_Ptr l2mem_alloc_ptr);

@@ -608,7 +608,7 @@ bool isPreOpHaveAComputeOp(Operation *op) {
 }
 
 shape_secs_t
-get_group_max_secs(const LgInfo &lg_info,
+get_group_max_secs(LgInfo &lg_info,
                    std::vector<std::pair<Operation *, int>> &vec_op_hwsecs) {
   int64_t n, c, d, h, w;
   module::getNCDHW(lg_info.group_ops[0]->getOperand(0), n, c, d, h, w,
@@ -746,7 +746,7 @@ void update_multi_core_secs(const shape_secs_t max_shape_secs,
   }
 }
 
-bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
+bool init_group_data_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
                           std::vector<std::pair<Value, int64_t>> &value_size,
                           const LgOptions &options) {
   if (lg_info.group_ops.size() == 1 && false == options.group_by_cores) {
@@ -1070,7 +1070,7 @@ int64_t get_split_max_secs(BasicTimeStepPtr time_step) {
   return ceiling_func(lmem_req[0], Arch::LMEM_BYTES);
 }
 
-void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
+void update_tensor_infos(LgInfo &lg_info, TensorInfo &tensor_infos,
                          const shape_secs_t &shape_secs, int speical_pattern) {
   for (auto &iter : tensor_infos) {
     auto v = iter.first;
@@ -1117,7 +1117,7 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
   }
 }
 
-bool can_split_w(const LgInfo &lg_info, int64_t dhw_secs, int64_t height_min,
+bool can_split_w(LgInfo &lg_info, int64_t dhw_secs, int64_t height_min,
                  int64_t wsecs) {
   if (dhw_secs < height_min && wsecs > 1) {
     for (auto out : lg_info.group_outs) {
@@ -1155,7 +1155,7 @@ static void force_group_by_cores(shape_secs_t &shape_secs,
   return;
 }
 
-void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
+void assign_dhwsecs(LgInfo &lg_info, shape_secs_t &shape_secs,
                     int64_t &dhw_secs, const shape_secs_t &max_shape_secs,
                     const LgOptions &options) {
   shape_secs.dsecs = 1;
@@ -1238,7 +1238,7 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
   dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
 }
 
-bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
+bool update_data_split(BasicTimeStepPtr time_step, LgInfo &lg_info,
                        shape_secs_t &shape_secs, const LgOptions &options) {
   shape_secs.clear();
   bool status = false;
@@ -1291,7 +1291,7 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
   return status;
 }
 
-bool strip_back_judge(Value v, const LgInfo &lg_info,
+bool strip_back_judge(Value v, LgInfo &lg_info,
                       const std::multiset<Operation *> &op_set,
                       const std::set<Value, value_compare> &out_tensor_set) {
   auto users = v.getUsers();
@@ -1314,7 +1314,7 @@ bool strip_back_judge(Value v, const LgInfo &lg_info,
   return res;
 }
 
-bool strip_back_judge2(Value v, const LgInfo &lg_info,
+bool strip_back_judge2(Value v, LgInfo &lg_info,
                        const std::multiset<Operation *> &op_set,
                        const std::set<Value, value_compare> &out_tensor_set) {
   auto users = v.getUsers();
@@ -1425,7 +1425,8 @@ bool is_matmul_right_tensor(Operation *op, Value v) {
   return res;
 }
 
-bool is_broadcast_rope_with_permute_optimize(Operation *op) {
+bool is_broadcast_rope_with_permute_optimize(
+    Operation *op, std::vector<bool> &is_broadcast_rope_vec) {
   if (auto rope_op = dyn_cast<tpu::RopeOp>(op)) {
     if (!rope_op.getIsPermuteOptimize()) {
       return false;
@@ -1454,10 +1455,14 @@ bool is_broadcast_rope_with_permute_optimize(Operation *op) {
     if ((input1_shape[0] != input2_shape[0] && input2_shape[0] != 1) ||
         (input1_shape[0] != input3_shape[0] && input3_shape[0] != 1)) {
       return false;
+    } else {
+      is_broadcast_rope_vec[0] = (input1_shape[0] != input2_shape[0]);
     }
     if ((input1_shape[2] != input2_shape[2] && input2_shape[2] != 1) ||
         (input1_shape[2] != input3_shape[2] && input3_shape[2] != 1)) {
       return false;
+    } else {
+      is_broadcast_rope_vec[2] = (input1_shape[2] != input2_shape[2]);
     }
     return true;
   }
@@ -1541,14 +1546,25 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op, Value in,
                              const shape_secs_t &shape_secs,
                              group_type_t group_type, bool &hold_in_lmem,
-                             bool is_group_in) {
+                             bool is_group_in, bool &need_reload) {
   int64_t n, c, d, h, w;
   module::getNCDHW(in, n, c, d, h, w, group_type);
   auto lg_op = cast<LocalGenInterface>(op);
   bool is_broadcast_tensor = is_broadcast_binary(op, in);
   bool is_right_matrix = is_matmul_right_tensor(op, in);
   bool is_no_input_attention = is_attention_not_input_tensor(op, in);
-  bool is_broadcast_rope = is_broadcast_rope_with_permute_optimize(op);
+  std::vector<bool> is_broadcast_rope_vec = {false, false, false, false};
+  bool is_broadcast_rope =
+      is_broadcast_rope_with_permute_optimize(op, is_broadcast_rope_vec);
+  bool rope_need_reload = false;
+  if (!is_broadcast_rope_vec[0] && shape_secs.nsecs > 1 ||
+      !is_broadcast_rope_vec[1] && shape_secs.csecs > 1 ||
+      !is_broadcast_rope_vec[2] && shape_secs.hsecs > 1 ||
+      !is_broadcast_rope_vec[3] && shape_secs.wsecs > 1) {
+    rope_need_reload = true;
+  }
+  if (rope_need_reload)
+    need_reload = true;
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
@@ -1560,6 +1576,10 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
           n == 1) {
         idx = 0;
         slice = 1;
+        if (!rope_need_reload) {
+          in_si.n.emplace_back(slice_pair_t(idx, slice));
+          break;
+        }
       } else {
         if (failed(ret) || slice == 0) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardN fail, at op:"
@@ -1646,6 +1666,10 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
           h == 1) {
         idx = 0;
         slice = 1;
+        if (!rope_need_reload) {
+          in_si.h.emplace_back(slice_pair_t(idx, slice));
+          break;
+        }
       } else {
         bool end_reached = idx + slice == pre_end_idx;
         // TMP
@@ -1882,7 +1906,7 @@ bool check_hsecs(Value value, slice_info_t &si, group_type_t group_type) {
 }
 
 static bool backward_update_slice(
-    const LgInfo &lg_info, const shape_secs_t &shape_secs, const Value &out,
+    LgInfo &lg_info, const shape_secs_t &shape_secs, const Value &out,
     std::list<Value> &tensor_branchs, TensorInfo &tensor_infos,
     std::multiset<Operation *> &op_set, const ValueSet &out_tensor_set) {
 
@@ -1928,10 +1952,18 @@ static bool backward_update_slice(
     }
     slice_info_t si;
     bool hold_in_lmem = false;
+    bool need_reload = false;
     bool is_group_in =
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
-    auto ret = get_backward_slice_info(si, out_si, op, in, shape_secs,
-                                       lg_info.type, hold_in_lmem, is_group_in);
+    auto ret =
+        get_backward_slice_info(si, out_si, op, in, shape_secs, lg_info.type,
+                                hold_in_lmem, is_group_in, need_reload);
+    if (need_reload) {
+      // reload may cost more cycle
+      // change shape_secs_search_level to 1 so as to find better shape_secs and
+      // avoid reloading
+      lg_info.shape_secs_search_level = 1;
+    }
     if (pre_op && module::isDynWeight(in)) {
       auto shape = module::getShape(in);
       si.n.clear();
@@ -2089,8 +2121,7 @@ static bool backward_update_slice(
   return true;
 }
 
-bool stripe_mine_max_slice(const LgInfo &lg_info,
-                           const shape_secs_t &shape_secs,
+bool stripe_mine_max_slice(LgInfo &lg_info, const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos, const LgOptions &options) {
   if (lg_info.group_ops.size() == 1 && false == options.group_by_cores) {
     return true;
@@ -2152,8 +2183,7 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   return true;
 }
 
-bool stripe_mine_idx_slice(const LgInfo &lg_info,
-                           const shape_secs_t &shape_secs,
+bool stripe_mine_idx_slice(LgInfo &lg_info, const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos, const LgOptions &options) {
   if (lg_info.group_ops.size() == 1 && false == options.group_by_cores) {
     return true;

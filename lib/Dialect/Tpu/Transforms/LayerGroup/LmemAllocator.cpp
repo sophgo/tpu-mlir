@@ -8,13 +8,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CostCache.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgConfig.h"
 #include "tpu_mlir/Support/Logger.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
 #include <unordered_map>
 #define DEBUG_TYPE "layer-group"
+
+#define MAX(x, y) (((x)) > ((y)) ? (x) : (y))
 
 using namespace tpu_mlir::backend;
 
@@ -179,8 +183,32 @@ static inline int64_t increase_csecs(int64_t csecs, int64_t max_csecs) {
   return next_csecs;
 }
 
-static inline void update_shape_secs(const LgInfo &lg_info,
-                                     shape_secs_t &shape_secs,
+static inline int64_t increase_secs(int64_t secs, int64_t max_secs) {
+  if (secs == max_secs) {
+    return max_secs + 1;
+  }
+  int64_t slice = max_secs / secs + (max_secs % secs > 0);
+  int64_t new_slice = slice;
+  int64_t next_secs = secs;
+  do {
+    next_secs++;
+    new_slice = max_secs / next_secs + (max_secs % next_secs > 0);
+  } while (new_slice >= slice && next_secs < max_secs);
+
+  DEBUG_WITH_TYPE("better_slice", {
+    // log to monitor when to find next_secs with better slice
+    if (new_slice < slice) {
+      llvm::dbgs() << "; action = better_slice"
+                   << "; step = increase_secs"
+                   << "; new_secs = " << next_secs << "; secs = " << secs
+                   << "; new_slice = " << new_slice << "; slice = " << slice
+                   << "\n";
+    }
+  });
+  return next_secs;
+}
+
+static inline void update_shape_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
                                      int64_t &dhw_secs,
                                      const shape_secs_t &max_shape_secs,
                                      const LgOptions &options) {
@@ -348,7 +376,6 @@ insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
     if (isInplaceOp(src_layer)) {
       // llvm::errs() << "-----------------src-" << src_layer->getName()
       // <<"----------------------------------\n";
-      auto src_in = src_layer->getOperand(0);
       for (buffer_idx = 0; buffer_idx < ts_overlap_buffer.size();
            ++buffer_idx) {
         auto &src_buffer_value =
@@ -361,23 +388,33 @@ insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
           }
         }
         if (ts_overlap_buffer[buffer_idx].type != LMEM_OPERATION &&
-            ts_overlap_buffer[buffer_idx].value == src_in &&
             src_buffer_value.end_ts == buffer_value.start_ts && !need_store) {
-          // llvm::errs() <<
-          // "-----------------if-----------------------------------\n";
-          if (can_membuf_inplace_alloc(
-                  src_buffer_value.start_ts, src_buffer_value.end_ts,
-                  buffer_value.start_ts, buffer_value.end_ts)) {
-            lmem_locate.first = src_buffer_value.addr;
-            lmem_locate.second = src_buffer_value.size;
-            // llvm::errs() << "-----------------can
-            // alloc-----------------------------------\n";
-          } else {
-            // llvm::errs() << "-----------------no can
-            // alloc-----------------------------------\n";
-            buffer_idx = ts_overlap_buffer.size();
+          bool find_src = false;
+          mlir::Value src_in;
+          for (auto const &v : src_layer->getOperands()) {
+            if (ts_overlap_buffer[buffer_idx].value == v) {
+              find_src = true;
+              src_in = v;
+              break;
+            }
           }
-          break;
+          if (find_src) {
+            // llvm::errs() <<
+            // "-----------------if-----------------------------------\n";
+            if (can_membuf_inplace_alloc(
+                    src_buffer_value.start_ts, src_buffer_value.end_ts,
+                    buffer_value.start_ts, buffer_value.end_ts)) {
+              lmem_locate.first = src_buffer_value.addr;
+              lmem_locate.second = src_buffer_value.size;
+              // llvm::errs() << "-----------------can
+              // alloc-----------------------------------\n";
+            } else {
+              // llvm::errs() << "-----------------no can
+              // alloc-----------------------------------\n";
+              buffer_idx = ts_overlap_buffer.size();
+            }
+            break;
+          }
         }
       }
 
@@ -537,7 +574,7 @@ void LmemAllocator::update_avail_lmems(
 
 MemBlock LmemAllocator::find_avail_lmem_location(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
-    const mem_buffer_value_t &buffer_value, const LgInfo &lg_info,
+    const mem_buffer_value_t &buffer_value, LgInfo &lg_info,
     bool allow_bank_conflict) {
 
   MemBlock alloc_lmem(-1, -1);
@@ -665,7 +702,7 @@ void LmemAllocator::update_exclude_banks(
 MemBlock LmemAllocator::global_find_avail_lmem_localtion(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
     const mem_buffer_key_t &recent_buffer_allocated,
-    BasicTimeStepPtr &time_step, bool one_loop, const LgInfo &lg_info,
+    BasicTimeStepPtr &time_step, bool one_loop, LgInfo &lg_info,
     bool allow_bank_conflict, bool allow_hold_in_lmem) {
   PROFILE_LOG("global_find_avail_lmem_localtion", true);
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
@@ -852,7 +889,7 @@ void init_buffer_avail_space(BufferAvailSpace &buffer_avail_space,
 /*
   this only for Lut BM1684
 */
-bool assignL2memAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step) {
+bool assignL2memAddr(LgInfo &lg_info, BasicTimeStepPtr &time_step) {
   auto &l2mem_buffer = time_step->get_l2mem_buffer();
   int l2mem_start_addr = (0x22000 + 0x80000);
   int l2mem_pos = l2mem_start_addr;
@@ -867,7 +904,7 @@ bool assignL2memAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step) {
 }
 
 void dump_lmem_assign_result(
-    std::list<MemBufSortStd>::iterator &membuf_allocated, const LgInfo &lg_info,
+    std::list<MemBufSortStd>::iterator &membuf_allocated, LgInfo &lg_info,
     BasicTimeStepPtr &time_step, bool allow_bank_conflict,
     bool allow_hold_in_lmem, const shape_secs_t &shape_secs,
     const char *lmem_assign_status, const char *lmem_assign_remark,
@@ -911,9 +948,8 @@ void dump_lmem_assign_result(
       << "\n";
 }
 
-void dump_membuf_list(const LgInfo &lg_info,
-                      std::list<MemBufSortStd> &membuf_list, const char *step,
-                      const char *tag, const char *remark) {
+void dump_membuf_list(LgInfo &lg_info, std::list<MemBufSortStd> &membuf_list,
+                      const char *step, const char *tag, const char *remark) {
   GROUP_DEBUG_WITH_TYPE("membuf_list", lg_info, [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO(step, tag, remark) << "\n";
     int i = 0;
@@ -936,8 +972,7 @@ void dump_membuf_list(const LgInfo &lg_info,
   });
 }
 
-bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
-                                   BasicTimeStepPtr &time_step,
+bool LmemAllocator::assignLmemAddr(LgInfo &lg_info, BasicTimeStepPtr &time_step,
                                    const shape_secs_t &shape_secs,
                                    bool allow_bank_conflict) {
   /**
@@ -1294,7 +1329,7 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
   return true;
 }
 
-bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
+bool LmemAllocator::assignLmemAddrWithSecs(LgInfo &lg_info,
                                            BasicTimeStepPtr &time_step,
                                            shape_secs_t &shape_secs,
                                            bool allow_bank_conflict,
@@ -1302,6 +1337,31 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   auto &lg_debugger = LgDebugger::getInstance();
   std::vector<std::pair<Operation *, int>> vec_op_hsecs;
   max_shape_secs_ = get_group_max_secs(lg_info, vec_op_hsecs);
+  // if (!allow_bank_conflict) {
+  //   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+  //     llvm::dbgs() << DEBUGGER_DEFAULT_INFO("update_data_split",
+  //                                           "call_function",
+  //                                           "try to find valid `shape_secs` "
+  //                                           "for current layer group faster")
+  //                  << "\n";
+  //   });
+  //   auto shape_secs_update = shape_secs;
+  //   if (update_data_split(time_step, lg_info, shape_secs_update, options_)) {
+  //     shape_secs = shape_secs_update;
+  //   }
+  //   GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+  //     llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+  //                         "update_data_split", "stamp",
+  //                         "show the shape_secs after update_data_split")
+  //                  << LOG_KV("nsecs", shape_secs.nsecs)
+  //                  << LOG_KV("csecs", shape_secs.csecs)
+  //                  << LOG_KV("dsecs", shape_secs.dsecs)
+  //                  << LOG_KV("hsecs", shape_secs.hsecs)
+  //                  << LOG_KV("wsecs", shape_secs.wsecs) << "\n";
+  //   });
+  // }
+
+  // min_total_secs_ = get_split_max_secs(time_step);
   min_total_secs_ = 1;
   std::vector<int64_t> group_costs;
   std::vector<shape_secs_t> shape_secs_space;
@@ -1319,8 +1379,12 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                              lg_info.func_end_idx)) {
     use_brute_force = true;
   }
+  if (lg_info.is_best_shape_secs) {
+    // use best shape_secs already searched
+    sc_method_use_best_shape_secs(lg_info, shape_secs, allow_bank_conflict,
+                                  time_step);
 
-  if (getenv("SC_BRUTE_FORCE") || use_brute_force) {
+  } else if (getenv("SC_BRUTE_FORCE") || use_brute_force) {
     GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
       llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
                           "sc_method_brute_force", "call_function",
@@ -1328,6 +1392,21 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                    << "\n";
     });
     sc_method_brute_force(lg_info, shape_secs, allow_bank_conflict, time_step);
+  } else if (lg_info.shape_secs_search_level == 1) {
+    GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "sc_method_search_better", "call_function",
+                          "this method try to find better `shape_secs`")
+                   << "\n";
+    });
+    if (lg_info.type == GROUP_MM) {
+      sc_method_search_better_v2(lg_info, shape_secs, allow_bank_conflict,
+                                 time_step);
+    } else {
+      sc_method_search_better_v1(lg_info, shape_secs, allow_bank_conflict,
+                                 time_step);
+    }
+
   } else if (lg_info.use_cache && lg_info.shape_secs.nsecs != 0 &&
              !getenv("RESEARCH_SHAPE_SECS")) {
     GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
@@ -1425,9 +1504,11 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   return true;
 }
 
-search_result_t LmemAllocator::try_this_shape_secs(
-    const LgInfo &lg_info, shape_secs_t &shape_secs, bool allow_bank_conflict,
-    BasicTimeStepPtr &time_step) {
+search_result_t
+LmemAllocator::try_this_shape_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
+                                   bool allow_bank_conflict,
+                                   BasicTimeStepPtr &time_step) {
+  auto start_time = std::chrono::high_resolution_clock::now();
   GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
     llvm::dbgs()
         << DEBUGGER_DEFAULT_INFO(
@@ -1451,6 +1532,14 @@ search_result_t LmemAllocator::try_this_shape_secs(
   bool status = time_step->assignTimeStep(lg_info, shape_secs, true);
 
   if (!status) {
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        end_time - start_time);
+    GROUP_DEBUG_WITH_TYPE("profile", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "time",
+                                            "show duration")
+                   << LOG_KV("duration", duration.count()) << "\n";
+    });
     return SECS_TIMESTEP_INVALID;
   }
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
@@ -1463,6 +1552,14 @@ search_result_t LmemAllocator::try_this_shape_secs(
   status = assignLmemAddr(lg_info, time_step, shape_secs, allow_bank_conflict);
 
   if (!status) {
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        end_time - start_time);
+    GROUP_DEBUG_WITH_TYPE("profile", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "time",
+                                            "show duration")
+                   << LOG_KV("duration", duration.count()) << "\n";
+    });
     return SECS_LMEM_INVALID;
   }
 
@@ -1476,14 +1573,456 @@ search_result_t LmemAllocator::try_this_shape_secs(
   if (min_group_costs_ == -1 || _group_cost < min_group_costs_) {
     min_group_costs_ = _group_cost;
     min_shape_secs_ = shape_secs;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        end_time - start_time);
+    GROUP_DEBUG_WITH_TYPE("profile", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "time",
+                                            "show duration")
+                   << LOG_KV("duration", duration.count()) << "\n";
+    });
     return SECS_VALID_AND_BETTER;
   }
 
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+      end_time - start_time);
+  GROUP_DEBUG_WITH_TYPE("profile", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "time",
+                                          "show duration")
+                 << LOG_KV("duration", duration.count()) << "\n";
+  });
   return SECS_VALID;
 }
 
+// use best shape_secs from lg_info
+void LmemAllocator::sc_method_use_best_shape_secs(LgInfo &lg_info,
+                                                  shape_secs_t &shape_secs,
+                                                  bool allow_bank_conflict,
+                                                  BasicTimeStepPtr &time_step) {
+  GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("sc_method_use_best_shape_secs",
+                                          "stamp",
+                                          "show best shape_secs from lg_info")
+                 << LOG_KV("nsecs", shape_secs.nsecs)
+                 << LOG_KV("csecs", shape_secs.csecs)
+                 << LOG_KV("dsecs", shape_secs.dsecs)
+                 << LOG_KV("hsecs", shape_secs.hsecs)
+                 << LOG_KV("wsecs", shape_secs.wsecs) << "\n";
+  });
+  search_result_t ret =
+      try_this_shape_secs(lg_info, shape_secs, allow_bank_conflict, time_step);
+  if (ret < SECS_VALID) {
+    llvm_unreachable("shape_secs is not valid");
+  }
+}
+
+void LmemAllocator::sc_method_search_better_v1(LgInfo &lg_info,
+                                               shape_secs_t &shape_secs,
+                                               bool allow_bank_conflict,
+                                               BasicTimeStepPtr &time_step) {
+  GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("sc_method_search_better_v1", "stamp",
+                                          "show max shape_secs")
+                 << LOG_KV("max_nsecs", max_shape_secs_.nsecs)
+                 << LOG_KV("max_csecs", max_shape_secs_.csecs)
+                 << LOG_KV("max_dsecs", max_shape_secs_.dsecs)
+                 << LOG_KV("max_hsecs", max_shape_secs_.hsecs)
+                 << LOG_KV("max_wsecs", max_shape_secs_.wsecs) << "\n";
+  });
+
+  auto &lg_config = LgConfig::getInstance();
+  search_result_t ret;
+  auto max_shape_secs_loop = max_shape_secs_;
+
+  struct DimensionConfig {
+    int threshold;
+    int64_t min_group_cost;
+    int search_index;
+    int64_t max_shape_value;
+    const char *name;
+  };
+
+  DimensionConfig dims[5] = {
+      {lg_config.get_config_value("sc_method_search_better_v1",
+                                  "DSECS_SEARCH_RECORD_THRESHOLD", 3),
+       -1, 0, max_shape_secs_loop.dsecs, "dsecs"},
+      {lg_config.get_config_value("sc_method_search_better_v1",
+                                  "WSECS_SEARCH_RECORD_THRESHOLD", 3),
+       -1, 0, max_shape_secs_loop.wsecs, "wsecs"},
+      {lg_config.get_config_value("sc_method_search_better_v1",
+                                  "CSECS_SEARCH_RECORD_THRESHOLD", 3),
+       -1, 0, max_shape_secs_loop.csecs, "csecs"},
+      {lg_config.get_config_value("sc_method_search_better_v1",
+                                  "NSECS_SEARCH_RECORD_THRESHOLD", 3),
+       -1, 0, max_shape_secs_loop.nsecs, "nsecs"},
+      {lg_config.get_config_value("sc_method_search_better_v1",
+                                  "HSECS_SEARCH_RECORD_THRESHOLD", 3),
+       -1, 0, max_shape_secs_loop.hsecs, "hsecs"}};
+
+  auto updateDimensionState = [&](DimensionConfig &dim, int64_t current_cost,
+                                  int current_ret,
+                                  int64_t current_value) -> bool {
+    if (dim.min_group_cost == -1) {
+      dim.min_group_cost = current_cost;
+      return false;
+    }
+    if (current_cost < dim.min_group_cost) {
+      dim.min_group_cost = current_cost;
+      dim.search_index = 0;
+    } else if (current_ret > SECS_LMEM_INVALID) {
+      dim.search_index++;
+    }
+    if (dim.search_index >= dim.threshold) {
+      dim.max_shape_value = current_value;
+      return true;
+    }
+    return false;
+  };
+
+  auto calc_real_secs = [&](int64_t max, int64_t sec) {
+    return ceiling_func(max, ceiling_func(max, sec));
+  };
+
+  dims[0].search_index = 0;
+  for (int64_t _d = 1; _d <= max_shape_secs_loop.dsecs; ++_d) {
+    dims[1].search_index = 0;
+    for (int64_t _w = 1; _w <= max_shape_secs_loop.wsecs; ++_w) {
+      dims[2].search_index = 0;
+      for (int64_t _c = 1; _c <= max_shape_secs_loop.csecs; ++_c) {
+        dims[3].search_index = 0;
+        for (int64_t _n = 1; _n <= max_shape_secs_loop.nsecs; ++_n) {
+          dims[4].search_index = 0;
+          for (int64_t _h = 1; _h <= max_shape_secs_loop.hsecs; ++_h) {
+            shape_secs_t cur_shape_secs = {_n, _c, _d, _h, _w};
+            int64_t real_nsecs = calc_real_secs(max_shape_secs_.nsecs, _n);
+            int64_t real_csecs = calc_real_secs(max_shape_secs_.csecs, _c);
+            int64_t real_dsecs = calc_real_secs(max_shape_secs_.dsecs, _d);
+            int64_t real_hsecs = calc_real_secs(max_shape_secs_.hsecs, _h);
+            int64_t real_wsecs = calc_real_secs(max_shape_secs_.wsecs, _w);
+
+            if (real_nsecs * real_csecs * real_dsecs * real_hsecs *
+                    real_wsecs <=
+                min_total_secs_) {
+              continue;
+            }
+
+            GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+              llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                                  "try_this_shape_secs", "stamp",
+                                  "show sc_method_search_better_v1 shape_secs")
+                           << LOG_KV_FORMAT(
+                                  "shape_secs", "%d,%d,%d,%d,%d",
+                                  cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                                  cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                                  cur_shape_secs.wsecs)
+                           << "\n";
+            });
+
+            ret = try_this_shape_secs(lg_info, cur_shape_secs,
+                                      allow_bank_conflict, time_step);
+
+            GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+              llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                                  "try_this_shape_secs", "result",
+                                  "show sc_method_search_better_v1 result")
+                           << LOG_KV_FORMAT(
+                                  "shape_secs", "%d,%d,%d,%d,%d",
+                                  cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                                  cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                                  cur_shape_secs.wsecs)
+                           << LOG_KV("search_result",
+                                     search_result_to_string(ret))
+                           << LOG_KV("group_cost", last_group_cost_) << "\n";
+            });
+
+            if (updateDimensionState(dims[4], min_group_costs_, ret, _h)) {
+              break;
+            }
+          }
+          if (updateDimensionState(dims[3], min_group_costs_, ret, _n)) {
+            break;
+          }
+        }
+        if (updateDimensionState(dims[2], min_group_costs_, ret, _c)) {
+          break;
+        }
+      }
+      if (updateDimensionState(dims[1], min_group_costs_, ret, _w)) {
+        break;
+      }
+    }
+    if (updateDimensionState(dims[0], min_group_costs_, ret, _d)) {
+      break;
+    }
+  }
+}
+
+void LmemAllocator::sc_method_search_better_v2(LgInfo &lg_info,
+                                               shape_secs_t &shape_secs,
+                                               bool allow_bank_conflict,
+                                               BasicTimeStepPtr &time_step) {
+  GROUP_DEBUG_WITH_TYPE("shape_secs", lg_info, [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "sc_method_brute_force", "stamp",
+                        "show max shape_secs for brute force search")
+                 << LOG_KV("group_type", lg_info.type)
+                 << LOG_KV("max_nsecs", max_shape_secs_.nsecs)
+                 << LOG_KV("max_csecs", max_shape_secs_.csecs)
+                 << LOG_KV("max_dsecs", max_shape_secs_.dsecs)
+                 << LOG_KV("max_hsecs", max_shape_secs_.hsecs)
+                 << LOG_KV("max_wsecs", max_shape_secs_.wsecs) << "\n";
+  });
+
+  auto &lg_config = LgConfig::getInstance();
+  search_result_t ret;
+  auto max_shape_secs_cur = max_shape_secs_;
+  int NSECS_THRESHOLD = lg_config.get_config_value(
+      "sc_method_search_better_v2", "NSECS_SEARCH_RECORD_THRESHOLD", 3);
+  int CSECS_THRESHOLD = lg_config.get_config_value(
+      "sc_method_search_better_v2", "CSECS_SEARCH_RECORD_THRESHOLD", 3);
+  int DSECS_THRESHOLD = lg_config.get_config_value(
+      "sc_method_search_better_v2", "DSECS_SEARCH_RECORD_THRESHOLD", 3);
+  int HSECS_THRESHOLD = lg_config.get_config_value(
+      "sc_method_search_better_v2", "HSECS_SEARCH_RECORD_THRESHOLD", 3);
+  int WSECS_THRESHOLD = lg_config.get_config_value(
+      "sc_method_search_better_v2", "WSECS_SEARCH_RECORD_THRESHOLD", 3);
+
+  max_shape_secs_cur.nsecs =
+      std::min(max_shape_secs_cur.nsecs,
+               (int64_t)lg_config.get_config_value("sc_method_search_better_v2",
+                                                   "MAX_NSECS", 32));
+  max_shape_secs_cur.csecs =
+      std::min(max_shape_secs_cur.csecs,
+               (int64_t)lg_config.get_config_value("sc_method_search_better_v2",
+                                                   "MAX_CSECS", 32));
+  max_shape_secs_cur.dsecs =
+      std::min(max_shape_secs_cur.dsecs,
+               (int64_t)lg_config.get_config_value("sc_method_search_better_v2",
+                                                   "MAX_DSECS", 32));
+  max_shape_secs_cur.hsecs =
+      std::min(max_shape_secs_cur.hsecs,
+               (int64_t)lg_config.get_config_value("sc_method_search_better_v2",
+                                                   "MAX_HSECS", 32));
+  max_shape_secs_cur.wsecs =
+      std::min(max_shape_secs_cur.wsecs,
+               (int64_t)lg_config.get_config_value("sc_method_search_better_v2",
+                                                   "MAX_WSECS", 32));
+
+  ret = try_this_shape_secs(lg_info, max_shape_secs_cur, allow_bank_conflict,
+                            time_step);
+
+  if (ret > SECS_LMEM_INVALID) {
+    struct DimConfig {
+      int threshold;
+      int search_index = 0;
+      int64_t fixed_value;
+      int64_t min_cost = -1;
+      const char *name;
+      int64_t shape_secs_t::*member_ptr;
+    };
+
+    DimConfig dims[5] = {{NSECS_THRESHOLD, 0, max_shape_secs_cur.nsecs, -1,
+                          "nsecs", &shape_secs_t::nsecs},
+                         {CSECS_THRESHOLD, 0, max_shape_secs_cur.csecs, -1,
+                          "csecs", &shape_secs_t::csecs},
+                         {DSECS_THRESHOLD, 0, max_shape_secs_cur.dsecs, -1,
+                          "dsecs", &shape_secs_t::dsecs},
+                         {HSECS_THRESHOLD, 0, max_shape_secs_cur.hsecs, -1,
+                          "hsecs", &shape_secs_t::hsecs},
+                         {WSECS_THRESHOLD, 0, max_shape_secs_cur.wsecs, -1,
+                          "wsecs", &shape_secs_t::wsecs}};
+
+    auto searchDimension = [&](DimConfig &dim, int64_t fixed_value,
+                               shape_secs_t base_shape, const char *rule_name) {
+      int64_t pre_min_cost = -1;
+      int64_t cur_min_cost = -1;
+
+      for (int64_t dim_value = 1; dim_value <= fixed_value; ++dim_value) {
+        shape_secs_t cur_shape_secs = base_shape;
+        cur_shape_secs.*(dim.member_ptr) = dim_value;
+
+        GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "stamp",
+                                                "find %s's change rule",
+                                                rule_name)
+                       << LOG_KV_FORMAT(
+                              "shape_secs", "%d,%d,%d,%d,%d",
+                              cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                              cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                              cur_shape_secs.wsecs)
+                       << "\n";
+        });
+
+        ret = try_this_shape_secs(lg_info, cur_shape_secs, allow_bank_conflict,
+                                  time_step);
+
+        GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "result",
+                                                "find %s's change rule",
+                                                rule_name)
+                       << LOG_KV_FORMAT(
+                              "shape_secs", "%d,%d,%d,%d,%d",
+                              cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                              cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                              cur_shape_secs.wsecs)
+                       << LOG_KV("search_result", search_result_to_string(ret))
+                       << LOG_KV("group_cost", last_group_cost_) << "\n";
+        });
+
+        if (pre_min_cost == -1) {
+          pre_min_cost = last_group_cost_;
+        } else {
+          cur_min_cost = last_group_cost_;
+          if (cur_min_cost < pre_min_cost) {
+            dim.search_index = 0;
+          } else if (ret > SECS_LMEM_INVALID) {
+            dim.search_index++;
+          }
+          if (dim.search_index >= dim.threshold) {
+            dim.fixed_value = dim_value;
+            break;
+          }
+          pre_min_cost = cur_min_cost;
+        }
+      }
+    };
+
+    shape_secs_t base_shape = max_shape_secs_cur;
+    for (auto &dim : dims) {
+      searchDimension(dim, dim.fixed_value, base_shape, dim.name);
+      base_shape.*(dim.member_ptr) = dim.fixed_value;
+    }
+
+    max_shape_secs_cur.nsecs = dims[0].fixed_value;
+    max_shape_secs_cur.csecs = dims[1].fixed_value;
+    max_shape_secs_cur.hsecs = dims[2].fixed_value;
+    max_shape_secs_cur.dsecs = dims[3].fixed_value;
+    max_shape_secs_cur.wsecs = dims[4].fixed_value;
+  }
+
+  min_total_secs_ = 1;
+  const int64_t max_secs = max_shape_secs_cur.nsecs * max_shape_secs_cur.csecs *
+                           max_shape_secs_cur.dsecs * max_shape_secs_cur.hsecs *
+                           max_shape_secs_cur.wsecs;
+
+  auto calc_real_secs = [&](int64_t max, int64_t sec) {
+    return ceiling_func(max, ceiling_func(max, sec));
+  };
+
+  auto calc_pre_real_secs = [&](int64_t max, int64_t sec, int threshold) {
+    int64_t pre_sec = std::max(sec - threshold, 1L);
+    return ceiling_func(max, ceiling_func(max, pre_sec));
+  };
+
+  for (int64_t _n = 1; _n <= max_shape_secs_.nsecs && _n <= max_secs; ++_n) {
+    for (int64_t _c = 1; _c <= max_shape_secs_.csecs && _n * _c <= max_secs;
+         ++_c) {
+      for (int64_t _h = 1;
+           _h <= max_shape_secs_.hsecs && _n * _c * _h <= max_secs; ++_h) {
+        for (int64_t _d = 1;
+             _d <= max_shape_secs_.dsecs && _n * _c * _h * _d <= max_secs;
+             ++_d) {
+          for (int64_t _w = 1; _w <= max_shape_secs_.wsecs &&
+                               _n * _c * _h * _d * _w <= max_secs;
+               ++_w) {
+            shape_secs_t cur_shape_secs = {_n, _c, _d, _h, _w};
+
+            int64_t real_nsecs = calc_real_secs(max_shape_secs_.nsecs, _n);
+            int64_t real_csecs = calc_real_secs(max_shape_secs_.csecs, _c);
+            int64_t real_dsecs = calc_real_secs(max_shape_secs_.dsecs, _d);
+            int64_t real_hsecs = calc_real_secs(max_shape_secs_.hsecs, _h);
+            int64_t real_wsecs = calc_real_secs(max_shape_secs_.wsecs, _w);
+
+            int64_t cur_real_secs =
+                real_nsecs * real_csecs * real_dsecs * real_hsecs * real_wsecs;
+
+            if (cur_real_secs <= min_total_secs_) {
+              GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+                llvm::dbgs()
+                    << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "stamp",
+                                             "shape_secs skip")
+                    << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
+                                     cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                                     cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                                     cur_shape_secs.wsecs)
+                    << LOG_KV_FORMAT("real_shape_secs", "%d,%d,%d,%d,%d",
+                                     real_nsecs, real_csecs, real_dsecs,
+                                     real_hsecs, real_wsecs)
+                    << LOG_KV("min_total_secs_", min_total_secs_) << "\n";
+              });
+              continue;
+            }
+
+            auto should_skip = [&](int64_t cur_value, int64_t max_loop_value,
+                                   int64_t real_sec, int64_t pre_real_sec,
+                                   int threshold) {
+              return (cur_value > max_loop_value) &&
+                     (cur_real_secs / real_sec * pre_real_sec >
+                      min_total_secs_);
+            };
+
+            if (should_skip(_n, max_shape_secs_cur.nsecs, real_nsecs,
+                            calc_pre_real_secs(max_shape_secs_.nsecs, _n,
+                                               NSECS_THRESHOLD),
+                            NSECS_THRESHOLD) ||
+                should_skip(_c, max_shape_secs_cur.csecs, real_csecs,
+                            calc_pre_real_secs(max_shape_secs_.csecs, _c,
+                                               CSECS_THRESHOLD),
+                            CSECS_THRESHOLD) ||
+                should_skip(_d, max_shape_secs_cur.dsecs, real_dsecs,
+                            calc_pre_real_secs(max_shape_secs_.dsecs, _d,
+                                               DSECS_THRESHOLD),
+                            DSECS_THRESHOLD) ||
+                should_skip(_h, max_shape_secs_cur.hsecs, real_hsecs,
+                            calc_pre_real_secs(max_shape_secs_.hsecs, _h,
+                                               HSECS_THRESHOLD),
+                            HSECS_THRESHOLD) ||
+                should_skip(_w, max_shape_secs_cur.wsecs, real_wsecs,
+                            calc_pre_real_secs(max_shape_secs_.wsecs, _w,
+                                               WSECS_THRESHOLD),
+                            WSECS_THRESHOLD)) {
+              continue;
+            }
+
+            GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+              llvm::dbgs()
+                  << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "stamp",
+                                           "show brute force search result")
+                  << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
+                                   cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                                   cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                                   cur_shape_secs.wsecs)
+                  << "\n";
+            });
+
+            ret = try_this_shape_secs(lg_info, cur_shape_secs,
+                                      allow_bank_conflict, time_step);
+
+            GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+              llvm::dbgs()
+                  << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "result",
+                                           "show brute force search result")
+                  << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
+                                   cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                                   cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                                   cur_shape_secs.wsecs)
+                  << LOG_KV("search_result", search_result_to_string(ret))
+                  << LOG_KV("group_cost", last_group_cost_) << "\n";
+            });
+
+            if (ret == SECS_LMEM_INVALID) {
+              min_total_secs_ = cur_real_secs;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 // best but slowest
-void LmemAllocator::sc_method_brute_force(const LgInfo &lg_info,
+void LmemAllocator::sc_method_brute_force(LgInfo &lg_info,
                                           shape_secs_t &shape_secs,
                                           bool allow_bank_conflict,
                                           BasicTimeStepPtr &time_step) {
@@ -1518,21 +2057,29 @@ void LmemAllocator::sc_method_brute_force(const LgInfo &lg_info,
                 min_total_secs_) {
               continue;
             }
+            GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+              llvm::dbgs()
+                  << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "stamp",
+                                           "show brute force search result")
+                  << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
+                                   cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                                   cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                                   cur_shape_secs.wsecs)
+                  << "\n";
+            });
             search_result_t ret = try_this_shape_secs(
                 lg_info, cur_shape_secs, allow_bank_conflict, time_step);
-            if (ret >= SECS_VALID) {
-              GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
-                llvm::dbgs()
-                    << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "result",
-                                             "show brute force search result")
-                    << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
-                                     shape_secs.nsecs, shape_secs.csecs,
-                                     shape_secs.dsecs, shape_secs.hsecs,
-                                     shape_secs.wsecs)
-                    << LOG_KV("search_result", search_result_to_string(ret))
-                    << LOG_KV("group_cost", last_group_cost_) << "\n";
-              });
-            }
+            GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
+              llvm::dbgs()
+                  << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "result",
+                                           "show brute force search result")
+                  << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
+                                   cur_shape_secs.nsecs, cur_shape_secs.csecs,
+                                   cur_shape_secs.dsecs, cur_shape_secs.hsecs,
+                                   cur_shape_secs.wsecs)
+                  << LOG_KV("search_result", search_result_to_string(ret))
+                  << LOG_KV("group_cost", last_group_cost_) << "\n";
+            });
           }
         }
       }
@@ -1540,7 +2087,7 @@ void LmemAllocator::sc_method_brute_force(const LgInfo &lg_info,
   }
 }
 
-void LmemAllocator::sc_method_quick_search(const LgInfo &lg_info,
+void LmemAllocator::sc_method_quick_search(LgInfo &lg_info,
                                            shape_secs_t &_shape_secs,
                                            bool allow_bank_conflict,
                                            BasicTimeStepPtr &time_step) {
@@ -1561,9 +2108,11 @@ void LmemAllocator::sc_method_quick_search(const LgInfo &lg_info,
                                   _shape_secs.wsecs, max_shape_secs_.wsecs)
                  << "\n";
   });
+  auto &lg_config = LgConfig::getInstance();
   shape_secs_t shape_secs = _shape_secs;
   int64_t try_num = 0;
-  const int64_t MAX_TRY_NUM = 20;
+  const int64_t MAX_TRY_NUM =
+      lg_config.get_config_value("sc_method_quick_search", "MAX_TRY_NUM", 20);
   int64_t dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
     llvm::dbgs()
@@ -1612,7 +2161,7 @@ void LmemAllocator::sc_method_quick_search(const LgInfo &lg_info,
   }
 }
 
-void LmemAllocator::sc_method_multi_core(const LgInfo &lg_info,
+void LmemAllocator::sc_method_multi_core(LgInfo &lg_info,
                                          shape_secs_t &_shape_secs,
                                          bool allow_bank_conflict,
                                          BasicTimeStepPtr &time_step) {
@@ -1667,7 +2216,7 @@ void LmemAllocator::sc_method_multi_core(const LgInfo &lg_info,
   }
 }
 
-void LmemAllocator::sc_method_multi_core_v2(const LgInfo &lg_info,
+void LmemAllocator::sc_method_multi_core_v2(LgInfo &lg_info,
                                             shape_secs_t &shape_secs,
                                             bool allow_bank_conflict,
                                             BasicTimeStepPtr &time_step) {
@@ -1739,7 +2288,7 @@ void LmemAllocator::sc_method_multi_core_v2(const LgInfo &lg_info,
   }
 }
 
-void LmemAllocator::sc_method_multi_core_v3(const LgInfo &lg_info,
+void LmemAllocator::sc_method_multi_core_v3(LgInfo &lg_info,
                                             shape_secs_t &_shape_secs,
                                             bool allow_bank_conflict,
                                             BasicTimeStepPtr &time_step) {
@@ -1789,7 +2338,7 @@ void LmemAllocator::sc_method_multi_core_v3(const LgInfo &lg_info,
 }
 
 void aggressive_slice_for_multicore(LmemAllocator &lmem_allocator,
-                                    const LgInfo &lg_info,
+                                    LgInfo &lg_info,
                                     BasicTimeStepPtr &time_step,
                                     shape_secs_t &ir_shape_secs,
                                     shape_secs_t lg_shape_secs) {
@@ -1828,6 +2377,16 @@ public:
     for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
       if (pass_ir->lg_infos[i].group_ops.size() > 1) {
         auto lmem_allocator = LmemAllocator(options_);
+        uint64_t hash_key;
+        auto find_hash_key = LgCostCache::getInstance().get_graph_hash(
+            pass_ir->lg_infos[i], hash_key);
+        if (find_hash_key) {
+          auto cache_hit = LgCostCache::getInstance().get_shape_secs_from_cache(
+              hash_key, pass_ir->shape_secs[i]);
+          if (cache_hit) {
+            pass_ir->lg_infos[i].is_best_shape_secs = true;
+          }
+        }
         auto shape_secs = pass_ir->shape_secs[i];
         auto ret = lmem_allocator.assignLmemAddrWithSecs(
             pass_ir->lg_infos[i], pass_ir->time_steps[i],

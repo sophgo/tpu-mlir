@@ -48,6 +48,19 @@ typedef enum {
   GROUP_UNSUPPORT
 } group_type_t;
 
+typedef enum {
+  /*
+   0: Use the first valid shape_secs for current group.
+   1: Firstly, use the first valid shape_secs for current group.
+      If current group will be splitted under this shape_secs, try to find
+   better one. 2: Always try to find better shape_secs.
+  */
+  SHAPE_SECS_FIRST_VALID = 0,
+  SHAPE_SECS_BETTER_IF_MIGHT_SPLIT = 1,
+  SHAPE_SECS_ALWAYS_BETTER = 2,
+  SHAPE_SECS_UNSUPPORT
+} shape_secs_search_strategy_t;
+
 //-----------------------------------------------------------------
 // Types
 //-----------------------------------------------------------------

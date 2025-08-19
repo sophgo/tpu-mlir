@@ -18,6 +18,7 @@ from utils.preprocess import preprocess, supported_customization_format
 from utils.auto_remove import file_mark, file_clean
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.gen_rewriter_config import gen_rewriter_config
+from tools.gen_layer_group_config import gen_layer_group_config
 import pymlir
 from utils.misc import str2bool
 from utils.log_setting import setup_logger
@@ -96,6 +97,8 @@ class DeployTool:
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
         self.lg_debugger = args.lg_debugger
+        if self.lg_debugger == 0 and args.debug:
+            self.lg_debugger = 1
         self.debug_cmd = args.debug_cmd
         self.bmodel_path = args.model
         self.ref_npz = args.test_reference
@@ -185,6 +188,14 @@ class DeployTool:
                 overwrite=True,
                 silence=True,
             )
+        self.layer_group_config = args.layer_group_config
+        if self.layer_group_config == "":
+            gen_layer_group_config(model_name=self.module_name,
+                                   chip=self.chip,
+                                   quantize=self.quantize,
+                                   overwrite=True,
+                                   silence=False,
+                                   strategy=args.shape_secs_search_strategy)
 
     def cleanup(self):
         file_clean()
@@ -409,7 +420,8 @@ class DeployTool:
                     subnet_params=self.subnet_params,
                     layer_group_cache=(
                         f"{self.prefix}.layer_group_cache.json" if self.quantize != "int8" else
-                        f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json"))
+                        f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json"),
+                    layer_group_config=self.layer_group_config)
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -532,6 +544,12 @@ if __name__ == '__main__':
     # ========== Compiler Options ==============
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2, 3], help="Optimization level")
+    parser.add_argument("--shape_secs_search_strategy", default=0, type=int, choices=[0, 1, 2],
+                        help="Search strategy for layer group passes in shape_secs. \
+                        Higher values may improve model performance, \
+                        but more complie time is cost."
+                        )
+    parser.add_argument("--layer_group_config", default="", type=str, help="layer group config file, if not set, use default config")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc'],
                         help="set address assign mode, if not set, auto as default")

@@ -26,9 +26,9 @@ class ILPTimeStep;
 class dot_graph;
 typedef std::pair<int64_t, int64_t> slice_pair_t; // idx and slice
 shape_secs_t
-get_group_max_secs(const LgInfo &lg_info,
+get_group_max_secs(LgInfo &lg_info,
                    std::vector<std::pair<Operation *, int>> &vec_op_hsecs);
-bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
+bool init_group_data_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
                           std::vector<std::pair<Value, int64_t>> &value_size,
                           const LgOptions &options);
 bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
@@ -39,16 +39,16 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
 void get_op_cut_sec_num(
     ilp_LgInfo &ilp_lg_info,
     std::vector<std::pair<Operation *, int>> &vec_op_cut_secs);
-void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos,
+void update_tensor_infos(LgInfo &lg_info, TensorInfo &tensor_infos,
                          const shape_secs_t &shape_secs,
                          int speical_pattern = 0);
-bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
+bool update_data_split(BasicTimeStepPtr time_step, LgInfo &lg_info,
                        shape_secs_t &shape_secs, const LgOptions &options);
 int64_t get_split_max_secs(BasicTimeStepPtr time_step);
 void update_multi_core_secs(const shape_secs_t max_shape_secs,
                             shape_secs_t &shape_secs);
 
-bool strip_back_judge(Value v, const LgInfo &lg_info,
+bool strip_back_judge(Value v, LgInfo &lg_info,
                       const std::multiset<Operation *> &op_set,
                       const std::set<Value, value_compare> &out_tensor_set);
 bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1);
@@ -59,14 +59,13 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op, Value in,
                              const shape_secs_t &shape_secs,
                              group_type_t group_type, bool &hold_in_lmem,
-                             bool is_group_in);
+                             bool is_group_in, bool &need_reload);
 bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
                               Operation *op, Value in,
                               const shape_secs_t &shape_secs,
                               group_type_t group_type, bool &hold_in_lmem,
                               bool is_group_in);
-bool stripe_mine_max_slice(const LgInfo &lg_info,
-                           const shape_secs_t &shape_secs,
+bool stripe_mine_max_slice(LgInfo &lg_info, const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos, const LgOptions &options);
 
 void get_max_slice_nchdw(const slice_info_t &slice_info, int64_t &max_nslice,
@@ -78,15 +77,14 @@ get_max_slice_nchdw_and_idx(const slice_info_t &slice_info, int64_t &max_nslice,
                             int64_t &max_cslice, int64_t &max_hslice,
                             int64_t &max_dslice, int64_t &max_wslice);
 
-void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
+void assign_dhwsecs(LgInfo &lg_info, shape_secs_t &shape_secs,
                     int64_t &dhw_secs, const shape_secs_t &max_shape_secs,
                     const LgOptions &options);
 
 int64_t get_buffer_size(Value v, tensor_info_t &ti, group_type_t group_type,
                         Operation *owner_op = nullptr);
 
-bool stripe_mine_idx_slice(const LgInfo &lg_info,
-                           const shape_secs_t &shape_secs,
+bool stripe_mine_idx_slice(LgInfo &lg_info, const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos, const LgOptions &options);
 
 void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
@@ -113,7 +111,7 @@ int64_t use_3ic(Value opd);
 std::vector<Value> get_input_values(Operation *op);
 std::vector<Value> get_output_values(Operation *op);
 
-bool strip_back_judge2(Value v, const LgInfo &lg_info,
+bool strip_back_judge2(Value v, LgInfo &lg_info,
                        const std::multiset<Operation *> &op_set,
                        const std::set<Value, value_compare> &out_tensor_set);
 bool stripe_mine_idx_slice2(ilp_LgInfo &ilp_lg_info,

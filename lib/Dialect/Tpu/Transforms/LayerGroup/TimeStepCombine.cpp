@@ -331,7 +331,7 @@ bool lmem_alloc_by_timestep_merge(BasicTimeStepPtr &time_step, int64_t ts) {
  * If total gdma cycle > total bdc cycle in current timestep or next timestep,
  * and then merge these two timestep
  */
-static void merge_timesteps(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
+static void merge_timesteps(LgInfo &lg_info, BasicTimeStepPtr &time_step,
                             const shape_secs_t &shape_secs,
                             std::vector<TpuTsField> &ts_layers_v,
                             std::vector<GdmaTsField> &ts_tensors_v,
@@ -434,7 +434,7 @@ static void merge_timesteps(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
  * last as possible, and make store as soon as possible.
  */
 static void reassign_timestep_tensors(
-    const LgInfo &lg_info, BasicTimeStepPtr &time_step,
+    LgInfo &lg_info, BasicTimeStepPtr &time_step,
     const shape_secs_t &shape_secs, std::vector<TpuTsField> &ts_layers_v,
     std::vector<GdmaTsField> &ts_tensors_v,
     std::vector<int64_t> &total_layer_cycle_v,
@@ -597,7 +597,7 @@ static void reassign_timestep_tensors(
 
 // search each timestep, if gdma time is less than bdc time, do nothing
 // else reassign tensors first, and then merge timestep
-static void memory_aware_timestep_combine(const LgInfo &lg_info,
+static void memory_aware_timestep_combine(LgInfo &lg_info,
                                           BasicTimeStepPtr &time_step,
                                           const shape_secs_t &shape_secs,
                                           int64_t group_idx,
@@ -635,7 +635,7 @@ static void memory_aware_timestep_combine(const LgInfo &lg_info,
                   print_log, group_idx, options);
 }
 
-static void timestep_combine(const std::vector<LgInfo> &lg_infos,
+static void timestep_combine(std::vector<LgInfo> &lg_infos,
                              std::vector<BasicTimeStepPtr> &time_steps,
                              const std::vector<shape_secs_t> &shape_secs,
                              const LgOptions &options) {

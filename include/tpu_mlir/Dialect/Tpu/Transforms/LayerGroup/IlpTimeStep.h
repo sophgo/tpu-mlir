@@ -200,8 +200,7 @@ struct value_compare2 {
 class dot_graph;
 class ILPTimeStep {
 public:
-  ILPTimeStep(const LgInfo &group_info,
-              std::shared_ptr<dot_graph> tmp_dot_graph_log,
+  ILPTimeStep(LgInfo &group_info, std::shared_ptr<dot_graph> tmp_dot_graph_log,
               int sec_per_core = 1);
   virtual ~ILPTimeStep();
   std::shared_ptr<ILPTimeStep> clone();

@@ -69,6 +69,7 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
            "4: do partial LayerGroup with debugger file.">,
     Option<"debugger_filename", "debugger_filename", "std::string", /*default=*/"\"\"", "debugger file name">,
     Option<"disable_group_overlap", "disable_group_overlap", "bool", /*default=*/"false", "disable group overlap">,
+    Option<"config_filename", "config_filename", "std::string", /*default=*/"\"\"", "config file name">,
   ];
 }
 

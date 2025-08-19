@@ -94,7 +94,8 @@ def compile(
         log_level: str = 'normal',
         embed_debug_info=False,
         addr_mode='auto',
-        gdma_check=False):
+        gdma_check=False,
+        layer_group_config=""):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -135,7 +136,8 @@ def compile(
                                       dynamic=dynamic,
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
-                                      gdma_check=gdma_check)
+                                      gdma_check=gdma_check,
+                                      layer_group_config=layer_group_config)
     else:
         origin_mlir_txt_to_bmodel(converter=converter,
                                   model_name=name,
@@ -167,7 +169,8 @@ def compile_f32(name: str,
                 log_level: str = 'normal',
                 embed_debug_info=False,
                 addr_mode='auto',
-                gdma_check=False):
+                gdma_check=False,
+                layer_group_config=""):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -206,7 +209,8 @@ def compile_f32(name: str,
                                           dynamic=dynamic,
                                           opt=opt,
                                           embed_debug_info=embed_debug_info,
-                                          gdma_check=gdma_check)
+                                          gdma_check=gdma_check,
+                                          layer_group_config=layer_group_config)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter,
@@ -294,8 +298,9 @@ def bmodel_generate_and_inference(model_name: str,
                                   dynamic: bool = False,
                                   opt: int = 2,
                                   log_level: str = 'normal',
-                                  embed_debug_info=False,
-                                  gdma_check=False):
+                                  embed_debug_info: bool = False,
+                                  gdma_check: bool = False,
+                                  layer_group_config: str = ""):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
@@ -310,7 +315,8 @@ def bmodel_generate_and_inference(model_name: str,
                   disable_layer_group=disable_layer_group,
                   log_level=log_level,
                   embed_debug_info=embed_debug_info,
-                  gdma_check=gdma_check)
+                  gdma_check=gdma_check,
+                  layer_group_config=layer_group_config)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"

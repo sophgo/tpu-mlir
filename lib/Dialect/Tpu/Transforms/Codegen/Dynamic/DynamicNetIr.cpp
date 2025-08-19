@@ -74,7 +74,7 @@ bool SubnetIr::is_eltwise_op(Operation *op) {
   return res;
 }
 
-bool SubnetIr::tensor_allow_slice_diff(const LgInfo &layer_group, Value &tensor,
+bool SubnetIr::tensor_allow_slice_diff(LgInfo &layer_group, Value &tensor,
                                        int &hslice_diff_flag) {
   //=============================
   // 1st, find the number of layer that tensor pointing to which is not allowed
@@ -205,9 +205,8 @@ int SubnetIr::get_forward_output_height(Operation *op, int in_height) {
   return out_height;
 }
 
-int SubnetIr::get_group_global_pooling_kh(const LgInfo &layer_group,
-                                          Value target_v, int global_kh,
-                                          int global_up_pad_h,
+int SubnetIr::get_group_global_pooling_kh(LgInfo &layer_group, Value target_v,
+                                          int global_kh, int global_up_pad_h,
                                           int global_down_pad_h) {
   Value tensor;
   Operation *op;
@@ -659,11 +658,10 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
         .max_nslice_deprecated = 255, // 255 means invalid
         .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
         .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
-        .flags =
-            (uint8_t)((1 << 5) | (sub_group.type << 2) |
-                      ((1 << 1) |
-                       (hsecs >
-                        1))), // group_type, using max_nslice, h_is_split or not
+        .flags = (uint8_t)(
+            (1 << 5) | (sub_group.type << 2) |
+            ((1 << 1) |
+             (hsecs > 1))), // group_type, using max_nslice, h_is_split or not
         .swpipl_stage_num = (uint8_t)(swpipl_stage_num),
         .max_nslice = max_nslice};
     ir_group_timestep_base_info.push_back(timestep_base_info);
@@ -1359,7 +1357,7 @@ void SubnetIr::write_binary_ir_to_buffer(std::unique_ptr<Context> &context) {
 }
 
 bool SubnetIr::strip_back_judge(
-    Value v, const LgInfo &lg_info, const std::multiset<Operation *> &op_set,
+    Value v, LgInfo &lg_info, const std::multiset<Operation *> &op_set,
     const std::set<Value, value_cmp> &out_tensor_set) {
   auto users = v.getUsers();
   bool res = true;

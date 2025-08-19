@@ -35,6 +35,7 @@ typedef struct {
   int64_t debugger;
   std::string debugger_filename;
   bool disable_group_overlap;
+  std::string config_filename;
 } LgOptions;
 
 typedef struct {
@@ -281,6 +282,12 @@ typedef struct shape_secs {
     nsecs = hsecs = dsecs = wsecs = csecs = shape_0 = 1;
     c_slice_num = h_slice_num = n_slice_num = n = c = h = -1;
   }
+  shape_secs(int64_t nsecs, int64_t csecs, int64_t dsecs, int64_t hsecs,
+             int64_t wsecs)
+      : nsecs(nsecs), csecs(csecs), dsecs(dsecs), hsecs(hsecs), wsecs(wsecs) {
+    shape_0 = 1;
+    c_slice_num = h_slice_num = n_slice_num = n = c = h = -1;
+  }
   int64_t get_sec_num(bool only_nc = false) {
     if (c_slice_num > 0) {
       if (only_nc) {
@@ -328,6 +335,8 @@ struct LgInfo {
     this->cache_key = -1;
     this->group_cost = 0;
     this->is_valid = NOT_CHECK;
+    this->shape_secs_search_level = 0;
+    this->is_best_shape_secs = false;
   }
 
   void update_group_io(int opt = 2) {
@@ -499,6 +508,8 @@ struct LgInfo {
   // all op out tensors
   std::vector<Value> group_op_outs;
   bool use_cache = false;
+  int shape_secs_search_level = 0;
+  bool is_best_shape_secs = false;
   shape_secs_t shape_secs; /**cached */
   // layer group type
   group_type_t type;

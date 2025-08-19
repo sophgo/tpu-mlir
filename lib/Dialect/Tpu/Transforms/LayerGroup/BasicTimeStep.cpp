@@ -72,7 +72,7 @@ void BasicTimeStep::clear() {
   swpipl_stage_num_ = 1;
 }
 
-bool BasicTimeStep::assignTimeStep(const LgInfo &lg_info,
+bool BasicTimeStep::assignTimeStep(LgInfo &lg_info,
                                    const shape_secs_t &shape_secs,
                                    bool gen_idx) {
   clear();
@@ -552,7 +552,7 @@ void BasicTimeStep::gen_all_mem_buffer_ts() {
   }
 }
 
-void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
+void BasicTimeStep::update_all_mem_buffer_size(LgInfo &lg_info) {
   if (lmem_buffer_.empty()) {
     gen_all_mem_buffer_ts();
   }

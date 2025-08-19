@@ -134,7 +134,7 @@ protected:
       LgInfo &group_ops, int hsecs,
       map<Value, dynamic_tensor_info_t, value_cmp> &tensor_to_dynamic_info);
 
-  bool strip_back_judge(Value v, const LgInfo &lg_info,
+  bool strip_back_judge(Value v, LgInfo &lg_info,
                         const std::multiset<Operation *> &op_set,
                         const std::set<Value, value_cmp> &out_tensor_set);
   void layer_data_back_dynamic_info(
@@ -147,12 +147,12 @@ protected:
                                     shared_ptr<BasicTimeStep> time_step);
   void insert_produced_tensors(map<int, int> &tensor_to_consumer_num,
                                int tensor_id);
-  int get_group_global_pooling_kh(const LgInfo &layer_group,
-                                  Value target_tensor_id, int global_kh,
-                                  int global_up_pad_h, int global_down_pad_h);
+  int get_group_global_pooling_kh(LgInfo &layer_group, Value target_tensor_id,
+                                  int global_kh, int global_up_pad_h,
+                                  int global_down_pad_h);
   int get_forward_output_height(Operation *op, int in_height);
   bool is_eltwise_op(Operation *op);
-  bool tensor_allow_slice_diff(const LgInfo &layer_group, Value &tensor,
+  bool tensor_allow_slice_diff(LgInfo &layer_group, Value &tensor,
                                int &hslice_diff_flag);
   void set_ir_offset_len(uint32_t offset, uint32_t len) {
     ir_offset = offset;

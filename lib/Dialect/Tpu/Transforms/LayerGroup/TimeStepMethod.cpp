@@ -15,7 +15,7 @@ namespace tpu {
 
 void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
                                                        TensorInfo &tensor_infos,
-                                                       const LgInfo &lg_info) {
+                                                       LgInfo &lg_info) {
   const std::vector<Operation *> &group_ops = lg_info.group_ops;
   bool have_load_tensor;
   TpuTsField tpu_field;
@@ -164,8 +164,8 @@ bool is_tensor_accessed_by_npu(Value v, BasicTimeStep *time_step, int64_t ts) {
 }
 
 bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
-                             const LgInfo &lg_info,
-                             const shape_secs_t &shape_secs, bool gen_idx) {
+                             LgInfo &lg_info, const shape_secs_t &shape_secs,
+                             bool gen_idx) {
   // backward update slice
   if (gen_idx) {
     GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
@@ -294,7 +294,7 @@ void TimeStepMethod::bubble_tensor_to_best_ts(
 
 void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
                                                       TensorInfo &tensor_infos,
-                                                      const LgInfo &lg_info) {
+                                                      LgInfo &lg_info) {
   layer_nearest_timestep_assignment(time_step, tensor_infos, lg_info);
   if (lg_info.group_ops.size() <= 1) {
     return;
@@ -364,8 +364,8 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
 }
 
 void TimeStepMethod::get_timestep_cycle_slack(
-    BasicTimeStep *time_step, const LgInfo &lg_info,
-    ValueIntMap &tensor_to_cycle, ValueIntMap &tensor_to_bufsize,
+    BasicTimeStep *time_step, LgInfo &lg_info, ValueIntMap &tensor_to_cycle,
+    ValueIntMap &tensor_to_bufsize,
     std::vector<std::list<GdmaElt>> &tensor_timesteps,
     std::vector<int64_t> &timestep_cycle_slack) {
   int64_t timestep_num = time_step->get_timestep_num();
@@ -418,7 +418,7 @@ int64_t TimeStepMethod::get_next_ts(bool &is_valid, int64_t cur_ts,
 }
 
 int64_t
-TimeStepMethod::get_best_ts(BasicTimeStep *time_step, const LgInfo &lg_info,
+TimeStepMethod::get_best_ts(BasicTimeStep *time_step, LgInfo &lg_info,
                             int64_t cur_ts, ValueIntMap &tensor_to_cycle,
                             ValueIntMap &tensor_to_bufsize,
                             std::vector<std::list<GdmaElt>> &tensor_timesteps,

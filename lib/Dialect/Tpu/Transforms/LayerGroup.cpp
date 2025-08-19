@@ -7,11 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgConfig.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include <fstream>
 #include <iostream>
+
+#define CONFIG_FILE_NAME                                                       \
+  module::getName(module::getModuleOp()).str() + "_" +                         \
+      module::getChipStr().str() + "_" + module::getModeStr() +                \
+      ".layer_group_config.json"
 
 using namespace llvm;
 
@@ -74,6 +79,14 @@ public:
     options.debugger = debugger;
     options.debugger_filename = debugger_filename;
     options.disable_group_overlap = disable_group_overlap;
+    options.config_filename = config_filename;
+
+    if (options.config_filename.empty()) {
+      options.config_filename = CONFIG_FILE_NAME;
+    }
+    auto &lg_config = LgConfig::getInstance();
+    lg_config.load(options.config_filename);
+
     // group pass by modules
     auto modules = module::getAllModules();
     for (auto s : *modules) {

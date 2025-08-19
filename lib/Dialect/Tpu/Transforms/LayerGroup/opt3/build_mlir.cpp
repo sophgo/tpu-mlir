@@ -194,7 +194,7 @@ void GroupOps::CreateLoadToL2mOp(int64_t ts, l2m_value_info &it,
 void GroupOps::CreateLoadOp2(
     int64_t ts, ts_var_t &ts_var, int64_t pipe_id,
     const std::vector<Operation *> &ops, std::vector<int64_t> ncdhw_idx,
-    const LgInfo &lgInfo, bool can_merge,
+    LgInfo &lgInfo, bool can_merge,
     std::map<Value, Value, value_compare> &map_old_v_to_new_v_in_group_in) {
   Value &input = ts_var.value;
   tensor_info_t &ti = ts_var.info;
@@ -763,7 +763,7 @@ void GroupOps::buildMlir_for_opt3() {
       std::map<Value, std::vector<Value>, value_compare>
           map_output_to_merge_slice_for_grp;
       map_store_tensor_to_outbuffer_out.clear();
-      const LgInfo &lg_info = lg_infos[group_idx];
+      LgInfo &lg_info = lg_infos[group_idx];
       TensorInfo &tensor_info = lg_pass_ir_->lg_tensor_infos_[group_idx];
       auto &ops = lg_info.group_ops;
       auto &op_outs = lg_info.group_op_outs;
