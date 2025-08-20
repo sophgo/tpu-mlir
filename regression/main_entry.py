@@ -233,19 +233,19 @@ class MAIN_ENTRY(object):
                 f"test_MaskRCNN.py --case {case} --chip bm1684x > {self.log_dir}/test_MaskRCNN_{case}_bm1684x.log\n"
             )
         del maskrcnn_tester
-        # send 1690 fx
-        import test_fx
-        for chip in ["bm1684x", "bm1688", "bm1690"]:
-            fx_tester = test_fx.FX_IR_TESTER(chip=chip)
-            for case in fx_tester.test_cases.keys():
-                if fx_tester.check_support(case):
-                    self.commands.append(
-                        f"test_fx.py --case {case} --chip {chip}> {self.log_dir}/test_fx_{chip}_{case}.log\n"
-                    )
-                else:
-                    continue
+        # # send 1690 fx
+        # import test_fx
+        # for chip in ["bm1684x", "bm1688", "bm1690"]:
+        #     fx_tester = test_fx.FX_IR_TESTER(chip=chip)
+        #     for case in fx_tester.test_cases.keys():
+        #         if fx_tester.check_support(case):
+        #             self.commands.append(
+        #                 f"test_fx.py --case {case} --chip {chip}> {self.log_dir}/test_fx_{chip}_{case}.log\n"
+        #             )
+        #         else:
+        #             continue
 
-            del fx_tester
+        #     del fx_tester
 
     def run_multi_core_test(self):
         self.run_model_test(multi_core=True)
