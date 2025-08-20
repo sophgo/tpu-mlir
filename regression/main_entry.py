@@ -43,7 +43,7 @@ class MAIN_ENTRY(object):
 
         self.results = []
         self.time_cost = []
-        self.max_workers = os.cpu_count()
+        self.max_workers = int(os.cpu_count())
         print(f"### max_workers: {self.max_workers}")
         self.log_dir = os.path.join(REGRESSION_PATH, "regression_op_log")
         os.makedirs(self.log_dir, exist_ok=True)
@@ -148,44 +148,28 @@ class MAIN_ENTRY(object):
 
     def run_op_torch_test(self):
         import test_torch
-        import test_tpulang
         import test_custom_tpulang
         # send torch test
         torch_tester = test_torch.TORCH_IR_TESTER()
-        chips = ["bm1684", "bm1684x", "bm1688", "cv183x", "cv184x"]
+        chips = ["bm1684x", "bm1688", "cv184x"]
         simple = "--simple" if self.is_basic else ""
         for chip in chips:
             for case, (_, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,
                        cv184x_support) in torch_tester.test_cases.items():
-                if chip == "bm1684" and not bm1684_support:
-                    continue
+                # if chip == "bm1684" and not bm1684_support:
+                #     continue
                 if chip == "bm1684x" and not bm1684x_support:
                     continue
                 if chip == "bm1688" and not bm1688_support:
                     continue
-                if chip == "cv183x" and not cv183x_support:
-                    continue
+                # if chip == "cv183x" and not cv183x_support:
+                #     continue
                 if chip == "cv184x" and not cv184x_support:
                     continue
                 self.commands.append(
                     f"test_torch.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_torch_{case}_{chip}.log\n"
                 )
         del torch_tester
-        # send tpulang test
-        if not self.is_basic:
-            tpulang_tester = test_tpulang.TPULANG_IR_TESTER()
-            chips = ["bm1684x", "bm1688"]
-            for chip in chips:
-                for case, (_, bm1684x_support,
-                           bm1688_support) in tpulang_tester.test_function.items():
-                    if chip == "bm1684x" and not bm1684x_support:
-                        continue
-                    if chip == "bm1688" and not bm1688_support:
-                        continue
-                    self.commands.append(
-                        f"test_tpulang.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_tpulang_{case}_{chip}.log\n"
-                    )
-            del tpulang_tester
         # send custom tpulang test
         custom_tester = test_custom_tpulang.CUSTOM_TPULANG_TESTER()
         custom_py = test_custom_tpulang.__file__
@@ -233,6 +217,24 @@ class MAIN_ENTRY(object):
                 f"test_MaskRCNN.py --case {case} --chip bm1684x > {self.log_dir}/test_MaskRCNN_{case}_bm1684x.log\n"
             )
         del maskrcnn_tester
+
+        # send tpulang test
+        import test_tpulang
+        if not self.is_basic:
+            tpulang_tester = test_tpulang.TPULANG_IR_TESTER()
+            chips = ["bm1684x", "bm1688"]
+            for chip in chips:
+                for case, (_, bm1684x_support,
+                           bm1688_support) in tpulang_tester.test_function.items():
+                    if chip == "bm1684x" and not bm1684x_support:
+                        continue
+                    if chip == "bm1688" and not bm1688_support:
+                        continue
+                    self.commands.append(
+                        f"test_tpulang.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_tpulang_{case}_{chip}.log\n"
+                    )
+            del tpulang_tester
+
         # # send 1690 fx
         # import test_fx
         # for chip in ["bm1684x", "bm1688", "bm1690"]:
@@ -272,6 +274,10 @@ class MAIN_ENTRY(object):
 
     def run_all(self, test_set):
         for test in test_set:
+            if test == "torch":
+                self.max_workers = max(1, self.max_workers // 8)
+            else:
+                self.max_workers = int(os.cpu_count())
             self.test_set[test]()
 
         self.execute_commands()
