@@ -4,7 +4,7 @@ User Interface
 This chapter introduces the user interface, including the basic process of converting models and the usage methods of various tools.
 
 Model Conversion Process
---------------------------
+---------------------------
 
 The basic procedure is transforming the model into a mlir file with ``model_transform.py``, and then transforming the mlir into the corresponding model with ``model_deploy.py``. Take the ``somenet.onnx`` model as an example, the steps are as follows:
 
@@ -28,7 +28,7 @@ The basic procedure is transforming the model into a mlir file with ``model_tran
        --model somenet_f32.bmodel
 
 Support for Image Input
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When using images as input, preprocessing information needs to be specified, as follows:
 
@@ -46,7 +46,7 @@ When using images as input, preprocessing information needs to be specified, as 
         --mlir img_input_net.mlir
 
 Support for Multiple Inputs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When the model has multiple inputs, you can pass in a single npz file or sequentially pass in multiple npy files separated by commas, as follows:
 
@@ -430,7 +430,7 @@ The third and fourth columns are min/max, used for asymmetric quantization.
 .. _model_deploy:
 
 model_deploy.py
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 Convert the mlir file into the corresponding model, the parameters are as follows:
 
@@ -649,8 +649,43 @@ Convert the LLM model into bmodel, the parameters are as follows:
      - Specifies the output directory for the bmodel file
 
 
+llm_analyse.py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Used to analyze the performance of HuggingFace LLM models. The supported parameters are as follows:
+
+.. list-table:: llm_analyse parameter functions
+   :widths: 18 10 50
+   :header-rows: 1
+
+   * - Parameter
+     - Required?
+     - Description
+   * - model_path
+     - Yes
+     - Specify the model path
+   * - seq_length
+     - Yes
+     - Specify the maximum sequence length
+   * - quantize
+     - Yes
+     - Specify the quantization type, e.g., w4bf16/w4f16/bf16/f16
+   * - q_group_size
+     - No
+     - Group size for per-group quantization
+   * - chip
+     - Yes
+     - Specify the processor type; supports bm1684x/bm1688/cv186ah
+   * - tpu_freq
+     - No
+     - Specify the TPU frequency in MHz; defaults to commonly used TPU frequency
+   * - quant_lmhead
+     - No
+     - Whether to quantize lm_head; default is False
+
+
 model_runner.py
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 Model inference. mlir/pytorch/onnx/tflite/bmodel/prototxt supported.
 
@@ -756,7 +791,7 @@ Notice: ``--debug`` flag should be opened during model_deploy.py to save interme
 
 
 mlir2graph.py
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 Visualizes MLIR files based on dot, supporting MLIR files from all stages. After execution, corresponding .dot and .svg files will be generated in the MLIR directory. The .dot file can be rendered into other formats using the dot command. .svg is the default output rendering format and can be directly opened in a browser.
 
@@ -795,7 +830,7 @@ Supported functions:
 
 
 gen_rand_input.py
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 During model transform, if you do not want to prepare additional test data (test_input), you can use this tool to generate random input data to facilitate model verification.
 

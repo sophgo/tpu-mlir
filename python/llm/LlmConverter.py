@@ -61,6 +61,8 @@ class LlmConverter(BaseConverter):
         self.cos, self.sin = self.rotary_embedding()
         cpu_count = os.cpu_count()
         self.max_workers = max(cpu_count, 4)
+        # check dtype
+        self.check_dtype()
         # get file path
         self.out_dir = os.path.abspath(args.out_dir)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -88,6 +90,19 @@ class LlmConverter(BaseConverter):
         self.compile_all()
         os.chdir(ori_path)
         print(f"Success: {self.model_path} has converted to {self.out_dir}")
+
+    def check_dtype(self):
+        if not hasattr(self.llm_config, "torch_dtype"):
+            return
+        dtype = self.llm_config.torch_dtype
+        if (dtype == torch.bfloat16 and self.half_precision_quantize
+                == "f16") or (dtype == torch.float16 and self.half_precision_quantize == "bf16"):
+            print(
+                f"Warning: Please make sure your type({self.quantize}) is correct. Your torch dtype is {dtype}."
+            )
+            choice = input("Continue ? (Y/n):").strip().lower()
+            if choice != "y":
+                sys.exit(0)
 
     def gen_config(self):
         import shutil

@@ -659,8 +659,44 @@ llm_convert.py
      - 是
      - 指定输出的 bmodel 文件保存路径
 
+
+llm_analyse.py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+用于分析HuggingFace LLM模型的性能, 支持的参数如下:
+
+.. list-table:: llm_analyse 参数功能
+   :widths: 18 10 50
+   :header-rows: 1
+
+   * - 参数名
+     - 必选？
+     - 说明
+   * - model_path
+     - 是
+     - 指定模型路径
+   * - seq_length
+     - 是
+     - 指定序列最大长度
+   * - quantize
+     - 是
+     - 指定量化类型, 如w4bf16/w4f16/bf16/f16
+   * - q_group_size
+     - 否
+     - 每组量化的组大小
+   * - chip
+     - 是
+     - 指定处理器类型, 支持bm1684x/bm1688/cv186ah
+   * - tpu_freq
+     - 否
+     - 指定TPU频率, 单位是MHz, 默认为TPU常用频率
+   * - quant_lmhead
+     - 否
+     - 是否对lm_head进行量化, 默认是False
+
+
 model_runner.py
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 对模型进行推理, 支持mlir/pytorch/onnx/tflite/bmodel/prototxt。
 
