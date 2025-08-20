@@ -22,8 +22,31 @@ from typing import Tuple
 from subprocess import run, CalledProcessError, TimeoutExpired
 import os
 import sys
+import re
+import signal
+import psutil
+
 # from typing import TextIO
 # from utils.tpuc_cmd_builder import TpucCommandBuilder
+
+
+def _parse_timeout(timeout_str):
+    if not timeout_str:
+        return None
+    match = re.match(r'^\s*(\d+\.?\d*)\s*([hms]?)\s*$', str(timeout_str).lower())
+    if match:
+        value, unit = match.groups()
+        value = float(value)
+        if unit == 'h':
+            return int(value * 3600)
+        elif unit == 'm':
+            return int(value * 60)
+        return int(value)
+    return None
+
+
+def _get_timeout():
+    return _parse_timeout(os.getenv('TPUC_OPT_TIMEOUT'))
 
 
 def env2bashstr(env: dict, auto_pick=True):
@@ -344,69 +367,76 @@ def getstatusoutput_v2_split_log(
     return exitcode, output
 
 
-def _os_system_log(cmd_str, cwd=None):
+def _os_system_log(cmd_str, cwd=None, timeout=None):
     # use subprocess to redirect the output stream
     # the file for saving the output stream should be set if using this function
     logging.info("[Running]: %s", cmd_str)
 
-    return getstatusoutput_v2(cmd_str, cwd=cwd, shell=True, check=True, print_output=True)
-    subprocess.run(
-        cmd_str,
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-        cwd=cwd,
-    )
-
-    # while True:
-    #     output = process.stdout.readline().strip()
-
-    #     if output:
-    #         logging.info(output)
-
-    #     if output == '' and process.poll() is not None:
-    #         break
-
-    # while True:
-    #     error = process.stderr.readline().strip()
-    #     if error:
-    #         logging.error(error)
-    #     else:
-    #         break
-
-    # process.wait()
-    # ret = process.returncode
-
-    if ret == 0:
-        logging.info("[Success]: %s", cmd_str)
-    else:
-        logging.error(cmd_str)
-        raise RuntimeError("[!Error]: {}".format(cmd_str))
+    return getstatusoutput_v2(cmd_str,
+                              cwd=cwd,
+                              shell=True,
+                              check=True,
+                              print_output=True,
+                              timeout=None)
 
 
 def _os_system(cmd: list, save_log: bool = False, mute: bool = False, log_level: str = "normal"):
     cmd_str = " ".join(cmd)
+
+    is_tpuc_opt = any("tpuc-opt" in part for part in cmd)
+    timeout = _get_timeout() if is_tpuc_opt else None
+
+    def kill_process_tree(pid):
+        try:
+            parent = psutil.Process(pid)
+            children = parent.children(recursive=True)
+            for child in children:
+                try:
+                    child.kill()
+                except psutil.NoSuchProcess:
+                    pass
+            parent.kill()
+        except psutil.NoSuchProcess:
+            pass
+
     if mute:
-        ret = subprocess.call(cmd_str,
-                              shell=True,
-                              stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL)
-        assert ret == 0
-        return
+        try:
+            process = subprocess.Popen(cmd_str,
+                                       shell=True,
+                                       stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.DEVNULL)
+            ret = process.wait(timeout=timeout)
+            assert ret == 0
+            return
+        except subprocess.TimeoutExpired:
+            kill_process_tree(process.pid)
+
     if save_log:
+        # TODO: _os_system_log doesnt support timeout for now
         _os_system_log(cmd_str)
     elif log_level == "quiet":
-        ret = os.system(cmd_str)
-        if ret != 0:
-            print("[Failed]: {}".format(cmd_str))
+        try:
+            process = subprocess.Popen(cmd_str, shell=True)
+            ret = process.wait(timeout=timeout)
+            if ret != 0:
+                print("[Failed]: {}".format(cmd_str))
+        except subprocess.TimeoutExpired:
+            kill_process_tree(process.pid)
+            print("[Timeout]: {}".format(cmd_str))
+            raise RuntimeError(f"Command timed out after {timeout}s")
     else:
         print("[Running]: {}".format(cmd_str))
-        ret = os.system(cmd_str)
-        if ret == 0:
-            print("[Success]: {}".format(cmd_str))
-        else:
-            raise RuntimeError("[!Error]: {}".format(cmd_str))
+        try:
+            process = subprocess.Popen(cmd_str, shell=True)
+            ret = process.wait(timeout=timeout)
+            if ret == 0:
+                print("[Success]: {}".format(cmd_str))
+            else:
+                raise RuntimeError("[!Error]: {}".format(cmd_str))
+        except subprocess.TimeoutExpired:
+            kill_process_tree(process.pid)
+            print("[Timeout]: {}".format(cmd_str))
+            raise RuntimeError(f"Command timed out after {timeout}s")
 
 
 def get_matched_patterns(log_file: str = ""):
