@@ -8,12 +8,14 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/lib/libbackend_bm1690e.so
               nntoolchain/lib/libbackend_sg2380.so
               nntoolchain/lib/libbackend_sgtpuv8.so
+              nntoolchain/lib/libbackend_bm1684x2.so
               nntoolchain/lib/libbmlib.so
               nntoolchain/lib/libbmlib.so.0
               nntoolchain/lib/libcmodel_bm1684.so
               nntoolchain/lib/libcmodel_cv184x.so
               nntoolchain/lib/libcmodel_sg2380.so
               nntoolchain/lib/libcmodel_sgtpuv8.so
+              nntoolchain/lib/libcmodel_bm1684x2.so
               nntoolchain/lib/libcmodel.so
               nntoolchain/lib/libbmrt.so
               nntoolchain/lib/libbmrt.so.1.0

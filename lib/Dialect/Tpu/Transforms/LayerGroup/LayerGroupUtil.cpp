@@ -1487,7 +1487,7 @@ void is_broadcast_rope_with_permute_optimize(Operation *op,
 // if upsample nearest, weight shape is [1, 2, slice_h, slice_w]
 bool is_upsample_indices(Operation *op, Value v) {
   bool res = false;
-  if (!module::isBM1684XFamily()) {
+  if (!module::isBM1684XFamily()&& !module::isBM1684X2()) {
     return res;
   }
   if (auto upsample_op = dyn_cast<tpu::UpsampleOp>(op)) {
@@ -2964,7 +2964,7 @@ bool need_bcast(Value opd) {
 }
 
 bool is_upsample_weight(Value opd) {
-  if (!module::isBM1684XFamily()) {
+  if (!module::isBM1684XFamily()&& !module::isBM1684X2()) {
     return false;
   }
   if (opd.hasOneUse() == false) {

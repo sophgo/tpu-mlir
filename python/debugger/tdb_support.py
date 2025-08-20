@@ -405,12 +405,10 @@ class TdbCmdBackend(cmd.Cmd):
             from .target_2380.context import SG2380Context
             from .target_cv184x.context import CV184XContext
             from .target_sgtpuv8.context import SGTPUV8Context
+            from .target_1684x2.context import BM1684X2Context
             if isinstance(self.context,
-                          BM1688Context) or isinstance(self.context, BM1690Context) or isinstance(
-                              self.context, BM1690EContext) or isinstance(
-                                  self.context, SG2380Context) or isinstance(
-                                      self.context, CV184XContext) or isinstance(
-                                          self.context, SGTPUV8Context):
+                          (BM1688Context, BM1690Context, BM1690EContext, SG2380Context,
+                           CV184XContext, SGTPUV8Context, BM1684X2Context)):
                 address = self.context.fix_addr(address)
             addr_offset_ddr = address - self.context.memmap[MType.G][0]
             # load constant data

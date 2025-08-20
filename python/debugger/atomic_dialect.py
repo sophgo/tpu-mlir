@@ -188,6 +188,7 @@ class Block(Node):
                 from .target_2380.context import SG2380Context
                 from .target_1690.context import BM1690Context
                 from .target_1690e.context import BM1690EContext
+                from .target_1684x2.context import BM1684X2Context
 
                 if isinstance(context, BM1690Context):
                     from .target_1690.multi_core import MultiCore, MsgCore
@@ -197,6 +198,8 @@ class Block(Node):
                     from .target_1688.multi_core import MultiCore, MsgCore
                 elif isinstance(context, SG2380Context):
                     from .target_2380.multi_core import MultiCore, MsgCore
+                elif isinstance(context, BM1684X2Context):
+                    from .target_1684x2.multi_core import MultiCore, MsgCore
                 core_nums = len(self.cmds)
                 self.cores_cmds = [
                     MultiCore(core_id, core_nums, core_cmds.all, indent)

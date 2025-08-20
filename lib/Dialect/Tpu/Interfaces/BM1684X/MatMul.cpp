@@ -54,6 +54,13 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
         auto multiplier_v = module::getI64Array(getMultipliers());
         spec.mul_val = multiplier_v->at(0);
         spec.shift_val = -rshift_v->at(0);
+        if (getQuantMode() == RequantMode::OnlyScale) {
+          assert(getFuseRq() == false && "not supported.");
+          f64_array_t scales = module::getF64Array(getOutScales().value());
+          float scale = scales->at(0); // cast to fp32.
+          spec.mul_val = *(int *)&scale;
+          spec.shift_val = 0;
+        }
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
         spec.fuse_rq = getFuseRq();
@@ -61,8 +68,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
           spec.round_mode = (RoundingMode)getRoundMode();
       }
     } else if (odtype.isFloat8E4M3FN()) {
+      assert(getQuantMode() == RequantMode::OnlyScale);
       spec.requant_mode = 0;
-      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      f64_array_t scales = module::getF64Array(getOutScales().value());
       float scale = scales->at(0);
       spec.mul_val = *(int *)&scale;
     }
@@ -96,6 +104,12 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       spec.requant_mode = static_cast<int>(getQuantMode());
       spec.mul_val = multiplier_v->at(0);
       spec.shift_val = -rshift_v->at(0);
+      if (getQuantMode() == RequantMode::OnlyScale) {
+        f64_array_t scales = module::getF64Array(getOutScales().value());
+        float scale = scales->at(0); // cast to fp32.
+        spec.mul_val = *(int *)&scale;
+        spec.shift_val = 0;
+      }
       auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
@@ -285,6 +299,12 @@ void tpu::MatMulOp::codegen_local_bm1684x_kernel(
       auto multiplier_v = module::getI64Array(getMultipliers());
       common.mul_val = multiplier_v->at(0);
       common.shift_val = -rshift_v->at(0);
+      if (getQuantMode() == RequantMode::OnlyScale) {
+        f64_array_t scales = module::getF64Array(getOutScales().value());
+        float scale = scales->at(0); // cast to fp32.
+        common.mul_val = *(int *)&scale;
+        common.shift_val = 0;
+      }
       auto output_type = module::getUniformQuantizedType(getOutput());
       common.offset_val = output_type.getZeroPoint();
       common.fuse_rq = getFuseRq();
@@ -292,8 +312,9 @@ void tpu::MatMulOp::codegen_local_bm1684x_kernel(
         common.round_mode = (RoundingMode)getRoundMode();
     }
   } else if (odtype.isFloat8E4M3FN()) {
+    assert(getQuantMode() == RequantMode::OnlyScale);
     common.requant_mode = 0;
-    f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+    f64_array_t scales = module::getF64Array(getOutScales().value());
     float scale = scales->at(0);
     common.mul_val = *(int *)&scale;
   }
@@ -342,6 +363,12 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
         auto multiplier_v = module::getI64Array(getMultipliers());
         spec.mul_val = multiplier_v->at(0);
         spec.shift_val = -rshift_v->at(0);
+        if (getQuantMode() == RequantMode::OnlyScale) {
+          f64_array_t scales = module::getF64Array(getOutScales().value());
+          float scale = scales->at(0); // cast to fp32.
+          spec.mul_val = *(int *)&scale;
+          spec.shift_val = 0;
+        }
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
         spec.fuse_rq = getFuseRq();
@@ -349,7 +376,7 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
       }
     } else if (odtype.isFloat8E4M3FN()) {
       spec.requant_mode = 0;
-      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      f64_array_t scales = module::getF64Array(getOutScales().value());
       float scale = scales->at(0);
       spec.mul_val = *(int *)&scale;
     }
@@ -374,6 +401,12 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
       spec.requant_mode = static_cast<int>(getQuantMode());
       spec.mul_val = multiplier_v->at(0);
       spec.shift_val = -rshift_v->at(0);
+      if (getQuantMode() == RequantMode::OnlyScale) {
+        f64_array_t scales = module::getF64Array(getOutScales().value());
+        float scale = scales->at(0); // cast to fp32.
+        spec.mul_val = *(int *)&scale;
+        spec.shift_val = 0;
+      }
       auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;

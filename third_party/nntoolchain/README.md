@@ -87,6 +87,15 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 # release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 # cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 # cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
+
+#BM1684X2 sha256:200896a5ac33dad525e70d49995371f2044d09c6
+cd TPU1686
+source  scripts/envsetup.sh bm1684x2
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
+cp build/backend_api/libbackend_bm1684x2.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1684x2.so
+cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1684x2.so
+
 ```
 
 ## tpu-runtime 2026-02-25

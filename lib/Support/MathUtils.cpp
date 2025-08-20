@@ -11,6 +11,7 @@
 #include "omp.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "llvm/Support/Debug.h"
+#include <cstdint>
 #include <vector>
 
 #define DEBUG_TYPE "math_utils"
@@ -49,6 +50,15 @@ void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
   scale = (int)std::round(scale_f * std::pow(2, shift));
 }
 
+float get_fscale_from_multiplier_and_rshift(const int multiplier,
+                                            const int rshift) {
+  // reverse of "get_scale_and_shift".
+  double scale_d = (double)multiplier / std::pow(2, rshift);
+  float scale_f = (float)scale_d;
+  // uint32_t bits = *reinterpret_cast<const uint32_t*>(&scale_f);
+  // assert((bits >> 23) & 0xFF != 0x0);
+  return scale_f;
+}
 // this function search positive right shift with max_shift, max_shift set to 8
 // for int16 op and shift to 8bit output.
 void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,

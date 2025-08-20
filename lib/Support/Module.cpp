@@ -1499,7 +1499,7 @@ bool isBM1684XFamily() {
 }
 bool isBM1690Family() {
   return (chip == Chip::BM1690 || chip == Chip::SG2262 ||
-          chip == Chip::BM1690E);
+          chip == Chip::BM1690E || chip == Chip::BM1684X2);
 }
 bool isSG2380() { return (chip == Chip::SG2380); }
 bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X); }
@@ -1510,6 +1510,7 @@ bool isSG2262() { return (chip == Chip::SG2262); }
 bool isMultiCoreArch() { return isBM1690Family() || isSG2380() || isBM1688(); }
 bool isBM1690E() { return (chip == Chip::BM1690E); }
 bool isBM1690() { return (chip == Chip::BM1690); }
+bool isBM1684X2() { return (chip == Chip::BM1684X2); }
 
 ModuleOp getModuleOp() { return m; }
 

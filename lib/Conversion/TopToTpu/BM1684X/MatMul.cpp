@@ -32,6 +32,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   std::vector<int64_t> shifts;
   bool fuse_rq = false;
   bool use_perchannel = false;
+  auto out_quant_mode = tpu::RequantMode::MultiplierShift; // default.
+  std::vector<double> out_rq_fscale;
 
   bool output_int16 = op->hasAttr("output_int16");
   double i16_out_scale = 0, i16_out_zp = 0;
@@ -42,6 +44,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
           per_channel_quant_attr.cast<mlir::BoolAttr>();
       use_perchannel = per_channel_quant.getValue();
     }
+  }
+  if (module::isBM1684X2() && !use_perchannel) {
+    out_quant_mode = tpu::RequantMode::OnlyScale;
   }
   if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = module::getNumElements(op.getBias());
@@ -264,8 +269,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       }
     } else {
       int scale_ = 1, shift_ = 0;
-      scale_f.push_back(in_scale * w_scale[0] / out_scale);
-      get_scale_and_shift(scale_f[0], scale_, shift_);
+      float rq_scale = in_scale * w_scale[0] / out_scale;
+      out_rq_fscale.push_back(rq_scale);
+      get_scale_and_shift(rq_scale, scale_, shift_);
       shifts.push_back(shift_);
       scales.push_back(scale_);
     }
@@ -317,6 +323,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       i16_out_zp = out_zp;
     }
     float scale_f = in_scale * w_scale / out_scale;
+    out_rq_fscale.push_back(scale_f);
     get_scale_and_shift(scale_f, scale, shift, 32);
     shifts.push_back(shift);
     scales.push_back(scale);
@@ -339,10 +346,22 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       operands[2] = new_bias;
     }
   }
-  attrs.push_back(
-      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shifts)));
-  attrs.push_back(
-      rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scales)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode",
+      tpu::RequantModeAttr::get(op->getContext(), out_quant_mode)));
+  if (out_quant_mode == tpu::RequantMode::OnlyScale) {
+    assert(out_rq_fscale.size() > 0);
+    attrs.push_back(rewriter.getNamedAttr(
+        "out_scales",
+        rewriter.getF64ArrayAttr(ArrayRef<double>{out_rq_fscale})));
+  } else if (out_quant_mode == tpu::RequantMode::MultiplierShift) {
+    attrs.push_back(
+        rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shifts)));
+    attrs.push_back(
+        rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scales)));
+  } else {
+    llvm_unreachable("Not Implemented");
+  }
 
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -413,14 +432,17 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       //   }
       // }
       // if (!find) {
-      // An input scale for int4 exists, indicating the previous layer is int8; therefore, the input tensor is also int8 and requires requantization to int4.
+      // An input scale for int4 exists, indicating the previous layer is int8;
+      // therefore, the input tensor is also int8 and requires requantization to
+      // int4.
       in_scale =
           op->getAttr("in_int4_scale").cast<FloatAttr>().getValueAsDouble();
       in_zp = op->getAttr("in_int4_zp").cast<FloatAttr>().getValueAsDouble();
       module::getScaleAndZeroPoint(op.getInput(), in_int8_scale, in_int8_zp,
                                    asymmetric);
       auto output_type = getQuantIntType(op.getInput(), in_scale, in_zp, 4);
-      double int4_scale = in_int8_scale / in_scale; // Convert int8 to int4 rq parameter
+      double int4_scale =
+          in_int8_scale / in_scale; // Convert int8 to int4 rq parameter
       double offset = in_zp - in_int8_zp * int4_scale;
       auto to_name = "to_b4_for_" + module::getName(op.getOperation()).str();
       value =
@@ -680,8 +702,7 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
-        auto dq_type =
-            rewriter.getNamedAttr("dq_type", op.getDqTypeAttr());
+        auto dq_type = rewriter.getNamedAttr("dq_type", op.getDqTypeAttr());
         attrs.push_back(dq_type);
         auto q_group_size =
             rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
@@ -689,10 +710,11 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
 
         bool right_transpose = op.getRightTranspose();
         if (right_transpose) {
-          auto filter_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
+          auto filter_op =
+              dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
           auto filter_f32 = filter_op.read<float>();
-          auto filter_f32T = std::make_shared<std::vector<float>>(
-              filter_f32->size());
+          auto filter_f32T =
+              std::make_shared<std::vector<float>>(filter_f32->size());
           auto p = op.parseParam();
           for (size_t n = 0; n < p.N; n++) {
             for (size_t k = 0; k < p.K; k++) {
@@ -702,8 +724,8 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
           std::vector<int64_t> new_shape = {p.K, p.N};
           auto new_type =
               RankedTensorType::get(new_shape, rewriter.getF32Type());
-          auto new_filter = top::WeightOp::create(
-              op, "filter_f32T", *filter_f32T, new_type);
+          auto new_filter =
+              top::WeightOp::create(op, "filter_f32T", *filter_f32T, new_type);
           operands[1] = new_filter;
         }
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
@@ -752,8 +774,8 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
-        auto dq_type =
-            rewriter.getNamedAttr("dq_type", op.getDqTypeAttr());;
+        auto dq_type = rewriter.getNamedAttr("dq_type", op.getDqTypeAttr());
+        ;
         attrs.push_back(dq_type);
         auto q_group_size =
             rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
@@ -761,10 +783,11 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
 
         bool right_transpose = op.getRightTranspose();
         if (right_transpose) {
-          auto filter_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
+          auto filter_op =
+              dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
           auto filter_f32 = filter_op.read<float>();
-          auto filter_f32T = std::make_shared<std::vector<float>>(
-              filter_f32->size());
+          auto filter_f32T =
+              std::make_shared<std::vector<float>>(filter_f32->size());
           auto p = op.parseParam();
           for (size_t n = 0; n < p.N; n++) {
             for (size_t k = 0; k < p.K; k++) {
@@ -774,8 +797,8 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
           std::vector<int64_t> new_shape = {p.K, p.N};
           auto new_type =
               RankedTensorType::get(new_shape, rewriter.getF32Type());
-          auto new_filter = top::WeightOp::create(
-              op, "filter_f32T", *filter_f32T, new_type);
+          auto new_filter =
+              top::WeightOp::create(op, "filter_f32T", *filter_f32T, new_type);
           operands[1] = new_filter;
         }
         if (true == op.getDoRelu()) {
@@ -933,7 +956,7 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   }
   bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(rewriter.getNamedAttr(
-      "out_f8_scales", rewriter.getF64ArrayAttr(ArrayRef<double>{sclae_f_v})));
+      "out_scales", rewriter.getF64ArrayAttr(ArrayRef<double>{sclae_f_v})));
   attrs.push_back(rewriter.getNamedAttr(
       "quant_mode", tpu::RequantModeAttr::get(op->getContext(),
                                               tpu::RequantMode::OnlyScale)));

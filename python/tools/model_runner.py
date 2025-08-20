@@ -167,6 +167,8 @@ def get_cmodel_so(chip: str, is_rvti: bool = False) -> str:
         return 'libcmodel_sgtpuv8.so'
     elif chip == "SG2380":
         return 'libcmodel_sg2380.so'
+    elif chip == "BM1684X2":
+        return 'libcmodel_bm1684x2.so'
     else:
         return 'libcmodel_bm1684x.so'
 

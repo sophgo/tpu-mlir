@@ -226,7 +226,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
       cudaShifts.reset();
     }
   } else if (out_stype.isFloat8E4M3FN()) {
-    f64_array_t scales = module::getF64Array(op.getOutF8Scales().value());
+    f64_array_t scales = module::getF64Array(op.getOutScales().value());
     if (scales->size() == 1) {
       cuda::requantF8(out_f32.get(), output, scales->at(0), 1, 1, 1, batch_size, p.M, p.N, p.do_relu);
     } else {

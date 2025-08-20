@@ -136,6 +136,9 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
 
 uint64_t tpu::MatMulOp::getL2BufferSize() {
   // calculate L2SRAM buffer size
+  if (module::isBM1684X2()) {
+    return 0;
+  }
   auto p = parseParam();
   fc_global_spec_t spec = {0};
   memset(&spec, 0, sizeof(spec));
@@ -606,9 +609,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     if (out_type.isFloat8E4M3FN() ||
         ((out_type.isF16() || out_type.isBF16()) &&
          module::getStorageType(getInput()).isFloat8E4M3FN())) {
-      if (!getOutF8Scales().has_value())
-        llvm_unreachable("should have out scale for MatMul in f8 mode");
-      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      assert(getOutScales().has_value());
+      f64_array_t scales = module::getF64Array(getOutScales().value());
       if (scales->size() == 1) {
         [[maybe_unused]] auto scale_f = scales->at(0);
         [[maybe_unused]] auto scale_f_reciprocal = 1 / scales->at(0);
@@ -668,8 +670,31 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       auto rshift_v = module::getI64Array(getRshifts(), shift_num, 0);
       auto multiplier_v = module::getI64Array(getMultipliers(), shift_num, 1);
       auto num_output = module::getNumElements(getOutput());
-      if (qmode == tpu::RequantMode::TFLite_LShift ||
-          qmode == tpu::RequantMode::TFLite) {
+      if (qmode == tpu::RequantMode::OnlyScale) {
+        if (getFuseRq()) {
+          assert(0 &&
+                 "not supported, use RequantMode::MultiplierShift instead.");
+#pragma omp parallel for schedule(static, omp_schedule(num_output))
+          for (int i = 0; i < num_output; ++i) {
+            float v = p.outputs[0][i] * p.inputs[3][i % N];
+            p.outputs[0][i] =
+                saturate((int32_t)roundf(v) + o_qtype.getZeroPoint(),
+                         out_type); // round half away from zero
+          }
+        } else {
+          assert(getOutScales().has_value());
+          f64_array_t scales = module::getF64Array(getOutScales().value());
+          float scale = (float)scales->at(0);
+#pragma omp parallel for schedule(static, omp_schedule(num_output))
+          for (int i = 0; i < num_output; ++i) {
+            float v = p.outputs[0][i] * scale;
+            p.outputs[0][i] =
+                saturate((int32_t)roundf(v) + o_qtype.getZeroPoint(),
+                         out_type); // round half away from zero
+          }
+        }
+      } else if (qmode == tpu::RequantMode::TFLite_LShift ||
+                 qmode == tpu::RequantMode::TFLite) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
         for (int64_t i = 0; i < num_output; i++) {
           // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >>

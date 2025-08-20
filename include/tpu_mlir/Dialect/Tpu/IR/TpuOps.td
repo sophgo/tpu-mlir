@@ -4509,7 +4509,7 @@ def Tpu_MatMulOp : Tpu_Op<"MatMul", [
     DefaultValuedAttr<I64Attr, "0">:$input_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     DefaultValuedAttr<I64Attr, "1">:$left_reuse,
-    OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
+    OptionalAttr<F64ArrayAttr>:$out_scales,  // for RequantMode::OnlyScale.
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multi_core,
     DefaultValuedAttr<BoolAttr, "false">:$fuse_rq,

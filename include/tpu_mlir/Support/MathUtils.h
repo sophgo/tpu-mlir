@@ -127,6 +127,7 @@ void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
 void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
                                            int &shift, int bitwidth,
                                            int max_shift = 8);
+float get_fscale_from_multiplier_and_rshift(int multiplier, int rshift);
 template <typename Dtype>
 float findMaxabs(const Dtype *pSrcData, int len);
 template <typename Dtype>
