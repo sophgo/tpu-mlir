@@ -31,6 +31,7 @@ class LlmConverter(BaseConverter):
             args.max_input_length > 0
             and args.max_input_length < self.seq_length) else self.seq_length
         self.max_prefill_kv_length = args.max_prefill_kv_length
+        self.share_prompt = args.share_prompt
         self.quantize = args.quantize
         self.num_device = args.num_device
         self.q_group_size = args.q_group_size
@@ -480,7 +481,10 @@ class LlmConverter(BaseConverter):
                 f.write(mlir_txt)
 
         if not self.embedding_disk:
-            gen_embedding_by_length("embedding", self.max_input_length)
+            input_len = self.max_input_length
+            if self.share_prompt:
+                input_len = max(self.max_prefill_kv_length, self.max_input_length)
+            gen_embedding_by_length("embedding", input_len)
             gen_embedding_by_length("embedding_cache", 1)
         gen_lm_head()
 
@@ -891,9 +895,14 @@ class LlmConverter(BaseConverter):
         # create block mlir
         def gen_block():
             name = f"block_{idx}"
-            input_len = self.max_input_length
+            if self.share_prompt:
+                input_len = self.max_prefill_kv_length
+                name = f"block_prompt_{idx}"
+            else:
+                input_len = self.max_input_length
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
+            id_shape[-1] = input_len
             mask_shape = [1, 1, input_len, input_len]
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
@@ -1180,6 +1189,8 @@ class LlmConverter(BaseConverter):
             gen_block_with_kv()
         else:
             gen_block()
+        if self.share_prompt:
+            gen_block()
         gen_block_cache()
 
     def gen_vit_mlir(self):
@@ -1327,6 +1338,26 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--debug')
         self.add_task(deploy_args, f"{name}.log")
 
+    def compile_block_prompt(self, layer_id):
+        name = f"block_prompt_{layer_id}"
+        if os.path.exists(f"{name}.bmodel"):
+            print(f"{name}.bmodel already exists. Skipping compilation.")
+            return
+
+        deploy_args = [
+            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.quantize}',
+            f'--q_group_size {self.q_group_size}', '--quant_input', '--quant_output',
+            f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'--model {name}.bmodel'
+        ]
+        if self.high_precision:
+            deploy_args.append('--high_precision')
+        if self.symmetric:
+            deploy_args.append('--q_symmetric')
+        if self.debug:
+            deploy_args.append('--debug')
+        self.add_task(deploy_args, f"{name}.log")
+
     def compile_vit(self):
         if not self.do_vit:
             return
@@ -1354,7 +1385,9 @@ class LlmConverter(BaseConverter):
         total_bytes = 0
         for i in range(self.num_layers):
             bmodel_list = bmodel_list + [f"block_{i}.bmodel", f"block_cache_{i}.bmodel"]
-            total_bytes += os.path.getsize("block_0.bmodel")
+            if self.share_prompt:
+                bmodel_list.append(f"block_prompt_{i}.bmodel")
+            total_bytes += os.path.getsize(f"block_{i}.bmodel")
         if not self.embedding_disk:
             bmodel_list += ['embedding.bmodel', 'embedding_cache.bmodel']
             total_bytes += os.path.getsize("embedding.bmodel")
@@ -1398,6 +1431,8 @@ class LlmConverter(BaseConverter):
         for i in range(self.num_layers):
             self.compile_block(i)
             self.compile_block_cache(i)
+            if self.share_prompt:
+                self.compile_block_prompt(i)
 
         for func in self.extern_compiles:
             func()

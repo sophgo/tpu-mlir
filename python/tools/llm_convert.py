@@ -61,6 +61,8 @@ if __name__ == '__main__':
                         help='Add sample head and separate greedy head from lmhead')
     parser.add_argument('--use_block_with_kv', action='store_true',
                         help='use history kv for prefill, default is False')
+    parser.add_argument('--share_prompt', action='store_true',
+                        help='share the same prompt for multi dialog, default is False')
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
     parser.add_argument('--max_prefill_kv_length', type=int, default=0,
@@ -78,6 +80,8 @@ if __name__ == '__main__':
                         help='output mlir/bmodel path, default `./tmp`')
     args = parser.parse_args()
     # yapf: enable
+    if args.share_prompt:
+        args.use_block_with_kv = True
     if args.use_block_with_kv:
         if args.max_input_length <= 0:
             args.max_input_length = args.seq_length // 4
