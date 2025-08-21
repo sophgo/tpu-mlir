@@ -755,37 +755,20 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
 }
 
 bool tpu::MatMulOp::support_multi_core() {
-  if (module::isSG2380()) {
-    auto in_type = module::getStorageType(getOperand(0));
-    if (in_type.isInteger(8)) {
-      auto p = parseParam();
-      if (p.right_transpose || p.M >= 64) {
-        return false;
-      }
-      uint64_t mm_cycle = p.M * align_up(p.N, 32) * 2u * p.K;
-      uint64_t mm2_cycle =
-          (uint64_t)align_up(p.M, 32) * align_up(p.N, 4) * align_up(p.K, 16);
-      if (mm_cycle <= mm2_cycle) {
-        return true;
-      }
-    }
-  }
-  if (!module::isBM1690Family()) {
+  if (!module::isMultiCoreArch()) {
     return false;
   }
 
   auto p = parseParam();
-  if (module::isBM1690Family()) {
-    auto in_type = module::getStorageType(getOperand(0));
-    if (in_type.isInteger(8)) {
-      if (p.left_transpose) {
-        return false;
-      }
-      if (p.batch > 1) {
-        return false;
-      }
-      return true;
+  auto in_type = module::getStorageType(getOperand(0));
+  if (in_type.isInteger(8)) {
+    if (p.left_transpose) {
+      return false;
     }
+    if (p.batch > 1) {
+      return false;
+    }
+    return true;
   }
 
   if (p.hdim_is_batch || p.batch != 1 || p.do_relu ||

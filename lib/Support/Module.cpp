@@ -1486,6 +1486,7 @@ bool isBM1684X() { return (chip == Chip::BM1684X); }
 bool isCV184X() { return (chip == Chip::CV184X); }
 bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 bool isSG2262() { return (chip == Chip::SG2262); }
+bool isMultiCoreArch() { return isBM1690Family() || isSG2380() || isBM1688(); }
 
 ModuleOp getModuleOp() { return m; }
 

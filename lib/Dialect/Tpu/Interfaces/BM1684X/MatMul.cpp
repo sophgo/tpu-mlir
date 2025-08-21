@@ -111,17 +111,6 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     if (!module::isNone(getBuffer())) {
       spec.need_buffer = true;
     }
-
-    // Double check support batch_matmul_fix8b on bm1690
-    // TODO: remove this check when bm1690 support multi-core backend op
-    if (module::isBM1690Family()) {
-      auto in_type = module::getStorageType(getOperand(0));
-      if (in_type.isInteger(8) && !p.left_transpose && p.batch == 1) {
-        return BM168x::call_global_func("backend_api_fc_global", &spec,
-                                        sizeof(spec), input_spec->data(),
-                                        output_spec->data());
-      }
-    }
     return BM168x::call_global_func("backend_api_fc_multi_core_global", &spec,
                                     sizeof(spec), input_spec->data(),
                                     output_spec->data());
