@@ -691,12 +691,15 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             return value_res
 
         # this hack should only enable in multicore
-        if not is_operand:
-            if value_view.file_line in self.tdb.global_layer_line:
-                self.tdb.global_layer_line[value_view.file_line] -= 1
-                if self.tdb.global_layer_line[value_view.file_line] != 0:
-                    value_res = ComparedResult(value_view, None, msg="ignore")
-                    return value_res
+        # if not is_operand:
+        #     if value_view.file_line in self.tdb.global_layer_line:
+        #         self.tdb.global_layer_line[value_view.file_line] -= 1
+        #         if self.tdb.global_layer_line[value_view.file_line] != 0:
+        #             value_res = ComparedResult(value_view, None, msg="ignore")
+        #             return value_res
+
+        # 8/28/2025
+        # Disable this hack, it makes multicore op's results are incomplete.
 
         context = self.tdb.context
         # only used for pcie mode
@@ -765,8 +768,10 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 msg=msg,
             )
             cmp_failed = not cmp_res[0]
-            cmd = self.tdb.get_cmd()
-
+            try:
+                cmd = self.tdb.get_cmd()
+            except StopIteration:
+                cmd = self.tdb.get_precmd()
             dump_desired = cmp_failed
             if self.dump_mode == DumpMode.ALL or cmp_failed:
                 dump_actual = True
@@ -850,7 +855,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                              figsize=16,
                              c_columns=32,
                              save_path=f"{name_santized}.png")
-            self.tdb.message(f"Visualizaton of actual data saved as {name_santized}_target.png")
+            self.tdb.message(f"Visualizaton of actual data saved as {name_santized}_actual.png")
             self.tdb.message(f"Visualizaton of desired data saved as {name_santized}_ref.png")
             self.tdb.message(f"Visualizaton of differece saved as {name_santized}_diff.png")
 
