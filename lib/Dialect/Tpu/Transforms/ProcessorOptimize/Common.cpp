@@ -127,6 +127,9 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
             module::getElementType(binaryshift_weight_Op.getOutput());
         auto weight_shape =
             module::getShape(binaryshift_weight_Op.getOutput()).vec();
+        if (module::getNumElements(binaryshift_weight_Op.getOutput()) == 1) {
+          weight_shape = {1, 1, 1, 1};
+        }
         if (weight_shape.size() != 4) {
           return;
         }
