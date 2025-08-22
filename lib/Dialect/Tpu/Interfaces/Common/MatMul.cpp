@@ -770,6 +770,10 @@ bool tpu::MatMulOp::support_multi_core() {
       }
     }
   }
+  if (!module::isBM1690Family()) {
+    return false;
+  }
+
   auto p = parseParam();
   if (module::isBM1690Family()) {
     auto in_type = module::getStorageType(getOperand(0));
