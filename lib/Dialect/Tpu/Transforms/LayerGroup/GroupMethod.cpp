@@ -995,7 +995,7 @@ void GroupMethod::dynamic_programming_kernel(
     // }
     int64_t group_cost = MAX_COST;
     is_layer_group_valid(lg_info, true, &group_cost);
-    if (lg_debugger.get_do_debug()) {
+    if (options_.debugger > 2) {
       int64_t manual_group_cost = lg_debugger.get_manual_group_cost(lg_info);
       if (manual_group_cost != -1) {
         return manual_group_cost;
@@ -1011,8 +1011,7 @@ void GroupMethod::dynamic_programming_kernel(
 #pragma omp critical(layer_group_cost_cache)
     cache_hit =
         LgCostCache::getInstance().get_cost_from_cache(hash_key, group_cost);
-    if (lg_debugger.get_do_debug()) {
-
+    if (options_.debugger > 2) {
       group_cost = lg_debugger.get_manual_group_cost(lg_info);
       if (group_cost != -1) {
         LgCostCache::getInstance().add_cache(hash_key, group_cost);
