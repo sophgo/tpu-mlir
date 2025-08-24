@@ -57,6 +57,8 @@ The structure of the complete `final.mlir` file is as follows:
 
 * The `location` of multiple outputs will be added to the end of the `final.mlir` file, and the inclusion relationship with each specific output `location` will be expressed, such as `#loc950 = loc(fused[#loc2, #loc3])`.
 
+.. _final_mlir_truncate:
+
 `final.mlir` Truncation Process
 --------------------------------
 

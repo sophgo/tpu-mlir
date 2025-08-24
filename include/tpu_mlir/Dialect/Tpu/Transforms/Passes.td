@@ -142,6 +142,14 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   ];
 }
 
+def CutFinalMlir : Pass<"cut-final-mlir", "ModuleOp"> {
+  let summary = "cut final mlir";
+  let constructor = "createCutFinalMlirPass()";
+  let options = [
+    Option<"config_file", "config_file", "std::string", /*default=*/"\"\"", "config json file">
+  ];
+}
+
 def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
   let summary = "remove input & output fp32<->int8 converiton in int8model";
   let constructor = "createStripIOQuant()";

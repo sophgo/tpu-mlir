@@ -1080,3 +1080,82 @@ The encryption and decryption interfaces must be implemented in C style, not usi
 
   extern "C" uint8_t* encrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);
   extern "C" uint8_t* decrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);
+
+mlir_cut
+~~~~~~~~~~~~~~~~~~~~
+mlir_cut.py is used to truncate MLIR files. By truncating MLIR files, users can quickly locate bugs or verify the correctness of such section of the model.
+Executing the following command to view the parameter descriptions and usage examples of mlir_cut.py:
+
+.. code-block:: shell
+
+   $ mlir_cut.py -h
+
+mlir_cut.py supports truncating top.mlir, tpu.mlir, or final.mlir files. Supported usage methods include:
+
+1. When truncating top.mlir or tpu.mlir, three modes are supported: ``io`` mode, ``bt`` mode, and ``ft`` mode:
+
+``io`` mode:
+  In the default mode (input-output), users should specify the input and output value names for the new model. Run the following command in the directory where top.mlir/tpu.mlir is located to truncate the model:
+
+  .. code-block:: shell
+
+    $ mlir_cut.py --mlir xxx_top/tpu.mlir [--mode io] --input_names input1,input2 --output_names output1,output2 [--ref_data xxx_top_outputs.npz]
+
+  If reference data ``--ref_data`` is provided, reference input and output data for the truncated model will be generated too. Users should note that the ``--output_names`` list should not be empty.
+
+``bt`` mode:
+  In backtrace mode, users should specify the output value names and the number of trace layers ``--num`` for the new model. mlir_cut.py will use the specified output value as the endpoint and the operator that locates ``num`` layers ahead of the output value as the starting point to truncate the model.
+
+  .. code-block:: shell
+
+    $ mlir_cut.py --mlir xxx_top/tpu.mlir --mode bt --output_names output1,output2 --num 3 [--ref_data xxx_top_outputs.npz]
+
+``ft`` mode:
+  In forward-trace mode, users need to specify the input names and the number of trace layers ``--num`` for the new model. mlir_cut.py will use the specified input operator as the starting point and the operator that locates ``num`` layers behind the input operator as the endpoint to truncate the model.
+
+  .. code-block:: shell
+
+    $ mlir_cut.py --mlir xxx_top/tpu.mlir --mode ft --input_names input1,input2 --num 3 [--ref_data xxx_top_outputs.npz]
+
+2. When truncating final.mlir, the following two usage modes are supported:
+
+``io`` mode:
+    User should specify the input and output names, and run the following command in the directory where final.mlir is located to truncate final.mlir and generate the the bmodel file:
+
+    .. code-block:: shell
+
+        $ mlir_cut.py --mlir xxx_final.mlir --input_names input1,input2 --output_names output1,output2 [--ref_data xxx_tpu_outputs.npz]
+
+    The execution results are stored in the `./dummy_bmodel` path by default. Additionally, the above command will generate a configuration file named `mlir_cut_cfg.json`, which records the detailed execution parameters of the above command.
+
+``config`` mode:
+    Following the format of the `mlir_cut_cfg.json` file in ``io`` mode, put input and output configurations into a JSON file, and then execute the following command in the directory where the final.mlir file is located to truncate the model:
+
+    .. code-block:: shell
+
+        $ mlir_cut.py --mlir xxx_final.mlir  --config_file mlir_cut_cfg.json [--ref_data xxx_tpu_outputs.npz]
+
+    Compared with ``io`` mode, the configuration file provides richer options, allowing users to have finer control over the truncation method. The configuration file allows users to configure the following five items:
+
+    .. list-table::
+      :widths: 20 15 65
+      :header-rows: 1
+
+      * - Parameter
+        - Default Value
+        - Description
+      * - ``input_names``
+        - ``[]``
+        - List of input operator names, which can be empty. During the debug process, users can use this parameter to replace the computation results of any operator in the bmodel with user-provided reference input data.
+      * - ``output_names``
+        - ``[]``
+        - List of output operator names, which cannot be empty. During the debug process, users can use this parameter to observe the computation results of any operator in the bmodel.
+      * - ``assign_new_io_addrs``
+        - ``true``
+        - As described in the (:ref:`final_mlir_truncate`) section, the addresses of intermediate results in bmodel will be reused by other variables. Therefore, when users set intermediate results of the original model as inputs/outputs of the new model, the program will allocate new addresses for these variables by default to prevent errors. If users set this parameter to ``false``, no new addresses will be allocated for these variables.
+      * - ``remove_unused_local_ops``
+        - ``true``
+        - After truncating the model, operators not associated with the output results will be deleted by default. If users set this parameter to ``false``, all local operators will be retained by default.
+      * - ``put_storeop_near_producer``
+        - ``true``
+        - When setting intermediate results of local operators as new outputs, a `tpu.Store` operator needs to be inserted to save the corresponding variables from LMEM to GMEM. By default, the `tpu.Store` operator will be inserted immediately after the local operator that generates the result. If users set this parameter to ``false``, the `tpu.Store` operator will be inserted before the position where the result is last used.

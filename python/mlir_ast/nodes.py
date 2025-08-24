@@ -369,7 +369,6 @@ class Location(Node):
             return f"{self.loc_id_str} = loc({loc_name})"
 
 
-@with_assert
 class Attributes(Node):
     match_eq = re.compile("#([^<]+)<([^<]+)>")
     match_m = re.compile(r"([\-.+\w]+ : \w+)")
@@ -396,7 +395,6 @@ class Attributes(Node):
             attr = attribute[i]
             k, v = str(attr.name), str(attr.attr)
             arr_map[k] = v
-
         return Attributes(arr_map)
 
     def dump(self):
@@ -513,10 +511,17 @@ class Operation(Node):
 
     @property
     def opds(self) -> List[str]:
+        if self.parent is not None and self.type != 'tpu.Load':
+            return [
+                self.context.get_op_name_by_op_id(i, self.parent.name) for i in self.op_type.opds
+                if i != "%0"
+            ]
         return [self.context.get_op_name_by_op_id(i) for i in self.op_type.opds if i != "%0"]
 
     @property
     def outputs(self) -> List[str]:
+        if self.parent is not None:
+            return [self.context.get_op_name_by_op_id(i, self.parent.name) for i in self.opd_ids]
         return [self.context.get_op_name_by_op_id(i) for i in self.opd_ids]
 
     @staticmethod
@@ -670,9 +675,10 @@ class Yield(Operation):
 class CallFunc(Operation):
 
     def update_opd(self):
-        prefix = self.opd_ids[0].split(":")[0]
-        number = len(self.output_types)
-        self.opd_ids = [f"{prefix}:{i}" for i in range(number)]
+        if len(self.output_types) > 1:
+            prefix = self.opd_ids[0].split(":")[0]
+            number = len(self.output_types)
+            self.opd_ids = [f"{prefix}#{i}" for i in range(number)]
         print(self.dump())
 
     def dump(self):
@@ -776,31 +782,34 @@ class Func(Node):
             if op.erased:
                 continue
 
-            if not op.op_type.isa("func.return"):
+            if not op.op_type.isa("func.return", "top.Weight"):
                 for opd_id in op.opd_ids:  # can be erased
                     opdid2index[opd_id] = i
                     counter[opd_id] = 0
 
             if not op.op_type.isa("top.Input", "top.Weight", "top.None"):  # no use of other data
                 for opd in op.op_type.unique_opds:
-                    counter[opd] -= 1
+                    if opd in counter:
+                        counter[opd] -= 1
 
         less = counter.most_common(1)
         while (len(less) > 0 and less[0][1]
                == 0):  # while the count of some opd is 0, that operation can be erased
             for opd, count in counter.most_common():
-                if count >= 0:
+                if count >= 0 and opd in counter:
                     index = opdid2index[opd]
                     op = self.ops[index]
                     all_zero = True
                     for opd_id in op.opd_ids:
                         if counter[opd_id] != 0:
+                            counter[opd] = counter[opd_id]
                             all_zero = False
                             break
                     if all_zero:
                         op.erase()
-                        for opd in op.op_type.unique_opds:
-                            counter[opd] += 1
+                        for oopd in op.op_type.unique_opds:
+                            if oopd in counter:
+                                counter[oopd] += 1
                         for opd_id in op.opd_ids:
                             if opd_id in counter:
                                 counter.pop(opd_id)
@@ -899,9 +908,15 @@ class Module(Node):
         """
         head = self.dump_head()
         tail = self.dump_tail()
-        func_str = "\n".join([i.dump() for i in self.funcs])
-        func_str = textwrap.indent(func_str, SPACE)
-        return f"{head}\n{func_str}\n{tail}"
+        module_str = f"{head}"
+        if len(self.sub_module) > 0:
+            for sub_module in self.sub_module:
+                module_str += f"\n{sub_module.dump()}\n{tail}"
+        else:
+            func_str = "\n".join([i.dump() for i in self.funcs])
+            func_str = textwrap.indent(func_str, SPACE)
+            module_str += f"\n{func_str}\n{tail}"
+        return module_str
 
     def dump_head(self):
         return f"module @{self.name} attributes {self.attrs.dump()} {{"

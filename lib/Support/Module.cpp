@@ -313,6 +313,8 @@ static void removeUnusedOp(ModuleOp submodule) {
     });
   }
   for (auto iter = all_ops.rbegin(); iter != all_ops.rend(); iter++) {
+    if (isOpInGroup((*iter)))
+      continue;
     if ((*iter)->use_empty()) {
       (*iter)->erase();
     }

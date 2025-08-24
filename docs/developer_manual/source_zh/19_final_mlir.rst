@@ -51,6 +51,7 @@ final.mlir 截断方式
 * mainfunc 中的 `arg0` 指代 `host` 端的输入，因此 `host_in_type` 不带有 `Gmem addr` 。
 * 多输出的 `location` 会被添加在 `final.mlir` 文件的最尾端，并表述出与每个具体输出 `location` 间的包含关系，例如 `#loc950 = loc(fused[#loc2, #loc3])` 。
 
+.. _final_mlir_truncate:
 
 `final.mlir` 截断流程
 ----------------------

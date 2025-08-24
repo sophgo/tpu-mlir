@@ -529,15 +529,16 @@ Offset<bmodel::CoeffMem> BMCodegen::CreateCoeffMem(ModuleOp s,
   }
   auto coeff_location = builder.CreateVector(locations);
   auto data_u8 = std::make_shared<std::vector<uint8_t>>(coeff_size, 0);
-  uint64_t offset = 0;
+  uint64_t total_size_ = 0;
   for (auto func : s.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp weightOp) {
       auto data = weightOp.read_as_byte();
+      uint64_t offset = module::getAddress(weightOp.getOutput()) - coeff_addr;
       memcpy(data_u8->data() + offset, data->data(), data->size());
-      offset += align_up((int64_t)data->size(), BM168x::ALIGNMENT);
+      total_size_ += align_up((int64_t)data->size(), BM168x::ALIGNMENT);
     });
   }
-  if (offset != coeff_size) {
+  if (total_size_ != coeff_size) {
     llvm::errs() << "Warning: coeff size is not correct\n";
   }
   auto sha256 = llvm::SHA256::hash(llvm::ArrayRef(data_u8->data(), coeff_size));
@@ -785,19 +786,14 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   }
   timestep_table.push_back(ts_row);
   // 2. create a vector to map id to op
-  std::vector<Operation *> group_ops;
-  for (int64_t id = 0; id < max_id;) {
-    body.walk([&](Operation *op) {
-      if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
-        auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
-                                       (int64_t)0, (int64_t)0);
-        if (ginfo.id == id) {
-          group_ops.push_back(op);
-          id++;
-        }
-      }
-    });
-  }
+  std::vector<Operation *> group_ops(max_id + 1);
+  body.walk([&](Operation *op) {
+    if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
+      auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
+                                      (int64_t)0, (int64_t)0);
+      group_ops[ginfo.id] = op;
+    }
+  });
   // 3. recover overlap ops that will be executed in this group
   int64_t tmp_ts = 0;
   // <timestep_idx, prev_group_op>

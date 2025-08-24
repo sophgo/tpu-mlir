@@ -109,8 +109,9 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 
   auto parent = op->getParentOp();
   assert(isa_and_nonnull<tpu::GroupOp>(parent));
-  auto group_next_op = *(parent->getResult(0).getUsers().begin());
-  bool have_more_groupOp = isa<SliceMergeOp>(group_next_op) ? true : false;
+  auto users = parent->getResult(0).getUsers();
+  auto group_next_op = users.empty() ? nullptr : *(users.begin());
+  bool have_more_groupOp = group_next_op && isa<SliceMergeOp>(group_next_op);
   auto buffer = op->getOperand(1);
   if (!isa<top::NoneOp>(buffer.getDefiningOp())) {
     g_addr = module::getAddress(buffer);

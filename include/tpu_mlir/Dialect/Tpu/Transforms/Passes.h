@@ -37,6 +37,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createShowAddressPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTruncIOPass();
 std::unique_ptr<OperationPass<ModuleOp>> createNetStatisticPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTruncLayerPass();
+std::unique_ptr<OperationPass<ModuleOp>> createCutFinalMlirPass();
 std::unique_ptr<OperationPass<ModuleOp>> createOptPostProcessorPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTimeFixedSubnetPass();
 

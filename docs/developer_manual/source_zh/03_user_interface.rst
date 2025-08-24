@@ -1076,3 +1076,81 @@ model_tool
 
   extern "C" uint8_t* encrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);
   extern "C" uint8_t* decrypt(const uint8_t* input, uint64_t input_bytes, uint64_t* output_bytes);
+
+mlir_cut
+~~~~~~~~~~~~~~~~~~~~
+该工具用于对 mlir 文件进行截断。在 debug 阶段，通过对 mlir 文件进行截断，用户可快速定位和验证模型出错的位置。执行如下命令，可查看该工具的参数说明及使用案例：
+
+.. code-block:: shell
+
+   $ mlir_cut.py -h
+
+mlir_cut.py 支持对 top.mlir、tpu.mlir 或 final.mlir 文件进行截断，目前支持的使用方式包括：
+
+1.截断 top.mlir 或 tpu.mlir 时，支持以下三种使用方式，即 ``io`` 模式、``bt`` 模式和 ``ft`` 模式：
+
+``io`` 模式：
+  默认模式(input-output)下，用户需给定新模型的输入和输出算子名称，在 top.mlir/tpu.mlir 所在目录下运行如下命令可截断模型：
+
+  .. code-block:: shell
+
+    $ mlir_cut.py --mlir xxx_top/tpu.mlir [--mode io] --input_names input1,input2 --output_names output1,output2 [--ref_data xxx_top_outputs.npz]
+
+  若用户提供了参考数据 ``--ref_data``, 输出结果中会包含所截断后模型的参考输入输出数据。此外，用户需注意，``--output_names`` 列表不可为空。
+
+``bt`` 模式：
+  反向追踪(backtrace)模式下，用户需给定新模型的输出算子名称和追踪层数 ``--num``。mlir_cut.py 会以给定的输出算子为终点，以输出算子之前 ``num`` 层的算子为起点，对模型进行截断。
+
+  .. code-block:: shell
+
+    $ mlir_cut.py --mlir xxx_top/tpu.mlir --mode bt --output_names output1,output2 --num 3 [--ref_data xxx_top_outputs.npz]
+
+``ft`` 模式：
+  前向追踪(forward-trace)模式下，用户需给定新模型的输入算子名称和追踪层数 ``--num``。mlir_cut.py 会以给定的输入算子为起点，以输入算子之后 ``num`` 层的算子为终点，对模型进行截断。
+
+  .. code-block:: shell
+
+    $ mlir_cut.py --mlir xxx_top/tpu.mlir --mode ft --input_names input1,input2 --num 3 [--ref_data xxx_top_outputs.npz]
+
+2.截断 final.mlir 时，支持如下两种使用方式：
+
+``io`` 模式：
+    明确所需的输入、输出算子名称后，在 final.mlir 所在目录下运行如下命令即可截断final.mlir并生成对应的.bmodel文件：
+
+    .. code-block:: shell
+
+        $ mlir_cut.py --mlir xxx_final.mlir --input_names input1,input2 --output_names output1,output2 [--ref_data xxx_tpu_outputs.npz]
+
+    运行结果默认存放在 `./dummy_bmodel` 路径下。此外，上述命令会默认生成一名为 `mlir_cut_cfg.json` 的配置文件，其中记录了上述代码的详细执行参数。
+
+``config`` 模式：
+    参照 ``io`` 模式中 `mlir_cut_cfg.json` 文件的格式，将输入输出等配置信息写入 json 文件后，在 final.mlir 文件所在目录下执行如下命令可截断模型：
+
+    .. code-block:: shell
+
+        $ mlir_cut.py --mlir xxx_final.mlir  --config_file mlir_cut_cfg.json [--ref_data xxx_tpu_outputs.npz]
+
+    与 ``io`` 模式相比，配置文件中提供了更丰富的选项，允许用户对截断方式进行更细致的控制。配置文件中允许用户配置以下五项内容：
+
+    .. list-table::
+      :widths: 20 15 65
+      :header-rows: 1
+
+      * - 参数
+        - 默认值
+        - 说明
+      * - ``input_names``
+        - ``[]``
+        - 输入算子名称列表，该列表可以为空。在debug过程中，用户可利用该参数，将bmodel中任意算子的计算结果替换为用户提供的参考输入数据。
+      * - ``output_names``
+        - ``[]``
+        - 输出算子名称列表，该列表不可为空。在debug过程中，用户可利用该参数，观测bmodel中任意算子的计算结果。
+      * - ``assign_new_io_addrs``
+        - ``true``
+        - 如(:ref:`final_mlir_truncate`)节所述，bmodel中间结果的地址会被其他变量复用，因此当用户将原模型的中间结果设置为新模型的输入/输出后，程序默认会为上述变量重新分配一份新的地址，以防错误的发生。若用户将该参数修改为 ``false`` ，则不会为上述变量分配新的地址。
+      * - ``remove_unused_local_ops``
+        - ``true``
+        - 在截断模型之后，默认会删除与输出结果没有关联的算子。如果用户将参数修改为 ``false``，则默认会保留所有的 local 算子。
+      * - ``put_storeop_near_producer``
+        - ``true``
+        - 当将 local 算子的中间结果设置为新的输出时，需要插入一个 `tpu.Store` 算子将相应变量从 LMEM 保存到 GMEM。默认情况下 `tpu.Store` 算子会插入到紧邻生成该结果的 local 算子之后。若用户将该参数修改为 ``false``，则 `tpu.Store` 算子会插入到该结果最后一次被使用的位置之前。

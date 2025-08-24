@@ -14,6 +14,7 @@ from itertools import chain
 from typing import Dict
 from .nodes import *
 import mlir.ir
+import ast
 
 AST_CONTEXT: "MlirAST" = None
 
@@ -269,11 +270,67 @@ class MlirAST:
                 op_lis.append(op)
         return op_lis
 
+    @property
+    def output_names(self) -> List[str]:
+        output_names = []
+        if self.is_final:
+            output_names = self.module.attrs.attributes['module.outputs']
+            return ast.literal_eval(output_names)
+        if self.ops[-1].type == 'func.return':
+            return_op = self.ops[-1]
+            for ids in return_op.output_ids:
+                op = self.opid2op[ids]
+                output_names.append(op.name)
+        return output_names
+
     def update_max_opd_id(self, opd_id_str: str):
         try:
             self.max_opd_id = max(int(opd_id_str[1:]), self.max_opd_id)
         except:
             pass
+
+    def update_io_info(self):
+        # update subfunc
+        input_types = []
+        input_names = []
+        for op in self.module.funcs[-1].ops:
+            if not op.erased:
+                for opd in op.op_type.opds:
+                    if "arg" in opd and opd not in input_names:
+                        input_names.append(opd)
+                        index = op.op_type.opds.index(opd)
+                        input_types.append(op.input_types[index])
+        self.module.funcs[-1].input_types = input_types
+        self.module.funcs[-1].input_names = [f"%arg{i}" for i in range(len(input_types))]
+        self.module.funcs[-1].input_locs = [self.module.funcs[-1].input_locs[0]] * len(input_types)
+
+        if self.is_final:
+            # update mainfunc
+            self.module.funcs[0].input_types = input_types
+            self.module.funcs[0].input_names = [f"%arg{i}" for i in range(len(input_types))]
+            self.module.funcs[0].input_locs = [self.module.funcs[-1].input_locs[0]
+                                               ] * len(input_types)
+            index = 0
+            for op in self.module.funcs[0].ops:
+                if op.op_type.isa("top.Input"):
+                    assert len(op.input_types) == 1
+                    if op.op_type.opds[0] not in input_names:
+                        op.erase()
+                    else:
+                        op.opd_ids = [f"%{index}"]
+                        index += 1
+                if op.op_type.isa("subfunc_0"):
+                    op.input_types = input_types
+                    op.op_type.opds = [f"%{i}" for i in range(len(input_types))]
+
+        # update module
+        inputs = []
+        outputs = []
+        for output_id in self.module.funcs[-1].ops[-1].output_ids:
+            opid = self.module.funcs[-1].name + '::' + output_id
+            outputs.append(f'"{self.opid2op[opid].name}"')
+
+        self.module.attrs.attributes['module.outputs'] = outputs
 
     def malloc_opd_id(self):
         self.max_opd_id += 1
@@ -289,33 +346,49 @@ class MlirAST:
         self.optype2op.setdefault(op.op_type.op_type_name, []).append(op)
         op_name = self.locid2opname[op.loc_label.loc_id_str]
 
-        if group_op is None:
-            local_id_start = 1e7
-        else:
-            local_id_start = int(group_op.ops[0].opd_ids[0][1:])
+        use_ns = self.is_final
+        ns = group_op.name if group_op is not None and use_ns else ""
+        func_ns = func.name + "::" if func is not None and use_ns else ""
+
+        for i, opd_id in enumerate(op.opd_ids):
+            # only update global_op num, include group op
+            if not group_op:
+                self.update_max_opd_id(opd_id)
+            if '#' in opd_id and op.type == "tpu.Group":
+                self.update_max_opd_id(opd_id.split('#')[0])
+                self.opid2op[func_ns + ns + opd_id.split('#')[0]] = op
+            else:
+                self.opid2op[func_ns + ns + opd_id] = op
+
+        if len(op.opd_ids) > 1 and op.type == "tpu.Group":
+            group_outputs = []
+            for oop in op.ops:
+                if oop.type == "tpu.Store":
+                    group_outputs.append(oop)
+            for i, opd_id in enumerate(op.opd_ids):
+                self.opid2op[func_ns + opd_id] = group_outputs[i]
+
+        # avoid local ops cover group op
+        if op_name not in self.opname2op.keys():
+            self.opname2op[op_name] = op
+        op.name = op_name
 
         def is_local_opid(opd_str):
+            if group_op is None:
+                local_id_start = 1e7
+            else:
+                local_id_start = int(group_op.ops[0].opd_ids[0][1:])
             try:
                 return int(opd_str[1:]) >= local_id_start
             except:
                 return False
 
-        use_ns = self.is_final
-        ns = group_op.name if group_op is not None and use_ns else ""
-        func_ns = func.name + "::" if func is not None and use_ns else ""
-
-        for opd_id in op.opd_ids:
-            self.update_max_opd_id(opd_id)
-            self.opid2op[func_ns + ns + opd_id] = op
-        self.opname2op[op_name] = op
-        op.name = op_name
-
         preops = self.opname2preop.setdefault(op_name, [])
         if not op.op_type.isa("top.Input", "top.Weight", "top.None", "tosa.const"):
             visited = set()
             for iop in op.op_type.opds:
-                if "arg" in iop:
-                    # skip final.mlir function input
+                if "arg" in iop or iop == "%0":
+                    # skip final.mlir function input and NoneOp
                     continue
 
                 if is_local_opid(iop):
@@ -323,7 +396,6 @@ class MlirAST:
                 else:
                     # load out of this group op
                     ns_iop = func_ns + iop
-
                 pre_op = self.opid2op[ns_iop]
 
                 if pre_op.op_type.isa("top.None", "top.Weight"):
@@ -373,13 +445,24 @@ class MlirAST:
         except:
             pass
 
-    def get_op_name_by_op_id(self, opd_str: str) -> str:
+    def get_op_name_by_op_id(self, opd_str: str, group_name: str = None) -> str:
         """
         for Operation input, use op.op_type.opds
         for Operation output, use op.opd_ids
         """
-        op = self.opid2op[opd_str]
-        return self.locid2opname[op.loc_label.loc_id_str]
+        try:
+            op = self.opid2op[opd_str]
+            op_name = self.locid2opname[op.loc_label.loc_id_str]
+        except:
+            # TODO: only support one subfunc for now
+            if 'arg' in opd_str:
+                opid = self.module.funcs[0].name + '::%' + opd_str.split('arg')[-1]
+            elif group_name is not None:
+                opid = self.module.funcs[-1].name + '::' + group_name + opd_str
+            else:
+                opid = self.module.funcs[-1].name + '::' + opd_str
+            op_name = self.opid2op[opid].name
+        return op_name
 
     def get_op_by_op_name(self, op_name: str) -> Operation:
         return self.opname2op[op_name]
@@ -414,14 +497,12 @@ class MlirParserV2:
 
     @staticmethod
     def from_astparser(parser: MlirASTParser):
-        self = MlirParserV2.__new__()  # type: MlirParserV2
+        self = object.__new__(MlirParserV2)  # type: MlirParserV2
         self.ctx = mlir.ir.Context()
         self.ctx.allow_unregistered_dialects = True
         self.ast = parser.ast
-
         self.attrs = self.ast.module.attrs.to_dict()
         self.module = self.ast.module
-        self.module_name = self.attrs["module.name"]
         self.module_state = self.attrs["module.state"]
         self.module_weight_file = self.attrs["module.weight_file"]
         self.module_chip = self.attrs["module.chip"]

@@ -21,7 +21,18 @@ void tpu::ConcatOp::codegen_global_bm1684x() {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   if (getOnlyMerge() && input_spec->at(0).addr == output_spec->at(0).addr) {
-    return;
+    bool is_inplace = true;
+    int64_t begin_addr = module::getAddress(getOutput());
+    int64_t end_addr = begin_addr + module::getBytes(getOutput());
+    for (Value input : getInputs()) {
+      if (module::getAddress(input) < begin_addr ||
+          module::getAddress(input) >= end_addr) {
+        is_inplace = false;
+        break;
+      }
+    }
+    if (is_inplace)
+      return;
   }
   concat_global_spec_t spec = {0};
   spec.common.input_num = num_input;
