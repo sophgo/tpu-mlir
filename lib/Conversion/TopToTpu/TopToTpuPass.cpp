@@ -2197,6 +2197,10 @@ void ConvertTopToTpu::init_qtable() {
         if (src_mode == "F32" || src_mode == "F16")
           mode = "BF16";
       }
+      if (module::isBM1684Family()) {
+        if (src_mode == "F16" || src_mode == "BF16")
+          mode = "F32";
+      }
       if ((src_mode == "W8F16" || src_mode == "W4F16") &&
           module::isBF16Modes()) {
         llvm_unreachable(
