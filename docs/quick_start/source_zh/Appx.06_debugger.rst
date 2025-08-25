@@ -446,7 +446,7 @@ py功能可以在TDB环境下直接执行python命令，使用方法如下：
 
 
 BModel Disassembler
-------------------
+--------------------
 
 BModel Disassembler 可以对 bmodel 文件进行反汇编得到 MLIR 格式的 atomic 指令的汇编代码，即 asm 指令，用于分析模型的最终运行命令。
 
@@ -602,7 +602,7 @@ BModel Checker 用于查找 bmodel 中的错误（codegen错误），如果在 m
 
    (tdb) check diff [file-line] [index]
 
-将真实数据、参考数据、差值数据的可视化结果保存为./*actual.png、./*ref.png、./*diff.png。
+将真实数据、参考数据、差值数据的可视化结果保存为./\*actual.png、./\*ref.png、./\*diff.png。
 
 **SoC 设备**
 

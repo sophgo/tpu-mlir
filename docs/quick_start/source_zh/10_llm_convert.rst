@@ -66,7 +66,7 @@
 示例用法
 ---------
 
-假设需要将位于 ``/workspace/Qwen2-7B-Instruct`` 的大模型转换为 ``bm1684x`` 平台的 bmodel，同时使用 ``384`` 的序列长度和``w4bf16`` 的量化类型，设置 group size 为 ``128``，并将输出文件存放在目录 ``qwen2_7b`` 下，可以执行以下命令：
+假设需要将位于 ``/workspace/Qwen2-7B-Instruct`` 的大模型转换为 ``bm1684x`` 平台的 bmodel，同时使用 ``384`` 的序列长度和 ``w4bf16`` 的量化类型，设置 group size 为 ``128``，并将输出文件存放在目录 ``qwen2_7b`` 下，可以执行以下命令：
 
 首先需要将Qwen2-7B-Instruct从huggingface下载到本地，然后执行如下命令：
 
