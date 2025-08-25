@@ -95,4 +95,72 @@ LogicalResult top::StridedSliceOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::StridedSliceOp::shape_inference() {}
+void top::StridedSliceOp::shape_inference() {
+  const auto input_shape = module::getShape(getInput());
+  const int in_dims = static_cast<int>(input_shape.size());
+
+  // Read slice params if statically known (Weight or Shape). Otherwise, mark
+  // dynamic run mode and return (shape cannot be determined statically).
+  auto readOperandAsFloat = [](mlir::Value v, std::vector<float> &out) -> bool {
+    if (module::isWeight(v)) {
+      if (auto w = v.getDefiningOp<top::WeightOp>()) {
+        if (auto data_i32 = w.read<int32_t>()) {
+          out.assign(data_i32->begin(), data_i32->end());
+          return true;
+        }
+        if (auto data_f = w.read_as_float()) {
+          out.assign(data_f->begin(), data_f->end());
+          return true;
+        }
+      }
+    } else if (module::isShape(v)) {
+      auto vals = module::getShapeTensorValue(v);
+      out.reserve(vals.size());
+      for (auto x : vals) {
+        out.push_back(static_cast<float>(x));
+      }
+      return true;
+    }
+    return false;
+  };
+
+  std::vector<float> starts_f, ends_f, strides_f;
+  bool ok = readOperandAsFloat(getStarts(), starts_f) &
+            readOperandAsFloat(getEnds(), ends_f) &
+            readOperandAsFloat(getStrides(), strides_f);
+  if (!ok) {
+    module::setTopRunMode(module::TopRunMode::DYNAMIC);
+    return;
+  }
+
+  const int s_dims = static_cast<int>(module::getNumElements(getStrides()));
+  int32_t begin[8] = {0}, end[8] = {0}, step[8] = {0}, input_shape_i32[8] = {0};
+  int32_t dims = 0, b_mask = 0, e_mask = 0, shrink_mask = 0;
+
+  stride_slice_gen_params(
+      input_shape.data(), in_dims, starts_f.data(), ends_f.data(),
+      strides_f.data(), s_dims, getBeginMask(), getEndMask(), getEllipsisMask(),
+      getNewAxisMask(), getShrinkAxisMask(), input_shape_i32, &dims, begin, end,
+      step, &b_mask, &e_mask, &shrink_mask);
+
+  for (int i = 0; i < dims; ++i) {
+    begin[i] = StartForAxis(begin, step, b_mask, input_shape_i32, i);
+    end[i] = StopForAxis(end, step, e_mask, shrink_mask, input_shape_i32, i,
+                         begin[i]);
+  }
+
+  // Current kernel only supports rank-preserving cases.
+  if (dims != in_dims) {
+    module::setTopRunMode(module::TopRunMode::DYNAMIC);
+    return;
+  }
+
+  std::vector<int64_t> output_shape(in_dims, 0);
+  for (int i = 0; i < in_dims; ++i) {
+    output_shape[i] = abs_ceiling_func<int64_t>(
+        static_cast<int64_t>(end[i]) - static_cast<int64_t>(begin[i]),
+        static_cast<int64_t>(step[i]));
+  }
+
+  module::setShapeOrVerify(getOutput(), output_shape);
+}
