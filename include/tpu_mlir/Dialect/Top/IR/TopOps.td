@@ -592,7 +592,8 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
     OptionalAttr<F64Attr>:$out_int8_scale,
-    OptionalAttr<F64Attr>:$out_int8_zp
+    OptionalAttr<F64Attr>:$out_int8_zp,
+    OptionalAttr<I64Attr>:$weight_bits     // indication for w4int8, etc.
   );
 
   let results = (outs AnyTensor:$output);

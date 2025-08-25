@@ -482,7 +482,7 @@ model_deploy.py
      - 指定是否将预处理融合到模型中，如果指定了此参数，则模型输入为uint8类型，直接输入resize后的原图即可
    * - calibration_table
      - 否
-     - 指定校准表路径, 当存在INT8/F8E4M3量化的时候需要校准表
+     - 指定校准表路径, 当存在INT8/F8E4M3/W4INT8量化的时候需要校准表
    * - high_precision
      - 否
      - 打开时一部分算子会固定用float32
@@ -602,15 +602,17 @@ model_deploy.py
    * - BM1684X
      - F32, F16, BF16, INT8, W4F16, W8F16, W4BF16, W8BF16
    * - BM1688
-     - F32, F16, BF16, INT8, INT4, W4F16, W8F16, W4BF16, W8BF16
+     - F32, F16, BF16, INT8, INT4, W4INT8, W4F16, W8F16, W4BF16, W8BF16
    * - BM1690
      - F32, F16, BF16, INT8, F8E4M3, F8E5M2, W4F16, W8F16, W4BF16, W8BF16
    * - CV186X
      - F32, F16, BF16, INT8, INT4
    * - CV183X, CV182X, CV181X, CV180X
      - BF16, INT8
-
-其中， ``W4A16`` 与 ``W8A16`` 的 ``Weight-only`` 量化模式仅作用于 MatMul 运算，其余算子根据实际情况仍会进行 ``F16`` 或 ``BF16`` 量化。
+   * - CV184X
+     - BF16, INT8, W4INT8
+其中， ``W4A16`` 与 ``W8A16`` 的 ``Weight-only`` 量化模式仅作用于 MatMul 运算，其余算子根据实际情况仍会进行 ``F16`` 或 ``BF16`` 量化。 \
+``W4INT8`` 量化模式在常规 ``INT8`` 量化的基础上，仅会将 Conv 和 MatMul 两类算子的权重进一步量化为 4 bits, 其余算子仍会按照 ``INT8`` 模式进行量化。
 
 
 llm_convert.py

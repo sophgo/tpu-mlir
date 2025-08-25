@@ -362,6 +362,7 @@ class ONNX_IR_TESTER(object):
         }
         # yapf: enable
         self.cases_int4 = ["Conv2d", "MatMul", "MatMul2"]  # only bm1688
+        self.cases_w4int8 = ["Conv2d", "Conv1d", "MatMul", "MatMul2"]
         self.cases_fp8 = [  # only bm1690 # SubConst failed
             "Add", "AddWeight", "Conv2d", "Gather", "GlobalAveragePool", "Mul", "MulConst",
             "Reshape", "Sub", "Unsqueeze"
@@ -395,7 +396,7 @@ class ONNX_IR_TESTER(object):
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
         elif self.chip == "cv184x":
-            self.support_quant_modes = ["bf16", "int8"]
+            self.support_quant_modes = ["bf16", "int8", "w4int8"]
         self.mode = mode.lower()
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
@@ -539,7 +540,7 @@ class ONNX_IR_TESTER(object):
         top_mlir = "{}.mlir".format(model_name)
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
         table = None
-        if quant_mode == "int8" or quant_mode == "int4":
+        if quant_mode == "int8" or quant_mode == "int4" or quant_mode == "w4int8":
             tpu_mlir += "_asym" if isAsym else "_sym"
             table = self.table_name
         elif quant_mode == "f8e4m3" or quant_mode == "f8e5m2":
@@ -585,7 +586,7 @@ class ONNX_IR_TESTER(object):
         ref_tpu_tolerance = "0.9,0.9"
         input_data = np.load(input_npz)
         # tpu mlir inference and compare
-        if quant_mode == "int8":
+        if quant_mode == "int8" or quant_mode == "w4int8":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
         elif quant_mode == "int4":
             ref_tpu_tolerance = "0.90,0.60"
@@ -615,7 +616,7 @@ class ONNX_IR_TESTER(object):
             file_mark(cuda_npz)
             npz_compare([cuda_npz, tpu_npz, "--tolerance", "0.9999,0.9999", "-v"])
         msg = quant_mode.upper()
-        if quant_mode == "int8" or quant_mode == "int4":
+        if quant_mode == "int8" or quant_mode == "int4" or quant_mode == "w4int8":
             msg += ", Asymmetric: {}".format(isAsym)
 
         print("[Success] test {} {}".format(model_name, msg))
@@ -630,7 +631,7 @@ class ONNX_IR_TESTER(object):
                                      node_name_mapping=None):
         ref_bmodel_tolerance = "0.9,0.9"
         input_data = np.load(input_npz)
-        if quant_mode == "int8":
+        if quant_mode == "int8" or quant_mode == "w4int8":
             ref_bmodel_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
         elif quant_mode == "int4":
             ref_bmodel_tolerance = "0.90,0.60"
@@ -670,7 +671,7 @@ class ONNX_IR_TESTER(object):
         npz_compare([onnx_transformed_npz, model_npz, "--tolerance", ref_bmodel_tolerance, "-v"])
 
         msg = quant_mode.upper()
-        if quant_mode == "int8" or quant_mode == "int4":
+        if quant_mode == "int8" or quant_mode == "int4" or quant_mode == "w4int8":
             msg += ", Asymmetric: {}".format(isAsym)
 
         print("[Success] test {} {}".format(model_name, msg))
@@ -679,7 +680,7 @@ class ONNX_IR_TESTER(object):
         # simple calibration table
         if qmode == 'f8e4m3' or qmode == 'f8e5m2':
             table_name = table_name + "_" + qmode
-        elif qmode not in ['int8', 'int4']:
+        elif qmode not in ['int8', 'int4', 'w4int8']:
             return
         with open(table_name, 'w') as f:
             if qmode == 'f8e4m3' or qmode == 'f8e5m2':
@@ -837,12 +838,14 @@ class ONNX_IR_TESTER(object):
                            matmul_perchannel=matmul_perchannel)
 
     def skip_case(self, case, quant_mode):
-        if quant_mode not in ["int4", "f8e4m3", "f8e5m2"]:
+        if quant_mode not in ["int4", "f8e4m3", "f8e5m2", "w4int8"]:
             return False
         name = case.split("_")[0]
         if quant_mode == "int4" and name in self.cases_int4:
             return False
         if quant_mode in ["f8e4m3", "f8e5m2"] and name in self.cases_fp8:
+            return False
+        if quant_mode == "w4int8" and name in self.cases_w4int8:
             return False
         print(f"Skip {self.chip} case {case} {quant_mode}")
         return True
@@ -926,7 +929,7 @@ class ONNX_IR_TESTER(object):
             print("Small Success: Small ONNX outs and Small Mlir outs are equal\n")
 
         for quant_mode in quant_modes:
-            if quant_mode == "int8" or quant_mode == "int4":
+            if quant_mode == "int8" or quant_mode == "int4" or quant_mode == "w4int8":
                 tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode, False,
                                                         matmul_perchannel)
                 self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name,
@@ -964,7 +967,7 @@ class ONNX_IR_TESTER(object):
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
         for quant_mode in quant_modes:
-            if quant_mode == "int8" or quant_mode == "int4":
+            if quant_mode == "int8" or quant_mode == "int4" or quant_mode == "w4int8":
                 _, bmodel = self.bmodel_generate(model_name, quant_mode, False)
                 self.inference_and_compare_bmodel(bmodel, input_npz, onnx_outs, quant_mode,
                                                   model_name, False, node_name_mapping)
@@ -7469,7 +7472,7 @@ if __name__ == "__main__":
                         choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
-    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2'],
+    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2', 'w4int8'],
                         help="quantize modes")
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')

@@ -132,7 +132,7 @@ class DeployTool:
             "w4f16", "w4bf16", "w8f16", "w8bf16"
         ] else 0
         self.q_symmetric = args.q_symmetric
-        if self.quantize == "int8" or self.quantize == "int4":
+        if self.quantize in ("int8", "int4", 'w4int8'):
             if self.asymmetric:
                 self.prefix += "_asym"
             else:
@@ -470,7 +470,7 @@ if __name__ == '__main__':
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
                         choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16',
-                                 'W4F16', 'W4BF16', "F8E4M3", "F8E5M2", 'QDQ'],
+                                 'W4F16', 'W4BF16', 'W4INT8', "F8E4M3", "F8E5M2", 'QDQ'],
                         help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
     # ========== Quantization Options ==============

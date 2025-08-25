@@ -256,7 +256,10 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
   auto filter_data = (stride_hw_gt_15 == true) ? data_i8 : filter_i8;
   tpu::reshape_coeff_for_broadcast_channel(filter_data, filter_shape, false,
                                            isINT4Conv);
-  if (isINT4Conv) {
+  const int weight_bits =
+      (op.getWeightBits().has_value() && op.getWeightBits().value() == 4) ? 4
+                                                                          : 8;
+  if (isINT4Conv || weight_bits == 4) {
     tpu::compact_coeff_for_int4(filter_data, filter_shape);
   }
 

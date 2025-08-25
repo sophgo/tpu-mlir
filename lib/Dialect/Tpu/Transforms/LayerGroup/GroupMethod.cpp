@@ -140,8 +140,10 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
 }
 
 static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
-  if (module::isCV184X() || module::isSGTPUV8())
+  if (module::isCV184X() || module::isSGTPUV8()) {
+    /** NOTE: following condition may need to  be removed.*/
     return false;
+  }
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
              ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp, WhereOp,

@@ -81,8 +81,9 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   if (data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
     data_type = DTYPE_INT8;
-    if (gi.h_slice == H) { //  H*W is odd
-      if ((W * H & 0x1) == 1) {
+    // note: H & W are assumed to be compactedly stored together,
+    if (gi.h_slice == H) {
+      if ((W * H & 0x1) == 1) { //  H*W is odd,
         W = align_up(W * H, (int64_t)2) / 2;
         real_wslice = align_up(real_wslice * real_hslice, (int64_t)2) / 2;
         H = 1;

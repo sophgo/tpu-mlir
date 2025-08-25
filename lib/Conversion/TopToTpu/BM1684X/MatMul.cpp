@@ -43,7 +43,6 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       use_perchannel = per_channel_quant.getValue();
     }
   }
-
   if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = module::getNumElements(op.getBias());
     if (bias_size > p.N)
@@ -115,6 +114,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       LoweringF32(rewriter, op);
       return;
     }
+    float fqmax;
     if (filterOp.getScale().has_value()) {
       auto weight_scale_v = module::getF64Array(filterOp.getScale().value());
       if (use_perchannel) {
@@ -134,7 +134,13 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                         ? tmp
                         : std::abs(filter_f32->data()[n + k * p.N]);
             }
-            w_scale[n] = tmp / 127.0;
+            if (op.getWeightBits().has_value() &&
+                op.getWeightBits().value() == 4) {
+              fqmax = 7.0;
+            } else {
+              fqmax = 127.0;
+            }
+            w_scale[n] = tmp / fqmax;
           }
         } else {
           for (size_t n = 0; n < p.N; n++) {
@@ -144,11 +150,22 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                         ? tmp
                         : std::abs(filter_f32->data()[k + n * p.K]);
             }
-            w_scale[n] = tmp / 127.0;
+            if (op.getWeightBits().has_value() &&
+                op.getWeightBits().value() == 4) {
+              fqmax = 7.0;
+            } else {
+              fqmax = 127.0;
+            }
+            w_scale[n] = tmp / fqmax;
           }
         }
       } else {
-        w_scale[0] = findMaxabs(filter_f32->data(), filter_f32->size()) / 127.0;
+        if (op.getWeightBits().has_value() && op.getWeightBits().value() == 4) {
+          fqmax = 7.0;
+        } else {
+          fqmax = 127.0;
+        }
+        w_scale[0] = findMaxabs(filter_f32->data(), filter_f32->size()) / fqmax;
       }
     }
 

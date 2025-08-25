@@ -397,6 +397,7 @@ typedef struct conv_common_spec {
   int32_t bias_sign; // For merged coeff
   int32_t use_3ic_optimize;
   int32_t weight_is_coeff;
+  int32_t weight_bits;
   nnvlc_common_spec_t nnvlc_param;
 } conv_common_spec_t;
 

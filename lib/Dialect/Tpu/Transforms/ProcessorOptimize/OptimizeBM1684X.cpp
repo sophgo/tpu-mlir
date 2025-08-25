@@ -4794,7 +4794,7 @@ public:
     Value result;
 
     if (mm_ctx_tiles > 1 && (multipliers->size() > 1 || rshifts->size() > 1)) {
-      llvm::errs() << "not support yet." << "\n";
+      // llvm::errs() << "not support yet." << "\n";
       return failure();
     }
     for (auto i = 0; i < input_tiles.size(); i++) {
@@ -4935,7 +4935,7 @@ public:
     auto rshifts = module::getI64Array(matMulOp.getRshifts());
     auto multipliers = module::getI64Array(matMulOp.getMultipliers());
     if (multipliers->size() > 1 || rshifts->size() > 1) {
-      llvm::errs() << "not support yet." << "\n";
+      // llvm::errs() << "not support yet." << "\n";
       return failure();
     }
     int tile_len = -1;

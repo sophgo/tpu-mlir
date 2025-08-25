@@ -471,7 +471,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Specify whether to fuse preprocessing into the model. If this parameter is specified, the model input will be of type uint8, and the resized original image can be directly input
    * - calibration_table
      - N
-     - The quantization table path. Required when it is INT8/F8E4M3 quantization
+     - The quantization table path. Required when it is INT8/F8E4M3/W4INT8 quantization
    * - high_precision
      - N
      - Some ops will force to be float32
@@ -591,15 +591,18 @@ The following table shows the correspondence between different processors and th
    * - BM1684X
      - F32, F16, BF16, INT8, W4F16, W8F16, W4BF16, W8BF16
    * - BM1688
-     - F32, F16, BF16, INT8, INT4, W4F16, W8F16, W4BF16, W8BF16
+     - F32, F16, BF16, INT8, INT4, W4INT8, W4F16, W8F16, W4BF16, W8BF16
    * - BM1690
      - F32, F16, BF16, INT8, F8E4M3, F8E5M2, W4F16, W8F16, W4BF16, W8BF16
    * - CV186X
      - F32, F16, BF16, INT8, INT4
    * - CV183X, CV182X, CV181X, CV180X
      - BF16, INT8
+   * - CV184X
+     - BF16, INT8, W4INT8
 
-The ``Weight-only`` quantization mode of ``W4A16`` and ``W8A16`` only applies to the MatMul operation, and other operators will still perform ``F16`` or ``BF16`` quantization.
+The ``Weight-only`` quantization modes ``W4A16`` and ``W8A16`` only apply to MatMul operations, while other operators will still be quantized using ``F16`` or ``BF16``. \
+The ``W4INT8`` quantization mode extends regular ``INT8`` quantization by further compressing the weights of Conv and MatMul operators to 4 bits, while keeping other operators in ``INT8`` quantization mode.
 
 
 llm_convert.py

@@ -1163,6 +1163,77 @@ public:
   bool shouldPrint(top::MatMulOp op) const override { return false; }
 };
 
+// prepare for W4INT8 MatMul
+struct W4INT8ConvPreparePattern : public OpRewriterPatternEx<top::ConvOp> {
+public:
+  W4INT8ConvPreparePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::ConvOp>(context, "W4INT8ConvPreparePattern") {}
+
+  LogicalResult matchAndRewriteImpl(top::ConvOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto qmode = getOpQuantMode(op);
+    if (!module::isWeight(op.getFilter())) {
+      return failure();
+    }
+    if (qmode != module::Mode::W4INT8) {
+      return failure();
+    }
+    if (op.getWeightBits().has_value() && op.getWeightBits().value() == 4) {
+      return failure();
+    }
+    auto ic = op.getInput().getType().cast<RankedTensorType>().getShape()[1];
+    auto oc = op.getOutput().getType().cast<RankedTensorType>().getShape()[1];
+    auto groups = op.getGroup();
+    if (oc == ic && oc == groups && groups > 1) {
+      llvm::outs()
+          << "\033[31mw4a8 for depthwise conv is not support yet.\033[0m\n";
+      op.dump();
+      return failure();
+    }
+    auto kernel_shape = module::getI64Array(op.getKernelShape());
+    if (kernel_shape->size() > 2) {
+      llvm::outs() << "\033[31mw4a8 for conv3d is not support yet.\033[0m\n";
+      op.dump();
+      return failure();
+    }
+    if (module::getCoreNum() > 1) {
+      llvm::outs() << "\033[31w4a8 not support for multi-core usage.\033[0m\n";
+      return failure();
+    }
+    op.setWeightBits(4);
+    return success();
+  }
+  bool shouldPrint(top::ConvOp op) const override { return false; }
+};
+
+struct W4INT8MatMulPreparePattern : public OpRewriterPatternEx<top::MatMulOp> {
+public:
+  W4INT8MatMulPreparePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::MatMulOp>(context,
+                                           "W4INT8MatMulPreparePattern") {}
+
+  LogicalResult matchAndRewriteImpl(top::MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto qmode = getOpQuantMode(op);
+    if (!module::isWeight(op.getRight())) {
+      return failure();
+    }
+    if (qmode != module::Mode::W4INT8) {
+      return failure();
+    }
+    if (op.getWeightBits().has_value() && op.getWeightBits().value() == 4) {
+      return failure();
+    }
+    if (module::getCoreNum() > 1) {
+      llvm::outs() << "\033[31w4a8 not support for multi-core usage.\033[0m\n";
+      return failure();
+    }
+    op.setWeightBits(4);
+    return success();
+  }
+  bool shouldPrint(top::MatMulOp op) const override { return false; }
+};
+
 // cast(u8->fp32) + active -> lut(u8->fp32)
 // cast(u8->fp32) + active(fp32) + cast(fp32->fp16) -> lut(u8->fp16)
 struct CastActivePattern : public OpRewriterPatternEx<tpu::ActiveOp> {
@@ -1394,7 +1465,8 @@ void ConvertTopToTpu::runOnOperation() {
   if ((module::isBM1684X() || module::isBM1688() || module::isCV184X()) &&
       !LoweringConfig::isQuantized &&
       (module::getMode() == module::Mode::INT8 ||
-       module::getMode() == module::Mode::UINT8)) {
+       module::getMode() == module::Mode::UINT8 ||
+       module::getMode() == module::Mode::W4INT8)) {
     // handle matmul perchannel setting
     if (matmulPerchannel) {
       mainFunc_.walk([&](Operation *op) {
@@ -1539,6 +1611,8 @@ void ConvertTopToTpu::runOnOperation() {
   // process W4A16 MatMul
   if (!module::isState(module::State::TOP_QUANTIZED)) {
     module::applyPatternOnce<W4A16MatMulPreparePattern>(module_);
+    module::applyPatternOnce<W4INT8ConvPreparePattern>(module_);
+    module::applyPatternOnce<W4INT8MatMulPreparePattern>(module_);
   }
 
   // kv_cache

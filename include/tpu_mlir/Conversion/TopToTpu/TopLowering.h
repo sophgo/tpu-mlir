@@ -302,6 +302,7 @@ protected:
     }
     switch (real_mode) {
     case module::Mode::INT8:
+    case module::Mode::W4INT8:
       if (auto conv = dyn_cast<top::ConvOp>(op)) {
         conv.setDoWinograd(LoweringConfig::doWinograd);
       }

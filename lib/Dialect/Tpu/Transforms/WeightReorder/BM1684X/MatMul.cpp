@@ -51,11 +51,13 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewriteImpl(
   //   return failure();
   auto p = op.parseParam();
 
-  // bias merge input zp
+  const bool is_w4int8 =
+      (op.getWeightBits().has_value() && op.getWeightBits().value() == 4);
+  // for INT4MM
   if (p.input_zp == 0) {
     auto in_stype = module::getStorageType(op.getInput());
     bool isINT4MM = in_stype.isInteger(4);
-    if (isINT4MM) {
+    if (isINT4MM || is_w4int8) {
       // filter
       auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
 
@@ -80,6 +82,7 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewriteImpl(
       return failure();
     }
   }
+  // bias merge input zp
   i32_array_t bias_quant;
   if (module::isWeight(op.getBias())) {
     bias_quant =

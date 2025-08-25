@@ -220,10 +220,14 @@ compact_coeff_for_int4(std::shared_ptr<std::vector<int8_t>> &weight_nIC,
     shape.back() = new_w;
     weight_nIC = filter_new;
   } else {
-    // MMII shape : ( K, N) --> (K, N/2) ,  for (M,K) *(K,N)
-    assert(shape.size() == 2);
-    K = shape[0];
-    N = shape[1];
+    // MMII shape :
+    // (1) H_dim_batch = 1 : (K, N)  --> (K, N/2)
+    // (2) H_dim_batch > 1:  (B1, K, B2, N) --> (B1, K, B2, N/2)
+    assert((shape.size() == 2 || shape.size() == 4) &&
+           "only deveploed for 2d/4d weight");
+    assert((shape.size() != 4 || shape[3] % 2 == 0) && "W-dim is odd");
+    K = shape.size() == 2 ? shape[0] : shape[0] * shape[1] * shape[2];
+    N = shape[shape.size() - 1];
     auto new_n = align_up(N, (int64_t)2) / 2;
     auto filter_new = std::make_shared<std::vector<int8_t>>(K * new_n, 0);
     int col_size = align_up(N, (int64_t)2);
@@ -239,8 +243,6 @@ compact_coeff_for_int4(std::shared_ptr<std::vector<int8_t>> &weight_nIC,
         }
       }
     }
-    shape.assign(shape.size(), 1);
-    shape[0] = K;
     shape.back() = N;
     weight_nIC = filter_new;
   }

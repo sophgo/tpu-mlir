@@ -1238,10 +1238,12 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v, tensor_info_t &tensor_info,
   if (data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
     data_type = DTYPE_INT8;
-    W >>= 1;
+    W = (H * W + 1) >> 1;
+    H = 1;
   }
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
+  assert(fmt_bytes > 0);
   auto g_addr = module::getAddress(v);
   auto l_addr = 0;
   if (module::isBM1684Family() && fmt_bytes == 1 && use_3ic) {

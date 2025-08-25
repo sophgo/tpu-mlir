@@ -13,8 +13,8 @@
 
 using namespace tpu_mlir::backend;
 
-#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a)-1) / (b) + 1)
-#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
+#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
+#define ALIGN(x, a) ((((x) + (a) - 1) / (a)) * (a))
 
 static int64_t sd_gt_15_buffer(const conv_attr_t &p, double dtype_len,
                                int64_t in_cslice, int64_t in_hslice,
@@ -72,7 +72,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
     BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
   }
-  conv_global_spec_t spec;
+  conv_global_spec_t spec = {0};
   memset(&spec, 0, sizeof(spec));
   auto &common = spec.common;
   common.input_c = attr.ic;
@@ -98,6 +98,9 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
+  if (getWeightBits().has_value()) {
+    common.weight_bits = getWeightBits().value();
+  }
   if (supportMultiCore(*this)) {
     spec.using_multicore = true;
   } else {
@@ -168,6 +171,20 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int use_3ic_optimize = getUse_3icOptimize();
   int64_t IC_PARALLEL = BM168x::ic_num(1);
   bool is_depthwise = p.groups == p.ic && p.groups == p.oc && p.groups > 1;
+
+  if (getWeightBits().has_value() && getWeightBits().value() == 4) {
+    // unpack_weight to 8bits.
+    assert(!p.is_dw && "not support now.");
+    // for 3ic kernel.
+    int kh_ext = use_3ic_optimize & 0x1 ? 1 : p.kh;
+    int kw_ext = use_3ic_optimize & 0x2 ? 1 : p.kw;
+    int ic_ext = p.ic * (use_3ic_optimize & 0x1 ? p.kh : 1) *
+                 (use_3ic_optimize & 0x2 ? p.kw : 1);
+    sz += oc_per_npu *
+          align_up(ic_ext / p.groups, BM168x::ic_num(in_type_len)) * kh_ext *
+          kw_ext;
+  }
+
   if ((module::isBM1688() || module::isCV184X() || module::isSGTPUV8()) &&
       getCoeffMerged()) {
     if (module::getStorageType(getInput()).isIntOrIndex() && p.kernel_zp != 0)
@@ -199,7 +216,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
       return sz;
     }
     if (use_3ic_optimize == 0)
-      return 0;
+      return sz;
   }
   if (p.sh > 15 || p.sw > 15 || p.dh > 15 || p.dw > 15) {
     sz += sd_gt_15_buffer(p, in_type_len, in_cslice, in_cslice, in_dslice,
@@ -217,8 +234,8 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   }
 
   if (p.is_dw) {
-    sz += int32_size;
-    sz += oc_per_npu * p.kh * p.kw;
+    sz += int32_size;               // conv_kzp_buffer_addr
+    sz += oc_per_npu * p.kh * p.kw; // kzp_is_const
   }
 
   int use_3ic = (use_3ic_optimize & 0x3);
@@ -318,7 +335,9 @@ void tpu::Conv2DOp::codegen_local_bm1684x_kernel(
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
-
+  if (getWeightBits().has_value()) {
+    common.weight_bits = getWeightBits().value();
+  }
   p.spec.unused_ht_for_input = 0;
   p.spec.unused_hb_for_input = 0;
   p.spec.unused_wl_for_input = 0;
@@ -378,7 +397,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x_kernel(
 int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(conv_local_param_t);
-  conv_local_param_t param;
+  conv_local_param_t param = {0};
   memset(&param, 0, sizeof(param));
   auto attr = parseParam();
   auto op = getOperation();
@@ -415,6 +434,9 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
+  if (getWeightBits().has_value()) {
+    common.weight_bits = getWeightBits().value();
+  }
   common.ipad_value = 0;
   if (module::getStorageType(getInput()).isIntOrIndex()) {
     if (module::isUniformQuantized(getInput())) {
@@ -448,7 +470,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
 int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(conv_global_spec_t);
-  conv_global_spec_t spec;
+  conv_global_spec_t spec = {0};
   memset(&spec, 0, sizeof(spec));
   auto attr = parseParam();
   auto &common = spec.common;
@@ -475,6 +497,9 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
+  if (getWeightBits().has_value()) {
+    common.weight_bits = getWeightBits().value();
+  }
   common.ipad_value = 0;
   if (module::getStorageType(getInput()).isIntOrIndex()) {
     if (module::isUniformQuantized(getInput())) {

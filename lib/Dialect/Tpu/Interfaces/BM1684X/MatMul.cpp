@@ -160,6 +160,11 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   }
 
   int64_t buffer_size = 0;
+  if (getWeightBits().has_value() && getWeightBits().value() == 4) {
+    buffer_size += ceiling_func(p.K, BM168x::NPU_NUM) *
+                   align_up(p.N, BM168x::eu_num(1)) *
+                   (p.hdim_is_batch ? oshape[2] : 1);
+  }
   // loop for Y_row to decrase local memory buffer
   auto in_type = BM168x::getDataType(getInput());
   auto out_type = BM168x::getDataType(getOutput());

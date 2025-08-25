@@ -335,6 +335,9 @@ TensorFile::readTensor(llvm::StringRef name, RankedTensorType &type,
                                       type.getDimSize(1) *
                                       ((type.getDimSize(2) * type.getDimSize(3) + 1)/2); */
         count = (count + 1) / 2;
+      } else if (dims == 3) {
+        assert(type.getDimSize(0) == 1 && "not support 3d tensor.");
+        count = type.getDimSize(1) * ((type.getDimSize(2) + 1) / 2);
       } else {
         assert(0);
       }

@@ -720,6 +720,15 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
                         stmode_map.at(stmode).second * c * h * w;
         /// consider int4 storage
         bytes = ceiling_func(bytes, 8l);
+        /// for safety of int4 MatMul Weight.
+        if (stmode_map.at(stmode).second == 4 &&
+            module::IsRightMat(out_value)) {
+          int64_t n2, c2, h2, w2;
+          module::getNCHW(out_value, n2, c2, h2, w2, /*left_align=*/false);
+          int64_t bytes_2 = ceiling_func(n2, stmode_map.at(stmode).first) * c2 * h2
+                          * ceiling_func(w2 * stmode_map.at(stmode).second, 8l);
+          bytes = std::max(bytes, bytes_2);
+        }
 
         DEBUG_WITH_TYPE("gmem_allocator", {
           llvm::dbgs() << "; action = assignGaddr" << "; step = weight_static"

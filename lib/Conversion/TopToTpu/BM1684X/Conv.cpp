@@ -89,6 +89,9 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   float times = 1;
   bool all_i8 = to_all_int8(*filter_f32, times, fsign);
   float fqmax = fsign ? 127 : 255;
+  if (op.getWeightBits().has_value() && op.getWeightBits().value() == 4) {
+    fqmax = fsign ? 7 : 15;
+  }
   f64_array_t weight_scale_v;
   if (filterOp.getScale().has_value()) {
     weight_scale_v = module::getF64Array(filterOp.getScale().value());
