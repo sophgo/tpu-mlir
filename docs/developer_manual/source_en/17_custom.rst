@@ -101,7 +101,7 @@ Add TpuLang Custom Operator
 
     bool local_gen_support_{op_name}(void* param, int param_size);
 
-  Not provided this plugin, the default is that custom operator corresponding to {op_name} is not supported to group with other operators. Otherwise, one should implement the backend apis like `api_xxx_local` and `api_xxx_local_bfsz`(optional) in cases when this plugin function returns true.
+  Not provided this plugin, the default is that custom operator corresponding to {op_name} is not supported to group with other operators. Otherwise, one should implement the backend apis like `api_xxx_local` and `api_xxx_local_bfsz` (optional) in cases when this plugin function returns true.
 
   e. [Optional] Try to split `axis` when group with other operators. The form of plugin function is as follows:
 
@@ -341,6 +341,7 @@ Add TpuLang Custom Operator
     run_custom_unittest {processor_arch}
 
 9. On-Processor test
+
   When at least a dynamic subnet exists in the network, the firmware containing in bmodel might be not useful since shell command `bmrt_test` does not work. In this case, one might need the following shell command to replace the old firmware with new one:
 
   .. code-block:: shell
@@ -700,7 +701,7 @@ This subsection provides application examples of custom operators absadd and cei
   The implementation of absadd and ceiladd is similar to the swapchannel operator and can be found in  $TPUC_ROOT/customlayer/include and $TPUC_ROOT/customlayer/src.
 
 Custom AP(Application Processor) Operator Adding Process
--------------------------------------
+--------------------------------------------------------------------------
 
 TpuLang Custom AP Operator Adding
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -728,8 +729,7 @@ TpuLang Custom AP Operator Adding
 
     REGISTER_APLAYER_CLASS(AP_CUSTOM, {op_name});
 
-  b. And define the member AP_CUSTOM_{OP_NAME} in the enumeration type `AP_CUSTOM_LAYER_TYPE_T`
-    in ./customlayer/include/customap_common.h, where OP_NAME is uppercase.
+  b. And define the member AP_CUSTOM_{OP_NAME} in the enumeration type `AP_CUSTOM_LAYER_TYPE_T` in ./customlayer/include/customap_common.h, where OP_NAME is uppercase.
 
   .. code-block:: c++
 
@@ -761,25 +761,20 @@ TpuLang Custom AP Operator Adding
   different custom operators under different parameters, and this requires adding some patches.
   The following patch functions are currently supported (defined in the ./plugin folder):
 
-  a. [Required] You need to implement the operator parameter parsing function yourself,
-    which is used to obtain the key parameters required by the operator, and override the
-    get_param() method of the custom layer:
+  a. [Required] You need to implement the operator parameter parsing function yourself, which is used to obtain the key parameters required by the operator, and override the get_param() method of the custom layer:
 
     .. code-block:: c++
 
       int ap_mylayer::get_param(void *param, int param_size);
 
 
-  b. [Required] Inference function, i.e., the C++ implementation of the operator. Override
-    the custom layer's forward() method:
+  b. [Required] Inference function, i.e., the C++ implementation of the operator. Override the custom layer's forward() method:
 
     .. code-block:: c++
 
       int ap_mylayer::forward(void *raw_param, int param_size);
 
-  c. [Optional] Shape inference function. This patch function is used for compiler shape
-    inference. If not implemented, by default, there is only one input and one output, and
-    the output shape is the same as the input shape. The patch function is as follows:
+  c. [Optional] Shape inference function. This patch function is used for compiler shape inference. If not implemented, by default, there is only one input and one output, and the output shape is the same as the input shape. The patch function is as follows:
 
     .. code-block:: c++
 
@@ -868,7 +863,7 @@ TpuLang Custom AP Operator Adding
   is compatible with the glibc version in the bmodel runtime environment.
 
 Custom AP(Application Processor) Operator Example
-----------------------------
+--------------------------------------------------------
 
 This section assumes that the tpu-mlir release package has been loaded.
 
@@ -940,8 +935,7 @@ through the TpuLang interface.
 
     REGISTER_APLAYER_CLASS(AP_CUSTOM_TOPK, ap_topk);
 
-  b. And define the member AP_CUSTOM_TOPK in the enumeration type `AP_CUSTOM_LAYER_TYPE_T`
-    in ./customlayer/include/customap_common.h.
+  b. And define the member AP_CUSTOM_TOPK in the enumeration type `AP_CUSTOM_LAYER_TYPE_T` in ./customlayer/include/customap_common.h.
 
   .. code-block:: c++
 

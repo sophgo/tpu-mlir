@@ -174,7 +174,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 上述教程介绍了TPU-MLIR编译CV18xx系列的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的处理器名称换成实际的CV18xx名称即可。
 
-.. _merge weight:
+.. _merge weight cv18xx:
 
 合并cvimodel模型文件
 --------------------------
@@ -704,7 +704,7 @@ TPU sdk准备:
 **其他samples运行命令参照EVB运行命令**
 
 在开发板上进行模型测试及验证工作
-----------------------------
+--------------------------------------------------------
 在板子上可以通过cvitek_tpu_sdk/bin/下的model_runner程序进行模型验证；运行model_runner前需要将cvitek_tpu_sdk放到板子上，然后：
 
 .. code-block:: shell
@@ -832,7 +832,7 @@ FAQ
 
 3. 是否支持动态shape?
 
-  cvimodel不支持动态shape。如果是固定的几种shape可以依据输入的batch_size以及不同的h和w分别生成独立的cvimodel文件,通过共享权重的形式合并为一个cvimodel。详见: :ref:`合并cvimodel模型文件 <merge weight>`
+  cvimodel不支持动态shape。如果是固定的几种shape可以依据输入的batch_size以及不同的h和w分别生成独立的cvimodel文件,通过共享权重的形式合并为一个cvimodel。详见: :ref:`合并cvimodel模型文件 <merge weight cv18xx>`
 
 模型评估常见问题
 ~~~~~~~~~~~~~~~~~~~~

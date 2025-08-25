@@ -172,7 +172,7 @@ The comparison of the four images is shown in :numref:`yolov5s_result1`, due to 
 
 The above tutorial introduces the process of TPU-MLIR deploying the ONNX model to the CV18xx series processors. For the conversion process of the Caffe model, please refer to the chapter "Compiling the Caffe Model". You only need to replace the processors name with the specific CV18xx processors.
 
-.. _merge weight:
+.. _merge weight cv18xx:
 
 Merge cvimodel Files
 ---------------------------
@@ -777,7 +777,7 @@ Model transformation FAQ
   3.3 Is dynamic shape supported?
 
     Cvimodel does not support dynamic shape. If several shapes are fixed, independent cvimodel files can be generated through the form of shared weights.
-    See :ref:`Merge cvimodel Files <merge weight>` for details.
+    See :ref:`Merge cvimodel Files <merge weight cv18xx>` for details.
 
 Model performance evaluation FAQ
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
