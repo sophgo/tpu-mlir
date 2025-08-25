@@ -263,6 +263,11 @@ static void pooling_forward_slice(uint32_t layer_id, const pooling_t *all,
     param.ins_val = 0;
     param.ins_fp = CV18xx::convert_fp32_to_bf16(0.0);
 
+    if (param.stride_h == ifmap->shape.h && param.stride_w == ifmap->shape.w) {
+      param.stride_h = 1;
+      param.stride_w = 1;
+    }
+
     LLVM_DEBUG(llvm::errs() << llvm::format(
                    "  tiu_bf16_avg_pooling\n"
                    "    ifmap shape (%d, %d, %d, %d)\n"
