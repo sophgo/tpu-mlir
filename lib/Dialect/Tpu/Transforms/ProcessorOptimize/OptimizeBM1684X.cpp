@@ -1145,7 +1145,9 @@ public:
     if (nextOp->hasOneUse() == false) {
       return failure();
     }
-
+    if (nextOp->getNumResults() != 1) {
+      return failure();
+    }
     auto next_nextOp = *nextOp->getResult(0).getUsers().begin();
     auto matmul_op = dyn_cast_or_null<tpu::MatMulOp>(next_nextOp);
     if (matmul_op) {
