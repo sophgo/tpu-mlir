@@ -430,7 +430,7 @@ class LlmConverter(BaseConverter):
         def gen_lm_head():
             out_shape = [[1, self.vocab_size]]
             if self.lmhead_with_topk:
-                out_shape = [[1, 1]]
+                out_shape = [[1, self.vocab_size]]
             lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
                                        out_shape,
                                        "lm_head",
@@ -465,14 +465,20 @@ class LlmConverter(BaseConverter):
                                           loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
                                           ip=lmhead_mlir.insert_point).output
             if self.lmhead_with_topk:
-                topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
-                                     lmhead_op,
-                                     axis=1,
-                                     K=1,
-                                     loc=self.get_loc(["token_value", "token_id"], lmhead_mlir),
-                                     ip=lmhead_mlir.insert_point)
-                # topk_op.values, topk_op.indices
-                lmhead_mlir.create_return_op([topk_op.indices])
+                # topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
+                #                      lmhead_op,
+                #                      axis=1,
+                #                      K=1,
+                #                      loc=self.get_loc(["token_value", "token_id"], lmhead_mlir),
+                #                      ip=lmhead_mlir.insert_point)
+                # # topk_op.values, topk_op.indices
+                # lmhead_mlir.create_return_op([topk_op.indices])
+                new_op = top.SoftmaxOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                       lmhead_op,
+                                       axis=1,
+                                       loc=self.get_loc(lmhead + ".softmax", lmhead_mlir),
+                                       ip=lmhead_mlir.insert_point).output
+                lmhead_mlir.create_return_op([new_op])
             else:
                 lmhead_mlir.create_return_op([lmhead_op])
 
