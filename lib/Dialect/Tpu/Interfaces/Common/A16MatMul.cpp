@@ -12,37 +12,10 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::A16MatMulOp::init(InferenceParameter &p) {
-  // (MxK), (KxN) matmul
-  if (getWeightBits() == 8) {
-    auto matmul = new MatMul();
-    auto in_shape = getInput().getType().cast<RankedTensorType>().getShape();
-    int64_t M = 1;
-    for (int i = 0; i < in_shape.size() - 1; i++) {
-      M *= in_shape[i];
-    }
-    auto weight_value = getWeight();
-    auto weight_shape =
-        weight_value.getType().cast<RankedTensorType>().getShape();
-
-    auto w_transpose = getWTranspose();
-    int K = w_transpose ? weight_shape[1] : weight_shape[0];
-    int N = w_transpose ? weight_shape[0] : weight_shape[1];
-
-    matmul->setup(p.inputs[0], p.inputs[1], p.inputs[4], p.outputs[0], 1, 1, M,
-                  K, N, false, -1.0, 0, 0, w_transpose, false, false, false);
-    p.handle = (void *)matmul;
-  }
   return success();
 }
 
-void tpu::A16MatMulOp::deinit(InferenceParameter &p) {
-  if (p.handle != nullptr) {
-    auto matmul = (MatMul *)p.handle;
-    delete matmul;
-    p.handle = nullptr;
-  }
-  return;
-}
+void tpu::A16MatMulOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
   // dequant weight back to f16/ bf16
@@ -53,17 +26,18 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
       weight_value.getType().cast<RankedTensorType>().getShape();
   int K = weight_shape[0];
   int N = weight_shape[1];
+  auto in_shape = getInput().getType().cast<RankedTensorType>().getShape();
+  int64_t M = 1;
+  for (int i = 0; i < in_shape.size() - 1; i++) {
+    M *= in_shape[i];
+  }
   auto weight = p.inputs[1];
   int q_group_size =
       getQGroupSize() ? getQGroupSize() : module::getQuantGroupSize();
+  auto w_transpose = getWTranspose();
   if (getWeightBits() == 4) {
-    auto w_transpose = getWTranspose();
     N *= 2;
-    auto in_shape = getInput().getType().cast<RankedTensorType>().getShape();
-    int64_t M = 1;
-    for (int i = 0; i < in_shape.size() - 1; i++) {
-      M *= in_shape[i];
-    }
+
     auto new_weight = std::vector<float>(K * N, 0);
     if (!q_group_size) {
       for (int i = 0; i < K; i++) {
@@ -99,13 +73,13 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     matmul->run();
     delete matmul;
   } else {
+    std::swap(K, N);
+    auto new_weight = std::vector<float>(N * K, 0);
     if (!q_group_size) {
-      for (int i = 0; i < K; i++) {
-        auto offset = i * N;
-        for (int j = 0; j < N; j++) {
-          weight[offset + j] = module::isSG2380()
-                                   ? ((weight[offset + j]) * scale[i] - zp[i])
-                                   : ((weight[offset + j]) * scale[i]);
+      for (int i = 0; i < N; i++) {
+        auto offset = i * K;
+        for (int j = 0; j < K; j++) {
+          new_weight[offset + j] = (weight[offset + j] - zp[i]) * scale[i];
         }
       }
     } else {
@@ -113,15 +87,20 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         int quant_idx = i / q_group_size;
         auto zp_i = zp[quant_idx];
         auto scale_i = scale[quant_idx];
-        weight[i] = (weight[i] - zp_i) * scale_i;
+        new_weight[i] = (weight[i] - zp_i) * scale_i;
       }
     }
-    // hand over the rest work to onednn matmul
-    if (p.handle == nullptr) {
-      return failure();
+    if (module::isF16Modes()) {
+      F16(new_weight.data(), new_weight.data(), N * K);
+    } else {
+      BF16(new_weight.data(), new_weight.data(), N * K);
     }
-    auto matmul = (MatMul *)p.handle;
+    auto matmul = new MatMul();
+    matmul->setup(p.inputs[0], new_weight.data(), p.inputs[4], p.outputs[0], 1,
+                  1, M, K, N, false, -1.0, 0, 0, w_transpose, false, false,
+                  false);
     matmul->run();
+    delete matmul;
   }
 
   auto num_elem = module::getNumElements(getOutput());

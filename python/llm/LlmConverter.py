@@ -646,7 +646,6 @@ class LlmConverter(BaseConverter):
                weight_shape: list,
                out_shape: list,
                force_bias: bool = False):
-        weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
         if self.model.is_exist(proj + ".bias") or force_bias:
             bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
