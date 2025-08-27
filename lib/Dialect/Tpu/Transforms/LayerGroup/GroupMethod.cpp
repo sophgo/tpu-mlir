@@ -75,8 +75,8 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
   }
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
-             SoftmaxOp, RMSNormOp, ReshapeOp, LutOp, MulOp, BinaryConstShiftOp,
-             BinaryShiftOp>(op)) {
+             SoftmaxOp, RMSNormOp, ReshapeOp, LutOp, MulOp, BinaryShiftOp>(
+            op)) {
       return false;
     }
     if (isa<ReshapeOp>(op)) {
