@@ -300,6 +300,13 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             self._failed_tensor = IncNpzFile(file)
         return self._failed_tensor
 
+    def is_multi_core(self, lino: int):
+        locs = [
+            self.index.final_mlir.loc[vv.value_view.loc_index] for vv in self.index_record[lino]
+        ]
+        core_ids = set([loc.core_id for loc in locs])
+        return len(core_ids) > 1
+
     def do_dump_names(self, arg=None):
         """
         dump failed comparison data into npz file
@@ -344,20 +351,49 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         return " ".join(summary_lis)
 
     def table_summary(self):
-        summary: List[Tuple[int, List[str], List[str]]] = []
+        # Group reports by line number
+        line_groups = {}
         for loc_index, v in self.reports.items():
             lino = self.index.final_mlir.loc[loc_index].file_line
 
-            loc_summary = ([], [])
+            # Process each report value
+            operand_flags = []
+            result_flags = []
             for vv in v:
                 if vv.value_view.is_operand:
-                    loc_summary[0].append(vv.state.flag)
+                    operand_flags.append(vv.state.flag)
                 else:
-                    loc_summary[1].append(vv.state.flag)
+                    result_flags.append(vv.state.flag)
 
-            loc_summary = f"({lino}{''.join(loc_summary[0])}|{''.join(loc_summary[1])})"
-            summary.append(loc_summary)
-        return " ".join(summary)
+            # Group by line number
+            if lino not in line_groups:
+                line_groups[lino] = []
+            line_groups[lino].append((operand_flags, result_flags))
+
+        # Build final summary
+        summary_parts = []
+        for lino, flag_groups in line_groups.items():
+            if self.is_multi_core(lino):  # Multi-core operator
+                # Create inner parts for multi-core operator
+                inner_parts = []
+                for core_idx, (operand_flags, result_flags) in enumerate(flag_groups):
+                    if core_idx < len(flag_groups) - 1:
+                        # multi-core op with multi results, show '?' for failed results in intermediate cores
+                        result_flags = [
+                            flag.replace('[red]x[/]', '[yellow]?[/]') for flag in result_flags
+                        ]
+
+                    inner_part = f"({''.join(operand_flags)}|{''.join(result_flags)})"
+                    inner_parts.append(inner_part)
+
+                multi_core_summary = f"{{{lino}{''.join(inner_parts)}}}"
+                summary_parts.append(multi_core_summary)
+            else:  # Single-core operator
+                operand_flags, result_flags = flag_groups[0]
+                single_core_summary = f"({lino}{''.join(operand_flags)}|{''.join(result_flags)})"
+                summary_parts.append(single_core_summary)
+
+        return " ".join(summary_parts)
 
     def failed_summary(self):
         summary: List[Tuple[int, List[str], List[str]]] = []

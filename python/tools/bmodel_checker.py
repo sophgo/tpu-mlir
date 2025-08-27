@@ -113,6 +113,7 @@ def main(argv=None):
     else:
         tdb.do_run("")
     tdb.message("(<file-line>:\[operands]|\[results])")
+    tdb.message("{<file-line>:\[operands]|\[results]...\[operands]|\[results]} for multicore op")
     plugin.do_summary("table")
     if args.dump_dataframe:
         plugin.dump_dataframe()
