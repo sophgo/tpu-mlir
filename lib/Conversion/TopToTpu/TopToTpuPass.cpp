@@ -2198,7 +2198,7 @@ void ConvertTopToTpu::init_qtable() {
           mode = "BF16";
       }
       if (module::isBM1684Family()) {
-        if (src_mode == "F16" || src_mode == "BF16")
+        if (src_mode != "INT8")
           mode = "F32";
       }
       if ((src_mode == "W8F16" || src_mode == "W4F16") &&
