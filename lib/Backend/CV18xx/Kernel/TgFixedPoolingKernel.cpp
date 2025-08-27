@@ -313,6 +313,13 @@ void TgInt8PoolingKernel::compute(int32_t step_idx, int32_t flip) {
     param.layer_id = layer_id;
     param.ins_val = 0;
     param.ins_fp = CV18xx::convert_fp32_to_bf16(0.0);
+
+    if (param.stride_h == param.ifmap->shape.h &&
+        param.stride_w == param.ifmap->shape.w) {
+      param.stride_h = 1;
+      param.stride_w = 1;
+    }
+
     CV18xx::tiu_average_pooling(&param);
   }
 }
