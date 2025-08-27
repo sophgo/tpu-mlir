@@ -18,6 +18,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ```bash
 
 #bm1684x sha256: 3ad6338bb749233ac1545763e64814cf110d372c
+# groupnorm fix: + 63f52fb9f9d2bd328509bc5151047b3d9d218749
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -29,6 +30,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
 #bm1688 sha256: 3ad6338bb749233ac1545763e64814cf110d372c
+# groupnorm fix: + 63f52fb9f9d2bd328509bc5151047b3d9d218749
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
