@@ -1861,7 +1861,8 @@ void GroupMethod::get_final_groups(
           llvm_unreachable("group_cost is not valid");
         }
       } else {
-        if (module::isBM1684XFamily() && runmode_ == RunMode::TPU_STATIC) {
+        if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
+            runmode_ == RunMode::TPU_STATIC) {
           group_one_layer_proc(lg_info, true, &cost);
           lg_info.group_cost = cost;
         }

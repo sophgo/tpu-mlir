@@ -870,12 +870,21 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   if (useMuliCore)
     setupMultiCoreCodegen();
   // multi-core-setup END
+  int cur_core_id = 0;
   for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
     if (useMuliCore && stage_idx == 0) {
+      cur_core_id = core_id;
       multi_core->useCore(core_id++);
       multi_core->syncAll();
     }
+    // llvm::dbgs() << "core_id: " << cur_core_id << ", stage_idx: " <<
+    // stage_idx
+    //              << ", draining_idx: " << draining_idx << ", nstep: " <<
+    //              nstep
+    //              << ", cstep: " << cstep << ", hstep: " << hstep
+    //              << ", dstep: " << dstep << ", wstep: " << wstep
+    //              << ", draining_period: " << draining_period << "\n";
     /* add for software pipeline */
     timestep_swpipl.write_swloop_buffer(nstep, cstep, hstep, dstep, wstep,
                                         swpipl_stage_num);
@@ -1465,6 +1474,14 @@ void BMCodegen::codegen_for_store_to_l2m_op(Operation *store_to_l2m_op,
       pid_node);
 }
 
+void reset_bm1688_gdma_bw(BM168x *bm168x, float bw) {
+  if (module::isBM1688()) {
+    auto bm1688 = (BM1688 *)bm168x;
+    bm1688->dl_set_gdma_bw_s2l(bw);
+    bm1688->dl_set_gdma_bw_l2s(bw);
+  }
+}
+
 void BMCodegen::codegen(FuncOp funcOp) {
 
   auto codegenGlobalLayer = [&](GlobalGenInterfaceDecorator globalOp) {
@@ -1605,7 +1622,9 @@ void BMCodegen::codegen(FuncOp funcOp) {
           }
         }
       } else {
+        reset_bm1688_gdma_bw(bm168x, 15.f);
         codegen_for_group(castOp, prev_op, next_op);
+        reset_bm1688_gdma_bw(bm168x, 24.f);
       }
       return WalkResult::skip();
     }
@@ -1617,8 +1636,10 @@ void BMCodegen::codegen(FuncOp funcOp) {
     }
 
     if (auto parallelOp = dyn_cast<CoreParallelOp>(op)) {
+      reset_bm1688_gdma_bw(bm168x, 15.f);
       setupMultiCoreCodegen();
       codegenCoreParallelOp(parallelOp, bm168x, codegenGlobalLayer);
+      reset_bm1688_gdma_bw(bm168x, 24.f);
       return WalkResult::skip();
     }
 
