@@ -61,10 +61,73 @@ train_op_sets = {
     },
 }
 
+# Inference operator sets
+infer_op_sets = {
+    "Abs": {},
+    "Add": {},
+    "Relu": {},
+    "Cast": {
+        "to": str,
+    },
+    "Concat": {
+        "axis": int,
+    },
+    "Compare": {
+        "mode": str,
+    },
+    "Conv": {
+        "strides": List[int],
+        "pads": List[int],
+        "dilations": List[int],
+        "group": int,
+    },
+    "Conv1d": {
+        "strides": List[int],
+        "pads": List[int],
+        "dilations": List[int],
+        "group": int,
+    },
+    "Conv2d": {
+        "strides": List[int],
+        "pads": List[int],
+        "dilations": List[int],
+        "group": int,
+    },
+    "Conv3d": {
+        "strides": List[int],
+        "pads": List[int],
+        "dilations": List[int],
+        "group": int,
+    },
+    "BatchNorm": {
+        "epsilon": float,
+        "momentum": float,
+        "do_relu": bool,
+    },
+    "MaxPool": {
+        "kernel_shape": List[int],
+        "strides": List[int],
+        "pads": List[int],
+        "ceil_mode": bool,
+        "dilations": List[int],
+    },
+    "AvgPool": {
+        "kernel_shape": List[int],
+        "strides": List[int],
+        "pads": List[int],
+        "ceil_mode": bool,
+        "dilations": List[int],
+    },
+}
 
-def save_operator_params(output_path: str, op_type: str, params: List) -> None:
+all_op_sets = MappingProxyType({**train_op_sets, **infer_op_sets})
+
+
+def save_operator_params(output_path: str, op_type: str, params: List, kind: str = None) -> None:
     """Save operator parameters with operator type validation key"""
     data = {"operator": op_type, "cases": params}
+    if kind:
+        data["type"] = kind
     with open(output_path, 'w') as f:
         json.dump(data, f, indent=2)
 
@@ -128,18 +191,34 @@ def extract_op_params(op, target_params: Dict[str, type], idx: int = 0) -> Dict[
     return params
 
 
-def parse_mlir_and_extract_ops(mlir_file: str, target_op: str) -> Dict[str, Any]:
+def parse_mlir_and_extract_ops(mlir_file: str, target_op: str, kind: str = None) -> Dict[str, Any]:
     """Parse MLIR file and extract parameters for target operator"""
     parser = MlirParser(mlir_file)
 
     assert parser.module_state.split("_")[0] == "TOP", "MLIR file must be a TOP dialect file"
 
-    if target_op not in train_op_sets:
+    if target_op not in all_op_sets:
         raise ValueError(
-            f"Unsupported operator type: {target_op}. Available operators: {list(train_op_sets.keys())}"
+            f"Unsupported operator type: {target_op}. Available operators: {sorted(list(all_op_sets.keys()))}"
         )
 
-    target_params = train_op_sets[target_op]
+    resolved_kind = kind
+    if resolved_kind is None:
+        in_train = target_op in train_op_sets
+        in_infer = target_op in infer_op_sets
+        if in_train and in_infer:
+            raise ValueError(f"Operator '{target_op}' exists in both train and inference sets. "
+                             f"Please specify --kind train|inference explicitly to disambiguate.")
+        elif in_train:
+            resolved_kind = "train"
+        elif in_infer:
+            resolved_kind = "inference"
+
+    if resolved_kind not in ["train", "inference"]:
+        raise ValueError(f"Invalid kind: {resolved_kind}. Use 'train' or 'inference'.")
+
+    target_params = train_op_sets[target_op] if resolved_kind == "train" else infer_op_sets[
+        target_op]
     cases = []
     idx = 0
     for op in parser.ops:
@@ -149,7 +228,7 @@ def parse_mlir_and_extract_ops(mlir_file: str, target_op: str) -> Dict[str, Any]
             cases.append(params)
             idx += 1
 
-    return {"operator": target_op, "cases": cases}
+    return {"operator": target_op, "type": resolved_kind, "cases": cases}
 
 
 def main():
@@ -161,8 +240,13 @@ def main():
         "--op",
         type=str,
         required=True,
-        choices=list(train_op_sets.keys()),
-        help=f"Operator to be extracted. Available options: {list(train_op_sets.keys())}")
+        choices=list(all_op_sets.keys()),
+        help=f"Operator to be extracted. Available options: {list(all_op_sets.keys())}")
+    parser.add_argument("--kind",
+                        type=str,
+                        default=None,
+                        choices=["train", "inference"],
+                        help="Operator kind. If omitted, inferred from --op.")
     parser.add_argument("--validate",
                         action="store_true",
                         help="Validate the output file contains the correct operator type")
@@ -174,8 +258,8 @@ def main():
 
     try:
         # Extract and save parameters
-        op_data = parse_mlir_and_extract_ops(args.mlir_file, args.op)
-        save_operator_params(args.output_json, args.op, op_data["cases"])
+        op_data = parse_mlir_and_extract_ops(args.mlir_file, args.op, args.kind)
+        save_operator_params(args.output_json, args.op, op_data["cases"], op_data.get("type"))
 
         print(f"Successfully extracted parameters for {len(op_data['cases'])} {args.op} operators")
         print(f"Results saved to {args.output_json}")
