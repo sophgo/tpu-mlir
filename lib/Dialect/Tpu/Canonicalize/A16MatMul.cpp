@@ -390,9 +390,82 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
   }
 };
 
+// Walkaround code, no group w8a16 is uncorrect.
+struct A16MatMulToGroup : public OpRewriterPatternEx<tpu::A16MatMulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  A16MatMulToGroup(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::A16MatMulOp>(context, "A16MatMulToGroup") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto group_size = op.getQGroupSize();
+    if (group_size > 0) {
+      return failure();
+    }
+    if (op.getWeightBits() != 8) {
+      return failure();
+    }
+
+    auto scaleOp = op.getScale().getDefiningOp<top::WeightOp>();
+    auto zpOp = op.getZp().getDefiningOp<top::WeightOp>();
+    if (!scaleOp || !zpOp) {
+      return failure();
+    }
+    auto scaleDtype = module::getStorageType(scaleOp.getResult());
+    auto zpDtype = module::getStorageType(zpOp.getResult());
+    if (!scaleDtype.isBF16() && !scaleDtype.isF16()) {
+      return failure();
+    }
+    if (zpDtype.isInteger(8) == false) {
+      return failure();
+    }
+    auto weightShape = module::getShape(op.getWeight());
+    int K = weightShape[1];
+    int tile = K / 128;
+    std::vector<int64_t> scale_shape = module::getShape(scaleOp.getResult());
+    std::vector<int64_t> zp_shape = module::getShape(zpOp.getResult());
+    auto scale = scaleOp.read<uint16_t>();
+    auto zp = zpOp.read<uint8_t>();
+    int scale_num = scale->size();
+    int zp_num = zp->size();
+    std::vector<uint16_t> new_scale(scale_num * tile, 0);
+    std::vector<uint8_t> new_zp(zp_num * tile, 0);
+#pragma omp parallel for schedule(static, omp_schedule(scale_num))
+    for (int i = 0; i < scale_num; i++) {
+      for (int j = 0; j < tile; j++) {
+        new_scale[i * tile + j] = scale->at(i);
+      }
+    }
+#pragma omp parallel for schedule(static, omp_schedule(zp_num))
+    for (int i = 0; i < zp_num; i++) {
+      for (int j = 0; j < tile; j++) {
+        new_zp[i * tile + j] = zp->at(i);
+      }
+    }
+    scale_shape[1] = scale_shape[1] * tile;
+    zp_shape[1] = zp_shape[1] * tile;
+    auto newScaleType = module::getTypeLike(scaleOp.getResult(), scale_shape);
+    auto newScaleOp =
+        top::WeightOp::create(op, "scale_new", new_scale, newScaleType);
+    auto newZpType = module::getTypeLike(zpOp.getResult(), zp_shape);
+    auto newZpOp = top::WeightOp::create(op, "zp_new", new_zp, newZpType);
+    op->setOperand(2, newScaleOp);
+    op->setOperand(3, newZpOp);
+    op.setQGroupSize(128);
+    rewriter.eraseOp(scaleOp);
+    rewriter.eraseOp(zpOp);
+    auto mGSize = module::getQuantGroupSize();
+    if (mGSize != 128) {
+      module::setQuantGroupSize(128);
+    }
+    return success();
+  }
+};
+
 void tpu::A16MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                    MLIRContext *context) {
-  results.insert<A16MatMulAdjust>(context);
+  results.insert<A16MatMulAdjust, A16MatMulToGroup>(context);
 }
 
 } // namespace tpu
