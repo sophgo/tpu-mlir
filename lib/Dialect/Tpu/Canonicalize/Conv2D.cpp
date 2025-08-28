@@ -67,7 +67,7 @@ public:
     auto none = module::getNoneOp(op);
 
     rewriter.setInsertionPoint(op);
-    // 切分输入tensor
+    // Split input tensor
     std::vector<Value> slicedInputs;
     int64_t inPerPartSum = 0;
     for (int i = 0; i < splitNumber; ++i) {
@@ -98,7 +98,7 @@ public:
       rewriter.setInsertionPointAfterValue(slice.getOutput());
     }
 
-    // Filter切片
+    // Filter slice
     std::vector<Value> slicedFilters;
     int64_t ocPerPartSum = 0;
     for (int i = 0; i < splitNumber; ++i) {
@@ -129,7 +129,7 @@ public:
       rewriter.setInsertionPointAfterValue(slice.getOutput());
     }
 
-    // Bias切片
+    // Bias slicing
     std::vector<Value> slicedBiases;
     if (module::isNone(bias)) {
       for (int i = 0; i < splitNumber; ++i) {
@@ -142,7 +142,7 @@ public:
             rewriter.getStringAttr(name + "_slice_bias_" + std::to_string(i)));
 
         auto newType = bias.getType().cast<RankedTensorType>().clone({
-            1, ocPerPart[i], 1, 1 // 输出通道匹配 ocPerPart
+            1, ocPerPart[i], 1, 1 // Output channel matching ocPerPart
         });
 
         std::vector<Value> operands;
@@ -189,7 +189,7 @@ public:
       old_multiplier_v = module::getI64Array(multiplier.value());
     }
 
-    // 创建分组卷积
+    // Create group convolution
     inPerPartSum = 0;
     std::vector<Value> convResults;
     for (int i = 0; i < splitNumber; ++i) {
@@ -230,7 +230,7 @@ public:
       rewriter.setInsertionPointAfterValue(newConv.getOutput());
     }
 
-    // 拼接结果
+    // Splicing result
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_concat"));
     NamedAttrList attrs;
     attrs.set("axis", rewriter.getSI32IntegerAttr(1));

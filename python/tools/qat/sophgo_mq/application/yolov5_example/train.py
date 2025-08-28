@@ -308,7 +308,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         module_tmp = module_tmp.cpu()
         convert_onnx(module_tmp.eval(), **kwargs)
         del module_tmp
-        model = model.train()  #prepare前一定要是train模式！！
+        model = model.train()  # Before prepare, the mode must be train!!
         # exit(0)
 
     if opt.quantize:

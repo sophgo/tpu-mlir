@@ -46,10 +46,10 @@ bool Sort_by_int(const std::pair<Value, int64_t> &v1,
 }
 
 bool SortByCycle(const ts_cycle_info &v1, const ts_cycle_info &v2) {
-  return v1.cycle > v2.cycle; //降序排列
+  return v1.cycle > v2.cycle; // Sort in descending order
 }
 bool SortByCycleDiff(const ts_cycle_info &v1, const ts_cycle_info &v2) {
-  return v1.cycle_diff > v2.cycle_diff; //降序排列
+  return v1.cycle_diff > v2.cycle_diff; // Descending order
 }
 
 bool pair_op_int_Sort_by_int(const std::pair<Operation *, int> &v1,
@@ -1524,7 +1524,7 @@ getTensorLmemBytes(Operation *op, Value &value, TensorInfo &tensor_infos,
       auto dims = map_value_to_cut_dims[value];
       c_idx = ncdhw_idx[dims[1]];
       h_idx =
-          ncdhw_idx[dims[3]]; // mlp的第2个matmul的右矩阵使用h索引作为c行索引
+          ncdhw_idx[dims[3]]; // The right matrix of the second matmul uses h index as c row index.
       llvm::errs() << "new c_idx:" << c_idx << ", h_idx:" << h_idx << "\n";
     }
   }
@@ -2115,7 +2115,7 @@ bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
                   -1, ilp_timeStep.getMPVarByName(load_var.first)));
             }
             ilp_timeStep.addConstraint(
-                0, 0, coeff_var_items); //定义sum(store_var) == sum(load_var)
+                0, 0, coeff_var_items); // Define sum(store_var) == sum(load_var)
 
             // for (auto itr = map_x_var_items.begin(); itr !=
             // map_x_var_items.end(); ++itr) {
@@ -2601,7 +2601,7 @@ void ilp_LgInfo::base_solver(
                                   cycle_calculator_);
   if (!ret) {
     if (_cur_strategy == STRATEGY_SEARCH_CONV_CUT) {
-      return; //搜索模式下不再嵌套group
+      return; // No nested groups in search mode
     }
     if (fail_op && fail_process_mode == 0) {
       LAYER_GROUP_LOG_DEBUG_BLOCK({

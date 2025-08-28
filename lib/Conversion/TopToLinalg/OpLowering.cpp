@@ -422,7 +422,7 @@ void DivLoweringToLinalg::Lowering(PatternRewriter &rewriter,
     }
   }
   rewriter.replaceOp(op, rewriter.create<linalg::DivOp>(loc, ins, empty));
-  //提升其中1个操作数的rank，对增加的维度做broadcast
+  // //Increase one operand's rank and broadcast added dimensionserand and broadcast the added dimensions.
 }
 
 //===------------------------------------------------------------===//

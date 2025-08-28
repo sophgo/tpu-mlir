@@ -516,7 +516,7 @@ void GroupOps::buildMlir_for_opt3() {
     }
   }
 
-  //添加global node
+  // Add global node
   func_.walk([&](Operation *op) {
     if (!isa<FuncOp, ReturnOp, top::NoneOp>(op)) {
       if (std::find(all_local_ops.begin(), all_local_ops.end(), op) ==
@@ -543,7 +543,7 @@ void GroupOps::buildMlir_for_opt3() {
     none_op_ = module::getNoneOp(lg_infos[0].group_ops[0]);
   }
 
-  //获取node的前后驱node
+  // Get predecessor and successor nodes of the node
   LOG(INFO) << "get pre&next nodes, nodes.size: " << nodes.size();
   for (auto &node : nodes) {
     if (node.global_op == nullptr) {

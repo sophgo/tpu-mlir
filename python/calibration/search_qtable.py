@@ -437,7 +437,7 @@ class SearchQtable:
 
     def auto_select_clusters(self, X, max_clusters=10):
         best_score = -1
-        best_n_clusters = 3  # 聚类数至少从3开始
+        best_n_clusters = 3  # Cluster number must be at least 3
         for n in range(2, max_clusters + 1):
             kmeans = KMeans(n_clusters=n, random_state=42)
             labels = kmeans.fit_predict(X)
@@ -470,11 +470,11 @@ class SearchQtable:
             db = DBSCAN(eps=eps, min_samples=min_samples)
             labels = db.fit_predict(X)
 
-            # 如果所有点都归为同一个簇或全为噪声，则跳过
+            # If all points are assigned to the same cluster or all are noise, skip.
             if len(set(labels)) <= 1:
                 continue
 
-            # 计算轮廓系数
+            # Calculate Silhouette Coefficient
             score = silhouette_score(X, labels)
             if score > best_score:
                 best_score = score
@@ -498,16 +498,16 @@ class SearchQtable:
         for name, label in zip(layer_names, labels):
             clusters[label].append(name)
 
-        # 获取聚类中心，centroids.shape = (n_clusters, n_features)
+        # Get the cluster centers, centroids.shape = (n_clusters, n_features)
         #centroids = kmeans.cluster_centers_
         centroids = {}
-        unique_labels = np.unique(labels)  # 包括噪声标签 -1
+        unique_labels = np.unique(labels)  # Includes noise labels -1
         for label in unique_labels:
             points = X[labels == label]
             centroids[label] = np.mean(points, axis=0)
 
-        # 根据 centroids 的第一个元素排序各个聚类
-        # sorted_labels 中的 label 顺序，就是对应聚类中心第一维从小到大的顺序
+        # Sort each cluster by the first element of centroids.
+        # sorted_labels' label order corresponds to the first dimension of cluster centers in ascending order.
         sorted_labels = sorted(clusters.keys(), key=lambda label: centroids[label][0])
         sorted_clusters = [clusters[label] for label in sorted_labels]
 
@@ -521,15 +521,15 @@ class SearchQtable:
         file_path (str): 文件路径
         lines_to_remove (Iterable[str]): 需要移除的内容列表（注意内容比较时去除换行符）
         """
-        # 读取当前文件中的所有行
+        # Read all lines in the current file
         with open(file_path, 'r') as f:
             lines = f.readlines()
-        # 过滤掉与 lines_to_remove 中的内容匹配的行（去除两端空白后比较）
+        # Filter out lines that match the content in lines_to_remove (trim whitespace before comparison)
         filtered_lines = []
         for line in lines:
             if line.strip() not in {s.strip() for s in lines_to_remove}:
                 filtered_lines.append(line)
-        # 将过滤后的结果写回文件（覆盖原有内容）
+        # Write the filtered results back to the file (overwriting existing content)
         with open(file_path, 'w') as f:
             f.writelines(filtered_lines)
 
