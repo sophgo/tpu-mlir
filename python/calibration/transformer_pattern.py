@@ -52,6 +52,13 @@ sub_blocks = {
         "top.Permute", "top.Reshape", "top.MatMul", "top.Add", "top.LayerNorm", "top.MatMul",
         "top.MatMul", "top.SiLU", "top.Mul", "top.LayerNorm", "top.MatMul", "top.Add"
     ],
+    "eva02_block_v1": [
+        "top.Add", "top.LayerNorm", "top.MatMul", "top.Reshape", "top.Slice", "top.Slice",
+        "top.Slice", "top.Squeeze", "top.Squeeze", "top.Squeeze", "top.Permute", "top.Rope",
+        "top.Permute", "top.Rope", "top.MulConst", "top.Permute", "top.MatMul", "top.Softmax",
+        "top.Permute", "top.MatMul", "top.Permute", "top.Reshape", "top.MatMul", "top.Add",
+        "top.LayerNorm", "top.MatMul", "top.MatMul", "top.SiLU", "top.Mul", "top.MatMul"
+    ],
     "bert_block": [
         'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape',
         'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul',
@@ -406,7 +413,7 @@ class MatchPattern:
                             next_next_op_type = self.parser.get_op_type_by_op_name(next_next_op[0])
                             if next_next_op_type == 'top.MatMul':
                                 fp_layer_list.append(next_next_op[0])
-                if model_block_name == '_eva_block':
+                if model_block_name == '_eva_block' or model_block_name == 'eva02_block_v1':
                     if op_type == 'top.Add':
                         fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'eva02_block':
