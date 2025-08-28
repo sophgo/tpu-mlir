@@ -118,6 +118,9 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
            shape[0] * shape[1] * shape[2] * shape[3] % Arch::NPU_NUM == 0)) {
         return false;
       }
+      if (ishape.size() == 4 && oshape.size() > 2 && ishape[2] != oshape[2]) {
+        return false;
+      }
     }
 
     if ((shape.size() == 4 &&

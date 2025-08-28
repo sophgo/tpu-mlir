@@ -275,6 +275,10 @@ LogicalResult tpu::SliceOp::BackwardN(int64_t &in_idx, int64_t &in_slice,
 
 LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
+  auto input_dim = module::getShape(getInput()).size();
+  if (input_dim < 3) {
+    return failure();
+  }
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
   std::vector<int64_t> in_shape = module::getShape(getInput());
@@ -289,6 +293,10 @@ LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 
 LogicalResult tpu::SliceOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
+  auto input_dim = module::getShape(getInput()).size();
+  if (input_dim < 4) {
+    return failure();
+  }
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
   std::vector<int64_t> in_shape = module::getShape(getInput());
