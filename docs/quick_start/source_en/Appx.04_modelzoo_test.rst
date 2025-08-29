@@ -50,7 +50,7 @@ The directory structure of model-zoo is as follows:
 
 
 Prepare the runtime environment
-~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Install the dependencies needed to run ``model-zoo`` on your system (outside of the Docker container):
 
@@ -72,7 +72,7 @@ In addition, tpu hardware needs to be invoked for performance and accuracy tests
 
 
 Configure SoC device
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 Note: If your device is a PCIE board, you can skip this section directly.
 
@@ -142,7 +142,7 @@ After unzipping, move the data under ``Data/CLS_LOC/val`` to a directory like mo
 
 
 COCO (optional)
------------
+----------------
 
 If the precision test uses the coco dataset (networks trained with coco such as yolo), please download and unzip it as follows:
 
@@ -156,7 +156,7 @@ If the precision test uses the coco dataset (networks trained with coco such as 
 
 
 Vid4 (optional)
------------
+----------------------
 
 If you need precision test on BasicVSR, please download and unzip the Vid4 dataset as follows:
 
@@ -169,7 +169,7 @@ If you need precision test on BasicVSR, please download and unzip the Vid4 datas
 
 
 Prepare the toolchain compilation environment
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is recommended to use the toolchain software in a docker environment, see :ref:`Base environment configuration <docker configuration>` to install Docker. and execute the following commands in your working directory (the directory which ``model-zoo`` is located) to create a Docker container:
 
@@ -194,10 +194,10 @@ After running the command, it will be in a Docker container. You can the latest 
 .. _test_main:
 
 Model performance and accuracy testing process
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Compile the model
----------
+------------------
 
 The model compilation process needs to be done within Docker, where ``tpu_mlir`` need to be installed as described above.
 
@@ -244,7 +244,7 @@ After the command is finished, you will see the newly generated ``output`` folde
 
 
 Performance test
----------
+----------------
 
 Running the test needs to be done in an environment outside Docker, it is assumed that you have installed and configured the runtime environment for the TPU hardware, so you can exit the Docker environment:
 
@@ -296,7 +296,7 @@ After that, performance data is available in ``output/stats.csv``, in which the 
 
 
 Precision test
----------
+---------------
 
 Note: Due to the limited CPU resources of SoC devices, precision testing is not recommended. Therefore, the SoC device test can skip the precision test part.
 
@@ -318,6 +318,7 @@ where the ``--target`` is used to specify the processor model, which currently s
 Note:
 
 - If multiple SOPHGO accelerator cards are installed on the host, you can
+
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 ``tpu_perf``. Such as:
 
