@@ -1095,6 +1095,8 @@ public:
         rope_op.setOperand(2, weight1);
       }
 
+      rope_op->setAttr("is_permute_optimize", rewriter.getBoolAttr(true));
+
       newType = RankedTensorType::get(
           in_shape, module::getElementType(rope_op.getOutput()));
       rope_op.getOutput().setType(newType);
