@@ -18,11 +18,11 @@ namespace tpu {
 
 bool SortByMemStruct(const std::pair<std::string, mem_struct> &v1,
                      const std::pair<std::string, mem_struct> &v2) {
-  return v1.second.addr < v2.second.addr; //升序排列
+  return v1.second.addr < v2.second.addr; // ascending order
 }
 
 bool SortByMemSize(const mem_alloc_req_info &v1, const mem_alloc_req_info &v2) {
-  return v1.size > v2.size; //升序排列
+  return v1.size > v2.size; // ascending sort
 }
 
 inline std::string convert_name_to_key(const std::string &name, int slice_idx) {
@@ -341,14 +341,14 @@ bool lmem_alloc::_alloc(int slice_idx, const std::string &name, Value value,
         ret_bank_id.push_back(i);
         if (i == s_bidx) {
           if (free_addr + size >
-              bank_area_start_addr[i + 1]) //分配区域横跨2个bank
+              bank_area_start_addr[i + 1]) // Allocation area spanning two banks
             bank_size[i] = bank_area_start_addr[i + 1] - free_addr;
           else
-            bank_size[i] = size; //分配区域在s_bidx这个bank内
+            bank_size[i] = size; // Allocation area is in bank s_bidx
         } else if (i == e_bidx) {
           bank_size[i] = free_addr + size - bank_area_start_addr[e_bidx];
         } else {
-          //中间的bank不可能冲突
+          // The middle bank cannot conflict
         }
       }
 

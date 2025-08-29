@@ -1735,7 +1735,7 @@ class fx2mlir(object):
 
     #- func: native_batch_norm_backward(Tensor grad_out, Tensor input, Tensor? weight, Tensor? running_mean, Tensor? running_var,
     #                                   Tensor? save_mean, Tensor? save_invstd, bool train, float eps, bool[3] output_mask) -> (Tensor, Tensor, Tensor)
-    def convert_batch_norm_backward_op(self, node):  #running_mean和running_var没有使用
+    def convert_batch_norm_backward_op(self, node):  # running_mean and running_var not used
         grad_out = self.operands[node.args[0]]
         input = self.operands[node.args[1]]
         weight = self.operands[node.args[2]]
@@ -2104,8 +2104,8 @@ class fx2mlir(object):
     #     self.operands[node] = new_op_pad
 
     def convert_maxpool2d_backward_op(self, node):
-        grad_out = self.operands[node.args[0]]  # 上游梯度
-        input = self.operands[node.args[1]]  # 原始输入
+        grad_out = self.operands[node.args[0]]  # Upstream Gradient
+        input = self.operands[node.args[1]]  # Original Input
         kernel = node.args[2]
         stride = node.args[3]
         padding = node.args[4] + node.args[4]
@@ -2127,8 +2127,8 @@ class fx2mlir(object):
 
     # def convert_maxpool2d_backward_op(self, node):
     #     # Parse the input parameters of the operation node
-    #     grad_out = self.operands[node.args[0]]  # 上游梯度
-    #     input    = self.operands[node.args[1]]  # 原始输入
+    # grad_out = self.operands[node.args[0]]  # upstream gradient
+    # input = self.operands[node.args[1]]  # original input
     #     kernel_size = node.args[2]
     #     stride    = node.args[3]
     #     padding   = node.args[4]
@@ -2136,9 +2136,9 @@ class fx2mlir(object):
     #     ceil_mode = node.args[6]
     #     indices   = self.operands[node.args[-1]]
     #     dtype       = self.mlir.get_output_dtypes(node)
-    #     shape_input = list(node.args[1].meta['val'].size())  # 原始输入形状
-    #     shape_grad  = list(node.args[0].meta['val'].size())  # 上游梯度形状
-    #     zero_data   = np.zeros(shape_input, dtype=np.float32)  # 用于填充的零数据
+    # shape_input = list(node.args[1].meta['val'].size())  # Original input shape
+    # shape_grad = list(node.args[0].meta['val'].size())  # upstream gradient shape
+    # Zero data for padding
     #     zero_weight = self.mlir.create_weight_op(f'{node.name}_zero', zero_data)
     #     # scatter
     #     new_shape   = [shape_input[0], shape_input[1], shape_input[2] * shape_input[3]]
@@ -2331,7 +2331,7 @@ class fx2mlir(object):
 
     def convert_index_op(
         self, node
-    ):  #(slice_12, [None, None, unsqueeze, _to_copy_1]) 每个tensor对应一个dim gather的输出再作为下一个gather输入
+    ):  # (slice_12, [None, None, unsqueeze, _to_copy_1]) Each tensor's dim gather output is used as the input for the next gather.
         op0 = self.operands[node.args[0]]
         dtype = self.mlir.get_output_dtypes(node)
         idx_store = []

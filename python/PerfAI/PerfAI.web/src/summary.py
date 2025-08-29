@@ -47,7 +47,7 @@ class SummaryProcessor:
         self.totalTime = max_end_time - min_start_time
 
     def _process_tiu(self, tiuProcessor):
-        # TIU处理器通用代码
+        # TIU Processor Generic Code
         temp_timelist = [self.totalTime / 1000 for _ in range(tiuProcessor.actual_corenum)]  #us
         tiu_cycle_to_time = [
             get_realtime_from_cycle(value, tiuProcessor.frequency)
@@ -79,7 +79,7 @@ class SummaryProcessor:
         ])
 
     def _process_dma(self, dmaProcessor, add_l2=True):
-        # DMA处理器通用代码
+        # DMA controller generic code
         temp_timelist = [self.totalTime / 1000 for _ in range(dmaProcessor.actual_corenum)]  #us
         temp_timelist.append(max(temp_timelist))
         if len(temp_timelist) >= len(self.total_time_list):
@@ -156,7 +156,7 @@ class SummaryProcessor:
             ])
 
         ParallelismList = []
-        # 计算每个核心的并行性
+        # Calculate the parallelism of each core
         for i in range(max_corenum):
             if self.total_time_list[i] == 0:
                 ParallelismList.append('0.00%')
@@ -175,7 +175,7 @@ class SummaryProcessor:
                         Decimal("0.00")))
                     ParallelismList.append(str(parallelism) + '%')
 
-        # 计算所有核心的并行性
+        # Calculate parallelism across all cores
         if max_corenum > 1:
             if sum(self.total_time_list[:-1]) == 0:
                 ParallelismList.append('0.00%')

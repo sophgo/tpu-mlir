@@ -128,7 +128,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   double scale_w;
   int int32_multiplier, shift;
   int inner_dim = filter_size / p.oc;
-  for (int c = 0; c < p.oc; c++) { // per-channel量化
+  for (int c = 0; c < p.oc; c++) { // per-channel quantization
     float *p_filter = filter_f32->data() + c * inner_dim;
     if (all_i8) {
       scale_w = 1.0 / times;
@@ -283,7 +283,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   int bitwidth = 4;
   Value value;
   if (op.getInInt4Scale().has_value()) {
-    // bool find = false; //会导致性能大幅下降，原因待分析
+    // // bool find = false; // causes significant performance degradation, reason pending analysisgnificant performance degradation; reason pending analysis
     // for (auto user : op.getInput().getDefiningOp()->getUsers()) {
     //   if (isa<tpu::RequantFpOp>(user)) {
     //     find = true;
@@ -292,13 +292,13 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     //   }
     // }
     // if (!find) {
-    // 存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
+    // // If an int4 input scale exists, the previous layer is int8, so the input tensor is int8 and requires requantization to int4revious layer is int8, hence the input tensor is also int8 and requires requantization to int4.
     in_scale = op.getInInt4Scale().value().convertToDouble();
     in_zp = op.getInInt4Zp().value().convertToDouble();
     module::getScaleAndZeroPoint(op.getInput(), in_int8_scale, in_int8_zp,
                                  asymmetric);
     auto output_type = getQuantIntType(op.getInput(), in_scale, in_zp, 4);
-    double scale = in_int8_scale / in_scale; // 将int8转为int4的rq参数
+    double scale = in_int8_scale / in_scale; // double scale = in_int8_scale / in_scale; // rq parameter for converting int8 to int48 to int4 rq parameter
     double offset = in_zp - in_int8_zp * scale;
     auto to_name = "to_b4_for_" + module::getName(op.getOperation()).str();
     value = do_requantFp(op.getInput(), scale, offset, output_type, to_name);
@@ -306,7 +306,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     value.dump();
     operands.push_back(value);
     // }
-  } else { // 输入tensor也是int4
+  } else { // } else { // input tensor is also int4r is also int4
     operands.push_back(op.getInput());
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric,
                                  bitwidth);
@@ -363,7 +363,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   double scale_w;
   int int32_multiplier, shift;
   int inner_dim = filter_f32->size() / p.oc;
-  for (int c = 0; c < p.oc; c++) { // per-channel量化
+  for (int c = 0; c < p.oc; c++) { // for (int c = 0; c < p.oc; c++) { // per-channel quantization}l quantization
     float *p_filter = filter_f32->data() + c * inner_dim;
     if (filterOp.getScale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
@@ -520,7 +520,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       auto requant_name_loc = NameLoc::get(builder.getStringAttr(requant_name));
       multiplier_v.clear();
       rshift_v.clear();
-      for (int c = 0; c < p.oc; c++) { // per-channel量化
+      for (int c = 0; c < p.oc; c++) { // for (int c = 0; c < p.oc; c++) { // per-channel quantization}annel quantization
         float *p_filter = filter_f32->data() + c * inner_dim;
         if (filterOp.getScale().has_value() && weight_scale_v->size()) {
           scale_w = weight_scale_v->data()[c];

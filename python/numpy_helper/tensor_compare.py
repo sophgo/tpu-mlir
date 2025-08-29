@@ -163,9 +163,9 @@ class TensorCompare():
             # check similarity
 
             def cosine_distance(a, b):
-                # 计算余弦相似度
+                # Compute cosine similarity
                 cos_similarity = np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
-                # 余弦距离 = 1 - 余弦相似度
+                # Cosine Distance = 1 - Cosine Similarity
                 return 1 - cos_similarity
 
             # cosine similarity

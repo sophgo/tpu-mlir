@@ -3,6 +3,7 @@
 c_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(lib|include|tools)/.*\.(cpp|h|hpp)$')
 py_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(python|regression)/.*\.(py)$')
 doc_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(rst|md)$')
+comment_check_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cpp|c|h|hpp|cc|cxx|py|sh|bash|html|htm)$')
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -215,4 +216,17 @@ if [ -n "$doc_files" ]; then
 fi
 
 echo -e "${GREEN}Success: document sensitive words check passed${NC}"
+
+# Add comment language check
+if [ -n "$comment_check_files" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    python3 "${SCRIPT_DIR}/check_comment_language.py" $comment_check_files
+    comment_check_status=$?
+    if [ $comment_check_status -ne 0 ]; then
+        echo -e "${RED}ERROR${NC}: Chinese comments detected. Please use English comments only."
+        exit 1
+    fi
+fi
+echo -e "${GREEN}Success: comment language check passed${NC}"
+
 exit 0

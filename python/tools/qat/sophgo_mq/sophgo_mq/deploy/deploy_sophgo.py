@@ -71,7 +71,7 @@ class LinearQuantizer_process(object):
     def deal_with_activation_fakequant(self, node, inp2node):
         next_nodes = inp2node[node.output[0]]
         for next_node, idx in next_nodes:
-            # if next_node.op_type == 'Add' and next_node.output[0] in inp2node: #将observer qdq的输入写到下一个layer的输入
+            # if next_node.op_type == 'Add' and next_node.output[0] in inp2node: # Write the input of observer qdq to the next layer's input
             #     nextnode, i = inp2node[next_node.output[0]][0]
             #     nextnode.input[i] = node.input[0]
             # else:
@@ -144,7 +144,7 @@ class LinearQuantizer_process(object):
     def get_correct_sophgo_tpu_input_tensor_name(self,
                                                  node,
                                                  out2node,
-                                                 have_int4=False):  #和tpu-mlir的命名风格一致
+                                                 have_int4=False):  # Consistent with tpu-mlir's naming style
         input_0 = node.input[0]
         op_type = ''
         if input_0 in out2node:
@@ -294,18 +294,18 @@ class LinearQuantizer_process(object):
                 self.clip_weight(node, name2data, inp2node, named_initializer, quant_type_dict)
                 tensor_name, scale, zero_point, qmin, qmax, dtype, quant_type = self.parse_qparams(
                     node, name2data, quant_type_dict)
-                #卷积权重per-channel量化参数，bias的per-chan量化参数没有去调优
+                # Convolution weight per-channel quantization parameters, bias per-chan quantization parameters have not been tuned
                 if len(next_nodes) == 1 and next_nodes[0][0].op_type in [
                         'Gemm', 'Conv'
-                ]:  #当前伪量化节点只有1个后继，且第1个后继节点为conv类型
+                ]:  # The current pseudo-quantization node has only one successor, and the first successor node is of conv type.
                     next_node_output = next_nodes[0][0].output[0]
                     if inp2node[next_node_output][0][
-                            0].op_type == 'Relu':  ##伪量化节点的第1个后继conv节点的第1个后继节点为Relu(fake->conv->relu)
-                        #若是fake->conv->relu,因为relu会融合到前面conv，故用relu的输出tensor名+Relu作为量化参数保存tensor名
+                            0].op_type == 'Relu':  # # The first successor node of the first successor conv node of a fake quantization node is Relu (fake->conv->relu)
+                        # If fake->conv->relu, since ReLU is merged into the previous conv, use the ReLU output tensor name + Relu as the quantization parameter to save the tensor name.
                         tensor_name = '{}_{}'.format(inp2node[next_node_output][0][0].output[0],
                                                      'Relu')
                     else:
-                        #若是fake->conv->not_relu_type,直接用conv的输出tensor名+conv作为量化参数保存tensor名
+                        # If fake->conv->not_relu_type, directly use the output tensor name of conv + conv as the quantization parameter's saved tensor name.
                         tensor_name = '{}_{}'.format(next_node_output, next_nodes[0][0].op_type)
                     tensor_name += '_{}'.format('weight' if next_nodes[0][1] == 1 else 'bias')
                     clip_ranges[tensor_name] = {
@@ -387,7 +387,7 @@ class LinearQuantizer_process(object):
                     if pre_op_is_cast:
                         quant_type = 'BF16_to_INT8'
                     clip_ranges[tensor_name_new + f'_{bits}'] = {
-                        'threshold': float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                        'threshold': float(scale * max(-qmin, qmax)),  # This parameter takes effect during symmetric quantization.
                         'min': float(scale * (qmin - zero_point)),
                         'max': float(scale * (qmax - zero_point)),
                         'bit': int(np.log2(qmax - qmin + 1)),

@@ -192,7 +192,7 @@ class OnnxPreprocess(object):
         return
 
 
-#输出tensor到节点，输入tensor到节点及该输入序号
+# Output tensor to node, input tensor to node, and the input index
 def update_inp2node_out2node(graph):
     out2node = {}
     inp2node = {}

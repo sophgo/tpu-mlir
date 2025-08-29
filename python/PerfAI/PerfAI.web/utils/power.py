@@ -298,7 +298,7 @@ def process_cdma(cdma_instances, core_idx, corename):
 def read_data_and_cal_power(core_idx, tiu_instances, gdma_instances, sdma_instances,
                             cdma_instances):
     with ThreadPoolExecutor(max_workers=4) as executor:
-        # 对每种实例并行处理
+        # Process each instance in parallel.
         corename = f'CORE{core_idx}'
         results = []
         tiu_future = executor.submit(process_tiu, tiu_instances, core_idx, corename)
@@ -385,7 +385,7 @@ def prepareJson(compiler_version, output_name, ip_list, pld_dict_to_js, perf_dic
 
     df = pd.DataFrame(missing_cmds, columns=perf_tiu_columns)
     df_unique = df.drop_duplicates(subset=['Ip', 'Function Type', 'Function Name', 'Data Type'])
-    # （可选）将 DataFrame 保存为 CSV 文件
+    # (Optional) Save the DataFrame as a CSV file.
     # df_unique.to_csv(f'{output_name}_missing_cmds.csv', index=False)
 
     js_content += f"let perf_energy = {perf_energy};\n"
@@ -414,11 +414,11 @@ def prepareHtml(htmlfile, name, out_path):
     soup = BeautifulSoup(html_content, 'html.parser')
     script_tags = soup.find_all('script')
 
-    # 更新<title>元素
+    # Update the <title> element
     title_tag = soup.find('title')
     if title_tag:
         title_tag.string = name
-    # 替换jsfile
+    # Replace jsfile
     for tag in script_tags:
         if tag.get('src') == 'output.js':
             tag['src'] = f'{name}_power.js'

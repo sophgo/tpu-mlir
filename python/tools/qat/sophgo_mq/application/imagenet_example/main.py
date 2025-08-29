@@ -304,7 +304,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if args.pre_eval_and_export:
         print('原始onnx模型精度')
-        validate(val_loader, model.eval(), criterion, args)  #这里未执行model.cuda()，会报错
+        validate(val_loader, model.eval(), criterion, args)  # model.cuda() is not executed here, will cause an error
 
         # kwargs = {
         #     'input_shape_dict': {'data': [args.deploy_batch_size, 3, 224, 224]},
@@ -317,7 +317,7 @@ def main_worker(gpu, ngpus_per_node, args):
         # module_tmp = module_tmp.cpu()
         # convert_onnx(module_tmp.eval(), **kwargs)
         # del module_tmp
-        model = model.train()  #prepare前一定要是train模式!!
+        model = model.train()  # Before prepare, must be in train mode!!
 
     # quantize model
     if args.quant:
@@ -441,7 +441,7 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.cpu:
                 model = model.cpu()
             else:
-                # model = torch.nn.DataParallel(model).cuda() #会导致gpu训练保存的模型无法resume后用cpu推理
+                # model = torch.nn.DataParallel(model).cuda() # Saved GPU model cannot be resumed for CPU inference
                 model = model.cuda()
 
     # define loss function (criterion) and optimizer
@@ -474,7 +474,7 @@ def main_worker(gpu, ngpus_per_node, args):
         enable_quantization(model)
 
     cudnn.benchmark = True
-    # cudnn.deterministic = True #避免计算结果波动
+    # cudnn.deterministic = True # Avoid fluctuations in calculation results
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -726,7 +726,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         if i % args.print_freq == 0:
             progress.display(i)
 
-        # # 检查训练过程参数是否异常
+        # # Check training process parameters for abnormalities
         # for param in model.named_parameters():
         #     sum = torch.isnan(param[1]).sum()
         #     if sum > 0:

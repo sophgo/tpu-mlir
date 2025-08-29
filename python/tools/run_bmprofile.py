@@ -247,7 +247,7 @@ class ProgramRunner:
 def find_summaryinfo(folder_path):
     summaryinfo = []
     for root, dirs, files in os.walk(folder_path):
-        if "output" in root:  # 进入output文件夹
+        if "output" in root:  # Enter output folder
             temp = {}
             for file_name in files:
                 if "CycleInfo" in file_name:

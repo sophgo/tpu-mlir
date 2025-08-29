@@ -82,23 +82,23 @@ INT_MAPPING = {
 }
 
 
-# 写一个获取FP8量化所能表示的最大值函数：
+# Write a function to get the maximum value representable by FP8 quantization:
 def get_flt_max(mode):
     if mode.lower() == "e5m2":
-        return float(57344.0)  # E5M2所能表示的最大值
+        return float(57344.0)  # Maximum value representable by E5M2
     elif mode.lower() == "e4m3":
-        return float(448.0)  # E4M3所能表示的最大值
+        return float(448.0)  # Maximum value representable by E4M3
 
 
-# 写一个获取FP8量化所能表示的最小值函数：
+# Write a function to get the minimum value representable by FP8 quantization:
 def get_flt_min(mode):
     if mode.lower() == "e5m2":
-        return float(1.5258789E-05)  # E5M2所能表示的最小值
+        return float(1.5258789E-05)  # The minimum value that can be represented by E5M2
     elif mode.lower() == "e4m3":
-        return float(1.9531250E-03)  #E4M3所能表示的最小值
+        return float(1.9531250E-03)  # Minimum representable value of E4M3
 
 
-# 写一个Int量化的转化函数（以支持INT8/INT4量化）：
+# Write conversion function for Int quantization (to support(INT８/INT4)
 def quantize_to_integer(tensor, mode, inplace=False):
     # compute tensor min and max values
     min_val = torch.min(tensor)
@@ -132,17 +132,17 @@ def quantize_to_integer(tensor, mode, inplace=False):
     return dqtensor
 
 
-#调用emulator函数计算量化后的权重：
+# Call emulator function to compute quantized weights:
 def fpemu_device_fn(tensor, mode, inplace=True, scale=1.0):
     #if "INT8" in mode or "INT4" in mode:
-    if "INT" in mode:  # 如果输入的mode是INT类型，走这个循环进行整数的量化
+    if "INT" in mode:  # If the input mode is INT, use this loop for integer quantization.
         return quantize_to_integer(tensor, mode.split("_")[0], inplace=inplace)
 
-    if tensor.is_cuda:  # 如果使用CUDA走这个循环，调用了pytquant中的CUDA函数
+    if tensor.is_cuda:  # If using CUDA for this loop, calls CUDA functions from pytquant
         from FP8_Emulator.pytquant.cuda import fpemu_cuda
         X = fpemu_cuda.FPEmuOp.apply(tensor, mode, inplace, scale)
 
-    else:  # 如果使用CPU走这个循环，调用了pytquant中的CPP函数
+    else:  # If using CPU to execute this loop, calls the C++ function in pytquant.
         from FP8_Emulator.pytquant.cpp import fpemu_cpp
         X = fpemu_cpp.FPEmuOp.apply(tensor, mode, inplace, scale)
 
@@ -165,8 +165,8 @@ class FP4GROUPFakeQuantize1(QuantizeBase):
 
     def forward(self, X):
         assert self.data_type in FLOAT_MAPPING, "unexpected data type."
-        allow_data = FLOAT_MAPPING[self.data_type]  #float类型
-        allow_data_bit = INT_MAPPING[self.data_type]  #int类型
+        allow_data = FLOAT_MAPPING[self.data_type]  # float type
+        allow_data_bit = INT_MAPPING[self.data_type]  # int type
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())
             _scale, _zero_point = self.calculate_qparams()
@@ -186,12 +186,12 @@ class FP4GROUPFakeQuantize1(QuantizeBase):
             _scale = X.abs().max(1)[0] * self.quantile / max(allow_data)
 
             #scale quantize
-            scalemax = torch.max(abs(torch.flatten(_scale.detach())))  #求出_scale的max
+            scalemax = torch.max(abs(torch.flatten(_scale.detach())))  # compute the max of _scale
             _scale1 = get_flt_max("e4m3") / scalemax
             _scale1 = torch.tensor(6.55e+04) if _scale1.item() > 3.275e+04 else _scale1
             _scale1 = _scale1.to(self.scale.device)
             _scale = fpemu_device_fn(_scale, mode=work_mode, inplace=False,
-                                     scale=_scale1)  #返回per tensor方式计算的量化权重
+                                     scale=_scale1)  # Return per-tensor quantized weights
 
             _scale.unsqueeze_(dim=-1)
             X = X / _scale

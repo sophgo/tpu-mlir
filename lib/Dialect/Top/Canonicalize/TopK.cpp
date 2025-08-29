@@ -246,7 +246,7 @@ struct TopKTranspose : public OpRewriterPatternEx<TopKOp> {
       if (i != axis)
         perm.push_back(i);
     }
-    perm.push_back(axis); // 将目标轴移到末尾
+    perm.push_back(axis); // Move target axis to end
 
     // create invert permute
     std::vector<int64_t> inv_perm(rank);

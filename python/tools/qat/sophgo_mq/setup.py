@@ -20,7 +20,7 @@ ext_modules.append(
     CppExtension(
         'fpemu_cpp',
         ['FP8_Emulator/pytquant/cpp/avx-fpemu.cpp'
-         ],  #如果机子支持avx-512指令集，可以在下面添加编译512指令集的args，然后将avx-fpemu文件更换为fpemu_impl.cpp文件
+         ],  # If the machine supports AVX-512, add the 512 instruction set compilation arguments below and replace avx-fpemu with fpemu_impl.cpp.
         extra_compile_args=["-mf16c", "-mavx2", "-mlzcnt", "-fopenmp",
                             "-Wdeprecated-declarations"]), )
 

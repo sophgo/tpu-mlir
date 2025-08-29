@@ -1476,16 +1476,16 @@ bool is_attention_not_input_tensor(Operation *op, Value v) {
 void slice_distributor(std::vector<slice_pair_t> &slice_pairs,
                        int64_t vec_length, int64_t secs) {
   slice_pairs.clear();
-  int64_t per_sec_base = vec_length / secs; // 每个分片的基本大小
-  int64_t extra = vec_length % secs; // 需要额外分配一个单位的分片数量
+  int64_t per_sec_base = vec_length / secs; // each shard's base size
+  int64_t extra = vec_length % secs; // Requires additional allocation of a unit's shard count
 
-  int64_t start_idx = 0; // 当前分片的起始索引
+  int64_t start_idx = 0; // Current shard start index
   for (int64_t i = 0; i < secs; ++i) {
     int64_t current_slice =
-        per_sec_base + (i < extra ? 1 : 0); // 当前分片的大小
+        per_sec_base + (i < extra ? 1 : 0); // Current shard size
     if (current_slice > 0) {
       slice_pairs.emplace_back(slice_pair_t(start_idx, current_slice));
-      start_idx += current_slice; // 更新下一个分片的起始索引
+      start_idx += current_slice; // Update the starting index of the next shard
     }
   }
 }
@@ -1518,13 +1518,13 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   int64_t c_per_npu_div_secs = c_per_npu / secs;
   int64_t c_per_npu_mod_secs = c_per_npu % secs;
   for (int64_t i = 0; i < secs; ++i) {
-    // 计算每一步的步长和索引
+    // Calculate the step length and index for each step.
     bool extra = c_per_npu_mod_secs > i;
     int64_t step = (c_per_npu_div_secs + extra) * npu_num;
     int64_t idx =
         (c_per_npu_div_secs * i + (extra ? i : c_per_npu_mod_secs)) * npu_num;
 
-    // 计算切片大小
+    // Calculate slice size
     int64_t slice = std::min(step, c - idx);
     assert(idx < c);
     slice_info.c.emplace_back(slice_pair_t(idx, slice));

@@ -109,19 +109,19 @@ class CSPDarknet(nn.Module):
     def __init__(self, base_channels, base_depth, phi, pretrained):
         super().__init__()
         #-----------------------------------------------#
-        #   输入图片是640, 640, 3
-        #   初始的基本通道base_channels是64
+        # Input image is 640, 640, 3
+        # Initial base_channels is 64
         #-----------------------------------------------#
 
         #-----------------------------------------------#
-        #   利用focus网络结构进行特征提取
+        # Use the Focus Network structure for feature extraction.
         #   640, 640, 3 -> 320, 320, 12 -> 320, 320, 64
         #-----------------------------------------------#
         self.stem = Focus(3, base_channels, k=3)
 
         #-----------------------------------------------#
-        #   完成卷积之后，320, 320, 64 -> 160, 160, 128
-        #   完成CSPlayer之后，160, 160, 128 -> 160, 160, 128
+        # Post convolution: 320, 320, 64 -> 160, 160, 128
+        # After completing CSPlayer, 160, 160, 128 -> 160, 160, 128
         #-----------------------------------------------#
         self.dark2 = nn.Sequential(
             # 320, 320, 64 -> 160, 160, 128
@@ -131,10 +131,10 @@ class CSPDarknet(nn.Module):
         )
 
         #-----------------------------------------------#
-        #   完成卷积之后，160, 160, 128 -> 80, 80, 256
-        #   完成CSPlayer之后，80, 80, 256 -> 80, 80, 256
-        #                   在这里引出有效特征层80, 80, 256
-        #                   进行加强特征提取网络FPN的构建
+        # After convolution, 160, 160, 128 -> 80, 80, 256
+        # After completing CSPlayer, 80, 80, 256 -> 80, 80, 256
+        # Here, extract effective feature layer 80, 80, 256
+        # Constructing the enhanced feature extraction network FPN
         #-----------------------------------------------#
         self.dark3 = nn.Sequential(
             Conv(base_channels * 2, base_channels * 4, 3, 2),
@@ -142,10 +142,10 @@ class CSPDarknet(nn.Module):
         )
 
         #-----------------------------------------------#
-        #   完成卷积之后，80, 80, 256 -> 40, 40, 512
-        #   完成CSPlayer之后，40, 40, 512 -> 40, 40, 512
-        #                   在这里引出有效特征层40, 40, 512
-        #                   进行加强特征提取网络FPN的构建
+        # After convolution, 80, 80, 256 -> 40, 40, 512
+        # After completing CSPlayer, 40, 40, 512 -> 40, 40, 512
+        # Here, extract the effective feature layer 40, 40, 512
+        # Constructing the enhanced feature extraction network FPN
         #-----------------------------------------------#
         self.dark4 = nn.Sequential(
             Conv(base_channels * 4, base_channels * 8, 3, 2),
@@ -153,9 +153,9 @@ class CSPDarknet(nn.Module):
         )
 
         #-----------------------------------------------#
-        #   完成卷积之后，40, 40, 512 -> 20, 20, 1024
-        #   完成SPP之后，20, 20, 1024 -> 20, 20, 1024
-        #   完成CSPlayer之后，20, 20, 1024 -> 20, 20, 1024
+        # After convolution, 40, 40, 512 -> 20, 20, 1024
+        # After completing SPP, 20, 20, 1024 -> 20, 20, 1024
+        # After completing CSPlayer, 20, 20, 1024 -> 20, 20, 1024
         #-----------------------------------------------#
         self.dark5 = nn.Sequential(
             Conv(base_channels * 8, base_channels * 16, 3, 2),
@@ -183,17 +183,17 @@ class CSPDarknet(nn.Module):
         x = self.stem(x)
         x = self.dark2(x)
         #-----------------------------------------------#
-        #   dark3的输出为80, 80, 256，是一个有效特征层
+        # dark3's output is 80, 80, 256, which is a valid feature layer
         #-----------------------------------------------#
         x = self.dark3(x)
         feat1 = x
         #-----------------------------------------------#
-        #   dark4的输出为40, 40, 512，是一个有效特征层
+        # dark4's output is 40, 40, 512, which is a valid feature layer
         #-----------------------------------------------#
         x = self.dark4(x)
         feat2 = x
         #-----------------------------------------------#
-        #   dark5的输出为20, 20, 1024，是一个有效特征层
+        # dark5's output is 20, 20, 1024, which is a valid feature layer
         #-----------------------------------------------#
         x = self.dark5(x)
         feat3 = x

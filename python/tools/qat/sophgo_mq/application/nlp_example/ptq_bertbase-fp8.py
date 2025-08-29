@@ -187,7 +187,7 @@ def main(config_path):
     if training_args.do_eval:
         if hasattr(config, 'quant'):
             enable_quantization(trainer.model)
-        evaluate(trainer, eval_datasets)  #此步骤进行了fake quant操作，注释以后即可跳过fake quant的计算操作
+        evaluate(trainer, eval_datasets)  # This step performs a fake quant operation; commenting it out allows skipping the fake quant calculation.
 
     model_kind, model_onnx_config = FeaturesManager.check_supported_model_or_raise(
         model, feature='default')

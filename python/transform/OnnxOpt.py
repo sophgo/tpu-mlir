@@ -1224,7 +1224,7 @@ def SelectiveScan(c, deltaA, deltaB_u, u, D):
 
         y_down[rev_i, :, :] = x_down[0, :, :] * c_down[rev_i, :, 0, :]
 
-    y = np.concatenate([y_up, y_down], axis=1)  # 结果形状 [L, Kcdim, Batch]
+    y = np.concatenate([y_up, y_down], axis=1)  # Output shape [L, Kcdim, Batch]
 
     if D is not None:
         residual = u * D[np.newaxis, :, np.newaxis]

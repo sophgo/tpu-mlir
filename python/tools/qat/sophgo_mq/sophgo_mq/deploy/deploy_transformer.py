@@ -248,18 +248,18 @@ class LinearQuantizer_process(object):
                     node, name2data)
 
                 if backend == 'sophgo_tpu':
-                    #卷积权重per-channel量化参数，bias的per-chan量化参数没有去调优
+                    # Convolution weights per-channel quantization parameters, bias per-channel quantization parameters not optimized.
                     if len(next_nodes) == 1 and next_nodes[0][0].op_type in [
                             'Gemm', 'Conv'
-                    ]:  #当前伪量化节点只有1个后继，且第1个后继节点为conv类型
+                    ]:  # The current pseudo-quantization node has only one successor, and the first successor node is of type conv.
                         next_node_output = next_nodes[0][0].output[0]
                         if inp2node[next_node_output][0][
-                                0].op_type == 'Relu':  ##伪量化节点的第1个后继conv节点的第1个后继节点为Relu(fake->conv->relu)
-                            #若是fake->conv->relu,因为relu会融合到前面conv，故用relu的输出tensor名+Relu作为量化参数保存tensor名
+                                0].op_type == 'Relu':  # # The first successor node of the pseudo-quantization node is a conv node, whose first successor node is Relu (fake->conv->relu)
+                            # For fake->conv->relu, since ReLU is merged into the preceding conv, use ReLU's output tensor name + 'Relu' as the quantization parameter save tensor name.
                             tensor_name = '{}_{}'.format(inp2node[next_node_output][0][0].output[0],
                                                          'Relu')
                         else:
-                            #若是fake->conv->not_relu_type,直接用conv的输出tensor名+conv作为量化参数保存tensor名
+                            # If fake->conv->not_relu_type, directly use conv's output tensor name + 'conv' as quantization parameter to save tensor name.
                             tensor_name = '{}_{}'.format(next_node_output, next_nodes[0][0].op_type)
                         tensor_name += '_{}'.format('weight' if next_nodes[0][1] == 1 else 'bias')
                         clip_ranges[tensor_name] = {
@@ -267,19 +267,19 @@ class LinearQuantizer_process(object):
                             'zero_point': [int(x) for x in zero_point]
                         }
                 elif backend == 'Academic_NLP':
-                    #卷积权重per-channel量化参数，bias的per-chan量化参数没有去调优
+                    # Convolution weights per-channel quantization parameters; bias per-channel quantization parameters are not optimized.
                     if len(next_nodes) == 1 and next_nodes[0][0].op_type in [
                             'Gemm', 'Conv', 'Transpose'
-                    ]:  #当前伪量化节点只有1个后继，且第1个后继节点为conv类型
+                    ]:  # The current pseudo-quantization node has only one successor, and the first successor node is of conv type.
                         next_node_output = next_nodes[0][0].output[0]
                         if next_node_output in inp2node:
                             if inp2node[next_node_output][0][
-                                    0].op_type == 'Relu':  ##伪量化节点的第1个后继conv节点的第1个后继节点为Relu(fake->conv->relu)
-                                #若是fake->conv->relu,因为relu会融合到前面conv，故用relu的输出tensor名+Relu作为量化参数保存tensor名
+                                    0].op_type == 'Relu':  # # The first successor of the pseudo-quantization node is a conv node, whose first successor is Relu (fake->conv->relu)
+                                # If the sequence is fake -> conv -> relu, since ReLU is merged into the preceding conv layer, use the ReLU output tensor name + 'Relu' as the quantization parameter's tensor name.
                                 tensor_name = '{}_{}'.format(
                                     inp2node[next_node_output][0][0].output[0], 'Relu')
                             else:
-                                #若是fake->conv->not_relu_type,直接用conv的输出tensor名+conv作为量化参数保存tensor名
+                                # If fake->conv->not_relu_type, directly use the conv's output tensor name + 'conv' as the quantization parameter tensor name.
                                 tensor_name = '{}_{}'.format(next_node_output,
                                                              next_nodes[0][0].op_type)
                         else:
@@ -310,7 +310,7 @@ class LinearQuantizer_process(object):
                             inp2node[node.output[0]][0][0].output[0],
                             inp2node[node.output[0]][0][0].op_type)
                         clip_ranges[tensor_name] = {
-                            'threshold': float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            'threshold': float(scale * max(-qmin, qmax)),  # This parameter applies during symmetric quantization.
                             'min': float(scale * (qmin - zero_point)),
                             'max': float(scale * (qmax - zero_point)),
                             'bit': int(np.log2(qmax - qmin + 1)),
@@ -323,7 +323,7 @@ class LinearQuantizer_process(object):
                             inp2node[node.output[0]][0][0].output[0],
                             inp2node[node.output[0]][0][0].op_type)
                         clip_ranges[tensor_name] = {
-                            'threshold': float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            'threshold': float(scale * max(-qmin, qmax)),  # This parameter applies during symmetric quantization.
                             'min': float(scale * (qmin - zero_point)),
                             'max': float(scale * (qmax - zero_point)),
                             'bit': int(np.log2(qmax - qmin + 1)),
@@ -360,7 +360,7 @@ class LinearQuantizer_process(object):
                             tensor_name += '_{}'.format(out2node[tensor_name].op_type)
                         clip_ranges[tensor_name] = {
                             'threshold':
-                            float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            float(scale * max(-qmin, qmax)),  # This parameter takes effect during symmetric quantization.
                             'min':
                             float(scale * (qmin - zero_point)),
                             'max':
@@ -376,7 +376,7 @@ class LinearQuantizer_process(object):
                             tensor_name += '_{}'.format(out2node[tensor_name].op_type)
                         clip_ranges[tensor_name] = {
                             'threshold':
-                            float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            float(scale * max(-qmin, qmax)),  # This parameter applies during symmetric quantization.
                             'min':
                             float(scale * (qmin - zero_point)),
                             'max':

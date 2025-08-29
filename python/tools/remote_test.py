@@ -1,12 +1,12 @@
 #!/usr/bin/python
 """
-# 多次运行bmodel，获取耗时相关统计值：均值、最小值、最大值、标准差
+# Run the bmodel multiple times to collect timing-related statistical values: mean, minimum, maximum, standard deviation.
 $ remote_test.py --username xxx --hostname ip_addr --bmodel ./xxx.bmodel --password xxx --debug statistic
 
-# 获取profile文件
+# Retrieve profile file
 $ remote_test.py --username xxx --hostname ip_addr --bmodel ./xxx.bmodel --password xxx --debug profile
 
-# 如果远程已存在该bmodel，--rename会给远程文件名添加后缀，否则会覆盖
+# If the remote already has this bmodel, --rename appends a suffix to the remote filename; otherwise, it will overwrite.
 $ remote_test.py --username xxx --hostname ip_addr --bmodel ./xxx.bmodel --password xxx --rename
 """
 import os

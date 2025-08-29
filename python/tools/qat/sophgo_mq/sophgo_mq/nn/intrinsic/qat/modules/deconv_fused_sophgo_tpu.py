@@ -154,7 +154,7 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
     #     if self.weight_fake_quant.fake_quant_enabled[0] == 1:
     #         _, fused_bias = fuse_deconv_bn_weights(self.weight, self.bias,
     #                             self.bn.running_mean, self.bn.running_var, self.bn.eps, self.bn.weight, self.bn.bias)
-    #         in_scale = self.input_fake_quantizer.scale #从上一个activation_fake_quant节点获取scale
+    # in_scale = self.input_fake_quantizer.scale # Get scale from the previous activation_fake_quant node
     #         scale_fused_bias = self.bias_fake_quant_proc(fused_bias, self.weight_fake_quant.scale, in_scale)
     #         diff_fused_bias = fused_bias - scale_fused_bias
 
@@ -168,7 +168,7 @@ class _ConvTransposeBnNd(nn.modules.conv._ConvTransposeNd, _FusedModule):
     #         conv_orig = conv_orig + self.bias.reshape(bias_shape)
     #     conv = self.bn(conv_orig)
     #     if self.weight_fake_quant.fake_quant_enabled[0] == 1:
-    #         conv -= diff_fused_bias.reshape(bias_shape) #这里从推导看应该是减
+    # Here, from the derivation, it should be subtracting.
     #     return conv
 
     def _forward(self, input):

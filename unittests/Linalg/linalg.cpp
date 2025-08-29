@@ -476,10 +476,10 @@ const StringLiteral kLinalgTransformMarker = "__internal_linalg_transform__";
 ///      using attributes and incrementally applying patterns to advance states.
 ///   2. filter function, which is a simple lambda on the Operation* that
 ///      returns a LogicalResult.
-/// 辅助类，用于控制线性代数变换模式的应用。
-/// 控制有两种形式：
-///   1. 使用名为`kLinalgTransformMarker`的属性进行属性匹配和设置行为。可以使用属性构建状态机，并逐步应用模式以推进状态。
-///   2. 过滤函数，它是对Operation*的简单lambda表达式，返回LogicalResult。
+// / Helper class for controlling the application of linear algebra transformation modes.
+// // Control has two forms:
+// Use the attribute named `kLinalgTransformMarker` for attribute matching and setting. Attributes can be used to build a state machine and apply patterns step by step to advance the state.
+// // 2. Filter function: a simple lambda expression for Operation* that returns LogicalResult.
 struct TilingOpFilter {
 
   explicit TilingOpFilter(ArrayRef<StringAttr> matchDisjunction = {},

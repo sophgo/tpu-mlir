@@ -232,7 +232,7 @@ struct op_related_info_t {
   std::map<Value, int, value_compare> tensor_size;
   std::map<Value, int, value_compare> load_tensor_cycles;
   // std::vector<ts_var_t>  ada_var_for_free_mem;
-  // //在本op执行后可以释放的自动驻留输入tensor
+  // // Auto-retained input tensor that can be released after this op is executed
   op_related_info_t() : op(nullptr) {}
 };
 
@@ -490,7 +490,7 @@ struct LgInfo {
   // group layers
   std::vector<Operation *> group_ops; /**cached, by loc name */
   // std::vector<Operation *> edge_ops;
-  // //寻找所有preOp或nextOp都在组外的op，即组的边缘op
+  // // // Find all ops where preOp or nextOp are outside the group, i.e., the edge ops of the groupOp and nextOp are outside the group, i.e., the edge ops of the group.
 
   // in tensors
   std::vector<Value> group_ins;
@@ -545,14 +545,14 @@ struct ilp_LgInfo {
   std::vector<std::shared_ptr<ilp_LgInfo>> sub_ilp_LgInfos;
   bool group_success = false;
 
-  // 考察是否将global conv作为分割点
+  // Check if global conv is used as a split point.
   int group_cycle = 0;
   bool conv_cut_optimized = false;
   std::shared_ptr<speical_layer_group_base> p_special_grp = nullptr;
   std::map<Value, int, value_compare> value_load_to_l2m;
   std::map<Value, int, value_compare> value_store_to_l2m;
 
-  // 二进制搜索可行分割点
+  // binary search feasible split point
   std::vector<Operation *> group_ops_all;
   std::vector<Operation *> divided_group_ops;
   std::map<Operation *, std::vector<Operation *>> map_parallel_node;

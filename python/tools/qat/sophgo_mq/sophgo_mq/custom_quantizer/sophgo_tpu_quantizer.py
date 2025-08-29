@@ -176,16 +176,16 @@ class SophgoTpuQuantizer(ModelQuantizer):
                                next_layers,
                                fp16=False):
         if len(next_layers) > 0:
-            layer = next_layers[0]  #选其中第1个就能正确决定节点类型
-            qconfig1 = flattened_qconfig_dict.get(layer.target, None)  #首先根据层名去取，优先级最高
+            layer = next_layers[0]  # Select the first one to correctly determine the node type.
+            qconfig1 = flattened_qconfig_dict.get(layer.target, None)  # First, retrieve by layer name (highest priority)
             if qconfig1 is None and layer.target in modules:
                 qconfig1 = flattened_qconfig_dict.get(type(modules[layer.target]),
-                                                      None)  #其次根据type去取
+                                                      None)  # Next, retrieve by type
                 if isinstance(modules[layer.target], self._layers_need_check_is_dw):
                     if modules[layer.target].groups > 1:
                         qconfig1 = None
             if qconfig1 is None:
-                qconfig1 = flattened_qconfig_dict.get('', None)  #最后找全局qconfig，优先级最低
+                qconfig1 = flattened_qconfig_dict.get('', None)  # Finally find global qconfig, lowest priority
             fake_quantizer = qconfig1.activation()
             if fp16:
                 fake_quantizer = BF16FakeQuantize(None)
@@ -204,14 +204,14 @@ class SophgoTpuQuantizer(ModelQuantizer):
         fake_quantizer = None
         if node.op == "call_module" and isinstance(
                 modules[node.target], self._layers_need_scale_form_input_fake_quantizer):
-            qconfig1 = flattened_qconfig_dict.get(node.target, None)  #首先根据层名去取，优先级最高
+            qconfig1 = flattened_qconfig_dict.get(node.target, None)  # First, retrieve based on layer name (highest priority)
             if qconfig1 is None and node.target in modules:
-                qconfig1 = flattened_qconfig_dict.get(type(modules[node.target]), None)  #其次根据type去取
+                qconfig1 = flattened_qconfig_dict.get(type(modules[node.target]), None)  # Next, fetch by type
                 if isinstance(modules[node.target], self._layers_need_check_is_dw):
                     if modules[node.target].groups > 1:
                         qconfig1 = None
             if qconfig1 is None:
-                qconfig1 = flattened_qconfig_dict.get('', None)  #最后找全局qconfig，优先级最低
+                qconfig1 = flattened_qconfig_dict.get('', None)  # Finally find the global QConfig, lowest priority
             fake_quantizer = qconfig1.activation()
         else:
             fake_quantizer = BF16FakeQuantize(None)
@@ -227,7 +227,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
         self.quantizer_prefix = "_input_act_fake_quantizer"
 
         def find_next_f16_and_int8_layers(node, int8_layers, f16_layers):
-            for user in node.users:  #若后继有1个层或多个不同类型的层，则插入多个input量化节点  todo:多个节点，部分相同，部分不同
+            for user in node.users:  # If the successor has one or more layers of different types, insert multiple input quantization nodes. todo: multiple nodes, some same, some different
                 if user.target in modules and type(
                         modules[user.target]) in self.exclude_module_name:
                     print(f'user:{user.name} is excluded')
@@ -235,7 +235,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
                     graph.erase_node(user)
                     del modules[user.target]
                     find_next_f16_and_int8_layers(user, int8_layers, f16_layers)
-                    continue  #dropout等层前不要插入伪量化节点
+                    continue  # Do not insert pseudo-quantization nodes before dropout and other layers.
                 if user.op == "call_module" and isinstance(
                         modules[user.target], self._layers_need_scale_form_input_fake_quantizer):
                     int8_layers.append(user)
@@ -245,7 +245,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
 
         for node in nodes:
             int8_layers, f16_layers = [], [
-            ]  #找到node后的多个int4后继节点和多个int8后继节点，然后这多个int8或int4后继节点共享1个输入量化节点
+            ]  # After finding the node, multiple int4 and int8 successor nodes share a single input quantization node.
             find_next_f16_and_int8_layers(node, int8_layers, f16_layers)
             print(f'node:{node}, f16_layers:', f16_layers, 'int8_layers:', int8_layers)
             self._insert_fake_quantizer(model, graph, modules, flattened_qconfig_dict, node,
@@ -309,7 +309,7 @@ class SophgoTpuQuantizer(ModelQuantizer):
                         del modules[fake_quantizer_node.target]
             if "_post_act_fake_quantizer" in node.name:
                 if isinstance(modules[node.target],
-                              BF16FakeQuantize):  #2个相邻的量化节点都为BF16FakeQuantize，则删除冗余的后1个节点
+                              BF16FakeQuantize):  # If two adjacent quantization nodes are both BF16FakeQuantize, delete the redundant latter node.
                     for user in list(node.users.keys()):
                         if "_input_act_fake_quantizer" in user.name:
                             if isinstance(modules[user.target], BF16FakeQuantize):
@@ -349,14 +349,14 @@ class SophgoTpuQuantizer(ModelQuantizer):
         logger.info('node_to_quantize_output:{}'.format(node_to_quantize_output))
         logger.info('flattened_qconfig_dict:{}'.format(flattened_qconfig_dict))
         for node in node_to_quantize_output:
-            qconfig2 = flattened_qconfig_dict.get(node.name, None)  #首先根据node.name去取，优先级最高
+            qconfig2 = flattened_qconfig_dict.get(node.name, None)  # First, retrieve by node.name (highest priority)
             if qconfig2 is None and node.target in modules:
-                qconfig2 = flattened_qconfig_dict.get(type(modules[node.target]), None)  #其次根据type去取
+                qconfig2 = flattened_qconfig_dict.get(type(modules[node.target]), None)  # Next, retrieve based on type
                 if isinstance(modules[node.target], self._layers_need_check_is_dw):
                     if modules[node.target].groups > 1:
-                        qconfig2 = None  #深度卷积使用int8计算
+                        qconfig2 = None  # Depthwise convolution uses int8 calculations
             if qconfig2 is None:
-                qconfig2 = flattened_qconfig_dict.get('', None)  #最后找全局qconfig，优先级最低
+                qconfig2 = flattened_qconfig_dict.get('', None)  # Finally find the global qconfig with the lowest priority.
             node_fake_quantizer = qconfig2.activation()
             quantizer_name2 = node.name + quantizer_prefix
             setattr(model, quantizer_name2, node_fake_quantizer)

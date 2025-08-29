@@ -51,7 +51,7 @@ if [ -n "$2" ]; then
     fi
 fi
 
-# 检查覆盖率环境变量
+# Check coverage environment variables
 if [ "${ENABLE_COVERAGE}" = "True" ]; then
     ENABLE_COVERAGE_FLAG="ON"
     echo "Building with code coverage enabled"

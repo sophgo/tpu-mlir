@@ -766,7 +766,7 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info,
       bool inc_c_slice = true;
       if (isa<tpu::MatMulOp>(op)) {
         if (name() != "attention_group" || op == ops.back()) {
-          inc_c_slice = in0_lmem_bytes >= in1_lmem_bytes; //相等时优先切c
+          inc_c_slice = in0_lmem_bytes >= in1_lmem_bytes; // When equal, prioritize cutting c
         }
       }
 
@@ -1396,7 +1396,7 @@ public:
         }
         bool inc_c_slice = true;
         if (isa<tpu::MatMulOp>(op) && op == ops.back()) {
-          inc_c_slice = in0_lmem_bytes >= in1_lmem_bytes; //相等时优先切c
+          inc_c_slice = in0_lmem_bytes >= in1_lmem_bytes; // When equal, prioritize cutting c
         }
 
         int total =

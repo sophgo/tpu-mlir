@@ -103,7 +103,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
   double scale_w;
   int inner_dim = filter_f32->size() / param.oc;
-  for (int c = 0; c < param.oc; c++) { // per-channel量化
+  for (int c = 0; c < param.oc; c++) { // per-channel quantization
     float *p_filter = filter_f32->data() + c * inner_dim;
     if (filterOp.getScale().has_value()) {
       scale_w = weight_scale_v->data()[c];

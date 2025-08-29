@@ -1,4 +1,4 @@
-#导入所需的库
+# Import the required libraries.
 import argparse
 import transformers
 import torch
@@ -86,7 +86,7 @@ parser.add_argument('--backend',
                     default='Academic_NLP')
 
 
-#前处理数据
+# Preprocessing data
 def prepare_train_features(examples):
     # Some of the questions have lots of whitespace on the left, which is not useful and will make the
     # truncation of the context fail (the tokenized question will take a lots of space). So we remove that
@@ -348,27 +348,27 @@ def prec(datasets, trainer):
 
 ###################################################################################################################
 
-#输入参数
+# Input parameters
 args = parser.parse_args()
 squad_v2 = False
 model_checkpoint = "distilbert-base-uncased"
 batch_size = args.b
 
-#导入数据
+# Import data
 datasets = load_dataset("squad_v2" if squad_v2 else "squad")
-#快速分词
+# Fast tokenization
 tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
 assert isinstance(tokenizer, transformers.PreTrainedTokenizerFast)
-#预处理参数导入
+# Preprocessing parameter import
 max_length = 384  # The maximum length of a feature (question and context)
 doc_stride = 128  # The authorized overlap between two part of the context when splitting it is needed.
 pad_on_right = tokenizer.padding_side == "right"
 n_best_size = 20
-#对训练数据进行处理
+# Process training data
 tokenized_datasets = datasets.map(prepare_train_features,
                                   batched=True,
                                   remove_columns=datasets["train"].column_names)
-#训练参数导入
+# Training parameters import
 model = AutoModelForQuestionAnswering.from_pretrained(model_checkpoint)
 model_name = model_checkpoint.split("/")[-1]
 args1 = TrainingArguments(f"{model_name}-finetuned-squad",
@@ -382,7 +382,7 @@ data_collator = default_data_collator
 
 ###############################################################################################################
 
-#量化模型参数准备
+# Quantization Model Parameters Preparation
 sig = inspect.signature(model.forward)
 input_names = ['input_ids', 'token_type_ids', 'attention_mask']
 #input_names =['input_ids','attention_mask']
@@ -412,13 +412,13 @@ prepare_custom_config_dict = {
     #'work_mode':'all_int4_qat',
     'extra_qconfig_dict': extra_qconfig_dict
 }
-#插入量化节点
+# Insert quantization node
 model_prepared = prepare_by_platform(model,
                                      BackendType.Academic_NLP,
                                      prepare_custom_config_dict=prepare_custom_config_dict,
                                      custom_tracer=HFTracer())
 
-#校准
+# Calibration
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 cali = []
 for i in range(64):
@@ -429,7 +429,7 @@ enable_calibration(model_prepared)
 model_prepared = model_prepared.to(device)
 calibrate(cali_loader, model_prepared)
 
-#模型后处理
+# Post-processing
 enable_quantization(model_prepared)
 model_prepared.train()
 
@@ -451,19 +451,19 @@ class BertForQuestionAnswering(PreTrainedModel):
         end_logits = end_logits.squeeze(-1)
 
         if start_positions is not None and end_positions is not None:
-            # 由于部分情况下start/end 位置会超过输入的长度
-            # （例如输入序列的可能大于512，并且正确的开始或者结束符就在512之后）
-            # 那么此时就要进行特殊处理
-            ignored_index = start_logits.size(1)  # 取输入序列的长度
+            # In some cases, start/end positions may exceed the input length.
+            # (For example, the input sequence may be greater than 512, and the correct start or end marker is right after 512)
+            # At this point, special handling is required.
+            ignored_index = start_logits.size(1)  # Take input sequence length
             start_positions.clamp_(0, ignored_index)
-            # 如果正确起始位置start_positions中，存在输入样本的开始位置大于输入长度，
-            # 那么直接取输入序列的长度作为开始位置
+            # If any start position in start_positions exceeds the input length,
+            # Then use the input sequence length as the starting position
             end_positions.clamp_(0, ignored_index)
 
             loss_fct = nn.CrossEntropyLoss(ignore_index=ignored_index)
-            # 这里指定ignored_index其实就是为了忽略掉超过输入序列长度的（起始结束）位置
-            # 在预测时所带来的损失，因为这些位置并不能算是模型预测错误的（只能看做是没有预测），
-            # 同时如果不加ignore_index的话，那么可能会影响模型在正常情况下的语义理解能力
+            # Here, the ignored_index is specified to ignore the (start and end) positions that exceed the input sequence length.
+            # Loss during prediction, since these positions cannot be considered as model prediction errors (they are merely unpredicted).
+            # Meanwhile, omitting ignore_index may affect the model's semantic understanding under normal conditions.
             start_loss = loss_fct(start_logits, start_positions)
             end_loss = loss_fct(end_logits, end_positions)
             return (start_loss + end_loss) / 2, start_logits, end_logits
@@ -472,9 +472,9 @@ class BertForQuestionAnswering(PreTrainedModel):
 
 
 config1 = DistilBertConfig.from_pretrained('distilbert-base-uncased')
-# 创建自定义配置对象
+# Create custom configuration object
 model_prepared2 = BertForQuestionAnswering(config1)
-# 原始模型训练
+# Original model training
 model_prepared22 = copy.deepcopy(model_prepared2)
 disable_all(model_prepared22)
 model_prepared22 = model_prepared22.train()
@@ -490,7 +490,7 @@ trainer1.train()
 print("原始模型精度：")
 prec(datasets, trainer1)
 print("**************************************************")
-# 量化模型训练
+# Quantization Model Training
 trained_model = trainer1.model
 enable_quantization(trained_model)
 trainer2 = Trainer(
@@ -505,7 +505,7 @@ print("量化模型精度：")
 prec(datasets, trainer2)
 print("**************************************************")
 
-#模型部署
+# Model Deployment
 keys_to_copy = ['input_ids', 'attention_mask']
 copied_cali = []
 for i in range(len(cali)):

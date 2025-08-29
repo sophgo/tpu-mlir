@@ -359,7 +359,7 @@ class SimpleTuner:
         if i == 0:
             node_label[0] += '\nclear_ref_tensor {}\'s input'.format(evaled_op)
         # evaled_op = split_fuseop(evaled_op
-        if self.ref_activations[i][evaled_op][1] == 0:  #清除残留的网络输出
+        if self.ref_activations[i][evaled_op][1] == 0:  # Clear residual network output
             self.ref_activations[i].pop(evaled_op)
         input_ops = self.parser.get_pre_op_by_op_name(evaled_op)
         for input_op in input_ops:
@@ -569,7 +569,7 @@ class SimpleTuner:
         else:
             node_label[0] += '\nnot tune {}, init th:{}'.format(tuned_op, threshold)
 
-        #若当前tune的best_threshold大于先前该th tune后的最佳门限,则保存，否则保留上次tune更大的结果
+        # If the current tune's best_threshold is greater than the best threshold from the previous th tune, save it; otherwise, keep the previous tune's larger result.
         if best_threshold > self.threshold_table.thresholds_map[tuned_op][0]:
             node_label[0] += '\nupdate {} th: {}>{}'.format(
                 tuned_op, self.threshold_table.thresholds_map[tuned_op][0], best_threshold)
@@ -610,7 +610,7 @@ class SimpleTuner:
                 evaled_op = split_fuseop(evaled_op)
                 self.gen_ref_tensor(idx, evaled_op, node_label)
 
-            #若op的多个输入都已调节过，那任挑其中1个来调节，暂定第1个
+            # If multiple op inputs are adjusted, select any one (temporarily the first) for adjustment.
             if self.isAllInputTuned(evaled_op):
                 ret = self.find_better_threshold(evaled_op, pre_ops[0], node_label)
                 if not ret:
@@ -623,7 +623,7 @@ class SimpleTuner:
                 continue
             faild = False
             for tuned_op in pre_ops:
-                #op的多个输入，调节那些没有调节过的；
+                # Multiple inputs of op, adjust those that haven't been adjusted;
                 if tuned_op not in self.tuned_op_list:
                     ret = self.find_better_threshold(evaled_op, tuned_op, node_label)
                     if not ret:
@@ -857,7 +857,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         assert self.args.input_num > 0
 
     def clear_ref_tensor(self, i, evaled_op):
-        if self.ref_activations[i][evaled_op][1] == 0:  #清除残留的网络输出
+        if self.ref_activations[i][evaled_op][1] == 0:  # Clear residual network output
             self.ref_activations[i].pop(evaled_op)
         input_ops = self.parser.get_pre_op_by_op_name(evaled_op)
         for input_op in input_ops:
@@ -954,7 +954,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             new_num_bins = half_increased_bins + old_num_bins
             # if new_num_bins > 40000000 :
             #     import warnings
-            #     warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
+            # warnings.warn("Calibration images show significant discrepancies. Please adjust their order or replace them if possible", UserWarning)
             #     new_num_bins = 40000000
             #     half_increased_bins = new_num_bins - old_num_bins
             if new_num_bins > 8000000:
@@ -1759,8 +1759,8 @@ class ActivationCalibrator(BaseKldCalibrator):
                     # time3 = time.time()
                     # print(abs_value)
                     # print(abs_value_test)
-                    # print("并行方法时间： {}s".format(time3 - time2))
-                    # print("numpy percentile方法时间： {}s".format(time2 - time1))
+                    # print("Parallel method time: {}s".format(time3 - time2))
+                    # print("numpy percentile method time: {}s".format(time2 - time1))
                 elif 'use_max' in self.debug_cmd:
                     #t0 = time.time()
                     abs_value = max_abs_value
@@ -1960,7 +1960,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 kurtosis_result = self.args.calibration_table[:last_index + 1] + "kurtosis_analysis"
             else:
                 kurtosis_result = "kurtosis_analysis"
-            # 按照值降序排序
+            # Sort by value in descending order
             sorted_kurtosis_result = dict(
                 sorted(self.kurtosis_result.items(), key=lambda item: item[1], reverse=True))
             with open(kurtosis_result, "w") as f:

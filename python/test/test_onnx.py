@@ -5955,7 +5955,7 @@ class ONNX_IR_TESTER(object):
             x_dims = len(x_shape)
             k = idx_shape[-1]
             assert (k <= x_dims)
-            # 生成不重复的 indices 数组
+            # Generate a unique indices array
             index_num = np.prod(idx_shape[:-1])
             if k == x_dims:
                 offset_max = np.prod(x_shape)

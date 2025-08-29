@@ -301,7 +301,7 @@ def main(args):
     )
     cali_loader = DataLoader(cali_loader, sampler=SequentialSampler(cali_loader), batch_size=args.b)
 
-    #导入模型
+    # Import model
     configuration = GPT2Config.from_pretrained('gpt2', resid_pdrop=0.3, output_hidden_states=False)
     model = GPT2LMHeadModel.from_pretrained("gpt2", config=configuration)
     model.resize_token_embeddings(len(tokenizer))
@@ -372,13 +372,13 @@ def main(args):
     model1 = copy.deepcopy(model)
     disable_all(model1)
 
-    #deepspeed 原始模型
+    # deepspeed base model
     epochs = args.epochs
     model1 = train(model1, epochs, traindataset, validation_dataloader)
     avg_ppl1 = cal_ppl_bygpt2(model1, test_dataloader)
     print("原始模型PPL:{}".format(avg_ppl1))
 
-    #deepspeed量化模型
+    # DeepSpeed quantized model
     torch.cuda.empty_cache()
     enable_calibration(model)
     parameters = model.parameters()

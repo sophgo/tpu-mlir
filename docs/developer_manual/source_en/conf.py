@@ -115,7 +115,7 @@ html_static_path = ['../assets']
 htmlhelp_basename = "TPU-MLIR Technical Reference Manual"
 
 
-# 图片和表格自动编号
+# Images and tables auto numbering
 numfig = True
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -123,28 +123,28 @@ latex_engine = 'xelatex'
 latex_elements = {
     # Papersize ('letterpaper' or 'a4paper'), default is letterpaper
     'papersize': 'a4paper',
-    # 设置页边距大小
+    # Set page margin size
     'geometry': r' \usepackage[left=2.8cm,right=2.6cm,top=3.7cm,bottom=3.5cm]{geometry}',
     # The font size ('10pt', '11pt' or '12pt'), default is '10pt'.
     'pointsize': '11pt',
     # \setCJKmainfont[BoldFont=Heiti SC Medium]{Heiti SC Light}
     # \setCJKmonofont[BoldFont=Times Regular]{Times Italic}
     # `\setmainfont`、`\setsansfont{}`、`\setmonofont{}`
-    # 分别设置正文字体、无衬线字体: 标题、等宽字体: 用于抄录内容
+    # Set body font and sans-serif font: title, monospace font: for copying content.
     'fontpkg': r'''
     \setmainfont{FandolSong}
     \setsansfont{FandolHei}
     \setmonofont{FandolFang}
     ''',
-    # 设置章节标题样式
+    # Set section heading style
     # \usepackage[Lenny]{fncychap}  Bjarne, Sonny, Lenny, Glenn, Conny, Rejne
     'fncychap': '\\usepackage[Sonny]{fncychap}',
-    # 图片严格出现在文字处
+    # Image strictly appears in the text area
     # 'figure_align': 'H',
-    # preamble 样式
-    # 目录样式: tocloft
-    # 每节从新页面开始: newcommand{\sectionbreak}{\clearpage}
-    # 全文文本左对齐: \usepackage[document]{ragged2e}
+    # preamble style
+    # Table of Contents Style: tocloft
+    # Each section starts on a new page: \newcommand{\sectionbreak}{\clearpage}
+    # Left-aligned text throughout: \usepackage[document]{ragged2e}
     'preamble':r'''
     \usepackage{tocloft}
     \renewcommand\cftfignumwidth{4em}

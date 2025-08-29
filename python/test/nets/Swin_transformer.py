@@ -46,8 +46,8 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 
 
 #--------------------------------------#
-#   Gelu激活函数的实现
-#   利用近似的数学公式
+# Gelu Activation Function Implementation
+# Use approximate mathematical formula
 #--------------------------------------#
 class GELU(nn.Module):
 
@@ -59,8 +59,8 @@ class GELU(nn.Module):
 
 
 #-------------------------------------------------------#
-#   对输入进来的图片进行高和宽的压缩
-#   并且进行通道的扩张。
+# Compress the input image's height and width
+# And expand the channels.
 #-------------------------------------------------------#
 class PatchEmbed(nn.Module):
 
@@ -148,15 +148,15 @@ class WindowAttention(nn.Module):
         self.scale = qk_scale or head_dim**-0.5
 
         #--------------------------------------------------------------------------#
-        #   相对坐标矩阵，用于表示每个窗口内，其它点相对于自己的坐标
-        #   由于相对坐标取值范围为-6 ~ +6。中间共13个值，因此需要13 * 13
+        # Relative coordinate matrix representing other points' positions relative to the current point within each window.
+        # Since relative coordinates range from -6 to +6 (13 values), 13 * 13 is needed.
         #   13 * 13, num_heads
         #--------------------------------------------------------------------------#
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads))
 
         #--------------------------------------------------------------------------#
-        #   该部分用于获取7x7的矩阵内部，其它特征点相对于自身相对坐标
+        # This section is used to obtain the interior of a 7x7 matrix, with other feature points having their relative coordinates.
         #--------------------------------------------------------------------------#
         coords_h = torch.arange(self.window_size[0])
         coords_w = torch.arange(self.window_size[1])
@@ -171,7 +171,7 @@ class WindowAttention(nn.Module):
         self.register_buffer("relative_position_index", relative_position_index)
 
         #--------------------------------------------------------------------------#
-        #   乘积获得q、k、v，用于计算多头注意力机制
+        # Compute q, k, v via product for multi-head attention
         #--------------------------------------------------------------------------#
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(attn_drop)
@@ -201,8 +201,8 @@ class WindowAttention(nn.Module):
         attn = (q @ k.transpose(-2, -1))
 
         #--------------------------------------------------------------------------#
-        #   这一步是根据已经求得的注意力，加上相对坐标的偏执量
-        #   形成最后的注意力
+        # This step is based on the precomputed attention and adds the relative coordinate bias.
+        # Form final attention
         #--------------------------------------------------------------------------#
         relative_position_bias = self.relative_position_bias_table[
             self.relative_position_index.view(-1)].view(self.window_size[0] * self.window_size[1],
@@ -212,7 +212,7 @@ class WindowAttention(nn.Module):
         attn = attn + relative_position_bias.unsqueeze(0)
 
         #--------------------------------------------------------------------------#
-        #   加上mask，保证分区。
+        # Add mask to ensure partitioning.
         #   bs * 64, num_head, 49, 49
         #--------------------------------------------------------------------------#
         if mask is not None:
@@ -271,7 +271,7 @@ class DropPath(nn.Module):
 
 
 #-------------------------------------------------------#
-#   两次全连接
+# Two full connections
 #-------------------------------------------------------#
 class Mlp(nn.Module):
 
@@ -299,8 +299,8 @@ class Mlp(nn.Module):
 
 
 #-------------------------------------------------------#
-#   每个阶段重复的基础模块
-#   在这其中会使用WindowAttention进行特征提取
+# Basic module repeated in each stage
+# WindowAttention will be used for feature extraction here.
 #-------------------------------------------------------#
 class SwinTransformerBlock(nn.Module):
 
@@ -350,14 +350,14 @@ class SwinTransformerBlock(nn.Module):
 
         if self.shift_size > 0:
             #----------------------------------------------------------------#
-            #   由于进行特征提取时，会对输入的特征层进行的平移
-            #   如：
+            # Translation is applied to the input feature layer during feature extraction.
+            # e.g.
             #   [                                   [
             #       [1, 2, 3],                          [5, 6, 4],
             #       [4, 5, 6],          -->             [8, 9, 7],
             #       [7, 8, 9],                          [1, 2, 3],
             #   ]                                   ]
-            #   这一步的作用就是使得平移后的区域块只计算自己部分的注意力机制
+            # This step ensures that the shifted region block only computes its own attention mechanism.
             #----------------------------------------------------------------#
             H, W = self.input_resolution
             _H, _W = _make_divisible(H, self.window_size), _make_divisible(W, self.window_size),
@@ -398,7 +398,7 @@ class SwinTransformerBlock(nn.Module):
         x = F.interpolate(x, [_H, _W], mode='bicubic', align_corners=False).permute(0, 2, 3, 1)
 
         #-----------------------------------------------#
-        #   进行特征层的平移
+        # Perform feature layer translation
         #-----------------------------------------------#
         if self.shift_size > 0:
             shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
@@ -428,7 +428,7 @@ class SwinTransformerBlock(nn.Module):
         shifted_x = window_reverse(attn_windows, self.window_size, _H, _W)  # B H' W' C
 
         #-----------------------------------------------#
-        #   将特征层平移回来
+        # Translate the feature layer back
         #-----------------------------------------------#
         if self.shift_size > 0:
             x = torch.roll(shifted_x, shifts=(self.shift_size, self.shift_size), dims=(1, 2))
@@ -452,8 +452,8 @@ class SwinTransformerBlock(nn.Module):
 
 
 #-------------------------------------------------------#
-#   对输入进来的特征层进行高和宽的压缩
-#   进行跨特征点的特征提取，提取完成后进行堆叠。
+# Compress the height and width of the input feature map
+# Perform feature extraction across feature points and stack the results.
 #-------------------------------------------------------#
 class PatchMerging(nn.Module):
 
@@ -502,9 +502,9 @@ class PatchMerging(nn.Module):
 
 
 #-------------------------------------------------------#
-#   Swin-Transformer的基础模块。
-#   使用窗口多头注意力机制进行特征提取。
-#   使用PatchMerging进行高和宽的压缩。
+# Base module of Swin-Transformer.
+# Use windowed multi-head attention for feature extraction.
+# Use PatchMerging for height and width compression.
 #-------------------------------------------------------#
 class BasicLayer(nn.Module):
 
@@ -525,24 +525,24 @@ class BasicLayer(nn.Module):
                  use_checkpoint=False):
         super().__init__()
         #-------------------------------------------------------#
-        #   四个阶段对应不同的dim
+        # Four stages correspond to different dimensions.
         #   [96, 192, 384, 768]
         #-------------------------------------------------------#
         self.dim = dim
         #-------------------------------------------------------#
-        #   四个阶段对应不同的输入分辨率
+        # Four stages correspond to different input resolutions
         #   [[56, 56], [28, 28], [14, 14], [7, 7]]
         #-------------------------------------------------------#
         self.input_resolution = input_resolution
         #-------------------------------------------------------#
-        #   四个阶段对应不同的多头注意力机制重复次数
+        # Four stages correspond to different repetition counts of the multi-head attention mechanism.
         #   [2, 2, 6, 2]
         #-------------------------------------------------------#
         self.depth = depth
         self.use_checkpoint = use_checkpoint
 
         #-------------------------------------------------------#
-        #   根据depth的次数利用窗口多头注意力机制进行特征提取。
+        # Use windowed multi-head attention based on depth count for feature extraction.
         #-------------------------------------------------------#
         self.blocks = nn.ModuleList([
             SwinTransformerBlock(
@@ -562,7 +562,7 @@ class BasicLayer(nn.Module):
 
         if downsample is not None:
             #-------------------------------------------------------#
-            #   判断是否要进行下采样，即：高宽压缩
+            # Determine whether to perform downsampling, i.e., height and width compression
             #-------------------------------------------------------#
             self.downsample = downsample(input_resolution, dim=dim, norm_layer=norm_layer)
         else:
@@ -622,8 +622,8 @@ class SwinTransformer(nn.Module):
                                       norm_layer=norm_layer if self.patch_norm else None)
 
         #--------------------------------------------------#
-        #   PatchEmbed之后的图像序列长度        3136
-        #   PatchEmbed之后的图像对应的分辨率    [56, 56]
+        # Length of image sequence after PatchEmbed        3136
+        # Resolution after PatchEmbed [56, 56]
         #--------------------------------------------------#
         num_patches = self.patch_embed.num_patches
         patches_resolution = self.patch_embed.patches_resolution
@@ -642,7 +642,7 @@ class SwinTransformer(nn.Module):
                ]  # stochastic depth decay rule
 
         #---------------------------------------------------------------#
-        #   构建swin-transform的每个阶段
+        # Build each stage of the Swin Transformer
         #   bs, 3136, 96 -> bs, 784, 192 -> bs, 196, 384 -> bs, 49, 768
         #---------------------------------------------------------------#
         self.layers = nn.ModuleList()
