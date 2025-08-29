@@ -403,9 +403,6 @@ struct A16MatMulToGroup : public OpRewriterPatternEx<tpu::A16MatMulOp> {
     if (group_size > 0) {
       return failure();
     }
-    if (op.getWeightBits() != 8) {
-      return failure();
-    }
 
     auto scaleOp = op.getScale().getDefiningOp<top::WeightOp>();
     auto zpOp = op.getZp().getDefiningOp<top::WeightOp>();
@@ -421,7 +418,7 @@ struct A16MatMulToGroup : public OpRewriterPatternEx<tpu::A16MatMulOp> {
       return failure();
     }
     auto weightShape = module::getShape(op.getWeight());
-    int K = weightShape[1];
+    int K = weightShape[1] * (8 / op.getWeightBits());
     int tile = K / 128;
     std::vector<int64_t> scale_shape = module::getShape(scaleOp.getResult());
     std::vector<int64_t> zp_shape = module::getShape(zpOp.getResult());

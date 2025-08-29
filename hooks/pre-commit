@@ -26,9 +26,9 @@ fi
 if [ -n "$c_files" ]; then
     echo "Running clang-format on staged files..."
     clang-format -i $c_files
-    if ! git diff --quiet; then
+    if ! git diff --quiet -- $c_files; then
         echo -e "${RED}Warning${NC}: Some cpp files were formatted. Please review the changes and then commit it again."
-        # git add $files
+        # git add $c_files
         exit 1
     fi
 fi
@@ -43,9 +43,9 @@ if [ -n "$py_files" ]; then
         echo -e "${RED}ERROR${NC}: yapf failed. Please check your code"
         exit 1
     fi
-    if ! git diff --quiet; then
+    if ! git diff --quiet -- $py_files; then
         echo -e "${RED}Warning${NC}: Some python files were formatted. Please review the changes and then commit it again."
-        # git add $files
+        # git add $py_files
         exit 1
     fi
 fi
