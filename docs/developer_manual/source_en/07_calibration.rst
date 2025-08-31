@@ -6,7 +6,7 @@ General introduction
 
 Calibration is the use of real scene data to tune the proper quantization parameters. Why do we need calibration? When we perform asymmetric quantization of the activation, we need to know the overall dynamic range, i.e., the minmax value, in advance. When applying symmetric quantization to activations, we need to use a suitable quantization threshold algorithm to calculate the quantization threshold based on the overall data distribution of the activation. However, the general trained model does not have the activation statistics. Therefore, both of them need to inference on a miniature sub-training set to collect the output activation of each layer.
 
-The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, sq, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
+The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), softmax correction (smc), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, sq, smc, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
 The above processes are integrated and executed collectively, and the optimized thresholds and min/max values of each operation are output to a quantization calibration parameter file called "cali_table." Subsequently, in the "model_deploy.py" script, these parameters can be used for further int8 quantization. If you have utilized the automatic mixed-precision feature, along with generating the "cali_table," a mixed-precision table "qtable" will also be produced. In the following "model_deploy.py" script, both of these files are required for subsequent int8 mixed-precision quantization.
 
 .. _quantization_process:
@@ -182,7 +182,7 @@ Implementation approach: TPU-MLIR provides two variants of the algorithm, aciq_g
 optimization algorithms Implementation
 ------------------------------------------------
 
-During the calibration process, to further enhance the precision of the quantized model, TPU-MLIR offers a variety of optimization algorithms, including SmoothQuant (SQ), Cross-Layer Weight Equalization (WE), Bias Correction (BC), search_qtable, and search_threshold. Below is an introduction to the aforementioned optimization algorithms.
+During the calibration process, to further enhance the precision of the quantized model, TPU-MLIR offers a variety of optimization algorithms, including SmoothQuant (SQ), Softmax Correction (SMC), Cross-Layer Weight Equalization (WE), Bias Correction (BC), search_qtable, and search_threshold. Below is an introduction to the aforementioned optimization algorithms.
 
 sq Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -198,6 +198,31 @@ Specifically, SmoothQuant introduces a smoothing factor before quantisation, whi
    :align: center
 
    SmoothQuant
+
+smc Algorithm
+~~~~~~~~~~~~~~~~~~~~~~
+The softmax correction algorithm implemented in TPU-MLIR is based on the paper "Softmax Bias Correction for Quantized Generative Models".
+The probability distribution output by Softmax exhibits a long-tailed distribution, with the majority of probability values approaching zero. During quantisation, these values are truncated to zero. When the model input resolution is very high or the input sequence is very long, a large number of probability values are quantised to zero, leading to a decline in model accuracy.
+
+The Softmax correction algorithm scales the Softmax output to maximise the probability distribution within the [0,1] interval, thereby reducing quantisation errors for probabilities near zero.
+Following attention calculation, the results are then inverse-scaled back to address the accuracy degradation caused by Softmax quantisation.
+
+The scaling factor is obtained by statistically estimating the maximum output probability of Softmax using a small number of calibrated samples. The following is its pseudocode implementation:
+
+.. code-block:: shell
+   :linenos:
+
+   the pseudocode of quantized attention with softmax correction:
+       Prepare Q: Quantized query tensor,
+               K: Quantized key tensor,
+               V: Quantized value tensor,
+               S: Scaling factor for softmax correction
+       compute O: Quantized attention output tensor
+
+       prob = softmax(Q * K^T) (softmax calculated in floating-point)
+       scaled_prob = prob / S
+       quantized_scaled_prob = quantize(scaled_prob)
+       O = quantized_scaled_prob * V * S
 
 we Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -384,6 +409,18 @@ sq:
       --cali_method use_mse \
       -o yolov5s_cali_table
 
+smc:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --smc \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --cali_method use_mse \
+      -o yolov5s_cali_table
+
 we:
 
 .. code-block:: shell
@@ -454,6 +491,8 @@ search_qtable:
      - mlir file
    * - --sq
      - open SmoothQuant
+   * - --smc
+     - open softmax_correction
    * - --we
      - open weight_equalization
    * - --bc

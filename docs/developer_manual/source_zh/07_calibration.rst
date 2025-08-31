@@ -8,8 +8,8 @@ Calibration
 在激活总体数据分布的基础上计算得到其量化门限, 而一般训练输出的模型是不带有激活这些数据统计
 信息的, 因此这两者都要依赖于在一个微型的训练集子集上进行推理, 收集各个输入的各层输出激活。
 
-tpu-mlir的校准过程包括了门限方法自动寻优(search_threshold),SmoothQuant(sq),跨层权重均衡(we),偏置修正(bc)以及自动
-混精功能(search_qtable)等方法。总体过程如(:ref:`quantization_process`)所示。其中sq,we,bc,search_qtable
+tpu-mlir的校准过程包括了门限方法自动寻优(search_threshold),SmoothQuant(sq),Softmax修正(smc),跨层权重均衡(we),偏置修正(bc)以及自动
+混精功能(search_qtable)等方法。总体过程如(:ref:`quantization_process`)所示。其中sq,smc,we,bc,search_qtable
 和search_threshold都是可选择的,可以根据当前要量化的模型的实际情况进行搭配，后面章节也会具体给出各个方法的使用说明。
 上述过程整合在一起统一执行, 最后将各个op的优化后的threshold和
 min/max值输出到一个量化校准参数文件cali_table中, 后续``model_deploy.py``时就可使用这个参数
@@ -211,7 +211,7 @@ tpu-mlir实现的aciq算法参考了文章《ACIQ:ANALYTICAL CLIPPING FOR INTEGE
 优化算法实现
 --------------------
 
-在校准过程中,为了进一步提升量化模型的精度,tpu-mlir提供了多种优化算法,其中包括SmoothQuant(sq),跨层权重均衡(we),偏置修正(bc),search_qtable和search_threshold,下面是上述优化
+在校准过程中,为了进一步提升量化模型的精度,tpu-mlir提供了多种优化算法,其中包括SmoothQuant(sq),Softmax修正(smc),跨层权重均衡(we),偏置修正(bc),search_qtable和search_threshold,下面是上述优化
 算法的介绍。
 
 sq算法
@@ -228,6 +228,31 @@ SmoothQuant通过调整模型的张量比例,将激活和权重的范围进行�
    :align: center
 
    SmoothQuant
+
+smc算法
+~~~~~~~~~~~~~~~~~~~~~~
+tpu-mlir实现的Softmax修正算法参考了文章《Softmax Bias Correction for Quantized Generative Models》。
+Softmax输出的概率分布为长尾分布，大部分的概率值接近于0，在量化过程中会被截断为0。在模型输入分辨率很大或输入序列很长时，大量的概率值被量化为0，导致模型精度下降。
+
+Softmax修正算法通过对Softmax的输出进行缩放，将缩放后的概率尽可能占满 [0,1] 区间，从而减小接近于0的概率的量化误差。
+然后在attention计算完成后，再将计算结果反缩放回去，解决Softmax量化导致的精度下降问题。
+
+缩放的尺度通过少量的校准样本，统计Softmax的输出概率最大值期望获得。下面是其实现伪码:
+
+.. code-block:: shell
+   :linenos:
+
+   the pseudocode of quantized attention with softmax correction:
+       Prepare Q: Quantized query tensor,
+               K: Quantized key tensor,
+               V: Quantized value tensor,
+               S: Scaling factor for softmax correction
+       compute O: Quantized attention output tensor
+
+       prob = softmax(Q * K^T) (softmax calculated in floating-point)
+       scaled_prob = prob / S
+       quantized_scaled_prob = quantize(scaled_prob)
+       O = quantized_scaled_prob * V * S
 
 we算法
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -421,6 +446,18 @@ sq:
       --cali_method use_mse \
       -o yolov5s_cali_table
 
+smc:
+
+.. code-block:: shell
+   :linenos:
+
+   $ run_calibration.py yolov5s.mlir \
+      --smc \
+      --dataset $REGRESSION_PATH/dataset/COCO2017 \
+      --input_num 100 \
+      --cali_method use_mse \
+      -o yolov5s_cali_table
+
 we:
 
 .. code-block:: shell
@@ -490,6 +527,8 @@ search_qtable:
      - mlir文件
    * - --sq
      - 开启SmoothQuant
+   * - --smc
+     - 开启softmax_correction
    * - --we
      - 开启weight_equalization
    * - --bc

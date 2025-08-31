@@ -17,6 +17,7 @@ from calibration.data_selector import DataSelector
 from calibration.search_threshold import SearchThreshold
 from calibration.search_qtable import SearchQtable
 from calibration.smoothquant import SmoothQuant
+from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
@@ -31,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--we', help='weight equalization', action="store_true")
     parser.add_argument('--bc', help='bias correction', action="store_true")
     parser.add_argument('--sq', help='smoothquant', action="store_true")
+    parser.add_argument('--smc', help='softmax correction', action="store_true")
     parser.add_argument('--dataset', type=str, help='dataset for calibration')
     parser.add_argument('--data_list', type=str, help='Input list file contain all input')
     parser.add_argument('--input_num', type=int, default=0, help='num of images for calibration')
@@ -122,6 +124,11 @@ if __name__ == '__main__':
             args._logger = logger('SmoothQuant', log_level=log_level)
             smoothquant = SmoothQuant(args, selector)
             smoothquant.run()
+        # softmax correction
+        if args.smc:
+            args._logger = logger('Softmax_Correction', log_level=log_level)
+            sm_correcter = SoftmaxCorrecter(args, selector)
+            sm_correcter.run()
         # weight equalization
         if args.we:
             args._logger = logger('Weight_Equalization', log_level=log_level)

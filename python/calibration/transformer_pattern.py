@@ -52,6 +52,14 @@ sub_blocks = {
         "top.Permute", "top.Reshape", "top.MatMul", "top.Add", "top.LayerNorm", "top.MatMul",
         "top.MatMul", "top.SiLU", "top.Mul", "top.LayerNorm", "top.MatMul", "top.Add"
     ],
+    "eva02_smc_block": [
+        "top.LayerNorm", "top.MatMul", "top.MatMul", "top.MatMul", "top.Reshape", "top.Permute",
+        "top.Reshape", "top.Permute", "top.Reshape", "top.Permute", "top.Rope", "top.Rope",
+        "top.Permute", "top.MulConst", "top.MulConst", "top.MatMul", "top.Softmax", "top.Mul",
+        "top.MatMul", "top.Mul", "top.Permute", "top.Reshape", "top.MatMul", "top.Add",
+        "top.LayerNorm", "top.MatMul", "top.MatMul", "top.SiLU", "top.Mul", "top.LayerNorm",
+        "top.MatMul", "top.Add"
+    ],
     "eva02_block_v1": [
         "top.Add", "top.LayerNorm", "top.MatMul", "top.Reshape", "top.Slice", "top.Slice",
         "top.Slice", "top.Squeeze", "top.Squeeze", "top.Squeeze", "top.Permute", "top.Rope",
@@ -416,7 +424,7 @@ class MatchPattern:
                 if model_block_name == '_eva_block' or model_block_name == 'eva02_block_v1':
                     if op_type == 'top.Add':
                         fp_layer_list.append(all_tensors[i])
-                if model_block_name == 'eva02_block':
+                if model_block_name == 'eva02_block' or model_block_name == 'eva02_smc_block':
                     if op_type == 'top.SiLU' and all_tensors[i] in fp_layer_list:
                         fp_layer_list.remove(all_tensors[i])
                     if op_type == 'top.MatMul':
@@ -426,6 +434,13 @@ class MatchPattern:
                         ]
                         if len(pre_ops) == 2 and any(pre_op_type == 'top.Softmax'
                                                      for pre_op_type in pre_op_types):
+                            fp_layer_list.append(all_tensors[i])
+                    if op_type == 'top.Mul':
+                        pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
+                        pre_op_types = [
+                            self.parser.get_op_type_by_op_name(pre_op) for pre_op in pre_ops
+                        ]
+                        if len(pre_ops) == 1 and pre_op_types[0] == 'top.Softmax':
                             fp_layer_list.append(all_tensors[i])
                     if op_type == 'top.Add':
                         next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])

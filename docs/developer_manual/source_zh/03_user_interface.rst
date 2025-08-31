@@ -319,6 +319,9 @@ run_calibration.py
    * - sq
      - 否
      - SmoothQuant
+   * - smc
+     - 否
+     - Softmax修正
    * - we
      - 否
      - 跨层权重均衡

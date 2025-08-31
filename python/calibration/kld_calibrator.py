@@ -1833,6 +1833,19 @@ class ActivationCalibrator(BaseKldCalibrator):
         else:
             thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4 = self.activation_collect_and_calc_th_new(
             )
+            if self.args.smc:  # fix softmax correction mul threshold as 1
+                for i, op_name in enumerate(op_layers):
+                    op_type = self.parser.get_op_type_by_op_name(op_name)
+                    pre_op = self.parser.get_pre_op_by_op_name(op_name)
+                    if op_type != 'top.Mul' or len(pre_op) != 1: continue
+                    pre_op_type = self.parser.get_op_type_by_op_name(pre_op[0])
+                    if pre_op_type == 'top.Softmax':
+                        output = self.parser.get_outputs_by_op_name(op_name)[0]
+                        thresholds_map[output] = 1.0
+                        thresholds_map_scale[output] = 1.0 / 255.0
+                        thresholds_map_zp[output] = -128
+                        self.activations_statistics[output] = (0.0, 1.0, 1.0)
+                        thresholds_map4[output] = 1.0
             self._clean_resource()
             # step 3: dump threshold table of default histogram bins
             cali_table = self.args.calibration_table
@@ -1905,6 +1918,15 @@ class ActivationCalibrator(BaseKldCalibrator):
         # setp 4: tune to get better threshold of each layers.
         self.tunner = SimpleTuner(self.args, self.tune_ds, self.ppa_list, thresholds_map_absmax)
         thresholds = self.tunner.run()
+        if self.args.smc:  # fix softmax correction mul threshold as 1
+            for i, op_name in enumerate(op_layers):
+                op_type = self.parser.get_op_type_by_op_name(op_name)
+                pre_op = self.parser.get_pre_op_by_op_name(op_name)
+                if op_type != 'top.Mul' or len(pre_op) != 1: continue
+                pre_op_type = self.parser.get_op_type_by_op_name(pre_op[0])
+                if pre_op_type == 'top.Softmax':
+                    output = self.parser.get_outputs_by_op_name(op_name)[0]
+                    thresholds[output] = 1.0
 
         # step 5: dump threshold table after tuning
         tuned_threshold_list = []

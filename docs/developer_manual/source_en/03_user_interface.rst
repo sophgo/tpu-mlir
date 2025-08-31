@@ -308,6 +308,9 @@ Supported parameters:
    * - sq
      - N
      - Open SmoothQuant
+   * - smc
+     - N
+     - Open softmax_correction
    * - we
      - N
      - Open weight_equalization
