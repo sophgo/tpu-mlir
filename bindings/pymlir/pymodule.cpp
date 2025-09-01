@@ -53,8 +53,8 @@ void py_module::load(std::string filename) {
   }
 }
 
-py::dict py_module::getAllTensor() {
-  py::dict py_ret;
+nb::dict py_module::getAllTensor() {
+  nb::dict py_ret;
   for (auto &name : interpreter_->all_tensor_names) {
     if (!interpreter_->hasTensorMem(name)) {
       // skip when part mem or memory allocated failed.
@@ -62,19 +62,19 @@ py::dict py_module::getAllTensor() {
     }
     auto tensor = interpreter_->getTensor(name);
     auto shape = interpreter_->getTensorShape(name);
-    py::str py_s(name);
+    nb::str py_s(name.c_str());
     py_ret[py_s] = getPyArray(std::move(tensor), shape);
   }
   return py_ret;
 }
 
-void py_module::before_invoke(py::function func) {
+void py_module::before_invoke(nb::object func) {
   auto py_ptr = std::make_shared<PyCallBack>(func);
 
   interpreter_->before_hooks.push_back(std::move(py_ptr));
 }
 
-void py_module::after_invoke(py::function func) {
+void py_module::after_invoke(nb::object func) {
   auto py_ptr = std::make_shared<PyCallBack>(func);
   interpreter_->after_hooks.push_back(std::move(py_ptr));
 }
@@ -87,28 +87,28 @@ void py_module::set_mem_mode(std::string mem_mode) {
 
 void py_module::set_tensor(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data,
+    nb::ndarray<> data,
     std::vector<int64_t> shape) {
-  interpreter_->setTensor(name, data.data(), data.size(), shape,
+  interpreter_->setTensor(name, static_cast<float *>(data.data()), data.size(), shape,
                           false);
 }
 
 void py_module::set_tensor_from_int(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data,
+    nb::ndarray<> data,
     std::vector<int64_t> shape) {
-  interpreter_->setTensor(name, data.data(), data.size(), shape, true);
+  interpreter_->setTensor(name, static_cast<float *>(data.data()), data.size(), shape, true);
 }
 
 // Warning: using copy in python
-py::array py_module::get_tensor(std::string name) {
+nb::ndarray<> py_module::get_tensor(std::string name) {
   auto tensor = interpreter_->getTensor(name);
   auto shape = interpreter_->getTensorShape(name);
   return getPyArray(std::move(tensor), shape);
 }
 
 // Tip: not using copy in python, since independent mem
-py::array py_module::get_fp32_tensor(std::string name) {
+nb::ndarray<> py_module::get_fp32_tensor(std::string name) {
   auto tensor = interpreter_->getTensor(name, true);
   auto shape = interpreter_->getTensorShape(name);
   return getPyArray(std::move(tensor), shape);
@@ -140,25 +140,34 @@ void py_module::invoke(bool fixed_to_float) {
 }
 void py_module::fake_quant_weight() { interpreter_->fake_quant_weight(); }
 
-py::array py_module::invoke_at(const std::string name) {
+nb::ndarray<> py_module::invoke_at(const std::string name) {
   auto tensor = interpreter_->invoke_at(name);
   auto shape = interpreter_->getTensorShape(name);
   return getPyArray(std::move(tensor), shape);
 }
 
-py::array py_module::backward_weight_at(
+nb::ndarray<> py_module::backward_weight_at(
     const std::string name, const std::string weight_name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> grd_dst) {
+    nb::ndarray<> grd_dst) {
   auto shape = interpreter_->getTensorShape(weight_name);
   size_t size = 1;
   for (auto dim : shape) {
     size *= dim;
   }
-  py::array_t<float, py::array::c_style | py::array::forcecast> weight_grd(
-      shape);
-  interpreter_->backward_weight_at(name, grd_dst.data(), grd_dst.size(),
-                                   weight_grd.data(), size);
-  return weight_grd;
+  auto strides = std::vector<size_t>(shape.size(), sizeof(float));
+  for (int i = static_cast<int>(shape.size()) - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * static_cast<size_t>(shape[i + 1]);
+  }
+  std::vector<int64_t> strides_i64(strides.begin(), strides.end());
+  std::vector<size_t> shape_sz(shape.begin(), shape.end());
+  auto vec_ptr = new std::vector<float>(size);
+  interpreter_->backward_weight_at(name, static_cast<float *>(grd_dst.data()), grd_dst.size(),
+                                   vec_ptr->data(), size);
+  nb::capsule owner(vec_ptr, [](void *p) noexcept {
+    delete reinterpret_cast<std::vector<float> *>(p);
+  });
+  return nb::ndarray(vec_ptr->data(), shape_sz.size(), shape_sz.data(), owner,
+                     strides_i64.data(), nb::dtype<float>());
 }
 
 void py_module::invoke_from(const std::string name) {

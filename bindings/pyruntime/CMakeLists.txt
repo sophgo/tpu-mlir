@@ -9,18 +9,18 @@ project(pyruntime)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH "\${ORIGIN}/")
 
-find_package(pybind11 REQUIRED CONFIG)
-pybind11_add_module(pyruntime_bm pyruntime_bm.cpp)
+find_package(nanobind CONFIG REQUIRED)
+nanobind_add_module(pyruntime_bm pyruntime_bm.cpp NB_STATIC)
 target_link_libraries(pyruntime_bm PRIVATE
   bmrt
   cpuop
 )
-pybind11_add_module(pyruntime_cvi pyruntime_cvi.cpp)
+nanobind_add_module(pyruntime_cvi pyruntime_cvi.cpp NB_STATIC)
 target_link_libraries(pyruntime_cvi PRIVATE
   cviruntime
 )
 
-pybind11_add_module(pyruntime_tpuv7 pyruntime_tpuv7.cpp)
+nanobind_add_module(pyruntime_tpuv7 pyruntime_tpuv7.cpp NB_STATIC)
 target_link_libraries(pyruntime_tpuv7 PRIVATE
   tpuv7_rt
   tpuv7_modelrt

@@ -7,18 +7,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <pybind11/iostream.h>
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/pytypes.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/stl/string.h>
+#include <memory>
 #include <dlfcn.h>
 #include "bmcpu.h"
 #include "bmruntime_interface.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 
-PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
+// holder type via template parameter on nb::class_
 
 struct PythonTensor {
   PythonTensor(bm_data_type_t dtype_, const char *name_, float scale_,
@@ -28,62 +28,56 @@ struct PythonTensor {
     qzero_point = zero_point_;
     std::vector<size_t> s(shape.dims, shape.dims + shape.num_dims);
     fixDtype(dtype_);
-    data = py::array(pytype, s, data_, py::cast(*this));
+    // build contiguous strides (bytes)
+    size_t item_size = sizeof(float);
+    std::vector<size_t> strides(s.size(), item_size);
+    for (int i = static_cast<int>(s.size()) - 2; i >= 0; --i) {
+      strides[i] = strides[i + 1] * s[i + 1];
+    }
+    std::vector<int64_t> strides_int64(strides.begin(), strides.end());
+    data = nb::ndarray(data_, s.size(), s.data(), nb::cast(*this), strides_int64.data(), nb::dtype<float>());
   }
 
   std::string name;
   std::string dtype; // f32/f16/bf16/i8/i16/i32/u8/u16/u32
   float qscale;
   int qzero_point;
-  py::array data;
+  nb::ndarray<> data;
 
 private:
-  py::dtype pytype;
   void fixDtype(bm_data_type_t fmt) {
     switch (fmt) {
     case BM_FLOAT32:
-      pytype = py::dtype("single");
       dtype = "f32";
       break;
     case BM_INT8:
-      pytype = py::dtype("int8");
       dtype = "i8";
       break;
     case BM_UINT8:
-      pytype = py::dtype("uint8");
       dtype = "u8";
       break;
     case BM_INT4:
-      pytype = py::dtype("int8");
       dtype = "i4";
       break;
     case BM_UINT4:
-      pytype = py::dtype("uint8");
       dtype = "u4";
       break;
     case BM_INT16:
-      pytype = py::dtype("int16");
       dtype = "i16";
       break;
     case BM_UINT16:
-      pytype = py::dtype("uint16");
       dtype = "u16";
       break;
     case BM_INT32:
-      pytype = py::dtype("int32");
       dtype = "i32";
       break;
     case BM_UINT32:
-      pytype = py::dtype("uint32");
       dtype = "u32";
       break;
     case BM_BFLOAT16:
-      // numpy has no bf16 type, use uint16 instread of bf16.
-      pytype = py::dtype("uint16");
       dtype = "bf16";
       break;
     case BM_FLOAT16:
-      pytype = py::dtype("float16");
       dtype = "f16";
       break;
     default:
@@ -344,11 +338,11 @@ struct PyCpuLayer {
   PyCpuLayer() { bmcpu_handle = bmcpu_init(); }
 
   std::vector<std::vector<int>> forward(
-      int op_type, py::bytes param_py, int param_size,
+      int op_type, nb::bytes param_py, int param_size,
       std::vector<std::vector<float>> &input_tensors_py,
       const std::vector<std::vector<int>> &input_shapes,
       // std::vector<std::vector<float>> &output_tensors_py,
-      std::vector<py::array_t<float, py::array::c_style | py::array::forcecast>>
+      std::vector<nb::ndarray<>>
           &output_tensors_py,
       std::vector<std::vector<int>> &output_shapes_out) {
 
@@ -370,9 +364,7 @@ struct PyCpuLayer {
                   output_shapes_out);
 
     for (int i = 0; i < output_tensors_py.size(); i++) {
-      // output_tensors[i] = output_tensors_py[i].data();
-      auto result_buffer = output_tensors_py[i].request();
-      memcpy((float *)result_buffer.ptr, output_tensors[i],
+      memcpy((float *)output_tensors_py[i].data(), output_tensors[i],
              output_tensors_py[i].size() * sizeof(float));
     }
 
@@ -385,39 +377,37 @@ private:
   void *bmcpu_handle;
 };
 
-PYBIND11_MODULE(pyruntime_bm, m) {
-  py::class_<PythonTensor, std::shared_ptr<PythonTensor>>(m, "Tensor")
-      .def_readonly("name", &PythonTensor::name)
-      .def_readonly("qscale", &PythonTensor::qscale)
-      .def_readonly("qzero_point", &PythonTensor::qzero_point)
-      .def_readonly("dtype", &PythonTensor::dtype)
-      .def_readwrite("data", &PythonTensor::data);
+NB_MODULE(pyruntime_bm, m) {
+  nb::class_<PythonTensor>(m, "Tensor")
+      .def_ro("name", &PythonTensor::name)
+      .def_ro("qscale", &PythonTensor::qscale)
+      .def_ro("qzero_point", &PythonTensor::qzero_point)
+      .def_ro("dtype", &PythonTensor::dtype)
+      .def_rw("data", &PythonTensor::data);
 
-  py::class_<PythonNet, std::shared_ptr<PythonNet>>(m, "Net")
+  nb::class_<PythonNet>(m, "Net")
       .def("forward", &PythonNet::forward)
       .def("forward_dynamic", &PythonNet::forward_dynamic)
       .def("dump", &PythonNet::dump)
-      .def_readonly("name", &PythonNet::name)
-      .def_readonly("num_input", &PythonNet::num_input)
-      .def_readonly("num_output", &PythonNet::num_output)
-      .def_readwrite("inputs", &PythonNet::inputs)
-      .def_readwrite("outputs", &PythonNet::outputs);
+      .def_ro("name", &PythonNet::name)
+      .def_ro("num_input", &PythonNet::num_input)
+      .def_ro("num_output", &PythonNet::num_output)
+      .def_rw("inputs", &PythonNet::inputs)
+      .def_rw("outputs", &PythonNet::outputs);
 
-  py::class_<PythonModel>(m, "Model")
-      .def(py::init<const std::string &, int, const std::string &>(),
-           py::arg("model_file"), py::arg("device_id") = 0,
-           py::arg("decrypt_lib") = "")
+  nb::class_<PythonModel>(m, "Model")
+      .def(nb::init<const std::string &, int, const std::string &>(),
+           nb::arg("model_file"), nb::arg("device_id") = 0,
+           nb::arg("decrypt_lib") = "")
       .def("Net", &PythonModel::Net)
-      .def_readonly("networks", &PythonModel::networks);
+      .def_ro("networks", &PythonModel::networks);
 
-  py::class_<PyCpuLayer>(m, "CpuLayer")
-      .def(py::init())
-      .def("forward", &PyCpuLayer::forward, "forward", py::arg("op_type"),
-           py::arg("param").noconvert(), py::arg("param_size"),
-           py::arg("input_tensors").noconvert(),
-           py::arg("input_shapes").noconvert(),
-           py::arg("output_tensors").noconvert(),
-           py::arg("output_shapes").noconvert());
-  py::scoped_ostream_redirect output{std::cerr,
-                                     py::module::import("sys").attr("stderr")};
+  nb::class_<PyCpuLayer>(m, "CpuLayer")
+      .def(nb::init())
+      .def("forward", &PyCpuLayer::forward, "forward", nb::arg("op_type"),
+           nb::arg("param").noconvert(), nb::arg("param_size"),
+           nb::arg("input_tensors").noconvert(),
+           nb::arg("input_shapes").noconvert(),
+           nb::arg("output_tensors").noconvert(),
+           nb::arg("output_shapes").noconvert());
 }
