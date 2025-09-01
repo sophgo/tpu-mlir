@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/DevParallel/DistributeUtils.h"
 namespace tpu_mlir {
 namespace tpu {
-#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
+#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a)-1) / (b) + 1)
 
 LogicalResult
 LargePadConvPattern::matchAndRewriteImpl(tpu::Conv2DOp op,
@@ -125,7 +125,8 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
         // transpose the weight
         auto weight_type =
             module::getElementType(binaryshift_weight_Op.getOutput());
-        auto weight_shape = module::getShape(binaryshift_weight_Op.getOutput());
+        auto weight_shape =
+            module::getShape(binaryshift_weight_Op.getOutput()).vec();
         if (weight_shape.size() != 4) {
           return;
         }
@@ -627,7 +628,8 @@ Value clone_splitK_matmul(tpu::MatMulOp matMulOp, Value input, Value weight,
     new_type = matMulOp.getOutput().getType();
     if (!module::isWeight(matMulOp.getOutput()))
       llvm::WithColor::warning()
-          << "unsafe data type for matmul split K pattern." << "\n";
+          << "unsafe data type for matmul split K pattern."
+          << "\n";
   }
   auto none = module::getNoneOp(matMulOp);
   auto new_matmul = rewriter.create<tpu::MatMulOp>(
@@ -768,7 +770,8 @@ Value apply_multipliers(Value input, Value multipliers, int scale, int rshift,
 
   if (!module::isNone(multipliers)) {
     if (scale != 1)
-      llvm::errs() << "not support yet." << "\n";
+      llvm::errs() << "not support yet."
+                   << "\n";
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("shift", rewriter.getSI32IntegerAttr(rshift)));
