@@ -33,6 +33,10 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.22.0
+     - 2025.08.31
+     - PPL supports dynamic compilation
+       llm_analyse supports performance estimation for large models
    * - v1.21.0
      - 2025.07.31
      - BM1688 supports yolov8 post-processing
