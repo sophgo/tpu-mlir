@@ -75,6 +75,7 @@ void tpu::InterpOp::codegen_global_bm1684x() {
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
   int mode_flag = (common.platform_sp == ONNX_NEAREST) ||
+                  (common.platform_sp == PYTORCH_NEAREST) ||
                   (common.platform_sp == PYTORCH_SUPPORT);
   if (ppl_flag && mode_flag) {
     param.spec.buffer_addr = module::getAddress(getBuffer());

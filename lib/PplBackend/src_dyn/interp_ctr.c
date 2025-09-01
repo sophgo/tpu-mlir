@@ -20,7 +20,6 @@ void dynamic_glb_interp_linear_layer_ctrl(void *ctx, void *param,
     out_w = w_ratio * in_w + 1e-3;
     _param->ptr_output = output_spec->addr;
     _param->ptr_input = input_spec->addr;
-    _param->ptr_index = addr_relocate(ctx, _param->ptr_index, DYNAMIC_NEURON);
     _param->H_in = in_h;
     _param->W_in = in_w;
     _param->H_out = out_h;
@@ -35,7 +34,6 @@ void dynamic_glb_interp_linear_layer_ctrl(void *ctx, void *param,
     out_w = w_ratio * in_w + 1e-3;
     _param->ptr_output = output_spec->addr;
     _param->ptr_input = input_spec->addr;
-    _param->ptr_index = addr_relocate(ctx, _param->ptr_index, DYNAMIC_NEURON);
     _param->H_in = in_h;
     _param->W_in = in_w;
     _param->H_out = out_h;
@@ -50,7 +48,6 @@ void dynamic_glb_interp_linear_layer_ctrl(void *ctx, void *param,
     out_w = w_ratio * in_w + 1e-3;
     _param->ptr_output = output_spec->addr;
     _param->ptr_input = input_spec->addr;
-    _param->ptr_index = addr_relocate(ctx, _param->ptr_index, DYNAMIC_NEURON);
     _param->H_in = in_h;
     _param->W_in = in_w;
     _param->H_out = out_h;
@@ -83,7 +80,6 @@ void dynamic_glb_interp_nearest_layer_ctrl(void *ctx, void *param,
     out_w = w_ratio * in_w + 1e-3;
     _param->ptr_output = output_spec->addr;
     _param->ptr_input = input_spec->addr;
-    _param->ptr_index = addr_relocate(ctx, _param->ptr_index, DYNAMIC_NEURON);
     _param->H_in = in_h;
     _param->W_in = in_w;
     _param->H_out = out_h;
@@ -98,7 +94,6 @@ void dynamic_glb_interp_nearest_layer_ctrl(void *ctx, void *param,
     out_w = w_ratio * in_w + 1e-3;
     _param->ptr_output = output_spec->addr;
     _param->ptr_input = input_spec->addr;
-    _param->ptr_index = addr_relocate(ctx, _param->ptr_index, DYNAMIC_NEURON);
     _param->H_in = in_h;
     _param->W_in = in_w;
     _param->H_out = out_h;
@@ -113,7 +108,6 @@ void dynamic_glb_interp_nearest_layer_ctrl(void *ctx, void *param,
     out_w = w_ratio * in_w + 1e-3;
     _param->ptr_output = output_spec->addr;
     _param->ptr_input = input_spec->addr;
-    _param->ptr_index = addr_relocate(ctx, _param->ptr_index, DYNAMIC_NEURON);
     _param->H_in = in_h;
     _param->W_in = in_w;
     _param->H_out = out_h;

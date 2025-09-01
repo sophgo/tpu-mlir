@@ -478,19 +478,8 @@ public:
     if (!module::isNone(interpOp.getBuffer())) {
       return failure();
     }
-    auto input_shape = module::getShape(interpOp.getInput());
-    int input_dim = input_shape.size();
-    int64_t n, c, ih, iw, oh, ow;
-    module::getNCHW(interpOp.getInput(), n, c, ih, iw, false);
-    module::getNCHW(interpOp.getOutput(), n, c, oh, ow, false);
-    bool range_flag = (oh % ih == 0 && ow % iw == 0);
-    if ((!range_flag) && (oh * ow < 520 * 520) && (input_dim == 4) &&
-        (module::isBM1684X() || module::isBM1688())) {
-      auto type = ::mlir::Builder(getContext()).getIntegerType(8);
-      int64_t buffer_size = 16 * 16 * 1024 * 64; // 4 banks
-      auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
-      auto buffer = tpu::BufferOp::create(interpOp, buffer_type);
-      interpOp.setOperand(2, buffer);
+
+    if ((module::isBM1684X() || module::isBM1688())) {
       auto ppl_flag = interpOp.getPplFlag();
       ppl_flag = true;
       interpOp->setAttr("ppl_flag", rewriter.getBoolAttr(true));
