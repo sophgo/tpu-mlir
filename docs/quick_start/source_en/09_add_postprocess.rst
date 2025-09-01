@@ -150,7 +150,7 @@ The command execution is as follows:
        --output dog_out.jpg
 
 Add segmentation post_processing(YOLOv8s_seg)
-------------------------------
+----------------------------------------------
 
 Prepare working directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -318,6 +318,7 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 注意：
 
 - 如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
+
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
 
 .. code-block:: shell

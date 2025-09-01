@@ -88,7 +88,7 @@ Example of starting TDB:
 
 
 TDB command summary
-------------------
+--------------------
 
 After entering TDB, press tab twice to get the command prompt. The display looks like this:
 
@@ -153,7 +153,7 @@ TDB usage process
 
 
 TDB function description
-------------------
+-------------------------
 
 next feature
 ~~~~~~~~~~~~~~~~~~~~
@@ -430,7 +430,7 @@ The py feature can execute python commands directly in the TDB environment, the 
 
 
 BModel Disassembler
-------------------
+--------------------
 
 BModel Disassembler can disassemble the bmodel file to get the assembly code of atomic instruction in MLIR format, which is asm instruction. They are used to analyze the final runtime instruction of the model.
 
@@ -586,7 +586,7 @@ To use ``check diff`` command can visualize the difference of data.
 
    (tdb) check diff [file-line] [index]
 
-Save the visualization results of the actual data, reference data, and difference data as ./*actual.png、./*ref.png、./*diff.png。
+Save the visualization results of the actual data, reference data, and difference data as ./\*actual.png、./\*ref.png、./\*diff.png。
 
 **SoC Devices**
 
