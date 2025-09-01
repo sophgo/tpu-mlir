@@ -64,9 +64,8 @@ LogicalResult tpu::PermuteOp::inference(InferenceParameter &p) {
   return success();
 }
 
-ArrayAttr tpu::PermuteOp::getIndexingMaps() {
-
-  auto order = module::getI64Array(getOrder());
+static int GetNoExchangeDim(tpu::PermuteOp op) {
+  auto order = module::getI64Array(op.getOrder());
   int no_exchange_dim = 0;
   for (int i = 0, n = order->size(); i < n; i++) {
     if (i == order->at(i))
@@ -74,6 +73,11 @@ ArrayAttr tpu::PermuteOp::getIndexingMaps() {
     else
       break;
   };
+  return no_exchange_dim;
+}
+
+ArrayAttr tpu::PermuteOp::getIndexingMaps() {
+  int no_exchange_dim = GetNoExchangeDim(*this);
   if (no_exchange_dim > 0) {
     MLIRContext *context = getContext();
     AffineMap identityMap =
@@ -86,11 +90,10 @@ ArrayAttr tpu::PermuteOp::getIndexingMaps() {
 };
 
 bool tpu::PermuteOp::support_multi_core() {
-  auto order = *(module::getI64Array(getOrder()));
-  auto in_shape = module::getShape(getInput());
-  if (in_shape.size() == 4 && order[0] == 0 && order[1] == 3 && order[2] == 1 &&
-      order[3] == 2 && in_shape[3] == 3) {
-    return true;
+  int no_exchange_dim = GetNoExchangeDim(*this);
+  if (no_exchange_dim > 0) {
+    return false;
+    // can do CoreParallel in getIndexingMaps
   }
-  return false;
+  return module::isMultiCoreArch();
 }

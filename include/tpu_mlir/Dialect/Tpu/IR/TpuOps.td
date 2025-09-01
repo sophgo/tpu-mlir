@@ -2684,6 +2684,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
 }
 
 def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {

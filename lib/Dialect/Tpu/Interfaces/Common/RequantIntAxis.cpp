@@ -135,4 +135,20 @@ mlir::Type tpu::RequantIntAxisOp::type_verify(uint64_t opd_idx,
   return do_nothing(mode);
 }
 
+ArrayAttr tpu::RequantIntAxisOp::getIndexingMaps() {
+  MLIRContext *ctx = getContext();
+  int can_parallel_dim = getRqAxis();
+  if (can_parallel_dim == 0) {
+    return Builder(getContext()).getAffineMapArrayAttr({});
+  }
+
+  // inputMap: parallel dims before rq axis
+  auto inputMap = AffineMap::getMultiDimIdentityMap(can_parallel_dim, ctx);
+  // broadcast rqParamMap
+  auto empty_map = AffineMap::get(can_parallel_dim, 0, ctx);
+
+  SmallVector<AffineMap> indexingMaps{inputMap, empty_map, inputMap};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};
+
 bool tpu::RequantIntAxisOp::support_multi_core() { return false; }
