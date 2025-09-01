@@ -406,7 +406,7 @@ random.seed(seed_val)
 np.random.seed(seed_val)
 torch.manual_seed(seed_val)
 torch.cuda.manual_seed_all(seed_val)
-#训练参数
+# Training parameters
 # optimizer = optim.AdamW(model.parameters(),
 #                   lr = learning_rate,
 #                   eps = epsilon
@@ -416,7 +416,7 @@ torch.cuda.manual_seed_all(seed_val)
 # scheduler = get_linear_schedule_with_warmup(optimizer,
 #                                             num_warmup_steps = warmup_steps,
 #                                             num_training_steps = total_steps)
-# #原始模型训练
+# #Original Model Training
 # model=model.train()
 # model_prepared2,training_stats1=train(model,epochs,optimizer,scheduler,train_dataloader,validation_dataloader,total_steps)
 
@@ -497,16 +497,16 @@ model_engine, optimizer, trainloader, __ = deepspeed.initialize(args=args,
                                                                 model_parameters=parameters,
                                                                 training_data=tokenized_train)
 model_prepared1 = model_engine
-#原始模型PPL
+# Original model PPL
 avg_ppl1 = cal_ppl(model_prepared1, test_dataloader)
 print("原始模型PPL:{}".format(avg_ppl1))
 
-#校准
+# Calibration
 enable_calibration(model_prepared1)
 #calibrate(train_dataloader, model_prepared1)
 calibrate(cali_loader, model_prepared1)
 
-#量化模型PPL
+# Quantization Model PPL
 enable_quantization(model_prepared1)
 avg_ppl2 = cal_ppl(model_prepared1, test_dataloader)
 print("量化模型PPL:{}".format(avg_ppl2))

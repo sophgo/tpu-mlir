@@ -234,14 +234,14 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
             datasize = pd.to_numeric(data['DMA data size(B)'][i])
             op_type = 0 if direction in read_directions else 1
             if direction in read_directions:
-                size = datasize / lane_num  #c维除以lane_num
+                size = datasize / lane_num  # c divided by lane_num
                 info = f'{type}{cmd},physical start addr:{dst}<br>{direction},{data["dst_shape"][i]}'
                 lmem_temp.append([
                     int(data['Start Cycle'][i]),
                     int(data['End Cycle'][i]), op_type, dst, size, info
                 ])
             elif direction in write_directions:
-                size = datasize / lane_num  #c维除以lane num
+                size = datasize / lane_num  # c dimension divided by lane number
                 info = f'{type}{cmd},physical start addr:{src}<br>{direction},{data["src_shape"][i]}'
                 lmem_temp.append([
                     int(data['Start Cycle'][i]),
@@ -279,7 +279,7 @@ def prepare_data(if_layer, data, frequency, idx, ip_type, bwlist, lane_num, cycl
 
 def merge_layer_data(cycle_data_dict, categories):
     if "TPU_LAYER" not in categories:
-        return cycle_data_dict  # 如果categories中不包含TPU_LAYER，则不进行任何操作
+        return cycle_data_dict  # If TPU_LAYER is not in categories, do nothing.
 
     ip_type = categories.index("TPU_LAYER")
     half_height_layers = ['Store', 'Load']
@@ -461,7 +461,7 @@ def calculate_ratios(cycle_data_dict):
     ddr_ratios, l2m_ratios = [], []
 
     for data in cycle_data_dict.values():
-        # 使用生成器表达式进行过滤
+        # Use generator expressions to filter
         filtered_data = (
             record for record in data if record[0] in [1, 2] and "SYS" not in record[5]  #GDMA/SDMA
         )

@@ -157,8 +157,8 @@ class GPTQFP4FakeQuantize(QuantizeBase):
 
     def FP4quant(self, X, W):
         assert self.data_type in FLOAT_MAPPING, "unexpected data type."
-        allow_data = FLOAT_MAPPING[self.data_type]  #float类型
-        allow_data_bit = INT_MAPPING[self.data_type]  #int类型
+        allow_data = FLOAT_MAPPING[self.data_type]  # float type
+        allow_data_bit = INT_MAPPING[self.data_type]  # int type
         _scale = W.abs().max(1)[0] * self.quantile / max(allow_data)
         #_scale.unsqueeze_(dim=-1)
         X = X / _scale
@@ -257,7 +257,7 @@ class GPTQFP4FakeQuantize(QuantizeBase):
 
         damp = percdamp * torch.mean(H_diag)
         diag = torch.arange(self.columns, device=self.dev)
-        H[diag, diag] += damp  # 使 H 转变为全正数，保证正定
+        H[diag, diag] += damp  # Make H all positive, ensure positive definiteness
 
         H_c = H.clone()
         H_cpu = H_c.cpu()
@@ -272,7 +272,7 @@ class GPTQFP4FakeQuantize(QuantizeBase):
         H_cpu = np.linalg.cholesky(H_cpu)
         Hinv = torch.tensor(H_cpu, device=self.dev)
 
-        for i1 in range(0, self.columns, blocksize):  # 以步长 blocksize (128) 循环到 columns
+        for i1 in range(0, self.columns, blocksize):  # Loop through columns with step size blocksize (128)
             i2 = min(i1 + blocksize, self.columns)
             count = i2 - i1
 
@@ -316,7 +316,7 @@ class GPTQFP4FakeQuantize(QuantizeBase):
             Q = Q.t()
         # self.weight.data = Q.reshape(self.weight.shape).to(self.weight.data.dtype)
         W = Q.reshape(self.weight.shape).to(
-            self.weight.data.dtype)  # fixed fakequantize 并没有重置 parameter weight
+            self.weight.data.dtype)  # fixed fakequantize: parameter weight not reset
 
         # if DEBUG:
         #     print(torch.sum((self.layer(self.inp1) - self.out1) ** 2))
@@ -371,7 +371,7 @@ class GPTQFP4FakeQuantize(QuantizeBase):
 
         damp = percdamp * torch.mean(H_diag)
         diag = torch.arange(self.columns, device=self.dev)
-        H[diag, diag] += damp  # 使 H 转变为全正数，保证正定
+        H[diag, diag] += damp  # Make H all positive to ensure positive definiteness.
 
         H_c = H.clone()
         H_cpu = H_c.cpu()
@@ -386,7 +386,7 @@ class GPTQFP4FakeQuantize(QuantizeBase):
         H_cpu = np.linalg.cholesky(H_cpu)
         Hinv = torch.tensor(H_cpu, device=self.dev)
 
-        for i1 in range(0, self.columns, blocksize):  # 以步长 blocksize (128) 循环到 columns
+        for i1 in range(0, self.columns, blocksize):  # Loop through columns with a stride of blocksize (128)
             i2 = min(i1 + blocksize, self.columns)
             count = i2 - i1
 
@@ -431,7 +431,7 @@ class GPTQFP4FakeQuantize(QuantizeBase):
             Q = Q.t()
         # self.weight.data = Q.reshape(self.weight.shape).to(self.weight.data.dtype)
         W = Q.reshape(self.weight.shape).to(
-            self.weight.data.dtype)  # fixed fakequantize 并没有重置 parameter weight
+            self.weight.data.dtype)  # fixed fake quantize without resetting parameter weight
 
         # if DEBUG:
         #     print(torch.sum((self.layer(self.inp1) - self.out1) ** 2))

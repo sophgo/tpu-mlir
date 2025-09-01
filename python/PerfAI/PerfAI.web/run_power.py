@@ -300,7 +300,7 @@ def get_power_from_data_parallel(sheet_data, perf_path, tiu_header, dma_header, 
 
 # power: watt (j/s)
 # cycle : 1ns = 10e-09s
-# Energy: nJ -> mJ 毫焦耳
+# Energy: nJ -> mJ (millijoule)
 def cal_total_energy(dict_to_js):
     energy = []
     missing_item = set()
@@ -350,15 +350,15 @@ def sort_and_update_lists(list_of_lists, n):
     updated_lists = []
     for lst in list_of_lists:
         updated_list = lst.copy()
-        updated_list[4] += n  # 第五个元素start cycle增加n
-        updated_list[5] += n  # 第六个元素end cycle增加n
+        updated_list[4] += n  # The fifth element start cycle increase n
+        updated_list[5] += n  # Increment n at the end of the sixth element cycle
         updated_lists.append(updated_list)
     updated_lists.sort(key=lambda x: x[5])
-    return updated_lists, updated_lists[-1][5] if updated_lists else n  # 返回新的列表和n的更新值
+    return updated_lists, updated_lists[-1][5] if updated_lists else n  # Return new list and updated n value
 
 
 def process_multiple_sets(arg_sets, tiu_header, dma_header, perf_tiu_columns, perf_dma_columns):
-    # 初始化最终结果存储
+    # Initialize final result storage
     final_ip_list = []
     final_pld_dict_to_js = {}
     final_perf_dict_to_js = {}
@@ -367,10 +367,10 @@ def process_multiple_sets(arg_sets, tiu_header, dma_header, perf_tiu_columns, pe
     pld_concat_timemark = {}
     perf_concat_timemark = {}
     for args in arg_sets:
-        # 假设 args 是一个包含 pldfile 和 perf 路径的字典
+        # Assume args is a dictionary containing the paths for pldfile and perf
         pldfile = os.path.abspath(args['pld']) if args['pld'] else ''
         perf_path = os.path.abspath(args['perf'])
-        base = os.path.basename(perf_path)  # 分离文件名和扩展名
+        base = os.path.basename(perf_path)  # Split filename and extension
         pattern_name, _ = os.path.splitext(base)
         pld_concat_timemark[pattern_name] = []
         perf_concat_timemark[pattern_name] = []
@@ -386,12 +386,12 @@ def process_multiple_sets(arg_sets, tiu_header, dma_header, perf_tiu_columns, pe
 
         ip_list, pld_dict_to_js, perf_dict_to_js = get_power_from_data_parallel(
             sheetdata, perf_path, tiu_header, dma_header, perf_tiu_columns, perf_dma_columns)
-        # 合并结果
+        # Merge result
         final_ip_list.extend(x for x in ip_list if x not in final_ip_list)
 
         for key in pld_dict_to_js:
             pld_dict_to_js[key] = remove_specific_entries(
-                pld_dict_to_js[key])  #删除pld第一个wait之前和最后一个end之后的指令
+                pld_dict_to_js[key])  # Delete instructions before the first wait and after the last end in pld.
 
         for key in {**pld_dict_to_js, **perf_dict_to_js}:
             if key not in n_dict1:
@@ -410,9 +410,9 @@ def process_multiple_sets(arg_sets, tiu_header, dma_header, perf_tiu_columns, pe
             n_dict2[key] = last_n + 1
             perf_concat_timemark[pattern_name].append(last_n + 1)
 
-    # 排序
+    # sort
     for key in final_pld_dict_to_js:
-        final_pld_dict_to_js[key].sort(key=lambda x: (x[4], x[5]))  # 确认第5个值是start cycle
+        final_pld_dict_to_js[key].sort(key=lambda x: (x[4], x[5]))  # Confirm the 5th value is start cycle
     for key in final_perf_dict_to_js:
         final_perf_dict_to_js[key].sort(key=lambda x: (x[4], x[5]))
 

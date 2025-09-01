@@ -36,14 +36,14 @@ class YoloBody(nn.Module):
         base_channels = int(wid_mul * 64)  # 64
         base_depth = max(round(dep_mul * 3), 1)  # 3
         #-----------------------------------------------#
-        #   输入图片是640, 640, 3
-        #   初始的基本通道是64
+        # Input image is 640, 640, 3
+        # Initial basic channel is 64
         #-----------------------------------------------#
         self.backbone_name = backbone
         if backbone == "cspdarknet":
             #---------------------------------------------------#
-            #   生成CSPdarknet53的主干模型
-            #   获得三个有效特征层，他们的shape分别是：
+            # Generate CSPdarknet53 backbone model
+            # Obtain three valid feature layers, their shapes are respectively:
             #   80,80,256
             #   40,40,512
             #   20,20,1024
@@ -51,8 +51,8 @@ class YoloBody(nn.Module):
             self.backbone = CSPDarknet(base_channels, base_depth, phi, pretrained)
         else:
             #---------------------------------------------------#
-            #   如果输入不为cspdarknet，则调整通道数
-            #   使其符合YoloV5的格式
+            # If the input is not cspdarknet, adjust the channel count.
+            # Make it comply with YoloV5 format
             #---------------------------------------------------#
             self.backbone = {
                 'convnext_tiny': ConvNeXt_Tiny,
@@ -146,17 +146,17 @@ class YoloBody(nn.Module):
         P5 = self.conv3_for_downsample2(P5)
 
         #---------------------------------------------------#
-        #   第三个特征层
+        # Third feature layer
         #   y3=(batch_size,75,80,80)
         #---------------------------------------------------#
         out2 = self.yolo_head_P3(P3)
         #---------------------------------------------------#
-        #   第二个特征层
+        # Second feature layer
         #   y2=(batch_size,75,40,40)
         #---------------------------------------------------#
         out1 = self.yolo_head_P4(P4)
         #---------------------------------------------------#
-        #   第一个特征层
+        # First feature layer
         #   y1=(batch_size,75,20,20)
         #---------------------------------------------------#
         out0 = self.yolo_head_P5(P5)

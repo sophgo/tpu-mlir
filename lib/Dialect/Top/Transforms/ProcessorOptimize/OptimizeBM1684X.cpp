@@ -863,11 +863,6 @@ protected:
     auto order = module::getI64Array(trans_op.getOrder());
     int order_size = order->size();
     std::vector<int64_t> shape = module::getShape(trans_op.getInput());
-    if (module::getName(trans_op.getOutput()).str() ==
-        "/layers/layers.0/blocks/blocks.0/attn/"
-        "Transpose_1_output_0_Transpose") {
-      printf("ddddddd");
-    }
     std::pair<int, int> swapIndices(-1, -1);
     for (int i = 0; i < order_size; ++i) {
       if (order->at(i) != i) {

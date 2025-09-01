@@ -148,7 +148,7 @@ class DataDump(TdbPlugin, TdbPluginCmd):
         value_dict = value.__dict__
         if value_dict['slice'] != '[...]':
             import re
-            pattern = re.compile(r'(?<=[\<|x])\d+')  # 查找数字
+            pattern = re.compile(r'(?<=[\<|x])\d+')  # Find number
             glb_shape = [int(x) for x in pattern.findall(value_dict['reshape'])]
             assert glb_shape[2] == 1, "not support 3d shape"
             glb_shape.pop(2)

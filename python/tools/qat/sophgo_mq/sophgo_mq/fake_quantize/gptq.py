@@ -246,8 +246,8 @@ class GPTQFakeQuantize(QuantizeBase):
         # print(self.H.size())
     def FP4quant(self, X, W, i1, i):
         assert self.data_type in FLOAT_MAPPING, "unexpected data type."
-        allow_data = FLOAT_MAPPING[self.data_type]  #float类型
-        allow_data_bit = INT_MAPPING[self.data_type]  #int类型
+        allow_data = FLOAT_MAPPING[self.data_type]  # float type
+        allow_data_bit = INT_MAPPING[self.data_type]  # int type
         if self.groupsize == -1:
             _scale = W.abs().max(1)[0] * self.quantile / max(allow_data)
             #_scale.unsqueeze_(dim=-1)
@@ -344,7 +344,7 @@ class GPTQFakeQuantize(QuantizeBase):
 
         damp = percdamp * torch.mean(torch.diag(H))
         diag = torch.arange(self.columns, device=self.dev)
-        H[diag, diag] += damp  # 使 H 转变为全正数，保证正定
+        H[diag, diag] += damp  # Convert H to a positive definite matrix to ensure positive definiteness.
 
         H_c = H.clone()
         H_cpu = H_c.cpu()
@@ -359,7 +359,7 @@ class GPTQFakeQuantize(QuantizeBase):
         # H_cpu = np.linalg.cholesky(H_cpu)
         # Hinv = torch.tensor(H_cpu, device=self.dev)
 
-        for i1 in range(0, self.columns, blocksize):  # 以步长 blocksize (128) 循环到 columns
+        for i1 in range(0, self.columns, blocksize):  # Loop through columns with a step size of blocksize (128)
             i2 = min(i1 + blocksize, self.columns)
             count = i2 - i1
 
@@ -408,7 +408,7 @@ class GPTQFakeQuantize(QuantizeBase):
         if isinstance(self.layer_module, transformers.Conv1D):
             Q = Q.t()
         # self.weight.data = Q.reshape(self.weight.shape).to(self.weight.data.dtype)
-        W = Q.reshape(X.shape).to(X.data.dtype)  # fixed fakequantize 并没有重置 parameter weight
+        W = Q.reshape(X.shape).to(X.data.dtype)  # Fixed FakeQuantize without resetting parameter weight
 
         # if DEBUG:
         #     print(torch.sum((self.layer(self.inp1) - self.out1) ** 2))

@@ -413,21 +413,21 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       //   }
       // }
       // if (!find) {
-      // 存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
+      // An input scale for int4 exists, indicating the previous layer is int8; therefore, the input tensor is also int8 and requires requantization to int4.
       in_scale =
           op->getAttr("in_int4_scale").cast<FloatAttr>().getValueAsDouble();
       in_zp = op->getAttr("in_int4_zp").cast<FloatAttr>().getValueAsDouble();
       module::getScaleAndZeroPoint(op.getInput(), in_int8_scale, in_int8_zp,
                                    asymmetric);
       auto output_type = getQuantIntType(op.getInput(), in_scale, in_zp, 4);
-      double int4_scale = in_int8_scale / in_scale; // 将int8转为int4的rq参数
+      double int4_scale = in_int8_scale / in_scale; // Convert int8 to int4 rq parameter
       double offset = in_zp - in_int8_zp * int4_scale;
       auto to_name = "to_b4_for_" + module::getName(op.getOperation()).str();
       value =
           do_requantFp(op.getInput(), int4_scale, offset, output_type, to_name);
       operands.push_back(value);
       // }
-    } else { // 输入tensor也是int4
+    } else { // Input tensor is also int4
       operands.push_back(op.getInput());
       module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric,
                                    bitwidth);

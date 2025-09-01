@@ -261,7 +261,7 @@ public:
   std::vector<ts_mem_cons> ts_mem_contrains;
   MPObjective *objective;
   lmem_alloc_Ptr lmem_alloc_ptr;
-  std::vector<l2m_value_info> vec_l2m_value_info; // Value + ts_idx > 加载ts号
+  std::vector<l2m_value_info> vec_l2m_value_info; // Value + ts_idx > loaded ts number
   std::map<Value, std::map<int, std::vector<std::string>>, value_compare>
       mapValueInfo;
   std::map<Value, std::map<int, cons_info>, value_compare> mapConsInfo;
@@ -270,7 +270,7 @@ public:
   std::vector<int64_t> core_ids;
   std::map<int, std::vector<std::vector<int64_t>>> ncdhw_steps;
   std::map<Operation *, std::vector<Value>>
-      reside_in_tensor; //分叉的输出因为远处的user靠得太近，不必要store/load，故直接驻留
+      reside_in_tensor; // Branch output, as a distant user is too close, unnecessary store/load, hence directly retained.
   std::map<Value, std::vector<std::string>, value_compare>
       values_need_store_to_grpout;
   std::map<Value, reside_value_info, value_compare> map_reside_value_info;

@@ -239,18 +239,18 @@ class FloatQuantizer_process(object):
                     logger.info("Vitis-DPU does not support per-channel quatization.")
                     raise NotImplementedError("Vitis-DPU does not support per-channel quatization.")
                 elif backend == 'sophgo_tpu':
-                    #卷积权重per-channel量化参数，bias的per-chan量化参数没有去调优
+                    # Convolution weights per-chan quantization parameters, bias per-chan quantization parameters have not been tuned.
                     if len(next_nodes) == 1 and next_nodes[0][0].op_type in [
                             'Gemm', 'Conv'
-                    ]:  #当前伪量化节点只有1个后继，且第1个后继节点为conv类型
+                    ]:  # The current pseudo-quantization node has only one successor, which is a conv type node.
                         next_node_output = next_nodes[0][0].output[0]
                         if inp2node[next_node_output][0][
-                                0].op_type == 'Relu':  ##伪量化节点的第1个后继conv节点的第1个后继节点为Relu(fake->conv->relu)
-                            #若是fake->conv->relu,因为relu会融合到前面conv，故用relu的输出tensor名+Relu作为量化参数保存tensor名
+                                0].op_type == 'Relu':  # # The first successor node of the first successor conv node of the fake quantization node is Relu (fake->conv->relu)
+                            # If fake->conv->relu, since ReLU is fused into the previous conv, use the ReLU output tensor name + Relu as the quantization parameter to save the tensor name.
                             tensor_name = '{}_{}'.format(inp2node[next_node_output][0][0].output[0],
                                                          'Relu')
                         else:
-                            #若是fake->conv->not_relu_type,直接用conv的输出tensor名+conv作为量化参数保存tensor名
+                            # If fake->conv->not_relu_type, directly use conv's output tensor name + conv as the quantization parameter to save the tensor name.
                             tensor_name = '{}_{}'.format(next_node_output, next_nodes[0][0].op_type)
                         tensor_name += '_{}'.format('weight_fp8' if next_nodes[0][1] ==
                                                     1 else 'bias_fp8')
@@ -260,18 +260,18 @@ class FloatQuantizer_process(object):
                         }
 
                 elif backend == 'Academic_NLP':
-                    #卷积权重per-channel量化参数，bias的per-chan量化参数没有去调优
+                    # Convolution weights' per-channel quantization parameters, bias' per-channel quantization parameters are not tuned
                     if len(next_nodes) == 1 and next_nodes[0][0].op_type in [
                             'Gemm', 'Conv'
-                    ]:  #当前伪量化节点只有1个后继，且第1个后继节点为conv类型
+                    ]:  # Current pseudo-quantization node has only one successor, and the first successor is of conv type.
                         next_node_output = next_nodes[0][0].output[0]
                         if inp2node[next_node_output][0][
-                                0].op_type == 'Relu':  ##伪量化节点的第1个后继conv节点的第1个后继节点为Relu(fake->conv->relu)
-                            #若是fake->conv->relu,因为relu会融合到前面conv，故用relu的输出tensor名+Relu作为量化参数保存tensor名
+                                0].op_type == 'Relu':  # #The first successor of the fake quantization node is a conv node, and its first successor is a Relu (fake->conv->relu)
+                            # If fake->conv->relu, since ReLU is fused into the previous conv, use the ReLU output tensor name + Relu as the quantization parameter name.
                             tensor_name = '{}_{}'.format(inp2node[next_node_output][0][0].output[0],
                                                          'Relu')
                         else:
-                            #若是fake->conv->not_relu_type,直接用conv的输出tensor名+conv作为量化参数保存tensor名
+                            # If fake->conv->not_relu_type, directly use the output tensor name of conv + conv as the quantization parameter to save the tensor name.
                             tensor_name = '{}_{}'.format(next_node_output, next_nodes[0][0].op_type)
                         tensor_name += '_{}'.format('weight_fp8' if next_nodes[0][1] ==
                                                     1 else 'bias_fp8')
@@ -302,7 +302,7 @@ class FloatQuantizer_process(object):
                             inp2node[node.output[0]][0][0].output[0],
                             inp2node[node.output[0]][0][0].op_type)
                         clip_ranges[tensor_name] = {
-                            'threshold': float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            'threshold': float(scale * max(-qmin, qmax)),  # This parameter is active during symmetric quantization.
                             'min': float(scale * (qmin - zero_point)),
                             'max': float(scale * (qmax - zero_point)),
                             'bit': int(np.log2(qmax - qmin + 1)),
@@ -315,7 +315,7 @@ class FloatQuantizer_process(object):
                             inp2node[node.output[0]][0][0].output[0],
                             inp2node[node.output[0]][0][0].op_type)
                         clip_ranges[tensor_name] = {
-                            'threshold': float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            'threshold': float(scale * max(-qmin, qmax)),  # This parameter takes effect during symmetric quantization.
                             'min': float(scale * (qmin - zero_point)),
                             'max': float(scale * (qmax - zero_point)),
                             'bit': int(np.log2(qmax - qmin + 1)),
@@ -363,7 +363,7 @@ class FloatQuantizer_process(object):
                             tensor_name += '_{}'.format(out2node[tensor_name].op_type)
                         clip_ranges[tensor_name] = {
                             'threshold':
-                            float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            float(scale * max(-qmin, qmax)),  # This parameter takes effect during symmetric quantization.
                             'min':
                             float(scale * (qmin - zero_point)),
                             'max':
@@ -383,7 +383,7 @@ class FloatQuantizer_process(object):
                             tensor_name += '_{}'.format(out2node[tensor_name].op_type)
                         clip_ranges[tensor_name] = {
                             'threshold':
-                            float(scale * max(-qmin, qmax)),  #对称量化时这个参数生效
+                            float(scale * max(-qmin, qmax)),  # This parameter takes effect during symmetric quantization.
                             'min':
                             float(scale * (qmin - zero_point)),
                             'max':

@@ -72,9 +72,9 @@ class Conv2d_sophgo(nnqat.Conv2d):
         return bias
 
     def forward(self, input):
-        #bias伪量化
+        # bias pseudo quantization
         bias = self.bias
         if self.bias is not None and self.weight_fake_quant.fake_quant_enabled[0] == 1:
-            in_scale = self.input_fake_quantizer.scale  #从上一个activation_fake_quant节点获取scale
+            in_scale = self.input_fake_quantizer.scale  # Get scale from the previous activation fake quant node
             bias = self.bias_fake_quant_proc(self.bias, self.weight_fake_quant.scale, in_scale)
         return self._conv_forward(input, self.weight_fake_quant(self.weight), bias)

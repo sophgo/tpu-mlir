@@ -47,7 +47,7 @@ def extract_val_assignments(config):
 
 
 def can_merge(last_asm1, last_asm2, config1, config2):
-    # 提取汇编指令的名称
+    # Extract assembly instruction name
     asm_name1 = extract_asm_name(last_asm1)
     asm_name2 = extract_asm_name(last_asm2)
     if asm_name1 != asm_name2:
@@ -180,7 +180,7 @@ def find_repeated_subarrays(arr):
         # record
         if max_length > 0 and max_count > 1:
             result.append((max_start, max_length, max_count))
-            i = max_start + max_length * max_count - 1  # 跳过当前记录的子数组
+            i = max_start + max_length * max_count - 1  # Skip current record's subarray
 
         i += 1
     return remove_pure_gdma(result, arr)

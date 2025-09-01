@@ -1,4 +1,4 @@
-# E5M2的Fake Quantize
+# Fake Quantize of E5M2
 
 import os
 import yaml

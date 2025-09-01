@@ -10,10 +10,10 @@ static void pipeline_move_(unsigned long long *array, int num) {
 void tpu_impl_absadd_global(global_addr_t input_global_addr,
                             global_addr_t output_global_addr, const int *shape,
                             float b_val, data_type_t dtype) {
-  // Step1. Lmem addr分配
+  // Step 1. Lmem address allocation
   // 2 bank for work0, 2 bank for work1, 1 bank for buffer
   // 2 bank for input, 2 bank for output
-  // ***Note: gdma 和 bdc 操作需要防止bank冲突以免导致性能下降
+  // ***Note: gdma and bdc operations should prevent bank conflicts to avoid performance degradation
   // tpu_local_mem_size_per_npu = 262144bit = 256KB
   // tpu_bank_num() = 16;
   int bank_size = tpu_local_mem_size_per_npu() / tpu_bank_num(); //16KB
@@ -27,7 +27,7 @@ void tpu_impl_absadd_global(global_addr_t input_global_addr,
   local_addr_t buffer_addr = 4 * bank_size;
 
 
-  // Step2. 数据切分
+  // Step 2. Data Splitting
   unsigned long long length = 1;
   for (int i = 0; i < 4; i++) {
     length *= (unsigned long long)shape[i];
@@ -38,29 +38,29 @@ void tpu_impl_absadd_global(global_addr_t input_global_addr,
 
   /// continus 128byte can get better peformance
   int tensor_w = MAX(DIV_UP(MIN(length , bank_size / tpu_data_type_size(dtype)), npu_num),
-                     DIV_UP(128, eu_num * tpu_data_type_size(dtype))); //每次搬运到第i个npu上的数据个数
-  // unsigned long long slice = tensor_w * npu_num; // 切片的最大长度
-  unsigned long long slice = MIN(MIN(length, (unsigned long long)npu_num * tensor_w), bank_size / tpu_data_type_size(dtype)); //切片的最大长度
-  int max_rows_per_time = (bank_size) / (tensor_w * tpu_data_type_size(dtype));//一个npu会划分16个bank,每个bank16KB,现在划分给in_local[0]=16KB,这步就是求这片空间可以存放多少数据量为tensor_w的数据块
-  int rows = DIV_UP(length, slice); //总共可以切出多少片slice
-  int rows_secs = DIV_UP(rows, max_rows_per_time); //length长度的输入数据至少能切成rows_secs块，每一块大小等于[max_rows_per_time,slice]的数据
+                     DIV_UP(128, eu_num * tpu_data_type_size(dtype))); // The number of data items transferred to the i-th NPU each time.
+  // unsigned long long slice = tensor_w * npu_num; // Max slice length
+  unsigned long long slice = MIN(MIN(length, (unsigned long long)npu_num * tensor_w), bank_size / tpu_data_type_size(dtype)); // Maximum slice length
+  int max_rows_per_time = (bank_size) / (tensor_w * tpu_data_type_size(dtype));// An NPU divides into 16 banks, each 16KB. Now, in_local[0] is allocated 16KB. This step calculates how many data blocks of size tensor_w can fit into this space.
+  int rows = DIV_UP(length, slice); // How many slices can be cut in total?
+  int rows_secs = DIV_UP(rows, max_rows_per_time); // The input data's length must allow splitting into at least rows_secs blocks, each with size [max_rows_per_time, slice].
   // at least loop two times to overlap all bdc time
-  int rows_slice = DIV_UP(rows, MAX(rows_secs, 2)); //length长度的输入数据至少能切成MAX(rows_secs, 2)块（一共计算MAX(rows_secs, 2)次），每次计算的一块大小等于（[rows_slice,slice]）的数据，一块对应64个npu;
+  int rows_slice = DIV_UP(rows, MAX(rows_secs, 2)); // The input data's length must be able to be split into at least MAX(rows_secs, 2) blocks (total of MAX(rows_secs, 2) computations), each block's size equals the data in [rows_slice, slice], with each block corresponding to 64 NPU.
 
   unsigned long long cur_idx[3] = {0}, cur_rows[3] = {0}, cur_cols[3] = {0};
   int stage_idx = 0, draning_idx = 0;
 
-  // Step3. 并行流水
-  // cur_idx[2] 用来存储已经处理完的数据长度，它的数据来自上步操作后更新得到 pipeline_move_(cur_idx, 3);
+  // Step3. Parallel Pipeline
+  // cur_idx[2] stores processed data length, obtained from previous operation's update via pipeline_move_(cur_idx, 3);
   while (cur_idx[2] < length) {
-    tpu_parallel_start(); //让夹在tpu_parallel_start()和 tpu_parallel_end()之间的bdc 和 gdma 指令做cmd id divide，去除指令依赖，并行执行指令
+    tpu_parallel_start(); // Make the BDC and GDMA instructions between tpu_parallel_start() and tpu_parallel_end() perform CMD ID division to eliminate instruction dependencies and enable parallel execution.
     // update load info
     if (draning_idx < 1) {
-      unsigned long long cur_len = MIN(length - cur_idx[0], rows_slice * slice); // 这里计算当前切片有多少数量需要进一步处理
-      cur_cols[0] = MIN(cur_len, slice); //这里计算当前切片数据拼成矩阵有多少列
-      cur_rows[0] = MAX(1, cur_len / cur_cols[0]); //这里计算当前切片拼成矩阵有多少行 ，这里拼成矩阵形状为[cur_cols[0],cur_rows[0]]
+      unsigned long long cur_len = MIN(length - cur_idx[0], rows_slice * slice); // Here calculate the number of the current slice requiring further processing
+      cur_cols[0] = MIN(cur_len, slice); // Calculates the number of columns for the current slice data when forming a matrix
+      cur_rows[0] = MAX(1, cur_len / cur_cols[0]); // This calculates the number of rows for the current slice when assembled into a matrix. The formed matrix shape is [cur_cols[0], cur_rows[0]].
     }
-    //整个代码的流水大致如下：
+    // The code's flow is roughly as follows:
     //---0--1--2----(-2)-------> time
     //  L0 C0 S0
     //     L1 C1 S1
@@ -92,19 +92,19 @@ void tpu_impl_absadd_global(global_addr_t input_global_addr,
                             cur_shape, b_val, dtype);
     }
 
-    tpu_parallel_end();//这一步是在做cmd id merge 和 tpu poll同步，并重新建立指令依赖关系，就是第一轮流水结束，需要更新状态，以便进行下一轮流水
-    pipeline_move_(cur_idx, 3);  // [上次已经处理的数据块，上次已经处理的数据块，] cur_idx[0] 会在第94行更新成当前已经处理完的数据块总数
-    pipeline_move_(cur_cols, 3); // [当前处理的切片的列数，上次处理的切片的列数，]
-    pipeline_move_(cur_rows, 3); // [当前处理的切片的行数，上次处理的切片的行数，]
+    tpu_parallel_end();// This step performs cmd id merge and tpu poll synchronization, re-establishing instruction dependencies. It is after the first round of pipelining ends, requiring state updates to proceed to the next round.
+    pipeline_move_(cur_idx, 3);  // [The data blocks processed last time, the data blocks processed last time,] cur_idx[0] will be updated in line 94 to the total number of data blocks processed so far.
+    pipeline_move_(cur_cols, 3); // [current processed slice's column count, last processed slice's column count,]
+    pipeline_move_(cur_rows, 3); // [current slice line count, previous slice line count,]
     if (draning_idx < 1) {
-      cur_idx[0] += cur_cols[0] * cur_rows[0]; // 计算当前已经处理的数据长度，并更新到cur_idx[0]
+      cur_idx[0] += cur_cols[0] * cur_rows[0]; // Calculate the current processed data length and update to cur_idx[0]
       if (cur_idx[0] >= length) {
-        draning_idx++; //更新draning_idx, 这里已经搬完数据了，等待计算，store完后就可以结束流水break出去了
+        draning_idx++; // Update draning_idx; the data has been moved here, waiting for calculation. After storing, end the flow and break.
       }
     } else {
-      draning_idx++; //更新状态机，后续根据这些新状态建立流水
+      draning_idx++; // Update state machine; subsequent flow will be established based on these new states.
     }
-    stage_idx++; //更新状态机，后续根据这些新状态建立流水
+    stage_idx++; // Update the state machine; establish the flow based on these new states.
   }
 }
 

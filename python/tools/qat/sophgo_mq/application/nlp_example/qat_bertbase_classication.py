@@ -175,7 +175,7 @@ test_dataloader = DataLoader(test_data, batch_size=args.b, shuffle=True, collate
 
 #quantize
 model1 = AutoModel.from_pretrained(checkpoint)
-#量化模型参数准备
+# Quantization model parameter preparation
 sig = inspect.signature(model1.forward)
 input_names = ['input_ids', 'token_type_ids', 'attention_mask']
 concrete_args = {p.name: p.default for p in sig.parameters.values() if p.name not in input_names}
@@ -209,13 +209,13 @@ prepare_custom_config_dict = {
     'extra_qconfig_dict': extra_qconfig_dict,
     'quant_dict': quant_dict
 }
-#插入量化节点
+# Insert quantization node
 model_prepared = prepare_by_platform(model1,
                                      prepare_custom_config_dict=prepare_custom_config_dict,
                                      custom_tracer=HFTracer())
 
 
-#后处理
+# post-processing
 class NeuralNetwork2(nn.Module):
 
     def __init__(self):
@@ -231,7 +231,7 @@ class NeuralNetwork2(nn.Module):
 
 
 model_prepared1 = NeuralNetwork2().to(device)
-#校准
+# Calibration
 cali = []
 for i in range(20):
     text = train_data[i]
@@ -240,7 +240,7 @@ cali_loader = DataLoader(cali, batch_size=args.b, shuffle=True, collate_fn=collo
 enable_calibration(model_prepared1)
 model_prepared1 = model_prepared1.to(device)
 calibrate(cali_loader, model_prepared1)
-#原始模型精度
+# Original model precision
 model_prepared11 = copy.deepcopy(model_prepared1)
 disable_all(model_prepared11)
 model_prepared11 = model_prepared11.train()
@@ -264,7 +264,7 @@ for t in range(epoch_num):
         print('saving new weights...\n')
 print("Done!")
 
-#量化模型精度
+# Model Quantization Precision
 enable_quantization(model_prepared1)
 model_prepared1 = model_prepared1.train()
 total_loss = 0
@@ -286,7 +286,7 @@ for t in range(epoch_num):
         print('saving new weights...\n')
 print("Done!")
 
-#量化模型部署
+# Quantization Model Deployment
 train_dataloader1 = DataLoader(train_data, batch_size=1, shuffle=True, collate_fn=collote_fn)
 batch_X1, batch_y1 = next(iter(train_dataloader1))
 model_prepared.eval()
