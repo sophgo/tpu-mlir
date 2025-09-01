@@ -24,6 +24,7 @@ void tpu::RMSNormOp::codegen_global_bm1684x() {
 
   param.common.eps = getEps().convertToDouble();
   param.common.affine = has_weight;
+  param.common.weight_keep_f32 = getWeightKeepF32();
 
 #if 1
   BM168x::call_global_func("backend_api_rms_norm_global", &param, sizeof(param),
@@ -78,6 +79,7 @@ void tpu::RMSNormOp::codegen_local_bm1684x_kernel(
 
   param.common.eps = getEps().convertToDouble();
   param.common.affine = has_weight;
+  param.common.weight_keep_f32 = getWeightKeepF32();
   // const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
   const auto &gi = out_group_infos[0];
   param.buffer_addr = gi.buffer_addr;

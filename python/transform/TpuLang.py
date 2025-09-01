@@ -5424,7 +5424,7 @@ def rms_norm(input: Tensor,
         assert input.dtype == gamma.dtype, "invalid input and gamma dtype"
         assert input.shape[-1] == gamma.shape[0] and len(gamma.shape) == 1, \
             "invalid input/gamma shape"
-    attr = {"eps": Attr(epsilon, 'float64')}
+    attr = {"eps": Attr(epsilon, 'float64'), "weight_keep_f32": Attr(False, "bool")}
     TpuLang.insert_op("top.RMSNorm", inputs=[input, gamma], outputs=[output], params=attr)
     return output
 

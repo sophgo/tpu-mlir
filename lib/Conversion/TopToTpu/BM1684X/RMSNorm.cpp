@@ -17,13 +17,14 @@ static void LoweringRMSNorm(PatternRewriter &rewriter, top::RMSNormOp op,
   rewriter.setInsertionPointAfter(op);
   const int nInputs = op->getNumOperands();
   std::vector<Value> opds;
+  auto weight_keep_f32 = op.getWeightKeepF32();
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
     if (isa<top::WeightOp>(opd.getDefiningOp())) {
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
-      if (type.isBF16()) {
+      if (type.isBF16() && !weight_keep_f32) {
         opds.push_back(weightOp.clone_bf16(op));
-      } else if (type.isF16()) {
+      } else if (type.isF16() && !weight_keep_f32) {
         opds.push_back(weightOp.clone_f16(op));
       } else {
         opds.push_back(opd);
@@ -45,6 +46,7 @@ static void LoweringRMSNorm(PatternRewriter &rewriter, top::RMSNormOp op,
   } else if (type.isBF16()) {
     new_type = getQuantBF16Type(out);
   } else {
+    assert(!weight_keep_f32);
     new_type = out.getType();
   }
   rewriter.replaceOpWithNewOp<tpu::RMSNormOp>(op, new_type, opds, attrs);

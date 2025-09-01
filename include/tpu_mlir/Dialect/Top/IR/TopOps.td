@@ -5511,7 +5511,8 @@ def Top_RMSNormOp : Top_Op<"RMSNorm"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensorOrNone:$gamma,
-    F64Attr:$eps
+    F64Attr:$eps,
+    DefaultValuedAttr<BoolAttr, "false">:$weight_keep_f32
   );
 
   let results = (outs

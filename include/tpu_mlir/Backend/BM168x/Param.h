@@ -971,6 +971,7 @@ typedef struct layer_norm_local_spec {
 typedef struct rms_norm_common_spec {
   float eps;
   int affine;
+  int weight_keep_f32;
 } rms_norm_common_spec_t;
 
 typedef struct rms_norm_global_spec {

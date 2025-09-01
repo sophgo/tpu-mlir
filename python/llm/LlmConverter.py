@@ -191,10 +191,12 @@ class LlmConverter(BaseConverter):
         weight_op = mlir_gen.create_weight_op(norm_path + ".weight", norm_shape)
         loc_name = name if name else norm_path
         eps = self.rms_norm_eps if eps is None else eps
+        weight_keep_f32 = True if self.llm_type in [LlmType.GEMMA3] else False
         return top.RMSNormOp(mlir_gen.get_tensor_type(input_shape),
                              in_op,
                              weight_op,
                              eps=eps,
+                             weight_keep_f32=weight_keep_f32,
                              loc=self.get_loc(loc_name, mlir_gen),
                              ip=mlir_gen.insert_point).output
 
