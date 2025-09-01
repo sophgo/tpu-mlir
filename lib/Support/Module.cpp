@@ -1486,6 +1486,7 @@ bool isBM1684X() { return (chip == Chip::BM1684X); }
 bool isCV184X() { return (chip == Chip::CV184X); }
 bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 bool isSG2262() { return (chip == Chip::SG2262); }
+bool isMultiCoreArch() { return isBM1690Family() || isSG2380() || isBM1688(); }
 
 ModuleOp getModuleOp() { return m; }
 
@@ -1852,7 +1853,7 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
       zeropoint = 0;
       auto th = std::max(std::abs(max), std::abs(min));
       scale = getScale(th, sign, bitwidth);
-      if (auto cop = dyn_cast<top::CompareOp>(v.getDefiningOp())) {
+      if (isa<top::CompareOp, top::CompareConstOp>(v.getDefiningOp())) {
         scale = 1.0;
       }
     }
@@ -1864,6 +1865,10 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
   } else if (auto ccop = dyn_cast<top::CompareConstOp>(v.getDefiningOp())) {
     if (ccop.getMode().str() == "And")
       llvm_unreachable("calibration info not set for compareconst And");
+    scale = 1.0;
+    zeropoint = 0;
+    sign = 0;
+  } else if (auto ccop = dyn_cast<top::CompareOp>(v.getDefiningOp())) {
     scale = 1.0;
     zeropoint = 0;
     sign = 0;

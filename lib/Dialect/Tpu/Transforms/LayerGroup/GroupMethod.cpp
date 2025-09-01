@@ -75,8 +75,8 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
   }
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
-             SoftmaxOp, RMSNormOp, ReshapeOp, LutOp, MulOp, BinaryConstShiftOp,
-             BinaryShiftOp>(op)) {
+             SoftmaxOp, RMSNormOp, ReshapeOp, LutOp, MulOp, BinaryShiftOp>(
+            op)) {
       return false;
     }
     if (isa<ReshapeOp>(op)) {
@@ -1861,7 +1861,8 @@ void GroupMethod::get_final_groups(
           llvm_unreachable("group_cost is not valid");
         }
       } else {
-        if (module::isBM1684XFamily() && runmode_ == RunMode::TPU_STATIC) {
+        if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
+            runmode_ == RunMode::TPU_STATIC) {
           group_one_layer_proc(lg_info, true, &cost);
           lg_info.group_cost = cost;
         }

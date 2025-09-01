@@ -1354,6 +1354,7 @@ void ConvertTopToTpu::runOnOperation() {
   LoweringConfig::doWinograd =
       doWinograd.hasValue() ? doWinograd.getValue() : false;
   init_qtable();
+  set_add_before_softmax_fp32();
 
   if (module::isState(module::State::TOP_QUANTIZED)) {
     module::setAsymmetric(true);
@@ -2195,6 +2196,10 @@ void ConvertTopToTpu::init_qtable() {
       if (module::isCV18xx()) {
         if (src_mode == "F32" || src_mode == "F16")
           mode = "BF16";
+      }
+      if (module::isBM1684Family()) {
+        if (src_mode != "INT8")
+          mode = "F32";
       }
       if ((src_mode == "W8F16" || src_mode == "W4F16") &&
           module::isBF16Modes()) {

@@ -74,48 +74,30 @@ int64_t top::A16MatMulOp::getFLOPs() {
 }
 
 LogicalResult top::A16MatMulOp::init(InferenceParameter &p) {
-  auto matmul = new MatMul();
-  p.handle = (void *)matmul;
   return success();
 }
 
-void top::A16MatMulOp::deinit(InferenceParameter &p) {
-  if (p.handle != nullptr) {
-    auto matmul = (MatMul *)p.handle;
-    delete matmul;
-    p.handle = nullptr;
-  }
-  return;
-}
+void top::A16MatMulOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult top::A16MatMulOp::inference(InferenceParameter &p) {
-  if (p.handle == nullptr) {
-    return failure();
-  }
-  auto matmul = (MatMul *)p.handle;
+  auto matmul = new MatMul();
   auto a = parseParam();
   auto weight_len = a.N * a.K;
 
   // dequant weight as shape (N * K)
   auto new_weight = std::vector<float>(weight_len, 0);
+  auto q_group_size = a.q_group_size;
+  if (q_group_size < 1) {
+    q_group_size = a.K;
+  }
   matmul->dequant_weight(new_weight.data(), p.inputs[1], p.inputs[2],
-                         p.inputs[3], weight_len, a.q_group_size,
-                         a.weight_bits);
-
-  // try {
-  //   cnpy::npz_save("/workspace/tpu-mlir/qwen2_vl/tpulang_test_bm1684x/A16Matmul/dqweights.npz",
-  //           "dq_weight", new_weight.data(), { static_cast<unsigned
-  //           long>(new_weight.size()) }, "w");
-  //   std::cout << "Success: dqweights.npz" << std::endl;
-  // }
-  // catch (const std::exception& e) {
-  //   std::cerr << "Failed: " << e.what() << std::endl;
-  // }
+                         p.inputs[3], weight_len, q_group_size, a.weight_bits);
 
   matmul->setup(p.inputs[0], new_weight.data(), p.inputs[4], p.outputs[0],
                 a.batch, 1, a.M, a.K, a.N, false, -1.0, 0, 0, a.right_transpose,
                 0, 0, 0, a.L_shape, a.R_shape, a.dims_merge_2_M);
   matmul->run();
+  delete matmul;
   return success();
 }
 

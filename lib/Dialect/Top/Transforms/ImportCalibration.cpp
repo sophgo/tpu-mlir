@@ -82,7 +82,16 @@ public:
       if (line.back() == '\r') {
         line.pop_back();
       }
-
+      size_t pos = line.find("inf");
+      if (pos != std::string::npos) {
+        llvm::errs() << "Warning: inf in calibration result, check your "
+                        "dataset or model! op name: "
+                     << line.substr(0, line.find("inf")) << "\n";
+        while (pos != std::string::npos) {
+          line.replace(pos, 3, "6.5e4");
+          pos = line.find("inf", pos + 1);
+        }
+      }
       std::istringstream iss(line);
       std::string name;
       std::string asym_op_name;

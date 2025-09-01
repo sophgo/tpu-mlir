@@ -648,7 +648,7 @@ int64_t Bm168xCycleCalculator::getGdmaCycleOpt(Value v,
 int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
                                              shape_secs_t &shape_secs,
                                              group_type_t group_type) {
-  if (num_core_ != 1 || !module::isBM1684XFamily()) {
+  if (!module::isBM1684XFamily()) {
     int64_t total_cycle = 0;
     total_cycle =
         CycleCalculator::getGroupCycle(time_step, shape_secs, group_type);
@@ -666,7 +666,14 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   auto dsecs = shape_secs.dsecs;
   auto hsecs = shape_secs.hsecs;
   auto wsecs = shape_secs.wsecs;
-  // int64_t base_cycle = 299647;
+
+  bool useMuliCore = num_core_ > 1;
+  auto secs = nsecs * csecs * dsecs * hsecs * wsecs;
+  auto max_task_per_core = (secs + num_core_ - 1) / num_core_;
+  int core_id = 0;
+  useMuliCore &= (secs > 1);
+
+  // int64_t base_cycle = 1046479;
   int64_t layer_cycle = 0;
   int64_t gdma_cycle = 0;
   int64_t total_cycle = 0;
@@ -678,6 +685,13 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
     //              << "; nstep: " << nstep << "; cstep: " << cstep
     //              << "; dstep: " << dstep << "; hstep: " << hstep
     //              << "; wstep: " << wstep << "\n";
+    if (useMuliCore && stage_idx == 0) {
+      if (core_id > 0) {
+        break;
+      } else {
+        core_id++;
+      }
+    }
     /* add for software pipeline */
     timestep_swpipl.write_swloop_buffer(nstep, cstep, hstep, dstep, wstep,
                                         swpipl_stage_num);
@@ -700,19 +714,19 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         const tensor_step_t *tensor_step =
             timestep_swpipl.read_swloop_buffer(op_stage);
         auto tensor_info = tensor.second;
-        // if (module::isBM1688()) {
-        //   auto bm1688 = (BM1688 *)BM168x::instance();
-        //   float BW = 24;
-        //   if (consider_multi_core_bw) {
-        //     BW = 15.f;
-        //     DEBUG_WITH_TYPE("cycle_calc", {
-        //       llvm::dbgs() << "; action = multi_core_align"
-        //                   << "; BW = " << BW << "\n";
-        //     });
-        //     bm1688->dl_set_gdma_bw_s2l(BW);
-        //     bm1688->dl_set_gdma_bw_l2s(BW);
-        //   }
-        // }
+        if (module::isBM1688()) {
+          auto bm1688 = (BM1688 *)BM168x::instance();
+          float BW = 24;
+          if (useMuliCore) {
+            BW = 15.f;
+            DEBUG_WITH_TYPE("cycle_calc", {
+              llvm::dbgs() << "; action = multi_core_align"
+                           << "; BW = " << BW << "\n";
+            });
+            bm1688->dl_set_gdma_bw_s2l(BW);
+            bm1688->dl_set_gdma_bw_l2s(BW);
+          }
+        }
         mem_buffer_key_t buffer_key;
         buffer_key.value = tensor.first;
         buffer_key.type =
@@ -730,6 +744,8 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           //                           c_step, d_step, h_step, w_step, l_addr);
           int64_t cycle = this->getGdmaCycleOpt(tensor.first, tensor_info,
                                                 group_type, ginfo);
+          // llvm::dbgs() << "gdma cycle cur: " << cycle <<
+          // "\n";
           gdma_cycle += cycle;
           // llvm::dbgs() << "gdma cycle_count: " << gdma_cycle + base_cycle <<
           // "\n";
@@ -748,6 +764,7 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
             time_step, op, tensor_infos, group_type, false, tensor_step->nstep,
             tensor_step->cstep, tensor_step->dstep, tensor_step->hstep,
             tensor_step->wstep);
+        // llvm::dbgs() << "layer cycle cur: " << cycle << "\n";
         layer_cycle += cycle;
         // llvm::dbgs() << "layer cycle_count: " << layer_cycle + base_cycle <<
         // "\n";
@@ -779,11 +796,11 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           draining_period = true;
         }
       }
-      // if (useMuliCore && ((stage_idx + 1) % max_task_per_core) == 0 &&
-      //     nstep < nsecs) {
-      //   draining_period = true;
-      //   draining_idx = 0;
-      // }
+      if (useMuliCore && ((stage_idx + 1) % max_task_per_core) == 0 &&
+          nstep < nsecs) {
+        draining_period = true;
+        draining_idx = 0;
+      }
     }
     stage_idx++;
     if (draining_period) {

@@ -109,6 +109,17 @@ struct AddToScale : public OpRewriterPatternEx<AddOp> {
   }
 };
 
+/**
+ * Before:
+ *            |->Slice->MulConst->Unsqueeze->\
+ *           |                                \->Concat->Reshape->Mul->\
+ * ->Slice->|->Slice->Unsqueeze-------------->|                         \->Add->
+ *          \                                                           |
+ *           \->Mul--------------------------------------------------->|
+ *
+ * After:
+ * ->Slice->Rope->
+ **/
 struct AddToRope : public OpRewriterPatternEx<AddOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
 
@@ -212,6 +223,120 @@ struct AddToRope : public OpRewriterPatternEx<AddOp> {
     rewriter.replaceOpWithNewOp<RopeOp>(
         op, op.getResult().getType(),
         ValueRange{in_value, mul0_weight, mul1_weight}, attrs);
+    return success();
+  }
+};
+
+/**
+ * Before:
+ *                 /-Slice-Squeeze-MulConst-Unsqueeze-\
+ *       /-Reshape-|                                  |-Concat-Reshape-Mul-\
+ * Slice-|         \-Slice----------------------------/                    |-Add
+ *       \-Mul-------------------------------------------------------------/
+ *
+ * After:
+ * ->Slice->Rope->
+ **/
+struct AddToRope2 : public OpRewriterPatternEx<AddOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  AddToRope2(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<AddOp>(context, "AddToRope2") {}
+
+  LogicalResult matchAndRewriteImpl(AddOp op,
+                                    PatternRewriter &rewriter) const override {
+    // Check the number of inputs
+    if (op.getInputs().size() != 2)
+      return failure();
+
+    // Define weights and flags
+    int add_above_branch_index = -1;
+    int concat_above_branch_index = -1;
+    Value in_value;
+
+    for (int i = 0; i < 2; ++i) {
+      auto above_mul_op = dyn_cast<MulOp>(op.getInputs()[i].getDefiningOp());
+      if (above_mul_op) {
+        auto last_reshape_op =
+            dyn_cast<ReshapeOp>(above_mul_op.getInputs()[0].getDefiningOp());
+        if (last_reshape_op)
+          add_above_branch_index = i;
+      }
+    }
+    if (add_above_branch_index == -1)
+      return failure();
+
+    auto above_mul_op =
+        dyn_cast<MulOp>(op.getInputs()[add_above_branch_index].getDefiningOp());
+    auto below_mul_op = dyn_cast<MulOp>(
+        op.getInputs()[1 - add_above_branch_index].getDefiningOp());
+    if (!above_mul_op || !below_mul_op)
+      return failure();
+
+    auto last_reshape_op =
+        dyn_cast<ReshapeOp>(above_mul_op.getInputs()[0].getDefiningOp());
+    auto above_mul_weight = above_mul_op.getInputs()[1];
+    auto below_mul_weight = below_mul_op.getInputs()[1];
+    auto concat_op =
+        dyn_cast<ConcatOp>(last_reshape_op.getInput().getDefiningOp());
+    if (!concat_op)
+      return failure();
+    for (int i = 0; i < 2; ++i) {
+      auto local_unsqueeze_op =
+          dyn_cast<UnsqueezeOp>(concat_op.getInputs()[i].getDefiningOp());
+      if (local_unsqueeze_op) {
+        auto local_mulconst_op =
+            dyn_cast<MulConstOp>(local_unsqueeze_op.getInput().getDefiningOp());
+        if (local_mulconst_op) {
+          auto local_squeeze_op =
+              dyn_cast<SqueezeOp>(local_mulconst_op.getInput().getDefiningOp());
+          if (local_squeeze_op) {
+            auto local_slice_op =
+                dyn_cast<SliceOp>(local_squeeze_op.getInput().getDefiningOp());
+            if (local_slice_op)
+              concat_above_branch_index = i;
+          }
+        }
+      }
+    }
+    if (concat_above_branch_index == -1)
+      return failure();
+    auto below_slice_op = dyn_cast<SliceOp>(
+        concat_op.getInputs()[1 - concat_above_branch_index].getDefiningOp());
+    if (!below_slice_op)
+      return failure();
+
+    auto unsqueeze_op = dyn_cast<UnsqueezeOp>(
+        concat_op.getInputs()[concat_above_branch_index].getDefiningOp());
+    auto mulconst_op =
+        dyn_cast<MulConstOp>(unsqueeze_op.getInput().getDefiningOp());
+    auto squeeze_op =
+        dyn_cast<SqueezeOp>(mulconst_op.getInput().getDefiningOp());
+    auto above_slice_op =
+        dyn_cast<SliceOp>(squeeze_op.getInput().getDefiningOp());
+    auto first_reshape_op =
+        dyn_cast<ReshapeOp>(above_slice_op.getInput().getDefiningOp());
+    if (!first_reshape_op)
+      return failure();
+    if (first_reshape_op != below_slice_op.getInput().getDefiningOp())
+      return failure();
+
+    if (below_mul_op.getInputs()[0].getDefiningOp() ==
+        first_reshape_op.getInput().getDefiningOp()) {
+      in_value = first_reshape_op.getInput();
+    } else {
+      return failure();
+    }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
+
+    // Create RopeOp
+    std::vector<NamedAttribute> attrs;
+    rewriter.replaceOpWithNewOp<RopeOp>(
+        op, op.getResult().getType(),
+        ValueRange{in_value, above_mul_weight, below_mul_weight}, attrs);
     return success();
   }
 };
@@ -423,6 +548,6 @@ struct AlignInputsDim : public OpRewriterPatternEx<AddOp> {
 
 void AddOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<SwapInput, AddToAddConst, AddToScale, AddToRope, AddMerge,
-                 AlignInputsDim>(context);
+  results.insert<SwapInput, AddToAddConst, AddToScale, AddToRope, AddToRope2,
+                 AddMerge, AlignInputsDim>(context);
 }

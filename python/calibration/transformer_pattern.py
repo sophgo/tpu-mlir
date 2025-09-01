@@ -45,6 +45,20 @@ sub_blocks = {
         'top.Permute', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Add',
         'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.SiLU', 'top.Mul', 'top.MatMul'
     ],
+    "eva02_block": [
+        "top.LayerNorm", "top.MatMul", "top.MatMul", "top.MatMul", "top.Reshape", "top.Permute",
+        "top.Reshape", "top.Permute", "top.Reshape", "top.Permute", "top.Rope", "top.Rope",
+        "top.Permute", "top.MulConst", "top.MulConst", "top.MatMul", "top.Softmax", "top.MatMul",
+        "top.Permute", "top.Reshape", "top.MatMul", "top.Add", "top.LayerNorm", "top.MatMul",
+        "top.MatMul", "top.SiLU", "top.Mul", "top.LayerNorm", "top.MatMul", "top.Add"
+    ],
+    "eva02_block_v1": [
+        "top.Add", "top.LayerNorm", "top.MatMul", "top.Reshape", "top.Slice", "top.Slice",
+        "top.Slice", "top.Squeeze", "top.Squeeze", "top.Squeeze", "top.Permute", "top.Rope",
+        "top.Permute", "top.Rope", "top.MulConst", "top.Permute", "top.MatMul", "top.Softmax",
+        "top.Permute", "top.MatMul", "top.Permute", "top.Reshape", "top.MatMul", "top.Add",
+        "top.LayerNorm", "top.MatMul", "top.MatMul", "top.SiLU", "top.Mul", "top.MatMul"
+    ],
     "bert_block": [
         'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape',
         'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul',
@@ -399,9 +413,27 @@ class MatchPattern:
                             next_next_op_type = self.parser.get_op_type_by_op_name(next_next_op[0])
                             if next_next_op_type == 'top.MatMul':
                                 fp_layer_list.append(next_next_op[0])
-                if model_block_name == '_eva_block':
+                if model_block_name == '_eva_block' or model_block_name == 'eva02_block_v1':
                     if op_type == 'top.Add':
                         fp_layer_list.append(all_tensors[i])
+                if model_block_name == 'eva02_block':
+                    if op_type == 'top.SiLU' and all_tensors[i] in fp_layer_list:
+                        fp_layer_list.remove(all_tensors[i])
+                    if op_type == 'top.MatMul':
+                        pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
+                        pre_op_types = [
+                            self.parser.get_op_type_by_op_name(pre_op) for pre_op in pre_ops
+                        ]
+                        if len(pre_ops) == 2 and any(pre_op_type == 'top.Softmax'
+                                                     for pre_op_type in pre_op_types):
+                            fp_layer_list.append(all_tensors[i])
+                    if op_type == 'top.Add':
+                        next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_op_types = [
+                            self.parser.get_op_type_by_op_name(next_op) for next_op in next_ops
+                        ]
+                        if all(next_op_type != 'top.LayerNorm' for next_op_type in next_op_types):
+                            fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'swin_block' or model_block_name == '_swin_block' or model_block_name == 'swin_1_block':
                     if op_type == 'top.LayerNorm':
                         pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
