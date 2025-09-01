@@ -3623,7 +3623,7 @@ class TORCH_IR_TESTER(object):
                     in_W = input_tensor.shape[-1]
                     _, _, h, w = disp.shape
                     r = self.radius
-                    step = (2 * r) / (2 * r)  # 计算步长
+                    step = (2 * r) / (2 * r)  # Calculate step length
                     x0 = torch.arange(-r, r + step, step).view(1, 1, 2 * r + 1, 1).to(disp.device)
                     gridx = x0 + disp.reshape(h * w, 1, 1, 1) / 2
                     gridx = 2 * gridx / (in_W - 1) + (-1)
@@ -3967,8 +3967,8 @@ class TORCH_IR_TESTER(object):
         # # #test_torch.py --case user_define_net --chip bm1690 --num_core 8 --mode f16 --debug --debug_cmd="enable_l2m"
         #from tools.train.gpt2 import FeedForward
         #mod = FeedForward(d_model=128)
-        # self.trace_and_test([(1, 2048, 128)], mod) #切c, ok
-        #self.trace_and_test([(1, 1024, 128)], mod) #切h, fail
+        # self.trace_and_test([(1, 2048, 128)], mod) #cut_c, ok
+        # self.trace_and_test([(1, 1024, 128)], mod) # check h, fail
 
         # from tools.train.gpt2 import Attention
         # mod = Attention(d_model=768, n_head=12)

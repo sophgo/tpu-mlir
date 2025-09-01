@@ -11,7 +11,7 @@ enum ROUNDING_MODES {
   ROUND_RNTZ = 4,
   ROUND_PINF = 5,
   ROUND_NINF = 6
-}; // 枚举定义了不同的舍入模式（决定如何将一个浮点数或整数近似为另一个更接近的值的规则）
+}; // The enum defines different rounding modes (rules that determine how to round a floating-point number or integer to the nearest value).
 
 namespace {
 

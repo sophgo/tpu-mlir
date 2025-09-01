@@ -15,8 +15,8 @@ class MyMatMul(nn.Module):
         self.weight2 = nn.Parameter(torch.randn(hidden_f, out_f))
 
     def forward(self, x):
-        y = x.matmul(self.weight1)  # 第一次 matmul
-        z = y.matmul(self.weight2)  # 第二次 matmul
+        y = x.matmul(self.weight1)  # First matmul
+        z = y.matmul(self.weight2)  # Second matmul
         return z
 
 
@@ -42,20 +42,20 @@ mask_1[:, mask_channel] = 0
 
 mask_2[mask_channel, :] = 0
 
-# 调用 torch.onnx.export 导出
+# Call torch.onnx.export to export
 torch.onnx.export(
-    matmul,  # 要导出的模型
-    dummy_input,  # 模型输入（示例 tensor）
-    "mymatmul.onnx",  # 输出文件名
-    export_params=True,  # 是否导出所有参数到 ONNX 文件
-    opset_version=11,  # ONNX 版本
-    do_constant_folding=True,  # 是否做常量折叠以优化图
-    input_names=['input'],  # 输入 tensor 名
-    output_names=['output'],  # 输出 tensor 名
+    matmul,  # Model to be exported
+    dummy_input,  # Model input (example tensor)
+    "mymatmul.onnx",  # Output filename
+    export_params=True,  # Whether to export all parameters to an ONNX file?
+    opset_version=11,  # ONNX version
+    do_constant_folding=True,  # Whether to perform constant folding to optimize the graph
+    input_names=['input'],  # Input tensor name
+    output_names=['output'],  # Output tensor name
 )
 print("✅ 导出完成： mymatmul.onnx")
 
-# 构造同上 mask
+# Construct as above mask
 prune.custom_from_mask(matmul, 'weight1', mask_1)
 prune.custom_from_mask(matmul, 'weight2', mask_2)
 y = matmul(dummy_input)
@@ -72,7 +72,7 @@ y_2 = y.detach().numpy()
 
 # np.savez("matmul_output.npz", y.detach().numpy())
 np.savez("matmul_output.npz", output_MatMul_f32=y_2, output_MatMul=y_2)
-# print("非零行:", (matmul.weight_mask.sum(dim=(1 - prun_dim)) != 0).nonzero().flatten())
+# print("non-zero rows:", (matmul.weight_mask.sum(dim=(1 - prun_dim)) != 0).nonzero().flatten())
 data = np.load("matmul_output.npz")
 print(data.files)
 print(data["output_MatMul_f32"].shape)

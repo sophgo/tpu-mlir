@@ -115,8 +115,8 @@ class BitFakeQuantize(QuantizeBase):
     def forward(self, X):
 
         assert self.data_type in FLOAT_MAPPING, "unexpected data type."
-        allow_data = FLOAT_MAPPING[self.data_type]  #float类型
-        allow_data_bit = INT_MAPPING[self.data_type]  #int类型
+        allow_data = FLOAT_MAPPING[self.data_type]  # float
+        allow_data_bit = INT_MAPPING[self.data_type]  # int type
 
         if self.observer_enabled[0] == 1:
             self.activation_post_process(X.detach())

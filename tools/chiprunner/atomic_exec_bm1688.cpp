@@ -458,17 +458,17 @@ void deinit(void *runner) { delete (DeviceRunner *)runner; }
 
 int main(int argc, char **argv) {
   int *ori_data =
-      (int *)malloc(1 * 1024 * 1024 * 16 * sizeof(int)); // 动态分配内存
+      (int *)malloc(1 * 1024 * 1024 * 16 * sizeof(int)); // Dynamic memory allocation
   for (int i = 0; i < 100; i++) {
     ori_data[i] = i;
   }
   int *new_data =
-      (int *)malloc(1 * 1024 * 1024 * 16 * sizeof(int)); // 动态分配内存
+      (int *)malloc(1 * 1024 * 1024 * 16 * sizeof(int)); // Dynamic memory allocation
   int *new_data_ddr =
-      (int *)malloc(1 * 1024 * 1024 * 16 * sizeof(int)); // 动态分配内存
+      (int *)malloc(1 * 1024 * 1024 * 16 * sizeof(int)); // Dynamic memory allocation
   if (new_data == nullptr) {
     fprintf(stderr, "Memory allocation failed\n");
-    return 1; // 处理内存分配失败
+    return 1; // Handle memory allocation failure
   }
 
   auto runner = DeviceRunner(
@@ -480,7 +480,7 @@ int main(int argc, char **argv) {
   runner.memcpy_d2s(0, 100, new_data_ddr, S2L_TAG);
   runner.memcpy_l2s(new_data);
 
-  free(new_data); // 释放动态分配的内存
+  free(new_data); // Free dynamically allocated memory
   printf("\n");
   return 0;
 }

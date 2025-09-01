@@ -1,4 +1,4 @@
-# E4M3的Fake Quantize
+# E4M3's Fake Quantize
 
 import os
 import yaml

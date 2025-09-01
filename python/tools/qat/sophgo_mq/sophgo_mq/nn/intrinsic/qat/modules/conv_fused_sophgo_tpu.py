@@ -158,11 +158,11 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
     #     if self.bias is not None and torch.isnan(self.bias).any():
     #         print('weight have nan')
     #     scaled_weight = self.weight_fake_quant(self.weight * scale_factor.reshape(weight_shape))
-    #     #bias伪量化
+    # #bias pseudo quantization
     #     if self.weight_fake_quant.fake_quant_enabled[0] == 1:
     #         _, fused_bias = nn.utils.fuse_conv_bn_weights(self.weight, self.bias,
     #                             self.bn.running_mean, self.bn.running_var, self.bn.eps, self.bn.weight, self.bn.bias)
-    #         in_scale = self.input_fake_quantizer.scale #从上一个activation_fake_quant节点获取scale
+    # # Get scale from the previous activation_fake_quant node
     #         scale_fused_bias = self.bias_fake_quant_proc(fused_bias, self.weight_fake_quant.scale, in_scale)
     #         diff_fused_bias = fused_bias - scale_fused_bias
     #     # using zero bias here since the bias for original conv
@@ -177,7 +177,7 @@ class _ConvBnNd(nn.modules.conv._ConvNd, _FusedModule):
     #         conv_orig = conv_orig + self.bias.reshape(bias_shape)
     #     conv = self.bn(conv_orig)
     #     if self.weight_fake_quant.fake_quant_enabled[0] == 1:
-    #         conv -= diff_fused_bias.reshape(bias_shape) #这里从推导看应该是减
+    # conv -= diff_fused_bias.reshape(bias_shape) # Here, from the derivation, it should be subtracted
     #     return conv
 
     def _forward(self, input):
