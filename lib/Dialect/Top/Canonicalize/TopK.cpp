@@ -254,13 +254,32 @@ struct TopKTranspose : public OpRewriterPatternEx<TopKOp> {
       inv_perm[perm[i]] = i;
     }
 
+    SmallVector<int64_t> permuted_shape(rank);
+    for (int64_t i = 0; i < rank; ++i) {
+      permuted_shape[i] = input_shape[perm[i]];
+    }
+
+    auto input_type = input.getType().cast<RankedTensorType>();
+    auto permuted_type =
+        RankedTensorType::get(permuted_shape, input_type.getElementType());
+
     // insert permuteOp
     rewriter.setInsertionPoint(op);
     auto perm_loc =
         NameLoc::get(rewriter.getStringAttr("transpose_before_topk"));
     auto perm_attr = rewriter.getI64ArrayAttr(perm);
     auto transpose_input =
-        rewriter.create<PermuteOp>(perm_loc, input.getType(), input, perm_attr);
+        rewriter.create<PermuteOp>(perm_loc, permuted_type, input, perm_attr);
+
+    // create new topk with axis == -1
+    SmallVector<int64_t> new_topk_shape(permuted_shape.begin(),
+                                        permuted_shape.end());
+    new_topk_shape[rank - 1] = op.getK();
+
+    auto value_type =
+        RankedTensorType::get(new_topk_shape, input_type.getElementType());
+    auto indices_type =
+        RankedTensorType::get(new_topk_shape, rewriter.getIntegerType(32));
 
     // create new topk with axis == -1
     std::vector<Location> locs = {};
@@ -276,8 +295,7 @@ struct TopKTranspose : public OpRewriterPatternEx<TopKOp> {
     locs.push_back(topk_value_loc);
     auto fused_loc = FusedLoc::get(getContext(), locs);
 
-    std::vector<Type> output_types{op.getValues().getType(),
-                                   op.getIndices().getType()};
+    std::vector<Type> output_types{value_type, indices_type};
     auto new_topk = rewriter.create<TopKOp>(
         fused_loc, output_types, ValueRange{transpose_input.getOutput()},
         op->getAttrs());
