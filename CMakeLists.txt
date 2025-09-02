@@ -27,6 +27,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
+# Provide nanobind headers (header-only) for extensions that include it directly.
+# This does not change any targets yet; individual modules can opt-in later.
+# Note: nanobind should be installed via pip (pip install nanobind) rather than FetchContent
+# to avoid network issues during build configuration.
+set(nanobind_DIR "/usr/local/lib/python3.10/dist-packages/nanobind/cmake")
+find_package(Python COMPONENTS Interpreter Development REQUIRED)
+find_package(nanobind CONFIG REQUIRED)
+
 find_program(CCACHE ccache)
 if(CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})

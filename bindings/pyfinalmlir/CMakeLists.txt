@@ -10,11 +10,11 @@ project(pyfinalmlir)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH "\${ORIGIN}/")
 
-find_package(pybind11 REQUIRED CONFIG)
+find_package(nanobind CONFIG REQUIRED)
 
 file(GLOB _sources pyfinalmlir.cpp)
 
-pybind11_add_module(pyfinalmlir ${_sources})
+nanobind_add_module(pyfinalmlir NB_STATIC ${_sources})
 
 target_link_libraries(pyfinalmlir PRIVATE
   TPUMLIRInitAll
