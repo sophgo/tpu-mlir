@@ -789,7 +789,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         name = f"{value.name}_asm_{value_view.file_line}_{value_view.loc_index}_{value_view.cmd_point}"
         dump_actual = False
         dump_desired = False
-
+        cmp_failed = None
         if self.dump_mode == DumpMode.ALL:
             dump_actual = True
 
@@ -819,6 +819,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         if dump_desired:
             self.failed_tensor[f"{name}_desired"] = desired
         if dump_actual or dump_desired:
+            if cmp_failed is None and self.dump_mode == DumpMode.ALL:
+                cmp_failed = False
             self.failed_summary_info.append({
                 "loc": value.name,
                 "cmd_point": value_view.cmd_point,
