@@ -781,6 +781,14 @@ bool tpu::MatMulOp::support_multi_core() {
 
   auto out_stype = module::getStorageType(getOutput());
   if (out_stype.isF16() || out_stype.isBF16()) {
+    auto l2_buffer_size = getL2BufferSize();
+    int64_t l2memSize = backend::BM168x::L2_SRAM_SIZE;
+    auto core_num = module::getCoreNum();
+    const int MAX_CORES = backend::BM168x::MAX_CORE_NUM;
+    l2memSize = (l2memSize / MAX_CORES) * core_num;
+    if (l2_buffer_size > l2memSize) {
+      return false;
+    }
     return true;
   }
   return false;

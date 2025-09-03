@@ -46,7 +46,12 @@ class LlmConverter(BaseConverter):
         self.position_shape = [1, self.max_input_length]
         self.num_core = args.num_core
         if self.num_core == 0:
-            self.num_core = 1 if args.chip != "bm1688" else 2
+            if args.chip == "bm1688":
+                self.num_core = 2
+            elif args.chip == "bm1690":
+                self.num_core = 8
+            else:
+                self.num_core = 1
         self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
         self.quant_mode = None
         self.quant_bits = 0

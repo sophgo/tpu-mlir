@@ -1000,14 +1000,13 @@ public:
     }
     auto indices_shape = module::getShape(ScatterNDOp.getIndices());
     int64_t buffer_size = 1;
-    for(auto i = 0; i < indices_shape.size()-1; i++){
+    for (auto i = 0; i < indices_shape.size() - 1; i++) {
       buffer_size *= indices_shape[i];
     }
     std::vector<int64_t> buffer_shape = {(int64_t)(buffer_size)};
     auto buffer_type =
         // ScatterNDOp.getInputData().getType().cast<RankedTensorType>();
-        RankedTensorType::get(buffer_shape,
-                              rewriter.getI32Type());
+        RankedTensorType::get(buffer_shape, rewriter.getI32Type());
     auto buffer = tpu::BufferOp::create(ScatterNDOp, buffer_type);
     ScatterNDOp.setOperand(3, buffer);
     return success();

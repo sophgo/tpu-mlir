@@ -111,4 +111,16 @@ LogicalResult tpu::RMSNormOp::AllowDataSplit(int64_t axis,
   return axis < ax ? success() : failure();
 }
 
+ArrayAttr tpu::RMSNormOp::getIndexingMaps() {
+  MLIRContext *context = getContext();
+  auto inputShape = module::getShape(getInput());
+  int maxParallelDims = inputShape.size() - 1;
+  AffineMap inMap = AffineMap::getMultiDimIdentityMap(maxParallelDims, context);
+  AffineMap empty = AffineMap::get(0, 0, context);
+  AffineMap outMap =
+      AffineMap::getMultiDimIdentityMap(maxParallelDims, context);
+  SmallVector<AffineMap> indexingMaps{inMap, empty, outMap};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};
+
 bool tpu::RMSNormOp::support_multi_core() { return false; }

@@ -140,7 +140,8 @@ static void op_lowering_common(PatternRewriter &rewriter,
       ArrayAttr::get(context, vector_offset),
       roundmodeflag == 0
           ? op.getRoundingMode()
-          : StringAttr::get(op.getContext(), "HalfToEven").getValue());
+          : StringAttr::get(op.getContext(), "HalfToEven").getValue(),
+      BoolAttr::get(context, false));
 
   rewriter.replaceOp(op, newOp.getOutput());
 }

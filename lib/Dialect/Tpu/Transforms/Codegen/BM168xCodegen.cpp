@@ -790,7 +790,7 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   body.walk([&](Operation *op) {
     if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
       auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
-                                      (int64_t)0, (int64_t)0);
+                                     (int64_t)0, (int64_t)0);
       group_ops[ginfo.id] = op;
     }
   });

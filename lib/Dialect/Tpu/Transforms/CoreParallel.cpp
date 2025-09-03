@@ -312,6 +312,20 @@ public:
       return;
     }
     auto modules = module::getAllModules();
+    // set multicore flag if support
+    for (auto m : *modules) {
+      m->walk<WalkOrder::PreOrder>([&](Operation *op) {
+        if (false == module::isOpInBlock(op)) {
+          auto gl = dyn_cast<GlobalGenInterface>(op);
+          if (gl && gl.support_multi_core()) {
+            mlir::Attribute isTrue =
+                mlir::BoolAttr::get(op->getContext(), true);
+            op->setAttr("multicore", isTrue);
+          }
+        }
+      });
+    }
+
     for (auto m : *modules) {
       // do core match first
       doCoreParallelPattern(m);
@@ -327,18 +341,7 @@ public:
           return WalkResult::skip();
         }
         if (supportMultiCore(op)) {
-          if (auto matmul_op = dyn_cast<tpu::MatMulOp>(op)) {
-            auto l2_buffer_size = matmul_op.getL2BufferSize();
-            int64_t l2memSize = backend::BM168x::L2_SRAM_SIZE;
-            auto core_num = module::getCoreNum();
-            const int MAX_CORES = 8;
-            l2memSize = (l2memSize / MAX_CORES) * core_num;
-            if (l2_buffer_size <= l2memSize) {
-              return WalkResult::skip();
-            }
-          } else {
-            return WalkResult::skip();
-          }
+          return WalkResult::skip();
         }
         if (auto coreParallelOp = dyn_cast<IndexingMapsInterface>(op)) {
           forAll(coreParallelOp, 0, num_core);

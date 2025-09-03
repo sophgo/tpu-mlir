@@ -134,6 +134,7 @@ protected:
     multiCode.push_back(std::make_unique<BM168x::Code>());
     code = multiCode.back();
     core_num = module::getCoreNum();
+    MAX_CORE_NUM = 2;
     start_env();
   };
   virtual void load_functions() override;

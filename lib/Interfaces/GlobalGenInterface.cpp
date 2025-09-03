@@ -15,17 +15,17 @@ using namespace mlir;
 namespace tpu_mlir {
 
 bool supportMultiCore(mlir::Operation *op) {
-  auto gl = dyn_cast<GlobalGenInterface>(op);
-  if (!gl) {
-    return false;
-  }
   if (module::isOpInBlock(op)) {
     return false;
   }
   if (module::getCoreNum() < 2) {
     return false;
   }
-  return gl.support_multi_core();
+  if (!op->hasAttrOfType<BoolAttr>("multicore")) {
+    return false;
+  }
+
+  return op->getAttrOfType<BoolAttr>("multicore").getValue() == true;
 }
 
 } // namespace tpu_mlir

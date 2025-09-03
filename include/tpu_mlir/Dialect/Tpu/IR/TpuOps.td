@@ -522,6 +522,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     //nnvlc
     support_compress: whether the operation supports compression.;
     compress_info: contains information about the compression method used.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -560,7 +561,8 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<F64ArrayAttr>:$out_f8_scales,
     //nnvlc
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info
+    OptionalAttr<Tpu_CompressAttr>:$compress_info,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -614,7 +616,7 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     round_mode: This parameter specifies the rounding mode to be used during quantization.;
     ginfo: This attribute contains information about layer grouping, which can be useful for organizing layers in a neural network.;
     out_f8_scale: This parameter contains the scaling factors for the output in FP8 (8-bit floating point) format.;
-
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -638,7 +640,8 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfUp">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<F64Attr>:$out_f8_scale
+    OptionalAttr<F64Attr>:$out_f8_scale,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -691,6 +694,7 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     layer_group: multiple layers to be processed together or treated as a single unit during computation.;
     /// fp8 quantize param
     fp8_out_scale: scaling factor used for the output tensor when utilizing 8-bit floating-point (FP8) representation.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -715,7 +719,8 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     /// fp8 quantize param
-    OptionalAttr<F64Attr>:$fp8_out_scale
+    OptionalAttr<F64Attr>:$fp8_out_scale,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -753,7 +758,8 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     /// fp8 quantize param
-    OptionalAttr<F64Attr>:$fp8_out_scale
+    OptionalAttr<F64Attr>:$fp8_out_scale,
+    OptionalAttr<BoolAttr>:$multicore
   );
 }
 
@@ -785,6 +791,7 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
     do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
     relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
     layer_group: multiple layers to be processed together or treated as a single unit during computation.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -794,7 +801,8 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
     I64ArrayAttr:$pads,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output, AnyRankedTensor:$mask);
@@ -866,6 +874,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     rshifts: an array of right shift values corresponding to each input tensor.;
     f8_scales: scaling factors for FP8 (8-bit floating point) quantization.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -881,7 +890,8 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<F64ArrayAttr>:$f8_scales, // for fp8 quant
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -920,6 +930,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
     rshift: the number of bits to right-shift the quantized values.;
     f8_scale: the scaling factor for FP8 (8-bit floating point) quantization.;
     ginfo: contains layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -931,7 +942,8 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<F64Attr, "1.0">:$f8_scale,  // input scale
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -969,6 +981,7 @@ def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
                 When set to true, the output will be clamped to a predefined range to prevent overflow or underflow during the operation.;
     round_mode: how values are rounded during the conversion from higher precision to lower precision.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
@@ -979,7 +992,8 @@ def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
     DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "true">:$saturation,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1013,6 +1027,7 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
                 When set true, the output will be clamped to a predefined range to prevent overflow or underflow during the operation.;
     round_mode: how values are rounded during the conversion from higher precision to lower precision.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
@@ -1023,7 +1038,8 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
     DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "true">:$saturation,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let hasCanonicalizer = 1;
@@ -1067,6 +1083,7 @@ def Tpu_RopeOp: Tpu_Op<"Rope", [
     mul2_saturation: Similar to mul1_saturation, this attribute specifies whether saturation should be applied to the second multiplication's output.;
     add_saturation: whether to apply saturation to the output of the addition operation.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
@@ -1083,7 +1100,8 @@ def Tpu_RopeOp: Tpu_Op<"Rope", [
     DefaultValuedAttr<BoolAttr, "true">:$mul1_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$mul2_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$add_saturation,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1110,6 +1128,7 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
     scale: a scaling factor applied to the attention scores before they are passed through the softmax function.;
     mean: the mean values that should be subtracted from the input tensor during normalization.;
     sign: whether the preprocessing operation should include a sign adjustment.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -1119,7 +1138,8 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$mean,
-    DefaultValuedAttr<BoolAttr, "true">:$sign
+    DefaultValuedAttr<BoolAttr, "true">:$sign,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let hasCanonicalizer = 1;
   let results = (outs AnyTensor:$output);
@@ -1155,6 +1175,7 @@ def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale",
     rshift: right shift values corresponding to each input tensor.;
     offset: Scalar;
     rounding_mode: The rounding method to use during quantization.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -1171,7 +1192,8 @@ def Tpu_MeanStdScaleOp: Tpu_Op<"MeanStdScale",
     I32ArrayAttr:$multi,
     I32ArrayAttr:$rshift,
     I32ArrayAttr:$offset,
-    StrAttr:$rounding_mode
+    StrAttr:$rounding_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1221,6 +1243,7 @@ def Tpu_PackRawOp: Tpu_Op<"PackRaw", [
     black_level: the minimum intensity level for normalization.;
     threshold: a threshold value that can be used during the normalization or clipping stages.;
     channel_order: the order of the color channels in the output tensor.(e.g., RGB, BGR).;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -1229,7 +1252,8 @@ def Tpu_PackRawOp: Tpu_Op<"PackRaw", [
     F64Attr:$white_level,
     F64Attr:$black_level,
     F64Attr:$threshold,
-    I64ArrayAttr:$channel_order
+    I64ArrayAttr:$channel_order,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1277,6 +1301,7 @@ def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
     white_level: the maximum intensity level for normalization.;
     black_level: the minimum intensity level for normalization.;
     channel_order: the order of the color channels in the output tensor.(e.g., RGB, BGR).;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (
     ins AnyTensor:$input,
@@ -1284,7 +1309,8 @@ def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
     I64Attr:$padding_w,
     F64Attr:$white_level,
     F64Attr:$black_level,
-    I64ArrayAttr:$channel_order
+    I64ArrayAttr:$channel_order,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1304,7 +1330,8 @@ def Tpu_Mmap2RgbmapOp: Tpu_Op<"Mmap2Rgbmap"> {
     input(act.): input tensor;
   }];
   let arguments = (
-    ins AnyTensor:$input
+    ins AnyTensor:$input,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1340,6 +1367,7 @@ def Tpu_SubOp: Tpu_Op<"Sub",
     rshifts: an array of right shift values corresponding to each input tensor.;
     f8_scales: scaling factors for FP8 (8-bit floating point) quantization.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1352,7 +1380,8 @@ def Tpu_SubOp: Tpu_Op<"Sub",
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<F64ArrayAttr>:$f8_scales, // for fp8 quant
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1391,6 +1420,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
     rshift: right shift values corresponding to each input tensor.;
     f8_scale: scaling factors for FP8 (8-bit floating point) quantization.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1403,7 +1433,8 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<F64Attr, "1.0">:$f8_scale,  // input scale
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1437,6 +1468,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     quant_mode: It determines how the output tensor should be quantized.;
     out_f8_scales: This parameter contains the scaling factors for the output in FP8 (8-bit floating point) format.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1448,7 +1480,8 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<F64ArrayAttr>:$out_f8_scales,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1484,6 +1517,7 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
     multipliers: applied during the concatenation process to adjust the values of the input tensors.;
     rshifts: an array of right shift values corresponding to each input tensor.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1494,7 +1528,8 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1530,6 +1565,7 @@ def Tpu_MinOp: Tpu_Op<"Min", [
     multipliers: applied during the concatenation process to adjust the values of the input tensors.;
     rshifts: an array of right shift values corresponding to each input tensor.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1540,7 +1576,8 @@ def Tpu_MinOp: Tpu_Op<"Min", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1576,6 +1613,7 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
     multipliers: applied during the concatenation process to adjust the values of the input tensors.;
     rshifts: an array of right shift values corresponding to each input tensor.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1586,7 +1624,8 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -1622,6 +1661,7 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
     multipliers: applied during the concatenation process to adjust the values of the input tensors.;
     rshifts: an array of right shift values corresponding to each input tensor.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1632,7 +1672,8 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -1664,13 +1705,15 @@ def Tpu_ActiveOp: Tpu_Op<"Active",[
     mode: the specific activation mode or function to be applied by the operator.;
     coeffs: an array of float64 values as coefficients for activation functions.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     AnyRankedTensor:$input,
     Tpu_ActiveModeAttr:$mode,
     OptionalAttr<F64ArrayAttr>:$coeffs,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1703,13 +1746,15 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
     min: the minimum value that the elements of the input tensor can take.;
     max: the maximum value that the elements of the input tensor can take.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     AnyRankedTensor:$input,
     F64Attr:$min,
     F64Attr:$max,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1735,11 +1780,13 @@ def Tpu_ShapeClipOp: Tpu_Op<"ShapeClip", [
     4.attributes
     min: the minimum value that the elements of the input tensor can take.;
     max: the maximum value that the elements of the input tensor can take.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
     F32Attr:$min,
-    F32Attr:$max
+    F32Attr:$max,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -1767,6 +1814,7 @@ def Tpu_Yuv2rgbFormulaOp: Tpu_Op<"Yuv2rgbFormula">{
     image_format: how the YUV data should be processed and how the output RGB data should be structured.;
     formula_mode: the mode of the conversion formula used for the YUV to RGB transformation. ;
     round_mode: how values are rounded during the conversion from higher precision to lower precision.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1775,7 +1823,8 @@ def Tpu_Yuv2rgbFormulaOp: Tpu_Op<"Yuv2rgbFormula">{
     UI32Attr:$dst_format,
     Tpu_ImageOutFormatAttr:$image_format,
     Tpu_Yuv2rgbFormulaAttr:$formula_mode,
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1809,6 +1858,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
     multipliers: applied during the concatenation process to adjust the values of the input tensors.;
     rshifts: an array of right shift values corresponding to each input tensor.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1819,7 +1869,8 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let hasCanonicalizer = 1;
 
@@ -1853,6 +1904,7 @@ def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [
     do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
     relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1860,7 +1912,8 @@ def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [
     DefaultValuedAttr<F64Attr, "1.0">: $const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1908,6 +1961,7 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
     in_is_NCHW: whether the input tensor is in NCHW format.;
     out_is_NCHW: whether the output tensor should be in NCHW format.;
     swap_cr: swaps the height and width dimensions in the output tensor.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
@@ -1918,7 +1972,8 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
     BoolAttr:$is_inversed,
     DefaultValuedAttr<BoolAttr, "true">:$in_is_NCHW,
     DefaultValuedAttr<BoolAttr, "true">:$out_is_NCHW,
-    DefaultValuedAttr<BoolAttr, "false">:$swap_cr
+    DefaultValuedAttr<BoolAttr, "false">:$swap_cr,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1945,12 +2000,14 @@ def Tpu_LutOp: Tpu_Op<"Lut", [
 
     4.attributes
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$table,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1986,6 +2043,7 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16", [
     min_range: the minimum value in the range of valid input values.;
     lut_mode: the mode of operation for the lookup table.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -1995,7 +2053,8 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16", [
     DefaultValuedAttr<F64Attr, "8">:$max_range,
     DefaultValuedAttr<F64Attr, "-8">:$min_range,
     DefaultValuedAttr<Tpu_LutBF16ModeAttr, "tpu::LutBF16Mode::Other">:$lut_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2044,6 +2103,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     multi_core: executed using multiple cores.;
     fuse_rq: fuse the requantization step with the matrix multiplication operation.;
     round_mode: the rounding mode to be used during the casting operation.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -2070,7 +2130,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     OptionalAttr<I64Attr>:$weight_bits,
     AnyTensorOrNone:$multi,
     AnyTensorOrNone:$buffer,
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2109,6 +2170,7 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
     sign: if output is signed.;
     w_transpose: whether the weight tensor should be transposed;
     q_group_size: the group size for per-group quantization.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -2121,7 +2183,8 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
     DefaultValuedAttr<BoolAttr, "true">:$sign,
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose,
     // do per-group quant if q_group_size > 0, otherwise per-channel
-    DefaultValuedAttr<I64Attr, "0">:$q_group_size
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let hasCanonicalizer = 1;
@@ -2169,6 +2232,7 @@ def Tpu_AttentionOp: Tpu_Op<"Attention", [
     head: the number of attention heads to use in the multi-head attention mechanism.;
     dim: the size of the input features or the size of the query, key, and value vectors.;;
     has_bias: whether the attention mechanism includes bias terms in its computations.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -2189,7 +2253,8 @@ def Tpu_AttentionOp: Tpu_Op<"Attention", [
     F64Attr:$scale,
     I64Attr:$head,
     I64Attr:$dim,
-    DefaultValuedAttr<I64Attr, "0">:$has_bias
+    DefaultValuedAttr<I64Attr, "0">:$has_bias,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -2228,6 +2293,7 @@ def Tpu_FAttentionOp: Tpu_Op<"FAttention", [
     dim: the size of the input features or the size of the query, key, and value vectors.;
     mq: a dimension or a modifier related to the query matrix.;
     mk: the key matrix.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -2242,7 +2308,8 @@ def Tpu_FAttentionOp: Tpu_Op<"FAttention", [
     I64Attr:$kv_head,
     I64Attr:$dim,
     I64Attr:$mq,
-    I64Attr:$mk
+    I64Attr:$mk,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -2322,12 +2389,14 @@ def Tpu_ReluOp: Tpu_Op<"Relu", [
     4.attribute
     ginfo: associated with layer grouping information.;
     relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
     ins AnyRankedTensor:$input,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2433,10 +2502,12 @@ def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
 
     4.attribute
     axis: the dimension of reverse;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    I64Attr:$axis
+    I64Attr:$axis,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2488,13 +2559,15 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
     ginfo: contains layer grouping information.;
     with_scale: whether the casting operation should include a scaling factor.;
     round_mode: the rounding mode to be used during the casting operation.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
     OptionalAttr<BoolAttr>:$extra_input,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$with_scale, //for BM1684
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
@@ -2524,13 +2597,15 @@ def Tpu_DtypeCastOp:Tpu_Op<"DtypeCast", [
     ginfo: contains layer grouping information.;
     with_scale: whether the casting operation should include a scaling factor.;
     round_mode: the rounding mode to be used during the casting operation.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
     OptionalAttr<BoolAttr>:$extra_input,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$with_scale, //for BM1684
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2671,6 +2746,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
     quant_mode: It determines how the output tensor should be quantized.;
     round_mode: This parameter specifies the rounding mode to be used during quantization.;
     ginfo: contains layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2678,7 +2754,8 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
     SI32Attr:$rshift,
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2706,6 +2783,7 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
     ginfo: contains layer grouping information.;
     rq_axis: the axis along which the requantization is performed.;
     fuse_rq_axis: whether to fuse the requantization operation with subsequent operations along the specified axis.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2714,7 +2792,8 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<SI32Attr, "1">:$rq_axis,
-    DefaultValuedAttr<BoolAttr, "false">:$fuse_rq_axis
+    DefaultValuedAttr<BoolAttr, "false">:$fuse_rq_axis,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2743,6 +2822,7 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
     round_mode: This parameter specifies the rounding mode to be used during quantization.;
     first_round_mode: the rounding behavior applied to the scaled value before the offset is added.;
     ginfo: contains layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2751,7 +2831,8 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2779,6 +2860,7 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
     round_mode: This parameter specifies the rounding mode to be used during quantization.;
     first_round_mode: the rounding behavior applied to the scaled value before the offset is added.;
     ginfo: contains layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2786,7 +2868,8 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2815,6 +2898,7 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
     quant_mode: It determines how the output tensor should be quantized.;
     round_mode: This parameter specifies the rounding mode to be used during quantization.;
     ginfo: contains layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2823,7 +2907,8 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     Tpu_DequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2851,6 +2936,7 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
     quant_mode: It determines how the output tensor should be quantized.;
     round_mode: This parameter specifies the rounding mode to be used during quantization.;
     ginfo: contains layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -2858,7 +2944,8 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     Tpu_DequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -3082,6 +3169,7 @@ def Tpu_SelectiveScanOp: Tpu_Op<"SelectiveScan"> {
     time_dim: Sequence length dimension (L = H × W)
     channel_split: Channel dimension partitioning factor (C → C//2)
     residual: Whether to apply residual connection (D term)
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -3089,7 +3177,8 @@ def Tpu_SelectiveScanOp: Tpu_Op<"SelectiveScan"> {
     AnyTensor:$deltaA,
     AnyTensor:$deltaB_u,
     AnyTensor:$us,
-    AnyTensorOrNone:$Ds
+    AnyTensorOrNone:$Ds,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -3242,6 +3331,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     log: when set to true, indicates that the output should be computed in log space.;
     beta: scaling factor.;
     round_mode: how values are rounded during the conversion from higher precision to lower precision.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -3254,7 +3344,8 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     SI32Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta,
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3286,6 +3377,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
     rshift: the number of bits to right-shift the quantized values.;
     rshift_neg: specifies the number of bits to right-shift the quantized negative values.;
     round_mode: how values are rounded during the conversion from higher precision to lower precision.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -3297,7 +3389,8 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
     OptionalAttr<SI32Attr>:$rshift,
     OptionalAttr<SI32Attr>:$rshift_neg,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -3332,6 +3425,7 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
     relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
     // for group
     ginfo: contains layer group information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -3343,7 +3437,8 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // for group
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -3420,13 +3515,15 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
     rshift: the number of bits to right-shift the quantized values.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
     ins AnyRankedTensor:$input,
     SI32Attr:$multiplier,
     SI32Attr:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3456,13 +3553,15 @@ def Tpu_PermuteOp: Tpu_Op<"Permute", [
     4.attribute
     order: An array of integers specifying the permutation order of the input tensor's dimensions.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
     ins AnyRankedTensor:$input,
     I64ArrayAttr:$order,
     AnyTensorOrNone:$buffer,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3522,12 +3621,14 @@ def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
     4.attribute
     group: An integer specifying the number of groups to divide the channels into.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
     ins AnyRankedTensor:$input,
     I64Attr:$group,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3556,6 +3657,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
     relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3563,7 +3665,8 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     I64Attr:$scale_w,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -3590,13 +3693,15 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
     scale_h: scaling factor for the height dimension of the output tensor.;
     scale_w: scaling factor for the width dimension of the output tensor.;
     ginfo: group information for layer grouping;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$mask,
     I64Attr:$scale_h,
     I64Attr:$scale_w,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -3632,6 +3737,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
     mode: the padding mode include constant(Pads with a constant value); reflect(Pads with a reflection of the tensor values); replicate(Pads by replicating the edge values of the tensor).;
     with_insert_zero : When with_insert_zero is true, it means that the PadOp first performs the insert zero operation, and then conducts the Padding expansion. In this case, the mode can only be PaddingMode::constant. When with_insert_zero is false, the insert zero operation is not performed.
     inserts : When with_insert_zero is true, the number of zeros inserted between points in the h and w dimensions.
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3645,7 +3751,8 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
     DefaultValuedAttr<Tpu_PaddingModeAttr, "tpu::PaddingMode::constant">:$mode,
 
     DefaultValuedAttr<BoolAttr, "false">:$with_insert_zero,
-    OptionalAttr<I64ArrayAttr>:$insert_zeros
+    OptionalAttr<I64ArrayAttr>:$insert_zeros,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -3679,6 +3786,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [
     multipliers: applied during the concatenation process to adjust the values of the input tensors.;
     rshifts: an array of right shift values corresponding to each input tensor.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -3689,7 +3797,8 @@ def Tpu_DivOp: Tpu_Op<"Div", [
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3726,6 +3835,7 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
     ends: An array of the ending indices for slicing along each axis.;
     axes: An array of the axes along which to perform the slicing operation.;
     hasparamConvert_axes: whether parameter conversion is needed for the specified axes.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -3738,7 +3848,8 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
     I64ArrayAttr:$steps,
     I64ArrayAttr:$ends,
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$axes,
-    DefaultValuedAttr<I64ArrayAttr, "{}">:$hasparamConvert_axes
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$hasparamConvert_axes,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
@@ -3958,6 +4069,7 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
     buffer_val: the provision of a buffer tensor where the output values can be stored.;
     buffer_idx: the provision of a buffer tensor for storing the output indices of the top K elements.;
     replace_topk_indices: whether to replace the indices of the top K elements in the output with new indices.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -3969,7 +4081,8 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
     DefaultValuedAttr<BoolAttr, "false">:$values_used_only,
     AnyTensorOrNone:$buffer_val,
     AnyTensorOrNone:$buffer_idx,
-    DefaultValuedAttr<BoolAttr, "false">:$replace_topk_indices
+    DefaultValuedAttr<BoolAttr, "false">:$replace_topk_indices,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensorOrNone:$values,
@@ -4050,6 +4163,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     rshift: the number of bits to right-shift the quantized values.;
     quant_mode: It determines how the output tensor should be quantized.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4069,7 +4183,8 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4115,6 +4230,7 @@ def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
     rshift: the number of bits to right-shift the quantized values.;
     quant_mode: It determines how the output tensor should be quantized.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4134,7 +4250,8 @@ def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4171,6 +4288,7 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
     do_relu: If set true, the output will be activated via the ReLU function after the calculation is complete.;
     relu_limit: If set -1.0, it means that there is no upper limit and the output will only be affected by the ReLU function.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4181,7 +4299,8 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
 
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4210,6 +4329,7 @@ def Tpu_LRNOp: Tpu_Op<"LRN", [
     alpha: a scaling factor;
     beta: a scaling factor;
     bias: A floating-point value added to the normalization denominator to prevent division by zero.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4219,7 +4339,8 @@ def Tpu_LRNOp: Tpu_Op<"LRN", [
     I64Attr:$size,
     DefaultValuedAttr<F64Attr, "0.0001">:$alpha,
     DefaultValuedAttr<F64Attr, "0.75">:$beta,
-    DefaultValuedAttr<F64Attr, "1.0">:$bias
+    DefaultValuedAttr<F64Attr, "1.0">:$bias,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4265,6 +4386,7 @@ def Tpu_GRUOp: Tpu_Op<"GRU"> {
     bidirectional: whether the GRU should be bidirectional;
     linear_before_reset: whether to apply a linear transformation to the input before applying the reset gate.;
     batch_first: the input and output tensors are provided in the shape (batch_size, seq_length, input_size).;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4281,7 +4403,8 @@ def Tpu_GRUOp: Tpu_Op<"GRU"> {
     I64Attr: $hidden_size,
     BoolAttr: $bidirectional,
     DefaultValuedAttr<BoolAttr, "true">:$linear_before_reset,
-    DefaultValuedAttr<BoolAttr, "false">:$batch_first
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs
@@ -4334,6 +4457,7 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
     hidden_size: the number of units in the LSTM cell, ;
     bidirectional: A boolean indicating whether the LSTM should be bidirectional;
     batch_first: the input and output tensors are provided in the shape (batch_size, seq_length, input_size).;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4351,7 +4475,8 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
     AnyTensorOrNone:$tanh_slope_table,
     I64Attr: $hidden_size,
     BoolAttr: $bidirectional,
-    DefaultValuedAttr<BoolAttr, "false">:$batch_first
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs
@@ -4389,6 +4514,7 @@ def Tpu_MatchTemplateOp: Tpu_Op<"MatchTemplate", [
 
     4.attributes
     mode: the method of template matching to be used (e.g., correlation, squared difference, etc.).;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4396,7 +4522,8 @@ def Tpu_MatchTemplateOp: Tpu_Op<"MatchTemplate", [
     AnyTensorOrNone:$match,
     AnyTensorOrNone:$table,
     AnyTensorOrNone:$mantissa_table,
-    MatchTemplateModeAttr:$mode
+    MatchTemplateModeAttr:$mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4424,12 +4551,14 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
 
     4.attributes
     tile: the number of times to replicate the input tensor along each dimension.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
     Optional<AnyTensor>:$tileT,
     DefaultValuedAttr<I64ArrayAttr, "{}">:$tile,
-    AnyTensorOrNone:$buffer
+    AnyTensorOrNone:$buffer,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -4490,6 +4619,7 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
     4.attributes
     axis: the dimension of the input tensor.;
     if_neg_index: how negative indices should be handled.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4497,7 +4627,8 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
     AnyRankedTensor:$indices,
     AnyTensorOrNone:$buffer, //for BM1684
     DefaultValuedAttr<SI32Attr, "0">:$axis,
-    DefaultValuedAttr<BoolAttr, "true">:$if_neg_index
+    DefaultValuedAttr<BoolAttr, "true">:$if_neg_index,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4523,6 +4654,7 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
 
     4.attributes
     axis: the dimension of the input tensor.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4530,7 +4662,8 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
     AnyTensor:$indices,
     AnyTensorOrNone:$indices_coeff,
     AnyTensorOrNone:$buffer,
-    DefaultValuedAttr<I64Attr, "2">:$axis
+    DefaultValuedAttr<I64Attr, "2">:$axis,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -4555,13 +4688,15 @@ def Tpu_GatherNDOp: Tpu_Op<"GatherND", [
     4.attributes
     indice_dims: the number of dimensions in the indices tensor.;
     batch_dims: the number of batch dimensions in the input tensor.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     AnyRankedTensor:$input_data,
     AnyRankedTensor:$indices,
     OptionalAttr<I64Attr>:$indice_dims,
-    DefaultValuedAttr<I64Attr, "0">:$batch_dims
+    DefaultValuedAttr<I64Attr, "0">:$batch_dims,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4592,6 +4727,7 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
     rshift_pos: This attribute defines the right shift for the positive output values during quantization.;
     multiplier_pos: This parameter specifies the multiplier for the positive part of the output, used in the context of quantization.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -4599,7 +4735,8 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<SI32Attr>:$rshift_pos,
     OptionalAttr<SI32Attr>:$multiplier_pos,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4621,12 +4758,14 @@ def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
     4.attributes
     cpu_op_name: the name of the CPU-specific operator to be executed.;
     param: a set of parameters.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     Variadic<AnyTensorOrNone>:$inputs,
     StrAttr:$cpu_op_name,
-    OptionalAttr<DictionaryAttr>:$param
+    OptionalAttr<DictionaryAttr>:$param,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs Variadic<AnyTensorOrNone>:$outputs);
@@ -4655,6 +4794,7 @@ def Tpu_InterpOp: Tpu_Op<"Interp",[DeclareOpInterfaceMethods<TypeInterface>]> {
     mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
     coord_mode: whether the coordinates are normalized (ranging from 0 to 1) or absolute (based on pixel indices).;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -4665,7 +4805,8 @@ def Tpu_InterpOp: Tpu_Op<"Interp",[DeclareOpInterfaceMethods<TypeInterface>]> {
     Tpu_ResizeModeAttr:$mode,
     Tpu_ResizeCoordModeAttr:$coord_mode,
     DefaultValuedAttr<BoolAttr, "false">:$ppl_flag,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -4703,6 +4844,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce", [
     mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
     multiplier: Floating-point multiplication operations are usually converted to fixed-point multiplication operations.;
     rshift: the number of bits to right-shift the quantized values.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4714,7 +4856,8 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce", [
     ReduceModeAttr:$mode,
     // for cv18xx
     OptionalAttr<I64ArrayAttr>:$multiplier,
-    OptionalAttr<I64ArrayAttr>:$rshift
+    OptionalAttr<I64ArrayAttr>:$rshift,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let hasCanonicalizer = 1;
@@ -4743,7 +4886,8 @@ def Tpu_ShapeReduceOp: Tpu_Op<"ShapeReduce", [
     keepdims: whether to retain the dimensions of the input tensor in the output.
                If true, will have the same number of dimensions as the input tensor.;
     mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
-    scale:scalar.;
+    scale: scalar.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4751,7 +4895,8 @@ def Tpu_ShapeReduceOp: Tpu_Op<"ShapeReduce", [
     I64ArrayAttr:$axes,
     BoolAttr:$keepdims,
     ReduceModeAttr:$mode,
-    DefaultValuedAttr<F64Attr, "1.0">:$scale
+    DefaultValuedAttr<F64Attr, "1.0">:$scale,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -4785,6 +4930,7 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
     mode: the type of binary operation to be performed, addition, subtraction, or other types of binary operations.;
     select_last_index: select the last index of the minimum or maximum value when multiple  along the specified axis.;
     use_int_input: choose if use i32/i16 as input, due to BF16 chip arch limit.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -4793,7 +4939,8 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
     BoolAttr:$keepdims,
     ArgModeAttr:$mode,
     DefaultValuedAttr<BoolAttr, "true">:$select_last_index,
-    DefaultValuedAttr<BoolAttr, "false">:$use_int_input
+    DefaultValuedAttr<BoolAttr, "false">:$use_int_input,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs
@@ -4827,6 +4974,7 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
     y_is_const: the tensor for the false branch (fbrn) is a constant.;
     x_const_val: the constant value to be used for the true branch if tbrn is not provided or is constant.;
     y_const_val: the constant value to be used for the false branch if fbrn is not provided or is constant.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$cond,
@@ -4836,7 +4984,8 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
     DefaultValuedAttr<BoolAttr, "false">:$y_is_const,
     DefaultValuedAttr<F64Attr, "0.0">:$x_const_val,
     DefaultValuedAttr<F64Attr, "0.0">:$y_const_val,
-    AnyTensorOrNone:$buffer
+    AnyTensorOrNone:$buffer,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -4866,12 +5015,14 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
     4.attributes
     inversed: whether the mask should be inverted.;
     const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$cond,
     AnyRankedTensor:$brn,
     BoolAttr:$inversed,
-    F64Attr:$const_val
+    F64Attr:$const_val,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
@@ -4900,11 +5051,13 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
     4.attributes
     mode: the type of comparison to be performed between the two input tensors.
           mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$lhs,
     AnyRankedTensor:$rhs,
-    CompareModeAttr:$mode
+    CompareModeAttr:$mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -4934,12 +5087,14 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
           mdoe include Equal, Not Equal, Less Than, Less Than or Equal, Greater Than and Greater Than or Equal;
     const_val: specifies the constant value to be added to each element of the input tensor(positive, negative, or zero).;
     inversed: whether the mask should be inverted.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
     CompareModeAttr:$mode,
     F64Attr:$const_val,
-    BoolAttr:$inversed
+    BoolAttr:$inversed,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -4975,6 +5130,7 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     normalized_shape: the shape of the input tensor that will be normalized.;
     axis: the dimension of the input tensor.;
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -4984,7 +5140,8 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     AnyTensorOrNone:$mantissa_table,   // cv18xx
     I64ArrayAttr:$normalized_shape,
     SI32Attr:$axis,
-    F64Attr:$eps
+    F64Attr:$eps,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -5016,13 +5173,15 @@ def Tpu_IndexPutOp : Tpu_Op<"IndexPut", [
 
     4.attributes
     accumulate: whether the operation should accumulate values at the specified indices or replace them.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$indices,
     AnyRankedTensor:$values,
     AnyTensorOrNone:$buffer, //for accumulate is True
-    DefaultValuedAttr<BoolAttr, "false">:$accumulate
+    DefaultValuedAttr<BoolAttr, "false">:$accumulate,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -5053,6 +5212,7 @@ def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
 
     4.attributes
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -5060,7 +5220,8 @@ def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$table,            // cv18xx
     AnyTensorOrNone:$mantissa_table,   // cv18xx
-    F64Attr:$eps
+    F64Attr:$eps,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -5095,6 +5256,7 @@ def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
     4.attributes
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
     num_groups: the number of groups to divide the input channels into for normalization.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -5103,7 +5265,8 @@ def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
     AnyTensorOrNone:$table,            // cv18xx
     AnyTensorOrNone:$mantissa_table,   // cv18xx
     I64Attr:$num_groups,
-    F64Attr:$eps
+    F64Attr:$eps,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -5136,17 +5299,19 @@ def Tpu_GridSamplerOp : Tpu_Op<"GridSampler"> {
     scale: scalar.;
     mean: mean values to subtract from each channel for normalization.;
     need_permute: whether permutation of the output tensor is required;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$grid,
+    AnyTensorOrNone:$buffer,
     I64Attr:$mode,
     I64Attr:$padding_mode,
     BoolAttr:$align_corners,
     DefaultValuedAttr<F64Attr, "0">:$mean,
     DefaultValuedAttr<F64Attr, "1">:$scale,
     DefaultValuedAttr<BoolAttr, "false">:$need_permute,
-    AnyTensorOrNone:$buffer
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -5178,8 +5343,8 @@ def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
     mantissa_table(w.): stores a table of mantissa values used in calculations to improve precision or to handle specific numerical representations.;
 
     4.attributes
-
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -5187,7 +5352,8 @@ def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$table,           // cv18xx
     AnyTensorOrNone:$mantissa_table,  // cv18xx
-    F64Attr:$eps
+    F64Attr:$eps,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -5212,6 +5378,7 @@ def Tpu_CopyOp: Tpu_Op<"Copy"> {
     input_stride: input data stride(saved as I64ArrayAttr).
     output_stride: output data stride(saved as I64ArrayAttr).
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
@@ -5219,7 +5386,8 @@ def Tpu_CopyOp: Tpu_Op<"Copy"> {
     I64ArrayAttr:$shape,
     I64ArrayAttr:$input_stride,
     I64ArrayAttr:$output_stride,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5247,6 +5415,7 @@ def Tpu_CscOp : Tpu_Op<"Csc"> {
     y_align: width alignment of channel y.;
     w_align: width alignment of channel uv.;
     channel_align: alignment of channel.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (
     ins AnyRankedTensor:$input,
@@ -5256,7 +5425,8 @@ def Tpu_CscOp : Tpu_Op<"Csc"> {
     DefaultValuedAttr<I64Attr, "1">:$pixel_type,
     DefaultValuedAttr<I64Attr, "64">:$y_align,
     DefaultValuedAttr<I64Attr, "64">:$w_align,
-    DefaultValuedAttr<I64Attr, "64">:$channel_align
+    DefaultValuedAttr<I64Attr, "64">:$channel_align,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5290,6 +5460,7 @@ def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
     bias: each channel bias.;
     sign: if output is signed.;
     ginfo: associated with layer grouping information.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
@@ -5298,7 +5469,8 @@ def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
     F64ArrayAttr:$scale,
     F64ArrayAttr:$bias,
     DefaultValuedAttr<BoolAttr, "true">:$sign,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -5326,11 +5498,13 @@ def TPU_SwapChannelOp: Tpu_Op<"SwapChannel" ,[
 
     4.attributes
     channel_order: channel swap order.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
     ins AnyRankedTensor:$input,
-    I64ArrayAttr:$channel_order
+    I64ArrayAttr:$channel_order,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5354,12 +5528,14 @@ def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
 
     4.attributes
     offset: the position at which the input tensor is split.;
+    multicore: whether op supports multicore execution.;
 
   }];
 
   let arguments = (
     ins AnyRankedTensor:$input,
-    I64ArrayAttr:$offset
+    I64ArrayAttr:$offset,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5390,6 +5566,7 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
 
     4.attributes
     axis: the dimension of the input tensor.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -5400,7 +5577,8 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
     AnyTensorOrNone:$buffer,
     I64Attr:$axis,
     DefaultValuedAttr<I64Attr, "0">:$reduction,
-    DefaultValuedAttr<BoolAttr, "false">:$nc_can_split
+    DefaultValuedAttr<BoolAttr, "false">:$nc_can_split,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5466,6 +5644,7 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
 
     4.attributes
     reduction: Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -5473,7 +5652,8 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
     AnyRankedTensor:$indices,
     AnyRankedTensor:$updates,
     AnyTensorOrNone:$buffer,
-    DefaultValuedAttr<I32Attr, "0">:$reduction
+    DefaultValuedAttr<I32Attr, "0">:$reduction,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5512,6 +5692,7 @@ def Tpu_RoiAlignOp: Tpu_Op<"RoiAlign"> {
     sampling_ratio: the number of sampling points in each direction (height and width).;
     spatial_scale: a scaling factor that maps the input coordinates (RoIs) to the input feature map's scale.;
     align_corners: whether to align the corners of the input and output tensors.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -5522,7 +5703,8 @@ def Tpu_RoiAlignOp: Tpu_Op<"RoiAlign"> {
     I64Attr:$output_width,
     I64Attr:$sampling_ratio,
     F64Attr:$spatial_scale,
-    BoolAttr:$align_corners
+    BoolAttr:$align_corners,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5565,6 +5747,7 @@ def Tpu_RoiExtractorOp: Tpu_Op<"RoiExtractor", [
     spatial_scale: a scaling factor that maps the input coordinates (RoIs) to the input feature map's scale.;
     align_corners: whether to align the corners of the input and output tensors.;
     is_static: whether the RoI extraction process has a fixed (static) configuration.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -5582,7 +5765,8 @@ def Tpu_RoiExtractorOp: Tpu_Op<"RoiExtractor", [
     I64Attr:$sampling_ratio,
     F64ArrayAttr:$spatial_scales,
     BoolAttr:$align_corners,
-    BoolAttr:$is_static
+    BoolAttr:$is_static,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5622,6 +5806,7 @@ def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
     class_num: The number of classes that the YOLO model can predict.;
     num_boxes: The number of bounding boxes that the model predicts for each grid cell in the feature map.;
     agnostic_nms: whether to use class-agnostic NMS.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
@@ -5635,7 +5820,8 @@ def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
     DefaultValuedAttr<I64Attr, "80">:$class_num,
     DefaultValuedAttr<I64Attr, "3">:$num_boxes,
     DefaultValuedAttr<BoolAttr, "false">:$agnostic_nms,
-    AnyTensorOrNone:$buffer
+    AnyTensorOrNone:$buffer,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5676,6 +5862,7 @@ def Tpu_DetectionOutputOp : Tpu_Op<"DetectionOutput"> {
     variance_encoded_in_target: whether the variance for bounding box predictions is encoded in the target.;
     eta: adjusts the confidence scores during NMS.;
     onnx_nms: configuration for ONNX compatibility (default is 1).;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
@@ -5690,7 +5877,8 @@ def Tpu_DetectionOutputOp : Tpu_Op<"DetectionOutput"> {
     DefaultValuedAttr<F64Attr, "0">:$variance_encoded_in_target,
     DefaultValuedAttr<F64Attr, "1">:$eta,
     DefaultValuedAttr<I64Attr, "1">:$onnx_nms,
-    AnyTensorOrNone:$buffer
+    AnyTensorOrNone:$buffer,
+    OptionalAttr<BoolAttr>:$multicore
 
   );
   let results = (outs AnyTensor:$output);
@@ -5735,10 +5923,12 @@ def Tpu_ConstantFillOp: Tpu_Op<"ConstantFill", [
 
     4.attribute
     value: the constant value that will fill the output tensor.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
-    F64Attr:$value
+    F64Attr:$value,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs
@@ -5853,6 +6043,7 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
     pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.;
     deform_group: (optional)Number of blocked connections from input channels to output channels. Default: 1.;
     use_mask: whether use mask for input tensor.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -5865,7 +6056,8 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
     I64ArrayAttr:$dilations,
     I64ArrayAttr:$pads, // top,left,bottom,right
     DefaultValuedAttr<BoolAttr, "false">:$use_mask,
-    DefaultValuedAttr<I64Attr, "1">:$deform_group
+    DefaultValuedAttr<I64Attr, "1">:$deform_group,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5956,14 +6148,16 @@ def Tpu_Space2BatchOp: Tpu_Op<"Space2Batch"> {
     block_h: The height of the blocks used to rearrange the depth into spatial dimensions.;
     block_w: The width of the blocks used to rearrange the depth into spatial dimensions.;
     pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
     ins AnyRankedTensor:$input,
+    AnyTensorOrNone:$buffer,
     I64Attr:$block_h,
     I64Attr:$block_w,
     I64ArrayAttr:$pads, // top, bottom, left, right
-    AnyTensorOrNone:$buffer
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5993,6 +6187,7 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
     block_h: The height of the blocks used to rearrange the depth into spatial dimensions.;
     block_w: The width of the blocks used to rearrange the depth into spatial dimensions.;
     crops: It contains four ints with top, left, bottom, right.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
@@ -6000,7 +6195,8 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
     I64Attr:$block_h,
     I64Attr:$block_w,
     I64ArrayAttr:$crops, // top, bottom, left, right
-    AnyTensorOrNone:$buffer
+    AnyTensorOrNone:$buffer,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -6047,12 +6243,14 @@ def Tpu_NmsOp : Tpu_Op<"Nms"> {
     4.attributes
     center_point_box: whether the bounding boxes are defined by their center points.;
     max_output_size: the maximum number of boxes to be output after NMS.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     Variadic<AnyTensor>: $inputs,
     I64Attr: $center_point_box,
     I64Attr: $max_output_size,
-    AnyTensorOrNone:$buffer
+    AnyTensorOrNone:$buffer,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$output);
@@ -6061,6 +6259,7 @@ def Tpu_NmsOp : Tpu_Op<"Nms"> {
 
 def Tpu_RMSNormOp : Tpu_Op<"RMSNorm", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "RMSNorm operation";
   let description = [{
@@ -6079,13 +6278,15 @@ def Tpu_RMSNormOp : Tpu_Op<"RMSNorm", [
 
     4.attributes
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     AnyTensor:$input,
     AnyTensorOrNone:$gamma,
     F64Attr:$eps,
-    DefaultValuedAttr<BoolAttr, "false">:$weight_keep_f32
+    DefaultValuedAttr<BoolAttr, "false">:$weight_keep_f32,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs
@@ -6229,12 +6430,14 @@ def Tpu_CumSumOp: Tpu_Op<"CumSum"> {
 
     4.attributes
     axis: the dimension of the input tensor.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     AnyTensor:$input,
     AnyTensorOrNone:$dim,
-    I64Attr:$axis
+    I64Attr:$axis,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$output);
@@ -6264,6 +6467,7 @@ def Tpu_LayerNormTrainOp : Tpu_Op<"LayerNormTrain"> {
     normalized_shape: the shape of the input tensor dimensions.;
     axis: the dimension of the input tensor.;
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -6271,7 +6475,8 @@ def Tpu_LayerNormTrainOp : Tpu_Op<"LayerNormTrain"> {
     AnyTensorOrNone:$bias,
     I64ArrayAttr:$normalized_shape,
     SI32Attr:$axis,
-    F64Attr:$eps
+    F64Attr:$eps,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyRankedTensor:$output,
@@ -6307,6 +6512,7 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
 
     4.attributes
     normalized_shape:  the shape of the input tensor dimensions.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
@@ -6315,7 +6521,8 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
     AnyTensor:$variance,
     AnyTensorOrNone:$weight,
     AnyTensorOrNone:$bias,
-    I64ArrayAttr:$normalized_shape
+    I64ArrayAttr:$normalized_shape,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensorOrNone:$grad_input,
@@ -6354,6 +6561,7 @@ def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain", [
     4.attribute
     epsilon;
     momentum: Momentum is a hyperparameter that controls the moving average of the mean and variance of the input tensor.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -6364,7 +6572,8 @@ def Tpu_BatchNormTrainOp: Tpu_Op<"BatchNormTrain", [
     AnyTensorOrNone:$running_status_buffer, // split h for multicore; running_mean and var
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
-    DefaultValuedAttr<F64Attr, "0.1">:$momentum
+    DefaultValuedAttr<F64Attr, "0.1">:$momentum,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$output,
@@ -6406,6 +6615,7 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd" ,[
 
     4.attribute
     epsilon;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
@@ -6414,7 +6624,8 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd" ,[
     AnyTensorOrNone:$saved_mean,
     AnyTensorOrNone:$saved_invstd,
     AnyTensorOrNone:$buffer,
-    DefaultValuedAttr<F64Attr, "1e-05">:$epsilon
+    DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$grad_in,
@@ -6453,6 +6664,7 @@ def Tpu_WhereBnbwdOp: Tpu_Op<"WhereBnbwdOp"> {
     4.attributes
     epsilon:;
     do_recompute: whether recomputed during the backward pass instead of being stored from the forward pass.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensorOrNone:$where_output,
@@ -6464,7 +6676,8 @@ def Tpu_WhereBnbwdOp: Tpu_Op<"WhereBnbwdOp"> {
     AnyTensorOrNone:$bnbwd_saved_invstd,
     AnyTensorOrNone:$buffer,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
-    DefaultValuedAttr<BoolAttr, "false">:$do_recompute
+    DefaultValuedAttr<BoolAttr, "false">:$do_recompute,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$grad_in,
@@ -6492,13 +6705,15 @@ def Tpu_EmbDenseBwdOp : Tpu_Op<"EmbDenseBwd"> {
     num_weights: the total number of embedding weights.;
     padding_idx: a index for padding.;
     scale_grad_by_freq: whether the gradient should be scaled by the inverse frequency of that token.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$grad_output,
     AnyTensor:$indices,
     SI32Attr:$num_weights,
     SI32Attr:$padding_idx,
-    BoolAttr:$scale_grad_by_freq
+    BoolAttr:$scale_grad_by_freq,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$output
@@ -6522,11 +6737,13 @@ def Tpu_WeightReorderOp: Tpu_Op<"WeightReorder"> {
 
     4.attributes
     reorder_mode: rearranging the weight tensor, such as sorting, shuffling, or applying a specific permutation.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (
     ins AnyTensor:$input,
-    DefaultValuedAttr<I64Attr, "0">:$reorder_mode
+    DefaultValuedAttr<I64Attr, "0">:$reorder_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyTensor:$output);
 }
@@ -6550,12 +6767,14 @@ def Tpu_SoftmaxBwdOp: Tpu_Op<"SoftmaxBwd"> {
 
     4.attributes
     dim: If set to 0, computed across rows, If set to 1, computed across columns.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
     AnyTensor:$grad_output,
     AnyTensor:$output,
-    SI32Attr:$dim
+    SI32Attr:$dim,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$grad_input);
@@ -6594,19 +6813,21 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight", [SupportFuseRelu,
     dilations: controls the spacing between the kernel points;
     padding: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
     grad_bias_enable: whether to compute the gradient for the bias term as well.;
+    multicore: whether op supports multicore execution.;
     }];
   let arguments = (ins
-  AnyTensor:$input,
-  AnyTensor:$gradout,
-  AnyTensor:$gradout_transpose,
-  I64Attr:$groups,
-  I64ArrayAttr:$input_shape,
-  I64ArrayAttr:$grad_out_shape,
-  I64ArrayAttr:$kernel_shape,
-  I64ArrayAttr:$stride,
-  I64ArrayAttr:$dilations,
-  I64ArrayAttr:$padding,
-  BoolAttr:$grad_bias_enable
+    AnyTensor:$input,
+    AnyTensor:$gradout,
+    AnyTensor:$gradout_transpose,
+    I64Attr:$groups,
+    I64ArrayAttr:$input_shape,
+    I64ArrayAttr:$grad_out_shape,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$stride,
+    I64ArrayAttr:$dilations,
+    I64ArrayAttr:$padding,
+    BoolAttr:$grad_bias_enable,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results =(outs
   AnyTensor:$output);
@@ -6639,11 +6860,13 @@ def Tpu_TriluOp:Tpu_Op<"Trilu", [
     upper: whether to extract the upper or lower triangular part of the input tensor.;
     diagonal: 0 refers to the main diagonal, positive values indicate diagonals above the main diagonal,
               and negative values indicate diagonals below the main diagonal.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
     SI32Attr:$upper,
-    SI32Attr:$diagonal
+    SI32Attr:$diagonal,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyTensor:$output);
 }
@@ -6666,12 +6889,14 @@ def Tpu_SortOp:Tpu_Op<"Sort", [DeclareOpInterfaceMethods<TypeInterface>]> {
     4.attributes
     axis: the dimension of the input tensor.;
     descending: the order of sorting.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
     AnyTensorOrNone:$buffer,
     I64Attr:$axis,
-    DefaultValuedAttr<BoolAttr, "true">:$descending
+    DefaultValuedAttr<BoolAttr, "true">:$descending,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensorOrNone:$values,
@@ -6723,6 +6948,7 @@ def Tpu_MeanRstdOp: Tpu_Op<"MeanRstd">{
     4.attributes
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
     momentum: hyperparameter;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -6731,7 +6957,8 @@ def Tpu_MeanRstdOp: Tpu_Op<"MeanRstd">{
     AnyTensor:$weight,
     AnyTensor:$bias,
     F64Attr:$eps,
-    F64Attr:$momentum
+    F64Attr:$momentum,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$mean,
@@ -6829,13 +7056,15 @@ def Tpu_GroupNormTrainOp : Tpu_Op<"GroupNormTrain"> {
     4.attributes
     eps: a small constant added to the denominator during normalization to prevent division by zero.;
     num_groups: number of groups to divide the channels into for normalization.;
+    multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
     AnyTensor:$input,
     AnyTensorOrNone:$weight,
     AnyTensorOrNone:$bias,
     I64Attr:$num_groups,
-    F64Attr:$eps
+    F64Attr:$eps,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$output,
@@ -6893,6 +7122,7 @@ def Tpu_ConvbwdOp :Tpu_Op<"Convbwd", [
     grad_input_enable: whether to compute the gradient with respect to the input tensor.;
     grad_weight_enable: whether to compute the gradient with respect to the kernel tensor.;
     grad_bias_enable: whether to compute the gradient with respect to the bias tensor.;
+    multicore: whether op supports multicore execution.;
     }];
   let arguments = (ins
     AnyTensor:$grad_out,
@@ -6909,7 +7139,8 @@ def Tpu_ConvbwdOp :Tpu_Op<"Convbwd", [
     I64ArrayAttr:$inserts,
     BoolAttr:$grad_input_enable,
     BoolAttr:$grad_weight_enable,
-    BoolAttr:$grad_bias_enable
+    BoolAttr:$grad_bias_enable,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensorOrNone:$grad_input,
@@ -7010,6 +7241,7 @@ def Tpu_MaskRCNNRPNGetBboxesOp: Tpu_Op<"MaskRCNN_RPNGetBboxes", [
     H_RPN_DYN_MAX: the maximum height for the dynamic RPN output.;
     W_RPN_DYN_MAX: the maximum width for the dynamic RPN output.;
     MAX_PER_IMG: the maximum number of proposals to be generated per image.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -7077,7 +7309,8 @@ AnyTensor:$cls_scores_0,
     I64Attr:$TOPK_ONNX_NMS,
     I64Attr:$H_RPN_DYN_MAX,
     I64Attr:$W_RPN_DYN_MAX,
-    I64Attr:$MAX_PER_IMG
+    I64Attr:$MAX_PER_IMG,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyTensor:$result_list);
@@ -7112,6 +7345,7 @@ def Tpu_MaskRCNNBboxPoolerOp: Tpu_Op<"MaskRCNN_BboxPooler", [
     ROI_PH: The height of the ROI in the feature map.;
     ROI_PW: The width of the ROI in the feature map.;
     ROI_LEN: The length of the ROIs being processed.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -7129,7 +7363,8 @@ def Tpu_MaskRCNNBboxPoolerOp: Tpu_Op<"MaskRCNN_BboxPooler", [
     I64Attr:$ROI_SLICE,
     I64Attr:$ROI_PH,
     I64Attr:$ROI_PW,
-    I64Attr:$ROI_LEN
+    I64Attr:$ROI_LEN,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs
     AnyTensor:$result_res,
@@ -7193,47 +7428,49 @@ def Tpu_MaskRCNNGetBboxBOp: Tpu_Op<"MaskRCNN_GetBboxB", [
     MAX_NMS_LENGTH_GetBboxB: Maximum number of bounding box candidates.;
     MAX_PER_IMG: The maximum number of detections allowed per image.;
     MAX_PER_IMG_GetBboxB: maximum number of bounding boxes after the final processing.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
-          AnyTensor:$ptr_rois,
-          AnyTensor:$ptr_bbox,
-          AnyTensor:$ptr_score,
-          AnyTensor:$max_val,
-          AnyTensor:$scale_factor,
-          AnyTensorOrNone:$means,
-          AnyTensorOrNone:$stds,
-          AnyTensorOrNone:$res_bbox,
-          AnyTensorOrNone:$res_bbox1,
-          AnyTensorOrNone:$res_bbox0,
-          AnyTensorOrNone:$res_score0,
-          AnyTensorOrNone:$res_score1,
-          AnyTensorOrNone:$res_score2,
-          AnyTensorOrNone:$res_score3,
-          AnyTensorOrNone:$res_label2,
-          AnyTensorOrNone:$result_list,
-          AnyTensorOrNone:$keep_3nch,
-          AnyTensorOrNone:$keep_u32_1h,
-          AnyTensorOrNone:$glb_buffer_boxes,
-          AnyTensorOrNone:$glb_buffer_scores,
-          AnyTensorOrNone:$glb_buffer_nms,
-          AnyTensorOrNone:$glb_buffer_nonzero,
-          AnyTensorOrNone:$result_valid_ind,
-          AnyTensorOrNone:$glb_lables,
-          AnyTensorOrNone:$glb_lables_expand,
-          F64Attr:$threshold_score_eq,
-          F64Attr:$wh_ratio_log,
-          F64Attr:$nms_iou_thr,
-          F64Attr:$delta2bbox_means,
-          F64Attr:$delta2bbox_stds_0,
-          F64Attr:$delta2bbox_stds_1,
-          I64Attr:$NUM_INDEXES,
-          I64Attr:$NUM_CLASSES,
-          I64Attr:$TOPK_ONNX_NMS,
-          I64Attr:$NUM_CLASSES_getBboxB,
-          I64Attr:$MAX_NMS_LENGTH_GetBboxB,
-          I64Attr:$MAX_PER_IMG,
-          I64Attr:$MAX_PER_IMG_GetBboxB
+      AnyTensor:$ptr_rois,
+      AnyTensor:$ptr_bbox,
+      AnyTensor:$ptr_score,
+      AnyTensor:$max_val,
+      AnyTensor:$scale_factor,
+      AnyTensorOrNone:$means,
+      AnyTensorOrNone:$stds,
+      AnyTensorOrNone:$res_bbox,
+      AnyTensorOrNone:$res_bbox1,
+      AnyTensorOrNone:$res_bbox0,
+      AnyTensorOrNone:$res_score0,
+      AnyTensorOrNone:$res_score1,
+      AnyTensorOrNone:$res_score2,
+      AnyTensorOrNone:$res_score3,
+      AnyTensorOrNone:$res_label2,
+      AnyTensorOrNone:$result_list,
+      AnyTensorOrNone:$keep_3nch,
+      AnyTensorOrNone:$keep_u32_1h,
+      AnyTensorOrNone:$glb_buffer_boxes,
+      AnyTensorOrNone:$glb_buffer_scores,
+      AnyTensorOrNone:$glb_buffer_nms,
+      AnyTensorOrNone:$glb_buffer_nonzero,
+      AnyTensorOrNone:$result_valid_ind,
+      AnyTensorOrNone:$glb_lables,
+      AnyTensorOrNone:$glb_lables_expand,
+      F64Attr:$threshold_score_eq,
+      F64Attr:$wh_ratio_log,
+      F64Attr:$nms_iou_thr,
+      F64Attr:$delta2bbox_means,
+      F64Attr:$delta2bbox_stds_0,
+      F64Attr:$delta2bbox_stds_1,
+      I64Attr:$NUM_INDEXES,
+      I64Attr:$NUM_CLASSES,
+      I64Attr:$TOPK_ONNX_NMS,
+      I64Attr:$NUM_CLASSES_getBboxB,
+      I64Attr:$MAX_NMS_LENGTH_GetBboxB,
+      I64Attr:$MAX_PER_IMG,
+      I64Attr:$MAX_PER_IMG_GetBboxB,
+      OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs
@@ -7278,6 +7515,7 @@ def Tpu_MaskRCNNMaskPoolerOp: Tpu_Op<"MaskRCNN_MaskPooler", [
     ROI_PH: Padding height for the ROI.;
     ROI_PW: Padding width for the ROI.;
     ROI_LEN: total length (or area) of the ROI.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -7300,7 +7538,8 @@ def Tpu_MaskRCNNMaskPoolerOp: Tpu_Op<"MaskRCNN_MaskPooler", [
     I64Attr:$ROI_SLICE,
     I64Attr:$ROI_PH,
     I64Attr:$ROI_PW,
-    I64Attr:$ROI_LEN
+    I64Attr:$ROI_LEN,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyTensor:$result_res);
 }
@@ -7329,6 +7568,7 @@ def tpu_MaxPoolingIndicesBwdOp: Tpu_Op<"MaxPoolingIndicesBwd", [
     pads: the amount of padding applied to the input. It contains four ints with top, left, bottom, right.
     dilations: controls the spacing between the kernel points;
     input_shape: The shape of the input tensor.;
+    multicore: whether op supports multicore execution.;
   }];
 
   let arguments = (ins
@@ -7338,7 +7578,8 @@ def tpu_MaxPoolingIndicesBwdOp: Tpu_Op<"MaxPoolingIndicesBwd", [
     I64ArrayAttr:$strides,
     I64ArrayAttr:$pads,
     I64ArrayAttr:$dilations,
-    I64ArrayAttr:$input_shape
+    I64ArrayAttr:$input_shape,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$grad_input);
@@ -7357,7 +7598,8 @@ def Tpu_CastAddOp: Tpu_Op<"CastAdd", [
     Variadic<AnyRankedTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -7379,7 +7621,8 @@ def Tpu_LayerNormCastOp: Tpu_Op<"LayerNormCast", [
     SI32Attr:$axis,
     F64Attr:$eps,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    DefaultValuedAttr<I64Attr, "1">:$isCastAtEnd
+    DefaultValuedAttr<I64Attr, "1">:$isCastAtEnd,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -7417,7 +7660,8 @@ def Tpu_MatMulLutOp: Tpu_Op<"MatMulLut", [
     DefaultValuedAttr<BoolAttr, "false">:$fuse_rq,
     AnyTensorOrNone:$multi,
     AnyTensorOrNone:$buffer,
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -7435,7 +7679,8 @@ def Tpu_FusedActiveCastOp: Tpu_Op<"FusedActiveCast",[
     AnyRankedTensor:$input,
     Tpu_ActiveModeAttr:$mode,
     OptionalAttr<F64ArrayAttr>:$coeffs,
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -7459,7 +7704,8 @@ def Tpu_SoftmaxCastOp: Tpu_Op<"SoftmaxCast",[
     SI32Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta,
-    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
+    OptionalAttr<BoolAttr>:$multicore
   );
 
   let results = (outs AnyRankedTensor:$output);

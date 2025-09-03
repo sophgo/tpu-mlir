@@ -107,6 +107,7 @@ protected:
     GDMA_VALUE_FORMAT_INT4 = 6;
     GDMA_VALUE_FORMAT_NUM = 7;
     core_num = module::getCoreNum();
+    MAX_CORE_NUM = 1;
     start_env();
     dl_tpu_set_id_node(code->cmdid_node);
   };
