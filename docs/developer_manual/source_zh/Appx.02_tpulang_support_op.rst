@@ -5057,6 +5057,45 @@ lut
 * BM1688： `input` 的数据类型可以是INT8/UINT8， `table` 的数据类型可以是INT8/UINT8。
 * BM1684X： `input` 的数据类型可以是INT8/UINT8， `table` 的数据类型可以是INT8/UINT8。
 
+gather_elements
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+        def gather_elements(input: Tensor,
+                   index: Tensor,
+                   axis: int,
+                   out_name = None):
+        #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+沿指定的 axis 维度，从 input 张量中根据 index 索引 gather 元素，生成输出张量。
+输出张量的形状与 index 相同。对于输出中的每个元素，其值是从 input 中对应位置的索引所指向的 input 元素。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* input：Tensor类型，表示输入数据张量。
+* index：Tensor类型，表示索引张量。
+* axis：int类型，指定沿哪个维度进行 gather 操作。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+约束条件：
+index 中的每个值必须在 [0, input.shape[axis]) 范围内（非负且不越界）
+
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，其形状与 index 相同，数据类型与 input 相同。。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688： `input` 的数据类型可以是FLOAT32/FLOAT16/INT32/INT8, `index` 的数据类型是INT32。
+* BM1684X： `input` 的数据类型可以是FLOAT32/FLOAT16/INT32/INT8, `index` 的数据类型是INT32。
+
 select
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -5156,7 +5195,7 @@ bmodel_inference_combine
           skip_check: bool = True,  # disable data_check to increase processing speed
           run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
           desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
-          is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
+          is_soc: bool = False,  # SoC mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
           using_memory_opt: bool = False, # required when is_soc=True
           enable_soc_log: bool = False, # required when is_soc=True
           soc_tmp_path: str = "/tmp",  # required when is_soc=True

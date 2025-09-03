@@ -5111,6 +5111,53 @@ Processor support
 * BM1688:  The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
 * BM1684X: The data type of `input` can be INT8/UINT8. The data type of `table` an be INT8/UINT8.
 
+
+gather_elements
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+Definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+        def gather_elements(input: Tensor,
+                   index: Tensor,
+                   axis: int,
+                   out_name = None):
+        #pass
+
+Description
+"""""""""""""""""""""""""""""""""
+Gathers elements from the input tensor along the specified axis dimension accord
+ing to the indices provided in the index tensor, producing an output tensor.
+
+The shape of the output tensor is the same as that of the index tensor. Each ele
+ment in the output is obtained by indexing into the input tensor using the correspond
+ing value from the index tensor.
+
+Parameters
+"""""""""""""""""""""""""""""""""
+* input: Tensor type, representing the input.
+* index: Tensor type, representing the the index tensor.
+* axis: int, the dimension along which to perform the gather operation. Must be within [-rank(input), rank(input)-1].
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Constraints
+""""""""""""""""""""""""""""""""""""""""""""""
+
+Each value in index must be in the range [0, input.shape[axis]) (non-negative an
+d within bounds).
+
+Returns
+"""""""""""""""""""""""""""""""""
+A Tensor with the same shape as index and the same data type as input.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688:  The data type of `input` can be FLOAT32/FLOAT16/INT32/INT8. The data type of `index` an be INT32.
+* BM1684X: The data type of `input` can be FLOAT32/FLOAT16/INT32/INT8. The data type of `index` an be INT32.
+
+
 select
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -5208,7 +5255,7 @@ Definition
             skip_check: bool = True,  # disable data_check to increase processing speed
             run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
             desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
-            is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
+            is_soc: bool = False,  # SoC mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
             using_memory_opt: bool = False, # required when is_soc=True
             enable_soc_log: bool = False, # required when is_soc=True
             soc_tmp_path: str = "/tmp",  # required when is_soc=True
@@ -5236,29 +5283,29 @@ Parameters
 * skip_check: Bool tyoe, set to True to disable data check to decrease time cost for CMODEL/PCIE mode.
 * run_by_op: Bool type, enable to run_by_op, decrease time cost but may cause timeout error when some OPs contain too many atomic cmds.
 * desire_op: List type, specify this option to dump specific tensors, dump all tensor as defalut.
-* is_soc: Bool type, representing whether to use in soc mode.
+* is_soc: Bool type, representing whether to use in SoC mode.
 * using_memory_opt: Bool type, enable to use memory opt, decrease memory usage at the expense of increasing time cost. Suggest to enable when running large model.
 * enable_soc_log: Bool type, enable to print and save log at `save_path`.
-* soc_tmp_path: String type, representing the abs path of tmp files and tools on device in soc mode.
-* hostname: String type, representing the ip address of device in soc mode.
-* port: Int type, representing the port of device in soc mode.
-* username: String type, representing the username of device in soc mode.
-* password: String type, representing the password of device in soc mode.
+* soc_tmp_path: String type, representing the abs path of tmp files and tools on device in SoC mode.
+* hostname: String type, representing the ip address of device in SoC mode.
+* port: Int type, representing the port of device in SoC mode.
+* username: String type, representing the username of device in SoC mode.
+* password: String type, representing the password of device in SoC mode.
 
 Attention:
 
 * When the funciton is called in cmodel/pcie mode, functions `use_cmodel/use_chip` from `/tpu-mlir/envsetup.sh` is required.
-* When the funciton is called in soc mode, use `use_chip` and `reference_data_fn` must be .npz.
+* When the funciton is called in SoC mode, use `use_chip` and `reference_data_fn` must be .npz.
 
 Returns
 """""""""""""""""""""""""""""""""
 * cmodel/pcie mode: if `dump_file=True`, then bmodel_infer_xxx.npz will be generated in `save_path`, otherwise return python dict.
-* soc mode: soc_infer_xxx.npz will be generated in `save_path`.
+* SoC mode: soc_infer_xxx.npz will be generated in `save_path`.
 
 Processor Support
 """""""""""""""""""""""""""""""""
 * BM1688:  only cmodel mode.
-* BM1684X: cmodel/pcie/soc mode.
+* BM1684X: cmodel/pcie/SoC mode.
 
 scatter
 :::::::::::::::::::::::::::::::::::::::::::::::::

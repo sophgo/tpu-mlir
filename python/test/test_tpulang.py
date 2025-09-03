@@ -66,6 +66,13 @@ def rand_indices(shape, dtype):
     return data.reshape(shape).astype(dtype=dtype)
 
 
+def rand_indices2(shape, dtype):
+    min_dim = min(shape)
+    total_elements = np.prod(shape)
+    data = np.random.randint(0, min_dim, size=total_elements)
+    return data.reshape(shape).astype(dtype=dtype)
+
+
 def tpulang(chip):
 
     def wrapper(func):
@@ -135,6 +142,7 @@ class TPULANG_IR_TESTER(object):
             "Exp": (self.test_Exp, Y, Y),
             "Extract": (self.test_Extract, Y, Y),
             "Floor": (self.test_Floor, Y, Y),
+            "GatherElements": (self.test_GatherElements, Y, Y),
             "Gelu": (self.test_Gelu, Y, Y),
             "Ge": (self.test_Ge, Y, Y),
             "Ges": (self.test_Ges, Y, Y),
@@ -5143,6 +5151,32 @@ class TPULANG_IR_TESTER(object):
             self.compile_and_check(self.unique_name(case_name), [x], [y])
 
         _test_argsort([4, 3, 4, 28], 3)
+
+    #######################################################################
+    # GatherElements
+    # ------------
+    def test_GatherElements(self, case_name):
+        """GatherElements"""
+
+        @tpulang(self.chip)
+        def _test_gather_elements(shape: List[int], axis: int, dtype="float32", is_quantized=False):
+            ind_data = rand_indices2(shape, "int32")
+            print(ind_data)
+            ind = tpul.Tensor(dtype="int32", shape=list(ind_data.shape), data=ind_data)
+            x_data = rand_data(shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
+            y = tpul.gather_elements(x, ind, axis=axis)
+            self.compile_and_check(self.unique_name(case_name), [x, ind], [y],
+                                   is_quantized=is_quantized)
+
+        _test_gather_elements([3, 3, 3], 1)
+        _test_gather_elements([3, 3, 3], 2)
+        _test_gather_elements([3, 3, 3], 1, dtype="float16", is_quantized=True)
+        _test_gather_elements([3, 3, 3], 2, dtype="float16", is_quantized=True)
+        _test_gather_elements([4, 11, 3], 2, dtype="int8", is_quantized=True)
+        _test_gather_elements([4, 11, 3], 1, dtype="int8", is_quantized=True)
+        _test_gather_elements([4, 11, 3], 2, dtype="int32", is_quantized=True)
+        _test_gather_elements([4, 11, 3], 1, dtype="int32", is_quantized=True)
 
     #######################################################################
     # IndexSelect

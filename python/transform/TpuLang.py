@@ -5998,6 +5998,20 @@ def index_select(input: Tensor,
 @auto_name()
 @annotation_check
 @assert_with_out_name
+def gather_elements(input: Tensor, index: Tensor, axis: int = 2, out_name: str = None):
+    assert index.dtype in ["int32"], "invalid index dtype"
+    assert axis <= len(input.shape) - 1, "axis param wrong"
+    attr = {
+        "axis": Attr(axis, "int64"),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.GatherElements", inputs=[input, index], outputs=[output], params=attr)
+    return output
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
 def mean_std_scale(input: Tensor,
                    std: List[float],
                    mean: List[float],
