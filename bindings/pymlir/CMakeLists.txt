@@ -10,7 +10,14 @@ project(pymlir)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH "\${ORIGIN}/")
 
-find_package(pybind11 REQUIRED CONFIG)
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
+execute_process(
+  COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+  OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
+find_package(nanobind CONFIG REQUIRED)
 
 file(GLOB _sources pymodule.cpp pymlir.cpp host/*.cpp)
 
@@ -20,7 +27,7 @@ if (TPUMLIR_USE_CUDA)
   list(APPEND _sources ${cuda_sources})
 endif ()
 
-pybind11_add_module(pymlir ${_sources})
+nanobind_add_module(pymlir ${_sources})
 
 target_link_libraries(pymlir PRIVATE
   TPUMLIRInitAll

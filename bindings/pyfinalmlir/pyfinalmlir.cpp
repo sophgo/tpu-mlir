@@ -54,12 +54,12 @@ void py_final_module::load(std::string filename) {
   }
 }
 
-py::dict py_final_module::getAllTensor() {
-  py::dict py_ret;
+nb::dict py_final_module::getAllTensor() {
+  nb::dict py_ret;
   for (auto &name : evaluator_->all_tensor_names) {
     auto tensor = evaluator_->getTensor(name);
     auto shape = evaluator_->getTensorShape(name);
-    py::str py_s(name);
+    nb::str py_s(name.c_str());
     py_ret[py_s] = getPyArray(std::move(tensor), shape);
   }
   return py_ret;
@@ -67,12 +67,12 @@ py::dict py_final_module::getAllTensor() {
 
 void py_final_module::set_tensor(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data) {
+    nb::ndarray<float> data) {
   evaluator_->setTensor(name, data.data(), data.size() * sizeof(float), false);
 }
 
 void py_final_module::set_tensor_from_int(
-    std::string name, py::array_t<float, py::array::c_style | py::array::forcecast> data) {
+    std::string name, nb::ndarray<float> data) {
   evaluator_->setTensor(name, data.data(), data.size() * sizeof(float), true);
 }
 
@@ -80,19 +80,18 @@ void py_final_module::invoke() {
   evaluator_->invoke();
 }
 
-PYBIND11_MODULE(pyfinalmlir, m) {
-  py::class_<py_final_module>(m, "module", "MLIR Final Module")
-      .def(py::init<>())
+NB_MODULE(pyfinalmlir, m) {
+  nb::class_<py_final_module>(m, "module", "MLIR Final Module")
+      .def(nb::init<>())
       .def("load", &py_final_module::load, "load module from IR")
       .def("set_tensor", &py_final_module::set_tensor)
       .def("set_tensor_from_int", &py_final_module::set_tensor_from_int)
       .def("get_all_tensor", &py_final_module::getAllTensor, "dump all tensor data")
       .def("invoke", &py_final_module::invoke)
-      .def_readonly("input_names", &py_final_module::input_names)
-      .def_readonly("output_names", &py_final_module::output_names)
-      .def_readonly("all_tensor_names", &py_final_module::all_tensor_names)
-      .def_readonly("all_weight_names", &py_final_module::all_weight_names);
+      .def_ro("input_names", &py_final_module::input_names)
+      .def_ro("output_names", &py_final_module::output_names)
+      .def_ro("all_tensor_names", &py_final_module::all_tensor_names)
+      .def_ro("all_weight_names", &py_final_module::all_weight_names);
   // clang-format on
-  py::scoped_ostream_redirect output{std::cerr,
-                                     py::module::import("sys").attr("stderr")};
+  // Note: nanobind doesn't have scoped_ostream_redirect, we'll handle this differently
 }
