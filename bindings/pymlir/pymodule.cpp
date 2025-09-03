@@ -53,8 +53,8 @@ void py_module::load(std::string filename) {
   }
 }
 
-py::dict py_module::getAllTensor() {
-  py::dict py_ret;
+nb::dict py_module::getAllTensor() {
+  nb::dict py_ret;
   for (auto &name : interpreter_->all_tensor_names) {
     if (!interpreter_->hasTensorMem(name)) {
       // skip when part mem or memory allocated failed.
@@ -62,19 +62,19 @@ py::dict py_module::getAllTensor() {
     }
     auto tensor = interpreter_->getTensor(name);
     auto shape = interpreter_->getTensorShape(name);
-    py::str py_s(name);
+    nb::str py_s(name.c_str());
     py_ret[py_s] = getPyArray(std::move(tensor), shape);
   }
   return py_ret;
 }
 
-void py_module::before_invoke(py::function func) {
+void py_module::before_invoke(nb::object func) {
   auto py_ptr = std::make_shared<PyCallBack>(func);
 
   interpreter_->before_hooks.push_back(std::move(py_ptr));
 }
 
-void py_module::after_invoke(py::function func) {
+void py_module::after_invoke(nb::object func) {
   auto py_ptr = std::make_shared<PyCallBack>(func);
   interpreter_->after_hooks.push_back(std::move(py_ptr));
 }
@@ -87,7 +87,7 @@ void py_module::set_mem_mode(std::string mem_mode) {
 
 void py_module::set_tensor(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data,
+    nb::ndarray<float> data,
     std::vector<int64_t> shape) {
   interpreter_->setTensor(name, data.data(), data.size(), shape,
                           false);
@@ -95,20 +95,20 @@ void py_module::set_tensor(
 
 void py_module::set_tensor_from_int(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data,
+    nb::ndarray<float> data,
     std::vector<int64_t> shape) {
   interpreter_->setTensor(name, data.data(), data.size(), shape, true);
 }
 
 // Warning: using copy in python
-py::array py_module::get_tensor(std::string name) {
+nb::ndarray<float, nb::numpy> py_module::get_tensor(std::string name) {
   auto tensor = interpreter_->getTensor(name);
   auto shape = interpreter_->getTensorShape(name);
   return getPyArray(std::move(tensor), shape);
 }
 
 // Tip: not using copy in python, since independent mem
-py::array py_module::get_fp32_tensor(std::string name) {
+nb::ndarray<float, nb::numpy> py_module::get_fp32_tensor(std::string name) {
   auto tensor = interpreter_->getTensor(name, true);
   auto shape = interpreter_->getTensorShape(name);
   return getPyArray(std::move(tensor), shape);
@@ -140,22 +140,23 @@ void py_module::invoke(bool fixed_to_float) {
 }
 void py_module::fake_quant_weight() { interpreter_->fake_quant_weight(); }
 
-py::array py_module::invoke_at(const std::string name) {
+nb::ndarray<float, nb::numpy> py_module::invoke_at(const std::string name) {
   auto tensor = interpreter_->invoke_at(name);
   auto shape = interpreter_->getTensorShape(name);
   return getPyArray(std::move(tensor), shape);
 }
 
-py::array py_module::backward_weight_at(
+nb::ndarray<float, nb::numpy> py_module::backward_weight_at(
     const std::string name, const std::string weight_name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> grd_dst) {
+    nb::ndarray<float> grd_dst) {
   auto shape = interpreter_->getTensorShape(weight_name);
   size_t size = 1;
   for (auto dim : shape) {
     size *= dim;
   }
-  py::array_t<float, py::array::c_style | py::array::forcecast> weight_grd(
-      shape);
+  std::vector<float> weight_grd_data(size);
+  std::vector<size_t> shape_vec(shape.begin(), shape.end());
+  nb::ndarray<float, nb::numpy> weight_grd(weight_grd_data.data(), shape_vec.size(), shape_vec.data());
   interpreter_->backward_weight_at(name, grd_dst.data(), grd_dst.size(),
                                    weight_grd.data(), size);
   return weight_grd;

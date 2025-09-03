@@ -95,7 +95,7 @@ RUN git clone https://github.com/oneapi-src/oneDNN.git && \
     cd / && rm -rf oneDNN /tmp/* ~/.cache/*
 
 # MLIR&Caffe python dependency
-RUN pip install pybind11-global==2.11.1 numpy==1.24.3 PyYAML==5.4.1 && \
+RUN pip install nanobind==1.8.0 numpy==1.24.3 PyYAML==5.4.1 && \
     rm -rf ~/.cache/pip/*
 
 # ********************************************************************************

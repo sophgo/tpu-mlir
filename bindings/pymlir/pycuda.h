@@ -52,10 +52,10 @@ public:
   // only can set input data
   void set_tensor(
       std::string name,
-      py::array_t<float, py::array::c_style | py::array::forcecast> data);
+      nb::ndarray<float> data);
   void invoke(bool dump_all);
-  py::array get_tensor(std::string name);
-  py::dict get_all_tensor();
+  nb::ndarray<float, nb::numpy> get_tensor(std::string name);
+  nb::dict get_all_tensor();
 
 private:
   // -------------------------------------------------------------------
@@ -103,8 +103,8 @@ private:
   void cuda_to_host(const std::string &name);
 
 public:
-  py::list input_names;
-  py::list output_names;
+  nb::list input_names;
+  nb::list output_names;
 
 private:
   std::unique_ptr<mlir::MLIRContext> context_;

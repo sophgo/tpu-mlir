@@ -156,7 +156,7 @@ void py_cuda::cuda_to_host(const std::string &name) {
 
 void py_cuda::set_tensor(
     std::string name,
-    py::array_t<float, py::array::c_style | py::array::forcecast> data) {
+    nb::ndarray<float> data) {
   auto it_value = value_map_.find(name);
   if (it_value == value_map_.end()) {
     llvm_unreachable("set_tensor name is not exist");
@@ -283,7 +283,7 @@ void py_cuda::invoke(bool dump_all) {
   }
 }
 
-py::array py_cuda::get_tensor(std::string name) {
+nb::ndarray<float, nb::numpy> py_cuda::get_tensor(std::string name) {
   auto it_buffer = buffer_map_.find(name);
   if (it_buffer == buffer_map_.end()) {
     std::cout << name << std::endl;
@@ -298,12 +298,12 @@ py::array py_cuda::get_tensor(std::string name) {
   return getPyArray(std::move(data), shape);
 }
 
-py::dict py_cuda::get_all_tensor() {
-  py::dict py_ret;
+nb::dict py_cuda::get_all_tensor() {
+  nb::dict py_ret;
   for (auto &it : buffer_map_) {
     auto v = value_map_[it.first];
     auto shape = module::getShape(v);
-    py::str py_s(it.first);
+    nb::str py_s(it.first);
     py_ret[py_s] = getPyArray(it.second, shape);
   }
   return py_ret;

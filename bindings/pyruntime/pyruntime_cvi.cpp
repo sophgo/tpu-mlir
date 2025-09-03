@@ -9,15 +9,16 @@
 
 
 #include "cviruntime.h"
-#include <pybind11/iostream.h>
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/pytypes.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/stl/map.h>
+#include <nanobind/stl/shared_ptr.h>
+#include <memory>
+#include <variant>
 
-namespace py = pybind11;
-
-PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
+namespace nb = nanobind;
 
 struct PythonTensor {
   PythonTensor(CVI_TENSOR *tensor) {
@@ -35,8 +36,7 @@ struct PythonTensor {
       // for model_runner reference
       shape = {1, 1, 1, size};
     }
-    data = py::array(pytype, shape, (void *)CVI_NN_TensorPtr(tensor),
-                     py::cast(*this));
+    createNdarray(tensor->fmt, (void *)CVI_NN_TensorPtr(tensor), shape);
   }
 
   std::string name;
@@ -46,54 +46,89 @@ struct PythonTensor {
   bool aligned = false;
   size_t size;
   size_t dsize;
-  py::array data;
+
+
+  std::variant<
+  nb::ndarray<nb::numpy, float>,
+  nb::ndarray<nb::numpy, int8_t>,
+  nb::ndarray<nb::numpy, uint8_t>,
+  nb::ndarray<nb::numpy, int16_t>,
+  nb::ndarray<nb::numpy, uint16_t>,
+  nb::ndarray<nb::numpy, int32_t>,
+  nb::ndarray<nb::numpy, uint32_t>
+> data;
 
 private:
-  py::dtype pytype;
+  // Note: nanobind doesn't have py::dtype, we'll handle dtype differently
   void fixDtype(CVI_FMT fmt) {
     switch (fmt) {
     case CVI_FMT_FP32:
-      pytype = py::dtype("single");
       dtype = "f32";
       dsize = 4;
       break;
     case CVI_FMT_INT8:
-      pytype = py::dtype("int8");
       dtype = "i8";
       dsize = 1;
       break;
     case CVI_FMT_UINT8:
-      pytype = py::dtype("uint8");
       dtype = "u8";
       dsize = 1;
       break;
     case CVI_FMT_INT16:
-      pytype = py::dtype("int16");
       dtype = "i16";
       dsize = 2;
       break;
     case CVI_FMT_UINT16:
-      pytype = py::dtype("uint16");
       dtype = "u16";
       dsize = 2;
       break;
     case CVI_FMT_INT32:
-      pytype = py::dtype("int32");
       dtype = "i32";
       dsize = 4;
       break;
     case CVI_FMT_UINT32:
-      pytype = py::dtype("uint32");
       dtype = "u32";
       dsize = 4;
       break;
     case CVI_FMT_BF16:
-      // numpy has no bf16 type, use uint16 instread of bf16.
-      pytype = py::dtype("uint16");
       dtype = "bf16";
       dsize = 2;
       break;
     default:
+      assert(0);
+    }
+  }
+
+
+  void createNdarray(CVI_FMT dtype_, void *data_, const std::vector<size_t> &shape) {
+    // 根据数据类型创建对应的ndarray
+    switch (dtype_) {
+    case CVI_FMT_FP32:
+      data = nb::ndarray<nb::numpy, float>(static_cast<float*>(data_), shape.size(), shape.data());
+      break;
+    case CVI_FMT_INT8:
+      data = nb::ndarray<nb::numpy, int8_t>(static_cast<int8_t*>(data_), shape.size(), shape.data());
+      break;
+    case CVI_FMT_UINT8:
+      data = nb::ndarray<nb::numpy, uint8_t>(static_cast<uint8_t*>(data_), shape.size(), shape.data());
+      break;
+    case CVI_FMT_INT16:
+      data = nb::ndarray<nb::numpy, int16_t>(static_cast<int16_t*>(data_), shape.size(), shape.data());
+      break;
+    case CVI_FMT_UINT16:
+      data = nb::ndarray<nb::numpy, uint16_t>(static_cast<uint16_t*>(data_), shape.size(), shape.data());
+      break;
+    case CVI_FMT_INT32:
+      data = nb::ndarray<nb::numpy, int32_t>(static_cast<int32_t*>(data_), shape.size(), shape.data());
+      break;
+    case CVI_FMT_UINT32:
+      data = nb::ndarray<nb::numpy, uint32_t>(static_cast<uint32_t*>(data_), shape.size(), shape.data());
+      break;
+    case CVI_FMT_BF16:
+      data = nb::ndarray<nb::numpy, uint16_t>(static_cast<uint16_t*>(data_), shape.size(), shape.data());
+      break;
+    default:
+      printf("error, unsupported CVI_FMT : %d\n", dtype_);
       assert(0);
     }
   }
@@ -111,13 +146,13 @@ struct PythonCviModel {
 
   ~PythonCviModel() { CVI_NN_CleanupModel(model); }
 
-  py::object clone() {
+  nb::object clone() {
     auto new_cvimodel = new PythonCviModel();
     int ret = CVI_NN_CloneModel(model, &new_cvimodel->model);
     if (ret != 0) {
       assert(0);
     }
-    return py::cast(new_cvimodel);
+    return nb::cast(new_cvimodel);
   }
 
   void config(int program_id, bool output_all_tensors) {
@@ -160,22 +195,21 @@ private:
   CVI_TENSOR *output_tensors = nullptr;
 };
 
-PYBIND11_MODULE(pyruntime_cvi, m) {
-  py::class_<PythonTensor, std::shared_ptr<PythonTensor>>(m, "Tensor")
-      .def_readonly("name", &PythonTensor::name)
-      .def_readonly("qscale", &PythonTensor::qscale)
-      .def_readonly("qzero_point", &PythonTensor::zpoint)
-      .def_readonly("dtype", &PythonTensor::dtype)
-      .def_readonly("aligned", &PythonTensor::aligned)
-      .def_readonly("size", &PythonTensor::size)
-      .def_readwrite("data", &PythonTensor::data);
+NB_MODULE(pyruntime_cvi, m) {
+  nb::class_<PythonTensor>(m, "Tensor")
+      .def_ro("name", &PythonTensor::name)
+      .def_ro("qscale", &PythonTensor::qscale)
+      .def_ro("qzero_point", &PythonTensor::zpoint)
+      .def_ro("dtype", &PythonTensor::dtype)
+      .def_ro("aligned", &PythonTensor::aligned)
+      .def_ro("size", &PythonTensor::size)
+      .def_rw("data", &PythonTensor::data);
 
-  py::class_<PythonCviModel>(m, "Model")
-      .def(py::init<const std::string &, int, bool>(), py::arg("cvimodel"),
-           py::arg("program_id") = 0, py::arg("output_all_tensors") = true)
+  nb::class_<PythonCviModel>(m, "Model")
+      .def(nb::init<const std::string &, int, bool>(), nb::arg("cvimodel"),
+           nb::arg("program_id") = 0, nb::arg("output_all_tensors") = true)
       .def("forward", &PythonCviModel::forward)
-      .def_readwrite("inputs", &PythonCviModel::inputs)
-      .def_readwrite("outputs", &PythonCviModel::outputs);
-  py::scoped_ostream_redirect output{std::cerr,
-                                     py::module::import("sys").attr("stderr")};
+      .def_rw("inputs", &PythonCviModel::inputs)
+      .def_rw("outputs", &PythonCviModel::outputs);
+  // Note: nanobind doesn't have scoped_ostream_redirect, we'll handle this differently
 }
