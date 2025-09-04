@@ -10,6 +10,9 @@
 #include "Common.h"
 #include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
 #include <future>
+#include <utility>
+#include <vector>
+
 namespace tpu_mlir {
 
 namespace bm1684x {
@@ -819,6 +822,7 @@ protected:
   }
 };
 
+// Fuse right transpose permute into matmul
 class ConvertMatMulWithRightTranspose
     : public OpRewriterPatternEx<top::MatMulOp> {
 public:
@@ -855,13 +859,39 @@ protected:
     if (attr.batch > 1) {
       to_dim = 3;
     }
-    std::vector<int64_t> shape = module::getShape(trans_op.getInput());
+    // check if the permute is a transpose
     auto order = module::getI64Array(trans_op.getOrder());
     int order_size = order->size();
+    std::vector<int64_t> shape = module::getShape(trans_op.getInput());
+    if (module::getName(trans_op.getOutput()).str() ==
+        "/layers/layers.0/blocks/blocks.0/attn/"
+        "Transpose_1_output_0_Transpose") {
+      printf("ddddddd");
+    }
+    std::pair<int, int> swapIndices(-1, -1);
+    for (int i = 0; i < order_size; ++i) {
+      if (order->at(i) != i) {
+        if (swapIndices.first == -1) {
+          swapIndices.first = i;
+        } else if (swapIndices.second == -1) {
+          swapIndices.second = i;
+        } else {
+          return failure();
+        }
+      }
+    }
+
+    if (swapIndices.first == -1 || swapIndices.second == -1 ||
+        !(order->at(swapIndices.first) == swapIndices.second &&
+          order->at(swapIndices.second) == swapIndices.first)) {
+      return failure();
+    }
+
     if (false == (order->at(order_size - 2) == order_size - 1 &&
                   order->at(order_size - 1) == order_size - 2)) {
       return failure();
     }
+
     std::vector<int64_t> shape_fix;
     std::vector<int64_t> order_fix;
     auto ret = permute_reset(shape, *order, shape_fix, order_fix, to_dim);
