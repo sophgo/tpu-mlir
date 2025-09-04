@@ -446,18 +446,6 @@ sq:
       --cali_method use_mse \
       -o yolov5s_cali_table
 
-smc:
-
-.. code-block:: shell
-   :linenos:
-
-   $ run_calibration.py yolov5s.mlir \
-      --smc \
-      --dataset $REGRESSION_PATH/dataset/COCO2017 \
-      --input_num 100 \
-      --cali_method use_mse \
-      -o yolov5s_cali_table
-
 we:
 
 .. code-block:: shell
