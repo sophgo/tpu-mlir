@@ -159,6 +159,9 @@ void SubLowering::LoweringF8(PatternRewriter &rewriter,
 }
 
 void SubLowering::LoweringF16(PatternRewriter &rewriter, top::SubOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f16<tpu::SubOp>(rewriter, op);
 }
 

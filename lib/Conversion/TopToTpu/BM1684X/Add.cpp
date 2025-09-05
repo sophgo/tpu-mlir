@@ -116,6 +116,9 @@ void AddLowering::LoweringBF16(PatternRewriter &rewriter, top::AddOp op) const {
 }
 
 void AddLowering::LoweringF16(PatternRewriter &rewriter, top::AddOp op) const {
+  for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+    try_insert_host2device(op, idx);
+  }
   lowering_common_f16<tpu::AddOp>(rewriter, op);
 }
 

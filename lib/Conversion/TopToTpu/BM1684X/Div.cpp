@@ -55,6 +55,9 @@ void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
 
 void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
   if (module::isBM1688() || module::isSG2380()) {
+    for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+      try_insert_host2device(op, idx);
+    }
     lowering_common_f16<tpu::DivOp>(rewriter, op);
   } else if (module::isCV184X() || module::isSGTPUV8()) {
     lowering_common_bf16<tpu::DivOp>(rewriter, op);
