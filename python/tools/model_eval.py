@@ -32,6 +32,7 @@ parser.add_argument("--dataset_type",
 parser.add_argument("--postprocess_type", type=str, required=True, help="the postprocess type.")
 parser.add_argument("--count", type=int, default=0)
 parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
+parser.add_argument("--cuda", action='store_true', help='use cuda to inference mlir model')
 args, _ = parser.parse_known_args()
 
 

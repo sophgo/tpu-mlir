@@ -38,8 +38,17 @@ class common_inference():
                         f'the mlir file:{model_file} of {args.model_file} is not exist, can not extract preprocess para'
                     )
                     exit(0)
-            self.module = pymlir.module()
-            self.module.load(model_file)
+            if not args.cuda or not pymlir.support_cuda:
+                if args.cuda:
+                    print('import cuda error, use cpu instead!')
+                self.use_cuda = False
+                self.module = pymlir.module()
+                self.module.load(model_file)
+            else:
+                self.use_cuda = True
+                self.module = pymlir.cuda()
+                self.module.load(model_file)
+
             self.module_parsered = MlirParser(model_file)
             self.batch_size = self.module_parsered.get_batch_size()
             args.batch_size = self.batch_size
@@ -47,6 +56,8 @@ class common_inference():
             self.img_proc = preprocess(args.debug_cmd)
             self.img_proc.load_config(self.module_parsered.get_input_op_by_idx(0))
             args.net_input_dims = self.img_proc.net_input_dims
+        else:
+            self.use_cuda = False
         self.batched_labels = []
         self.batched_imgs = ''
         exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(
@@ -226,13 +237,21 @@ class mlir_inference(common_inference):
         super().__init__(args)
 
     def invoke(self):
-        self.module.set_tensor(self.img_proc.input_name, self.x, self.x.shape)
-        self.module.invoke()
-        all_tensors = self.module.get_all_tensor()
-        outputs = []
-        for i in self.module.output_names:
-            outputs.append(all_tensors[i])
-        return outputs
+        if not self.use_cuda:
+            self.module.set_tensor(self.img_proc.input_name, self.x, self.x.shape)
+            self.module.invoke()
+            all_tensors = self.module.get_all_tensor()
+            outputs = []
+            for i in self.module.output_names:
+                outputs.append(all_tensors[i])
+            return outputs
+        else:
+            self.module.set_tensor(self.img_proc.input_name, self.x.astype(np.float32))
+            self.module.invoke()
+            outputs = []
+            for i in self.module.output_names:
+                outputs.append(self.module.get_tensor(i))
+            return outputs
 
 
 class onnx_inference(object):

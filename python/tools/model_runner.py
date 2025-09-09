@@ -524,7 +524,11 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
     try:
-        session = onnxruntime.InferenceSession(onnx_file, providers=['CPUExecutionProvider'])
+        so = onnxruntime.SessionOptions()
+        so.log_severity_level = 3
+        session = onnxruntime.InferenceSession(onnx_file,
+                                               providers=['CPUExecutionProvider'],
+                                               sess_options=so)
     except Exception as E:
         if "is not a registered function/op" in str(E):
             sess = PyOrtFunction.from_model(onnx_file)
