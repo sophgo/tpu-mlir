@@ -3804,29 +3804,30 @@ def multi_scale_deformable_attention(
     if out_name is None:
         out_name = generate_name("multi_scale_deformable_attention")
     o_dtype = query.dtype
+    w_dtype = "float32"
     int64_max = np.iinfo(np.int64).max
 
     # reshape: reshape all bias to [1, 1, bias_len]
     bias_reshape_attr = {
         "shape": ArrayAttr([1, 1, -1]),
     }
-    sampling_offsets_bias = Tensor(dtype=o_dtype, name=out_name + "_sampling_offsets_bias_reshape")
+    sampling_offsets_bias = Tensor(dtype=w_dtype, name=out_name + "_sampling_offsets_bias_reshape")
     TpuLang.insert_op("top.Reshape",
                       inputs=[sampling_offsets_bias_ori],
                       outputs=[sampling_offsets_bias],
                       params=bias_reshape_attr)
-    attention_weights_bias = Tensor(dtype=o_dtype,
+    attention_weights_bias = Tensor(dtype=w_dtype,
                                     name=out_name + "_attention_weights_bias_reshape")
     TpuLang.insert_op("top.Reshape",
                       inputs=[attention_weights_bias_ori],
                       outputs=[attention_weights_bias],
                       params=bias_reshape_attr)
-    value_proj_bias = Tensor(dtype=o_dtype, name=out_name + "_value_proj_bias_reshape")
+    value_proj_bias = Tensor(dtype=w_dtype, name=out_name + "_value_proj_bias_reshape")
     TpuLang.insert_op("top.Reshape",
                       inputs=[value_proj_bias_ori],
                       outputs=[value_proj_bias],
                       params=bias_reshape_attr)
-    output_proj_bias = Tensor(dtype=o_dtype, name=out_name + "_output_proj_bias_reshape")
+    output_proj_bias = Tensor(dtype=w_dtype, name=out_name + "_output_proj_bias_reshape")
     TpuLang.insert_op("top.Reshape",
                       inputs=[output_proj_bias_ori],
                       outputs=[output_proj_bias],
@@ -3930,7 +3931,7 @@ def multi_scale_deformable_attention(
     sampling_offsets_bias_reshape_attr = {
         "shape": ArrayAttr([num_heads, num_levels, num_points, 2]),
     }
-    sampling_offsets_bias_reshape_0_out = Tensor(dtype=o_dtype,
+    sampling_offsets_bias_reshape_0_out = Tensor(dtype=w_dtype,
                                                  name=out_name + "_sampling_offsets_bias_reshape_0")
     TpuLang.insert_op("top.Reshape",
                       inputs=[sampling_offsets_bias],
@@ -3940,7 +3941,7 @@ def multi_scale_deformable_attention(
     sampling_offsets_bias_permute_attr = {
         "order": ArrayAttr([1, 0, 3, 2]),
     }
-    sampling_offsets_bias_permute_out = Tensor(dtype=o_dtype,
+    sampling_offsets_bias_permute_out = Tensor(dtype=w_dtype,
                                                name=out_name + "_sampling_offsets_bias_permute")
     TpuLang.insert_op("top.Permute",
                       inputs=[sampling_offsets_bias_reshape_0_out],
@@ -3950,7 +3951,7 @@ def multi_scale_deformable_attention(
     sampling_offsets_bias_reshape_attr = {
         "shape": ArrayAttr([1, 1, -1]),
     }
-    sampling_offsets_bias_reshape_1_out = Tensor(dtype=o_dtype,
+    sampling_offsets_bias_reshape_1_out = Tensor(dtype=w_dtype,
                                                  name=out_name + "_sampling_offsets_bias_reshape_1")
     TpuLang.insert_op("top.Reshape",
                       inputs=[sampling_offsets_bias_permute_out],

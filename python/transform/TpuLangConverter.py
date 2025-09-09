@@ -200,6 +200,8 @@ class Tensor:
         if data is not None:
             if self.dtype == "float16" and data.dtype == "float32":
                 data = data.astype("float16")
+            if self.dtype == "float32" and data.dtype == "float16":
+                data = data.astype("float32")
             assert data.dtype == self.dtype
         if data is not None and tuple(shape) != tuple(data.shape):
             num = 1
