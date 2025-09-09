@@ -511,14 +511,12 @@ struct MatMulWithSlice : public OpRewriterPatternEx<MatMulOp> {
       if (offset < 0) {
         offset += input_size;
       }
-      operands.push_back(get_weight(
-          op.getRight(), offset, offset + size, -1,
-          op.getRight().getType().cast<RankedTensorType>().getElementType(),
-          "_offset" + std::to_string(offset)));
-      operands.push_back(get_weight(
-          op.getBias(), offset, offset + size, -1,
-          op.getBias().getType().cast<RankedTensorType>().getElementType(),
-          "_offset" + std::to_string(offset)));
+      operands.push_back(get_weight(op.getRight(), offset, offset + size, -1,
+                                    module::getElementType(op.getRight()),
+                                    "_offset" + std::to_string(offset)));
+      operands.push_back(get_weight(op.getBias(), offset, offset + size, -1,
+                                    module::getElementType(op.getBias()),
+                                    "_offset" + std::to_string(offset)));
       rewriter.replaceOpWithNewOp<top::MatMulOp>(
           slice_op, slice_op.getOutput().getType(), operands, op->getAttrs());
     }
