@@ -47,9 +47,6 @@ struct InterpToUpsampleMergePattern : public OpRewriterPatternEx<InterpOp> {
 
   LogicalResult matchAndRewriteImpl(InterpOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!op->hasOneUse()) {
-      return failure();
-    }
 
     auto mode = op.getMode();
     std::string mode_name = mode.data();

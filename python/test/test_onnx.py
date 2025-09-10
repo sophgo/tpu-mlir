@@ -320,6 +320,7 @@ class ONNX_IR_TESTER(object):
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y),
             "If":               (self.test_If,              N, Y, Y, N, Y, N),
+            "UpsampleAddWeight":(self.test_UpsampleAddWeight, N, Y, Y, N, N, Y),
             # "Loop":            (self.test_Loop,             N, Y, N, N, Y, N),
             #########################################
             # Dynamic test case, Alphabetically
@@ -2764,6 +2765,22 @@ class ONNX_IR_TESTER(object):
                 return self.Upsample(x)
 
         x = torch.randn(2, 64, 184, 320).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_UpsampleAddWeight(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                add = x + 2.0
+                upsample = torch.nn.functional.interpolate(add, scale_factor=2.0, mode='nearest')
+                y = upsample * 0.5
+                return y
+
+        x = torch.randn(2, 64, 160, 320).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_Deconv(self, case_name):

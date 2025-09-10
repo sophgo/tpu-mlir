@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void UpsampleLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::UpsampleOp op) const {
-  lowering_common_f32<tpu::UpsampleOp>(rewriter, op);
+  lowering_common_f32<tpu::UpsampleOp>(rewriter, op, 2);
 }
 void UpsampleLowering::LoweringINT4(PatternRewriter &rewriter,
                                     top::UpsampleOp op, bool asymmetric) const {
@@ -22,22 +22,22 @@ void UpsampleLowering::LoweringINT4(PatternRewriter &rewriter,
 }
 void UpsampleLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::UpsampleOp op, bool asymmetric) const {
-  lowering_common_int8<tpu::UpsampleOp>(rewriter, op, asymmetric);
+  lowering_common_int8<tpu::UpsampleOp>(rewriter, op, asymmetric, 2);
 }
 
 void UpsampleLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::UpsampleOp op) const {
-  lowering_common_bf16<tpu::UpsampleOp>(rewriter, op);
+  lowering_common_bf16<tpu::UpsampleOp>(rewriter, op, 2);
 }
 
 void UpsampleLowering::LoweringF16(PatternRewriter &rewriter,
                                    top::UpsampleOp op) const {
-  lowering_common_f16<tpu::UpsampleOp>(rewriter, op);
+  lowering_common_f16<tpu::UpsampleOp>(rewriter, op, 2);
 }
 
 void UpsampleLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::UpsampleOp op) const {
-  lowering_common_f16<tpu::UpsampleOp>(rewriter, op);
+  lowering_common_f16<tpu::UpsampleOp>(rewriter, op, 2);
 }
 
 void UpsampleLowering::LoweringQuantized(PatternRewriter &rewriter,

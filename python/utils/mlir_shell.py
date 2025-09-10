@@ -652,6 +652,7 @@ def tpu_ada_options(
         trunc_param,
         parallel_param,
         opt_post_processor_param,
+        "--after-layergroup-weight-reorder",
         address_assign_param
     ]
     return options

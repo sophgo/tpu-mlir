@@ -355,16 +355,51 @@ int64_t Bm168xCycleCalculator::getLoadCycleOpt(Value v,
   // - need_bcast, use_3ic
   // TODO: CONCAT
   auto bm168x = BM168x::instance();
-  auto n_idx = ginfo.n_idx;
-  auto c_idx = ginfo.c_idx;
-  auto d_idx = ginfo.d_idx;
-  auto h_idx = ginfo.h_idx;
-  auto w_idx = ginfo.w_idx;
-  auto n_slice = ginfo.n_slice;
-  auto c_slice = ginfo.c_slice;
-  auto d_slice = ginfo.d_slice;
-  auto h_slice = ginfo.h_slice;
-  auto w_slice = ginfo.w_slice;
+  int64_t n_idx, c_idx, d_idx, h_idx, w_idx;
+  int64_t n_slice, c_slice, d_slice, h_slice, w_slice;
+  auto is_idx = tensor_info.is_idx_weight;
+  if (is_idx) {
+    auto user = v.getUsers().begin();
+    auto it = *user;
+    auto indices_info = tensor_info.indices_info;
+    if (isa<tpu::UpsampleOp>(it) && !indices_info.indices.empty()) {
+      auto w_slice_size = tensor_info.slice_info.w.size();
+      auto it_h = std::find_if(
+          tensor_info.slice_info.h.begin(), tensor_info.slice_info.h.end(),
+          [&](const auto &p) { return p.first == ginfo.h_idx; });
+      int64_t h_step =
+          (it_h == tensor_info.slice_info.h.end())
+              ? -1
+              : std::distance(tensor_info.slice_info.h.begin(), it_h);
+      auto it_w = std::find_if(
+          tensor_info.slice_info.w.begin(), tensor_info.slice_info.w.end(),
+          [&](const auto &p) { return p.first == ginfo.w_idx; });
+      int64_t w_step =
+          (it_w == tensor_info.slice_info.w.end())
+              ? -1
+              : std::distance(tensor_info.slice_info.w.begin(), it_w);
+      int64_t step = h_step * w_slice_size + w_step;
+      c_idx = 0;
+      h_idx = 0;
+      w_idx = indices_info.indices[step].first;
+      c_slice = Arch::NPU_NUM;
+      h_slice = 1;
+      w_slice = indices_info.indices[step].second;
+    } else {
+      llvm::errs() << "not support this idx reorder!\n";
+    }
+  } else {
+    c_idx = ginfo.c_idx;
+    h_idx = ginfo.h_idx;
+    w_idx = ginfo.w_idx;
+    c_slice = ginfo.c_slice;
+    h_slice = ginfo.h_slice;
+    w_slice = ginfo.w_slice;
+  }
+  n_idx = ginfo.n_idx;
+  d_idx = ginfo.d_idx;
+  n_slice = ginfo.n_slice;
+  d_slice = ginfo.d_slice;
   auto l_addr = ginfo.out_addr;
   int64_t use_3ic = tensor_info.use_3ic_opt;
   bool need_bcast = tensor_info.need_bcast;
@@ -447,7 +482,7 @@ int64_t Bm168xCycleCalculator::getLoadCycleOpt(Value v,
               w_slice, 1, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
           channel_index++;
         }
-      }      // depth loop
+      } // depth loop
     } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
       for (int64_t i = 0; i < n_slice; i++) {
         int64_t cur_local_offset = i * c_num_local * c_stride * fmt_bytes;
@@ -720,8 +755,8 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           if (useMuliCore) {
             BW = 15.f;
             DEBUG_WITH_TYPE("cycle_calc", {
-              llvm::dbgs() << "; action = multi_core_align"
-                           << "; BW = " << BW << "\n";
+              llvm::dbgs() << "; action = multi_core_align" << "; BW = " << BW
+                           << "\n";
             });
             bm1688->dl_set_gdma_bw_s2l(BW);
             bm1688->dl_set_gdma_bw_l2s(BW);
@@ -824,8 +859,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
                      shape_secs.dsecs * shape_secs.wsecs;
 
   DEBUG_WITH_TYPE("cycle_calc", {
-    llvm::dbgs() << "; action = cycle_calc"
-                 << "; loop_num = " << loop_num << "\n";
+    llvm::dbgs() << "; action = cycle_calc" << "; loop_num = " << loop_num
+                 << "\n";
   });
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
@@ -834,8 +869,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
     consider_multi_core_bw = true;
     loop_num = loop_num / num_core_ + (loop_num % num_core_ > 0);
     DEBUG_WITH_TYPE("cycle_calc", {
-      llvm::dbgs() << "; action = cycle_calc"
-                   << "; step = multi_core_refactor"
+      llvm::dbgs() << "; action = cycle_calc" << "; step = multi_core_refactor"
                    << "; loop_num = " << loop_num << "\n";
     });
   }
@@ -843,8 +877,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   if (num_core_ == 8) {
     loop_num = loop_num / num_core_ + (loop_num % num_core_ > 0);
     DEBUG_WITH_TYPE("cycle_calc", {
-      llvm::dbgs() << "; action = cycle_calc"
-                   << "; step = multi_core_refactor"
+      llvm::dbgs() << "; action = cycle_calc" << "; step = multi_core_refactor"
                    << "; loop_num = " << loop_num << "\n";
     });
   }
@@ -867,8 +900,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       int64_t cycle =
           this->getLocalLayerCycle(op, tensor_infos, group_type, false);
       DEBUG_WITH_TYPE("cycle_calc", {
-        llvm::dbgs() << "; action = cycle_calc"
-                     << "; engine = layer_cycle"
+        llvm::dbgs() << "; action = cycle_calc" << "; engine = layer_cycle"
                      << "; op_name = " << module::getName(op)
                      << "; value = " << cycle << "\n";
         op->dump();
@@ -884,8 +916,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         if (consider_multi_core_bw) {
           BW = 15.f;
           DEBUG_WITH_TYPE("cycle_calc", {
-            llvm::dbgs() << "; action = multi_core_align"
-                         << "; BW = " << BW << "\n";
+            llvm::dbgs() << "; action = multi_core_align" << "; BW = " << BW
+                         << "\n";
           });
           bm1688->dl_set_gdma_bw_s2l(BW);
           bm1688->dl_set_gdma_bw_l2s(BW);
@@ -901,8 +933,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       int64_t hold_in_lmem =
           time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
       DEBUG_WITH_TYPE("cycle_calc", {
-        llvm::dbgs() << "; action = cycle_calc"
-                     << "; engine = gdma_cycle"
+        llvm::dbgs() << "; action = cycle_calc" << "; engine = gdma_cycle"
                      << "; op_name = " << module::getName(tensor.first)
                      << "; hold_in_lmem = " << hold_in_lmem
                      << "; value = " << cycle << "\n";
@@ -920,8 +951,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           total_layer_cycle += layer.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_tiu_cycle"
-                         << "; stage = filling"
-                         << "; value = " << layer.cycle << "\n";
+                         << "; stage = filling" << "; value = " << layer.cycle
+                         << "\n";
           });
         }
       }
@@ -933,8 +964,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           total_gdma_cycle += tensor.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_gdma_cycle"
-                         << "; stage = filling"
-                         << "; value = " << tensor.cycle << "\n";
+                         << "; stage = filling" << "; value = " << tensor.cycle
+                         << "\n";
           });
           if (tensor.hold_in_lmem == 1) {
             tensor.hold_in_lmem = 2;
@@ -943,8 +974,7 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       }
       DEBUG_WITH_TYPE("cycle_calc", {
         if (total_layer_cycle > total_gdma_cycle) {
-          llvm::dbgs() << "; action = consider_tiu_cycle"
-                       << "; stage = filling"
+          llvm::dbgs() << "; action = consider_tiu_cycle" << "; stage = filling"
                        << "; value = " << total_layer_cycle << "\n";
         } else {
           llvm::dbgs() << "; action = consider_gdma_cycle"
@@ -963,8 +993,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         total_layer_cycle += layer.cycle;
         DEBUG_WITH_TYPE("cycle_calc", {
           llvm::dbgs() << "; action = accumulate_tiu_cycle"
-                       << "; stage = kernel"
-                       << "; value = " << layer.cycle << "\n";
+                       << "; stage = kernel" << "; value = " << layer.cycle
+                       << "\n";
         });
       }
       // tensors
@@ -974,19 +1004,17 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           total_gdma_cycle += tensor.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_gdma_cycle"
-                         << "; stage = kernel"
-                         << "; value = " << tensor.cycle << "\n";
+                         << "; stage = kernel" << "; value = " << tensor.cycle
+                         << "\n";
           });
         }
       }
       DEBUG_WITH_TYPE("cycle_calc", {
         if (total_layer_cycle > total_gdma_cycle) {
-          llvm::dbgs() << "; action = consider_tiu_cycle"
-                       << "; stage = kernel"
+          llvm::dbgs() << "; action = consider_tiu_cycle" << "; stage = kernel"
                        << "; value = " << total_layer_cycle << "\n";
         } else {
-          llvm::dbgs() << "; action = consider_gdma_cycle"
-                       << "; stage = kernel"
+          llvm::dbgs() << "; action = consider_gdma_cycle" << "; stage = kernel"
                        << "; value = " << total_gdma_cycle << "\n";
         }
       });
@@ -1001,8 +1029,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           total_layer_cycle += layer.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_tiu_cycle"
-                         << "; stage = draining"
-                         << "; value = " << layer.cycle << "\n";
+                         << "; stage = draining" << "; value = " << layer.cycle
+                         << "\n";
           });
         }
       }
@@ -1014,8 +1042,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           total_gdma_cycle += tensor.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_gdma_cycle"
-                         << "; stage = draining"
-                         << "; value = " << tensor.cycle << "\n";
+                         << "; stage = draining" << "; value = " << tensor.cycle
+                         << "\n";
           });
         }
       }
@@ -1037,10 +1065,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       filling_cycle + draining_cycle +
       std::max(loop_num - swpipl_stage_num, (int64_t)0) * kernel_cycle;
   DEBUG_WITH_TYPE("cycle_calc", {
-    llvm::dbgs() << "; action = total_cycle_of_group"
-                 << "; step = end"
-                 << "; event = "
-                 << "total_cycle_of_group"
+    llvm::dbgs() << "; action = total_cycle_of_group" << "; step = end"
+                 << "; event = " << "total_cycle_of_group"
                  << "; filling_cycle = " << filling_cycle
                  << "; draining_cycle = " << draining_cycle
                  << "; loop_num = " << loop_num
@@ -1075,9 +1101,8 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
     if (imp_multi_core_global) {
       BW = 15.f;
       DEBUG_WITH_TYPE("cycle_calc", {
-        llvm::dbgs() << "; action = align_multi_core_bw"
-                     << "; BW = " << BW << "; op_name = " << module::getName(op)
-                     << "\n";
+        llvm::dbgs() << "; action = align_multi_core_bw" << "; BW = " << BW
+                     << "; op_name = " << module::getName(op) << "\n";
       });
     }
     // for other targets, writer
@@ -1343,7 +1368,7 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v, tensor_info_t &tensor_info,
                 GDMA_VALUE_DIR_S2L, 0, pid_node);
             channel_index++;
           }
-        }      // depth loop
+        } // depth loop
       } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
         for (int64_t i = 0; i < n_slice; i++) {
           bm168x->dl_tensor_stride_move_gen_cmd(

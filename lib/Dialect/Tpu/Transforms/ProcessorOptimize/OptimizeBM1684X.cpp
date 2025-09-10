@@ -6073,6 +6073,53 @@ struct GridSampleInDeformableAttnFusionPattern
   }
 };
 
+// To allow upsample to access the local layer at any segmentation
+// point, the coordinate data is encoded as weights for processing.
+class UpsampleAddWeightPattern : public OpRewriterPatternEx<tpu::UpsampleOp> {
+public:
+  UpsampleAddWeightPattern(mlir::MLIRContext *context, int benifit)
+      : OpRewriterPatternEx<tpu::UpsampleOp>(
+            context, "UpsampleAddWeightPattern", benifit) {}
+  LogicalResult matchAndRewriteImpl(tpu::UpsampleOp op,
+                                    PatternRewriter &rewriter) const override {
+
+    if (!(module::isBM1684X() || module::isBM1688() || module::isCV184X())) {
+      return failure();
+    }
+    auto input = op.getInput();
+    auto input_type = input.getType().cast<RankedTensorType>();
+    auto dims = input_type.getShape();
+    if (dims.size() != 4)
+      return failure();
+
+    int64_t H_in = dims[2];
+    int64_t W_in = dims[3];
+    int64_t scale_h = op.getScaleH();
+    float scale_factor = static_cast<float>(scale_h);
+    int64_t H_out = static_cast<int>(std::floor(H_in * scale_factor));
+    int64_t W_out = static_cast<int>(std::floor(W_in * scale_factor));
+
+    std::vector<uint16_t> idx_data(H_out * W_out * 2);
+    for (int64_t h = 0; h < H_out; ++h) {
+      int64_t src_h = std::min<int64_t>(std::floor(h / scale_factor), H_in - 1);
+      for (int64_t w = 0; w < W_out; ++w) {
+        int64_t src_w =
+            std::min<int64_t>(std::floor(w / scale_factor), W_in - 1);
+        size_t c = h * W_out + w;
+        idx_data[c * 2 + 0] = static_cast<uint16_t>(src_h);
+        idx_data[c * 2 + 1] = static_cast<uint16_t>(src_w);
+      }
+    }
+    SmallVector<int64_t> weight_shape{1, H_out * W_out, 1, 2};
+    auto elem_type = rewriter.getIntegerType(16);
+    auto weight_type = RankedTensorType::get(weight_shape, elem_type);
+    auto weight_op =
+        top::WeightOp::create<uint16_t>(op, "indices", idx_data, weight_type);
+    op->setOperand(1, weight_op);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
@@ -6127,6 +6174,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                 MatMulRequantIntFusion,
                 RemoveReshape,
                 WhereBnbwdFusePattern,
+                UpsampleAddWeightPattern,
                 // ConvMergePattern
                 DeconvPadPattern
                 >(ctx, 8);

@@ -42,22 +42,40 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
 LogicalResult tpu::UpsampleOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                          int64_t out_idx, int64_t out_slice) {
   auto unit = getScaleH();
-  if (out_idx % unit || out_slice % unit) {
-    return failure();
+  if (module::isBM1684X() || module::isBM1688() || module::isCV184X()) {
+    int64_t out_start = out_idx;
+    int64_t out_end = out_idx + out_slice - 1;
+    int64_t in_start = out_start / unit;
+    int64_t in_end = out_end / unit;
+    in_idx = in_start;
+    in_slice = in_end - in_start + 1;
+  } else {
+    if (out_idx % unit || out_slice % unit) {
+      return failure();
+    }
+    in_idx = out_idx / unit;
+    in_slice = out_slice / unit;
   }
-  in_idx = out_idx / unit;
-  in_slice = out_slice / unit;
   return success();
 }
 
 LogicalResult tpu::UpsampleOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
                                          int64_t out_idx, int64_t out_slice) {
   auto unit = getScaleW();
-  if (out_idx % unit || out_slice % unit) {
-    return failure();
+  if (module::isBM1684X() || module::isBM1688() || module::isCV184X()) {
+    int64_t out_start = out_idx;
+    int64_t out_end = out_idx + out_slice - 1;
+    int64_t in_start = out_start / unit;
+    int64_t in_end = out_end / unit;
+    in_idx = in_start;
+    in_slice = in_end - in_start + 1;
+  } else {
+    if (out_idx % unit || out_slice % unit) {
+      return failure();
+    }
+    in_idx = out_idx / unit;
+    in_slice = out_slice / unit;
   }
-  in_idx = out_idx / unit;
-  in_slice = out_slice / unit;
   return success();
 }
 

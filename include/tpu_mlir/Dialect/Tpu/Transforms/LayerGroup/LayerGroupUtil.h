@@ -59,7 +59,8 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op, Value in,
                              const shape_secs_t &shape_secs,
                              group_type_t group_type, bool &hold_in_lmem,
-                             bool is_group_in, bool &need_reload);
+                             bool is_group_in, bool &need_reload,
+                             indices_info_t &indices_info);
 bool get_backward_slice_info2(slice_info_t &in_si, const slice_info_t &out_si,
                               Operation *op, Value in,
                               const shape_secs_t &shape_secs,
@@ -108,6 +109,7 @@ bool need_bcast(Value opd);
 
 int64_t use_3ic(Value opd);
 
+bool is_upsample_weight(Value opd);
 std::vector<Value> get_input_values(Operation *op);
 std::vector<Value> get_output_values(Operation *op);
 
@@ -249,9 +251,7 @@ struct dot_graph {
     log_stream << " graph [label=\"GroupOps\";";
     // log_stream << " labelloc=\"t\";";
     log_stream << " fontsize=" << 30 << ";";
-    log_stream << " fontcolor=\""
-               << "black"
-               << "\";]" << std::endl;
+    log_stream << " fontcolor=\"" << "black" << "\";]" << std::endl;
     log_stream << " node [shape = record, color = black]" << std::endl;
 
     for (auto itr : main_graph_nodes) {

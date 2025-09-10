@@ -2658,6 +2658,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
     DefaultValuedAttr<I64Attr, "0">:$lmem_type,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
+    DefaultValuedAttr<BoolAttr, "false">:$is_idx_weight,
     OptionalAttr<Tpu_CompressAttr>:$compress_info
   );
   let results = (outs AnyRankedTensor:$output);
@@ -3661,6 +3662,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    AnyTensorOrNone:$indices,
     I64Attr:$scale_h,
     I64Attr:$scale_w,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,

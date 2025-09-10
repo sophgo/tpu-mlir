@@ -122,6 +122,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     OptionalAttr<F64ArrayAttr>:$scale,
     OptionalAttr<StoreModeAttr>:$store_mode,
     OptionalAttr<I64ArrayAttr>:$allow_split,
+    OptionalAttr<I64ArrayAttr>:$indices_idx,
+    OptionalAttr<I64ArrayAttr>:$indices_slice,
     //nnvlc param
     OptionalAttr<BoolAttr>:$do_compress,
     OptionalAttr<I64Attr>:$bias0,

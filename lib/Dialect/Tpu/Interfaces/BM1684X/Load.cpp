@@ -42,6 +42,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   }
 
   int64_t N, C, D, H, W;
+  int64_t real_cidx, real_hidx, real_widx, real_didx;
   int64_t real_cslice, real_hslice, real_wslice, real_dslice;
   int64_t gdma_format;
   module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
@@ -73,11 +74,40 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       zero_guard = cinfo->getZeroGuard();
     }
   }
-
-  real_cslice = gi.c_slice;
-  real_hslice = gi.h_slice;
-  real_wslice = gi.w_slice;
-  real_dslice = gi.d_slice;
+  auto is_idx = getIsIdxWeight();
+  if (is_idx) {
+    auto user = this->getResult().getUsers().begin();
+    auto it = *user;
+    if (isa<tpu::UpsampleOp>(it)) {
+      auto g_param = this->getOperation()
+                         ->getAttr(LocalGenInterface::kLayerGroupAttrName)
+                         .cast<tpu::LayerGroupAttr>();
+      int64_t w_slice_size = g_param.getWSlice().size();
+      auto indices = this->getInput().getDefiningOp<top::WeightOp>();
+      auto indices_idx = module::getI64Array(indices.getIndicesIdxAttr());
+      auto indices_slice = module::getI64Array(indices.getIndicesSliceAttr());
+      int64_t step = h_step * w_slice_size + w_step;
+      real_cidx = 0;
+      real_hidx = 0;
+      real_widx = indices_idx->at(step);
+      real_didx = gi.d_idx;
+      real_cslice = Arch::NPU_NUM;
+      real_hslice = 1;
+      real_wslice = indices_slice->at(step);
+      real_dslice = gi.d_slice;
+    } else {
+      llvm::errs() << "not support this idx reorder!\n";
+    }
+  } else {
+    real_cidx = gi.c_idx;
+    real_hidx = gi.h_idx;
+    real_widx = gi.w_idx;
+    real_didx = gi.d_idx;
+    real_cslice = gi.c_slice;
+    real_hslice = gi.h_slice;
+    real_wslice = gi.w_slice;
+    real_dslice = gi.d_slice;
+  }
   if (data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
     data_type = DTYPE_INT8;
@@ -269,12 +299,12 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                 bias0, bias1, is_signed, zero_guard, gdma_format, pid_node);
           } else {
             int64_t src_offset_c =
-                (channel_index * (int64_t)MAX_TPU_DIM + gi.c_idx) * H * W *
+                (channel_index * (int64_t)MAX_TPU_DIM + real_cidx) * H * W *
                 fmt_bytes;
             int64_t cur_global_offset = gi.n_idx * C * D * H * W * fmt_bytes +
                                         (gi.d_idx + d) * H * W * fmt_bytes +
-                                        gi.h_idx * W * fmt_bytes +
-                                        gi.w_idx * fmt_bytes + src_offset_c;
+                                        real_hidx * W * fmt_bytes +
+                                        real_widx * fmt_bytes + src_offset_c;
             if (module::isDebugCmdEnable("codegen_debug")) {
               llvm::errs() << "loadOp, gi.n_idx:" << gi.n_idx
                            << ", gi.c_idx:" << gi.c_idx
@@ -302,7 +332,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           }
           channel_index++;
         }
-      }      // depth loop
+      } // depth loop
     } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
       for (int64_t i = 0; i < gi.n_slice; i++) {
         int64_t cur_local_offset = i * c_num_local * c_stride * fmt_bytes;

@@ -572,6 +572,27 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
         "use_3ic_optimize", builder.getI64IntegerAttr(ti.use_3ic_opt)));
   }
 
+  if (ti.is_idx_weight) {
+    attrs.push_back(
+        builder.getNamedAttr("is_idx_weight", builder.getBoolAttr(true)));
+    auto ctx = inputOp->getContext();
+    auto builder = OpBuilder(ctx);
+    auto weightop = dyn_cast<top::WeightOp>(inputOp);
+    auto indices_info = ti.indices_info;
+    if (indices_info.indices.empty()) {
+      llvm::errs() << "Missing weight reorder split information!\n";
+      return;
+    }
+    llvm::SmallVector<int64_t, 4> indices_idx, indices_slice;
+    indices_idx.reserve(indices_info.indices.size());
+    indices_slice.reserve(indices_info.indices.size());
+    for (const auto &[idx, slice] : indices_info.indices) {
+      indices_idx.push_back(idx);
+      indices_slice.push_back(slice);
+    }
+    weightop.setIndicesIdxAttr(builder.getI64ArrayAttr(indices_idx));
+    weightop.setIndicesSliceAttr(builder.getI64ArrayAttr(indices_slice));
+  }
   mem_buffer_key_t buffer_key = {LMEM_ACTIVATION, input, nullptr};
   if (auto weightop = dyn_cast_or_null<top::WeightOp>(inputOp)) {
     bool allow_split = false;

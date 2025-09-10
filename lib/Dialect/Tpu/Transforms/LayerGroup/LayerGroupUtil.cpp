@@ -1077,6 +1077,7 @@ void update_tensor_infos(LgInfo &lg_info, TensorInfo &tensor_infos,
     iter.second.use_3ic_opt = use_3ic(v);
     iter.second.eu_align = is_eu_align(v);
     iter.second.need_bcast = need_bcast(v);
+    iter.second.is_idx_weight = is_upsample_weight(v);
   }
 
   if (speical_pattern > 0) {
@@ -1469,6 +1470,18 @@ bool is_broadcast_rope_with_permute_optimize(
   return false;
 }
 
+// if upsample nearest, weight shape is [1, 2, slice_h, slice_w]
+bool is_upsample_indices(Operation *op, Value v) {
+  bool res = false;
+  if (!(module::isBM1684X() || module::isBM1688() || module::isCV184X())) {
+    return res;
+  }
+  if (auto upsample_op = dyn_cast<tpu::UpsampleOp>(op)) {
+    res = (v == upsample_op.getIndices());
+  }
+  return res;
+}
+
 bool is_attention_not_input_tensor(Operation *op, Value v) {
   bool res = false;
   if (auto attention_op = dyn_cast<tpu::AttentionOp>(op)) {
@@ -1546,13 +1559,15 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op, Value in,
                              const shape_secs_t &shape_secs,
                              group_type_t group_type, bool &hold_in_lmem,
-                             bool is_group_in, bool &need_reload) {
+                             bool is_group_in, bool &need_reload,
+                             indices_info_t &indices_info) {
   int64_t n, c, d, h, w;
   module::getNCDHW(in, n, c, d, h, w, group_type);
   auto lg_op = cast<LocalGenInterface>(op);
   bool is_broadcast_tensor = is_broadcast_binary(op, in);
   bool is_right_matrix = is_matmul_right_tensor(op, in);
   bool is_no_input_attention = is_attention_not_input_tensor(op, in);
+  bool is_upsample_weight = is_upsample_indices(op, in);
   std::vector<bool> is_broadcast_rope_vec = {false, false, false, false};
   bool is_broadcast_rope =
       is_broadcast_rope_with_permute_optimize(op, is_broadcast_rope_vec);
@@ -1572,7 +1587,8 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   } else {
     for (auto &s : out_si.n) {
       auto ret = lg_op.BackwardN(idx, slice, s.first, s.second);
-      if ((is_broadcast_tensor || is_right_matrix || is_broadcast_rope) &&
+      if ((is_broadcast_tensor || is_right_matrix || is_broadcast_rope ||
+           is_upsample_weight) &&
           n == 1) {
         idx = 0;
         slice = 1;
@@ -1592,7 +1608,11 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   }
 
   if (shape_secs.csecs == 1) {
-    in_si.c.emplace_back(slice_pair_t(0, c));
+    if (is_upsample_weight) {
+      in_si.c.emplace_back(slice_pair_t(0, 2));
+    } else {
+      in_si.c.emplace_back(slice_pair_t(0, c));
+    }
   } else {
     for (auto &s : out_si.c) {
       auto ret = lg_op.BackwardC(idx, slice, s.first, s.second);
@@ -1614,6 +1634,9 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
         idx = 0;
         slice = c;
         in_si.c.emplace_back(slice_pair_t(idx, slice));
+      } else if (is_upsample_weight) {
+        idx = 0;
+        slice = 2;
       } else {
         if (failed(ret) || slice == 0) {
           // llvm::outs() << "BackwardC fail, at
@@ -1652,7 +1675,14 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   pre_end_idx = 0;
   idx = slice = 0;
   if (shape_secs.hsecs == 1) {
-    in_si.h.emplace_back(slice_pair_t(0, h));
+    if (is_upsample_weight) {
+      auto &s = out_si.h[0];
+      idx = s.first;
+      slice = s.second;
+      in_si.h.emplace_back(slice_pair_t(idx, slice));
+    } else {
+      in_si.h.emplace_back(slice_pair_t(0, h));
+    }
   } else {
     // llvm::errs()  << "BackwardH at op:" << module::getName(op).str() <<",
     // type:"<<op->getName()<< "\n";
@@ -1670,6 +1700,9 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
           in_si.h.emplace_back(slice_pair_t(idx, slice));
           break;
         }
+      } else if (is_upsample_weight) {
+        idx = s.first;
+        slice = s.second;
       } else {
         bool end_reached = idx + slice == pre_end_idx;
         // TMP
@@ -1703,7 +1736,14 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   pre_end_idx = 0;
   idx = slice = 0;
   if (shape_secs.wsecs == 1) {
-    in_si.w.emplace_back(slice_pair_t(0, w));
+    if (is_upsample_weight) {
+      auto &s = out_si.w[0];
+      idx = s.first;
+      slice = s.second;
+      in_si.w.emplace_back(slice_pair_t(idx, slice));
+    } else {
+      in_si.w.emplace_back(slice_pair_t(0, w));
+    }
   } else {
     for (int i = 0; i < out_si.w.size(); i++) {
       auto &s = out_si.w[i];
@@ -1711,6 +1751,9 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
       if (is_broadcast_tensor && w == 1) {
         idx = 0;
         slice = 1;
+      } else if (is_upsample_weight) {
+        idx = s.first;
+        slice = s.second;
       } else {
         bool end_reached = idx + slice == pre_end_idx;
         if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
@@ -1721,6 +1764,21 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
       }
       pre_end_idx = idx + slice;
       in_si.w.emplace_back(slice_pair_t(idx, slice));
+    }
+  }
+  if (is_upsample_weight) {
+    indices_info.indices.clear();
+    int64_t current_idx = 0;
+    for (const auto &h_pair : out_si.h) {
+      int64_t h_slice = h_pair.second;
+      for (const auto &w_pair : out_si.w) {
+        int64_t w_slice = w_pair.second;
+        int64_t combined_slice = h_slice * w_slice;
+        int64_t aligned_slice = ceiling_func(combined_slice, Arch::NPU_NUM);
+        indices_info.indices.emplace_back(
+            slice_pair_t(current_idx, aligned_slice));
+        current_idx += aligned_slice;
+      }
     }
   }
   return true;
@@ -1955,9 +2013,10 @@ static bool backward_update_slice(
     bool need_reload = false;
     bool is_group_in =
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
-    auto ret =
-        get_backward_slice_info(si, out_si, op, in, shape_secs, lg_info.type,
-                                hold_in_lmem, is_group_in, need_reload);
+    indices_info_t indices_info;
+    auto ret = get_backward_slice_info(si, out_si, op, in, shape_secs,
+                                       lg_info.type, hold_in_lmem, is_group_in,
+                                       need_reload, indices_info);
     if (need_reload) {
       // reload may cost more cycle
       // change shape_secs_search_level to 1 so as to find better shape_secs and
@@ -2113,6 +2172,9 @@ static bool backward_update_slice(
     } else {
       tensor_infos[in] = tensor_info_t(si);
       tensor_infos[in].hold_in_lmem = hold_in_lmem;
+      if (is_upsample_weight(in) && !indices_info.indices.empty()) {
+        tensor_infos[in].indices_info = indices_info;
+      }
     }
     if (strip_back_judge(in, lg_info, op_set, out_tensor_set)) {
       tensor_branchs.push_back(in);
@@ -2307,6 +2369,25 @@ get_max_slice_nchdw_and_idx(const slice_info_t &slice_info, int64_t &max_nslice,
   return slice_idx;
 }
 
+bool get_reorder_max_slice_nchdw(indices_info_t indices_info,
+                                 int64_t &max_nslice, int64_t &max_cslice,
+                                 int64_t &max_hslice, int64_t &max_dslice,
+                                 int64_t &max_wslice) {
+  max_nslice = 1;
+  max_cslice = Arch::NPU_NUM;
+  max_hslice = 1;
+  max_dslice = 1;
+  max_wslice = 0;
+  if (indices_info.indices.empty()) {
+    return false;
+  }
+  auto indices_slice = indices_info.indices;
+  for (const auto &[idx, slice] : indices_info.indices) {
+    max_wslice = std::max(max_wslice, slice);
+  }
+  return true;
+}
+
 int64_t get_buffer_size(Value v, tensor_info_t &ti, group_type_t group_type,
                         Operation *owner_op) {
   int64_t buf_size = 0;
@@ -2334,6 +2415,14 @@ int64_t get_buffer_size(Value v, tensor_info_t &ti, group_type_t group_type,
       si = ti.slice_infos[owner_op];
     }
     get_max_slice_nchdw(si, nslice, cslice, hslice, dslice, wslice);
+    if (is_upsample_weight(v)) {
+      auto indices_info = ti.indices_info;
+      if (!get_reorder_max_slice_nchdw(indices_info, nslice, cslice, hslice,
+                                       dslice, wslice)) {
+        llvm::errs() << "unsupport this idx weight reorder\n";
+        return -1;
+      }
+    }
     buf_size = Arch::get_tensor_lmem_bytes(v, nslice, cslice, hslice, dslice,
                                            wslice, group_type, ti.eu_align);
   }
@@ -2422,7 +2511,7 @@ void set_weight_allow_split_attr(Operation *op) {
   auto builder = OpBuilder(ctx);
   if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
           tpu::MaxOp, tpu::CompareOp, tpu::ConcatOp, tpu::MatMulOp,
-          tpu::BinaryShiftOp>(op) &&
+          tpu::BinaryShiftOp, tpu::UpsampleOp>(op) &&
       (module::isWeight(op->getOperand(0)) ||
        module::isWeight(op->getOperand(1)))) {
 
@@ -2657,6 +2746,21 @@ bool need_bcast(Value opd) {
     return opd == cast_op.getTable() || opd == cast_op.getMantissa();
   } else if (auto cast_op = dyn_cast<tpu::LayerNormOp>(use_op)) {
     return module::isCV18xx() && module::isWeight(opd);
+  } else {
+    return false;
+  }
+}
+
+bool is_upsample_weight(Value opd) {
+  if (!(module::isBM1684X() || module::isBM1688() || module::isCV184X())) {
+    return false;
+  }
+  if (opd.hasOneUse() == false) {
+    return false;
+  }
+  auto use_op = *opd.user_begin();
+  if (auto cast_op = dyn_cast<tpu::UpsampleOp>(use_op)) {
+    return opd == cast_op.getIndices();
   } else {
     return false;
   }

@@ -87,6 +87,9 @@ struct slice_info_t {
   std::vector<slice_pair_t> c; // c_idx and c_slice
 };
 
+struct indices_info_t {
+  std::vector<slice_pair_t> indices;
+};
 typedef struct mem_buffer_key {
   lmem_type_t type;
   Value value;
@@ -156,22 +159,24 @@ struct tensor_info_t {
   bool eu_align;
   bool need_bcast;
   bool hold_in_lmem;
+  bool is_idx_weight;
+  indices_info_t indices_info;
 
   // init
   tensor_info_t()
       : mode(TIMESTEP_LOAD), stage(0), use_3ic_opt(0), eu_align(false),
-        mode2(0), need_bcast(false), hold_in_lmem(true) {}
+        mode2(0), need_bcast(false), hold_in_lmem(true), is_idx_weight(false) {}
   tensor_info_t(TIMESTEP_LD_ST mode)
       : mode(mode), stage(0), use_3ic_opt(0), eu_align(false), mode2(0),
-        need_bcast(false), hold_in_lmem(true) {}
+        need_bcast(false), hold_in_lmem(true), is_idx_weight(false) {}
   tensor_info_t(slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
         use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false),
-        hold_in_lmem(true) {}
+        hold_in_lmem(true), is_idx_weight(false) {}
   tensor_info_t(Operation *next_op, slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
         use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false),
-        hold_in_lmem(true) {
+        hold_in_lmem(true), is_idx_weight(false) {
     slice_infos[next_op] = slice_info;
   }
   void add_slice_info(Operation *next_op, slice_info_t slice_info) {
@@ -433,15 +438,13 @@ struct LgInfo {
     if (!module::isDebugCmdEnable("detail_info_show")) {
       return;
     }
-    llvm::dbgs() << "LgInfo Begin {"
-                 << "\n";
+    llvm::dbgs() << "LgInfo Begin {" << "\n";
     // llvm::dbgs() << "ins"
     //              << "\n";
     // for (auto op : group_ins) {
     //   op.dump();
     // }
-    llvm::dbgs() << "ops"
-                 << "\n";
+    llvm::dbgs() << "ops" << "\n";
     for (auto [index, op] : llvm::enumerate(group_ops)) {
       // op->dump();
       if (op) {
@@ -456,8 +459,7 @@ struct LgInfo {
     // for (auto op : group_outs) {
     //   op.dump();
     // }
-    llvm::dbgs() << "} LgInfo End;"
-                 << "\n";
+    llvm::dbgs() << "} LgInfo End;" << "\n";
   }
 
   void const dump() const {

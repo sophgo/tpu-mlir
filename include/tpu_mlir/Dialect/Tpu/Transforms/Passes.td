@@ -125,6 +125,12 @@ def TimeFixedSubnet : Pass<"time-fixed-subnet", "ModuleOp"> {
   ];
 }
 
+def AfterLayerGroupWeightReorder : Pass<"after-layergroup-weight-reorder", "ModuleOp"> {
+  let summary = "some idx weights allow split, but the output slice may use correspond to non-consecutive idxs, requiring a reordering of the idx weights.";
+  let constructor = "createAfterLayerGroupWeightReorderPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def Codegen : Pass<"codegen", "ModuleOp"> {
   let summary = "codegen in tpu by tpuc-opt";
   let constructor = "createCodegenPass()";
