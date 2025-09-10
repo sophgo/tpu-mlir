@@ -22,7 +22,7 @@ sh_template = r"""
 
 model_transform.py \
    --model_name {model_name} \
-   --model_def {model_name}.{suf} \
+   --model_def ../{model_name}.{suf} \
    --input_shapes {shape_str} \
    --test_input data.npz \
    --keep_aspect_ratio \
@@ -327,7 +327,7 @@ def generate_onnx(
     if input_shapes is not None:
         print(f"replace original onnx shape with input_shapes {input_shapes}.")
         shape_list = input_shapes
-    shutil.copy(model_path, os.path.join(workspace_root, f"{model_name}.onnx"))
+    # shutil.copy(model_path, os.path.join(workspace_root, f"{model_name}.onnx"))
     generate_shell(model_name, shape_list, workspace_root, suf="onnx")
     generate_yaml(model_name, shape_list, workspace_root, suf="onnx")
 
