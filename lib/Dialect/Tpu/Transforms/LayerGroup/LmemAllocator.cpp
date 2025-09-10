@@ -1372,6 +1372,7 @@ bool LmemAllocator::assignLmemAddrWithSecs(LgInfo &lg_info,
 
   // min_total_secs_ = get_split_max_secs(time_step);
   min_total_secs_ = 1;
+  total_secs_lower_bound_ = 0;
   std::vector<int64_t> group_costs;
   std::vector<shape_secs_t> shape_secs_space;
   if (module::isCV18xx()) {
@@ -1718,7 +1719,7 @@ void LmemAllocator::sc_method_search_better_v1(LgInfo &lg_info,
 
             if (real_nsecs * real_csecs * real_dsecs * real_hsecs *
                     real_wsecs <=
-                min_total_secs_) {
+                total_secs_lower_bound_) {
               continue;
             }
 
@@ -1952,7 +1953,7 @@ void LmemAllocator::sc_method_search_better_v2(LgInfo &lg_info,
             int64_t cur_real_secs =
                 real_nsecs * real_csecs * real_dsecs * real_hsecs * real_wsecs;
 
-            if (cur_real_secs <= min_total_secs_) {
+            if (cur_real_secs <= total_secs_lower_bound_) {
               GROUP_DEBUG_WITH_TYPE("brute_force", lg_info, [&]() {
                 llvm::dbgs()
                     << DEBUGGER_DEFAULT_INFO("try_this_shape_secs", "stamp",
@@ -1964,7 +1965,9 @@ void LmemAllocator::sc_method_search_better_v2(LgInfo &lg_info,
                     << LOG_KV_FORMAT("real_shape_secs", "%d,%d,%d,%d,%d",
                                      real_nsecs, real_csecs, real_dsecs,
                                      real_hsecs, real_wsecs)
-                    << LOG_KV("min_total_secs_", min_total_secs_) << "\n";
+                    << LOG_KV("total_secs_lower_bound_",
+                              total_secs_lower_bound_)
+                    << "\n";
               });
               continue;
             }
@@ -1974,7 +1977,7 @@ void LmemAllocator::sc_method_search_better_v2(LgInfo &lg_info,
                                    int threshold) {
               return (cur_value > max_loop_value) &&
                      (cur_real_secs / real_sec * pre_real_sec >
-                      min_total_secs_);
+                      total_secs_lower_bound_);
             };
 
             if (should_skip(_n, max_shape_secs_cur.nsecs, real_nsecs,
@@ -2027,7 +2030,7 @@ void LmemAllocator::sc_method_search_better_v2(LgInfo &lg_info,
             });
 
             if (ret == SECS_LMEM_INVALID) {
-              min_total_secs_ = cur_real_secs;
+              total_secs_lower_bound_ = cur_real_secs;
             }
           }
         }

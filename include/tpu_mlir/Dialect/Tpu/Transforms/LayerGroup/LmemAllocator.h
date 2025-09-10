@@ -118,6 +118,7 @@ protected:
   bool consider_inplace_;
   shape_secs_t max_shape_secs_;
   int64_t min_total_secs_;
+  int64_t total_secs_lower_bound_ = 0;
   void sc_method_use_best_shape_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
                                      bool allow_bank_conflict,
                                      BasicTimeStepPtr &time_step);
