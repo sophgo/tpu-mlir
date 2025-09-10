@@ -149,25 +149,21 @@ class LlmProfiler:
         allreduce_num = self.num_layers * 2
         if prefill:
             bf16_size = 2
-            ring_data_ratio = (self.num_device - 1) * 2 / self.num_device
+            ring_data_ratio = math.log2(self.num_device)
             gbytes = self.seq_length * self.hidden_size * bf16_size * ring_data_ratio * allreduce_num / 2**30
-            p2p_time_ms = gbytes / self.p2p_bw * self.tpu_freq
+            self.prefill_pcie_data = gbytes
+            self.prefill_p2p_time_ms = gbytes / self.p2p_bw * self.tpu_freq
             add_time_ms = (gbytes * 3 / self.dma_bw) / self.prefill_ddr_util * self.tpu_freq
-            allreduce_time_ms = p2p_time_ms + add_time_ms
+            allreduce_time_ms = self.prefill_p2p_time_ms + add_time_ms
             return allreduce_time_ms
         else:
-            time_per_allreduce = 0
-            if self.num_device == 2:
-                time_per_allreduce = 0.12
-            elif self.num_device == 4:
-                time_per_allreduce = 0.15
-            elif self.num_device == 8:
-                time_per_allreduce = 0.2
-            elif self.num_device == 1:
-                return 0
-            else:
-                raise ValueError(f"Unsupported device num: {self.num_device}")
-            allreduce_time_ms = time_per_allreduce * allreduce_num
+            bf16_size = 2
+            ring_data_ratio = math.log2(self.num_device)
+            gbytes = 1 * self.hidden_size * bf16_size * ring_data_ratio * allreduce_num / 2**30
+            self.decode_pcie_data = gbytes
+            self.decode_p2p_time_ms = gbytes / self.p2p_bw * self.tpu_freq
+            add_time_ms = (gbytes * 3 / self.dma_bw) / self.decode_ddr_util * self.tpu_freq
+            allreduce_time_ms = self.decode_p2p_time_ms + add_time_ms
             return allreduce_time_ms
 
     def get_pcie_interrupt_time(self, pcie_avg_ms):
@@ -222,7 +218,8 @@ class LlmProfiler:
         self.prefill_tiu_time = self.get_tiu_time(self.prefill_flops, self.prefill_mac_util)
         self.prefill_dma_time = self.get_dma_time(self.prefill_bytes, self.prefill_ddr_util)
         self.prefill_allreduce_time = self.get_allreduce_time(prefill=True)
-        self.prefill_total_time = block_time + lmhead_time + self.prefill_allreduce_time
+        self.prefill_pcie_interrupt_time = self.get_pcie_interrupt_time(pcie_avg_ms=0.1)
+        self.prefill_total_time = block_time + lmhead_time + self.prefill_allreduce_time + self.prefill_pcie_interrupt_time
 
     def _analyze_decode(self):
         self.decode_stage = [
@@ -268,8 +265,8 @@ class LlmProfiler:
         self.decode_tiu_time = self.get_tiu_time(self.decode_flops, self.decode_mac_util)
         self.decode_dma_time = self.get_dma_time(self.decode_bytes, self.decode_ddr_util)
         self.decode_allreduce_time = self.get_allreduce_time(prefill=False)
-        self.decode_pcie_time = self.get_pcie_interrupt_time(pcie_avg_ms=0.1)
-        self.decode_total_time = block_time + lmhead_time + self.decode_allreduce_time + self.decode_pcie_time
+        self.decode_pcie_interrupt_time = self.get_pcie_interrupt_time(pcie_avg_ms=0.1)
+        self.decode_total_time = block_time + lmhead_time + self.decode_allreduce_time + self.decode_pcie_interrupt_time
 
     def _analyze_mem_usage(self):
         lm_head = MatMul([1, self.hidden_size / self.num_device],
@@ -303,22 +300,38 @@ class LlmProfiler:
         print(f'    vocab_size: {self.vocab_size}\n')
 
         print("Prefill:")
-        print(f"    Total Flops: {self.prefill_flops / 1e9:.3f} GFLOPs")
-        print(f"    Total Bytes: {self.prefill_bytes / 2**20:.3f} MiB")
         print(f"    Total Time: {self.prefill_total_time:.3f} ms")
+        print(f"    ============== TPU ================")
+        print(f"    Total Flops: {self.prefill_flops / 1e9:.3f} GFLOPs")
         print(f"    TPU Theo Time: {self.prefill_tiu_theo_time:.3f} ms")
-        print(f"    DDR Theo Time: {self.prefill_dma_theo_time:.3f} ms")
         print(f"    TPU Time: {self.prefill_tiu_time:.3f} ms")
-        print(f"    DDR Time: {self.prefill_dma_time:.3f} ms\n")
+        print(f"    ============== DDR ================")
+        print(f"    Total Bytes: {self.prefill_bytes / 2**20:.3f} MiB")
+        print(f"    DDR Theo Time: {self.prefill_dma_theo_time:.3f} ms")
+        print(f"    DDR Time: {self.prefill_dma_time:.3f} ms")
+        if self.num_device > 1:
+            print(f"    ============== PCIE ================")
+            print(f"    PCIE Interrupt Time: {self.prefill_pcie_interrupt_time:.3f} ms")
+            print(f"    Allreduce Time: {self.prefill_allreduce_time:.3f} ms")
+            print(f"        PCIE Data: {self.prefill_pcie_data:.5f} GiB")
+            print(f"        P2P Time: {self.prefill_p2p_time_ms:.5f} ms\n")
 
         print("Decode:")
-        print(f"    Total Flops: {self.decode_flops / 1e9:.3f} GFLOPs")
-        print(f"    Total Bytes: {self.decode_bytes / 2**20:.3f} MiB")
         print(f"    Total Time: {self.decode_total_time:.3f} ms")
+        print(f"    ============== TPU ================")
+        print(f"    Total Flops: {self.decode_flops / 1e9:.3f} GFLOPs")
         print(f"    TPU Theo Time: {self.decode_tiu_theo_time:.3f} ms")
-        print(f"    DDR Theo Time: {self.decode_dma_theo_time:.3f} ms")
         print(f"    TPU Time: {self.decode_tiu_time:.3f} ms")
-        print(f"    DDR Time: {self.decode_dma_time:.3f} ms\n")
+        print(f"    ============== DDR ================")
+        print(f"    Total Bytes: {self.decode_bytes / 2**20:.3f} MiB")
+        print(f"    DDR Theo Time: {self.decode_dma_theo_time:.3f} ms")
+        print(f"    DDR Time: {self.decode_dma_time:.3f} ms")
+        if self.num_device > 1:
+            print(f"    ============== PCIE ================")
+            print(f"    PCIE Interrupt Time: {self.decode_pcie_interrupt_time:.3f} ms")
+            print(f"    Allreduce Time: {self.decode_allreduce_time:.3f} ms")
+            print(f"        PCIE Data: {self.decode_pcie_data:.5f} GiB")
+            print(f"        P2P Time: {self.decode_p2p_time_ms:.5f} ms\n")
 
         print(f"FTL: {self.prefill_total_time / 1000:.3} s")
         print(f"TPS: {1000 / self.decode_total_time:.3f} token/s")
