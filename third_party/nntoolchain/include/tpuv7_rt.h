@@ -162,6 +162,30 @@ tpuRtStatus_t tpuRtMallocMedia(void **devPtr, unsigned long long size);
 tpuRtStatus_t tpuRtFree(void **devPtr, int free_num);
 
 /**
+ * @name    tpuRtMallocInstr
+ * @brief   To malloc instruction cache memory
+ * @ingroup tpuv7_rt
+ *
+ * @param [out]	devPtr	memory array
+ * @param [in]  size	memory size
+ * @param [in]  parallel_num	parallelism
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtMallocInstr(void **devPtr, unsigned long long size, int parallel_num);
+
+/**
+ * @name    tpuRtFreeInstr
+ * @brief   To free instruction cache memory
+ * @ingroup tpuv7_rt
+ *
+ * @param [out]	devPtr		memory array
+ * @param [in]  free_num	free memory num
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtFreeInstr(void **devPtr, int free_num);
+/**
  * @name    tpuRtMallocHost
  * @brief   To malloc host memory
  * @ingroup tpuv7_rt

@@ -39,7 +39,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1690 sha256: 5aad477fd18a2708139e79e8eb7d0ecd3aabea57
+#bm1690 sha256: 911dc239fa851dd83ac89d18af9d95355d41da0d
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -105,18 +105,20 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 # libbmcpu.so/libusercpu.so are deprecated
 ```
 
-## tpuv7-runtime 2024-12-20
+## tpuv7-runtime 2025-09-18
 
-build from tpuv7-runtime e06660ead76443d9dc6cabd59d9d003a1d5ccfd6
+build from tpuv7-runtime c2a9f8bc360fe5c03e467db6997c83579b69ff80
 
 ```bash
-mkdir -p -p build/emulator
-cd build/emulator
+mkdir -p build/emulator
+pushd build/emulator
 cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=OFF -DUSING_TP_DEBUG=OFF ../..
 make -j$(nproc)
 cp model-runtime/runtime/libtpuv7_modelrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp cdmlib/host/cdm_runtime/libtpuv7_rt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp cdmlib/ap/daemon/cdm_daemon/libcdm_daemon_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp cdmlib/fw/ap/daemon/libcdm_daemon_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp cdmlib/fw/tp/daemon/libtpuv7_scalar_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+popd
 cp model-runtime/runtime/include/tpuv7_modelrt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 cp cdmlib/host/cdm_runtime/include/tpuv7_rt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 ```

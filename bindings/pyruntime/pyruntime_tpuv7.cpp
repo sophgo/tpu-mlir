@@ -214,7 +214,7 @@ struct PythonNet {
         in_.dims[j] = dyn_in_[j];
       }
     }
-    std::cout << "Pyruntime.Net->forward_dynamic >>>>>>>" << std::endl;
+    // std::cout << "Pyruntime.Net->forward_dynamic >>>>>>>" << std::endl;
     auto net_info = tpuRtGetNetInfo(m_net, name.c_str());
     std::vector<tpuRtTensor_t> input_tensors(net_info.input.num);
     std::vector<tpuRtTensor_t> output_tensors(net_info.output.num);
@@ -225,6 +225,7 @@ struct PythonNet {
         tpuRtMemcpyS2D(input_tensors[i].data, (void *)input_datas[i], data_size);
     }
     tpuRtLaunchNet(m_net, input_tensors.data(), output_tensors.data(), name.c_str(), m_stream);
+    tpuRtStreamSynchronize(m_stream);
 
     // copy output
     for (int idx = 0; idx < net_info.output.num; idx++) {

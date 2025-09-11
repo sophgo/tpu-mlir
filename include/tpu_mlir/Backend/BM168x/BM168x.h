@@ -245,6 +245,7 @@ public:
   static uint64_t L2_SRAM_START_ADDR;
   static uint64_t COEFF_START_ADDR;
   static uint64_t CTX_START_ADDR;
+  static uint64_t IO_START_ADDR;
   static bool SUPPORT_MEM_TAG;
   static uint64_t IO_ADDR[5];
   static uint64_t L2_SRAM_SIZE;

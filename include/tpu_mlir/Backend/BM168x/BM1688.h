@@ -114,6 +114,8 @@ protected:
     GMEM_START_ADDR = 0x1ul << 39; // tag for global memory address
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
+    IO_START_ADDR =
+        0x100000000ull; // use 4GB for IO ALONE start address without tag
     IO_ADDR[0] = GMEM_START_ADDR | TAG_IO0;
     IO_ADDR[1] = GMEM_START_ADDR | TAG_IO1;
     IO_ADDR[2] = GMEM_START_ADDR | TAG_IO2;
