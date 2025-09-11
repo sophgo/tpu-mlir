@@ -11,7 +11,7 @@ from decimal import Decimal
 from numpy import transpose
 import sys
 
-from utils.utils import get_realtime_from_cycle
+from PerfAI.PerfAI_web.utils.utils import get_realtime_from_cycle
 
 
 class SummaryProcessor:

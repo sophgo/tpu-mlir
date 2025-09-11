@@ -11,8 +11,8 @@ import os
 from decimal import Decimal
 import sys
 
-from utils.utils import data_type_dict, data_size_dict
-from utils.utils import *
+from PerfAI.PerfAI_web.utils.utils import data_type_dict, data_size_dict
+from PerfAI.PerfAI_web.utils.utils import *
 
 
 class TIU:

@@ -19,7 +19,7 @@ from src.dma import DMA
 from src.summary import SummaryProcessor
 from src.mlir_json import *
 from src.mlir_json import GlobalProfileParser
-from utils.utils import *
+from PerfAI.PerfAI_web.utils.utils import *
 
 
 def generate_jsfile(dirpath, name, out_path, file_path, layerinfo_path):

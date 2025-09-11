@@ -19,7 +19,7 @@ from openpyxl.utils import get_column_letter
 
 from definition.bm1684x_defs import dma_func_type_dict, data_type_dict
 from definition.style import *
-from utils.utils import *
+from PerfAI.PerfAI_doc.utils.utils import *
 
 
 class DmaNode:

@@ -19,8 +19,8 @@ from intervaltree import Interval, IntervalTree
 from concurrent.futures import ProcessPoolExecutor
 from bs4 import BeautifulSoup
 
-from utils.utils import *
-from utils.power import *
+from PerfAI.PerfAI_web.utils.utils import *
+from PerfAI.PerfAI_web.utils.power import *
 
 warnings.filterwarnings('ignore')
 
@@ -166,7 +166,7 @@ def match_dma_data_from_perf(row1, perfdf):  #row1：pld data
     return None, None, None, None
 
 
-#get uRate, sim cycles, etc from PerfAI.doc and match the pld data(row1)
+#get uRate, sim cycles, etc from PerfAI_doc and match the pld data(row1)
 def match_tiu_data_from_perf(row1, perftiu):
     # pld:perf
     tiu_function = {
@@ -250,9 +250,9 @@ def get_power_from_data_parallel(sheet_data, perf_path, tiu_header, dma_header, 
     try:
         perfdoc = pd.ExcelFile(perf_path)
     except FileNotFoundError:
-        print(f"PerfAI.doc not found.")
+        print(f"PerfAI_doc not found.")
     except Exception as e:
-        print(f"An error occurred while reading PerfAI.doc: {e}")
+        print(f"An error occurred while reading PerfAI_doc: {e}")
 
     ip_list = [name.split('_0')[0].lower() for name in perfdoc.sheet_names if name.endswith('_0')]
     suffix_numbers = set(
@@ -423,7 +423,7 @@ def run_power(ptpx, cmds, pld, perf, name, version):
     # Ensure there is at least one perf argument
     if len(perf) == 0:
         print(
-            "Error: At least one data source mush be provided. Please --perf to provide PerfAI.doc path"
+            "Error: At least one data source mush be provided. Please --perf to provide PerfAI_doc path"
         )
         exit(1)
     if pld:

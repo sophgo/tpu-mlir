@@ -12,7 +12,7 @@ from collections import namedtuple
 import json
 import logging
 
-from utils.utils import *
+from PerfAI.PerfAI_web.utils.utils import *
 from src.common import *
 
 

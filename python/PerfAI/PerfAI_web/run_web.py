@@ -12,9 +12,9 @@ import shutil
 import time
 import argparse
 
-from utils.js_prep import *
-from utils.utils import *
-from utils.power import *
+from PerfAI.PerfAI_web.utils.js_prep import *
+from PerfAI.PerfAI_web.utils.utils import *
+from PerfAI.PerfAI_web.utils.power import *
 
 
 def run_web(reginfo_dir, name, file_path, power, version, layerinfo_dir):

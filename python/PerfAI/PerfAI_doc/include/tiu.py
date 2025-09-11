@@ -16,7 +16,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
 from definition.bm1684x_defs import data_type_dict, tiu_func_name_dict
-from utils.utils import *
+from PerfAI.PerfAI_doc.utils.utils import *
 from definition.style import *
 
 

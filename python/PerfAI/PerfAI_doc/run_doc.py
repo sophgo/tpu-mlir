@@ -22,7 +22,7 @@ from src.generator.layer import generate_layer
 from src.generator.style import set_details_style, set_summary_style, set_layer_style, set_sim_summary_style
 from src.generator.summary import generate_summary
 from src.parser.exfile_parser import GlobalProfileParser
-from utils.utils import get_total_time
+from PerfAI.PerfAI_doc.utils.utils import get_total_time
 
 
 def run_doc(input,

@@ -19,7 +19,7 @@ from include.dma import Gdma, Sdma, Cdma
 from include.instr_world import InstrWorld
 from include.asic_summary import AsicSummary
 from include.tiu import Tiu
-from utils.utils import get_instr_cols, get_instr_reg_list, get_active_cores, get_total_time
+from PerfAI.PerfAI_doc.utils.utils import get_instr_cols, get_instr_reg_list, get_active_cores, get_total_time
 from include.summary import GlobalInfo
 
 

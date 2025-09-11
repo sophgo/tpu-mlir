@@ -15,7 +15,7 @@ import pandas as pd
 from numpy import transpose
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
-from utils.utils import *
+from PerfAI.PerfAI_doc.utils.utils import *
 from definition.style import DetailsStyle
 
 

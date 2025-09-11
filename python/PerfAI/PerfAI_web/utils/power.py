@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 from src.tiu import TIU
 from src.dma import DMA
-from utils.utils import *
+from PerfAI.PerfAI_web.utils.utils import *
 
 perf_tiu_columns = [
     'Core', 'Ip', 'Function Type', 'Function Name', 'Start Cycle', 'End Cycle', 'Asic Cycle',

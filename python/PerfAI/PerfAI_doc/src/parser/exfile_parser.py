@@ -18,7 +18,7 @@ import json
 from definition.bm1684x_defs import Arch, LayerType, DataType, GDMAOpType
 from include.layer import LayerInfo
 from include.summary import GlobalInfo, SubnetInfo, TensorInfo, StaticRunNode, jsonObj
-from utils.utils import enum_cast, re_key_value, get_memory_type, get_layer_info_by_opcode
+from PerfAI.PerfAI_doc.utils.utils import enum_cast, re_key_value, get_memory_type, get_layer_info_by_opcode
 from src.common.common import *
 import mlir.ir as ir
 

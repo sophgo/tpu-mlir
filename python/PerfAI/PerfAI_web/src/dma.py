@@ -13,7 +13,7 @@ import os
 import sys
 import glob, re
 
-from utils.utils import *
+from PerfAI.PerfAI_web.utils.utils import *
 
 
 class DMA():  #GDMA/SDMA/CDMA

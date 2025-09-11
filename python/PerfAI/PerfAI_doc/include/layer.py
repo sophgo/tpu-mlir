@@ -17,7 +17,7 @@ import os
 from openpyxl.reader.excel import load_workbook
 from openpyxl.utils import get_column_letter
 from definition.style import LayerStyle
-from utils.utils import get_dtype_size
+from PerfAI.PerfAI_doc.utils.utils import get_dtype_size
 
 
 def get_trans_cost(ddr_bytes, lmem_bytes, ddr_bw, lmem_bw):

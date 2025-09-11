@@ -29,7 +29,7 @@ from openpyxl.utils import get_column_letter
 
 from definition.bm1684x_defs import Arch, DataType
 from definition.style import SummaryStyle
-from utils.utils import load_arch_lib, get_ratio_str_3f, cycle_to_us, ops_to_gops, cycle_to_fps
+from PerfAI.PerfAI_doc.utils.utils import load_arch_lib, get_ratio_str_3f, cycle_to_us, ops_to_gops, cycle_to_fps
 
 
 class GlobalInfo:
