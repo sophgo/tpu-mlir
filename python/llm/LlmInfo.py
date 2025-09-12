@@ -265,3 +265,28 @@ GLM4V_INFO = ModelInfo(
         LlmList.NORM: "model.language_model.norm",
         LlmList.LMHEAD: "lm_head",
     })
+
+MINICPMV_INFO = ModelInfo(
+    ModelConfig(),
+    weights={
+        LlmList.LAYERS: "llm.model.layers",
+        LlmList.EMBEDING: "llm.model.embed_tokens",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.POST_SELF_ATTN_LN: "post_self_attn_layernorm",
+        LlmList.POST_MLP_LN: "post_mlp_layernorm",
+        LlmList.Q_NORM: "self_attn.q_norm",
+        LlmList.K_NORM: "self_attn.k_norm",
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.O_PROJ: "self_attn.o_proj",
+        LlmList.MLP_GATE: "mlp.gate_proj",
+        LlmList.MLP_UP: "mlp.up_proj",
+        LlmList.MLP_DOWN: "mlp.down_proj",
+        # LlmList.MLP_GATE_UP: "mlp.gate_up_proj",
+        # ================================
+        LlmList.NORM: "llm.model.norm",
+        LlmList.LMHEAD: "llm.lm_head",
+    })
