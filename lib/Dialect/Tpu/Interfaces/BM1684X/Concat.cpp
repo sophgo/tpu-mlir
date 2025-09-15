@@ -39,9 +39,14 @@ void tpu::ConcatOp::codegen_global_bm1684x() {
   spec.common.concat_axis = getAxis();
   SmallVector<int> is_st_concat_way(num_input, 0);
   spec.is_st_concat_way = is_st_concat_way.data();
-
-  BM168x::call_global_func("backend_api_concat_global", &spec, sizeof(spec),
-                           input_spec->data(), output_spec->data());
+  if (supportMultiCore(*this)) {
+    BM168x::call_global_func("backend_api_concat_multi_core_global", &spec,
+                             sizeof(spec), input_spec->data(),
+                             output_spec->data());
+  } else {
+    BM168x::call_global_func("backend_api_concat_global", &spec, sizeof(spec),
+                             input_spec->data(), output_spec->data());
+  }
 }
 
 // =========================================
