@@ -49,14 +49,16 @@ public:
                                          LgInfo &group_info);
   void memory_aware_timestep_assignment(BasicTimeStep *time_step,
                                         TensorInfo &tensor_infos,
-                                        LgInfo &group_info);
+                                        LgInfo &group_info,
+                                        const shape_secs_t &shape_secs);
 
   void
   get_timestep_cycle_slack(BasicTimeStep *time_step, LgInfo &lg_info,
                            ValueIntMap &tensor_to_cycle,
                            ValueIntMap &tensor_to_bufsize,
                            std::vector<std::list<GdmaElt>> &tensor_timesteps,
-                           std::vector<int64_t> &timestep_cycle_slack);
+                           std::vector<int64_t> &timestep_cycle_slack,
+                           const shape_secs_t &shape_secs);
   int64_t get_next_ts(bool &is_valid, int64_t cur_ts, TIMESTEP_LD_ST ld_st,
                       int64_t range_end);
   int64_t get_best_ts(BasicTimeStep *time_step, LgInfo &lg_info, int64_t cur_ts,

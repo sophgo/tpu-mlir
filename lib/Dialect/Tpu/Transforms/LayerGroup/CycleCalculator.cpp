@@ -785,6 +785,12 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           // llvm::dbgs() << "gdma cycle_count: " << gdma_cycle + base_cycle <<
           // "\n";
         }
+        if (module::isBM1688()) {
+          auto bm1688 = (BM1688 *)BM168x::instance();
+          float BW = 24;
+          bm1688->dl_set_gdma_bw_s2l(BW);
+          bm1688->dl_set_gdma_bw_l2s(BW);
+        }
       }
       for (auto op : timestep_layers) {
         auto op_stage = time_step->get_layer_swpipl_stage(op);

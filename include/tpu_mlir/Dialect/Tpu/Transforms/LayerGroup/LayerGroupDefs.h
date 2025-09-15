@@ -123,6 +123,53 @@ typedef struct mem_buffer_key {
   }
 } mem_buffer_key_t;
 
+typedef struct mem_buffer_key_with_idx_t {
+  lmem_type_t type;
+  Value value;
+  Operation *op;
+  int64_t conflict;
+  int64_t idx; // for stable sort
+  bool operator<(const mem_buffer_key_with_idx_t &other) const {
+    if (type < other.type) {
+      return true;
+    } else if (type == other.type) {
+      if (type == LMEM_OPERATION) {
+        return op < other.op;
+      } else {
+        return idx < other.idx;
+      }
+    }
+    return false;
+  }
+
+  mem_buffer_key_with_idx_t(const mem_buffer_key_t &key, int64_t idx)
+      : type(key.type), value(key.value), op(key.op), conflict(key.conflict),
+        idx(idx) {}
+
+  mem_buffer_key_t get_mem_buffer_key() const {
+    mem_buffer_key_t key;
+    key.type = type;
+    key.value = value;
+    key.op = op;
+    key.conflict = conflict;
+    return key;
+  }
+
+  std::string lmem_type_str() {
+    switch (type) {
+    case LMEM_WEIGHT:
+      return "LMEM_WEIGHT";
+    case LMEM_ACTIVATION:
+      return "LMEM_ACTIVATION";
+    case LMEM_OPERATION:
+      return "LMEM_OPERATION";
+    case LMEM_ANY:
+      return "LMEM_ANY";
+    }
+    return "LMEM_UNKNOWN";
+  }
+} mem_buffer_key_with_idx_t;
+
 typedef struct mem_buffer_value {
   int64_t start_ts;
   int64_t end_ts;
@@ -205,6 +252,9 @@ using ValueIntMap = std::map<Value, int64_t, value_compare>;
 using IntValueIntMap = std::map<int64_t, ValueIntMap>;
 using TensorInfo = std::map<Value, tensor_info_t, value_compare>;
 using MemBuff = std::map<mem_buffer_key_t, mem_buffer_value_t>;
+using MemBuffIdx = std::map<mem_buffer_key_t, int64_t>;
+using MemBuffStableSort =
+    std::map<mem_buffer_key_with_idx_t, mem_buffer_value_t>;
 using MemBuffElt = std::pair<mem_buffer_key_t, mem_buffer_value_t>;
 using TpuTsField = std::vector<Operation *>;
 using GdmaElt = std::pair<Value, tensor_info_t>;

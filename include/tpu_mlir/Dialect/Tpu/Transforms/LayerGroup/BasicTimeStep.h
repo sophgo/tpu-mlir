@@ -37,7 +37,8 @@ public:
   void add_gdma0_ts_field(const GdmaTsField &field);
   void add_tpu0_gdma0_ts_field(const TpuTsField &tpu_field,
                                const GdmaTsField &gdma_field);
-  void update_gdma0_ts_field(int64_t ts, const GdmaTsField &field);
+  void update_gdma0_ts_field(LgInfo &lg_info, int64_t ts,
+                             const GdmaTsField &field);
   void show_timestep_table();
   std::vector<TimestepRow> &get_timestep_table() { return timestep_table_; }
   size_t get_timestep_num() { return timestep_table_.size(); }
@@ -67,6 +68,7 @@ public:
   int64_t get_lmem_size(const mem_buffer_key_t &buffer_key);
   MemBlock get_lmem_locate(Value value, int64_t ts);
   MemBuff &get_lmem_buffer() { return lmem_buffer_; }
+  MemBuffIdx &get_lmem_buffer_idx() { return lmem_buffer_idx_; }
   MemBuff &get_l2mem_buffer() { return l2mem_buffer_; }
 
   const mem_buffer_value_t &
@@ -145,6 +147,7 @@ protected:
 
   int64_t lmem_occupy_;
   MemBuff lmem_buffer_;
+  MemBuffIdx lmem_buffer_idx_;
   MemBuff l2mem_buffer_;
 
   // members for timestep combine

@@ -35,7 +35,12 @@ static bool membuf_sort_std_cmp(const MemBufSortStd &membuf_a,
     if (membuf_a.second.area > membuf_b.second.area) {
       res = true;
     } else if (membuf_a.second.area == membuf_b.second.area) {
-      res = (membuf_a.second.start_ts < membuf_b.second.start_ts);
+      if (membuf_a.second.start_ts < membuf_b.second.start_ts) {
+        res = true;
+      } else if (membuf_a.second.start_ts == membuf_b.second.start_ts) {
+        // make the sort stable
+        res = (membuf_a.second.idx < membuf_b.second.idx);
+      }
     }
   }
 
@@ -855,6 +860,7 @@ static void init_membuf_list(std::list<MemBufSortStd> &membuf_list,
   membuf_sort_std_t membuf_sort_std;
   int64_t timestep_num = time_step->get_timestep_num();
   const MemBuff &mem_buffer = time_step->get_lmem_buffer();
+  MemBuffIdx &mem_buffer_idx = time_step->get_lmem_buffer_idx();
   for (auto it = mem_buffer.begin(); it != mem_buffer.end(); ++it) {
     hold_on_coeff = false;
     if (it->first.type != LMEM_OPERATION) {
@@ -871,6 +877,7 @@ static void init_membuf_list(std::list<MemBufSortStd> &membuf_list,
     // membuf_sort_std.conflict = 0;
     membuf_sort_std.area = membuf_area;
     membuf_sort_std.start_ts = it->second.start_ts;
+    membuf_sort_std.idx = mem_buffer_idx[it->first];
     membuf_list.push_back(std::make_pair(it->first, membuf_sort_std));
   }
 }
@@ -1221,8 +1228,10 @@ bool LmemAllocator::assignLmemAddr(LgInfo &lg_info, BasicTimeStepPtr &time_step,
                    time_step->get_lmem_buffer_value(buflist_it->first).start_ts)
             << "->"
             << time_step->get_lmem_buffer_value(buflist_it->first).end_ts
+            << LOG_KV("area", buflist_it->second.area)
+            << LOG_KV("idx", buflist_it->second.idx)
             << LOG_KV("addr", llvm::format_hex(candidate_allocation.first, 8))
-            << LOG_KV("size", candidate_allocation.second);
+            << LOG_KV("size", time_step->get_lmem_size(buflist_it->first));
         if (candidate_allocation.first != -1) {
           std::set<int64_t> used_banks;
           find_used_banks(used_banks, candidate_allocation.first,
@@ -1610,6 +1619,12 @@ void LmemAllocator::sc_method_use_best_shape_secs(LgInfo &lg_info,
                  << LOG_KV("hsecs", shape_secs.hsecs)
                  << LOG_KV("wsecs", shape_secs.wsecs) << "\n";
   });
+  // auto &lg_debugger = LgDebugger::getInstance();
+  // if (lg_debugger.is_conditional_debug_group(lg_info.func_start_idx,
+  //                                            lg_info.func_end_idx)) {
+  //   // lg_info.dump();
+  // }
+  // lg_info.dump();
   search_result_t ret =
       try_this_shape_secs(lg_info, shape_secs, allow_bank_conflict, time_step);
   if (ret < SECS_VALID) {

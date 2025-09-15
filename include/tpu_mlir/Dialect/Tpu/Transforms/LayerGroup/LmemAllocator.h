@@ -27,6 +27,7 @@ namespace tpu {
 typedef struct membuf_sort_standard {
   int64_t area;
   int64_t start_ts;
+  int64_t idx;
 } membuf_sort_std_t;
 
 using MemBufSortStd = std::pair<mem_buffer_key_t, membuf_sort_std_t>;
@@ -42,6 +43,7 @@ typedef enum {
   SECS_LMEM_INVALID = 1,
   SECS_VALID = 2,
   SECS_VALID_AND_BETTER = 3,
+  SECS_INIT = -1,
 } search_result_t;
 
 typedef enum {

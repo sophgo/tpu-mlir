@@ -127,12 +127,12 @@ void BasicTimeStep::add_tpu0_gdma0_ts_field(const TpuTsField &tpu_field,
   });
 }
 
-void BasicTimeStep::update_gdma0_ts_field(int64_t ts,
+void BasicTimeStep::update_gdma0_ts_field(LgInfo &lg_info, int64_t ts,
                                           const GdmaTsField &field) {
   this->timestep_table_[ts].gdma0_ts_field.clear();
   this->timestep_table_[ts].gdma0_ts_field = field;
 
-  DEBUG_WITH_TYPE("timestep_assign", {
+  GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
     llvm::dbgs() << "; action = update_gdma0_ts_field"
                  << "; ts = " << ts;
 
@@ -380,6 +380,7 @@ void BasicTimeStep::gen_all_mem_buffer_ts() {
 
   mem_buffer_key_t lmem_key;
   mem_buffer_value_t lmem_value = {0};
+  int64_t lmem_key_idx = 0;
   lmem_value.align_bytes = 32;
 
   for (int64_t stg = 0; stg < this->swpipl_stage_num_; ++stg) {
@@ -425,6 +426,7 @@ void BasicTimeStep::gen_all_mem_buffer_ts() {
             });
 
             lmem_buffer_[lmem_key] = lmem_value;
+            lmem_buffer_idx_[lmem_key] = lmem_key_idx++;
           }
 
           // Operands
@@ -490,6 +492,7 @@ void BasicTimeStep::gen_all_mem_buffer_ts() {
                          << "; lmem_end_ts = " << lmem_value.end_ts << "\n";
           });
           lmem_buffer_[lmem_key] = lmem_value;
+          lmem_buffer_idx_[lmem_key] = lmem_key_idx++;
         } // cur_tpu_field
       }
       // process current timestep tensors
@@ -518,6 +521,7 @@ void BasicTimeStep::gen_all_mem_buffer_ts() {
             l2mem_buffer_[lmem_key] = lmem_value;
           } else {
             lmem_buffer_[lmem_key] = lmem_value;
+            lmem_buffer_idx_[lmem_key] = lmem_key_idx++;
             DEBUG_WITH_TYPE("lmem_buffer_assign", {
               llvm::dbgs() << "; action = lmem_buffer_assign"
                            << "; step =     "

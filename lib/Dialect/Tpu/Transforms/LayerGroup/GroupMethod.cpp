@@ -864,6 +864,11 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
             : LgCostCache::getInstance().get_cost_from_cache(
                   hash_key, group_cost, lg_info.shape_secs_search_level);
     if (!cache_hit) {
+      // if
+      // (LgDebugger::getInstance().is_conditional_debug_group(lg_info.func_start_idx,
+      //                                           lg_info.func_end_idx)) {
+      //   lg_info.dump();
+      // }
       group_cost = calc_group_cost(lg_info);
       if (group_cost != MAX_COST) {
         shape_secs = lg_info.shape_secs;

@@ -8,8 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
+#include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 
+using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
@@ -123,9 +125,10 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
     }
   }
 
-  GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
+  GROUP_DEBUG_WITH_TYPE("timestep_assign_result", lg_info, [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                        "timestep_assign", "intermediate_result",
+                        "layer_nearest_timestep_assignment",
+                        "intermediate_result",
                         "using nearest algorithm to assign timestep for tpu "
                         "and gdma operations firstly")
                  << "\n============= nearest algorithm =============\n";
@@ -137,9 +140,10 @@ void TimeStepMethod::layer_nearest_timestep_assignment(BasicTimeStep *time_step,
     time_step->software_pipeline();
   }
 
-  GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
+  GROUP_DEBUG_WITH_TYPE("timestep_assign_result", lg_info, [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                        "timestep_assign", "intermediate_result",
+                        "layer_nearest_timestep_assignment",
+                        "intermediate_result",
                         "adust timesteps considering the software pipeline ")
                  << "\n============= software pipeline =============\n";
     time_step->show_timestep_table();
@@ -205,7 +209,8 @@ bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
                  << "\n";
   });
   // layer_nearest_timestep_assignment(time_step, tensor_infos, lg_info);
-  memory_aware_timestep_assignment(time_step, tensor_infos, lg_info);
+  memory_aware_timestep_assignment(time_step, tensor_infos, lg_info,
+                                   shape_secs);
 
   GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
@@ -216,6 +221,56 @@ bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
                  << "\n";
   });
   time_step->gen_hold_coeff();
+  GROUP_DEBUG_WITH_TYPE("timestep_with_cycle", lg_info, [&]() {
+    auto &timestep_table = time_step->get_timestep_table();
+    auto &gdma_cycle = time_step->get_gdma_cycle();
+    auto &layer_cycle = time_step->get_layer_cycle();
+    for (int i = 0; i < timestep_table.size(); ++i) {
+      auto &ts = timestep_table[i];
+      for (auto &gdma : ts.gdma0_ts_field) {
+        auto gdma_type = gdma.second.mode;
+        Operation *concerning_op;
+        std::string gdma_op_type;
+        if (is_timestep_load(gdma_type)) {
+          concerning_op = *gdma.first.user_begin();
+          gdma_op_type = "tpu.Load";
+        } else {
+          concerning_op = gdma.first.getDefiningOp();
+          gdma_op_type = "tpu.Store";
+        }
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_with_cycle", "result",
+                                              "gdma cycle of tensor")
+                     << LOG_ACTION("timestep_with_cycle")
+                     << LOG_KV("timestep", i) << LOG_KV("timestep_type", "gdma")
+                     << LOG_KV("op", gdma_op_type)
+                     << LOG_KV("tensor_name", module::getName(gdma.first))
+                     << LOG_KV("concerning_op", concerning_op->getName())
+                     << LOG_KV("concerning_op_name",
+                               module::getName(concerning_op))
+                     << LOG_KV("cycle", gdma_cycle[gdma.first])
+                     << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
+                                      shape_secs.nsecs, shape_secs.csecs,
+                                      shape_secs.dsecs, shape_secs.hsecs,
+                                      shape_secs.wsecs)
+                     << "\n";
+      }
+      for (auto &layer : ts.tpu0_ts_field) {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_with_cycle", "result",
+                                              "layer cycle of operation")
+                     << LOG_ACTION("timestep_with_cycle")
+                     << LOG_KV("timestep", i)
+                     << LOG_KV("timestep_type", "layer")
+                     << LOG_KV("op", layer->getName())
+                     << LOG_KV("tensor_name", module::getName(layer))
+                     << LOG_KV("cycle", layer_cycle[layer])
+                     << LOG_KV_FORMAT("shape_secs", "%d,%d,%d,%d,%d",
+                                      shape_secs.nsecs, shape_secs.csecs,
+                                      shape_secs.dsecs, shape_secs.hsecs,
+                                      shape_secs.wsecs)
+                     << "\n";
+      }
+    }
+  });
   return true;
 }
 
@@ -292,9 +347,9 @@ void TimeStepMethod::bubble_tensor_to_best_ts(
   }
 }
 
-void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
-                                                      TensorInfo &tensor_infos,
-                                                      LgInfo &lg_info) {
+void TimeStepMethod::memory_aware_timestep_assignment(
+    BasicTimeStep *time_step, TensorInfo &tensor_infos, LgInfo &lg_info,
+    const shape_secs_t &shape_secs) {
   layer_nearest_timestep_assignment(time_step, tensor_infos, lg_info);
   if (lg_info.group_ops.size() <= 1) {
     return;
@@ -308,7 +363,7 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
   ValueIntMap tensor_to_bufsize;
   std::vector<std::list<GdmaElt>> tensor_timesteps;
 
-  GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
+  GROUP_DEBUG_WITH_TYPE("timestep_assign_result", lg_info, [&]() {
     llvm::dbgs() << "============= memory aware algorithm =============\n";
   });
 
@@ -316,7 +371,17 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
 #pragma omp critical(get_cycle)
   get_timestep_cycle_slack(time_step, lg_info, tensor_to_cycle,
                            tensor_to_bufsize, tensor_timesteps,
-                           timestep_cycle_slack);
+                           timestep_cycle_slack, shape_secs);
+  GROUP_DEBUG_WITH_TYPE("cycle_slack", lg_info, [&]() {
+    // print cycle slack info
+    for (int64_t ts = 0; ts < timestep_cycle_slack.size(); ++ts) {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_cycle_slack", "result",
+                                            "cycle slack of timestep")
+                   << LOG_ACTION("timestep_cycle_slack")
+                   << LOG_KV("timestep", ts)
+                   << LOG_KV("cycle_slack", timestep_cycle_slack[ts]) << "\n";
+    }
+  });
 
   std::list<GdmaElt>::iterator sel_list_iter;
   int64_t best_ts = 0;
@@ -346,19 +411,19 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
     for (auto &iter : tensor_timesteps[ts]) {
       new_tensor_timestep.push_back(std::move(iter));
     }
-    time_step->update_gdma0_ts_field(ts, new_tensor_timestep);
+    time_step->update_gdma0_ts_field(lg_info, ts, new_tensor_timestep);
   }
 
-  GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
+  GROUP_DEBUG_WITH_TYPE("timestep_assign_result", lg_info, [&]() {
     llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                        "timestep_assign", "final_result",
+                        "memory_aware_timestep_assignment", "final_result",
                         "optimize timesteps using algorithm based on cycle "
                         "slack and buffer area")
                  << "\n============= timestep optimized =============\n";
     time_step->show_timestep_table();
   });
 
-  GROUP_DEBUG_WITH_TYPE("timestep_assign", lg_info, [&]() {
+  GROUP_DEBUG_WITH_TYPE("timestep_assign_result", lg_info, [&]() {
     llvm::dbgs() << "=======================================\n";
   });
 }
@@ -367,13 +432,31 @@ void TimeStepMethod::get_timestep_cycle_slack(
     BasicTimeStep *time_step, LgInfo &lg_info, ValueIntMap &tensor_to_cycle,
     ValueIntMap &tensor_to_bufsize,
     std::vector<std::list<GdmaElt>> &tensor_timesteps,
-    std::vector<int64_t> &timestep_cycle_slack) {
+    std::vector<int64_t> &timestep_cycle_slack,
+    const shape_secs_t &shape_secs) {
   int64_t timestep_num = time_step->get_timestep_num();
   auto &tensor_infos = time_step->get_tensor_infos();
   time_step->clear_gdma_cycle();
   time_step->clear_layer_cycle();
   int64_t tensor_cycle = 0;
   int64_t buffer_size = 0;
+  bool useMultiCore = options_.num_core > 1;
+  auto secs = shape_secs.nsecs * shape_secs.csecs * shape_secs.dsecs *
+              shape_secs.hsecs * shape_secs.wsecs;
+  useMultiCore &= (secs > 1);
+  if (module::isBM1688()) {
+    auto bm1688 = (BM1688 *)BM168x::instance();
+    float BW = 24;
+    if (useMultiCore) {
+      BW = 15.f;
+      DEBUG_WITH_TYPE("cycle_calc", {
+        llvm::dbgs() << "; action = multi_core_align"
+                     << "; BW = " << BW << "\n";
+      });
+      bm1688->dl_set_gdma_bw_s2l(BW);
+      bm1688->dl_set_gdma_bw_l2s(BW);
+    }
+  }
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
     const auto &ts_layers = time_step->getLayers(ts);
     for (auto op : ts_layers) {
@@ -384,6 +467,15 @@ void TimeStepMethod::get_timestep_cycle_slack(
       }
       timestep_cycle_slack[ts] += cycle_slack;
       time_step->set_layer_cycle(op, cycle_slack);
+      GROUP_DEBUG_WITH_TYPE("cycle_slack", lg_info, [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_cycle", "result",
+                                              "layer cycle of operation")
+                     << LOG_ACTION("timestep_cycle") << LOG_KV("timestep", ts)
+                     << LOG_KV("timestep_type", "layer")
+                     << LOG_KV("op", op->getName())
+                     << LOG_KV("tensor_name", module::getName(op))
+                     << LOG_KV("cycle", cycle_slack) << "\n";
+      });
     }
 
     std::list<GdmaElt> list_tensors;
@@ -398,8 +490,23 @@ void TimeStepMethod::get_timestep_cycle_slack(
       list_tensors.push_back(tensor);
       timestep_cycle_slack[ts] -= tensor_cycle;
       time_step->set_gdma_cycle(tensor.first, tensor_cycle);
+      GROUP_DEBUG_WITH_TYPE("cycle_slack", lg_info, [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("timestep_cycle", "result",
+                                              "layer cycle of operation")
+                     << LOG_ACTION("timestep_cycle") << LOG_KV("timestep", ts)
+                     << LOG_KV("timestep_type", "gdma")
+                     << LOG_KV("tensor_name", module::getName(tensor.first))
+                     << LOG_KV("cycle", tensor_cycle)
+                     << LOG_KV("buffer_size", buffer_size) << "\n";
+      });
     }
     tensor_timesteps.push_back(std::move(list_tensors));
+  }
+  if (module::isBM1688()) {
+    auto bm1688 = (BM1688 *)BM168x::instance();
+    float BW = 24;
+    bm1688->dl_set_gdma_bw_s2l(BW);
+    bm1688->dl_set_gdma_bw_l2s(BW);
   }
 }
 
