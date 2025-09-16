@@ -6,6 +6,7 @@ import sys
 
 sys.path.append('../..')
 from utils.mlir_parser import MlirParser
+from calibration.utils import split_fuseop
 
 
 class Graph():
@@ -30,7 +31,7 @@ class Graph():
                     if opd in b_:
                         in_ = True
                         break
-                ids = bottom_of_layer[op.name]
+                ids = bottom_of_layer[opd]
                 if not in_ or len(ids) == 0:
                     fake_id = self.fake_node[-1]
                     self.fake_node.append(fake_id)
