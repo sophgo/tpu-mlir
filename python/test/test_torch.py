@@ -2215,6 +2215,7 @@ class TORCH_IR_TESTER(object):
                 self.trace_and_test([(4, 3, 16, 16)], Model(), [self.Desc('int', 1, 100)])
             else:
                 self.trace_and_test([(4, 3, 16, 16)], Model())
+                self.trace_and_test([(1, 10, 10, 128)], Model())
 
         for f in [torch.argmin, torch.argmax]:
             for axis in [0, 1, 2, 3]:
