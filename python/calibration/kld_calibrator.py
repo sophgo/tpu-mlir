@@ -603,11 +603,11 @@ class SimpleTuner:
             pre_ops = self.parser.get_pre_op_by_op_name(evaled_op)
             if self.dot is not None:
                 for pre_op in pre_ops:
-                    evaled_op = split_fuseop(evaled_op)
+                    evaled_op = split_fuseop(evaled_op)[0]
                     self.dot.edge(pre_op, evaled_op, label=pre_op)
 
             for idx in range(self.args.tune_num):
-                evaled_op = split_fuseop(evaled_op)
+                evaled_op = split_fuseop(evaled_op)[0]
                 self.gen_ref_tensor(idx, evaled_op, node_label)
 
             # If multiple op inputs are adjusted, select any one (temporarily the first) for adjustment.
@@ -875,7 +875,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         return None
 
     def gen_ref_tensor(self, i, op_name):
-        op_name = split_fuseop(op_name)
+        op_name = split_fuseop(op_name)[0]
         if op_name in self.ref_activations[i]:
             return
 
@@ -1825,7 +1825,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 os.system('cp -f {name} {name}.1'.format(name=input_calibration_table))
                 threshold_table = CalibrationTable(input_calibration_table)
                 for op_name in op_layers:
-                    op_name = split_fuseop(op_name)
+                    op_name = split_fuseop(op_name)[0]
                     thresholds_map_list.append(threshold_table.thresholds_map[op_name][0])
             else:
                 print('input_calibration_table error')
@@ -1940,7 +1940,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             f.write("# tune number: {}\n###\n".format(self.args.tune_num))
             f.write("# op_name    threshold    min    max\n")
             for i, op_name in enumerate(op_layers):
-                op_name = split_fuseop(op_name)
+                op_name = split_fuseop(op_name)[0]
                 threshold = thresholds[op_name]
                 if threshold <= 1e-5 or np.isnan(threshold):
                     threshold = 1e-5

@@ -117,7 +117,7 @@ class SensitiveLayer:
                 f.write("# tune number: {}\n###\n".format(self.args.tune_num))
                 f.write("# op_name    threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
-                    op_name = split_fuseop(op_name)
+                    op_name = split_fuseop(op_name)[0]
                     threshold = thresholds_map[op_name]
                     if threshold <= 1e-5 or np.isnan(threshold):
                         threshold = 1e-5

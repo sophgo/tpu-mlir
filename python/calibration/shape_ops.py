@@ -83,11 +83,23 @@ class ShapeOps:
 
         shape_generator = ['top.Shape', 'top.Size']
         shape_consumer = ['top.Reshape', 'top.Interp']
+        shape_generator_second_output = ['top.TopK']  # maybe maxpooling
+        shape_consumer_second_input = ['top.GatherElements'
+                                       ]  # maybe 'top.Gather', 'top.Scatter', 'top.ScatterND',
         transparent_ops = [
-            'top.Concat', 'top.Slice', 'top.Tile', 'top.Split', 'top.Pack', 'top.Repeat'
+            'top.Concat',
+            'top.Slice',
+            'top.Tile',
+            'top.Split',
+            'top.Pack',
+            'top.Repeat',
+            'top.Squeeze',
+            'top.Unsqueeze',
         ]
         is_generator = lambda op_name: self.parser.get_op_type_by_op_name(op_name
                                                                           ) in shape_generator
+        is_second_output_generator = lambda op_name: self.parser.get_op_type_by_op_name(
+            op_name) in shape_generator_second_output
         is_consumer = lambda op_name: self.parser.get_op_type_by_op_name(op_name) in shape_consumer
         is_transparent = lambda op_name: self.parser.get_op_type_by_op_name(op_name
                                                                             ) in transparent_ops
@@ -98,10 +110,17 @@ class ShapeOps:
         is_output = lambda op_name: op_name in outputs
 
         shape_ops = [x.name for x in self.parser.ops if is_generator(x.name)]  #op names
-
+        shape_ops_second_output = [
+            x.outputs[1] for x in self.parser.ops if is_second_output_generator(x.name)
+        ]
+        shape_consumer_second_input_tensor = [
+            x.opds[1] for x in self.parser.ops
+            if x.type in shape_consumer_second_input and len(x.opds) > 1
+        ]
+        is_second_input_consumer = lambda op_name: op_name in shape_consumer_second_input_tensor
         while True:
             no_new_shape_op = True
-            for op in shape_ops:
+            for op in shape_ops + shape_ops_second_output:  # in fact, tensor names
                 if is_output(op):
                     continue
                 next_ops = self.parser.get_next_op_by_op_name(op)
@@ -111,14 +130,14 @@ class ShapeOps:
                     elif is_output(op_):
                         shape_ops.append(op_)
                         no_new_shape_op = False
-                    elif is_consumer(op_):
+                    elif is_consumer(op_) or is_second_input_consumer(op_):
                         continue
                     elif is_transparent(op_):
                         shape_ops.append(op_)
                         no_new_shape_op = False
                     else:
                         continue
-            for op in shape_ops:
+            for op in shape_ops + shape_ops_second_output:
                 pre_ops = self.parser.get_pre_op_by_op_name(op)
                 for op in pre_ops:
                     if op in shape_ops or is_generator(op):
@@ -128,7 +147,8 @@ class ShapeOps:
                         shape_ops.append(op)
                     else:  #maybe some math op is calculating ratio and shape, the output may be shape but the ratio may be not from shape
                         continue
-            new_op, shape_ops = self.find_forward_all_input_shapes(shape_ops)
+            new_op, shape_ops = self.find_forward_all_input_shapes(shape_ops +
+                                                                   shape_ops_second_output)
             if new_op:
                 no_new_shape_op = False
             if no_new_shape_op:

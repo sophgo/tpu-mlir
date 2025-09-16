@@ -37,6 +37,6 @@ def is_fuseop(op_name):
 def split_fuseop(op_name):
     if is_fuseop(op_name):
         new_ops = re.findall(r'"([^"]+)"', op_name)
-        return new_ops[0]
+        return new_ops
     else:
-        return op_name
+        return [op_name]
