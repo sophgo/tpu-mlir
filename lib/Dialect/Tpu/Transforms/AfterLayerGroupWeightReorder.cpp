@@ -64,12 +64,15 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
     auto idx_op = dyn_cast<top::WeightOp>(v);
     auto idx_u16 = idx_op.read<uint16_t>();
     auto count = idx_u16->size();
-    if (count % 2 != 0)
-      return failure();
+    assert(count % 2 == 0);
     const size_t pos_num = static_cast<size_t>(count / 2);
     auto reorder = std::make_shared<std::vector<uint16_t>>();
     reorder->reserve(pos_num);
-
+    auto ensure_size = [&](size_t need) {
+      if (reorder->size() < need) {
+        reorder->resize(need);
+      }
+    };
     SmallVector<int64_t> new_w_idx_vec;
     SmallVector<int64_t> new_w_slice_vec;
     size_t write_pos = 0;
@@ -90,9 +93,7 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
           size_t src_pair = (row_base + static_cast<size_t>(w0)) * 2;
           size_t dst_base = write_pos;
           const size_t copy_pairs = static_cast<size_t>(wlen);
-          if (reorder->size() < dst_base + copy_pairs) {
-            reorder->resize(dst_base + copy_pairs);
-          }
+          ensure_size(dst_base + copy_pairs);
           for (size_t k = 0; k < copy_pairs; ++k) {
             uint16_t h_g = (*idx_u16)[src_pair + 0];
             uint16_t w_g = (*idx_u16)[src_pair + 1];
@@ -110,6 +111,7 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
         size_t pad_size = padded - slice;
         if (pad_size > 0) {
           size_t pad_base = write_pos;
+          ensure_size(pad_base + pad_size);
           for (size_t t = 0; t < pad_size; ++t) {
             (*reorder)[pad_base + t] = 0;
           }
