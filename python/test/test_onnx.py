@@ -182,6 +182,7 @@ class ONNX_IR_TESTER(object):
             "ReduceLogSumExp": (self.test_ReduceLogSumExp, Y, Y, Y, N, N, N),
             "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y, Y, Y),
             "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y, Y, Y),
+            "ReduceSum2":    (self.test_ReduceSum2,     N, Y, Y, N, N, Y),
             "ReduceProd":   (self.test_ReduceProd,    Y, Y, Y, N, Y, Y),
             "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y, Y, Y),
             "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y, Y),
@@ -2625,6 +2626,33 @@ class ONNX_IR_TESTER(object):
             """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
+
+    # test reduce dim>65536
+    def test_ReduceSum2(self, case_name):
+        input_shape_1 = [2, 3, 200, 120]
+        output_shape_1 = [2]
+        input_shape_2 = [100, 66000]
+        output_shape_2 = [100]
+
+        graph_txt_1 = """
+            %s (float%s input) => (float%s o_sum)
+            <int64[3] axes = {1,2,3}>
+            {
+                o_sum = ReduceSum<keepdims=0>(input, axes)
+            }
+            """ % (case_name, input_shape_1, output_shape_1)
+        graph_def_1 = onnx.parser.parse_graph(graph_txt_1)
+        self.onnx_and_test(graph_def_1)
+
+        graph_txt_2 = """
+            %s (float%s input) => (float%s o_sum)
+            <int64[1] axes = {1}>
+            {
+                o_sum = ReduceSum<keepdims=0>(input, axes)
+            }
+            """ % (case_name, input_shape_2, output_shape_2)
+        graph_def_2 = onnx.parser.parse_graph(graph_txt_2)
+        self.onnx_and_test(graph_def_2)
 
     def test_ReduceProd(self, case_name):
         input_shape = [1, 3, 128, 128]
