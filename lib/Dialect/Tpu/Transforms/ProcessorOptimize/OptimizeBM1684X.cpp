@@ -127,16 +127,21 @@ protected:
           r_trans = !r_trans;
         }
         if (l_trans == true && r_trans == false) {
-          // mm2 not support l_trans && !r_trans
-          return failure();
+          std::vector<int64_t> new_l_order = {0, 3, 2, 1};
+          l_trans_op->setAttr("order", rewriter.getI64ArrayAttr(new_l_order));
+          module::setLocSuffix(l_trans_op, "reorder");
+          op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+          op->setOperand(1, r_trans_op.getInput());
+          rewriter.eraseOp(r_trans_op);
+        } else {
+          op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+          op->setAttr("left_transpose", rewriter.getBoolAttr(l_trans));
+          op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
+          op->setOperand(0, l_trans_op.getInput());
+          op->setOperand(1, r_trans_op.getInput());
+          rewriter.eraseOp(l_trans_op);
+          rewriter.eraseOp(r_trans_op);
         }
-        op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
-        op->setAttr("left_transpose", rewriter.getBoolAttr(l_trans));
-        op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
-        op->setOperand(0, l_trans_op.getInput());
-        op->setOperand(1, r_trans_op.getInput());
-        rewriter.eraseOp(l_trans_op);
-        rewriter.eraseOp(r_trans_op);
       } else if (isa<tpu::ReshapeOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
         // Case2
         // Left  -> Reshape -\              Left(+ Reshape)-\
@@ -1617,8 +1622,7 @@ struct PermuteFuse : public OpRewriterPatternEx<tpu::PermuteOp> {
   }
 };
 
-// permute1 + permute2
-// permute_order[0,2,1,3]!=  permute2_order[0,1,3,2]
+// permute1 + permute2 => permute
 struct PermuteFuse2 : public OpRewriterPatternEx<tpu::PermuteOp> {
   // using OpRewriterPatternEx::OpRewriterPatternEx;
   PermuteFuse2(mlir::MLIRContext *context, int benifit)
@@ -1641,21 +1645,20 @@ struct PermuteFuse2 : public OpRewriterPatternEx<tpu::PermuteOp> {
       return failure();
     }
     // strict restrictions
-    if (in1_order->size() == 4) {
-      if (false == (in1_order->at(0) == 0 && in1_order->at(1) == 1 &&
-                    in1_order->at(2) == 3 && in1_order->at(3) == 2) ||
-          false == (in0_order->at(0) == 0 && in0_order->at(1) == 2 &&
-                    in0_order->at(2) == 1 && in0_order->at(3) == 3)) {
-        return failure();
-      }
-    }
-
+    // if (in1_order->size() == 4) {
+    //   if (false == (in1_order->at(0) == 0 && in1_order->at(1) == 1 &&
+    //                 in1_order->at(2) == 3 && in1_order->at(3) == 2) ||
+    //       false == (in0_order->at(0) == 0 && in0_order->at(1) == 2 &&
+    //                 in0_order->at(2) == 1 && in0_order->at(3) == 3)) {
+    //     return failure();
+    //   }
+    // }
     std::vector<int64_t> new_order;
     for (auto o : *in1_order) {
       new_order.push_back((*in0_order)[o]);
     }
-    permute_op.getOutput().replaceAllUsesWith(permute_op.getInput());
     op->setAttr("order", rewriter.getI64ArrayAttr(new_order));
+    permute_op.getOutput().replaceAllUsesWith(permute_op.getInput());
     rewriter.eraseOp(permute_op);
     return success();
   }
@@ -4348,36 +4351,33 @@ struct CanCutGridSamplerFusePattern
     }
     auto before_op = op.getInput().getDefiningOp();
     auto next_op = *op.getOutput().user_begin();
-    if (!isa<tpu::PermuteOp>(before_op) && !isa<tpu::PermuteOp>(next_op)) {
+    if (!isa<tpu::PermuteOp>(before_op) || !isa<tpu::PermuteOp>(next_op)) {
       return failure();
     }
     auto grid = op.getGrid();
-    auto concat_op = grid.getDefiningOp<tpu::ConcatOp>();
-    if (concat_op.getInputs().size() != 2) {
+    auto concat_tail = grid.getDefiningOp<tpu::ConcatOp>();
+    if (concat_tail.getInputs().size() != 2) {
       return failure();
     }
-    bool is_weight = false;
-    Value concat_input;
-
-    for (auto input : concat_op.getInputs()) {
-      if (isa<top::WeightOp>(input.getDefiningOp())) {
-        is_weight = true;
-      } else {
-        concat_input = input;
+    tpu::SliceOp split = nullptr;
+    for (auto input : concat_tail.getInputs()) {
+      if (auto v = dyn_cast<tpu::SliceOp>(input.getDefiningOp())) {
+        split = v;
       }
     }
-    if (!is_weight) {
+    if (!split) {
       return failure();
     }
-    auto addconst = concat_input.getDefiningOp<tpu::AddConstOp>();
-    if (!addconst) {
+    auto concat_head = split.getInput().getDefiningOp<tpu::ConcatOp>();
+    if (!concat_head) {
       return failure();
     }
-    auto mulconst = addconst.getInput().getDefiningOp<tpu::MulConstOp>();
-    if (!mulconst) {
-      return failure();
+    tpu::PermuteOp permute = nullptr;
+    for (auto input : concat_head.getInputs()) {
+      if (auto v = dyn_cast<tpu::PermuteOp>(input.getDefiningOp())) {
+        permute = v;
+      }
     }
-    auto permute = mulconst.getInput().getDefiningOp<tpu::PermuteOp>();
     if (!permute) {
       return failure();
     }
@@ -4392,11 +4392,6 @@ struct CanCutGridSamplerFusePattern
     op->setAttr("need_permute", rewriter.getBoolAttr(true));
     rewriter.replaceOp(before_op, before_op->getOperand(0));
     rewriter.replaceOp(next_op, ArrayRef<Value>{op.getResult()});
-
-    rewriter.eraseOp(concat_op);
-    rewriter.eraseOp(addconst);
-    rewriter.eraseOp(mulconst);
-    rewriter.eraseOp(permute);
     return success();
   }
 };
