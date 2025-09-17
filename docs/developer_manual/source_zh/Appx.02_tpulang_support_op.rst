@@ -162,26 +162,31 @@ compile
 
     .. code-block:: python
 
-        def compile(name: str,
-            inputs: List[Tensor],
-            outputs: List[Tensor],
-            cmp=True,
-            refs=None,
-            mode='f32',         # unused
-            dynamic=False,
-            asymmetric=False,
-            no_save=False,
-            opt=2,
-            mlir_inference=True,
-            bmodel_inference=True,
-            log_level="normal",
-            embed_debug_info=False):
+        def compile(
+                name: str,
+                inputs: List[Tensor],
+                outputs: List[Tensor],
+                cmp=True,
+                refs=None,
+                mode='f32',  # unused
+                dynamic=False,
+                asymmetric=False,
+                no_save=False,
+                opt=2,
+                mlir_inference=True,
+                bmodel_inference=True,
+                log_level: str = 'normal',
+                embed_debug_info=False,
+                addr_mode='auto',
+                gdma_check=False,
+                layer_group_config=""):
+          #pass
 
 
 功能描述
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
-用于将TpuLang模型编译为bmodel。
+用于将TpuLang模型编译为bmodel，该接口用于对接量化后模型。
 
 参数说明
 :::::::::::::::::::::::::::::::::::::::::::::::::
@@ -204,6 +209,72 @@ compile
   - normal: 编译生成bmodel的日志都会打印出来
   - quiet: 什么都不打印
 * embed_debug_info: bool类型，是否开启profile模式。
+* addr_mode: string类型，表示地址分配模式。取值范围"auto"\|"io_reloc"。默认值为"auto"。
+* gdma_check: bool类型，是否开启gdma越界检查。
+* layer_group_config: string类型，表示layer group配置文件路径。默认值为""。
+
+
+.. _compile:
+compile_f32
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+接口定义
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+    .. code-block:: python
+
+        def compile_f32(name: str,
+                inputs: List[Tensor],
+                outputs: List[Tensor],
+                cmp=True,
+                refs=None,
+                mode='f32',
+                dynamic=False,
+                opt=2,
+                no_save=False,
+                mlir_inference=True,
+                bmodel_inference=True,
+                top_mlir_inference=True,
+                tpu_mlir_inference=True,
+                log_level: str = 'normal',
+                embed_debug_info=False,
+                addr_mode='auto',
+                gdma_check=False,
+                layer_group_config="",
+                spec_op_mode: dict[str, str] = None):
+          #pass
+
+
+功能描述
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+用于将TpuLang模型编译为bmodel。
+
+参数说明
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+* name：string类型。模型名称。
+* inputs：List[Tensor]，表示编译网络的所有输入Tensor；
+* outputs：List[Tensor]，表示编译网络的所有输出Tensor；
+* cmp：bool类型，True表示需要结果比对，False表示仅编译；如果mlir_inference为False，cmp参数无效。
+* refs：List[Tensor]，表示编译网络的所有需要比对验证的Tensor；
+* mode：string类型，量化类型，取值范围为"f32"\|"f16"\|"bf16"。
+* dynamic：bool类型，是否进行动态编译。
+* no_save：bool类型，是否将中间文件暂存到共享内存并随进程释放，启用该项时Compile会返回生成的bmodel文件的bytes-like object，用户需要自行接收和处理，如使用f.write(bmodel_bin)保存。
+* opt：int类型，表示编译器group优化级别。0，表示不需要进行group；1，表示尽可能进行group；2，表示根据动态规划进行group。默认值为2。
+* mlir_inference: bool类型，是否执行mlir的推理，如果为False, cmp参数无效。
+* bmodel_inference: bool类型，是否执行bmodel的推理。
+* log_level 用来控制日志等级，目前支持only-pass、only-layer-group、normal、quiet:
+  - only-pass: 主要打印图优化pattern匹配情况。
+  - only-layer-group: 主要打印layer group 信息。
+  - normal: 编译生成bmodel的日志都会打印出来
+  - quiet: 什么都不打印
+* embed_debug_info: bool类型，是否开启profile模式。
+* addr_mode: string类型，表示地址分配模式。取值范围"auto"\|"io_reloc"。默认值为"auto"。
+* gdma_check: bool类型，是否开启gdma越界检查。
+* layer_group_config: string类型，表示layer group配置文件路径。默认值为""。
+* spec_op_mode: Dict[str, str]类型，表示指定算子的量化模式。key为算子名称（与TpuLang算子接口一致，custom算子则为op_name），value为量化模式，取值范围为"f32"\|"f16"\|"bf16"。注意：如果涉及到算子融合，则以最后一个算子的量化模式为准。
+
 
 .. _deinit:
 

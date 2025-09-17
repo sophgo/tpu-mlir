@@ -13,6 +13,7 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "tpu_mlir/Support/ActiveUtils.h"
 #include "tpu_mlir/Support/Float8.h"
+#include <filesystem>
 #include <regex>
 
 namespace tpu_mlir {
@@ -2240,61 +2241,92 @@ void ConvertTopToTpu::init_qtable() {
   if (qtable.empty()) {
     return;
   }
-  std::regex map_pattern("\\S+\\s+\\S+");
-  std::regex name_pattern("\\S+");
-  std::regex info_pattern("#.*");
-  std::regex empty_pattern("^\\s*$");
-  std::ifstream infile(qtable);
-  if (!infile) {
-    llvm::errs() << "Can't open file: " << qtable << " !\n";
-    llvm_unreachable("Open quantize table failed");
-  }
-  std::string line;
-  while (std::getline(infile, line)) {
-    if (line.back() == '\r') {
-      line.pop_back();
-    }
-    std::istringstream iss(line);
-    std::string name;
-    std::string mode;
-    if (std::regex_match(line, empty_pattern)) {
-      continue;
-    }
-    if (std::regex_match(line, info_pattern)) {
-      continue;
-    }
-    if (std::regex_match(line, map_pattern)) {
-      iss >> name;
-      iss >> mode;
-      auto src_mode = StringRef(mode).upper();
-      if (module::isCV18xx()) {
-        if (src_mode == "F32" || src_mode == "F16")
-          mode = "BF16";
-      }
-      if (module::isBM1684Family()) {
-        if (src_mode != "INT8")
-          mode = "F32";
-      }
-      if ((src_mode == "W8F16" || src_mode == "W4F16") &&
-          module::isBF16Modes()) {
-        llvm_unreachable(
-            "WxF16 and BF16 mix precision is not allowed, check your qtable");
-      }
-      if ((src_mode == "W8BF16" || src_mode == "W4BF16") &&
-          module::isF16Modes()) {
-        llvm_unreachable(
-            "WxBF16 and F16 mix precision is not allowed, check your qtable");
-      }
-      LoweringConfig::quantize_map[name] = qmode(mode);
-      continue;
-    }
-    if (std::regex_match(line, name_pattern)) {
-      continue;
-    }
 
-    llvm::errs() << "Error, quantize file in [" << line << "]\n";
-    assert(false);
+  std::string qtable_str = qtable.getValue();
+  const size_t MAX_PATH_LENGTH = 256;
+  bool is_file = qtable_str.size() <= MAX_PATH_LENGTH &&
+                 std::filesystem::exists(qtable_str) &&
+                 std::filesystem::is_regular_file(qtable_str);
+
+  std::unique_ptr<std::istream> infile;
+  if (is_file) {
+    infile = std::make_unique<std::ifstream>(qtable);
+  } else {
+    infile = std::make_unique<std::istringstream>(qtable);
   }
+
+  std::vector<std::pair<std::string, std::string>> entries;
+  if (is_file) {
+    // File mode: parse line by line
+    std::regex map_pattern("\\S+\\s+\\S+");
+    std::regex info_pattern("#.*");
+    std::regex empty_pattern("^\\s*$");
+
+    std::string line;
+    while (std::getline(*infile, line)) {
+      if (line.back() == '\r') {
+        line.pop_back();
+      }
+      if (std::regex_match(line, empty_pattern) ||
+          std::regex_match(line, info_pattern)) {
+        continue;
+      }
+      if (std::regex_match(line, map_pattern)) {
+        std::istringstream iss(line);
+        std::string name, mode;
+        iss >> name >> mode;
+        entries.emplace_back(name, mode);
+      } else {
+        llvm::errs() << "Error, quantize table content invalid: [" << line
+                     << "]\n";
+        assert(false);
+      }
+    }
+  } else {
+    // String mode: parse comma-separated entries
+    std::string content;
+    std::getline(*infile, content); // Read entire content
+    std::istringstream iss(content);
+    std::string entry;
+    while (std::getline(iss, entry, ',')) {
+      size_t colon_pos = entry.find(':');
+      if (colon_pos == std::string::npos) {
+        llvm::errs() << "Error, invalid quantize table entry: [" << entry
+                     << "]\n";
+        assert(false);
+      }
+      std::string name = entry.substr(0, colon_pos);
+      std::string mode = entry.substr(colon_pos + 1);
+      entries.emplace_back(name, mode);
+    }
+  }
+
+  // Common processing for both modes
+  for (const auto &[name, mode] : entries) {
+    auto src_mode = StringRef(mode).upper();
+    std::string final_mode = mode;
+
+    if (module::isCV18xx()) {
+      if (src_mode == "F32" || src_mode == "F16")
+        final_mode = "BF16";
+    }
+    if (module::isBM1684Family()) {
+      if (src_mode != "INT8")
+        final_mode = "F32";
+    }
+    if ((src_mode == "W8F16" || src_mode == "W4F16") && module::isBF16Modes()) {
+      llvm_unreachable(
+          "WxF16 and BF16 mix precision is not allowed, check your qtable");
+    }
+    if ((src_mode == "W8BF16" || src_mode == "W4BF16") &&
+        module::isF16Modes()) {
+      llvm_unreachable(
+          "WxBF16 and F16 mix precision is not allowed, check your qtable");
+    }
+    LoweringConfig::quantize_map[name] = qmode(final_mode);
+  }
+
+  // Process split map
   for (const auto &entry : LoweringConfig::split_map) {
     const std::string &key = entry.first;
     const std::set<std::string> &splitValues = entry.second;

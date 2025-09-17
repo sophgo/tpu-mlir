@@ -18,6 +18,8 @@ logger = logging.getLogger("root")
 
 supported_dtypes = ["float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"]
 
+_current_func_name = None
+
 
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     """Indent string"""
@@ -47,13 +49,19 @@ def auto_name(kwarg_name='out_name'):
     def wrapper(func):
 
         def decorate(*args, **kwargs):
+            global _current_func_name
+            if not _current_func_name:
+                _current_func_name = func.__name__
             if kwarg_name in kwargs:
                 need_gen_name = kwargs[kwarg_name] is None
             else:
                 need_gen_name = True
             if need_gen_name:
                 kwargs[kwarg_name] = generate_name(func.__name__)
-            return func(*args, **kwargs)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                _current_func_name = None
 
         return decorate
 
@@ -295,6 +303,11 @@ class Operator:
         self.params = params
         self.inputs = inputs
         self.outputs = outputs
+        global _current_func_name
+        if op_name == "top.Custom":
+            self.src_func = params["name"][0]
+        else:
+            self.src_func = _current_func_name
 
     def __repr__(self):
         s = "{type} (\n{modstr}\n)"
@@ -314,6 +327,7 @@ class Graph:
     def __init__(self, name="main"):
         self.name = name
         self.operators: List[Operator] = []
+        self.contained_func: List = []
         self._inputs = None
         self._outputs = None
         self.tensors_dict = dict()
@@ -335,6 +349,7 @@ class Graph:
         # op = Operator(op_name, params=params, inputs=inputs, outputs=outputs)
         self.check_tensors(op)
         self.operators.append(op)
+        self.contained_func.append(op.src_func)
 
     def reset(self):
         for op in self.operators:

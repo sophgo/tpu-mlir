@@ -4689,23 +4689,8 @@ class TPULANG_IR_TESTER(object):
             # 3. init and compile tpulang model to top.mlir
             tpul.init(device=self.chip.upper())
             out = model_def(x)
-            tpul.compile_f32(case_name, [x], [out])
+            tpul.compile_f32(case_name, [x], [out], spec_op_mode={"conv": "f16", "relu": "f16"})
             tpul.deinit()
-            # tpul.compile will do top mlir inference with random input
-            in_f32_npz = case_name + '_in_f32.npz'
-            top_out = case_name + '_top_outputs.npz'
-            # 4. deploy to bmodel
-            deploy_cmd_base = f"model_deploy.py --mlir {case_name}.mlir "
-            deploy_cmd_base += "--chip {} ".format(self.chip)
-            deploy_cmd_base += "--test_input {} ".format(in_f32_npz)
-            deploy_cmd_base += "--test_reference {} ".format(top_out)
-            # deploy to [f32, f16, bf16] quant mode
-            for mode in self.quant_modes:
-                bmodel_name = "{}.bmodel".format(case_name + "_" + self.chip + "_" + mode)
-                deploy_cmd = deploy_cmd_base
-                deploy_cmd += "--model {} ".format(bmodel_name)
-                deploy_cmd += "--quantize {} ".format(mode.upper())
-                assert (os.system(deploy_cmd) == 0)
 
         _test_resnet_block([1, 64, 112, 112])
 
@@ -4716,17 +4701,27 @@ class TPULANG_IR_TESTER(object):
         """MergerMatMul"""
 
         @tpulang(self.chip)
-        def _test_merger_matmul(shape_input: List[int], shape_matmul_weight: List[int], split_hws=None, dtype="float32"):
+        def _test_merger_matmul(shape_input: List[int],
+                                shape_matmul_weight: List[int],
+                                split_hws=None,
+                                dtype="float32"):
             input_data = rand_data(shape_input, dtype)
             matmul_weight_data = rand_data(shape_matmul_weight, dtype)
             input = tpul.Tensor(dtype=dtype, shape=shape_input, data=input_data)
-            matmul_weight = tpul.Tensor(dtype=dtype, shape=shape_matmul_weight, data=matmul_weight_data, ttype="coeff")
+            matmul_weight = tpul.Tensor(dtype=dtype,
+                                        shape=shape_matmul_weight,
+                                        data=matmul_weight_data,
+                                        ttype="coeff")
             out = tpul.merger_matmul(input, matmul_weight, split_hws)
             self.compile_and_check(self.unique_name(case_name), [input], [out])
 
         _test_merger_matmul([5, 1536, 32, 32], [6144, 3584], dtype="float16")
-        _test_merger_matmul([5, 1536, 32, 32], [6144, 3584], split_hws=[(1, 1), (2, 2)], dtype="float16")
-        _test_merger_matmul([5, 1536, 32, 32], [6144, 3584], split_hws=[(2, 2), (1, 1)], dtype="float16")
+        _test_merger_matmul([5, 1536, 32, 32], [6144, 3584],
+                            split_hws=[(1, 1), (2, 2)],
+                            dtype="float16")
+        _test_merger_matmul([5, 1536, 32, 32], [6144, 3584],
+                            split_hws=[(2, 2), (1, 1)],
+                            dtype="float16")
 
     #######################################################################
     # Mobilenet like model case
@@ -5225,16 +5220,29 @@ class TPULANG_IR_TESTER(object):
                                        embed_dims=32,
                                        num_levels=5,
                                        num_points=4,
-                                       value_spatial_shapes=[[200, 300], [100, 150], [50, 75], [25, 38], [13, 19]],
+                                       value_spatial_shapes=[[200, 300], [100, 150], [50, 75],
+                                                             [25, 38], [13, 19]],
                                        dtype="float32"):
             value_data = rand_data([bs, num_keys, num_heads, embed_dims], dtype)
-            value = tpul.Tensor(dtype=dtype, shape=[bs, num_keys, num_heads, embed_dims], data=value_data)
-            sampling_locations_data = rand_data([bs, num_queries, num_heads, num_levels, num_points, 2], dtype)
-            sampling_locations = tpul.Tensor(dtype=dtype, shape=[bs, num_queries, num_heads, num_levels, num_points, 2], data=sampling_locations_data)
-            attention_weights_data = rand_data([bs, num_queries, num_heads, num_levels, num_points], dtype)
-            attention_weights = tpul.Tensor(dtype=dtype, shape=[bs, num_queries, num_heads, num_levels, num_points], data=attention_weights_data)
-            y = tpul.deformable_attention(value, sampling_locations, attention_weights, value_spatial_shapes)
-            self.compile_and_check(self.unique_name(case_name), [value, sampling_locations, attention_weights], [y])
+            value = tpul.Tensor(dtype=dtype,
+                                shape=[bs, num_keys, num_heads, embed_dims],
+                                data=value_data)
+            sampling_locations_data = rand_data(
+                [bs, num_queries, num_heads, num_levels, num_points, 2], dtype)
+            sampling_locations = tpul.Tensor(
+                dtype=dtype,
+                shape=[bs, num_queries, num_heads, num_levels, num_points, 2],
+                data=sampling_locations_data)
+            attention_weights_data = rand_data([bs, num_queries, num_heads, num_levels, num_points],
+                                               dtype)
+            attention_weights = tpul.Tensor(
+                dtype=dtype,
+                shape=[bs, num_queries, num_heads, num_levels, num_points],
+                data=attention_weights_data)
+            y = tpul.deformable_attention(value, sampling_locations, attention_weights,
+                                          value_spatial_shapes)
+            self.compile_and_check(self.unique_name(case_name),
+                                   [value, sampling_locations, attention_weights], [y])
 
         # value_spatial_shapes = [[200, 300], [100, 150], [50, 75], [25, 38], [13, 19]]
         # _test_deformable_attention(dtype="float32")

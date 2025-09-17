@@ -170,11 +170,13 @@ def compile_f32(name: str,
                 embed_debug_info=False,
                 addr_mode='auto',
                 gdma_check=False,
-                layer_group_config=""):
+                layer_group_config="",
+                spec_op_mode: dict = None):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
-    assert mode in ['f32', 'f16', 'bf16', 'int8', 'all', 'none']
+    support_quant_mode = ['f32', 'f16', 'bf16']
+    assert mode in support_quant_mode + ['all']
     assert addr_mode in ['auto', 'io_reloc']
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
@@ -184,6 +186,15 @@ def compile_f32(name: str,
     if mode == 'all':
         mode_list = ['f32', 'f16', 'bf16']
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
+    qtable = ""
+    if spec_op_mode:
+        for op_name, mode in spec_op_mode.items():
+            assert op_name in TpuLang.graph.contained_func, f"Op '{op_name}' not found in graph"
+            assert (lower_mode := mode.lower()) in support_quant_mode, f"Invalid quant mode: {mode}"
+            spec_op_mode[op_name] = lower_mode.upper()
+        qtable = ",".join(f"{op.outputs[0].name}:{spec_op_mode[op.src_func]}"
+                          for op in TpuLang.graph.operators if op.src_func in spec_op_mode)
+
     # [NOTE] Please sync options for no_save !!!
     if not no_save:
         save_input_reference(model_name=name, refs=refs)
@@ -201,7 +212,8 @@ def compile_f32(name: str,
                                          cmp=tpu_mlir_compare,
                                          log_level=log_level,
                                          chip=TpuLang.chip,
-                                         addr_mode=addr_mode)
+                                         addr_mode=addr_mode,
+                                         quantize_table=qtable)
             bmodel_generate_and_inference(model_name=name,
                                           quant_mode=m,
                                           inference=bmodel_inference,
@@ -219,6 +231,7 @@ def compile_f32(name: str,
                                       log_level=log_level,
                                       chip=TpuLang.chip,
                                       dynamic=dynamic,
+                                      quantize_table=qtable,
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
                                       addr_mode=addr_mode)
@@ -262,13 +275,13 @@ def model_top_inference(model_name, cmp=False, log_level: str = 'normal'):
 
 def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, asymmetric: bool = False, \
                                  inference: bool = True, cmp: bool = False, ctm_format = "BGR_PLANAR", \
-                                 fuse=False,log_level : str = 'normal', addr_mode:str = 'auto'):
+                                 fuse=False,log_level : str = 'normal', addr_mode:str = 'auto', quantize_table=""):
     top_mlir = "{}.mlir".format(model_name)
     tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
 
     mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, \
                   customization_format=ctm_format, fuse_preprocess=fuse, addr_mode=addr_mode, \
-                  log_level=log_level)
+                  log_level=log_level, quantize_table=quantize_table,)
     if inference:
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
@@ -4585,6 +4598,7 @@ def multi_scale_deformable_attention(
                       outputs=[output_proj_add_out])
     return output_proj_add_out
 
+
 @auto_name()
 @annotation_check
 @assert_with_out_name
@@ -4592,7 +4606,7 @@ def deformable_attention(value: Tensor,
                          sampling_locations: Tensor,
                          attention_weights: Tensor,
                          value_spatial_shapes: List[List[int]],
-                         out_name:str=None):
+                         out_name: str = None):
     # value: [bs, num_keys, num_heads, embed_dims//num_heads]
     # sampling_locations: [bs, num_queries, num_heads, num_levels, num_points, 2]
     # attention_weights: [bs, num_queries, num_heads, num_levels, num_points]
@@ -4633,12 +4647,18 @@ def deformable_attention(value: Tensor,
         "const_val": Attr(2, 'float64'),
     }
     mulconst_out = Tensor(dtype=o_dtype, name=out_name + "_mulconst")
-    TpuLang.insert_op("top.MulConst", inputs=[sampling_locations], outputs=[mulconst_out], params=mulconst_attr)
+    TpuLang.insert_op("top.MulConst",
+                      inputs=[sampling_locations],
+                      outputs=[mulconst_out],
+                      params=mulconst_attr)
     addconst_attr = {
         "const_val": Attr(-1, 'float64'),
     }
     addconst_out = Tensor(dtype=o_dtype, name=out_name + "_addconst")
-    TpuLang.insert_op("top.AddConst", inputs=[mulconst_out], outputs=[addconst_out], params=addconst_attr)
+    TpuLang.insert_op("top.AddConst",
+                      inputs=[mulconst_out],
+                      outputs=[addconst_out],
+                      params=addconst_attr)
     for i, (H_, W_) in enumerate(value_spatial_shapes):
         HW_ = H_ * W_
         value_ends[1] += HW_
@@ -4650,23 +4670,29 @@ def deformable_attention(value: Tensor,
         }
         value_offset[1] += HW_
         value_slice_out = Tensor(dtype=o_dtype, name=out_name + "_value_split_{}".format(i))
-        TpuLang.insert_op("top.Slice", inputs=[value, None, None, None], outputs=[value_slice_out], params=value_slice_attr)
+        TpuLang.insert_op("top.Slice",
+                          inputs=[value, None, None, None],
+                          outputs=[value_slice_out],
+                          params=value_slice_attr)
         print(f"Sucess: value_slice_{i}")
-        reshape0_attr = {
-            "shape": ArrayAttr([bs, HW_, -1])
-        }
+        reshape0_attr = {"shape": ArrayAttr([bs, HW_, -1])}
         reshape0_out = Tensor(dtype=o_dtype, name=out_name + "_reshape0_{}".format(i))
-        TpuLang.insert_op("top.Reshape", inputs=[value_slice_out], outputs=[reshape0_out], params=reshape0_attr)
-        permute0_attr = {
-            "order": ArrayAttr([0, 2, 1])
-        }
+        TpuLang.insert_op("top.Reshape",
+                          inputs=[value_slice_out],
+                          outputs=[reshape0_out],
+                          params=reshape0_attr)
+        permute0_attr = {"order": ArrayAttr([0, 2, 1])}
         permute0_out = Tensor(dtype=o_dtype, name=out_name + "_permute_{}".format(i))
-        TpuLang.insert_op("top.Permute", inputs=[reshape0_out], outputs=[permute0_out], params=permute0_attr)
-        reshape1_attr = {
-            "shape": ArrayAttr([bs*num_heads, embed_dims, H_, W_])
-        }
+        TpuLang.insert_op("top.Permute",
+                          inputs=[reshape0_out],
+                          outputs=[permute0_out],
+                          params=permute0_attr)
+        reshape1_attr = {"shape": ArrayAttr([bs * num_heads, embed_dims, H_, W_])}
         reshape1_out = Tensor(dtype=o_dtype, name=out_name + "_reshape1_{}".format(i))
-        TpuLang.insert_op("top.Reshape", inputs=[permute0_out], outputs=[reshape1_out], params=reshape1_attr)
+        TpuLang.insert_op("top.Reshape",
+                          inputs=[permute0_out],
+                          outputs=[reshape1_out],
+                          params=reshape1_attr)
         addconst_ends[3] += 1
         addconst_slice_attr = {
             "offset": ArrayAttr(addconst_offset),
@@ -4676,56 +4702,70 @@ def deformable_attention(value: Tensor,
         }
         addconst_offset[3] += 1
         addconst_slice_out = Tensor(dtype=o_dtype, name=out_name + "_addconst_slice_{}".format(i))
-        TpuLang.insert_op("top.Slice", inputs=[addconst_out, None, None, None], outputs=[addconst_slice_out], params=addconst_slice_attr)
-        squeeze_attr = {
-            "axes": ArrayAttr([3])
-        }
+        TpuLang.insert_op("top.Slice",
+                          inputs=[addconst_out, None, None, None],
+                          outputs=[addconst_slice_out],
+                          params=addconst_slice_attr)
+        squeeze_attr = {"axes": ArrayAttr([3])}
         squeeze_out = Tensor(dtype=o_dtype, name=out_name + "_squeeze_{}".format(i))
-        TpuLang.insert_op("top.Squeeze", inputs=[addconst_slice_out], outputs=[squeeze_out], params=squeeze_attr)
-        permute1_attr = {
-            "order": ArrayAttr([0, 2, 1, 3, 4])
-        }
+        TpuLang.insert_op("top.Squeeze",
+                          inputs=[addconst_slice_out],
+                          outputs=[squeeze_out],
+                          params=squeeze_attr)
+        permute1_attr = {"order": ArrayAttr([0, 2, 1, 3, 4])}
         permute1_out = Tensor(dtype=o_dtype, name=out_name + "_permute1_{}".format(i))
-        TpuLang.insert_op("top.Permute", inputs=[squeeze_out], outputs=[permute1_out], params=permute1_attr)
-        reshape2_attr = {
-            "shape": ArrayAttr([-1, num_queries, num_points, 2])
-        }
+        TpuLang.insert_op("top.Permute",
+                          inputs=[squeeze_out],
+                          outputs=[permute1_out],
+                          params=permute1_attr)
+        reshape2_attr = {"shape": ArrayAttr([-1, num_queries, num_points, 2])}
         reshape2_out = Tensor(dtype=o_dtype, name=out_name + "_reshape2_{}".format(i))
-        TpuLang.insert_op("top.Reshape", inputs=[permute1_out], outputs=[reshape2_out], params=reshape2_attr)
+        TpuLang.insert_op("top.Reshape",
+                          inputs=[permute1_out],
+                          outputs=[reshape2_out],
+                          params=reshape2_attr)
         grid_sampler_attr = {
             "mode": Attr(0, "int64"),
             "padding_mode": Attr(0, "int64"),
             "align_corners": Attr(False, 'bool'),
         }
         grid_sampler_out = Tensor(dtype=o_dtype, name=out_name + "_grid_sampler_{}".format(i))
-        TpuLang.insert_op("top.GridSampler", inputs=[reshape1_out, reshape2_out], outputs=[grid_sampler_out], params=grid_sampler_attr)
-        unsqueeze_attr = {
-            "axes": ArrayAttr([-2])
-        }
+        TpuLang.insert_op("top.GridSampler",
+                          inputs=[reshape1_out, reshape2_out],
+                          outputs=[grid_sampler_out],
+                          params=grid_sampler_attr)
+        unsqueeze_attr = {"axes": ArrayAttr([-2])}
         unsqueeze_out = Tensor(dtype=o_dtype, name=out_name + "_unsqueeze_{}".format(i))
-        TpuLang.insert_op("top.Unsqueeze", inputs=[grid_sampler_out], outputs=[unsqueeze_out], params=unsqueeze_attr)
+        TpuLang.insert_op("top.Unsqueeze",
+                          inputs=[grid_sampler_out],
+                          outputs=[unsqueeze_out],
+                          params=unsqueeze_attr)
         print(f"Sucess: unsqueeze_{i}")
         concat_inputs_list.append(unsqueeze_out)
-    concat_attr = {
-        "axis": Attr(-2, "int32")
-    }
+    concat_attr = {"axis": Attr(-2, "int32")}
     concat_out = Tensor(dtype=o_dtype, name=out_name + "_concat")
-    TpuLang.insert_op("top.Concat", inputs=concat_inputs_list, outputs=[concat_out], params=concat_attr)
-    reshape3_attr = {
-        "shape": ArrayAttr([bs*num_heads, embed_dims, num_queries, -1])
-    }
+    TpuLang.insert_op("top.Concat",
+                      inputs=concat_inputs_list,
+                      outputs=[concat_out],
+                      params=concat_attr)
+    reshape3_attr = {"shape": ArrayAttr([bs * num_heads, embed_dims, num_queries, -1])}
     reshape3_out = Tensor(dtype=o_dtype, name=out_name + "_reshape3")
-    TpuLang.insert_op("top.Reshape", inputs=[concat_out], outputs=[reshape3_out], params=reshape3_attr)
-    permute2_attr = {
-        "order": ArrayAttr([0, 2, 1, 3, 4])
-    }
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[concat_out],
+                      outputs=[reshape3_out],
+                      params=reshape3_attr)
+    permute2_attr = {"order": ArrayAttr([0, 2, 1, 3, 4])}
     permute2_out = Tensor(dtype=o_dtype, name=out_name + "_permute2")
-    TpuLang.insert_op("top.Permute", inputs=[attention_weights], outputs=[permute2_out], params=permute2_attr)
-    reshape4_attr = {
-        "shape": ArrayAttr([bs*num_heads, 1, num_queries, num_levels * num_points])
-    }
+    TpuLang.insert_op("top.Permute",
+                      inputs=[attention_weights],
+                      outputs=[permute2_out],
+                      params=permute2_attr)
+    reshape4_attr = {"shape": ArrayAttr([bs * num_heads, 1, num_queries, num_levels * num_points])}
     reshape4_out = Tensor(dtype=o_dtype, name=out_name + "_reshape4")
-    TpuLang.insert_op("top.Reshape", inputs=[permute2_out], outputs=[reshape4_out], params=reshape4_attr)
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[permute2_out],
+                      outputs=[reshape4_out],
+                      params=reshape4_attr)
     mul_output = Tensor(dtype=o_dtype, name=out_name + "_mul")
     TpuLang.insert_op("top.Mul", inputs=[reshape3_out, reshape4_out], outputs=[mul_output])
     print(f"Sucess: mul")
@@ -4736,28 +4776,29 @@ def deformable_attention(value: Tensor,
     }
     reduce_out = Tensor(dtype=o_dtype, name=out_name + "_reduce")
     TpuLang.insert_op("top.Reduce", inputs=[mul_output], outputs=[reduce_out], params=reduce_attr)
-    reshape5_attr = {
-        "shape": ArrayAttr([bs, num_heads*embed_dims, num_queries])
-    }
+    reshape5_attr = {"shape": ArrayAttr([bs, num_heads * embed_dims, num_queries])}
     reshape5_out = Tensor(dtype=o_dtype, name=out_name + "_reshape5")
-    TpuLang.insert_op("top.Reshape", inputs=[reduce_out], outputs=[reshape5_out], params=reshape5_attr)
-    permute3_attr = {
-        "order": ArrayAttr([0, 2, 1])
-    }
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[reduce_out],
+                      outputs=[reshape5_out],
+                      params=reshape5_attr)
+    permute3_attr = {"order": ArrayAttr([0, 2, 1])}
     permute3_out = Tensor(dtype=o_dtype, name=out_name)
-    TpuLang.insert_op("top.Permute", inputs=[reshape5_out], outputs=[permute3_out], params=permute3_attr)
+    TpuLang.insert_op("top.Permute",
+                      inputs=[reshape5_out],
+                      outputs=[permute3_out],
+                      params=permute3_attr)
 
     return permute3_out
+
 
 @auto_name()
 @annotation_check
 @assert_with_out_name
-def merger_matmul(
-    input: Tensor,
-    matmul_weight: Tensor,
-    split_hws: List[Tuple[int]] = None,
-    out_name: str = None
-):
+def merger_matmul(input: Tensor,
+                  matmul_weight: Tensor,
+                  split_hws: List[Tuple[int]] = None,
+                  out_name: str = None):
     # first step
     # reorder matmul_weight to convolution kernel
     # [4*in_channels, out_channels] -> [2, 2, in_channels, out_channels] -> [out_channels, in_channels, 2, 2]
@@ -4774,13 +4815,19 @@ def merger_matmul(
         "shape": ArrayAttr([2, 2, in_channels, out_channels]),
     }
     matmul_weight_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_matmul_weight_reshape")
-    TpuLang.insert_op("top.Reshape", inputs=[matmul_weight], outputs=[matmul_weight_reshape_out], params=matmul_weight_reshape_attr)
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[matmul_weight],
+                      outputs=[matmul_weight_reshape_out],
+                      params=matmul_weight_reshape_attr)
     # permute: permute matmul_weight to [out_channels, in_channels, 2, 2]
     matmul_weight_permute_attr = {
         "order": ArrayAttr([3, 2, 0, 1]),
     }
     conv_kernel = Tensor(dtype=o_dtype, name=out_name + "_conv_kernel")
-    TpuLang.insert_op("top.Permute", inputs=[matmul_weight_reshape_out], outputs=[conv_kernel], params=matmul_weight_permute_attr)
+    TpuLang.insert_op("top.Permute",
+                      inputs=[matmul_weight_reshape_out],
+                      outputs=[conv_kernel],
+                      params=matmul_weight_permute_attr)
     # second step
     # do convolution
     # [b, in_channels, h, w] -> [b, out_channels, h/2, w/2]
@@ -4823,25 +4870,41 @@ def merger_matmul(
                 "axes": ArrayAttr([]),
             }
             split_slice_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_{}".format(i))
-            TpuLang.insert_op("top.Slice", inputs=[conv_out, None, None, None], outputs=[split_slice_out], params=split_slice_attr)
+            TpuLang.insert_op("top.Slice",
+                              inputs=[conv_out, None, None, None],
+                              outputs=[split_slice_out],
+                              params=split_slice_attr)
             # reshape: reshape to [split_h, split_w, out_channels, h/2, w/2]
             split_slice_reshape_attr = {
                 "shape": ArrayAttr([split_h, split_w, out_channels, h, w]),
             }
-            split_slice_reshape_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_reshape_{}".format(i))
-            TpuLang.insert_op("top.Reshape", inputs=[split_slice_out], outputs=[split_slice_reshape_out], params=split_slice_reshape_attr)
+            split_slice_reshape_out = Tensor(dtype=o_dtype,
+                                             name=out_name + "_split_slice_reshape_{}".format(i))
+            TpuLang.insert_op("top.Reshape",
+                              inputs=[split_slice_out],
+                              outputs=[split_slice_reshape_out],
+                              params=split_slice_reshape_attr)
             # permute: permute to [split_h, h, split_w, w, out_channels]
             split_slice_permute_attr = {
                 "order": ArrayAttr([0, 3, 1, 4, 2]),
             }
-            split_slice_permute_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_permute_{}".format(i))
-            TpuLang.insert_op("top.Permute", inputs=[split_slice_reshape_out], outputs=[split_slice_permute_out], params=split_slice_permute_attr)
+            split_slice_permute_out = Tensor(dtype=o_dtype,
+                                             name=out_name + "_split_slice_permute_{}".format(i))
+            TpuLang.insert_op("top.Permute",
+                              inputs=[split_slice_reshape_out],
+                              outputs=[split_slice_permute_out],
+                              params=split_slice_permute_attr)
             # reshape: reshape to [(split_h*h*split_w*w), out_channels]
             split_slice_reshape_1_attr = {
                 "shape": ArrayAttr([-1, out_channels]),
             }
-            split_slice_reshape_1_out = Tensor(dtype=o_dtype, name=out_name + "_split_slice_reshape_1_{}".format(i))
-            TpuLang.insert_op("top.Reshape", inputs=[split_slice_permute_out], outputs=[split_slice_reshape_1_out], params=split_slice_reshape_1_attr)
+            split_slice_reshape_1_out = Tensor(dtype=o_dtype,
+                                               name=out_name +
+                                               "_split_slice_reshape_1_{}".format(i))
+            TpuLang.insert_op("top.Reshape",
+                              inputs=[split_slice_permute_out],
+                              outputs=[split_slice_reshape_1_out],
+                              params=split_slice_reshape_1_attr)
             x_list.append(split_slice_reshape_1_out)
             last_split_index += split_h * split_w
         # concat: concat x_list
@@ -4849,7 +4912,10 @@ def merger_matmul(
             "axis": Attr(0, "int32"),
         }
         merger_matmul_out = Tensor(dtype=o_dtype, name=out_name)
-        TpuLang.insert_op("top.Concat", inputs=x_list, outputs=[merger_matmul_out], params=concat_attr)
+        TpuLang.insert_op("top.Concat",
+                          inputs=x_list,
+                          outputs=[merger_matmul_out],
+                          params=concat_attr)
     else:
         # Flatten spatial dimensions into rows
         # [b, out_channels, h/2, w/2] -> [b*h/2*w/2, out_channels]
@@ -4857,13 +4923,20 @@ def merger_matmul(
             "order": ArrayAttr([0, 2, 3, 1]),
         }
         conv_out_permute_out = Tensor(dtype=o_dtype, name=out_name + "_conv_out_permute")
-        TpuLang.insert_op("top.Permute", inputs=[conv_out], outputs=[conv_out_permute_out], params=conv_out_permute_attr)
+        TpuLang.insert_op("top.Permute",
+                          inputs=[conv_out],
+                          outputs=[conv_out_permute_out],
+                          params=conv_out_permute_attr)
         conv_out_reshape_attr = {
-            "shape": ArrayAttr([b*h*w, -1]),
+            "shape": ArrayAttr([b * h * w, -1]),
         }
         merger_matmul_out = Tensor(dtype=o_dtype, name=out_name)
-        TpuLang.insert_op("top.Reshape", inputs=[conv_out_permute_out], outputs=[merger_matmul_out], params=conv_out_reshape_attr)
+        TpuLang.insert_op("top.Reshape",
+                          inputs=[conv_out_permute_out],
+                          outputs=[merger_matmul_out],
+                          params=conv_out_reshape_attr)
     return merger_matmul_out
+
 
 @auto_name()
 @annotation_check
@@ -5028,7 +5101,7 @@ def roiExtractor(rois: Tensor,
     for i in range(len(feats) - 1):
         assert feats[i].shape[1] == feats[i + 1].shape[1]
 
-    roi_num =  target_lvls.shape[0]
+    roi_num = target_lvls.shape[0]
     if max_roi_num:
         assert max_roi_num == roi_num
     o_dtype = rois.dtype
@@ -5135,11 +5208,11 @@ def roiExtractor(rois: Tensor,
         return ScatterND_outputs[-1]
     elif mode == "DynFuse":
         RoiExtractor_out = Tensor(dtype=o_dtype, name=out_name + "_RoiExtractor_{}".format(0))
-        assert(sampling_ratio > 0)
+        assert (sampling_ratio > 0)
         assert (num_layer <= 5 and num_layer >= 1)
         # assert (rois.shape[1] == 5 or rois.shape[1] == 7)
         Slice_out = None
-        if 0: #if(rois.shape[1] == 7):
+        if 0:  #if(rois.shape[1] == 7):
             #check coordinates of rois satisfied with [a, batch_id, x0, y0, x1, y1, b]
             batch = feats[0].shape[0]
             for i in range(num_layer):
@@ -5183,7 +5256,7 @@ def roiExtractor(rois: Tensor,
             "is_static": Attr(False, "bool"),
         }
         # inputs =  [feats[i] for i in range(num_layer)] + [rois, target_lvls]
-        rois_revise = rois# if rois.shape[1] == 5  else Concat_out
+        rois_revise = rois  # if rois.shape[1] == 5  else Concat_out
         assert rois_revise is not None
         inputs = [rois_revise, target_lvls] + [feats[i] for i in range(num_layer)]
         TpuLang.insert_op("top.RoiExtractor",
