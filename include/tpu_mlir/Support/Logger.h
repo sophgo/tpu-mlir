@@ -26,7 +26,7 @@ inline std::string formatString(const char *format, ...) {
 
 #define PASS_LOG_DEBUG_BLOCK(block)                                            \
   do {                                                                         \
-    if (cur_log_level == 1 || cur_log_level == 0) {                            \
+    if (cur_log_level == 1) {                                                  \
       std::string log_output;                                                  \
       llvm::raw_string_ostream rso(log_output);                                \
       block;                                                                   \

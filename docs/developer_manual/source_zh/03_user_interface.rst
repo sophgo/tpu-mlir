@@ -286,6 +286,9 @@ model_transform.py
    * - struct_optimize
      - 否
      - 指定输入特定模型的结构预处理, 例如'0'默认不处理，'1'表示对CLIP模型进行结构预处理
+   * - log_level
+     - 否
+     - 日志输出级别, 可选0：正常打印模型转换日志，1：打印图优化 pattern 应用信息
 
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
@@ -594,6 +597,9 @@ model_deploy.py
    * - enable_maskrcnn
      - 否
      - 是否启用 MaskRCNN大算子.
+   * - log_level
+     - 否
+     - 日志输出级别, 可选0：正常打印模型转换日志，1：打印图优化 pattern 应用信息
 
 对于不同处理器和支持的量化类型对应关系如下表所示：
 
@@ -645,7 +651,7 @@ llm_convert.py
    * - q_group_size
      - 否
      - 每组量化的组大小
-   * - chip
+   * - processor
      - 是
      - 指定处理器类型, 支持bm1684x/bm1688/cv186ah
    * - max_pixels
@@ -662,7 +668,7 @@ llm_convert.py
      - 指定最大输入长度, 默认为seq_length
    * - embedding_disk
      - 否
-     - 如果设置该标志, 则将word_embedding导出为二进制文件, 并通过 CPU 进行推理
+     - 如果设置该标志, 则将word_embedding导出为二进制文件, 并通过中央处理器进行推理
    * - out_dir
      - 是
      - 指定输出的 bmodel 文件保存路径

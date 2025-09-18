@@ -264,8 +264,8 @@ compile_f32
 * opt：int类型，表示编译器group优化级别。0，表示不需要进行group；1，表示尽可能进行group；2，表示根据动态规划进行group。默认值为2。
 * mlir_inference: bool类型，是否执行mlir的推理，如果为False, cmp参数无效。
 * bmodel_inference: bool类型，是否执行bmodel的推理。
-* log_level 用来控制日志等级，目前支持only-pass、only-layer-group、normal、quiet:
-  - only-pass: 主要打印图优化pattern匹配情况。
+* log_level 用来控制日志等级，目前支持simple、only-layer-group、normal、quiet:
+  - simple: 主要打印图优化pattern匹配情况。
   - only-layer-group: 主要打印layer group 信息。
   - normal: 编译生成bmodel的日志都会打印出来
   - quiet: 什么都不打印

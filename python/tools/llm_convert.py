@@ -48,7 +48,7 @@ if __name__ == '__main__':
                         help="quantize type for bmodel")
     parser.add_argument('-g', "--q_group_size", default=64, type=int,
                         help="group size for per-group quant, only used in quant mode")
-    parser.add_argument('-c', '--chip', type=str, default="bm1684x",
+    parser.add_argument('-c', '--chip', "--processor", type=str, default="bm1684x",
                         choices=["bm1684x", "bm1688", "cv186x", "bm1690"],
                         help="chip type for bmodel")
     parser.add_argument('--num_device', type=int, default=1,

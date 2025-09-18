@@ -288,6 +288,9 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
    * - struct_optimize
      - N
      - Specify structural preprocessing for specific models, e.g., '1' means structural preprocessing for CLIP models
+   * - log_level
+     - N
+     - Set the log level, the optional values are: 0, 1. 0 means normal model transform info, and 1 means all pattern applied info.
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 
@@ -583,6 +586,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - enable_maskrcnn
      - N
      - if enable comparison for MaskRCNN.
+   * - log_level
+     - N
+     - Set the log level, the optional values are: 0, 1. 0 means normal model transform info, and 1 means all pattern applied info.
 
 The following table shows the correspondence between different processors and the supported quantize types:
 
@@ -635,7 +641,7 @@ Convert the LLM model into bmodel, the parameters are as follows:
    * - q_group_size
      - No
      - Specifies the group size for quantization
-   * - chip
+   * - processor
      - Yes
      - Specifies the processor type; supports bm1684x/bm1688/cv186ah
    * - max_pixels
@@ -652,7 +658,7 @@ Convert the LLM model into bmodel, the parameters are as follows:
      - Specifies the maximum input length, default is seq_length
    * - embedding_disk
      - No
-     - If set, exports the word embeddings to a binary file and runs inference on the CPU
+     - If set, exports the word embeddings to a binary file and runs inference on the Central Processing Unit
    * - out_dir
      - Yes
      - Specifies the output directory for the bmodel file
@@ -687,7 +693,7 @@ Used to analyze the performance of HuggingFace LLM models. The supported paramet
      - Specify the processor type; supports bm1684x/bm1688/cv186ah
    * - tpu_freq
      - No
-     - Specify the TPU frequency in MHz; defaults to commonly used TPU frequency
+     - Specify the Tensor Computing Processor frequency in MHz; defaults to commonly used Tensor Computing Processor frequency
    * - quant_lmhead
      - No
      - Whether to quantize lm_head; default is False

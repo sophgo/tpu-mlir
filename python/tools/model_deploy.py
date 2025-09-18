@@ -74,6 +74,7 @@ class DeployTool:
         self.excepts = args.excepts
         self.quantize = args.quantize.lower()
         self.tolerance = args.tolerance
+        self.log_level = args.log_level
         if not self.tolerance:
             if self.quantize in ["int8", "w8f16", "w8bf16", "w4f16", "w4bf16"]:
                 self.tolerance = "0.90,0.80"
@@ -233,29 +234,28 @@ class DeployTool:
             return {}
         else:
             file_mark(self.tpu_mlir)
-            patterns = mlir_lowering(
-                self.mlir_file,
-                self.tpu_mlir,
-                self.quantize,
-                self.chip,
-                self.num_device,
-                self.num_core,
-                self.cali_table,
-                self.asymmetric,
-                self.quantize_table,
-                self.customization_format,
-                self.fuse_preprocess,
-                self.aligned_input,
-                self.high_precision,
-                self.do_winograd,
-                self.q_group_size,
-                self.q_symmetric,
-                True if self.patterns_count else False,
-                addr_mode=self.addr_mode,
-                mute=self.mute,
-                matmul_perchannel=self.matmul_perchannel,
-                gelu_mode=self.gelu_mode,
-            )
+            patterns = mlir_lowering(self.mlir_file,
+                                     self.tpu_mlir,
+                                     self.quantize,
+                                     self.chip,
+                                     self.num_device,
+                                     self.num_core,
+                                     self.cali_table,
+                                     self.asymmetric,
+                                     self.quantize_table,
+                                     self.customization_format,
+                                     self.fuse_preprocess,
+                                     self.aligned_input,
+                                     self.high_precision,
+                                     self.do_winograd,
+                                     self.q_group_size,
+                                     self.q_symmetric,
+                                     True if self.patterns_count else False,
+                                     addr_mode=self.addr_mode,
+                                     mute=self.mute,
+                                     matmul_perchannel=self.matmul_perchannel,
+                                     gelu_mode=self.gelu_mode,
+                                     log_level="normal" if self.log_level == 0 else "simple")
             if self.do_validate and not self.enable_maskrcnn:
                 self.validate_tpu_mlir()
             return patterns
@@ -421,7 +421,8 @@ class DeployTool:
                     layer_group_cache=(
                         f"{self.prefix}.layer_group_cache.json" if self.quantize != "int8" else
                         f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json"),
-                    layer_group_config=self.layer_group_config)
+                    layer_group_config=self.layer_group_config,
+                    log_level="normal" if self.log_level == 0 else "simple")
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -559,6 +560,7 @@ if __name__ == '__main__':
                         help="use rewriter config to do model deploy.")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')
     parser.add_argument("--disable_layer_group", action="store_true", help="Whether to enable layer group pass")
     parser.add_argument("--disable_gdma_check", action='store_true', help='disable gdma addr check')
     parser.add_argument("--trunc_final", nargs="*", help="assign op to be trunced in final mlir.")

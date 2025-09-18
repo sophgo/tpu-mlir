@@ -66,7 +66,8 @@ class ModelTransformer(object):
                         mlir_file: str,
                         add_postprocess: str = "",
                         patterns_count: dict = {},
-                        pruning: str = ""):
+                        pruning: str = "",
+                        log_level: int = 0):
         self.set_mlir_file(mlir_file)
         mlir_origin = self.mlir_file.replace('.mlir', '_origin.mlir', 1)
         if self.converter:
@@ -79,7 +80,8 @@ class ModelTransformer(object):
                                     self.mlir_file,
                                     add_postprocess,
                                     True if patterns_count else False,
-                                    pruning=pruning)
+                                    pruning=pruning,
+                                    log_level="normal" if log_level == 0 else "simple")
         if patterns_count:
             for k, v in patterns_count.items():
                 assert k in patterns and v == patterns[k], \
@@ -490,6 +492,8 @@ if __name__ == '__main__':
                         help="use rewriter config to do model transform.")
     parser.add_argument("--struct_optimize", type=int, default=0,
                         help="enable struct optimize presets by id: 1=clip, 2+=future models")
+    # ========== Debug Options ==============
+    parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args, unknown_args = parser.parse_known_args()
@@ -517,7 +521,8 @@ if __name__ == '__main__':
         qat_tool.process_model()
         args.model_def = args.model_def.replace('.onnx', '_qat.onnx')
     tool = get_model_transform(args)
-    tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count, args.pruning)
+    tool.model_transform(args.mlir, args.add_postprocess, args.patterns_count, args.pruning,
+                         args.log_level)
     if (not args.not_inference) and args.test_input:
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result,
