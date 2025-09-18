@@ -304,10 +304,17 @@ class MatchPattern:
         count = 0
         type_tensors = []
         fp_layer_list = []
-        fp_layer_list_part_quantize = []
         all_tensors = self.parser.get_op_name_list()
         num_tensors = len(all_tensors)
         model_block_name = None
+
+        if self.args.part_quantize:
+            for j in range(num_tensors):
+                op_type = self.parser.get_op_type_by_op_name(all_tensors[j])
+                if op_type in self.quantize_ops:
+                    pass
+                else:
+                    fp_layer_list.append(all_tensors[j])
 
         for i in range(num_tensors):
             op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
@@ -375,15 +382,7 @@ class MatchPattern:
 
                 split_fuse_fp_layer_list = []
                 for item in fp_layer_list:
-                    if item.startswith('fused['):
-                        match = re.search(r'fused\["(.*?)"\]', item)
-                        if match:
-                            fused_paths = [p.strip('"') for p in match.group(1).split(', ')]
-                            split_fuse_fp_layer_list.extend(fused_paths)
-                        else:
-                            split_fuse_fp_layer_list.append(item)
-                    else:
-                        split_fuse_fp_layer_list.append(item)
+                    split_fuse_fp_layer_list.extend(split_fuseop(item))
                 self.gen_qtable(split_fuse_fp_layer_list, flag)
                 return
 
@@ -529,12 +528,4 @@ class MatchPattern:
                             fp_layer_list.append(all_tensors[i])
 
             self.gen_qtable(fp_layer_list, flag)
-        if flag == 0 and self.args.part_quantize:
-            for j in range(num_tensors):
-                op_type = self.parser.get_op_type_by_op_name(all_tensors[j])
-                if op_type in self.quantize_ops:
-                    pass
-                else:
-                    fp_layer_list_part_quantize.append(all_tensors[j])
-            self.gen_qtable(fp_layer_list_part_quantize, flag)
         return
