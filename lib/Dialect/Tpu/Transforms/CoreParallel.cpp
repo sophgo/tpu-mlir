@@ -312,20 +312,6 @@ public:
       return;
     }
     auto modules = module::getAllModules();
-    // set multicore flag if support
-    for (auto m : *modules) {
-      m->walk<WalkOrder::PreOrder>([&](Operation *op) {
-        if (false == module::isOpInBlock(op)) {
-          auto gl = dyn_cast<GlobalGenInterface>(op);
-          if (gl && gl.support_multi_core()) {
-            mlir::Attribute isTrue =
-                mlir::BoolAttr::get(op->getContext(), true);
-            op->setAttr("multicore", isTrue);
-          }
-        }
-      });
-    }
-
     for (auto m : *modules) {
       // do core match first
       doCoreParallelPattern(m);
