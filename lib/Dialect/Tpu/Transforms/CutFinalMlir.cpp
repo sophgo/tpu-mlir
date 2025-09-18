@@ -700,6 +700,8 @@ void prune_unused_vars(ModuleOp submodule, const bool remove_unused_local_ops) {
     op->setAttr("flow", builder.getI64ArrayAttr(new_flow));
     op->setAttr("other_up_overlap_op", builder.getI64ArrayAttr({}));
     op->setAttr("other_down_overlap_op", builder.getI64ArrayAttr({}));
+    op->setAttr("self_up_overlap_op", builder.getI64ArrayAttr({}));
+    op->setAttr("self_down_overlap_op", builder.getI64ArrayAttr({}));
   });
 
   // 2.2. update subfunc id & next_index.
@@ -865,26 +867,30 @@ private:
         }
       });
     });
+    /**
+     * Following code only works well for BM1688 and newer chips.
+     * TODO: support coeff size minize for BM1684X chip.
+     */
     // 2. update coeff size to minimize the size of bmodel.
-    int64_t max_addr = 0;
-    submodule.walk([&](top::WeightOp op) {
-      max_addr = std::max(max_addr, module::getAddress(op));
-    });
-    auto it = weight_addrs.upper_bound(max_addr);
-    if (it != weight_addrs.end()) {
-      module::setCoeffSize(submodule, *it - module::getCoeffAddr(submodule));
-    }
-    // update coeff start addr.
-    int64_t weight_start_addr = module::getCoeffAddr(submodule);
-    int64_t new_weight_start_addr =
-        weight_start_addr + module::getCoeffSize(submodule);
-    submodule.walk([&](top::WeightOp op) {
-      new_weight_start_addr =
-          std::min(new_weight_start_addr, module::getAddress(op));
-    });
-    module::setCoeffAddr(submodule, new_weight_start_addr);
-    module::setCoeffSize(submodule, module::getCoeffSize(submodule) +
-                          new_weight_start_addr - weight_start_addr);
+    // int64_t max_addr = 0;
+    // submodule.walk([&](top::WeightOp op) {
+    //   max_addr = std::max(max_addr, module::getAddress(op));
+    // });
+    // auto it = weight_addrs.upper_bound(max_addr);
+    // if (it != weight_addrs.end()) {
+    //   module::setCoeffSize(submodule, *it - module::getCoeffAddr(submodule));
+    // }
+    // // update coeff start addr.
+    // int64_t weight_start_addr = module::getCoeffAddr(submodule);
+    // int64_t new_weight_start_addr =
+    //     weight_start_addr + module::getCoeffSize(submodule);
+    // submodule.walk([&](top::WeightOp op) {
+    //   new_weight_start_addr =
+    //       std::min(new_weight_start_addr, module::getAddress(op));
+    // });
+    // module::setCoeffAddr(submodule, new_weight_start_addr);
+    // module::setCoeffSize(submodule, module::getCoeffSize(submodule) +
+    //                       new_weight_start_addr - weight_start_addr);
 
     // 3. update module types again.
     module::updateModuleTypes();
