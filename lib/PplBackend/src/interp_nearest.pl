@@ -191,16 +191,6 @@ void interp_(T *ptr_output, T *ptr_input, const int g_core_num, const int N, con
           index_w_dif = 0;
         }
       }
-      if(!align_corners){
-        index_h_dif = (int)floor((count_h * block_h + const_c) * scale_h - const_c);
-        if(index_h_dif < 0){
-          index_h_dif = 0;
-        }
-        index_w_dif = (int)floor((count_w * block_w + const_c) * scale_w - const_c);
-        if(index_w_dif < 0){
-          index_w_dif = 0;
-        }
-      }
       dim4 h_stride;
       get_stride<int16>(&h_stride, &real_index_shape, TPU_COMPACT);
       h_stride.w = 2;
@@ -228,16 +218,6 @@ void interp_(T *ptr_output, T *ptr_input, const int g_core_num, const int N, con
         }
         if(count_w){
           idx_input_w =  floor(idx_w * scale_w - 1);
-          if(idx_input_w < 0){
-            idx_input_w = 0;
-          }
-        }
-        if(!align_corners){
-          idx_input_h = floor((idx_h + const_c) * scale_h - const_c);
-          if(idx_input_h < 0){
-            idx_input_h = 0;
-          }
-          idx_input_w = floor((idx_w + const_c) * scale_w - const_c);
           if(idx_input_w < 0){
             idx_input_w = 0;
           }

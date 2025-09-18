@@ -2000,8 +2000,10 @@ class ONNX_IR_TESTER(object):
                  'align_corners']
         case6 = [[1, 1, 736, 1280], [1, 1, 184, 320], [1, 1, 1 / 4, 1 / 4], [4], 'linear',
                  'align_corners']
-        cases = (case0, case1, case2, case3, case4, case5,
-                 case6) if self.chip in ['bm1684x', 'bm1688', 'sg2380'] else (case0, )
+        case7 = [[1, 128, 92, 160], [1, 128, 23, 40], [1, 1, 1 / 4, 1 / 4], [4], 'nearest',
+                 'asymmetric']
+        cases = (case0, case1, case2, case3, case4, case5, case6,
+                 case7) if self.chip in ['bm1684x', 'bm1688', 'sg2380'] else (case0, )
 
         for idx, case in enumerate(cases):
             input_shape, output_shape, scales, dim, mode, coor_mode = case
