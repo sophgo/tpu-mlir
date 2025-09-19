@@ -492,11 +492,238 @@ protected:
   }
 };
 
+// Pattern to fuse correlation computation chain into a single Correlation op
+// Pattern scope:
+// Start: Two operation outputs (any operation types)
+// End: Final ScatterND operation
+// Pattern content:
+// 1. Initial operation: Mul(input1, input2) -> Reshape -> [Expand] ->
+// ReduceMean -> Reshape -> ScatterND (offset=0 case)
+// 2. Repeated operations: For i in [1, 2, ..., max_disp-1]:
+//    Slice(input1, offset=[i]) -> Slice(input2, ends=[-i]) ->
+//    Mul -> Reshape -> [Expand] -> ReduceMean -> Reshape -> ScatterND
+// Optimization goal:
+// Replace entire correlation computation with Correlation(input1, input2) ->
+// Unsqueeze -> subsequent operations
+class ConvertFuseCorrelationPattern
+    : public OpRewritePattern<top::ScatterNDOp> {
+public:
+  ConvertFuseCorrelationPattern(mlir::MLIRContext *context,
+                                PatternBenefit benefit)
+      : OpRewritePattern<top::ScatterNDOp>(context, benefit) {}
+
+  LogicalResult matchAndRewrite(top::ScatterNDOp op,
+                                PatternRewriter &rewriter) const override {
+    // Step 1: Check if this ScatterND has users (output is used by other
+    // operations)
+    if (op.getResult().getUsers().empty()) {
+      return failure();
+    }
+
+    // Step 2: Check if Correlation operation already exists (avoid duplicate
+    // processing)
+    auto block = op->getBlock();
+    for (auto &block_op : *block) {
+      if (isa<top::CorrelationOp>(&block_op)) {
+        return failure();
+      }
+    }
+
+    // Step 3: Trace back the correlation chain to find the initial two source
+    // operations Trace from final ScatterND: ScatterND <- Reshape <- [Expand]
+    // <- ReduceMean <- Reshape <- Mul <- Slice/any_op
+    auto updates = op.getUpdates();
+
+    auto reshape2 = dyn_cast<top::ReshapeOp>(updates.getDefiningOp());
+    if (!reshape2) {
+      return failure();
+    }
+
+    // Check for optional Expand operation after Reshape
+    Value reduce_input = reshape2.getInput();
+    auto expand = dyn_cast<top::ExpandOp>(reduce_input.getDefiningOp());
+    if (expand) {
+      reduce_input = expand.getInput();
+    }
+
+    auto reduce = dyn_cast<top::ReduceOp>(reduce_input.getDefiningOp());
+    if (!reduce || reduce.getMode() != "ReduceMean") {
+      return failure();
+    }
+
+    auto reshape1 = dyn_cast<top::ReshapeOp>(reduce.getInput().getDefiningOp());
+    if (!reshape1) {
+      return failure();
+    }
+
+    auto mul = dyn_cast<top::MulOp>(reshape1.getInput().getDefiningOp());
+    if (!mul) {
+      return failure();
+    }
+
+    // Step 4: Determine two source operations from Mul inputs
+    auto mul_input1 = mul.getInputs()[0];
+    auto mul_input2 = mul.getInputs()[1];
+
+    Value left_input, right_input;
+
+    // Case 1: Direct Mul of two operation outputs (offset=0 case)
+    if (mul_input1.getDefiningOp() && mul_input2.getDefiningOp()) {
+      // Check if both are not Slice operations (direct use of source operation
+      // outputs)
+      auto slice1 = dyn_cast<top::SliceOp>(mul_input1.getDefiningOp());
+      auto slice2 = dyn_cast<top::SliceOp>(mul_input2.getDefiningOp());
+
+      if (!slice1 && !slice2) {
+        // This is the initial Mul operation for offset=0
+        left_input = mul_input1;
+        right_input = mul_input2;
+      } else if (slice1 && slice2) {
+        // Case 2: Mul of two Slice outputs (offset>0 case)
+        // Trace back from Slice to source operations
+        left_input = slice1.getInput();
+        right_input = slice2.getInput();
+
+        // Verify these inputs have defining operations
+        if (!left_input.getDefiningOp() || !right_input.getDefiningOp()) {
+          return failure();
+        }
+      } else {
+        return failure();
+      }
+    } else {
+      return failure();
+    }
+
+    // Step 5: Scan entire block to collect all related correlation operations
+    std::set<int64_t> all_offsets;
+    std::vector<top::ScatterNDOp> all_scatter_ops;
+
+    // Traverse all ScatterND operations in block to find operations belonging
+    // to same correlation pattern
+    for (auto &block_op : *block) {
+      if (auto scatter_op = dyn_cast<top::ScatterNDOp>(&block_op)) {
+        // Trace back to verify if this ScatterND belongs to the same
+        // correlation pattern
+        auto sc_updates = scatter_op.getUpdates();
+        auto sc_reshape2 = dyn_cast<top::ReshapeOp>(sc_updates.getDefiningOp());
+        if (!sc_reshape2)
+          continue;
+
+        // Check for optional Expand operation after Reshape
+        Value sc_reduce_input = sc_reshape2.getInput();
+        auto sc_expand =
+            dyn_cast<top::ExpandOp>(sc_reduce_input.getDefiningOp());
+        if (sc_expand) {
+          sc_reduce_input = sc_expand.getInput();
+        }
+
+        auto sc_reduce =
+            dyn_cast<top::ReduceOp>(sc_reduce_input.getDefiningOp());
+        if (!sc_reduce || sc_reduce.getMode() != "ReduceMean")
+          continue;
+
+        auto sc_reshape1 =
+            dyn_cast<top::ReshapeOp>(sc_reduce.getInput().getDefiningOp());
+        if (!sc_reshape1)
+          continue;
+
+        auto sc_mul =
+            dyn_cast<top::MulOp>(sc_reshape1.getInput().getDefiningOp());
+        if (!sc_mul)
+          continue;
+
+        // Check if this Mul's inputs are related to our left_input and
+        // right_input
+        auto sc_input1 = sc_mul.getInputs()[0];
+        auto sc_input2 = sc_mul.getInputs()[1];
+
+        bool belongs_to_pattern = false;
+
+        // Check for offset=0 case (direct use of source operation outputs)
+        if ((sc_input1 == left_input && sc_input2 == right_input) ||
+            (sc_input1 == right_input && sc_input2 == left_input)) {
+          belongs_to_pattern = true;
+          all_offsets.insert(0);
+        } else {
+          // Check for offset>0 case (use of Slice outputs)
+          auto sc_slice1 = dyn_cast<top::SliceOp>(sc_input1.getDefiningOp());
+          auto sc_slice2 = dyn_cast<top::SliceOp>(sc_input2.getDefiningOp());
+
+          if (sc_slice1 && sc_slice2) {
+            if ((sc_slice1.getInput() == left_input &&
+                 sc_slice2.getInput() == right_input) ||
+                (sc_slice1.getInput() == right_input &&
+                 sc_slice2.getInput() == left_input)) {
+              belongs_to_pattern = true;
+
+              // Extract offset information
+              auto left_slice =
+                  (sc_slice1.getInput() == left_input) ? sc_slice1 : sc_slice2;
+              auto offset_array =
+                  module::getI64Array(left_slice.getOffsetAttr());
+              if (offset_array && offset_array->size() == 1) {
+                all_offsets.insert((*offset_array)[0]);
+              }
+            }
+          }
+        }
+
+        if (belongs_to_pattern) {
+          all_scatter_ops.push_back(scatter_op);
+        }
+      }
+    }
+
+    // Calculate max_disp
+    int64_t max_disp = all_offsets.size();
+    if (max_disp == 0) {
+      return failure();
+    }
+
+    // Infer num_groups from reshape1
+    int64_t num_groups = 8; // Default value
+    auto shape_array = module::getI64Array(reshape1.getShapeAttr());
+    if (shape_array && shape_array->size() >= 2) {
+      num_groups = (*shape_array)[1]; // Second dimension is num_groups
+    }
+
+    // Step 6: Create Correlation operation
+    auto max_disp_attr = rewriter.getI64IntegerAttr(max_disp);
+    auto num_groups_attr = rewriter.getI64IntegerAttr(num_groups);
+
+    // Infer element type from input type
+    Type element_type = rewriter.getF32Type(); // Default f32
+    if (auto shaped_type = left_input.getType().dyn_cast<ShapedType>()) {
+      element_type = shaped_type.getElementType();
+    }
+    auto correlation_type = UnrankedTensorType::get(element_type);
+
+    auto correlation_op = rewriter.create<top::CorrelationOp>(
+        mlir::NameLoc::get(rewriter.getStringAttr("fused_correlation")),
+        correlation_type, ValueRange{left_input, right_input}, max_disp_attr,
+        num_groups_attr);
+
+    // Step 7: Create Unsqueeze operation to get 5D output
+    auto axes_attr = rewriter.getI64ArrayAttr({0});
+    auto unsqueeze_type = UnrankedTensorType::get(element_type);
+
+    auto unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
+        mlir::NameLoc::get(
+            rewriter.getStringAttr("fused_correlation_unsqueeze")),
+        unsqueeze_type, correlation_op.getResult(), axes_attr);
+
+    // Step 8: Replace final ScatterND operation
+    rewriter.replaceOp(op, unsqueeze_op.getResult());
+
+    return success();
+  }
+};
+
 void populateStructOptimizePatterns(RewritePatternSet *patterns,
                                     const std::vector<RewriterRule> &rules) {
   // Always-on fixed patterns (independent of external rules)
-  // patterns->add<>(
-  //     patterns->getContext(), 8);
+  patterns->add<ConvertFuseCorrelationPattern>(patterns->getContext(), 8);
 
   // Rule-driven patterns (enabled only when rules are provided)
   if (!rules.empty()) {
