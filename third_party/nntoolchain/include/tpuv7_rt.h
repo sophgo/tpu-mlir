@@ -687,6 +687,51 @@ tpuRtStatus_t tpuRtGetChipSN(int device_id, char *sn);
  *          Other code Fails.
  */
 tpuRtStatus_t tpuRtGetPcieStatus(int device_id, int *pcie_id);
+
+/**
+ * @name    tpuRtGetAllMemory
+ * @brief   To get total device memory of current device
+ * @ingroup tpuv7_rt
+ *
+ * @param [out]	value   total memory size
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtGetAllMemory(uint64_t *value);
+
+/**
+ * @name    tpuRtGetFreeMemory
+ * @brief   To get free device memory of current device
+ * @ingroup tpuv7_rt
+ *
+ * @param [out]	value   free memory size
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtGetFreeMemory(uint64_t *value);
+
+/**
+ * @name    tpuRtGetPeakMemory
+ * @brief   To get peak device memory of current device
+ * @ingroup tpuv7_rt
+ *
+ * @param [out]	value   peak memory size
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtGetPeakMemory(uint64_t *value);
+
+/**
+ * @name    tpuRtResetPeakMemory
+ * @brief   To set peak device memory to 0
+ * @ingroup tpuv7_rt
+ *
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtResetPeakMemory(void);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -105,9 +105,9 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 # libbmcpu.so/libusercpu.so are deprecated
 ```
 
-## tpuv7-runtime 2025-09-18
+## tpuv7-runtime 2025-09-20
 
-build from tpuv7-runtime c2a9f8bc360fe5c03e467db6997c83579b69ff80
+build from tpuv7-runtime 43871bf2cafb6e0ef07431325db9eba18a037b7f
 
 ```bash
 mkdir -p build/emulator

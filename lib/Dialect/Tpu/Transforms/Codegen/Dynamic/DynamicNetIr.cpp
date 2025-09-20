@@ -658,10 +658,11 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
         .max_nslice_deprecated = 255, // 255 means invalid
         .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
         .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
-        .flags = (uint8_t)(
-            (1 << 5) | (sub_group.type << 2) |
-            ((1 << 1) |
-             (hsecs > 1))), // group_type, using max_nslice, h_is_split or not
+        .flags =
+            (uint8_t)((1 << 5) | (sub_group.type << 2) |
+                      ((1 << 1) |
+                       (hsecs >
+                        1))), // group_type, using max_nslice, h_is_split or not
         .swpipl_stage_num = (uint8_t)(swpipl_stage_num),
         .max_nslice = max_nslice};
     ir_group_timestep_base_info.push_back(timestep_base_info);
@@ -805,82 +806,76 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       ir_group_timestep_layer_param.push_back(layer_info_v2);
     ir_group_timestep_tensor_gdma_param.push_back(tensor_gdma_info_v2);
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (module::isBM1684XFamily() || module::isBM1684Family() ||
-        module::isBM1690Family()) {
-      // global layer
-      LgInfo sub_group;
-      sub_group.group_ops.push_back(op);
-      for (auto &&v : op->getOperands()) {
-        if (!isa_and_nonnull<top::WeightOp, top::NoneOp, tpu::BufferOp>(
-                v.getDefiningOp()))
-          sub_group.group_ins.emplace_back(v);
-      }
-      for (auto &&v : op->getResults())
-        sub_group.group_outs.emplace_back(v);
-      m_layer_groups_.push_back(sub_group);
-      // get and push fw_timestep_base_info_t
-      fw_timestep_base_info_t timestep_base_info = {
-          .ts_num_and_split_tensor_num = 1 << 16,
-          // 252 is aligned to 4, because it may meet 4N
-          .max_nslice_deprecated = 255, // 255 means invalid
-          .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
-          .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
-          .flags =
-              (uint8_t)((1 << 5) | (sub_group.type << 2) |
-                        ((1 << 1) | 0)), // using max_nslice, h is not split
-          .swpipl_stage_num = 1,
-          .max_nslice = (uint32_t)batch_num};
-      ir_group_timestep_base_info.push_back(timestep_base_info);
-      fw_ir_length += sizeof(fw_timestep_base_info_t);
+    // global layer
+    LgInfo sub_group;
+    sub_group.group_ops.push_back(op);
+    for (auto &&v : op->getOperands()) {
+      if (!isa_and_nonnull<top::WeightOp, top::NoneOp, tpu::BufferOp>(
+              v.getDefiningOp()))
+        sub_group.group_ins.emplace_back(v);
+    }
+    for (auto &&v : op->getResults())
+      sub_group.group_outs.emplace_back(v);
+    m_layer_groups_.push_back(sub_group);
+    // get and push fw_timestep_base_info_t
+    fw_timestep_base_info_t timestep_base_info = {
+        .ts_num_and_split_tensor_num = 1 << 16,
+        // 252 is aligned to 4, because it may meet 4N
+        .max_nslice_deprecated = 255, // 255 means invalid
+        .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
+        .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
+        // using max_nslice, h is not split
+        .flags = (uint8_t)((1 << 5) | (sub_group.type << 2) | ((1 << 1) | 0)),
+        .swpipl_stage_num = 1,
+        .max_nslice = (uint32_t)batch_num};
+    ir_group_timestep_base_info.push_back(timestep_base_info);
+    fw_ir_length += sizeof(fw_timestep_base_info_t);
 
-      // get and push fw_input_tensor_info_t for each input tensor
-      vector<fw_input_tensor_info_t> input_tensor_info_v;
-      for (int i = 0; i < sub_group.group_ins.size(); i++) {
-        fw_input_tensor_info_t input_tensor_info = {
-            .tensor_id_and_max_hslice =
-                (uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16,
-            .stride_h_and_kh = 0,
-            .pad_h_top_and_bottom = 0,
-            .min_pool_kh = 0};
+    // get and push fw_input_tensor_info_t for each input tensor
+    vector<fw_input_tensor_info_t> input_tensor_info_v;
+    for (int i = 0; i < sub_group.group_ins.size(); i++) {
+      fw_input_tensor_info_t input_tensor_info = {
+          .tensor_id_and_max_hslice =
+              (uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16,
+          .stride_h_and_kh = 0,
+          .pad_h_top_and_bottom = 0,
+          .min_pool_kh = 0};
 
-        input_tensor_info_v.push_back(input_tensor_info);
-        // because firmware only need tensor id actually, so the length of IR
-        // info for firmware is sizeof(u32)
-        fw_ir_length += sizeof(uint32_t);
-      }
-      ir_group_input_tensor_info.push_back(input_tensor_info_v);
+      input_tensor_info_v.push_back(input_tensor_info);
+      // because firmware only need tensor id actually, so the length of IR
+      // info for firmware is sizeof(u32)
+      fw_ir_length += sizeof(uint32_t);
+    }
+    ir_group_input_tensor_info.push_back(input_tensor_info_v);
 
-      // get and push group_out_tensor_id_and_consumer_num
-      vector<uint32_t> group_out_tensor_id_and_consumer_num;
-      for (int i = 0; i < sub_group.group_outs.size(); i++) {
-        uint32_t group_consumer_num =
-            get_tensor_group_consumer_num(sub_group.group_outs[i]);
-        uint32_t tensor_id_and_consumer_num =
-            (((uint32_t)get_tensor_id(sub_group.group_outs[i])) << 16) |
-            (group_consumer_num & 0xffff);
-        group_out_tensor_id_and_consumer_num.push_back(
-            tensor_id_and_consumer_num);
-        fw_ir_length += sizeof(uint32_t);
-      }
-      ir_group_out_tensor_id_and_consumer_num.push_back(
-          group_out_tensor_id_and_consumer_num);
+    // get and push group_out_tensor_id_and_consumer_num
+    vector<uint32_t> group_out_tensor_id_and_consumer_num;
+    for (int i = 0; i < sub_group.group_outs.size(); i++) {
+      uint32_t group_consumer_num =
+          get_tensor_group_consumer_num(sub_group.group_outs[i]);
+      uint32_t tensor_id_and_consumer_num =
+          (((uint32_t)get_tensor_id(sub_group.group_outs[i])) << 16) |
+          (group_consumer_num & 0xffff);
+      group_out_tensor_id_and_consumer_num.push_back(
+          tensor_id_and_consumer_num);
+      fw_ir_length += sizeof(uint32_t);
+    }
+    ir_group_out_tensor_id_and_consumer_num.push_back(
+        group_out_tensor_id_and_consumer_num);
 
-      auto time_step = std::make_shared<BasicTimeStep>();
-      TpuTsField tpu_field;
-      tpu_field.emplace_back(op);
-      time_step->add_tpu0_ts_field(tpu_field);
-      m_time_step_groups_.push_back(time_step);
+    auto time_step = std::make_shared<BasicTimeStep>();
+    TpuTsField tpu_field;
+    tpu_field.emplace_back(op);
+    time_step->add_tpu0_ts_field(tpu_field);
+    m_time_step_groups_.push_back(time_step);
 
-      vector<vector<ir_tensor_gdma_info_t>> tensor_gdma_dummy;
-      ir_group_timestep_tensor_gdma_param.push_back(tensor_gdma_dummy);
+    vector<vector<ir_tensor_gdma_info_t>> tensor_gdma_dummy;
+    ir_group_timestep_tensor_gdma_param.push_back(tensor_gdma_dummy);
 
-      if (get_dynamic_version() >= 2) {
-        global_layer_ir_generate_v2(op);
-      } else {
-        global_layer_ir_generate(op);
-      }
+    if (get_dynamic_version() >= 2) {
+      global_layer_ir_generate_v2(op);
     } else {
-      llvm_unreachable("not support");
+      global_layer_ir_generate(op);
     }
   }
 }

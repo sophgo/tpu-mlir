@@ -373,6 +373,7 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
   }
   if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
     if (module::isBM1684X()) {
+      // bm1684x has no mem tag
       module::setIOAddr(m, start_addr);
       module::setIOSize(m, io_limit - start_addr);
       module::setNeuronAddr(m, io_limit);
@@ -380,6 +381,7 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
       return;
     }
     if (BM168x::SUPPORT_MEM_TAG) {
+      // bm1688 and bm1690
       // move address to tag start
       int64_t io_start = BM168x::IO_START_ADDR;
       int64_t io_offset = io_start - start_addr;

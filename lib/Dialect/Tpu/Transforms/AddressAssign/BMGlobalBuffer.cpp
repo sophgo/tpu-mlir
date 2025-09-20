@@ -1109,10 +1109,6 @@ public:
       return failure();
     }
 
-    if (!module::isBM1684XFamily()) {
-      return failure();
-    }
-
     int64_t num_elements = module::getNumElements(TopKOp.getInput());
     auto val_type = module::getStorageType(TopKOp.getValues());
     auto idx_type = module::getStorageType(TopKOp.getIndices());
