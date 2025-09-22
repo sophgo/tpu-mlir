@@ -123,4 +123,9 @@ ArrayAttr tpu::RMSNormOp::getIndexingMaps() {
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
 
-bool tpu::RMSNormOp::support_multi_core() { return false; }
+bool tpu::RMSNormOp::support_multi_core() {
+  if (module::isMultiCoreArch()) {
+    return true;
+  }
+  return false;
+}

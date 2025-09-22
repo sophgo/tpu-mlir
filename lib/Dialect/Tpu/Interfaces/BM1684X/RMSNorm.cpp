@@ -27,8 +27,15 @@ void tpu::RMSNormOp::codegen_global_bm1684x() {
   param.common.weight_keep_f32 = getWeightKeepF32();
 
 #if 1
-  BM168x::call_global_func("backend_api_rms_norm_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+  if (supportMultiCore(*this)) {
+    BM168x::call_global_func("backend_api_rms_norm_multi_core_global", &param,
+                             sizeof(param), input_spec->data(),
+                             output_spec->data());
+  } else {
+    BM168x::call_global_func("backend_api_rms_norm_global", &param,
+                             sizeof(param), input_spec->data(),
+                             output_spec->data());
+  }
 #else
   BM168x::call_ppl_global_func("api_rms_norm_global", &param, sizeof(param),
                                input_spec->data(), output_spec->data());
