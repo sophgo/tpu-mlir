@@ -114,7 +114,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       LoweringF32(rewriter, op);
       return;
     }
-    float fqmax;
+    double fqmax;
     if (filterOp.getScale().has_value()) {
       auto weight_scale_v = module::getF64Array(filterOp.getScale().value());
       if (use_perchannel) {
