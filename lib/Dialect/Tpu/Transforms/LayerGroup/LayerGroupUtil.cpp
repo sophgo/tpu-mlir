@@ -638,6 +638,7 @@ get_group_max_secs(LgInfo &lg_info,
     }
     auto mode = getRunMode(dyn_cast<func::FuncOp>(op->getParentOp()));
     auto lgOp = dyn_cast<LocalGenInterface>(op);
+    assert(!lgOp && "Global only Op!");
     int min_total_secs = 100000;
     for (auto v : get_output_values(op)) {
       module::getNCDHW(v, n, c, d, h, w, lg_info.type);

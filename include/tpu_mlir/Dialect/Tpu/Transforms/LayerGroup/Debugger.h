@@ -259,7 +259,8 @@ public:
 
   void dump();
   void create_debugger_config(const std::string &config_file);
-  void load_debugger_config(const std::string &config_file);
+  void load_debugger_config(const std::string &config_file,
+                            const int subfunc_idx);
 
 private:
   LgDebugger() { clear(); }

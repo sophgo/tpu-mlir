@@ -125,8 +125,20 @@ void LgDebugger::create_debugger_config(const std::string &config_file) {
   J.attributeBegin("GroupLayerDump");
   J.arrayBegin();
   J.objectBegin();
+  J.attribute("subfunc_idx", -1);
   J.attribute("func_start_idx", -1);
   J.attribute("func_end_idx", -1);
+  J.objectEnd();
+  J.arrayEnd();
+  J.attributeEnd();
+
+  J.attributeBegin("ManualSetting");
+  J.arrayBegin();
+  J.objectBegin();
+  J.attribute("subfunc_idx", -1);
+  J.attribute("func_start_idx", -1);
+  J.attribute("func_end_idx", -1);
+  J.attribute("group_cost", -1);
   J.objectEnd();
   J.arrayEnd();
   J.attributeEnd();
@@ -144,7 +156,8 @@ void LgDebugger::create_debugger_config(const std::string &config_file) {
   }
 }
 
-void LgDebugger::load_debugger_config(const std::string &config_file) {
+void LgDebugger::load_debugger_config(const std::string &config_file,
+                                      const int subfunc_idx) {
   // Load the debugger configuration json file
   auto bufferOrErr = llvm::MemoryBuffer::getFile(config_file);
   if (!bufferOrErr) {
@@ -199,21 +212,28 @@ void LgDebugger::load_debugger_config(const std::string &config_file) {
         for (const auto &groupObj : *groupLayerArray) {
           int64_t _func_start_idx = -1, _func_end_idx = -1;
           if (auto *groupObj_ = groupObj.getAsObject()) {
-            if (auto func_start_idx = groupObj_->getInteger("func_start_idx")) {
-              _func_start_idx = *func_start_idx;
-            } else {
-              llvm_unreachable("func_start_idx needs to be int");
-            }
-            if (auto func_end_idx = groupObj_->getInteger("func_end_idx")) {
-              _func_end_idx = *func_end_idx;
-            } else {
-              llvm_unreachable("func_end_idx needs to be int");
+            if (auto subfunc_idx_ = groupObj_->getInteger("subfunc_idx")) {
+              if (*subfunc_idx_ == subfunc_idx) {
+                if (auto func_start_idx =
+                        groupObj_->getInteger("func_start_idx")) {
+                  _func_start_idx = *func_start_idx;
+                } else {
+                  llvm_unreachable("func_start_idx needs to be int");
+                }
+                if (auto func_end_idx = groupObj_->getInteger("func_end_idx")) {
+                  _func_end_idx = *func_end_idx;
+                } else {
+                  llvm_unreachable("func_end_idx needs to be int");
+                }
+              }
             }
           } else {
             llvm_unreachable("\"GroupLayerDump\" array format error");
           }
-          add_lg_debugger_info(_func_start_idx, _func_end_idx);
-          add_conditional_debug_group(_func_start_idx, _func_end_idx);
+          if (_func_start_idx != -1 && _func_end_idx != -1) {
+            add_lg_debugger_info(_func_start_idx, _func_end_idx);
+            add_conditional_debug_group(_func_start_idx, _func_end_idx);
+          }
         }
       }
     }
@@ -221,23 +241,29 @@ void LgDebugger::load_debugger_config(const std::string &config_file) {
       for (const auto &groupObj : *groupLayerArray) {
         int64_t _func_start_idx = -1, _func_end_idx = -1, _group_cost = -1;
         if (auto *groupObj_ = groupObj.getAsObject()) {
-          if (auto func_start_idx = groupObj_->getInteger("func_start_idx")) {
-            _func_start_idx = *func_start_idx;
-          } else {
-            llvm_unreachable("func_start_idx needs to be int");
-          }
-          if (auto func_end_idx = groupObj_->getInteger("func_end_idx")) {
-            _func_end_idx = *func_end_idx;
-          } else {
-            llvm_unreachable("func_end_idx needs to be int");
-          }
-          if (auto group_cost = groupObj_->getInteger("group_cost")) {
-            _group_cost = *group_cost;
+          if (auto subfunc_idx_ = groupObj_->getInteger("subfunc_idx")) {
+            if (*subfunc_idx_ == subfunc_idx) {
+              if (auto func_start_idx =
+                      groupObj_->getInteger("func_start_idx")) {
+                _func_start_idx = *func_start_idx;
+              } else {
+                llvm_unreachable("func_start_idx needs to be int");
+              }
+              if (auto func_end_idx = groupObj_->getInteger("func_end_idx")) {
+                _func_end_idx = *func_end_idx;
+              } else {
+                llvm_unreachable("func_end_idx needs to be int");
+              }
+              if (auto group_cost = groupObj_->getInteger("group_cost")) {
+                _group_cost = *group_cost;
+              }
+            }
           }
         } else {
           llvm_unreachable("\"GroupLayerDump\" array format error");
         }
-        add_manual_group_cost(_func_start_idx, _func_end_idx, _group_cost);
+        if (_func_start_idx != -1 && _func_end_idx != -1)
+          add_manual_group_cost(_func_start_idx, _func_end_idx, _group_cost);
       }
     }
     do_debug_ = true;

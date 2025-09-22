@@ -23,6 +23,7 @@
 #include <random>
 
 #define DEBUG_TYPE "layer-group"
+static int subfunc_idx = 0;
 #define CACHE_FILE_NAME                                                        \
   module::getName(module::getModuleOp()).str() + "_" +                         \
       module::getChipStr().str() + "_" + module::getModeStr() +                \
@@ -1899,7 +1900,8 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   case 3: // Fall through
   case 4:
     lg_debugger.load_debugger_config(
-        debugger_filename); // both 3 and 4 need to load debugger file
+        debugger_filename,
+        subfunc_idx); // both 3 and 4 need to load debugger file
     break;
   default: {
     llvm_unreachable("Invalid debugger option");
@@ -1944,7 +1946,7 @@ void GroupMethod::process(LgPassIR *pass_ir) {
       break;
     }
   }
-
+  subfunc_idx += 1;
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -2096,7 +2098,35 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
   }
 
   std::error_code EC;
-  llvm::raw_fd_ostream OS(CACHE_FILE_NAME, EC);
+  std::string filename = CACHE_FILE_NAME;
+
+  std::filesystem::path filePath(filename);
+
+  llvm::json::Object existingData;
+  if (subfunc_idx != 0 && std::filesystem::exists(filename)) {
+    auto bufferOrErr = llvm::MemoryBuffer::getFile(filename);
+    if (bufferOrErr) {
+      std::string content = (*bufferOrErr)->getBuffer().str();
+      if (!content.empty()) {
+        auto jsonOrErr = llvm::json::parse(content);
+        if (jsonOrErr) {
+          auto root = *jsonOrErr;
+          if (auto *rootObj = root.getAsObject()) {
+            for (const auto &kv : *rootObj) {
+              existingData[kv.first] = kv.second;
+            }
+          }
+        } else {
+          LLVM_DEBUG(llvm::dbgs() << "Failed to parse existing JSON content: "
+                                  << toString(jsonOrErr.takeError()) << "\n");
+        }
+      }
+    }
+  } else {
+    existingData = llvm::json::Object{};
+  }
+
+  llvm::raw_fd_ostream OS(filename, EC);
   if (EC) {
     llvm::errs() << "Failed to open file for writing: " << EC.message() << "\n";
     return;
@@ -2106,6 +2136,128 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
   J.objectBegin();
 
   J.attribute("opt", options_.opt);
+  J.attribute("total subfunc", subfunc_idx + 1);
+
+  std::vector<std::pair<int, std::string>> sortedSubfuncs;
+  for (const auto &kv : existingData) {
+    std::string keyStr = kv.first.str();
+    if (keyStr.find("subfunc_") == 0) {
+      std::string idxStr = keyStr.substr(8);
+      if (!idxStr.empty()) {
+        try {
+          int idx = std::stoi(idxStr);
+          sortedSubfuncs.emplace_back(idx, keyStr);
+        } catch (const std::exception &e) {
+          LLVM_DEBUG(llvm::dbgs() << "Failed to parse subfunc index from "
+                                  << keyStr << ": " << e.what() << "\n");
+        }
+      }
+    }
+  }
+
+  std::sort(sortedSubfuncs.begin(), sortedSubfuncs.end(),
+            [](const auto &a, const auto &b) { return a.first < b.first; });
+
+  for (const auto &item : sortedSubfuncs) {
+    const std::string &keyStr = item.second;
+    auto &subfuncData = existingData[keyStr];
+
+    J.attributeBegin(keyStr);
+
+    // CyclePrefixSum
+    if (auto *subfuncObj = subfuncData.getAsObject()) {
+      J.objectBegin();
+
+      if (auto sfi = subfuncObj->get("subfunc idx")) {
+        J.attribute("subfunc idx", sfi->getAsInteger());
+      }
+
+      if (auto groupLayer = subfuncObj->get("GroupLayer")) {
+        J.attributeBegin("GroupLayer");
+        J.arrayBegin();
+
+        if (auto *groupLayerArray = groupLayer->getAsArray()) {
+          for (const auto &groupObj : *groupLayerArray) {
+            if (auto *groupObj_ = groupObj.getAsObject()) {
+              J.objectBegin();
+
+              if (auto base_group_idx =
+                      groupObj_->getInteger("base_group_idx")) {
+                J.attribute("base_group_idx", *base_group_idx);
+              }
+              if (auto start_idx = groupObj_->getInteger("start_idx")) {
+                J.attribute("start_idx", *start_idx);
+              }
+              if (auto end_idx = groupObj_->getInteger("end_idx")) {
+                J.attribute("end_idx", *end_idx);
+              }
+              if (auto func_start_idx =
+                      groupObj_->getInteger("func_start_idx")) {
+                J.attribute("func_start_idx", *func_start_idx);
+              }
+              if (auto func_end_idx = groupObj_->getInteger("func_end_idx")) {
+                J.attribute("func_end_idx", *func_end_idx);
+              }
+              if (auto group_cost = groupObj_->getInteger("group_cost")) {
+                J.attribute("group_cost", *group_cost);
+              }
+              if (auto index = groupObj_->getInteger("index")) {
+                J.attribute("index", *index);
+              }
+
+              if (auto locsArray = groupObj_->getArray("locs")) {
+                J.attributeArray("locs", [&] {
+                  for (const auto &loc : *locsArray) {
+                    J.value(loc);
+                  }
+                });
+              }
+
+              if (auto shapeSecsArray = groupObj_->getArray("shape_secs")) {
+                J.attributeArray("shape_secs", [&] {
+                  for (const auto &val : *shapeSecsArray) {
+                    J.value(val);
+                  }
+                });
+              }
+
+              J.objectEnd();
+            } else {
+              J.value(groupObj);
+            }
+          }
+        }
+
+        J.arrayEnd();
+        J.attributeEnd();
+      }
+
+      if (auto globalLayer = subfuncObj->get("GlobalLayer")) {
+        J.attributeBegin("GlobalLayer");
+        J.value(*globalLayer);
+        J.attributeEnd();
+      }
+
+      if (auto cyclePrefix = subfuncObj->get("CyclePrefixSum")) {
+        J.attributeBegin("CyclePrefixSum");
+        J.value(*cyclePrefix);
+        J.attributeEnd();
+      }
+
+      J.objectEnd();
+    } else {
+      J.value(subfuncData);
+    }
+
+    J.attributeEnd();
+  }
+
+  std::string subfuncKey = "subfunc_" + std::to_string(subfunc_idx);
+  J.attributeBegin(subfuncKey);
+  J.objectBegin();
+
+  J.attribute("subfunc idx", subfunc_idx);
+
   // Write GroupLayer array
   J.attributeBegin("GroupLayer");
   J.arrayBegin();
@@ -2181,6 +2333,11 @@ void GroupMethod::dump_lg_results(std::vector<LgInfo> &lg_infos) {
   });
 
   J.objectEnd();
+  J.attributeEnd();
+
+  J.objectEnd();
+
+  LLVM_DEBUG(llvm::dbgs() << "Dumped LG results to " << filename << "\n");
 }
 
 void GroupMethod::load_lg_results(
@@ -2211,17 +2368,27 @@ void GroupMethod::load_lg_results(
   int opt = options_.opt;
   // Load group layers
 
-  std::vector<std::vector<Operation *>> base_groups;
-  get_base_groups(base_groups, subnet_ops);
-
   if (auto *rootObj = root.getAsObject()) {
     if (auto opt_ = rootObj->getInteger("opt")) {
       opt = *opt_;
     } else {
       llvm_unreachable("opt not found");
     }
+  }
 
-    if (auto groupLayerArray = rootObj->getArray("GroupLayer")) {
+  std::vector<std::vector<Operation *>> base_groups;
+  get_base_groups(base_groups, subnet_ops);
+
+  std::string subfuncKey = "subfunc_" + std::to_string(subfunc_idx);
+  auto *subfuncData = root.getAsObject()->getObject(subfuncKey);
+  if (!subfuncData) {
+    llvm::errs() << "No data found for " << subfuncKey << "\n";
+    return;
+  }
+
+  if (auto *subfuncData = root.getAsObject()->getObject(subfuncKey)) {
+
+    if (auto groupLayerArray = subfuncData->getArray("GroupLayer")) {
       for (const auto &groupObj : *groupLayerArray) {
         LgInfo lg_info;
 
@@ -2289,7 +2456,7 @@ void GroupMethod::load_lg_results(
     }
 
     // Load global layers
-    if (auto globalArray = rootObj->getArray("GlobalLayer")) {
+    if (auto globalArray = subfuncData->getArray("GlobalLayer")) {
       for (const auto &globalObj : *globalArray) {
         LgInfo lg_info;
         if (auto *globalObj_ = globalObj.getAsObject()) {
@@ -2317,6 +2484,8 @@ void GroupMethod::load_lg_results(
             [](LgInfo &a, LgInfo &b) { return a.sort_index < b.sort_index; });
 
   for (auto &lg_info : lg_infos) {
+    if (lg_info.group_ops.size() == 1)
+      break;
     int64_t cost = 0;
     lg_info.use_cache = true;
     DEBUG_WITH_TYPE("lg_index", {
