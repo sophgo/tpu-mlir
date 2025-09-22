@@ -4256,6 +4256,7 @@ class DMA_gather_reg(atomic_reg):
         ("dst_cstride", ctypes.c_uint64, 32),
         ("dst_hstride", ctypes.c_uint64, 32),
         ("index_cstride", ctypes.c_uint64, 32),
+        ("index_hstride", ctypes.c_uint64, 32),
         ("start_pos", ctypes.c_uint64, 32),
         ("reserved", ctypes.c_uint64, 16),
         ("src_csize", ctypes.c_uint64, 16),
@@ -4306,6 +4307,7 @@ class DMA_gather_reg(atomic_reg):
     dst_cstride: int
     dst_hstride: int
     index_cstride: int
+    index_hstride: int
     start_pos: int
     reserved: int
     src_csize: int
@@ -4361,6 +4363,7 @@ class DMA_scatter_reg(atomic_reg):
         ("dst_cstride", ctypes.c_uint64, 32),
         ("dst_hstride", ctypes.c_uint64, 32),
         ("index_cstride", ctypes.c_uint64, 32),
+        ("index_hstride", ctypes.c_uint64, 32),
         ("start_pos", ctypes.c_uint64, 32),
         ("reserved", ctypes.c_uint64, 16),
         ("src_csize", ctypes.c_uint64, 16),
@@ -4411,6 +4414,7 @@ class DMA_scatter_reg(atomic_reg):
     dst_cstride: int
     dst_hstride: int
     index_cstride: int
+    index_hstride: int
     start_pos: int
     reserved: int
     src_csize: int
