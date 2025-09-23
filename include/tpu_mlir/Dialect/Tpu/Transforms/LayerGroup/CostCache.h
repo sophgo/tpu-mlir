@@ -114,6 +114,9 @@ public:
 
   /// gen hash key for sub-graph
   bool get_graph_hash(LgInfo &lginfo, uint64_t &hash_key) {
+    if (!cache_enabled) {
+      return false;
+    }
     /// use relative value-id to serialize sub-graph topo structure.
     llvm::DenseMap<mlir::Value, int> value_id;
     for (auto v : lginfo.group_ins) {
