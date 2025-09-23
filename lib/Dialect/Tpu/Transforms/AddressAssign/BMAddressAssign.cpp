@@ -477,7 +477,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
       }
       auto p = sliceOp.parseParam();
       int axis;
-      for (axis = 0; p.offset_4[axis] == 0 && axis < 4; axis++)
+      for (axis = 0; axis < 4 && p.offset_4[axis] == 0; axis++)
         ;
       size_t offset_bytes = 0;
       if (axis != 4) {
