@@ -526,6 +526,10 @@ public:
       return failure();
     }
 
+    if (backend::BM168x::L2_SRAM_SIZE <= 0) {
+      return failure();
+    }
+
     auto buffer_size = matmulOp.getL2BufferSize();
     if (buffer_size > 0) {
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
