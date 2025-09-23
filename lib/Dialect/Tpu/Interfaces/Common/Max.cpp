@@ -78,8 +78,13 @@ void tpu::MaxOp::assign_sec_info_kernel(
   sec_info.n_slice = std::max(in0_gi.n_slice, in1_gi.n_slice);
   sec_info.c_slice = std::max(in0_gi.c_slice, in1_gi.c_slice);
   sec_info.d_slice = std::max(in0_gi.d_slice, in1_gi.d_slice);
-  sec_info.h_slice = std::max(in0_gi.h_slice, in1_gi.h_slice);
-  sec_info.w_slice = std::max(in0_gi.w_slice, in1_gi.w_slice);
+  sec_info.h_slice = gi.h_slice;
+  // set "w_slice" for 5d broadcast (i.e., broadcast across both h and w dims)
+  sec_info.w_slice = std::max(in0_gi.w_slice, in1_gi.w_slice) >= gi.w_slice
+                         ? gi.w_slice
+                         : std::max(in0_gi.w_slice, in1_gi.w_slice);
+  setHWMargins(sec_info.hw_margins_opdA, in0_gi, gi);
+  setHWMargins(sec_info.hw_margins_opdB, in1_gi, gi);
   sec_info.n_idx = std::max(in0_gi.n_idx, in1_gi.n_idx);
   sec_info.d_idx = std::max(in0_gi.d_idx, in1_gi.d_idx);
   sec_info.c_idx = std::max(in0_gi.c_idx, in1_gi.c_idx);

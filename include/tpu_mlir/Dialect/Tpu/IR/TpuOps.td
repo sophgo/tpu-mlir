@@ -902,7 +902,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
 
 def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info_kernel", "codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<TypeInterface>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
@@ -1392,7 +1392,7 @@ def Tpu_SubOp: Tpu_Op<"Sub",
 
 def Tpu_SubConstOp: Tpu_Op<"SubConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info_kernel", "codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub const operator";
@@ -3810,7 +3810,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [
 }
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>
   ]> {

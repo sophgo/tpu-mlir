@@ -324,6 +324,20 @@ class ONNX_IR_TESTER(object):
             "UpsampleAddWeight":(self.test_UpsampleAddWeight, N, Y, Y, N, N, Y),
             # "Loop":            (self.test_Loop,             N, Y, N, N, Y, N),
             #########################################
+            # LayerGroup test case, Alphabetically
+            #########################################
+            "LgMultiBranchAdd":         (self.test_LgMultiBranchAdd,      N, Y, Y, N, Y, Y),
+            "LgMultiBranchAddConst":    (self.test_LgMultiBranchAddConst, N, Y, Y, N, Y, Y),
+            "LgMultiBranchSub":         (self.test_LgMultiBranchSub,      N, Y, Y, N, Y, Y),
+            "LgMultiBranchSubConst":    (self.test_LgMultiBranchSubConst, N, Y, Y, N, Y, Y),
+            "LgMultiBranchMul":         (self.test_LgMultiBranchMul,      N, Y, Y, N, Y, Y),
+            # "LgMultiBranchDiv":         (self.test_LgMultiBranchDiv,      N, Y, Y, N, Y, Y), # f16 test has precision issue when lowering
+            # "LgMultiBranchMax":         (self.test_LgMultiBranchMax,      N, Y, Y, N, Y, Y), # int8 lowering not support
+            # "LgMultiBranchMin":         (self.test_LgMultiBranchMin,      N, Y, Y, N, Y, Y), # int8 lowering not support
+            # "LgMultiBranchCmp":         (self.test_LgMultiBranchCmp,      N, Y, Y, N, Y, Y), # int8 has precision issue when lowering
+            "LgMultiBranchSlice":       (self.test_LgMultiBranchSlice,    N, Y, Y, N, Y, Y),
+            "LgMultiBranchStore":       (self.test_LgMultiBranchStore,    N, Y, Y, N, Y, Y),
+            #########################################
             # Dynamic test case, Alphabetically
             #########################################
             # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support,cv184x_support)
@@ -539,7 +553,9 @@ class ONNX_IR_TESTER(object):
                         model_name: str,
                         quant_mode: str,
                         isAsym: bool = False,
-                        matmul_perchannel: bool = False):
+                        matmul_perchannel: bool = False,
+                        quant_input_setting: bool = False,
+                        quant_output_setting: bool = False):
 
         top_mlir = "{}.mlir".format(model_name)
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
@@ -570,6 +586,8 @@ class ONNX_IR_TESTER(object):
         else:
             quant_input = False
             quant_output = False
+        quant_input = quant_input_setting or quant_input
+        quant_output = quant_output_setting or quant_output
         mlir_to_model(tpu_mlir=tpu_mlir + ".mlir",
                       bmodel_path=bmodel,
                       final_mlir=tpu_final,
@@ -749,7 +767,9 @@ class ONNX_IR_TESTER(object):
                        dynamic_in_names=None,
                        dynamic_shape_input_names=[],
                        shape_influencing_input_names=[],
-                       matmul_perchannel=False):
+                       matmul_perchannel=False,
+                       quant_input_setting=False,
+                       quant_output_setting=False):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -839,7 +859,9 @@ class ONNX_IR_TESTER(object):
                            dynamic=dynamic,
                            dynamic_shape_input_names=dynamic_shape_input_names,
                            shape_influencing_input_names=shape_influencing_input_names,
-                           matmul_perchannel=matmul_perchannel)
+                           matmul_perchannel=matmul_perchannel,
+                           quant_input_setting=quant_input_setting,
+                           quant_output_setting=quant_output_setting)
 
     def skip_case(self, case, quant_mode):
         if quant_mode not in ["int4", "f8e4m3", "f8e5m2", "w4int8"]:
@@ -866,7 +888,9 @@ class ONNX_IR_TESTER(object):
                       dynamic=False,
                       matmul_perchannel=False,
                       dynamic_shape_input_names=[],
-                      shape_influencing_input_names=[]):
+                      shape_influencing_input_names=[],
+                      quant_input_setting=False,
+                      quant_output_setting=False):
 
         model_name = name if name else graph_def.name
         if support_modes is None:
@@ -934,12 +958,19 @@ class ONNX_IR_TESTER(object):
 
         for quant_mode in quant_modes:
             if quant_mode == "int8" or quant_mode == "int4" or quant_mode == "w4int8":
-                tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode, False,
-                                                        matmul_perchannel)
+                tpu_mlir, bmodel = self.bmodel_generate(model_name,
+                                                        quant_mode,
+                                                        False,
+                                                        matmul_perchannel,
+                                                        quant_input_setting=quant_input_setting,
+                                                        quant_output_setting=quant_output_setting)
                 self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name,
                                            False)
             else:
-                tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode)
+                tpu_mlir, bmodel = self.bmodel_generate(model_name,
+                                                        quant_mode,
+                                                        quant_input_setting=quant_input_setting,
+                                                        quant_output_setting=quant_output_setting)
                 self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name)
 
     def onnx_and_test_bmodel_only(self,
@@ -996,6 +1027,86 @@ class ONNX_IR_TESTER(object):
             """ % (case_name, input_shape, output_shape, kernel, strides)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
+
+    def test_LgMultiBranchOperation(self, case_name, op="add", is_const=False):
+
+        class Model(nn.Module):
+
+            def __init__(self, shape, op="add", is_const=False):
+
+                super(Model, self).__init__()
+                _, c, _, _ = shape
+                self.conv3x3_1 = nn.Conv2d(c, c, kernel_size=3, padding=1)
+                self.conv3x3_2 = nn.Conv2d(c, c, kernel_size=3, padding=1)
+                self.op = op
+                self.op_weight = 2 if is_const else torch.randn(shape).float()
+
+            def forward(self, x):
+                y0 = self.conv3x3_1(x)
+                y1 = self.conv3x3_2(y0)
+                if self.op == "add":
+                    y2 = y0 + self.op_weight
+                elif self.op == "sub":
+                    y2 = y0 - self.op_weight
+                elif self.op == "mul":
+                    y2 = y0 * self.op_weight
+                elif self.op == "div":
+                    y2 = y0 / self.op_weight
+                elif self.op == "max":
+                    y2 = torch.max(y0, self.op_weight)
+                elif self.op == "min":
+                    y2 = torch.min(y0, self.op_weight)
+                elif self.op == "cmp":
+                    y2 = y0 > self.op_weight
+                elif self.op == "slice":
+                    y2 = y0[:, 1:2, :, :]
+                elif self.op == "store":
+                    y2 = y0 + self.op_weight
+                    return y1 + y2, y0
+                else:
+                    raise ValueError("Unsupported operation: {}".format(op))
+                return y1 + y2
+
+        shape = [1, 64, 360, 640]
+        x = torch.randn(shape).float()
+        self.torch_and_test(x,
+                            Model(shape, op, is_const),
+                            case_name,
+                            quant_input_setting=True,
+                            quant_output_setting=True)
+
+    def test_LgMultiBranchAdd(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "add")
+
+    def test_LgMultiBranchAddConst(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "add", is_const=True)
+
+    def test_LgMultiBranchSub(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "sub")
+
+    def test_LgMultiBranchSubConst(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "sub", is_const=True)
+
+    def test_LgMultiBranchMul(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "mul")
+
+    def test_LgMultiBranchDiv(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "div")
+
+    def test_LgMultiBranchMax(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "max")
+
+    def test_LgMultiBranchMin(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "min")
+
+    def test_LgMultiBranchCmp(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "cmp")
+
+    def test_LgMultiBranchSlice(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "slice")
+
+    def test_LgMultiBranchStore(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "store")
 
     def test_Unsqueeze(self, case_name):
 

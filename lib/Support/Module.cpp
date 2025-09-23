@@ -1454,6 +1454,11 @@ bool isTpuOp(Operation *op) {
   return (op->getDialect()->getNamespace() == "tpu");
 }
 
+bool isTpuArOp(Operation *op) {
+  return isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
+             tpu::MinOp, tpu::CompareOp>(op);
+}
+
 bool isInt4Op(Operation *op) {
   // if (isa<top::ConvOp, tpu::Conv2DOp>(op)) {
   if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(op)) {
