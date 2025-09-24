@@ -759,6 +759,10 @@ bool tpu::MatMulOp::support_multi_core() {
     return false;
   }
 
+  if (module::isBM1688()) {
+    return false;
+  }
+
   auto p = parseParam();
   auto in_type = module::getStorageType(getOperand(0));
   if (in_type.isInteger(8)) {
