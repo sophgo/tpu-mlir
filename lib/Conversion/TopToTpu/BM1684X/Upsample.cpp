@@ -42,7 +42,7 @@ void UpsampleLowering::LoweringF8(PatternRewriter &rewriter,
 
 void UpsampleLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::UpsampleOp op) const {
-  lowering_common<tpu::UpsampleOp>(rewriter, op, op.getOutput().getType());
+  lowering_common<tpu::UpsampleOp>(rewriter, op, op.getOutput().getType(), 2);
 }
 
 } // namespace bm1684x
