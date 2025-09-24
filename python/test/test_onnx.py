@@ -54,6 +54,7 @@ class ONNX_IR_TESTER(object):
             "AddBcast":     (self.test_AddBcast,      N, N, N, N, Y, N), # bm1684x has random error caused by 2.27 commit
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y, Y),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N, N), # failed cases
+            "AddBcast4":    (self.test_AddBcast4,     N, Y, Y, N, N, N),
             "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y, Y),
             "Atan":         (self.test_Arctan,        N, Y, Y, N, Y, Y),
             "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y, Y),
@@ -214,6 +215,7 @@ class ONNX_IR_TESTER(object):
             "SubBcast2":    (self.test_SubBcast2,     Y, Y, Y, N, Y, Y),
             "SubConst":     (self.test_SubConst,      Y, Y, Y, Y, Y, Y),
             "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y, Y, Y),
+            "SubBcast3":    (self.test_SubBcast3,     N, Y, Y, N, N, N),
             "Sum":          (self.test_Sum,           Y, Y, Y, Y, Y, Y),
             "Tanh":         (self.test_Tanh,          Y, Y, Y, Y, Y, Y),
             "Tile":         (self.test_Tile,          Y, Y, Y, Y, Y, Y),
@@ -4343,6 +4345,39 @@ class ONNX_IR_TESTER(object):
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
+    def test_AddBcast4(self, case_name):
+        # Build ONNX graph for Add with broadcasting - testing scenarios with dimensions > 65535
+        # Optimized version with reduced test cases for faster execution
+        shapes = (
+            [65536],  # 1D with large dimension
+            [65536, 96],  # 2D 
+            [1, 96, 65536],  # 3D  
+            [1, 12, 65536, 8],  # 4D 
+        )
+
+        bcast_dims = (
+            [[0]],
+            [[0], [1]],
+            [[0], [2]],
+            [[0], [3]],
+        )
+
+        for i, s in enumerate(shapes):
+            for j, dims in enumerate(bcast_dims[i]):
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+
+                sub_case_name = f"{case_name}_{i}_{j}_{''.join(map(str, dims))}"
+
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                y = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                add_node = helper.make_node("Add", inputs=["a", "b"], outputs=["output"])
+                graph_def = helper.make_graph([add_node], sub_case_name, [a, b], [y])
+
+                self.onnx_and_test(graph_def, name=sub_case_name)
+
     def test_AddWeight2(self, case_name):
         input_shape = [1, 16, 8, 8]
         wshape = [16, 1, 1]
@@ -4923,6 +4958,37 @@ class ONNX_IR_TESTER(object):
                 """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
+
+    def test_SubBcast3(self, case_name):
+        # Test Sub broadcast scenarios to solve AR broadcast issues in Grounding-DINO
+        test_cases = [{
+            'input1_shape': [1, 256, 4, 13294],
+            'input2_shape': [1, 256, 4, 1],
+            'output_shape': [1, 256, 4, 13294],
+            'desc': 'large_width_broadcast'
+        }, {
+            'input1_shape': [1, 256, 4, 13294],
+            'input2_shape': [1, 256, 1, 1],
+            'output_shape': [1, 256, 4, 13294],
+            'desc': 'height_width_broadcast'
+        }]
+
+        for i, test_case in enumerate(test_cases):
+            input1_shape = test_case['input1_shape']
+            input2_shape = test_case['input2_shape']
+            output_shape = test_case['output_shape']
+            desc = test_case['desc']
+
+            # Create unique case name for each test
+            sub_case_name = f"{case_name}_{i}_{desc}"
+
+            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, input1_shape)
+            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, input2_shape)
+            y = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+            sub_node = helper.make_node("Sub", inputs=["a", "b"], outputs=["output"])
+            graph_def = helper.make_graph([sub_node], sub_case_name, [a, b], [y])
+
+            self.onnx_and_test(graph_def, name=sub_case_name)
 
     def test_SubConst(self, case_name):
         input_shape = [4, 3, 27, 27]
