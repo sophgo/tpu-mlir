@@ -318,7 +318,8 @@ bool GroupMethod::group_one_layer_proc(LgInfo &lg_info, bool calc_cost,
   if (lg_info.group_ops.size() == 1) {
     if (calc_cost) {
       *group_cost =
-          cycle_calculator_->getGlobalLayerCycle(lg_info.group_ops.back());
+          cycle_calculator_->getGlobalLayerCycle(lg_info.group_ops.back())
+              .cycles;
     }
     return true;
   }
@@ -730,8 +731,8 @@ void GroupMethod::get_group_clusters(
     int64_t pre_cost = 0;
     for (size_t idx = 1; idx < group_layer_num; ++idx) {
       if (start_idx == end_idx - 1) {
-        pre_cost =
-            cycle_calculator_->getGlobalLayerCycle(base_group[start_idx]);
+        pre_cost = cycle_calculator_->getGlobalLayerCycle(base_group[start_idx])
+                       .cycles;
         LG_DEBUG_WITH_TYPE("group_clusters", [&]() {
           llvm::dbgs()
               << DEBUGGER_DEFAULT_INFO(
@@ -744,7 +745,7 @@ void GroupMethod::get_group_clusters(
         });
       }
       int64_t post_cost =
-          cycle_calculator_->getGlobalLayerCycle(base_group[end_idx]);
+          cycle_calculator_->getGlobalLayerCycle(base_group[end_idx]).cycles;
       LG_DEBUG_WITH_TYPE("group_clusters", [&]() {
         llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_post_cost", "result",
                                               "calculate post_cost")
@@ -914,7 +915,8 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
   auto cut_points = std::vector<std::vector<int64_t>>(
       group_layer_num, std::vector<int64_t>(group_layer_num, 0));
   for (size_t i = 0; i < group_layer_num; ++i) {
-    cost_table[i][i] = cycle_calculator_->getGlobalLayerCycle(base_group[i]);
+    cost_table[i][i] =
+        cycle_calculator_->getGlobalLayerCycle(base_group[i]).cycles;
     cut_points[i][i] = i;
   }
   progressbar cost_table_bar(group_layer_num - 1);
@@ -1578,8 +1580,10 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
         valid = false;
         break;
       }
-      group_costs[i] = cycle_calculator_->getGroupCycle(
-          time_steps[i], shape_secs[i], groups[i]->type);
+      group_costs[i] =
+          cycle_calculator_
+              ->getGroupCycle(time_steps[i], shape_secs[i], groups[i]->type)
+              .cycles;
     }
   }
   opt_seq_info.left_cost = group_costs[0];
@@ -1606,8 +1610,10 @@ bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
       break;
     }
     *left_first = !(*left_first);
-    group_costs[i] = cycle_calculator_->getGroupCycle(
-        time_steps[i], shape_secs[i], groups[i]->type);
+    group_costs[i] =
+        cycle_calculator_
+            ->getGroupCycle(time_steps[i], shape_secs[i], groups[i]->type)
+            .cycles;
   }
   opt_seq_info.left_cost = group_costs[0];
   opt_seq_info.right_cost = group_costs[1];
@@ -1972,7 +1978,7 @@ void GroupMethod::get_final_groups(
           lg_info.group_cost = cost;
         }
       }
-      if (lg_info.group_ops.size() > 1 || false == options_.group_by_cores) {
+      if (lg_info.group_ops.size() >= 1 || false == options_.group_by_cores) {
         lg_infos.push_back(lg_info);
       }
       DEBUG_WITH_TYPE("lg_results", {
@@ -2028,7 +2034,7 @@ void GroupMethod::get_final_groups_by_cache(
           lg_info.group_cost = cost;
         }
       }
-      if (lg_info.group_ops.size() > 1 || false == options_.group_by_cores) {
+      if (lg_info.group_ops.size() >= 1 || false == options_.group_by_cores) {
         lg_infos.push_back(lg_info);
       }
       DEBUG_WITH_TYPE("lg_results", {

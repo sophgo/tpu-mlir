@@ -49,10 +49,10 @@ public:
   CycleCalculator() : num_core_(module::getCoreNum()){};
   CycleCalculator(int num_core) : num_core_(num_core){};
   virtual ~CycleCalculator(){};
-  virtual int64_t getGlobalLayerCycle(Operation *op) = 0;
-  virtual int64_t getGroupCycle(BasicTimeStepPtr &time_step,
-                                shape_secs_t &shape_secs,
-                                group_type_t group_type);
+  virtual TimeInfo getGlobalLayerCycle(Operation *op) = 0;
+  virtual TimeInfo getGroupCycle(BasicTimeStepPtr &time_step,
+                                 shape_secs_t &shape_secs,
+                                 group_type_t group_type);
   virtual int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
                                      group_type_t group_type,
                                      bool calc_bdc_slack) = 0;
@@ -76,11 +76,10 @@ public:
   Bm168xCycleCalculator() {}
   Bm168xCycleCalculator(int num_core) : CycleCalculator(num_core) {}
   ~Bm168xCycleCalculator() {}
-  int64_t getGroupCycle(BasicTimeStepPtr &time_step, shape_secs_t &shape_secs,
-                        group_type_t group_type) override;
-  int64_t getGlobalLayerCycle(Operation *op) override;
+  TimeInfo getGroupCycle(BasicTimeStepPtr &time_step, shape_secs_t &shape_secs,
+                         group_type_t group_type) override;
+  TimeInfo getGlobalLayerCycle(Operation *op) override;
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
-
                              group_type_t group_type,
                              bool calc_bdc_slack) override;
   int64_t getGdmaCycle(Value v, tensor_info_t &tensor_info,
@@ -115,7 +114,7 @@ public:
   Cv18xxCycleCalculator() {}
   Cv18xxCycleCalculator(int num_core) : CycleCalculator(num_core) {}
   ~Cv18xxCycleCalculator() {}
-  int64_t getGlobalLayerCycle(Operation *op) override;
+  TimeInfo getGlobalLayerCycle(Operation *op) override;
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
                              group_type_t group_type,
                              bool calc_bdc_slack) override;
@@ -132,5 +131,17 @@ private:
   bool check_lmem(Operation *op, const TensorInfo &tesnor_info,
                   group_type_t group_type);
 };
+
+class CycleCalculatorFactory {
+public:
+  static std::unique_ptr<CycleCalculator> create(int64_t num_cores) {
+    if (module::isCV18xx()) {
+      return std::make_unique<Cv18xxCycleCalculator>(num_cores);
+    } else {
+      return std::make_unique<Bm168xCycleCalculator>(num_cores);
+    }
+  }
+};
+
 } // namespace tpu
 } // namespace tpu_mlir

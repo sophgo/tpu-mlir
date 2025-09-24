@@ -684,7 +684,7 @@ void GroupMethod::cut_this_group_is_better(
     if (left_sub_ops.size() > 0) {
       if (left_sub_ops.size() == 1) {
         left_sub_group_cost =
-            cycle_calculator_->getGlobalLayerCycle(left_sub_ops.back());
+            cycle_calculator_->getGlobalLayerCycle(left_sub_ops.back()).cycles;
       } else {
         auto left_sub_group =
             CreateIlpLgInfo(sortOpsByOtherOpsOrder(group_ops, left_sub_ops),
@@ -719,7 +719,7 @@ void GroupMethod::cut_this_group_is_better(
     if (right_sub_ops.size() > 0) {
       if (right_sub_ops.size() == 1) {
         right_sub_group_cost =
-            cycle_calculator_->getGlobalLayerCycle(right_sub_ops.back());
+            cycle_calculator_->getGlobalLayerCycle(right_sub_ops.back()).cycles;
       } else {
         auto right_sub_group =
             CreateIlpLgInfo(sortOpsByOtherOpsOrder(group_ops, right_sub_ops),
@@ -752,8 +752,9 @@ void GroupMethod::cut_this_group_is_better(
     }
 
     int64_t global_op_cost =
-        is_cut_op_is_global ? cycle_calculator_->getGlobalLayerCycle(cut_op)
-                            : 0;
+        is_cut_op_is_global
+            ? cycle_calculator_->getGlobalLayerCycle(cut_op).cycles
+            : 0;
     int64_t cut_group_cost =
         left_sub_group_cost + right_sub_group_cost + global_op_cost;
     LAYER_GROUP_LOG_DEBUG_BLOCK({
@@ -1526,8 +1527,8 @@ getTensorLmemBytes(Operation *op, Value &value, TensorInfo &tensor_infos,
     if (map_value_to_cut_dims.find(value) != map_value_to_cut_dims.end()) {
       auto dims = map_value_to_cut_dims[value];
       c_idx = ncdhw_idx[dims[1]];
-      h_idx =
-          ncdhw_idx[dims[3]]; // The right matrix of the second matmul uses h index as c row index.
+      h_idx = ncdhw_idx[dims[3]]; // The right matrix of the second matmul uses
+                                  // h index as c row index.
       llvm::errs() << "new c_idx:" << c_idx << ", h_idx:" << h_idx << "\n";
     }
   }
@@ -2118,7 +2119,8 @@ bool backward_gen_ilp_var2(ilp_LgInfo &ilp_lg_info, TensorInfo &tensor_infos,
                   -1, ilp_timeStep.getMPVarByName(load_var.first)));
             }
             ilp_timeStep.addConstraint(
-                0, 0, coeff_var_items); // Define sum(store_var) == sum(load_var)
+                0, 0,
+                coeff_var_items); // Define sum(store_var) == sum(load_var)
 
             // for (auto itr = map_x_var_items.begin(); itr !=
             // map_x_var_items.end(); ++itr) {
@@ -2673,7 +2675,8 @@ void ilp_LgInfo::base_solver(
   }
   for (auto global_layer : global_layers) {
     if (global_layer) {
-      group_cycle += cycle_calculator_->getGlobalLayerCycle(global_layer);
+      group_cycle +=
+          cycle_calculator_->getGlobalLayerCycle(global_layer).cycles;
     }
   }
 }

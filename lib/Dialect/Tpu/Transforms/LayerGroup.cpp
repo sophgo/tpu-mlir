@@ -80,6 +80,7 @@ public:
     options.debugger_filename = debugger_filename;
     options.disable_group_overlap = disable_group_overlap;
     options.config_filename = config_filename;
+    options.enable_profile = false;
 
     if (options.config_filename.empty()) {
       options.config_filename = CONFIG_FILE_NAME;

@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOverlap.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupPostTransform.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupProfile.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepCombine.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
@@ -56,6 +57,9 @@ void InternalLgOptimizer::manage_post_passes(std::shared_ptr<LgPassManager> pm,
                                              const LgOptions &options) {
   if (options.opt != 3 && !options.disable_group_overlap) {
     pm->add_pass(CreateGroupDataMoveOverlapPass(options));
+  }
+  if (options.enable_profile) {
+    pm->add_pass(CreateLayerGroupProfilePass(options));
   }
 }
 

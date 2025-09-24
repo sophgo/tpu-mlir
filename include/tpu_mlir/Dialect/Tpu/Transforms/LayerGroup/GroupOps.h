@@ -27,7 +27,9 @@ public:
   GroupOps(::mlir::func::FuncOp func, LgOptions &options);
   GroupOps(SmallVector<Operation *> &ops, LgOptions &options);
   ~GroupOps() { delete lg_pass_ir_; }
-  void process();
+  void process(bool lg_only = false);
+  SmallVector<Operation *> getGroupedOps() { return grouped_ops_; }
+  LayerGroupPerf getProfile();
   ::mlir::func::FuncOp func_;
 
 protected:
@@ -43,8 +45,8 @@ protected:
   // create MLIR GroupOp
   void buildMlir();
   void buildMlir_for_opt3();
-  void buildGroupOp(LgInfo &lg_info, const shape_secs_t &shape_secs,
-                    int64_t group_idx);
+  Operation *buildGroupOp(LgInfo &lg_info, const shape_secs_t &shape_secs,
+                          int64_t group_idx);
   void CreateLoadOp(GdmaElt &tensor, int64_t id,
                     const std::vector<Operation *> &ops,
                     group_type_t group_type);
@@ -94,6 +96,7 @@ protected:
   Block *body_;
   int64_t MAX_ID_;
   LgOptions options_;
+  SmallVector<Operation *> grouped_ops_;
 
   // used for group overlap
   IntValueIntMap self_up_overlap_ops_;

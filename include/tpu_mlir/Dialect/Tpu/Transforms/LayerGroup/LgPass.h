@@ -17,7 +17,7 @@ namespace tpu {
 
 // struct node_info;
 struct LgPassIR {
-  LgPassIR() { returnOp = nullptr; };
+  LgPassIR() { returnOp = nullptr; }
   ~LgPassIR() { clear(); };
 
   /**
@@ -69,6 +69,7 @@ struct LgPassIR {
   Operation *returnOp;
   std::shared_ptr<dot_graph> dot_graph_log_subnet;
   FuncOp func;
+  LayerGroupPerf perf;
 };
 
 class LgPass {

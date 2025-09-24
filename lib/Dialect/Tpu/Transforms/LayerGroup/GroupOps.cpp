@@ -284,8 +284,11 @@ GroupOps::GroupOps(::mlir::func::FuncOp func, LgOptions &options) {
   findSpecialGroup(lg_pass_ir_->subnet_ops);
 }
 
-void GroupOps::process() {
+void GroupOps::process(bool lg_only) {
   buildGroups();
+  if (lg_only == true) {
+    return;
+  }
   if (options_.opt == 3) {
     buildMlir_for_opt3();
   } else {
@@ -318,9 +321,14 @@ void GroupOps::buildMlir() {
   for (int64_t i = group_num - 1; i >= 0; --i) {
     if (lg_infos[i].group_ops.size() > 1) {
       time_step = lg_pass_ir_->time_steps[i];
-      buildGroupOp(lg_infos[i], lg_pass_ir_->shape_secs[i], i);
+      auto op = buildGroupOp(lg_infos[i], lg_pass_ir_->shape_secs[i], i);
+      grouped_ops_.push_back(op);
+    } else {
+      grouped_ops_.push_back(lg_infos[i].group_ops[0]);
     }
   }
+  std::reverse(grouped_ops_.begin(), grouped_ops_.end());
+
   // update group overlap info
   int64_t idx = 0;
   for (int64_t i = group_num - 1; i >= 0; --i) {
@@ -347,8 +355,9 @@ void GroupOps::buildMlir() {
   DEBUG_WITH_TYPE("dominate_bug", { module::getModuleOp().dump(); });
 }
 
-void GroupOps::buildGroupOp(LgInfo &lg_info, const shape_secs_t &shape_secs,
-                            const int64_t group_idx) {
+Operation *GroupOps::buildGroupOp(LgInfo &lg_info,
+                                  const shape_secs_t &shape_secs,
+                                  const int64_t group_idx) {
   auto builder = OpBuilder(ctx_);
   llvm::SmallVector<Value, 8> operands;
   llvm::SmallVector<Value, 8> outputs;
@@ -501,6 +510,8 @@ void GroupOps::buildGroupOp(LgInfo &lg_info, const shape_secs_t &shape_secs,
   }
   groupOp->setAttr("flow", builder.getI64ArrayAttr(flow));
   groups_.push_back(groupOp.getOperation());
+
+  return groupOp.getOperation();
 }
 
 void GroupOps::UpdateGroupOverlapInfo(Operation *op, int64_t group_idx) {
@@ -974,3 +985,5 @@ void GroupOps::buildNnvlcActivation() {
     }
   }
 }
+
+LayerGroupPerf GroupOps::getProfile() { return lg_pass_ir_->perf; }

@@ -482,7 +482,7 @@ int64_t Bm168xCycleCalculator::getLoadCycleOpt(Value v,
               w_slice, 1, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
           channel_index++;
         }
-      } // depth loop
+      }      // depth loop
     } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
       for (int64_t i = 0; i < n_slice; i++) {
         int64_t cur_local_offset = i * c_num_local * c_stride * fmt_bytes;
@@ -680,14 +680,13 @@ int64_t Bm168xCycleCalculator::getGdmaCycleOpt(Value v,
   return cycle;
 }
 
-int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
-                                             shape_secs_t &shape_secs,
-                                             group_type_t group_type) {
+TimeInfo Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
+                                              shape_secs_t &shape_secs,
+                                              group_type_t group_type) {
   if (!module::isBM1684XFamily()) {
-    int64_t total_cycle = 0;
-    total_cycle =
+    auto time_info =
         CycleCalculator::getGroupCycle(time_step, shape_secs, group_type);
-    return total_cycle;
+    return time_info;
   }
   int64_t stage_idx = 0;
   int64_t draining_idx = 0;
@@ -755,8 +754,8 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
           if (useMuliCore) {
             BW = 15.f;
             DEBUG_WITH_TYPE("cycle_calc", {
-              llvm::dbgs() << "; action = multi_core_align" << "; BW = " << BW
-                           << "\n";
+              llvm::dbgs() << "; action = multi_core_align"
+                           << "; BW = " << BW << "\n";
             });
             bm1688->dl_set_gdma_bw_s2l(BW);
             bm1688->dl_set_gdma_bw_l2s(BW);
@@ -853,20 +852,20 @@ int64_t Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       }
     }
   }
-  return total_cycle;
+  return TimeInfo(total_cycle, gdma_cycle, layer_cycle);
 }
 
-int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
-                                       shape_secs_t &shape_secs,
-                                       group_type_t group_type) {
+TimeInfo CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
+                                        shape_secs_t &shape_secs,
+                                        group_type_t group_type) {
   // (void*)invokeInIterationSpace;
 
   int64_t loop_num = shape_secs.nsecs * shape_secs.csecs * shape_secs.hsecs *
                      shape_secs.dsecs * shape_secs.wsecs;
 
   DEBUG_WITH_TYPE("cycle_calc", {
-    llvm::dbgs() << "; action = cycle_calc" << "; loop_num = " << loop_num
-                 << "\n";
+    llvm::dbgs() << "; action = cycle_calc"
+                 << "; loop_num = " << loop_num << "\n";
   });
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
@@ -875,7 +874,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
     consider_multi_core_bw = true;
     loop_num = loop_num / num_core_ + (loop_num % num_core_ > 0);
     DEBUG_WITH_TYPE("cycle_calc", {
-      llvm::dbgs() << "; action = cycle_calc" << "; step = multi_core_refactor"
+      llvm::dbgs() << "; action = cycle_calc"
+                   << "; step = multi_core_refactor"
                    << "; loop_num = " << loop_num << "\n";
     });
   }
@@ -883,13 +883,18 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
   if (num_core_ == 8) {
     loop_num = loop_num / num_core_ + (loop_num % num_core_ > 0);
     DEBUG_WITH_TYPE("cycle_calc", {
-      llvm::dbgs() << "; action = cycle_calc" << "; step = multi_core_refactor"
+      llvm::dbgs() << "; action = cycle_calc"
+                   << "; step = multi_core_refactor"
                    << "; loop_num = " << loop_num << "\n";
     });
   }
 
   int64_t filling_cycle = 0, kernel_cycle = 0, draining_cycle = 0;
-  int64_t total_layer_cycle = 0, total_gdma_cycle = 0;
+  int64_t filling_gdma_cycle = 0, kernel_gdma_cycle = 0,
+          draining_gdma_cycle = 0;
+  int64_t filling_layer_cycle = 0, kernel_layer_cycle = 0,
+          draining_layer_cycle = 0;
+  int64_t ts_layer_cycle = 0, ts_gdma_cycle = 0;
   int64_t swpipl_stage_num = time_step->get_swpipl_stage_num();
   int64_t timestep_num = time_step->get_timestep_num();
   auto &tensor_infos = time_step->get_tensor_infos();
@@ -906,7 +911,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       int64_t cycle =
           this->getLocalLayerCycle(op, tensor_infos, group_type, false);
       DEBUG_WITH_TYPE("cycle_calc", {
-        llvm::dbgs() << "; action = cycle_calc" << "; engine = layer_cycle"
+        llvm::dbgs() << "; action = cycle_calc"
+                     << "; engine = layer_cycle"
                      << "; op_name = " << module::getName(op)
                      << "; value = " << cycle << "\n";
         op->dump();
@@ -922,8 +928,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         if (consider_multi_core_bw) {
           BW = 15.f;
           DEBUG_WITH_TYPE("cycle_calc", {
-            llvm::dbgs() << "; action = multi_core_align" << "; BW = " << BW
-                         << "\n";
+            llvm::dbgs() << "; action = multi_core_align"
+                         << "; BW = " << BW << "\n";
           });
           bm1688->dl_set_gdma_bw_s2l(BW);
           bm1688->dl_set_gdma_bw_l2s(BW);
@@ -939,7 +945,8 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       int64_t hold_in_lmem =
           time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
       DEBUG_WITH_TYPE("cycle_calc", {
-        llvm::dbgs() << "; action = cycle_calc" << "; engine = gdma_cycle"
+        llvm::dbgs() << "; action = cycle_calc"
+                     << "; engine = gdma_cycle"
                      << "; op_name = " << module::getName(tensor.first)
                      << "; hold_in_lmem = " << hold_in_lmem
                      << "; value = " << cycle << "\n";
@@ -951,27 +958,27 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
     for (int64_t j = 0; j < swpipl_stage_num; ++j) {
       start = std::max((j - (loop_num - 1)), (int64_t)0);
       // layers
-      total_layer_cycle = 0;
+      ts_layer_cycle = 0;
       for (auto &layer : layer_cycle) {
         if (layer.stage <= j && layer.stage >= start) {
-          total_layer_cycle += layer.cycle;
+          ts_layer_cycle += layer.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_tiu_cycle"
-                         << "; stage = filling" << "; value = " << layer.cycle
-                         << "\n";
+                         << "; stage = filling"
+                         << "; value = " << layer.cycle << "\n";
           });
         }
       }
       // tensors
-      total_gdma_cycle = 0;
+      ts_gdma_cycle = 0;
       for (auto &tensor : gdma_cycle) {
         if (tensor.stage <= j && tensor.stage >= start &&
             tensor.hold_in_lmem < 2) {
-          total_gdma_cycle += tensor.cycle;
+          ts_gdma_cycle += tensor.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_gdma_cycle"
-                         << "; stage = filling" << "; value = " << tensor.cycle
-                         << "\n";
+                         << "; stage = filling"
+                         << "; value = " << tensor.cycle << "\n";
           });
           if (tensor.hold_in_lmem == 1) {
             tensor.hold_in_lmem = 2;
@@ -979,100 +986,116 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
         }
       }
       DEBUG_WITH_TYPE("cycle_calc", {
-        if (total_layer_cycle > total_gdma_cycle) {
-          llvm::dbgs() << "; action = consider_tiu_cycle" << "; stage = filling"
-                       << "; value = " << total_layer_cycle << "\n";
+        if (ts_layer_cycle > ts_gdma_cycle) {
+          llvm::dbgs() << "; action = consider_tiu_cycle"
+                       << "; stage = filling"
+                       << "; value = " << ts_layer_cycle << "\n";
         } else {
           llvm::dbgs() << "; action = consider_gdma_cycle"
                        << "; stage = filling"
-                       << "; value = " << total_gdma_cycle << "\n";
+                       << "; value = " << ts_gdma_cycle << "\n";
         }
       });
       // max
-      filling_cycle += std::max(total_layer_cycle, total_gdma_cycle);
+      filling_cycle += std::max(ts_layer_cycle, ts_gdma_cycle);
+      filling_layer_cycle += ts_layer_cycle;
+      filling_gdma_cycle += ts_gdma_cycle;
     }
     // kernel time
     if (loop_num > swpipl_stage_num) {
       // layers
-      total_layer_cycle = 0;
+      ts_layer_cycle = 0;
       for (auto &layer : layer_cycle) {
-        total_layer_cycle += layer.cycle;
+        ts_layer_cycle += layer.cycle;
         DEBUG_WITH_TYPE("cycle_calc", {
           llvm::dbgs() << "; action = accumulate_tiu_cycle"
-                       << "; stage = kernel" << "; value = " << layer.cycle
-                       << "\n";
+                       << "; stage = kernel"
+                       << "; value = " << layer.cycle << "\n";
         });
       }
       // tensors
-      total_gdma_cycle = 0;
+      ts_gdma_cycle = 0;
       for (auto &tensor : gdma_cycle) {
         if (tensor.hold_in_lmem == 0) {
-          total_gdma_cycle += tensor.cycle;
+          ts_gdma_cycle += tensor.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_gdma_cycle"
-                         << "; stage = kernel" << "; value = " << tensor.cycle
-                         << "\n";
+                         << "; stage = kernel"
+                         << "; value = " << tensor.cycle << "\n";
           });
         }
       }
       DEBUG_WITH_TYPE("cycle_calc", {
-        if (total_layer_cycle > total_gdma_cycle) {
-          llvm::dbgs() << "; action = consider_tiu_cycle" << "; stage = kernel"
-                       << "; value = " << total_layer_cycle << "\n";
+        if (ts_layer_cycle > ts_gdma_cycle) {
+          llvm::dbgs() << "; action = consider_tiu_cycle"
+                       << "; stage = kernel"
+                       << "; value = " << ts_layer_cycle << "\n";
         } else {
-          llvm::dbgs() << "; action = consider_gdma_cycle" << "; stage = kernel"
-                       << "; value = " << total_gdma_cycle << "\n";
+          llvm::dbgs() << "; action = consider_gdma_cycle"
+                       << "; stage = kernel"
+                       << "; value = " << ts_gdma_cycle << "\n";
         }
       });
-      kernel_cycle += std::max(total_layer_cycle, total_gdma_cycle);
+      kernel_cycle += std::max(ts_layer_cycle, ts_gdma_cycle);
+      kernel_layer_cycle += ts_layer_cycle;
+      kernel_gdma_cycle += ts_gdma_cycle;
     }
     // draining time
     for (int64_t j = start + 1; j < swpipl_stage_num; ++j) {
       // layers
-      total_layer_cycle = 0;
+      ts_layer_cycle = 0;
       for (auto &layer : layer_cycle) {
         if (layer.stage >= j && layer.stage < swpipl_stage_num) {
-          total_layer_cycle += layer.cycle;
+          ts_layer_cycle += layer.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_tiu_cycle"
-                         << "; stage = draining" << "; value = " << layer.cycle
-                         << "\n";
+                         << "; stage = draining"
+                         << "; value = " << layer.cycle << "\n";
           });
         }
       }
       // tensors
-      total_gdma_cycle = 0;
+      ts_gdma_cycle = 0;
       for (auto &tensor : gdma_cycle) {
         if (tensor.hold_in_lmem == 0 && tensor.stage >= j &&
             tensor.stage < swpipl_stage_num) {
-          total_gdma_cycle += tensor.cycle;
+          ts_gdma_cycle += tensor.cycle;
           DEBUG_WITH_TYPE("cycle_calc", {
             llvm::dbgs() << "; action = accumulate_gdma_cycle"
-                         << "; stage = draining" << "; value = " << tensor.cycle
-                         << "\n";
+                         << "; stage = draining"
+                         << "; value = " << tensor.cycle << "\n";
           });
         }
       }
       DEBUG_WITH_TYPE("cycle_calc", {
-        if (total_layer_cycle > total_gdma_cycle) {
+        if (ts_layer_cycle > ts_gdma_cycle) {
           llvm::dbgs() << "; action = consider_tiu_cycle"
                        << "; stage = draining"
-                       << "; value = " << total_layer_cycle << "\n";
+                       << "; value = " << ts_layer_cycle << "\n";
         } else {
           llvm::dbgs() << "; action = consider_gdma_cycle"
                        << "; stage = draining"
-                       << "; value = " << total_gdma_cycle << "\n";
+                       << "; value = " << ts_gdma_cycle << "\n";
         }
       });
-      draining_cycle += std::max(total_layer_cycle, total_gdma_cycle);
+      draining_cycle += std::max(ts_layer_cycle, ts_gdma_cycle);
+      draining_layer_cycle += ts_layer_cycle;
+      draining_gdma_cycle += ts_gdma_cycle;
     }
   }
+
+  int64_t kernel_loop = std::max(loop_num - swpipl_stage_num, (int64_t)0);
   int64_t total_cycle =
-      filling_cycle + draining_cycle +
-      std::max(loop_num - swpipl_stage_num, (int64_t)0) * kernel_cycle;
+      filling_cycle + draining_cycle + kernel_loop * kernel_cycle;
+  int64_t total_layer_cycle = filling_layer_cycle + draining_layer_cycle +
+                              kernel_loop * kernel_layer_cycle;
+  int64_t total_gdma_cycle = filling_gdma_cycle + draining_gdma_cycle +
+                             kernel_loop * kernel_gdma_cycle;
   DEBUG_WITH_TYPE("cycle_calc", {
-    llvm::dbgs() << "; action = total_cycle_of_group" << "; step = end"
-                 << "; event = " << "total_cycle_of_group"
+    llvm::dbgs() << "; action = total_cycle_of_group"
+                 << "; step = end"
+                 << "; event = "
+                 << "total_cycle_of_group"
                  << "; filling_cycle = " << filling_cycle
                  << "; draining_cycle = " << draining_cycle
                  << "; loop_num = " << loop_num
@@ -1080,16 +1103,15 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
                  << "; kernel_cycle = " << kernel_cycle
                  << "; total_cycle = " << total_cycle << "\n";
   });
-  return total_cycle;
+  return TimeInfo(total_cycle, total_gdma_cycle, total_layer_cycle);
 }
 
-int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
+TimeInfo Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
   auto splitedOps = createTempCoreParallelOp(op, num_core_);
-  // SmallVector<Operation *> splitedOps;
 
   if (auto inplaceOp = dyn_cast<InplaceInterface>(op)) {
     if (inplaceOp.SupportInplace()) {
-      return 0;
+      return TimeInfo(0, 0, 0);
     }
   }
 
@@ -1107,29 +1129,36 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
     if (imp_multi_core_global) {
       BW = 15.f;
       DEBUG_WITH_TYPE("cycle_calc", {
-        llvm::dbgs() << "; action = align_multi_core_bw" << "; BW = " << BW
-                     << "; op_name = " << module::getName(op) << "\n";
+        llvm::dbgs() << "; action = align_multi_core_bw"
+                     << "; BW = " << BW << "; op_name = " << module::getName(op)
+                     << "\n";
       });
     }
     // for other targets, writer
     bm1688->dl_set_gdma_bw_s2l(BW);
     bm1688->dl_set_gdma_bw_l2s(BW);
   }
-  int64_t cycle = 0;
 
+  int64_t cycle = 0, bdc_cycle = 0, gdma_cycle = 0;
   for (auto _op : splitedOps) {
     if (auto castOp = dyn_cast<GlobalGenInterface>(_op)) {
       bm168x->set_command_issue_flag(false);
       bm168x->reset_cmd_id_node();
       castOp.codegen_global_bm168x();
       auto full_cycle = bm168x->get_cmd_cycle();
+      auto cur_gdma_cycle = bm168x->get_gdma_cycle();
+      auto cur_bdc_cycle = bm168x->get_bdc_cycle();
       auto op_name = module::getName(_op);
       DEBUG_WITH_TYPE("cycle_calc", {
         llvm::dbgs() << "; action = codegen_global_layer"
                      << "; op_name = " << op_name << "; full = " << full_cycle
                      << "\n";
       });
-      cycle = std::max(cycle, full_cycle);
+      if (cycle < full_cycle) {
+        cycle = full_cycle;
+        gdma_cycle = cur_gdma_cycle;
+        bdc_cycle = cur_bdc_cycle;
+      }
       bm168x->dl_sg_stas_reset();
     }
   }
@@ -1164,7 +1193,7 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
     bm1688->dl_set_gdma_bw_s2l(BW);
     bm1688->dl_set_gdma_bw_l2s(BW);
   }
-  return cycle;
+  return TimeInfo(cycle, gdma_cycle, bdc_cycle);
 }
 
 int64_t Bm168xCycleCalculator::getLocalLayerCycle(Operation *op,
@@ -1374,7 +1403,7 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v, tensor_info_t &tensor_info,
                 GDMA_VALUE_DIR_S2L, 0, pid_node);
             channel_index++;
           }
-        } // depth loop
+        }      // depth loop
       } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
         for (int64_t i = 0; i < n_slice; i++) {
           bm168x->dl_tensor_stride_move_gen_cmd(
@@ -1451,7 +1480,7 @@ int64_t Bm168xCycleCalculator::getStoreCycle(Value v,
   return gdma_cycle;
 }
 
-int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) {
+TimeInfo Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) {
   std::vector<uint8_t> cmdbuf;
   auto castOp = dyn_cast<GlobalGenInterface>(op);
   castOp.codegen_global_cv18xx(0);
@@ -1465,7 +1494,7 @@ int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) {
   //   std::ofstream ofs(ss.str(), std::ios::binary);
   //   ofs.write((char *)cmdbuf.data(), cmdbuf.size());
   // }
-  return cycle;
+  return TimeInfo(cycle, 0, 0);
 }
 
 bool Cv18xxCycleCalculator::check_lmem(Operation *op,

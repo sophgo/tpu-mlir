@@ -36,6 +36,7 @@ typedef struct {
   std::string debugger_filename;
   bool disable_group_overlap;
   std::string config_filename;
+  bool enable_profile;
 } LgOptions;
 
 typedef struct {
@@ -288,7 +289,8 @@ struct op_related_info_t {
   std::map<Value, int, value_compare> tensor_size;
   std::map<Value, int, value_compare> load_tensor_cycles;
   // std::vector<ts_var_t>  ada_var_for_free_mem;
-  // // Auto-retained input tensor that can be released after this op is executed
+  // // Auto-retained input tensor that can be released after this op is
+  // executed
   op_related_info_t() : op(nullptr) {}
 };
 
@@ -432,6 +434,11 @@ struct LgInfo {
           continue;
         }
         group_op_outs.push_back(out);
+
+        if (out.use_empty()) {
+          group_outs.push_back(out);
+          continue;
+        }
         for (auto dst_op : out.getUsers()) {
           if (std::find(group_ops.begin(), group_ops.end(), dst_op) ==
                   group_ops.end() &&
@@ -488,13 +495,15 @@ struct LgInfo {
     if (!module::isDebugCmdEnable("detail_info_show")) {
       return;
     }
-    llvm::dbgs() << "LgInfo Begin {" << "\n";
+    llvm::dbgs() << "LgInfo Begin {"
+                 << "\n";
     // llvm::dbgs() << "ins"
     //              << "\n";
     // for (auto op : group_ins) {
     //   op.dump();
     // }
-    llvm::dbgs() << "ops" << "\n";
+    llvm::dbgs() << "ops"
+                 << "\n";
     for (auto [index, op] : llvm::enumerate(group_ops)) {
       // op->dump();
       if (op) {
@@ -509,7 +518,8 @@ struct LgInfo {
     // for (auto op : group_outs) {
     //   op.dump();
     // }
-    llvm::dbgs() << "} LgInfo End;" << "\n";
+    llvm::dbgs() << "} LgInfo End;"
+                 << "\n";
   }
 
   void const dump() const {
@@ -551,7 +561,9 @@ struct LgInfo {
   // group layers
   std::vector<Operation *> group_ops; /**cached, by loc name */
   // std::vector<Operation *> edge_ops;
-  // // // Find all ops where preOp or nextOp are outside the group, i.e., the edge ops of the groupOp and nextOp are outside the group, i.e., the edge ops of the group.
+  // // // Find all ops where preOp or nextOp are outside the group, i.e., the
+  // edge ops of the groupOp and nextOp are outside the group, i.e., the edge
+  // ops of the group.
 
   // in tensors
   std::vector<Value> group_ins;
@@ -706,6 +718,39 @@ public:
   bool find_softmax = false;
   bool hdim_is_batch = false;
   std::map<Value, std::vector<int>, value_compare> map_value_to_cut_dims;
+};
+
+struct DataMovementInfo {
+  int64_t s2l_bytes; // ddr/l2 -> lmem
+  int64_t l2s_bytes; // lmem to ddr/l2
+  int64_t s2s_bytes; // ddr -> ddr
+};
+
+struct TimeInfo {
+  int64_t cycles;
+  int64_t gdma_cycles;
+  int64_t bdc_cycles;
+  TimeInfo(int64_t cycles_ = 0, int64_t gdma_cycles_ = 0,
+           int64_t bdc_cycles_ = 0)
+      : cycles(cycles_), gdma_cycles(gdma_cycles_), bdc_cycles(bdc_cycles_) {}
+
+  TimeInfo &operator+=(const TimeInfo &rhs) {
+    cycles += rhs.cycles;
+    gdma_cycles += rhs.gdma_cycles;
+    bdc_cycles += rhs.bdc_cycles;
+    return *this;
+  }
+};
+
+enum class BottleneckType { COMPUTE_BOUND, MEMORY_BOUND, BALANCED };
+
+struct LayerGroupPerf {
+  int64_t num_ops;
+  int64_t flops;
+
+  DataMovementInfo data_info;
+  TimeInfo time_info;
+  BottleneckType bottleneck;
 };
 
 } // namespace tpu

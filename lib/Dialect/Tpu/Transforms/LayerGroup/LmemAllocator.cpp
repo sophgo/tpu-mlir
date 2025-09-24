@@ -1577,7 +1577,8 @@ LmemAllocator::try_this_shape_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
 
 #pragma omp critical(get_cycle)
   _group_cost =
-      cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
+      cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type)
+          .cycles;
 
   last_group_cost_ = _group_cost;
   if (min_group_costs_ == -1 || _group_cost < min_group_costs_) {
