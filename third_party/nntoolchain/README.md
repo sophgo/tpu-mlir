@@ -28,6 +28,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
 #bm1688 sha256: 640934b972a0946f8c551f9a489f7bb5f64aed46
+# + AR broadcast bugfix: 98787c3b38064ca12f6a3e628df69c0faeebf73b
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
