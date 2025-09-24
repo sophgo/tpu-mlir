@@ -562,7 +562,8 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     //nnvlc
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
     OptionalAttr<Tpu_CompressAttr>:$compress_info,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -720,7 +721,8 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     /// fp8 quantize param
     OptionalAttr<F64Attr>:$fp8_out_scale,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -891,7 +893,8 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<F64ArrayAttr>:$f8_scales, // for fp8 quant
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -943,7 +946,8 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<F64Attr, "1.0">:$f8_scale,  // input scale
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -993,7 +997,8 @@ def Tpu_BinaryShiftOp: Tpu_Op<"BinaryShift", [
     DefaultValuedAttr<BoolAttr, "true">:$saturation,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1039,7 +1044,8 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
     DefaultValuedAttr<BoolAttr, "true">:$saturation,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let hasCanonicalizer = 1;
@@ -1381,7 +1387,8 @@ def Tpu_SubOp: Tpu_Op<"Sub",
     OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<F64ArrayAttr>:$f8_scales, // for fp8 quant
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1434,7 +1441,8 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<F64Attr, "1.0">:$f8_scale,  // input scale
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1481,7 +1489,8 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<F64ArrayAttr>:$out_f8_scales,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1529,7 +1538,8 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1577,7 +1587,8 @@ def Tpu_MinOp: Tpu_Op<"Min", [
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1625,7 +1636,8 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyTensor:$output);
@@ -1673,7 +1685,8 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyTensor:$output);
@@ -1713,7 +1726,8 @@ def Tpu_ActiveOp: Tpu_Op<"Active",[
     Tpu_ActiveModeAttr:$mode,
     OptionalAttr<F64ArrayAttr>:$coeffs,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1754,7 +1768,8 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
     F64Attr:$min,
     F64Attr:$max,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1870,7 +1885,8 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let hasCanonicalizer = 1;
 
@@ -1913,7 +1929,8 @@ def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2007,7 +2024,8 @@ def Tpu_LutOp: Tpu_Op<"Lut", [
     AnyRankedTensor:$input,
     AnyRankedTensor:$table,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2131,7 +2149,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     AnyTensorOrNone:$multi,
     AnyTensorOrNone:$buffer,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2184,7 +2203,8 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose,
     // do per-group quant if q_group_size > 0, otherwise per-channel
     DefaultValuedAttr<I64Attr, "0">:$q_group_size,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let hasCanonicalizer = 1;
@@ -2396,7 +2416,8 @@ def Tpu_ReluOp: Tpu_Op<"Relu", [
     ins AnyRankedTensor:$input,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2567,7 +2588,8 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$with_scale, //for BM1684
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
@@ -2605,7 +2627,8 @@ def Tpu_DtypeCastOp:Tpu_Op<"DtypeCast", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$with_scale, //for BM1684
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2756,7 +2779,8 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2794,7 +2818,8 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<SI32Attr, "1">:$rq_axis,
     DefaultValuedAttr<BoolAttr, "false">:$fuse_rq_axis,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2833,7 +2858,8 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$first_round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -2909,7 +2935,8 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
     Tpu_DequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -3346,7 +3373,8 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3391,7 +3419,8 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
     OptionalAttr<SI32Attr>:$rshift_neg,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -3524,7 +3553,8 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     SI32Attr:$multiplier,
     SI32Attr:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3562,7 +3592,8 @@ def Tpu_PermuteOp: Tpu_Op<"Permute", [
     I64ArrayAttr:$order,
     AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -3800,7 +3831,8 @@ def Tpu_DivOp: Tpu_Op<"Div", [
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4302,7 +4334,8 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4738,7 +4771,8 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
     OptionalAttr<SI32Attr>:$rshift_pos,
     OptionalAttr<SI32Attr>:$multiplier_pos,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4987,7 +5021,8 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
     DefaultValuedAttr<F64Attr, "0.0">:$x_const_val,
     DefaultValuedAttr<F64Attr, "0.0">:$y_const_val,
     AnyTensorOrNone:$buffer,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -5059,7 +5094,8 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
     AnyRankedTensor:$lhs,
     AnyRankedTensor:$rhs,
     CompareModeAttr:$mode,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -5096,7 +5132,8 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
     CompareModeAttr:$mode,
     F64Attr:$const_val,
     BoolAttr:$inversed,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -5143,7 +5180,8 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     I64ArrayAttr:$normalized_shape,
     SI32Attr:$axis,
     F64Attr:$eps,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -5268,7 +5306,8 @@ def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
     AnyTensorOrNone:$mantissa_table,   // cv18xx
     I64Attr:$num_groups,
     F64Attr:$eps,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -5580,7 +5619,8 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
     I64Attr:$axis,
     DefaultValuedAttr<I64Attr, "0">:$reduction,
     DefaultValuedAttr<BoolAttr, "false">:$nc_can_split,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -6288,7 +6328,8 @@ def Tpu_RMSNormOp : Tpu_Op<"RMSNorm", [
     AnyTensorOrNone:$gamma,
     F64Attr:$eps,
     DefaultValuedAttr<BoolAttr, "false">:$weight_keep_f32,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs
@@ -6829,7 +6870,8 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight", [SupportFuseRelu,
     I64ArrayAttr:$dilations,
     I64ArrayAttr:$padding,
     BoolAttr:$grad_bias_enable,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results =(outs
   AnyTensor:$output);
@@ -7581,7 +7623,8 @@ def tpu_MaxPoolingIndicesBwdOp: Tpu_Op<"MaxPoolingIndicesBwd", [
     I64ArrayAttr:$pads,
     I64ArrayAttr:$dilations,
     I64ArrayAttr:$input_shape,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$grad_input);
@@ -7624,7 +7667,8 @@ def Tpu_LayerNormCastOp: Tpu_Op<"LayerNormCast", [
     F64Attr:$eps,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     DefaultValuedAttr<I64Attr, "1">:$isCastAtEnd,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -7707,7 +7751,8 @@ def Tpu_SoftmaxCastOp: Tpu_Op<"SoftmaxCast",[
     DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<BoolAttr>:$do_core_parallel
   );
 
   let results = (outs AnyRankedTensor:$output);

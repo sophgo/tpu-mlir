@@ -329,6 +329,10 @@ public:
         if (supportMultiCore(op)) {
           return WalkResult::skip();
         }
+        if (op->hasAttr("do_core_parallel") &&
+            !op->getAttrOfType<BoolAttr>("do_core_parallel")) {
+          return WalkResult::skip();
+        }
         if (auto coreParallelOp = dyn_cast<IndexingMapsInterface>(op)) {
           forAll(coreParallelOp, 0, num_core);
         }

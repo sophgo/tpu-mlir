@@ -1121,6 +1121,23 @@ TimeInfo Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
 
   auto bm168x = BM168x::instance();
 
+  int64_t origin_cycle = 0x7FFFFFFFFFFFFFFF;
+  if (splitedOps.size() > 1) {
+    if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
+      bm168x->set_command_issue_flag(false);
+      bm168x->reset_cmd_id_node();
+      castOp.codegen_global_bm168x();
+      origin_cycle = bm168x->get_cmd_cycle();
+      auto op_name = module::getName(op);
+      DEBUG_WITH_TYPE("cycle_calc", {
+        llvm::dbgs() << "; action = codegen_global_layer"
+                     << "; op_name = " << op_name
+                     << "; origin = " << origin_cycle << "\n";
+      });
+      bm168x->dl_sg_stas_reset();
+    }
+  }
+
   if (module::isBM1688()) {
     auto bm1688 = (BM1688 *)bm168x;
     bool imp_multi_core_global =
@@ -1161,6 +1178,9 @@ TimeInfo Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
       }
       bm168x->dl_sg_stas_reset();
     }
+  }
+  if (splitedOps.size() > 1 && cycle > origin_cycle) { // default do core par
+    op->setAttr("do_core_parallel", BoolAttr::get(op->getContext(), false));
   }
 
   DEBUG_WITH_TYPE("mc_lg_refactor", {
