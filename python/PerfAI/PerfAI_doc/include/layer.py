@@ -401,12 +401,25 @@ class TotalLayerInfo:
         if platform.lower() == 'sg2260':
             int8_ops = 256
             fp32_ops = 16
+            f16_ops = int8_ops / 2
+            bf16_ops = int8_ops / 2
         elif platform.lower() == 'bm1684x':
             int8_ops = 32
             fp32_ops = 2.2
+            f16_ops = int8_ops / 2
+            bf16_ops = int8_ops / 2
         elif platform.lower() == 'a2':
             int8_ops = 14.4
             fp32_ops = 0.45
+            f16_ops = int8_ops / 2
+            bf16_ops = int8_ops / 2
+        elif platform.lower() == 'cv184x':
+            int8_ops = 0.75
+            fp32_ops = 0  # no f32 support
+            f16_ops = 0  # no f16 support
+            bf16_ops = int8_ops / 4
+        else:
+            assert 0, "Current platform={} does not support layer info".format(platform)
         ddr_bw = round(float(chip_arch['DDR Max BW(GB/s/Core)']) * int(chip_arch['Core Num']), 2)
         tpu_freq = float(chip_arch['TIU Frequency(MHz)']) / 1000
         dma_freq = float(chip_arch['DMA Frequency(MHz)']) / 1000
@@ -414,7 +427,8 @@ class TotalLayerInfo:
             'Network': [network],
             'platform': [platform],
             'TPU INT8 TOPS': [int8_ops],
-            'TPU FP16 TOPS': [int8_ops / 2],
+            'TPU FP16 TOPS': [f16_ops],
+            'TPU BF16 TOPS': [bf16_ops],
             'TPU FP32 TOPS': [fp32_ops],
             'DDR BW(GB/s/Core)': [ddr_bw],
             'TPU Frequency(GHz)': [tpu_freq],

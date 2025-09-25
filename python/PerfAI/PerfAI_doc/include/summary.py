@@ -243,6 +243,7 @@ class Summary:
 
     def _get_layer_peak_tops(self, layer_name, dtype, platform, tpu_freq):
         platform = platform.lower()
+        # NOTE: refer to perf formula in spec
         if layer_name in ['Conv', 'MatMul', 'Attention']:
             if platform == 'bm1684x':
                 cu_num = 64 * 64 * 4  # int8 compute units number of BM1684X
@@ -262,6 +263,12 @@ class Summary:
                     cu_num = cu_num / 2
                 elif dtype in [DataType.FP32, 'f32']:
                     cu_num = 64 * 16 * 8
+            elif platform == 'cv184x':
+                cu_num = 4 * 8 * 16
+                if dtype in [DataType.FP16, DataType.BF16, 'f16', 'bf16']:
+                    cu_num = 2 * 8 * 8
+            else:
+                assert 0, "Current platform={} does not support layer info".format(platform)
             return cu_num * 2 * tpu_freq / 1e6
         elif layer_name in ['LayerNorm', 'Pool', 'Reduce', 'FC']:
             if platform == 'bm1684x':
@@ -282,6 +289,12 @@ class Summary:
                     cu_num = cu_num / 2
                 elif dtype in [DataType.FP32, 'f32']:
                     cu_num = 64 * 16 * 8
+            elif platform == 'cv184x':
+                cu_num = 4 * 8 * 2
+                if dtype in [DataType.FP16, DataType.BF16, 'f16', 'bf16']:
+                    cu_num = cu_num / 2
+            else:
+                assert 0, "Current platform={} does not support layer info".format(platform)
             return cu_num * 2 * tpu_freq / 1e6
         elif layer_name in ['Lut']:
             if platform == 'bm1684x':
@@ -290,6 +303,10 @@ class Summary:
                 cu_num = 32
             elif platform == 'sg2260':
                 cu_num = 64 * 8
+            elif platform == 'cv184x':
+                cu_num = 8
+            else:
+                assert 0, "Current platform={} does not support layer info".format(platform)
             return cu_num * tpu_freq / 1e6
         else:
             if platform == 'bm1684x':
@@ -310,6 +327,12 @@ class Summary:
                     cu_num = cu_num / 2
                 elif dtype in [DataType.FP32, 'f32']:
                     cu_num = 64 * 16 * 8
+            elif platform == 'cv184x':
+                cu_num = 4 * 8 * 2
+                if dtype in [DataType.FP16, DataType.BF16, 'f16', 'bf16']:
+                    cu_num = cu_num / 2
+            else:
+                assert 0, "Current platform={} does not support layer info".format(platform)
             return cu_num * tpu_freq / 1e6
 
     def _get_peak_tops(self, dtype, platform, tpu_freq):
@@ -438,15 +461,6 @@ class Summary:
         flops = chip_arch['flops']
         quant_type = chip_arch['quant_type']
         platform = chip_arch['Chip Arch']
-        if platform.lower() == 'sg2260':
-            int8_ops = 256
-            fp32_ops = 16
-        elif platform.lower() == 'bm1684x':
-            int8_ops = 32
-            fp32_ops = 2.2
-        elif platform.lower() == 'a2':
-            int8_ops = 14.4
-            fp32_ops = 0.45
         ddr_bw = round(float(chip_arch['DDR Max BW(GB/s/Core)']) * int(chip_arch['Core Num']), 2)
         tpu_freq = float(chip_arch['TIU Frequency(MHz)'])
         dma_freq = float(chip_arch['DMA Frequency(MHz)'])
@@ -457,6 +471,7 @@ class Summary:
             'platform': [platform],
             'TPU INT8 TOPS': [self._get_peak_tops(DataType.INT8, platform, tpu_freq)],
             'TPU FP16 TOPS': [self._get_peak_tops(DataType.FP16, platform, tpu_freq)],
+            'TPU BF16 TOPS': [self._get_peak_tops(DataType.BF16, platform, tpu_freq)],
             'TPU FP32 TOPS': [self._get_peak_tops(DataType.FP32, platform, tpu_freq)],
             'DDR BW(GB/s)': [ddr_bw],
             'TPU Frequency(MHz)': [tpu_freq],
