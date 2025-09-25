@@ -85,7 +85,7 @@ void flash_attention_bf16_v1(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
         auto mi_sub_tensor = make_tensor<bf16>(mi_shape, mi_real_shape);
         auto li_sub_tensor = make_tensor<bf16>(li_shape, li_real_shape);
         auto acc_sub_tensor = make_tensor<bf16>(acc_shape, acc_real_shape);
-        tiu::fill(mi_sub_tensor, -15000);
+        tiu::fill(mi_sub_tensor, -1.5e10);
         tiu::zero(li_sub_tensor);
         tiu::zero(acc_sub_tensor);
         for (int _k = 0; _k < kvm; _k += block_k_iter) {
@@ -146,7 +146,7 @@ void flash_attention_bf16_v1(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
           // auto max_out_fp32 = make_tensor<fp32>(mi_shape, mi_real_shape);
           auto mi_new_tensor = make_tensor<bf16>(mi_shape, mi_real_shape);
           quick_pooling(max_out, qk_sub_tensor, &qk_shape, &qk_real_shape,
-                        -15000, 0);
+                        -1.5e10, 0);
           // tiu::cast(max_out_fp32, max_out);
 
           tiu::fmax(mi_new_tensor, mi_sub_tensor, max_out);
@@ -211,6 +211,7 @@ void flash_attention_bf16_v1(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
         dma::store_transpose_nc(
             out_sub_global.sub_view(qi_real_global_shape, qkv_offset),
             qkvo_tensor);
+        
       }
     }
   }
@@ -234,4 +235,45 @@ __KERNEL__ void flash_attention_gqa_bf16(
   flash_attention_bf16_v1<true>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
                                 kvm, d, q_head, kv_head, sqrt_d, has_mask,
                                 g_core_num, dmax, block_m, block_k, block_h);
+}
+
+
+using DTYPE = bf16;
+
+__TEST__ void flash_attention_gqa_main() {
+  int d = 128;
+  float sqrt_d = 0.088388;
+  int qm = 1024;
+  int kvm = 1024;
+  int b = 1;
+  int q_head = 12;
+  int kv_head = 2;
+  const int dmax = 128;
+  const int block_m = 320;
+  const int block_k = 96;
+  // const int block_k = 416;
+  const int block_h = 16;
+
+  dim4 q_shape = {b, qm, q_head, d};
+  dim4 kv_shape = {b, kvm, kv_head, d};
+  dim4 mask_shape = {b, 1, qm, kvm};
+
+  auto ptr_out = ppl::malloc<DTYPE>(&q_shape);
+  auto ptr_q = ppl::malloc<DTYPE>(&q_shape);
+  auto ptr_k = ppl::malloc<DTYPE>(&kv_shape);
+  auto ptr_v = ppl::malloc<DTYPE>(&kv_shape);
+  auto ptr_mask = ppl::malloc<DTYPE>(&mask_shape);
+
+
+  read_npz<DTYPE>(ptr_q, "fa_input.npz", "q_proj_f32");
+  read_npz<DTYPE>(ptr_k, "fa_input.npz", "k_cache_f32");
+  read_npz<DTYPE>(ptr_v, "fa_input.npz", "v_cache_f32");
+  read_npz<DTYPE>(ptr_mask, "fa_input.npz", "attention_mask");
+  // ppl::print("%s",ptr_mask);
+
+  int has_mask = 1;
+  int g_core_num = 1;
+  flash_attention_gqa_bf16(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
+                           d, q_head, kv_head, sqrt_d, has_mask, g_core_num, dmax, block_m,
+                           block_k, block_h);
 }

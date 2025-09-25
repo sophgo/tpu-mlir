@@ -7,7 +7,7 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
                         int b, int qm, int kvm, int d, int q_head, int kv_head,
                         float sqrt_d, int has_mask, const int g_core_num,
                         const int dmax, const int block_m, const int block_k,
-                        const int block_h) {
+                        const int block_h, float pool_pad) {
   ppl::set_core_num(g_core_num);
   int head_rep = q_head / kv_head;
 
@@ -83,7 +83,7 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
         auto mi_sub_tensor = make_tensor<fp32>(mi_shape, mi_real_shape);
         auto li_sub_tensor = make_tensor<fp32>(li_shape, li_real_shape);
         auto acc_sub_tensor = make_tensor<fp32>(acc_shape, acc_real_shape);
-        tiu::fill(mi_sub_tensor, -15000);
+        tiu::fill(mi_sub_tensor, pool_pad);
         tiu::zero(li_sub_tensor);
         tiu::zero(acc_sub_tensor);
         for (int _k = 0; _k < kvm; _k += block_k_iter) {
@@ -138,7 +138,7 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
           auto max_out = make_tensor<fp32>(mi_shape, mi_real_shape);
           auto mi_new_tensor = make_tensor<fp32>(mi_shape, mi_real_shape);
           quick_pooling(max_out, qk_sub_tensor, &qk_shape, &qk_real_shape,
-                        -15000, 0);
+                        pool_pad, 0);
 
           tiu::fmax(mi_new_tensor, mi_sub_tensor, max_out);
 
@@ -205,7 +205,7 @@ __KERNEL__ void flash_attention_mha_bf16_high_precision(
     const int block_h) {
   flash_attention_v2<false, bf16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
                                   kvm, d, q_head, kv_head, sqrt_d, has_mask,
-                                  g_core_num, dmax, block_m, block_k, block_h);
+                                  g_core_num, dmax, block_m, block_k, block_h, -1.5e10);
 }
 
 __KERNEL__ void flash_attention_gqa_bf16_high_precision(
@@ -215,7 +215,7 @@ __KERNEL__ void flash_attention_gqa_bf16_high_precision(
     const int block_h) {
   flash_attention_v2<true, bf16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
                                  kvm, d, q_head, kv_head, sqrt_d, has_mask,
-                                 g_core_num, dmax, block_m, block_k, block_h);
+                                 g_core_num, dmax, block_m, block_k, block_h, -1.5e10);
 }
 
 __KERNEL__ void flash_attention_mha_f16_high_precision(
@@ -225,7 +225,7 @@ __KERNEL__ void flash_attention_mha_f16_high_precision(
     const int block_h) {
   flash_attention_v2<false, fp16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
                                   kvm, d, q_head, kv_head, sqrt_d, has_mask,
-                                  g_core_num, dmax, block_m, block_k, block_h);
+                                  g_core_num, dmax, block_m, block_k, block_h, -15000);
 }
 
 __KERNEL__ void flash_attention_gqa_f16_high_precision(
@@ -235,5 +235,5 @@ __KERNEL__ void flash_attention_gqa_f16_high_precision(
     const int block_h) {
   flash_attention_v2<true, fp16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
                                  kvm, d, q_head, kv_head, sqrt_d, has_mask,
-                                 g_core_num, dmax, block_m, block_k, block_h);
+                                 g_core_num, dmax, block_m, block_k, block_h, -15000);
 }
