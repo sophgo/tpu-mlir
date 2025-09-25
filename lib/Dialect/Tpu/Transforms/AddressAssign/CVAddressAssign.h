@@ -39,7 +39,8 @@ class CVAddressAssign {
 public:
   CVAddressAssign() {}
   void assign(mlir::ModuleOp &module, bool reuse_addr, bool merge_weight,
-              bool compress_weight, std::string &weight_map_file);
+              bool compress_weight, std::string &weight_map_file,
+              const std::string &iomem_set = "");
 
 protected:
   std::string calcMD5(std::vector<uint8_t> &data);

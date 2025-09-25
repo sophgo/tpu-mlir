@@ -114,6 +114,8 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
            "compress weight memory.">,
     Option<"weight_map_file", "weight_map_file", "std::string", /*default=*/"\"_weight_map.csv\"",
            "record weight offset with its name into a csv map file.">,
+    Option<"iomem_set", "iomem_set", "std::string", /*default=*/"",
+           "set special input/output as io memory">,
   ];
 }
 

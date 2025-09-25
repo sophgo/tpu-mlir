@@ -138,9 +138,28 @@ void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &m, bool merge_weight,
   module::setCoeffSize(m, addr);
 }
 
+static inline std::vector<int> string2vec(std::string slist) {
+  std::vector<int> outvec;
+  std::string idx_str = "";
+  for (auto s : slist) {
+    int idx;
+    if (s == ',') {
+      idx = atoi(idx_str.c_str());
+      idx_str = "";
+      outvec.push_back(idx);
+    } else {
+      idx_str += s;
+    }
+  }
+  if (idx_str.size())
+    outvec.push_back(atoi(idx_str.c_str()));
+  return outvec;
+}
+
 void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
                              bool merge_weight, bool compress_weight,
-                             std::string &weight_map_file) {
+                             std::string &weight_map_file,
+                             const std::string &iomem_set) {
   // assign weight first
   assign_weight_addr(m, merge_weight, compress_weight, weight_map_file);
 
@@ -155,6 +174,10 @@ void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
   std::vector<ValueInfo> private_outs;
   std::vector<ValueInfo> io_outs;
   std::vector<Operation *> group_ops;
+  std::vector<int> iomem_idxs;
+  if (!iomem_set.empty()) {
+    iomem_idxs = string2vec(iomem_set);
+  }
 
   // assign activation
   uint32_t loc = 0;
@@ -175,6 +198,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
     updateLiveRange(*iter, ops_loc, op_infos, inplace_ops, outputs,
                     neuron_alignment);
   }
+  int io_idx = 0;
   // make the order of the ops positive
   std::reverse(inplace_ops.begin(), inplace_ops.end());
   // updateConcatOpTargetV(inplace_ops, op_infos);
@@ -194,11 +218,21 @@ void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
         liveRange[v_info] = op_infos[v_info].live;
         switch (op_infos[v_info].mem_type) {
         case MEM_IOMEM:
-          if (io_outs.size() < 5) {
-            io_outs.emplace_back(v_info);
+          if (!iomem_idxs.empty()) {
+            if (std::find(iomem_idxs.begin(), iomem_idxs.end(), io_idx) !=
+                iomem_idxs.end()) {
+              io_outs.emplace_back(v_info);
+            } else {
+              private_outs.emplace_back(v_info);
+            }
           } else {
-            private_outs.emplace_back(v_info);
+            if (io_outs.size() < 5) {
+              io_outs.emplace_back(v_info);
+            } else {
+              private_outs.emplace_back(v_info);
+            }
           }
+          io_idx++;
           break;
         case MEM_PRIVATE:
           private_outs.emplace_back(v_info);

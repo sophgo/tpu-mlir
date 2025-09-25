@@ -130,6 +130,7 @@ class DeployTool:
 
         self.skip_validation = args.skip_validation
         self.model_version = args.model_version
+        self.iomem_set = args.iomem_set
         self.addr_mode = args.addr_mode
         self.cuda = args.cuda
         self.q_group_size = args.q_group_size if self.quantize in [
@@ -405,6 +406,7 @@ class DeployTool:
                     embed_debug_info=self.embed_debug_info,
                     group_by_cores=self.group_by_cores,
                     model_version=self.model_version,
+                    iomem_set=self.iomem_set,
                     count_patterns=True if self.patterns_count else False,
                     compress_mode=self.compress_mode,
                     future_update_rank=self.future_update_rank,
@@ -580,6 +582,8 @@ if __name__ == '__main__':
                         help="merge weights into one weight binary with previous generated cvimodel")
     parser.add_argument("--model_version", default="latest",
                         help="if need old version cvimodel, set the verion, such as 1.2")
+    parser.add_argument("--iomem_set", default="", type=str,
+                        help="set special input/output as io memory")
     # for bm1684
     parser.add_argument("--do_winograd", action="store_true", default=False,
                         help="do_winograd")
