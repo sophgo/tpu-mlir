@@ -129,6 +129,16 @@ protected:
         if (l_trans == true && r_trans == false) {
           std::vector<int64_t> new_l_order = {0, 3, 2, 1};
           l_trans_op->setAttr("order", rewriter.getI64ArrayAttr(new_l_order));
+          auto l_input_type =
+              l_trans_op.getInput().getType().cast<RankedTensorType>();
+          auto l_input_shape = module::getShape(l_trans_op.getInput());
+          std::vector<int64_t> new_l_output_shape;
+          for (auto idx : new_l_order) {
+            new_l_output_shape.push_back(l_input_shape[idx]);
+          }
+          auto new_l_output_type = RankedTensorType::get(
+              new_l_output_shape, l_input_type.getElementType());
+          l_trans_op.getResult().setType(new_l_output_type);
           module::setLocSuffix(l_trans_op, "reorder");
           op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
           op->setOperand(1, r_trans_op.getInput());
