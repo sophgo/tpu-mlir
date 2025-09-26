@@ -9,13 +9,14 @@
 # ==============================================================================
 
 import ctypes as ct
-from profile_helper.bmprofile_common import dictStructure
+from profile_helper.bmprofile_common import dictStructure, global_freq_info
 from enum import Enum
 from debugger.target_common import get_target_context
 from debugger.target_common import DType
 
 GDMA_FREQ = 750
 BD_FREQ = 900
+global_freq_info.set_freq(BD_FREQ, GDMA_FREQ)
 arch_name = "BM1688"
 
 

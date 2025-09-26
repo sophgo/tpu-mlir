@@ -9,7 +9,7 @@
 # ==============================================================================
 
 from profile_helper.bmprofile_parser import BMProfileParser, parse_data_blocks, IterRecord, parse_monitor_bd, parse_monitor_gdma
-from profile_helper.bmprofile_common import BlockType, GlobalInfo, Arch
+from profile_helper.bmprofile_common import BlockType, GlobalInfo, Arch, getTIUFreq, getGDMAFreq
 from profile_helper.bmprofile_utils import re_key_value
 import os
 import logging
@@ -116,22 +116,22 @@ class BMProfileParserPerfAI(BMProfileParser):
     def __cycle2time(self):
         for i in self.gdma_monitor:
             for j in i:
-                j.inst_start_time = int(j.inst_start_time / self.archlib.GDMA_FREQ * 1000)
-                j.inst_end_time = int(j.inst_end_time / self.archlib.GDMA_FREQ * 1000)
+                j.inst_start_time = int(j.inst_start_time / getGDMAFreq() * 1000)
+                j.inst_end_time = int(j.inst_end_time / getGDMAFreq() * 1000)
         for i in self.bd_monitor:
             for j in i:
-                j.inst_start_time = int(j.inst_start_time / self.archlib.BD_FREQ * 1000)
-                j.inst_end_time = int(j.inst_end_time / self.archlib.BD_FREQ * 1000)
+                j.inst_start_time = int(j.inst_start_time / getTIUFreq() * 1000)
+                j.inst_end_time = int(j.inst_end_time / getTIUFreq() * 1000)
 
     def __time2cycle(self):
         for i in self.gdma_monitor:
             for j in i:
-                j.inst_start_time = int(j.inst_start_time * self.archlib.GDMA_FREQ / 1000)
-                j.inst_end_time = int(j.inst_end_time * self.archlib.GDMA_FREQ / 1000)
+                j.inst_start_time = int(j.inst_start_time * getGDMAFreq() / 1000)
+                j.inst_end_time = int(j.inst_end_time * getGDMAFreq() / 1000)
         for i in self.bd_monitor:
             for j in i:
-                j.inst_start_time = int(j.inst_start_time * self.archlib.BD_FREQ / 1000)
-                j.inst_end_time = int(j.inst_end_time * self.archlib.BD_FREQ / 1000)
+                j.inst_start_time = int(j.inst_start_time * getTIUFreq() / 1000)
+                j.inst_end_time = int(j.inst_end_time * getTIUFreq() / 1000)
 
     def __align_core_time(self):
         first_wait_cmd_id = []

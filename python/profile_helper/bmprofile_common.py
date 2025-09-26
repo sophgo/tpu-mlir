@@ -1022,6 +1022,35 @@ class GlobalInfo():
         assert self.archlib is not None
 
 
+class FrequencyManager():
+
+    def __init__(self):
+        self.FreqMap = None
+        self.tiu_freq = None
+        self.gdma_freq = None
+        self.compute_ability = None
+
+    def set_freq_map(self, freq_map: dict):
+        self.FreqMap = freq_map
+
+    def set_freq(self, tiu_freq: float, gdma_freq: float):
+        self.tiu_freq = tiu_freq
+        self.gdma_freq = gdma_freq
+
+    def set_freq(self, compute_ability: float):
+        if not self.FreqMap:
+            raise ValueError("set FreqMap first")
+        elif str(compute_ability) not in self.FreqMap:
+            raise ValueError("compute_ability not in FreqMap")
+        else:
+            self.tiu_freq = self.FreqMap[str(compute_ability)]["BD_FREQ"]
+            self.gdma_freq = self.FreqMap[str(compute_ability)]["GDMA_FREQ"]
+
+    def __repr__(self):
+        return "BD_FREQ={}, GDMA_FREQ={}, compute_ability={}".format(self.tiu_freq, self.gdma_freq,
+                                                                     self.compute_ability)
+
+
 class dictStructure(ct.Structure):
     _alias_ = {}
 
@@ -1066,3 +1095,22 @@ class dictStructure(ct.Structure):
 
     def __repr__(self):
         return str(dict(self.items()))
+
+
+global_freq_info = FrequencyManager()
+
+
+def getTIUFreq() -> float:
+    if global_freq_info.tiu_freq is None:
+        raise ValueError("TIU Frequency is not set")
+    return global_freq_info.tiu_freq
+
+
+def getGDMAFreq() -> float:
+    if global_freq_info.gdma_freq is None:
+        raise ValueError("GDMA Frequency is not set")
+    return global_freq_info.gdma_freq
+
+
+def setComputeAbility(compute_ability: str):
+    global_freq_info.compute_ability = compute_ability

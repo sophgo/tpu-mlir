@@ -9,14 +9,29 @@
 # ==============================================================================
 
 import ctypes as ct
-from profile_helper.bmprofile_common import dictStructure
+from profile_helper.bmprofile_common import dictStructure, global_freq_info, getTIUFreq, getGDMAFreq
 from enum import Enum
 from debugger.target_common import get_target_context
 from debugger.target_common import DType
 
-GDMA_FREQ = 650
-BD_FREQ = 750
-# TODO: cv184x has more than three kinds of work freqs, need auto parse form pmu header
+FREQ_MAP = {
+    "0.75": {
+        "BD_FREQ": 750,
+        "GDMA_FREQ": 650
+    },
+    "0.5": {
+        "BD_FREQ": 500,
+        "GDMA_FREQ": 500
+    },
+    "0.35": {
+        "BD_FREQ": 375,
+        "GDMA_FREQ": 500
+    }
+}
+
+global_freq_info.set_freq_map(FREQ_MAP)
+compute_ability = 0.75 if not global_freq_info.compute_ability else global_freq_info.compute_ability
+global_freq_info.set_freq(compute_ability)
 arch_name = "CV184X"
 
 
@@ -117,8 +132,8 @@ DMA_ARCH = {
     "Cube OHOW Align(8bits)": 4,
     "Cube OHOW Align(16bits)": 2,
     "Vector OHOW Align(8bits)": 8,
-    "TIU Frequency(MHz)": BD_FREQ,
-    "DMA Frequency(MHz)": GDMA_FREQ
+    "TIU Frequency(MHz)": getTIUFreq(),
+    "DMA Frequency(MHz)": getGDMAFreq()
 }
 
 TIU_ARCH = DMA_ARCH
@@ -172,7 +187,7 @@ def get_dma_info(monitor_info, reg_info):
     dma_info["Stall Cycle"] = monitor_info.gif_wr_rd_stall_cntr
     dma_info["gmem_xfer_bytes(B)"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
     dma_info["gmem_bandwidth"] = round(
-        dma_info["gmem_xfer_bytes(B)"] / dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
+        dma_info["gmem_xfer_bytes(B)"] / dma_info["Asic Cycle"] * (getGDMAFreq() / 1000), 4)
     # dma_info["gmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
     #                                         (getattr(reg_info, "dst_nsize", 0) or 1) * (getattr(reg_info, "dst_csize", 0) or 1) * getattr(reg_info,"dst_hsize", 0) * getattr(reg_info,"src_wsize", 0)) * data_type.prec()
     # dma_info["lmem_dma_data_size(B)"] = max((getattr(reg_info, "src_nsize", 0) or 1) * (getattr(reg_info, "src_csize", 0) or 1) * getattr(reg_info,"src_hsize", 0) * getattr(reg_info,"src_wsize", 0),
@@ -182,7 +197,7 @@ def get_dma_info(monitor_info, reg_info):
         "gmem_xact_cnt"] = monitor_info.axi_d0_wr_vaild_cntr + monitor_info.axi_d0_rd_vaild_cntr
     dma_info["lmem_xfer_bytes"] = monitor_info.gif_mem_w_cntr + monitor_info.axi_d0_w_cntr
     dma_info["lmem_bandwidth"] = round(
-        dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"] * (GDMA_FREQ / 1000), 4)
+        dma_info["lmem_xfer_bytes"] / dma_info["Asic Cycle"] * (getGDMAFreq() / 1000), 4)
     dma_info["lmem_dma_data_size(B)"] = dma_info["lmem_xfer_bytes"]
     dma_info["lmem_xact_cnt"] = monitor_info.gif_wr_valid_cntr + monitor_info.gif_rd_valid_cntr
     dma_info["DMA data size(B)"] = max(dma_info["gmem_dma_data_size(B)"],
@@ -289,3 +304,7 @@ def getDmaFunctionName(cmd_type, cmd_special_function, direction):
         functinName = "tensor{}".format(direction_dict.get(direction, ""))
 
     return functionType, functinName
+
+
+def show_arch_info():
+    print("CV184X tiu_freq={} gdma_freq={}".format(getTIUFreq(), getGDMAFreq()))
