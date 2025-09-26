@@ -38,20 +38,20 @@ SKIP_OPERATION = [
 ]
 
 
-def find_all_pre_layers(all_pre_layers, op_name, parser, exist_ref_layers=None):
+def find_all_pre_layers(all_pre_layers: set, op_name, parser, exist_ref_layers=None):
     pre_layers = parser.get_pre_op_by_op_name(op_name)
     if len(pre_layers) > 0:
         for pre_layer in pre_layers:
             if pre_layer not in all_pre_layers:
-                all_pre_layers.append(pre_layer)
-            if exist_ref_layers is not None:
-                if pre_layer in exist_ref_layers:
+                all_pre_layers.add(pre_layer)
+                if exist_ref_layers is not None:
+                    if pre_layer in exist_ref_layers:
+                        find_all_pre_layers(all_pre_layers, pre_layer, parser, exist_ref_layers)
+                else:
                     find_all_pre_layers(all_pre_layers, pre_layer, parser, exist_ref_layers)
-            else:
-                find_all_pre_layers(all_pre_layers, pre_layer, parser, exist_ref_layers)
     else:
         if op_name not in all_pre_layers:
-            all_pre_layers.append(op_name)
+            all_pre_layers.add(op_name)
 
 
 class MixQuantModel:
@@ -527,17 +527,18 @@ class MixPrecSearcher:
         return extra_input
 
     def clear_ref_tensor(self, op_name, parser, data_dict):
-        all_pre_layers = []
+        all_pre_layers = set()
         find_all_pre_layers(all_pre_layers, op_name, parser, list(data_dict[0].keys()))
         for idx in range(self.num_sample):
-            self.clear_tensor(idx, op_name, data_dict, parser, all_pre_layers)
+            self.clear_tensor(idx, op_name, data_dict, parser, list(all_pre_layers))
 
     def clear_ref_tensor2(self, op_name, top_parser, int8_parser, data_dict):
-        all_pre_layers = []
+        all_pre_layers = set()
         find_all_pre_layers(all_pre_layers, op_name, top_parser, list(data_dict[0].keys()))
-        all_pre_layers2 = []
+        all_pre_layers2 = set()
         find_all_pre_layers(all_pre_layers2, op_name, int8_parser, list(data_dict[0].keys()))
-        all_pre_layers.extend(all_pre_layers2)
+        all_pre_layers = list(all_pre_layers)
+        all_pre_layers.extend(list(all_pre_layers2))
         all_pre_layers = set(all_pre_layers)
         all_pre_layers_used = len(all_pre_layers) * [False]
         for i, layer in enumerate(all_pre_layers):
@@ -596,9 +597,9 @@ class MixPrecSearcher:
         if global_compare_layers != None:
             all_pre_layers = []
             for layer in global_compare_layers:
-                pre_layers = []
+                pre_layers = set()
                 find_all_pre_layers(pre_layers, layer, self.parser)
-                all_pre_layers.extend(pre_layers)
+                all_pre_layers.extend(list(pre_layers))
             all_pre_layers = set(all_pre_layers)
             if len(layers_rate) > 0:
                 if len(global_compare_layers) != len(layers_rate):
@@ -609,6 +610,10 @@ class MixPrecSearcher:
                     exit(1)
             else:
                 layers_rate = len(global_compare_layers) * [1]
+        print(f'global_compare_layers:{global_compare_layers}')
+        print(
+            f'finding prelayer of {global_compare_layers} get - {"None" if all_pre_layers is None else len(all_pre_layers)}'
+        )
         return global_compare_layers, layers_rate, all_pre_layers
 
     def run_model(self, model, float_type, global_compare_layers, layers_rate, predictions_gt):
@@ -1043,9 +1048,9 @@ class MixPrecSearcher:
             global_compare_layers = [i.split(':')[0].strip() for i in global_compare_layers]
             all_pre_layers = []
             for layer in global_compare_layers:
-                pre_layers = []
+                pre_layers = set()
                 find_all_pre_layers(pre_layers, layer, self.parser)
-                all_pre_layers.extend(pre_layers)
+                all_pre_layers.extend(list(pre_layers))
             all_pre_layers = set(all_pre_layers)
             if len(layers_rate) > 0:
                 if len(global_compare_layers) != len(layers_rate):
