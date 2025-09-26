@@ -20,7 +20,7 @@ except:
         Warning)
     use_npz_tool = False
 
-from multiprocess import Pool
+from multiprocessing import Pool
 from pathlib import Path
 
 ###########################
