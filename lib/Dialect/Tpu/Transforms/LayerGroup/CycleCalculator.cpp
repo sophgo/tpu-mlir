@@ -683,7 +683,7 @@ int64_t Bm168xCycleCalculator::getGdmaCycleOpt(Value v,
 TimeInfo Bm168xCycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
                                               shape_secs_t &shape_secs,
                                               group_type_t group_type) {
-  if (!module::isBM1684XFamily()) {
+  if (!module::isBM1684XFamily() && !module::isBM1690Family()) {
     auto time_info =
         CycleCalculator::getGroupCycle(time_step, shape_secs, group_type);
     return time_info;
