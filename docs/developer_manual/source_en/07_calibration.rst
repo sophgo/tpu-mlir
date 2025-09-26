@@ -348,7 +348,7 @@ octav:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 minmax:
@@ -359,7 +359,7 @@ minmax:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_max \
+      --cali_method max \
       -o yolov5s_cali_table
 
 percentile9999:
@@ -370,7 +370,7 @@ percentile9999:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_percentile9999 \
+      --cali_method percentile9999 \
       -o yolov5s_cali_table
 
 aciq_gauss:
@@ -381,7 +381,7 @@ aciq_gauss:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_aciq_gauss \
+      --cali_method aciq_gauss \
       -o yolov5s_cali_table
 
 aciq_laplace:
@@ -392,7 +392,7 @@ aciq_laplace:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_aciq_laplace \
+      --cali_method aciq_laplace \
       -o yolov5s_cali_table
 
 Using optimization methods:
@@ -406,7 +406,7 @@ sq:
       --sq \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 we:
@@ -418,7 +418,7 @@ we:
       --we \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 we+bc:
@@ -433,7 +433,7 @@ we+bc:
       --input_num 100 \
       --processor bm1684x \
       --bc_inference_num 200 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 we+bc+search_threshold:
@@ -510,7 +510,7 @@ search_qtable:
    * - --processor
      - processor type
    * - --cali_method
-     - Choose quantization threshold calculation method, Options include use_kl, use_mse, use_percentile9999, use_max, with the default being use_kl
+     - Choose quantization threshold calculation method, Options include kl, mse, percentile9999, max, with the default being kl
    * - --fp_type
      - The data type of floating-point layers in search_qtable
    * - --post_process
@@ -542,7 +542,7 @@ search_qtable:
    * - -o
      - output threshold table
    * - --debug_cmd
-     - debug command to specify calibration mode; “percentile9999” initialize the threshold via percentile function, “use_max” specifies the maximum of absolute value to be the threshold, “use_torch_observer_for_cali” adopts Torch observer for calibration. "use_mse" adopts Octav for calibration.
+     - debug command to specify calibration mode; “percentile9999” initialize the threshold via percentile function, “max” specifies the maximum of absolute value to be the threshold, “use_torch_observer_for_cali” adopts Torch observer for calibration. "mse" adopts Octav for calibration.
    * - --debug_log
      - Log output level
 

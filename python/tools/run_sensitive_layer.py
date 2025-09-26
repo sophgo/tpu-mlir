@@ -16,6 +16,7 @@ from calibration.sensitive_layer import SensitiveLayer
 from calibration.data_selector import DataSelector
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
+from utils.misc import parse_debug_cmd
 
 if __name__ == '__main__':
     print("TPU-MLIR {}".format(pymlir.__version__))
@@ -32,7 +33,7 @@ if __name__ == '__main__':
                         help='num of maximum float layers')
     parser.add_argument('--tune_list', type=str, default='', help='Tune list file contain all input for tune')
     parser.add_argument('--tune_num', type=int, default=5, help='num of images for tune')
-    parser.add_argument('--cali_method', type=str, default='use_kl',help='method of calibration')
+    parser.add_argument('--cali_method', type=str, default='kl',help='method of calibration')
     parser.add_argument('--expected_cos', type=float, default=0.99,
                         help='expected net output cos')
     parser.add_argument('--global_compare_layers', type=str, default='',
@@ -51,7 +52,9 @@ if __name__ == '__main__':
                         help='post_process program path')
     parser.add_argument('-o', '--quantize_table', required=True,
                         help='output searched sensitive layers table')
-    parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
+    parser.add_argument('--debug_cmd', type=parse_debug_cmd, default={}, help='debug cmd')
+    parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
+    parser.add_argument('--kurtosis_analysis', help='kurtosis analysis', action="store_true")
 
     # yapf: enable
     args = parser.parse_args()

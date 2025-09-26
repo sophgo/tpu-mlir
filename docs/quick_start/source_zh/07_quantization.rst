@@ -79,7 +79,7 @@ run_calibration参数介绍
    * - processor
      - 处理器类型,默认为bm1684x
    * - cali_method
-     - 选择校准模式;不添加该参数默认为KLD校准。“use_percentile9999”采用99.99分位作为门限。“use_max”采用绝对值最大值作为门限。“use_torch_observer_for_cali”采用torch的observer进行校准。"use_mse"采用octav进行校准。
+     - 选择校准模式;不添加该参数默认为KLD校准。“percentile9999”采用99.99分位作为门限。“max”采用绝对值最大值作为门限。“use_torch_observer_for_cali”采用torch的observer进行校准。"mse"采用octav进行校准。
    * - fp_type
      - search_qtable浮点层数据类型
    * - post_process
@@ -173,21 +173,21 @@ case2:当对您的模型进行初步量化时您已经清楚该模型适合于�
    $ run_calibration mlir.file \
        --dataset data_path \
        --input_num 100 \
-       --cali_method use_mse \
+       --cali_method mse \
        -o cali_table
 
-注意事项:1.当不添加 ``cali_method`` 参数时,此时将采用默认的KLD校准方法。2.目前 ``cali_method`` 支持五种选择,包括 ``use_mse``, ``use_max`` , ``use_percentile9999`` , ``use_aciq_gauss`` 以及 ``use_aciq_laplace``。
+注意事项:1.当不添加 ``cali_method`` 参数时,此时将采用默认的KLD校准方法。2.目前 ``cali_method`` 支持五种选择,包括 ``mse``, ``max`` , ``percentile9999`` , ``aciq_gauss`` 以及 ``aciq_laplace``。
 
 case3:当您对量化时间比较敏感,希望尽可能快的生成校准表 ``cali_table`` ,但您不清楚该如何选择校准方法时,这里推荐您直接根据 ``cali_method`` 参数去选择固定的校准方法,相比于TPU-MLIR V1.8版本的量化速度,
-V1.9版本的单个校准方法量化速度提升100%,因此所需时间也平均降低到之前的50%左右,加速效果明显。在V1.9版本校准方法中, ``use_mse`` 是平均量化速度最快的。对于校准方法的选择,可以参考以下几点经验性的结论:
-1.当您的模型是不带有attention结构的非transformer模型,可以选择 ``use_mse`` 校准方法。具体操作如下:
+V1.9版本的单个校准方法量化速度提升100%,因此所需时间也平均降低到之前的50%左右,加速效果明显。在V1.9版本校准方法中, ``mse`` 是平均量化速度最快的。对于校准方法的选择,可以参考以下几点经验性的结论:
+1.当您的模型是不带有attention结构的非transformer模型,可以选择 ``mse`` 校准方法。具体操作如下:
 
 .. code-block:: shell
 
    $ run_calibration mlir.file \
        --dataset data_path \
        --input_num 100 \
-       --cali_method use_mse \
+       --cali_method mse \
        -o cali_table
 
 或者也可选择默认的KLD校准方法。具体操作如下:
@@ -201,17 +201,17 @@ V1.9版本的单个校准方法量化速度提升100%,因此所需时间也平�
 
 如果上述两种方法精度均不满足需求,可能需要采取混合精度策略或者混合门限方法,具体介绍可看后面小节。
 
-2.当您的模型是带有attention结构的transformer模型,可以选择 ``use_mse`` 校准方法,如果 ``use_mse`` 校准方法效果略差,则可以尝试 ``use_max`` 校准方法,具体操作如下:
+2.当您的模型是带有attention结构的transformer模型,可以选择 ``mse`` 校准方法,如果 ``mse`` 校准方法效果略差,则可以尝试 ``max`` 校准方法,具体操作如下:
 
 .. code-block:: shell
 
    $ run_calibration mlir.file \
        --dataset data_path \
        --input_num 100 \
-       --cali_method use_max \
+       --cali_method max \
        -o cali_table
 
-如果 ``use_max`` 效果也无法满足需求,此时需要采取混合精度策略,可依据后续介绍的混精方法进行尝试。
+如果 ``max`` 效果也无法满足需求,此时需要采取混合精度策略,可依据后续介绍的混精方法进行尝试。
 
 除去上面总体的选择规则,也提供一些选择校准方法的细节:1.如果您的模型是yolo系列的检测模型,建议采取默认的KLD校准方法。2.如果您的模型是有多个输出的分类模型,建议采取默认的KLD校准方法。
 
@@ -233,7 +233,7 @@ case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法�
        --bc_inference_num 100 \
        -o cali_table
 
-如果使用 ``cali_method`` 选择固定校准方法,下面以 ``use_mse`` 为例添加 ``sq``、``smc``、``we`` 和 ``bc`` 方法,具体操作如下:
+如果使用 ``cali_method`` 选择固定校准方法,下面以 ``mse`` 为例添加 ``sq``、``smc``、``we`` 和 ``bc`` 方法,具体操作如下:
 
 .. code-block:: shell
 
@@ -245,7 +245,7 @@ case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法�
        --dataset data_path \
        --input_num 100 \
        --processor bm1684 \
-       --cali_method use_mse \
+       --cali_method mse \
        --bc_inference_num 100 \
        -o cali_table
 
@@ -400,14 +400,14 @@ search_qtable
 步骤2: 生成calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-这里我们采用 ``use_mse`` 方法进行校准。
+这里我们采用 ``mse`` 方法进行校准。
 
 .. code-block:: shell
 
    $ run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
-       --cali_method use_mse \
+       --cali_method mse \
        -o mobilenet_v2_cali_table
 
 多输入：
@@ -418,7 +418,7 @@ search_qtable
         --dataset ../SQuAD/mlir \
         --input_num 10 \
         --tune_num 0 \
-        --debug_cmd use_mse \
+        --debug_cmd mse \
         -o bert_base_squad_uncased-2.11.0.calitable
 步骤3: 转FP32 bmodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

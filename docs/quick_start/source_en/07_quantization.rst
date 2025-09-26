@@ -77,7 +77,7 @@ The table below provides an introduction to the parameters of the ``run_calibrat
    * - processor
      - processor type, default is bm1684x
    * - cali_method
-     - select the calibration mode; if this parameter is not added, the default is KLD calibration. "use_percentile9999" uses the 99.99 percentile as the threshold. "use_max" uses the absolute maximum value as the threshold. "use_torch_observer_for_cali" uses torch's observer for calibration. "use_mse" uses octav for calibration.
+     - select the calibration mode; if this parameter is not added, the default is KLD calibration. "percentile9999" uses the 99.99 percentile as the threshold. "max" uses the absolute maximum value as the threshold. "use_torch_observer_for_cali" uses torch's observer for calibration. "mse" uses octav for calibration.
    * - fp_type
      - search_qtable floating-point layer data type
    * - post_process
@@ -175,23 +175,23 @@ case2: When quantizing your model for the first time, you already know which cal
    $ run_calibration mlir.file \
        --dataset data_path \
        --input_num 100 \
-       --cali_method use_mse \
+       --cali_method mse \
        -o cali_table
 
-Notes:1.when the ``cali_method`` parameter is not added, the default KLD calibration method will be used. 2.currently, the ``cali_method`` supports five options, including ``use_mse``, ``use_max``, ``use_percentile9999``, ``use_aciq_gauss`` and ``use_aciq_laplace``.
+Notes:1.when the ``cali_method`` parameter is not added, the default KLD calibration method will be used. 2.currently, the ``cali_method`` supports five options, including ``mse``, ``max``, ``percentile9999``, ``aciq_gauss`` and ``aciq_laplace``.
 
 case3: When you are sensitive to quantization time and wish to generate the calibration table ``cali_table`` as quickly as possible, but you are unsure how to choose a calibration method, it is recommended to select a fixed calibration method based on the ``cali_method`` parameter.
 In comparison to the quantization speed of TPU-MLIR V1.8, the V1.9 version shows a 100% speed improvement for individual calibration methods, resulting in an average time reduction of around 50%. The acceleration effect is significant.
-In the V1.9 version, ``use_mse`` is the fastest calibration method on average. When selecting a calibration method, you can consider the following empirical conclusions:
+In the V1.9 version, ``mse`` is the fastest calibration method on average. When selecting a calibration method, you can consider the following empirical conclusions:
 
-1.For non-transformer models without attention structure, ``use_mse`` is a suitable calibration method. Here is a specific operation guide:
+1.For non-transformer models without attention structure, ``mse`` is a suitable calibration method. Here is a specific operation guide:
 
 .. code-block:: shell
 
    $ run_calibration mlir.file \
        --dataset data_path \
        --input_num 100 \
-       --cali_method use_mse \
+       --cali_method mse \
        -o cali_table
 
 You can also choose the default ``KLD`` calibration method. Here is a specific operation guide:
@@ -205,17 +205,17 @@ You can also choose the default ``KLD`` calibration method. Here is a specific o
 
 If neither of the above two methods meets the accuracy requirements, you may need to consider adopting a mixed precision strategy or a hybrid threshold method. More detailed information on these approaches can be found in the subsequent section.
 
-2.When your model is a transformer model that includes an attention structure, you can choose the ``use_mse`` calibration method. If the ``use_mse`` calibration method does not produce satisfactory results, you can then consider trying the ``use_max`` calibration method. Here is a specific operation guide:
+2.When your model is a transformer model that includes an attention structure, you can choose the ``mse`` calibration method. If the ``mse`` calibration method does not produce satisfactory results, you can then consider trying the ``max`` calibration method. Here is a specific operation guide:
 
 .. code-block:: shell
 
    $ run_calibration mlir.file \
        --dataset data_path \
        --input_num 100 \
-       --cali_method use_max \
+       --cali_method max \
        -o cali_table
 
-If the ``use_max`` method also fails to meet the requirements, at this point, you may need to adopt a mixed precision strategy. You can then try the mixed precision methods that will be introduced later.
+If the ``max`` method also fails to meet the requirements, at this point, you may need to adopt a mixed precision strategy. You can then try the mixed precision methods that will be introduced later.
 
 Apart from the overall selection rules mentioned above, here are some specific details for choosing calibration methods:1.If your model is a YOLO series object detection model, it is recommended to use the default KLD calibration method.2.If your model is a multi-output classification model,
 it is also recommended to use the default KLD calibration method.
@@ -239,7 +239,7 @@ If you have used ``search_threshold`` for searching, the operations for adding s
        --bc_inference_num 100 \
        -o cali_table
 
-If you choose a fixed calibration method using ``cali_method`` , for example, using ``use_mse`` , to add the ``sq``, ``smc``, ``we`` and ``bc`` methods, the specific operation is as follows:
+If you choose a fixed calibration method using ``cali_method`` , for example, using ``mse`` , to add the ``sq``, ``smc``, ``we`` and ``bc`` methods, the specific operation is as follows:
 
 .. code-block:: shell
 
@@ -251,7 +251,7 @@ If you choose a fixed calibration method using ``cali_method`` , for example, us
        --dataset data_path \
        --input_num 100 \
        --processor bm1684 \
-       --cali_method use_mse \
+       --cali_method mse \
        --bc_inference_num 100 \
        -o cali_table
 
@@ -411,14 +411,14 @@ multi-input Model:
 Step 2: Gen calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Here, we use the ``use_mse`` method for calibration.
+Here, we use the ``mse`` method for calibration.
 
 .. code-block:: shell
 
    $ run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
-       --cali_method use_mse \
+       --cali_method mse \
        -o mobilenet_v2_cali_table
 
 multi-input Model:
@@ -429,7 +429,7 @@ multi-input Model:
         --dataset ../SQuAD/mlir \
         --input_num 10 \
         --tune_num 0 \
-        --debug_cmd use_mse \
+        --debug_cmd mse \
         -o bert_base_squad_uncased-2.11.0.calitable
 
 Step 3: To F32 bmodel

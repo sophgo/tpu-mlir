@@ -180,7 +180,7 @@ class MixPrecSearcher:
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
         self.num_sample = 0
-        self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        self.debug_cmd = args.debug_cmd
         log_level = "DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
         if '_logger' in args:
             self.logger = args._logger
@@ -610,10 +610,6 @@ class MixPrecSearcher:
                     exit(1)
             else:
                 layers_rate = len(global_compare_layers) * [1]
-        print(f'global_compare_layers:{global_compare_layers}')
-        print(
-            f'finding prelayer of {global_compare_layers} get - {"None" if all_pre_layers is None else len(all_pre_layers)}'
-        )
         return global_compare_layers, layers_rate, all_pre_layers
 
     def run_model(self, model, float_type, global_compare_layers, layers_rate, predictions_gt):

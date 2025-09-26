@@ -385,7 +385,7 @@ octav:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 minmax:
@@ -396,7 +396,7 @@ minmax:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_max \
+      --cali_method max \
       -o yolov5s_cali_table
 
 percentile9999:
@@ -407,7 +407,7 @@ percentile9999:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_percentile9999 \
+      --cali_method percentile9999 \
       -o yolov5s_cali_table
 
 aciq_gauss:
@@ -418,7 +418,7 @@ aciq_gauss:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_aciq_gauss \
+      --cali_method aciq_gauss \
       -o yolov5s_cali_table
 
 aciq_laplace:
@@ -429,7 +429,7 @@ aciq_laplace:
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_aciq_laplace \
+      --cali_method aciq_laplace \
       -o yolov5s_cali_table
 
 使用优化方法：
@@ -443,7 +443,7 @@ sq:
       --sq \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 we:
@@ -455,7 +455,7 @@ we:
       --we \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 we+bc:
@@ -470,7 +470,7 @@ we+bc:
       --input_num 100 \
       --processor bm1684x \
       --bc_inference_num 200 \
-      --cali_method use_mse \
+      --cali_method mse \
       -o yolov5s_cali_table
 
 we+bc+search_threshold:
@@ -546,7 +546,7 @@ search_qtable:
    * - --processor
      - 处理器类型
    * - --cali_method
-     - 量化门限计算方法选择,可选择use_kl,use_mse,use_percentile9999,use_max,默认为use_kl
+     - 量化门限计算方法选择,可选择kl,mse,percentile9999,max,默认为kl
    * - --fp_type
      - search_qtable浮点层数据类型
    * - --post_process
@@ -578,7 +578,7 @@ search_qtable:
    * - -o
      - 输出门限表
    * - --debug_cmd
-     - debug命令,可以选择校准模式;“percentile9999”采用99.99分位作为初始门限。“use_max”采用绝对值最大值作为门限。“use_torch_observer_for_cali”采用torch的observer进行校准。"use_mse"采用octav进行校准。
+     - debug命令,可以选择校准模式;“percentile9999”采用99.99分位作为初始门限。“max”采用绝对值最大值作为门限。“use_torch_observer_for_cali”采用torch的observer进行校准。"mse"采用octav进行校准。
    * - --debug_log
      - 日志输出级别
 

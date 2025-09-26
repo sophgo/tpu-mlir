@@ -328,6 +328,7 @@ class MatchPattern:
                     openclip_blocks['openclip_text_block']))].count('top')
                 first_text_mlp_start_index = first_text_block_index + 27  # 27 is the index of the fisrt mlp matmul in openclip text block
                 first_text_mlp_end_index = first_text_block_index + 31  # 31 is the index of the second mlp matmul in openclip text block
+        Pattern_fp_layer_list_total = []
         if flag == 1:
             if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
                 for op_name in all_tensors:

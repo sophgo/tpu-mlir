@@ -18,7 +18,7 @@ import logging
 from utils.mlir_parser import *
 from calibration.mix_precision import MixQuantModel
 from calibration.mix_precision import MixPrecSearcher
-from calibration.kld_calibrator import CalibrationTable, ActivationCalibrator, SimpleTuner
+from calibration.kld_calibrator import CalibrationTable, ActivationCalibrator
 from pathlib import Path
 from utils.net_dot_log import net_dot_log
 from utils.log_setting import logger, setup_logger
@@ -46,120 +46,23 @@ class SearchThreshold:
         if args.input_num > args.inference_num:
             args.input_num = args.inference_num
         self.mix_prec = MixPrecSearcher(args)
-        self.debug_cmd = parse_debug_cmd(args.debug_cmd)
-        self.fixed_fp_layers = fixed_fp_layers
-
-    def gen_multiple_thresholds_new(self, quantize_method_list):
-        calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)
-        thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, _, _, _, _, thresholds, thresholds4 = calibrator.activation_collect_and_calc_th_parallel(
-        )
-        calibrator._clean_resource()
-        for i, method_name in enumerate(quantize_method_list):
-            thresholds_map = thresholds[method_name]
-            op_layers = self.parser.get_op_name_list()
-            cali_table = self.args.calibration_table + "_" + method_name
-            if self.args.tune_num > 0:
-                cali_table += ".1"
-            with open(cali_table, 'w') as f:
-                f.write("# mlir version: {}\n".format(pymlir.__version__))
-                f.write("# mlir: {}\n".format(self.args.mlir_file))
-                f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-                f.write("# quantization threshold calculation method: {}\n".format(method_name))
-                if 'fp8' in self.debug_cmd:
-                    f.write("#tpu-mlir-fp8 caliration table\n")
-                else:
-                    f.write("# histogram number: {}\n".format(calibrator.histogram_bin_num))
-                f.write("# sample number: {}\n###\n".format(calibrator.num_samples))
-                f.write("# op_name    threshold    min    max\n")
-                for i, op_name in enumerate(op_layers):
-                    outputs = self.parser.get_outputs_by_op_name(op_name)
-                    for out in outputs:
-                        if out not in thresholds_map:
-                            continue  # possible useless leaf output
-                        if 'fp8' in self.debug_cmd:
-                            threshold = thresholds_map[out]
-                            min_value, max_value = -threshold * 128.0 / 127.0, threshold
-                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(
-                                out, threshold, min_value, max_value))
-                        else:
-                            if out in thresholds_map:
-                                threshold = thresholds_map[out]
-                            else:
-                                threshold = 1.0
-                            if out in calibrator._activations_statistics:
-                                min_value, max_value, *_ = calibrator._activations_statistics[
-                                    op_name]
-                            else:
-                                min_value, max_value = -1, 1
-                            if threshold <= 1e-5 or np.isnan(threshold):
-                                threshold = 1e-5
-                                self.mix_prec.logger.print_info(
-                                    "WARNING: layer {} threshold is zero. Please check the input data correctness."
-                                    .format(op_name))
-                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                                   max_value))
-                if 'int4' in self.debug_cmd:
-                    thresholds_map4 = thresholds4[method_name]
-                    f.write("\n")
-                    f.write("#int4_th\n")
-                    for i, op_name in enumerate(op_layers):
-                        outputs = self.parser.get_outputs_by_op_name(op_name)
-                        for out in outputs:
-                            if out not in thresholds_map:
-                                continue
-                            threshold = thresholds_map4[out]
-                            if threshold <= 1e-5 or np.isnan(threshold):
-                                threshold = 1e-5
-                                self.mix_prec.logger.print_info(
-                                    "WARNING: layer {} threshold is zero. Please check the input data correctness."
-                                    .format(out))
-                            min_value, max_value = -threshold * 8.0 / 7.0, threshold
-                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(
-                                out, threshold, min_value, max_value))
-            if calibrator.args.tune_num <= 0 or 'int4' in self.debug_cmd or method_name != 'KL':
-                continue
-
-            if self.args.tune_num > 0:
-                cali_table = cali_table.rsplit(".1", 1)[0]
-            calibrator.args.calibration_table = cali_table
-            tunner = SimpleTuner(calibrator.args, calibrator.tune_ds, calibrator.ppa_list,
-                                 thresholds_map_absmax)
-            thresholds_map = tunner.run()
-
-            layer_name_list = []
-            cali_table += "_tune"
-            with open(cali_table, 'w') as f:
-                f.write("# mlir version: {}\n".format(pymlir.__version__))
-                f.write("# mlir: {}\n".format(self.args.mlir_file))
-                f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-                f.write("# quantization threshold calculation method: {}\n".format(method_name))
-                f.write("# histogram number: {}\n".format(calibrator.histogram_bin_num))
-                f.write("# sample number: {}\n".format(calibrator.num_samples))
-                f.write("# tune number: {}\n###\n".format(self.args.tune_num))
-                f.write("# op_name    threshold    min    max\n")
-                for i, op_name in enumerate(op_layers):
-                    op_name = split_fuseop(op_name)[0]
-                    threshold = thresholds_map[op_name]
-                    if threshold <= 1e-5:
-                        threshold = 1e-5
-                        self.mix_prec.logger.print_info(
-                            "WARNING: layer {} threshold is zero. Please check the input data correctness."
-                            .format(op_name))
-                    layer_name_list.append('{}_{}'.format(i, op_name))
-                    min_value, max_value, *_ = calibrator._activations_statistics[op_name]
-                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                               max_value))
-        return
+        self.debug_cmd = args.debug_cmd
+        self.fixed_fp_layers = shape_pattern_fp_layers or []
 
     def run_search_calitable(self):
 
         float_model = MixQuantModel(self.fp32_mlir, self.chip)
         predictions_gt = []
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
-        quantize_method_list = ["KL", "MAX", "Percentile9999", "MSE"]
+        quantize_method_list = ["kl", "max", "percentile9999", "mse"]
         self.mix_prec.logger.print_info(
             "Quantization threshold calculation method: {}".format(quantize_method_list))
-        self.gen_multiple_thresholds_new(quantize_method_list)
+        all_op_names = self.parser.get_op_name_list()
+        all_op_names = get_no_fused_tensors(self.parser, all_op_names)
+        calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)
+        calibrator.calibration_method = quantize_method_list
+        layer_th_dict = calibrator.gen_multiple_thresholds(all_op_names, quantize_method_list)
+        del calibrator
         mix_table = self.mix_prec._gen_mix_table(self.fixed_fp_layers)
 
         result = {}
@@ -167,7 +70,7 @@ class SearchThreshold:
                                     predictions_gt)
         for method in quantize_method_list:
             cali_table = self.cali_table_name + "_" + method + ".1"
-            if method == 'KL':
+            if method == 'KL' and self.args.tune_num > 0:
                 cali_table = self.cali_table_name + "_" + method + "_tune"
             new_cali_table_name = "new_cali_table.txt"
             with open(cali_table, 'r') as file:

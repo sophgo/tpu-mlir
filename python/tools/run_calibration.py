@@ -16,13 +16,16 @@ from calibration.kld_calibrator import ActivationCalibrator
 from calibration.data_selector import DataSelector
 from calibration.search_threshold import SearchThreshold
 from calibration.search_qtable import SearchQtable
+from calibration.sensitive_layer import SensitiveLayer
 from calibration.smoothquant import SmoothQuant
 from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
 from calibration.utils import gen_shape_pattern_qtable
+from calibration.utils import parse_method_list, compactable_method_list, compactable_cmd_method_list
 from utils.log_setting import logger
+from utils.misc import parse_debug_cmd
 
 if __name__ == '__main__':
     print("TPU-MLIR {}".format(pymlir.__version__))
@@ -36,9 +39,9 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, help='dataset for calibration')
     parser.add_argument('--data_list', type=str, help='Input list file contain all input')
     parser.add_argument('--input_num', type=int, default=0, help='num of images for calibration')
-    parser.add_argument('--cali_method', type=str, default='use_kl',choices=['use_mse','use_max','use_kl','use_percentile9999'],
+    parser.add_argument('--cali_method', type=str, default='kl',choices=['mse','max','kl','percentile9999','aciq_laplace', 'aciq_gauss', 'use_mse','use_max','use_kl','use_percentile9999'],
                         help='method of calibration')
-    parser.add_argument('--search', type=str, default='False', choices=['search_threshold', 'search_qtable','False'],
+    parser.add_argument('--search', type=str, default='False', choices=['search_threshold', 'search_qtable', 'search_sensitive_layer', 'False'],
                         help='choose quantization scheme')
     parser.add_argument('--inference_num', type=int, default=30,
                         help='num of inputs for inference during optimal threshold searching')
@@ -62,7 +65,7 @@ if __name__ == '__main__':
                         help='global compare layers, for example:\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'')
     parser.add_argument('--transformer', type=str, default='False',
                         help='model include attention structure')
-    parser.add_argument('--quantize_method_list', type=parse_method_list, default='MSE',
+    parser.add_argument('--quantize_method_list', type=parse_method_list, default='mse',
                         help='threshold method for search_qtable')
     parser.add_argument('--benchmark_method', type=str, default='cos', choices=['cos', 'snr'],
                         help='method for search optimal threshold')
@@ -79,8 +82,8 @@ if __name__ == '__main__':
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
     parser.add_argument('-o', '--calibration_table', type=str,
                         help='output threshold table')
-    parser.add_argument('--quantize_table', help='output search qtable')
-    parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
+    parser.add_argument('--quantize_table', type=str, default='', help='output search qtable')
+    parser.add_argument('--debug_cmd', type=parse_debug_cmd, default={}, help='debug cmd')
     parser.add_argument('--debug_log', action='store_true', help='Enable DEBUG logging level')
     # yapf: enable
     args = parser.parse_args()
@@ -101,6 +104,13 @@ if __name__ == '__main__':
         )
 
     log_level = "DEBUG" if args.debug_log else "INFO"
+
+    args.cali_method = parse_method_list(args.cali_method)
+    args.cali_method = compactable_method_list(args.cali_method)
+    args.debug_cmd = compactable_cmd_method_list(args.debug_cmd)
+
+    if args.search != 'False' and args.quantize_table == '':
+        parser.error("please set --quantize_table when --search is not False")
 
     shape_ops = ShapeOps(args)
     shape_fp_layers = shape_ops.run()
@@ -143,6 +153,10 @@ if __name__ == '__main__':
             args._logger = logger('Search_Threshold', log_level=log_level)
             searcherT = SearchThreshold(args, selector, tune_ds, shape_pattern_fp_layers)
             searcherT.run_search_calitable()
+        elif args.search == 'search_sensitive_layer':
+            args._logger = logger('Sensitive_Layer', log_level=log_level)
+            searcher = SensitiveLayer(args, selector, tune_ds)
+            searcher.run()
         elif args.search == 'False':
             calibrator = ActivationCalibrator(args, selector, tune_ds)
             calibrator.run()
