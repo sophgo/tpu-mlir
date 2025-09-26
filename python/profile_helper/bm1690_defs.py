@@ -17,6 +17,7 @@ from debugger.target_common import DType
 ID_WIDTH = 20
 GDMA_FREQ = 1000
 BD_FREQ = 1000
+global_freq_info.set_freq(BD_FREQ, GDMA_FREQ)
 BYTE_PER_BEAT = 128
 CDMA_NUM = 11
 GDMACyclePeriod = 1.0 / GDMA_FREQ
