@@ -40,6 +40,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
 #bm1690 sha256: 640934b972a0946f8c551f9a489f7bb5f64aed46
+# matmul muti core fix: + b824cb48fad50b0c2cc4fe648614cbb2f9a3e158
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
