@@ -1618,6 +1618,7 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
         idx = 0;
         slice = 1;
         if (!rope_need_reload) {
+          hold_in_lmem = true;
           in_si.n.emplace_back(slice_pair_t(idx, slice));
           break;
         }
@@ -1752,6 +1753,7 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
         idx = 0;
         slice = 1;
         if (!rope_need_reload) {
+          hold_in_lmem = true;
           in_si.h.emplace_back(slice_pair_t(idx, slice));
           break;
         }

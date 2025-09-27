@@ -353,7 +353,7 @@ void BasicTimeStep::gen_hold_coeff() {
           if (src_op.getAllowSplitAttr() != nullptr) {
             allow_split = true;
           }
-          if (allow_split == false) {
+          if (allow_split == false || tensor_info.hold_in_lmem) {
             this->hold_coeff_[v] = ts;
           }
         }
