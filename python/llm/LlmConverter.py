@@ -41,6 +41,7 @@ class LlmConverter(BaseConverter):
         self.chip = args.chip
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
+        self.dynamic_vit = args.dynamic_vit
         self.use_block_with_kv = args.use_block_with_kv
         self.debug = args.debug
         self.position_shape = [1, self.max_input_length]
@@ -1392,6 +1393,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--high_precision')
         if self.debug:
             deploy_args.append('--debug')
+        if self.dynamic_vit:
+            deploy_args.append('--dynamic')
         self.add_task(deploy_args, f"{name}.log")
 
     def combine(self):
