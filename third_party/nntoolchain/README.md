@@ -57,6 +57,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 
 #cv184x sha256: aca5e7b1a4c2d565398ce680614e9da56f1cde4f
 # lg multi_branch bugfix
+# group conv prob: + da304c7bbc7c8d53763968c235eaa8697eff24af
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel

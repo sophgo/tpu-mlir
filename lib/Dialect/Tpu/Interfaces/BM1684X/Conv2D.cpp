@@ -184,6 +184,9 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
           align_up(ic_ext / p.groups, BM168x::ic_num(in_type_len)) * kh_ext *
           kw_ext;
   }
+  if ((module::isCV184X()) && p.groups > 1 && !is_depthwise) {
+    sz += align_up(out_hslice * out_wslice, eu_num) * out_type_len;
+  }
 
   if ((module::isBM1688() || module::isCV184X() || module::isSGTPUV8()) &&
       getCoeffMerged()) {
