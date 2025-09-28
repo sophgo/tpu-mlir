@@ -1427,12 +1427,15 @@ bool is_matmul_right_tensor(Operation *op, Value v) {
   return res;
 }
 
-bool is_broadcast_rope_with_permute_optimize(
-    Operation *op, std::vector<bool> &is_broadcast_rope_vec) {
+void is_broadcast_rope_with_permute_optimize(Operation *op,
+                                             const shape_secs_t &shape_secs,
+                                             bool &is_broadcast_rope,
+                                             bool &rope_need_reload) {
   if (auto rope_op = dyn_cast<tpu::RopeOp>(op)) {
     if (!rope_op.getIsPermuteOptimize()) {
-      return false;
+      return;
     }
+    std::vector<bool> is_broadcast_rope_vec = {false, false, false, false};
     auto rope_input1 = rope_op.getInput1();
     auto rope_input2 = rope_op.getInput2();
     auto rope_input3 = rope_op.getInput3();
@@ -1444,31 +1447,38 @@ bool is_broadcast_rope_with_permute_optimize(
         rope_input3.getType().cast<RankedTensorType>().getShape();
     if (input1_shape.size() != 4 || input2_shape.size() != 4 ||
         input3_shape.size() != 4) {
-      return false;
+      return;
     }
     if (input1_shape[1] != input2_shape[1] ||
         input1_shape[1] != input3_shape[1]) {
-      return false;
+      return;
     }
     if (input1_shape[3] != input2_shape[3] ||
         input1_shape[3] != input3_shape[3]) {
-      return false;
+      return;
     }
     if ((input1_shape[0] != input2_shape[0] && input2_shape[0] != 1) ||
         (input1_shape[0] != input3_shape[0] && input3_shape[0] != 1)) {
-      return false;
+      return;
     } else {
       is_broadcast_rope_vec[0] = (input1_shape[0] != input2_shape[0]);
     }
     if ((input1_shape[2] != input2_shape[2] && input2_shape[2] != 1) ||
         (input1_shape[2] != input3_shape[2] && input3_shape[2] != 1)) {
-      return false;
+      return;
     } else {
       is_broadcast_rope_vec[2] = (input1_shape[2] != input2_shape[2]);
     }
-    return true;
+    is_broadcast_rope = true;
+    if (!is_broadcast_rope_vec[0] && shape_secs.nsecs > 1 ||
+        !is_broadcast_rope_vec[1] && shape_secs.csecs > 1 ||
+        !is_broadcast_rope_vec[2] && shape_secs.hsecs > 1 ||
+        !is_broadcast_rope_vec[3] && shape_secs.wsecs > 1) {
+      rope_need_reload = true;
+    }
+    return;
   }
-  return false;
+  return;
 }
 
 // if upsample nearest, weight shape is [1, 2, slice_h, slice_w]
@@ -1594,18 +1604,13 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
   bool is_right_matrix = is_matmul_right_tensor(op, in);
   bool is_no_input_attention = is_attention_not_input_tensor(op, in);
   bool is_upsample_weight = is_upsample_indices(op, in);
-  std::vector<bool> is_broadcast_rope_vec = {false, false, false, false};
-  bool is_broadcast_rope =
-      is_broadcast_rope_with_permute_optimize(op, is_broadcast_rope_vec);
+  bool is_broadcast_rope = false;
   bool rope_need_reload = false;
-  if (!is_broadcast_rope_vec[0] && shape_secs.nsecs > 1 ||
-      !is_broadcast_rope_vec[1] && shape_secs.csecs > 1 ||
-      !is_broadcast_rope_vec[2] && shape_secs.hsecs > 1 ||
-      !is_broadcast_rope_vec[3] && shape_secs.wsecs > 1) {
-    rope_need_reload = true;
-  }
-  if (rope_need_reload)
+  is_broadcast_rope_with_permute_optimize(op, shape_secs, is_broadcast_rope,
+                                          rope_need_reload);
+  if (rope_need_reload) {
     need_reload = true;
+  }
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
@@ -1618,7 +1623,7 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
           n == 1) {
         idx = 0;
         slice = 1;
-        if (!rope_need_reload) {
+        if (is_broadcast_rope && !rope_need_reload) {
           hold_in_lmem = true;
           in_si.n.emplace_back(slice_pair_t(idx, slice));
           break;
@@ -1753,7 +1758,7 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
           h == 1) {
         idx = 0;
         slice = 1;
-        if (!rope_need_reload) {
+        if (is_broadcast_rope && !rope_need_reload) {
           hold_in_lmem = true;
           in_si.h.emplace_back(slice_pair_t(idx, slice));
           break;
