@@ -65,6 +65,11 @@ void tpu::DivOp::codegen_local_bm1684x_kernel(
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
+  // inception setting
+  auto in0_gi = in_group_infos[0];
+  auto in1_gi = in_group_infos[1];
+  setHWMargins(input_spec->at(0).hw_margins, in0_gi, gi);
+  setHWMargins(input_spec->at(1).hw_margins, in1_gi, gi);
 
   BM168x::call_local_func("backend_api_bcbinary_local", &param, sizeof(param),
                           &sec_info, input_spec->data(), output_spec->data());

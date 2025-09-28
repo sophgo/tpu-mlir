@@ -3430,7 +3430,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
 
 def Tpu_ConcatOp:Tpu_Op<"Concat", [
     DeclareOpInterfaceMethods<InplaceInterface, ["SupportInplace"]>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "assign_sec_info_kernel"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Concatate operation";
   let description = [{

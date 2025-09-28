@@ -287,6 +287,7 @@ typedef struct local_tensor_spec {
   int32_t dtype;
   int32_t dims;
   int32_t shape[MAX_SHAPE_DIMS];
+  uint32_t hw_margins;
   uint8_t consume_num;
   int *host_data;
   int elem_num;

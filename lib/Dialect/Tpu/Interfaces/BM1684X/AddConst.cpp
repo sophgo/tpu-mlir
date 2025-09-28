@@ -115,6 +115,9 @@ void tpu::AddConstOp::codegen_local_bm1684x_kernel(
   } else {
     param.common.B_dtype = DTYPE_INT32; // assume coeff is fp32
   }
+  // inception setting
+  auto in_gi = in_group_infos[0];
+  setHWMargins(input_spec->at(0).hw_margins, in_gi, gi);
 #ifdef __PPL_SAMPLE
   if (!module::isUniformQuantized(getInput())) {
     BM168x::call_ppl_local_func("api_add_const_fp_local", &param, sizeof(param),

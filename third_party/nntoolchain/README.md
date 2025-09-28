@@ -14,9 +14,8 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ```
 
 ## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2025-09-25
-
 ```bash
-#bm1684x sha256: 98787c3b38064ca12f6a3e628df69c0faeebf73b
+#bm1684x sha256: aca5e7b1a4c2d565398ce680614e9da56f1cde4f
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -27,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1688 sha256: b824cb48fad50b0c2cc4fe648614cbb2f9a3e158
+#bm1688 sha256: aca5e7b1a4c2d565398ce680614e9da56f1cde4f
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -38,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1690 sha256: b824cb48fad50b0c2cc4fe648614cbb2f9a3e158
+#bm1690 sha256: aca5e7b1a4c2d565398ce680614e9da56f1cde4f
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -50,7 +49,7 @@ unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#cv184x sha256: d3641b33217fefe229857756c1fc9282c4892c03
+#cv184x sha256: aca5e7b1a4c2d565398ce680614e9da56f1cde4f
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
@@ -66,7 +65,7 @@ release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#SGTPUV8 sha256: 98787c3b38064ca12f6a3e628df69c0faeebf73b
+#SGTPUV8 sha256: aca5e7b1a4c2d565398ce680614e9da56f1cde4f
 cd TPU1686
 source  scripts/envsetup.sh sgtpuv8
 debug: rebuild_backend_lib_cmodel

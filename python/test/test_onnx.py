@@ -338,6 +338,7 @@ class ONNX_IR_TESTER(object):
             # "LgMultiBranchMin":         (self.test_LgMultiBranchMin,      N, Y, Y, N, Y, Y), # int8 lowering not support
             # "LgMultiBranchCmp":         (self.test_LgMultiBranchCmp,      N, Y, Y, N, Y, Y), # int8 has precision issue when lowering
             "LgMultiBranchSlice":       (self.test_LgMultiBranchSlice,    N, Y, Y, N, Y, Y),
+            "LgMultiBranchConcat":      (self.test_LgMultiBranchConcat,   N, Y, Y, N, Y, Y),
             "LgMultiBranchStore":       (self.test_LgMultiBranchStore,    N, Y, Y, N, Y, Y),
             #########################################
             # Dynamic test case, Alphabetically
@@ -1030,7 +1031,11 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
-    def test_LgMultiBranchOperation(self, case_name, op="add", is_const=False):
+    def test_LgMultiBranchOperation(self,
+                                    case_name,
+                                    op="add",
+                                    is_const=False,
+                                    shape=[1, 64, 360, 640]):
 
         class Model(nn.Module):
 
@@ -1062,6 +1067,8 @@ class ONNX_IR_TESTER(object):
                     y2 = y0 > self.op_weight
                 elif self.op == "slice":
                     y2 = y0[:, 1:2, :, :]
+                elif self.op == "concat":
+                    return torch.cat((y0, y1), dim=1)
                 elif self.op == "store":
                     y2 = y0 + self.op_weight
                     return y1 + y2, y0
@@ -1069,7 +1076,6 @@ class ONNX_IR_TESTER(object):
                     raise ValueError("Unsupported operation: {}".format(op))
                 return y1 + y2
 
-        shape = [1, 64, 360, 640]
         x = torch.randn(shape).float()
         self.torch_and_test(x,
                             Model(shape, op, is_const),
@@ -1106,6 +1112,9 @@ class ONNX_IR_TESTER(object):
 
     def test_LgMultiBranchSlice(self, case_name):
         self.test_LgMultiBranchOperation(case_name, "slice")
+
+    def test_LgMultiBranchConcat(self, case_name):
+        self.test_LgMultiBranchOperation(case_name, "concat", shape=[2, 4, 360, 640])
 
     def test_LgMultiBranchStore(self, case_name):
         self.test_LgMultiBranchOperation(case_name, "store")
@@ -4350,9 +4359,9 @@ class ONNX_IR_TESTER(object):
         # Optimized version with reduced test cases for faster execution
         shapes = (
             [65536],  # 1D with large dimension
-            [65536, 96],  # 2D 
-            [1, 96, 65536],  # 3D  
-            [1, 12, 65536, 8],  # 4D 
+            [65536, 96],  # 2D
+            [1, 96, 65536],  # 3D
+            [1, 12, 65536, 8],  # 4D
         )
 
         bcast_dims = (
