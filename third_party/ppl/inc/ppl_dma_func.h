@@ -107,6 +107,94 @@ template <typename DataType0> void zero(gtensor<DataType0> &dst) {
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
+void gather_c(tensor<DataType0> &dst, tensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(tensor<DataType0> &dst, tensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(tensor<DataType0> &dst, tensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(tensor<DataType0> &dst, tensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
+              tensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C, int index_start_pos);
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void gather_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
+              gtensor<DataType2> &index, DataType3 C) {
+  gather_c(dst, param, index, C, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
 void gather_h(tensor<DataType0> &dst, tensor<DataType1> &param,
               tensor<DataType2> &index, DataType3 C, int index_start_pos);
 template <typename DataType0, typename DataType1, typename DataType2,
@@ -192,38 +280,70 @@ void gather_h(gtensor<DataType0> &dst, gtensor<DataType1> &param,
               gtensor<DataType2> &index, DataType3 C) {
   gather_h(dst, param, index, C, 0);
 }
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(tensor<DataType0> &dst, tensor<DataType1> &param,
+               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
+               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(tensor<DataType0> &dst, tensor<DataType1> &param,
+               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
+               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
+               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
+               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
+               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void scatter_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
+               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, tensor<DataType1> &param,
-               tensor<DataType2> &index);
+               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, gtensor<DataType1> &param,
-               tensor<DataType2> &index);
+               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, tensor<DataType1> &param,
-               gtensor<DataType2> &index);
+               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, gtensor<DataType1> &param,
-               gtensor<DataType2> &index);
+               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, tensor<DataType1> &param,
-               tensor<DataType2> &index);
+               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, gtensor<DataType1> &param,
-               tensor<DataType2> &index);
+               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, tensor<DataType1> &param,
-               gtensor<DataType2> &index);
+               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, gtensor<DataType1> &param,
-               gtensor<DataType2> &index);
+               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
 
 template <typename DataType0, typename DataType1>
 uint nonzero(gtensor<DataType0> &dst, tensor<DataType1> &src);

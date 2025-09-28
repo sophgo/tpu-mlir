@@ -10,20 +10,6 @@
 
 namespace ppl {
 
-enum arith_mode_t {
-  ARITH_AND = 0,
-  ARITH_OR = 1,
-  ARITH_XOR = 2,
-  ARITH_MIN = 3,
-  ARITH_MAX = 4,
-  ARITH_ADD = 5,
-  ARITH_SUB = 6,
-  ARITH_MUL = 7,
-  ARITH_DIV = 8,
-  ARITH_DIFF_ABS = 9,
-  ARITH_MAC = 10,
-};
-
 enum comparision_mode_t {
   GREATER = 0,
   LESS = 1,
@@ -88,6 +74,7 @@ enum data_type_t {
   DT_UINT4,
   DT_INT64,
   DT_UINT64,
+  DT_FP4,
 };
 
 enum all_reduce_opcode_t {
@@ -105,6 +92,19 @@ enum all_reduce_psum_t {
   ALL_REDUCE_PSUM_WO = 0,
   ALL_REDUCE_PSUM_WR = 1,
 };
+
+enum memory_alloc_method_t {
+  BANK_CONFLICT_FIRST = 0,
+  MEMORY_UTILIZATION_FIRST = 1,
+};
+
+enum sync_type {
+  TIU_DMA_SYNC = 0x1,
+  SDMA_SYNC = 0x10,
+  HAU_SYNC = 0x100
+};
+
+#define SYNC_ALL TIU_DMA_SYNC & SDMA_SYNC & HAU_SYNC
 
 struct dim4 {
   int n, c, h, w;
@@ -155,6 +155,8 @@ public:
   template <typename dimT> tensor<dtype> &view(dimT &_shape, dimT &_stride);
   template <typename dimT> tensor<dtype> &sub_view(dimT &_shape, dimT &_offset);
 
+  dim4& getBlockShape();
+  dim4& getShape();
 private:
   dtype *data;
 };

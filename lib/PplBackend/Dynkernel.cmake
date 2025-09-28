@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(TPUKernelSamples LANGUAGES C CXX)
-option(CMODEL "Enable cmodel mode" OFF) 
+option(CMODEL "Enable cmodel mode" OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,8 +25,6 @@ if(NOT DEFINED CHIP)
 else()
   message(NOTICE "CHIP: ${CHIP}")
 endif()
-# Add chip arch defination
-add_definitions(-D__${CHIP}__)
 
 if(CMODEL)
   add_definitions(-DUSING_CMODEL)
@@ -80,6 +78,7 @@ endif()
 set(LIBRARY_OUTPUT_DIRECTORY $ENV{INSTALL_PATH}/lib)
 set(NNTOOLCHAIN_DIRECTORY $ENV{PROJECT_ROOT}/third_party/nntoolchain)
 if(${CHIP} STREQUAL "bm1684x")
+  set(CHIP_CODE "tpu_6_0")
   if(CMODEL)
     set(KERNEL_LIB ${NNTOOLCHAIN_DIRECTORY}/lib/libcmodel_1684x.a)
     set(SHARED_LIBRARY_OUTPUT_FILE libcmodel_1684x)
@@ -88,6 +87,7 @@ if(${CHIP} STREQUAL "bm1684x")
     set(SHARED_LIBRARY_OUTPUT_FILE libbm1684x_kernel_module)
   endif()
 elseif(${CHIP} STREQUAL "bm1688")
+  set(CHIP_CODE "tpul_6_0")
   if(CMODEL)
     set(KERNEL_LIB ${NNTOOLCHAIN_DIRECTORY}/lib/libcmodel_1688.a)
     set(SHARED_LIBRARY_OUTPUT_FILE libcmodel_1688)
@@ -105,21 +105,21 @@ parse_list("${EXTRA_LDIRS}" EXTRA_LDIRS ";")
 parse_list("${EXTRA_LDFLAGS}" EXTRA_LDFLAGS ";")
 parse_list("${EXTRA_CFLAGS}" EXTRA_CFLAGS " ")
 
-set(TPUKERNEL_TOP ${PPL_TOP}/runtime/${CHIP}/TPU1686)
-set(KERNEL_TOP ${PPL_TOP}/runtime/kernel)
-set(CUS_TOP ${PPL_TOP}/runtime/customize)
+# Add chip arch defination
+add_definitions(-D__${CHIP_CODE}__)
+include($ENV{PPL_RUNTIME_PATH}/chip/${CHIP_CODE}/config_common.cmake)
+include_directories(
+  include
+  ${TPUKERNEL_TOP}/kernel/include
+  ${CUS_TOP}/host/include
+  ${CUS_TOP}/dev/utils/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_DIR}/device
+)
 
-include_directories(include)
-include_directories(${TPUKERNEL_TOP}/kernel/include)
-include_directories(${KERNEL_TOP})
-include_directories(${CUS_TOP}/include)
-include_directories(${CMAKE_BINARY_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_DIR}/device)
 # Set the library directories for the shared library (link tpu-mlir's)
 link_directories($ENV{INSTALL_PATH}/lib)
 # Set the output file for the shared library
 aux_source_directory(src_dyn DYN_DEVICE_SRCS)
-# add_library(${SHARED_LIBRARY_OUTPUT_FILE} SHARED ${DYN_DEVICE_SRCS} ${CUS_TOP}/src/ppl_helper.c)
 add_library(${SHARED_LIBRARY_OUTPUT_FILE} SHARED ${DYN_DEVICE_SRCS})
 if(CMODEL)
   set(EX_LIB stdc++)

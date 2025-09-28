@@ -29,12 +29,12 @@ else()
     add_definitions(-O3)
   endif()
 endif()
-set(KERNEL_TOP ${PPL_TOP}/runtime/kernel)
-set(CUS_TOP ${PPL_TOP}/runtime/customize)
 
-include_directories(${TPUKERNEL_TOP}/kernel/include)
+set(KERNEL_TOP ${PPL_TOP}/deps/common/dev/kernel)
+set(HOST_TOP ${PPL_TOP}/deps/common/host)
+
 include_directories(${KERNEL_TOP})
-include_directories(${CUS_TOP}/include)
+include_directories(${HOST_TOP}/include)
 include_directories($ENV{TPUC_ROOT}/include)
 include_directories(include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_DIR}/include)
@@ -42,9 +42,10 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_DIR}/host PL_SRC)
 
 # compile cpp
 aux_source_directory(src TILING_SRC)
+include($ENV{PPL_RUNTIME_PATH}/scripts/GenChipDef.cmake)
 if(BUILD_STATIC)
-  set(ADDITIONAL_SRC ${CUS_TOP}/src/ppl_jit.cpp
-                    ${CUS_TOP}/src/host_utils.cpp)
+  set(ADDITIONAL_SRC ${HOST_TOP}/src/ppl_jit.cpp
+                    ${HOST_TOP}/src/host_utils.cpp)
   add_library(ppl_host SHARED ${TILING_SRC} ${PL_SRC} ${ADDITIONAL_SRC})
 
   install(TARGETS ppl_host DESTINATION lib)
@@ -59,7 +60,7 @@ else()
   include(Dynkernel)
   if(BUILD_DYN_HOST)
     set(DYN_HOST_NAME ppl_dyn_host_${CHIP})
-    set(ADDITIONAL_SRC ${CUS_TOP}/src/host_utils.cpp)
+    set(ADDITIONAL_SRC ${HOST_TOP}/src/host_utils.cpp)
     add_library(${DYN_HOST_NAME} SHARED ${TILING_SRC} ${PL_SRC} ${ADDITIONAL_SRC})
     install(TARGETS ${DYN_HOST_NAME} DESTINATION lib)
     if(NOT DEBUG)

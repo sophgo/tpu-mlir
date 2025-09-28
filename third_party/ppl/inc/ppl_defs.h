@@ -43,6 +43,7 @@ using FP16 = fp16;
 using FP32 = fp32;
 using INT8 = int8;
 using UINT8 = uint8;
+using conv_param = int*;
 
 struct fp8e5m2 {
   char data;
@@ -52,6 +53,7 @@ struct fp8e4m3 {
 };
 struct int4 {};
 struct uint4 {};
+struct fp4 {};
 struct fp20 {
   int data : 20;
 };

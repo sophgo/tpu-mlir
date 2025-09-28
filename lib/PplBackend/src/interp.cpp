@@ -140,7 +140,7 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
     align_corners = 0;
   }
 
-  std::string chip_str = get_chip_str();
+  std::string chip_str = getenv("CHIP");
   if (chip_str == PPL_BM1688) {
     npu_size = 128 * 1024;
     npu_num = 32;
@@ -232,7 +232,7 @@ int api_dyn_interp_global(void *param, void *input_spec, void *output_spec,
     align_corners = 0;
   }
   if (buffer) {
-    std::string chip_str = get_chip_str();
+    std::string chip_str = getenv("CHIP");
     if (chip_str == PPL_BM1688) {
       npu_size = 128 * 1024;
       npu_num = 32;

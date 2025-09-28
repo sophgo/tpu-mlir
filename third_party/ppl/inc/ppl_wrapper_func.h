@@ -29,16 +29,16 @@ template <typename T> auto getSignMask() {
   }
 }
 
-template <typename T> double log_approximation(T x) {
+template <typename T> float log_approximation(T x) {
   if (x <= 0) {
     return -1;
   }
-  double sum = 0.0;
+  float sum = 0.0;
   int n = 1000;
-  double term = (x - 1) / (x + 1);
-  double term_sq = term * term;
-  double numerator = term;
-  double denominator = 1.0;
+  float term = (x - 1) / (x + 1);
+  float term_sq = term * term;
+  float numerator = term;
+  float denominator = 1.0;
   for (int i = 1; i <= n; i += 2) {
     sum += numerator / denominator;
     numerator *= term_sq;
@@ -105,11 +105,12 @@ void fsin(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   auto work = make_tensor<DataType>(shape, real_shape);
   auto work1 = make_tensor<DataType>(shape, real_shape);
   auto work2 = make_tensor<DataType>(shape, real_shape);
-  auto work3 = make_tensor<DataType>(shape, real_shape);
   tiu::fmul(work, in, C);
   tiu::round(work1, work, RM_HALF_AWAY_FROM_ZERO);
   tiu::fsub(work2, work, work1);
-  tiu::fsin_base(out, work2);
+  tiu::fmul(work1, work2, work2);
+  tiu::fsin_base(work, work1);
+  tiu::fmul(out, work2, work);
 }
 
 template <typename DataType>
@@ -123,7 +124,8 @@ void fcos(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fmul(work, in, C);
   tiu::round(work1, work, RM_HALF_AWAY_FROM_ZERO);
   tiu::fsub(work2, work, work1);
-  tiu::fcos_base(out, work2);
+  tiu::fmul(work1, work2, work2);
+  tiu::fcos_base(out, work1);
 }
 
 template <typename DataType>
@@ -145,8 +147,9 @@ void farcsin(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   fsqrt(t_sqrt1, t_025sub, shape, real_shape);
   tiu::fsub(t_05sub, 0.5, t_sqrt1);
   fsqrt(t_sqrt2, t_05sub, shape, real_shape);
-  tiu::farcsin_base(t_arcsin, t_sqrt2);
-  tiu::fmul(t_mul2, t_arcsin, 2.0);
+  tiu::farcsin_base(t_arcsin, t_05sub);
+  tiu::fmul(t_sqrt1, t_sqrt2, t_arcsin);
+  tiu::fmul(t_mul2, t_sqrt1, 2.0);
   auto sign_mask = getSignMask<DataType>();
   if constexpr (std::is_same<DataType, float>::value) {
     sign_mask = 0x80000000;
@@ -203,7 +206,9 @@ void ftan(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fsub(t_rem, t_mul, t_round);
   tiu::abs(t_abs, t_rem);
   tiu::fsub(t_sub, t_abs, C025);
-  tiu::ftan_base(t_tanx_sub_025pi, t_sub);
+  tiu::fmul(t_round, t_sub, t_sub);
+  tiu::ftan_base(t_abs, t_round);
+  tiu::fmul(t_tanx_sub_025pi, t_sub, t_abs);
   tiu::fsub(t_sub, C1, t_tanx_sub_025pi);
   tiu::fdiv(t_c_div, C2, t_sub);
   tiu::fsub(t_sub_c, t_c_div, C1);
@@ -259,7 +264,9 @@ void fcot(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fsub(t_rem, t_csub, t_round);
   tiu::abs(t_abs, t_rem);
   tiu::fsub(t_sub, t_abs, C025);
-  tiu::ftan_base(t_tanx_sub_025pi, t_sub);
+  tiu::fmul(t_round, t_sub, t_sub);
+  tiu::ftan_base(t_abs, t_round);
+  tiu::fmul(t_tanx_sub_025pi, t_sub, t_abs);
   tiu::fsub(t_sub, C1, t_tanx_sub_025pi);
   tiu::fdiv(t_c_div, C2, t_sub);
   tiu::fsub(t_sub_c, t_c_div, C1);
@@ -334,7 +341,7 @@ void exp_no_overflow(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
              RM_HALF_AWAY_FROM_ZERO, true);
 
     auto exp_out = make_tensor<fp32>(shape, real_shape);
-    tiu::fexp(exp_out, fp_sub);
+    tiu::fexp_base(exp_out, fp_sub);
 
     auto cast_intc_tensor = add_intc_tensor.view<fp32>();
 
@@ -354,7 +361,7 @@ void exp_no_overflow(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
              RM_HALF_AWAY_FROM_ZERO, true);
 
     auto exp_out = make_tensor<fp16>(shape, real_shape);
-    tiu::fexp(exp_out, fp_sub);
+    tiu::fexp_base(exp_out, fp_sub);
 
     auto cast_intc_tensor = add_intc_tensor.view<fp16>();
 
@@ -374,7 +381,7 @@ void exp_no_overflow(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
              RM_HALF_AWAY_FROM_ZERO, true);
 
     auto exp_out = make_tensor<bf16>(shape, real_shape);
-    tiu::fexp(exp_out, fp_sub);
+    tiu::fexp_base(exp_out, fp_sub);
 
     auto cast_intc_tensor = add_intc_tensor.view<bf16>();
 
@@ -388,16 +395,16 @@ void exp_no_overflow(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape) {
 }
 
 template <typename T>
-void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input,
+void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input, dim4 *block_shape,
                   dim4 *shape) {
-  auto local_input_exp = tensor<T>(*shape);
+  auto local_input_exp = make_tensor<T>(block_shape, shape);
   // tiu::fexp(local_input_exp, local_input);
-  exp_no_overflow(local_input_exp, local_input, shape, shape);
+  exp_no_overflow(local_input_exp, local_input, block_shape, shape);
 
-  auto local_input_exp_reciprocal = tensor<T>(*shape);
+  auto local_input_exp_reciprocal = make_tensor<T>(block_shape, shape);
   tiu::fdiv(local_input_exp_reciprocal, 1, local_input_exp, 3);
 
-  auto local_output_pre = tensor<T>(*shape);
+  auto local_output_pre = make_tensor<T>(block_shape, shape);
   tiu::fadd(local_output_pre, local_input_exp_reciprocal, 1);
 
   tiu::fdiv(local_output, 1, local_output_pre, 3);

@@ -58,6 +58,36 @@ void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode,
     stride->w = 1;
   }
 }
+
+template <typename T>
+dim4 &get_stride(dim4 &shape, align_mode_t mode, int start_idx = 0) {
+  int eu_num = get_eu_num<T>();
+  dim4 stride;
+  if (mode == TPU_ALIGN) {
+    stride.h = shape.w;
+    stride.c = shape.h * stride.h;
+    stride.c = align(stride.c, eu_num);
+    stride.n = div_up(start_idx + shape.c, LANE_NUM) * stride.c;
+    stride.w = 1;
+  } else if (mode == TPU_COMPACT) {
+    stride.h = shape.w;
+    stride.c = shape.h * stride.h;
+    stride.n = div_up(start_idx + shape.c, LANE_NUM) * stride.c;
+    stride.w = 1;
+  } else if (mode == TPU_ROW_ALIGN) {
+    stride.n = div_up(start_idx + shape.c, LANE_NUM) * stride.c;
+    stride.c = shape.h * stride.h;
+    stride.h = div_up(shape.w, eu_num);
+    stride.w = 1;
+  } else {
+    stride.n = shape.c * shape.h * shape.w;
+    stride.c = shape.h * shape.w;
+    stride.h = shape.w;
+    stride.w = 1;
+  }
+  return stride;
+}
+
 template <typename U, typename V>
 void aligned_stride_4d(dim4 *aligned_stride, dim4 *shape, U start_idx,
                        V eu_size) {
@@ -65,7 +95,8 @@ void aligned_stride_4d(dim4 *aligned_stride, dim4 *shape, U start_idx,
   aligned_stride->h = shape->w;
   aligned_stride->c = shape->h * aligned_stride->h;
   aligned_stride->c = align(aligned_stride->c, eu_num);
-  aligned_stride->n = div_up(start_idx + shape->c, LANE_NUM) * aligned_stride->c;
+  aligned_stride->n =
+      div_up(start_idx + shape->c, LANE_NUM) * aligned_stride->c;
   aligned_stride->w = 1;
 }
 
@@ -98,6 +129,8 @@ template <typename T> data_type_t convert_dtype() {
     return DT_FP8E5M2;
   } else if constexpr (std::is_same_v<T, fp20>) {
     return DT_FP20;
+  } else if constexpr (std::is_same_v<T, fp4>) {
+    return DT_FP4;
   } else {
     return DT_NONE;
   }
@@ -191,7 +224,8 @@ template <typename DataType> int get_nic() {
   if constexpr (std::is_same_v<DataType, fp32>) {
     return 1;
   } else if constexpr (std::is_same_v<DataType, int4> ||
-                       std::is_same_v<DataType, uint4>) {
+                       std::is_same_v<DataType, uint4> ||
+                       std::is_same_v<DataType, fp4>) {
     return LANE_NUM * 2;
   } else {
     return LANE_NUM / get_data_size<DataType>();

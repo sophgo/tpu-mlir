@@ -25,6 +25,10 @@ void move(gtensor<DataType> &dst, gtensor<DataType> &src,
           int port_id = DEFAULT_SDMA_PORT);
 
 template <typename DataType>
+void move_compact(gtensor<DataType> &dst, gtensor<DataType> &src,
+          int port_id = DEFAULT_SDMA_PORT);
+
+template <typename DataType>
 void transpose_cw(gtensor<DataType> &dst, gtensor<DataType> &src,
                   int port_id = DEFAULT_SDMA_PORT);
 

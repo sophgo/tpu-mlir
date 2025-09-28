@@ -103,7 +103,7 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
                       int &block_h) {
   int ret = 0;
   int dmax = align_up(d, 32 /*eu num*/);
-  std::string chip_str = get_chip_str();
+  std::string chip_str = getenv("CHIP");
   bool is_mha = q_head == kv_head;
   bool is_decode = qm == 1;
   bool is_fp16 = dtype == DTYPE_FP16;

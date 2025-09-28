@@ -1,0 +1,178 @@
+#ifndef _TPU_DEFS_
+#define _TPU_DEFS_
+typedef unsigned int local_addr_t;
+typedef unsigned int static_addr_t;
+typedef unsigned long long l2_sram_addr_t;
+typedef unsigned long long system_addr_t;
+typedef unsigned long long global_addr_t;
+typedef unsigned long long addr_t;
+typedef unsigned long long u64;
+typedef long long i64;
+typedef unsigned int u32;
+#define NO_USE 0
+
+#define TENSOR_N_DIM 0
+#define TENSOR_C_DIM 1
+#define TENSOR_H_DIM 2
+#define TENSOR_W_DIM 3
+
+#ifdef USING_CMODEL
+#define THREAD __thread
+#else
+#define THREAD
+#endif
+
+#ifdef __sg2262__
+typedef enum {
+    DT_INT8   = (0 << 1) | 1,
+    DT_UINT8  = (0 << 1) | 0,
+    DT_INT16  = (3 << 1) | 1,
+    DT_UINT16 = (3 << 1) | 0,
+    DT_F16   = (1 << 1) | 1,
+    DT_FP4  = (5 << 1) | 1,
+    DT_INT32  = (4 << 1) | 1,
+    DT_UINT32 = (4 << 1) | 0,
+    DT_FP32   = (2 << 1) | 1,
+    DT_INT4   = (6 << 1) | 1,
+    DT_UINT4  = (6 << 1) | 0,
+    DT_FP8E5M2 = (0 << 5) | (7 << 1) | 1,
+    DT_FP8E4M3 = (1 << 5) | (7 << 1) | 1,
+    DT_FP20   = (8 << 1) | 1,
+    DT_TF32   = (9 << 1) | 1,
+    DT_FP16   = (10 << 1) | 1,
+    DT_BFP16  = (11 << 1) | 1,
+} data_type_t;
+#else
+typedef enum {
+    DT_INT8   = (0 << 1) | 1,
+    DT_UINT8  = (0 << 1) | 0,
+    DT_INT16  = (3 << 1) | 1,
+    DT_UINT16 = (3 << 1) | 0,
+    DT_FP16   = (1 << 1) | 1,
+    DT_BFP16  = (5 << 1) | 1,
+    DT_INT32  = (4 << 1) | 1,
+    DT_UINT32 = (4 << 1) | 0,
+    DT_FP32   = (2 << 1) | 1,
+    DT_INT4   = (6 << 1) | 1,
+    DT_UINT4  = (6 << 1) | 0,
+    DT_FP8E5M2 = (0 << 5) | (7 << 1) | 1,
+    DT_FP8E4M3 = (1 << 5) | (7 << 1) | 1,
+    DT_FP20   = (8 << 1) | 1,
+    DT_TF32   = (9 << 1) | 1,
+} data_type_t;
+#endif
+typedef enum {
+    RM_HALF_TO_EVEN        = 0,
+    RM_HALF_AWAY_FROM_ZERO = 1,
+    RM_TOWARDS_ZERO        = 2,
+    RM_DOWN                = 3,   /* FLOOR */
+    RM_UP                  = 4,   /* CEIL */
+    RM_HALF_UP             = 5,
+    RM_HALF_DOWN           = 6
+} rounding_mode_t;
+
+typedef enum {
+  REDUCE_MEAN = 0,
+  REDUCE_SUM  = 1,
+  REDUCE_MAX  = 2,
+  REDUCE_MIN  = 3,
+  REDUCE_PROD = 4,
+  REDUCE_L2   = 5,
+  REDUCE_L1   = 6,
+} reduce_method_t;
+
+typedef struct {
+    int n, c, d, h, w;
+} dim5;
+typedef struct {
+    int n, c, h, w;
+} dim4;
+typedef struct {
+    int d, h, w;
+} dim3;
+typedef struct {
+    int h, w;
+} dim2;
+typedef struct {
+    int top, bottom, left, right;
+} padding_t;
+typedef struct {
+    int front, back, top, bottom, left, right;
+} padding3d_t;
+typedef struct {
+    int start, end;
+} range_t;
+
+typedef union {
+    unsigned char bits;
+    struct {
+        unsigned char frac : 2; // mantissa
+        unsigned char exp  : 5;  // exponent
+        unsigned char sign : 1;  // sign
+    } format;
+} float8e5m2;
+
+typedef union {
+    unsigned char bits;
+    struct {
+        unsigned char frac : 3; // mantissa
+        unsigned char exp  : 4;  // exponent
+        unsigned char sign : 1;  // sign
+    } format;
+} float8e4m3;
+typedef union {
+    unsigned short bits;
+    struct {
+        unsigned short frac : 10; // mantissa
+        unsigned short exp  : 5;  // exponent
+        unsigned short sign : 1;  // sign
+    } format;
+} float16;
+typedef union {
+    unsigned short bits;
+    struct {
+        unsigned short frac : 7;  // mantissa
+        unsigned short exp  : 8;  // exponent
+        unsigned short sign : 1;  // sign
+    } format;
+} bfloat16;
+typedef union {
+    unsigned short bits;
+    struct {
+        unsigned short frac : 11; // mantissa
+        unsigned short exp  : 8;  // exponent
+        unsigned short sign : 1;  // sign
+    } format;
+} float20;
+typedef union {
+    char           s4;
+    unsigned char  u4;
+    char           s8;
+    unsigned char  u8;
+    float8e5m2     f8e5m2;
+    float8e4m3     f8e3m4;
+    short          s16;
+    unsigned short u16;
+    float16        f16;
+    bfloat16       bf16;
+    int            s32;
+    unsigned int   u32;
+    float          f32;
+    float20        f20;
+} scalar_t;
+
+typedef struct {
+    u32 engine_type;
+    u32 command_num;
+    u64 command_addr;
+    u64 command_bytes;
+} tpu_engine_command_info_t;
+
+typedef enum {
+    READABLE_WRITABLE = 0,
+    NON_READABLE = 1,
+    NON_WRITABLE = 2,
+    NON_READABLE_NON_WRITABLE = 3
+  } mem_guard_attr_t;
+
+#endif /* _OK_DEFS_ */

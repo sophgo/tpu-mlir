@@ -23,7 +23,7 @@ elif [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cp $PPL_PROJECT_ROOT/runtime/scripts/DescDevice.cmake $OUT/CMakeLists.txt
+cp $PPL_RUNTIME_PATH/scripts/DescDevice.cmake $OUT/CMakeLists.txt
 mkdir -p $OUT/build
 cd $OUT/build
 cmake  ../ -DCHIP=${CHIP} -DNAME=${FUNC_NAME} -DDEBUG=on

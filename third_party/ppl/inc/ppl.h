@@ -12,4 +12,6 @@
 #include "ppl_utils.h"
 #include "ppl_hau_func.h"
 #include "ppl_sdma_func.h"
+#include "ppl_cdma_func.h"
+#include "ppl_param.h"
 // #include "ppl_deprecate.h"

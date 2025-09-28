@@ -20,9 +20,11 @@ if ("$ENV{CUSTOM_LAYER_DEV_MODE}" STREQUAL "backend")
       execute_process(COMMAND bash -c "${COMMAND}")
   endforeach()
   # prepare build env
-  set(CUS_TOP ${PPL_TOP}/runtime/customize)
+  set(CUS_TOP ${PPL_TOP}/deps/common/host)
   include_directories(${CUS_TOP}/include)
   include_directories(${SRC_DIR}/PplBackend/include)
+
+  include(${PPL_TOP}/deps/scripts/GenChipDef.cmake)
   file(GLOB_RECURSE PL_SRC
     ${CMAKE_BINARY_DIR}/host/*.cpp
     ${SRC_DIR}/PplBackend/src/*.cpp

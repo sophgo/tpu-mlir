@@ -27,6 +27,24 @@ template <typename DataType> int64 get_gmem_addr(gtensor<DataType> &src);
 
 template <typename DataType> DataType get_value(int64 gaddr);
 
+template <typename DataType>
+void invalid_cache(DataType *read_addr = nullptr, int64 read_size = 64);
+
+template <typename DataType>
+void flush_cache(DataType *write_addr = nullptr, int64 write_size = 64);
+
+template <typename DataType>
+DataType *sort(DataType *data, int size, bool ascending = true);
+
+template <typename T> void disable_pingpong(tensor<T> &tensor);
+
+void set_config_auto_sync(bool enable);
+void set_config_memory_alloc_method(memory_alloc_method_t method);
+
+void set_memory_alloc_method(memory_alloc_method_t method) {
+  set_config_memory_alloc_method(method);
+}
+
 /******************************/
 /*       for host           */
 /******************************/

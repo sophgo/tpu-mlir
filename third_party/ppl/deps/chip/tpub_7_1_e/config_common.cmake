@@ -1,0 +1,21 @@
+add_definitions(-D__sg2260e__)
+if(DEFINED RUNTIME_PATH)
+  set(RUNTIME_TOP ${RUNTIME_PATH})
+  message(NOTICE "RUNTIME PATH: ${RUNTIME_PATH}")
+else()
+  set(RUNTIME_TOP ${CMAKE_CURRENT_LIST_DIR}/../../runtime/tpuv7-runtime)
+endif()
+set(FIRMWARE_CMODEL libtpuv7_emulator.so)
+set(BACKEND_LIB_PATH ${CMAKE_CURRENT_LIST_DIR}/lib)
+set(TPUKERNEL_TOP ${CMAKE_CURRENT_LIST_DIR}/TPU1686)
+set(KERNEL_TOP ${CMAKE_CURRENT_LIST_DIR}/../../common/dev/kernel)
+set(CUS_TOP ${CMAKE_CURRENT_LIST_DIR}/../../common)
+set(CHECKER ${CUS_TOP}/dev/checker/include)
+set(RUNTIME_LIBS tpuv7_rt cdm_daemon_emulator)
+set(RT_WRAP_TOP ${RUNTIME_TOP}/../tpu_rt_wrap)
+set(RT_WRAP_LIB_PATH ${RT_WRAP_TOP}/lib/tpuv7)
+set(MAX_TPU_CORE_NUM 4)
+
+aux_source_directory(${CUS_TOP}/dev/checker/src KERNEL_CHECKER)
+
+
