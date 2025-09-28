@@ -324,8 +324,8 @@ void tpu::SliceOp::assign_sec_info_kernel(
   auto in_gi = in_group_infos[0];
   sec_info.n_slice = in_gi.n_slice;
   sec_info.d_slice = in_gi.d_slice;
-  sec_info.h_slice = gi.h_slice;
-  sec_info.w_slice = gi.w_slice;
+  sec_info.h_slice = h == oh ? gi.h_slice : in_gi.h_slice;
+  sec_info.w_slice = w == ow ? gi.w_slice : in_gi.w_slice;
   sec_info.c_slice = gi.c_slice;
   sec_info.n_idx = in_gi.n_idx;
   sec_info.d_idx = in_gi.d_idx;
