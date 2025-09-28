@@ -1,6 +1,13 @@
 RELEASE
 v1.5.44-gb417fc68-20250801
+<<<<<<< HEAD
 libcmodel_1684x.a 7e987c5191c16e57a2e2c439e6a52633
 libbm1684x_kernel_module.a 8f97e9ef89fc60ad3c5935c7bd62de93
 libcmodel_1688.a c1aa3fee014e46296bd84a837ecf1ea4
 libbmtpulv60_kernel_module.a 46be5cb4b961a4398d5d50527f7e2aca
+=======
+libcmodel_1684x.a 3d4a973ec583ff8b318f2c03efd504f9
+libbm1684x_kernel_module.a 162aaa49b64e16d5142413da8b19a0ee
+libcmodel_1688.a 58311349f631934430406e634d0669e6
+libbmtpulv60_kernel_module.a 734254453e39b29bb2fc97901781b4d2
+>>>>>>> 3aae80fba (feat: refactor multi-branch concerning code)

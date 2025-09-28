@@ -68,6 +68,12 @@ void tpu::ConcatOp::codegen_local_bm1684x_kernel(
   spec.common.input_num = num_input;
   spec.common.concat_axis = getAxis();
 
+  auto gi = out_group_infos[0];
+  for (int i = 0; i < num_input; i++) {
+    auto in_gi = in_group_infos[i];
+    setHWMargins(input_spec->at(i).hw_margins, in_gi, gi);
+  }
+
   BM168x::call_local_func("backend_api_concat_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
 }

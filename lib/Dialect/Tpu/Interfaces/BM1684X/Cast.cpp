@@ -140,6 +140,8 @@ void tpu::CastOp::codegen_local_bm1684x_kernel(
   bool fOutput = out_type.isIntOrIndex() == false;
   auto gi = out_group_infos[0];
   auto in_gi = in_group_infos[0];
+  // inception setting
+  setHWMargins(input_spec->at(0).hw_margins, in_gi, gi);
 
   if (!(qInput && fOutput) && !(fInput && qOutput)) {
     cast_local_spec_t spec = {0};

@@ -56,6 +56,12 @@ void tpu::CompareOp::codegen_local_bm1684x_kernel(
   spec.common.scale_B = 1;
   spec.common.f8_scale_A = 1.0;
   spec.common.f8_scale_B = 1.0;
+  // inception setting
+  auto gi = out_group_infos[0];
+  auto in0_gi = in_group_infos[0];
+  auto in1_gi = in_group_infos[1];
+  setHWMargins(input_spec->at(0).hw_margins, in0_gi, gi);
+  setHWMargins(input_spec->at(1).hw_margins, in1_gi, gi);
   BM168x::call_local_func("backend_api_bcbinary_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
 }

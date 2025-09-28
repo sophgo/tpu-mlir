@@ -55,9 +55,6 @@ typedef struct local_sec_info {
   int32_t is_c_split;
   int32_t c_idx;
   int32_t c_slice;
-
-  int32_t hw_margins_opA;
-  int32_t hw_margins_opB;
 } local_sec_info_t;
 
 static inline bool get_is_true3d(int group_type, int dims) {

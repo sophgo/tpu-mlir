@@ -119,6 +119,11 @@ void tpu::AddOp::codegen_local_bm1684x_kernel(
     for (auto scale : *scales)
       f8_scales.push_back((float)scale);
   }
+  // inception setting
+  auto in0_gi = in_group_infos[0];
+  auto in1_gi = in_group_infos[1];
+  setHWMargins(input_spec->at(0).hw_margins, in0_gi, gi);
+  setHWMargins(input_spec->at(1).hw_margins, in1_gi, gi);
 
   param.spec.common.binary_type = BINARY_ADD;
   param.spec.common.if_relu = getDoRelu();
