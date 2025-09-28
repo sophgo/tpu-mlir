@@ -296,9 +296,11 @@ def merge_layer_data(cycle_data_dict, categories):
                 layer_data[layer_id] = []
             layer_data[layer_id].append(entry)
         for layer_id, entries in layer_data.items():
+            # SYS_TR_ACC may cause layer information in the profile to overlap
             if entries[0][5] == 'SYS_TR_ACC':
                 entries.pop(0)
-                continue
+                if len(entries) == 0:
+                    continue
             layer_name = entries[0][10]
             subnet_id = entries[0][11]
             subnet_type = entries[0][12]
