@@ -127,6 +127,9 @@ if __name__ == '__main__':
     elif config.model_type in ['qwen2_5_vl']:
         from llm.Qwen2_5VLConverter import Qwen2_5VLConverter
         converter = Qwen2_5VLConverter(args, config)
+    elif config.model_type in ['qwen3_vl']:
+        from llm.Qwen3VLConverter import Qwen3VLConverter
+        converter = Qwen3VLConverter(args, config)
     elif config.model_type in ['qwen2_5_omni']:
         from llm.Qwen2_5OConverter import Qwen2_5OConverter
         converter = Qwen2_5OConverter(args, config)

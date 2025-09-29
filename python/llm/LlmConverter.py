@@ -86,6 +86,7 @@ class LlmConverter(BaseConverter):
         self.extern_gen_mlirs = []
         self.extern_compiles = []
         self.extern_bmodels = []
+        self.extern_block_weights = {}
         # store all weights name because some weights like qkv.weights may be splitted
         self.weights = []
 
@@ -862,7 +863,8 @@ class LlmConverter(BaseConverter):
         self.set_linear_weight(mlp_down, weight_dict)
         if do_norm:
             self.set_common_weight(norm, weight_dict, WeightType.RMS_NORM)
-
+        if self.extern_block_weights:
+            weight_dict.update(self.extern_block_weights)
         np.savez(weight_file, **weight_dict)
 
         def gen_mlp(mlir_gen, input_shape, in_op):
