@@ -323,4 +323,32 @@ mlir::Type tpu::PadOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_same(op, opd_idx, mode);
 }
 
+static int GetNoPadDim(tpu::PadOp op) {
+  auto paddings = module::getI64Array(op.getPaddings());
+  auto shape = module::getShape(op.getInput());
+  int64_t size = shape.size();
+  int no_pad_dim = 0;
+  for (int64_t i = 0; i < size; i++) {
+    if (paddings->at(i) == 0 && paddings->at(i + size) == 0)
+      no_pad_dim++;
+    else
+      break;
+  }
+  return no_pad_dim;
+}
+
+ArrayAttr tpu::PadOp::getIndexingMaps() {
+  int no_pad_dim = GetNoPadDim(*this);
+  MLIRContext *context = getContext();
+  if (no_pad_dim > 0) {
+    AffineMap identityMap =
+        AffineMap::getMultiDimIdentityMap(no_pad_dim, context);
+    AffineMap emptyMap = AffineMap::get(no_pad_dim, 0, context);
+    SmallVector<AffineMap> indexingMaps{identityMap, emptyMap, emptyMap,
+                                        emptyMap,    emptyMap, identityMap};
+    return Builder(context).getAffineMapArrayAttr(indexingMaps);
+  }
+  return Builder(context).getAffineMapArrayAttr({});
+}
+
 bool tpu::PadOp::support_multi_core() { return false; }

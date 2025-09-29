@@ -10,6 +10,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include <valarray>
 
@@ -483,6 +484,37 @@ mlir::Type tpu::SliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     return type_verify_case_same(getOperation(), 0, mode);
   }
   return do_nothing(mode);
+}
+
+static int GetNoSliceDim(tpu::SliceOp op) {
+#define MAX_END 9223372036854775807
+
+  auto offsets = module::getI64Array(op.getOffset());
+  auto ends = module::getI64Array(op.getEnds());
+  auto steps = module::getI64Array(op.getSteps());
+  int64_t size = offsets->size();
+  int no_slice_dim = 0;
+  for (int64_t i = 0; i < size; i++) {
+    if (offsets->at(i) == 0 && ends->at(i) == MAX_END && steps->at(i) == 1)
+      no_slice_dim++;
+    else
+      break;
+  }
+  return no_slice_dim;
+}
+
+ArrayAttr tpu::SliceOp::getIndexingMaps() {
+  int no_slice_dim = GetNoSliceDim(*this);
+  MLIRContext *context = getContext();
+  if (no_slice_dim > 0) {
+    AffineMap identityMap =
+        AffineMap::getMultiDimIdentityMap(no_slice_dim, context);
+    AffineMap emptyMap = AffineMap::get(no_slice_dim, 0, context);
+    SmallVector<AffineMap> indexingMaps{identityMap, emptyMap, emptyMap,
+                                        emptyMap,    emptyMap, identityMap};
+    return Builder(context).getAffineMapArrayAttr(indexingMaps);
+  }
+  return Builder(context).getAffineMapArrayAttr({});
 }
 
 bool tpu::SliceOp::support_multi_core() { return false; }

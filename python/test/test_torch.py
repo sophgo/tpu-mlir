@@ -160,12 +160,14 @@ class TORCH_IR_TESTER(object):
             "Permute2":         (self.test_Permute2,          N, Y, Y, N, Y),
             "Pad1d":            (self.test_Pad1d,             Y, Y, Y, Y, Y),
             "Pad2d":            (self.test_Pad2d,             Y, Y, Y, Y, Y),
+            "Pad_MultiCore":    (self.test_Pad_MultiCore,     Y, Y, Y, Y, Y),
             "Pow":              (self.test_Pow,               N, Y, Y, Y, Y),
             "Scatter":          (self.test_Scatter,           N, N, N, N, N),
             "ScaleDotAtten":    (self.test_ScaleDotAtten,     N, Y, N, N, Y),
             "Select":           (self.test_Select,            N, Y, Y, Y, Y),
             "Sign":             (self.test_Sign,              N, Y, Y, N, Y),
             "Slice":            (self.test_Slice,             N, Y, Y, Y, Y),
+            "Slice_MultiCore":  (self.test_Slice_MultiCore,   N, Y, Y, Y, Y),
             "Softmax":          (self.test_Softmax,           N, Y, Y, Y, Y),
             "Softmin":          (self.test_Softmin,           N, Y, Y, Y, Y),
             "Split":            (self.test_Split,             N, Y, Y, Y, Y),
@@ -2710,6 +2712,33 @@ class TORCH_IR_TESTER(object):
         self.trace_and_test([(16, 9, 8)], Model1())
 
     #######################################################################
+    # Slice_MultiCore
+    # ------------
+    def test_Slice_MultiCore(self):
+        """Slice_MultiCore"""
+
+        class Model1(nn.Module):
+
+            def __init__(self):
+                super(Model1, self).__init__()
+
+            def forward(self, x):
+                y = x[:, :3680, :, :]
+                return y
+
+        class Model2(nn.Module):
+
+            def __init__(self):
+                super(Model2, self).__init__()
+
+            def forward(self, x):
+                y = x[:, :, :, 2:3, :, :]
+                return y
+
+        self.trace_and_test([(4, 4840, 8, 32)], Model1())
+        self.trace_and_test([(4, 4840, 8, 3, 4, 2)], Model2())
+
+    #######################################################################
     # Squeeze
     # ------------
     def test_Squeeze(self):
@@ -3417,6 +3446,28 @@ class TORCH_IR_TESTER(object):
             if not self.simple:
                 _test_pad2d(op_type, (1, 3, 16, 32), 3, 0.5)
                 _test_pad2d(op_type, (2, 4, 16, 32), (3, 4, 5, 6), 0.4)
+
+    #######################################################################
+    # Pad_MultiCore
+    # ------------
+    def test_Pad_MultiCore(self):
+        """Pad_MultiCore"""
+
+        def _test_pad_multicore(op_type, input_shape, padding: Union[int, tuple], value=0.):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.pad2d = op_type(padding, value)
+
+                def forward(self, x):
+                    return self.pad2d(x)
+
+            self.trace_and_test([input_shape], Model())
+
+        _test_pad_multicore(nn.ConstantPad2d, (4, 1, 32, 256), (0, 0, 0, 8))
+        _test_pad_multicore(nn.ConstantPad2d, (4, 1, 80, 1024), (0, 16, 0, 2))
 
     #######################################################################
     # Abs

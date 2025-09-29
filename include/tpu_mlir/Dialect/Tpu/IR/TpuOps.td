@@ -3741,7 +3741,8 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
 
 def Tpu_PadOp:Tpu_Op<"Pad", [
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport"]>,
-    DeclareOpInterfaceMethods<TypeInterface>]> {
+    DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "Pad operation";
   let description = [{
     1.Op Introduction
@@ -3844,8 +3845,8 @@ def Tpu_DivOp: Tpu_Op<"Div", [
 def Tpu_SliceOp: Tpu_Op<"Slice", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
-  DeclareOpInterfaceMethods<TypeInterface>
-  ]> {
+  DeclareOpInterfaceMethods<TypeInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "Slice operator";
   let description = [{
     1.Op Introduction
