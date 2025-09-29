@@ -322,10 +322,25 @@ void tpu::SliceOp::assign_sec_info_kernel(
   module::getNCDHW(output, on, oc, od, oh, ow, group_type);
   auto gi = out_group_infos[0];
   auto in_gi = in_group_infos[0];
+  auto in_shape = module::getShape(input);
+  auto out_shape = module::getShape(output);
+  bool is_c_slice = true;
+  if (in_shape.size() == out_shape.size()) {
+    for (size_t i = 0; i < in_shape.size(); i++) {
+      if (i == 1) {
+        continue;
+      } else {
+        if (in_shape[i] != out_shape[i]) {
+          is_c_slice = false;
+          break;
+        }
+      }
+    }
+  }
   sec_info.n_slice = in_gi.n_slice;
   sec_info.d_slice = in_gi.d_slice;
-  sec_info.h_slice = h == oh ? gi.h_slice : in_gi.h_slice;
-  sec_info.w_slice = w == ow ? gi.w_slice : in_gi.w_slice;
+  sec_info.h_slice = is_c_slice ? gi.h_slice : in_gi.h_slice;
+  sec_info.w_slice = is_c_slice ? gi.w_slice : in_gi.w_slice;
   sec_info.c_slice = gi.c_slice;
   sec_info.n_idx = in_gi.n_idx;
   sec_info.d_idx = in_gi.d_idx;
