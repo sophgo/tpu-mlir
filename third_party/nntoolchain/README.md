@@ -29,7 +29,8 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
 #bm1688 sha256: 640934b972a0946f8c551f9a489f7bb5f64aed46
-# + AR broadcast bugfix: 98787c3b38064ca12f6a3e628df69c0faeebf73b
+# AR broadcast bugfix: + 98787c3b38064ca12f6a3e628df69c0faeebf73b
+# FC requant bugfix: + 2bae0bebef38fab6a3109c63098e544fea164c78
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -42,6 +43,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 
 #bm1690 sha256: 640934b972a0946f8c551f9a489f7bb5f64aed46
 # matmul muti core fix: + b824cb48fad50b0c2cc4fe648614cbb2f9a3e158
+# FC requant bugfix: + 2bae0bebef38fab6a3109c63098e544fea164c78
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
