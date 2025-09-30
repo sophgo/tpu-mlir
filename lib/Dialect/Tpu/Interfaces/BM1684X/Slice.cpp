@@ -109,24 +109,6 @@ void tpu::SliceOp::codegen_local_bm1684x_kernel(
   common.end_mask = 0;
   auto input_shape = SmallVector<int64_t>(module::getShape(getInput()));
   auto output_shape = SmallVector<int64_t>(module::getShape(getOutput()));
-  // inception setting
-  bool is_c_slice = true;
-  if (input_shape.size() == output_shape.size()) {
-    for (size_t i = 0; i < input_shape.size(); i++) {
-      if (i == 1) {
-        continue;
-      } else {
-        if (input_shape[i] != output_shape[i]) {
-          is_c_slice = false;
-          break;
-        }
-      }
-    }
-  }
-  if (is_c_slice) {
-    auto in_gi = in_group_infos[0];
-    setHWMargins(input_spec->at(0).hw_margins, in_gi, gi);
-  }
   const int num_dims = output_shape.size();
   output_shape[0] = sec_info.out_n_slice;
   if (num_dims > 2) {
