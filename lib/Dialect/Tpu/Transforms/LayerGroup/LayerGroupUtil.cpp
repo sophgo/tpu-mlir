@@ -615,7 +615,7 @@ get_group_max_secs(LgInfo &lg_info,
                    lg_info.type);
   int64_t max_nsecs = n;
   if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
-          tpu::MinOp, tpu::CompareOp, tpu::MatMulOp>(lg_info.group_ops[0])) {
+          tpu::MinOp, tpu::MatMulOp>(lg_info.group_ops[0])) {
     module::getNCDHW(lg_info.group_ops[0]->getOperand(1), n, c, d, h, w,
                      lg_info.type);
     // if (isa<tpu::MatMulOp>(lg_info.group_ops[0]) && n != max_nsecs) {
@@ -1394,7 +1394,7 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
 
 bool is_broadcast_binary(Operation *op, Value in) {
   if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
-           tpu::MinOp, tpu::CompareOp, tpu::BinaryShiftOp>(op)) {
+           tpu::MinOp, tpu::BinaryShiftOp>(op)) {
     return false;
   }
   auto other = in == op->getOperand(0) ? op->getOperand(1) : op->getOperand(0);
@@ -1426,15 +1426,12 @@ bool is_matmul_right_tensor(Operation *op, Value v) {
   return res;
 }
 
-void is_broadcast_rope_with_permute_optimize(Operation *op,
-                                             const shape_secs_t &shape_secs,
-                                             bool &is_broadcast_rope,
-                                             bool &rope_need_reload) {
+bool is_broadcast_rope_with_permute_optimize(
+    Operation *op, std::vector<bool> &is_broadcast_rope_vec) {
   if (auto rope_op = dyn_cast<tpu::RopeOp>(op)) {
     if (!rope_op.getIsPermuteOptimize()) {
-      return;
+      return false;
     }
-    std::vector<bool> is_broadcast_rope_vec = {false, false, false, false};
     auto rope_input1 = rope_op.getInput1();
     auto rope_input2 = rope_op.getInput2();
     auto rope_input3 = rope_op.getInput3();
@@ -1446,44 +1443,37 @@ void is_broadcast_rope_with_permute_optimize(Operation *op,
         rope_input3.getType().cast<RankedTensorType>().getShape();
     if (input1_shape.size() != 4 || input2_shape.size() != 4 ||
         input3_shape.size() != 4) {
-      return;
+      return false;
     }
     if (input1_shape[1] != input2_shape[1] ||
         input1_shape[1] != input3_shape[1]) {
-      return;
+      return false;
     }
     if (input1_shape[3] != input2_shape[3] ||
         input1_shape[3] != input3_shape[3]) {
-      return;
+      return false;
     }
     if ((input1_shape[0] != input2_shape[0] && input2_shape[0] != 1) ||
         (input1_shape[0] != input3_shape[0] && input3_shape[0] != 1)) {
-      return;
+      return false;
     } else {
       is_broadcast_rope_vec[0] = (input1_shape[0] != input2_shape[0]);
     }
     if ((input1_shape[2] != input2_shape[2] && input2_shape[2] != 1) ||
         (input1_shape[2] != input3_shape[2] && input3_shape[2] != 1)) {
-      return;
+      return false;
     } else {
       is_broadcast_rope_vec[2] = (input1_shape[2] != input2_shape[2]);
     }
-    is_broadcast_rope = true;
-    if (!is_broadcast_rope_vec[0] && shape_secs.nsecs > 1 ||
-        !is_broadcast_rope_vec[1] && shape_secs.csecs > 1 ||
-        !is_broadcast_rope_vec[2] && shape_secs.hsecs > 1 ||
-        !is_broadcast_rope_vec[3] && shape_secs.wsecs > 1) {
-      rope_need_reload = true;
-    }
-    return;
+    return true;
   }
-  return;
+  return false;
 }
 
 // if upsample nearest, weight shape is [1, 2, slice_h, slice_w]
 bool is_upsample_indices(Operation *op, Value v) {
   bool res = false;
-  if (!module::isBM1684XFamily()) {
+  if (!(module::isBM1684X() || module::isBM1688() || module::isCV184X())) {
     return res;
   }
   if (auto upsample_op = dyn_cast<tpu::UpsampleOp>(op)) {
@@ -1567,32 +1557,9 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   return slice_info;
 }
 
-void dump_slice_info(const slice_info_t &si) {
-  for (auto &n_slice : si.n) {
-    llvm::dbgs() << "n slice: " << n_slice.first << ", " << n_slice.second
-                 << "\n";
-  }
-  for (auto &c_slice : si.c) {
-    llvm::dbgs() << "c slice: " << c_slice.first << ", " << c_slice.second
-                 << "\n";
-  }
-  for (auto &d_slice : si.d) {
-    llvm::dbgs() << "d slice: " << d_slice.first << ", " << d_slice.second
-                 << "\n";
-  }
-  for (auto &h_slice : si.h) {
-    llvm::dbgs() << "h slice: " << h_slice.first << ", " << h_slice.second
-                 << "\n";
-  }
-  for (auto &w_slice : si.w) {
-    llvm::dbgs() << "w slice: " << w_slice.first << ", " << w_slice.second
-                 << "\n";
-  }
-}
-
-bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
-                             const slice_info_t &out_si, Operation *op,
-                             Value in, const shape_secs_t &shape_secs,
+bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
+                             Operation *op, Value in,
+                             const shape_secs_t &shape_secs,
                              group_type_t group_type, bool &hold_in_lmem,
                              bool is_group_in, bool &need_reload,
                              indices_info_t &indices_info) {
@@ -1603,13 +1570,18 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
   bool is_right_matrix = is_matmul_right_tensor(op, in);
   bool is_no_input_attention = is_attention_not_input_tensor(op, in);
   bool is_upsample_weight = is_upsample_indices(op, in);
-  bool is_broadcast_rope = false;
+  std::vector<bool> is_broadcast_rope_vec = {false, false, false, false};
+  bool is_broadcast_rope =
+      is_broadcast_rope_with_permute_optimize(op, is_broadcast_rope_vec);
   bool rope_need_reload = false;
-  is_broadcast_rope_with_permute_optimize(op, shape_secs, is_broadcast_rope,
-                                          rope_need_reload);
-  if (rope_need_reload) {
-    need_reload = true;
+  if (!is_broadcast_rope_vec[0] && shape_secs.nsecs > 1 ||
+      !is_broadcast_rope_vec[1] && shape_secs.csecs > 1 ||
+      !is_broadcast_rope_vec[2] && shape_secs.hsecs > 1 ||
+      !is_broadcast_rope_vec[3] && shape_secs.wsecs > 1) {
+    rope_need_reload = true;
   }
+  if (rope_need_reload)
+    need_reload = true;
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
@@ -1622,7 +1594,7 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
           n == 1) {
         idx = 0;
         slice = 1;
-        if (is_broadcast_rope && !rope_need_reload) {
+        if (!rope_need_reload) {
           hold_in_lmem = true;
           in_si.n.emplace_back(slice_pair_t(idx, slice));
           break;
@@ -1631,15 +1603,6 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
         if (failed(ret) || slice == 0) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardN fail, at op:"
                                   << module::getName(op).str() << "\n";);
-          GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_backward_slice_info",
-                                                  "result",
-                                                  "backward n dim slice failed")
-                         << LOG_KV("ret", failed(ret)) << LOG_KV("slice", slice)
-                         << LOG_KV("op_name", module::getName(op).str())
-                         << "\n";
-            dump_slice_info(in_si);
-          });
           return false;
         }
       }
@@ -1681,16 +1644,6 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
         if (failed(ret) || slice == 0) {
           // llvm::outs() << "BackwardC fail, at
           // op:"<<module::getName(op).str()<<"\n";
-          GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_backward_slice_info",
-                                                  "result",
-                                                  "backward c dim slice failed")
-                         << LOG_KV("failed(ret)", failed(ret))
-                         << LOG_KV("slice", slice)
-                         << LOG_KV("op_name", module::getName(op).str())
-                         << "\n";
-            dump_slice_info(in_si);
-          });
           return false;
         }
       }
@@ -1714,17 +1667,6 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
         if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardD fail, at op:"
                                   << module::getName(op).str() << "\n";);
-          GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_backward_slice_info",
-                                                  "result",
-                                                  "backward d dim slice failed")
-                         << LOG_KV("failed(ret)", failed(ret))
-                         << LOG_KV("slice", slice) << LOG_KV("idx", idx)
-                         << LOG_KV("i", i) << LOG_KV("end_reached", end_reached)
-                         << LOG_KV("op_name", module::getName(op).str())
-                         << "\n";
-            dump_slice_info(in_si);
-          });
           return false;
         }
       }
@@ -1757,7 +1699,7 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
           h == 1) {
         idx = 0;
         slice = 1;
-        if (is_broadcast_rope && !rope_need_reload) {
+        if (!rope_need_reload) {
           hold_in_lmem = true;
           in_si.h.emplace_back(slice_pair_t(idx, slice));
           break;
@@ -1776,17 +1718,6 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
                          << ", end_reached:" << end_reached << ", i:" << i
                          << ", idx:" << idx << ", slice:" << slice
                          << " at op:" << module::getName(op).str() << "\n";);
-          GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_backward_slice_info",
-                                                  "result",
-                                                  "backward h dim slice failed")
-                         << LOG_KV("failed(ret)", failed(ret))
-                         << LOG_KV("slice", slice) << LOG_KV("idx", idx)
-                         << LOG_KV("i", i) << LOG_KV("end_reached", end_reached)
-                         << LOG_KV("op_name", module::getName(op).str())
-                         << "\n";
-            dump_slice_info(in_si);
-          });
           // for debug
           // llvm::dbgs()
           //       << "BackwardH fail, ret:"
@@ -1832,17 +1763,6 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
         if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardW fail, at op:"
                                   << module::getName(op).str() << "\n";);
-          GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_backward_slice_info",
-                                                  "result",
-                                                  "backward w dim slice failed")
-                         << LOG_KV("ret", failed(ret)) << LOG_KV("slice", slice)
-                         << LOG_KV("idx", idx) << LOG_KV("i", i)
-                         << LOG_KV("end_reached", end_reached)
-                         << LOG_KV("op_name", module::getName(op).str())
-                         << "\n";
-            dump_slice_info(in_si);
-          });
           return false;
         }
       }
@@ -2098,7 +2018,7 @@ static bool backward_update_slice(
     bool is_group_in =
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
     indices_info_t indices_info;
-    auto ret = get_backward_slice_info(lg_info, si, out_si, op, in, shape_secs,
+    auto ret = get_backward_slice_info(si, out_si, op, in, shape_secs,
                                        lg_info.type, hold_in_lmem, is_group_in,
                                        need_reload, indices_info);
     if (need_reload) {
@@ -2127,61 +2047,26 @@ static bool backward_update_slice(
       continue;
     }
     if (ret == false) {
-      GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                            "backward_update_slice", "result",
-                            "`get_backward_slice_info` failed")
-                     << LOG_KV("op", module::getName(op)) << "\n";
-      });
       return false;
     }
     auto iter = tensor_infos.find(in);
     if (iter != tensor_infos.end()) {
       if (false == is_same_slice_info(si, iter->second.slice_info)) {
         if (module::isCV18xx() || mode == RunMode::TPU_DYNAMIC || !pre_op) {
-          GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                                "backward_update_slice", "result",
-                                "mulit-branch backward failed")
-                         << LOG_KV("multi_branch_op", module::getName(pre_op))
-                         << "\n";
-          });
           return false;
         }
         /* "tpu.store" now not support storing a tensor with margins to GMEM. */
-        // auto followed_by_store_op = [&lg_info](Operation *op) -> bool {
-        //   if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
-        //                 op) == lg_info.group_ops.end()) {
-        //     return false; // do not need to a store_op.
-        //   }
-        //   for (auto user : op->getUsers()) {
-        //     if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
-        //                   user) == lg_info.group_ops.end())
-        //       return true;
-        //   }
-        //   return false;
-        // };
-        // For SliceOp, only support slice c axis
-        auto is_c_slice_or_other_op = [&](Operation *op) -> bool {
-          if (isa<tpu::SliceOp>(op)) {
-            auto slice_op = dyn_cast<SliceOp>(op);
-            auto in_shape = module::getShape(slice_op.getInput());
-            auto out_shape = module::getShape(slice_op.getOutput());
-            if (in_shape.size() != out_shape.size()) {
-              return false;
-            }
-            for (size_t i = 0; i < in_shape.size(); i++) {
-              if (i == 1) { // c axis
-                continue;
-              } else {
-                if (in_shape[i] != out_shape[i]) {
-                  return false;
-                }
-              }
-            }
-            return true;
+        auto followed_by_store_op = [&lg_info](Operation *op) -> bool {
+          if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
+                        op) == lg_info.group_ops.end()) {
+            return false; // do not need to a store_op.
           }
-          return true;
+          for (auto user : op->getUsers()) {
+            if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
+                          user) == lg_info.group_ops.end())
+              return true;
+          }
+          return false;
         };
         // Whether backend func can accept input tensor with margins. (NOTE: LUT
         // has no backend support.)
@@ -2190,75 +2075,23 @@ static bool backward_update_slice(
               op->getAttrOfType<IntegerAttr>("group").getInt() > 1) {
             // Note: backend function is incomplete, feel free to complete it
             // Realizing this functionality could lead to significant rewards.
-            GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-              llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                                  "backward_update_slice", "result",
-                                  "`is_same_slice_info` failed since Conv2DOp")
-                           << LOG_KV("op", module::getName(op)) << "\n";
-            });
             return false;
           }
           if (module::getChip() == module::Chip::BM1684) {
             return isa<tpu::Conv2DOp>(op);
           } else {
-            return isa<tpu::Conv2DOp, tpu::AddOp, tpu::SubOp, tpu::MulOp,
-                       tpu::DivOp, tpu::MaxOp, tpu::MinOp, tpu::CompareOp,
-                       tpu::AddConstOp, tpu::SubConstOp, tpu::BinaryShiftOp,
-                       tpu::BinaryConstShiftOp, tpu::ConcatOp, tpu::SliceOp,
-                       func::ReturnOp>(op);
+            return isa<tpu::Conv2DOp, tpu::AddOp, tpu::BinaryShiftOp,
+                       tpu::BinaryConstShiftOp>(op);
           }
         };
 
-        // if (followed_by_store_op(pre_op)) {
-        //   GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-        //     llvm::dbgs() << DEBUGGER_DEFAULT_INFO("backward_update_slice",
-        //                                           "result",
-        //                                           "`is_same_slice_info`
-        //                                           failed")
-        //                  << LOG_KV("pre_op", module::getName(pre_op)) <<
-        //                  "\n";
-        //   });
-        //   return false;
-        // }
+        if (followed_by_store_op(pre_op)) {
+          return false;
+        }
         for (auto user : pre_op->getUsers()) {
-          if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
-                        user) == lg_info.group_ops.end()) {
-            continue;
-          }
-          if (!is_c_slice_or_other_op(user)) {
-            GROUP_DEBUG_WITH_TYPE(
-                "slice_backward", lg_info, [&]() {
-                  llvm::dbgs()
-                      << DEBUGGER_DEFAULT_INFO(
-                             "backward_update_slice", "result",
-                             "multi-branch backward failed since multi-branch "
-                             "op's user is SliceOp but slice dim is not c")
-                      << LOG_KV("multi_branch_op", module::getName(pre_op))
-                      << LOG_KV("user", module::getName(user)) << "\n";
-                });
-            return false;
-          }
           if (!(tpukernel_support_HWmargins(user) ||
-                isa<tpu::LutOp, tpu::CastOp>(user))) {
-            GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-              llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                                  "backward_update_slice", "result",
-                                  "multi-branch backward failed since "
-                                  "multi-branch op's user's tpu-kernel is not "
-                                  "supported and user is not LutOp or CastOp")
-                           << LOG_KV("multi_branch_op", module::getName(pre_op))
-                           << LOG_KV("user", module::getName(user)) << "\n";
-            });
-            return false;
-          }
-          if (module::isF8Modes()) {
-            GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-              llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                                  "backward_update_slice", "result",
-                                  "multi-branch backward failed since quantize "
-                                  "mode is F8")
-                           << "\n";
-            });
+                isa<tpu::LutOp, tpu::CastOp>(user)) ||
+              module::isF8Modes()) {
             return false;
           }
         }
@@ -2310,22 +2143,12 @@ static bool backward_update_slice(
               // For now, LutOp has no backend support for HW-margins, so
               // HW-margins must insteadly be passed to && processed by its
               // child Operator.
-              // if (followed_by_store_op(user)) {
-              //   return false;
-              // }
+              if (followed_by_store_op(user)) {
+                return false;
+              }
               for (auto lut_user : user->getUsers()) {
                 if (!tpukernel_support_HWmargins(lut_user))
-                  GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-                    llvm::dbgs()
-                        << DEBUGGER_DEFAULT_INFO(
-                               "backward_update_slice", "result",
-                               "multi-branch backward failed since "
-                               "LutOp's or CastOp's user's tpu-kernel is not "
-                               "supported")
-                        << LOG_KV("lut_or_cast_op", module::getName(user))
-                        << LOG_KV("user", module::getName(lut_user)) << "\n";
-                  });
-                return false;
+                  return false;
               }
               auto val = user->getResult(0);
               if (tensor_infos.find(val) == tensor_infos.end()) {
@@ -2347,23 +2170,9 @@ static bool backward_update_slice(
           }
           tensor_infos[in].hold_in_lmem = hold_in_lmem;
         } else {
-          GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-            llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
-                                "backward_update_slice", "result",
-                                "multi-branch backward failed since only "
-                                "support hw overlap case for different slices")
-                         << LOG_KV("multi_branch_op", module::getName(pre_op))
-                         << "\n";
-          });
           return false;
         }
       }
-      GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
-        llvm::dbgs() << DEBUGGER_DEFAULT_INFO("backward_update_slice", "result",
-                                              "multi-branch backward success")
-                     << LOG_KV("multi_branch_op", module::getName(pre_op))
-                     << "\n";
-      });
     } else {
       tensor_infos[in] = tensor_info_t(si);
       tensor_infos[in].hold_in_lmem = hold_in_lmem;
@@ -2947,7 +2756,7 @@ bool need_bcast(Value opd) {
 }
 
 bool is_upsample_weight(Value opd) {
-  if (!module::isBM1684XFamily()) {
+  if (!(module::isBM1684X() || module::isBM1688() || module::isCV184X())) {
     return false;
   }
   if (opd.hasOneUse() == false) {

@@ -106,6 +106,8 @@ void tpu::BinaryShiftOp::assign_sec_info_kernel(
   sec_info.is_w_split =
       !(std::max(in0_gi.w_idx, in1_gi.w_idx) == 0 &&
         std::max(in0_gi.w_slice, in1_gi.w_slice) == std::max(w0, w1));
+  setHWMargins(sec_info.hw_margins_opdA, in0_gi, gi);
+  setHWMargins(sec_info.hw_margins_opdB, in1_gi, gi);
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;

@@ -53,10 +53,6 @@ void tpu::MinConstOp::codegen_local_bm1684x_kernel(
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
   param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
-  // inception setting
-  auto gi = out_group_infos[0];
-  auto in_gi = in_group_infos[0];
-  setHWMargins(input_spec->at(0).hw_margins, in_gi, gi);
   BM168x::call_local_func("backend_api_constbinary_local", &param,
                           sizeof(param), &sec_info, input_spec->data(),
                           output_spec->data());

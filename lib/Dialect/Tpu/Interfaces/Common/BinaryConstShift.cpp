@@ -88,6 +88,8 @@ void tpu::BinaryConstShiftOp ::assign_sec_info_kernel(
   sec_info.is_w_split = !(in_gi.w_idx == 0 && in_gi.w_slice == w);
   sec_info.c_idx = gi.c_idx;
   sec_info.is_c_split = !(in_gi.c_idx == 0 && in_gi.c_slice == c);
+  // set margins
+  setHWMargins(sec_info.hw_margins_opdA, in_gi, gi);
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;

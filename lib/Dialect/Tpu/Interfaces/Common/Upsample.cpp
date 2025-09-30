@@ -42,7 +42,7 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
 LogicalResult tpu::UpsampleOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                          int64_t out_idx, int64_t out_slice) {
   auto unit = getScaleH();
-  if (module::isBM1684XFamily()) {
+  if (module::isBM1684X() || module::isBM1688() || module::isCV184X()) {
     int64_t out_start = out_idx;
     int64_t out_end = out_idx + out_slice - 1;
     int64_t in_start = out_start / unit;
@@ -62,7 +62,7 @@ LogicalResult tpu::UpsampleOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::UpsampleOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
                                          int64_t out_idx, int64_t out_slice) {
   auto unit = getScaleW();
-  if (module::isBM1684XFamily()) {
+  if (module::isBM1684X() || module::isBM1688() || module::isCV184X()) {
     int64_t out_start = out_idx;
     int64_t out_end = out_idx + out_slice - 1;
     int64_t in_start = out_start / unit;

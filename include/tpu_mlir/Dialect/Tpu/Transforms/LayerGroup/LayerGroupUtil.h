@@ -55,9 +55,9 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1);
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
                                 int64_t c, int64_t h, int64_t d, int64_t w,
                                 int64_t bitwidth);
-bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
-                             const slice_info_t &out_si, Operation *op,
-                             Value in, const shape_secs_t &shape_secs,
+bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
+                             Operation *op, Value in,
+                             const shape_secs_t &shape_secs,
                              group_type_t group_type, bool &hold_in_lmem,
                              bool is_group_in, bool &need_reload,
                              indices_info_t &indices_info);

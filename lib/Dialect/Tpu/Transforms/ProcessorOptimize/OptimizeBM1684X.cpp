@@ -6088,7 +6088,7 @@ public:
   LogicalResult matchAndRewriteImpl(tpu::UpsampleOp op,
                                     PatternRewriter &rewriter) const override {
 
-    if (!module::isBM1684XFamily()) {
+    if (!(module::isBM1684X() || module::isBM1688() || module::isCV184X())) {
       return failure();
     }
     auto input = op.getInput();
