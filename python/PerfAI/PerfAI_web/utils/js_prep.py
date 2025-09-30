@@ -298,7 +298,8 @@ def merge_layer_data(cycle_data_dict, categories):
         for layer_id, entries in layer_data.items():
             if entries[0][5] == 'SYS_TR_ACC':
                 entries.pop(0)
-                continue
+                if len(entries) < 1:
+                    continue
             layer_name = entries[0][10]
             subnet_id = entries[0][11]
             subnet_type = entries[0][12]
