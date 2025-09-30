@@ -33,6 +33,10 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.23.0
+     - 2025.09.30
+     - GLM4.1V support
+       BM1688 Conv and MatMul support W4A8 quantization
    * - v1.22.0
      - 2025.08.31
      - PPL supports dynamic compilation
@@ -87,7 +91,7 @@
        Support for PPL backend operator development
    * - v1.11.0
      - 2024.09.27
-     - Added soc mode for BM1688 tdb;
+     - Added SoC mode for BM1688 tdb;
        bmodel supports fine-grained merging;
        Fixed several performance degradation issues
    * - v1.10.0
