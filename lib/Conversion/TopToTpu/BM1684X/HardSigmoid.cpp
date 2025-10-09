@@ -61,7 +61,10 @@ void HardSigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
 void HardSigmoidLowering::LoweringF16(PatternRewriter &rewriter,
                                       top::HardSigmoidOp op) const {
   set_hsigmoid_attr(rewriter, op); // TODO: supports f16
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
+  if (module::isBM1688())
+    lowering_common_f16<tpu::ActiveOp>(rewriter, op);
+  else
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
 void HardSigmoidLowering::LoweringF8(PatternRewriter &rewriter,
