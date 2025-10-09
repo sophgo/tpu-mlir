@@ -1,3 +1,5 @@
+.. _Appendix 02 Basic Elements of TpuLang:
+
 附录02：TpuLang的基本元素
 ==============================
 
@@ -154,6 +156,7 @@ Control Functions
 * device：string类型。取值范围"BM1684X"\|"BM1688"\|"CV183X"。
 
 .. _compile:
+
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -337,54 +340,54 @@ Tpulang的数据才会得到释放
 给定 x，舍入结果是 y，有下面的舍入模式供选择。
 
 邻近偶数四舍五入(Half to Even)
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     四舍五入，当小数值为0.5时舍入到邻近的偶数，对应的值是 :cpp:enumerator:`half_to_even`。
 
 远离原点四舍五入(Half Away From Zero)
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     四舍五入，正数接近于正无穷，负数接近于负无穷，对应的值是 :cpp:enumerator:`half_away_from_zero`，公式如下
 
     .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x| + 0.5\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x| - 0.5\right\rceil}
 
 截断取整(Towards Zero)
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     无条件舍去，接近于原点，对应的值是 :cpp:enumerator:`towards_zero`，公式如下
 
     .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x|\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x|\right\rceil} = {\begin{cases}\mathsf{\lfloor x\rfloor}&{\text{if}}\mathsf{\ \ x > 0,}\\ \mathsf{\lceil x\rceil}&{\text{otherwise}}.\end{cases}}
 
 下取整(Down)
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     接近于负无穷，对应的值是 :cpp:enumerator:`down`，公式如下
 
     .. math:: \mathsf{y = \lfloor x\rfloor = -\lceil-x\rceil}
 
 上取整(Up)
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     接近于正无穷，对应的值是 :cpp:enumerator:`up`，公式如下
 
     .. math:: \mathsf{y = \lceil x\rceil = -\lfloor-x\rfloor}
 
 向上四舍五入(Half Up)
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     四舍五入，接近于正无穷，对应的值是 :cpp:enumerator:`half_up`，公式如下
 
     .. math:: \mathsf{y = \lceil x + 0.5\rceil = -\lfloor-x - 0.5\rfloor = \left\lceil\frac{\lfloor 2x\rfloor}{2}\right\rceil}
 
 向下四舍五入(Half Down)
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     四舍五入，接近于正无穷，对应的值是 :cpp:enumerator:`half_down`，公式如下
 
     .. math:: \mathsf{y = \lfloor x - 0.5\rfloor = -\lceil-x + 0.5\rceil = \left\lfloor\frac{\lceil 2x\rceil}{2}\right\rfloor}
 
 例子
-""""""""""""""""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 下表列出不同舍入模式下 x 与 y 的对应关系。
 
@@ -3489,13 +3492,13 @@ concat
 
     .. code-block:: python
 
-    def concat(inputs: List[Tensor],
-               scales: Optional[Union[List[float],List[int]]] = None,
-               zero_points: Optional[List[int]] = None,
-               axis: int = 0,
-               out_name: str = None,
-               dtype="float32",
-               round_mode: str="half_away_from_zero"):
+      def concat(inputs: List[Tensor],
+                scales: Optional[Union[List[float],List[int]]] = None,
+                zero_points: Optional[List[int]] = None,
+                axis: int = 0,
+                out_name: str = None,
+                dtype="float32",
+                round_mode: str="half_away_from_zero"):
         #pass
 
 功能描述
@@ -5045,9 +5048,11 @@ roiExtractor
 * list_spatial_scale：int，List[int]或Tuple[int]型，表示每层feature map对应的spatial scale。
                       请注意，spatial scale遵循mmdetection风格，最初给定一个整数值，但其浮点倒数最終被用于RoIAlign。
 * mode: string类型, 表示Op执行模式, 目前支持DynNormal, DynFuse。
-        请注意，在DynFuse模式下，输入rois的坐标  支持2类风格,1)遵循mmdetection的风格，即5长度[batch_id, x0, y0, x1, y1]。
-                                                       2)自定义的7长度[a, b, x0, y0, x1, y1, c], 特別注意如果batch_id和a,b,c难以匹配, 建议另外重新生成batch_id。
-               在DynNormal模式下，输入rois的坐标风格是一种自定义的7长度[a, b, x0, y0, x1, y1, c]风格，以便应用客户独特的模型。
+        请注意，在DynFuse模式下，输入rois的坐标  支持2类风格,
+                1)遵循mmdetection的风格，即5长度[batch_id, x0, y0, x1, y1]。
+                2)自定义的7长度[a, b, x0, y0, x1, y1, c], 特別注意如果batch_id和a,b,c难以匹配, 建议另外重新生成batch_id。
+
+        在DynNormal模式下，输入rois的坐标风格是一种自定义的7长度[a, b, x0, y0, x1, y1, c]风格，以便应用客户独特的模型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -5200,7 +5205,7 @@ select
 
 返回值
 """"""""""""""""""""""""""""""""""""""""""""""
-返回一个Tensor，数据类型与张量 `tbrn`的数据类型相同。
+返回一个Tensor，数据类型与张量 `tbrn` 的数据类型相同。
 
 处理器支持
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -5286,7 +5291,7 @@ bmodel_inference_combine
 * final_mlir_fn: String类型，表示bmodel对应的final.mlir的绝对路径。
 * input_data_fn: String类型或dict类型，表示输入数据的格式，支持 字典格式、.dat格式、.npz格式。
 * tensor_loc_file: String类型，表示bmodel对应的tensor_location.json文件的绝对路径。
-* reference_data_fn: String,类型，表示 `module.state = "TPU_LOWERED"`的.mlir文件或对应的.npz推理结果的绝对路径。bmodel推理时会将原本一个算子的shape拆散，该参数用于恢复原本的shape。
+* reference_data_fn: String,类型，表示 `module.state = "TPU_LOWERED"` 的.mlir文件或对应的.npz推理结果的绝对路径。bmodel推理时会将原本一个算子的shape拆散，该参数用于恢复原本的shape。
 * dump_file: Bool类型，表示逐层Tensor数据是否以.npz文件形似保存，或直接返回字典。
 * save_path: String类型，表示 `dump_file=True` 时的主机(host)端保存逐层推理的.npz文件的绝对路径。
 * out_fixed: Bool类型，表示逐层Tensor数据输出是否保持为定点格式。
