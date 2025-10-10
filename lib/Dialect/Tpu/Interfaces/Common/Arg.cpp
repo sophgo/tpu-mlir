@@ -131,6 +131,8 @@ mlir::Type tpu::ArgOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
       return type_verify_case_type(op, opd_idx, Builder(op).getBF16Type(),
                                    mode);
     }
+  } else if ((module::getStorageType(getOperation()->getResult(1))).isF16()) {
+    return type_verify_case_type(op, opd_idx, Builder(op).getF16Type(), mode);
   } else {
     return type_verify_case_type(op, opd_idx, Builder(op).getF32Type(), mode);
   }

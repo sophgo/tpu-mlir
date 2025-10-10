@@ -278,6 +278,8 @@ protected:
     bool isQuantized = LoweringConfig::isQuantized;
     if (isQuantized) {
       auto stype = module::getStorageType(opTy.getODSResults(0)[0]);
+      if (isa<top::ArgOp>(op))
+        stype = module::getStorageType(opTy.getODSResults(1)[0]);
       if (stype.isF32()) {
         if (!isa<top::CastOp, top::Yuv2rgbFormulaOp>(op)) {
           module::removeAttr(op, "round_mode");

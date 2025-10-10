@@ -81,7 +81,11 @@ void ArgLowering::LoweringF32(PatternRewriter &rewriter, top::ArgOp op) const {
 }
 
 void ArgLowering::LoweringF16(PatternRewriter &rewriter, top::ArgOp op) const {
-  LoweringF32(rewriter, op);
+  if (module::isBM1688() || module::isBM1684X())
+    LoweringArg(rewriter, op,
+                getQuantFloatType<mlir::Float16Type>(op.getValues()));
+  else
+    LoweringF32(rewriter, op);
 }
 
 void ArgLowering::LoweringBF16(PatternRewriter &rewriter, top::ArgOp op) const {
