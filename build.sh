@@ -57,6 +57,21 @@ if [ "${ENABLE_COVERAGE}" = "True" ]; then
     echo "Building with code coverage enabled"
 fi
 
+# check nanobind
+if ! python3 -c "import nanobind" 2>/dev/null; then
+    echo "Installing nanobind..."
+    if [ -f /.dockerenv ]; then
+        pip3 install "nanobind>=2.8.0"
+    else
+        pip3 install "nanobind>=2.8.0" --user
+    fi
+    if ! python3 -c "import nanobind" 2>/dev/null; then
+        echo "${RED}ERROR${NC}: Failed to install nanobind. Please install manually:"
+        echo "  pip3 install 'nanobind>=2.8.0'"
+        exit 1
+    fi
+fi
+
 # prepare install/build dir
 rm -rf "${INSTALL_PATH}"
 cmake -G Ninja \
