@@ -772,7 +772,7 @@ bool init_group_data_secs(LgInfo &lg_info, shape_secs_t &shape_secs,
     auto lg_op = cast<LocalGenInterface>(op);
     total_size += lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n,
                                       in_c, in_h, in_d, in_w, out_n, out_c,
-                                      out_h, out_d, out_w, lg_info.type);
+                                      out_h, out_d, out_w, lg_info.type, false);
     for (size_t i = 1; i < ins.size(); ++i) {
       if ((module::isTrain() && !isa<tpu::AddOp, tpu::ConcatOp>(op)) ||
           module::isWeight(ins[i])) {
@@ -865,7 +865,7 @@ bool init_group_data_secs2(ilp_LgInfo &ilp_lg_info, shape_secs_t &shape_secs,
     auto lg_op = cast<LocalGenInterface>(op);
     int64_t buffer_size = lg_op.getBufferSize(
         in0_lmem_bytes, out0_lmem_bytes, in_n, in_c, in_h, in_d, in_w, out_n,
-        out_c, out_h, out_d, out_w, lg_info.type);
+        out_c, out_h, out_d, out_w, lg_info.type, false);
     total_size += buffer_size;
     // llvm::errs() << "  buffer_size:" << buffer_size<< ", total_size:"
     // <<total_size<< "\n";
@@ -1007,7 +1007,7 @@ void get_op_cut_sec_num(
       int64_t buffer_size = lg_op.getBufferSize(
           in0_lmem_bytes, out0_lmem_bytes, new_in_n, new_in_c, new_in_h,
           new_in_d, new_in_w, new_out_n, new_out_c, new_out_h, new_out_d,
-          new_out_w, lg_info.type);
+          new_out_w, lg_info.type, false);
       total_size += buffer_size;
       int64_t non_weight_size = Arch::LMEM_BYTES;
       for (size_t i = 1; i < ins.size(); ++i) {
@@ -2346,6 +2346,7 @@ static bool backward_update_slice(
             }
           }
           tensor_infos[in].hold_in_lmem = hold_in_lmem;
+          tensor_infos[in].with_hw_margins = true;
         } else {
           GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
             llvm::dbgs() << DEBUGGER_DEFAULT_INFO(

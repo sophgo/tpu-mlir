@@ -208,23 +208,26 @@ struct tensor_info_t {
   bool need_bcast;
   bool hold_in_lmem;
   bool is_idx_weight;
+  bool with_hw_margins;
   indices_info_t indices_info;
 
   // init
   tensor_info_t()
       : mode(TIMESTEP_LOAD), stage(0), use_3ic_opt(0), eu_align(false),
-        mode2(0), need_bcast(false), hold_in_lmem(true), is_idx_weight(false) {}
+        mode2(0), need_bcast(false), hold_in_lmem(true), is_idx_weight(false),
+        with_hw_margins(false) {}
   tensor_info_t(TIMESTEP_LD_ST mode)
       : mode(mode), stage(0), use_3ic_opt(0), eu_align(false), mode2(0),
-        need_bcast(false), hold_in_lmem(true), is_idx_weight(false) {}
+        need_bcast(false), hold_in_lmem(true), is_idx_weight(false),
+        with_hw_margins(false) {}
   tensor_info_t(slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
         use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false),
-        hold_in_lmem(true), is_idx_weight(false) {}
+        hold_in_lmem(true), is_idx_weight(false), with_hw_margins(false) {}
   tensor_info_t(Operation *next_op, slice_info_t slice_info)
       : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0),
         use_3ic_opt(0), mode2(0), eu_align(false), need_bcast(false),
-        hold_in_lmem(true), is_idx_weight(false) {
+        hold_in_lmem(true), is_idx_weight(false), with_hw_margins(false) {
     slice_infos[next_op] = slice_info;
   }
   void add_slice_info(Operation *next_op, slice_info_t slice_info) {

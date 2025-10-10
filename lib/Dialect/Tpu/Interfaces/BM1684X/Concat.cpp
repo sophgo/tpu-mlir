@@ -57,8 +57,13 @@ int64_t tpu::ConcatOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
-    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-  return 0;
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type,
+    bool with_hw_margins) {
+  auto axis = getAxis();
+  if (axis != 1 || !with_hw_margins) {
+    return 0;
+  }
+  return out_lmem_bytes;
 }
 
 void tpu::ConcatOp::codegen_local_bm1684x_kernel(
@@ -74,6 +79,7 @@ void tpu::ConcatOp::codegen_local_bm1684x_kernel(
   spec.common.concat_axis = getAxis();
 
   auto gi = out_group_infos[0];
+  spec.buffer_addr = gi.buffer_addr;
   for (int i = 0; i < num_input; i++) {
     auto in_gi = in_group_infos[i];
     setHWMargins(input_spec->at(i).hw_margins, in_gi, gi);

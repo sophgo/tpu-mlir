@@ -365,6 +365,7 @@ typedef struct concat_global_spec {
 typedef struct concat_local_spec {
   concat_common_spec_t common;
   int *is_st_concat_way;
+  int buffer_addr;
 } concat_local_spec_t;
 
 typedef struct concat_local_param {

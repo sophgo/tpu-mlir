@@ -592,11 +592,20 @@ void BasicTimeStep::update_all_mem_buffer_size(LgInfo &lg_info) {
       buffer_key0.value = in;
       buffer_key1.value = out;
 
+      bool with_hw_margins = false;
+      for (auto opd : op->getOperands()) {
+        if (tensor_infos[opd].with_hw_margins) {
+          with_hw_margins = true;
+          break;
+        }
+      }
+
       auto lg_op = cast<LocalGenInterface>(op);
       iter->second.size = lg_op.getBufferSize(
           lmem_buffer_[buffer_key0].size, lmem_buffer_[buffer_key1].size,
           in_nslice, in_cslice, in_hslice, in_dslice, in_wslice, out_nslice,
-          out_cslice, out_hslice, out_dslice, out_wslice, lg_info.type);
+          out_cslice, out_hslice, out_dslice, out_wslice, lg_info.type,
+          with_hw_margins);
     }
   }
 

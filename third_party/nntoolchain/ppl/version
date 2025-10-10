@@ -1,6 +1,6 @@
 RELEASE
 v1.5.44-gb417fc68-20250801
-libcmodel_1684x.a 3d4a973ec583ff8b318f2c03efd504f9
-libbm1684x_kernel_module.a 162aaa49b64e16d5142413da8b19a0ee
-libcmodel_1688.a 58311349f631934430406e634d0669e6
-libbmtpulv60_kernel_module.a a051ef53b7a8df96334977c4de77ccb8
+libcmodel_1684x.a 28e909665b6b6c60aaff262f1d2f8cce
+libbm1684x_kernel_module.a e242459460895ffa7752881c07f56ac8
+libcmodel_1688.a 77f9ff3172acfd56c170eebfd91adcd6
+libbmtpulv60_kernel_module.a 337a11d5dd65b75649b0c8adf0cce97a

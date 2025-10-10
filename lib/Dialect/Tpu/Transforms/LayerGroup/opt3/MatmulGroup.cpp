@@ -661,7 +661,7 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info,
       auto lg_op = cast<LocalGenInterface>(op);
       int64_t buffer_size = lg_op.getBufferSize(
           in0_lmem_bytes, out0_lmem_bytes, slice_max_n, in_c, in_h, in_d, in_w,
-          slice_max_n, out_c, out_h, out_d, out_w, type);
+          slice_max_n, out_c, out_h, out_d, out_w, type, false);
       if (ins.size() > 1) {
         module::getNCDHW(ins[1], in_n, in_c, in_d, in_h, in_w, type);
         llvm::errs() << "in1_n:" << in_n << ", in_c:" << in_c
@@ -766,7 +766,8 @@ bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info,
       bool inc_c_slice = true;
       if (isa<tpu::MatMulOp>(op)) {
         if (name() != "attention_group" || op == ops.back()) {
-          inc_c_slice = in0_lmem_bytes >= in1_lmem_bytes; // When equal, prioritize cutting c
+          inc_c_slice = in0_lmem_bytes >=
+                        in1_lmem_bytes; // When equal, prioritize cutting c
         }
       }
 
@@ -1364,7 +1365,7 @@ public:
         auto lg_op = cast<LocalGenInterface>(op);
         int64_t buffer_size = lg_op.getBufferSize(
             in0_lmem_bytes, out0_lmem_bytes, cut_n, in_c, cut_h, 1, in_w, cut_n,
-            out_c, cut_h, 1, out_w, type);
+            out_c, cut_h, 1, out_w, type, false);
         if (ins.size() > 1) {
           shape = ins[1].getType().cast<RankedTensorType>().getShape().vec();
           ;
@@ -1396,7 +1397,8 @@ public:
         }
         bool inc_c_slice = true;
         if (isa<tpu::MatMulOp>(op) && op == ops.back()) {
-          inc_c_slice = in0_lmem_bytes >= in1_lmem_bytes; // When equal, prioritize cutting c
+          inc_c_slice = in0_lmem_bytes >=
+                        in1_lmem_bytes; // When equal, prioritize cutting c
         }
 
         int total =

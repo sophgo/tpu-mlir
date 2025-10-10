@@ -1068,7 +1068,7 @@ class ONNX_IR_TESTER(object):
                 elif self.op == "slice":
                     y2 = y0[:, 1:2, :, :]
                 elif self.op == "concat":
-                    return torch.cat((y0, y1), dim=1)
+                    return torch.cat((y1, y0), dim=1)
                 elif self.op == "store":
                     y2 = y0 + self.op_weight
                     return y1 + y2, y0
@@ -1114,7 +1114,7 @@ class ONNX_IR_TESTER(object):
         self.test_LgMultiBranchOperation(case_name, "slice")
 
     def test_LgMultiBranchConcat(self, case_name):
-        self.test_LgMultiBranchOperation(case_name, "concat", shape=[2, 4, 360, 640])
+        self.test_LgMultiBranchOperation(case_name, "concat", shape=[2, 4, 300, 600])
 
     def test_LgMultiBranchStore(self, case_name):
         self.test_LgMultiBranchOperation(case_name, "store")

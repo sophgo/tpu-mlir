@@ -347,7 +347,7 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes,
                       "int64_t":$in_nslice, "int64_t":$in_cslice, "int64_t":$in_hslice, "int64_t":$in_dslice, "int64_t":$in_wslice,
                       "int64_t":$out_nslice, "int64_t":$out_cslice, "int64_t":$out_hslice, "int64_t":$out_dslice, "int64_t":$out_wslice,
-                      "group_type_t":$group_type)
+                      "group_type_t":$group_type, "bool":$with_hw_margins)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
@@ -364,7 +364,7 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes,
                       "int64_t":$in_nslice, "int64_t":$in_cslice, "int64_t":$in_hslice, "int64_t":$in_dslice, "int64_t":$in_wslice,
                       "int64_t":$out_nslice, "int64_t":$out_cslice, "int64_t":$out_hslice, "int64_t":$out_dslice, "int64_t":$out_wslice,
-                      "group_type_t":$group_type),
+                      "group_type_t":$group_type, "bool":$with_hw_margins),
         [{}],
         [{
           if (module::isBM1684Family()) {
@@ -375,7 +375,7 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
             return $_op.getBufferSize_bm1684x(in_lmem_bytes, out_lmem_bytes,
                                               in_nslice, in_cslice, in_hslice, in_dslice, in_wslice,
                                               out_nslice, out_cslice, out_hslice, out_dslice, out_wslice,
-                                              group_type);
+                                              group_type, with_hw_margins);
           } else if (module::isCV18xx()) {
             return $_op.getBufferSize_cv18xx(in_lmem_bytes, out_lmem_bytes,
                                               in_nslice, in_hslice, out_nslice, out_hslice);

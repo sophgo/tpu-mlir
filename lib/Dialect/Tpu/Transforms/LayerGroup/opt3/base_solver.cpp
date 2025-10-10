@@ -1591,7 +1591,7 @@ static int getOpLmemBytes(Operation *op, TensorInfo &tensor_infos,
   auto lg_op = cast<LocalGenInterface>(op);
   buffer_size = align_64(lg_op.getBufferSize(
       in0_lmem_bytes, out0_lmem_bytes, in_n, in_c, in_h, in_d, in_w, out_n,
-      out_c, out_h, out_d, out_w, ilp_lg_info._lgInfo.type));
+      out_c, out_h, out_d, out_w, ilp_lg_info._lgInfo.type, false));
   int64_t used_mem = in_lmem_bytes + out_lmem_bytes + buffer_size;
   int64_t free_mem = backend::Arch::LMEM_BYTES - used_mem;
   LAYER_GROUP_LOG_DEBUG_BLOCK({

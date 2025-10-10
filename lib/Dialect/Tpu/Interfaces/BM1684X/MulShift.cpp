@@ -59,7 +59,8 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
-    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type,
+    bool with_hw_margins) {
   auto in_sType = module::getStorageType(getInput());
   auto out_sType = module::getStorageType(getOutput());
   if (module::isUniformQuantized(getInput())) {
