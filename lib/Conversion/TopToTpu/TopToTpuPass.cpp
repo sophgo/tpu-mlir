@@ -343,6 +343,9 @@ public:
       }
     }
     auto out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
     auto out_qtype = module::getCalibratedType(out);
     double min = out_qtype.getMin();
     if (is_sign == false && min < 0) {
