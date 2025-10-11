@@ -125,6 +125,29 @@ COMMON_INFO = ModelInfo(
         LlmList.LMHEAD: "lm_head",
     })
 
+# janus
+JANUS_INFO = ModelInfo(
+    ModelConfig(),
+    weights={
+        LlmList.LAYERS: "language_model.model.layers",
+        LlmList.EMBEDING: "language_model.model.embed_tokens",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.Q_NORM: "self_attn.q_norm",  # qwen3
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.K_NORM: "self_attn.k_norm",  # qwen3
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.O_PROJ: "self_attn.o_proj",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.MLP_GATE: "mlp.gate_proj",
+        LlmList.MLP_UP: "mlp.up_proj",
+        LlmList.MLP_DOWN: "mlp.down_proj",
+        # ================================
+        LlmList.NORM: "language_model.model.norm",
+        LlmList.LMHEAD: "language_model.lm_head",
+    })
+
 # mllama
 MLLAMA_INFO = ModelInfo(
     ModelConfig(),
