@@ -1960,8 +1960,12 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
       if (th[0] / th[1] > 64 || th[1] / th[0] > 64) {
         if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
             LoweringConfig::quantize_map.end()) {
-          LoweringConfig::quantize_map.insert(
-              {module::getName(op).str(), module::Mode::F16});
+          if (module::isBM1684Family())
+            LoweringConfig::quantize_map.insert(
+                {module::getName(op).str(), module::Mode::F32});
+          else
+            LoweringConfig::quantize_map.insert(
+                {module::getName(op).str(), module::Mode::F16});
         }
       }
     }
