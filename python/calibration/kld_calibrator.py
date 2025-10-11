@@ -928,10 +928,21 @@ class ActivationCalibrator(BaseKldCalibrator):
         for item in histogram_data_map:
             pbar.set_description("[{}] threshold: {}".format(self.histogram_bin_num, item))
             pbar.update(1)
-            remainder = len(histogram_data_map[item]) % dst_bins
-            padding_size = 0 if remainder == 0 else dst_bins - remainder
-            padding = np.zeros(padding_size, dtype=histogram_data_map[item].dtype)
-            histogram_data_map[item] = np.concatenate((histogram_data_map[item], padding))
+
+            def _padding(data_map, bin_num):
+                remainder = len(data_map) % bin_num
+                padding_size = 0 if remainder == 0 else bin_num - remainder
+                padding = np.zeros(padding_size, dtype=data_map.dtype)
+                data_map = np.concatenate((data_map, padding))
+                return data_map
+
+            histogram_data_map[item] = _padding(histogram_data_map[item], dst_bins)
+            MAX_BINS = 64 * 2048  # give a huge number of bins to avoid too many thread in cpp cal function, max threads would be 64*2048 / 128 (8bit) = 1024
+            while len(histogram_data_map[item]) > MAX_BINS:
+                histogram_data_map[
+                    item] = histogram_data_map[item][::2] + histogram_data_map[item][1::2]
+                histogram_data_map[item] = _padding(histogram_data_map[item], dst_bins)
+                histogram_width_map[item] *= 2.0
             thresholds[item] = self.kld_threshold(histogram_data_map[item],
                                                   histogram_width_map[item],
                                                   len(histogram_data_map[item]), dst_bins)
