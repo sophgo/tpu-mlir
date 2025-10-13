@@ -434,7 +434,7 @@ class Qwen3VLConverter(LlmConverter):
         save_weights()
 
     def gen_add_mlir(self):
-        input_shape = [self.seq_length * self.hidden_size]
+        input_shape = [self.max_input_length * self.hidden_size]
         add_mlir = MLIRImporter([input_shape] * 2, [input_shape], "add", Platform.LLM,
                                 ['F32', 'F32'])
         ip = add_mlir.insert_point
@@ -456,7 +456,7 @@ class Qwen3VLConverter(LlmConverter):
         deploy_args = [
             'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
             f'--num_core {self.num_core}', f'--num_device {self.num_device}', f'--dynamic',
-            f'--quant_input', f'--quant_output', f'--model {name}.bmodel'
+            f'--addr_mode io_alone', f'--quant_input', f'--quant_output', f'--model {name}.bmodel'
         ]
         deploy_args.append(f'--quantize {self.half_precision_quantize}')
         self.add_task(deploy_args, f"{name}.log")

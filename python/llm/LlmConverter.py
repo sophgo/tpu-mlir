@@ -1292,7 +1292,7 @@ class LlmConverter(BaseConverter):
             return
         deploy_args = [
             'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--model {name}.bmodel'
+            f'--addr_mode io_alone', f'--model {name}.bmodel'
         ]
         if self.debug:
             deploy_args.append('--debug')
@@ -1305,7 +1305,7 @@ class LlmConverter(BaseConverter):
             return
         deploy_args = [
             'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--model {name}.bmodel'
+            f'--addr_mode io_alone', f'--model {name}.bmodel'
         ]
         if self.debug:
             deploy_args.append('--debug')
