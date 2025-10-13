@@ -23,7 +23,11 @@ void RopeLowering::LoweringF32(PatternRewriter &rewriter,
 
 void RopeLowering::LoweringINT8(PatternRewriter &rewriter, top::RopeOp op,
                                 bool asymmetric) const {
-  LoweringF16(rewriter, op);
+  if (!module::isCV184X() && !module::isSGTPUV8()) {
+    LoweringF16(rewriter, op);
+  } else {
+    LoweringBF16(rewriter, op);
+  }
 }
 
 void RopeLowering::LoweringINT4(PatternRewriter &rewriter, top::RopeOp op,
