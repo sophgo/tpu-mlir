@@ -1309,39 +1309,48 @@ public:
     if (!stype.isInteger(32)) {
       return failure();
     }
-    auto next_op = op.getOperation();
+    auto cur_op = op.getOperation();
     std::vector<Operation *> middle_casts;
-    while (next_op->hasOneUse()) {
-      next_op = *next_op->getUsers().begin();
+    while (cur_op->hasOneUse()) {
+      auto next_op = *cur_op->getUsers().begin();
       if (isa<tpu::CastOp>(next_op)) {
         // skip cast
+        next_op->dump();
         middle_casts.push_back(next_op);
+        cur_op = next_op;
         continue;
       }
       break;
     }
-    std::vector<Operation *> users(next_op->user_begin(), next_op->user_end());
+    std::vector<Operation *> users(cur_op->user_begin(), cur_op->user_end());
     for (auto user : users) {
-      auto next_op = user;
+      auto cur_op = user;
+      auto next_op = cur_op;
       std::vector<Operation *> middle_ops;
       middle_ops.push_back(op.getOperation()); // add input op to middle ops
-      while (next_op->hasOneUse()) {
-        if (isa<tpu::SliceOp, tpu::ReshapeOp, tpu::SqueezeOp, tpu::UnsqueezeOp>(
-                next_op)) {
+      bool first_flag = true;
+      while (cur_op->hasOneUse()) {
+        if (!first_flag) {
+          next_op = *cur_op->getUsers().begin();
+        } else {
+          first_flag = false;
+        }
+        if (isa<tpu::SliceOp, tpu::ReshapeOp, tpu::SqueezeOp, tpu::UnsqueezeOp,
+                tpu::ReluOp>(next_op)) {
           middle_ops.push_back(next_op);
-          next_op = *next_op->getUsers().begin();
+          cur_op = next_op;
           continue;
         }
         if (isa<tpu::CastOp>(next_op)) {
           // skip cast
-          next_op = *next_op->getUsers().begin();
           middle_casts.push_back(next_op);
+          cur_op = next_op;
           continue;
         }
         break;
       }
-      std::vector<Operation *> next_users(next_op->user_begin(),
-                                          next_op->user_end());
+      std::vector<Operation *> next_users(cur_op->user_begin(),
+                                          cur_op->user_end());
       // all users is GatherOp ?
       bool is_all_gather = true;
       for (auto next_user : next_users) {
@@ -1350,7 +1359,7 @@ public:
           break;
         }
         auto g_op = dyn_cast<tpu::GatherOp>(next_user);
-        if (g_op.getIndices() != next_op->getResult(0)) {
+        if (g_op.getIndices() != cur_op->getResult(0)) {
           is_all_gather = false;
           break;
         }

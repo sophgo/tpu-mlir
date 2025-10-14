@@ -197,6 +197,7 @@ class TORCH_IR_TESTER(object):
             "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N, Y),
             "Conv2Img2Col": (self.test_Conv2Img2Col, N, Y, Y, N, Y),
             "SplitMatMul": (self.test_SplitMatMul, N, Y, Y, N, Y),
+            "InputGather": (self.test_InputGather, N, Y, Y, N, Y)
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -321,9 +322,15 @@ class TORCH_IR_TESTER(object):
         fp32_mlir = "{}.mlir".format(model_name)
         # input_dtype = [] if len(descs) == 0 else [d.dtype for d in descs]
         input_descs = {}
+        input_types = []
         for i in range(len(descs)):
             input_descs[i] = descs[i]
-        tool = TorchTransformer(model_name, torch_model, input_shapes=in_shapes)
+            dtype = descs[i].dtype if descs[i].dtype != 'bool' else 'float32'
+            input_types.append(dtype)
+        tool = TorchTransformer(model_name,
+                                torch_model,
+                                input_shapes=in_shapes,
+                                input_types=input_types)
         tool.model_transform(fp32_mlir)
 
         input_npz = "{}_ref_in_fp32.npz".format(model_name)
@@ -796,7 +803,7 @@ class TORCH_IR_TESTER(object):
                         return max_values, max_indices
 
             if (self.chip == "cv184x"):
-                self.trace_and_test([shape], Model(), [self.Desc('int', 1, 100)])
+                self.trace_and_test([shape], Model(), [self.Desc('int32', 1, 100)])
             else:
                 self.trace_and_test([shape], Model())
 
@@ -847,7 +854,7 @@ class TORCH_IR_TESTER(object):
                         return min_values, min_indices
 
             if (self.chip == "cv184x"):
-                self.trace_and_test([shape], Model(), [self.Desc('int', 1, 100)])
+                self.trace_and_test([shape], Model(), [self.Desc('int32', 1, 100)])
             else:
                 self.trace_and_test([shape], Model())
 
@@ -1237,7 +1244,7 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test(
             [(1, 32, 128, 128), (1, 1, 128, 128)], Model(),
-            [self.Desc('float', -10, 10), self.Desc('bool', 0, 2)])
+            [self.Desc('float32', -10, 10), self.Desc('bool', 0, 2)])
 
     #######################################################################
     # MatMul
@@ -1339,6 +1346,43 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(16, 32)], Model1())
         self.trace_and_test([(16, 32)], Model2())
+
+    #######################################################################
+    # test InputGatherPattern
+    # ------------
+    def test_InputGather(self):
+
+        class Model1(torch.nn.Module):
+
+            def __init__(self):
+                super(Model1, self).__init__()
+                self.data0 = torch.randn(1000, 32)
+                self.data1 = torch.randn(1000, 32)
+
+            def forward(self, x):
+                a = x[:1]
+                b = x[1:2]
+                a = a.reshape(-1)
+                b = b.reshape(-1)
+                c = self.data0[a, :]
+                d = self.data1[b, :]
+                e = c + d
+                return e
+
+        class Model2(torch.nn.Module):
+
+            def __init__(self):
+                super(Model2, self).__init__()
+                self.data = torch.randn(1000, 32)
+
+            def forward(self, x):
+                a = torch.relu(x)
+                a = a.reshape(-1)
+                b = self.data[a, :]
+                return b
+
+        self.trace_and_test([(4, 32)], Model1(), [self.Desc('int32', 0, 1000)])
+        self.trace_and_test([(4, 32)], Model2(), [self.Desc('int32', 0, 1000)])
 
     #######################################################################
     # ConstantFill
@@ -1973,7 +2017,7 @@ class TORCH_IR_TESTER(object):
             def forward(self, indice):
                 return self.embed(indice) * 1.25
 
-        self.trace_and_test([(4, 28)], Model(), [self.Desc("int64", 0, 64)])
+        self.trace_and_test([(4, 28)], Model(), [self.Desc("int32", 0, 64)])
 
     #######################################################################
     # GroupNorm
@@ -2085,9 +2129,9 @@ class TORCH_IR_TESTER(object):
                         x += 1
                     return x
 
-            self.trace_and_test(
-                [in_shape, mask_shape], Model(),
-                [self.Desc('float', -10, 10), self.Desc('bool', 0, 2)])
+            self.trace_and_test([in_shape, mask_shape], Model(),
+                                [self.Desc('float32', -10, 10),
+                                 self.Desc('bool', 0, 2)])
 
         dims = [3, 4, 5]
         shape = [1, 3, 128, 300, 2]
@@ -2215,7 +2259,7 @@ class TORCH_IR_TESTER(object):
                     return y
 
             if (self.chip == "cv184x"):
-                self.trace_and_test([(4, 3, 16, 16)], Model(), [self.Desc('int', 1, 100)])
+                self.trace_and_test([(4, 3, 16, 16)], Model(), [self.Desc('int32', 1, 100)])
             else:
                 self.trace_and_test([(4, 3, 16, 16)], Model())
                 self.trace_and_test([(1, 10, 10, 128)], Model())

@@ -1,6 +1,6 @@
 RELEASE
 v1.5.212-gab8fd174-20251010
-libcmodel_1684x.a b741050f8bc7fd376c663b7cdc1c1412
-libbm1684x_kernel_module.a c68bf967b3df3da367facbd0e7ccf242
-libcmodel_1688.a 9fb8b344b48c1bb40dc28111c8cdb40b
-libbmtpulv60_kernel_module.a ad785481a4d972f7b938de196f36d05d
+libcmodel_1684x.a fa7b4e5d8765e23cc5a616cc379a3d86
+libbm1684x_kernel_module.a e2463738f2fc8a5b5cb57ccaf8482b9c
+libcmodel_1688.a bf55a6da440d773167d0f7f22d64370d
+libbmtpulv60_kernel_module.a 8f5e2690f4a811cb1bc399ff65cdd7b2
