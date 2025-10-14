@@ -60,8 +60,6 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
   auto op_ = set_mode(op);
   if (module::isCV184X() || module::isSGTPUV8())
     lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
-  else if (module::isBM1688())
-    lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
   else
     lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
