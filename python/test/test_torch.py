@@ -803,6 +803,7 @@ class TORCH_IR_TESTER(object):
         for ret_case in [0, 1, 2]:
             _test_max((4, 30), 1, ret_case)
             _test_max((1, 3, 64, 64), 3, ret_case)
+            _test_max((1, 80, 1, 8400), 1, ret_case)  # test shape for yolo detection
             # _test_max((4, 384), 0, ret_case)
 
     def test_MulConst(self):
