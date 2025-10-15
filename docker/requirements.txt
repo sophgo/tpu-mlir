@@ -38,7 +38,7 @@ paramiko==3.2.0
 Pillow==10.0.0
 plotly==5.15.0
 protobuf==3.20.3
-pybind11-global==2.11.1
+nanobind>=2.8.0
 pycocotools==2.0.6
 pytest-xdist==3.3.1
 python-dateutil==2.8.2

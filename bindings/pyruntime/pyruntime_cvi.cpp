@@ -9,15 +9,15 @@
 
 
 #include "cviruntime.h"
-#include <pybind11/iostream.h>
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/pytypes.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/stl/string.h>
+#include <memory>
 
-namespace py = pybind11;
+namespace nb = nanobind;
 
-PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
+// holder type via template parameter on nb::class_
 
 struct PythonTensor {
   PythonTensor(CVI_TENSOR *tensor) {
@@ -35,8 +35,14 @@ struct PythonTensor {
       // for model_runner reference
       shape = {1, 1, 1, size};
     }
-    data = py::array(pytype, shape, (void *)CVI_NN_TensorPtr(tensor),
-                     py::cast(*this));
+    // build contiguous strides (bytes)
+    size_t item_size = dsize;
+    std::vector<size_t> strides(shape.size(), item_size);
+    for (int i = static_cast<int>(shape.size()) - 2; i >= 0; --i) {
+      strides[i] = strides[i + 1] * shape[i + 1];
+    }
+    std::vector<int64_t> strides_int64(strides.begin(), strides.end());
+    data = nb::ndarray((void *)CVI_NN_TensorPtr(tensor), shape.size(), shape.data(), nb::cast(*this), strides_int64.data(), nb::dtype<float>());
   }
 
   std::string name;
@@ -46,50 +52,40 @@ struct PythonTensor {
   bool aligned = false;
   size_t size;
   size_t dsize;
-  py::array data;
+  nb::ndarray<> data;
 
 private:
-  py::dtype pytype;
   void fixDtype(CVI_FMT fmt) {
     switch (fmt) {
     case CVI_FMT_FP32:
-      pytype = py::dtype("single");
       dtype = "f32";
       dsize = 4;
       break;
     case CVI_FMT_INT8:
-      pytype = py::dtype("int8");
       dtype = "i8";
       dsize = 1;
       break;
     case CVI_FMT_UINT8:
-      pytype = py::dtype("uint8");
       dtype = "u8";
       dsize = 1;
       break;
     case CVI_FMT_INT16:
-      pytype = py::dtype("int16");
       dtype = "i16";
       dsize = 2;
       break;
     case CVI_FMT_UINT16:
-      pytype = py::dtype("uint16");
       dtype = "u16";
       dsize = 2;
       break;
     case CVI_FMT_INT32:
-      pytype = py::dtype("int32");
       dtype = "i32";
       dsize = 4;
       break;
     case CVI_FMT_UINT32:
-      pytype = py::dtype("uint32");
       dtype = "u32";
       dsize = 4;
       break;
     case CVI_FMT_BF16:
-      // numpy has no bf16 type, use uint16 instread of bf16.
-      pytype = py::dtype("uint16");
       dtype = "bf16";
       dsize = 2;
       break;
@@ -111,13 +107,13 @@ struct PythonCviModel {
 
   ~PythonCviModel() { CVI_NN_CleanupModel(model); }
 
-  py::object clone() {
+  nb::object clone() {
     auto new_cvimodel = new PythonCviModel();
     int ret = CVI_NN_CloneModel(model, &new_cvimodel->model);
     if (ret != 0) {
       assert(0);
     }
-    return py::cast(new_cvimodel);
+    return nb::cast(new_cvimodel);
   }
 
   void config(int program_id, bool output_all_tensors) {
@@ -160,22 +156,21 @@ private:
   CVI_TENSOR *output_tensors = nullptr;
 };
 
-PYBIND11_MODULE(pyruntime_cvi, m) {
-  py::class_<PythonTensor, std::shared_ptr<PythonTensor>>(m, "Tensor")
-      .def_readonly("name", &PythonTensor::name)
-      .def_readonly("qscale", &PythonTensor::qscale)
-      .def_readonly("qzero_point", &PythonTensor::zpoint)
-      .def_readonly("dtype", &PythonTensor::dtype)
-      .def_readonly("aligned", &PythonTensor::aligned)
-      .def_readonly("size", &PythonTensor::size)
-      .def_readwrite("data", &PythonTensor::data);
+NB_MODULE(pyruntime_cvi, m) {
+  nb::class_<PythonTensor>(m, "Tensor")
+      .def_ro("name", &PythonTensor::name)
+      .def_ro("qscale", &PythonTensor::qscale)
+      .def_ro("qzero_point", &PythonTensor::zpoint)
+      .def_ro("dtype", &PythonTensor::dtype)
+      .def_ro("aligned", &PythonTensor::aligned)
+      .def_ro("size", &PythonTensor::size)
+      .def_rw("data", &PythonTensor::data);
 
-  py::class_<PythonCviModel>(m, "Model")
-      .def(py::init<const std::string &, int, bool>(), py::arg("cvimodel"),
-           py::arg("program_id") = 0, py::arg("output_all_tensors") = true)
+  nb::class_<PythonCviModel>(m, "Model")
+      .def(nb::init<const std::string &, int, bool>(), nb::arg("cvimodel"),
+           nb::arg("program_id") = 0, nb::arg("output_all_tensors") = true)
       .def("forward", &PythonCviModel::forward)
-      .def_readwrite("inputs", &PythonCviModel::inputs)
-      .def_readwrite("outputs", &PythonCviModel::outputs);
-  py::scoped_ostream_redirect output{std::cerr,
-                                     py::module::import("sys").attr("stderr")};
+      .def_rw("inputs", &PythonCviModel::inputs)
+      .def_rw("outputs", &PythonCviModel::outputs);
+  // removed pybind11 ostream redirect; use Python contextlib on caller side
 }
