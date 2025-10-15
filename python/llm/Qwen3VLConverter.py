@@ -35,7 +35,7 @@ class Qwen3VLConverter(LlmConverter):
         self.patch_size = self.vconfig.patch_size
         self.temporal_patch_size = self.vconfig.temporal_patch_size
         self.spatial_merge_size = self.vconfig.spatial_merge_size
-        self.in_channels = self.vconfig.in_chans
+        self.in_channels = self.vconfig.in_channels
         self.depth = self.vconfig.depth
         self.num_patches = self.max_pixels // (self.patch_size * self.patch_size)
         self.patch_dim = self.in_channels * self.patch_size * self.patch_size * self.temporal_patch_size
@@ -46,12 +46,13 @@ class Qwen3VLConverter(LlmConverter):
         self.position_shape = [3, self.max_input_length]
         self.deepstack_visual_indexes = self.vconfig.deepstack_visual_indexes
         self.num_position_embeddings = self.vconfig.num_position_embeddings
-        self.mrope_section = getattr(self.config.rope_scaling, 'mrope_section', [24, 20, 20])
+        self.mrope_section = getattr(self.llm_config.rope_scaling, 'mrope_section', [24, 20, 20])
 
     @override
     def load_pretrained(self, config):
         super().load_pretrained(config)
         self.llm_type = LlmType.QWEN3
+        self.model_info = QWEN3VL_INFO
 
     @override
     def rotary_embedding(self):
@@ -70,7 +71,7 @@ class Qwen3VLConverter(LlmConverter):
         sin = sin[:, :, :self.head_dim // 2]
         return cos.numpy(), sin.numpy()  #[seq, 1, 64]
 
-    def apply_interleaved_mrope(freqs, mrope_section):
+    def apply_interleaved_mrope(self, freqs):
         """Apply interleaved MRoPE to 3D rotary embeddings.
         Reorganizes frequency layout from chunked [TTT...HHH...WWW] to
         interleaved [THWTHWTHW...TT], preserving frequency continuity.
@@ -82,7 +83,7 @@ class Qwen3VLConverter(LlmConverter):
         """
         freqs_t = freqs[0]  # just overwrite the first dimension T
         for dim, offset in enumerate((1, 2), start=1):  # H, W
-            length = mrope_section[dim] * 3
+            length = self.mrope_section[dim] * 3
             idx = slice(offset, length, 3)
             freqs_t[..., idx] = freqs[dim, ..., idx]
         return freqs_t
@@ -90,9 +91,9 @@ class Qwen3VLConverter(LlmConverter):
     def get_mrope_index(self):
         freqs = np.arange(0, 3 * self.head_dim // 2,
                           dtype=np.int32).reshape(3, 1, self.head_dim // 2)
-        freqs_t = self.apply_interleaved_mrope(freqs, self.mrope_section)  # [1, 64]
+        freqs_t = self.apply_interleaved_mrope(freqs)  # [1, 64]
         freqs_t = np.tile(freqs_t, (1, 2))  # [1, 128]
-        return freqs_t
+        return freqs_t.astype(np.float32)
 
     def mrope(self, mlir_gen, in_op, name: str):
         dim = in_op.type.shape[-1]
@@ -273,6 +274,7 @@ class Qwen3VLConverter(LlmConverter):
             self.set_linear_weight(linear_fc1, weights_dict)
             self.set_linear_weight(linear_fc2, weights_dict)
             for idx in range(len(self.deepstack_visual_indexes)):
+                self.set_common_weight(deepstack_norm_list[idx], weights_dict)
                 self.set_linear_weight(deepstack_fc1_list[idx], weights_dict)
                 self.set_linear_weight(deepstack_fc2_list[idx], weights_dict)
             for i in range(self.depth):
@@ -406,25 +408,32 @@ class Qwen3VLConverter(LlmConverter):
             if id in self.deepstack_visual_indexes:
                 deepstack_list.append(new_op)
 
-        def patch_merger(in_op, fc1_path: str, fc2_path: str, norm_path: str):
-            in_op = self.layer_norm(vit_mlir, in_op, norm_path, eps=1e-6)
+        def patch_merger(in_op, fc1_path: str, fc2_path: str, norm_path: str, shuffle: bool):
             out_dim = self.embed_dim * (self.spatial_merge_size**2)
             in_dim = self.num_patches // (self.spatial_merge_size**2)
-            new_op = top.ReshapeOp(T([in_dim, out_dim]),
-                                   new_op,
-                                   loc=L(fc1_path + ".preshape"),
-                                   ip=ip).output
+            if shuffle:
+                in_op = top.ReshapeOp(T([in_dim, out_dim]),
+                                      in_op,
+                                      loc=L(fc1_path + ".preshape"),
+                                      ip=ip).output
+            new_op = self.layer_norm(vit_mlir, in_op, norm_path, eps=1e-6)
+            if not shuffle:
+                new_op = top.ReshapeOp(T([in_dim, out_dim]),
+                                       new_op,
+                                       loc=L(fc1_path + ".preshape"),
+                                       ip=ip).output
             new_op = self.linear(vit_mlir, fc1_path, new_op, [out_dim, out_dim], [in_dim, out_dim])
             new_op = self.activate(vit_mlir, new_op, ActType.GELU, fc1_path)
             new_op = self.linear(vit_mlir, fc2_path, new_op, [out_dim, self.hidden_size],
                                  [in_dim, self.hidden_size])
+            return new_op
 
         ret_ops = []
-        new_op = patch_merger(new_op, linear_fc1, linear_fc2, merger_norm)
+        new_op = patch_merger(new_op, linear_fc1, linear_fc2, merger_norm, False)
         ret_ops.append(new_op)
         for idx in range(len(deepstack_list)):
             deep_op = patch_merger(deepstack_list[idx], deepstack_fc1_list[idx],
-                                   deepstack_fc2_list[idx], deepstack_norm_list[idx])
+                                   deepstack_fc2_list[idx], deepstack_norm_list[idx], True)
             ret_ops.append(deep_op)
 
         vit_mlir.create_return_op(ret_ops)

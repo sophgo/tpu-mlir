@@ -103,9 +103,12 @@ class LlmConverter(BaseConverter):
         print(f"Success: {self.model_path} has converted to {self.out_dir}")
 
     def check_dtype(self):
-        if not hasattr(self.llm_config, "torch_dtype"):
+        if hasattr(self.llm_config, "dtype"):
+            dtype = self.llm_config.dtype
+        elif hasattr(self.llm_config, "torch_dtype"):
+            dtype = self.llm_config.torch_dtype
+        else:
             return
-        dtype = self.llm_config.torch_dtype
         if (dtype == torch.bfloat16 and self.half_precision_quantize
                 == "f16") or (dtype == torch.float16 and self.half_precision_quantize == "bf16"):
             print(
@@ -135,7 +138,8 @@ class LlmConverter(BaseConverter):
             for func in self.extern_gen_mlirs:
                 func()
             self.gen_embedding_lmhead_mlir()
-            self.gen_sample_head_mlir()
+            if not self.lmhead_with_topk:
+                self.gen_sample_head_mlir()
             for i in range(self.num_layers):
                 self.gen_block_mlir(i)
             return
