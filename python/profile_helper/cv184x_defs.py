@@ -31,7 +31,7 @@ FREQ_MAP = {
 
 global_freq_info.set_freq_map(FREQ_MAP)
 compute_ability = 0.75 if not global_freq_info.compute_ability else global_freq_info.compute_ability
-global_freq_info.set_freq(compute_ability)
+global_freq_info.set_freq_by_compute_ability(compute_ability)
 arch_name = "CV184X"
 
 

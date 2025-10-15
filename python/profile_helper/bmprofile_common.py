@@ -1037,7 +1037,7 @@ class FrequencyManager():
         self.tiu_freq = tiu_freq
         self.gdma_freq = gdma_freq
 
-    def set_freq(self, compute_ability: float):
+    def set_freq_by_compute_ability(self, compute_ability: float):
         if not self.FreqMap:
             raise ValueError("set FreqMap first")
         elif str(compute_ability) not in self.FreqMap:
