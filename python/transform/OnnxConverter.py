@@ -1816,7 +1816,7 @@ class OnnxConverter(BaseConverter):
             if self.get_value_info(onnx_node.name) != None:
                 output_type = self.get_value_info(onnx_node.name).type.tensor_type.elem_type
             need_floor = (output_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64]) \
-                        or (lhs_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64])
+                        and (lhs_type in [onnx.TensorProto.INT32, onnx.TensorProto.INT64])
 
             if self.is_dynamic() and need_floor:
                 new_op = top.DivConstOp(self.unranked_type,
