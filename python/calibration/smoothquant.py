@@ -471,7 +471,7 @@ class SmoothQuant(ModelModifier):
         np.savez(self.parser.module_weight_file, **self.module_weights)
 
     def run(self):
-        if self.data_selector.all_image:
+        if self.data_selector.all_image or self.data_selector.all_yuv:
             self.init_ppa()
         self.load_net_weights()
         self.load_net_inputs()

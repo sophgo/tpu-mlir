@@ -179,7 +179,7 @@ class SoftmaxCorrecter(ModelModifier):
         os.remove('tmp.mlir')
 
     def run(self):
-        if self.data_selector.all_image:
+        if self.data_selector.all_image or self.data_selector.all_yuv:
             self.init_ppa()
         self.load_net_weights()
         self.load_net_inputs()

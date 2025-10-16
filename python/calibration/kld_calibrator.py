@@ -197,7 +197,7 @@ class SimpleTuner:
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
         self.ds = ds
-        if ds.all_image:
+        if ds.all_image or ds.all_yuv:
             n = self.args.tune_num % self.batch_size
             if n != 0:
                 for i in range(self.batch_size - n):
@@ -233,7 +233,7 @@ class SimpleTuner:
         for input in self.module.input_names:
             inp_ref_dict[input] = self.parser.get_use_count_by_op_name(input)
 
-        if self.ds.all_image:
+        if self.ds.all_image or self.ds.all_yuv:
             batched_inputs = self.input_num * ['']
         else:
             batched_inputs = {}
@@ -293,7 +293,7 @@ class SimpleTuner:
 
                     if batch_size < self.batch_size:
                         continue
-            elif self.ds.all_image:
+            elif self.ds.all_image or self.ds.all_yuv:
                 idx += 1
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]
@@ -542,9 +542,9 @@ class SimpleTuner:
                         init_cos_sim = cur_cos_sim
                         continue
                     elif cur_distance < prev_distance:  # and cur_cos_sim > best_cos_sim
-                        # self.print_dbg(
-                        #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, find a better threshold:"
-                        #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
+                        self.print_dbg(
+                            "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, find a better threshold:"
+                            "{:5f}".format(i, op_no, tuned_op, cur_threshold))
                         prev_distance = cur_distance
                         best_threshold = cur_threshold
                         # print(f'tuned_op:{tuned_op}, find best_threshold:{best_threshold}')
@@ -553,6 +553,9 @@ class SimpleTuner:
                     # self.print_dbg(
                     #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, not a better threshold:"
                     #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
+        else:
+            self.print_dbg("### {} step <=0 or diff < min_tuned_diff, {} {} skip!".format(
+                evaled_op, diff, min_tuned_diff))
 
         for idx in range(self.args.tune_num):
             if 'not_use_fp32_tensor_as_ref' in self.debug_cmd:
@@ -733,7 +736,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.tune_ds = ds if tune_ds is None else tune_ds
         self.data_list = ds.data_list
         self.args.input_num = len(self.data_list)
-        if ds.all_image:
+        if ds.all_image or ds.all_yuv:
             n = self.args.input_num % self.batch_size
             if n != 0:
                 for i in range(self.batch_size - n):
@@ -760,7 +763,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         for input in self.module.input_names:
             inp_ref_dict[input] = self.parser.get_use_count_by_op_name(input)
 
-        if self.ds.all_image:
+        if self.ds.all_image or self.ds.all_yuv:
             batched_inputs = self.input_num * ['']
         else:
             batched_inputs = {}
@@ -817,7 +820,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                     if batch_size < self.batch_size:
                         continue
 
-            elif self.ds.all_image:
+            elif self.ds.all_image or self.ds.all_yuv:
                 idx += 1
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]

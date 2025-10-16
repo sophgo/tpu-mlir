@@ -18,7 +18,7 @@ class ModelModifier:
         self.data_selector = data_selector
         self.data_list = data_selector.data_list
         self.args.input_num = len(self.data_list)
-        if data_selector.all_image:
+        if data_selector.all_image or data_selector.all_yuv:
             n = self.args.input_num % self.batch_size
             if n != 0:
                 for i in range(self.batch_size - n):
@@ -43,7 +43,7 @@ class ModelModifier:
     def load_net_inputs(self):
         self.input_tensors = {}
 
-        if self.data_selector.all_image:
+        if self.data_selector.all_image or self.data_selector.all_yuv:
             batched_inputs = [[] for i in range(self.input_num)]
         else:
             batched_inputs = {}
@@ -80,7 +80,7 @@ class ModelModifier:
                             input][:real_batch_size]
                         batched_inputs[input] = batched_inputs[input][real_batch_size:]
 
-            elif self.data_selector.all_image:
+            elif self.data_selector.all_image or self.data_selector.all_yuv:
                 inputs = [s.strip() for s in data.split(',')]
                 assert (self.input_num == len(inputs))
                 for i in range(self.input_num):

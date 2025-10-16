@@ -45,7 +45,7 @@ class DataSelector:
             raise RuntimeError("Please specific dataset path by --dataset")
         if len(self.data_list) == 0:
             raise RuntimeError("There is no inputs")
-        self.all_npz, self.all_npy, self.all_image = False, False, False
+        self.all_npz, self.all_npy, self.all_image, self.all_yuv = False, False, False, False
         self._check_data_list()
 
     def _check_data_list(self):
@@ -60,9 +60,11 @@ class DataSelector:
                         self.all_npy = True
                     elif self.is_image(i):
                         self.all_image = True
+                    elif self.is_yuv(i):
+                        self.all_yuv = True
                     else:
                         raise RuntimeError("File illegal:{}".format(file))
-            num_type = self.all_npz + self.all_image + self.all_npy
+            num_type = self.all_npz + self.all_image + self.all_npy + self.all_yuv
             if num_type != 1:
                 raise RuntimeError("Only support one input type: npy/npz/image")
 
@@ -70,7 +72,7 @@ class DataSelector:
         full_list = []
         for file in pathlib.Path(dataset_path).glob('**/*'):
             name = str(file)
-            if self.is_npz(name) or self.is_npy(name) or self.is_image(name):
+            if self.is_npz(name) or self.is_npy(name) or self.is_image(name) or self.is_yuv(name):
                 full_list.append(name)
         full_list = sorted(full_list)
         random.seed(1684)
@@ -85,6 +87,9 @@ class DataSelector:
 
     def is_npy(self, filename: str):
         return True if filename.lower().split('.')[-1] == 'npy' else False
+
+    def is_yuv(self, filename: str):
+        return True if filename.lower().split('.')[-1] == 'yuv' else False
 
     def is_image(self, filename: str):
         type = filename.lower().split('.')[-1]

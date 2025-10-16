@@ -223,7 +223,7 @@ class MixPrecSearcher:
         input_names = [op.name for op in self.parser.inputs]
         ds = DataSelector(args.dataset, args.input_num, args.data_list)
         ppa_list = []
-        if ds.all_image:
+        if ds.all_image or ds.all_yuv:
             for i in range(self.input_num):
                 ppa = preprocess()
                 ppa.load_config(self.parser.get_input_op_by_idx(i))
