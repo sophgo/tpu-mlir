@@ -219,6 +219,13 @@ sub_blocks = {
     "yolo_block_12": [
         'top.Sub', 'top.Add', 'top.Add', 'top.Sub', 'top.MulConst', 'top.Concat', 'top.Mul',
         'top.Concat'
+    ],
+    "clip_m2_encoder_block": [
+        'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute',
+        'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul',
+        'top.MulConst', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.LayerNorm',
+        'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.LayerNorm',
+        'top.MatMul', 'top.Add'
     ]
 }
 openclip_blocks = {
@@ -493,6 +500,9 @@ class MatchPattern:
                         else:
                             fp_layer_list.append(all_tensors[i])
                     else:
+                        fp_layer_list.append(all_tensors[i])
+                if model_block_name == "clip_m2_encoder_block":  # very basic config, need further optimization
+                    if op_type == "top.Add":
                         fp_layer_list.append(all_tensors[i])
                 if model_block_name == 'openclip_block':
                     if i >= last_matmul_index or (first_text_mlp_start_index <= i <=
