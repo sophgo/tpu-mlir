@@ -144,6 +144,7 @@ void bm_show(const string &filename, bool all) {
     cout << ",  device num: " << model->device_num();
   }
   cout << "\ncreate time: " << model->time()->c_str() << endl;
+
   // kernel_module info
   auto kernel_module = model->kernel_module();
   if (!kernel_module) {
@@ -157,7 +158,11 @@ void bm_show(const string &filename, bool all) {
          << endl;
     cout << "kernel_module size: " << module_size << endl;
   }
+
   std::map<std::string, std::shared_ptr<vector<uint32_t>>> cascade_nets;
+  size_t max_bdc_cmd_size = 0;
+  size_t max_gdma_cmd_size = 0;
+
   for (uint32_t idx = 0; idx < model->net()->size(); idx++) {
     auto net = model->net()->Get(idx);
     auto cascade = net->cascade();
@@ -192,6 +197,7 @@ void bm_show(const string &filename, bool all) {
     if (cascade) {
       cout << "device id: " << cascade->device_id() << endl;
     }
+
     for (uint32_t i = 0; i < parameter->size(); i++) {
       auto net_param = parameter->Get(i);
       auto subnet = net_param->sub_net();
@@ -203,8 +209,16 @@ void bm_show(const string &filename, bool all) {
         cout << "subnet number: " << subnet->size() << endl;
       }
       show(parameter->Get(i), is_dynamic);
+      auto cmd_groups = net_param->cmd_group();
+      for (const auto &cmd_group : *cmd_groups) {
+        max_bdc_cmd_size =
+            std::max(max_bdc_cmd_size, cmd_group->binary_bdc()->size());
+        max_gdma_cmd_size =
+            std::max(max_gdma_cmd_size, cmd_group->binary_gdma()->size());
+      }
     }
   }
+
   for (auto &it : cascade_nets) {
     cout << "==========================================" << endl;
     cout << "net: [" << it.first << "]  cascade" << endl;
@@ -244,8 +258,27 @@ void bm_show(const string &filename, bool all) {
       cout << tensor_str(outs[i].first, true, false, false, outs[i].second);
     }
   }
-  cout << std::endl;
+
   auto mem_info = model_ctx.get_bmodel_mem_info();
+  // consistent with runtime def
+  const size_t pcie_coeff_block_size =
+      std::min(size_t(0x1000000), mem_info.coeff_mem_size);
+  constexpr size_t runtime_init = 0xB2000; // runtime init overhead
+
+  size_t max_cmd_bytes = std::max(max_bdc_cmd_size, max_gdma_cmd_size);
+  if (model->chip()->c_str() == string("BM1684X")) {
+    max_cmd_bytes *= 2; // TODO: figure out why BM1684X requires double buffer
+  }
+
+  const size_t kernel_module_size =
+      kernel_module ? 2 * kernel_module->binary()->size() : 0;
+  const size_t cmd_or_kernel = std::max(kernel_module_size, max_cmd_bytes);
+
+  size_t soc_cpu_peak = runtime_init + cmd_or_kernel;
+  size_t pcie_cpu_peak =
+      runtime_init + std::max(cmd_or_kernel, pcie_coeff_block_size);
+
+  cout << std::endl;
   cout << "device mem size: "
        << mem_info.coeff_mem_size + mem_info.neuron_mem_size +
               mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
@@ -258,13 +291,12 @@ void bm_show(const string &filename, bool all) {
        << ", runtime: "
        << mem_info.neuron_mem_size + mem_info.middle_buffer_size << ")"
        << std::endl;
-  // cout << "\t(coeff size: " << mem_info.coeff_mem_size
-  //      << "; middle buffer size: " << mem_info.middle_buffer_size
-  //      << "; neuron size: " << mem_info.neuron_mem_size << ")" << std::endl;
   cout << "host mem size: "
        << mem_info.host_coeff_mem_size + mem_info.host_neuron_mem_size
        << " (weight: " << mem_info.host_coeff_mem_size
        << ", runtime: " << mem_info.host_neuron_mem_size << ")" << std::endl;
+  cout << "estimated SoC CPU peak: " << soc_cpu_peak << endl;
+  cout << "estimated PCIE CPU peak: " << pcie_cpu_peak << endl;
 }
 
 // print chip of model
