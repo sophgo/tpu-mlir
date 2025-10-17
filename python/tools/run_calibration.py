@@ -21,7 +21,7 @@ from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
-from calibration.utils import parse_method_list
+from calibration.utils import gen_shape_pattern_qtable
 from utils.log_setting import logger
 
 if __name__ == '__main__':
@@ -103,12 +103,16 @@ if __name__ == '__main__':
     log_level = "DEBUG" if args.debug_log else "INFO"
 
     shape_ops = ShapeOps(args)
-    shape_ops.run()
+    shape_fp_layers = shape_ops.run()
+    matcher = MatchPattern(args)
+    transformer_fp_layers, flag = matcher.run()
+    shape_pattern_fp_layers = list(set(shape_fp_layers + transformer_fp_layers))
+    gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, flag)
 
     # mix precision
     if args.search == 'search_qtable':
         args._logger = logger('Search_Qtable', log_level=log_level)
-        searcherQ = SearchQtable(args, selector, tune_ds)
+        searcherQ = SearchQtable(args, selector, tune_ds, shape_pattern_fp_layers)
         if args.mix_mode == '4_8':
             searcherQ.run_4_8()
         elif args.mix_mode == 'w4a8':
@@ -137,7 +141,7 @@ if __name__ == '__main__':
         # calibration
         if args.search == 'search_threshold':
             args._logger = logger('Search_Threshold', log_level=log_level)
-            searcherT = SearchThreshold(args, selector, tune_ds)
+            searcherT = SearchThreshold(args, selector, tune_ds, shape_pattern_fp_layers)
             searcherT.run_search_calitable()
         elif args.search == 'False':
             calibrator = ActivationCalibrator(args, selector, tune_ds)
@@ -157,5 +161,3 @@ if __name__ == '__main__':
             elif args.search == 'False':
                 calibrator = ActivationCalibrator(args, selector, tune_ds)
                 calibrator.run()
-        match_pattern = MatchPattern(args)
-        match_pattern.run()

@@ -39,24 +39,6 @@ class ShapeOps:
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.parser = MlirParser(args.mlir_file)
-        self.quantize_table = self.parser.module_name + "_shape_ops"
-        if args.fp_type == 'auto':
-            self.mix_mode = FLOAT_MAP[self.chip]
-        else:
-            self.mix_mode = args.fp_type
-            if args.fp_type not in chip_support_mix_fp_type[self.chip]:
-                print('parameter error, fp_type:{args.fp_type} not support by {self.chip}')
-                exit(1)
-
-    def gen_qtable(self, fp_layer_list):
-        with open(self.quantize_table, "w") as f:
-            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-            f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
-            f.write("# number of {} layer: {}\n".format(self.mix_mode, len(fp_layer_list)))
-            f.write("###\n")
-            f.write("# op_name   quantize_mode\n")
-            for layer in fp_layer_list:
-                f.write("{} {}\n".format(layer, self.mix_mode))
 
     def find_forward_all_input_shapes(self, shape_ops):
         found_new_shape_ops = False
@@ -153,5 +135,4 @@ class ShapeOps:
                 no_new_shape_op = False
             if no_new_shape_op:
                 break
-        self.gen_qtable(shape_ops)
-        return
+        return shape_ops

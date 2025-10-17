@@ -31,7 +31,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 class SensitiveLayer:
 
-    def __init__(self, args, selector, tune_ds):
+    def __init__(self, args, selector, tune_ds, fixed_fp_layers):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -47,6 +47,7 @@ class SensitiveLayer:
         self.mix_prec = MixPrecSearcher(args)
         self.mix_prec.dot_log = net_dot_log('sensitive_layer_search_result', self.parser,
                                             self.mix_prec.logger)
+        self.fixed_fp_layers = fixed_fp_layers or []
 
     def gen_multiple_thresholds(self, all_op_names, quantize_method_list):
         layer_th_dicts = {}  # method_name: {op_name: [op_fmax, op_th]}
@@ -176,70 +177,73 @@ class SensitiveLayer:
         last_tried_method = quantize_method_list[0]
         sensitive_layer_analysis_dict = {}
         for layer_name in layer_names:
-            layer_type = self.parser.get_op_type_by_op_name(layer_name)
-            self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
-                layer_name, layer_type))
-            fp_layer_list.remove(layer_name)
-            mix_table = self.mix_prec._gen_mix_table(fp_layer_list)
-            ret = False
-            while not ret:
-                if layer_name not in modified_layers:
-                    last_tried_method = quantize_method_list[0]
-                    modified_layers[layer_name] = [
-                        1,
-                        float('inf'), layer_th_dicts[last_tried_method][layer_name][1],
-                        last_tried_method
-                    ]
-                    method = last_tried_method
-                    new_th = layer_th_dicts[last_tried_method][layer_name][
-                        1]  # layer_th_dicts{quantize_method: {layer_name:{fmax, th}}}
-                    new_cali_table_name = self.set_layer_new_th(int8_model, layer_name, new_th)
-                    last_tried_method = method
-                    self.mix_prec.logger.print_info(
-                        "adjust layer {} th, with method {}, and threshlod {}".format(
-                            layer_name, method, new_th))
-                    mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
-                                             mix_table)
-                    outputs_cos = 1 - self.mix_prec.run_model(
-                        mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                    self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
-                elif modified_layers[layer_name][0] < num_quantize_method:
-                    method_idx = modified_layers[layer_name][0]
-                    method = quantize_method_list[method_idx]
-                    if outputs_cos < modified_layers[layer_name][1]:
-                        modified_layers[layer_name][1] = outputs_cos
-                        modified_layers[layer_name][2] = layer_th_dicts[last_tried_method][
-                            layer_name][1]
-                        modified_layers[layer_name][3] = last_tried_method
-                    new_th = layer_th_dicts[method][layer_name][1]
-                    new_cali_table_name = self.set_layer_new_th(int8_model, layer_name, new_th)
-                    last_tried_method = method
-                    self.mix_prec.logger.print_info(
-                        "adjust layer {} th, with method {}, and threshlod {}".format(
-                            layer_name, method, new_th))
-                    modified_layers[layer_name][0] += 1
-                    mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
-                                             mix_table)
-                    outputs_cos = 1 - self.mix_prec.run_model(
-                        mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                    self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
-                elif modified_layers[layer_name][0] == num_quantize_method:
-                    if outputs_cos < modified_layers[layer_name][1]:
-                        modified_layers[layer_name][1] = outputs_cos
-                        modified_layers[layer_name][2] = layer_th_dicts[last_tried_method][
-                            layer_name][1]
-                        modified_layers[layer_name][3] = last_tried_method
-                    best_th = modified_layers[layer_name][2]
-                    modified_layers[layer_name][0] += 1
-                    new_cali_table_name = self.set_layer_new_th(int8_model, layer_name, best_th)
-                    self.mix_prec.logger.print_info(
-                        "layer {}, layer type is {}, best_th = {}, best_method = {}, best_cos_loss = {}"
-                        .format(layer_name, layer_type, best_th, modified_layers[layer_name][3],
-                                modified_layers[layer_name][1]))
-                    sensitive_layer_analysis_dict[layer_name] = [
-                        modified_layers[layer_name][1], layer_type
-                    ]
-                    ret = True
+            if layer_name in self.fixed_fp_layers:
+                continue
+            else:
+                layer_type = self.parser.get_op_type_by_op_name(layer_name)
+                self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
+                    layer_name, layer_type))
+                fp_layer_list.remove(layer_name)
+                mix_table = self.mix_prec._gen_mix_table(fp_layer_list)
+                ret = False
+                while not ret:
+                    if layer_name not in modified_layers:
+                        last_tried_method = quantize_method_list[0]
+                        modified_layers[layer_name] = [
+                            1,
+                            float('inf'), layer_th_dicts[last_tried_method][layer_name][1],
+                            last_tried_method
+                        ]
+                        method = last_tried_method
+                        new_th = layer_th_dicts[last_tried_method][layer_name][
+                            1]  # layer_th_dicts{quantize_method: {layer_name:{fmax, th}}}
+                        new_cali_table_name = self.set_layer_new_th(int8_model, layer_name, new_th)
+                        last_tried_method = method
+                        self.mix_prec.logger.print_info(
+                            "adjust layer {} th, with method {}, and threshlod {}".format(
+                                layer_name, method, new_th))
+                        mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
+                                                 mix_table)
+                        outputs_cos = 1 - self.mix_prec.run_model(
+                            mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
+                        self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
+                    elif modified_layers[layer_name][0] < num_quantize_method:
+                        method_idx = modified_layers[layer_name][0]
+                        method = quantize_method_list[method_idx]
+                        if outputs_cos < modified_layers[layer_name][1]:
+                            modified_layers[layer_name][1] = outputs_cos
+                            modified_layers[layer_name][2] = layer_th_dicts[last_tried_method][
+                                layer_name][1]
+                            modified_layers[layer_name][3] = last_tried_method
+                        new_th = layer_th_dicts[method][layer_name][1]
+                        new_cali_table_name = self.set_layer_new_th(int8_model, layer_name, new_th)
+                        last_tried_method = method
+                        self.mix_prec.logger.print_info(
+                            "adjust layer {} th, with method {}, and threshlod {}".format(
+                                layer_name, method, new_th))
+                        modified_layers[layer_name][0] += 1
+                        mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
+                                                 mix_table)
+                        outputs_cos = 1 - self.mix_prec.run_model(
+                            mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
+                        self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
+                    elif modified_layers[layer_name][0] == num_quantize_method:
+                        if outputs_cos < modified_layers[layer_name][1]:
+                            modified_layers[layer_name][1] = outputs_cos
+                            modified_layers[layer_name][2] = layer_th_dicts[last_tried_method][
+                                layer_name][1]
+                            modified_layers[layer_name][3] = last_tried_method
+                        best_th = modified_layers[layer_name][2]
+                        modified_layers[layer_name][0] += 1
+                        new_cali_table_name = self.set_layer_new_th(int8_model, layer_name, best_th)
+                        self.mix_prec.logger.print_info(
+                            "layer {}, layer type is {}, best_th = {}, best_method = {}, best_cos_loss = {}"
+                            .format(layer_name, layer_type, best_th, modified_layers[layer_name][3],
+                                    modified_layers[layer_name][1]))
+                        sensitive_layer_analysis_dict[layer_name] = [
+                            modified_layers[layer_name][1], layer_type
+                        ]
+                        ret = True
 
             fp_layer_list.append(layer_name)
         return sensitive_layer_analysis_dict, new_cali_table_name
@@ -372,7 +376,8 @@ class SensitiveLayer:
 
         #step6: generate final mix model and print info
         self.mix_prec.dot_log.gen_dot_graph()
-        mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
+        total_fp_layers = set_fp_layer_list + self.fixed_fp_layers
+        mix_table = self.mix_prec._gen_mix_table(total_fp_layers)
         mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
         outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate,
                                               predictions_gt)

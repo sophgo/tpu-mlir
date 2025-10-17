@@ -31,7 +31,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 class SearchThreshold:
 
-    def __init__(self, args, selector, tune_ds):
+    def __init__(self, args, selector, tune_ds, fixed_fp_layers):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -47,6 +47,7 @@ class SearchThreshold:
             args.input_num = args.inference_num
         self.mix_prec = MixPrecSearcher(args)
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        self.fixed_fp_layers = fixed_fp_layers
 
     def gen_multiple_thresholds_new(self, quantize_method_list):
         calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)
@@ -159,6 +160,7 @@ class SearchThreshold:
         self.mix_prec.logger.print_info(
             "Quantization threshold calculation method: {}".format(quantize_method_list))
         self.gen_multiple_thresholds_new(quantize_method_list)
+        mix_table = self.mix_prec._gen_mix_table(self.fixed_fp_layers)
 
         result = {}
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
@@ -172,7 +174,7 @@ class SearchThreshold:
                 data = file.read()
             with open(new_cali_table_name, 'w') as file:
                 file.write(data)
-            int8_model = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name)
+            int8_model = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
             if self.benchmark_method == 'cos':
                 outputs = self.mix_prec.run_model(int8_model, False, global_compare_layers,
                                                   layers_rate, predictions_gt)

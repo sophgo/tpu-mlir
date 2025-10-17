@@ -14,6 +14,8 @@ import numpy as np
 from pathlib import Path
 from calibration.sensitive_layer import SensitiveLayer
 from calibration.data_selector import DataSelector
+from calibration.transformer_pattern import MatchPattern
+from calibration.shape_ops import ShapeOps
 
 if __name__ == '__main__':
     print("TPU-MLIR {}".format(pymlir.__version__))
@@ -58,5 +60,10 @@ if __name__ == '__main__':
     if args.tune_list:
         tune_ds = DataSelector(None, args.tune_num, args.tune_list)
         args.tune_num = len(tune_ds.data_list)
-    searcher = SensitiveLayer(args, selector, tune_ds)
+    shape_ops = ShapeOps(args)
+    shape_fp_layers = shape_ops.run()
+    matcher = MatchPattern(args)
+    transformer_fp_layers, flag = matcher.run()
+    shape_pattern_fp_layers = list(set(shape_fp_layers + transformer_fp_layers))
+    searcher = SensitiveLayer(args, selector, tune_ds, shape_pattern_fp_layers)
     searcher.run()

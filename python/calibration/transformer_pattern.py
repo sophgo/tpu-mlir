@@ -279,33 +279,6 @@ class MatchPattern:
         else:
             pass
 
-        if '/' in self.cali_table_name:
-            last_index = self.cali_table_name.rfind('/')
-            self.quantize_table = self.cali_table_name[:last_index + 1] + "qtable"
-        else:
-            self.quantize_table = "qtable"
-        if args.fp_type == 'auto':
-            self.mix_mode = FLOAT_MAP[self.chip]
-        else:
-            self.mix_mode = args.fp_type
-            if args.fp_type not in chip_support_mix_fp_type[self.chip]:
-                self.logger.print_info(
-                    f'parameter error, fp_type:{args.fp_type} not support by {self.chip}')
-                exit(1)
-
-    def gen_qtable(self, fp_layer_list, flag):
-        self.logger.print_info(f'The qtable has been generated in: {self.quantize_table} !!!')
-        with open(self.quantize_table, "w") as f:
-            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-            f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
-            f.write("# number of {} layer: {}\n".format(self.mix_mode, len(fp_layer_list)))
-            if self.args.part_quantize and flag == 0:
-                f.write("# part_quantize \n")
-            f.write("###\n")
-            f.write("# op_name   quantize_mode\n")
-            for layer in fp_layer_list:
-                f.write("{} {}\n".format(layer, self.mix_mode))
-
     def run(self):
         flag = 0
         count = 0
@@ -390,8 +363,7 @@ class MatchPattern:
                 split_fuse_fp_layer_list = []
                 for item in fp_layer_list:
                     split_fuse_fp_layer_list.extend(split_fuseop(item))
-                self.gen_qtable(split_fuse_fp_layer_list, flag)
-                return
+                return split_fuse_fp_layer_list, flag
 
             for i in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
@@ -537,5 +509,5 @@ class MatchPattern:
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
                             fp_layer_list.append(all_tensors[i])
 
-            self.gen_qtable(fp_layer_list, flag)
-        return
+            Pattern_fp_layer_list_total = list(set(fp_layer_list + split_fuse_fp_layer_list))
+        return Pattern_fp_layer_list_total, flag
