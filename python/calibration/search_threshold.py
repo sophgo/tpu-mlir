@@ -31,7 +31,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 class SearchThreshold:
 
-    def __init__(self, args, selector, tune_ds, fixed_fp_layers):
+    def __init__(self, args, selector, tune_ds, shape_pattern_fp_layers):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -47,7 +47,7 @@ class SearchThreshold:
             args.input_num = args.inference_num
         self.mix_prec = MixPrecSearcher(args)
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
-        self.fixed_fp_layers = fixed_fp_layers
+        self.fixed_fp_layers = shape_pattern_fp_layers or []
 
     def gen_multiple_thresholds_new(self, quantize_method_list):
         calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)

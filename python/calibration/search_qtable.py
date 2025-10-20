@@ -35,7 +35,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 class SearchQtable:
 
-    def __init__(self, args, selector, tune_ds, fixed_fp_layers):
+    def __init__(self, args, selector, tune_ds, shape_pattern_fp_layers):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -52,7 +52,7 @@ class SearchQtable:
                                             self.mix_prec.logger)
         self.quantize_method_list = args.quantize_method_list
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
-        self.fixed_fp_layers = fixed_fp_layers or []
+        self.fixed_fp_layers = shape_pattern_fp_layers or []
 
     def gen_multiple_thresholds(self, all_op_names, quantize_method_list):
         layer_th_dicts = {}

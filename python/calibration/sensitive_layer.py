@@ -31,7 +31,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 class SensitiveLayer:
 
-    def __init__(self, args, selector, tune_ds, fixed_fp_layers):
+    def __init__(self, args, selector, tune_ds, shape_pattern_fp_layers):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -47,7 +47,7 @@ class SensitiveLayer:
         self.mix_prec = MixPrecSearcher(args)
         self.mix_prec.dot_log = net_dot_log('sensitive_layer_search_result', self.parser,
                                             self.mix_prec.logger)
-        self.fixed_fp_layers = fixed_fp_layers or []
+        self.fixed_fp_layers = shape_pattern_fp_layers or []
 
     def gen_multiple_thresholds(self, all_op_names, quantize_method_list):
         layer_th_dicts = {}  # method_name: {op_name: [op_fmax, op_th]}
