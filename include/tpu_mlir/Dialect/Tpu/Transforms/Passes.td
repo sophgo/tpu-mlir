@@ -55,7 +55,8 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
            "1: do LayerGroup and create debugger file; "
            "2: only create debugger file; "
            "3: do LayerGroup with debugger file; "
-           "4: do partial LayerGroup with debugger file.">,
+           "4: do partial LayerGroup with debugger file; "
+           "5: check the single group interval given by debugger file.">,
     Option<"debugger_filename", "debugger_filename", "std::string", /*default=*/"\"\"", "debugger file name">,
     Option<"disable_group_overlap", "disable_group_overlap", "bool", /*default=*/"false", "disable group overlap">,
     Option<"config_filename", "config_filename", "std::string", /*default=*/"\"\"", "config file name">,

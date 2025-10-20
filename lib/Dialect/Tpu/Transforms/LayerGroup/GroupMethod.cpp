@@ -19,7 +19,9 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Support/WithColor.h>
+#include <llvm/Support/raw_ostream.h>
 #include <random>
 
 #define DEBUG_TYPE "layer-group"
@@ -32,6 +34,10 @@ static int subfunc_idx = 0;
   module::getName(module::getModuleOp()).str() + "_" +                         \
       module::getChipStr().str() + "_" + module::getModeStr() +                \
       ".layer_group_debugger.json"
+#define IDX_FILE_NAME                                                          \
+  module::getName(module::getModuleOp()).str() + "_" +                         \
+      module::getChipStr().str() + "_" + module::getModeStr() +                \
+      ".layer_group_idx.txt"
 using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {
@@ -1614,6 +1620,94 @@ void GroupMethod::dynamic_programming_kernel(
   // });
 }
 
+void GroupMethod::single_group_debug(
+    std::vector<LgInfo> &lg_infos,
+    const llvm::SetVector<Operation *> &subnet_ops) {
+  auto &lg_debugger = LgDebugger::getInstance();
+  auto &lg_config = LgConfig::getInstance();
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::dbgs()
+        << "\n"
+        << "========================================================\n"
+        << "**                 Layer group debug                  **\n"
+        << "========================================================\n";
+  });
+  LgInfo lg_info;
+  int debug_group_idx = 0;
+  for (auto iter : lg_debugger.get_conditional_debug_groups()) {
+    LG_DEBUG_WITH_TYPE("lg_step", [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "lg_debugger_iteration_start", "stamp",
+                          "process debug_groups[%d], start_idx=%d, end_idx=%d",
+                          debug_group_idx, iter.first, iter.second)
+                   << "\n";
+    });
+    auto start_idx = iter.first;
+    auto end_idx = iter.second;
+    std::vector<Operation *> debug_group;
+    std::vector<std::pair<int64_t, int64_t>> clusters;
+    auto cluster_num = end_idx - start_idx + 1;
+    get_debug_group(debug_group, subnet_ops, start_idx, end_idx);
+    get_debug_cluster(clusters, cluster_num);
+    LG_DEBUG_WITH_TYPE("lg_step", [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "dynamic_programming_kernel", "call_function",
+                          "process clusters using dynamic programming "
+                          "algorithm, cluster_num=%d",
+                          cluster_num)
+                   << "\n";
+    });
+    /**
+     * you can debug any cluster like calc_cost(16, 17);
+     */
+    auto calc_group_cost = [&](LgInfo &lg_info) {
+      GROUP_DEBUG_WITH_TYPE("lg_step", lg_info, [&]() {
+        llvm::dbgs()
+            << DEBUGGER_DEFAULT_INFO(
+                   "is_layer_group_valid", "call_function",
+                   "check if the group is valid and calculate the cost")
+            << "\n";
+      });
+      // if (lg_debugger.is_conditional_debug_group(sub_group.func_start_idx,
+      // sub_group.func_end_idx)) {
+      //   return MAX_COST;
+      // }
+      int64_t group_cost = MAX_COST;
+      auto is_valid = is_layer_group_valid(lg_info, true, &group_cost);
+      if (options_.debugger > 2 && is_valid) {
+        int64_t manual_group_cost = lg_debugger.get_manual_group_cost(lg_info);
+        if (manual_group_cost != -1) { // -1 means no manual cost
+          return manual_group_cost;
+        }
+      }
+      return group_cost;
+    };
+    int64_t start = 0;
+    int64_t end = end_idx - start_idx;
+    get_layer_group(lg_info, debug_group, start, end, debug_group_idx,
+                    start_idx);
+    if (lg_config.get_shape_secs_search_strategy() ==
+        SHAPE_SECS_ALWAYS_BETTER) {
+      lg_info.shape_secs_search_level = 1;
+    }
+    int64_t cost = calc_group_cost(lg_info);
+    GROUP_DEBUG_WITH_TYPE("group_cost", lg_info, [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "single_group_costs", "record",
+                          "calculate single_group_costs(func_start_idx=%d, "
+                          "func_end_idx=%d)",
+                          lg_info.func_start_idx, lg_info.func_end_idx)
+                   << LOG_KV("cost", cost)
+                   << LOG_KV_FORMAT(
+                          "shape_secs", "%d,%d,%d,%d,%d",
+                          lg_info.shape_secs.nsecs, lg_info.shape_secs.csecs,
+                          lg_info.shape_secs.dsecs, lg_info.shape_secs.hsecs,
+                          lg_info.shape_secs.wsecs)
+                   << "\n";
+    });
+  }
+}
+
 void GroupMethod::dynamic_programming_layer_group_with_cluster_debug(
     std::vector<LgInfo> &lg_infos,
     const llvm::SetVector<Operation *> &subnet_ops) {
@@ -2338,6 +2432,55 @@ void GroupMethod::simple_layer_group(
   get_final_groups(lg_infos, base_groups);
 }
 
+static std::string padLeft(const std::string &s, size_t width,
+                           char fill = ' ') {
+  if (s.size() >= width)
+    return s;
+  return std::string(width - s.size(), fill) + s;
+}
+static std::string padRight(const std::string &s, size_t width,
+                            char fill = ' ') {
+  if (s.size() >= width)
+    return s;
+  return s + std::string(width - s.size(), fill);
+}
+
+void GroupMethod::dump_lg_idx(
+    const llvm::SetVector<mlir::Operation *> &subnet_ops,
+    const std::string &filename) {
+  static bool initialized = false;
+
+  std::error_code ec;
+  llvm::raw_fd_ostream os(filename, ec,
+                          initialized ? llvm::sys::fs::OF_Append
+                                      : llvm::sys::fs::OF_Text);
+  if (ec) {
+    llvm::errs() << "Failed to open file: " << filename << ": " << ec.message()
+                 << "\n";
+    return;
+  }
+
+  constexpr size_t w_subfunc = 12;
+  constexpr size_t w_op_idx = 8;
+
+  if (!initialized) {
+    os << padRight("subfunc_idx", w_subfunc) << " "
+       << padRight("op_idx", w_op_idx) << " "
+       << "op_ir\n";
+    initialized = true;
+  }
+
+  int idx = 0;
+  for (auto *op : subnet_ops) {
+    std::string s_sub = std::to_string(subfunc_idx);
+    std::string s_idx = std::to_string(idx++);
+    os << padRight(s_sub, w_subfunc) << " " << padRight(s_idx, w_op_idx) << " ";
+    op->print(os);
+    os << "\n";
+  }
+  os.flush();
+}
+
 void GroupMethod::process(LgPassIR *pass_ir) {
   std::vector<LgInfo> &lg_infos = pass_ir->lg_infos;
   llvm::SetVector<Operation *> &subnet_ops = pass_ir->subnet_ops;
@@ -2352,6 +2495,7 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   // 2: only create debugger file
   // 3: do LayerGroup with debugger file
   // 4: do partial LayerGroup with debugger file
+  // 5: check the single group interval given by debugger file
   std::string debugger_filename = DEBUGGER_FILE_NAME;
   if (!options_.debugger_filename.empty()) {
     debugger_filename = options_.debugger_filename;
@@ -2368,12 +2512,14 @@ void GroupMethod::process(LgPassIR *pass_ir) {
   case 2: {
     lg_debugger.create_debugger_config(
         debugger_filename); // only create debugger file
+    dump_lg_idx(subnet_ops, IDX_FILE_NAME);
     llvm::WithColor(llvm::outs(), llvm::raw_ostream::GREEN)
         << "Only create debugger file when debugger=2!\n";
     return;
   }
   case 3: // Fall through
   case 4:
+  case 5:
     lg_debugger.load_debugger_config(
         debugger_filename,
         subfunc_idx); // both 3 and 4 need to load debugger file
@@ -2382,6 +2528,19 @@ void GroupMethod::process(LgPassIR *pass_ir) {
     llvm_unreachable("Invalid debugger option");
   }
   }
+  LG_DEBUG_WITH_TYPE("lg_idx", [&]() {
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                        "GroupMethod::process", "stamp",
+                        "start processing subnet_ops with size=%d",
+                        subnet_ops.size())
+                 << "\n";
+    llvm::dbgs() << LOG_KV("subfunc_idx", subfunc_idx) << "\n";
+    int idx = 0;
+    for (auto op : subnet_ops) {
+      llvm::dbgs() << LOG_KV("idx", idx++)
+                   << LOG_KV("op_name", module::getName(op)) << "\n";
+    }
+  });
 
   if (getenv("LOAD_TPU_GROUP") || options_.opt == 4) {
     if (is_lg_results_exists()) {
@@ -2401,6 +2560,8 @@ void GroupMethod::process(LgPassIR *pass_ir) {
       llvm_unreachable("only opt=2 is supported when debugger=4");
       break;
     }
+  } else if (options_.debugger == 5) {
+    single_group_debug(lg_infos, subnet_ops);
   } else {
     switch (options_.opt) {
     case 1:

@@ -59,6 +59,8 @@ public:
   void dynamic_programming_layer_group_with_cluster_debug(
       std::vector<LgInfo> &lg_infos,
       const llvm::SetVector<Operation *> &subnet_ops);
+  void single_group_debug(std::vector<LgInfo> &lg_infos,
+                          const llvm::SetVector<Operation *> &subnet_ops);
   void
   get_final_groups(std::vector<LgInfo> &lg_infos,
                    const std::vector<std::vector<Operation *>> &base_groups);
@@ -137,6 +139,8 @@ public:
                        int64_t right, int64_t base_group_idx,
                        int64_t idx_offset = 0);
   void set_layer_group_cache(LgInfo lg_info);
+  void dump_lg_idx(const llvm::SetVector<Operation *> &subnet_ops,
+                   const std::string &debugger_filename);
 
 protected:
   LgOptions options_;
