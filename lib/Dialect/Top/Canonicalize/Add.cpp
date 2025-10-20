@@ -218,6 +218,21 @@ struct AddToRope : public OpRewriterPatternEx<AddOp> {
       return failure();
     }
 
+    // Check if Slice input comes from a Reshape with output shape [..., 2, 2]
+    // This indicates a 4-element pattern which is NOT supported by backend
+    auto slice_input_op = slice_op.getInput().getDefiningOp();
+    if (auto reshape_op = dyn_cast_or_null<ReshapeOp>(slice_input_op)) {
+      auto reshape_output_shape = module::getShape(reshape_op.getOutput());
+      // Check if reshape output has last two dimensions both equal to 2
+      if (reshape_output_shape.size() >= 2 &&
+          reshape_output_shape[reshape_output_shape.size() - 1] == 2 &&
+          reshape_output_shape[reshape_output_shape.size() - 2] == 2) {
+        // This is a 4-element pattern ([..., D, 2] -> [..., D/2, 2, 2])
+        // Backend only supports 2-element, so reject fusion
+        return failure();
+      }
+    }
+
     // Create RopeOp
     std::vector<NamedAttribute> attrs;
     rewriter.replaceOpWithNewOp<RopeOp>(
@@ -330,6 +345,21 @@ struct AddToRope2 : public OpRewriterPatternEx<AddOp> {
     auto storage_type = module::getStorageType(op.getOutput());
     if (!storage_type.isF32() && !storage_type.isF16()) {
       return failure();
+    }
+
+    // Check if Slice input comes from a Reshape with output shape [..., 2, 2]
+    // This indicates a 4-element pattern which is NOT supported by backend
+    auto slice_input_op = above_slice_op.getInput().getDefiningOp();
+    if (auto reshape_op = dyn_cast_or_null<ReshapeOp>(slice_input_op)) {
+      auto reshape_output_shape = module::getShape(reshape_op.getOutput());
+      // Check if reshape output has last two dimensions both equal to 2
+      if (reshape_output_shape.size() >= 2 &&
+          reshape_output_shape[reshape_output_shape.size() - 1] == 2 &&
+          reshape_output_shape[reshape_output_shape.size() - 2] == 2) {
+        // This is a 4-element pattern ([..., D, 2] -> [..., D/2, 2, 2])
+        // Backend only supports 2-element, so reject fusion
+        return failure();
+      }
     }
 
     // Create RopeOp
