@@ -156,7 +156,7 @@ if __name__ == '__main__':
             args.input_num = input_num
             if args.search == 'search_threshold':
                 args._logger = logger('Search_Threshold', log_level=log_level)
-                searcher = SearchThreshold(args, selector, tune_ds, shape_pattern_fp_layers)
+                searcher = SearchThreshold(args, selector, tune_ds)
                 searcher.run_search_calitable()
             elif args.search == 'False':
                 calibrator = ActivationCalibrator(args, selector, tune_ds)

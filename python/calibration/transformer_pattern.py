@@ -508,4 +508,6 @@ class MatchPattern:
                         if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
                             fp_layer_list.append(all_tensors[i])
-        return fp_layer_list, flag
+
+            Pattern_fp_layer_list_total = list(set(fp_layer_list + split_fuse_fp_layer_list))
+        return Pattern_fp_layer_list_total, flag
