@@ -317,12 +317,19 @@ static bool can_membuf_inplace_alloc(int pre_start, int pre_end, int post_start,
   return flag;
 }
 
-static bool isInplaceOp(Operation *op) {
+static bool isInplaceOp(Operation *op, LgInfo &lg_info) {
   if (module::isCV18xx())
     return false;
   if (op->getNumOperands() > 0) {
-    auto parent = op->getOperand(0).getUsers();
-    int users_num = std::distance(parent.begin(), parent.end());
+    auto parents = op->getOperand(0).getUsers();
+    int users_num = 0;
+    for (auto *parent : parents) {
+      // only count users in group_ops
+      if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
+                    parent) != lg_info.group_ops.end()) {
+        users_num++;
+      }
+    }
     if (users_num > 1) {
       return false;
     }
@@ -360,7 +367,7 @@ static void
 insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
                          const std::vector<mem_buffer_key_t> &ts_overlap_buffer,
                          BasicTimeStepPtr &time_step,
-                         std::list<MemBlock> &avail_lmems) {
+                         std::list<MemBlock> &avail_lmems, LgInfo &lg_info) {
   // llvm::errs() << "-----------------insert_inplace_local_mem "<<
   // buffer_key.type << "----------------------------------\n";
   if (buffer_key.type == LMEM_OPERATION)
@@ -378,7 +385,7 @@ insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
       // weight----------------------------------\n";
       return;
     }
-    if (isInplaceOp(src_layer)) {
+    if (isInplaceOp(src_layer, lg_info)) {
       // llvm::errs() << "-----------------src-" << src_layer->getName()
       // <<"----------------------------------\n";
       for (buffer_idx = 0; buffer_idx < ts_overlap_buffer.size();
@@ -459,7 +466,7 @@ insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
   auto dst_layers = value.getUsers();
   if (!dst_layers.empty()) {
     auto dst_layer = *dst_layers.begin();
-    if (isInplaceOp(dst_layer) && value == dst_layer->getOperand(0)) {
+    if (isInplaceOp(dst_layer, lg_info) && value == dst_layer->getOperand(0)) {
       // llvm::errs() << "-----------------dst-" << dst_layer->getName()
       // <<"----------------------------------\n";
       auto dst_out = dst_layer->getResult(0);
@@ -526,8 +533,9 @@ void LmemAllocator::update_avail_lmems(
     std::list<MemBlock> &avail_lmems, const mem_buffer_key_t &buffer_key,
     const mem_buffer_value_t &buffer_value,
     const mem_buffer_key_t &recent_buffer_allocated,
-    const mem_buffer_value_t &recent_buffer_value, BasicTimeStepPtr &time_step,
-    bool hold_on_coeff, bool consider_inplace, bool allow_hold_in_lmem) {
+    const mem_buffer_value_t &recent_buffer_value, LgInfo &lg_info,
+    BasicTimeStepPtr &time_step, bool hold_on_coeff, bool consider_inplace,
+    bool allow_hold_in_lmem) {
   PROFILE_LOG("update_avail_lmems", true);
   // find the allocated buffer overlap in time dimension
   bool ts_overlap = is_timestep_overlapped(
@@ -561,7 +569,7 @@ void LmemAllocator::update_avail_lmems(
       std::vector<mem_buffer_key_t> ts_overlap_buffer(1,
                                                       recent_buffer_allocated);
       insert_inplace_local_mem(buffer_key, ts_overlap_buffer, time_step,
-                               avail_lmems);
+                               avail_lmems, lg_info);
     }
   }
 
@@ -706,9 +714,9 @@ void LmemAllocator::update_exclude_banks(
 
 MemBlock LmemAllocator::global_find_avail_lmem_localtion(
     avail_space_t &avail_space, const mem_buffer_key_t &buffer_key,
-    const mem_buffer_key_t &recent_buffer_allocated,
-    BasicTimeStepPtr &time_step, bool one_loop, LgInfo &lg_info,
-    bool allow_bank_conflict, bool allow_hold_in_lmem) {
+    const mem_buffer_key_t &recent_buffer_allocated, LgInfo &lg_info,
+    BasicTimeStepPtr &time_step, bool one_loop, bool allow_bank_conflict,
+    bool allow_hold_in_lmem) {
   PROFILE_LOG("global_find_avail_lmem_localtion", true);
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   auto &recent_buffer_value =
@@ -718,8 +726,8 @@ MemBlock LmemAllocator::global_find_avail_lmem_localtion(
                        recent_buffer_allocated, recent_buffer_value, time_step);
 
   update_avail_lmems(avail_space.avail_lmems, buffer_key, buffer_value,
-                     recent_buffer_allocated, recent_buffer_value, time_step,
-                     !one_loop, true, allow_hold_in_lmem);
+                     recent_buffer_allocated, recent_buffer_value, lg_info,
+                     time_step, !one_loop, true, allow_hold_in_lmem);
 
   // get the available local memory location
   auto alloc_mem = find_avail_lmem_location(
@@ -1207,7 +1215,7 @@ bool LmemAllocator::assignLmemAddr(LgInfo &lg_info, BasicTimeStepPtr &time_step,
         //         is the smallest one for all buffers in the loop
         candidate_allocation = global_find_avail_lmem_localtion(
             buffer_avail_space[buflist_it->first], buflist_it->first,
-            recent_buffer_allocated, time_step, one_loop, lg_info,
+            recent_buffer_allocated, lg_info, time_step, one_loop,
             allow_bank_conflict, allow_hold_in_lmem);
         if (candidate_allocation.first == -1) {
           addr_assign_result = ADDR_CANDIDATE_ALLOCATE_FAILED;
