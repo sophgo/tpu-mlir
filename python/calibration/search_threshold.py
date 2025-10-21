@@ -31,7 +31,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 class SearchThreshold:
 
-    def __init__(self, args, selector, tune_ds, fixed_fp_layers):
+    def __init__(self, args, selector, tune_ds, shape_pattern_fp_layers):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip

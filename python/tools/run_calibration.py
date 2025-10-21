@@ -155,7 +155,7 @@ if __name__ == '__main__':
             searcherT.run_search_calitable()
         elif args.search == 'search_sensitive_layer':
             args._logger = logger('Sensitive_Layer', log_level=log_level)
-            searcher = SensitiveLayer(args, selector, tune_ds)
+            searcher = SensitiveLayer(args, selector, tune_ds, shape_pattern_fp_layers)
             searcher.run()
         elif args.search == 'False':
             calibrator = ActivationCalibrator(args, selector, tune_ds)
