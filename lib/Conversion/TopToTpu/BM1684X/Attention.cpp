@@ -144,7 +144,12 @@ void lowering_multi_attention_float(PatternRewriter &rewriter,
     auto attention = attention_head(rewriter, op, i);
     attention_reorder(rewriter, attention);
     // multi head fuse
-    operands.push_back(lowering_attention_float<ElemTy>(rewriter, attention));
+    auto head_i_output = lowering_attention_float<ElemTy>(rewriter, attention);
+    if (i == 0 && head == 1) {
+      rewriter.replaceOp(op, head_i_output);
+      return;
+    }
+    operands.push_back(head_i_output);
     if (i > 0) {
       std::vector<NamedAttribute> attrs_none;
       auto newType = getQuantFloatType<ElemTy>(op->getResult(0));

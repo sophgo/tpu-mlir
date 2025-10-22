@@ -116,38 +116,55 @@ struct ReduceFusePattern : public OpRewriterPatternEx<ReduceOp> {
     }
     auto axis_list_former = module::getI64Array(formerOp.getAxes());
     auto axis_list_current = module::getI64Array(op.getAxes());
-    int axis_num_former = axis_list_former->size();
-    int axis_num_current = axis_list_current->size();
     auto new_input = formerOp.getInput();
 
-    int mask[MAX_SHAPE_DIMS] = {0};
-    int new_axis_num = 0;
-    for (int i = 0; i < axis_num_former; i++) {
-      mask[axis_list_former->at(i)] = 1;
-      new_axis_num += 1;
-    }
-    for (int i = 0; i < axis_num_current; i++) {
-      int offset = 0;
-      while (mask[axis_list_current->at(i) + offset]) {
-        offset += 1;
+    int64_t N = formerOpShape.size();
+    std::vector<int64_t> new_axis;
+    new_axis.reserve(axis_list_former->size() + axis_list_current->size());
+
+    if (!op.getKeepdims()) {
+      std::vector<bool> removed(N, false);
+      for (auto a : *axis_list_former) {
+        removed[a] = true;
       }
-      mask[axis_list_current->at(i) + offset] = 1;
-      new_axis_num += 1;
-    }
-    int offset_start = 0;
-    while (!mask[offset_start]) {
-      offset_start += 1;
-    }
-    std::vector<int64_t> new_axis(new_axis_num, 0);
-    for (int i = 0; i < new_axis_num; i++) {
-      int offset_insert = offset_start;
-      while (!mask[offset_insert]) {
-        offset_insert += 1;
+      std::vector<int64_t> kept;
+      kept.reserve(N - (int64_t)axis_list_former->size());
+      for (int64_t i = 0; i < N; ++i) {
+        if (!removed[i])
+          kept.push_back(i);
       }
-      new_axis[i] = offset_insert;
-      offset_start = offset_insert + 1;
+
+      std::vector<int64_t> current_axes_mapped;
+      current_axes_mapped.reserve(axis_list_current->size());
+      for (auto a : *axis_list_current) {
+        current_axes_mapped.push_back(kept[a]);
+      }
+
+      llvm::SmallDenseSet<int64_t> set_axes;
+      for (auto a : *axis_list_former)
+        set_axes.insert(a);
+      for (auto a : current_axes_mapped)
+        set_axes.insert(a);
+      new_axis.assign(set_axes.begin(), set_axes.end());
+      std::sort(new_axis.begin(), new_axis.end());
+    } else {
+      llvm::SmallDenseSet<int64_t> set_axes;
+      for (auto a : *axis_list_former) {
+        set_axes.insert(a);
+      }
+      for (auto a : *axis_list_current) {
+        set_axes.insert(a);
+      }
+      new_axis.assign(set_axes.begin(), set_axes.end());
+      std::sort(new_axis.begin(), new_axis.end());
     }
-    std::sort(new_axis.begin(), new_axis.end());
+    // check new_axis is continuous, backend not support cross-axes reduce
+    for (int i = 1; i < new_axis.size(); i++) {
+      if (new_axis[i] != new_axis[i - 1] + 1) {
+        return failure();
+      }
+    }
+
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(new_axis)));
