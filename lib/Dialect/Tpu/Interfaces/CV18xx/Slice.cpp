@@ -23,9 +23,18 @@ void tpu::SliceOp::codegen_global_cv18xx(int64_t layer_id) {
   }
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
+  std::vector<int64_t> offset;
+  for (int i = 0; i < p.offset_4.size(); i++) {
+    if (p.offset_4[i] < 0) {
+      offset.push_back(p.offset_4[i] + p.is_4[i]);
+    } else {
+      offset.push_back(p.offset_4[i]);
+    }
+  }
+
   if (p.fusible == false) {
     cvi_backend_tg_crop_kernel(layer_id, ga_input, ga_output, p.is_4, p.os_4,
-                               p.offset_4, p.step_4, fmt);
+                               offset, p.step_4, fmt);
   }
 }
 
