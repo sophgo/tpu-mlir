@@ -23,7 +23,6 @@ from tqdm import tqdm
 import datetime
 from utils.preprocess import preprocess
 from utils.mlir_parser import *
-from utils.log_setting import logger, setup_logger
 from utils.misc import *
 #import graphviz as gz
 from math import *
@@ -268,7 +267,7 @@ class MatchPattern:
         self.parser = MlirParser(args.mlir_file)
         self.cali_method = args.cali_method
         self.log_level = "DEBUG" if args.debug_log else "INFO"
-        self.logger = logger('Match_Pattern', log_level=self.log_level)
+        self._logs = []
 
         if self.args.part_quantize == 'N_mode':
             self.quantize_ops = N_mode
@@ -278,6 +277,11 @@ class MatchPattern:
             self.quantize_ops = ['top.' + op for op in self.args.custom_operator]
         else:
             pass
+
+    def _log(self, msg: str):
+        self._logs.append(msg)
+        if self.args.debug_log:
+            print(msg)
 
     def run(self):
         flag = 0
@@ -306,7 +310,7 @@ class MatchPattern:
                 count = type_tensors_str.count(sub_str)
                 flag = 1
                 model_block_name = name
-                self.logger.print_info(
+                self._log(
                     f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
                 break
         else:
@@ -320,7 +324,7 @@ class MatchPattern:
                 model_block_name = 'openclip_block'
                 for name, sub_block in openclip_blocks.items():
                     count = openclip_block_counts[name]
-                    self.logger.print_info(
+                    self._log(
                         f"{sub_block} (Name: {name}) is a subset of the main list. Count: {count}")
                 last_matmul_index = num_tensors - type_tensors_str[
                     type_tensors_str.rfind('top.MatMul'):].count('top')
@@ -328,7 +332,7 @@ class MatchPattern:
                     openclip_blocks['openclip_text_block']))].count('top')
                 first_text_mlp_start_index = first_text_block_index + 27  # 27 is the index of the fisrt mlp matmul in openclip text block
                 first_text_mlp_end_index = first_text_block_index + 31  # 31 is the index of the second mlp matmul in openclip text block
-        Pattern_fp_layer_list_total = []
+
         split_fuse_fp_layer_list = []
         if flag == 1:
             if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
@@ -364,7 +368,7 @@ class MatchPattern:
 
                 for item in fp_layer_list:
                     split_fuse_fp_layer_list.extend(split_fuseop(item))
-                return split_fuse_fp_layer_list, flag
+                return split_fuse_fp_layer_list, flag, self._logs
 
             for i in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
@@ -509,6 +513,4 @@ class MatchPattern:
                         if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
                             fp_layer_list.append(all_tensors[i])
-
-            Pattern_fp_layer_list_total = list(set(fp_layer_list + split_fuse_fp_layer_list))
-        return Pattern_fp_layer_list_total, flag
+        return fp_layer_list, flag, self._logs

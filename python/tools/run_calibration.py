@@ -115,9 +115,10 @@ if __name__ == '__main__':
     shape_ops = ShapeOps(args)
     shape_fp_layers = shape_ops.run()
     matcher = MatchPattern(args)
-    transformer_fp_layers, flag = matcher.run()
-    shape_pattern_fp_layers = list(set(shape_fp_layers + transformer_fp_layers))
-    gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, flag)
+    transformer_fp_layers, flag, match_log = matcher.run()
+    transformer_fp_layers = [item for item in transformer_fp_layers if item not in shape_fp_layers]
+    shape_pattern_fp_layers = shape_fp_layers + transformer_fp_layers
+    gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, flag, match_log)
 
     # mix precision
     if args.search == 'search_qtable':
