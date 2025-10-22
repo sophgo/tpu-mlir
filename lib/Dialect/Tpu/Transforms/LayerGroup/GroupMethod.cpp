@@ -996,6 +996,10 @@ void GroupMethod::dynamic_programming_kernel(
     get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx,
                     idx_offset);
 
+    if (lg_config.get_shape_secs_search_strategy() ==
+        SHAPE_SECS_ALWAYS_BETTER) {
+      lg_info.shape_secs_search_level = 1;
+    }
     assert(is_layer_group_valid(lg_info, true, &cost_table[j][j]));
 
     GROUP_DEBUG_WITH_TYPE("lg_cost", lg_info, [&]() {
