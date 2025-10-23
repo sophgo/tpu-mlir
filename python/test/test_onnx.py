@@ -55,6 +55,10 @@ class ONNX_IR_TESTER(object):
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y, Y),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N, N), # failed cases
             "AddBcast4":    (self.test_AddBcast4,     N, Y, Y, N, N, N),
+            "AddNoRearrange":    (self.test_AddNoRearrange,     N, Y, Y, N, Y, N),
+            "AddRearrange_1d":    (self.test_AddRearrange_1d,     N, Y, Y, N, Y, N),
+            "AddRearrange_2d":    (self.test_AddRearrange_2d,     N, Y, Y, N, Y, N),
+            "AddRearrange_3d":    (self.test_AddRearrange_3d,     N, Y, Y, N, Y, N),
             "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y, Y),
             "Atan":         (self.test_Arctan,        N, Y, Y, N, Y, Y),
             "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y, Y),
@@ -4386,6 +4390,106 @@ class ONNX_IR_TESTER(object):
                 graph_def = helper.make_graph([add_node], sub_case_name, [a, b], [y])
 
                 self.onnx_and_test(graph_def, name=sub_case_name)
+
+    def test_AddRearrange_1d(self, case_name):
+        test_cases = [
+            ([200], [1]),
+            ([65536], [1]),
+            ([4096, 16], [1, 1]),
+            ([2, 20, 5], [1, 1, 1]),
+            ([2, 10, 2, 5], [1, 1, 1, 1]),
+        ]
+
+        for shape_a, shape_b in test_cases:
+            shape_a_str = ','.join(map(str, shape_a))
+            shape_b_str = ','.join(map(str, shape_b))
+
+            graph_txt = """
+                %s_row (float[%s] a, float[%s] b) => (float[%s] output)
+                {
+                    output = Add(a, b)
+                }
+                """ % (case_name, shape_a_str, shape_b_str, shape_a_str)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
+
+    def test_AddRearrange_2d(self, case_name):
+        test_cases = [
+            ([128, 64], [128, 1]),
+            ([512, 128], [512, 1]),
+            ([4, 128, 128], [4, 128, 1]),
+            ([2, 2, 128, 128], [2, 2, 128, 1]),
+            ([320, 192], [1, 192]),
+            ([512, 128], [1, 128]),
+            ([4, 128, 128], [1, 128, 128]),
+            ([320, 1], [1, 192]),
+            ([512, 1], [1, 128]),
+        ]
+
+        for shape_a, shape_b in test_cases:
+            shape_a_str = ','.join(map(str, shape_a))
+            shape_b_str = ','.join(map(str, shape_b))
+
+            graph_txt = """
+                %s_row (float[%s] a, float[%s] b) => (float[%s] output)
+                {
+                    output = Add(a, b)
+                }
+                """ % (case_name, shape_a_str, shape_b_str, shape_a_str)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
+
+    def test_AddRearrange_3d(self, case_name):
+        test_cases = [
+            ([128, 50, 64], [128, 1, 64]),
+            ([2, 64, 50, 32], [2, 64, 1, 32]),
+            ([128, 6400, 64], [1, 6400, 1]),
+            ([256, 128, 32], [1, 128, 1]),
+            ([128, 50, 1], [128, 1, 64]),
+            ([128, 6400, 1], [1, 6400, 64]),
+            ([256, 128, 1], [1, 128, 32]),
+            ([128, 1, 64], [1, 50, 64]),
+            ([2, 64, 1, 32], [1, 50, 32]),
+            ([128, 1, 64], [1, 50, 1]),
+        ]
+
+        for shape_a, shape_b in test_cases:
+            shape_a_str = ','.join(map(str, shape_a))
+            shape_b_str = ','.join(map(str, shape_b))
+
+            graph_txt = """
+                %s_row (float[%s] a, float[%s] b) => (float[%s] output)
+                {
+                    output = Add(a, b)
+                }
+                """ % (case_name, shape_a_str, shape_b_str, shape_a_str)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
+
+    def test_AddNoRearrange(self, case_name):
+        test_cases = [
+            ([1, 96, 1, 1], [65536, 96, 1, 1], "unsupported_2d_cross"),
+            ([1, 64, 1], [128, 1, 32], "unsupported_3d_cross"),
+            ([10, 10], [1, 10], "small_elements_1d"),
+            ([8, 8, 8], [1, 8, 8], "small_elements_2d"),
+            ([4, 4, 4, 4], [1, 4, 4, 4], "small_elements_3d"),
+            ([360, 11, 12, 7], [360, 1, 12, 7], "a_not_divisible"),
+            ([100, 50, 32], [100, 1, 32], "3d_a_not_divisible"),
+            ([4, 9, 10, 11, 12, 7], [4, 1, 10, 1, 12, 7], "6d_input"),
+        ]
+
+        for shape_a, shape_b, desc in test_cases:
+            shape_a_str = ','.join(map(str, shape_a))
+            shape_b_str = ','.join(map(str, shape_b))
+
+            graph_txt = """
+                %s_%s (float[%s] a, float[%s] b) => (float[%s] output)
+                {
+                    output = Add(a, b)
+                }
+                """ % (case_name, desc, shape_a_str, shape_b_str, shape_a_str)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
 
     def test_AddWeight2(self, case_name):
         input_shape = [1, 16, 8, 8]
