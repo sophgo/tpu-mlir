@@ -22,7 +22,7 @@ static void
 get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func) {
   int64_t total_bytes = 0;
   int64_t output_bytes = 0;
-  std::ofstream file("group_before.txt", std::ios::ate | std::ios::out);
+  // std::ofstream file("group_before.txt", std::ios::ate | std::ios::out);
   func.walk([&](Operation *op) {
     if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
       // do nothing
@@ -49,7 +49,7 @@ get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func) {
       }
     }
   });
-  file.close();
+  // file.close();
   llvm::errs() << "output_bytes: " << output_bytes
                << ", before group, NetStatisticPass total_bytes: "
                << total_bytes << "\n";
