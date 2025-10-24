@@ -616,14 +616,16 @@ def tpu_ada_options(
     opt_post_processor: bool = False,
     lg_debugger: int = 0,
     disable_group_overlap: bool = False,
+    lgcache: bool = True,
     layer_group_config: str = "",
     iomem_set: str = "",
 ):
     lg_param = ''
     disable_group_overlap = "true" if disable_group_overlap else "false"
+    lgcache = "true" if lgcache else "false"
     if not disable_layer_group:
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={} config_filename={}"'.format(
-            opt, group_by_cores, compress_mode, lg_debugger, disable_group_overlap, layer_group_config)
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={} lgcache={} config_filename={}"'.format(
+            opt, group_by_cores, compress_mode, lg_debugger, disable_group_overlap, lgcache, layer_group_config)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     if merge_weight:
@@ -999,47 +1001,46 @@ def mlir_to_model(
     return get_matched_patterns(log_file)
 
 
-def origin_mlir_txt_to_bmodel(
-    *,
-    converter,
-    model_name: str,
-    mode: str,
-    chip: str,
-    add_postprocess: str = "",
-    num_device: int = 1,
-    num_core: int = 1,
-    cali_table: str = None,
-    asymmetric: bool = False,
-    quantize_table: str = None,
-    customization_format: str = None,
-    fuse_preprocess: bool = False,
-    aligned_input: bool = False,
-    high_precision: bool = False,
-    do_winograd: bool = False,
-    q_group_size: int = 0,
-    q_symmetric: bool = False,
-    dynamic: bool = False,
-    quant_input: bool = False,
-    quant_output: bool = False,
-    quant_input_list: str = "",
-    quant_output_list: str = "",
-    disable_layer_group: bool = False,
-    opt: int = 2,
-    merge_weight: bool = False,
-    op_divide: bool = False,
-    embed_debug_info: bool = False,
-    addr_mode: str = "auto",
-    group_by_cores: str = "auto",
-    model_version: str = "",
-    count_patterns: bool = False,
-    compress_mode: str = "none",
-    log_level: str = "normal",
-    future_update_rank: int = 0,
-    future_update_list: str = "",
-    matmul_perchannel: bool = False,
-    gelu_mode: str = "normal",
-    quant_output_bf16: bool = False,
-):
+def origin_mlir_txt_to_bmodel(*,
+                              converter,
+                              model_name: str,
+                              mode: str,
+                              chip: str,
+                              add_postprocess: str = "",
+                              num_device: int = 1,
+                              num_core: int = 1,
+                              cali_table: str = None,
+                              asymmetric: bool = False,
+                              quantize_table: str = None,
+                              customization_format: str = None,
+                              fuse_preprocess: bool = False,
+                              aligned_input: bool = False,
+                              high_precision: bool = False,
+                              do_winograd: bool = False,
+                              q_group_size: int = 0,
+                              q_symmetric: bool = False,
+                              dynamic: bool = False,
+                              quant_input: bool = False,
+                              quant_output: bool = False,
+                              quant_input_list: str = "",
+                              quant_output_list: str = "",
+                              disable_layer_group: bool = False,
+                              opt: int = 2,
+                              merge_weight: bool = False,
+                              op_divide: bool = False,
+                              embed_debug_info: bool = False,
+                              addr_mode: str = "auto",
+                              group_by_cores: str = "auto",
+                              model_version: str = "",
+                              count_patterns: bool = False,
+                              compress_mode: str = "none",
+                              log_level: str = "normal",
+                              future_update_rank: int = 0,
+                              future_update_list: str = "",
+                              matmul_perchannel: bool = False,
+                              gelu_mode: str = "normal",
+                              quant_output_bf16: bool = False,
+                              lgcache=True):
 
     options = []
     new_options = top_opt_options(add_postprocess)
@@ -1052,17 +1053,16 @@ def origin_mlir_txt_to_bmodel(
     new_options = tpu_opt_options(quant_input, quant_output, quant_input_list, quant_output_list,
                                   False, quant_output_bf16)
     options.extend(new_options)
-    new_options = tpu_ada_options(
-        dynamic=dynamic,
-        disable_layer_group=disable_layer_group,
-        opt=opt,
-        merge_weight=merge_weight,
-        op_divide=op_divide,
-        group_by_cores=group_by_cores,
-        compress_mode=compress_mode,
-        future_update_rank=future_update_rank,
-        future_update_list=future_update_list,
-    )
+    new_options = tpu_ada_options(dynamic=dynamic,
+                                  disable_layer_group=disable_layer_group,
+                                  opt=opt,
+                                  merge_weight=merge_weight,
+                                  op_divide=op_divide,
+                                  group_by_cores=group_by_cores,
+                                  compress_mode=compress_mode,
+                                  future_update_rank=future_update_rank,
+                                  future_update_list=future_update_list,
+                                  lgcache=lgcache)
     options.extend(new_options)
     new_options = codegen_options(f"{model_name}_{mode}.bmodel", embed_debug_info, model_version,
                                   True)

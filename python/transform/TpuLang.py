@@ -150,7 +150,8 @@ def compile(
                                   dynamic=dynamic,
                                   opt=opt,
                                   embed_debug_info=embed_debug_info,
-                                  addr_mode=addr_mode)
+                                  addr_mode=addr_mode,
+                                  lgcache=False)
 
 
 def compile_f32(name: str,
@@ -234,7 +235,8 @@ def compile_f32(name: str,
                                       quantize_table=qtable,
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
-                                      addr_mode=addr_mode)
+                                      addr_mode=addr_mode,
+                                      lgcache=False)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level: str = 'normal'):
