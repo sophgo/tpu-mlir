@@ -24,7 +24,7 @@ void BM1688::before_codegen() {
   // Note: keep useCore(0) at last
   for (int i = multiCode.size() - 1; i >= 0; i--) {
     useCore(i);
-    BM168x::before_codegen();
+    BM1684X::before_codegen();
     dl_backend_api_clear_tpu_inst_data();
   }
 }
