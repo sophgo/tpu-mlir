@@ -93,12 +93,21 @@ int64_t tpu::ReshapeOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer)
+  if (!buffer) {
     return sizeof(reshape_spec_t);
+  }
   reshape_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  auto shape = module::getI64Array(getShape());
+  if (std::find(shape->begin(), shape->end(), -1) != shape->end()) {
+    spec.dims = shape->size();
+    for (int i = 0; i < spec.dims; i++) {
+      spec.shape[i] = shape->at(i);
+    }
+    return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  }
 #define FLAG_VAL 0x0a0a0a0a
 #define MLIR_RESHAPE_FLAG 0x08000000
-  memset(&spec, 0, sizeof(spec));
   memset(spec.shape, FLAG_VAL, sizeof(spec.shape));
   auto out_shape = module::getShape(getOutput());
   auto in_shape = module::getShape(getInput());

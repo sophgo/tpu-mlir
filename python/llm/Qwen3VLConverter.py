@@ -21,7 +21,6 @@ class Qwen3VLConverter(LlmConverter):
                 "max_pixels is not a multiple of 32*32, please set max_pixels to a value that is a multiple of 32*32."
             )
         self.do_vit = True
-        self.dynamic_vit = True  # force dynamic vit
         # vision config
         self.init_vconfig()
         self.vit_path = "model.visual"
@@ -112,6 +111,7 @@ class Qwen3VLConverter(LlmConverter):
                                ip=mlir_gen.insert_point).output
         new_op = top.ReshapeOp(mlir_gen.get_tensor_type([3 * self.head_dim // 2, 1, dim]),
                                new_op,
+                               shape=[3 * self.head_dim // 2, 1, -1],
                                loc=self.get_loc(name + ".reshape", mlir_gen),
                                ip=mlir_gen.insert_point).output
         weight_op = mlir_gen.create_weight_op("mrope_interleave_idx", [1, self.head_dim])
@@ -148,7 +148,7 @@ class Qwen3VLConverter(LlmConverter):
         freqs = rotary_embed(self.num_patches)
         return freqs.cos().numpy(), freqs.sin().numpy()
 
-    def vision_block(self, vit_mlir, id: int, in_op, cos_op, sin_op):
+    def vision_block(self, vit_mlir, id: int, in_op, cos_op, sin_op, mask_op):
         norm1 = f"{self.vit_path}.blocks.{id}.norm1"
         attn_q = f"{self.vit_path}.blocks.{id}.attn.q"
         attn_k = f"{self.vit_path}.blocks.{id}.attn.k"
@@ -182,17 +182,29 @@ class Qwen3VLConverter(LlmConverter):
                                hidden_shape,
                                force_bias=True)
             qk_shape = [1, self.num_patches, self.vnum_heads, self.vhead_dim]
-            q_op = top.ReshapeOp(T(qk_shape), q_op, loc=L(attn_q + ".reshape"), ip=ip).output
-
-            k_op = top.ReshapeOp(T(qk_shape), k_op, loc=L(attn_k + ".reshape"), ip=ip).output
-            v_op = top.ReshapeOp(T(qk_shape), v_op, loc=L(attn_v + ".reshape"), ip=ip).output
+            qk_reshape = [1, -1, self.vnum_heads, self.vhead_dim]
+            q_op = top.ReshapeOp(T(qk_shape),
+                                 q_op,
+                                 shape=qk_reshape,
+                                 loc=L(attn_q + ".reshape"),
+                                 ip=ip).output
+            k_op = top.ReshapeOp(T(qk_shape),
+                                 k_op,
+                                 shape=qk_reshape,
+                                 loc=L(attn_k + ".reshape"),
+                                 ip=ip).output
+            v_op = top.ReshapeOp(T(qk_shape),
+                                 v_op,
+                                 shape=qk_reshape,
+                                 loc=L(attn_v + ".reshape"),
+                                 ip=ip).output
             q_op = self.rotary_pos(vit_mlir, q_op, cos_op, sin_op, attn_q + ".rotary")
             k_op = self.rotary_pos(vit_mlir, k_op, cos_op, sin_op, attn_k + ".rotary")
             fa_op = top.FAttentionOp(T(qk_shape),
                                      q_op,
                                      k_op,
                                      v_op,
-                                     vit_mlir.none_op,
+                                     mask_op,
                                      vit_mlir.none_op,
                                      scale=self.vhead_dim**-0.5,
                                      batch=1,
@@ -205,6 +217,7 @@ class Qwen3VLConverter(LlmConverter):
                                      ip=ip).output
             fa_op = top.ReshapeOp(T(hidden_shape),
                                   fa_op,
+                                  shape=[-1, self.embed_dim],
                                   loc=L(f"{self.vit_path}.blocks.{id}.fattention.reshape"),
                                   ip=ip).output
             out_op = self.linear(vit_mlir,
@@ -313,8 +326,11 @@ class Qwen3VLConverter(LlmConverter):
         position_shape = [self.num_patches, 2]
         out_dim = self.num_patches // (self.spatial_merge_size**2)
         out_shape = [out_dim, self.hidden_size]
-        input_shapes = [in_shape, position_shape, [4, self.num_patches], [4, self.num_patches, 1]]
-        input_types = ['F32', 'INT32', 'INT32', 'F32']
+        input_shapes = [
+            in_shape, position_shape, [self.num_patches, 4], [self.num_patches, 4, 1],
+            [1, 1, self.num_patches, self.num_patches]
+        ]
+        input_types = ['F32', 'INT32', 'INT32', 'F32', 'F32']
         out_num = 1 + len(self.deepstack_visual_indexes)
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape] * out_num,
@@ -336,6 +352,7 @@ class Qwen3VLConverter(LlmConverter):
                                           2)  # by fast_pos_embed_interpolate, need to be reordered
         in3_op = vit_mlir.create_input_op(L('pos_weight'),
                                           3)  # by fast_pos_embed_interpolate, need to be reordered
+        in4_op = vit_mlir.create_input_op(L('attention_mask'), 4)
         new_weight = vit_mlir.create_weight_op(patch_embed + ".weight",
                                                [self.patch_dim, self.embed_dim])
         new_bias = vit_mlir.create_weight_op(patch_embed + ".bias", [self.embed_dim])
@@ -348,18 +365,18 @@ class Qwen3VLConverter(LlmConverter):
         # fast_pos_embed_interpolate
         new_weight = vit_mlir.create_weight_op(pos_embed + ".weight",
                                                [self.num_position_embeddings, self.embed_dim])
-        pos_idx_gather = top.GatherOp(T([4, self.num_patches, self.embed_dim]),
+        pos_idx_gather = top.GatherOp(T([self.num_patches, 4, self.embed_dim]),
                                       new_weight,
                                       in2_op,
                                       axis=0,
                                       loc=L(pos_embed),
                                       ip=ip).output
-        pos_mul = top.MulOp(T([4, self.num_patches, self.embed_dim]), [pos_idx_gather, in3_op],
+        pos_mul = top.MulOp(T([self.num_patches, 4, self.embed_dim]), [pos_idx_gather, in3_op],
                             loc=L(pos_embed + ".mul"),
                             ip=ip).output
         pos_sum = top.ReduceOp(T([self.num_patches, self.embed_dim]),
                                pos_mul,
-                               axes=[0],
+                               axes=[1],
                                keepdims=0,
                                mode=StringAttr.get("ReduceSum"),
                                loc=L(pos_embed + ".sum"),
@@ -378,6 +395,7 @@ class Qwen3VLConverter(LlmConverter):
                               ip=ip).output
         cos_op = top.ReshapeOp(T([1, self.num_patches, 1, self.vhead_dim // 2]),
                                cos_op,
+                               shape=[1, -1, 1, self.vhead_dim // 2],
                                loc=L(rotary_cos + ".reshape"),
                                ip=ip).output
         cos_op = top.TileOp(T([1, self.num_patches, 1, self.vhead_dim]),
@@ -395,6 +413,7 @@ class Qwen3VLConverter(LlmConverter):
                               ip=ip).output
         sin_op = top.ReshapeOp(T([1, self.num_patches, 1, self.vhead_dim // 2]),
                                sin_op,
+                               shape=[1, -1, 1, self.vhead_dim // 2],
                                loc=L(rotary_sin + ".reshape"),
                                ip=ip).output
         sin_op = top.TileOp(T([1, self.num_patches, 1, self.vhead_dim]),
@@ -404,7 +423,7 @@ class Qwen3VLConverter(LlmConverter):
                             ip=ip).output
         deepstack_list = []
         for id in range(self.depth):
-            new_op = self.vision_block(vit_mlir, id, new_op, cos_op, sin_op)
+            new_op = self.vision_block(vit_mlir, id, new_op, cos_op, sin_op, in4_op)
             if id in self.deepstack_visual_indexes:
                 deepstack_list.append(new_op)
 
@@ -414,12 +433,14 @@ class Qwen3VLConverter(LlmConverter):
             if shuffle:
                 in_op = top.ReshapeOp(T([in_dim, out_dim]),
                                       in_op,
+                                      shape=[-1, out_dim],
                                       loc=L(fc1_path + ".preshape"),
                                       ip=ip).output
             new_op = self.layer_norm(vit_mlir, in_op, norm_path, eps=1e-6)
             if not shuffle:
                 new_op = top.ReshapeOp(T([in_dim, out_dim]),
                                        new_op,
+                                       shape=[-1, out_dim],
                                        loc=L(fc1_path + ".preshape"),
                                        ip=ip).output
             new_op = self.linear(vit_mlir, fc1_path, new_op, [out_dim, out_dim], [in_dim, out_dim])
@@ -464,7 +485,7 @@ class Qwen3VLConverter(LlmConverter):
             return
         deploy_args = [
             'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}', f'--dynamic',
+            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
             f'--addr_mode io_alone', f'--quant_input', f'--quant_output', f'--model {name}.bmodel'
         ]
         deploy_args.append(f'--quantize {self.half_precision_quantize}')

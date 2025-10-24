@@ -172,10 +172,23 @@ class Qwen2_5VLConverter(LlmConverter):
                                hidden_shape,
                                force_bias=True)
             qk_shape = [1, self.num_patches, self.vnum_heads, self.vhead_dim]
-            q_op = top.ReshapeOp(T(qk_shape), q_op, loc=L(attn_q + ".reshape"), ip=ip).output
+            qk_reshape = [1, -1, self.vnum_heads, self.vhead_dim]
+            q_op = top.ReshapeOp(T(qk_shape),
+                                 q_op,
+                                 shape=qk_reshape,
+                                 loc=L(attn_q + ".reshape"),
+                                 ip=ip).output
 
-            k_op = top.ReshapeOp(T(qk_shape), k_op, loc=L(attn_k + ".reshape"), ip=ip).output
-            v_op = top.ReshapeOp(T(qk_shape), v_op, loc=L(attn_v + ".reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(qk_shape),
+                                 k_op,
+                                 shape=qk_reshape,
+                                 loc=L(attn_k + ".reshape"),
+                                 ip=ip).output
+            v_op = top.ReshapeOp(T(qk_shape),
+                                 v_op,
+                                 shape=qk_reshape,
+                                 loc=L(attn_v + ".reshape"),
+                                 ip=ip).output
             q_op = self.rotary_pos(vit_mlir, q_op, cos_op, sin_op, attn_q + ".rotary")
             k_op = self.rotary_pos(vit_mlir, k_op, cos_op, sin_op, attn_k + ".rotary")
             fa_op = top.FAttentionOp(T(qk_shape),
@@ -195,6 +208,7 @@ class Qwen2_5VLConverter(LlmConverter):
                                      ip=ip).output
             fa_op = top.ReshapeOp(T(hidden_shape),
                                   fa_op,
+                                  shape=[-1, self.embed_dim],
                                   loc=L(f"{self.vit_path}.blocks.{id}.fattention.reshape"),
                                   ip=ip).output
             out_op = self.linear(vit_mlir,
@@ -332,6 +346,7 @@ class Qwen2_5VLConverter(LlmConverter):
                               ip=ip).output
         cos_op = top.ReshapeOp(T([1, self.num_patches, 1, 40]),
                                cos_op,
+                               shape=[1, -1, 1, 40],
                                loc=L(rotary_cos + ".reshape"),
                                ip=ip).output
         cos_op = top.TileOp(T([1, self.num_patches, 1, self.vhead_dim]),
@@ -348,6 +363,7 @@ class Qwen2_5VLConverter(LlmConverter):
                               ip=ip).output
         sin_op = top.ReshapeOp(T([1, self.num_patches, 1, 40]),
                                sin_op,
+                               shape=[1, -1, 1, 40],
                                loc=L(rotary_sin + ".reshape"),
                                ip=ip).output
         sin_op = top.TileOp(T([1, self.num_patches, 1, self.vhead_dim]),
@@ -365,7 +381,10 @@ class Qwen2_5VLConverter(LlmConverter):
         new_op = self.rms_norm(vit_mlir, new_op, merger_ln_q)
         out_dim = self.embed_dim * (self.spatial_merge_size**2)
         in_dim = self.num_patches // (self.spatial_merge_size**2)
-        new_op = top.ReshapeOp(T([in_dim, out_dim]), new_op, loc=L(merger_ln_q + ".reshape"),
+        new_op = top.ReshapeOp(T([in_dim, out_dim]),
+                               new_op,
+                               shape=[-1, out_dim],
+                               loc=L(merger_ln_q + ".reshape"),
                                ip=ip).output
         new_op = self.linear(vit_mlir, merger_mlp0, new_op, [out_dim, out_dim], [in_dim, out_dim])
         new_op = self.activate(vit_mlir, new_op, ActType.GELU, merger_mlp0)

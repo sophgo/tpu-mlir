@@ -651,6 +651,7 @@ class LlmConverter(BaseConverter):
         rs = top.ReshapeOp(mlir_gen.get_tensor_type(
             [1, len, self.num_attention_heads, self.head_dim]),
                            tile,
+                           shape=[1, -1, self.num_attention_heads, self.head_dim],
                            loc=self.get_loc(prefix + ".tile.reshape", mlir_gen),
                            ip=mlir_gen.insert_point).output
         return rs
@@ -958,9 +959,21 @@ class LlmConverter(BaseConverter):
             v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
                                [1, input_len, self.kv_dim])
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshape"), ip=ip).output
-            v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape),
+                                 q_op,
+                                 shape=[1, -1, self.num_attention_heads, self.head_dim],
+                                 loc=L(q_proj + ".reshape"),
+                                 ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape),
+                                 k_op,
+                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
+                                 loc=L(k_proj + ".reshape"),
+                                 ip=ip).output
+            v_op = top.ReshapeOp(T(kv_shape),
+                                 v_op,
+                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
+                                 loc=L("v_cache"),
+                                 ip=ip).output
             if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
                 q_op = self.rms_norm(block_mlir, q_op, q_norm)
                 k_op = self.rms_norm(block_mlir, k_op, k_norm)
@@ -1149,9 +1162,21 @@ class LlmConverter(BaseConverter):
             v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
                                [1, input_len, self.kv_dim])
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshape"), ip=ip).output
-            v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape),
+                                 q_op,
+                                 shape=[1, -1, self.num_attention_heads, self.head_dim],
+                                 loc=L(q_proj + ".reshape"),
+                                 ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape),
+                                 k_op,
+                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
+                                 loc=L(k_proj + ".reshape"),
+                                 ip=ip).output
+            v_op = top.ReshapeOp(T(kv_shape),
+                                 v_op,
+                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
+                                 loc=L("v_cache"),
+                                 ip=ip).output
             if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
                 q_op = self.rms_norm(block_mlir, q_op, q_norm)
                 k_op = self.rms_norm(block_mlir, k_op, k_norm)

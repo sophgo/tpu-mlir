@@ -210,11 +210,13 @@ void bm_show(const string &filename, bool all) {
       }
       show(parameter->Get(i), is_dynamic);
       auto cmd_groups = net_param->cmd_group();
-      for (const auto &cmd_group : *cmd_groups) {
-        max_bdc_cmd_size =
-            std::max(max_bdc_cmd_size, cmd_group->binary_bdc()->size());
-        max_gdma_cmd_size =
-            std::max(max_gdma_cmd_size, cmd_group->binary_gdma()->size());
+      if (cmd_groups) {
+        for (const auto &cmd_group : *cmd_groups) {
+          max_bdc_cmd_size =
+              std::max(max_bdc_cmd_size, cmd_group->binary_bdc()->size());
+          max_gdma_cmd_size =
+              std::max(max_gdma_cmd_size, cmd_group->binary_gdma()->size());
+        }
       }
     }
   }
