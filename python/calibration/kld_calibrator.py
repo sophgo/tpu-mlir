@@ -781,7 +781,6 @@ class ActivationCalibrator(BaseKldCalibrator):
         thresholds_map_list = []
         layer_name_list = []
         op_layers = self.parser.get_op_name_list()
-        op_layers = get_no_fused_tensors(self.parser, op_layers)
         use_dict = len(thresholds_map) > 0
         with open(cali_table, 'w') as f:
             f.write("# mlir version: {} cali version 1.0\n".format(pymlir.__version__))
@@ -797,8 +796,8 @@ class ActivationCalibrator(BaseKldCalibrator):
             f.write("# op_name    threshold    min    max\n")
             for i, op_name in enumerate(op_layers):
                 outputs = self.parser.get_outputs_by_op_name(op_name)
-                for out in outputs:
-                    out = split_fuseop(op_name)[0]
+                no_fused_outputs = get_no_fused_tensors(self.parser, outputs)
+                for out in no_fused_outputs:
                     if out not in self.activations_statistics:
                         continue  # possible useless leaf output
                     if 'fp8' in self.debug_cmd:
@@ -844,7 +843,8 @@ class ActivationCalibrator(BaseKldCalibrator):
                 f.write("#int4_th\n")
                 for i, op_name in enumerate(op_layers):
                     outputs = self.parser.get_outputs_by_op_name(op_name)
-                    for out in outputs:
+                    no_fused_outputs = get_no_fused_tensors(self.parser, outputs)
+                    for out in no_fused_outputs:
                         if out not in self.activations_statistics or len(
                                 self.activations_statistics[out]) < 2:
                             continue
