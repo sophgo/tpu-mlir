@@ -43,7 +43,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "4")
 os.environ.setdefault("TPUC_ROOT", package_path)
 os.environ.setdefault("PPL_PROJECT_ROOT", f"{package_path}/ppl")
 os.environ.setdefault("PPL_BUILD_PATH", f"{package_path}/ppl/build")
-os.environ.setdefault("PPL_RUNTIME_PATH", f"{package_path}/ppl/runtime")
+os.environ.setdefault("PPL_RUNTIME_PATH", f"{package_path}/ppl/deps")
 
 os.environ["LD_LIBRARY_PATH"] = join_path(
     f"{package_path}/lib",
