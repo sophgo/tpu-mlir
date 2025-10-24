@@ -70,7 +70,6 @@ has_md5_changes() {
 MD5FILE=$DIR/.md5
 file_changed=false
 mapfile -t md5_list < <(generate_md5_list "$DIR/src" "$DIR/src_dyn")
-# printf '>> %s\n' "${md5_list[@]}"
 if [ ! -f "$MD5FILE" ] || has_md5_changes "$MD5FILE" "${md5_list[@]}"; then
   file_changed=true
 fi
@@ -79,7 +78,9 @@ lib_changed=false
 NNTC_LIB_PATH=${PROJECT_ROOT}/third_party/nntoolchain/lib
 PPL_VER_PATH=${PROJECT_ROOT}/third_party/ppl/version
 VER_FILE=${PROJECT_ROOT}/third_party/nntoolchain/ppl/version
-LIBS=("libcmodel_1684x.a" "libbm1684x_kernel_module.a" "libcmodel_1688.a" "libbmtpulv60_kernel_module.a")
+LIBS=("libcmodel_1684x.a"  "libbm1684x_kernel_module.a"
+      "libcmodel_1688.a"   "libbmtpulv60_kernel_module.a"
+      "libcmodel_bm1690.a" "libbm1690_kernel_module.a")
 mapfile -t libs_md5_list < <(
   for lib in "${LIBS[@]}"; do
     rel="$NNTC_LIB_PATH/$lib"
@@ -101,7 +102,7 @@ fi
 echo "rebuilding ppl..."
 pushd "$DIR"
 # dyn
-chips=("bm1684x" "bm1688")
+chips=("bm1684x" "bm1688" "bm1690")
 for chip in "${chips[@]}"; do
   build_dir="build_${chip}_dyn"
   clean_up "$build_dir"

@@ -1,7 +1,7 @@
 #include "ppl_helper.h"
 #include <cast.h>
 
-#ifdef __tpub_9_0__
+#if defined(__tpub_7_1_e__) || defined(__tpub_9_0__) || defined(__tpub_9_3__)
 #include "rvt_api.h"
 #endif
 
@@ -104,12 +104,12 @@ char *__ppl_to_string(const ppl_tensor_t *tensor) {
            "\tdtype: %s\n"
            "\tmode: %s\n"
            "\talign_mode: %s\n"
-           "\toffset: %d\n"
+           "\toffset: %ld\n"
            "\tunsigned_flag: %s\n"
            "\tdefault_stride: %s\n",
            tensor->shape.n, tensor->shape.c, tensor->shape.h, tensor->shape.w,
-           tensor->stride[0], tensor->stride[1], tensor->stride[2],
-           tensor->stride[3], tensor->addr, data_type_to_string(tensor->dtype),
+           tensor->stride.n, tensor->stride.c, tensor->stride.h,
+           tensor->stride.w, tensor->addr, data_type_to_string(tensor->dtype),
            tensor_mode_to_string(tensor->mode),
            align_mode_to_string(tensor->align_mode), tensor->offset,
            tensor->unsigned_flag ? "true" : "false",
@@ -180,12 +180,12 @@ void print_local_mem_data(local_addr_t local_offset, int start_idx,
                          lane_num, is_rv);
     return;
   }
-#if defined(__sg2260e__) || defined(__sg2262__)
+#if defined(__tpub_7_1_e__) || defined(__tpub_9_3__) || defined(__tpub_9_0__)
   if (is_rv) {
-#if defined(__sg2262__)
-    rvt_sync_i(__SR(0xdeadbeef), 0);
-#else
+#if defined(__tpub_7_1_e__)
     rvt_sync_i(0xdeadbeef, 0);
+#else
+    rvt_sync_i(__SR(0xdeadbeef), 0);
 #endif
   } else {
     tpu_poll_with_check_parallel();

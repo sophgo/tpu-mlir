@@ -27,13 +27,17 @@ __attribute__((constructor)) void tpu_kernel_register_##func() {   \
     tpu_register_kernel_func(#func, func##_wrapper, FUNC_TYPE_2);  \
 }
 
+
+#if defined(__sg2260__)
+  __attribute__((weak)) int tp_debug(const char *, ...);
+#endif
+
 #if defined(USING_CMODEL)
   #include <stdlib.h>
   #define TPUKERNEL_LOG(format, ...) printf("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
 #elif defined(USING_FW_DEBUG) && !defined(USING_FAKE_DDR_MODE)
 
 #if defined(__sg2260__)
-  __attribute__((weak)) int tp_debug(const char *, ...);
   #define TPUKERNEL_LOG(format, ...) tp_debug("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
 #elif defined(__cv184x__)
   #include <stdlib.h>
@@ -70,7 +74,6 @@ extern int get_atomic_cmodel_assert_enable();
 #else
 
 #if defined(__sg2260__)
-  __attribute__((weak)) int tp_debug(const char *, ...);
   #define ASSERT_LOG(format, ...) tp_debug("[%d]" format, tpu_core_index(), ##__VA_ARGS__)
 #else
   extern void fw_log(char *fmt, ...);
@@ -325,6 +328,8 @@ int tpu_bank_num();
 int tpu_eu_num(data_type_t dtype);
 
 int tpu_get_ic_parallel(data_type_t dtype);
+
+dim2 tpu_cube_shape(data_type_t dtype);
 
 int tpu_local_mem_size_per_npu();
 
@@ -1094,20 +1099,6 @@ void tpu_gdma_random_mask_S2L(
     int use_iter_state,
     data_type_t dtype);
 
-#ifdef __mars3__
-void tpu_bdc_bf16_fast_exp(
-    local_addr_t  dst_addr,
-    local_addr_t  src_addr,
-    local_addr_t  work0_addr,
-    local_addr_t  work1_addr,
-    const dim4   *shape);
-#endif
-
-#ifdef __sg2262__
-/****************************************************************
-2262 new added instruction, usage refer to:https://wiki.sophgo.com/pages/viewpage.action?pageId=183234634
-****************************************************************/
-
 void tpu_gdma_cpy_reduce_S2S(
     system_addr_t dst_addr,
     system_addr_t  src_addr,
@@ -1128,129 +1119,23 @@ void tpu_gdma_cpy_reduce_L2S(
     int reduce_psum_op,
     int reduce_opcode);
 
-void tpu_bdc_clamp(
-    local_addr_t R_addr,
-    local_addr_t A_addr,
-    scalar_t B_const_val,
-    scalar_t C_const_val,
+void tpu_gdma_cpy_reduce_mac_S2S(
+    system_addr_t dst_addr,
+    system_addr_t  src_addr,
     const dim4 *shape,
-    const dim4 *A_stride,
-    const dim4 *R_stride,
-    int Sign,
-    data_type_t dtype);
-
-//saturate is valid when dtype is FP16
-void tpu_bdc_fp_div2(
-    local_addr_t  dst_addr,
-    local_addr_t  src0_addr,
-    local_addr_t  src1_addr,
-    const dim4   *shape,
-    const dim4   *dst_stride,
-    const dim4   *src0_stride,
-    const dim4   *src1_stride,
-    data_type_t   dtype,
-    int           saturate);
-
-void tpu_bdc_fp_div2_C(
-    local_addr_t  dst_addr,
-    local_addr_t  src_addr,
-    scalar_t      C,
-    const dim4   *shape,
-    const dim4   *dst_stride,
-    const dim4   *src_stride,
-    data_type_t   dtype,
-    int           saturate);
-
-void tpu_bdc_fp_C_div2(
-    local_addr_t  dst_addr,
-    local_addr_t  src_addr,
-    scalar_t      C,
-    const dim4   *shape,
-    const dim4   *dst_stride,
-    const dim4   *src_stride,
-    data_type_t   dtype,
-    int           saturate);
-
-void tpu_bdc_fp16_dequant(
-    local_addr_t     dst_addr,
-    local_addr_t     src_addr,
-    const dim4      *shape,
-    scalar_t         offset,
-    uint16_t         scale_fp16,
-    data_type_t      src_dtype,
-    rounding_mode_t  rounding_mode);
-
-void tpu_bdc_fp16_pc_dequant(
-    local_addr_t     dst_addr,
-    local_addr_t     src_addr,
-    local_addr_t     quant_addr,
-    const dim4      *shape,
-    data_type_t      src_dtype,
-    rounding_mode_t  rounding_mode);
-
-void tpu_bdc_bf16_dequant(
-    local_addr_t     dst_addr,
-    local_addr_t     src_addr,
-    const dim4      *shape,
-    scalar_t         offset,
-    uint16_t         scale_bf16,
-    data_type_t      src_dtype,
-    rounding_mode_t  rounding_mode);
-
-void tpu_bdc_bf16_pc_dequant(
-    local_addr_t     dst_addr,
-    local_addr_t     src_addr,
-    local_addr_t     quant_addr,
-    const dim4      *shape,
-    data_type_t      src_dtype,
-    rounding_mode_t  rounding_mode);
-
-void tpu_bdc_fp_frexp(
-    local_addr_t  dst0_addr,
-    local_addr_t  dst1_addr,
-    local_addr_t  src_addr,
-    const dim4   *shape,
-    data_type_t   dtype);
-
-void tpu_bdc_fp_sfu_reciprocal(
-    local_addr_t  dst_addr,
-    local_addr_t  src_addr,
-    const dim4   *shape,
-    data_type_t   dtype);
-
-void tpu_bdc_fuse_mul_cast(
-    local_addr_t R_addr,
-    local_addr_t A_addr,
-    local_addr_t B_addr,
-    const dim4 *shape,
-    const dim4 *A_stride,
-    const dim4 *B_stride,
-    const dim4 *R_stride,
-    int A_is_const,
-    int B_is_const,
-    int *Sign,  //len = 3, opd0 and opd1 and res
-    data_type_t A_type,
-    data_type_t B_type,
-    data_type_t R_type,
-    rounding_mode_t round,
-    int saturate);
-
-void tpu_bdc_fuse_madd(
-    local_addr_t R_addr,
-    local_addr_t A_addr,
-    local_addr_t B_addr,
-    local_addr_t C_addr,
-    const dim4 *shape,
-    const dim4 *B_shape,
-    int B_is_const,
-    int B_short_str,
+    const dim4 *dst_stride,
+    const dim4 *src_stride,
     data_type_t dtype,
-    int saturate);
+    scalar_t scale_val);
 
-/*Fuse_exp, refer to: https://wiki.sophgo.com/pages/viewpage.action?pageId=183234634 */
-void tpu_bdc_load_fuse_exp_coeff(
-    local_addr_t coeff_addr,
-    data_type_t dtype);
+void tpu_gdma_cpy_reduce_mac_L2S(
+    system_addr_t dst_addr,
+    local_addr_t  src_addr,
+    const dim4 *shape,
+    const dim4 *dst_stride,
+    const dim4 *src_stride,
+    data_type_t dtype,
+    scalar_t scale_val);
 
 void tpu_bdc_fuse_exp_with_range(
     local_addr_t R_addr,
@@ -1260,7 +1145,7 @@ void tpu_bdc_fuse_exp_with_range(
     local_addr_t R1_addr,
     local_addr_t R2_addr,
     const dim4 *shape,
-    const dim4 *B_stride,
+    bool B_n_is_1,
     scalar_t range_start,
     scalar_t range_end,
     int B_is_const,
@@ -1276,7 +1161,7 @@ void tpu_bdc_fuse_exp(
     local_addr_t R1_addr,
     local_addr_t R2_addr,
     const dim4 *shape,
-    const dim4 *B_stride,
+    bool B_n_is_1,
     int B_is_const,
     int B_short_str,
     data_type_t dtype);
@@ -1388,15 +1273,33 @@ void tpu_bdc_fp8_bq_mm2_nt(
     local_addr_t Y_addr,
     local_addr_t L_addr,
     local_addr_t R_addr,
-    local_addr_t L_bq_addr,
-    local_addr_t R_bq_addr,
+    local_addr_t L_scale_addr,
+    local_addr_t R_scale_addr,
     int L_row_num,
     int L_col_num,
     int R_col_num,
     int gsize,
     int add_result,
     data_type_t R_dtype,  //FP4/FP8
-    data_type_t BQ_dtype, //FP16/BFP16
+    data_type_t scale_dtype, //FP16/BFP16
+    data_type_t Y_dtype, //FP16/BFP16/FP32
+    int L_fp8_type,
+    int R_fp8_type,
+    int saturate);
+
+void tpu_bdc_fp8_bq_mm2_wblock_nt(
+    local_addr_t Y_addr,
+    local_addr_t L_addr,
+    local_addr_t R_addr,
+    local_addr_t L_scale_addr,
+    local_addr_t R_scale_addr,
+    int L_row_num,
+    int L_col_num,
+    int R_col_num,
+    int gsize,
+    int add_result,
+    data_type_t R_dtype,  //FP4/FP8
+    data_type_t scale_dtype, //FP16/BFP16
     data_type_t Y_dtype, //FP16/BFP16/FP32
     int L_fp8_type,
     int R_fp8_type,
@@ -1539,9 +1442,6 @@ void tpu_gdma_c_scatter_S2S(
     int            inplace_add,
     int            stride_enable,
     data_type_t    dtype);
-
-
-#endif
 
 void tpu_gdma_random_mask_set_seed(const int seed);
 void tpu_bd_set_random_gen_seed(u64 seed);
@@ -1907,7 +1807,7 @@ void tpu_cdma_write(
     int             opcode,
 #endif
     int             stride_enable,
-#if defined(__sg2260e__) || defined(__sg2262__)
+#if defined(__sg2260e__) || defined(__sg2262__) || defined(__bm1684x2__)
     int             nchw_copy,
     u32             msg_en,
     u32             msg_id,
@@ -2819,6 +2719,31 @@ void tpu_bdc_fp_scale_bias_C(
     scalar_t      bias,
     const dim4   *shape,
     data_type_t   dtype);
+
+void tpu_bdc_fuse_mul_cast(
+    local_addr_t dst_addr,
+    local_addr_t src0_addr,
+    local_addr_t src1_addr,
+    const dim4 *shape,
+    const dim4 *src0_stride,
+    const dim4 *src1_stride,
+    const dim4 *dst_stride,
+    data_type_t src0_type,
+    data_type_t src1_type,
+    data_type_t dst_type,
+    rounding_mode_t rounding_mode,
+    bool saturation);
+
+void tpu_bdc_fuse_madd(
+    local_addr_t dst_addr,
+    local_addr_t src0_addr,
+    local_addr_t src1_addr,
+    local_addr_t src2_addr,
+    const dim4 *dst_shape,
+    const dim4 *src1_shape,
+    data_type_t dtype,
+    bool src1_compact_store,
+    bool saturation);
 
 void tpu_bdc_fp_conv2d(
     local_addr_t      output_addr,
@@ -3892,6 +3817,25 @@ void tpu_bdc_f16_group_dequant(
     data_type_t      dst_dtype,
     int              group);
 
+void tpu_bdc_f16_dequant(
+    local_addr_t     dst_addr,
+    local_addr_t     src_addr,
+    const dim4      *shape,
+    scalar_t         offset,
+    uint16_t         scale,
+    data_type_t      src_dtype,
+    data_type_t      dst_dtype,
+    rounding_mode_t  rounding_mode);
+
+void tpu_bdc_f16_pc_dequant(
+    local_addr_t     dst_addr,
+    local_addr_t     src_addr,
+    local_addr_t     quant_addr,
+    const dim4      *shape,
+    data_type_t      src_dtype,
+    data_type_t      dst_dtype,
+    rounding_mode_t  rounding_mode);
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // BDC BINARY FUNCTIONS
@@ -4496,6 +4440,38 @@ void tpu_bdc_fp_C_div(
     const dim4   *src_stride,
     data_type_t   dtype);
 
+//saturate is valid when dtype is FP16
+void tpu_bdc_fp_div2(
+    local_addr_t  dst_addr,
+    local_addr_t  src0_addr,
+    local_addr_t  src1_addr,
+    const dim4   *shape,
+    const dim4   *dst_stride,
+    const dim4   *src0_stride,
+    const dim4   *src1_stride,
+    data_type_t   dtype,
+    bool          saturate);
+
+void tpu_bdc_fp_div2_C(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    scalar_t      C,
+    const dim4   *shape,
+    const dim4   *dst_stride,
+    const dim4   *src_stride,
+    data_type_t   dtype,
+    bool          saturate);
+
+void tpu_bdc_fp_C_div2(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    scalar_t      C,
+    const dim4   *shape,
+    const dim4   *dst_stride,
+    const dim4   *src_stride,
+    data_type_t   dtype,
+    bool          saturate);
+
 void tpu_bdc_fp_tunable_div(
     local_addr_t  dst_addr,
     local_addr_t  src0_addr,
@@ -5089,6 +5065,12 @@ void tpu_bdc_fp_reciprocal(
     const dim4   *src_stride,
     data_type_t   dtype);
 
+void tpu_bdc_fp_sfu_reciprocal(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
 void tpu_bdc_fp32_compensate_reciprocal(
     local_addr_t  dst_addr,
     local_addr_t  src_addr,
@@ -5201,6 +5183,21 @@ void tpu_bdc_fp_exp_for_neg_arg(
     local_addr_t  work0_addr,
     local_addr_t  work1_addr,
     local_addr_t  coeff_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
+void tpu_bdc_fp_fast_exp(
+    local_addr_t  dst_addr,
+    local_addr_t  src_addr,
+    local_addr_t  work0_addr,
+    local_addr_t  work1_addr,
+    const dim4   *shape,
+    data_type_t   dtype);
+
+void tpu_bdc_fp_frexp(
+    local_addr_t  dst0_addr,
+    local_addr_t  dst1_addr,
+    local_addr_t  src_addr,
     const dim4   *shape,
     data_type_t   dtype);
 
@@ -5485,6 +5482,8 @@ void tpu_bdc_load_fp_arctan_coeff(local_addr_t coeff_addr, data_type_t dtype);
 void tpu_bdc_load_fp32_arcsin_coeff(local_addr_t coeff_addr);
 
 void tpu_bdc_load_fp_exp_coeff(local_addr_t coeff_addr, data_type_t dtype);
+
+void tpu_bdc_load_fuse_exp_coeff(local_addr_t coeff_addr, data_type_t dtype);
 
 void tpu_bdc_load_fp_erf_coeff(local_addr_t coeff_addr, data_type_t dtype);
 
@@ -6045,6 +6044,16 @@ void tpu_bdc_random_gen_load_state(
     int             need_store_state,
     const dim4     *shape,
     data_type_t     dtype);
+
+void tpu_bdc_clamp(
+    local_addr_t dst_addr,
+    local_addr_t src_addr,
+    scalar_t max_const_val,
+    scalar_t min_const_val,
+    const dim4 *shape,
+    const dim4 *dst_stride,
+    const dim4 *src_stride,
+    data_type_t dtype);
 
 void tpu_bdc_end();
 

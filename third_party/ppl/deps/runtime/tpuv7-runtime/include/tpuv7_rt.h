@@ -214,7 +214,7 @@ tpuRtStatus_t tpuRtFreeHost(void *ptr);
  * @brief   To set device memory
  * @ingroup tpuv7_rt
  *
- * @param [in]	ptr		memory ptr
+ * @param [in]	devPtr		memory ptr
  * @param [in]  value	memory value
  * @param [in]  size	memory size
  * @retval  tpuRtSuccess  Succeeds.
@@ -260,16 +260,14 @@ tpuRtStatus_t tpuRtMemcpyD2S(void *hostPtr, const void *devPtr, unsigned long lo
  *          Other code Fails.
  */
 tpuRtStatus_t tpuRtMemcpyD2D(void *dstDevPtr, const void *srcDevPtr, unsigned long long size);
-tpuRtStatus_t tpuRtMemcpyP2P(void *dstDevPtr, int dstDevice, const void *srcDevPtr, int srcDevice,
-			  unsigned long long size);
 
 /**
  * @name    tpuRtMemsetAsync
  * @brief   To set device memory asynchronously
  * @ingroup tpuv7_rt
  *
- * @param [in]	dstDevPtr	dst device memory ptr
- * @param [in]  srcDevPtr	src device memory ptr
+ * @param [in]	dstDevPtr	memory ptr
+ * @param [in]  value		memory value
  * @param [in]  size		memory size
  * @param [in]  stream		stream
  * @retval  tpuRtSuccess  Succeeds.
@@ -319,8 +317,6 @@ tpuRtStatus_t tpuRtMemcpyD2SAsync(void *hostPtr, const void *devPtr, unsigned lo
  */
 tpuRtStatus_t tpuRtMemcpyD2DAsync(void *dstDevPtr, const void *srcDevPtr, unsigned long long size,
 				  tpuRtStream_t stream);
-tpuRtStatus_t tpuRtMemcpyP2PAsync(void *dstDevPtr, int dstDevice, const void *srcDevPtr,
-				  int srcDevice, unsigned long long size, tpuRtStream_t stream);
 
 /**
  * @name    tpuRtStreamCreate
@@ -590,7 +586,7 @@ tpuRtStatus_t tpuRtGetUniqueId(char *uuid);
 
 /**
  * @name    tpuRtKernelLaunchCDMA
- * @brief   To launch kernel cdma
+ * @brief   To launch kernel of cdma op
  * @ingroup tpuv7_rt
  *
  * @param [in]	module		module ptr
@@ -612,7 +608,7 @@ tpuRtStatus_t tpuRtKernelLaunchCDMA(tpuRtKernelModule_t module, const char *func
 
 /**
  * @name    tpuRtKernelLaunchCDMA
- * @brief   To launch kernel cdma asynchronously
+ * @brief   To launch kernel of cdma op asynchronously
  * @ingroup tpuv7_rt
  *
  * @param [in]	module		module ptr

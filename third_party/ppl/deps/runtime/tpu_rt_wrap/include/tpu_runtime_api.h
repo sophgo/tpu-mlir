@@ -309,6 +309,33 @@ tpuError_t tpuSetupTopology();
  */
 tpuError_t tpuGetTopology(tpuTopology_t** topology);
 
+/**
+ * @brief Get total memory size of the device
+ * @param allMemSize[out] Pointer to store total memory size in bytes
+ * @return tpuError_t Error code
+ */
+tpuError_t tpuGetAllMemory(size_t* allMemSize);
+
+/**
+ * @brief Get free memory size of the device
+ * @param freeMemSize[out] Pointer to store free memory size in bytes
+ * @return tpuError_t Error code
+ */
+tpuError_t tpuGetFreeMemory(size_t* freeMemSize);
+
+/**
+ * @brief Get peak memory usage size of the device
+ * @param peakMemSize[out] Pointer to store peak memory size in bytes
+ * @return tpuError_t Error code
+ */
+tpuError_t tpuGetPeakMemory(size_t* peakMemSize);
+
+/**
+ * @brief Reset peak memory usage size of the device
+ * @return tpuError_t Error code
+ */
+tpuError_t tpuResetPeakMemory();
+
 
 typedef void *tpuGraph_t;
 typedef void *tpuGraphExec_t;

@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+// Copyright (C) 2022  Technologies Inc.  All rights reserved.
 //
 //===----------------------------------------------------------------------===//
 
@@ -20,7 +20,14 @@ template <typename DataType> char *to_string(tensor<DataType> &src);
 
 template <typename DataType> char *to_string(gtensor<DataType> &src);
 
+/* Map pyhsics global address/tensor to a pointer/int64 of operation
+ * system/cpu/scalar */
 template <typename DataType> int64 get_gmem_addr(gtensor<DataType> &src);
+template <typename DataType> int64 get_gmem_addr(DataType *src);
+
+template <typename DataType> DataType *get_gmem_ptr(gtensor<DataType> &src);
+template <typename DataType> DataType *get_gmem_ptr(DataType *src);
+
 
 // template <typename DataType>
 // uint64 get_gmem_addr(DataType *address);
@@ -29,6 +36,9 @@ template <typename DataType> DataType get_value(int64 gaddr);
 
 template <typename DataType>
 void invalid_cache(DataType *read_addr = nullptr, int64 read_size = 64);
+
+template <typename DataType>
+void invalid_cache(gtensor<DataType> &src, int64 read_size = 64);
 
 template <typename DataType>
 void flush_cache(DataType *write_addr = nullptr, int64 write_size = 64);

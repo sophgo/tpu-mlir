@@ -828,6 +828,12 @@ tpudnnStatus_t tpudnnConv2dBackwardAsync (
     tpudnnTensor_t grad_weight,
     tpudnnTensor_t grad_bias);
 
+tpudnnStatus_t tpudnnMaskedSelectAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    tpudnnTensor_t mask,
+    tpudnnTensor_t output);
+
 tpudnnStatus_t tpudnnConv3dAsync (
     tpudnnHandle_t handle,
     tpudnnTensor_t input,
@@ -1098,6 +1104,7 @@ tpudnnStatus_t tpudnnPagedAttentionAsync (
     tpudnnTensor_t Kbuffer,
     tpudnnTensor_t Vbuffer,
     tpudnnTensor_t input_lengths_tensor,
+    tpudnnTensor_t cache_lengths_tensor,
     int            rope_head_size,
     int*           input_lengths,
     int*           cache_lengths,
@@ -1216,6 +1223,8 @@ tpudnnStatus_t tpudnnPagedLatentAttentionFp8Async(
     tpudnnTensor_t mask,
     tpudnnTensor_t WUQ_scale,
     tpudnnTensor_t WUKV_scale,
+    tpudnnTensor_t input_length_tensor,
+    tpudnnTensor_t cache_length_tensor,
     tpudnnTensor_t block_table,
     tpudnnTensor_t save_slots,
     const int*     seqlen,

@@ -20,7 +20,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libcpuop.so.1.0.0
               nntoolchain/lib/libbm1684x_kernel_module.a
               nntoolchain/lib/libbmtpulv60_kernel_module.a
-              nntoolchain/lib/libbm1690_kernel_module.so
+              # nntoolchain/lib/libbm1690_kernel_module.so
               nntoolchain/lib/libbm1690_kernel_module.a
               # nntoolchain/lib/libcv184x_kernel_module.so
               # nntoolchain/lib/libcv184x_kernel_module.a
@@ -30,7 +30,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libmodel_combine.so
               nntoolchain/lib/libtpuv7_rt.so
               nntoolchain/lib/libtpuv7_modelrt.so
-              nntoolchain/lib/libtpuv7_emulator.so
+              # nntoolchain/lib/libtpuv7_emulator.so
               nntoolchain/lib/libcdm_daemon_emulator.so
               nntoolchain/lib/libtpuv7_scalar_emulator.so
               or-tools/lib/libortools.so
@@ -45,12 +45,19 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               CV18xx/lib/libunwind.so.8
               atomic_exec/libbm1684x_atomic_kernel.so
               # ppl (nntoolchain/ppl/README.md for details)
+              # cmodel libs
               nntoolchain/ppl/libcmodel_1684x.so
               nntoolchain/ppl/libcmodel_1688.so
+              nntoolchain/ppl/libtpuv7_emulator.so
+              # device libs
               nntoolchain/ppl/libbm1684x_kernel_module.so
               nntoolchain/ppl/libbmtpulv60_kernel_module.so
+              nntoolchain/ppl/libbm1690_kernel_module.so
+              # dyn host libs
               nntoolchain/ppl/libppl_dyn_host_bm1684x.so
               nntoolchain/ppl/libppl_dyn_host_bm1688.so
+              nntoolchain/ppl/libppl_dyn_host_bm1690.so
+              # static host lib
               nntoolchain/ppl/libppl_host.so
         DESTINATION lib)
 

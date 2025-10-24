@@ -139,6 +139,7 @@ void pl_sgd1_check(ppl_tensor_t *tensorR, ppl_tensor_t *tensorA,
                    int limit_enable, SG_OP op);
 
 void static_broad_txp_check(ppl_tensor_t *dst, u32 src_addr);
+void static_broad_check(ppl_tensor_t *dst, u32 src_addr);
 
 void static_distribute_txp_check(ppl_tensor_t *dst, u32 src_addr);
 
@@ -267,4 +268,23 @@ void roi_avg_pool_check(ppl_tensor_t *input, ppl_tensor_t *roi,
 void roi_max_min_pool_check(ppl_tensor_t *input, ppl_tensor_t *roi,
                             ppl_tensor_t *output, dim2 kernel, int do_relu,
                             int pool_op);
+
+void check_match_2(ppl_tensor_t *input, ppl_tensor_t *output, const dim4* perm_opt, const dim4* bmask_opt);
+
+void check_match_3(ppl_tensor_t* a, ppl_tensor_t* b, ppl_tensor_t* c);
+
+void check_match_4(ppl_tensor_t* a, ppl_tensor_t* b, ppl_tensor_t* c, ppl_tensor_t* d);
+
+void check_match_5(ppl_tensor_t* a, ppl_tensor_t* b, ppl_tensor_t* c, ppl_tensor_t* d, ppl_tensor_t* e);
+
+void check_matmul(ppl_tensor_t* lhs,
+                  ppl_tensor_t* rhs,
+                  ppl_tensor_t* output,
+                  int a, int b,
+                  int t /* 0:NN, 1:NT, 2:TT */);
+
+void check_mm(ppl_tensor_t* left, ppl_tensor_t* right, ppl_tensor_t* dst);
+
+void check_size(ppl_tensor_t* a, ppl_tensor_t* b);
+
 #endif /* ATOMIC_CHECK */

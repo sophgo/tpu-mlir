@@ -1,9 +1,8 @@
 //===----------------------------------------------------------------------===//
 //
-// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+// Copyright (C) 2022  Technologies Inc.  All rights reserved.
 //
 //===----------------------------------------------------------------------===//
-
 
 #pragma once
 #include "ppl_defs.h"
@@ -98,11 +97,7 @@ enum memory_alloc_method_t {
   MEMORY_UTILIZATION_FIRST = 1,
 };
 
-enum sync_type {
-  TIU_DMA_SYNC = 0x1,
-  SDMA_SYNC = 0x10,
-  HAU_SYNC = 0x100
-};
+enum sync_type { TIU_DMA_SYNC = 0x1, SDMA_SYNC = 0x10, HAU_SYNC = 0x100 };
 
 #define SYNC_ALL TIU_DMA_SYNC & SDMA_SYNC & HAU_SYNC
 
@@ -144,19 +139,21 @@ public:
   tensor &operator=(const tensor &) = delete;
 
   template <typename dimT>
-  explicit tensor(dimT &_shape, align_mode_t align_mode = TPU_ALIGN,
+  explicit tensor(dimT &&_shape, align_mode_t align_mode = TPU_ALIGN,
                   long long address = -1);
   template <typename dtype2> tensor<dtype2> &view();
   tensor<dtype> &view(align_mode_t align_mode);
-  template <typename dtype2, typename dimT> tensor<dtype2> &view(dimT &_shape);
+  template <typename dtype2, typename dimT> tensor<dtype2> &view(dimT &&_shape);
   template <typename dtype2, typename dimT>
-  tensor<dtype2> &view(dimT &_shape, dimT &_stride);
-  template <typename dimT> tensor<dtype> &view(dimT &_shape);
-  template <typename dimT> tensor<dtype> &view(dimT &_shape, dimT &_stride);
-  template <typename dimT> tensor<dtype> &sub_view(dimT &_shape, dimT &_offset);
+  tensor<dtype2> &view(dimT &&_shape, dimT &&_stride);
+  template <typename dimT> tensor<dtype> &view(dimT &&_shape);
+  template <typename dimT> tensor<dtype> &view(dimT &&_shape, dimT &&_stride);
+  template <typename dimT>
+  tensor<dtype> &sub_view(dimT &&_shape, dimT &&_offset);
 
-  dim4& getBlockShape();
-  dim4& getShape();
+  dim4 &getBlockShape();
+  dim4 &getShape();
+
 private:
   dtype *data;
 };
@@ -168,16 +165,17 @@ public:
   gtensor &operator=(const gtensor &) = delete;
 
   template <typename dimT>
-  explicit gtensor(dimT &_shape, tensor_mode_t mode, dtype *address = nullptr);
+  explicit gtensor(dimT &&_shape, tensor_mode_t mode, dtype *address = nullptr);
   template <typename dtype2> gtensor<dtype2> &view();
 
-  template <typename dtype2, typename dimT> gtensor<dtype2> &view(dimT &_shape);
   template <typename dtype2, typename dimT>
-  gtensor<dtype2> &view(dimT &_shape, dimT &_stride);
-  template <typename dimT> gtensor<dtype> &view(dimT &_shape);
-  template <typename dimT> gtensor<dtype> &view(dimT &_shape, dimT &_stride);
+  gtensor<dtype2> &view(dimT &&_shape);
+  template <typename dtype2, typename dimT>
+  gtensor<dtype2> &view(dimT &&_shape, dimT &&_stride);
+  template <typename dimT> gtensor<dtype> &view(dimT &&_shape);
+  template <typename dimT> gtensor<dtype> &view(dimT &&_shape, dimT &&_stride);
   template <typename dimT>
-  gtensor<dtype> &sub_view(dimT &_shape, dimT &_offset);
+  gtensor<dtype> &sub_view(dimT &&_shape, dimT &&_offset);
 
 private:
   dtype *data;

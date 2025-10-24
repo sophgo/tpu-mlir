@@ -39,7 +39,7 @@ endif()
 if(NOT DEFINED ENV{CROSS_TOOLCHAINS})
     message("CROSS_TOOLCHAINS was not defined, try source download_toolchain.sh")
     execute_process(
-        COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source $ENV{PPL_PROJECT_ROOT}/samples/scripts/download_toolchain.sh && env"
+        COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source $ENV{PPL_PROJECT_ROOT}/deps/scripts/download_toolchain.sh && env"
         RESULT_VARIABLE result
         OUTPUT_VARIABLE output
     )
@@ -71,7 +71,7 @@ endif()
 
 # Set the include directories for the shared library
 # if(NOT DEFINED ENV{SOC_SDK})
-#   message(FATAL_ERROR "Environment variable SOC_SDK has not been set. Please download libsophon_soc and set SOC_SDK.")
+#   message(FATAL_ERROR "Environment variable SOC_SDK has not been set. Please download runtime sdk and set SOC_SDK.")
 # else()
 #   set(SOC_SDK_INCLUDE_PATH "$ENV{SOC_SDK}/include")
 #   set(SOC_SDK_LIB_PATH "$ENV{SOC_SDK}/lib")
@@ -131,7 +131,7 @@ else()
 endif()
 
 # Link the libraries for the shared library
-target_link_libraries(${SHARED_LIBRARY_OUTPUT_FILE} -Wl,--whole-archive libfirmware_core.a -Wl,--no-whole-archive m)
+target_link_libraries(${SHARED_LIBRARY_OUTPUT_FILE} -Wl,--whole-archive libfirmware_core.a -Wl,--no-whole-archive -Wl,-s dl m)
 
 # Set the output file properties for the shared library
 set_target_properties(${SHARED_LIBRARY_OUTPUT_FILE} PROPERTIES PREFIX "" SUFFIX ".so" COMPILE_FLAGS "-fPIC" LINK_FLAGS "-shared")

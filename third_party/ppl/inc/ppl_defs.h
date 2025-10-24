@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+// Copyright (C) 2022  Technologies Inc.  All rights reserved.
 //
 //===----------------------------------------------------------------------===//
 #pragma once

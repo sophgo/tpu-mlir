@@ -47,7 +47,7 @@ endif()
 if(NOT DEFINED ENV{CROSS_TOOLCHAINS})
   message("CROSS_TOOLCHAINS was not defined, try source download_toolchain.sh")
   execute_process(
-    COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source $ENV{PPL_PROJECT_ROOT}/samples/scripts/download_toolchain.sh && env"
+    COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source $ENV{PPL_PROJECT_ROOT}/deps/scripts/download_toolchain.sh && env"
     RESULT_VARIABLE result
     OUTPUT_VARIABLE output
   )
@@ -91,7 +91,7 @@ link_directories(${BACKEND_LIB_PATH} ${RUNTIME_TOP}/lib ${EXTRA_LDIRS})
 aux_source_directory(device DEVICE_SRCS)
 set(SHARED_LIBRARY_OUTPUT_FILE libkernel)
 add_library(${SHARED_LIBRARY_OUTPUT_FILE} SHARED ${DEVICE_SRCS} ${CUS_TOP}/dev/utils/src/ppl_helper.c)
-target_link_libraries(${SHARED_LIBRARY_OUTPUT_FILE} -Wl,--whole-archive libfirmware_core.a -Wl,--no-whole-archive m)
+target_link_libraries(${SHARED_LIBRARY_OUTPUT_FILE} -Wl,--whole-archive libfirmware_core.a -Wl,--no-whole-archive -Wl,-s dl m)
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   set(FW_DEBUG_FLAGS "-DUSING_FW_DEBUG")
@@ -126,25 +126,6 @@ message(NOTICE "EXTRA_CFLAGS: ${EXTRA_CFLAGS}")
 message(NOTICE "EXTRA_LDIRS: ${EXTRA_LDIRS}")
 find_package(ZLIB REQUIRED)
 aux_source_directory(src APP_SRC_FILES)
-
-# deal autotune test
-foreach(file ${APP_SRC_FILES})
-  get_filename_component(FILENAME ${file} NAME)
-  if(FILENAME STREQUAL "autotune_test.cpp")
-    set(AUTOTUNE_TEST_SRC ${file})
-    break()
-  endif()
-endforeach()
-
-if(AUTOTUNE_TEST_SRC)
-  message("Building autotune_test from ${AUTOTUNE_TEST_SRC}")
-  list(REMOVE_ITEM APP_SRC_FILES ${AUTOTUNE_TEST_SRC})
-  add_executable(autotest ${AUTOTUNE_TEST_SRC})
-  set_target_properties(autotest PROPERTIES OUTPUT_NAME autotune_test)
-  target_link_libraries(autotest PRIVATE ${EXTRA_LDFLAGS})
-  target_compile_options(autotest PRIVATE ${EXTRA_CFLAGS})
-  install(TARGETS autotest DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
-endif()
 
 # build main test
 aux_source_directory(host HOST_SRC_FILES)

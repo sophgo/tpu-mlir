@@ -27,13 +27,17 @@ __attribute__((constructor)) void tpu_kernel_register_##func() {   \
     tpu_register_kernel_func(#func, func##_wrapper, FUNC_TYPE_2);  \
 }
 
+
+#if defined(__sg2260__)
+  __attribute__((weak)) int tp_debug(const char *, ...);
+#endif
+
 #if defined(USING_CMODEL)
   #include <stdlib.h>
   #define TPUKERNEL_LOG(format, ...) printf("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
 #elif defined(USING_FW_DEBUG) && !defined(USING_FAKE_DDR_MODE)
 
 #if defined(__sg2260__)
-  __attribute__((weak)) int tp_debug(const char *, ...);
   #define TPUKERNEL_LOG(format, ...) tp_debug("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
 #elif defined(__cv184x__)
   #include <stdlib.h>
@@ -70,7 +74,6 @@ extern int get_atomic_cmodel_assert_enable();
 #else
 
 #if defined(__sg2260__)
-  __attribute__((weak)) int tp_debug(const char *, ...);
   #define ASSERT_LOG(format, ...) tp_debug("[%d]" format, tpu_core_index(), ##__VA_ARGS__)
 #else
   extern void fw_log(char *fmt, ...);

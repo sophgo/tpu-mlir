@@ -44,9 +44,8 @@ debug: rebuild_backend_lib_cmodel
 release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
 export EXTRA_CONFIG="-DDEBUG=OFF -DUSING_FW_DEBUG=OFF" && rebuild_test sgdnn
-cp build/firmware_core/libtpuv7_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690.a
 unset EXTRA_CONFIG && rebuild_firmware
-cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
 #cv184x sha256: 3e9a1bb80573ecfcb29f150c43466d80dd9200f0

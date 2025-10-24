@@ -1,6 +1,8 @@
 RELEASE
-v1.5.212-gab8fd174-20251010
+v1.6.25-g65ce405c-20251024
 libcmodel_1684x.a 8a4937ba34b63557579de5c4b80892d0
 libbm1684x_kernel_module.a 4391147d0ba9b1889f900d099c3dce65
 libcmodel_1688.a aa49b22a45f7186b0cf8c24e8f229d61
 libbmtpulv60_kernel_module.a 92f412c812558604a60728defe7c5d1b
+libcmodel_bm1690.a 71cb02c8171f1a28a2a29cf92c4428f5
+libbm1690_kernel_module.a e44e0b46e3d5d21d29df82b0bcf8c674

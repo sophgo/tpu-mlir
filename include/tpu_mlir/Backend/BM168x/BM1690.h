@@ -116,6 +116,7 @@ protected:
     L2_SRAM_SIZE = 0x8000000;
     SUPPORT_MEM_TAG = true;
     LIB_BACKEND_NAME = "libbackend_bm1690.so";
+    LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1690.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;
     GDMA_VALUE_FORMAT_FLOAT16 = 1;

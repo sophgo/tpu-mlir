@@ -12,7 +12,7 @@
 
 typedef struct {
   dim4 shape;
-  int stride[4];
+  dim4 stride;
   global_addr_t addr;
   data_type_t dtype;
   int mode;
@@ -58,24 +58,24 @@ static void check_tensor_overflow(void *__parent, void *__sub_tensor,
   size_t sub_size = 0;
   if (sub_tensor->align_mode == 4) {
     size_t max_size = 1;
-    max_size += (sub_tensor->shape.n - 1) * sub_tensor->stride[0];
+    max_size += (sub_tensor->shape.n - 1) * sub_tensor->stride.n;
     int c_shape = sub_tensor->shape.c;
     if (sub_tensor->mode == 0) {
       c_shape = (c_shape + NPU_NUM - 1) / NPU_NUM;
     }
-    max_size += (c_shape - 1) * sub_tensor->stride[1];
-    max_size += (sub_tensor->shape.h - 1) * sub_tensor->stride[2];
-    max_size += (sub_tensor->shape.w - 1) * sub_tensor->stride[3];
+    max_size += (c_shape - 1) * sub_tensor->stride.c;
+    max_size += (sub_tensor->shape.h - 1) * sub_tensor->stride.h;
+    max_size += (sub_tensor->shape.w - 1) * sub_tensor->stride.w;
     max_size *= tpu_data_type_size(sub_tensor->dtype);
     sub_size = max_size;
   } else {
-    sub_size = sub_tensor->shape.n * sub_tensor->stride[0] *
+    sub_size = sub_tensor->shape.n * sub_tensor->stride.n *
                tpu_data_type_size(sub_tensor->dtype);
   }
   int parent_size = 0;
   if (parent->size == 0) {
     parent_size =
-        parent->shape.n * parent->stride[0] * tpu_data_type_size(parent->dtype);
+        parent->shape.n * parent->stride.n * tpu_data_type_size(parent->dtype);
   } else {
     parent_size = parent->size;
   }
@@ -151,14 +151,14 @@ static inline bool is_l2sram_addr(u64 addr) {
           (addr < tpu_l2_sram_get_start_addr() + L2_SRAM_SIZE));
 }
 
-static inline u64 get_global_ptr(u64 addr) {
+static inline void* get_global_ptr(u64 addr) {
   u64 ptr = 0;
   if (is_l2sram_addr(addr)) {
     ptr = (u64)(uintptr_t)tpu_l2_sram_addr(addr);
   } else {
     ptr = (u64)(uintptr_t)tpu_global_mem_addr(addr);
   }
-  return ptr;
+  return (void*)ptr;
 }
 
 static data_type_t __ppl_get_dtype(int type) {
@@ -185,6 +185,45 @@ static data_type_t __ppl_get_dtype(int type) {
   };
 #endif
   return __dtype[type];
+}
+
+static int check_bank_conflict(const ppl_tensor_t *tensors[], int n) {
+  uint32_t max_bank_start = 0, min_bank_end = 0xffffffff;
+  for (int i = 0; i < n; ++i) {
+    if (!tensors[i])
+      continue;
+    uint32_t addr = tensors[i]->addr;
+    uint32_t size =
+        (tensors[i]->align_mode != 4)
+            ? tensors[i]->shape.n * tensors[i]->stride.n
+            : (tensors[i]->shape.n - 1) * tensors[i]->stride.n +
+                  ((tensors[i]->shape.c + NPU_NUM - 1) / NPU_NUM - 1) *
+                      tensors[i]->stride.c +
+                  (tensors[i]->shape.h - 1) * tensors[i]->stride.h +
+                  (tensors[i]->shape.w - 1) * tensors[i]->stride.w;
+    size *= tpu_data_type_size(tensors[i]->dtype);
+    uint32_t end = addr + size;
+    uint32_t bank_start = addr / LOCAL_BANK_SIZE;
+    uint32_t bank_end = end / LOCAL_BANK_SIZE;
+    bank_start = bank_start < (uint32_t)(LOCAL_MEM_BANKS) ? bank_start : (uint32_t)(LOCAL_MEM_BANKS);
+    bank_end = bank_end < (uint32_t)(LOCAL_MEM_BANKS) ? bank_end : (uint32_t)(LOCAL_MEM_BANKS) - 1;
+    if (bank_start > max_bank_start)
+      max_bank_start = bank_start;
+    if (bank_end < min_bank_end)
+      min_bank_end = bank_end;
+  }
+  return max_bank_start <= min_bank_end;
+}
+static int check_bank_conflict_by_scalar(const uint32_t *bank_start,
+                                         const uint32_t *bank_end, int n) {
+  uint32_t max_bank_start = 0, min_bank_end = 0xffffffff;
+  for (int i = 0; i < n; ++i) {
+    if (bank_start[i] > max_bank_start)
+      max_bank_start = bank_start[i];
+    if (bank_end[i] < min_bank_end)
+      min_bank_end = bank_end[i];
+  }
+  return 1;
 }
 
 #endif
