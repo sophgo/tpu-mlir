@@ -96,7 +96,9 @@ def compile(
         addr_mode='auto',
         gdma_check=False,
         layer_group_config="",
-        num_core=1):
+        num_core=1,
+        enable_lghash=False,
+        lghash_dir=""):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -142,7 +144,9 @@ def compile(
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
                                       gdma_check=gdma_check,
-                                      layer_group_config=layer_group_config)
+                                      layer_group_config=layer_group_config,
+                                      enable_lghash=enable_lghash,
+                                      lghash_dir=lghash_dir)
     else:
         origin_mlir_txt_to_bmodel(converter=converter,
                                   model_name=name,
@@ -156,7 +160,8 @@ def compile(
                                   opt=opt,
                                   embed_debug_info=embed_debug_info,
                                   addr_mode=addr_mode,
-                                  lgcache=False)
+                                  lgcache=False,
+                                  lghash_dir=lghash_dir)
 
 
 def compile_f32(name: str,
@@ -178,7 +183,9 @@ def compile_f32(name: str,
                 gdma_check=False,
                 layer_group_config="",
                 spec_op_mode: dict = None,
-                num_core=1):
+                num_core=1,
+                enable_lghash=False,
+                lghash_dir=""):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -242,7 +249,9 @@ def compile_f32(name: str,
                                           opt=opt,
                                           embed_debug_info=embed_debug_info,
                                           gdma_check=gdma_check,
-                                          layer_group_config=layer_group_config)
+                                          layer_group_config=layer_group_config,
+                                          enable_lghash=enable_lghash,
+                                          lghash_dir=lghash_dir)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter,
@@ -255,7 +264,8 @@ def compile_f32(name: str,
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
                                       addr_mode=addr_mode,
-                                      lgcache=False)
+                                      lgcache=False,
+                                      lghash_dir=lghash_dir)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level: str = 'normal'):
@@ -335,7 +345,9 @@ def bmodel_generate_and_inference(model_name: str,
                                   log_level: str = 'normal',
                                   embed_debug_info: bool = False,
                                   gdma_check: bool = False,
-                                  layer_group_config: str = ""):
+                                  layer_group_config: str = "",
+                                  enable_lghash: bool = False,
+                                  lghash_dir: str = ""):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
@@ -351,7 +363,9 @@ def bmodel_generate_and_inference(model_name: str,
                   log_level=log_level,
                   embed_debug_info=embed_debug_info,
                   gdma_check=gdma_check,
-                  layer_group_config=layer_group_config)
+                  layer_group_config=layer_group_config,
+                  enable_lghash=enable_lghash,
+                  lghash_dir=lghash_dir)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"

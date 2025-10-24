@@ -38,6 +38,7 @@ static int subfunc_idx = 0;
   module::getName(module::getModuleOp()).str() + "_" +                         \
       module::getChipStr().str() + "_" + module::getModeStr() +                \
       ".layer_group_idx.txt"
+#define HASH_FILE_NAME std::to_string(modules_hash)
 using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {
@@ -2569,7 +2570,11 @@ void GroupMethod::process(LgPassIR *pass_ir) {
       dump_lg_results(lg_infos);
       break;
     case 2:
-      dynamic_programming_layer_group_with_cluster(lg_infos, subnet_ops);
+      if (!load_hash_lg(lg_infos, subnet_ops)) {
+        dynamic_programming_layer_group_with_cluster(lg_infos, subnet_ops);
+        if (options_.enable_lghash)
+          dump_hash_lg(lg_infos);
+      }
       dump_lg_results(lg_infos);
       break;
     case 3:
@@ -3145,6 +3150,331 @@ void GroupMethod::load_lg_results(
   llvm::outs() << "load lg results\n";
 }
 
+void GroupMethod::dump_hash_lg(std::vector<LgInfo> &lg_infos) {
+  std::string filename = HASH_FILE_NAME;
+  if (std::getenv("ENABLE_MLIR_VERSION_HASH")) {
+    const char *env_value = std::getenv("ENABLE_MLIR_VERSION_HASH");
+    const char *mlir_version =
+        (std::strcmp(env_value, "1") == 0) ? MLIR_VERSION : env_value;
+    filename = filename + "_" + mlir_version;
+  }
+  std::string final_path;
+  std::ofstream outfile;
+
+  std::vector<std::pair<std::string, std::string>> path_priority;
+
+  auto env_lghash_dir = std::getenv("LGHASH_DIR");
+  if (env_lghash_dir != nullptr) {
+    path_priority.emplace_back(env_lghash_dir + std::string("/") + filename,
+                               "environment variable LGHASH_DIR");
+  }
+
+  if (!options_.lghash_dir.empty()) {
+    path_priority.emplace_back(options_.lghash_dir + "/" + filename,
+                               "options.lghash_dir");
+  }
+
+  path_priority.emplace_back(filename, "current directory");
+
+  bool file_opened = false;
+  for (const auto &[path, description] : path_priority) {
+    outfile.open(path, std::ios_base::app);
+    if (outfile.is_open()) {
+      final_path = path;
+      file_opened = true;
+      LLVM_DEBUG(llvm::dbgs() << "Writing hash LG to " << description << ": "
+                              << path << "\n");
+      break;
+    } else {
+      LLVM_DEBUG(llvm::dbgs() << "Failed to open " << description
+                              << " path: " << path << "\n");
+    }
+  }
+
+  if (!file_opened) {
+    llvm::errs() << "Error: Failed to dump hash file to all available paths:\n";
+    for (const auto &[path, description] : path_priority) {
+      llvm::errs() << "  - " << description << ": " << path << "\n";
+    }
+    exit(EXIT_FAILURE);
+  }
+
+  bool fileExists = false;
+  bool fileEmpty = true;
+  std::ifstream infile(final_path);
+  if (infile.good()) {
+    fileExists = true;
+    infile.seekg(0, std::ios::end);
+    fileEmpty = infile.tellg() == 0;
+    infile.close();
+  }
+
+  if (fileExists && !fileEmpty) {
+    outfile << "\n";
+  }
+
+  outfile << "subfunc_idx: " << subfunc_idx << " ";
+
+  for (const auto &layer : lg_infos) {
+    if (layer.group_ops.size() > 1) {
+      outfile << layer.func_start_idx << "," << layer.func_end_idx;
+      outfile << "[" << layer.shape_secs.nsecs << "," << layer.shape_secs.csecs
+              << "," << layer.shape_secs.dsecs << "," << layer.shape_secs.hsecs
+              << "," << layer.shape_secs.wsecs << "]";
+      outfile << ";";
+    } else {
+      outfile << layer.func_end_idx << ";";
+    }
+  }
+
+  outfile.close();
+  LLVM_DEBUG(llvm::dbgs() << "Appended hash LG to " << final_path << "\n");
+}
+
+bool GroupMethod::load_hash_lg(std::vector<LgInfo> &lg_infos,
+                               const llvm::SetVector<Operation *> &subnet_ops) {
+  std::string filename = HASH_FILE_NAME;
+  if (std::getenv("ENABLE_MLIR_VERSION_HASH")) {
+    const char *env_value = std::getenv("ENABLE_MLIR_VERSION_HASH");
+    const char *mlir_version =
+        (std::strcmp(env_value, "1") == 0) ? MLIR_VERSION : env_value;
+    filename = filename + "_" + mlir_version;
+  }
+  std::ifstream infile;
+  std::string final_path;
+  bool file_opened = false;
+
+  std::vector<std::pair<std::string, std::string>> path_priority;
+
+  auto env_lghash_dir = std::getenv("LGHASH_DIR");
+  if (env_lghash_dir != nullptr) {
+    path_priority.emplace_back(std::string(env_lghash_dir) + "/" + filename,
+                               "environment variable LGHASH_DIR");
+  }
+
+  if (!options_.lghash_dir.empty()) {
+    path_priority.emplace_back(options_.lghash_dir + "/" + filename,
+                               "options.lghash_dir");
+  }
+
+  path_priority.emplace_back(filename, "current directory");
+
+  for (const auto &[path, description] : path_priority) {
+    infile.open(path);
+    if (infile.is_open()) {
+      final_path = path;
+      file_opened = true;
+      LLVM_DEBUG(llvm::dbgs() << "Loading hash LG from " << description << ": "
+                              << path << "\n");
+      break;
+    } else {
+      LLVM_DEBUG(llvm::dbgs() << "Failed to open " << description
+                              << " path: " << path << "\n");
+    }
+  }
+
+  if (!file_opened) {
+    llvm::errs()
+        << "Error: Failed to open hash file from all available paths:\n";
+    for (const auto &[path, description] : path_priority) {
+      llvm::errs() << "  - " << description << ": " << path << "\n";
+    }
+    return false;
+  }
+
+  lg_infos.clear();
+
+  std::vector<Operation *> subnet_ops_vec;
+  for (auto op : subnet_ops) {
+    subnet_ops_vec.push_back(op);
+  }
+
+  std::string line;
+  bool found = false;
+  std::string target_prefix =
+      "subfunc_idx: " + std::to_string(subfunc_idx) + " ";
+
+  while (std::getline(infile, line)) {
+    if (line.rfind(target_prefix, 0) == 0) {
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    llvm::errs() << "No data found for subfunc_idx: " << subfunc_idx << "\n";
+    infile.close();
+    return false;
+  }
+
+  infile.close();
+
+  std::string data = line.substr(target_prefix.length());
+  std::istringstream iss(data);
+  std::string token;
+  int index = 0;
+
+  // auto &lg_config = LgConfig::getInstance();
+
+  while (std::getline(iss, token, ';')) {
+    if (token.empty())
+      continue;
+
+    LgInfo lg_info;
+    lg_info.sort_index = index++;
+
+    size_t bracket_start = token.find('[');
+    size_t bracket_end = token.find(']');
+
+    std::string indices_str = token;
+    std::string shapes_str = "";
+
+    if (bracket_start != std::string::npos &&
+        bracket_end != std::string::npos && bracket_end > bracket_start) {
+      indices_str = token.substr(0, bracket_start);
+      shapes_str =
+          token.substr(bracket_start + 1, bracket_end - bracket_start - 1);
+    }
+
+    size_t comma_pos = indices_str.find(',');
+    if (comma_pos != std::string::npos) {
+      std::string start_str = indices_str.substr(0, comma_pos);
+      std::string end_str = indices_str.substr(comma_pos + 1);
+
+      if (start_str.empty() || end_str.empty()) {
+        llvm::errs() << "Empty integer string: " << indices_str << "\n";
+        continue;
+      }
+
+      std::istringstream start_ss(start_str);
+      std::istringstream end_ss(end_str);
+      int start_idx, end_idx;
+
+      if (!(start_ss >> start_idx) || !(end_ss >> end_idx)) {
+        llvm::errs() << "Invalid integer format: " << indices_str << "\n";
+        continue;
+      }
+
+      if (!start_ss.eof() || !end_ss.eof()) {
+        llvm::errs() << "Invalid integer format (extra characters): "
+                     << indices_str << "\n";
+        continue;
+      }
+
+      get_layer_group(lg_info, subnet_ops_vec, start_idx, end_idx, -1);
+      lg_info.func_start_idx = start_idx;
+      lg_info.func_end_idx = end_idx;
+    } else {
+      if (indices_str.empty()) {
+        llvm::errs() << "Empty integer string: " << indices_str << "\n";
+        continue;
+      }
+
+      std::istringstream idx_ss(indices_str);
+      int idx;
+
+      if (!(idx_ss >> idx)) {
+        llvm::errs() << "Invalid integer format: " << indices_str << "\n";
+        continue;
+      }
+
+      if (!idx_ss.eof()) {
+        llvm::errs() << "Invalid integer format (extra characters): "
+                     << indices_str << "\n";
+        continue;
+      }
+
+      if (idx >= 0 && static_cast<size_t>(idx) < subnet_ops_vec.size()) {
+        lg_info.group_ops.push_back(subnet_ops_vec[idx]);
+        lg_info.func_start_idx = idx;
+        lg_info.func_end_idx = idx;
+      } else {
+        llvm::errs() << "Index out of range: " << idx << "\n";
+        continue;
+      }
+    }
+
+    if (!shapes_str.empty()) {
+      std::istringstream shape_ss(shapes_str);
+      std::string dim_str;
+      std::vector<int> dims;
+
+      while (std::getline(shape_ss, dim_str, ',')) {
+        if (!dim_str.empty()) {
+          try {
+            dims.push_back(std::stoi(dim_str));
+          } catch (const std::exception &e) {
+            llvm::errs() << "Invalid shape dimension: " << dim_str << "\n";
+            dims.clear();
+            break;
+          }
+        }
+      }
+
+      if (dims.size() == 5) {
+        lg_info.shape_secs.nsecs = dims[0];
+        lg_info.shape_secs.csecs = dims[1];
+        lg_info.shape_secs.dsecs = dims[2];
+        lg_info.shape_secs.hsecs = dims[3];
+        lg_info.shape_secs.wsecs = dims[4];
+        lg_info.is_best_shape_secs = true;
+      } else if (!dims.empty()) {
+        llvm::errs()
+            << "Invalid shape_secs format, expected 5 dimensions, got: "
+            << dims.size() << "\n";
+      }
+    }
+
+    set_group_type(lg_info);
+    lg_info.update_group_io(options_.opt);
+
+    if (lg_info.group_ops.size() > 1) {
+      bool status;
+      auto time_step = std::make_shared<BasicTimeStep>(options_);
+      status = time_step->assignTimeStep(lg_info, lg_info.shape_secs, true);
+      if (!status) {
+        llvm::errs() << "load lghash time_step error"
+                     << "\n";
+        lg_infos.clear();
+        return false;
+      }
+      auto lmem_allocator = std::make_shared<LmemAllocator>(options_);
+      status = lmem_allocator->assignLmemAddrWithSecs(
+          lg_info, time_step, lg_info.shape_secs, false, true);
+      if (!status) {
+        llvm::errs() << "load lghash SHAPESECS error"
+                     << "\n";
+        lg_infos.clear();
+        return false;
+      }
+      // uint64_t hash_key;
+      // LgCostCache::getInstance().cache_enabled = true;
+      // LgCostCache::getInstance().get_graph_hash(lg_info, hash_key);
+      // LgCostCache::getInstance().add_cache(hash_key, lg_info);
+    }
+
+    // if (lg_config.get_shape_secs_search_strategy() ==
+    //     SHAPE_SECS_ALWAYS_BETTER) {
+    //   lg_info.shape_secs_search_level = 1;
+    // }
+
+    // int64_t group_cost = 0;
+    // if (lg_info.group_ops.size() > 1 &&
+    //     !is_layer_group_valid(lg_info, true, &group_cost)) {
+    //   llvm::errs() << "Invalid layer group detected\n";
+    //   lg_infos.clear();
+    //   return false;
+    // }
+
+    lg_infos.push_back(lg_info);
+  }
+
+  std::sort(lg_infos.begin(), lg_infos.end(),
+            [](LgInfo &a, LgInfo &b) { return a.sort_index < b.sort_index; });
+
+  llvm::outs() << "Loaded hash LG from " << final_path << "\n";
+  return true;
+}
 /// The pass of layer group searching
 class LayerGroupSearchPass : public LgPass {
 public:

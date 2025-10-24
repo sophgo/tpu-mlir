@@ -202,6 +202,8 @@ class DeployTool:
                                    silence=False,
                                    strategy=self.shape_secs_search_strategy,
                                    structure_detect_opt=self.structure_detect_opt)
+        self.enable_lghash = True if args.enable_lghash else False
+        self.lghash_dir = args.lghash_dir
 
     def cleanup(self):
         file_clean()
@@ -429,6 +431,8 @@ class DeployTool:
                         f"{self.prefix}.layer_group_cache.json" if self.quantize != "int8" else
                         f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json"),
                     layer_group_config=self.layer_group_config,
+                    enable_lghash=self.enable_lghash,
+                    lghash_dir=self.lghash_dir,
                     log_level="normal" if self.log_level == 0 else "simple",
                     disable_topo_sort=self.disable_topo_sort)
                 if not self.skip_validation and self.do_validate:
@@ -578,6 +582,8 @@ if __name__ == '__main__':
                         help="use rewriter config to do model deploy.")
     parser.add_argument("--disable_topo_sort", action="store_true",
                         help="Whether to disable topo sort pass before layer group pass")
+    parser.add_argument("--enable_lghash", action='store_true', help="dump hash file if set, load hash file by default whether set or not")
+    parser.add_argument("--lghash_dir", default="", type=str, help='directory to dump and load lghash file')
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')

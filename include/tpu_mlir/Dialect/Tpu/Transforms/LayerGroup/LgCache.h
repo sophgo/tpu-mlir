@@ -229,6 +229,33 @@ public:
     return true;
   }
 
+  uint64_t get_modules_hash(std::shared_ptr<std::vector<ModuleOp>> &modules) {
+    std::string buffer;
+    llvm::raw_string_ostream os(buffer);
+
+    for (auto &module : *modules) {
+      module->walk<WalkOrder::PreOrder>([&](Operation *op) {
+        // if (!module::isOpInBlock(op))
+        //   return;
+
+        os << op->getName().getStringRef() << ":";
+        os << "\tInputs: ";
+        for (auto v : op->getOperands()) {
+          serialize_value(os, v);
+        }
+        os << "\tOutputs: ";
+        for (auto v : op->getResults()) {
+          serialize_value(os, v);
+        }
+        os << "\n";
+      });
+    }
+
+    os.flush();
+    // std::cout << "\n" << buffer << "\n\n";
+    return llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
+  }
+
   /// gen hash key for single op
   /// if quant_agnostic is true, ignore quantization attributes
   uint64_t get_op_hash(Operation *op, bool quant_agnostic = false,
@@ -304,3 +331,5 @@ private:
 
 } // namespace tpu
 } // namespace tpu_mlir
+
+extern uint64_t modules_hash;

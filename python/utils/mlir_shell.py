@@ -680,6 +680,8 @@ def tpu_ada_options(
     lg_debugger: int = 0,
     disable_group_overlap: bool = False,
     lgcache: bool = True,
+    enable_lghash: bool = False,
+    lghash_dir: str = "",
     layer_group_config: str = "",
     iomem_set: str = "",
     same_addr: str = "",
@@ -692,8 +694,8 @@ def tpu_ada_options(
     disable_group_overlap = "true" if disable_group_overlap else "false"
     lgcache = "true" if lgcache else "false"
     if not disable_layer_group:
-        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={} lgcache={} config_filename={}"'.format(
-            opt, group_by_cores, compress_mode, lg_debugger, disable_group_overlap, lgcache, layer_group_config)
+        lg_param = '--layer-group="opt={} group_by_cores={} compress_mode={} debugger={} disable_group_overlap={} lgcache={} config_filename={} enable_lghash={} lghash_dir={}"'.format(
+            opt, group_by_cores, compress_mode, lg_debugger, disable_group_overlap, lgcache, layer_group_config, enable_lghash, lghash_dir)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     if merge_weight:
@@ -978,7 +980,9 @@ def mlir_to_model(
     subnet_params: str = None,
     layer_group_cache: str = "",
     layer_group_config: str = "",
-    disable_topo_sort: bool = False
+    disable_topo_sort: bool = False,
+    enable_lghash: bool = False,
+    lghash_dir: str = "",
 ):
     if command_mem is None:
         command_mem = {}
@@ -1011,6 +1015,8 @@ def mlir_to_model(
                               lg_debugger=lg_debugger,
                               disable_group_overlap=(time_fixed_subnet != None),
                               layer_group_config=layer_group_config,
+                              enable_lghash=enable_lghash,
+                              lghash_dir=lghash_dir,
                               iomem_set=iomem_set,
                               same_addr=same_addr,
                               disable_topo_sort=disable_topo_sort)
@@ -1124,7 +1130,9 @@ def origin_mlir_txt_to_bmodel(*,
                               matmul_perchannel: bool = False,
                               gelu_mode: str = "normal",
                               quant_output_bf16: bool = False,
-                              lgcache=True):
+                              lgcache=True,
+                              enable_lghash=False,
+                              lghash_dir: str = ""):
 
     options = []
     new_options = top_opt_options(add_postprocess)
@@ -1144,7 +1152,9 @@ def origin_mlir_txt_to_bmodel(*,
                                   op_divide=op_divide,
                                   group_by_cores=group_by_cores,
                                   compress_mode=compress_mode,
-                                  lgcache=lgcache)
+                                  lgcache=lgcache,
+                                  enable_lghash=enable_lghash,
+                                  lghash_dir=lghash_dir)
     options.extend(new_options)
     new_options = codegen_options(f"{model_name}_{mode}.bmodel", embed_debug_info, model_version,
                                   True)

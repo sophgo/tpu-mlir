@@ -120,6 +120,9 @@ public:
   void dump_lg_results(std::vector<LgInfo> &lg_infos);
   void load_lg_results(std::vector<LgInfo> &lg_infos,
                        const llvm::SetVector<Operation *> &subnet_ops);
+  void dump_hash_lg(std::vector<LgInfo> &lg_infos);
+  bool load_hash_lg(std::vector<LgInfo> &lg_infos,
+                    const llvm::SetVector<Operation *> &subnet_ops);
   bool is_lg_results_exists();
   void ilp_layer_group(LgPassIR *pass_ir);
   void get_base_dfs_topo_groups(

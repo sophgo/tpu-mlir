@@ -59,6 +59,8 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
     Option<"group_by_cores", "group_by_cores", "std::string", /*default=*/"\"auto\"", "whether force group by cores">,
     Option<"compress_mode", "compress_mode", "std::string", /*default=*/"\"none\"", "compress mode">,
     Option<"lgcache", "lgcache", "std::string", /*default=*/"\"true\"", "whether to dump cut_results">,
+    Option<"enable_lghash", "enable_lghash", "std::string", /*default=*/"\"false\"", "whether to dump lghash with layer group info">,
+    Option<"lghash_dir", "lghash_dir", "std::string", /*default=*/"\"\"","directory to dump and load lghash file">,
     Option<"debugger", "debugger", "int64_t", /*default=*/"0",
            "0: do nothing; "
            "1: do LayerGroup and create debugger file; "
