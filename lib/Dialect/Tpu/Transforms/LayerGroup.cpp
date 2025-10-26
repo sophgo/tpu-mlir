@@ -66,6 +66,21 @@ class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
   void runOnOperation() override {
+    // group pass by modules
+    auto modules = module::getAllModules();
+    // set multicore flag if support
+    for (auto m : *modules) {
+      m->walk<WalkOrder::PreOrder>([&](Operation *op) {
+        if (false == module::isOpInBlock(op)) {
+          auto gl = dyn_cast<GlobalGenInterface>(op);
+          if (gl && gl.support_multi_core()) {
+            mlir::Attribute isTrue =
+                mlir::BoolAttr::get(op->getContext(), true);
+            op->setAttr("multicore", isTrue);
+          }
+        }
+      });
+    }
     if (module::isDebugCmdEnable("disable_layer_group")) {
       return;
     }
@@ -87,22 +102,6 @@ public:
     }
     auto &lg_config = LgConfig::getInstance();
     lg_config.load(options.config_filename);
-
-    // group pass by modules
-    auto modules = module::getAllModules();
-    // set multicore flag if support
-    for (auto m : *modules) {
-      m->walk<WalkOrder::PreOrder>([&](Operation *op) {
-        if (false == module::isOpInBlock(op)) {
-          auto gl = dyn_cast<GlobalGenInterface>(op);
-          if (gl && gl.support_multi_core()) {
-            mlir::Attribute isTrue =
-                mlir::BoolAttr::get(op->getContext(), true);
-            op->setAttr("multicore", isTrue);
-          }
-        }
-      });
-    }
 
     for (auto s : *modules) {
       for (auto f : s.getOps<FuncOp>()) {
