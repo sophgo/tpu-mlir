@@ -16,6 +16,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2025-10-23
 ```bash
 #bm1684x sha256: 376191048a4f4d04b2d89e3f46d19a9ef531ed3a
+# maxpool-fix: + 163d96ab0098cb7c72a3dda08a73b6ad148c14ac
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -27,6 +28,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
 #bm1688 sha256: 376191048a4f4d04b2d89e3f46d19a9ef531ed3a
+# maxpool-fix: + 163d96ab0098cb7c72a3dda08a73b6ad148c14ac
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -38,6 +40,7 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
 #bm1690 sha256: 376191048a4f4d04b2d89e3f46d19a9ef531ed3a
+# maxpool-fix: + 163d96ab0098cb7c72a3dda08a73b6ad148c14ac
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -120,3 +123,4 @@ popd
 cp model-runtime/runtime/include/tpuv7_modelrt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 cp cdmlib/host/cdm_runtime/include/tpuv7_rt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 ```
+
