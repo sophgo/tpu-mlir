@@ -151,6 +151,7 @@ class MixQuantModel:
     def clean(self):
         try:
             del self.module
+            del self.parser
             os.remove(self.quanted_mlir_file)
             os.remove(self.weight_file)
         except:
@@ -635,6 +636,8 @@ class MixPrecSearcher:
                 predictions_gt.append(outputs)
             else:
                 outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
+            del outputs
+            del data
         outputs_cos = outputs_cos / self.num_sample
         return outputs_cos
 

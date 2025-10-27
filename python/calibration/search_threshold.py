@@ -63,15 +63,20 @@ class SearchThreshold:
         calibrator.calibration_method = quantize_method_list
         layer_th_dict = calibrator.gen_multiple_thresholds(all_op_names, quantize_method_list)
         del calibrator
-        mix_table = self.mix_prec._gen_mix_table(self.fixed_fp_layers)
+        mix_table = None if len(self.fixed_fp_layers) == 0 else self.mix_prec._gen_mix_table(
+            self.fixed_fp_layers)
 
         result = {}
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
         for method in quantize_method_list:
-            cali_table = self.cali_table_name + "_" + method + ".1"
-            if method == 'KL' and self.args.tune_num > 0:
+            if self.args.tune_num <= 0:
+                cali_table = self.cali_table_name + "_" + method + ".1"
+            else:
                 cali_table = self.cali_table_name + "_" + method + "_tune"
+            self.mix_prec.logger.print_info(
+                f"Trying multi algorithm threshold of {method} with {cali_table} in {quantize_method_list}"
+            )
             new_cali_table_name = "new_cali_table.txt"
             with open(cali_table, 'r') as file:
                 data = file.read()

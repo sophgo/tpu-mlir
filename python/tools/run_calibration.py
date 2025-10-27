@@ -16,7 +16,6 @@ from calibration.kld_calibrator import ActivationCalibrator
 from calibration.data_selector import DataSelector
 from calibration.search_threshold import SearchThreshold
 from calibration.search_qtable import SearchQtable
-from calibration.sensitive_layer import SensitiveLayer
 from calibration.smoothquant import SmoothQuant
 from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
@@ -41,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_num', type=int, default=0, help='num of images for calibration')
     parser.add_argument('--cali_method', type=str, default='kl',choices=['mse','max','kl','percentile9999','aciq_laplace', 'aciq_gauss', 'use_mse','use_max','use_kl','use_percentile9999'],
                         help='method of calibration')
-    parser.add_argument('--search', type=str, default='False', choices=['search_threshold', 'search_qtable', 'search_sensitive_layer', 'False'],
+    parser.add_argument('--search', type=str, default='False', choices=['search_threshold', 'search_qtable', 'False'],
                         help='choose quantization scheme')
     parser.add_argument('--inference_num', type=int, default=30,
                         help='num of inputs for inference during optimal threshold searching')
@@ -154,10 +153,6 @@ if __name__ == '__main__':
             args._logger = logger('Search_Threshold', log_level=log_level)
             searcherT = SearchThreshold(args, selector, tune_ds, shape_pattern_fp_layers)
             searcherT.run_search_calitable()
-        elif args.search == 'search_sensitive_layer':
-            args._logger = logger('Sensitive_Layer', log_level=log_level)
-            searcher = SensitiveLayer(args, selector, tune_ds, shape_pattern_fp_layers)
-            searcher.run()
         elif args.search == 'False':
             calibrator = ActivationCalibrator(args, selector, tune_ds)
             calibrator.run()

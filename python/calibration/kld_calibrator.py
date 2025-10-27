@@ -861,7 +861,6 @@ class ActivationCalibrator(BaseKldCalibrator):
 
     def gen_multiple_thresholds(self, all_op_names, quantize_method_list):
         layer_th_dicts = {}  # method_name: {op_name: [op_fmax, op_th]}
-        tmp_th_dict = {}
         quantize_method_list = [x.lower() for x in quantize_method_list]
         self.args.calibration_method = quantize_method_list
 
@@ -869,6 +868,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         self._clean_resource()
         # step 3: dump threshold table of default histogram bins
         for method_name in quantize_method_list:
+            tmp_th_dict = {}
             cali_table_orig = self.args.calibration_table
             cali_table = self.args.calibration_table + "_" + method_name
             if self.args.tune_num > 0:

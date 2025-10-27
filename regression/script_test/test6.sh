@@ -24,23 +24,15 @@ model_transform.py \
 run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
-       -o mobilenet_v2_cali_table
-
-
-run_sensitive_layer.py mobilenet_v2.mlir \
-       --dataset ../ILSVRC2012 \
-       --calibration_table mobilenet_v2_cali_table \
-       --input_num 100 \
-       --inference_num 30 \
-       --chip bm1684 \
-       --expected_cos 0.9999 \
-       -o mobilenet_v2_qtable
-
+       -o mobilenet_v2_cali_table \
+       --quantize_method_list="kl,mse,percentile9999,max" \
+       --search search_qtable \
+       --quantize_table mobilenet_v2_qtable
 
 model_deploy.py \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
-       --quantize_table mobilenet_v2_qtable \
+       --quantize_table mobilenet_v2_qtable_shape_pattern_part \
        --calibration_table new_cali_table.txt \
        --chip bm1684 \
        --model mobilenet_v2_mix.bmodel
