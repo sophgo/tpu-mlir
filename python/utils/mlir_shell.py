@@ -25,9 +25,69 @@ import sys
 import re
 import signal
 import psutil
+from contextlib import contextmanager
+import ctypes
 
 # from typing import TextIO
 # from utils.tpuc_cmd_builder import TpucCommandBuilder
+
+
+@contextmanager
+def suppress_output():
+    import sys
+    import os
+    import tempfile
+    import time
+
+    original_stdout_fd = sys.stdout.fileno()
+    original_stderr_fd = sys.stderr.fileno()
+    original_stdout_copy = os.dup(original_stdout_fd)
+    original_stderr_copy = os.dup(original_stderr_fd)
+
+    temp_stdout = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+    temp_stderr = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+    temp_stdout_name = temp_stdout.name
+    temp_stderr_name = temp_stderr.name
+    temp_stdout.close()
+    temp_stderr.close()
+
+    try:
+        temp_stdout_fd = os.open(temp_stdout_name, os.O_WRONLY)
+        temp_stderr_fd = os.open(temp_stderr_name, os.O_WRONLY)
+        os.dup2(temp_stdout_fd, original_stdout_fd)
+        os.dup2(temp_stderr_fd, original_stderr_fd)
+        os.close(temp_stdout_fd)
+        os.close(temp_stderr_fd)
+        yield
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        try:
+            libc = ctypes.CDLL("libc.so.6")
+            libc.fflush(None)
+            time.sleep(0.05)
+        except Exception:
+            pass
+
+        os.dup2(original_stdout_copy, original_stdout_fd)
+        os.dup2(original_stderr_copy, original_stderr_fd)
+
+        os.close(original_stdout_copy)
+        os.close(original_stderr_copy)
+
+        try:
+            with open(temp_stdout_name, 'r+') as f:
+                f.truncate(0)
+            with open(temp_stderr_name, 'r+') as f:
+                f.truncate(0)
+            os.remove(temp_stdout_name)
+            os.remove(temp_stderr_name)
+        except Exception:
+            pass
+
+        sys.stdout.flush()
+        sys.stderr.flush()
 
 
 def _parse_timeout(timeout_str):
@@ -1079,15 +1139,9 @@ def origin_mlir_txt_to_bmodel(*,
     mlir_txt = converter.get_mlir_txt()
     weight_option = "weight_in_mem=True"
     if log_level == "quiet":
-        options.insert(0, f'--init="{weight_option}"')
-        with open(os.devnull, "w") as devnull:
-            os.dup2(devnull.fileno(), sys.stdout.fileno())
-            os.dup2(devnull.fileno(), sys.stderr.fileno())
-        try:
+        options.insert(0, f'--init="{weight_option} level=-1"')
+        with suppress_output():
             pymlir.run_pass_pipeline(mlir_txt, options)
-        finally:
-            os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
-            os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
     else:
         if log_level == "simple":
             options = [opt for opt in options if not opt.startswith('--init')]
@@ -1095,7 +1149,6 @@ def origin_mlir_txt_to_bmodel(*,
         elif log_level == "only-layer-group":
             options = [opt for opt in options if not opt.startswith('--init')]
             options.insert(0, f'--init="{weight_option} level=2"')
-            # pymlir.debug(["layer-group","LayerGroupUtil"]) #todo
         else:
             options.insert(0, f'--init="{weight_option}"')
         print("options: ", options)
