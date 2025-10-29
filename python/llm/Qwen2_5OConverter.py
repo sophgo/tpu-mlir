@@ -347,6 +347,7 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
                                          dim=head_dim,
                                          mq=n_window,
                                          mk=n_window,
+                                         keep_dims=False,
                                          loc=L(f"{path}fattention"),
                                          ip=ip).output
                 out_op = self.linear(audio_mlir, attn_out, fa_op, [self.embed_dim, self.embed_dim],

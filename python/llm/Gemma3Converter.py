@@ -191,6 +191,7 @@ class Gemma3Converter(LlmConverter):
                                      dim=head_dim,
                                      mq=num_patches,
                                      mk=num_patches,
+                                     keep_dims=False,
                                      loc=L(f"{layer_path}.fattention"),
                                      ip=ip).output
             o_op = self.linear(vit_mlir, f"{layer_path}.self_attn.out_proj", fa_op,

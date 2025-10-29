@@ -109,6 +109,8 @@ class LlmConverter(BaseConverter):
             dtype = self.llm_config.torch_dtype
         else:
             return
+        if self.quant_mode == "awq" and self.quantize == "w4f16":
+            return  # skip check for awq w4f16
         if (dtype == torch.bfloat16 and self.half_precision_quantize
                 == "f16") or (dtype == torch.float16 and self.half_precision_quantize == "bf16"):
             print(
@@ -349,6 +351,10 @@ class LlmConverter(BaseConverter):
                 assert self.quantization_config["version"] == "gemm", (
                     "AWQ only support gemm version for now")
                 assert self.quant_bits == 4, ("AWQ only support quant bits == 4 for now")
+                if self.quantize != "w4f16":
+                    print("Warning: AWQ only support w4f16 quantize, change quantize to w4f16")
+                    self.quantize = "w4f16"
+
         if self.q_group_size < 0:
             self.q_group_size = 0
 
@@ -997,6 +1003,7 @@ class LlmConverter(BaseConverter):
                                      dim=self.head_dim,
                                      mq=input_len,
                                      mk=input_len,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -1096,6 +1103,7 @@ class LlmConverter(BaseConverter):
                                      dim=self.head_dim,
                                      mq=1,
                                      mk=self.seq_length + 1,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -1210,6 +1218,7 @@ class LlmConverter(BaseConverter):
                                      dim=self.head_dim,
                                      mq=input_len,
                                      mk=max_kv_len,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)

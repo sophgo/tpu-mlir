@@ -2329,6 +2329,7 @@ def Tpu_FAttentionOp: Tpu_Op<"FAttention", [
     I64Attr:$dim,
     I64Attr:$mq,
     I64Attr:$mk,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
     OptionalAttr<BoolAttr>:$multicore
   );
 

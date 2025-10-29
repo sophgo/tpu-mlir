@@ -90,6 +90,20 @@ LogicalResult top::FAttentionOp::inference(InferenceParameter &p) {
   return success();
 }
 
+// if keep_dims, output shape = input shape
+// else input = [1, M_q, q_head, d], output = [1, M_q, q_head*d]
 void top::FAttentionOp::shape_inference() {
-  UNREACHABLE_THIS("Not Implemented");
+  auto out = getOutput();
+  bool keep_dims = getKeepDims();
+  if (keep_dims) {
+    common_shape_inference(getOperation());
+    return;
+  }
+  auto in_shape = module::getShape(getQueries());
+  assert(in_shape.size() == 4);
+  std::vector<int64_t> out_shape;
+  out_shape.push_back(in_shape[0]);
+  out_shape.push_back(in_shape[1]);
+  out_shape.push_back(in_shape[2] * in_shape[3]);
+  module::setShapeOrVerify(out, out_shape);
 }

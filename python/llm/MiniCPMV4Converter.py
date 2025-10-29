@@ -164,6 +164,7 @@ class MiniCPMV4Converter(LlmConverter):
                                      dim=self.vit_head_dim,
                                      mq=self.num_patches,
                                      mk=self.num_patches,
+                                     keep_dims=True,
                                      loc=L(f"vpm.encoder.layers.{idx}.fattention"),
                                      ip=ip).output
             fa_op = top.ReshapeOp(T(hidden_shape),
@@ -428,6 +429,7 @@ class MiniCPMV4Converter(LlmConverter):
                                      dim=128,
                                      mq=self.query_num,
                                      mk=self.num_patches,
+                                     keep_dims=True,
                                      loc=L("resampler.fattention"),
                                      ip=ip).output
             # out proj

@@ -213,6 +213,7 @@ class Qwen3VLConverter(LlmConverter):
                                      dim=self.vhead_dim,
                                      mq=self.num_patches,
                                      mk=self.num_patches,
+                                     keep_dims=True,
                                      loc=L(f"{self.vit_path}.blocks.{id}.fattention"),
                                      ip=ip).output
             fa_op = top.ReshapeOp(T(hidden_shape),
@@ -355,7 +356,7 @@ class Qwen3VLConverter(LlmConverter):
         in4_op = vit_mlir.create_input_op(L('attention_mask'), 4)
         new_weight = vit_mlir.create_weight_op(patch_embed + ".weight",
                                                [self.patch_dim, self.embed_dim])
-        new_bias = vit_mlir.create_weight_op(patch_embed + ".bias", [self.embed_dim])
+        new_bias = vit_mlir.create_weight_op(patch_embed + ".bias", [1, self.embed_dim])
         new_op = top.MatMulOp(T([self.num_patches, self.embed_dim]),
                               in0_op,
                               new_weight,

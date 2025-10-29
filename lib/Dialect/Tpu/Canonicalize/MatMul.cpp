@@ -376,6 +376,8 @@ struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
         rewriter.getNamedAttr("mq", rewriter.getI64IntegerAttr(mq)));
     attrs.push_back(
         rewriter.getNamedAttr("mk", rewriter.getI64IntegerAttr(mk)));
+    attrs.push_back(
+        rewriter.getNamedAttr("keep_dims", rewriter.getBoolAttr(true)));
     std::vector<Value> operands;
     operands.push_back(q_in);
 

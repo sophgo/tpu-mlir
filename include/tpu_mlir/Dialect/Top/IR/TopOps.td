@@ -1885,7 +1885,8 @@ def Top_FAttentionOp: Top_Op<"FAttention"> {
     I64Attr:$kv_head,
     I64Attr:$dim,
     I64Attr:$mq,
-    I64Attr:$mk
+    I64Attr:$mk,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims
   );
 
   let results = (outs AnyTensor:$output);

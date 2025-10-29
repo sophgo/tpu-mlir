@@ -471,6 +471,7 @@ class GLM4VConverter(LlmConverter):
                                      dim=self.vit_head_dim,
                                      mq=self.num_patches,
                                      mk=self.num_patches,
+                                     keep_dims=True,
                                      loc=L(f"visual.blocks.{idx}.fattention"),
                                      ip=ip).output
             fa_op = top.ReshapeOp(T(hidden_shape),
@@ -1042,6 +1043,7 @@ class GLM4VConverter(LlmConverter):
                                      dim=self.head_dim,
                                      mq=input_len,
                                      mk=input_len,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -1131,6 +1133,7 @@ class GLM4VConverter(LlmConverter):
                                      dim=self.head_dim,
                                      mq=1,
                                      mk=self.seq_length + 1,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -1223,6 +1226,7 @@ class GLM4VConverter(LlmConverter):
                                      dim=self.head_dim,
                                      mq=input_len,
                                      mk=max_kv_len,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)

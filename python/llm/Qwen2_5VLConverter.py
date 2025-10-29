@@ -204,6 +204,7 @@ class Qwen2_5VLConverter(LlmConverter):
                                      dim=self.vhead_dim,
                                      mq=self.num_patches,
                                      mk=self.num_patches,
+                                     keep_dims=True,
                                      loc=L(f"{self.vit_path}.blocks.{id}.fattention"),
                                      ip=ip).output
             fa_op = top.ReshapeOp(T(hidden_shape),

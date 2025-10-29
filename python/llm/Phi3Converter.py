@@ -442,6 +442,7 @@ class Phi3Converter(Chatglm3Converter):
                                      dim=self.head_dim,
                                      mq=self.seq_length,
                                      mk=self.seq_length,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, att_dense, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -533,6 +534,7 @@ class Phi3Converter(Chatglm3Converter):
                                      dim=self.head_dim,
                                      mq=1,
                                      mk=self.seq_length + 1,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, att_dense, fa_op, [q_dim, self.hidden_size], input_shape)

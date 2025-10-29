@@ -323,6 +323,7 @@ class Llama3_2VConverter(LlmConverter):
                 dim=self.vhead_dim,
                 mq=(self.num_patches + num_padding_patches) * self.max_num_tiles,
                 mk=(self.num_patches + num_padding_patches) * self.max_num_tiles,
+                keep_dims=False,
                 loc=L(attn_proj + f"attn_proj.{id}.fattention"),
                 ip=ip).output
 
@@ -1067,6 +1068,7 @@ class Llama3_2VConverter(LlmConverter):
                                      dim=self.head_dim,
                                      mq=input_len,
                                      mk=input_len,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -1549,6 +1551,7 @@ class Llama3_2VConverter(LlmConverter):
                                      dim=self.head_dim,
                                      mq=1,
                                      mk=self.seq_length + 1,
+                                     keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
 
