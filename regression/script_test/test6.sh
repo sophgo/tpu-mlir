@@ -22,19 +22,20 @@ model_transform.py \
        --mlir mobilenet_v2.mlir
 
 run_calibration.py mobilenet_v2.mlir \
-       --dataset ../ILSVRC2012 \
+       --dataset ../ILSVRC2012/ \
        --input_num 100 \
        -o mobilenet_v2_cali_table \
        --quantize_method_list="kl,mse,percentile9999,max" \
        --search search_qtable \
-       --quantize_table mobilenet_v2_qtable
+       --quantize_table mobilenet_v2_qtable \
+       --expected_cos 0.9999
 
 model_deploy.py \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --quantize_table mobilenet_v2_qtable_shape_pattern_part \
-       --calibration_table new_cali_table.txt \
-       --chip bm1684 \
+       --calibration_table mobilenet_v2_cali_table \
+       --chip bm1684x \
        --model mobilenet_v2_mix.bmodel
 
 
@@ -47,3 +48,4 @@ classify_mobilenet_v2.py \
 rm -rf *.npz
 
 popd
+

@@ -258,7 +258,7 @@ TPU-MLIR混合精度量化概述
 
 TPU-MLIR支持模型混精度量化,其核心步骤在于获得记录算子名称及其量化类型的 ``quantize_table``,后称 ``qtable``。
 
-TPU-MLIR支持两种获取 ``qtable`` 的获取路径,对于典型模型,TPU-MLIR提供基于经验的 ``pattern-match`` 方法。对于特殊模型或非典型模型,TPU-MLIR提供基于检索的方法 ``search_qtable`` 和 ``fp_forward`` 工具#######。
+TPU-MLIR支持两种获取 ``qtable`` 的获取路径,对于典型模型,TPU-MLIR提供基于经验的 ``pattern-match`` 方法。对于特殊模型或非典型模型,TPU-MLIR提供基于检索方法 ``search_qtable`` 和手工设置工具 ``fp_forward`` 。
 在后续四个章节中会详细介绍上述四种方法工具
 
 pattern-match
