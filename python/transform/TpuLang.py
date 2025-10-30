@@ -189,12 +189,21 @@ def compile_f32(name: str,
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
     qtable = ""
     if spec_op_mode:
-        for op_name, mode in spec_op_mode.items():
-            assert op_name in TpuLang.graph.contained_func, f"Op '{op_name}' not found in graph"
-            assert (lower_mode := mode.lower()) in support_quant_mode, f"Invalid quant mode: {mode}"
-            spec_op_mode[op_name] = lower_mode.upper()
-        qtable = ",".join(f"{op.outputs[0].name}:{spec_op_mode[op.src_func]}"
-                          for op in TpuLang.graph.operators if op.src_func in spec_op_mode)
+        keys_to_remove = [
+            op_name for op_name in spec_op_mode if op_name not in TpuLang.graph.contained_func
+        ]
+
+        for op_name in keys_to_remove:
+            # print(f"Deleting {op_name} from spec_op_mode")
+            del spec_op_mode[op_name]
+        if spec_op_mode:
+            for op_name, mode in spec_op_mode.items():
+                assert op_name in TpuLang.graph.contained_func, f"Op '{op_name}' not found in graph"
+                assert (lower_mode :=
+                        mode.lower()) in support_quant_mode, f"Invalid quant mode: {mode}"
+                spec_op_mode[op_name] = lower_mode.upper()
+            qtable = ",".join(f"{op.outputs[0].name}:{spec_op_mode[op.src_func]}"
+                              for op in TpuLang.graph.operators if op.src_func in spec_op_mode)
 
     # [NOTE] Please sync options for no_save !!!
     if not no_save:
@@ -5404,8 +5413,8 @@ def interpolate(input: Tensor,
                 method: str = 'nearest',
                 coord_mode: str = "pytorch_half_pixel",
                 out_name: str = None):
-    input_dims = len(input.shape)
-    assert input_dims >= 2, f"input dims expect >=2 but get {input_dims}"
+    # input_dims = len(input.shape)
+    # assert input_dims >= 2, f"input dims expect >=2 but get {input_dims}"
     assert scale_h > 0, f"scale_h:{scale_h} is not valid"
     assert scale_w > 0, f"scale_w:{scale_w} is not valid"
     assert method in ['nearest', 'linear'], f"method:{method} is not supported"
