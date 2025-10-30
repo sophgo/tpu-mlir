@@ -2947,24 +2947,40 @@ class ONNX_IR_TESTER(object):
 
         class Model(nn.Module):
 
-            def __init__(self):
+            def __init__(self,
+                         in_channels=128,
+                         out_channels=128,
+                         kernel_size=4,
+                         stride=2,
+                         padding=0,
+                         output_padding=0,
+                         groups=128,
+                         bias=False,
+                         dilation=1):
                 super(Model, self).__init__()
-                self.deconv = nn.ConvTranspose2d(in_channels=128,
-                                                 out_channels=128,
-                                                 kernel_size=4,
-                                                 stride=2,
-                                                 padding=0,
-                                                 output_padding=0,
-                                                 groups=128,
-                                                 bias=False,
-                                                 dilation=1)
+                self.deconv = nn.ConvTranspose2d(in_channels=in_channels,
+                                                 out_channels=out_channels,
+                                                 kernel_size=kernel_size,
+                                                 stride=stride,
+                                                 padding=padding,
+                                                 output_padding=output_padding,
+                                                 groups=groups,
+                                                 bias=bias,
+                                                 dilation=dilation)
 
             def forward(self, x):
                 y = self.deconv(x)
                 return y
 
-        x = torch.randn(1, 128, 24, 44).float()
-        self.torch_and_test(x, Model(), case_name)
+        self.torch_and_test(torch.randn(1, 128, 24, 44).float(), Model(), case_name + "_1")
+        self.torch_and_test(
+            torch.randn(1, 32, 160, 160).float(), Model(32, 32, 3, 2, 1, 1, 32, True, 1),
+            case_name + "_2")
+        self.torch_and_test(torch.randn(1, 32, 160, 160).float(),
+                            Model(32, 32, 3, 2, 1, 1, 32, True, 1),
+                            case_name + "_3",
+                            quant_input_setting=True,
+                            quant_output_setting=True)
 
     def test_DeconvDynW(self, case_name):
 
