@@ -486,7 +486,8 @@ class SearchQtable:
             base_float_layers = self.args.max_float_layers
             self.args.max_float_layers = len(layer_names_quant) // 5
             set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, False)
-            mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
+            total_fp_layers_analysis = set_fp_layer_list + self.fixed_fp_layers
+            mix_table = self.mix_prec._gen_mix_table(total_fp_layers_analysis)
             mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
             outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers,
                                                   layers_rate, predictions_gt)
@@ -501,7 +502,8 @@ class SearchQtable:
                     self.args.max_float_layers = (lower_bound + upper_bound) // 2
                     set_fp_layer_list = self.analysis_sensitive_layers(
                         sensitive_layer_analysis_dict, False)
-                    mix_table = self.mix_prec._gen_mix_table(set_fp_layer_list)
+                    total_fp_layers_analysis = set_fp_layer_list + self.fixed_fp_layers
+                    mix_table = self.mix_prec._gen_mix_table(total_fp_layers_analysis)
                     mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
                                              mix_table)
                     outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers,
@@ -522,9 +524,15 @@ class SearchQtable:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# sample number: {}\n".format(self.mix_prec.num_sample))
             f.write("# chip: {}  mix_mode: {}\n".format(self.mix_prec.chip, self.mix_prec.mix_mode))
+            f.write("# number of {} shape_pattern_match layer: {}\n".format(
+                self.mix_prec.mix_mode, len(self.fixed_fp_layers)))
             f.write("# number of {} layer: {}\n".format(self.mix_prec.mix_mode, len(fp_layer_list)))
             f.write("###\n")
             f.write("# op_name   quantize_mode\n")
+            f.write("# mix_prec layers by shape_pattern_matching identification\n")
+            for layer in self.fixed_fp_layers:
+                f.write("{} {}\n".format(layer, self.mix_prec.mix_mode))
+            f.write("# mix_prec layers by qtable_search\n")
             for layer in fp_layer_list:
                 f.write("{} {}\n".format(layer, self.mix_prec.mix_mode))
         self.mix_prec.logger.print_info(f'int8 outputs_cos:{all_int8_cos:.6f} old')
@@ -645,9 +653,13 @@ class SearchQtable:
         del int8_model
 
         #step4: search sensitive layer
+        t1 = time.time()
         sensitive_layer_analysis_dict, new_cali_table_name, loss_dict = self.search_sensitve_layer(
             layer_names, quantize_method_list, layer_th_dicts, global_compare_layers, layers_rate,
             predictions_gt)
+        t2 = time.time()
+        self.mix_prec.logger.print_info("total time of sensitive_layer search is: {}".format(t2 -
+                                                                                             t1))
 
         #step5: analysis sensitive layers
         self.mix_prec.enable_print()

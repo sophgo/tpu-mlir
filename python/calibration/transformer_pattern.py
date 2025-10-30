@@ -291,6 +291,7 @@ class MatchPattern:
         all_tensors = self.parser.get_op_name_list()
         num_tensors = len(all_tensors)
         model_block_name = None
+        append_unduplicated = lambda lst, item: lst.append(item) if item not in lst else None
 
         if self.args.part_quantize:
             for j in range(num_tensors):
@@ -298,7 +299,7 @@ class MatchPattern:
                 if op_type in self.quantize_ops:
                     pass
                 else:
-                    fp_layer_list.append(all_tensors[j])
+                    append_unduplicated(fp_layer_list, all_tensors[j])
 
         for i in range(num_tensors):
             op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
@@ -362,12 +363,21 @@ class MatchPattern:
                         current_op = ops_after_last_conv.pop(0)
                         if current_op in fp_layer_list:
                             continue
-                        fp_layer_list.append(current_op)
+                        append_unduplicated(fp_layer_list, current_op)
                         next_ops = self.parser.get_next_op_by_op_name(current_op)
                         ops_after_last_conv.extend(next_ops)
 
                 for item in fp_layer_list:
-                    split_fuse_fp_layer_list.extend(split_fuseop(item))
+                    if not is_fuseop(item):
+                        if isinstance(item, (list, tuple)):
+                            split_fuse_fp_layer_list.extend(item)
+                        else:
+                            split_fuse_fp_layer_list.append(item)
+                    else:
+                        new_ops = split_fuseop[item]
+                        for op in new_ops:
+                            if op not in fp_layer_list:
+                                split_fuse_fp_layer_list.append(op)
                 return split_fuse_fp_layer_list, flag, self._logs
 
             for i in range(num_tensors):
@@ -376,9 +386,9 @@ class MatchPattern:
                     pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
                     if len(pre_op) == 1 and self.parser.get_op_type_by_op_name(
                             pre_op[0]) == 'top.Add':
-                        fp_layer_list.append(pre_op[0])
+                        append_unduplicated(fp_layer_list, pre_op[0])
                 if op_type == 'top.SiLU' or op_type == 'top.GELU':
-                    fp_layer_list.append(all_tensors[i])
+                    append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'vit_block':
                     first_ln_index = type_tensors_str[:type_tensors_str.find('top.LayerNorm'
                                                                              )].count('top')
@@ -389,13 +399,14 @@ class MatchPattern:
                             next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
                             if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(
                                     next_ops[0]) != 'top.LayerNorm':
-                                fp_layer_list.append(
+                                append_unduplicated(
+                                    fp_layer_list,
                                     all_tensors[i])  # avoid to add top.Add repeatedly
                         else:
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'eva_block':
                     if op_type == 'top.Add':
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                     if op_type == 'top.SiLU':
                         next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
@@ -403,10 +414,10 @@ class MatchPattern:
                             next_next_op = self.parser.get_next_op_by_op_name(next_op[0])
                             next_next_op_type = self.parser.get_op_type_by_op_name(next_next_op[0])
                             if next_next_op_type == 'top.MatMul':
-                                fp_layer_list.append(next_next_op[0])
+                                append_unduplicated(fp_layer_list, next_next_op[0])
                 if model_block_name == '_eva_block' or model_block_name == 'eva02_block_v1':
                     if op_type == 'top.Add':
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'eva02_block' or model_block_name == 'eva02_smc_block':
                     if op_type == 'top.SiLU' and all_tensors[i] in fp_layer_list:
                         fp_layer_list.remove(all_tensors[i])
@@ -417,21 +428,21 @@ class MatchPattern:
                         ]
                         if len(pre_ops) == 2 and any(pre_op_type == 'top.Softmax'
                                                      for pre_op_type in pre_op_types):
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                     if op_type == 'top.Mul':
                         pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
                         pre_op_types = [
                             self.parser.get_op_type_by_op_name(pre_op) for pre_op in pre_ops
                         ]
                         if len(pre_ops) == 1 and pre_op_types[0] == 'top.Softmax':
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                     if op_type == 'top.Add':
                         next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
                         next_op_types = [
                             self.parser.get_op_type_by_op_name(next_op) for next_op in next_ops
                         ]
                         if all(next_op_type != 'top.LayerNorm' for next_op_type in next_op_types):
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'swin_block' or model_block_name == '_swin_block' or model_block_name == 'swin_1_block':
                     if op_type == 'top.LayerNorm':
                         pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
@@ -440,18 +451,18 @@ class MatchPattern:
                             _pre_op = self.parser.get_pre_op_by_op_name(pre_op[0])
                             if len(_pre_op) == 1 and self.parser.get_op_type_by_op_name(
                                     _pre_op[0]) == 'top.Permute':
-                                fp_layer_list.append(_pre_op[0])
+                                append_unduplicated(fp_layer_list, _pre_op[0])
                     if op_type == 'top.Add':
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == '_swin_1_block':
                     if op_type == 'top.Add' or op_type == 'top.Depth2Space':
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'bert_block' or model_block_name == 'bert_block_1':
                     if op_type == 'top.GELU':
                         next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if next_op_type == 'top.MatMul':
-                            fp_layer_list.append(next_op[0])
+                            append_unduplicated(fp_layer_list, next_op[0])
                 if model_block_name.startswith('insert_mul_bert_block'):
                     if op_type == 'top.GELU' and all_tensors[i] in fp_layer_list:
                         fp_layer_list.remove(all_tensors[i])
@@ -459,12 +470,12 @@ class MatchPattern:
                         next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
                         if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(
                                 next_ops[0]) != 'top.LayerNorm':
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                     elif op_type == 'top.Mul':
                         pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
                         if len(pre_ops) == 1 and self.parser.get_op_type_by_op_name(
                                 pre_ops[0]) == 'top.LayerNorm':
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'detr_block' or model_block_name == 'detr_rc_50_block':
                     if op_type in ['top.Conv', 'top.Scale', 'top.Reshape']:
                         pass
@@ -475,34 +486,34 @@ class MatchPattern:
                                                  or pre_op_type == 'top.Reshape'):
                             pass
                         else:
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                     else:
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == "clip_m2_encoder_block":  # very basic config, need further optimization
                     if op_type == "top.Add":
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'openclip_block':
                     if i >= last_matmul_index or (first_text_mlp_start_index <= i <=
                                                   first_text_mlp_end_index):
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                     elif op_type in [
                             'top.Abs', 'top.Reduce', 'top.Sqrt', 'top.Softmax', 'top.Gather',
                             'top.Slice', 'top.Squeeze', 'top.Arg', 'top.Concat'
                     ]:
-                        fp_layer_list.append(all_tensors[i])
+                        append_unduplicated(fp_layer_list, all_tensors[i])
                     elif op_type == 'top.Div':
                         # Div op name will be changed by adding '_inv' suffix when deploying.
-                        fp_layer_list.append(f'{all_tensors[i]}_inv')
+                        append_unduplicated(fp_layer_list, f'{all_tensors[i]}_inv')
                     elif op_type == 'top.Mul':
                         next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if len(next_op) == 1 and next_op_type == 'top.Reduce':
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                     elif op_type == 'top.Permute':
                         pre_op = self.parser.get_pre_op_by_op_name(all_tensors[i])
                         pre_op_type = self.parser.get_op_type_by_op_name(pre_op[0])
                         if len(pre_op) == 1 and pre_op_type == 'top.Div':
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
                     elif op_type == 'top.Add':
                         next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
@@ -512,5 +523,5 @@ class MatchPattern:
                         ]
                         if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
-                            fp_layer_list.append(all_tensors[i])
+                            append_unduplicated(fp_layer_list, all_tensors[i])
         return fp_layer_list, flag, self._logs
