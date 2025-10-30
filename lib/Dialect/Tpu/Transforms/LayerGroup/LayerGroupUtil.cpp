@@ -2223,6 +2223,9 @@ static bool backward_update_slice(
         for (auto user : pre_op->getUsers()) {
           if (std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                         user) == lg_info.group_ops.end()) {
+            if (module::isBM1684Family()) {
+              return false;
+            }
             continue;
           }
           if (!is_c_slice_or_other_op(user)) {
