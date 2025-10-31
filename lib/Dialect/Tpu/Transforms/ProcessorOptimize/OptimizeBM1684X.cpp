@@ -421,6 +421,10 @@ public:
             context, "MatMulRemoveReshapePattern", benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
+    auto hdim_is_batch = op.getHdimIsBatch();
+    if (hdim_is_batch) {
+      return failure();
+    }
     auto left_op =
         dyn_cast_or_null<tpu::ReshapeOp>(op.getInput().getDefiningOp());
     auto right_op =
