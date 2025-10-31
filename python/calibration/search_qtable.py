@@ -580,6 +580,7 @@ class SearchQtable:
         all_op_names = self.parser.get_op_name_list()
         all_op_names = get_no_fused_tensors(self.parser, all_op_names)
         quantize_method_list = [x.lower() for x in self.quantize_method_list]
+        suffix = "_tune" if self.args.tune_num > 0 else ""
         calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)
         calibrator.calibration_method = quantize_method_list
         layer_th_dicts = calibrator.gen_multiple_thresholds(all_op_names, quantize_method_list)
@@ -587,11 +588,11 @@ class SearchQtable:
         self.mix_prec.logger.print_info("quantize_method_list={}".format(quantize_method_list))
 
         try:
-            mse_cali_table = self.args.calibration_table + "_mse_tune"
+            mse_cali_table = self.args.calibration_table + "_mse" + suffix
             with open(mse_cali_table, 'r') as file:
                 data = file.read()
         except Exception as e:
-            _cali_table = self.args.calibration_table + "_" + quantize_method_list[0] + "_tune"
+            _cali_table = self.args.calibration_table + "_" + quantize_method_list[0] + suffix
             with open(_cali_table, 'r') as file:
                 data = file.read()
         with open(self.cali_table_name, 'w') as file:
