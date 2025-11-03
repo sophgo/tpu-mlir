@@ -31,7 +31,6 @@ std::unique_ptr<OperationPass<ModuleOp>> createOpDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createDevParallelPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCoreParallelPass();
 std::unique_ptr<OperationPass<ModuleOp>> createWeightFoldPass();
-std::unique_ptr<OperationPass<ModuleOp>> createDDRInterleavePass();
 std::unique_ptr<OperationPass<ModuleOp>> createShapeOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createShowAddressPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTruncIOPass();

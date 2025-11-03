@@ -78,128 +78,6 @@ static int64_t getIOLimit(ModuleOp m) {
   return limit;
 }
 
-std::set<ValueInfo> _8ChannelAssign(std::map<ValueInfo, TensorLive> &liveRange,
-                                    bool reuse_addr) {
-  if (!module::isBM1690Family())
-    return {};
-
-  std::set<ValueInfo> _8chOut;
-  std::set<ValueInfo> _32chIn;
-  std::map<ValueInfo, TensorLive> _8channelLiveRange;
-  std::set<ValueInfo> AllSplitOpAndJoinOp;
-  int64_t start_addr = 0;
-  ValueInfo last_value;
-
-  for (auto rit = liveRange.rbegin(); rit != liveRange.rend(); ++rit) {
-    auto value = (*rit).first;
-    auto live = (*rit).second;
-    auto op = (Operation *)value.op;
-    if (!isa<tpu::CoreParallelOp>(op)) {
-      continue;
-    }
-    int op_splits = 0;
-    for (auto &inner_op : op->getRegion(0).getOps()) {
-      if (!isa<tpu::JoinOp>(inner_op))
-        continue;
-      op_splits = inner_op.getNumOperands();
-      break;
-    }
-
-    auto result = op->getResult(0);
-    ValueInfo new_value;
-    int OnceFlag = 1;
-    for (auto &use : result.getUses()) {
-      if (isa<tpu::SplitOp>(use.getOwner())) {
-        // this break is used to hack for tpu::ConvOp, when there are too few to
-        // split into 8channels
-        if (use.getOwner()->getNumResults() != op_splits) {
-          break;
-        }
-
-        if (OnceFlag) {
-          _8chOut.insert(value);
-          op->walk([&](tpu::JoinOp join_op) {
-            uint32_t per_size = Arch::get_gmem_bytes(join_op.getOperand(0));
-            _8channelLiveRange.insert(std::pair<ValueInfo, TensorLive>(
-                value, TensorLive(live.start, live.end, per_size)));
-            AllSplitOpAndJoinOp.insert(value);
-          });
-          OnceFlag = 0;
-        }
-
-        int cur_id = -use.getOperandNumber() - 1;
-        new_value = ValueInfo(use.getOwner(), cur_id);
-        AllSplitOpAndJoinOp.insert(new_value);
-      }
-    }
-  }
-
-  auto getValues = [](std::map<ValueInfo, TensorLive> &valueMap) {
-    std::vector<ValueInfo> values;
-    values.reserve(valueMap.size());
-    for (auto &[key, v] : valueMap)
-      values.push_back(key);
-    return std::move(values);
-  };
-
-  auto ops = getValues(_8channelLiveRange);
-  std::map<ValueInfo, int64_t> _8ChannelMap;
-  if (!ops.empty()) {
-    // FitFirstAssign should make sure op's start liverange ascendingly
-    GmemAllocator::sortOpByLiveStart(ops, _8channelLiveRange);
-    GmemAllocator allocator(_8ChannelMap, BM168x::ALIGNMENT);
-    auto _8channelUsed =
-        allocator.assignGaddr(ops, _8channelLiveRange, reuse_addr, start_addr);
-    LLVM_DEBUG(llvm::dbgs() << "_8channel Memory Each usage(without weight): "
-                            << _8channelUsed / (1 << 20) << " MB\n");
-  }
-
-  for (auto &valueInfo : AllSplitOpAndJoinOp) {
-    auto op = (Operation *)valueInfo.op;
-    if (!isa<tpu::CoreParallelOp>(op))
-      continue;
-    int64_t offset;
-
-    auto setCPAttr = [&op](auto &OpValue, auto &offset) {
-      auto valueType =
-          dyn_cast_or_null<mlir::RankedTensorType>(OpValue.getType());
-      auto valueAttr = valueType.getEncoding();
-      if (isa_and_present<tpu::CPInterleaveAttr>(valueAttr)) {
-        return;
-      }
-      auto context = op->getContext();
-      auto index_init = -1;
-      auto ddrAttr = tpu::CPInterleaveAttr::get(context, index_init, offset, 0);
-      auto ddrType = mlir::RankedTensorType::get(
-          valueType.getShape(), valueType.getElementType(), ddrAttr);
-      OpValue.setType(ddrType);
-    };
-
-    auto getOffset = [&](auto valueInfo) {
-      if (_8ChannelMap.count(valueInfo) != 0) {
-        offset = _8ChannelMap[valueInfo];
-      } else {
-        offset = -1;
-      }
-      return offset;
-    };
-
-    if (valueInfo.index >= 0) {
-      auto result = op->getResult(0);
-      offset = getOffset(valueInfo);
-      setCPAttr(result, offset);
-    } else {
-      auto operand = op->getOperand(-valueInfo.index - 1);
-      auto prev_op = op->getPrevNode();
-      assert(isa<tpu::CoreParallelOp>(prev_op));
-      assert(prev_op->getResult(0) == operand);
-      offset = getOffset(ValueInfo(prev_op, -1));
-      setCPAttr(operand, offset);
-    }
-  }
-  return std::move(_8chOut);
-}
-
 static void fix_addr_for_io_tag(mlir::ModuleOp &m, int64_t start, int64_t limit,
                                 int64_t offset) {
   for (auto func : m.getOps<FuncOp>()) {
@@ -532,71 +410,35 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
     }
   }
   // step 3: set parallel Op address
-  auto If8channel = [](auto &checkOp, bool isSplitOp) {
-    mlir::RankedTensorType valueType;
-    if (isSplitOp) {
-      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
-          ((tpu::SplitOp)checkOp).getOperand().getType());
-    } else {
-      valueType = dyn_cast_or_null<mlir::RankedTensorType>(
-          checkOp.getResult(0).getType());
-    }
-    auto ddrAttr =
-        dyn_cast_or_null<tpu::CPInterleaveAttr>(valueType.getEncoding());
-    return ddrAttr;
-  };
   for (auto func : m.getOps<FuncOp>()) {
     func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp parallelOp) {
-      auto ifCPOut8ch = If8channel(parallelOp, false);
       for (auto &op : parallelOp.getRegion().getOps()) {
         llvm::TypeSwitch<Operation &>(op)
             .Case([&](tpu::SplitOp splitOp) {
-              auto ifSplitOp8ch = If8channel(splitOp, true);
-              if (!isa_and_present<tpu::CPInterleaveAttr>(ifSplitOp8ch)) {
-                int64_t address = module::getAddress(splitOp->getOperand(0));
-                if (address != 0) {
-                  for (auto v : splitOp->getResults()) {
-                    module::setAddress(v, address);
-                    address += module::getBytes(v);
-                  }
-                }
-              } else {
-                for (auto [index, v] : llvm::enumerate(splitOp->getResults())) {
-                  int64_t offset = ifSplitOp8ch.getOffset();
-                  module::set8chAddress(v, index, offset, -1);
+              int64_t address = module::getAddress(splitOp->getOperand(0));
+              if (address != 0) {
+                for (auto v : splitOp->getResults()) {
+                  module::setAddress(v, address);
+                  address += module::getBytes(v);
                 }
               }
             })
             .Case([&](tpu::YieldOp yieldOp) {
-              if (!isa_and_present<tpu::CPInterleaveAttr>(ifCPOut8ch)) {
-                for (auto [joinOpValue, returnType] :
-                     llvm::zip(yieldOp->getOperands(),
-                               parallelOp->getResultTypes())) {
-                  joinOpValue.setType(returnType);
-                  if (!isa<tpu::JoinOp>(joinOpValue.getDefiningOp()))
-                    continue;
-                  int64_t address = module::getAddress(joinOpValue);
-                  if (address == 0) {
-                    continue;
-                  }
-                  for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
-                    if (v.getType().isa<NoneType>()) {
-                      continue;
-                    }
-                    module::setAddress(v, address);
-                    address += module::getBytes(v);
-                  }
+              for (auto [joinOpValue, returnType] : llvm::zip(
+                       yieldOp->getOperands(), parallelOp->getResultTypes())) {
+                joinOpValue.setType(returnType);
+                if (!isa<tpu::JoinOp>(joinOpValue.getDefiningOp()))
+                  continue;
+                int64_t address = module::getAddress(joinOpValue);
+                if (address == 0) {
+                  continue;
                 }
-              } else {
-                for (auto [joinOpValue, returnType] :
-                     llvm::zip(yieldOp->getOperands(),
-                               parallelOp->getResultTypes())) {
-                  joinOpValue.setType(returnType);
-                  int64_t offset = ifCPOut8ch.getOffset();
-                  for (auto [index, v] : llvm::enumerate(
-                           joinOpValue.getDefiningOp()->getOperands())) {
-                    module::set8chAddress(v, index, offset, -1);
+                for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
+                  if (v.getType().isa<NoneType>()) {
+                    continue;
                   }
+                  module::setAddress(v, address);
+                  address += module::getBytes(v);
                 }
               }
             });
@@ -803,29 +645,6 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       }
       updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops, inplace_ops,
                              alignment);
-    }
-  }
-
-  // 8 channel
-  // clang-format off
-  // Tested: test_onnx.py with bm1690 f32 mode multicore.
-  // Details: 8channel will only be activated when there are multiple
-  //          continuous CoreParallelOp. the input of the 1st CoreParallelOp
-  //          will be 32ch, the output of the final CoreParallelOp will
-  //          be 32ch, the connections of these CoreParallelOp will be 8ch.
-  // TODO: Support LayerGroupOp, single core and other mode<int8,f16,bf16>
-  // clang-format on
-  auto env_8ch = std::getenv("USING_8CH");
-  if (env_8ch) {
-    auto _8channelValueInfo = _8ChannelAssign(liveRange, reuse_addr);
-    if (!_8channelValueInfo.empty()) {
-      std::vector<ValueInfo> values;
-      values.reserve(common_ops.size());
-      for (auto v : common_ops) {
-        if (_8channelValueInfo.count(v) == 0)
-          values.push_back(v);
-      }
-      common_ops.swap(values);
     }
   }
 

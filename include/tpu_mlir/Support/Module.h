@@ -158,7 +158,6 @@ void updateModuleTypes();
 void removeUnusedOp();
 int64_t getAddress(Value v);
 void setAddress(Value v, int64_t addr);
-void set8chAddress(Value v, size_t index, int64_t offset, int64_t addr);
 void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
              bool left_align = true);
 void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
