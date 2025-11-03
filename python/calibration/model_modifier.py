@@ -185,7 +185,7 @@ class ModelModifier:
             new_out = top.ReshapeOp(
                 self.unranked_type,
                 *args,
-                shape=[_.value for _ in kwargs['shape']],
+                shape=[_ if isinstance(_, int) else _.value for _ in kwargs['shape']],
                 ip=kwargs['ip'],
                 loc=kwargs['loc'],
             ).output

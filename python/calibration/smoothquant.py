@@ -75,11 +75,17 @@ class SmoothQuant(ModelModifier):
                                 weight_file=self.parser.module_weight_file)
         self.unranked_type = new_mlir.get_tensor_type([])
 
-        idx2operand = {0: new_mlir.none_op}
-        idx2name = {0: ''}
+        if Operation.type(self.parser.body.operations[0]) == 'top.None':
+            idx2operand = {0: new_mlir.none_op}
+            idx2name = {0: ''}
+            input_offset = 1
+        else:
+            idx2operand = {}
+            idx2name = {}
+            input_offset = 0
         # create input ops
         for i, name in enumerate(self.module.input_names):
-            op = self.parser.body.operations[i + 1]
+            op = self.parser.body.operations[i + input_offset]
             attrs = op.attributes
             name = Operation.name(op)
             kwargs = {}
@@ -90,13 +96,16 @@ class SmoothQuant(ModelModifier):
                     kwargs[a.name] = [_.value for _ in a.attr]
             input_ = new_mlir.create_input_op(
                 Location.fused([Location.name(name)], context=new_mlir.ctx), i, kwargs)
-            idx2operand[i + 1] = input_
-            idx2name[i + 1] = name
+            idx2operand[i + input_offset] = input_
+            idx2name[i + input_offset] = name
 
         ln2mulout = {}  # layernorm to mul output mapping, used to replace matmul input
         return_idx = []
         # insert other ops
-        for i in range(len(self.module.input_names) + 1, len(self.parser.body.operations) - 1):
+        shape_map = self.parser.get_middle_op_names_n_shape_type()
+        for i in range(
+                len(self.module.input_names) + input_offset,
+                len(self.parser.body.operations) - 1):
             op = self.parser.body.operations[i]
             op_type = Operation.type(op)
             attrs = op.attributes
@@ -114,6 +123,8 @@ class SmoothQuant(ModelModifier):
                 new_out = new_mlir.create_weight_op(name, weight_shape)
                 self.module_weights[name] = self.module_weights[name].reshape(weight_shape)
             else:
+                if op_type == 'top.Reshape' and 'shape' not in kwargs:
+                    kwargs['shape'] = shape_map[name].shape
                 new_out = self.insert_origin_op(op_type, args, kwargs)
             if new_out is None: return  # fail to insert, stop inserting mul
 
