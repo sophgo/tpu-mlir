@@ -153,7 +153,7 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
              ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp, WhereOp,
              BatchNormBwdOp, LutOp, BinaryConstShiftOp, BinaryShiftOp,
-             AddConstOp, ReduceOp, ClipOp, DivOp, RopeOp>(op)) {
+             AddConstOp, ReduceOp, ClipOp, DivOp, RopeOp, ConcatOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -1218,8 +1218,8 @@ void GroupMethod::dynamic_programming_kernel(
                       idx_offset);
       int64_t group_cost = MAX_COST;
       auto temp_status = is_layer_group_valid(lg_info, true, &group_cost);
-      llvm::dbgs() << temp_status << " ;start" << start << " - "
-                   << " end " << end << " = " << group_cost << "\n";
+      llvm::dbgs() << temp_status << " ;start" << start << " - " << " end "
+                   << end << " = " << group_cost << "\n";
       start = end + 1;
     }
 
@@ -1227,16 +1227,14 @@ void GroupMethod::dynamic_programming_kernel(
     llvm::dbgs() << "================FINAL GROUP================\n";
     for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
       for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
-        llvm::dbgs() << cut_points[cost_i][cost_j] << ", "
-                     << "";
+        llvm::dbgs() << cut_points[cost_i][cost_j] << ", " << "";
       }
       llvm::dbgs() << "\n";
     }
     llvm::dbgs() << "================COST TABLE================\n";
     for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
       for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
-        llvm::dbgs() << cost_table[cost_i][cost_j] << ", "
-                     << "";
+        llvm::dbgs() << cost_table[cost_i][cost_j] << ", " << "";
       }
       llvm::dbgs() << "\n";
     }
@@ -1680,26 +1678,20 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
               &left_sub_group, &right_sub_group, &left_first, seq_info);
 
           DEBUG_WITH_TYPE("lg_cost", {
-            llvm::dbgs() << "; action = "
-                         << "lg_cost"
+            llvm::dbgs() << "; action = " << "lg_cost"
                          << "; start_idx = " << left_cut_idx
                          << "; end_idx = " << cut_result[j]
                          << "; group_cost = " << seq_info.left_cost
                          << "; group_idx = " << i << "; step = "
                          << "consider_redundant_computation_and_gdma_cost"
-                         << "; part = "
-                         << "left"
-                         << "\n";
-            llvm::dbgs() << "; action = "
-                         << "lg_cost"
+                         << "; part = " << "left" << "\n";
+            llvm::dbgs() << "; action = " << "lg_cost"
                          << "; start_idx = " << cut_result[j] + 1
                          << "; end_idx = " << cut_result[j + 1]
                          << "; group_cost = " << seq_info.right_cost
                          << "; group_idx = " << i << "; step = "
                          << "consider_redundant_computation_and_gdma_cost"
-                         << "; part = "
-                         << "right"
-                         << "\n";
+                         << "; part = " << "right" << "\n";
           });
           if (is_better) {
             optimal_cut_idx = cut_result[j];
@@ -1750,13 +1742,9 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
             llvm::dbgs() << "; start_idx = " << start_cut_idx
                          << "; end_idx = " << cut_idx
                          << "; group_cost = " << left_group_cost
-                         << "; group_idx = " << i << "; action = "
-                         << "lg_cost"
-                         << "; step = "
-                         << "merge_cut_idx_to_reduce_gdma_cost"
-                         << "; part = "
-                         << "left"
-                         << "\n";
+                         << "; group_idx = " << i << "; action = " << "lg_cost"
+                         << "; step = " << "merge_cut_idx_to_reduce_gdma_cost"
+                         << "; part = " << "left" << "\n";
           });
         }
         // get right sub_group
@@ -1768,13 +1756,9 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
           llvm::dbgs() << "; start_idx = " << cut_idx + 1
                        << "; end_idx = " << end_cut_idx
                        << "; group_cost = " << right_group_cost
-                       << "; group_idx = " << i << "; action = "
-                       << "lg_cost"
-                       << "; step = "
-                       << "merge_cut_idx_to_reduce_gdma_cost"
-                       << "; part = "
-                       << "right"
-                       << "\n";
+                       << "; group_idx = " << i << "; action = " << "lg_cost"
+                       << "; step = " << "merge_cut_idx_to_reduce_gdma_cost"
+                       << "; part = " << "right" << "\n";
         });
 
         // get combine group
@@ -1786,10 +1770,9 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
               llvm::dbgs() << "; start_idx = " << start_cut_idx
                            << "; end_idx = " << end_cut_idx
                            << "; group_cost = " << combine_group_cost
-                           << "; group_idx = " << i << "; action = "
-                           << "lg_cost"
-                           << "; step = "
-                           << "merge_cut_idx_to_reduce_gdma_cost"
+                           << "; group_idx = " << i
+                           << "; action = " << "lg_cost"
+                           << "; step = " << "merge_cut_idx_to_reduce_gdma_cost"
                            << "\n";
             });
             DEBUG_WITH_TYPE("cut_optimize", {
@@ -2077,8 +2060,7 @@ void GroupMethod::show_cut_results() {
       int64_t start_idx = 0;
       for (size_t j = 0; j < cut_result.size(); ++j) {
         int64_t end_idx = cut_result[j];
-        llvm::dbgs() << "; action = cut_optimize"
-                     << "; step = show_cut_results"
+        llvm::dbgs() << "; action = cut_optimize" << "; step = show_cut_results"
                      << "; range = " << start_idx << "-" << end_idx
                      << "; group_idx = " << i << "\n";
         start_idx = end_idx + 1;
@@ -2502,8 +2484,7 @@ void GroupMethod::load_lg_results(
       llvm_unreachable("group_cost is not valid");
     }
     DEBUG_WITH_TYPE("lg_cost", {
-      llvm::dbgs() << "; action = lg_cost"
-                   << "; step = group_layer"
+      llvm::dbgs() << "; action = lg_cost" << "; step = group_layer"
                    << "; start_idx = " << lg_info.start_idx
                    << "; end_idx = " << lg_info.end_idx
                    << "; group_idx = " << lg_info.base_group_idx
