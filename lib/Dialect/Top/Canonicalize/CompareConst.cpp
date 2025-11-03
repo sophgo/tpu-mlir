@@ -27,6 +27,7 @@ struct CompareConstWhereToMinConst
     if (op.getMode().str() == "Less" && op.getResult().hasOneUse() &&
         isa<WhereOp>(*op.getResult().getUsers().begin())) {
       auto where_op = dyn_cast<WhereOp>(*op.getResult().getUsers().begin());
+      auto where_loc = module::getLoc(where_op.getOutput());
       if (where_op.getXIsConst()) {
         auto where_c_v = where_op.getXConstVal().convertToDouble();
         if (compare_c_v == where_c_v) {
@@ -34,8 +35,9 @@ struct CompareConstWhereToMinConst
           attrs.push_back(rewriter.getNamedAttr(
               "const_val", rewriter.getF64FloatAttr(compare_c_v)));
           where_op.replaceAllUsesWith(op.getOutput());
-          rewriter.replaceOpWithNewOp<MinConstOp>(op, op.getOutput().getType(),
-                                                  op.getInput(), attrs);
+          auto new_ctx = rewriter.replaceOpWithNewOp<MinConstOp>(
+              op, op.getOutput().getType(), op.getInput(), attrs);
+          module::setLoc(new_ctx, where_loc);
         }
       }
     }
