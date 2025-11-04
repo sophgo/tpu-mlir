@@ -9,13 +9,13 @@ if [ "$1" = "op" ]; then
     rebuild_custom_backend
     rebuild_custom_firmware_cmodel bm1684x
     rebuild_custom_firmware_cmodel bm1688
-    pip show openai || pip install openai
-    python3 $PROJECT_ROOT/regression/llm_code_reviewer/gerrit_compare.py tpu-mlir
     $REGRESSION_PATH/main_entry.py --test_type basic --test_set torch
 elif [ "$1" = "script" ]; then
     echo "::RUN check tests and unit tests."
     cmake --build ${BUILD_PATH} --target check-tpumlir
     echo "::RUN script and model test."
+    pip show openai || pip install openai
+    python3 $PROJECT_ROOT/regression/llm_code_reviewer/gerrit_compare.py tpu-mlir
     $REGRESSION_PATH/main_entry.py --test_type basic --test_set script model
 elif [ "$1" = "model" ]; then
     echo "::RUN operation set 1 test."
