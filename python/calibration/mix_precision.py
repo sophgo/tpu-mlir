@@ -1024,7 +1024,18 @@ class MixPrecSearcher:
                                             all_pre_layers, all_int8_cos)
         self.print_log_info(layer_cos_list, fp_layer_list, all_int8_cos, outputs_cos, t0)
 
+    def precheck_bc(self, top_ops):
+        if not any(
+                getattr(op, 'type', None) == 'top.Conv' and len(getattr(op, 'opds', [])) > 2
+                for op in (top_ops.values() if hasattr(top_ops, 'values') else top_ops)):
+            self.logger.print_info(
+                f'There is no Conv op with bias in this model(maybe NLP model). You do not have to use bias correction.'
+            )
+            raise SystemExit(0)
+
     def run_bias_correction(self):
+        top_ops = {op.name: op for op in self.parser.ops}
+        self.precheck_bc(top_ops)
         self.logger.print_info("run_bias_correction start")
         t0 = time.time()
         layer_cos_list = list()
@@ -1096,7 +1107,6 @@ class MixPrecSearcher:
         self.dot_log = net_dot_log('bias_correction', int8_model.parser, self.logger)
         self.dot_log.add_new_log_region('compute cos and run bias correction')
         fp_op_names = float_model.parser.get_op_name_list()
-        top_ops = {op.name: op for op in self.parser.ops}
         int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table)
         int8_op_names = int8_model.parser.get_op_name_list()
         full_op_list, cur_fp_op_idx = {}, 0
@@ -1159,7 +1169,10 @@ class MixPrecSearcher:
                 self.dot_log.add_node_label(op.name,
                                             f'not in all_pre_layers of compare layer, continue')
                 continue
+
             top_op = top_ops[op.name]
+            if not (top_op.type == 'top.Conv' and len(top_op.opds) > 2):
+                continue
             layer_cos, int8_mean, fp32_mean = 0, 0, 0
             for idx in range(self.num_sample):
                 int8_out = self.get_input_int8_tensor(idx, top_op.name, True)
@@ -1169,8 +1182,7 @@ class MixPrecSearcher:
                 layer_cos += cos_sim(int8_out, fp32_out)
             old_layer_cos = layer_cos / self.num_sample
             print(f'old_layer_cos:{old_layer_cos:.6f}')
-            if old_layer_cos < self.args.min_layer_cos and top_op.type == 'top.Conv' and len(
-                    top_op.opds) > 2:
+            if old_layer_cos < self.args.min_layer_cos:
                 weight_file_dict = {}
                 weight_file = np.load(weight_file_name)
                 os.system(f'cp -f {weight_file_name} {weight_file_name}_tmpbk')
