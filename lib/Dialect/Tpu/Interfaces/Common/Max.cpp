@@ -49,6 +49,7 @@ LogicalResult tpu::MaxOp::inference(InferenceParameter &p) {
       .setup();
 
   binary->run();
+  deinit(p);
   return success();
 }
 

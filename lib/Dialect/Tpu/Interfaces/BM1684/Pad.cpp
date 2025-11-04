@@ -71,6 +71,7 @@ void tpu::PadOp::codegen_global_bm1684() {
           in_shape[3], p_pad, type, constant,
           (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
+    delete[] p_pad;
   } else if (dims == 5) {
     int in_shape[5] = {0};
     module::getGlobalShape(getInput(), in_shape);
@@ -96,6 +97,7 @@ void tpu::PadOp::codegen_global_bm1684() {
           in_shape[2], in_shape[3], in_shape[4], p_pad, type, constant,
           (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
+    delete[] p_pad;
   }
 }
 

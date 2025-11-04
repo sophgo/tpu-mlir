@@ -19,8 +19,8 @@ void tpu::MaskedFillOp::codegen_global_bm1684() {
   auto input_addr = module::getAddress(input);
   auto top_addr = module::getAddress(getOutput());
   float value = getConstVal().convertToDouble();
-  int *input_shape = new int[MAX_SHAPE_DIMS];
-  int *mask_shape = new int[MAX_SHAPE_DIMS];
+  int input_shape[MAX_SHAPE_DIMS];
+  int mask_shape[MAX_SHAPE_DIMS];
   int input_dims = module::getShape(input).size();
   int mask_dims = module::getShape(mask).size();
 

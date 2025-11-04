@@ -102,6 +102,8 @@ LogicalResult tpu::CastAddOp::inference(InferenceParameter &p) {
     UNREACHABLE_THIS(0);
   }
 
+  deinit(p);
+
   return success();
 }
 

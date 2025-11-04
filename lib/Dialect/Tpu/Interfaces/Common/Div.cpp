@@ -75,6 +75,7 @@ LogicalResult tpu::DivOp::inference(InferenceParameter &p) {
   } else if (out_type.isBF16()) {
     BF16(dst, dst, num_elements);
   }
+  delete binary;
   return success();
 }
 

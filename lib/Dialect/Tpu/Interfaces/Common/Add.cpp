@@ -256,6 +256,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     }
   }
 
+  deinit(p);
   return success();
 }
 

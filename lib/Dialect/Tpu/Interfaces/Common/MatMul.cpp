@@ -436,7 +436,11 @@ void tpu::MatMulOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
-  auto matmul = new MatMul();
+  if (p.handle == nullptr) {
+    init(p);
+  }
+  auto matmul = (MatMul *)p.handle;
+
   auto a = dynparseParam();
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
                 a.batch_low, a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
@@ -547,6 +551,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     }
   }
 
+  deinit(p);
   return success();
 }
 

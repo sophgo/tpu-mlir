@@ -30,6 +30,7 @@ void tpu::ReverseOp::codegen_global_bm1684() {
   } else {
     UNREACHABLE_THIS("Not Implemented");
   }
+  delete[] input_shape;
 }
 
 uint32_t tpu::ReverseOp::dyn_codegen_global_bm1684(void *ir_layer_info) {

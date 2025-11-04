@@ -54,6 +54,7 @@ void tpu::ReduceOp::codegen_global_bm1684() {
         axis_num, method, keep_dims, bottom_sign, store_mode, bottom_scale,
         top_scale, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
+  delete[] input_shape;
 }
 
 uint32_t tpu::ReduceOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
