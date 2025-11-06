@@ -67,7 +67,7 @@ void flash_attention_bf16_v1(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
     auto out_sub_global =
         out_global_tensor.sub_view(q_sub_shape, sub_offset).view(q_sub_reshape);
     for (int _h = q_head_start; _h < q_head_end; _h += block_h_iter) {
-      int real_q_h = min(block_h_iter, q_head - _h);
+      int real_q_h = min(block_h_iter, q_head_end - _h);
       real_q_h = min(real_q_h, block_h);
       int real_kv_h = real_q_h / head_rep;
       for (int _m = 0; _m < qm; _m += block_m) {
@@ -211,7 +211,6 @@ void flash_attention_bf16_v1(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
         dma::store_transpose_nc(
             out_sub_global.sub_view(qi_real_global_shape, qkv_offset),
             qkvo_tensor);
-        
       }
     }
   }
@@ -236,7 +235,6 @@ __KERNEL__ void flash_attention_gqa_bf16(
                                 kvm, d, q_head, kv_head, sqrt_d, has_mask,
                                 g_core_num, dmax, block_m, block_k, block_h);
 }
-
 
 using DTYPE = bf16;
 
@@ -264,7 +262,6 @@ __TEST__ void flash_attention_gqa_main() {
   auto ptr_v = ppl::malloc<DTYPE>(&kv_shape);
   auto ptr_mask = ppl::malloc<DTYPE>(&mask_shape);
 
-
   read_npz<DTYPE>(ptr_q, "fa_input.npz", "q_proj_f32");
   read_npz<DTYPE>(ptr_k, "fa_input.npz", "k_cache_f32");
   read_npz<DTYPE>(ptr_v, "fa_input.npz", "v_cache_f32");
@@ -274,6 +271,6 @@ __TEST__ void flash_attention_gqa_main() {
   int has_mask = 1;
   int g_core_num = 1;
   flash_attention_gqa_bf16(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
-                           d, q_head, kv_head, sqrt_d, has_mask, g_core_num, dmax, block_m,
-                           block_k, block_h);
+                           d, q_head, kv_head, sqrt_d, has_mask, g_core_num,
+                           dmax, block_m, block_k, block_h);
 }

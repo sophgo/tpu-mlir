@@ -35,6 +35,7 @@ npz_tool_func = {
     "to_npy": npz_to_npy,
     "cali_test": npz_cali_test,
     "statistic": npz_statistic,
+    "check_nan_inf": npz_check_nan_inf,
 }
 
 

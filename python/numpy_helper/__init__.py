@@ -31,6 +31,20 @@ def get_npz_shape(args):
     exit(0)
 
 
+def npz_check_nan_inf(args):
+    if len(args) < 1:
+        print("Usage: {} check_nan_inf in.npz".format(sys.argv[0]))
+        exit(-1)
+    npz_in = np.load(args[0])
+    for name in npz_in.files:
+        data = npz_in[name]
+        if np.isnan(data).any():
+            print(f"NaN in {name}:{data.shape}")
+        if np.isinf(data).any():
+            print(f"Inf in {name}:{data.shape}")
+    exit(0)
+
+
 def npz_rename(args):
     if len(args) < 2:
         print("Usage: {} rename in.npz name1 name2".format(sys.argv[0]))
