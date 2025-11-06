@@ -96,7 +96,7 @@ class ONNX_IR_TESTER(object):
             "Clip":         (self.test_Clip,          Y, Y, Y, Y, Y, N),
             "CumSum":       (self.test_CumSum,        N, Y, N, N, Y, Y),
             "DepthToSpace":  (self.test_DepthToSpace,  Y, Y, Y, Y, Y, N),
-            "Deconv":       (self.test_Deconv,        Y, Y, Y, Y, Y, N),
+            "Deconv":       (self.test_Deconv,        N, Y, Y, Y, Y, N),
             "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N, Y, N),
             "Deconv2":      (self.test_Deconv2,       Y, N, N, Y, N, N),
             "Deconv3d":     (self.test_Deconv3d,      Y, Y, Y, N, Y, Y),

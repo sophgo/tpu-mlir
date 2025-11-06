@@ -433,8 +433,13 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
           module::setAddress(input, addr + offset);
           input = rop.getInput();
         }
-        if (module::isAddrMode(module::AddrMode::IO_TAG) &&
-            module::getAddress(input) >= BM168x::IO_ADDR[0]) {
+
+        if ((module::isAddrMode(module::AddrMode::IO_TAG) &&
+             module::getAddress(input) >= BM168x::IO_ADDR[0]) ||
+            // in io_alone mode, the io address must always be placed before
+            // other activations
+            (module::isAddrMode(module::AddrMode::IO_ALONE) &&
+             isa<top::InputOp>(input.getDefiningOp()))) {
           continue;
         }
         module::setAddress(input, addr + offset);

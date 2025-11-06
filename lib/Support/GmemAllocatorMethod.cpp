@@ -249,7 +249,6 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
   std::list<std::shared_ptr<OpAddr>> allocated_op_list;
   assert(neuronMemoryReuse);
   for (auto op : ops) {
-    // int addr_idx = findValueAddr(gaddrMap_, tensor);
     uint32_t op_size = liveRange[op].tensor_size;
     std::shared_ptr<OpAddr> op_addr = std::make_shared<OpAddr>(
         op, op_size, liveRange[op].start, liveRange[op].end);
@@ -315,6 +314,37 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
   for (auto &op_addr : allocated_op_list) {
     // update gaddr map by adding base gaddr.
     gaddrMap_[op_addr->op] += baseGaddr;
+  }
+
+  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
+    int64_t io_max_end = 0;
+
+    for (auto op : ops) {
+      auto real_op = static_cast<Operation *>(op.op);
+      if (isa<top::InputOp, ReturnOp>(real_op)) {
+        int64_t op_end = gaddrMap_[op] + liveRange[op].tensor_size;
+        io_max_end = std::max(io_max_end, op_end);
+      }
+    }
+
+    bool io_at_front = true;
+    for (auto op : ops) {
+      auto real_op = static_cast<Operation *>(op.op);
+      if (!isa<top::InputOp, ReturnOp>(real_op)) {
+        int64_t op_addr = gaddrMap_[op];
+        if (op_addr < io_max_end) {
+          io_at_front = false;
+          break;
+        }
+      }
+    }
+
+    if (!io_at_front) {
+      LLVM_DEBUG(llvm::errs()
+                     << "GmemAllocOpSizeOrder: Input/Return ops are not "
+                     << "at front, abandon this method\n";);
+      return std::numeric_limits<int64_t>::max() / 2;
+    }
   }
 
   for (auto op : ops) {

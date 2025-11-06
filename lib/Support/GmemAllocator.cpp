@@ -92,7 +92,7 @@ int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
     if (p) {
       alloc_methods.emplace_back(p);
     } else {
-      assert(0);
+      assert(0 && "GmemAllocatorMethodFactory makeMethod failed");
     }
   }
 
