@@ -48,7 +48,7 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#cv184x sha256: 9b12352c69f5fe838b9289f981784e3adf818676
+#cv184x sha256: 5269ab221e0165915fd04f6cd29fbeb2e2ddd5bf
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
