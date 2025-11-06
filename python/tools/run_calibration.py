@@ -21,7 +21,7 @@ from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
-from calibration.utils import gen_shape_pattern_qtable
+from calibration.utils import gen_shape_pattern_qtable, QuantizeTable
 from calibration.utils import parse_method_list, compactable_method_list, compactable_cmd_method_list
 from utils.log_setting import logger
 from utils.misc import parse_debug_cmd
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
                         help='Specify the bit width for automatic mixed precision')
     parser.add_argument('--fast',help='faster search_qtable', action='store_true')
-    parser.add_argument('--pre_qtable',help='path to initial qtable for search_qtable')
+    parser.add_argument('--pre_qtable',type=str, default='', help='path to initial qtable for search_qtable')
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
     parser.add_argument('-o', '--calibration_table', type=str,
                         help='output threshold table')
@@ -116,13 +116,17 @@ if __name__ == '__main__':
     matcher = MatchPattern(args)
     transformer_fp_layers, flag, match_log = matcher.run()
     transformer_fp_layers = [item for item in transformer_fp_layers if item not in shape_fp_layers]
-    shape_pattern_fp_layers = shape_fp_layers + transformer_fp_layers
-    gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, flag, match_log)
+    quant_table = gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, match_log)
+    if args.pre_qtable != '':
+        quant_table.read(args.pre_qtable)
+        quant_table.shape_layer_list = []
+        quant_table.pattern_layer_list = []
+        print(f'Use only {args.pre_qtable} as quantize table!')
 
     # mix precision
     if args.search == 'search_qtable':
         args._logger = logger('Search_Qtable', log_level=log_level)
-        searcherQ = SearchQtable(args, selector, tune_ds, shape_pattern_fp_layers)
+        searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
         if args.mix_mode == '4_8':
             searcherQ.run_4_8()
         elif args.mix_mode == 'w4a8':
@@ -151,7 +155,7 @@ if __name__ == '__main__':
         # calibration
         if args.search == 'search_threshold':
             args._logger = logger('Search_Threshold', log_level=log_level)
-            searcherT = SearchThreshold(args, selector, tune_ds, shape_pattern_fp_layers)
+            searcherT = SearchThreshold(args, selector, tune_ds, quant_table)
             searcherT.run_search_calitable()
         elif args.search == 'False':
             calibrator = ActivationCalibrator(args, selector, tune_ds)

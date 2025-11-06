@@ -280,11 +280,15 @@ class MixPrecSearcher:
             raise RuntimeError("dataset is uncorrect")
         self.int8_activations = copy.deepcopy(self.ref_activations)
 
-    def _gen_mix_table(self, mix_ops):
+    def _gen_mix_table(self, mix_ops, qtable: QuantizeTable = None):
         target_file = "tmp_mix_table.txt"
-        with open(target_file, 'w') as f:
-            for mix_op in mix_ops:
-                f.write("{} {}\n".format(mix_op, self.mix_mode))
+        if qtable is None:
+            qtable = QuantizeTable()
+        else:
+            qtable = copy.deepcopy(qtable)
+        mix_modes = [self.mix_mode] * len(mix_ops)
+        qtable.append_custom(mix_ops, mix_modes)
+        qtable.dump(target_file)
         return target_file
 
     def _gen_mix_table_4_8(self, mix_ops, mix_mode):

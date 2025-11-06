@@ -4,6 +4,7 @@ from typing import Optional
 from dataclasses import dataclass
 from utils.mlir_parser import MlirParser
 import warnings
+from typing import List, Tuple, Optional
 
 FLOAT_MAP = {
     "bm1684x": "F16",
@@ -205,54 +206,6 @@ def get_no_fused_tensors(parser: MlirParser, all_tensors: list):
     return tensor_list
 
 
-def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, flag, logs=None):
-    chip = args.chip
-    cali_table_name = args.calibration_table
-    if args.fp_type == 'auto':
-        shape_mix_mode = FLOAT_MAP[args.chip]
-        pattern_mix_mode = FLOAT_MAP[args.chip]
-    else:
-        shape_mix_mode = args.fp_type
-        pattern_mix_mode = args.fp_type
-        if args.fp_type not in chip_support_mix_fp_type[args.chip]:
-            print('parameter error, fp_type:{args.fp_type} not support by {args.chip}')
-            exit(1)
-
-    if '/' in cali_table_name:
-        last_index = cali_table_name.rfind('/')
-        quantize_table = cali_table_name[:last_index + 1] + "shape_pattern_qtable"
-    else:
-        if args.quantize_table:
-            quantize_table = args.quantize_table + "_shape_pattern_part"
-        else:
-            quantize_table = "shape_pattern_qtable"
-
-    with open(quantize_table, "w") as f:
-        f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-        f.write("# chip: {}  shape_mix_mode: {}  pattern_mix_mode: {}\n".format(
-            chip, shape_mix_mode, pattern_mix_mode))
-        f.write("# number of {} layer(shape): {}\n".format(shape_mix_mode, len(shape_fp_layers)))
-        f.write("# number of {} layer(pattern): {}\n".format(pattern_mix_mode,
-                                                             len(transformer_fp_layers)))
-        if args.part_quantize and flag == 0:
-            f.write("# part_quantize \n")
-
-        if logs:
-            f.write("###\n")
-            f.write("# Match_Pattern logs:\n")
-            for line in logs:
-                f.write("#" + str(line) + "\n")
-
-        f.write("###\n")
-        f.write("# op_name   quantize_mode\n")
-        f.write("# mix_prec layers by op_shape identification\n")
-        for layer in shape_fp_layers:
-            f.write("{} {}\n".format(layer, shape_mix_mode))
-        f.write("# mix_prec layers by transformer_pattern identification\n")
-        for layer in transformer_fp_layers:
-            f.write("{} {}\n".format(layer, pattern_mix_mode))
-
-
 class CalibrationTable:
 
     def __init__(self, table):
@@ -297,3 +250,176 @@ class CalibrationTable:
                     f.write("{} {:.7f} {:.7f} {:.7f}\n".format(k, new_threshold, v[1], v[2]))
                 else:
                     f.write("{} {:.7f} {:.7f} {:.7f}\n".format(k, *v))
+
+
+class QuantizeTable:
+
+    def __init__(self,
+                 num_sample: int = 100,
+                 chip: str = 'BM1684X',
+                 shape_layer_list: List[str] = [],
+                 shape_mix_mode: str = [],
+                 pattern_layer_list: List[str] = [],
+                 pattern_mix_mode: str = [],
+                 custom_layer_list: List[str] = [],
+                 custom_mix_mode: List[str] = [],
+                 part_mode: str = 'None',
+                 custom_operator: List[str] = [],
+                 extra_info: Optional[List[str]] = None):
+        self.num_sample = num_sample
+        self.chip = chip
+        # custom > shape > pattern
+        self.shape_layer_list = shape_layer_list
+        self.shape_mix_mode = shape_mix_mode
+        self.pattern_layer_list = pattern_layer_list
+        self.pattern_mix_mode = pattern_mix_mode
+        self.custom_layer_list = custom_layer_list
+        self.custom_mix_mode = custom_mix_mode
+        self.part_quant_info = ''
+        self.extra_info = extra_info if extra_info is not None else []
+        if part_mode != 'None':
+            self.part_quant_info = f'# part_quant_mode: {part_mode}'
+            if part_mode == 'custom_mode' and len(custom_operator) > 0:
+                self.part_quant_info += f', custom_operator: {",".join(custom_operator)}'
+
+        # Combine all layer lists for easy iteration
+
+    def dump(self, quantize_table: str) -> None:
+        """Write the quantize table to file with metadata and layer information."""
+        total_layers = len(self.shape_layer_list) + len(self.pattern_layer_list) + len(
+            self.custom_layer_list)
+
+        with open(quantize_table, "w") as f:
+            f.write(f"# generated time: {datetime.datetime.now()}\n")
+            f.write(f"# sample number: {self.num_sample}\n")
+            f.write(f"# chip: {self.chip}\n")
+            f.write(f"# total layers: {total_layers} (unique list blow)\n")
+            f.write(f"# number of shape layers: {len(self.shape_layer_list)}\n")
+            f.write(f"# number of pattern layers: {len(self.pattern_layer_list)}\n")
+            f.write(f"# number of custom layers: {len(self.custom_layer_list)}\n")
+            if not self.part_quant_info == '':
+                f.write(f"# {self.part_quant_info}\n")
+            f.write("###\n")
+            if self.extra_info:
+                for line in self.extra_info:
+                    f.write(f"# {line}\n")
+                f.write("###\n")
+            f.write("# op_name   quantize_mode\n")
+
+            # Write all layers with their respective mix_modes
+            f.write("# custom layers\n")
+            for layer, mode in zip(self.custom_layer_list, self.custom_mix_mode):
+                f.write(f"{layer} {mode}\n")
+            f.write("# shape layers\n")
+            for layer in self.shape_layer_list:
+                if layer not in self.custom_layer_list:
+                    f.write(f"{layer} {self.shape_mix_mode}\n")
+            f.write("# pattern layers\n")
+            for layer in self.pattern_layer_list:
+                if layer not in self.custom_layer_list and layer not in self.shape_layer_list:
+                    f.write(f"{layer} {self.pattern_mix_mode}\n")
+
+    def read(self, quantize_table: str) -> List[Tuple[str, str]]:
+        """
+        Read a dumped quantize table file, skip lines starting with #,
+        and return a list of (layer_name, mix_mode) tuples.
+
+        Raises:
+            FileNotFoundError: If the quantize table file does not exist
+            IOError: If there are other file reading issues
+        """
+        layer_data = []
+
+        try:
+            with open(quantize_table, "r") as f:
+                for line in f:
+                    # Skip lines starting with # and empty lines
+                    stripped_line = line.strip()
+                    if not stripped_line or stripped_line.startswith('#'):
+                        continue
+
+                    # Split the line into components and take first two as layer_name and mix_mode
+                    parts = stripped_line.split()
+                    if len(parts) >= 2:
+                        layer_name = parts[0]
+                        mix_mode = parts[1]
+                        layer_data.append((layer_name, mix_mode))
+            self.custom_layer_list = [x[0] for x in layer_data]
+            self.custom_mix_mode = [x[1] for x in layer_data]
+            return layer_data
+
+        except FileNotFoundError:
+            print(f"Error: Quantize table file '{quantize_table}' not found.")
+            raise
+        except IOError as e:
+            print(f"Error: Unable to read file '{quantize_table}': {e}")
+            raise
+        except Exception as e:
+            print(f"Error: Unexpected error reading file '{quantize_table}': {e}")
+            raise
+
+    def append_custom(self, mix_ops: List[str], mix_modes: List[str]) -> None:
+        """Append custom mix precision operations to the quantize table."""
+        self.custom_layer_list.extend(mix_ops)
+        self.custom_mix_mode.extend(mix_modes)
+
+    def exists(self, layer_name: str) -> bool:
+        """Check if a layer exists in any of the layer lists."""
+        return (layer_name in self.shape_layer_list or layer_name in self.pattern_layer_list
+                or layer_name in self.custom_layer_list)
+
+    def get_layer_counts(self) -> dict:
+        """Return the count of layers for each mix_mode."""
+        return {
+            self.shape_mix_mode: len(self.shape_layer_list),
+            self.pattern_mix_mode: len(self.pattern_layer_list),
+            self.custom_mix_mode: len(self.custom_layer_list)
+        }
+
+    def get_all_fp_layers(self) -> List[str]:
+        """Return a list of all layers set to floating point precision."""
+        return self.shape_layer_list + self.pattern_layer_list + self.custom_layer_list
+
+    def get_total_layers(self) -> int:
+        """Return the total number of layers across all mix_modes."""
+        return len(self.shape_layer_list) + len(self.pattern_layer_list) + len(
+            self.custom_layer_list)
+
+    def __str__(self) -> str:
+        counts = self.get_layer_counts()
+        return f"QuantizeTableWriter(chip='{self.chip}', total_layers={self.get_total_layers()}, mix_modes={counts})"
+
+
+def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, logs=None):
+    chip = args.chip
+    cali_table_name = args.calibration_table
+    if args.fp_type == 'auto':
+        shape_mix_mode = FLOAT_MAP[args.chip]
+        pattern_mix_mode = FLOAT_MAP[args.chip]
+    else:
+        shape_mix_mode = args.fp_type
+        pattern_mix_mode = args.fp_type
+        if args.fp_type not in chip_support_mix_fp_type[args.chip]:
+            print('parameter error, fp_type:{args.fp_type} not support by {args.chip}')
+            exit(1)
+
+    if '/' in cali_table_name:
+        last_index = cali_table_name.rfind('/')
+        quantize_table = cali_table_name[:last_index + 1] + "shape_pattern_qtable"
+    else:
+        if args.quantize_table:
+            quantize_table = args.quantize_table + "_shape_pattern_part"
+        else:
+            quantize_table = "shape_pattern_qtable"
+
+    qtable = QuantizeTable(num_sample=args.input_num,
+                           chip=chip,
+                           shape_layer_list=shape_fp_layers,
+                           shape_mix_mode=shape_mix_mode,
+                           pattern_layer_list=transformer_fp_layers,
+                           pattern_mix_mode=pattern_mix_mode,
+                           part_mode=args.part_quantize,
+                           custom_operator=args.custom_operator,
+                           extra_info=logs)
+    qtable.dump(quantize_table)
+    return qtable
