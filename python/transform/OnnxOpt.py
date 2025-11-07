@@ -7,6 +7,7 @@ import onnxruntime as rt
 from transform.OnnxOpOptionalAttrs import OnnxOpOptionalAttrGetter
 from onnxruntime_extensions import onnx_op, PyOp, PyOrtFunction
 import torch
+from onnx import helper, TensorProto
 
 onnx_attr_translator = {
     "axis": lambda x: int(x),
@@ -836,7 +837,95 @@ class ReForm(object):
             if o.name in removed_input:
                 o.name = oname_map[o.name]
 
+    def get_cast_to_attr(self, node):
+        # return Cast's 'to' attr
+        for a in node.attribute:
+            if a.name == "to":
+                return a.i
+        return None
+
+    def replace_cast_f32_bool_f32(self):
+        # replace Cast(float->bool)->Cast(bool->float) with Not(Equal(x, 0))
+        # x.astype(bool).astype(float) == not(x == 0).astype(float)
+
+        producers = {}  # tensor_name -> (idx, node)
+        consumers = defaultdict(list)  # tensor_name -> [idx_of_consumer_nodes]
+        for idx, node in enumerate(self.nodes):
+            for out in node.output:
+                producers[out] = (idx, node)
+            for inp in node.input:
+                consumers[inp].append(idx)
+
+        to_bool = TensorProto.BOOL
+        to_float = TensorProto.FLOAT
+
+        chains = []
+
+        for i, node in enumerate(self.nodes):
+            if node.op_type != "Cast":
+                continue
+            to_attr = self.get_cast_to_attr(node)
+            if to_attr != to_bool:
+                continue
+
+            mid = node.output[0]
+
+            cons = consumers.get(mid, [])
+            if len(cons) != 1:
+                continue
+
+            j = cons[0]
+            next_node = self.nodes[j]
+            if next_node.op_type != "Cast":
+                continue
+
+            next_to = self.get_cast_to_attr(next_node)
+            if next_to == to_float:
+                chains.append((i, j))
+
+        for first_idx, second_idx in sorted(chains, key=lambda x: (x[0], x[1]), reverse=True):
+            first_cast = self.nodes[first_idx]
+            second_cast = self.nodes[second_idx]
+            src = first_cast.input[0]
+            final_out = second_cast.output[0]
+
+            zero_name = final_out + "_zero"
+            const_zero = helper.make_node("Constant",
+                                          name=zero_name + "_Const",
+                                          inputs=[],
+                                          outputs=[zero_name],
+                                          value=helper.make_tensor(
+                                              name=zero_name + "_tensor",
+                                              data_type=TensorProto.FLOAT,
+                                              dims=[],
+                                              vals=[0.0],
+                                          ))
+
+            # Equal(x, 0)
+            tmp_bool = final_out + "_EqualZero_out"
+            equal_node = helper.make_node(
+                "Equal",
+                name=final_out + "_EqualZero",
+                inputs=[src, zero_name],
+                outputs=[tmp_bool],
+            )
+            # Not(Equal(x, 0))
+            not_node = helper.make_node(
+                "Not",
+                name=final_out,
+                inputs=[tmp_bool],
+                outputs=[final_out],
+            )
+
+            del self.nodes[second_idx]
+            del self.nodes[first_idx]
+            self.nodes.insert(first_idx, const_zero)
+            self.nodes.insert(first_idx + 1, equal_node)
+            self.nodes.insert(first_idx + 2, not_node)
+
     def remove_cast(self):
+        self.replace_cast_f32_bool_f32()
+
         cast_ops = []
         cast_in_dict = defaultdict(str)
         cast_out_dict = defaultdict(str)
