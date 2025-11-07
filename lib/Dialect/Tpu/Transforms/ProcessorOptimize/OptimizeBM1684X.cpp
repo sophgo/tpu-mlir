@@ -1531,6 +1531,7 @@ public:
       op.replaceAllUsesWith(op.getInput());
       next_op.replaceAllUsesWith(next_op.getInput());
       rewriter.eraseOp(op);
+      rewriter.eraseOp(next_op);
       return success();
     }
 
@@ -6177,7 +6178,6 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                 MoveReshapeInSubGraphPattern,
                 SwapDimMerge,
                 MatMulRequantIntFusion,
-                RemoveReshape,
                 WhereBnbwdFusePattern,
                 UpsampleAddWeightPattern,
                 // ConvMergePattern
