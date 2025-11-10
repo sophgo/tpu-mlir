@@ -54,6 +54,7 @@ class SearchQtable:
         self.quantize_method_list = args.quantize_method_list
         self.debug_cmd = args.debug_cmd
         self.qtable = qtable
+        self.mix_prec.qtable = qtable
 
     def check_layer_names(self, all_op_names, int8_model, layer_th_dicts, quantize_method_list):
         layer_names = []
@@ -246,7 +247,9 @@ class SearchQtable:
                 self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
                     layer_name, layer_type))
                 fp_layer_list.remove(layer_name)
-                mix_table = self.mix_prec._gen_mix_table_4_8(fp_layer_list, mix_mode)
+                mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
+                                                         qtable=self.qtable,
+                                                         mix_mode=mix_mode)
                 with open(self.cali_table_name, 'a') as file:
                     file.write(f"{layer_name}")
                 int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name,
@@ -282,7 +285,9 @@ class SearchQtable:
                 self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
                     layer_name, layer_type))
                 fp_layer_list.append(layer_name)
-                mix_table = self.mix_prec._gen_mix_table_4_8(fp_layer_list, mix_mode)
+                mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
+                                                         qtable=self.qtable,
+                                                         mix_mode=mix_mode)
                 mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name,
                                           mix_table, "w4a8")
                 outputs_cos, outputs_snr = self.mix_prec.run_model_new(
@@ -516,6 +521,8 @@ class SearchQtable:
                         upper_bound = self.args.max_float_layers - 1
                     else:
                         lower_bound = self.args.max_float_layers + 1
+            return total_fp_layers_analysis, outputs_cos
+        return list(sensitive_layer_analysis_dict), outputs_cos
 
     def print_log_info(self, layer_cos_list, fp_layer_list, all_int8_cos, outputs_cos, t0):
         self.mix_prec.logger.print_info('>>>run result:')
@@ -532,33 +539,14 @@ class SearchQtable:
             self.mix_prec.quantize_table))
         self.mix_prec.logger.print_info("total time:{}".format(time.time() - t0))
 
-    def print_log_info_4_8(self, fp_layer_list, int8_outputs_cos, t0):
+    def print_log_info_4bit(self, fp_layer_list, int8_outputs_cos, t0, mix_mode: str = 'INT8'):
         self.mix_prec.logger.print_info('>>>run result:')
-        with open(self.mix_prec.quantize_table, "w") as f:
-            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-            f.write("# sample number: {}\n".format(self.mix_prec.num_sample))
-            f.write("# chip: {}  mix_mode: {}\n".format(self.mix_prec.chip, "INT8"))
-            f.write("# number of {} layer: {}\n".format("INT8", len(fp_layer_list)))
-            f.write("###\n")
-            f.write("# op_name   quantize_mode\n")
-            for layer in fp_layer_list:
-                f.write("{} {}\n".format(layer, "INT8"))
-        self.mix_prec.logger.print_info(f'int8 outputs_cos:{int8_outputs_cos:.6f} old')
-        self.mix_prec.logger.print_info("Output mix quantization table to {}".format(
-            self.mix_prec.quantize_table))
-        self.mix_prec.logger.print_info("total time:{}".format(time.time() - t0))
-
-    def print_log_info_w4a8(self, fp_layer_list, int8_outputs_cos, t0):
-        self.mix_prec.logger.print_info('>>>run result:')
-        with open(self.mix_prec.quantize_table, "w") as f:
-            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-            f.write("# sample number: {}\n".format(self.mix_prec.num_sample))
-            f.write("# chip: {}  mix_mode: {}\n".format(self.mix_prec.chip, "W4INT8"))
-            f.write("# number of {} layer: {}\n".format("W4INT8", len(fp_layer_list)))
-            f.write("###\n")
-            f.write("# op_name   quantize_mode\n")
-            for layer in fp_layer_list:
-                f.write("{} {}\n".format(layer, "W4INT8"))
+        if self.qtable is not None:
+            qtable = copy.deepcopy(self.qtable)
+        else:
+            qtable = QuantizeTable()
+        qtable.append_custom(fp_layer_list, [mix_mode] * len(fp_layer_list))
+        qtable.dump(self.mix_prec.quantize_table)
         self.mix_prec.logger.print_info(f'int8 outputs_cos:{int8_outputs_cos:.6f} old')
         self.mix_prec.logger.print_info("Output mix quantization table to {}".format(
             self.mix_prec.quantize_table))
@@ -633,8 +621,7 @@ class SearchQtable:
             layer for layer in layer_names_quant
             if self.parser.get_op_type_by_op_name(layer) in sensitive_op_type
         ]
-        self.mix_prec.logger.print_info("transformer model: {}, all search layer number: {}".format(
-            self.args.transformer, len(layer_names)))
+        self.mix_prec.logger.print_info("all search layer number: {}".format(len(layer_names)))
         self.mix_prec.logger.print_info(
             "Global metrics layer is : {}".format(global_compare_layers))
 
@@ -670,10 +657,12 @@ class SearchQtable:
             self.args.max_float_layers, outputs_cos))
 
         if not self.args.cluster:
-            self.adjust_qtable(outputs_cos, layer_names_quant, sensitive_layer_analysis_dict,
-                               new_cali_table_name, global_compare_layers, layers_rate,
-                               predictions_gt)
-            self.print_log_info(layer_cos_list, set_fp_layer_list, all_int8_cos, outputs_cos, t0)
+            final_fp_layers, outputs_cos = self.adjust_qtable(outputs_cos, layer_names_quant,
+                                                              sensitive_layer_analysis_dict,
+                                                              new_cali_table_name,
+                                                              global_compare_layers, layers_rate,
+                                                              predictions_gt)
+            self.print_log_info(layer_cos_list, final_fp_layers, all_int8_cos, outputs_cos, t0)
         else:
             self.print_log_info(layer_cos_list, selected_fp_layers, all_int8_cos, outputs_cos, t0)
         print("success search qtable")
@@ -684,7 +673,8 @@ class SearchQtable:
         t0 = time.time()
         layer_cos_list, predictions_gt = [], []
         float_model = MixQuantModel(self.fp32_mlir, self.chip)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name)
+        mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
@@ -716,7 +706,9 @@ class SearchQtable:
                 with open(self.cali_table_name, 'a') as file:
                     file.write(f"{op_name}\n")
                 fp_layer_list.remove(op_name)
-            mix_table = self.mix_prec._gen_mix_table_4_8(fp_layer_list, 'INT8')
+            mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
+                                                     qtable=self.qtable,
+                                                     mix_mode='INT8')
             int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name,
                                            mix_table, "int4")
             outputs_cos, outputs_snr = self.mix_prec.run_model_new(int4_mix_model, False,
@@ -727,7 +719,7 @@ class SearchQtable:
                 for op_name in cluster:
                     fp_layer_list.append(op_name)
                 break
-        self.print_log_info_4_8(fp_layer_list, int8_outputs_cos, t0)
+        self.print_log_info_4bit(fp_layer_list, int8_outputs_cos, t0, mix_mode='INT8')
 
     def run_fast(self):
         t0 = time.time()
@@ -758,8 +750,7 @@ class SearchQtable:
             layer for layer in all_op_names
             if self.parser.get_op_type_by_op_name(layer) in sensitive_op_type
         ]
-        self.mix_prec.logger.print_info("transformer model: {}, all search layer number: {}".format(
-            self.args.transformer, len(layer_names)))
+        self.mix_prec.logger.print_info("all search layer number: {}".format(len(layer_names)))
 
         sensitive_layer = []
         cos_sim = int8_outputs_cos
@@ -802,7 +793,8 @@ class SearchQtable:
         t0 = time.time()
         layer_cos_list, predictions_gt = [], []
         float_model = MixQuantModel(self.fp32_mlir, self.chip)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name)
+        mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
@@ -837,7 +829,9 @@ class SearchQtable:
         for cluster in sorted_clusters:
             for op_name in cluster:
                 fp_layer_list.append(op_name)
-            mix_table = self.mix_prec._gen_mix_table_4_8(fp_layer_list, 'W4INT8')
+            mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
+                                                     qtable=self.qtable,
+                                                     mix_mode='W4INT8')
             mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table,
                                       "w4a8")
             outputs_cos, outputs_snr = self.mix_prec.run_model_new(mix_model, False,
@@ -847,4 +841,4 @@ class SearchQtable:
                 for op_name in cluster:
                     fp_layer_list.remove(op_name)
                 break
-        self.print_log_info_w4a8(fp_layer_list, int8_outputs_cos, t0)
+        self.print_log_info_4bit(fp_layer_list, int8_outputs_cos, t0, mix_mode='W4INT8')

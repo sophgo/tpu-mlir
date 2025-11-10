@@ -47,7 +47,7 @@ class CaliMathCpu:
     def get_percentile(self, array, percentile_len: int = 1):
         return self.sort_distr_percentile(array.flatten(), percentile_len)
 
-    def get_kurtosis(signal):
+    def get_kurtosis(self, signal):
         """Calculates the kurtosis of a given signal.
         """
         signal = signal.flatten()
@@ -163,7 +163,7 @@ class CaliMathCuda:
     def get_percentile(self, array, percentile_len: int = 1):
         return self.sort_distr_percentile(array.flatten(), percentile_len)
 
-    def get_kurtosis(signal):
+    def get_kurtosis(self, signal):
         """Calculates the kurtosis of a given signal.
         """
         signal = signal.flatten()
