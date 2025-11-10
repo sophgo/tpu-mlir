@@ -1027,8 +1027,10 @@ def matmul(input: Tensor,
     o_dtype = input.dtype if out_dtype is None else out_dtype
     assert input.dtype == o_dtype
     assert input.dtype in ["float32", "float16"] and input.dtype == right.dtype
-    if bias:
+    if bias is not None:
         assert bias.dtype in ["float32", "float16"]
+        if TpuLang.chip == "bm1688" and bias.dtype != "float32":
+            bias = bias.astype("float32")
     assert input.is_quantized is False
     assert right.is_quantized is False
 
@@ -3779,6 +3781,7 @@ def multi_scale_deformable_attention(
     num_heads: int = 8,
     num_levels: int = 4,
     num_points: int = 4,
+    value_proj_ratio: float = 1.0,
     out_name: str = None,
 ):
     assert query.shape[0] == 1
@@ -3802,6 +3805,7 @@ def multi_scale_deformable_attention(
     import math
     num_padding = math.ceil(num_query / npu_num) * npu_num - num_query
     num_query_padding = num_padding + num_query
+    value_proj_size = int(embed_dims * value_proj_ratio)
 
     if out_name is None:
         out_name = generate_name("multi_scale_deformable_attention")
@@ -4168,7 +4172,7 @@ def multi_scale_deformable_attention(
                     ik = i * 4 + k
                     ijk = i * num_heads * 2 + j * 2 + k
                     # calculate 2 *(reference_points_list[ik] + sampling_offsets_list[ijk] / num_points * reference_points_list[ik + 2] * 0.5) - 1
-                    # mulconst: sampling_offsets_list[ijk] * (1/offset_normalizer_list[ik])
+                    # mulconst: sampling_offsets_list[ijk] * (1/num_points)
                     sampling_locations_mulconst_0_attr = {
                         "const_val": Attr(1.0 / num_points, "float64"),
                     }
@@ -4197,13 +4201,13 @@ def multi_scale_deformable_attention(
                                       inputs=[sampling_locations_mul_out],
                                       outputs=[sampling_locations_mulconst_1_out],
                                       params=sampling_locations_mulconst_1_attr)
-                    # add: reference_points_list[ik] + sampling_locations_mulconst_0_out[ijk]
+                    # add: reference_points_list[ik] + sampling_locations_mulconst_1_out
                     sampling_locations_add_out = Tensor(dtype=o_dtype,
                                                         name=out_name +
                                                         "_sampling_locations_add_{}".format(ijk))
                     TpuLang.insert_op(
                         "top.Add",
-                        inputs=[reference_points_list[ik], sampling_locations_mulconst_0_out],
+                        inputs=[reference_points_list[ik], sampling_locations_mulconst_1_out],
                         outputs=[sampling_locations_add_out])
                     # mulconst: 2 * sampling_locations_add_out[ijk]
                     sampling_locations_mulconst_2_attr = {
@@ -4216,7 +4220,7 @@ def multi_scale_deformable_attention(
                                       inputs=[sampling_locations_add_out],
                                       outputs=[sampling_locations_mulconst_2_out],
                                       params=sampling_locations_mulconst_2_attr)
-                    # addconst: 2 * sampling_locations_add_out[ijk] - 1
+                    # addconst: 2 * sampling_locations_mulconst_2_out - 1
                     sampling_locations_addconst_attr = {
                         "const_val": Attr(-1.0, "float64"),
                     }
@@ -4224,7 +4228,7 @@ def multi_scale_deformable_attention(
                         dtype=o_dtype,
                         name=out_name + "_sampling_locations_addconst_{}".format(ijk))
                     TpuLang.insert_op("top.AddConst",
-                                      inputs=[sampling_locations_mulconst_1_out],
+                                      inputs=[sampling_locations_mulconst_2_out],
                                       outputs=[sampling_locations_addconst_out],
                                       params=sampling_locations_addconst_attr)
                     sampling_locations_list.append(sampling_locations_addconst_out)
@@ -4373,7 +4377,7 @@ def multi_scale_deformable_attention(
     sampling_grid_slice_offset = [0] * sampling_grid_shape_len
     sampling_grid_slice_ends = [int64_max] * sampling_grid_shape_len
     sampling_grid_slice_steps = [1] * sampling_grid_shape_len
-    dim_per_head = embed_dims // num_heads
+    dim_per_head = value_proj_size // num_heads
     sampling_value_list = []
     if len(value_proj_bias.shape) == 1:
         value_proj_bias.shape = [1, 1, value_proj_bias.shape[0]]
@@ -4546,7 +4550,7 @@ def multi_scale_deformable_attention(
                       params=sampling_value_l_reduce_all_attr)
     # reshape
     sampling_value_l_reshape_attr = {
-        "shape": ArrayAttr([1, embed_dims, -1]),
+        "shape": ArrayAttr([1, value_proj_size, -1]),
     }
     sampling_value_l_reshape_out = Tensor(dtype=o_dtype,
                                           name=out_name + "_sampling_value_l_reshape")
