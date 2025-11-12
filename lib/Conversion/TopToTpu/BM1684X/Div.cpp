@@ -62,7 +62,7 @@ void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
   } else if (module::isCV184X() || module::isSGTPUV8()) {
     lowering_common_bf16<tpu::DivOp>(rewriter, op);
   } else {
-    lowering_common_f32<tpu::DivOp>(rewriter, op);
+    LoweringF32(rewriter, op);
   }
 }
 
