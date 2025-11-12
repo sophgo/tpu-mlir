@@ -583,8 +583,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
         }
 
         DEBUG_WITH_TYPE("gmem_allocator", {
-          llvm::dbgs() << "; action = assignGaddr"
-                       << "; step = weight_static"
+          llvm::dbgs() << "; action = assignGaddr" << "; step = weight_static"
                        << "; start_addr = " << addr
                        << "; end_addr = " << addr + bytes
                        << "; live_start = " << 0
@@ -737,8 +736,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     int alignment) {
   auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
     DEBUG_WITH_TYPE("on_live_range", {
-      llvm::dbgs() << "\n; action = updateOperandsLiveRange"
-                   << "; step = begin"
+      llvm::dbgs() << "\n; action = updateOperandsLiveRange" << "; step = begin"
                    << "; op = " << module::getName(op)
                    << "; endPosition = " << endPosition << "\n";
     });
@@ -755,8 +753,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       if (noNeedAddress(operand)) {
         DEBUG_WITH_TYPE("on_live_range", {
           llvm::dbgs() << "; action = updateOperandsLiveRange"
-                       << "; step = opd_skip"
-                       << "\n";
+                       << "; step = opd_skip" << "\n";
         });
         continue;
       }
@@ -968,15 +965,13 @@ void BMAddressAssign::updateLiveRangeofBMOps(
 
       DEBUG_WITH_TYPE("on_live_range", {
         llvm::dbgs() << "; action = updateOperandsLiveRange"
-                     << "; step = opd_end"
-                     << "; opd_type = " << opd->getName()
+                     << "; step = opd_end" << "; opd_type = " << opd->getName()
                      << "; opd_loc = " << module::getName(operand)
                      << "; opd_index = " << i << "\n";
       });
     }
     DEBUG_WITH_TYPE("on_live_range", {
-      llvm::dbgs() << "; action = updateOperandsLiveRange"
-                   << "; step = end"
+      llvm::dbgs() << "; action = updateOperandsLiveRange" << "; step = end"
                    << "; op = " << module::getName(op) << "\n";
     });
   };
@@ -988,8 +983,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         getTensorGmemSize(op, v_info.index, alignment);
 
     DEBUG_WITH_TYPE("live_range", {
-      llvm::dbgs() << "; action = live_range"
-                   << "; step = update_solo"
+      llvm::dbgs() << "; action = live_range" << "; step = update_solo"
                    << "; live_start = " << liveRange[v_info].start
                    << "; live_end = " << liveRange[v_info].end
                    << "; loc = " << module::getName(v_info.op)
@@ -1076,8 +1070,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         }
 
         DEBUG_WITH_TYPE("live_range", {
-          llvm::dbgs() << "; action = live_range"
-                       << "; step = inplace_concat"
+          llvm::dbgs() << "; action = live_range" << "; step = inplace_concat"
                        << "; live_start = " << liveRange[pre_v].start
                        << "; live_end = " << liveRange[pre_v].end
                        << "; loc = " << module::getName(pre_v.op)
@@ -1129,13 +1122,6 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     updateSOLOLiveRange(op, cur_info, endPosition);
   } else {
     updateOperandsLiveRange(op, endPosition);
-  }
-  for (auto user : op->getUsers()) {
-    if (isInPlaceOp(user)) {
-      uint32_t maxPosition = endPosition;
-      findInPlaceOpMaxUsePosition(user, maxPosition, ops_loc);
-      updateOperandsLiveRange(op, maxPosition);
-    }
   }
   common_ops.emplace_back(v);
 }
