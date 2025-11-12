@@ -235,7 +235,15 @@ static void updateModuleTypes(ModuleOp s) {
     Block &entryBlock = func.front();
     auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
     for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
-      returns.push_back(returnOp->getOperand(i).getType());
+      auto v = returnOp->getOperand(i);
+      returns.push_back(v.getType());
+      if (isa_and_nonnull<tpu::GroupOp>(v.getDefiningOp())) {
+        auto groupOp = dyn_cast<tpu::GroupOp>(v.getDefiningOp());
+        auto rv = cast<mlir::OpResult>(v);
+        auto yieldOp =
+            dyn_cast<tpu::YieldOp>(groupOp.getBody().back().getTerminator());
+        yieldOp.getOperand(rv.getResultNumber()).setType(v.getType());
+      }
     }
     auto fnType = builder.getFunctionType(func.getArgumentTypes(),
                                           llvm::ArrayRef<Type>{returns});

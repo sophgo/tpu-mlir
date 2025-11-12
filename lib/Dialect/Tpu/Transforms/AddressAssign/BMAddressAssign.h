@@ -19,7 +19,7 @@ namespace tpu {
 class BMAddressAssign {
 public:
   BMAddressAssign() {}
-  void assign(ModuleOp &module, bool reuse_addr);
+  void assign(ModuleOp &module, bool reuse_addr, std::string same_addr);
   static bool isInPlaceOp(Operation *op);
 
 protected:

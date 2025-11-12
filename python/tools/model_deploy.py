@@ -132,6 +132,7 @@ class DeployTool:
         self.model_version = args.model_version
         self.iomem_set = args.iomem_set
         self.addr_mode = args.addr_mode
+        self.same_addr = args.same_addr
         self.cuda = args.cuda
         self.q_group_size = args.q_group_size if self.quantize in [
             "w4f16", "w4bf16", "w8f16", "w8bf16"
@@ -407,6 +408,7 @@ class DeployTool:
                     group_by_cores=self.group_by_cores,
                     model_version=self.model_version,
                     iomem_set=self.iomem_set,
+                    same_addr=self.same_addr,
                     count_patterns=True if self.patterns_count else False,
                     compress_mode=self.compress_mode,
                     future_update_rank=self.future_update_rank,
@@ -556,6 +558,8 @@ if __name__ == '__main__':
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc'],
                         help="set address assign mode, if not set, auto as default")
+    parser.add_argument("--same_addr", default="", type=str,
+                        help="use same address for the specified inputs and outputs")
     parser.add_argument("--not_gen_bmodel", action="store_true",
                         help="for qat intergation, only gen tpu.mlir")
     parser.add_argument("--use_rewriter_config", action="store_true",

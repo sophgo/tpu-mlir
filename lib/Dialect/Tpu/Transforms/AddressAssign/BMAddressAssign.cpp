@@ -520,7 +520,36 @@ void BMAddressAssign::assignL2SRAM(ModuleOp &m) {
   assignAfter(m, inplace_ops);
 }
 
-void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
+static inline std::vector<std::pair<int, int>> string2pair(std::string slist) {
+  // slist: "0:0,1:2,4:4"
+  // outpair: [0,0] [1,2] [4,4]
+  std::vector<std::pair<int, int>> outpair;
+  std::string idx_str = "";
+  int first = 0;
+  int second = 0;
+  for (auto s : slist) {
+    if (s == ':') {
+      first = atoi(idx_str.c_str());
+      idx_str = "";
+    } else if (s == ',') {
+      second = atoi(idx_str.c_str());
+      idx_str = "";
+      outpair.emplace_back(first, second);
+    } else if (s == ' ') {
+      continue;
+    } else {
+      idx_str += s;
+    }
+  }
+  if (idx_str.size()) {
+    second = atoi(idx_str.c_str());
+    outpair.emplace_back(first, second);
+  }
+  return outpair;
+}
+
+void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
+                             std::string same_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
   Builder builder(m.getContext());
@@ -719,6 +748,18 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   if (module::isAddrMode(module::AddrMode::IO_ALONE) ||
       module::isAddrMode(module::AddrMode::IO_RELOC)) {
     updateAddressByAddrMode(m, start_addr, addr);
+  }
+
+  // set the same address pairs
+  if (!same_addr.empty()) {
+    std::vector<std::pair<int, int>> same_idx = string2pair(same_addr);
+    for (auto &pair : same_idx) {
+      std::vector<Value> ins, outs;
+      module::getInputsOutputs(m, ins, outs);
+      module::setAddress(outs[pair.second],
+                         module::getAddress(ins[pair.first]));
+    }
+    module::updateModuleTypes();
   }
 }
 

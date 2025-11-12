@@ -43,6 +43,7 @@ class LlmConverter(BaseConverter):
         self.dynamic = args.dynamic
         self.dynamic_vit = args.dynamic_vit
         self.use_block_with_kv = args.use_block_with_kv
+        self.same_addr = "0:0" if args.use_same_addr else ""
         self.debug = args.debug
         self.position_shape = [1, self.max_input_length]
         self.num_core = args.num_core
@@ -1369,6 +1370,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
+        if self.same_addr:
+            deploy_args.append(f'--same_addr {self.same_addr}')
         self.add_task(deploy_args, f"{name}.log")
 
     def compile_block_cache(self, layer_id):
@@ -1389,6 +1392,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--q_symmetric')
         if self.debug:
             deploy_args.append('--debug')
+        if self.same_addr:
+            deploy_args.append(f'--same_addr {self.same_addr}')
         self.add_task(deploy_args, f"{name}.log")
 
     def compile_block_prompt(self, layer_id):

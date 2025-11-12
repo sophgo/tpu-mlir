@@ -134,7 +134,7 @@ public:
         module::applyPatternOnce<ConcatFusePattern>(s);
         module::applyPatternOnce<Concat_SlicePattern>(s);
         BMAddressAssign addr_assign;
-        addr_assign.assign(s, reuse_addr);
+        addr_assign.assign(s, reuse_addr, same_addr);
       }
     }
     module::setState(module::State::TPU_ADDRESSED);

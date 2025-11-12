@@ -679,6 +679,7 @@ def tpu_ada_options(
     lgcache: bool = True,
     layer_group_config: str = "",
     iomem_set: str = "",
+    same_addr: str = "",
 ):
     lg_param = ''
     disable_group_overlap = "true" if disable_group_overlap else "false"
@@ -692,6 +693,8 @@ def tpu_ada_options(
         address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
     if iomem_set:
         address_assign_param = '--address-assign="iomem_set={}"'.format(iomem_set)
+    if same_addr:
+        address_assign_param = '--address-assign="same_addr={}"'.format(same_addr)
 
     trunc_param = ""
     if trunc_final:
@@ -937,6 +940,7 @@ def mlir_to_model(
     group_by_cores: str = "auto",
     model_version: str = "",
     iomem_set: str = "",
+    same_addr: str = "",
     count_patterns: bool = False,
     compress_mode: str = "none",
     future_update_rank: int = 0,
@@ -987,7 +991,8 @@ def mlir_to_model(
                               lg_debugger=lg_debugger,
                               disable_group_overlap=(time_fixed_subnet != None),
                               layer_group_config=layer_group_config,
-                              iomem_set=iomem_set)
+                              iomem_set=iomem_set,
+                              same_addr=same_addr)
     cmd.extend(options)
 
     cmd.extend(["-o", final_mlir])

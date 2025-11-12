@@ -63,6 +63,8 @@ if __name__ == '__main__':
                         help='use history kv for prefill, default is False')
     parser.add_argument('--share_prompt', action='store_true',
                         help='share the same prompt for multi dialog, default is False')
+    parser.add_argument('--use_same_addr', action='store_true',
+                        help='use same address between input_states and output_states, default is False')
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
     parser.add_argument('--max_prefill_kv_length', type=int, default=0,

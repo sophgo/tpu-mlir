@@ -106,6 +106,8 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
            "record weight offset with its name into a csv map file.">,
     Option<"iomem_set", "iomem_set", "std::string", /*default=*/"",
            "set special input/output as io memory">,
+    Option<"same_addr", "same_addr", "std::string", /*default=*/"",
+           "use same address for the specified tensor.">,
   ];
 }
 
