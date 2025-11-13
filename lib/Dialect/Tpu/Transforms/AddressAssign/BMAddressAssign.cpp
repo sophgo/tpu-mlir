@@ -186,7 +186,8 @@ static void sort_ios(std::vector<Value> &ios) {
 void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
                                               int64_t start_addr,
                                               int64_t addr_limit) {
-  if (module::isAddrMode(module::AddrMode::BASIC)) {
+  if (module::isAddrMode(module::AddrMode::BASIC) ||
+      module::isAddrMode(module::AddrMode::IN_REUSE)) {
     module::setNeuronAddr(m, start_addr);
     module::setNeuronSize(m, addr_limit - start_addr);
     return;
@@ -914,7 +915,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         });
       }
 
-      if (isa<top::InputOp>(opd) ||
+      if ((isa<top::InputOp>(opd) &&
+           !module::isAddrMode(module::AddrMode::IN_REUSE)) ||
           (isa<ReturnOp>(op) &&
            (module::isAddrMode(module::AddrMode::IO_ALONE) ||
             module::isAddrMode(module::AddrMode::IO_RELOC)))) {

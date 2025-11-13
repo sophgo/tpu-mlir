@@ -96,6 +96,7 @@ def Module_AddrMode: I32EnumAttr<"AddrMode", "address mode",[
       I32EnumAttrCase<"IO_TAG", 2, "io_tag">,
       I32EnumAttrCase<"IO_TAG_FUSE", 3, "io_tag_fuse">,
       I32EnumAttrCase<"IO_RELOC", 4, "io_reloc">,
+      I32EnumAttrCase<"IN_REUSE", 5, "in_reuse">,
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";

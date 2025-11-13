@@ -556,7 +556,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument("--layer_group_config", default="", type=str, help="layer group config file, if not set, use default config")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
-                        choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc'],
+                        choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'],
                         help="set address assign mode, if not set, auto as default")
     parser.add_argument("--same_addr", default="", type=str,
                         help="use same address for the specified inputs and outputs")

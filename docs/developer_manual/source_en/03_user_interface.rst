@@ -564,7 +564,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Optimization type of LayerGroup, 1/2/3, default is 2. 1: Simple LayerGroup mode, all operators will be grouped as much as possible, and the compilation speed is faster; 2: Dynamic compilation calculates the global cycle optimal Group grouping, suitable for inference graphs; 3: Linear programming LayerGroup mode, suitable for training graphs.
    * - addr_mode
      - N
-     - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc'], if not set, auto as default
+     - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'], if not set, auto as default
    * - disable_layer_group
      - N
      - Whether to disable LayerGroup pass
