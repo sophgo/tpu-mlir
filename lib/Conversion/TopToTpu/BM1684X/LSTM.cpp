@@ -76,7 +76,7 @@ void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
 void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::LSTMOp op) const {
   // LoweringLSTM(rewriter, op, rewriter.getBF16Type());
-  LoweringLSTM(rewriter, op, rewriter.getF32Type());
+  LoweringLSTM(rewriter, op, rewriter.getBF16Type());
 }
 
 void LSTMLowering::LoweringF16(PatternRewriter &rewriter,

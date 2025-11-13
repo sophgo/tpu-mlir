@@ -147,6 +147,7 @@ class ONNX_IR_TESTER(object):
             "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y, N), # output all
             "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y, Y, N), # output_yh and output_yc
             "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, Y, N),
+            "LSTM4":        (self.test_LSTM4,         N, Y, Y, Y, Y, N),  # LSTM CV184X BF16 test case
             "MaxPool1d":    (self.test_MaxPool1d,     Y, Y, Y, Y, Y, Y),
             "MaxPool2d":    (self.test_MaxPool2d,     Y, Y, Y, Y, Y, Y),
             "MaxPool3d":    (self.test_MaxPool3d,     N, Y, Y, Y, Y, Y),
@@ -4725,6 +4726,72 @@ class ONNX_IR_TESTER(object):
         )
         graph_def.initializer.extend([w_value, r_value, b_value])
         self.onnx_and_test(graph_def)
+
+    def test_LSTM4(self, case_name):
+        """
+        Test case for the first LSTM layer in crnn_200000.mlir.
+        Shapes taken directly from the MLIR:
+        - Input: [49, 1, 64]
+        - W / R: [2, 256, 64] (bidirectional, 4 * hidden_size = 256, input_size = 64)
+        - B: [2, 512] (8 * hidden_size)
+        - h0 / c0: [2, 1, 64]
+        - Output: [49, 2, 1, 64]
+        """
+        seq_length = 49
+        batch_size = 1
+        num_dir = 2
+        input_size = 64
+        hidden_size = 64
+        direction = 'bidirectional'
+
+        input_s = [seq_length, batch_size, input_size]
+        h0_s = [num_dir, batch_size, hidden_size]
+        c0_s = [num_dir, batch_size, hidden_size]
+        Y_s = [seq_length, num_dir, batch_size, hidden_size]
+
+        w_data = np.random.randn(num_dir, 4 * hidden_size, input_size).astype(np.float32)
+        r_data = np.random.randn(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
+        b_data = np.random.randn(num_dir, 8 * hidden_size).astype(np.float32)
+
+        lstm_node = helper.make_node(
+            'LSTM',
+            inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
+            outputs=['Y', 'Y_h', 'Y_c'],
+            direction=direction,
+            hidden_size=hidden_size,
+        )
+
+        graph_inputs = [
+            helper.make_tensor_value_info('input', TensorProto.FLOAT, input_s),
+            helper.make_tensor_value_info('h0', TensorProto.FLOAT, h0_s),
+            helper.make_tensor_value_info('c0', TensorProto.FLOAT, c0_s),
+        ]
+        graph_outputs = [
+            helper.make_tensor_value_info('Y', TensorProto.FLOAT, Y_s),
+            helper.make_tensor_value_info('Y_h', TensorProto.FLOAT, h0_s),
+            helper.make_tensor_value_info('Y_c', TensorProto.FLOAT, c0_s),
+        ]
+        initializers = [
+            helper.make_tensor('w', TensorProto.FLOAT, w_data.shape, w_data.flatten()),
+            helper.make_tensor('r', TensorProto.FLOAT, r_data.shape, r_data.flatten()),
+            helper.make_tensor('b', TensorProto.FLOAT, b_data.shape, b_data.flatten()),
+        ]
+
+        graph_def = helper.make_graph(
+            [lstm_node],
+            case_name,
+            graph_inputs,
+            graph_outputs,
+            initializer=initializers,
+        )
+
+        input_data = {
+            'input': np.clip(np.random.randn(*input_s).astype(np.float32), -10, 10),
+            'h0': np.clip(np.random.randn(*h0_s).astype(np.float32), -10, 10),
+            'c0': np.clip(np.random.randn(*c0_s).astype(np.float32), -10, 10),
+        }
+
+        self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_BCastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
