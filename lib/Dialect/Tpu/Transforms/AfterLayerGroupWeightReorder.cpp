@@ -149,6 +149,10 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
     auto attrs = idx_op->getAttrs();
     auto trans_idx_op = trans_idx.getDefiningOp();
     for (auto &attr : attrs) {
+      auto attr_name = attr.getName().str();
+      if (attr_name == "inline_bytes") {
+        continue;
+      }
       trans_idx_op->setAttr(attr.getName(), attr.getValue());
     }
     load_op->setOperand(0, trans_idx);
