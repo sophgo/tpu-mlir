@@ -329,6 +329,7 @@ class ONNX_IR_TESTER(object):
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y),
             "If":               (self.test_If,              N, Y, Y, N, Y, N),
             "UpsampleAddWeight":(self.test_UpsampleAddWeight, N, Y, Y, N, N, Y),
+            "MatmulHdimIsBatch":(self.test_MatmulHdimIsBatch, N, Y, Y, Y, Y, Y),
             # "Loop":            (self.test_Loop,             N, Y, N, N, Y, N),
             #########################################
             # LayerGroup test case, Alphabetically
@@ -2946,6 +2947,26 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(2, 64, 160, 320).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_MatmulHdimIsBatch(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                x = x + 1
+                y = y + 1
+                x = x.reshape(1, 17, 1, 32).permute(0, 2, 1, 3)
+                y = y.reshape(1, 38, 1, 32).permute(0, 2, 1, 3)
+                y = y.permute(0, 1, 3, 2)
+                return x @ y
+
+        model = Model()
+        x = torch.randn(1, 17, 32)
+        y = torch.randn(1, 38, 32)
+        self.torch_and_test((x, y), model, case_name, support_modes=["f16", "bf16"])
 
     def test_Deconv(self, case_name):
 
