@@ -147,7 +147,7 @@ class ONNX_IR_TESTER(object):
             "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y, N), # output all
             "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y, Y, N), # output_yh and output_yc
             "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, Y, N),
-            "LSTM4":        (self.test_LSTM4,         N, Y, Y, Y, Y, N),  # LSTM CV184X BF16 test case
+            "LSTM4":        (self.test_LSTM4,         N, Y, Y, Y, Y, Y),  # LSTM CV184X BF16 test case
             "MaxPool1d":    (self.test_MaxPool1d,     Y, Y, Y, Y, Y, Y),
             "MaxPool2d":    (self.test_MaxPool2d,     Y, Y, Y, Y, Y, Y),
             "MaxPool3d":    (self.test_MaxPool3d,     N, Y, Y, Y, Y, Y),

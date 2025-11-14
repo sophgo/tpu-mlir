@@ -70,7 +70,7 @@ void LSTMLowering::LoweringINT4(PatternRewriter &rewriter, top::LSTMOp op,
 }
 void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
                                 bool asymmetric) const {
-  LoweringLSTM(rewriter, op, rewriter.getF32Type());
+  LoweringLSTM(rewriter, op, rewriter.getBF16Type());
 }
 
 void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
