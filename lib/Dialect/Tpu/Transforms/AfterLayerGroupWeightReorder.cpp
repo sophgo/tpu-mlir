@@ -40,8 +40,10 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
                                 PatternRewriter &rewriter) const override {
 
     auto picked = pickReorderWeight(op);
-    if (!picked.first)
+    if (!picked.first) {
+      op->setOperand(1, module::getNoneOp(op));
       return failure();
+    }
 
     auto input = op.getOperand(0).getDefiningOp();
     if (!input->hasAttr("ginfo"))
