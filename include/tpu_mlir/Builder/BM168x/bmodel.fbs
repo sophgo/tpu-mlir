@@ -134,6 +134,7 @@ table SubNet {
     merge_param: MergeParam (id: 12);
     switch_param: SwitchParam (id: 13);
     core_commands: [CoreCommands] (id: 14);
+    run_core:uint32 (id: 15);                   /* how many cores the subnet run */
 }
 
 table NetStatic {}      // for old bmodel, not use any more

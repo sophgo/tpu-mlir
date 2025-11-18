@@ -401,7 +401,7 @@ def _parse_groups(final_mlir):
             group = False
             core_group = False
         if group or core_group:
-            if "tpu.Split" not in line:
+            if "tpu.CoreSplit" not in line:
                 group_line.append(line_no)
                 if "Yeild" not in line and "Join" not in line:
                     if "Load" not in line and "Store" not in line:
@@ -714,7 +714,7 @@ class DebugBase:
                 tgt_no = linos[0] - 1
             else:
                 tgt_no = linos[0] - 2
-            while "tpu.Split" in lines[tgt_no]:
+            while "tpu.CoreSplit" in lines[tgt_no]:
                 tgt_no -= 1
 
             lines[tgt_no] = re.sub("^(\s*)%", f"\\1group({group_no}) :{tgt_no}%", lines[tgt_no])

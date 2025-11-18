@@ -48,7 +48,7 @@ using DYN_ATTENTION = std::function<int(
     unsigned long long v4, unsigned long long v5, int32_t v6, int32_t v7,
     int32_t v8, int32_t v9, int32_t v10, int32_t v11, float v12, int32_t v13,
     int32_t v14, int32_t v15, int32_t v16, int32_t v17, int32_t v18,
-    void *buffer)>;
+    int32_t v19, void *buffer)>;
 // fill_${OP_NAME}_struct gen automatic by ppl, the differ between ppl kernel
 // func are with extra buffer param and return type
 static DYN_ATTENTION get_dyn_attention_func(bool is_fp16, bool is_mha,
@@ -88,6 +88,7 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
   auto q_head = _param->common.q_head;
   auto kv_head = _param->common.kv_head;
   auto high_precision = _param->common.high_precision;
+  int keep_dim = _param->common.keep_dim ? 1 : 0;
   int block_m, block_k, block_h;
   if (buffer) {
     // get tile info
@@ -107,8 +108,8 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
               _param->common.batch, _param->common.mq, _param->common.mk,
               _param->common.dim, q_head, kv_head, _param->common.scale,
               _param->common.hasmask, core_num,
-              align_up(_param->common.dim, 32 /*eu num*/), block_m, block_k,
-              block_h, buffer);
+              align_up(_param->common.dim, 32 /*eu num*/), keep_dim, block_m,
+              block_k, block_h, buffer);
 }
 
 #ifdef __cplusplus

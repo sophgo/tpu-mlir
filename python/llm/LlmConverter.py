@@ -45,7 +45,7 @@ class LlmConverter(BaseConverter):
         self.chip = args.chip
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
-        self.dynamic_vit = args.dynamic_vit
+        self.dynamic_vit = args.dynamic
         self.use_block_with_kv = args.use_block_with_kv
         self.same_addr = "0:0" if args.use_same_addr else ""
         self.debug = args.debug
@@ -88,6 +88,7 @@ class LlmConverter(BaseConverter):
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev"
         else:
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core"
+        folder_name += "_dynamic" if args.dynamic else "_static"
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.config_dir = os.path.join(self.out_dir, "config")

@@ -13,30 +13,21 @@ class Qwen3VLConverter(LlmConverter):
 
     def __init__(self, args, config):
         super().__init__(args, config)
-        if isinstance(args.max_pixels, int):
-            self.max_pixels = [args.max_pixels]
-        elif isinstance(args.max_pixels, list):
-            self.max_pixels = args.max_pixels
-        else:
-            raise RuntimeError(f"max_pixels format is invalid: {args.max_pixels}")
-        any_no_32 = any((mp % (32 * 32) != 0) for mp in self.max_pixels)
-        is_zero = any((mp == 0) for mp in self.max_pixels)
-        if any_no_32 or is_zero:
+        self.max_pixels = args.max_pixels
+        if self.max_pixels == 0 or self.max_pixels % (32 * 32) != 0:
             raise RuntimeError(
                 f"max_pixels values must be multiples of 32*32 and non-zero: {args.max_pixels}")
-
         self.do_vit = False  # compile vit externally
         # vision config
         self.init_vconfig()
         self.vit_path = "model.visual"
         # extern mlirs
         self.all_gen_mlirs.append(self.gen_add_mlir)
-        self.all_gen_mlirs.append(self.gen_all_vits)
+        self.all_gen_mlirs.append(self.gen_vit_mlir)
 
         # extern compiles
         self.all_compiles.append(self.compile_add_mlir)
-        self.all_compiles.append(self.compile_all_vits)
-
+        self.all_compiles.append(self.compile_vit_mlir)
         self.extern_block_weights = {"mrope_interleave_idx": self.get_mrope_index()}
 
     def init_vconfig(self):
@@ -46,7 +37,7 @@ class Qwen3VLConverter(LlmConverter):
         self.spatial_merge_size = self.vconfig.spatial_merge_size
         self.in_channels = self.vconfig.in_channels
         self.depth = self.vconfig.depth
-        self.num_patches = [mp // (self.patch_size * self.patch_size) for mp in self.max_pixels]
+        self.num_patches = self.max_pixels // (self.patch_size * self.patch_size)
         self.patch_dim = self.in_channels * self.patch_size * self.patch_size * self.temporal_patch_size
         self.embed_dim = self.vconfig.hidden_size
         self.vnum_heads = self.vconfig.num_heads
@@ -168,17 +159,13 @@ class Qwen3VLConverter(LlmConverter):
         from transformers.models.qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding
         head_dim = self.vconfig.hidden_size // self.vnum_heads
         rotary_embed = VisionRotaryEmbedding(head_dim // 2)
-        freqs = rotary_embed(self.num_patches[0])
+        freqs = rotary_embed(self.num_patches)
         return freqs.cos().numpy(), freqs.sin().numpy()
 
-    def gen_all_vits(self):
-        for idx in range(len(self.num_patches)):
-            self.gen_vit_mlir_by_patches(idx)
-
-    def gen_vit_mlir_by_patches(self, patch_idx: int):
-        tqdm.write(f"generate vit {patch_idx} mlir ...")
-        name = f"vit_{patch_idx}"
-        patches = self.num_patches[patch_idx]
+    def gen_vit_mlir(self):
+        tqdm.write(f"generate vit  mlir ...")
+        name = f"vit"
+        patches = self.num_patches
         # create weights file
         vit_npz = f"vit_top_weights.npz"
         patch_embed = f"{self.vit_path}.patch_embed.proj"
@@ -197,8 +184,6 @@ class Qwen3VLConverter(LlmConverter):
             deepstack_fc2_list.append(f"{self.vit_path}.deepstack_merger_list.{idx}.linear_fc2")
 
         def save_weights():
-            if patch_idx > 0:
-                return
             cos, sin = self.vision_rotary()
             weights_dict = {
                 rotary_cos + ".weight": cos,
@@ -253,10 +238,14 @@ class Qwen3VLConverter(LlmConverter):
         position_shape = [patches, 2]
         out_dim = patches // (self.spatial_merge_size**2)
         out_shape = [out_dim, self.hidden_size]
-        input_shapes = [
-            in_shape, position_shape, [patches, 4], [patches, 4, 1], [1, 1, patches, patches]
-        ]
-        input_types = ['F32', 'INT32', 'INT32', 'F32', 'F32']
+        if self.dynamic_vit:
+            input_shapes = [in_shape, position_shape, [patches, 4], [patches, 4, 1]]
+            input_types = ['F32', 'INT32', 'INT32', 'F32']
+        else:
+            input_shapes = [
+                in_shape, position_shape, [patches, 4], [patches, 4, 1], [1, 1, patches, patches]
+            ]
+            input_types = ['F32', 'INT32', 'INT32', 'F32', 'F32']
         out_num = 1 + len(self.deepstack_visual_indexes)
 
         vit_mlir = MLIRImporter(
@@ -392,7 +381,10 @@ class Qwen3VLConverter(LlmConverter):
                                           2)  # by fast_pos_embed_interpolate, need to be reordered
         in3_op = vit_mlir.create_input_op(L('pos_weight'),
                                           3)  # by fast_pos_embed_interpolate, need to be reordered
-        in4_op = vit_mlir.create_input_op(L('attention_mask'), 4)
+        if not self.dynamic_vit:
+            in4_op = vit_mlir.create_input_op(L('attention_mask'), 4)
+        else:
+            in4_op = vit_mlir.none_op
         new_weight = vit_mlir.create_weight_op(patch_embed + ".weight",
                                                [self.patch_dim, self.embed_dim])
         new_bias = vit_mlir.create_weight_op(patch_embed + ".bias", [1, self.embed_dim])
@@ -426,7 +418,7 @@ class Qwen3VLConverter(LlmConverter):
                            ip=ip).output
         # rotary embedding
         new_weight = vit_mlir.create_weight_op(rotary_cos + ".weight",
-                                               [self.num_patches[0], self.vhead_dim // 4])
+                                               [self.num_patches, self.vhead_dim // 4])
         cos_op = top.GatherOp(T([patches, 2, self.vhead_dim // 4]),
                               new_weight,
                               in1_op,
@@ -444,7 +436,7 @@ class Qwen3VLConverter(LlmConverter):
                             loc=L(rotary_cos + ".tile"),
                             ip=ip).output
         new_weight = vit_mlir.create_weight_op(rotary_sin + ".weight",
-                                               [self.num_patches[0], self.vhead_dim // 4])
+                                               [self.num_patches, self.vhead_dim // 4])
         sin_op = top.GatherOp(T([patches, 2, self.vhead_dim // 4]),
                               new_weight,
                               in1_op,
@@ -540,24 +532,17 @@ class Qwen3VLConverter(LlmConverter):
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
-    def compile_all_vits(self):
-        for idx in range(len(self.num_patches)):
-            self.compile_vit_by_patches(idx)
-
-    def compile_vit_by_patches(self, patch_idx: int):
-        name = f"vit_{patch_idx}"
+    def compile_vit_mlir(self):
+        name = f"vit"
         model_path = f"{name}/{name}.bmodel"
-        if patch_idx == 0:
-            self.all_bmodels.append(model_path)
-        else:
-            self.all_bmodels_without_bytes.append(model_path)
+        self.all_bmodels.append(model_path)
         if os.path.exists(model_path):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
+        num_core = self.num_core if not self.dynamic_vit else 1
         deploy_args = [
-            f'pushd vit_{patch_idx} &&', 'model_deploy.py', f'--mlir {name}.mlir',
-            f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model {name}.bmodel'
+            f'pushd vit &&', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
+            f'--num_core {num_core}', f'--num_device {self.num_device}', f'--model {name}.bmodel'
         ]
         if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
             deploy_args.append('--quantize f16')

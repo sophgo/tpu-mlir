@@ -326,10 +326,14 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
 
   // step 2: populate groupParallel address to its regions.
   for (auto func : m.getOps<FuncOp>()) {
-    for (auto groupParallelOp : func.getOps<tpu::GroupParallelOp>()) {
-      for (auto [value, region] : llvm::zip(groupParallelOp.getResults(),
-                                            groupParallelOp.getParallel())) {
+    for (auto gOp : func.getOps<tpu::GroupParallelOp>()) {
+      for (auto [value, region] :
+           llvm::zip(gOp.getResults(), gOp.getParallel())) {
         region.back().getTerminator()->getOperand(0).setType(value.getType());
+        for (auto op : region.back().getOps<tpu::ReshapeOp>()) {
+          auto addr = module::getAddress(op.getOutput());
+          module::setAddress(op.getInput(), addr);
+        }
       }
     }
   }
@@ -338,7 +342,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
     func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp parallelOp) {
       for (auto &op : parallelOp.getRegion().getOps()) {
         llvm::TypeSwitch<Operation &>(op)
-            .Case([&](tpu::SplitOp splitOp) {
+            .Case([&](tpu::CoreSplitOp splitOp) {
               int64_t address = module::getAddress(splitOp->getOperand(0));
               if (address != 0) {
                 for (auto v : splitOp->getResults()) {
@@ -351,7 +355,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
               for (auto [joinOpValue, returnType] : llvm::zip(
                        yieldOp->getOperands(), parallelOp->getResultTypes())) {
                 joinOpValue.setType(returnType);
-                if (!isa<tpu::JoinOp>(joinOpValue.getDefiningOp()))
+                if (!isa<tpu::CoreJoinOp>(joinOpValue.getDefiningOp()))
                   continue;
                 int64_t address = module::getAddress(joinOpValue);
                 if (address == 0) {

@@ -82,10 +82,10 @@ public:
   bool shouldPrint(tpu::ConcatOp op) const override { return false; }
 };
 
-class Concat_SlicePattern : public OpRewriterPatternEx<tpu::ConcatOp> {
+class ConcatSlicePattern : public OpRewriterPatternEx<tpu::ConcatOp> {
 public:
-  Concat_SlicePattern(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::ConcatOp>(context, "Concat_SlicePattern") {}
+  ConcatSlicePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::ConcatOp>(context, "ConcatSlicePattern") {}
 
   LogicalResult matchAndRewriteImpl(tpu::ConcatOp op,
                                     PatternRewriter &rewriter) const override {
@@ -132,7 +132,7 @@ public:
         applyPatternsAndFoldGreedily(s, std::move(patterns));
         module::applyPatternOnce<ConcatMergePattern>(s);
         module::applyPatternOnce<ConcatFusePattern>(s);
-        module::applyPatternOnce<Concat_SlicePattern>(s);
+        module::applyPatternOnce<ConcatSlicePattern>(s);
         BMAddressAssign addr_assign;
         addr_assign.assign(s, reuse_addr, same_addr);
       }

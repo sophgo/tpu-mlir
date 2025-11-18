@@ -135,6 +135,19 @@ model_deploy.py \
   --tolerance 0.98,0.90 \
   --model qwen_block_cache_0.bmodel
 
+# multi-core dynamic
+model_deploy.py \
+  --mlir qwen_block_cache_0.mlir \
+  --quantize W4BF16 \
+  --q_group_size 64 \
+  --num_core 2 \
+  --chip bm1688 \
+  --dynamic \
+  --test_input ${NNMODELS_PATH}/llm_models/qwen_block_cache_0_input.npz \
+  --test_reference qwen_block_cache_0_top_outputs.npz \
+  --tolerance 0.98,0.90 \
+  --model qwen_block_cache_0_dynamic.bmodel
+
 check_fattention qwen_block_cache_0_bm1684x_w4bf16_final.mlir
 
 model_deploy.py \

@@ -10,9 +10,7 @@ using namespace ppl;
 #endif
 #define DTYPE fp32
 template <typename T>
-void interp_(T *ptr_output, T *ptr_input, const int g_core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int block_w, const int align_corners) {
-  ppl::set_core_num(g_core_num);
-  int core_num = ppl::get_core_num();
+void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const int C, const int H_in, const int W_in, const int H_out, const int W_out, const int block_h, const int block_w, const int align_corners) {
   int core_idx = ppl::get_core_index();
   if (core_idx >= core_num) {
     return;

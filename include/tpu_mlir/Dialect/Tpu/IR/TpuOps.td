@@ -3211,7 +3211,7 @@ def Tpu_SelectiveScanOp: Tpu_Op<"SelectiveScan"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_SplitOp:Tpu_BaseOp<"Split"> {
+def Tpu_CoreSplitOp:Tpu_Op<"CoreSplit"> {
   let summary = "split tensor to continues pieces";
   let description = [{
     1.Op Introduction
@@ -3226,12 +3226,14 @@ def Tpu_SplitOp:Tpu_BaseOp<"Split"> {
     input(act.): input tensor.;
   }];
   let arguments = (ins
-    AnyRankedTensor:$input
+    AnyRankedTensor:$input,
+    SI32Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "true">:$multicore
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
 }
 
-def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
+def Tpu_CoreJoinOp:Tpu_Op<"CoreJoin"> {
   let summary = "Join tensor to continues pieces";
   let description = [{
     1.Op Introduction
@@ -3244,7 +3246,9 @@ def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
     inputs(act.): input tensor.;
   }];
   let arguments = (ins
-    Variadic<AnyRankedTensor>:$inputs
+    Variadic<AnyRankedTensor>:$inputs,
+    SI32Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "true">:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }
