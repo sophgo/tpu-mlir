@@ -146,7 +146,7 @@ if __name__ == "__main__":
                         default="",
                         choices=[
                             'bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380',
-                            'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'
+                            'cv183x', 'cv182x', 'cv181x', 'cv180x', 'phobos3', 'cv186x', 'cpu'
                         ],
                         help="if dialect is \'tpu\', set quantize type as \'model_deploy\' step")
     parser.add_argument("--quantize",

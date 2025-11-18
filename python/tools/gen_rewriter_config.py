@@ -283,7 +283,7 @@ if __name__ == "__main__":
         default="",
         choices=[
             'bm1688', 'bm1684x', 'bm1684', 'bm1690', 'mars3', 'sgtpuv8', 'sg2380', 'cv183x',
-            'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'
+            'cv182x', 'cv181x', 'cv180x', 'phobos3', 'cv186x', 'cpu'
         ],
         help="if pass_type is \'tpu_processor_optimize\', set chip type as \'model_deploy\' step")
     parser.add_argument(

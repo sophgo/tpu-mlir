@@ -52,6 +52,9 @@ uint64_t CV18xxProfiling::get_cycle(std::vector<uint8_t> &cmdbuf) {
       case MAGIC_CV180X:
         tpu_freqency = 500;
         break;
+      case MAGIC_PHOBOS3:
+        tpu_freqency = 1000;
+        break;
       default:
         assert(0 && "unsupported chip");
         break;
@@ -115,6 +118,9 @@ void TiuReg::parse_tiu_reg(tiu_reg_t *r, const uint32_t *p,
     parse_cv182x_tiu_reg(r, p);
     cv182xMapToCv183x(r);
   } else if (magicNum == 0xA8) {
+    parse_cv182x_tiu_reg(r, p);
+    cv182xMapToCv183x(r);
+  } else if (magicNum == 0xA9) {
     parse_cv182x_tiu_reg(r, p);
     cv182xMapToCv183x(r);
   } else {
@@ -860,6 +866,8 @@ void TdmaReg::parse_tdma_reg(tdma_reg_t *r, const uint32_t *p,
   } else if (magicNum == 0xA7) {
     parse_cv182x_tdma_reg(r, p);
   } else if (magicNum == 0xA8) {
+    parse_cv182x_tdma_reg(r, p);
+  } else if (magicNum == 0xA9) {
     parse_cv182x_tdma_reg(r, p);
   } else {
     printf("invalid magic number %x\n", magicNum);

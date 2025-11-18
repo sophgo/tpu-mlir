@@ -34,7 +34,7 @@ typedef uint64_t gaddr_t;
 #define GA_INVALID 0xffffffffffffffffULL
 
 #define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
-#define ALIGN(x, a) __ALIGN_MASK(x, (__typeof__(x))(a)-1)
+#define ALIGN(x, a) __ALIGN_MASK(x, (__typeof__(x))(a) - 1)
 
 // cvicontex
 /*
@@ -63,6 +63,7 @@ typedef enum CVIKERNEL_FMT_E {
 #define CVI_TPU_VERSION_182X "cv182x"
 #define CVI_TPU_VERSION_181X "cv181x"
 #define CVI_TPU_VERSION_180X "cv180x"
+#define CVI_TPU_VERSION_PHOBOS3 "phobos3"
 
 /*
  * System information

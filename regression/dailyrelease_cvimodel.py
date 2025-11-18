@@ -6,9 +6,16 @@ import os
 import shutil
 import time
 
-from main_entry import Status
 from run_model import MODEL_RUN
 from chip import *
+
+from enum import Enum
+
+
+class Status(Enum):
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
 
 
 def move_model(dir, dst_model):
@@ -38,8 +45,7 @@ class CviModelRegressor:
         self.current_dir = os.getcwd()
         self.dest_dir = dest_dir
         os.makedirs(self.dest_dir, exist_ok=True)
-        self.chips = ["cv180x", "cv181x", "cv182x", "cv183x"]
-        # self.chips = ["cv183x"]
+        self.chips = ["phobos3", "cv180x", "cv181x", "cv182x", "cv183x"]
         self.model_list = full_model_list
         self.test_type = "all"
         self.results = []
@@ -203,8 +209,7 @@ class CviModelRegressor:
 class CviSampleGenerator:
 
     def __init__(self, dest_dir):
-        self.chips = ["cv180x", "cv181x", "cv182x", "cv183x"]
-        # self.chips = ["cv182x"]
+        self.chips = ["phobos3", "cv180x", "cv181x", "cv182x", "cv183x"]
         self.current_dir = os.getcwd()
         self.dest_dir = dest_dir
         os.makedirs(self.dest_dir, exist_ok=True)
@@ -260,10 +265,10 @@ class CviSampleGenerator:
         self.run_sample_net("retinaface_mnet_with_det", os.path.join(tmp_dir, "retinaface_mnet25_600_fused_preprocess_aligned_input.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True, True)
         self.run_sample_net("yolov8n", os.path.join(tmp_dir, "yolov8n_int8.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
 
-        if chip != "cv181x" and chip != "cv180x":
+        if chip == "cv183x" or chip == "cv182x":
             self.run_sample_net("yolov3_416_with_det", os.path.join(tmp_dir, "yolo_v3_416_fused_preprocess_with_detection.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
 
-        if chip != "cv180x":
+        if chip != "cv180x" and chip != "phobos3":
             self.run_sample_net("yolox_s", os.path.join(tmp_dir, "yolox_s.cvimodel"), chip, "int8_sym")
             self.run_sample_net("yolov5s", os.path.join(tmp_dir, "yolov5s_fused_preprocess.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
             self.run_sample_net("yolov5s", os.path.join(tmp_dir, "yolov5s_fused_preprocess_aligned_input.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True, True)

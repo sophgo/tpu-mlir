@@ -35,6 +35,7 @@ namespace backend {
 #define MAGIC_CV182X 0xA6
 #define MAGIC_CV181X 0xA7
 #define MAGIC_CV180X 0xA8
+#define MAGIC_PHOBOS3 0xA9
 
 typedef struct __cmd_hdr_s {
   unsigned char magic;         // 0xA5

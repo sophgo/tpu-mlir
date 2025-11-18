@@ -482,7 +482,7 @@ class ONNX_IR_TESTER(object):
             self.support_quant_modes.append("f8e4m3")
             if not self.simple:
                 self.support_quant_modes.append("f8e5m2")
-        if self.chip.startswith("cv18") and self.chip != "cv186x" and self.chip != "cv184x":
+        if self.chip in ["cv183x", "cv182x", "cv181x", "cv180x", "phobos3"]:
             self.support_quant_modes = ["bf16", "int8"]
             self.model_file = ".cvimodel"
             self.is_cv18xx = True
@@ -9202,7 +9202,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8', 'bm1690e', 'bm1684x2'],
+                        choices=['bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'phobos3', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8', 'bm1690e', 'bm1684x2'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2', 'w4int8'],

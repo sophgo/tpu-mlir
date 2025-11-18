@@ -50,7 +50,8 @@ def Module_Chip: I32EnumAttr<"Chip", "module chip",[
       I32EnumAttrCase<"CV181x",  2001, "cv181x">,
       I32EnumAttrCase<"CV182x",  2002, "cv182x">,
       I32EnumAttrCase<"CV183x",  2003, "cv183x">,
-      I32EnumAttrCase<"SG2262",  2004, "sg2262">
+      I32EnumAttrCase<"SG2262",  2004, "sg2262">,
+      I32EnumAttrCase<"PHOBOS3",  2005, "phobos3">,
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";

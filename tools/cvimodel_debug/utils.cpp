@@ -57,6 +57,8 @@ uint32_t getNpuSize(std::string chip) {
     size = 8 * 32 * 1024;
   } else if (chip == "cv183x") {
     size = 32 * 32 * 1024;
+  } else if (chip == "phobos3") {
+    size = 2 * 32 * 512;
   } else {
     assert(0 && "unsupport chip");
   }
@@ -79,6 +81,8 @@ tpu_mlir::module::Chip getChip(std::string chip) {
     return tpu_mlir::module::Chip::CV182x;
   } else if (chip == "cv183x") {
     return tpu_mlir::module::Chip::CV183x;
+  } else if (chip == "phobos3") {
+    return tpu_mlir::module::Chip::PHOBOS3;
   } else {
     assert(0 && "unsupport chip type");
   }
@@ -134,7 +138,8 @@ void reset_tiu_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt,
     p[0] = p[0] | (low13 << 19);
     p[1] = p[1] & 0xFFFFFFF8;
     p[1] = p[1] | (high3 >> 29);
-  } else if (magicNum == 0xA6 || magicNum == 0xA7 || magicNum == 0xA8) {
+  } else if (magicNum == 0xA6 || magicNum == 0xA7 || magicNum == 0xA8 ||
+             magicNum == 0xA9) {
     // reset cv182x/cv181x/cv180x
     // cal des_cmd_id_tpu
     uint32_t ori_cmd_id_tpu = p[1] & ((1u << 16) - 1);
@@ -166,7 +171,7 @@ void reset_tdma_info(uint32_t *p, uint32_t tiuCnt, uint32_t tdmaCnt,
     return;
   }
   if (magicNum == 0xA5 || magicNum == 0xA6 || magicNum == 0xA7 ||
-      magicNum == 0xA8) {
+      magicNum == 0xA8 || magicNum == 0xA9) {
     // reset cv183x/cv182x/cv181x/cv180x
     // cal des_cmd_id_tdma
     uint32_t ori_cmd_id = (p[0] >> 16) & ((1u << 16) - 1);

@@ -1531,7 +1531,8 @@ bool isInt4Op(Operation *op) {
 
 bool isCV18xx() {
   return (chip == Chip::CV183x || chip == Chip::CV182x ||
-          chip == Chip::CV181x || chip == Chip::CV180x);
+          chip == Chip::CV181x || chip == Chip::CV180x ||
+          chip == Chip::PHOBOS3);
 }
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
@@ -1549,7 +1550,9 @@ bool isBM1684X() { return (chip == Chip::BM1684X); }
 bool isCV184X() { return (chip == Chip::CV184X); }
 bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 bool isSG2262() { return (chip == Chip::SG2262); }
-bool isMultiCoreArch() { return isBM1690Family() || isSG2380() || isBM1688() || isBM1684X2(); }
+bool isMultiCoreArch() {
+  return isBM1690Family() || isSG2380() || isBM1688() || isBM1684X2();
+}
 bool isBM1690E() { return (chip == Chip::BM1690E); }
 bool isBM1690() { return (chip == Chip::BM1690); }
 bool isBM1684X2() { return (chip == Chip::BM1684X2); }

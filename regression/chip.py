@@ -26,6 +26,7 @@ chip_support = {
     "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,      N,      N,       "bmodel"),
     "bm1684x":   (Y,   Y,   Y,    Y,        Y,         N,        N,      N,      N,       "bmodel"),
     "bm1688":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
+    "phobos3":   (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv181x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
