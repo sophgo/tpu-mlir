@@ -344,6 +344,8 @@ class LlmConverter(BaseConverter):
     def init_quantization(self):
         c = self.model_info.config
         self.quantization_config = getattr(self.llm_config, c.quantization_config, None)
+        if self.quantization_config is None:
+            self.quantization_config = getattr(self.config, c.quantization_config, None)
         if self.quantization_config:
             self.quant_mode = self.quantization_config["quant_method"]
             self.q_group_size = self.quantization_config["group_size"]
@@ -355,6 +357,15 @@ class LlmConverter(BaseConverter):
                 if self.quantize != "w4f16":
                     print("Warning: AWQ only support w4f16 quantize, change quantize to w4f16")
                     self.quantize = "w4f16"
+            if self.quant_mode == "auto-round":
+                packing_format = self.quantization_config.get("packing_format",
+                                                              "auto_round:auto_gptq")
+                if packing_format == "auto_round:auto_gptq":
+                    self.quant_mode = "gptq"
+                elif packing_format == "auto_round:auto_awq":
+                    self.quant_mode = "awq"
+                else:
+                    raise NotImplementedError(f"Not support packing_format: {packing_format}")
 
         if self.q_group_size < 0:
             self.q_group_size = 0
