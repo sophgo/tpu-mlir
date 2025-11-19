@@ -110,6 +110,8 @@ run_calibration参数介绍
      - search_qtable输出的混精度量化表
    * - o
      - 输出门限表
+   * - calibration_table
+     - 输出门限表，同-o选项，在mix_search时候输入提前计算好的量化表
    * - debug_cmd
      - debug命令
    * - debug_log
@@ -265,7 +267,7 @@ pattern-match
 =====================
 
 ``pattern-match`` 方法集成于 ``run_calibration`` 中,不需要显示指定参数,当前共有两类模型提供经验 ``qtable`` ,一类为 YOLO 系列,另一类为 BERT 等 Transformer 系列。
-在获得 ``cali_table`` 后,如果模型匹配上现有pattern,则会在 ``path/to/cali_table/`` 文件夹下生成qtable。
+在获得 ``cali_table`` 后,如果模型匹配上现有pattern,则会在 ``path/to/cali_table/`` 文件夹下生成qtable。同时在校准前也会对算子计算内容简单判断，如果是对shape，坐标等进行计算的算子也会包含在qtable中。
 
 YOLO系列自动混精度方法
 -------------------------------

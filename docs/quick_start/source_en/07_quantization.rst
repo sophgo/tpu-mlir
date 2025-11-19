@@ -275,7 +275,7 @@ pattern-match
 
 The ``pattern-match`` method is integrated into ``run_calibration`` and does not require explicit parameter specification.
 Currently, there are two type of models for which experience ``qtable`` is provided: one is the YOLO series, and the other is the Transformer series (e.g., BERT).
-After obtaining the ``cali_table`` , if the model matches an existing pattern, a qtable will be generated in the ``path/to/cali_table/`` folder.
+After obtaining the ``cali_table`` , if the model matches an existing pattern, a qtable will be generated in the ``path/to/cali_table/`` folder. Before calibration, purpose of every op is judged, if it is calculating shape or position, it will be set float and included in qtable.
 
 YOLO Series Automatic Mixed Precision Method
 -----------------------------------------------
