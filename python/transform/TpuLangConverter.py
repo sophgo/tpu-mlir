@@ -5,7 +5,7 @@
 #
 # ==============================================================================
 
-from typing import Union, Iterable, List, Tuple, get_origin, get_args
+from typing import Union, Iterable, List, Tuple, get_origin, get_args, Optional, Dict, Any
 from .MLIRImporter import MLIRImporter, State, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
@@ -13,6 +13,8 @@ import mlir.dialects.quant as quant
 from utils.mlir_shell import *
 import numpy as np
 import logging
+import gzip
+import pickle
 
 logger = logging.getLogger("root")
 
@@ -218,6 +220,33 @@ class Tensor:
         self.is_preprocess = False
         Tensor.ID += 1
 
+    def __getstate__(self):
+        state = {
+            'id': self.id,
+            'shape': self.shape,
+            'name': self.name,
+            'ttype': self.ttype,
+            'dtype': self.dtype,
+            'is_quantized': self.is_quantized,
+            'scale': self.scale,
+            'zero_point': self.zero_point,
+            'is_preprocess': self.is_preprocess,
+            'buffer': self.buffer if self.ttype == "coeff" else None  # only save coeff data
+        }
+        return state
+
+    def __setstate__(self, state):
+        self.id = state['id']
+        self.shape = state['shape']
+        self.name = state['name']
+        self.ttype = state['ttype']
+        self.dtype = state['dtype']
+        self.is_quantized = state['is_quantized']
+        self.scale = state['scale']
+        self.zero_point = state['zero_point']
+        self.is_preprocess = state['is_preprocess']
+        self.buffer = state['buffer']
+
     def reset(self):
         self.buffer = None
 
@@ -300,7 +329,9 @@ class Operator:
                  op_name: str,
                  inputs: List[Tensor],
                  outputs: List[Tensor],
-                 params: dict = {}):
+                 caller_tpulang_op_func_name: str,
+                 params: dict = {},
+                 args_info: dict = {}):
         self.op_name = op_name
         self.params = params
         self.inputs = inputs
@@ -310,6 +341,8 @@ class Operator:
             self.src_func = params["name"][0]
         else:
             self.src_func = _current_func_name
+        self.caller_tpulang_op_func_name = caller_tpulang_op_func_name
+        self.args_info = args_info
 
     def __repr__(self):
         s = "{type} (\n{modstr}\n)"
@@ -322,6 +355,27 @@ class Operator:
     def __del__(self):
         del self.inputs
         del self.outputs
+
+    def __getstate__(self):
+        state = {
+            'op_name': self.op_name,
+            'params': self.params,
+            'inputs': self.inputs,
+            'outputs': self.outputs,
+            'src_func': self.src_func,
+            'caller_tpulang_op_func_name': self.caller_tpulang_op_func_name,
+            'args_info': self.args_info
+        }
+        return state
+
+    def __setstate__(self, state):
+        self.op_name = state['op_name']
+        self.params = state['params']
+        self.inputs = state['inputs']
+        self.outputs = state['outputs']
+        self.src_func = state['src_func']
+        self.caller_tpulang_op_func_name = state['caller_tpulang_op_func_name']
+        self.args_info = state['args_info']
 
 
 class Graph:
@@ -399,6 +453,27 @@ class Graph:
                            ["outputs (\n{}\n)".format(_indent(self.outputs, 2))] +
                            ["body (\n{}\n)".format(_indent(self.operators, 2))])
         return s.format(name=self.name, modstr=_indent(modstr, 2))
+
+    def __getstate__(self):
+        """Control serialization content"""
+        state = {
+            'name': self.name,
+            'operators': self.operators,
+            'contained_func': self.contained_func,
+            '_inputs': self._inputs,
+            '_outputs': self._outputs,
+            'tensors_dict': self.tensors_dict
+        }
+        return state
+
+    def __setstate__(self, state):
+        """Control deserialization process"""
+        self.name = state['name']
+        self.operators = state['operators']
+        self.contained_func = state['contained_func']
+        self._inputs = state['_inputs']
+        self._outputs = state['_outputs']
+        self.tensors_dict = state['tensors_dict']
 
 
 class TpuLangConverter(BaseConverter):
@@ -691,3 +766,131 @@ class TpuLangConverter(BaseConverter):
         np.savez(self.weight_file, **self.constant)
         if log_level != "quiet":
             logger.info("Save weight file: {}".format(self.weight_file))
+
+
+class DebugDumper:
+    # MODE_NONE = "none"
+    # MODE_DUMP = "dump"
+    # MODE_LOAD = "load"
+
+    DEFAULT_DUMP_PATH = "./debug_dumps/"
+
+    @staticmethod
+    def _resolve_path(name: str, custom_path: Optional[str], mode: str) -> str:
+        """Resolve file path"""
+        base_path = custom_path or DebugDumper.DEFAULT_DUMP_PATH
+        if mode == "dump":
+            os.makedirs(base_path, exist_ok=True)
+        filename = f"{name}_graph_dump.pkl.gz"
+        return os.path.join(base_path, filename)
+
+    @staticmethod
+    def dump(name: str,
+             graph: Graph,
+             compile_args: Dict[str, Any],
+             dump_path: Optional[str] = None) -> str:
+        """Serialize and save graph data"""
+        if not graph:
+            print("[WARNING] No graph to dump")
+            return ""
+
+        file_path = DebugDumper._resolve_path(name, dump_path, mode='dump')
+
+        # Prepare data to save
+        data = {'name': name, 'graph': graph, 'compile_args': compile_args}
+
+        # Save as gzipped pickle
+        with gzip.open(file_path, 'wb') as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        print(f"[DEBUG] Graph dumped to {file_path}")
+        return file_path
+
+    # @staticmethod
+    # def load_by_name(
+    #     name: str,
+    #     load_path: Optional[str] = None
+    # ) -> Optional[Dict]:
+    #     """Load graph data by name"""
+    #     file_path = DebugDumper._resolve_path(name, load_path, mode='load')
+    #     return DebugDumper._load_from_file(file_path)
+
+    @staticmethod
+    def _load_from_file(file_path: str) -> Optional[Dict]:
+        """Load data from file"""
+        if not os.path.exists(file_path):
+            print(f"[ERROR] Dump file not found: {file_path}")
+            return None
+
+        try:
+            with gzip.open(file_path, 'rb') as f:
+                data = pickle.load(f)
+            print(f"[DEBUG] Loaded graph dump from {file_path}")
+            return data
+        except Exception as e:
+            print(f"[ERROR] Failed to load dump file: {str(e)}")
+            return None
+
+    @staticmethod
+    def inspect_dump_file(graph: Graph, file_path: str):
+        """Inspect dump file contents"""
+        data = DebugDumper._load_from_file(file_path)
+        if not data:
+            print(f"[ERROR] Failed to load dump file: {file_path}")
+            return
+
+        print(f"\n=== Graph Dump Inspection: {file_path} ===")
+        print(f"Graph Name: {data['name']}")
+        # print(f"Dump Time: {data['dump_time']}")
+        # print(f"Version: {data.get('version', 'unknown')}")
+
+        graph = data['graph']
+        print(f"\nGraph Info: {graph}")
+
+        # Print compilation arguments
+        compile_args = data.get('compile_args', {})
+        print(f"\nCompile Arguments ({len(compile_args)}):")
+        for i, (key, value) in enumerate(compile_args.items()):
+            print(f"{i+1}. {key}: {value}")
+
+        # Print first 5 operators
+        print(f"\nFirst 5 Operators ({len(graph.operators)} total):")
+        for i, op in enumerate(graph.operators[:5]):
+            inputs = [t.name for t in op.inputs if t is not None] if op.inputs else []
+            outputs = [t.name for t in op.outputs if t is not None] if op.outputs else []
+            print(f"{i+1}. {op.op_name} (from {op.src_func})")
+            print(f"   caller_tpulang_op_func_name: {op.caller_tpulang_op_func_name}")
+            print(f"   Inputs: {inputs}")
+            print(f"   Outputs: {outputs}")
+            print(f"   Args Info: {op.args_info}")
+
+        # Print first 5 tensors
+        print(f"\nFirst 5 Tensors:")
+        tensor_count = 0
+        for i, (name, tensor_id) in enumerate(graph.tensors_dict.items()):
+            if tensor_count >= 5:
+                break
+            # Find corresponding tensor object
+            tensor = None
+            for op in graph.operators:
+                for t in op.inputs + op.outputs:
+                    if t and t.id == tensor_id:
+                        tensor = t
+                        break
+                if tensor:
+                    break
+
+            if tensor:
+                # Show tensor data status
+                data_status = "with data" if tensor.buffer is not None else "no data"
+                if tensor.ttype == "neuron":
+                    data_status += " (neuron)"
+                else:
+                    data_status += " (coeff)"
+
+                print(
+                    f"{i+1}. {name}: shape={tensor.shape}, dtype={tensor.dtype}, ttype={tensor.ttype}, {data_status}"
+                )
+                tensor_count += 1
+
+        return data

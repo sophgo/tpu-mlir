@@ -10,6 +10,7 @@ import time
 from typing import List, Union, Tuple, Optional
 
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name, assert_with_out_name
+from .TpuLangConverter import DebugDumper
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.model_deploy import getCustomFormat
 # from deprecated.sphinx import deprecated
@@ -24,10 +25,35 @@ import numpy as np
 import math
 import logging
 from copy import deepcopy
+import inspect
 
 logger = logging.getLogger("root")
 
 device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
+
+
+def simplify_value(value):
+    if isinstance(value, Tensor):
+        return {
+            'id': value.id,
+            'dtype': value.dtype,
+            'shape': value.shape,
+            'name': value.name,
+            'ttype': value.ttype,
+            'is_quantized': value.is_quantized,
+            'scale': value.scale,
+            'zero_point': value.zero_point,
+            'is_preprocess': value.is_preprocess
+        }
+    elif isinstance(value, dict):
+        return {k: simplify_value(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [simplify_value(v) for v in value]
+    elif isinstance(value, tuple):
+
+        return tuple(simplify_value(v) for v in value)
+    else:
+        return value
 
 
 class TpuLang:
@@ -48,7 +74,24 @@ class TpuLang:
 
     @staticmethod
     def insert_op(op_name: str, inputs: List[Tensor], outputs: List[Tensor], params: dict = {}):
-        op = Operator(op_name, params=params, inputs=inputs, outputs=outputs)
+        caller_frame = inspect.currentframe().f_back
+        # caller_info = inspect.getframeinfo(caller_frame)
+        caller_tpulang_op_func_name = caller_frame.f_code.co_name
+        caller_args = inspect.getargvalues(caller_frame)
+        args_info = {
+            'args': caller_args.args,
+            'values': {
+                k: simplify_value(caller_args.locals[k])
+                for k in caller_args.args
+            }
+        }
+
+        op = Operator(op_name,
+                      params=params,
+                      inputs=inputs,
+                      outputs=outputs,
+                      caller_tpulang_op_func_name=caller_tpulang_op_func_name,
+                      args_info=args_info)
         TpuLang.graph.insert_op(op)
 
 
@@ -78,6 +121,23 @@ def reset_graph(graph: Graph = None):
         TpuLang.graph.reset()
 
 
+def debug_dump_compile(file_path: str):
+    reset_default_graph()
+    dump_data = DebugDumper.inspect_dump_file(TpuLang.graph, file_path)
+    dump_compile_args = dump_data['compile_args']
+    TpuLang.chip = dump_compile_args['chip']
+    TpuLang.device = dump_compile_args['device']
+    TpuLang.graph = dump_data['graph']
+    if dump_compile_args['interface'] == 'compile':
+        # print("Re-compile model from debug dump file:", file_path)
+        compile(dump_compile_args['name'], None, None, False, None, 'f32',
+                dump_compile_args['dynamic'], dump_compile_args['asymmetric'],
+                dump_compile_args['no_save'], dump_compile_args['opt'], False, False,
+                dump_compile_args['log_level'], dump_compile_args['embed_debug_info'],
+                dump_compile_args['addr_mode'], dump_compile_args['gdma_check'],
+                dump_compile_args['layer_group_config'], 'load')
+
+
 def compile(
         name: str,
         inputs: List[Tensor],
@@ -98,7 +158,12 @@ def compile(
         layer_group_config="",
         num_core=1,
         enable_lghash=False,
-        lghash_dir=""):
+        lghash_dir="",
+        debug_dump_mode='normal'):
+    if debug_dump_mode not in ['normal', 'dump', 'load']:
+        raise ValueError(
+            f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
+        )
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -107,10 +172,23 @@ def compile(
         logger.info("TPU-MLIR {}".format(pymlir.__version__))
     assert addr_mode in ['auto', 'io_reloc']
     assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
-       (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
-       f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
-    TpuLang.graph.inputs = inputs
-    TpuLang.graph.outputs = outputs
+         (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
+         f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
+    if debug_dump_mode != 'load':
+        TpuLang.graph.inputs = inputs
+        TpuLang.graph.outputs = outputs
+    if debug_dump_mode == 'dump':
+        params = list(inspect.signature(compile).parameters.keys())
+        all_locals = locals()
+        exclude_params = [
+            'inputs', 'outputs', 'cmp', 'refs', 'mode', 'mlir_inference', 'bmodel_inference',
+            'layer_group_config'
+        ]
+        compile_args = {param: all_locals[param] for param in params if param not in exclude_params}
+        compile_args['interface'] = 'compile'
+        compile_args['chip'] = TpuLang.chip
+        compile_args['device'] = TpuLang.device
+        DebugDumper.dump(name, TpuLang.graph, compile_args)
     TpuLang.graph.quantized_type_inference()
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="quantized", no_save=no_save)
     ctm_format = None
@@ -164,6 +242,56 @@ def compile(
                                   lghash_dir=lghash_dir)
 
 
+def mlir_compile(name: str,
+                 mlir_path: str,
+                 cmp=False,
+                 refs=None,
+                 dynamic=False,
+                 asymmetric=False,
+                 opt=2,
+                 mlir_inference=False,
+                 bmodel_inference=False,
+                 log_level: str = 'normal',
+                 embed_debug_info=False,
+                 addr_mode='auto',
+                 gdma_check=False,
+                 layer_group_config=""):
+    supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
+    if log_level not in supported_log_levels:
+        raise ValueError(
+            f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
+    if log_level != 'quiet':
+        logger.info("TPU-MLIR {}".format(pymlir.__version__))
+    assert addr_mode in ['auto', 'io_reloc']
+    ctm_format = None
+    fuse = False
+    mlir_file = name + '.mlir'
+    mlir_origin = os.path.basename(mlir_path)
+    mlir_opt_for_top(mlir_origin, mlir_file, log_level=log_level)
+    if log_level != "quiet":
+        print("Mlir file generated:{}".format(mlir_file))
+    compare = cmp and refs != None
+    model_lowering_and_inference(model_name=name,
+                                 quant_mode="int8",
+                                 inference=mlir_inference,
+                                 cmp=compare,
+                                 log_level=log_level,
+                                 chip=TpuLang.chip,
+                                 asymmetric=asymmetric,
+                                 ctm_format=ctm_format,
+                                 fuse=fuse,
+                                 addr_mode=addr_mode)
+    bmodel_generate_and_inference(model_name=name,
+                                  quant_mode="int8",
+                                  inference=bmodel_inference,
+                                  log_level=log_level,
+                                  dynamic=dynamic,
+                                  opt=opt,
+                                  embed_debug_info=embed_debug_info,
+                                  gdma_check=gdma_check,
+                                  layer_group_config=layer_group_config)
+
+
 def compile_f32(name: str,
                 inputs: List[Tensor],
                 outputs: List[Tensor],
@@ -185,9 +313,27 @@ def compile_f32(name: str,
                 spec_op_mode: dict = None,
                 num_core=1,
                 enable_lghash=False,
-                lghash_dir=""):
-    TpuLang.graph.inputs = inputs
-    TpuLang.graph.outputs = outputs
+                lghash_dir="",
+                debug_dump_mode='normal'):
+    if debug_dump_mode not in ['normal', 'dump', 'load']:
+        raise ValueError(
+            f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
+        )
+    if debug_dump_mode != 'load':
+        TpuLang.graph.inputs = inputs
+        TpuLang.graph.outputs = outputs
+    if debug_dump_mode == 'dump':
+        params = list(inspect.signature(compile).parameters.keys())
+        all_locals = locals()
+        exclude_params = [
+            'inputs', 'outputs', 'cmp', 'refs', 'mode', 'mlir_inference', 'bmodel_inference',
+            'layer_group_config'
+        ]
+        compile_args = {param: all_locals[param] for param in params if param not in exclude_params}
+        compile_args['interface'] = 'compile'
+        compile_args['chip'] = TpuLang.chip
+        compile_args['device'] = TpuLang.device
+        DebugDumper.dump(name, TpuLang.graph, compile_args)
     TpuLang.graph.quantized_type_inference()
     support_quant_mode = ['f32', 'f16', 'bf16']
     assert mode in support_quant_mode + ['all']
@@ -266,6 +412,82 @@ def compile_f32(name: str,
                                       addr_mode=addr_mode,
                                       lgcache=False,
                                       lghash_dir=lghash_dir)
+
+
+def mlir_compile_f32(name: str,
+                     mlir_path: str,
+                     cmp=False,
+                     refs=None,
+                     mode='f32',
+                     dynamic=False,
+                     opt=2,
+                     mlir_inference=False,
+                     bmodel_inference=False,
+                     top_mlir_inference=False,
+                     tpu_mlir_inference=False,
+                     log_level: str = 'normal',
+                     embed_debug_info=False,
+                     addr_mode='auto',
+                     gdma_check=False,
+                     layer_group_config="",
+                     spec_op_mode: dict = {"mean_std_scale": "f16"}):
+    support_quant_mode = ['f32', 'f16', 'bf16']
+    assert mode in support_quant_mode + ['all']
+    assert addr_mode in ['auto', 'io_reloc']
+    supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
+    if log_level not in supported_log_levels:
+        raise ValueError(
+            f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
+    mode_list = [mode]
+    if mode == 'all':
+        mode_list = ['f32', 'f16', 'bf16']
+    qtable = ""
+    if spec_op_mode:
+        keys_to_remove = [
+            op_name for op_name in spec_op_mode if op_name not in TpuLang.graph.contained_func
+        ]
+
+        for op_name in keys_to_remove:
+            # print(f"Deleting {op_name} from spec_op_mode")
+            del spec_op_mode[op_name]
+        if spec_op_mode:
+            for op_name, mode in spec_op_mode.items():
+                assert op_name in TpuLang.graph.contained_func, f"Op '{op_name}' not found in graph"
+                assert (lower_mode :=
+                        mode.lower()) in support_quant_mode, f"Invalid quant mode: {mode}"
+                spec_op_mode[op_name] = lower_mode.upper()
+            qtable = ",".join(f"{op.outputs[0].name}:{spec_op_mode[op.src_func]}"
+                              for op in TpuLang.graph.operators if op.src_func in spec_op_mode)
+
+    mlir_file = name + '.mlir'
+    mlir_origin = os.path.basename(mlir_path)
+    mlir_opt_for_top(mlir_origin, mlir_file, log_level=log_level)
+    if log_level != "quiet":
+        print("Mlir file generated:{}".format(mlir_file))
+    compare = cmp and refs != None
+    top_mlir_inference = top_mlir_inference and mlir_inference
+    tpu_mlir_inference = tpu_mlir_inference and mlir_inference
+    if top_mlir_inference:
+        model_top_inference(model_name=name, cmp=compare, log_level=log_level)
+    for m in mode_list:
+        tpu_mlir_compare = cmp and top_mlir_inference
+        model_lowering_and_inference(model_name=name,
+                                     quant_mode=m,
+                                     inference=tpu_mlir_inference,
+                                     cmp=tpu_mlir_compare,
+                                     log_level=log_level,
+                                     chip=TpuLang.chip,
+                                     addr_mode=addr_mode,
+                                     quantize_table=qtable)
+        bmodel_generate_and_inference(model_name=name,
+                                      quant_mode=m,
+                                      inference=bmodel_inference,
+                                      log_level=log_level,
+                                      dynamic=dynamic,
+                                      opt=opt,
+                                      embed_debug_info=embed_debug_info,
+                                      gdma_check=gdma_check,
+                                      layer_group_config=layer_group_config)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level: str = 'normal'):
