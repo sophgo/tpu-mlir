@@ -6,6 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
+#include "tpu_mlir/Support/Float4.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
@@ -77,19 +79,31 @@ void computePerGroupParam(
     const std::shared_ptr<std::vector<float>> &weight_data, int row, int col,
     int bitwidth, int q_group_size, bool q_symmetric,
     std::shared_ptr<std::vector<float>> &scale,
-    std::shared_ptr<std::vector<uint8_t>> &zp) {
+    std::shared_ptr<std::vector<uint8_t>> &zp, std::string dq_type) {
   assert(col % q_group_size == 0 && "invalid q_group_size");
   int num_groups = row * col / q_group_size;
   int max_int = bitwidth == 4 ? std::pow(2, 4) - 1 : std::pow(2, 8) - 1;
   int min_int = 0;
   float max_val = 0;
   float min_val = 0;
-
+  float f8e4m3_max = get_f8e4m3_max();
+  // float f8e5m2_max = get_f8e5m2_max();
+  float f4e2m1_max = get_f4e2m1_max();
+  auto is_dynamic_quant = module::isDynamicQuantize();
   for (int i = 0; i < num_groups; i++) {
     float *p_weight = weight_data->data() + i * q_group_size;
     findMinMax(p_weight, q_group_size, &min_val, &max_val);
     auto abs_max = findMaxabs(p_weight, q_group_size);
-    if (q_symmetric) {
+    if (is_dynamic_quant && dq_type == "F8E4M3") {
+      scale->at(i) = std::abs(abs_max) / f8e4m3_max;
+      zp->at(i) = 0.0;
+    // } else if (is_dynamic_quant && dq_type == "F8E5M2") {
+    //   scale->at(i) = std::abs(abs_max) / f8e5m2_max;
+    //   zp->at(i) = 0.0;
+    } else if (is_dynamic_quant && dq_type == "F4") {
+      scale->at(i) = std::abs(abs_max) / f4e2m1_max;
+      zp->at(i) = 0.0;
+    } else if (q_symmetric) {
       scale->at(i) = 2 * std::abs(abs_max) / max_int;
     } else {
       scale->at(i) =
@@ -111,7 +125,6 @@ void computePerGroupParam(
   int min_int = 0;
   float max_val = 0;
   float min_val = 0;
-
   for (int i = 0; i < num_groups; i++) {
     float *p_weight = weight_data->data() + i * q_group_size;
     findMinMax(p_weight, q_group_size, &min_val, &max_val);
@@ -137,7 +150,8 @@ void weightQuantization(
     std::shared_ptr<std::vector<float>> &scale,
     std::shared_ptr<std::vector<uint8_t>> &zp,
     std::shared_ptr<std::vector<int8_t>> &int_weight_data,
-    std::shared_ptr<std::vector<uint8_t>> &uint_weight_data) {
+    std::shared_ptr<std::vector<uint8_t>> &uint_weight_data,
+    std::string dq_type) {
   if (!q_group_size) {
     for (auto c = 0; c < row; c++) {
       int offset = c * col;
@@ -165,19 +179,36 @@ void weightQuantization(
       }
     }
   } else {
+    auto is_dynamic_quant = module::isDynamicQuantize();
     for (auto i = 0; i < row * col; i++) {
       int quant_idx = i / q_group_size;
-      auto tmp_value =
-          std::round(weight_f32_data->at(i) / scale->at(quant_idx)) +
-          zp->at(quant_idx);
+      auto tmp_value = weight_f32_data->at(i) / scale->at(quant_idx);
+      if (!is_dynamic_quant || (dq_type == "INT4" || dq_type == "INT8"))
+        tmp_value = std::round(tmp_value);
+      tmp_value += zp->at(quant_idx);
       if (bitwidth == 8) {
-        uint_weight_data->at(i) = to_uint8(tmp_value);
+        if (is_dynamic_quant && dq_type == "F8E4M3") {
+          uint_weight_data->at(i) = f32_to_f8e4m3(tmp_value, true);
+        // } else if (is_dynamic_quant && dynamic_quant_type == "F8E5M2") {
+        //   uint_weight_data->at(i) = f32_to_f8e5m2(tmp_value, true);
+        } else {
+          uint_weight_data->at(i) = to_uint8(tmp_value);
+        }
       } else {
         int real_weight_idx = i / 2;
-        if (i % 2) {
-          uint_weight_data->at(real_weight_idx) |= to_uint4(tmp_value) << 4;
+        if (dq_type == "F4") {
+          if (i % 2) {
+            uint_weight_data->at(real_weight_idx) |= f32_to_f4e2m1(tmp_value)
+                                                     << 4;
+          } else {
+            uint_weight_data->at(real_weight_idx) = f32_to_f4e2m1(tmp_value);
+          }
         } else {
-          uint_weight_data->at(real_weight_idx) = to_uint4(tmp_value);
+          if (i % 2) {
+            uint_weight_data->at(real_weight_idx) |= to_uint4(tmp_value) << 4;
+          } else {
+            uint_weight_data->at(real_weight_idx) = to_uint4(tmp_value);
+          }
         }
       }
     }
@@ -310,7 +341,7 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
         quant_param_size, q_symmetric ? zp_value : 0);
     auto zp_fp = std::make_shared<std::vector<float>>(
         quant_param_size, q_symmetric ? zp_value : 0);
-
+    auto dq_type = op.getDqType().str();
     if (!q_group_size) {
       if (module::isSG2380())
         computePerChannelParam(trans_weight, row, col, sign, bitwidth, scale,
@@ -325,7 +356,7 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
                              q_symmetric, scale, zp_fp);
       else
         computePerGroupParam(trans_weight, row, col, bitwidth, q_group_size,
-                             q_symmetric, scale, zp_int8);
+                             q_symmetric, scale, zp_int8, dq_type);
     }
 
     // 2. quantize weight to low bit integer
@@ -344,7 +375,7 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
                          scale, zp_fp, int_weight_data, uint_weight_data);
     else
       weightQuantization(bitwidth, sign, row, col, q_group_size, trans_weight,
-                         scale, zp_int8, int_weight_data, uint_weight_data);
+                         scale, zp_int8, int_weight_data, uint_weight_data, dq_type);
 
     // 3. create f16 weightOp for scale/zp
     rewriter.setInsertionPoint(op);

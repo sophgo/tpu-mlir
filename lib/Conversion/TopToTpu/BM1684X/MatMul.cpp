@@ -680,6 +680,10 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
+        auto dq_type =
+            rewriter.getNamedAttr("dq_type", op.getDqTypeAttr());;
+        attrs.push_back(dq_type);
+
         bool right_transpose = op.getRightTranspose();
         if (right_transpose) {
           auto filter_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());

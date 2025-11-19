@@ -577,7 +577,9 @@ def lowering_options(mode: str,
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={} align={}\"".format(
             mode, customization_format, aligned_input)
         options.extend([fuse_pre_param])
-    qw = "qtable={} weightFileName={}".format(quantize_table, weight_name) if quantize_table else ""
+    qw = "weightFileName={}".format(weight_name)
+    if quantize_table:
+        qw = "qtable={} {}".format(quantize_table, qw)
     lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={}" \
                   " q_group_size={} q_symmetric={} matmul_perchannel={} gelu_mode={}\"".format(
         qw, asymmetric, do_winograd, q_group_size, q_symmetric, matmul_perchannel, gelu_mode)
@@ -613,7 +615,7 @@ def mlir_lowering(top_mlir: str,
                   gelu_mode: str = "normal"):
     mode = mode.upper()
     cmd = ["tpuc-opt", top_mlir]
-    weight_name = ""
+    weight_name = tpu_mlir[:-len(".mlir")] + "_weights.npz"
     if quantize_table:
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"

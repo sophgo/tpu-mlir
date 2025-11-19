@@ -48,7 +48,7 @@ def ProcessorAssign : Pass<"processor-assign", "ModuleOp"> {
     Option<"chip", "chip", "std::string", /*default=*/"",
            "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1688/bm1690/bm1690e/cv184x/sgtpuv8/sg2262">,
     Option<"mode", "mode", "std::string", /*default=*/"",
-           "default quantization mode: INT8/BF16/F16/F32/F8/F8E4M3/F8E5M2">,
+           "default quantization mode: INT8/BF16/F16/F32/F8/F8E4M3/F8E5M2/INT8F16DYN/INT8BF16DYN/INT4F16DYN/INT4BF16DYN/F8E4M3F16DYN/F8E4M3BF16DYN/F4F16DYN/F4BF16DYN">,
     Option<"num_device", "num_device", "int64_t", /*default=*/"1",
            "num of devices to distributed.">,
     Option<"num_core", "num_core", "int64_t", /*default=*/"1",

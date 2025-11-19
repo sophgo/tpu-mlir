@@ -316,11 +316,19 @@ protected:
     case module::Mode::F16:
     case module::Mode::W8F16:
     case module::Mode::W4F16:
+    case module::Mode::INT8F16DYN:
+    case module::Mode::INT4F16DYN:
+    case module::Mode::F8E4M3F16DYN:
+    case module::Mode::F4F16DYN:
       LoweringF16(rewriter, opTy);
       break;
     case module::Mode::BF16:
     case module::Mode::W8BF16:
     case module::Mode::W4BF16:
+    case module::Mode::INT8BF16DYN:
+    case module::Mode::INT4BF16DYN:
+    case module::Mode::F8E4M3BF16DYN:
+    case module::Mode::F4BF16DYN:
       LoweringBF16(rewriter, opTy);
       break;
     case module::Mode::F8:

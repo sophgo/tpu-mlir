@@ -133,6 +133,7 @@ int64_t getFLOPs();
 void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
+bool isDynamicQuantize();
 int getQuantGroupSize();
 void setQuantGroupSize(int q_group_size);
 bool isQuantSymmetric();

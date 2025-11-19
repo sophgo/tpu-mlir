@@ -134,9 +134,8 @@ class DeployTool:
         self.addr_mode = args.addr_mode
         self.same_addr = args.same_addr
         self.cuda = args.cuda
-        self.q_group_size = args.q_group_size if self.quantize in [
-            "w4f16", "w4bf16", "w8f16", "w8bf16"
-        ] else 0
+        self.q_group_size = args.q_group_size if (self.quantize.endswith('dyn') or self.quantize
+                                                  in ["w4f16", "w4bf16", "w8f16", "w8bf16"]) else 0
         self.q_symmetric = args.q_symmetric
         if self.quantize in ("int8", "int4", 'w4int8'):
             if self.asymmetric:
@@ -486,11 +485,13 @@ if __name__ == '__main__':
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
                         choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16',
-                                 'W4F16', 'W4BF16', 'W4INT8', "F8E4M3", "F8E5M2", 'QDQ'],
+                                 'W4F16', 'W4BF16', 'W4INT8', "F8E4M3", "F8E5M2", 'QDQ',
+                                 "INT8F16DYN", "INT8BF16DYN", "INT4F16DYN", "INT4BF16DYN",
+                                 "F8E4M3F16DYN", "F8E4M3BF16DYN", "F4F16DYN", "F4BF16DYN"],
                         help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
     # ========== Quantization Options ==============
-    parser.add_argument("--calibration_table",
+    parser.add_argument("--calibration_table", type=str,
                         help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table",
                         help="table of OPs that quantized to specific mode")
@@ -627,11 +628,10 @@ if __name__ == '__main__':
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
     deprecated_option(args.ignore_f16_overflow, "DEPRECATED, please use --high_precision")
     if args.quant_output_bf16:
-        if args.quantize == "BF16":
+        if args.quantize in ["BF16", "INT8BF16DYN", "INT4BF16DYN", "F8E4M3BF16DYN", "F4BF16DYN"]:
             RuntimeError("quantize is BF16, please use --quant_output instead")
         if args.quant_output:
             RuntimeError("quant_output and quant_output_bf16 can't both be true")
-
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:
@@ -640,6 +640,8 @@ if __name__ == '__main__':
     # lowering to tpu/tosa
     if args.not_gen_bmodel:
         tool.do_validate = False
+    if args.quantize.lower().endswith('dyn'):
+        RuntimeError("Dynamic quantization is not supported in deploy yet.")
     lowering_patterns = tool.lowering()
     # generate model
     if args.time_fixed_subnet == 'custom' and not args.subnet_params:

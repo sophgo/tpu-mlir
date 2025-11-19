@@ -1087,14 +1087,22 @@ public:
       slice_axis = 0;
     }
     // W8A16
-    if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8F16) {
+    if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8F16 ||
+        qmode == module::Mode::F8E4M3F16DYN ||
+        qmode == module::Mode::F8E4M3BF16DYN ||
+        qmode == module::Mode::INT8F16DYN ||
+        qmode == module::Mode::INT8BF16DYN) {
       if (op.getWeightBits() == 8 || (group_size > 0 && K % group_size != 0)) {
         return failure();
       }
       op.setWeightBits(8);
     }
     // W4A16
-    else if (qmode == module::Mode::W4BF16 || qmode == module::Mode::W4F16) {
+    else if (qmode == module::Mode::W4BF16 || qmode == module::Mode::W4F16 ||
+             qmode == module::Mode::INT4F16DYN ||
+             qmode == module::Mode::INT4BF16DYN ||
+             qmode == module::Mode::F4F16DYN ||
+             qmode == module::Mode::F4BF16DYN) {
       if (op.getWeightBits() == 4 || (group_size > 0 && K % group_size != 0)) {
         return failure();
       }
@@ -1108,9 +1116,7 @@ public:
     auto o_shape = module::getShape(out);
     auto o_name = module::getName(out);
     auto target_mode =
-        ((qmode == module::Mode::W4BF16 || qmode == module::Mode::W8BF16)
-             ? module::Mode::BF16
-             : module::Mode::F16);
+        (module::isBF16Modes() ? module::Mode::BF16 : module::Mode::F16);
     // if has q_group_size, means npu_num must be divided exactly by N
     if (N % backend::Arch::NPU_NUM == 0)
       return success();
@@ -1162,6 +1168,12 @@ public:
     auto m1_op =
         rewriter.create<top::MatMulOp>(loc1, type1, opds1, op->getAttrs());
     m1_op.removeWeightBitsAttr();
+    if (module::isDynamicQuantize()) {
+      if (module::isF16Modes())
+        m1_op.setDqTypeAttr(mlir::StringAttr::get(m1_op.getContext(), "F16"));
+      else
+        m1_op.setDqTypeAttr(mlir::StringAttr::get(m1_op.getContext(), "BF16"));
+    }
     auto name1 = module::getName(m1_op.getOutput());
     LoweringConfig::quantize_map[name1.str()] = target_mode;
 
@@ -1459,7 +1471,40 @@ void ConvertTopToTpu::runOnOperation() {
     module::setAsymmetric(isAsymmetric);
     calibration_process();
   }
-
+  if (module::isDynamicQuantize()) {
+    Builder builder(ctx_);
+    mainFunc_.walk([&](Operation *op) {
+      auto name = module::getName(op).str();
+      if (!isa<top::MatMulOp>(op)) {
+        if (module::isF16Modes()) {
+          LoweringConfig::quantize_map[name] = qmode("F16");
+        } else {
+          LoweringConfig::quantize_map[name] = qmode("BF16");
+        }
+      } else {
+        auto op_mode = module::getMode();
+        if (LoweringConfig::quantize_map.find(name) != LoweringConfig::quantize_map.end()) {
+          op_mode = LoweringConfig::quantize_map[name];
+        }
+        std::string dq_type;
+        if (op_mode == module::Mode::INT4F16DYN || op_mode == module::Mode::INT4BF16DYN)
+          dq_type = "INT4";
+        else if (op_mode == module::Mode::INT8F16DYN || op_mode == module::Mode::INT8BF16DYN)
+          dq_type = "INT8";
+        else if (op_mode == module::Mode::F8E4M3F16DYN || op_mode == module::Mode::F8E4M3BF16DYN)
+          dq_type = "F8E4M3";
+        else if (op_mode == module::Mode::F4F16DYN || op_mode == module::Mode::F4BF16DYN)
+          dq_type = "FP4";
+        else {
+          if (module::isBF16Modes())
+            dq_type = "BF16";
+          else
+            dq_type = "F16";
+        }
+        op->setAttr("dq_type", builder.getStringAttr(dq_type));
+      }
+    });
+  }
   if (module::isBM1690Family() && !LoweringConfig::isQuantized &&
       module::getMode() == module::Mode::F8E4M3) {
     mainFunc_.walk([&](Operation *op) {
