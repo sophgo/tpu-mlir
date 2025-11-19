@@ -210,7 +210,7 @@ static bool is_valid_order(std::vector<int64_t> shape,
         }
       }
     } // end for check continous order
-  }   // end num_dims > 4
+  } // end num_dims > 4
   return valid_order;
 }
 
@@ -1077,10 +1077,95 @@ struct PermuteAndConv1DtoMatMul : public OpRewriterPatternEx<PermuteOp> {
   }
 };
 
+struct PermuteAfterGridSampler : public OpRewriterPatternEx<PermuteOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  PermuteAfterGridSampler(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<PermuteOp>(context, "PermuteAfterGridSampler") {}
+
+  LogicalResult matchAndRewriteImpl(PermuteOp op,
+                                    PatternRewriter &rewriter) const override {
+
+    auto in_op = op.getInput().getDefiningOp();
+    if (!in_op || !isa<top::ConcatOp>(in_op)) {
+      return failure();
+    }
+    auto concat_op = cast<top::ConcatOp>(in_op);
+    SmallVector<top::GridSamplerOp> gridsample_ops;
+    SmallVector<top::ReshapeOp> reshape_ops;
+
+    for (auto input : concat_op.getInputs()) {
+      auto def_op = input.getDefiningOp();
+      if (!def_op || !isa<top::ReshapeOp>(def_op)) {
+        return failure();
+      }
+      auto reshape_op = cast<top::ReshapeOp>(def_op);
+      reshape_ops.push_back(reshape_op);
+      auto reshape_input = reshape_op.getInput().getDefiningOp();
+      if (!reshape_input || !isa<top::GridSamplerOp>(reshape_input)) {
+        return failure();
+      }
+      auto grid_sampler = dyn_cast<top::GridSamplerOp>(reshape_input);
+      std::vector<int64_t> grid_sampler_shape = module::getShape(grid_sampler);
+      if (grid_sampler_shape.size() != 4 || grid_sampler_shape[2] != 1)
+        return failure();
+      gridsample_ops.push_back(grid_sampler);
+    }
+
+    rewriter.startRootUpdate(op);
+    auto out_shape = module::getShape(op.getOutput());
+    auto permute_loc = module::getName(op.getOutput()).str();
+    std::vector<int64_t> permute_order{2, 1, 3, 0};
+    for (int i = 0; i < reshape_ops.size(); ++i) {
+      auto grid_output_type =
+          gridsample_ops[i].getOutput().getType().cast<RankedTensorType>();
+      auto grid_shape = grid_output_type.getShape();
+      SmallVector<int64_t> permuted_shape = {
+          grid_shape[permute_order[0]],
+          grid_shape[permute_order[1]],
+          grid_shape[permute_order[2]],
+          grid_shape[permute_order[3]],
+      };
+      auto permuted_type = RankedTensorType::get(
+          permuted_shape, grid_output_type.getElementType());
+
+      SmallVector<int64_t> new_reshape_shape = {
+          1, permuted_shape[0] * permuted_shape[1] * permuted_shape[2],
+          out_shape[2], out_shape[3]};
+      auto reshape_output_type =
+          reshape_ops[i].getOutput().getType().cast<RankedTensorType>();
+      auto new_reshape_type = RankedTensorType::get(
+          new_reshape_shape, reshape_output_type.getElementType());
+      rewriter.setInsertionPointAfter(gridsample_ops[i]);
+      auto new_permute = rewriter.create<top::PermuteOp>(
+          NameLoc::get(rewriter.getStringAttr(permute_loc + "_Reshape_" +
+                                              std::to_string(i))),
+          permuted_type, gridsample_ops[i].getOutput(),
+          rewriter.getNamedAttr("order",
+                                rewriter.getI64ArrayAttr(permute_order)));
+      auto reshape_loc = module::getName(reshape_ops[i].getOutput()).str();
+      ;
+      reshape_ops[i]->setLoc(
+          NameLoc::get(rewriter.getStringAttr(reshape_loc + "_Concat")));
+      reshape_ops[i].getInputMutable().assign(new_permute.getOutput());
+      reshape_ops[i].setShapeAttr(rewriter.getI64ArrayAttr(new_reshape_shape));
+      reshape_ops[i].getResult().setType(new_reshape_type);
+    }
+    auto concat_loc = module::getName(op.getOutput()).str();
+    concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(concat_loc)));
+    concat_op.setAxisAttr(rewriter.getSI32IntegerAttr(1));
+    concat_op.getResult().setType(op.getOutput().getType());
+    rewriter.replaceOp(op, concat_op.getOutput());
+    rewriter.finalizeRootUpdate(op);
+
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
                  PermuteFuse, NonZeroPermutePattern, TopDecomposedRelPosEmb,
                  TopPermuteEliminate, TopMoveSoftmaxAfterPermute,
-                 PermuteAndConv1DtoMatMul>(context);
+                 PermuteAndConv1DtoMatMul, PermuteAfterGridSampler>(context);
 }

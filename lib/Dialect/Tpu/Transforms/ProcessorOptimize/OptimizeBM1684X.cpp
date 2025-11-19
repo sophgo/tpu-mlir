@@ -4405,7 +4405,16 @@ struct CanCutGridSamplerFusePattern
     op->setOperand(1, permute.getInput());
     op->getResult(0).setType(next_op->getResult(0).getType());
     op->setAttr("need_permute", rewriter.getBoolAttr(true));
-    rewriter.replaceOp(before_op, before_op->getOperand(0));
+    bool hasOtherUsers = false;
+    for (auto *user : before_op->getResult(0).getUsers()) {
+      if (user != op.getOperation() && user != next_op) {
+        hasOtherUsers = true;
+        break;
+      }
+    }
+    if (!hasOtherUsers) {
+      rewriter.replaceOp(before_op, before_op->getOperand(0));
+    }
     rewriter.replaceOp(next_op, ArrayRef<Value>{op.getResult()});
     return success();
   }
