@@ -1341,8 +1341,8 @@ class LlmConverter(BaseConverter):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--addr_mode io_alone', f'--model {name}.bmodel'
+            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}', '--addr_mode io_alone',
+            f'--model {name}.bmodel'
         ]
         if self.debug:
             deploy_args.append('--debug')
@@ -1354,8 +1354,8 @@ class LlmConverter(BaseConverter):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--addr_mode io_alone', f'--model {name}.bmodel'
+            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}', '--dynamic',
+            '--addr_mode io_alone', f'--model {name}.bmodel'
         ]
         if self.debug:
             deploy_args.append('--debug')
