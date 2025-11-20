@@ -53,8 +53,8 @@ multi_core_info = {
 basic_model_list = {
     # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
     "mobilenet_v2_cf":            (N,      Y,       Y,      Y,      N,      Y,      Y,     N,      N,       N,       Y,    Y,    N),
-    "resnet50_v2":                (Y,      N,       N,      N,      N,      Y,      Y,     N,      Y,       N,       Y,    Y,    N),
-    "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      Y,       N,       Y,    Y,    N),
+    "resnet50_v2":                (Y,      N,       N,      N,      N,      Y,      Y,     N,      Y,       N,       Y,    Y,    Y),
+    "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      Y,       N,       Y,    Y,    Y),
     "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N,       N,       Y,    N,    N),
     "yolov5s_tf":                 (N,      N,       N,      N,      N,      N,      N,     N,      N,       N,       N,    N,    N),
     "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y,     N,      N,       N,       N,    N,    N),
