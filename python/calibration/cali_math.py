@@ -10,6 +10,10 @@
 
 import numpy as np
 import math
+import warnings
+warnings.formatwarning = lambda message, category, filename, lineno, line: \
+    f"{category.__name__}: {message}\n"
+
 from scipy import spatial
 
 try:
@@ -104,6 +108,9 @@ class CaliMathCpu:
         else:
             unsigned = 1
         abs_x = np.abs(array.flatten())
+        if abs_x[abs_x > 0].size == 0:
+            warnings.warn("output all zero", UserWarning)
+            return {bit: 1.0 for bit in bits}
         thresholds = {}
         for bit in bits:
             s_n = abs_x.sum() / abs_x[abs_x > 0].size
@@ -220,6 +227,9 @@ class CaliMathCuda:
         else:
             unsigned = 1
         abs_x = cp.abs(array.flatten())
+        if abs_x[abs_x > 0].size == 0:
+            warnings.warn("output all zero", UserWarning)
+            return {bit: 1.0 for bit in bits}
         thresholds = {}
         for bit in bits:
             s_n = abs_x.sum() / abs_x[abs_x > 0].size
@@ -255,6 +265,8 @@ class CaliMathCuda:
 def cosine_sim(x, y):
     x[np.isnan(x)] = 0.0
     y[np.isnan(y)] = 0.0
+    if np.abs(x).max() < 1e-8 or np.abs(y).max() < 1e-8:
+        return 0.0
     cosine_similarity = 1 - spatial.distance.cosine(x.flatten().astype(np.float32),
                                                     y.flatten().astype(np.float32))
     return cosine_similarity

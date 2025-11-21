@@ -103,6 +103,7 @@ if __name__ == '__main__':
 
     args.cali_method = parse_method_list(args.cali_method)
     args.cali_method = compactable_method_list(args.cali_method)
+    args.quantize_method_list = compactable_method_list(args.quantize_method_list)
     args.debug_cmd = compactable_cmd_method_list(args.debug_cmd)
 
     if args.search != 'False' and args.quantize_table == '':

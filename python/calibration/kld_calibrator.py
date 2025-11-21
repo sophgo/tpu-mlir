@@ -35,6 +35,8 @@ from .simple_tunner import SimpleTuner
 from .cali_math import cosine_sim, math_impl, POOL_THREADS
 
 pymlir.set_mem_mode("force_value_mem")
+warnings.formatwarning = lambda message, category, filename, lineno, line: \
+    f"{category.__name__}: {message}\n"
 
 cur_dir_path = os.path.join(os.path.dirname(__file__))
 calibration_math_path = os.path.join("/".join(cur_dir_path.split("/")[:-2]),
@@ -385,6 +387,10 @@ class ActivationCalibrator(BaseKldCalibrator):
                     self.max_value[out] = max(np.max(activation), self.max_value[out])
                     abs_value = max(abs(self.min_value[out]), abs(self.max_value[out]))
                     bits = [8, 4] if 'int4' in self.debug_cmd else [8]
+                    if np.abs(activation).max() < 1e-8:
+                        all_zero = True
+                    else:
+                        all_zero = False
                     activation = math_impl.prepare(activation.flatten())
                     if self.args.kurtosis_analysis:
                         kurtosis = math_impl.get_kurtosis(activation)
@@ -448,6 +454,8 @@ class ActivationCalibrator(BaseKldCalibrator):
                                 self.aciq_l4[out].append(th_aciq_laplace[4])
                     if 'max' in self.calibration_method:
                         self.max_abs_value[out] = max(abs_value, self.max_abs_value[out])
+                    if all_zero:
+                        continue
                     if out not in self.histogram_data_map:
                         hist, width = math_impl.histogram(activation, abs_value,
                                                           self.histogram_bin_num)
@@ -736,6 +744,12 @@ class ActivationCalibrator(BaseKldCalibrator):
                     result8.kl = thresholds_map[k]
                     if result4 is not None:
                         result4.kl = thresholds_map4[k]
+                else:
+                    warnings.warn("Warning: op {} not in thresholds_map, set to 1.0".format(k),
+                                  UserWarning)
+                    result8.kl = 1.0
+                    if result4 is not None:
+                        result4.kl = 1.0
                 result8.canonicalize()
                 if result4 is not None:
                     result4.canonicalize()
