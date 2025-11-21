@@ -19,7 +19,7 @@ min/max值输出到一个量化校准参数文件cali_table中, 后续``model_de
 校准过程在推荐的docker中运行，以下的校准算法同时有cpu版本和gpu版本，当模型较大，仅仅模型大小就占用了大部分计算机内存的时候往往使用gpu版本会更快，因为cpu计算启用了并行，小一些的网络往往在gpu上没有优势。根据使用的docker版本不同会自动决定用什么版本。
 
 .. _quantization_process:
-.. figure:: ../assets/quant.png
+.. figure:: ../assets/quant_zh.png
    :height: 22cm
    :align: center
 
@@ -586,6 +586,8 @@ search_qtable:
      - 指定search_qtable寻找敏感层时采用聚类算法
    * - --quantize_table
      - search_qtable和mix_search输出的混精度量化表
+   * - --pre_qtable
+     - search_qtable时候输入的qtable，替代默认识别的的patter和shape op形成的qtable，在此基础上继续搜索
    * - -o
      - 输出门限表
    * - --calibration_table

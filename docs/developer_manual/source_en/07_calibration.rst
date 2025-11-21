@@ -13,7 +13,7 @@ Calibration runs in recommanded docker environment, following algorithms are imp
 
 
 .. _quantization_process:
-.. figure:: ../assets/quant.png
+.. figure:: ../assets/quant_en.png
    :height: 22cm
    :align: center
 
@@ -536,7 +536,7 @@ search_qtable:
    * - --transformer
      - Whether it is a transformer model, if it is, search_qtable can allocate specific acceleration strategies
    * - --quantize_method_list
-     - The threshold methods used for searching in search_qtable, The default is only MSE, but it supports free selection among KL, MSE, MAX, and Percentile9999
+     - The threshold methods used for searching in search_qtable, The default is only MSE, but it supports free selection among kl, mse, max, and percentile9999, combine them with seperator ','.
    * - --benchmark_method
      - Specifies the method for calculating similarity in search_threshold
    * - --kurtosis_analysis
@@ -553,6 +553,8 @@ search_qtable:
      - Specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - --quantize_table
      - The mixed-precision quantization table output by search_qtable
+   * - --pre_qtable
+     - qtable as the base to search from, replace the default pattern match and shape ops as qtable
    * - -o
      - output threshold table
    * - --calibration_table
