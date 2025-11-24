@@ -111,6 +111,7 @@ class MAIN_ENTRY(object):
             "test_pruning",
             "struct_optimize_pattern_test",
             # "struct_optimize_pattern_test2"
+            "test_profile",
         ]
         self.script_extend = [
             "test3", "test4", "test6", "test7", "test8", "test10", "test_llm1", "test_tdb"
