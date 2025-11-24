@@ -464,38 +464,6 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values, int devid) {
   return builder.CreateVector(tensor_v);
 }
 
-bool BMCodegen::getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
-                                   uint64_t coeff_size,
-                                   std::vector<location_t> &locations) {
-  locations.clear();
-  if (op == nullptr || op->getNumOperands() == 0 ||
-      op->getName().getDialect()->getNamespace() != "tpu" ||
-      isa<tpu::LoadOp, tpu::GroupOp>(op)) {
-    return false;
-  }
-  // coeff should be continuos
-  for (auto opd : op->getOperands()) {
-    auto in_op = opd.getDefiningOp();
-    if (in_op == nullptr || !isa<top::WeightOp, tpu::LoadOp>(in_op)) {
-      continue;
-    }
-    if (isa<tpu::LoadOp>(in_op)) {
-      opd = in_op->getOperand(0);
-    }
-    if (!module::isWeight(opd)) {
-      continue;
-    }
-
-    auto addr = module::getAddress(opd);
-    auto size = align_up(module::getBytes(opd), BM168x::ALIGNMENT);
-    if (size == 0 || addr < coeff_addr ||
-        (addr + size) > (coeff_addr + coeff_size))
-      continue;
-    locations.emplace_back(location_t(addr - coeff_addr, size));
-  }
-  return true;
-}
-
 Offset<bmodel::CoeffMem> BMCodegen::CreateCoeffMem(ModuleOp s,
                                                    uint64_t coeff_addr,
                                                    uint64_t coeff_size) {
@@ -506,27 +474,23 @@ Offset<bmodel::CoeffMem> BMCodegen::CreateCoeffMem(ModuleOp s,
   std::vector<location_t> added_locations;
   std::vector<Offset<bmodel::Location>> locations;
   for (auto func : s.getOps<FuncOp>()) {
-    func.walk([&](Operation *op) {
-      std::vector<location_t> coeff_infos;
-      getOpCoeffLocation(op, coeff_addr, coeff_size, coeff_infos);
-      for (auto info : coeff_infos) {
-        auto iter = std::find_if(
-            added_locations.begin(), added_locations.end(),
-            [&info](location_t &loc) { return loc.offset == info.offset; });
-        (void)(iter);
-        if (iter != added_locations.end()) {
-          assert(info.size == iter->size);
-          continue;
-        }
-        added_locations.push_back(info);
-
-        auto name = builder.CreateString(op->getName().getStringRef().str());
-        bmodel::LocationBuilder lb(builder);
-        lb.add_name(name);
-        lb.add_offset(info.offset);
-        lb.add_size(info.size);
-        locations.push_back(lb.Finish());
+    func.walk([&](top::WeightOp op) {
+      auto v = op.getOutput();
+      auto addr = module::getAddress(v);
+      auto size = align_up(module::getBytes(v), BM168x::ALIGNMENT);
+      if (size == 0 || addr < coeff_addr ||
+          (addr + size) > (coeff_addr + coeff_size)) {
+        return;
       }
+      if (op.getPath().has_value() == false) {
+        return;
+      }
+      auto name = builder.CreateString(op.getPath().value().str());
+      bmodel::LocationBuilder lb(builder);
+      lb.add_name(name);
+      lb.add_offset(addr - coeff_addr);
+      lb.add_size(size);
+      locations.push_back(lb.Finish());
     });
   }
   auto coeff_location = builder.CreateVector(locations);

@@ -1932,31 +1932,37 @@ mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
   auto suffix = std::to_string(axis) + "_" + std::to_string(offset);
   if (isWeight(v)) {
     auto op = v.getDefiningOp<top::WeightOp>();
+    auto attrs = op->getAttrs();
     if (stype.isBF16() || stype.isF16()) {
       auto data = op.read<uint16_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type, 0,
+                                             attrs);
     } else if (stype.isSignedInteger(8) || stype.isSignlessInteger(8)) {
       auto data = op.read<int8_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type, 0,
+                                           attrs);
     } else if (stype.isUnsignedInteger(8)) {
       auto data = op.read<uint8_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<uint8_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<uint8_t>(op, suffix, *new_data, new_type, 0,
+                                            attrs);
     } else if (stype.isF32()) {
       auto data = op.read<float>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<float>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<float>(op, suffix, *new_data, new_type, 0,
+                                          attrs);
     } else if (stype.isInteger(32)) {
       auto data = op.read<int32_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<int32_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<int32_t>(op, suffix, *new_data, new_type, 0,
+                                            attrs);
     }
     op.dump();
     llvm_unreachable("Not Implemented");

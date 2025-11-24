@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Backend/Arch.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
 using namespace llvm;
 
@@ -20,6 +20,86 @@ namespace tpu {
 extern void populateWeightReorderCV18xxPatterns(RewritePatternSet *patterns);
 extern void populateWeightReorderBM1684Patterns(RewritePatternSet *patterns);
 extern void populateWeightReorderBM1684XPatterns(RewritePatternSet *patterns);
+
+class WeightTypePattern : public OpRewriterPatternEx<top::WeightOp> {
+public:
+  WeightTypePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::WeightOp>(context, "WeightTypePattern") {}
+
+  LogicalResult matchAndRewriteImpl(top::WeightOp op,
+                                    PatternRewriter &rewriter) const override {
+    if (op.getPath().has_value()) {
+      return failure();
+    }
+    if (op.use_empty()) {
+      return failure();
+    }
+    auto user_op = *op->user_begin();
+    std::string path = user_op->getName().getStringRef().str();
+    auto result = op.getResult();
+    if (auto user = dyn_cast<tpu::A16MatMulOp>(user_op)) {
+      if (result == user.getInput()) {
+        path += ".Input";
+      } else if (result == user.getWeight()) {
+        path += ".Weight";
+      } else if (result == user.getScale()) {
+        path += ".Scale";
+      } else if (result == user.getZp()) {
+        path += ".Zp";
+      } else if (result == user.getBias()) {
+        path += ".Bias";
+      }
+    } else if (auto user = dyn_cast<tpu::MatMulOp>(user_op)) {
+      if (result == user.getInput()) {
+        path += ".Input";
+      } else if (result == user.getRight()) {
+        path += ".Weight";
+      } else if (result == user.getBias()) {
+        path += ".Bias";
+      }
+    } else if (auto user = dyn_cast<tpu::Conv2DOp>(user_op)) {
+      if (result == user.getInput()) {
+        path += ".Input";
+      } else if (result == user.getFilter()) {
+        path += ".Weight";
+      } else if (result == user.getBias()) {
+        path += ".Bias";
+      }
+    } else if (auto user = dyn_cast<tpu::LayerNormOp>(user_op)) {
+      if (result == user.getInput()) {
+        path += ".Input";
+      } else if (result == user.getWeight()) {
+        path += ".Weight";
+      } else if (result == user.getBias()) {
+        path += ".Bias";
+      }
+    } else if (auto user = dyn_cast<tpu::RMSNormOp>(user_op)) {
+      if (result == user.getInput()) {
+        path += ".Input";
+      } else if (result == user.getGamma()) {
+        path += ".Gamma";
+      }
+    } else if (auto user = dyn_cast<tpu::GatherOp>(user_op)) {
+      if (result == user.getInput()) {
+        path += ".Source";
+      } else if (result == user.getIndices()) {
+        path += ".Index";
+      }
+    } else {
+      int index = 0;
+      for (int i = 0; i < user_op->getNumOperands(); i++) {
+        if (user_op->getOperand(i) == result) {
+          index = i;
+          break;
+        }
+      }
+      path += "." + std::to_string(index);
+    }
+    op.setPath(mlir::StringAttr::get(op.getContext(), path));
+    return success();
+  }
+  bool shouldPrint(top::WeightOp op) const override { return false; }
+};
 
 class WeightReorderPass : public WeightReorderBase<WeightReorderPass> {
 public:
@@ -41,6 +121,7 @@ public:
       auto config = GreedyRewriteConfig();
       config.maxIterations = 1; // apply each pattern only once.
       applyPatternsAndFoldGreedily(sub, std::move(patterns), config);
+      module::applyPatternOnce<WeightTypePattern>(sub);
     }
     module::updateModuleTypes();
     module::setState(module::State::TPU_REORDERED);

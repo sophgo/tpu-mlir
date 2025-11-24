@@ -18,8 +18,7 @@
 
 namespace tpu_mlir {
 
-template <typename OpTy>
-static void BackwardOp(OpTy op) {
+template <typename OpTy> static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -38,8 +37,7 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy>
-static void ForwardOp(OpTy op) {
+template <typename OpTy> static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -1075,6 +1073,9 @@ public:
     if (!module::isWeight(op.getRight())) {
       return failure();
     }
+    if (op.getIsLora()) {
+      return failure();
+    }
     auto r_shape = module::getShape(op.getRight());
     auto N = r_shape.back();
     auto K = r_shape[0];
@@ -1098,8 +1099,7 @@ public:
         return failure();
       }
       op.setWeightBits(4);
-    }
-    else {
+    } else {
       return failure();
     }
     if (group_size <= 0)
@@ -1107,8 +1107,10 @@ public:
     auto out = op.getOutput();
     auto o_shape = module::getShape(out);
     auto o_name = module::getName(out);
-    auto target_mode = ((qmode == module::Mode::W4BF16 || qmode == module::Mode::W8BF16) ? module::Mode::BF16
-                                                      : module::Mode::F16);
+    auto target_mode =
+        ((qmode == module::Mode::W4BF16 || qmode == module::Mode::W8BF16)
+             ? module::Mode::BF16
+             : module::Mode::F16);
     // if has q_group_size, means npu_num must be divided exactly by N
     if (N % backend::Arch::NPU_NUM == 0)
       return success();

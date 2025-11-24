@@ -153,8 +153,6 @@ class DeployTool:
         self.mute = args.not_gen_bmodel
         self.matmul_perchannel = args.matmul_perchannel
         self.enable_maskrcnn = args.enable_maskrcnn
-        self.future_update_rank = args.future_update_rank
-        self.future_update_list = args.future_update_list
         self.gelu_mode = args.gelu_mode
         self.time_fixed_subnet = args.time_fixed_subnet
         self.subnet_params = args.subnet_params
@@ -411,8 +409,6 @@ class DeployTool:
                     same_addr=self.same_addr,
                     count_patterns=True if self.patterns_count else False,
                     compress_mode=self.compress_mode,
-                    future_update_rank=self.future_update_rank,
-                    future_update_list=self.future_update_list,
                     debug_info=self.debug_cmd,
                     trunc_final=self.trunc_final,
                     command_mem=command_mem,
@@ -619,11 +615,6 @@ if __name__ == '__main__':
     # ========== MaskRCNN Options ==============
     parser.add_argument("--enable_maskrcnn", action="store_true", default=False,
                         help="enable maskrcnn")
-    # ========== Future Update Options ==============
-    parser.add_argument("--future_update_rank", default=0, type=int,
-                        help="the rank of matmul, when use the pass of future-update")
-    parser.add_argument("--future_update_list", default="", type=str,
-                        help="the idx list of weight, when use the pass of future-update, suck as 1,2,3")
     parser.add_argument("--debug_cmd", default="", type=str,
                         help="debug cmd")
 

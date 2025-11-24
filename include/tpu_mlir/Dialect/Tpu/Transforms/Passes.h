@@ -18,7 +18,6 @@ namespace tpu_mlir {
 namespace tpu {
 
 std::unique_ptr<OperationPass<ModuleOp>> createOpReorderPass();
-std::unique_ptr<OperationPass<ModuleOp>> createFutureUpdatePass();
 std::unique_ptr<OperationPass<ModuleOp>> createWeightReorderPass();
 std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass();

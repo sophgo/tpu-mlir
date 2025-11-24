@@ -670,8 +670,6 @@ def tpu_ada_options(
     op_divide: bool = False,
     group_by_cores: str = "auto",
     compress_mode: str = "none",
-    future_update_rank: int = 0,
-    future_update_list: str = "",
     trunc_final: list = None,
     opt_post_processor: bool = False,
     lg_debugger: int = 0,
@@ -703,7 +701,6 @@ def tpu_ada_options(
 
     distribute_param = f"--dev-parallel"
     parallel_param = f"--core-parallel"
-    future_update_param = '--future-update="rank={} weight_list={}"'.format(future_update_rank, future_update_list)
 
     op_divide_param = ""
     if op_divide:
@@ -715,7 +712,6 @@ def tpu_ada_options(
         op_divide_param,
         subnet_param,
         "--op-reorder",
-        future_update_param,
         lg_param,
         trunc_param,
         parallel_param,
@@ -958,8 +954,6 @@ def mlir_to_model(
     same_addr: str = "",
     count_patterns: bool = False,
     compress_mode: str = "none",
-    future_update_rank: int = 0,
-    future_update_list: str = "",
     debug_info: str = "",
     log_level: str = "normal",
     trunc_final: list = None,
@@ -999,8 +993,6 @@ def mlir_to_model(
                               op_divide=op_divide,
                               group_by_cores=group_by_cores,
                               compress_mode=compress_mode,
-                              future_update_rank=future_update_rank,
-                              future_update_list=future_update_list,
                               trunc_final=trunc_final,
                               opt_post_processor=opt_post_processor,
                               lg_debugger=lg_debugger,
@@ -1115,8 +1107,6 @@ def origin_mlir_txt_to_bmodel(*,
                               count_patterns: bool = False,
                               compress_mode: str = "none",
                               log_level: str = "normal",
-                              future_update_rank: int = 0,
-                              future_update_list: str = "",
                               matmul_perchannel: bool = False,
                               gelu_mode: str = "normal",
                               quant_output_bf16: bool = False,
@@ -1140,8 +1130,6 @@ def origin_mlir_txt_to_bmodel(*,
                                   op_divide=op_divide,
                                   group_by_cores=group_by_cores,
                                   compress_mode=compress_mode,
-                                  future_update_rank=future_update_rank,
-                                  future_update_list=future_update_list,
                                   lgcache=lgcache)
     options.extend(new_options)
     new_options = codegen_options(f"{model_name}_{mode}.bmodel", embed_debug_info, model_version,

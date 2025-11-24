@@ -124,6 +124,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     OptionalAttr<I64ArrayAttr>:$allow_split,
     OptionalAttr<I64ArrayAttr>:$indices_idx,
     OptionalAttr<I64ArrayAttr>:$indices_slice,
+    OptionalAttr<StrAttr>:$path,
     //nnvlc param
     OptionalAttr<BoolAttr>:$do_compress,
     OptionalAttr<I64Attr>:$bias0,
@@ -148,7 +149,9 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
                             llvm::StringRef suffix,
                             const std::vector<T>& data,
                             mlir::RankedTensorType& type,
-                            uint32_t store_mode = 0);
+                            uint32_t store_mode = 0,
+                            mlir::DictionaryAttr::ValueType attrs = {}
+                            );
   template<typename T>
   mlir::LogicalResult update(const std::vector<T>& data, size_t count);
   mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");
@@ -1470,6 +1473,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora,
     OptionalAttr<I64Attr>:$weight_bits,
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
@@ -3402,7 +3406,8 @@ def Top_GatherOp: Top_Op<"Gather", [ScalarProducer]> {
     AnyTensor:$indices,
     DefaultValuedAttr<BoolAttr, "true">:$keepdims,
     DefaultValuedAttr<SI32Attr, "0">:$axis,
-    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora
   );
 
   let results = (outs AnyTensor:$output);

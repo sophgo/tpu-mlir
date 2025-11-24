@@ -2122,6 +2122,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multi_core,
     DefaultValuedAttr<BoolAttr, "false">:$fuse_rq,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora,
     OptionalAttr<I64Attr>:$weight_bits,
     AnyTensorOrNone:$multi,
     AnyTensorOrNone:$buffer,
@@ -4642,6 +4643,7 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
     AnyTensorOrNone:$buffer, //for BM1684
     DefaultValuedAttr<SI32Attr, "0">:$axis,
     DefaultValuedAttr<BoolAttr, "true">:$if_neg_index,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora,
     OptionalAttr<BoolAttr>:$multicore
   );
 
