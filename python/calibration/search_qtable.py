@@ -169,8 +169,11 @@ class SearchQtable:
                         self.mix_prec.logger.print_info(
                             "adjust layer {} th, with method {}, and threshlod {}".format(
                                 layer_name, method, new_th))
-                        mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
-                                                 mix_table)
+                        mixmodel = MixQuantModel(self.fp32_mlir,
+                                                 self.chip,
+                                                 new_cali_table_name,
+                                                 mix_table,
+                                                 using_cuda=False)
                         if not self.args.cluster:
                             outputs_cos = 1 - self.mix_prec.run_model(
                                 mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
@@ -196,8 +199,11 @@ class SearchQtable:
                             "adjust layer {} th, with method {}, and threshlod {}".format(
                                 layer_name, method, new_th))
                         modified_layers[layer_name][0] += 1
-                        mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
-                                                 mix_table)
+                        mixmodel = MixQuantModel(self.fp32_mlir,
+                                                 self.chip,
+                                                 new_cali_table_name,
+                                                 mix_table,
+                                                 using_cuda=False)
                         if not self.args.cluster:
                             outputs_cos = 1 - self.mix_prec.run_model(
                                 mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
@@ -560,7 +566,7 @@ class SearchQtable:
         all_op_names = get_no_fused_tensors(self.parser, all_op_names)
         quantize_method_list = [x.lower() for x in self.quantize_method_list]
         suffix = "_tune" if self.args.tune_num > 0 else ""
-        calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds)
+        calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds, using_cuda=False)
         calibrator.calibration_method = quantize_method_list
         layer_th_dicts = calibrator.gen_multiple_thresholds(all_op_names, quantize_method_list)
         del calibrator
@@ -602,7 +608,8 @@ class SearchQtable:
                 )
             exit(0)
         all_int8_cos = outputs_cos
-        self.mix_prec.logger.print_info("all_int8_cos={}".format(all_int8_cos))
+        self.mix_prec.logger.print_info(
+            "all_int8_cos={} with default mse_tune calitable".format(all_int8_cos))
         self.cali_table = CalibrationTable(self.cali_table_name)
 
         #step3: check layer names
@@ -651,7 +658,11 @@ class SearchQtable:
 
         #step6: generate final mix model and print info
         self.mix_prec.dot_log.gen_dot_graph()
-        mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
+        mixmodel = MixQuantModel(self.fp32_mlir,
+                                 self.chip,
+                                 new_cali_table_name,
+                                 mix_table,
+                                 using_cuda=False)
         outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate,
                                               predictions_gt)
         self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(

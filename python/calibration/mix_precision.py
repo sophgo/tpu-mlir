@@ -61,7 +61,8 @@ class MixQuantModel:
                  chip: str,
                  calib_table: str = None,
                  mix_table: str = None,
-                 fp_type: str = 'auto'):
+                 fp_type: str = 'auto',
+                 using_cuda=False):
         self.fp32_mlir = fp32_mlir
         self.chip = chip
         self.calib_table = None
@@ -84,22 +85,32 @@ class MixQuantModel:
             else:
                 self.mode = fp_type
                 if fp_type not in chip_support_mix_fp_type[self.chip]:
-                    print('parameter error, fp_type:{fp_type} not support by {chip}')
+                    print(f'parameter error, fp_type:{fp_type} not support by {chip}')
                     exit(1)
 
         self.quanted_mlir_file = '{}.{}.tune.mlir'.format(fp32_mlir,
                                                           'mix' if mix_table else self.mode)
         mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip, 1, 1,
                       self.calib_table, False, self.mix_table)
-        self.module = pymlir.module()
+        if pymlir.support_cuda and using_cuda:
+            self.using_cuda = True
+            self.module = pymlir.cuda()
+        else:
+            self.using_cuda = False
+            self.module = pymlir.module()
         self.module.load(self.quanted_mlir_file)
         self.parser = MlirParser(self.quanted_mlir_file)
         self.weight_file = self.parser.module_weight_file
 
     def infer(self, data: list, global_compare_layers: list = None):
-        for k, v in zip(self.module.input_names, data):
-            self.module.set_tensor(k, v, v.shape)
-        self.module.invoke()
+        if self.using_cuda:
+            for k, v in zip(self.module.input_names, data):
+                self.module.set_tensor(k, v)
+            self.module.invoke(False)
+        else:
+            for k, v in zip(self.module.input_names, data):
+                self.module.set_tensor(k, v, v.shape)
+            self.module.invoke()
         outputs = {}
         if global_compare_layers is None:
             for name in self.module.output_names:

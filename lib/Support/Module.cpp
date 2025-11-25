@@ -2183,8 +2183,9 @@ void unreachable(const char *info, Operation *op, const char *file,
   if (op != nullptr) {
     auto inputs = op->getOperands();
     if (!inputs.empty()) {
-      for (auto input : inputs)
+      for (auto input : inputs) {
         input.dump();
+      }
     }
     std::cerr << "-> ";
     op->dump();

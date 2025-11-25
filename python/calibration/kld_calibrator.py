@@ -61,7 +61,7 @@ class BaseKldCalibrator:
 
 class ActivationCalibrator(BaseKldCalibrator):
 
-    def __init__(self, args, ds: DataSelector, tune_ds: DataSelector):
+    def __init__(self, args, ds: DataSelector, tune_ds: DataSelector, using_cuda: bool = False):
         super().__init__()
         self.args = copy.deepcopy(args)
         self.start_time = time.time()
@@ -85,7 +85,12 @@ class ActivationCalibrator(BaseKldCalibrator):
             print(f'final dbg cmd is {self.debug_cmd}')
             self.args.tune_num = 0
         # if 'input_calibration_table' in self.debug_cmd:
-        self.module = pymlir.module()
+        if pymlir.support_cuda and using_cuda:
+            self.using_cuda = True
+            self.module = pymlir.cuda()
+        else:
+            self.using_cuda = False
+            self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.torchObserver_dict = {}
         if 'use_torch_observer_for_cali' in self.debug_cmd:
@@ -695,9 +700,14 @@ class ActivationCalibrator(BaseKldCalibrator):
                 data = []
                 for name in list(self.ref_activations[idx].keys()):
                     data.append(self.ref_activations[idx][name][0])
-                for k, v in zip(self.module.input_names, data):
-                    self.module.set_tensor(k, v, v.shape)
-                self.module.invoke()
+                if self.using_cuda:
+                    for k, v in zip(self.module.input_names, data):
+                        self.module.set_tensor(k, v)
+                    self.module.invoke(True)
+                else:
+                    for k, v in zip(self.module.input_names, data):
+                        self.module.set_tensor(k, v, v.shape)
+                    self.module.invoke()
                 self.parallel_statistic(all_tensors, idx)
         pbar.close()
         for tensor in self.histogram_data_map:

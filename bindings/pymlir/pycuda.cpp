@@ -186,7 +186,11 @@ void py_cuda::invoke(bool dump_all) {
     func.walk([&](Operation *op) {
       if (isa<top::NoneOp, top::InputOp, top::WeightOp, func::FuncOp,
               func::ReturnOp>(op)) {
-        // do nothing
+        if (dump_all && isa<top::InputOp>(op)) {
+          auto name = module::getName(op).str();
+          cudaDeviceSynchronize();
+          cuda_to_host(name);
+        }
       } else {
         // 1. alloc output mem in cuda
         for (auto out : op->getResults()) {
@@ -202,8 +206,12 @@ void py_cuda::invoke(bool dump_all) {
         // 2. inference
         if (auto tpuOp = dyn_cast<tpu::AddOp>(op)) {
           cudaAddOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::AddOp>(op)) {
+          cudaAddOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::Conv2DOp>(op)) {
           cudaConv2DOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ConvOp>(op)) {
+          cudaConvOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::ConcatOp>(op)) {
           cudaConcatOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::CastOp>(op)) {
@@ -220,16 +228,24 @@ void py_cuda::invoke(bool dump_all) {
           cudaLutOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MatMulOp>(op)) {
           cudaMatMulOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MatMulOp>(op)) {
+          cudaMatMulOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulOp>(op)) {
           cudaMulOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulShiftOp>(op)) {
           cudaMulShiftOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ReshapeOp>(op)) {
           cudaReshapeOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ReshapeOp>(op)) {
+          cudaReshapeOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::RequantIntAxisOp>(op)) {
           cudaRequantIntAxisOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::Pool2DOp>(op)) {
           cudaPool2DOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaxPoolOp>(op)) {
+          cudaMaxPoolOp(topOp);
+        } else if (auto topOp = dyn_cast<top::AvgPoolOp>(op)) {
+          cudaAvgPoolOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::PReluOp>(op)) {
           cudaPReluOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::PermuteOp>(op)) {
@@ -246,6 +262,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaUpsampleOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::UnsqueezeOp>(op)) {
           cudaUnsqueezeOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ScaleOp>(op)) {
+          cudaScaleOp(topOp);
         } else {
           UNREACHABLE_OP("Not Implemented", op);
         }

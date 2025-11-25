@@ -78,6 +78,9 @@ void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                int shift0, int shift1, bool sign0, bool sign1, bool sign2,
                bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2);
+void add4DF32(void *input0, void *input1, void *output,
+               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2);
 
 void neg(void *input, void *output, int size, data_type_t type);
 // zero pad
@@ -176,6 +179,9 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
                void *table1, void *table2, void *table3, int outer_dim,
                int axis_dim, int inner_dim, float scale, float offset,
                bool log);
+void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,
+             int off1, int off2, int off3, int s0, int s1, int s2, int s3,
+             int on, int oc, int oh, int ow);
 
 } // namespace cuda
 } // namespace tpu_mlir
