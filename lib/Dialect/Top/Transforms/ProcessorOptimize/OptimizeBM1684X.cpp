@@ -972,6 +972,33 @@ Value is_permute_reshape(Value in) {
   return reshape1.getInput();
 }
 
+Value six_dims_special_case(Value in) {
+  Value permute_out;
+  auto reshape0 = dyn_cast<top::ReshapeOp>(in.getDefiningOp());
+  if (!reshape0) {
+    permute_out = in;
+  } else if (!reshape0->hasOneUse()) {
+    return NULL;
+  } else {
+    permute_out = reshape0.getInput();
+  }
+  auto permute0 = dyn_cast<top::PermuteOp>(permute_out.getDefiningOp());
+  if (!permute0 || !permute0->hasOneUse())
+    return NULL;
+  // special case for six dims input
+  if (module::getShape(permute_out).size() == 6) {
+    auto permute_order = module::getI64Array(permute0.getOrder());
+    if (permute_order->at(2) == 3 && permute_order->at(3) == 2) {
+      return NULL;
+    }
+  }
+  auto reshape1 = dyn_cast<top::ReshapeOp>(permute0.getInput().getDefiningOp());
+  if (!reshape1 || !reshape1->hasOneUse()) {
+    return NULL;
+  }
+  return reshape1.getInput();
+}
+
 class ConvertMatMul2Attention : public OpRewriterPatternEx<top::MatMulOp> {
 public:
   ConvertMatMul2Attention(mlir::MLIRContext *context, int benefit)
@@ -1085,6 +1112,10 @@ protected:
       head = shape[0] / n;
     } else {
       head = shape[1];
+    }
+    Value query_middle_permute = six_dims_special_case(matmul0.getInput());
+    if (query_middle_permute == NULL) {
+      head = 1;
     }
     auto len_weight0 = module::getNumElements(matmul_queries.getRight());
     auto len_weight1 = module::getNumElements(matmul_keys.getRight());
