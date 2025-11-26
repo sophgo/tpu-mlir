@@ -17,7 +17,28 @@ def parse_max_pixels(value):
     If the input is a single number, convert it to an integer.
     If it contains a comma, parse it as a tuple (or list) of two integers, e.g., "128,124".
     """
-    if ',' in value:
+    if '+' in value:
+        s = []
+        parts = value.split('+')
+        for p in parts:
+            dims = p.split(',')
+            pixels = 1
+            for dim in dims:
+                try:
+                    d = int(dim.strip())
+                    pixels *= d
+                except ValueError:
+                    raise argparse.ArgumentTypeError(
+                        "The input values must be integers, e.g., 128,124")
+            s.append(pixels)
+        s = sorted(s, reverse=True)
+        gaps = [s[i] - s[i + 1] for i in range(len(s) - 1)]
+        lt_64 = any(g < 64 for g in gaps)
+        any_zero = any((mp == 0) for mp in s)
+        if lt_64 or any_zero:
+            print("Warning: The gaps between max_pixels should be at least 64 and no zero values.")
+        return s
+    elif ',' in value:
         parts = value.split(',')
         if len(parts) != 2:
             raise argparse.ArgumentTypeError(

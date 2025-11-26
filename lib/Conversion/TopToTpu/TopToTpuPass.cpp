@@ -1315,7 +1315,7 @@ public:
       auto next_op = *cur_op->getUsers().begin();
       if (isa<tpu::CastOp>(next_op)) {
         // skip cast
-        next_op->dump();
+        // next_op->dump();
         middle_casts.push_back(next_op);
         cur_op = next_op;
         continue;

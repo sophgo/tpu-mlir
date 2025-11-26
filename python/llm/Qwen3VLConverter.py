@@ -13,20 +13,33 @@ class Qwen3VLConverter(LlmConverter):
 
     def __init__(self, args, config):
         super().__init__(args, config)
-        self.max_pixels = args.max_pixels
-        if args.max_pixels == 0:
-            raise RuntimeError("max_pixels is 0, please set max_pixels to a value greater than 0.")
-        if args.max_pixels % (32 * 32) != 0:
-            raise RuntimeError(
-                "max_pixels is not a multiple of 32*32, please set max_pixels to a value that is a multiple of 32*32."
-            )
-        self.do_vit = True
+        if isinstance(args.max_pixels, int):
+            self.max_pixels = [args.max_pixels]
+        elif isinstance(args.max_pixels, list):
+            self.max_pixels = args.max_pixels
+        else:
+            raise RuntimeError(f"max_pixels format is invalid: {args.max_pixels}")
+        any_no_32 = any((mp % (32 * 32) != 0) for mp in self.max_pixels)
+        if any_no_32:
+            raise RuntimeError(f"max_pixels values must be multiples of 32*32: {args.max_pixels}")
+
+        self.do_vit = False  # compile vit externally
         # vision config
         self.init_vconfig()
         self.vit_path = "model.visual"
+        # extern mlirs
         self.extern_gen_mlirs.append(self.gen_add_mlir)
+        self.extern_gen_mlirs.append(self.gen_all_vits)
+
+        # extern compiles
         self.extern_compiles.append(self.compile_add_mlir)
+        self.extern_compiles.append(self.compile_all_vits)
+
+        # extern bmodels
         self.extern_bmodels.append("add.bmodel")
+        self.extern_bmodels.append("vit_0.bmodel")
+        for idx in range(1, len(self.num_patches)):
+            self.extern_bmodels_without_bytes.append(f"vit_{idx}.bmodel")
         self.extern_block_weights = {"mrope_interleave_idx": self.get_mrope_index()}
 
     def init_vconfig(self):
@@ -36,7 +49,7 @@ class Qwen3VLConverter(LlmConverter):
         self.spatial_merge_size = self.vconfig.spatial_merge_size
         self.in_channels = self.vconfig.in_channels
         self.depth = self.vconfig.depth
-        self.num_patches = self.max_pixels // (self.patch_size * self.patch_size)
+        self.num_patches = [mp // (self.patch_size * self.patch_size) for mp in self.max_pixels]
         self.patch_dim = self.in_channels * self.patch_size * self.patch_size * self.temporal_patch_size
         self.embed_dim = self.vconfig.hidden_size
         self.vnum_heads = self.vconfig.num_heads
@@ -145,118 +158,21 @@ class Qwen3VLConverter(LlmConverter):
         from transformers.models.qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding
         head_dim = self.vconfig.hidden_size // self.vnum_heads
         rotary_embed = VisionRotaryEmbedding(head_dim // 2)
-        freqs = rotary_embed(self.num_patches)
+        freqs = rotary_embed(self.num_patches[0])
         return freqs.cos().numpy(), freqs.sin().numpy()
 
-    def vision_block(self, vit_mlir, id: int, in_op, cos_op, sin_op, mask_op):
-        norm1 = f"{self.vit_path}.blocks.{id}.norm1"
-        attn_q = f"{self.vit_path}.blocks.{id}.attn.q"
-        attn_k = f"{self.vit_path}.blocks.{id}.attn.k"
-        attn_v = f"{self.vit_path}.blocks.{id}.attn.v"
-        attn_proj = f"{self.vit_path}.blocks.{id}.attn.proj"
-        norm2 = f"{self.vit_path}.blocks.{id}.norm2"
-        ip = vit_mlir.insert_point
+    def gen_all_vits(self):
+        for idx in range(len(self.num_patches)):
+            self.gen_vit_mlir_by_patches(idx)
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
-
-        def vision_attention(in_op):
-            norm1_op = self.layer_norm(vit_mlir, in_op, norm1, eps=1e-6)
-            hidden_shape = [self.num_patches, self.embed_dim]
-            q_op = self.linear(vit_mlir,
-                               attn_q,
-                               norm1_op, [self.embed_dim, self.embed_dim],
-                               hidden_shape,
-                               force_bias=True)
-            k_op = self.linear(vit_mlir,
-                               attn_k,
-                               norm1_op, [self.embed_dim, self.embed_dim],
-                               hidden_shape,
-                               force_bias=True)
-            v_op = self.linear(vit_mlir,
-                               attn_v,
-                               norm1_op, [self.embed_dim, self.embed_dim],
-                               hidden_shape,
-                               force_bias=True)
-            qk_shape = [1, self.num_patches, self.vnum_heads, self.vhead_dim]
-            qk_reshape = [1, -1, self.vnum_heads, self.vhead_dim]
-            q_op = top.ReshapeOp(T(qk_shape),
-                                 q_op,
-                                 shape=qk_reshape,
-                                 loc=L(attn_q + ".reshape"),
-                                 ip=ip).output
-            k_op = top.ReshapeOp(T(qk_shape),
-                                 k_op,
-                                 shape=qk_reshape,
-                                 loc=L(attn_k + ".reshape"),
-                                 ip=ip).output
-            v_op = top.ReshapeOp(T(qk_shape),
-                                 v_op,
-                                 shape=qk_reshape,
-                                 loc=L(attn_v + ".reshape"),
-                                 ip=ip).output
-            q_op = self.rotary_pos(vit_mlir, q_op, cos_op, sin_op, attn_q + ".rotary")
-            k_op = self.rotary_pos(vit_mlir, k_op, cos_op, sin_op, attn_k + ".rotary")
-            fa_op = top.FAttentionOp(T(qk_shape),
-                                     q_op,
-                                     k_op,
-                                     v_op,
-                                     mask_op,
-                                     vit_mlir.none_op,
-                                     scale=self.vhead_dim**-0.5,
-                                     batch=1,
-                                     q_head=self.vnum_heads,
-                                     kv_head=self.vnum_heads,
-                                     dim=self.vhead_dim,
-                                     mq=self.num_patches,
-                                     mk=self.num_patches,
-                                     keep_dims=True,
-                                     loc=L(f"{self.vit_path}.blocks.{id}.fattention"),
-                                     ip=ip).output
-            fa_op = top.ReshapeOp(T(hidden_shape),
-                                  fa_op,
-                                  shape=[-1, self.embed_dim],
-                                  loc=L(f"{self.vit_path}.blocks.{id}.fattention.reshape"),
-                                  ip=ip).output
-            out_op = self.linear(vit_mlir,
-                                 attn_proj,
-                                 fa_op, [self.embed_dim, self.embed_dim],
-                                 [self.num_patches, self.embed_dim],
-                                 force_bias=True)
-            out_op = top.AddOp(T(hidden_shape), [in_op, out_op], loc=L(attn_proj + ".add"),
-                               ip=ip).output
-            return out_op
-
-        def vision_mlp(in_op):
-            in_shape = [self.num_patches, self.embed_dim]
-            linear_fc1 = f"{self.vit_path}.blocks.{id}.mlp.linear_fc1"
-            linear_fc2 = f"{self.vit_path}.blocks.{id}.mlp.linear_fc2"
-
-            new_op = self.layer_norm(vit_mlir, in_op, norm2, eps=1e-6)
-
-            fc1_op = self.linear(vit_mlir, linear_fc1, new_op,
-                                 [self.embed_dim, self.vintermediate_size],
-                                 [self.num_patches, self.vintermediate_size])
-            act_op = self.activate(vit_mlir, fc1_op, self.vconfig.hidden_act, linear_fc1)
-            fc2_op = self.linear(vit_mlir, linear_fc2, act_op,
-                                 [self.vintermediate_size, self.embed_dim],
-                                 [self.num_patches, self.embed_dim])
-            new_op = top.AddOp(T(in_shape), [in_op, fc2_op], loc=L(linear_fc2 + ".add"),
-                               ip=ip).output
-            return new_op
-
-        in_op = vision_attention(in_op)
-        in_op = vision_mlp(in_op)
-        return in_op
-
-    @override
-    def gen_vit_mlir(self):
-        tqdm.write(f"generate vit mlir ...")
+    def gen_vit_mlir_by_patches(self, patch_idx: int):
+        tqdm.write(f"generate vit {patch_idx} mlir ...")
+        workdir = f"vit_{patch_idx}"
+        if not os.path.exists(workdir):
+            os.mkdir(workdir)
+        patches = self.num_patches[patch_idx]
         # create weights file
-        vit_npz = "vit_top_weights.npz"
+        vit_npz = f"vit_top_weights.npz"
         patch_embed = f"{self.vit_path}.patch_embed.proj"
         pos_embed = f"{self.vit_path}.pos_embed"
         rotary_cos = f"{self.vit_path}.rotary.cos"
@@ -320,16 +236,15 @@ class Qwen3VLConverter(LlmConverter):
                 weights_dict[f"{self.vit_path}.blocks.{i}.attn.k.bias"] = k_b
                 weights_dict[f"{self.vit_path}.blocks.{i}.attn.v.bias"] = v_b
             # save weights
-            np.savez(vit_npz, **weights_dict)
+            np.savez(os.path.join(workdir, vit_npz), **weights_dict)
 
         # create mlir file
-        in_shape = [self.num_patches, self.patch_dim]
-        position_shape = [self.num_patches, 2]
-        out_dim = self.num_patches // (self.spatial_merge_size**2)
+        in_shape = [patches, self.patch_dim]
+        position_shape = [patches, 2]
+        out_dim = patches // (self.spatial_merge_size**2)
         out_shape = [out_dim, self.hidden_size]
         input_shapes = [
-            in_shape, position_shape, [self.num_patches, 4], [self.num_patches, 4, 1],
-            [1, 1, self.num_patches, self.num_patches]
+            in_shape, position_shape, [patches, 4], [patches, 4, 1], [1, 1, patches, patches]
         ]
         input_types = ['F32', 'INT32', 'INT32', 'F32', 'F32']
         out_num = 1 + len(self.deepstack_visual_indexes)
@@ -347,6 +262,104 @@ class Qwen3VLConverter(LlmConverter):
         def L(name: str):
             return self.get_loc(name, vit_mlir)
 
+        def vision_block(id: int, in_op, cos_op, sin_op, mask_op):
+            norm1 = f"{self.vit_path}.blocks.{id}.norm1"
+            attn_q = f"{self.vit_path}.blocks.{id}.attn.q"
+            attn_k = f"{self.vit_path}.blocks.{id}.attn.k"
+            attn_v = f"{self.vit_path}.blocks.{id}.attn.v"
+            attn_proj = f"{self.vit_path}.blocks.{id}.attn.proj"
+            norm2 = f"{self.vit_path}.blocks.{id}.norm2"
+
+            def vision_attention(in_op):
+                norm1_op = self.layer_norm(vit_mlir, in_op, norm1, eps=1e-6)
+                hidden_shape = [patches, self.embed_dim]
+                q_op = self.linear(vit_mlir,
+                                   attn_q,
+                                   norm1_op, [self.embed_dim, self.embed_dim],
+                                   hidden_shape,
+                                   force_bias=True)
+                k_op = self.linear(vit_mlir,
+                                   attn_k,
+                                   norm1_op, [self.embed_dim, self.embed_dim],
+                                   hidden_shape,
+                                   force_bias=True)
+                v_op = self.linear(vit_mlir,
+                                   attn_v,
+                                   norm1_op, [self.embed_dim, self.embed_dim],
+                                   hidden_shape,
+                                   force_bias=True)
+                qk_shape = [1, patches, self.vnum_heads, self.vhead_dim]
+                qk_reshape = [1, -1, self.vnum_heads, self.vhead_dim]
+                q_op = top.ReshapeOp(T(qk_shape),
+                                     q_op,
+                                     shape=qk_reshape,
+                                     loc=L(attn_q + ".reshape"),
+                                     ip=ip).output
+                k_op = top.ReshapeOp(T(qk_shape),
+                                     k_op,
+                                     shape=qk_reshape,
+                                     loc=L(attn_k + ".reshape"),
+                                     ip=ip).output
+                v_op = top.ReshapeOp(T(qk_shape),
+                                     v_op,
+                                     shape=qk_reshape,
+                                     loc=L(attn_v + ".reshape"),
+                                     ip=ip).output
+                q_op = self.rotary_pos(vit_mlir, q_op, cos_op, sin_op, attn_q + ".rotary")
+                k_op = self.rotary_pos(vit_mlir, k_op, cos_op, sin_op, attn_k + ".rotary")
+                fa_op = top.FAttentionOp(T(qk_shape),
+                                         q_op,
+                                         k_op,
+                                         v_op,
+                                         mask_op,
+                                         vit_mlir.none_op,
+                                         scale=self.vhead_dim**-0.5,
+                                         batch=1,
+                                         q_head=self.vnum_heads,
+                                         kv_head=self.vnum_heads,
+                                         dim=self.vhead_dim,
+                                         mq=patches,
+                                         mk=patches,
+                                         keep_dims=True,
+                                         loc=L(f"{self.vit_path}.blocks.{id}.fattention"),
+                                         ip=ip).output
+                fa_op = top.ReshapeOp(T(hidden_shape),
+                                      fa_op,
+                                      shape=[-1, self.embed_dim],
+                                      loc=L(f"{self.vit_path}.blocks.{id}.fattention.reshape"),
+                                      ip=ip).output
+                out_op = self.linear(vit_mlir,
+                                     attn_proj,
+                                     fa_op, [self.embed_dim, self.embed_dim],
+                                     [patches, self.embed_dim],
+                                     force_bias=True)
+                out_op = top.AddOp(T(hidden_shape), [in_op, out_op],
+                                   loc=L(attn_proj + ".add"),
+                                   ip=ip).output
+                return out_op
+
+            def vision_mlp(in_op):
+                in_shape = [patches, self.embed_dim]
+                linear_fc1 = f"{self.vit_path}.blocks.{id}.mlp.linear_fc1"
+                linear_fc2 = f"{self.vit_path}.blocks.{id}.mlp.linear_fc2"
+
+                new_op = self.layer_norm(vit_mlir, in_op, norm2, eps=1e-6)
+
+                fc1_op = self.linear(vit_mlir, linear_fc1, new_op,
+                                     [self.embed_dim, self.vintermediate_size],
+                                     [patches, self.vintermediate_size])
+                act_op = self.activate(vit_mlir, fc1_op, self.vconfig.hidden_act, linear_fc1)
+                fc2_op = self.linear(vit_mlir, linear_fc2, act_op,
+                                     [self.vintermediate_size, self.embed_dim],
+                                     [patches, self.embed_dim])
+                new_op = top.AddOp(T(in_shape), [in_op, fc2_op], loc=L(linear_fc2 + ".add"),
+                                   ip=ip).output
+                return new_op
+
+            in_op = vision_attention(in_op)
+            in_op = vision_mlp(in_op)
+            return in_op
+
         in0_op = vit_mlir.create_input_op(L('input_states'), 0)
         in1_op = vit_mlir.create_input_op(L('position_ids'), 1)
         in2_op = vit_mlir.create_input_op(L('pos_idx'),
@@ -357,7 +370,7 @@ class Qwen3VLConverter(LlmConverter):
         new_weight = vit_mlir.create_weight_op(patch_embed + ".weight",
                                                [self.patch_dim, self.embed_dim])
         new_bias = vit_mlir.create_weight_op(patch_embed + ".bias", [1, self.embed_dim])
-        new_op = top.MatMulOp(T([self.num_patches, self.embed_dim]),
+        new_op = top.MatMulOp(T([patches, self.embed_dim]),
                               in0_op,
                               new_weight,
                               new_bias,
@@ -366,71 +379,71 @@ class Qwen3VLConverter(LlmConverter):
         # fast_pos_embed_interpolate
         new_weight = vit_mlir.create_weight_op(pos_embed + ".weight",
                                                [self.num_position_embeddings, self.embed_dim])
-        pos_idx_gather = top.GatherOp(T([self.num_patches, 4, self.embed_dim]),
+        pos_idx_gather = top.GatherOp(T([patches, 4, self.embed_dim]),
                                       new_weight,
                                       in2_op,
                                       axis=0,
                                       loc=L(pos_embed),
                                       ip=ip).output
-        pos_mul = top.MulOp(T([self.num_patches, 4, self.embed_dim]), [pos_idx_gather, in3_op],
+        pos_mul = top.MulOp(T([patches, 4, self.embed_dim]), [pos_idx_gather, in3_op],
                             loc=L(pos_embed + ".mul"),
                             ip=ip).output
-        pos_sum = top.ReduceOp(T([self.num_patches, self.embed_dim]),
+        pos_sum = top.ReduceOp(T([patches, self.embed_dim]),
                                pos_mul,
                                axes=[1],
                                keepdims=0,
                                mode=StringAttr.get("ReduceSum"),
                                loc=L(pos_embed + ".sum"),
                                ip=ip).output
-        new_op = top.AddOp(T([self.num_patches, self.embed_dim]), [new_op, pos_sum],
+        new_op = top.AddOp(T([patches, self.embed_dim]), [new_op, pos_sum],
                            loc=L(pos_embed + ".add"),
                            ip=ip).output
         # rotary embedding
         new_weight = vit_mlir.create_weight_op(rotary_cos + ".weight",
-                                               [self.num_patches, self.vhead_dim // 4])
-        cos_op = top.GatherOp(T([self.num_patches, 2, self.vhead_dim // 4]),
+                                               [self.num_patches[0], self.vhead_dim // 4])
+        cos_op = top.GatherOp(T([patches, 2, self.vhead_dim // 4]),
                               new_weight,
                               in1_op,
                               axis=0,
                               loc=L(rotary_cos),
                               ip=ip).output
-        cos_op = top.ReshapeOp(T([1, self.num_patches, 1, self.vhead_dim // 2]),
+        cos_op = top.ReshapeOp(T([1, patches, 1, self.vhead_dim // 2]),
                                cos_op,
                                shape=[1, -1, 1, self.vhead_dim // 2],
                                loc=L(rotary_cos + ".reshape"),
                                ip=ip).output
-        cos_op = top.TileOp(T([1, self.num_patches, 1, self.vhead_dim]),
+        cos_op = top.TileOp(T([1, patches, 1, self.vhead_dim]),
                             cos_op,
                             tile=[1, 1, 1, 2],
                             loc=L(rotary_cos + ".tile"),
                             ip=ip).output
         new_weight = vit_mlir.create_weight_op(rotary_sin + ".weight",
-                                               [self.num_patches, self.vhead_dim // 4])
-        sin_op = top.GatherOp(T([self.num_patches, 2, self.vhead_dim // 4]),
+                                               [self.num_patches[0], self.vhead_dim // 4])
+        sin_op = top.GatherOp(T([patches, 2, self.vhead_dim // 4]),
                               new_weight,
                               in1_op,
                               axis=0,
                               loc=L(rotary_sin),
                               ip=ip).output
-        sin_op = top.ReshapeOp(T([1, self.num_patches, 1, self.vhead_dim // 2]),
+        sin_op = top.ReshapeOp(T([1, patches, 1, self.vhead_dim // 2]),
                                sin_op,
                                shape=[1, -1, 1, self.vhead_dim // 2],
                                loc=L(rotary_sin + ".reshape"),
                                ip=ip).output
-        sin_op = top.TileOp(T([1, self.num_patches, 1, self.vhead_dim]),
+        sin_op = top.TileOp(T([1, patches, 1, self.vhead_dim]),
                             sin_op,
                             tile=[1, 1, 1, 2],
                             loc=L(rotary_sin + ".tile"),
                             ip=ip).output
         deepstack_list = []
         for id in range(self.depth):
-            new_op = self.vision_block(vit_mlir, id, new_op, cos_op, sin_op, in4_op)
+            new_op = vision_block(id, new_op, cos_op, sin_op, in4_op)
             if id in self.deepstack_visual_indexes:
                 deepstack_list.append(new_op)
 
         def patch_merger(in_op, fc1_path: str, fc2_path: str, norm_path: str, shuffle: bool):
             out_dim = self.embed_dim * (self.spatial_merge_size**2)
-            in_dim = self.num_patches // (self.spatial_merge_size**2)
+            in_dim = patches // (self.spatial_merge_size**2)
             if shuffle:
                 in_op = top.ReshapeOp(T([in_dim, out_dim]),
                                       in_op,
@@ -460,7 +473,8 @@ class Qwen3VLConverter(LlmConverter):
 
         vit_mlir.create_return_op(ret_ops)
         mlir_txt = vit_mlir.print_module()
-        with open(f"vit.mlir", "w") as f:
+        target = os.path.join(workdir, f"vit_{patch_idx}.mlir")
+        with open(target, "w") as f:
             f.write(mlir_txt)
         save_weights()
 
@@ -490,4 +504,33 @@ class Qwen3VLConverter(LlmConverter):
             f'--addr_mode io_alone', f'--quant_input', f'--quant_output', f'--model {name}.bmodel'
         ]
         deploy_args.append(f'--quantize {self.half_precision_quantize}')
+        self.add_task(deploy_args, f"{name}.log")
+
+    def compile_all_vits(self):
+        for idx in range(len(self.num_patches)):
+            self.compile_vit_by_patches(idx)
+
+    def compile_vit_by_patches(self, patch_idx: int):
+        name = f"vit_{patch_idx}"
+        if os.path.exists(f"{name}.bmodel"):
+            print(f"{name}.bmodel already exists. Skipping compilation.")
+            return
+        deploy_args = [
+            f'pushd vit_{patch_idx} &&', 'model_deploy.py', f'--mlir {name}.mlir',
+            f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'--model ../{name}.bmodel'
+        ]
+        if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
+            deploy_args.append('--quantize f16')
+            deploy_args.append('--quant_output_bf16')
+        else:
+            deploy_args.append(f'--quantize {self.half_precision_quantize}')
+            deploy_args.append('--quant_output')
+        if self.high_precision:
+            deploy_args.append('--high_precision')
+        if self.debug:
+            deploy_args.append('--debug')
+        if self.dynamic_vit:
+            deploy_args.append('--dynamic')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")

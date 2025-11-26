@@ -87,6 +87,7 @@ class LlmConverter(BaseConverter):
         self.extern_gen_mlirs = []
         self.extern_compiles = []
         self.extern_bmodels = []
+        self.extern_bmodels_without_bytes = []
         self.extern_block_weights = {}
         # store all weights name because some weights like qkv.weights may be splitted
         self.weights = []
@@ -1472,6 +1473,8 @@ class LlmConverter(BaseConverter):
         for bmodel in self.extern_bmodels:
             bmodel_list += [bmodel]
             total_bytes += os.path.getsize(bmodel)
+        for bmodel in self.extern_bmodels_without_bytes:
+            bmodel_list += [bmodel]
         bmodel_list += ["lm_head.bmodel"]
         total_bytes += os.path.getsize("lm_head.bmodel")
 
