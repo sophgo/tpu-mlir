@@ -551,12 +551,15 @@ public:
       return failure();
     }
 
+    Value mul_input;
     auto reshape1 = dyn_cast<top::ReshapeOp>(reduce.getInput().getDefiningOp());
-    if (!reshape1) {
-      return failure();
+    if (reshape1) {
+      mul_input = reshape1.getInput();
+    } else {
+      mul_input = reduce.getInput();
     }
 
-    auto mul = dyn_cast<top::MulOp>(reshape1.getInput().getDefiningOp());
+    auto mul = dyn_cast<top::MulOp>(mul_input.getDefiningOp());
     if (!mul) {
       return failure();
     }
@@ -623,13 +626,16 @@ public:
         if (!sc_reduce || sc_reduce.getMode() != "ReduceMean")
           continue;
 
+        Value sc_mul_input;
         auto sc_reshape1 =
             dyn_cast<top::ReshapeOp>(sc_reduce.getInput().getDefiningOp());
-        if (!sc_reshape1)
-          continue;
+        if (sc_reshape1) {
+          sc_mul_input = sc_reshape1.getInput();
+        } else {
+          sc_mul_input = sc_reduce.getInput();
+        }
 
-        auto sc_mul =
-            dyn_cast<top::MulOp>(sc_reshape1.getInput().getDefiningOp());
+        auto sc_mul = dyn_cast<top::MulOp>(sc_mul_input.getDefiningOp());
         if (!sc_mul)
           continue;
 
@@ -682,10 +688,14 @@ public:
     }
 
     // Infer num_groups from reshape1
-    int64_t num_groups = 8; // Default value
-    auto shape_array = module::getI64Array(reshape1.getShapeAttr());
-    if (shape_array && shape_array->size() >= 2) {
-      num_groups = (*shape_array)[1]; // Second dimension is num_groups
+    int64_t num_groups = 0; // Default value
+    auto shape_array = module::getI64Array(reshape2.getShapeAttr());
+    if (!shape_array || shape_array->size() < 3) {
+      return failure();
+    }
+    num_groups = (*shape_array)[1]; // Second dimension is num_groups
+    if (num_groups <= 0) {
+      return failure();
     }
 
     // Step 6: Create Correlation operation
@@ -704,18 +714,23 @@ public:
         correlation_type, ValueRange{left_input, right_input}, max_disp_attr,
         num_groups_attr);
 
-    // Step 7: Create Unsqueeze operation to get 5D output
-    auto axes_attr = rewriter.getI64ArrayAttr({0});
-    auto unsqueeze_type = UnrankedTensorType::get(element_type);
+    // Step 7: Create Unsqueeze operation to get 5D output, if 4D output, skip
+    if (shape_array->size() == 4) {
+      rewriter.replaceOp(op, correlation_op.getResult());
+    } else if (shape_array->size() == 5) {
+      auto axes_attr = rewriter.getI64ArrayAttr({0});
+      auto unsqueeze_type = UnrankedTensorType::get(element_type);
 
-    auto unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
-        mlir::NameLoc::get(
-            rewriter.getStringAttr("fused_correlation_unsqueeze")),
-        unsqueeze_type, correlation_op.getResult(), axes_attr);
+      auto unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
+          mlir::NameLoc::get(
+              rewriter.getStringAttr("fused_correlation_unsqueeze")),
+          unsqueeze_type, correlation_op.getResult(), axes_attr);
 
-    // Step 8: Replace final ScatterND operation
-    rewriter.replaceOp(op, unsqueeze_op.getResult());
-
+      // Step 8: Replace final ScatterND operation
+      rewriter.replaceOp(op, unsqueeze_op.getResult());
+    } else {
+      llvm_unreachable("Not Support this Correlation!");
+    }
     return success();
   }
 };
