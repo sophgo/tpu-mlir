@@ -1095,11 +1095,13 @@ class LlmConverter(BaseConverter):
             k_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
                                    self.head_dim]), [in3_op, k_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(k_proj + ".concat"),
                                 ip=ip).output
             v_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
                                    self.head_dim]), [in4_op, v_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(v_proj + ".concat"),
                                 ip=ip).output
             # ======= fattention =========
@@ -1210,11 +1212,13 @@ class LlmConverter(BaseConverter):
             k_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
                                 [in3_op, k_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(k_proj + ".concat"),
                                 ip=ip).output
             v_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
                                 [in4_op, v_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(v_proj + ".concat"),
                                 ip=ip).output
             # ======= fattention =========

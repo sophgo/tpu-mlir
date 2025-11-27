@@ -367,6 +367,7 @@ def Top_ConcatOp: Top_Op<"Concat"> {
     DefaultValuedAttr<SI32Attr, "1">:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$only_merge,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
