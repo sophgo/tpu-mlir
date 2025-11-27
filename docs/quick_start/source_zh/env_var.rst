@@ -1,3 +1,8 @@
+:orphan:
+
+环境变量设置
+================
+
 以下操作需要在Docker容器中。关于Docker的使用, 请参考 :ref:`启动Docker Container <docker container_setup>` 。
 
 

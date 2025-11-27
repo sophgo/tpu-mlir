@@ -285,7 +285,7 @@ compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-Call the tpul.compile function (:ref:`compile`). After compilation, you will get `example_f32.bmodel`:
+Call the tpul.compile function (:ref:`compile <compile>`). After compilation, you will get `example_f32.bmodel`:
 
    .. code-block:: python
 

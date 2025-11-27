@@ -623,6 +623,7 @@ model_deploy.py
      - BF16, INT8
    * - CV184X
      - BF16, INT8, W4INT8
+
 其中， ``W4A16`` 与 ``W8A16`` 的 ``Weight-only`` 量化模式仅作用于 MatMul 运算，其余算子根据实际情况仍会进行 ``F16`` 或 ``BF16`` 量化。 \
 ``W4INT8`` 量化模式在常规 ``INT8`` 量化的基础上，仅会将 Conv 和 MatMul 两类算子的权重进一步量化为 4 bits, 其余算子仍会按照 ``INT8`` 模式进行量化。
 

@@ -289,7 +289,7 @@ Tpulang接口使用方式
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-调用tpul.compile函数(:ref:`compile`), 编译完成后会得到 `example_f32.bmodel` ：
+调用tpul.compile函数(:ref:`compile <compile>`), 编译完成后会得到 `example_f32.bmodel` ：
 
    .. code-block:: python
 

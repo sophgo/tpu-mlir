@@ -217,7 +217,8 @@ compile
 * layer_group_config: string类型，表示layer group配置文件路径。默认值为""。
 
 
-.. _compile:
+.. _compile_f32:
+
 compile_f32
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

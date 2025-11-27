@@ -221,7 +221,8 @@ Explanation of parameters
 * gdma_check: A boolean. Whether to enable gdma check.
 * layer_group_config: string type, which indicates the layer group configuration file path. The default value is "".
 
-.. _compile:
+.. _compile_f32:
+
 compile_f32
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -5919,7 +5920,7 @@ merger_matmul
 :::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
     .. code-block:: python
 
       def merger_matmul(
