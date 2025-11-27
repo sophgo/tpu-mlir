@@ -578,7 +578,8 @@ class SearchQtable:
             file.write(data)
         #setp2: float_model and int8_model inference
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
-        float_model = MixQuantModel(self.fp32_mlir, self.chip, fp_type=self.args.fp_type)
+        using_fp = 'F32' if 'F32' in chip_support_mix_fp_type[self.args.chip] else self.args.fp_type
+        float_model = MixQuantModel(self.fp32_mlir, self.chip, fp_type=using_fp)
         int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
         float_outputs_cos = 1.0
         layer_cos_list, predictions_gt = [], []
