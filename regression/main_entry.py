@@ -281,7 +281,7 @@ class MAIN_ENTRY(object):
             input_ref = os.path.join(MODEL_PATH, "block_cache_0_input.npz")
             output_ref = os.path.join(MODEL_PATH, "block_cache_0_output.npz")
             bmodel = os.path.join("llm_output",
-                                  model.lower() + f"_{type}_seq2048_bm1684x_1dev",
+                                  model.lower() + f"_{type}_seq2048_bm1684x_1dev", "block_cache_0",
                                   "block_cache_0.bmodel")
             self.run_command([
                 "model_runner.py", "--input", input_ref, "--model", bmodel, "--output", "output.npz"

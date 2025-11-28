@@ -37,7 +37,6 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
         self.vit_path = "thinker.visual"
         self.extern_gen_mlirs.append(self.gen_audio_tower)
         self.extern_compiles.append(self.compile_audio_tower)
-        self.extern_bmodels.append("audio.bmodel")
 
     @override
     def load_pretrained(self, config):
@@ -131,7 +130,7 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
                                 "vit",
                                 Platform.LLM,
                                 input_types,
-                                weight_file=vit_npz)
+                                weight_file=f'../{vit_npz}')
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -210,7 +209,10 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
                               ip=ip).output
         vit_mlir.create_return_op([new_op])
         mlir_txt = vit_mlir.print_module()
-        with open(f"vit.mlir", "w") as f:
+        name = "vit"
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
         save_weights()
 
@@ -226,6 +228,7 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
         num_layers = audio_config.num_hidden_layers
         tqdm.write(f"generate audio tower mlir ...")
         audio_path = "thinker.audio_tower."
+        name = "audio"
         # create weights file
         audio_npz = "audio_tower_top_weights.npz"
         conv1 = f"{audio_path}conv1"
@@ -263,10 +266,10 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
         input_types = ['F32']
 
         audio_mlir = MLIRImporter([in_shape], [out_shape],
-                                  "audio",
+                                  name,
                                   Platform.LLM,
                                   input_types,
-                                  weight_file=audio_npz)
+                                  weight_file=f"../{audio_npz}")
         ip = audio_mlir.insert_point
 
         def T(shape: list):
@@ -401,17 +404,21 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
                              [1, n_window // 2, self.hidden_size])
         audio_mlir.create_return_op([new_op])
         mlir_txt = audio_mlir.print_module()
-        with open(f"audio.mlir", "w") as f:
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
         save_weights()
 
     def compile_audio_tower(self):
         name = "audio"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{model_path} already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
             f'--num_core {self.num_core}', f'--num_device {self.num_device}',
             f'--model {name}.bmodel'
         ]
@@ -419,4 +426,7 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
         deploy_args.append('--quant_output')
         if self.high_precision:
             deploy_args.append('--high_precision')
+        if self.debug:
+            deploy_args.append('--debug')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")

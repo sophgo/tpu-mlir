@@ -35,11 +35,6 @@ class Qwen3VLConverter(LlmConverter):
         self.extern_compiles.append(self.compile_add_mlir)
         self.extern_compiles.append(self.compile_all_vits)
 
-        # extern bmodels
-        self.extern_bmodels.append("add.bmodel")
-        self.extern_bmodels.append("vit_0.bmodel")
-        for idx in range(1, len(self.num_patches)):
-            self.extern_bmodels_without_bytes.append(f"vit_{idx}.bmodel")
         self.extern_block_weights = {"mrope_interleave_idx": self.get_mrope_index()}
 
     def init_vconfig(self):
@@ -167,9 +162,7 @@ class Qwen3VLConverter(LlmConverter):
 
     def gen_vit_mlir_by_patches(self, patch_idx: int):
         tqdm.write(f"generate vit {patch_idx} mlir ...")
-        workdir = f"vit_{patch_idx}"
-        if not os.path.exists(workdir):
-            os.mkdir(workdir)
+        name = f"vit_{patch_idx}"
         patches = self.num_patches[patch_idx]
         # create weights file
         vit_npz = f"vit_top_weights.npz"
@@ -189,6 +182,8 @@ class Qwen3VLConverter(LlmConverter):
             deepstack_fc2_list.append(f"{self.vit_path}.deepstack_merger_list.{idx}.linear_fc2")
 
         def save_weights():
+            if patch_idx > 0:
+                return
             cos, sin = self.vision_rotary()
             weights_dict = {
                 rotary_cos + ".weight": cos,
@@ -236,7 +231,7 @@ class Qwen3VLConverter(LlmConverter):
                 weights_dict[f"{self.vit_path}.blocks.{i}.attn.k.bias"] = k_b
                 weights_dict[f"{self.vit_path}.blocks.{i}.attn.v.bias"] = v_b
             # save weights
-            np.savez(os.path.join(workdir, vit_npz), **weights_dict)
+            np.savez(vit_npz, **weights_dict)
 
         # create mlir file
         in_shape = [patches, self.patch_dim]
@@ -249,11 +244,13 @@ class Qwen3VLConverter(LlmConverter):
         input_types = ['F32', 'INT32', 'INT32', 'F32', 'F32']
         out_num = 1 + len(self.deepstack_visual_indexes)
 
-        vit_mlir = MLIRImporter(input_shapes, [out_shape] * out_num,
-                                "vit",
-                                Platform.LLM,
-                                input_types,
-                                weight_file=vit_npz)
+        vit_mlir = MLIRImporter(
+            input_shapes,
+            [out_shape] * out_num,
+            "vit",  # all vit use the same name
+            Platform.LLM,
+            input_types,
+            weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -473,37 +470,45 @@ class Qwen3VLConverter(LlmConverter):
 
         vit_mlir.create_return_op(ret_ops)
         mlir_txt = vit_mlir.print_module()
-        target = os.path.join(workdir, f"vit_{patch_idx}.mlir")
-        with open(target, "w") as f:
+        if not os.path.exists(name):
+            os.mkdir(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
         save_weights()
 
     def gen_add_mlir(self):
+        name = "add"
         input_shape = [self.max_input_length * self.hidden_size]
-        add_mlir = MLIRImporter([input_shape] * 2, [input_shape], "add", Platform.LLM,
+        add_mlir = MLIRImporter([input_shape] * 2, [input_shape], name, Platform.LLM,
                                 ['F32', 'F32'])
         ip = add_mlir.insert_point
         in0_op = add_mlir.create_input_op(self.get_loc('input0', add_mlir), 0)
         in1_op = add_mlir.create_input_op(self.get_loc('input1', add_mlir), 1)
         out_op = top.AddOp(add_mlir.get_tensor_type(input_shape), [in0_op, in1_op],
-                           loc=self.get_loc("add", add_mlir),
+                           loc=self.get_loc(name, add_mlir),
                            ip=ip).output
         add_mlir.create_return_op([out_op])
         mlir_txt = add_mlir.print_module()
-        with open(f"add.mlir", "w") as f:
+        if not os.path.exists(f"{name}"):
+            os.mkdir(f"{name}")
+        target = os.path.join(f"{name}", f"{name}.mlir")
+        with open(target, "w") as f:
             f.write(mlir_txt)
 
     def compile_add_mlir(self):
         name = "add"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{model_path} already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
+            f'pushd {name} &&', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
             f'--num_core {self.num_core}', f'--num_device {self.num_device}',
             f'--addr_mode io_alone', f'--quant_input', f'--quant_output', f'--model {name}.bmodel'
         ]
         deploy_args.append(f'--quantize {self.half_precision_quantize}')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
     def compile_all_vits(self):
@@ -512,13 +517,18 @@ class Qwen3VLConverter(LlmConverter):
 
     def compile_vit_by_patches(self, patch_idx: int):
         name = f"vit_{patch_idx}"
-        if os.path.exists(f"{name}.bmodel"):
+        model_path = f"{name}/{name}.bmodel"
+        if patch_idx == 0:
+            self.all_bmodels.append(model_path)
+        else:
+            self.all_bmodels_without_bytes.append(model_path)
+        if os.path.exists(model_path):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
         deploy_args = [
             f'pushd vit_{patch_idx} &&', 'model_deploy.py', f'--mlir {name}.mlir',
             f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model ../{name}.bmodel'
+            f'--model {name}.bmodel'
         ]
         if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
             deploy_args.append('--quantize f16')
