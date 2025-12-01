@@ -17,11 +17,10 @@ import onnx
 import ast
 import onnxruntime
 import onnxsim.onnx_simplifier as onnxsim
-from tpu_mlir.python.utils.preprocess import get_preprocess_parser, preprocess
-from tpu_mlir.python.utils.mlir_parser import *
-from tpu_mlir.python.utils.misc import *
-from tpu_mlir.python.tools.model_runner import get_chip_from_model, round_away_from_zero
-
+from utils.preprocess import get_preprocess_parser, preprocess
+from utils.mlir_parser import *
+from utils.misc import *
+from tools.model_runner import get_chip_from_model, round_away_from_zero
 
 class common_inference():
 
@@ -131,8 +130,6 @@ class bmodel_inference(common_inference):
                 lib_so = 'libcmodel_1684.so'
             elif chip == "BM1690":
                 lib_so = 'libtpuv7_emulator.so'
-            elif chip == "BM1690E":
-                lib_so = 'libtpuv7.1_emulator.so'
             elif chip == "CV184X":
                 lib_so = 'libcmodel_cv184x.so'
             elif chip == "SG2380":

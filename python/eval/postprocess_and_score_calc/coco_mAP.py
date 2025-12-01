@@ -16,7 +16,6 @@ import argparse
 from pathlib import Path
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-from tpu_mlir.python.utils.log_setting import setup_logger
 
 logger = setup_logger('root', log_level="INFO")
 
@@ -464,7 +463,7 @@ def postproc(outputs, imsize, anchors=ANCHORS):
             bs, _, ny, nx, _ = out.shape
         else:
             bs, _, ny, nx = out.shape
-            out = out.reshape(bs, -1, 6, ny, nx)
+            out = out.reshape(bs, -1, 85, ny, nx)
             out = np.transpose(out, (0, 1, 3, 4, 2))
         stride = imsize[0] / ny
         assert (stride == imsize[1] / nx)
@@ -475,7 +474,7 @@ def postproc(outputs, imsize, anchors=ANCHORS):
         y[..., 2:4] = (y[..., 2:4] * 2)**2 * anchor_grid  # wh
         # batch = 1
         # z.append(y.view(bs, -1, 85))
-        z.append(y.reshape(-1, 6))
+        z.append(y.reshape(-1, 85))
     pred = np.concatenate(z, axis=0)
     boxes = pred[:, :4]
     scores = pred[:, 4:5] * pred[:, 5:]
