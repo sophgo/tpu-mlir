@@ -404,6 +404,10 @@ uint8_t *ModelGen::Encrypt(uint8_t *input, uint64_t input_bytes,
 
 uint8_t *ModelGen::GetBufferPointer() { return builder_.GetBufferPointer(); }
 
+static uint32_t align_to_4k(uint32_t size) {
+  return (size + 4095) / 4096 * 4096 - size;
+}
+
 void ModelGen::Save(const string &filename) {
   ASSERT(!filename.empty());
   std::ofstream fout(filename,
@@ -418,8 +422,15 @@ void ModelGen::Save(const string &filename) {
   header.header_size = sizeof(header);
   header.flatbuffers_size = builder_.GetSize();
   header.binary_size = binary_.size();
+  // 4K align flatbuffer
+  auto pad_size = align_to_4k(header.header_size + header.flatbuffers_size);
+  header.flatbuffers_size += pad_size;
   fout.write((char *)&header, sizeof(header));
   fout.write((char *)builder_.GetBufferPointer(), builder_.GetSize());
+  if (pad_size > 0) {
+    std::vector<uint8_t> pad_buffer(pad_size, 0);
+    fout.write((char *)pad_buffer.data(), pad_size);
+  }
   fout.write((char *)binary_.data(), binary_.size());
   fout.close();
 }
