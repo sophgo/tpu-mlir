@@ -90,8 +90,8 @@ class LlmConverter(BaseConverter):
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.config_dir = os.path.join(self.out_dir, "config")
         self.commands = []
-        self.extern_gen_mlirs = []
-        self.extern_compiles = []
+        self.all_gen_mlirs = []
+        self.all_compiles = []
         self.all_bmodels = []
         self.all_bmodels_without_bytes = []
         self.extern_block_weights = {}
@@ -143,33 +143,24 @@ class LlmConverter(BaseConverter):
                         dirs_exist_ok=True)
 
     def gen_all_mlir(self):
+        if self.do_vit:
+            self.all_gen_mlirs.append(self.gen_vit_mlir)
+        self.all_gen_mlirs.append(self.gen_embedding_lmhead_mlir)
+        if not self.lmhead_with_topk:
+            self.all_gen_mlirs.append(self.gen_sample_head_mlir)
+        for i in range(self.num_layers):
+            self.all_gen_mlirs.append(lambda i=i: self.gen_block_mlir(i))
+
         if self.debug:
-            self.gen_vit_mlir()
-            for func in self.extern_gen_mlirs:
+            for func in self.all_gen_mlirs:
                 func()
-            self.gen_embedding_lmhead_mlir()
-            if not self.lmhead_with_topk:
-                self.gen_sample_head_mlir()
-            for i in range(self.num_layers):
-                self.gen_block_mlir(i)
             return
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = []
 
-            if self.do_vit:
-                futures.append(executor.submit(self.gen_vit_mlir))
-
-            for func in self.extern_gen_mlirs:
+            for func in self.all_gen_mlirs:
                 futures.append(executor.submit(func))
-
-            futures.append(executor.submit(self.gen_embedding_lmhead_mlir))
-
-            if not self.lmhead_with_topk:
-                futures.append(executor.submit(self.gen_sample_head_mlir))
-
-            for i in range(self.num_layers):
-                futures.append(executor.submit(self.gen_block_mlir, i))
 
             # Wait for all threads to complete
             for future in tqdm(concurrent.futures.as_completed(futures),
@@ -1545,25 +1536,24 @@ class LlmConverter(BaseConverter):
     def compile_all(self):
 
         if self.do_vit:
-            self.compile_vit()
+            self.all_compiles.append(self.compile_vit)
 
         if not self.embedding_disk:
-            self.compile_embedding()
-            self.compile_embedding_cache()
+            self.all_compiles.append(self.compile_embedding)
+            self.all_compiles.append(self.compile_embedding_cache)
 
-        self.compile_lm_head()
+        self.all_compiles.append(self.compile_lm_head)
 
         if not self.lmhead_with_topk:
-            self.compile_greedy_head()
-            self.compile_sample_head()
-
-        self.compile_block()
+            self.all_compiles.append(self.compile_greedy_head)
+            self.all_compiles.append(self.compile_sample_head)
+        self.all_compiles.append(self.compile_block)
         for i in range(self.num_layers):
-            self.compile_block_cache(i)
+            self.all_compiles.append(lambda i=i: self.compile_block_cache(i))
             if self.share_prompt:
-                self.compile_block_prompt(i)
+                self.all_compiles.append(lambda i=i: self.compile_block_prompt(i))
 
-        for func in self.extern_compiles:
+        for func in self.all_compiles:
             func()
 
         self.execute_tasks()

@@ -35,8 +35,8 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
     def __init__(self, args, config):
         super().__init__(args, config)
         self.vit_path = "thinker.visual"
-        self.extern_gen_mlirs.append(self.gen_audio_tower)
-        self.extern_compiles.append(self.compile_audio_tower)
+        self.all_gen_mlirs.append(self.gen_audio_tower)
+        self.all_compiles.append(self.compile_audio_tower)
 
     @override
     def load_pretrained(self, config):

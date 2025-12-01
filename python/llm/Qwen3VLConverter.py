@@ -28,12 +28,12 @@ class Qwen3VLConverter(LlmConverter):
         self.init_vconfig()
         self.vit_path = "model.visual"
         # extern mlirs
-        self.extern_gen_mlirs.append(self.gen_add_mlir)
-        self.extern_gen_mlirs.append(self.gen_all_vits)
+        self.all_gen_mlirs.append(self.gen_add_mlir)
+        self.all_gen_mlirs.append(self.gen_all_vits)
 
         # extern compiles
-        self.extern_compiles.append(self.compile_add_mlir)
-        self.extern_compiles.append(self.compile_all_vits)
+        self.all_compiles.append(self.compile_add_mlir)
+        self.all_compiles.append(self.compile_all_vits)
 
         self.extern_block_weights = {"mrope_interleave_idx": self.get_mrope_index()}
 

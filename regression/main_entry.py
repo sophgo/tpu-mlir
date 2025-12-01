@@ -246,7 +246,7 @@ class MAIN_ENTRY(object):
                     if chip == "bm1688" and not bm1688_support:
                         continue
                     self.commands.append(
-                        f"test_tpulang.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_tpulang_{case}_{chip}.log\n"
+                        f"test_tpulang.py --case {case} --chip {chip} > {self.log_dir}/test_tpulang_{case}_{chip}.log\n"
                     )
             del tpulang_tester
 
