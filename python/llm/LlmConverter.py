@@ -299,7 +299,7 @@ class LlmConverter(BaseConverter):
                             row //
                             2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
         else:
-            raise NotImplementedError("Not support now")
+            raise NotImplementedError(f"Not support now: {quant_mode}")
 
         for col in range(unpacked_zeros.shape[1]):
             i = order_map[col % compress_ratio]
@@ -312,6 +312,41 @@ class LlmConverter(BaseConverter):
             return unpacked_weights, pack_int8_weights, unpacked_zeros + 1
         else:
             return unpacked_weights, pack_int8_weights, unpacked_zeros
+
+    def decompressed_weights(self, weight_packed, weight_scale, qzeros):
+        N, K = weight_packed.shape
+        Ns, Ks = weight_scale.shape
+        assert (N == Ns)
+        bits = self.quant_bits
+        compress_ratio = 32 // bits
+        mask = 0xF if bits == 4 else 0xFF
+        unpacked_weights = np.zeros((N, K * compress_ratio), dtype=np.int32)
+        pack_int8_weights = np.zeros((N, K * compress_ratio // 2), dtype=np.uint8)
+        unpacked_zeros = np.zeros((Ns, Ks), dtype=np.uint8)
+        order_map = [i for i in range(compress_ratio)]
+        for row in range(unpacked_weights.shape[1]):
+            i = order_map[row % compress_ratio]
+            unpacked_weights[:, row] = (weight_packed[:, row // compress_ratio] >>
+                                        (bits * i)) & mask
+            if bits == 4:
+                if row % 2 == 0:
+                    pack_int8_weights[:, row // 2] = unpacked_weights[:, row]
+                else:
+                    pack_int8_weights[:, row //
+                                      2] = unpacked_weights[:, row] << 4 | pack_int8_weights[:,
+                                                                                             row //
+                                                                                             2]
+        if qzeros is not None:
+            for col in range(unpacked_zeros.shape[0]):
+                i = order_map[col % compress_ratio]
+                unpacked_zeros[col, :] = (qzeros[col // compress_ratio, :] >> (bits * i)) & mask
+        else:
+            # fill for zero points
+            unpacked_zeros.fill((1 << (bits - 1)))
+
+        if bits == 8:
+            pack_int8_weights = unpacked_weights.astype("uint8")
+        return unpacked_weights, pack_int8_weights, unpacked_zeros
 
     def init_config(self):
         c = self.model_info.config
@@ -346,8 +381,11 @@ class LlmConverter(BaseConverter):
             self.quantization_config = getattr(self.config, c.quantization_config, None)
         if self.quantization_config:
             self.quant_mode = self.quantization_config["quant_method"]
-            self.q_group_size = self.quantization_config["group_size"]
-            self.quant_bits = self.quantization_config["bits"]
+            if self.quant_mode not in ["gptq", "awq", "compressed-tensors", "auto-round"]:
+                raise NotImplementedError(f"Not support quantization method: {self.quant_mode}")
+            if self.quant_mode != "compressed-tensors":
+                self.q_group_size = self.quantization_config["group_size"]
+                self.quant_bits = self.quantization_config["bits"]
             if self.quant_mode == "awq":
                 assert self.quantization_config["version"] == "gemm", (
                     "AWQ only support gemm version for now")
@@ -364,6 +402,21 @@ class LlmConverter(BaseConverter):
                     self.quant_mode = "awq"
                 else:
                     raise NotImplementedError(f"Not support packing_format: {packing_format}")
+            if self.quant_mode == "compressed-tensors":
+                format = self.quantization_config.get("format", "pack-quantized")
+                quantization_status = self.quantization_config.get("quantization_status",
+                                                                   "compressed")
+                if format != "pack-quantized" and quantization_status != "compressed":
+                    raise NotImplementedError("Only support compressed pack-quantized now")
+                config_groups = self.quantization_config.get("config_groups", {})
+                assert len(config_groups) == 1, "Only support one group config now"
+                group_0 = config_groups.get("group_0", {})
+                weights_config = group_0.get("weights", {})
+                self.quant_bits = weights_config.get("num_bits")
+                self.q_group_size = weights_config.get("group_size")
+                self.compressed_with_zp = weights_config.get("symmetric", True) is False
+                weight_type = weights_config.get("type")
+                assert (weight_type == "int")
 
         if self.q_group_size < 0:
             self.q_group_size = 0
@@ -803,32 +856,48 @@ class LlmConverter(BaseConverter):
         return q_op, k_op
 
     def set_linear_weight(self, path: str, weight_dict: dict):
-        is_quant = self.quant_mode is not None and self.model.is_exist(path + ".qweight")
+        is_quant = False
+        if self.quant_mode is not None:
+            if self.model.is_exist(path + ".qweight") or self.model.is_exist(path +
+                                                                             ".weight_packed"):
+                is_quant = True
         if not is_quant:
             weight_path = path + ".weight"
-            bias_path = path + ".bias"
             if self.model.is_exist(weight_path):
                 data = self.model.read(weight_path)
                 weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
             else:
                 raise RuntimeError("Can't find key: {}".format(weight_path))
-        else:
+        elif self.quant_mode in ["gptq", "awq"]:
             qweight_path = path + ".qweight"
             scale_path = path + ".scales"
             zp_path = path + ".qzeros"
-            bias_path = path + ".bias"
-            if self.model.is_exist(qweight_path):
-                qweight_data = self.model.read(qweight_path)
-                scale_data = self.model.read(scale_path)
+            qweight_data = self.model.read(qweight_path)
+            scale_data = self.model.read(scale_path)
+            zp_data = self.model.read(zp_path)
+            _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
+                qweight_data, zp_data, self.quant_bits, self.quant_mode)
+            weight_dict[qweight_path] = np.ascontiguousarray(np.transpose(
+                pack_int8_weights, (1, 0)))
+            weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
+            weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
+        elif self.quant_mode == "compressed-tensors":
+            qweight_path = path + ".weight_packed"
+            scale_path = path + ".weight_scale"
+            zp_path = path + ".weight_zero_point"
+            qweight_data = self.model.read(qweight_path)
+            scale_data = self.model.read(scale_path)
+            if self.compressed_with_zp:
                 zp_data = self.model.read(zp_path)
-                _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweight_data, zp_data, self.quant_bits, self.quant_mode)
-                weight_dict[qweight_path] = np.ascontiguousarray(
-                    np.transpose(pack_int8_weights, (1, 0)))
-                weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
-                weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
             else:
-                raise RuntimeError("Can't find key: {}".format(qweight_path))
+                zp_data = None
+            _, pack_int8_weights, unpacked_zeros = self.decompressed_weights(
+                qweight_data, scale_data, zp_data)
+            weight_dict[path + ".qweight"] = pack_int8_weights
+            weight_dict[path + ".scales"] = scale_data
+            weight_dict[path + ".qzeros"] = unpacked_zeros
+
+        bias_path = path + ".bias"
         if self.model.is_exist(bias_path):
             weight_dict[bias_path] = self.model.read(bias_path)
 
@@ -898,6 +967,7 @@ class LlmConverter(BaseConverter):
             self.set_common_weight(norm, weight_dict, WeightType.RMS_NORM)
         if self.extern_block_weights:
             weight_dict.update(self.extern_block_weights)
+        self.weights.extend(list(weight_dict.keys()))
         np.savez(weight_file, **weight_dict)
 
         def gen_mlp(mlir_gen, input_shape, in_op):
@@ -1413,7 +1483,7 @@ class LlmConverter(BaseConverter):
             self.all_bmodels_without_bytes.append(model_path)
             if os.path.exists(model_path):
                 print(f"{name}.bmodel already exists. Skipping compilation.")
-                return
+                continue
 
             deploy_args = [
                 f'pushd {dir} && ', 'model_deploy.py', f'--mlir {name}.mlir',

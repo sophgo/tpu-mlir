@@ -20,8 +20,10 @@ class Qwen3VLConverter(LlmConverter):
         else:
             raise RuntimeError(f"max_pixels format is invalid: {args.max_pixels}")
         any_no_32 = any((mp % (32 * 32) != 0) for mp in self.max_pixels)
-        if any_no_32:
-            raise RuntimeError(f"max_pixels values must be multiples of 32*32: {args.max_pixels}")
+        is_zero = any((mp == 0) for mp in self.max_pixels)
+        if any_no_32 or is_zero:
+            raise RuntimeError(
+                f"max_pixels values must be multiples of 32*32 and non-zero: {args.max_pixels}")
 
         self.do_vit = False  # compile vit externally
         # vision config
