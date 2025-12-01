@@ -17,10 +17,10 @@ import onnx
 import ast
 import onnxruntime
 import onnxsim.onnx_simplifier as onnxsim
-from utils.preprocess import get_preprocess_parser, preprocess
-from utils.mlir_parser import *
-from utils.misc import *
-from tools.model_runner import get_chip_from_model, round_away_from_zero
+from tpu_mlir.python.utils.preprocess import get_preprocess_parser, preprocess
+from tpu_mlir.python.utils.mlir_parser import *
+from tpu_mlir.python.utils.misc import *
+from tpu_mlir.python.tools.model_runner import get_chip_from_model, round_away_from_zero
 
 
 class common_inference():
@@ -60,9 +60,10 @@ class common_inference():
             self.use_cuda = False
         self.batched_labels = []
         self.batched_imgs = ''
+        postprocess_type_tmp = args.postprocess_type.replace("_yolov8", "")
         exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(
-            name=args.postprocess_type))
-        self.score = eval('{}(args)'.format(args.postprocess_type))
+            name=postprocess_type_tmp))
+        self.score = eval('{}(args)'.format(postprocess_type_tmp))
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         print('batch_size:', self.batch_size)
 
@@ -130,6 +131,8 @@ class bmodel_inference(common_inference):
                 lib_so = 'libcmodel_1684.so'
             elif chip == "BM1690":
                 lib_so = 'libtpuv7_emulator.so'
+            elif chip == "BM1690E":
+                lib_so = 'libtpuv7.1_emulator.so'
             elif chip == "CV184X":
                 lib_so = 'libcmodel_cv184x.so'
             elif chip == "SG2380":
@@ -284,7 +287,7 @@ class model_inference(object):
         args, _ = parser.parse_known_args()
         if args.postprocess_type == 'topx':
             from eval.postprocess_and_score_calc.topx import score_Parser
-        elif args.postprocess_type == 'coco_mAP':
+        elif args.postprocess_type.startswith('coco_mAP'):
             from eval.postprocess_and_score_calc.coco_mAP import score_Parser
         else:
             print('postprocess_type error')
