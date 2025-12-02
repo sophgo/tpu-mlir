@@ -48,7 +48,7 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#bm1690e sha256: d3b569e09e068a31182d686e4df8a251ac13f546
+#bm1690e sha256: 43751446a1f35aaaeccf87da033a46cc27e0417d
 cd TPU1686
 source  scripts/envsetup.sh sg2260e
 debug: rebuild_backend_lib_cmodel
