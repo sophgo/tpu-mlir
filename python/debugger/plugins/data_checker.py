@@ -93,6 +93,7 @@ class DumpMode(Enum):
     COMB = 3
     TPULANG = 4
     COMB_ALL = 5
+    OUT_FIXED = 6
 
 
 class CmpState(Enum):
@@ -761,6 +762,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         desired = self.get_ref_data(value)
         if self.dump_mode == DumpMode.TPULANG and self.out_fixed == True:
+            actual = raw_data.astype(np.float32)
+        elif self.dump_mode == DumpMode.OUT_FIXED:
             actual = raw_data.astype(np.float32)
         else:
             actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
