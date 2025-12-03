@@ -4754,6 +4754,9 @@ class ONNX_IR_TESTER(object):
         """
         Test case for the first LSTM layer in crnn_200000.mlir.
         Shapes taken directly from the MLIR:
+        
+        Note: cv184x does not support INT8 mode for LSTM due to hardware limitations
+        (lacks FP32 exp/sigmoid/tanh operations required by INT8 internal computation).
         - Input: [49, 1, 64]
         - W / R: [2, 256, 64] (bidirectional, 4 * hidden_size = 256, input_size = 64)
         - B: [2, 512] (8 * hidden_size)
@@ -4813,8 +4816,12 @@ class ONNX_IR_TESTER(object):
             'h0': np.clip(np.random.randn(*h0_s).astype(np.float32), -10, 10),
             'c0': np.clip(np.random.randn(*c0_s).astype(np.float32), -10, 10),
         }
+        # cv184x do not support INT8 mode for LSTM (lacks FP32 exp/sigmoid/tanh)
+        support_modes = None
+        if self.chip == "cv184x":
+            support_modes = ["bf16"]  # Only BF16 mode supported on cv184x
 
-        self.onnx_and_test(graph_def, input_data=input_data)
+        self.onnx_and_test(graph_def, input_data=input_data, support_modes=support_modes)
 
     def test_BCastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
