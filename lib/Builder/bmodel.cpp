@@ -65,6 +65,10 @@ ModelGen::~ModelGen() {
   }
 }
 
+static uint64_t align_to_4k(uint64_t size) {
+  return (size + 4095) / 4096 * 4096 - size;
+}
+
 Binary ModelGen::WriteBinary(size_t size, uint8_t *data) {
   // ASSERT(size != 0 && data != NULL);
   for (auto &binary : binary_vector_) {
@@ -78,6 +82,11 @@ Binary ModelGen::WriteBinary(size_t size, uint8_t *data) {
   uint64_t start = binary_.size();
   binary_.insert(binary_.end(), size, 0);
   memcpy(binary_.data() + start, data, size);
+  uint64_t bytes = binary_.size();
+  auto pad_4k = align_to_4k(bytes);
+  if (pad_4k > 0) {
+    binary_.insert(binary_.end(), pad_4k, 0);
+  }
   Binary new_bin(start, size);
   binary_vector_.push_back(new_bin);
   return new_bin;
@@ -403,10 +412,6 @@ uint8_t *ModelGen::Encrypt(uint8_t *input, uint64_t input_bytes,
 }
 
 uint8_t *ModelGen::GetBufferPointer() { return builder_.GetBufferPointer(); }
-
-static uint32_t align_to_4k(uint32_t size) {
-  return (size + 4095) / 4096 * 4096 - size;
-}
 
 void ModelGen::Save(const string &filename) {
   ASSERT(!filename.empty());
