@@ -95,7 +95,8 @@ def compile(
         embed_debug_info=False,
         addr_mode='auto',
         gdma_check=False,
-        layer_group_config=""):
+        layer_group_config="",
+        num_core=1):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -103,6 +104,9 @@ def compile(
     if log_level != 'quiet':
         logger.info("TPU-MLIR {}".format(pymlir.__version__))
     assert addr_mode in ['auto', 'io_reloc']
+    assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
+       (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
+       f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -128,7 +132,8 @@ def compile(
                                      asymmetric=asymmetric,
                                      ctm_format=ctm_format,
                                      fuse=fuse,
-                                     addr_mode=addr_mode)
+                                     addr_mode=addr_mode,
+                                     num_core=num_core)
         bmodel_generate_and_inference(model_name=name,
                                       quant_mode="int8",
                                       inference=bmodel_inference,
@@ -172,7 +177,8 @@ def compile_f32(name: str,
                 addr_mode='auto',
                 gdma_check=False,
                 layer_group_config="",
-                spec_op_mode: dict = None):
+                spec_op_mode: dict = None,
+                num_core=1):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     TpuLang.graph.quantized_type_inference()
@@ -186,6 +192,9 @@ def compile_f32(name: str,
     mode_list = [mode]
     if mode == 'all':
         mode_list = ['f32', 'f16', 'bf16']
+    assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
+       (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
+       f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
     qtable = ""
     if spec_op_mode:
@@ -223,7 +232,8 @@ def compile_f32(name: str,
                                          log_level=log_level,
                                          chip=TpuLang.chip,
                                          addr_mode=addr_mode,
-                                         quantize_table=qtable)
+                                         quantize_table=qtable,
+                                         num_core=num_core)
             bmodel_generate_and_inference(model_name=name,
                                           quant_mode=m,
                                           inference=bmodel_inference,
@@ -286,13 +296,14 @@ def model_top_inference(model_name, cmp=False, log_level: str = 'normal'):
 
 def model_lowering_and_inference(model_name: str, quant_mode: str, chip: str, asymmetric: bool = False, \
                                  inference: bool = True, cmp: bool = False, ctm_format = "BGR_PLANAR", \
-                                 fuse=False,log_level : str = 'normal', addr_mode:str = 'auto', quantize_table=""):
+                                 fuse=False,log_level : str = 'normal', addr_mode:str = 'auto', quantize_table="", \
+                                 num_core=1):
     top_mlir = "{}.mlir".format(model_name)
     tpu_mlir = "{}_{}.mlir".format(model_name, quant_mode)
 
     mlir_lowering(top_mlir, tpu_mlir, mode=quant_mode, chip=chip, asymmetric=asymmetric, \
                   customization_format=ctm_format, fuse_preprocess=fuse, addr_mode=addr_mode, \
-                  log_level=log_level, quantize_table=quantize_table,)
+                  log_level=log_level, quantize_table=quantize_table, num_core=num_core)
     if inference:
         in_f32_npz = model_name + '_in_f32.npz'
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")

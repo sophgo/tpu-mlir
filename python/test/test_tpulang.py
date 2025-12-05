@@ -100,7 +100,8 @@ class TPULANG_IR_TESTER(object):
                  mode: str = "all",
                  simple: bool = False,
                  no_save: bool = False,
-                 concise_log: bool = False):
+                 concise_log: bool = False,
+                 num_core: int = 1):
         Y, N = True, False
         self.test_function = {
             #############################
@@ -254,6 +255,7 @@ class TPULANG_IR_TESTER(object):
         self.chip = chip.lower()
         self.no_save = no_save
         self.concise_log = concise_log  # use when run regression/main_entry.py
+        self.num_core = num_core
         if self.simple:
             self.support_quant_modes = ["f16"]
         if self.mode == "" or self.mode == "all":
@@ -342,7 +344,8 @@ class TPULANG_IR_TESTER(object):
                                  no_save=self.no_save,
                                  top_mlir_inference=top_mlir_inference,
                                  tpu_mlir_inference=tpu_mlir_inference,
-                                 log_level=log_level)
+                                 log_level=log_level,
+                                 num_core=self.num_core)
         else:
             tpul.compile(model_name,
                          inputs,
@@ -351,7 +354,8 @@ class TPULANG_IR_TESTER(object):
                          dynamic=False,
                          asymmetric=asymmetric,
                          no_save=self.no_save,
-                         log_level=log_level)
+                         log_level=log_level,
+                         num_core=self.num_core)
 
     def test_base_binary_quant(self,
                                case_name,
@@ -6442,9 +6446,11 @@ if __name__ == "__main__":
     parser.add_argument("--no_save", action="store_true", help="whether to save mlir/weight in memory instead of hard disk.")
     parser.add_argument("--path", default="", type=str, help="the path to store intermediate file, accept "" or absolute path.")
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
+    parser.add_argument("--num_core", default=1, type=int, help="number of cores to use")
     # yapf: enable
     args = parser.parse_args()
-    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple, args.no_save, args.concise_log)
+    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple, args.no_save, args.concise_log,
+                               args.num_core)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_function:
