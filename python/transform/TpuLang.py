@@ -3802,6 +3802,7 @@ def multi_scale_deformable_attention(
     num_levels: int = 4,
     num_points: int = 4,
     value_proj_ratio: float = 1.0,
+    grid_sampler_mode: int = 0,
     out_name: str = None,
 ):
     assert query.shape[0] == 1
@@ -4526,7 +4527,7 @@ def multi_scale_deformable_attention(
                           params=sampling_grids_permute_attr)
         # grid_sampler
         sampling_grid_l_grid_sampler_attr = {
-            "mode": Attr(0, "int64"),
+            "mode": Attr(grid_sampler_mode, "int64"),
             "padding_mode": Attr(0, "int64"),
             "align_corners": Attr(False, 'bool'),
         }
@@ -4633,6 +4634,7 @@ def deformable_attention(value: Tensor,
                          sampling_locations: Tensor,
                          attention_weights: Tensor,
                          value_spatial_shapes: List[List[int]],
+                         grid_sampler_mode: int = 0,
                          out_name: str = None):
     # value: [bs, num_keys, num_heads, embed_dims//num_heads]
     # sampling_locations: [bs, num_queries, num_heads, num_levels, num_points, 2]
@@ -4752,7 +4754,7 @@ def deformable_attention(value: Tensor,
                           outputs=[reshape2_out],
                           params=reshape2_attr)
         grid_sampler_attr = {
-            "mode": Attr(0, "int64"),
+            "mode": Attr(grid_sampler_mode, "int64"),
             "padding_mode": Attr(0, "int64"),
             "align_corners": Attr(False, 'bool'),
         }
