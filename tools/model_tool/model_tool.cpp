@@ -32,6 +32,7 @@ static void usage(void) {
        << "      --encrypt -model model_file -net net_name -lib lib_path -o out_file" << endl
        << "      --decrypt -model model_file -lib lib_path -o out_file" << endl
        << "      --extract model_file : extract one multi-net bmodel to multi one-net bmodels" << endl
+       << "      --refresh model_file : refresh bmodel to fix potential issues" << endl
        << "      --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath" << endl
        << "      --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path" << endl
        << "      --combine_coeff file1 .. fileN -o new_dir: combine bmodels to one bmodel by filepath, all models' coeff is same" << endl
@@ -500,6 +501,8 @@ int main(int argc, char **argv) {
     show_dynamic(argv[2]);
   } else if (cmd == "--extract") {
     extract(argv[2]);
+  } else if (cmd == "--refresh") {
+    bm_refresh(argv[2]);
   } else if (cmd == "--combine") {
     combine(argc, argv);
   } else if (cmd == "--combine_dir") {
