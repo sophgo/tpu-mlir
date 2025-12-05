@@ -31,4 +31,4 @@
 
 * test_encrypt:  test encrypt and decrypt
 
-* test_mlir_cut: test mlir_cut tool
+* test_mlir_cut: test mlir_cut tool and time_fixed_subnet

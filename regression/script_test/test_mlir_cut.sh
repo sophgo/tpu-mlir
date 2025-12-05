@@ -1,5 +1,5 @@
 #!/bin/bash
-# test case: test mlir_cut.py
+# test case: test mlir_cut.py and time_fixed_subnet
 set -ex
 
 mkdir -p test_mlir_cut
@@ -8,7 +8,6 @@ pushd test_mlir_cut
 
 # ===------------------------------------------------------------===
 # yolov5s, 2-cores, bm1688
-# donot use --time_fixed_subnet to generate/test multi-subnet models.
 # ===------------------------------------------------------------===
 
 model_transform.py \
@@ -29,6 +28,27 @@ run_calibration.py yolov5s.mlir \
       --input_num 1 \
       -o yolov5s_cali_table
 
+# ===------------------------------------------------------------===
+# only test time_fixed_subnet
+# ===------------------------------------------------------------===
+
+model_deploy.py \
+    --mlir yolov5s.mlir \
+    --quantize INT8 \
+    --chip bm1688 \
+    --calibration_table yolov5s_cali_table \
+    --test_input ${REGRESSION_PATH}/image/dog.jpg \
+    --test_reference yolov5s_top_outputs.npz \
+    --debug \
+    --time_fixed_subnet limit \
+    --model yolov5s_int8_bm1688.bmodel
+
+rm -f yolov5s_bm1688_int8_sym_*.mlir
+rm -f yolov5s_1688_int8.bmodel
+
+# ===------------------------------------------------------------===
+# donot use --time_fixed_subnet to generate/test multi-subnet models.
+# ===------------------------------------------------------------===
 model_deploy.py \
        --mlir yolov5s.mlir \
        --quantize INT8 \

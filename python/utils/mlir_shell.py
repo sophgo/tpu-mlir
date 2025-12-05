@@ -729,13 +729,28 @@ def time_fixed_subnet_options(time_fixed_subnet, subnet_params, layer_group_cach
     all_layers = []
     layer_group_cache_path = layer_group_cache
     with open(layer_group_cache_path, 'r') as f:
-        layer_group_cache = json.load(f)
-        for group in (*layer_group_cache["GroupLayer"], *layer_group_cache["GlobalLayer"]):
-            all_layers.append({
-                "index": group["index"],
-                "group_cost": group["group_cost"],
-                "locs": group.get("locs", group.get("loc")),
-            })
+        layer_group_cache_data = json.load(f)
+        stack = [layer_group_cache_data]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, dict):
+                for key in ("GroupLayer", "GlobalLayer"):
+                    val = node.get(key)
+                    if isinstance(val, list):
+                        for group in val:
+                            if isinstance(group, dict):
+                                all_layers.append({
+                                    "index": group.get("index"),
+                                    "group_cost": group.get("group_cost"),
+                                    "locs": group.get("locs", group.get("loc")),
+                                })
+                for v in node.values():
+                    stack.append(v)
+            elif isinstance(node, list):
+                for item in node:
+                    stack.append(item)
+    if len(all_layers) == 0:
+        raise ValueError("JSON format is incorrect: no GroupLayer or GlobalLayer found")
 
     all_layers = sorted(all_layers, key=lambda x: x['index'])
     subnets = {}
