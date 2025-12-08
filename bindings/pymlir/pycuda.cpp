@@ -148,6 +148,16 @@ void py_cuda::cuda_to_host(const std::string &name) {
       buffer[i] = f16_to_f32(temp[i]);
     }
     delete[] temp;
+  } else if (stype.isInteger(16)) {
+    auto num = module::getNumElements(v);
+    auto qtype = module::getUniformQuantizedType(v);
+    int16_t * temp = new int16_t[num];
+    auto scale = qtype.getScale();
+    CHECK_CUDA(cudaMemcpy(temp, cudaData, num * sizeof(int16_t),
+                          cudaMemcpyDeviceToHost));
+    for (size_t i=0; i<num; i++) {
+      buffer[i] = temp[i] * scale;
+    }
   } else {
     v.dump();
     llvm_unreachable("Not Implemented");
@@ -180,7 +190,7 @@ void py_cuda::set_tensor(
   }
 }
 
-void py_cuda::invoke(bool dump_all) {
+void py_cuda::invoke(bool dump_all, const std::vector<std::string>& extra_outputs) {
   auto m = module_.get();
   for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
@@ -214,6 +224,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaConvOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::ConcatOp>(op)) {
           cudaConcatOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ConcatOp>(op)) {
+          cudaConcatOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::CastOp>(op)) {
           cudaCastOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::DeconvOp>(op)) {
@@ -232,6 +244,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaMatMulOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulOp>(op)) {
           cudaMulOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MulOp>(op)) {
+          cudaMulOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulShiftOp>(op)) {
           cudaMulShiftOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ReshapeOp>(op)) {
@@ -250,21 +264,45 @@ void py_cuda::invoke(bool dump_all) {
           cudaPReluOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::PermuteOp>(op)) {
           cudaPermuteOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::PermuteOp>(op)) {
+          cudaPermuteOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SliceOp>(op)) {
           cudaSliceOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SliceOp>(op)) {
+          cudaSliceOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SoftmaxOp>(op)) {
           cudaSoftmaxOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SoftmaxOp>(op)) {
+          cudaSoftmaxOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SqueezeOp>(op)) {
           cudaSqueezeOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::TileOp>(op)) {
           cudaTileOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::UpsampleOp>(op)) {
           cudaUpsampleOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::UpsampleOp>(op)) {
+          cudaUpsampleOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::UnsqueezeOp>(op)) {
           cudaUnsqueezeOp(tpuOp);
         } else if (auto topOp = dyn_cast<top::ScaleOp>(op)) {
           cudaScaleOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SiLUOp>(op)) {
+          cudaSiLUOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SigmoidOp>(op)) {
+          cudaSigmoidOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ActiveOp>(op)) {
+          cudaActiveOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SubOp>(op)) {
+          cudaSubOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SubOp>(op)) {
+          cudaSubOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MulConstOp>(op)) {
+          cudaMulConstOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MulConstOp>(op)) {
+          cudaMulConstOp(tpuOp);
         } else {
+          op->dump();
+          __asm__("int3");
           UNREACHABLE_OP("Not Implemented", op);
         }
         // 3. after inference, check input is still need, or remove from cuda
@@ -284,7 +322,7 @@ void py_cuda::invoke(bool dump_all) {
             }
           }
           if (!need) {
-            if (dump_all) {
+            if (dump_all || std::find(extra_outputs.begin(), extra_outputs.end(), name) != extra_outputs.end()) {
               cudaDeviceSynchronize();
               cuda_to_host(name);
             }

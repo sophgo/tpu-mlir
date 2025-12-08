@@ -53,7 +53,7 @@ public:
   void set_tensor(
       std::string name,
       py::array_t<float, py::array::c_style | py::array::forcecast> data);
-  void invoke(bool dump_all);
+  void invoke(bool dump_all, const std::vector<std::string>& extra_outputs);
   py::array get_tensor(std::string name);
   py::dict get_all_tensor();
 
@@ -96,6 +96,9 @@ private:
   void cudaTileOp(tpu::TileOp op);
   void cudaUpsampleOp(tpu::UpsampleOp op);
   void cudaUnsqueezeOp(tpu::UnsqueezeOp op);
+  void cudaActiveOp(tpu::ActiveOp op);
+  void cudaSubOp(tpu::SubOp op);
+  void cudaMulConstOp(tpu::MulConstOp op);
 
   void cudaAddOp(top::AddOp op);
   void cudaConvOp(top::ConvOp op);
@@ -104,6 +107,17 @@ private:
   void cudaAvgPoolOp(top::AvgPoolOp op);
   void cudaMatMulOp(top::MatMulOp op);
   void cudaReshapeOp(top::ReshapeOp op);
+  void cudaSiLUOp(top::SiLUOp op);
+  void cudaConcatOp(top::ConcatOp op);
+  void cudaUpsampleOp(top::UpsampleOp op);
+  void cudaPermuteOp(top::PermuteOp op);
+  void cudaSliceOp(top::SliceOp op);
+  void cudaSoftmaxOp(top::SoftmaxOp op);
+  void cudaSubOp(top::SubOp op);
+  void cudaMulConstOp(top::MulConstOp op);
+  void cudaMulOp(top::MulOp op);
+  void cudaSigmoidOp(top::SigmoidOp op);
+
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

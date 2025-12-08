@@ -122,7 +122,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def(py::init<>())
       .def("load", &py_cuda::load, "load mlir to cuda")
       .def("set_tensor", &py_cuda::set_tensor)
-      .def("invoke", &py_cuda::invoke, py::arg("dump_all")=false)
+      .def("invoke", &py_cuda::invoke, py::arg("dump_all")=false, py::arg("extra_outputs")=std::vector<std::string>())
       .def("get_tensor", &py_cuda::get_tensor, "get one tensor data")
       .def("get_all_tensor", &py_cuda::get_all_tensor, "dump all tensor data")
       .def_readonly("input_names", &py_cuda::input_names)

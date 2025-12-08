@@ -84,6 +84,27 @@ void int8ScaleToF16(void *input, void *output, float scale, int size,
                                                size, sign);
 }
 
+void int16ScaleToF32(void *input, void *output, float scale, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_int16ScaleToF32<<<num_blocks, block_size>>>(input, (float *)output, scale,
+                                               size);
+}
+
+void int16ScaleToBF16(void *input, void *output, float scale, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_int16ScaleToBF16<<<num_blocks, block_size>>>(input, (uint16_t *)output, scale,
+                                               size);
+}
+
+void int16ScaleToF16(void *input, void *output, float scale, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_int16ScaleToF16<<<num_blocks, block_size>>>(input, (uint16_t *)output, scale,
+                                               size);
+}
+
 cudaError_t convertType(void *src, void *dst, int num_elem,
                         data_type_t src_type, data_type_t dst_type,
                         rounding_mode_t rmode) {
@@ -246,6 +267,64 @@ void add4DF32(void *input0, void *input1, void *output,
   g_add4DF32<<<num_blocks, block_size>>>(
       (float *)input0, (float *)input1, (float *)output,
       relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+}
+
+void sub4DF32(void *input0, void *input1, void *output,
+               bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_sub4DF32<<<num_blocks, block_size>>>(
+      (float *)input0, (float *)input1, (float *)output,
+      relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+}
+
+void sub4DInt8(void *input0, bool input0_unsigned, int mul0, int shift0, void *input1, bool input1_unsigned, int mul1, int shift1, void *output, bool output_unsigned,
+               bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (input0_unsigned && input1_unsigned) {
+    g_sub4DInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, mul0, shift0, (uint8_t *)input1, mul1, shift1, (int8_t *)output,
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+  } else if (input0_unsigned && !input1_unsigned) {
+    g_sub4DInt8<<<num_blocks, block_size>>>(
+        (uint8_t *)input0, mul0, shift0, (int8_t *)input1, mul1, shift1, (int8_t *)output,
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+  } else if (!input0_unsigned && input1_unsigned) {
+    g_sub4DInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, mul0, shift0, (uint8_t *)input1, mul1, shift1, (int8_t *)output,
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+  } else {
+    g_sub4DInt8<<<num_blocks, block_size>>>(
+        (int8_t *)input0, mul0, shift0, (int8_t *)input1, mul1, shift1, (int8_t *)output,
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+  }
+}
+
+void mulConst4DF32(void *input, float const_v, void *output, bool do_relu,
+                  int n0, int c0, int h0, int w0) {
+  int size = n0 * c0 * h0 * w0;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_mulConst4DF32<<<num_blocks, block_size>>>(
+      (float *)input, const_v, (float *)output,
+      do_relu, n0, c0, h0, w0);
+}
+
+void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
+                  int n0, int c0, int h0, int w0,
+                  int n1, int c1, int h1, int w1,
+                  int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_mul4DF32<<<num_blocks, block_size>>>(
+      (float *)input0, (float *)input1, (float *)output,
+      do_relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
 }
 
 void copyAxis(void *src, void *dst, int outer_dim, int axis_dim, int inner_dim,
@@ -502,6 +581,15 @@ void requantInt8(void *input, void *output, int32_t multiplier, int32_t shift,
       (int32_t *)input, output, multiplier, shift, num, out_sign, qdm, relu);
 }
 
+void requantInt16Perchannel(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c, int h, int w, bool relu) {
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_requantInt16Perchannel<<<num_blocks, block_size>>>(
+      (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
+      h, w, relu);
+}
+
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
               data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
@@ -670,6 +758,20 @@ void cvLutSlope(void *input, void *output, void *table0, void *table1, int num,
       (uint16_t *)table1, num, scale, offset);
 }
 
+void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim*axis_dim*inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_bmExp<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, outer_dim, axis_dim, inner_dim);
+}
+
+void bmReciprocal(void *input, void *output, int outer_dim, int inner_dim, data_type_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim*inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_bmReciprocal<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, outer_dim, inner_dim);
+}
+
 void cvLutMantissa(void *input, void *output, void *table0, void *table1,
                    int num, bool is_log) {
   int num_blocks = CUDA_NUM_BLOCKS(num);
@@ -700,6 +802,30 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
     addAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
   } else {
     mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
+  }
+}
+
+void bmSoftmax(void *input, void *buffer, void *output, int outer_dim,
+               int axis_dim, int inner_dim, bool log) {
+  // get max => buffer
+  maxAxis(input, buffer, outer_dim, axis_dim, inner_dim, DT_F32);
+
+  // sub max => output
+  subAxis(input, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
+
+  // exp => output
+  bmExp(output, output, outer_dim, axis_dim, inner_dim, DT_F32);
+
+  // sum => buffer
+  sumAxis(output, buffer, outer_dim, axis_dim, inner_dim, DT_F32);
+
+  // 1/sum => buffer
+  bmReciprocal(buffer, buffer, outer_dim, inner_dim, DT_F32);
+
+  if (log) {
+    addAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
+  } else {
+    mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
   }
 }
 

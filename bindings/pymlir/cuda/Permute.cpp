@@ -23,3 +23,16 @@ void py_cuda::cudaPermuteOp(tpu::PermuteOp op) {
   cuda::permute4D(src, dst, shape[0], shape[1], shape[2], shape[3], order[0],
                   order[1], order[2], order[3], tbytes);
 }
+
+void py_cuda::cudaPermuteOp(top::PermuteOp op) {
+  auto p = op.parseParam();
+  if (p.in_shape_fix.size() != 4) {
+    UNREACHABLE_OP("Not Implemented", op);
+  }
+  auto src = getCudaData(op.getInput());
+  auto dst = getCudaData(op.getOutput());
+  std::vector<int> shape(p.in_shape_fix.begin(), p.in_shape_fix.end());
+  std::vector<int> order(p.order_fix.begin(), p.order_fix.end());
+  cuda::permute4D(src, dst, shape[0], shape[1], shape[2], shape[3], order[0],
+                  order[1], order[2], order[3], sizeof(float));
+}

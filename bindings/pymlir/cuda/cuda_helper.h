@@ -64,6 +64,10 @@ void int8ScaleToBF16(void *input, void *output, float scale, int size,
                      bool sign);
 void int8ScaleToF16(void *input, void *output, float scale, int size,
                     bool sign);
+void int16ScaleToF32(void *input, void *output, float scale, int size);
+void int16ScaleToBF16(void *input, void *output, float scale, int size);
+void int16ScaleToF16(void *input, void *output, float scale, int size);
+
 // mul: int8 * int8 * multiplier >> rshift => int8
 void mulInt8(void *a, void *b, void *o, bool a_sign, bool b_sign, bool o_sign,
              int multiplier, int rshift, int size, bool qdm, bool relu);
@@ -81,6 +85,18 @@ void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
 void add4DF32(void *input0, void *input1, void *output,
                bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2);
+void sub4DF32(void *input0, void *input1, void *output,
+               bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2);
+void sub4DInt8(void *input0, bool input0_unsigned, int mul0, int shift0, void *input1, bool input1_unsigned, int mul1, int shift1, void *output, bool output_unsigned,
+               bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2);
+void mulConst4DF32(void *input, float const_v, void *output, bool do_relu,
+                  int n0, int c0, int h0, int w0);
+void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
+                  int n0, int c0, int h0, int w0,
+                  int n1, int c1, int h1, int w1,
+                  int n2, int c2, int h2, int w2);
 
 void neg(void *input, void *output, int size, data_type_t type);
 // zero pad
@@ -101,6 +117,9 @@ void requantInt8Perchannel(void *input, void *output, void *multipliers,
 // requant from int32 to int8
 void requantInt8(void *input, void *output, int32_t multiplier, int32_t shift,
                  int num, bool out_sign, bool qdm = false, bool relu = false);
+
+void requantInt16Perchannel(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c, int h, int w, bool relu = false);
 
 // inplace relu
 void doRelu(void *data, int size, data_type_t type);
@@ -179,6 +198,12 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
                void *table1, void *table2, void *table3, int outer_dim,
                int axis_dim, int inner_dim, float scale, float offset,
                bool log);
+
+void bmSoftmax(void *input, void *buffer, void *output,
+               int outer_dim, int axis_dim, int inner_dim, bool log);
+void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type);
+void bmReciprocal(void *input, void *output,  int outer_dim, int inner_dim, data_type_t type);
+
 void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,
              int off1, int off2, int off3, int s0, int s1, int s2, int s3,
              int on, int oc, int oh, int ow);

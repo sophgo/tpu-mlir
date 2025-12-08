@@ -9,7 +9,7 @@
 #pragma once
 
 #include "cuda_device.cuh"
-
+#include "cmath"
 namespace tpu_mlir {
 namespace cuda {
 
@@ -91,6 +91,39 @@ __global__ void g_int8ScaleToF16(void *input, uint16_t *output, float scale,
     } else {
       value = static_cast<float>(((uint8_t *)input)[idx]) * d_F16(scale);
     }
+    output[idx] = d_F16Raw(value);
+  }
+}
+
+__global__ void g_int16ScaleToF32(void *input, float *output, float scale,
+                                 int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    // Convert int16 to f32 and scale
+    float value;
+    value = static_cast<float>(((int16_t *)input)[idx]) * scale;
+    output[idx] = value;
+  }
+}
+
+__global__ void g_int16ScaleToBF16(void *input, uint16_t *output, float scale,
+                                 int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    // Convert int16 to f32 and scale
+    float value;
+    value = static_cast<float>(((int16_t *)input)[idx]) * d_BF16(scale);
+    output[idx] = d_BF16Raw(value);
+  }
+}
+
+__global__ void g_int16ScaleToF16(void *input, uint16_t *output, float scale,
+                                 int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    // Convert int16 to f32 and scale
+    float value;
+    value = static_cast<float>(((int16_t *)input)[idx]) * d_F16(scale);
     output[idx] = d_F16Raw(value);
   }
 }
@@ -256,6 +289,120 @@ __global__ void g_add4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
   }
 }
 
+template <typename T0, typename T1, typename T2>
+__global__ void g_sub4DF32(T0 *a, T1 *b, T2 *out, bool relu, bool reverse, int n0, int c0,
+                            int h0, int w0, int n1, int c1, int h1, int w1,
+                            int on, int oc, int oh, int ow) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int idx_n0 = idx_n % n0;
+    int idx_c0 = idx_c % c0;
+    int idx_h0 = idx_h % h0;
+    int idx_w0 = idx_w % w0;
+    int idx_0 = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_n1 = idx_n % n1;
+    int idx_c1 = idx_c % c1;
+    int idx_h1 = idx_h % h1;
+    int idx_w1 = idx_w % w1;
+    int idx_1 = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
+    float a_data = a[idx_0];
+    float b_data = b[idx_1];
+    if (reverse)
+      a_data = b_data - a_data;
+    else
+      a_data = a_data - b_data;
+    if (relu)
+      a_data = max(0.0, a_data);
+    out[dst_idx] = a_data;
+  }
+}
+
+template <typename T0, typename T1, typename T2>
+__global__ void g_sub4DInt8(T0 *a, int mul0, int shift0, T1 *b, int mul1, int shift1, T2 *out, bool relu, bool reverse, int n0, int c0,
+                            int h0, int w0, int n1, int c1, int h1, int w1,
+                            int on, int oc, int oh, int ow) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int idx_n0 = idx_n % n0;
+    int idx_c0 = idx_c % c0;
+    int idx_h0 = idx_h % h0;
+    int idx_w0 = idx_w % w0;
+    int idx_0 = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_n1 = idx_n % n1;
+    int idx_c1 = idx_c % c1;
+    int idx_h1 = idx_h % h1;
+    int idx_w1 = idx_w % w1;
+    int idx_1 = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
+    int a_data = a[idx_0];
+    int b_data = b[idx_1];
+    a_data = (a_data*mul0)>>shift0;
+    b_data = (b_data*mul1)>>shift1;
+    if (reverse)
+      a_data = b_data - a_data;
+    else
+      a_data = a_data - b_data;
+    if (relu)
+      a_data = max(0, a_data);
+    a_data = max(-128, a_data);
+    a_data = min(127, a_data);
+    out[dst_idx] = (int8_t)a_data;
+  }
+}
+
+template <typename T0, typename T1, typename T2>
+__global__ void g_mulConst4DF32(T0 *a, T1 b, T2 *out, bool relu, int n0, int c0,
+                            int h0, int w0) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (c0 * h0 * w0);
+  int idx_c = dst_idx % (c0 * h0 * w0) / (h0 * w0);
+  int idx_h = dst_idx % (h0 * w0) / w0;
+  int idx_w = dst_idx % w0;
+  if (idx_w < w0 && idx_h < h0 && idx_c < c0 && idx_n < n0) {
+    float a_data = a[dst_idx];
+    a_data = a_data * b;
+    if (relu)
+      a_data = max(0.0, a_data);
+    out[dst_idx] = a_data;
+  }
+}
+
+template <typename T0, typename T1, typename T2>
+__global__ void g_mul4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
+                            int h0, int w0, int n1, int c1, int h1, int w1,
+                            int on, int oc, int oh, int ow) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int idx_n0 = idx_n % n0;
+    int idx_c0 = idx_c % c0;
+    int idx_h0 = idx_h % h0;
+    int idx_w0 = idx_w % w0;
+    int idx_0 = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_n1 = idx_n % n1;
+    int idx_c1 = idx_c % c1;
+    int idx_h1 = idx_h % h1;
+    int idx_w1 = idx_w % w1;
+    int idx_1 = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
+    float a_data = a[idx_0];
+    float b_data = b[idx_1];
+    a_data = a_data * b_data;
+    if (relu)
+      a_data = max(0.0, a_data);
+    out[dst_idx] = a_data;
+  }
+}
+
 template <typename T0, typename T1, typename T2, typename T3>
 __global__ void g_scale4DF32(T0 *a, T1 *s, T2 *b, T3 *out, bool relu, int n0, int c0,
                             int h0, int w0, int n1, int c1, int h1, int w1,int n2, int c2, int h2, int w2,
@@ -388,14 +535,14 @@ __global__ void g_copyAxis(void *src, void *dst, int outer_dim, int axis_dim,
 
 __global__ void g_mmF32(float *A, float *B, float *C, int m, int k, int n) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < (m * n)) {
-    int row = idx / n;
-    int col = idx % n;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m < m && idx_n < n) {
     float sum = 0.0;
     for (int i = 0; i < k; i++) {
-      sum += A[row * k + i] * B[i * n + col];
+      sum += A[idx_m * k + i] * B[i * n + idx_n];
     }
-    C[row * n + col] = sum;
+    C[idx_m * n + idx_n] = sum;
   }
 }
 
@@ -479,6 +626,25 @@ __global__ void g_requantInt8(int32_t *input, void *output, int32_t multiplier,
       value = max(0, min(255, value));
       ((uint8_t *)output)[idx] = static_cast<uint8_t>(value);
     }
+  }
+}
+
+__global__ void g_requantInt16Perchannel(int32_t *input, void *output,
+                                        int32_t *multipliers, int32_t *shifts,
+                                        int n, int c, int h, int w, bool relu) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * h * w)) {
+    int idx_c = idx % (c * h * w) / (h * w);
+    int32_t value;
+    // half up
+    int64_t data = static_cast<int64_t>(input[idx]) *
+                    static_cast<int64_t>(multipliers[idx_c]);
+    int64_t round = (int64_t)(1ll << (shifts[idx_c] - 1));
+    data = (data + round) >> shifts[idx_c];
+    value = static_cast<int32_t>(data);
+    int32_t min_ = relu ? 0 : -32768;
+    value = max(min_, min(32767, value));
+    ((int16_t *)output)[idx] = static_cast<int16_t>(value);
   }
 }
 
@@ -576,16 +742,17 @@ template <typename T> __global__ void g_doRelu(T *data, int size) {
 template <typename T>
 __global__ void g_maxAxis(T *input, T *output, int outer_dim, int axis_dim,
                           int inner_dim) {
-  int inner_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int outer_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int inner_idx = idx % inner_dim;
+  int outer_idx = idx /inner_dim;
   if (inner_idx < inner_dim && outer_idx < outer_dim) {
-    int outer_offset = outer_idx * axis_dim * inner_dim;
+    int input_offset = outer_idx * axis_dim * inner_dim;
     // find max
-    T max_v = input[outer_offset + inner_idx];
+    T max_v = input[input_offset + inner_idx];
     for (int i = 1; i < axis_dim; i++) {
-      T v = input[outer_offset + inner_idx + i * inner_dim];
+      T v = input[input_offset + inner_idx + i * inner_dim];
       if (v > max_v) {
-        v = max_v;
+        max_v = v;
       }
     }
     output[outer_idx * inner_dim + inner_idx] = max_v;
@@ -622,7 +789,7 @@ __global__ void g_sumAxis(T *input, T *output, int outer_dim, int axis_dim,
     int outer_idx = idx / inner_dim;
     int inner_idx = idx % inner_dim;
     int outer_offset = outer_idx * axis_dim * inner_dim;
-    // find max
+    // sum up
     T sum = 0;
     for (int i = 0; i < axis_dim; i++) {
       sum += input[outer_offset + inner_idx + i * inner_dim];
@@ -705,8 +872,9 @@ __global__ void g_mulAxis(T *input, T *mul, T *output, int outer_dim,
   int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
   int inner_idx = idx % inner_dim;
   if (inner_idx < inner_dim && outer_idx < outer_dim && axis_idx < axis_dim) {
-    int sub_idx = outer_idx * inner_dim * inner_idx;
-    output[idx] = input[idx] + mul[sub_idx];
+    int sub_idx = outer_idx * inner_dim + inner_idx;
+    T val = input[idx] * mul[sub_idx];
+    output[idx] = val;
   }
 }
 
@@ -918,6 +1086,27 @@ __global__ void g_cvLutSlope(uint16_t *input, uint16_t *output,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < num) {
     output[idx] = d_lutSlopeBF16(input[idx], table0, table1, scale, offset);
+  }
+}
+
+__global__ void g_bmExp(float *input, float *output, int outer_dim, int axis_dim, int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int out_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (out_idx < outer_dim && axis_idx < axis_dim && inner_idx < inner_dim) {
+    float value = __expf(input[idx]);
+    output[idx] = value;
+  }
+}
+
+__global__ void g_bmReciprocal(float *input, float *output, int outer_dim, int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int out_idx = idx / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (out_idx < outer_dim && inner_idx < inner_dim) {
+    float value = 1.0/(input[idx]);
+    output[idx] = value;
   }
 }
 

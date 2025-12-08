@@ -17,7 +17,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
   auto batch_elem_left = module::getNumElements(op.getInput())/p.batch;
-  auto batch_elem_right = module::getNumElements(op.getInput())/p.batch;
+  auto batch_elem_right = module::getNumElements(op.getRight())/p.batch;
   auto batch_elem_out = module::getNumElements(op.getOutput())/p.batch;
   auto out_f32 = cuda_malloc(num_out * sizeof(float));
   if (module::isUniformQuantized(op.getInput()) || !module::getStorageType(op.getInput()).isF32()) {
@@ -107,7 +107,7 @@ void py_cuda::cudaMatMulOp(top::MatMulOp op) {
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
   auto batch_elem_left = module::getNumElements(op.getInput())/p.batch;
-  auto batch_elem_right = module::getNumElements(op.getInput())/p.batch;
+  auto batch_elem_right = module::getNumElements(op.getRight())/p.batch;
   auto batch_elem_out = module::getNumElements(op.getOutput())/p.batch;
   auto in_f32 = getCudaData(op.getInput());
   auto right_f32 = getCudaData(op.getRight());
