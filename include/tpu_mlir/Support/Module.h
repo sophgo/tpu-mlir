@@ -237,6 +237,7 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
 void removeAttr(mlir::Operation *op, std::string attr_name);
 
 bool isTpuOp(Operation *op);
+bool isTpuArOp(Operation *op);
 bool isInt4Op(Operation *op);
 bool isCV18xx();
 bool isBM1684Family();
