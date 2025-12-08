@@ -87,9 +87,9 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.a
 ```
 
-## tpu-runtime 2025-1-17
+## tpu-runtime 2025-12-9
 
-build from tpu-runtime c07d53dd22fdb6005aac262d3e21f85b7ff390de
+build from tpu-runtime 5a67ee3c1ba0beee128812f7a55b70120882b14d
 
 ```bash
 pushd libsophon
