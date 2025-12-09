@@ -18,7 +18,11 @@ void RopeLowering::LoweringF32(PatternRewriter &rewriter,
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");
-  lowering_common_f32<tpu::RopeOp>(rewriter, op);
+  Operation *newOp;
+  newOp = lowering_common_f32<tpu::RopeOp>(rewriter, op);
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
+  newOp->setAttr("rope_mode",
+                 tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }
 
 void RopeLowering::LoweringINT8(PatternRewriter &rewriter, top::RopeOp op,
@@ -41,7 +45,11 @@ void RopeLowering::LoweringBF16(PatternRewriter &rewriter,
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");
-  lowering_common_bf16<tpu::RopeOp>(rewriter, op);
+  Operation *newOp;
+  newOp = lowering_common_bf16<tpu::RopeOp>(rewriter, op);
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
+  newOp->setAttr("rope_mode",
+                 tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }
 
 void RopeLowering::LoweringF16(PatternRewriter &rewriter,
@@ -50,7 +58,11 @@ void RopeLowering::LoweringF16(PatternRewriter &rewriter,
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");
-  lowering_common_f16<tpu::RopeOp>(rewriter, op);
+  Operation *newOp;
+  newOp = lowering_common_f16<tpu::RopeOp>(rewriter, op);
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
+  newOp->setAttr("rope_mode",
+                 tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }
 
 void RopeLowering::LoweringF8(PatternRewriter &rewriter, top::RopeOp op) const {
@@ -76,6 +88,9 @@ void RopeLowering::LoweringQuantized(PatternRewriter &rewriter,
                  tpu::RoundModeAttr::get(op.getContext(), mul2_round_mode));
   newOp->setAttr("add_round_mode",
                  tpu::RoundModeAttr::get(op.getContext(), add_round_mode));
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
+  newOp->setAttr("rope_mode",
+                 tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }
 } // namespace bm1684x
 } // namespace tpu_mlir

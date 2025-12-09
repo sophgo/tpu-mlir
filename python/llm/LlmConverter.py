@@ -981,11 +981,30 @@ class LlmConverter(BaseConverter):
                               axis=0,
                               loc=self.get_loc(rotary_sin, mlir_gen),
                               ip=mlir_gen.insert_point).output
-        # ===== q_proj rotary ========
-        q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
+        use_rope = True
+        if not use_rope:
+            # ===== q_proj rotary ========
+            q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
 
-        # ===== k_proj rotary ========
-        k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
+            # ===== k_proj rotary ========
+            k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
+        else:
+            q_op_shape = q_op.type.shape
+            q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
+                              q_op,
+                              sin_op,
+                              cos_op,
+                              rope_mode=StringAttr.get("contiguous_halves"),
+                              loc=self.get_loc("q_proj", mlir_gen),
+                              ip=mlir_gen.insert_point).output
+            k_op_shape = k_op.type.shape
+            k_op = top.RopeOp(mlir_gen.get_tensor_type(k_op_shape),
+                              k_op,
+                              sin_op,
+                              cos_op,
+                              rope_mode=StringAttr.get("contiguous_halves"),
+                              loc=self.get_loc("k_cache", mlir_gen),
+                              ip=mlir_gen.insert_point).output
         return q_op, k_op
 
     def set_lora_weight(self, weight_dict: dict, path: str, K: int, N: int):

@@ -1749,6 +1749,7 @@ typedef struct rope_spec {
   int32_t mul2_round_mode;
   int32_t add_round_mode;
   int32_t is_permute_optimize;
+  int32_t rope_mode;
 } rope_param_t;
 
 typedef struct where_spec {

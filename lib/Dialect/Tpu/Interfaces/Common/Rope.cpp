@@ -57,12 +57,25 @@ LogicalResult tpu::RopeOp::inference(InferenceParameter &p) {
     temp_input[i] = p.inputs[0][i];
   }
 
-  for (int i = 0; i < num_element; i++) {
-    if (i % 2 == 0 && i + 1 < num_element) {
+  auto rope_mode = rope_mode_convert(getRopeMode());
+  if (rope_mode == 1) {
+    int half_num_element = num_element / 2;
+    for (int i = 0; i < num_element; i++) {
       float temp = temp_input[i];
-      temp_input[i] = temp_input[i + 1];
-      temp_input[i + 1] = temp;
-      temp_input[i] = -temp_input[i];
+      if (i < half_num_element) {
+        temp_input[i + half_num_element] = temp;
+      } else {
+        temp_input[i - half_num_element] = -temp;
+      }
+    }
+  } else {
+    for (int i = 0; i < num_element; i++) {
+      if (i % 2 == 0 && i + 1 < num_element) {
+        float temp = temp_input[i];
+        temp_input[i] = temp_input[i + 1];
+        temp_input[i + 1] = temp;
+        temp_input[i] = -temp_input[i];
+      }
     }
   }
 

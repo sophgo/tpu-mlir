@@ -42,6 +42,14 @@ typedef enum {
 } RoundingMode;
 
 // =======================
+// rope mode
+// =======================
+typedef enum {
+  interleaved_pairs = 0,
+  contiguous_halves = 1,
+} RopeMode;
+
+// =======================
 // alignment function
 // =======================
 template <typename T>
@@ -379,6 +387,8 @@ void sort_per_dim(const sort_param_t &param, const int *shape, int dims,
                   float *sorted_indices);
 
 RoundingMode round_mode_convert(tpu::RoundMode mode);
+
+RopeMode rope_mode_convert(tpu::RopeMode mode);
 
 void distribute_elements(const std::vector<int64_t> &elements,
                          const std::vector<int64_t> &limits,

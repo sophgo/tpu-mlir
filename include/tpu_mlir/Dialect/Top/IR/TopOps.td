@@ -81,6 +81,7 @@ def BinaryShiftAttr: AnyStrAttrOf<["Add","Sub", "Mul"]>;
 def ImageOutFormatAttr: AnyStrAttrOf<["FLOAT32", "UINT8"]>;
 def Yuv2rgbFormulaAttr: AnyStrAttrOf<["_601_limited", "_601_full"]>;
 def GELUModeAttr: AnyStrAttrOf<["normal", "tanh", "sigm"]>;
+def RopeModeAttr: AnyStrAttrOf<["interleaved_pairs", "contiguous_halves"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -1315,6 +1316,7 @@ def Tpu_RopeOp: Top_Op<"Rope"> {
     ins AnyTensor:$input1,
     AnyTensor:$input2,
     AnyTensor:$input3,
+    DefaultValuedAttr<RopeModeAttr, "\"interleaved_pairs\"">:$rope_mode,
     DefaultValuedAttr<BoolAttr, "false">:$is_permute_optimize,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$mul1_round_mode,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$mul2_round_mode,

@@ -177,6 +177,17 @@ def Tpu_RoundMode: I32EnumAttr<"RoundMode",
 }
 def Tpu_RoundModeAttr : EnumAttr<Tpu_Dialect, Tpu_RoundMode, "round_mode">;
 
+def Tpu_RopeMode: I32EnumAttr<"RopeMode",
+    "rope mode supported by Rope",
+    [
+      I32EnumAttrCase<"interleaved_pairs", 0>,
+      I32EnumAttrCase<"contiguous_halves", 1>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_RopeModeAttr : EnumAttr<Tpu_Dialect, Tpu_RopeMode, "rope_mode">;
+
 def Tpu_PoolMode: I32EnumAttr<"PoolMode",
     "pooling mode supported by PoolOp",
     [
@@ -1073,6 +1084,7 @@ def Tpu_RopeOp: Tpu_Op<"Rope", [
     ins AnyRankedTensor:$input1,
     AnyRankedTensor:$input2,
     AnyRankedTensor:$input3,
+    DefaultValuedAttr<Tpu_RopeModeAttr, "tpu::RopeMode::interleaved_pairs">:$rope_mode,
     DefaultValuedAttr<BoolAttr, "false">:$is_permute_optimize,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$mul1_round_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$mul2_round_mode,
