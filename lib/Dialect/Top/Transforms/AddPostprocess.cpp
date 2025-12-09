@@ -131,7 +131,7 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
   // yolov8/yolov11
   if ((post_type == "yolov8" || post_type == "yolov11") && num_opds == 1) {
     auto s = module::getShape(opds[0]);
-    if (s.size() != 4) {
+    if (s.size() != 3) {
       terminator->dump();
       llvm_unreachable(
           "YOLOv8/YOLOv11 shape invalid. "
