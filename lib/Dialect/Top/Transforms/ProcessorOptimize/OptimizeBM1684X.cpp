@@ -1871,6 +1871,10 @@ protected:
     llvm::ArrayRef<int64_t> bias_shape;
     int32_t total_slice_width = 0;
     std::vector<int32_t> slice_width;
+    if (right_shape.size() == 1) {
+      // input mul vector
+      return failure();
+    }
 
     // sort the slices ops by offset
     std::packaged_task<std::vector<Operation *>(std::vector<Operation *> &)>
