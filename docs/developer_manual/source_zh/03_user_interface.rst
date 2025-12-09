@@ -600,6 +600,15 @@ model_deploy.py
    * - log_level
      - 否
      - 日志输出级别, 可选0：正常打印模型转换日志，1：打印图优化 pattern 应用信息
+   * - layer_group_config
+     - 否
+     - 指定 layer group json格式配置文件的路径
+   * - shape_secs_search_strategy
+     - 否
+     - 指定LayerGroup pass中shape_secs的搜索策略，支持0、1和2，默认为0，数值越大，可能得到性能更好的模型，但编译时间也会增加
+   * - disable_structure_detect_optimize
+     - 否
+     - 是否关闭LayerGroup pass中的结构检测优化
 
 对于不同处理器和支持的量化类型对应关系如下表所示：
 

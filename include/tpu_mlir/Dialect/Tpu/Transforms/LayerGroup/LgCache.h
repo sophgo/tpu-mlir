@@ -15,39 +15,89 @@
 namespace tpu_mlir {
 namespace tpu {
 
-/* LgCostCache: {key: sub_graph_hash, value:cost }  */
-class LgCostCache {
+struct LgCacheKey {
+  std::string structure_hash_str;
+  std::string cost_hash_str;
+
+  bool operator==(const LgCacheKey &other) const {
+    return structure_hash_str == other.structure_hash_str &&
+           cost_hash_str == other.cost_hash_str;
+  }
+};
+
+/* LgCache: {key: sub_graph_hash, value:cost }  */
+class LgCache {
 public:
-  static LgCostCache &getInstance() {
-    static LgCostCache instance;
+  static LgCache &getInstance() {
+    static LgCache instance;
     return instance;
   }
 
-  // pre encode each local op. Results stored as u64 strings.
-  void init(const std::vector<std::vector<Operation *>> &base_groups,
-            bool dynamic_mode) {
+  void init(const llvm::SetVector<Operation *> &subnet_ops, bool dynamic_mode) {
+    hash_counts.clear();
+    hash_counts_map.clear();
+    hash_op_map.clear();
     if (dynamic_mode) {
       cache_enabled = false;
       return;
     }
     cache_enabled = true;
-    base_group_op_hash.resize(base_groups.size());
-    for (size_t idx_group = 0; idx_group < base_groups.size(); ++idx_group) {
-      const auto &base_group = base_groups[idx_group];
-      base_group_op_hash[idx_group].resize(base_group.size());
+    subnet_op_hash.resize(subnet_ops.size());
+    for (int64_t idx_op = 0; idx_op < subnet_ops.size(); ++idx_op) {
+      LgCacheKey op_hash;
+      auto op_structure_hash = get_op_hash(subnet_ops[idx_op], true);
+      auto op_cost_hash = get_op_hash(subnet_ops[idx_op]);
+      op_hash.structure_hash_str = std::to_string(op_structure_hash);
+      op_hash.cost_hash_str = std::to_string(op_cost_hash);
+      subnet_op_hash[idx_op] = op_hash;
 
-      for (size_t idx_op = 0; idx_op < base_group.size(); ++idx_op) {
-        base_group_op_hash[idx_group][idx_op] =
-            std::to_string(get_op_hash(base_group[idx_op]));
+      // structure hash counting
+      hash_op_map[op_structure_hash].push_back(idx_op);
+      if (hash_counts.find(op_structure_hash) == hash_counts.end()) {
+        hash_counts[op_structure_hash] = 1;
+      } else {
+        hash_counts[op_structure_hash] += 1;
       }
     }
+    for (int64_t idx_op = 0; idx_op < subnet_ops.size(); ++idx_op) {
+      auto op_structure_hash = get_op_hash(subnet_ops[idx_op], true);
+      auto cnt = hash_counts[op_structure_hash];
+      hash_counts_map[cnt].insert(op_structure_hash);
+    }
+    DEBUG_WITH_TYPE("layer_group_cache", {
+      llvm::dbgs() << "LgCache initialized. op hash counts:\n";
+      // print op hash counts according to base_groups
+      for (size_t idx_op = 0; idx_op < subnet_ops.size(); ++idx_op) {
+        auto op_structure_hash = get_op_hash(subnet_ops[idx_op], true);
+        auto op_cost_hash = get_op_hash(subnet_ops[idx_op]);
+        llvm::dbgs() << "  Op " << idx_op << ": "
+                     << "cost_hash = " << op_cost_hash
+                     << ", structure_hash = " << op_structure_hash
+                     << ", count = " << hash_counts[op_structure_hash] << "\n";
+        subnet_ops[idx_op]->dump();
+        llvm::dbgs() << "\n";
+      }
+    });
+  }
+
+  std::unordered_map<uint64_t, int64_t> get_hash_counts() {
+    return hash_counts;
+  }
+
+  std::map<int64_t, std::set<uint64_t>, std::less<int64_t>>
+  get_hash_counts_map() {
+    return hash_counts_map;
+  }
+
+  std::unordered_map<uint64_t, std::vector<int64_t>> get_hash_op_map() {
+    return hash_op_map;
   }
 
   /// get sub-graph cost from cache
-  bool get_info_from_cache(const uint64_t key, int64_t &cost,
-                           shape_secs_t &shape_secs) {
+  bool get_info_from_cost_cache(const uint64_t key, int64_t &cost,
+                                shape_secs_t &shape_secs) {
     if (!cache_enabled) {
-      llvm::errs() << "LgCostCache is not enabled.\n";
+      llvm::errs() << "LgCache is not enabled.\n";
       return false;
     }
     auto cost_it = cost_cache.find(key);
@@ -64,10 +114,10 @@ public:
     return false;
   }
 
-  bool get_cost_from_cache(const uint64_t key, int64_t &cost,
-                           int shape_secs_search_level) {
+  bool get_cost_from_cost_cache(const uint64_t key, int64_t &cost,
+                                int shape_secs_search_level) {
     if (!cache_enabled) {
-      llvm::errs() << "LgCostCache is not enabled.\n";
+      llvm::errs() << "LgCache is not enabled.\n";
       return false;
     }
     auto search_level_it = search_level_cache.find(key);
@@ -87,9 +137,10 @@ public:
     return false;
   }
 
-  bool get_shape_secs_from_cache(const uint64_t key, shape_secs_t &shape_secs) {
+  bool get_shape_secs_from_cost_cache(const uint64_t key,
+                                      shape_secs_t &shape_secs) {
     if (!cache_enabled) {
-      llvm::errs() << "LgCostCache is not enabled.\n";
+      llvm::errs() << "LgCache is not enabled.\n";
       return false;
     }
     auto shape_secs_it = shape_secs_cache.find(key);
@@ -101,11 +152,11 @@ public:
   }
 
   /// add sub-graph cost to cache
-  void add_cache(const uint64_t key, const LgInfo &lg_info) {
+  void add_cost_cache(const uint64_t key, const LgInfo &lg_info) {
     cost_cache[key] = lg_info.group_cost;
     shape_secs_cache[key] = lg_info.shape_secs;
     search_level_cache[key] = lg_info.shape_secs_search_level;
-    // llvm::dbgs() << "add_cache: key = " << key
+    // llvm::dbgs() << "add_cost_cache: key = " << key
     //              << "; cost = " << lg_info.group_cost
     //              << "; shape_secs_search_level = " <<
     //              lg_info.shape_secs_search_level
@@ -113,7 +164,8 @@ public:
   }
 
   /// gen hash key for sub-graph
-  bool get_graph_hash(LgInfo &lginfo, uint64_t &hash_key) {
+  bool get_graph_hash(LgInfo &lginfo, uint64_t &hash_key,
+                      bool quant_agnostic = false) {
     if (!cache_enabled) {
       return false;
     }
@@ -131,15 +183,15 @@ public:
       }
     }
 
-    const int64_t base_group_idx = lginfo.base_group_idx;
-    if (base_group_idx < 0) {
-      /// -1 for init value.
+    const int64_t func_start_idx = lginfo.func_start_idx,
+                  func_end_idx = lginfo.func_end_idx;
+    if (func_start_idx < 0 || func_end_idx < 0) {
       return false;
     }
-    if (base_group_op_hash.size() <= base_group_idx) {
+    if (subnet_op_hash.size() <= func_end_idx ||
+        subnet_op_hash.size() <= func_start_idx) {
       return false;
     }
-    const int64_t start_idx = lginfo.start_idx, end_idx = lginfo.end_idx;
 
     std::string buffer;
     llvm::raw_string_ostream os(buffer);
@@ -153,11 +205,16 @@ public:
       serialize_value(os, v);
     }
     os << "\ngroup_ops[" << lginfo.group_ops.size() << "]: ";
-    for (int idx = start_idx; idx <= end_idx; ++idx) {
-      os << "op: " << base_group_op_hash[base_group_idx][idx]
-         << "; operand_relative_ids:";
+    for (int idx = func_start_idx; idx <= func_end_idx; ++idx) {
+      std::string current_op_hash;
+      if (quant_agnostic) {
+        current_op_hash = subnet_op_hash[idx].structure_hash_str;
+      } else {
+        current_op_hash = subnet_op_hash[idx].cost_hash_str;
+      }
+      os << "op: " << current_op_hash << "; operand_relative_ids:";
       // add topo info.
-      for (auto v : lginfo.group_ops[idx - start_idx]->getOperands()) {
+      for (auto v : lginfo.group_ops[idx - func_start_idx]->getOperands()) {
         if (value_id.find(v) != value_id.end()) {
           os << value_id[v] << " ";
         } else {
@@ -173,7 +230,9 @@ public:
   }
 
   /// gen hash key for single op
-  uint64_t get_op_hash(Operation *op, bool dump = false) {
+  /// if quant_agnostic is true, ignore quantization attributes
+  uint64_t get_op_hash(Operation *op, bool quant_agnostic = false,
+                       bool dump = false) {
     std::string buffer;
     llvm::raw_string_ostream os(buffer);
     this->serialize_op(os, op);
@@ -188,7 +247,8 @@ public:
   }
 
   /// serialize op to string
-  void serialize_op(llvm::raw_string_ostream &os, Operation *op) {
+  void serialize_op(llvm::raw_string_ostream &os, Operation *op,
+                    bool quant_agnostic = false) {
     os << op->getName().getStringRef() << ":";
     os << "\tInputs: ";
     for (auto v : op->getOperands()) {
@@ -200,7 +260,7 @@ public:
     }
     os << "\tAttrs: ";
     if (auto lg_op = dyn_cast<LocalGenInterface>(op)) {
-      lg_op.DumpQuantAgnosticAttrs(os);
+      lg_op.DumpAttrs(os, quant_agnostic);
     }
     // else {
     //   llvm::errs() << "op is not a LocalGenInterface: \n";
@@ -223,19 +283,23 @@ public:
   }
 
 public:
-  /// a set of u64 strings, for each op in each base_group.
-  std::vector<std::vector<std::string>> base_group_op_hash;
+  bool cache_enabled = true;
+  std::vector<LgCacheKey> subnet_op_hash;
   /// group cost cache
-  bool cache_enabled = false;
   std::unordered_map<uint64_t, int64_t> cost_cache;
   std::unordered_map<uint64_t, int> search_level_cache;
   std::unordered_map<uint64_t, shape_secs_t> shape_secs_cache;
+  // structure cache
+  std::unordered_map<uint64_t, int64_t> structure_cache;
+  std::unordered_map<uint64_t, int64_t> hash_counts;
+  std::map<int64_t, std::set<uint64_t>, std::less<int64_t>> hash_counts_map;
+  std::unordered_map<uint64_t, std::vector<int64_t>> hash_op_map;
 
 private:
-  LgCostCache() = default;
-  ~LgCostCache() = default;
-  LgCostCache(const LgCostCache &) = delete;
-  LgCostCache &operator=(const LgCostCache &) = delete;
+  LgCache() = default;
+  ~LgCache() = default;
+  LgCache(const LgCache &) = delete;
+  LgCache &operator=(const LgCache &) = delete;
 };
 
 } // namespace tpu

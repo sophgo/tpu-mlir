@@ -48,6 +48,11 @@ public:
       std::vector<std::vector<int64_t>> &cost_table,
       std::vector<std::vector<int64_t>> &cut_points, int64_t base_group_idx,
       int64_t idx_offset);
+  void dynamic_programming_with_cluster(
+      const std::vector<Operation *> &base_group,
+      std::vector<std::pair<int64_t, int64_t>> &clusters,
+      std::vector<int64_t> &cut_result, int group_idx, int64_t idx_offset,
+      int64_t max_cluster_size = 1);
   void dynamic_programming_layer_group_with_cluster(
       std::vector<LgInfo> &lg_infos,
       const llvm::SetVector<Operation *> &subnet_ops);
@@ -73,10 +78,13 @@ public:
   void get_group_clusters(std::vector<std::pair<int64_t, int64_t>> &clusters,
                           const std::vector<Operation *> &base_group,
                           int group_idx, int64_t idx_offset = 0);
+  bool dynamic_programming_with_structure_detect(
+      const std::vector<Operation *> &base_group, int group_idx,
+      int64_t idx_offset = 0);
   void get_group_clusters_with_dynamic_programming(
       std::vector<std::pair<int64_t, int64_t>> &clusters,
       const std::vector<Operation *> &base_group, int group_idx,
-      int64_t idx_offset = 0);
+      int64_t idx_offset = 0, int64_t max_cluster_size = 1);
   bool is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                             int64_t *group_cost);
   bool group_one_layer_proc(LgInfo &lg_info, bool calc_cost,
@@ -124,7 +132,7 @@ public:
   void try_modify_mlp_group_sub_sum(
       LgPassIR *pass_ir, std::vector<std::shared_ptr<ilp_LgInfo>> &base_groups);
   void init_ilp_base_groups(LgPassIR *pass_ir);
-  void get_layer_group(LgInfo &lg_info,
+  bool get_layer_group(LgInfo &lg_info,
                        const std::vector<Operation *> &base_group, int64_t left,
                        int64_t right, int64_t base_group_idx,
                        int64_t idx_offset = 0);

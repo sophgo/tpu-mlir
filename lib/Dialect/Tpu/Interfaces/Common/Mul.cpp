@@ -172,7 +172,7 @@ void tpu::MulOp::assign_sec_info_kernel(
   sec_info.out_w_slice = gi.w_slice;
 }
 
-void tpu::MulOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+void tpu::MulOp::DumpAttrs(llvm::raw_string_ostream &os, bool quant_agnostic) {
   for (auto attr : getOperation()->getAttrs()) {
     auto attr_name = attr.getName().str();
     if (attr_name == "ginfo" || attr_name == "rshift" ||
@@ -183,6 +183,9 @@ void tpu::MulOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
     attr.getValue().print(os);
     os << "; ";
   }
+
+  if (quant_agnostic)
+    return;
 
   auto rshift_v = getRshift();
   auto multiplier_v = getMultiplier();

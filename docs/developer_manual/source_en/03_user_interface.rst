@@ -589,6 +589,15 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - log_level
      - N
      - Set the log level, the optional values are: 0, 1. 0 means normal model transform info, and 1 means all pattern applied info.
+   * - layer_group_config
+     - N
+     - Specify the LayerGroup configuration file in JSON format.
+   * - shape_secs_search_strategy
+     - N
+     - Specify the search strategy for LayerGroup pass in shape_secs. Options include 0, 1 and 2. The default is 0. Higher values may improve model performance, but will increase compilation time.
+   * - disable_structure_detect_optimize
+     - N
+     - Disable structure detect optimization in LayerGroup pass.
 
 The following table shows the correspondence between different processors and the supported quantize types:
 

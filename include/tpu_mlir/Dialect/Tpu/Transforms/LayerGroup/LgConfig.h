@@ -43,15 +43,6 @@ public:
 
   void clear() { sc_method_configs_.clear(); }
 
-  void set_shape_secs_search_strategy(int strategy) {
-    shape_secs_search_strategy_ =
-        static_cast<shape_secs_search_strategy_t>(strategy);
-  }
-
-  shape_secs_search_strategy_t get_shape_secs_search_strategy() const {
-    return shape_secs_search_strategy_;
-  }
-
   void
   set_sc_method_configs(std::map<std::string, ConfigMap> sc_method_configs) {
     sc_method_configs_ = sc_method_configs;
@@ -62,15 +53,9 @@ public:
   }
 
   template <typename T>
-  T get_config_value(const std::string &sc_method,
-                     const std::string &config_name, const T &default_value) {
-    auto method_it = sc_method_configs_.find(sc_method);
-    if (method_it == sc_method_configs_.end()) {
-      return default_value;
-    }
-
-    auto config_it = method_it->second.find(config_name);
-    if (config_it == method_it->second.end()) {
+  T get_config_value(const std::string &config_name, const T &default_value) {
+    auto config_it = global_configs_.find(config_name);
+    if (config_it == global_configs_.end()) {
       return default_value;
     }
 
@@ -101,6 +86,22 @@ public:
         config_it->second);
   }
 
+  template <typename T>
+  T get_config_value(const std::string &sc_method,
+                     const std::string &config_name, const T &default_value) {
+    auto method_it = sc_method_configs_.find(sc_method);
+    if (method_it == sc_method_configs_.end()) {
+      return default_value;
+    }
+
+    return get_config_value<T>(config_name, default_value);
+  }
+
+  shape_secs_search_strategy_t get_shape_secs_search_strategy() {
+    return (shape_secs_search_strategy_t)get_config_value<int>(
+        "shape_secs_search_strategy", 0);
+  }
+
   void load(const std::string &config_file);
   void dump();
 
@@ -108,8 +109,8 @@ private:
   LgConfig() { clear(); }
   ~LgConfig() { clear(); }
 
-  shape_secs_search_strategy_t shape_secs_search_strategy_;
   std::map<std::string, ConfigMap> sc_method_configs_;
+  ConfigMap global_configs_;
 };
 
 } // namespace tpu

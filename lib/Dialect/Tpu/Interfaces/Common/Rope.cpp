@@ -132,4 +132,18 @@ LogicalResult tpu::RopeOp::inference(InferenceParameter &p) {
   delete[] temp_result1;
   return success();
 }
+
+void tpu::RopeOp::DumpAttrs(llvm::raw_string_ostream &os, bool quant_agnostic) {
+  for (auto attr : getOperation()->getAttrs()) {
+    auto attr_name = attr.getName().str();
+    if (attr_name == "ginfo" || attr_name == "add_shift" ||
+        attr_name == "mul1_shift" || attr_name == "mul2_shift") {
+      continue;
+    }
+    os << attr_name << "=";
+    attr.getValue().print(os);
+    os << "; ";
+  }
+}
+
 bool tpu::RopeOp::support_multi_core() { return false; }

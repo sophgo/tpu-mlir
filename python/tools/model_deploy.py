@@ -190,13 +190,16 @@ class DeployTool:
                 silence=True,
             )
         self.layer_group_config = args.layer_group_config
+        self.shape_secs_search_strategy = args.shape_secs_search_strategy
+        self.structure_detect_opt = not args.disable_structure_detect_opt
         if self.layer_group_config == "":
             gen_layer_group_config(model_name=self.module_name,
                                    chip=self.chip,
                                    quantize=self.quantize,
                                    overwrite=True,
                                    silence=False,
-                                   strategy=args.shape_secs_search_strategy)
+                                   strategy=self.shape_secs_search_strategy,
+                                   structure_detect_opt=self.structure_detect_opt)
 
     def cleanup(self):
         file_clean()
@@ -545,12 +548,14 @@ if __name__ == '__main__':
     # ========== Compiler Options ==============
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2, 3], help="Optimization level")
-    parser.add_argument("--shape_secs_search_strategy", default=0, type=int, choices=[0, 1, 2],
-                        help="Search strategy for layer group passes in shape_secs. \
-                        Higher values may improve model performance, \
-                        but more complie time is cost."
-                        )
     parser.add_argument("--layer_group_config", default="", type=str, help="layer group config file, if not set, use default config")
+    parser.add_argument("--shape_secs_search_strategy", default=0, type=int, choices=[0, 1, 2],
+                        help="Search strategy for layer group pass in shape_secs. \
+                        Higher values may improve model performance, \
+                        but will increase compilation time."
+                        )
+    parser.add_argument("--disable_structure_detect_opt", action='store_true',
+                        help="Disable structure detect optimization in layer group pass")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'],
                         help="set address assign mode, if not set, auto as default")
