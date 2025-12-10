@@ -39,51 +39,51 @@ public:
     auto result = op.getResult();
     if (auto user = dyn_cast<tpu::A16MatMulOp>(user_op)) {
       if (result == user.getInput()) {
-        path += ".Input";
+        path += ".input";
       } else if (result == user.getWeight()) {
-        path += ".Weight";
+        path += ".weight";
       } else if (result == user.getScale()) {
-        path += ".Scale";
+        path += ".scale";
       } else if (result == user.getZp()) {
-        path += ".Zp";
+        path += ".zp";
       } else if (result == user.getBias()) {
-        path += ".Bias";
+        path += ".bias";
       }
     } else if (auto user = dyn_cast<tpu::MatMulOp>(user_op)) {
       if (result == user.getInput()) {
-        path += ".Input";
+        path += ".input";
       } else if (result == user.getRight()) {
-        path += ".Weight";
+        path += ".weight";
       } else if (result == user.getBias()) {
-        path += ".Bias";
+        path += ".bias";
       }
     } else if (auto user = dyn_cast<tpu::Conv2DOp>(user_op)) {
       if (result == user.getInput()) {
-        path += ".Input";
+        path += ".input";
       } else if (result == user.getFilter()) {
-        path += ".Weight";
+        path += ".weight";
       } else if (result == user.getBias()) {
-        path += ".Bias";
+        path += ".bias";
       }
     } else if (auto user = dyn_cast<tpu::LayerNormOp>(user_op)) {
       if (result == user.getInput()) {
-        path += ".Input";
+        path += ".input";
       } else if (result == user.getWeight()) {
-        path += ".Weight";
+        path += ".weight";
       } else if (result == user.getBias()) {
-        path += ".Bias";
+        path += ".bias";
       }
     } else if (auto user = dyn_cast<tpu::RMSNormOp>(user_op)) {
       if (result == user.getInput()) {
-        path += ".Input";
+        path += ".input";
       } else if (result == user.getGamma()) {
-        path += ".Gamma";
+        path += ".gamma";
       }
     } else if (auto user = dyn_cast<tpu::GatherOp>(user_op)) {
       if (result == user.getInput()) {
-        path += ".Source";
+        path += ".source";
       } else if (result == user.getIndices()) {
-        path += ".Index";
+        path += ".index";
       }
     } else {
       int index = 0;

@@ -41,7 +41,10 @@ void RopeLowering::LoweringINT4(PatternRewriter &rewriter, top::RopeOp op,
 
 void RopeLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::RopeOp op) const {
-
+  if (op.getForceF32()) {
+    LoweringF32(rewriter, op);
+    return;
+  }
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");
@@ -54,7 +57,10 @@ void RopeLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void RopeLowering::LoweringF16(PatternRewriter &rewriter,
                                top::RopeOp op) const {
-
+  if (op.getForceF32()) {
+    LoweringF32(rewriter, op);
+    return;
+  }
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");

@@ -1095,6 +1095,7 @@ def Tpu_RopeOp: Tpu_Op<"Rope", [
     DefaultValuedAttr<BoolAttr, "true">:$mul1_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$mul2_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$add_saturation,
+    DefaultValuedAttr<BoolAttr, "false">:$force_f32,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multicore
   );

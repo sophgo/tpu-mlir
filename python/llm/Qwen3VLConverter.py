@@ -144,11 +144,24 @@ class Qwen3VLConverter(LlmConverter):
         cos_op = self.mrope(mlir_gen, pos_op, rotary_cos)
         # sin MROPE
         sin_op = self.mrope(mlir_gen, pos_op, rotary_sin)
-        # ===== q_proj rotary ========
-        q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
-
-        # ===== k_proj rotary ========
-        k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
+        q_op_shape = q_op.type.shape
+        q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
+                          q_op,
+                          sin_op,
+                          cos_op,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("q_proj", mlir_gen),
+                          ip=mlir_gen.insert_point).output
+        k_op_shape = k_op.type.shape
+        k_op = top.RopeOp(mlir_gen.get_tensor_type(k_op_shape),
+                          k_op,
+                          sin_op,
+                          cos_op,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("k_cache", mlir_gen),
+                          ip=mlir_gen.insert_point).output
+        # q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
+        # k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
         return q_op, k_op
 
     def vision_rotary(self):
@@ -304,8 +317,22 @@ class Qwen3VLConverter(LlmConverter):
                                      shape=qk_reshape,
                                      loc=L(attn_v + ".reshape"),
                                      ip=ip).output
-                q_op = self.rotary_pos(vit_mlir, q_op, cos_op, sin_op, attn_q + ".rotary")
-                k_op = self.rotary_pos(vit_mlir, k_op, cos_op, sin_op, attn_k + ".rotary")
+                q_op = top.RopeOp(T(qk_shape),
+                                  q_op,
+                                  sin_op,
+                                  cos_op,
+                                  force_f32=True,
+                                  rope_mode=StringAttr.get("contiguous_halves"),
+                                  loc=L(attn_q + ".rotary"),
+                                  ip=ip).output
+                k_op = top.RopeOp(T(qk_shape),
+                                  k_op,
+                                  sin_op,
+                                  cos_op,
+                                  force_f32=True,
+                                  rope_mode=StringAttr.get("contiguous_halves"),
+                                  loc=L(attn_k + ".rotary"),
+                                  ip=ip).output
                 fa_op = top.FAttentionOp(T(qk_shape),
                                          q_op,
                                          k_op,

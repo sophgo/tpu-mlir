@@ -51,7 +51,7 @@ class LlmConverter(BaseConverter):
         self.debug = args.debug
         self.lora_rank = args.lora_max_rank
         self.do_lora = self.lora_rank > 0
-        self.lmhead_with_topk = True if (not args.do_sample or not self.do_lora) else False
+        self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
         self.position_shape = [1, self.max_input_length]
         self.num_core = args.num_core
         self.block_mlir_targes = {}
@@ -431,6 +431,10 @@ class LlmConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
+    def lora_path(self, weight_path: str, dim: int = 0):
+        # dim: which dim the lora rank is
+        return f"lora.{self.lora_rank}.{dim}.{weight_path}"
+
     def gen_embedding_bin(self, embedding_data):
         embedding_file = os.path.join(self.config_dir, 'embedding.bin')
         if os.path.exists(embedding_file):
@@ -476,11 +480,13 @@ class LlmConverter(BaseConverter):
 
         if self.do_lora:
             embedding_lora_weights = {}
-            self.set_lora_weight(embedding_lora_weights, embedding, self.vocab_size,
-                                 self.hidden_size)
+            self.set_lora_weight(embedding_lora_weights, embedding,
+                                 (self.vocab_size, self.lora_rank),
+                                 (self.lora_rank, self.hidden_size))
             np.savez("embedding_lora_top_weights.npz", **embedding_lora_weights)
             lmhead_lora_weights = {}
-            self.set_lora_weight(lmhead_lora_weights, lmhead, self.hidden_size, self.vocab_size)
+            self.set_linear_lora_weight(lmhead_lora_weights, lmhead, self.hidden_size,
+                                        self.vocab_size)
             # walkaround: avoid lmhead_lora merged with embedding_lora
             lmhead_lora_weights[f"{lmhead}.lora_A.weight"].fill(1.0)
             np.savez("lm_head_lora_top_weights.npz", **lmhead_lora_weights)
@@ -524,18 +530,19 @@ class LlmConverter(BaseConverter):
                                      weight_file="../embedding_lora_top_weights.npz")
             input_op = lora_mlir.create_input_op(self.get_loc("input_ids", lora_mlir), 0)
             state_op = lora_mlir.create_input_op(self.get_loc("input_states", lora_mlir), 1)
-            weight_op = lora_mlir.create_weight_op(f"{embedding}.lora_A.weight",
-                                                   [self.vocab_size, self.lora_rank],
-                                                   path="Lora.A_weight")
+            lora_a_weight = f"{embedding}.lora_A.weight"
+            weight_op = lora_mlir.create_weight_op(lora_a_weight, [self.vocab_size, self.lora_rank],
+                                                   path=self.lora_path(lora_a_weight, 1))
             a_op = top.GatherOp(lora_mlir.get_tensor_type([1, seq_length, self.lora_rank]),
                                 weight_op,
                                 input_op,
                                 axis=0,
                                 loc=self.get_loc(f"{name}.lora_A", lora_mlir),
                                 ip=lora_mlir.insert_point).output
-            weight_op = lora_mlir.create_weight_op(f"{embedding}.lora_B.weight",
+            lora_b_weight = f"{embedding}.lora_B.weight"
+            weight_op = lora_mlir.create_weight_op(lora_b_weight,
                                                    [self.lora_rank, self.hidden_size],
-                                                   path="Lora.B_weight")
+                                                   path=self.lora_path(lora_b_weight))
             b_op = top.MatMulOp(lora_mlir.get_tensor_type(hidden_shape),
                                 a_op,
                                 weight_op,
@@ -630,20 +637,23 @@ class LlmConverter(BaseConverter):
                                           const_val=self.dim_model_base / self.hidden_size,
                                           loc=self.get_loc(lmhead + ".scale", lmhead_mlir),
                                           ip=lmhead_mlir.insert_point).output
-            a_weight_op = lmhead_mlir.create_weight_op(f"{lmhead}.lora_A.weight",
-                                                       [self.hidden_size, self.lora_rank],
-                                                       path="Lora.A_weight")
+            lora_a_weight = f"{lmhead}.lora_A.weight"
+            a_weight_op = lmhead_mlir.create_weight_op(lora_a_weight,
+                                                       [self.lora_rank, self.hidden_size],
+                                                       path=self.lora_path(lora_a_weight))
             a_op = top.MatMulOp(lmhead_mlir.get_tensor_type([1, self.lora_rank]),
                                 input_op,
                                 a_weight_op,
                                 lmhead_mlir.none_op,
                                 do_relu=False,
+                                right_transpose=True,
                                 is_lora=True,
                                 loc=self.get_loc(f"{name}.lora_A", lmhead_mlir),
                                 ip=lmhead_mlir.insert_point).output
-            b_weight_op = lmhead_mlir.create_weight_op(f"{lmhead}.lora_B.weight",
+            lora_b_weight = f"{lmhead}.lora_B.weight"
+            b_weight_op = lmhead_mlir.create_weight_op(lora_b_weight,
                                                        [self.lora_rank, self.vocab_size],
-                                                       path="Lora.B_weight")
+                                                       path=self.lora_path(lora_b_weight))
             b_op = top.MatMulOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
                                 a_op,
                                 b_weight_op,
@@ -883,10 +893,10 @@ class LlmConverter(BaseConverter):
         if bias_op is not mlir_gen.none_op:
             raise NotImplementedError("Lora with bias is not supported yet.")
         # add lora
-        lora_a = proj + ".lora_A"
-        lora_b = proj + ".lora_B"
-        weight_op = mlir_gen.create_weight_op(lora_a + ".weight", [weight_shape[0], self.lora_rank],
-                                              path="Lora.A_weight")
+        lora_a_weight = f"{proj}.lora_A.weight"
+        lora_b_weight = f"{proj}.lora_B.weight"
+        weight_op = mlir_gen.create_weight_op(lora_a_weight, [self.lora_rank, weight_shape[0]],
+                                              path=self.lora_path(lora_a_weight))
         lora_a_shape = list(out_shape)
         lora_a_shape[-1] = self.lora_rank
         lora_op = top.MatMulOp(mlir_gen.get_tensor_type(lora_a_shape),
@@ -894,18 +904,19 @@ class LlmConverter(BaseConverter):
                                weight_op,
                                mlir_gen.none_op,
                                do_relu=False,
+                               right_transpose=True,
                                is_lora=True,
-                               loc=self.get_loc(lora_a, mlir_gen),
+                               loc=self.get_loc(f"{proj}.lora_A", mlir_gen),
                                ip=mlir_gen.insert_point).output
-        weight_op = mlir_gen.create_weight_op(lora_b + ".weight", [self.lora_rank, weight_shape[1]],
-                                              path="Lora.B_weight")
+        weight_op = mlir_gen.create_weight_op(lora_b_weight, [self.lora_rank, weight_shape[1]],
+                                              path=self.lora_path(lora_b_weight))
         lora_op = top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
                                lora_op,
                                weight_op,
                                mlir_gen.none_op,
                                do_relu=False,
                                is_lora=True,
-                               loc=self.get_loc(lora_b, mlir_gen),
+                               loc=self.get_loc(f"{proj}.lora_B", mlir_gen),
                                ip=mlir_gen.insert_point).output
         new_op = top.AddOp(mlir_gen.get_tensor_type(out_shape), [new_op, lora_op],
                            loc=self.get_loc(proj + ".lora_add", mlir_gen),
@@ -981,37 +992,33 @@ class LlmConverter(BaseConverter):
                               axis=0,
                               loc=self.get_loc(rotary_sin, mlir_gen),
                               ip=mlir_gen.insert_point).output
-        use_rope = True
-        if not use_rope:
-            # ===== q_proj rotary ========
-            q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
-
-            # ===== k_proj rotary ========
-            k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
-        else:
-            q_op_shape = q_op.type.shape
-            q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
-                              q_op,
-                              sin_op,
-                              cos_op,
-                              rope_mode=StringAttr.get("contiguous_halves"),
-                              loc=self.get_loc("q_proj", mlir_gen),
-                              ip=mlir_gen.insert_point).output
-            k_op_shape = k_op.type.shape
-            k_op = top.RopeOp(mlir_gen.get_tensor_type(k_op_shape),
-                              k_op,
-                              sin_op,
-                              cos_op,
-                              rope_mode=StringAttr.get("contiguous_halves"),
-                              loc=self.get_loc("k_cache", mlir_gen),
-                              ip=mlir_gen.insert_point).output
+        q_op_shape = q_op.type.shape
+        q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
+                          q_op,
+                          sin_op,
+                          cos_op,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("q_proj", mlir_gen),
+                          ip=mlir_gen.insert_point).output
+        k_op_shape = k_op.type.shape
+        k_op = top.RopeOp(mlir_gen.get_tensor_type(k_op_shape),
+                          k_op,
+                          sin_op,
+                          cos_op,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("k_cache", mlir_gen),
+                          ip=mlir_gen.insert_point).output
         return q_op, k_op
 
-    def set_lora_weight(self, weight_dict: dict, path: str, K: int, N: int):
+    def set_linear_lora_weight(self, weight_dict: dict, path: str, K: int, N: int):
+        self.set_lora_weight(weight_dict, path, (self.lora_rank, K), (self.lora_rank, N))
+
+    def set_lora_weight(self, weight_dict: dict, path: str, A_shape: tuple[int],
+                        B_shape: tuple[int]):
         lora_a_path = path + ".lora_A.weight"
         lora_b_path = path + ".lora_B.weight"
-        weight_dict[lora_a_path] = np.zeros((K, self.lora_rank), dtype=np.float32)
-        weight_dict[lora_b_path] = np.zeros((self.lora_rank, N), dtype=np.float32)
+        weight_dict[lora_a_path] = np.zeros(A_shape, dtype=np.float32)
+        weight_dict[lora_b_path] = np.zeros(B_shape, dtype=np.float32)
 
     def set_linear_weight(self, path: str, weight_dict: dict, do_lora: bool = False):
         is_quant = False
@@ -1066,7 +1073,7 @@ class LlmConverter(BaseConverter):
         if self.model.is_exist(bias_path):
             weight_dict[bias_path] = self.model.read(bias_path)
         if do_lora:
-            self.set_lora_weight(weight_dict, path, K, N)
+            self.set_linear_lora_weight(weight_dict, path, K, N)
 
     def set_common_weight(self, path: str, weight_dict: dict, type=WeightType.NORMAL):
         weight_path = path + ".weight"

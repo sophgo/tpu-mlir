@@ -1310,6 +1310,7 @@ def Tpu_RopeOp: Top_Op<"Rope"> {
                      When set to true, the result will be clamped to prevent overflow or underflow.;
     mul2_saturation: Similar to mul1_saturation, this attribute specifies whether saturation should be applied to the second multiplication's output.;
     add_saturation: whether to apply saturation to the output of the addition operation.;
+    force_f32: when set to true, forces the computations to be performed in 32-bit floating point format, regardless of the input tensor formats.;
   }];
 
   let arguments = (
@@ -1326,7 +1327,8 @@ def Tpu_RopeOp: Top_Op<"Rope"> {
     DefaultValuedAttr<SI32Attr, "0">:$add_shift,
     DefaultValuedAttr<BoolAttr, "true">:$mul1_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$mul2_saturation,
-    DefaultValuedAttr<BoolAttr, "true">:$add_saturation
+    DefaultValuedAttr<BoolAttr, "true">:$add_saturation,
+    DefaultValuedAttr<BoolAttr, "false">:$force_f32
   );
 
   let results = (outs AnyTensor:$output);
