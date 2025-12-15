@@ -1759,7 +1759,7 @@ class LlmConverter(BaseConverter):
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
-    def compile_common(self, name, with_size=False):
+    def compile_common(self, name, with_size=False, io_alone=False):
         model_path = f"{name}/{name}.bmodel"
         if not with_size:
             self.all_bmodels_without_bytes.append(model_path)
@@ -1776,6 +1776,8 @@ class LlmConverter(BaseConverter):
         ]
         if self.debug:
             deploy_args.append('--debug')
+        if io_alone:
+            deploy_args.append('--addr_mode io_alone')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
@@ -1810,10 +1812,12 @@ class LlmConverter(BaseConverter):
                 lambda: self.compile_common("embedding_cache", with_size=False))
 
         if self.do_lora:
-            self.all_compiles.append(lambda: self.compile_common("lm_head_lora", with_size=True))
-            self.all_compiles.append(lambda: self.compile_common("embedding_lora", with_size=True))
             self.all_compiles.append(
-                lambda: self.compile_common("embedding_cache_lora", with_size=False))
+                lambda: self.compile_common("lm_head_lora", with_size=True, io_alone=True))
+            self.all_compiles.append(
+                lambda: self.compile_common("embedding_lora", with_size=True, io_alone=True))
+            self.all_compiles.append(
+                lambda: self.compile_common("embedding_cache_lora", with_size=False, io_alone=True))
 
         self.all_compiles.append(self.compile_lm_head)
 
