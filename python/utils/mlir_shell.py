@@ -648,10 +648,13 @@ def tpu_opt_options(quant_input: bool = False,
                     quant_input_list: str = "",
                     quant_output_list: str = "",
                     mlir_disable_threading: bool = True,
-                    quant_output_bf16: bool = False):
+                    quant_output_bf16: bool = False,
+                    quant_input_int8: bool = False,
+                    quant_output_int8: bool = False):
     # generate final mlir
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={} quant_output_bf16={}"'.format(
-        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16)
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={} quant_output_bf16={} quant_input_int8={} quant_output_int8={} "'.format(
+        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16,
+        quant_input_int8, quant_output_int8)
     # yapf: disable
     options = []
     if mlir_disable_threading:
@@ -961,6 +964,8 @@ def mlir_to_model(
     trunc_final: list = None,
     command_mem: dict = None,
     quant_output_bf16: bool = False,
+    quant_input_int8: bool = False,
+    quant_output_int8: bool = False,
     opt_post_processor: bool = False,
     gdma_check: bool = True,
     lg_debugger: int = 0,
@@ -974,7 +979,7 @@ def mlir_to_model(
     cmd = ["tpuc-opt", tpu_mlir]
     debug_cmd = f"--debug_cmd={debug_info}"
     options = tpu_opt_options(
-        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16=quant_output_bf16
+        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16=quant_output_bf16, quant_input_int8=quant_input_int8, quant_output_int8=quant_output_int8
     )
     cmd.extend(options)
 

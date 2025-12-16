@@ -156,6 +156,10 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
            "choose index to strip output quant.">,
     Option<"quant_output_bf16", "quant_output_bf16", "bool", /*default=*/"false",
            "force output to be bf16 type">,
+    Option<"quant_input_int8", "quant_input_int8", "bool", /*default=*/"false",
+           "force input to int8/uint8 type in quantize to INT8 mode">,
+    Option<"quant_output_int8", "quant_output_int8", "bool", /*default=*/"false",
+           "force output to int8/uint8 type in quantize to INT8 mode">,
   ];
 }
 

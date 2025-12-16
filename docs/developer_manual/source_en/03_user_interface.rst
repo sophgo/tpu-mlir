@@ -472,6 +472,12 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - quant_output_list
      - N
      - Choose index to strip cast, such as 1,3 means first & third output`s cast
+   * - quant_input_int8
+     - N
+     - When quant_input and quantize to INT8 mode, if first op is float, the input is kept float, enable this param to force the input to int8/uint8, the scale of input should be ignored
+   * - quant_output_int8
+     - N
+     - When quant_output and quantize to INT8 mode, if last op is float, the output is kept float, enable this param to force the output to int8/uint8
    * - quantize_table
      - N
      - Specify the path to the mixed precision quantization table. If not specified, quantization is performed according to the quantize type; otherwise, quantization is prioritized according to the quantization table

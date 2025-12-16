@@ -483,6 +483,12 @@ model_deploy.py
    * - quant_output_list
      - 否
      - 选择要转换的索引，例如 1,3 表示第一个和第三个输出的强制转换
+   * - quant_input_int8
+     - 否
+     - 在指定量化为INT8和quant_input情况下，如果输入第一个算子为浮点，默认输入会使用浮点，启用此参数则强制输入为INT8，使用bmodel时其scale应忽略
+   * - quant_output_int8
+     - 否
+     - 在指定量化为INT8和quant_output情况下，如果输入最后一个算子为浮点，默认输出会保持浮点，启用此参数则强制输出为INT8
    * - quantize_table
      - 否
      - 指定混精度量化表路径, 如果没有指定则按quantize类型量化; 否则优先按量化表量化

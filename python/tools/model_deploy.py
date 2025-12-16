@@ -95,6 +95,8 @@ class DeployTool:
         self.quant_input_list = args.quant_input_list
         self.quant_output_list = args.quant_output_list
         self.quant_output_bf16 = args.quant_output_bf16
+        self.quant_input_int8 = args.quant_input_int8
+        self.quant_output_int8 = args.quant_output_int8
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
         self.lg_debugger = args.lg_debugger
@@ -415,6 +417,8 @@ class DeployTool:
                     trunc_final=self.trunc_final,
                     command_mem=command_mem,
                     quant_output_bf16=self.quant_output_bf16,
+                    quant_input_int8=self.quant_input_int8,
+                    quant_output_int8=self.quant_output_int8,
                     opt_post_processor=self.opt_post_processor,
                     gdma_check=self.gdma_check,
                     lg_debugger=self.lg_debugger,
@@ -507,6 +511,10 @@ if __name__ == '__main__':
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output_bf16", action="store_true",
                         help="force output to be bf16 type")
+    parser.add_argument("--quant_input_int8", action="store_true",
+                        help="force quant input to be int8/uint8 type")
+    parser.add_argument("--quant_output_int8", action="store_true",
+                        help="force quant output to be int8/uint8 type")
     parser.add_argument("--quant_input_list", default="", type=str,
                         help="choose index to strip cast, such as 1,3 means first & third input`s cast")
     parser.add_argument("--quant_output_list", default="", type=str,
@@ -632,6 +640,9 @@ if __name__ == '__main__':
             RuntimeError("quantize is BF16, please use --quant_output instead")
         if args.quant_output:
             RuntimeError("quant_output and quant_output_bf16 can't both be true")
+    if args.quant_output_bf16 and args.quant_output_int8:
+        RuntimeError("quant_output_bf16 and quant_output_int8 can't both be true")
+
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:
