@@ -307,6 +307,9 @@ class ONNX_IR_TESTER(object):
             "PadPool3d":        (self.test_PadPool3d,       N, N, N, Y, N, N, N),
             "PixelNorm":        (self.test_PixelNorm,       N, Y, Y, N, Y, Y, Y),
             "PixelNorm2":       (self.test_PixelNorm2,      N, Y, Y, N, Y, Y, Y),
+            "PixelNorm3":       (self.test_PixelNorm3,      N, Y, Y, N, Y, Y, Y),
+            "PixelNorm4":       (self.test_PixelNorm4,      N, Y, Y, N, Y, Y, Y),
+            "PixelNorm5":       (self.test_PixelNorm5,      N, Y, Y, N, Y, Y, Y),
             "PenaltySample":    (self.test_PenaltySample,   N, N, Y, N, N, N, N),
             "PermuteAndConv1DtoMatMul": (self.test_PermuteAndConv1DtoMatMul, Y, Y, Y, Y, Y, Y, Y),
             "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y, Y, Y, Y),
@@ -3663,6 +3666,72 @@ class ONNX_IR_TESTER(object):
                 return z
 
         x = torch.randn(N, C, H, W).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_PixelNorm3(self, case_name):
+        """LayerNorm with 3D input [512, 1, 128], normalize along last dim (-1)
+        Simulates: model_transform.py --input_shapes "[[512, 1, 128]]"
+        """
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.scale = torch.randn(128).float()
+                self.bias = torch.randn(128).float()
+
+            def forward(self, x):
+                m = x.mean(-1, keepdim=True)
+                var = (x - m).pow(2).mean(-1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+        x = torch.randn(512, 1, 128).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_PixelNorm4(self, case_name):
+        """LayerNorm with 3D input [512, 25, 128], normalize along last dim (-1)
+        Simulates: model_transform.py --input_shapes "[[512, 25, 128]]"
+        """
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.scale = torch.randn(128).float()
+                self.bias = torch.randn(128).float()
+
+            def forward(self, x):
+                m = x.mean(-1, keepdim=True)
+                var = (x - m).pow(2).mean(-1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+        x = torch.randn(512, 25, 128).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_PixelNorm5(self, case_name):
+        """LayerNorm with 2D input [512, 2], normalize along last dim (-1)
+        Simulates: model_transform.py --input_shapes "[[512, 2]]"
+        """
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.scale = torch.randn(2).float()
+                self.bias = torch.randn(2).float()
+
+            def forward(self, x):
+                m = x.mean(-1, keepdim=True)
+                var = (x - m).pow(2).mean(-1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+        x = torch.randn(512, 2).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_ConcatToSpace(self, case_name):
