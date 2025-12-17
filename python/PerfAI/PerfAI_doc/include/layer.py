@@ -8,9 +8,6 @@
 # third-party components.
 #
 # ==============================================================================
-# @Time    : 2023/8/7 11:24
-# @Author  : chongqing.zeng@sophgo.com
-# @Project: PerfAI
 import pandas as pd
 import os
 

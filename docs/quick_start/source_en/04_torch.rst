@@ -25,7 +25,7 @@ Prepare working directory
 .. include:: get_resource.rst
 
 Create a ``model_yolov5s_pt`` directory, and put both model files and image files
-into the ``model_yolov5s_pt`` directory.
+into the ``model_yolov5s_pt`` directory. You can get yolov5s.pt from tpu-mlir-resource.tar (provided in SDK package).
 
 The operation is as follows:
 
@@ -33,7 +33,7 @@ The operation is as follows:
    :linenos:
 
    $ mkdir model_yolov5s_pt && cd model_yolov5s_pt
-   $ wget -O yolov5s.pt "https://github.com/sophgo/tpu-mlir/raw/master/regression/model/yolov5s.pt"
+   $ mv path/to/yolov5s.pt .
    $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace

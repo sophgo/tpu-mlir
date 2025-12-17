@@ -30,18 +30,14 @@ llmc_tpu
 
 本项目源自 `ModelTC/llmc <https://github.com/ModelTC/llmc>`_。ModelTC/llmc是非常优秀的项目,专为压缩LLM设计,利用最先进的压缩算法提高效率并减少模型体积,同时不影响预测精度。如果要深入了解llmc项目,请转到 `<https://github.com/ModelTC/llmc>`_。
 
-本项目是基于 `ModelTC/llmc` 进行一些定制化修改,用于支持Sophgo处理器。
+本项目是基于 `ModelTC/llmc` 进行一些定制化修改,用于支持深度学习处理器。
 
 环境准备
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. **下载本项目**
 
-.. code-block:: shell
-   :linenos:
-
-   git clone git@github.com:sophgo/llmc-tpu.git
-
+从github上获取tpu-mq代码。
 
 2. **准备您需要量化的LLM或者VLM模型,放到`llmc-tpu`的同级目录**
 

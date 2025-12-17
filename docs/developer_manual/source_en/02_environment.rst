@@ -8,31 +8,18 @@ This chapter describes the development environment configuration. The code is co
 Code Download
 -------------------
 
-GitHub link: https://github.com/sophgo/tpu-mlir
-
-After cloning this code, it needs to be compiled in docker. For specific steps, please refer to the following.
+You can clone the source code of tpu-mlir from github, it needs to be compiled in docker. For specific steps, please refer to the following.
 
 .. _env_setup:
 
 Docker Configuration
 ------------------------
 
-TPU-MLIR is developed in the Docker environment, and it can be compiled and run after Docker is configured.
-
-Download the required image from DockerHub https://hub.docker.com/r/sophgo/tpuc_dev :
-
-
-.. code-block:: shell
-
-   $ docker pull sophgo/tpuc_dev:v3.4
-
-
-If the pulling fails, you can download the required image file from the official website development materials https://developer.sophgo.com/site/index/material/86/all.html, or use the following command to download and load the image:
+You can get the required image file `tpuc_dev_v3.4.tar.gz` from the SDK package:
 
 .. code-block:: shell
    :linenos:
 
-   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/04/15/16/tpuc_dev_v3.4.tar.gz
    $ docker load -i tpuc_dev_v3.4.tar.gz
 
 If you are using docker for the first time, you can execute the following commands to install and configure it (only for the first time):
@@ -55,7 +42,7 @@ Make sure the installation package is in the current directory, and then create 
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
   # "myname" is just an example, you can use any name you want
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
 
@@ -66,9 +53,7 @@ Note that the path of the TPU-MLIR project in docker should be /workspace/tpu-ml
 ModelZoo (Optional)
 ------------------------
 
-TPU-MLIR comes with the yolov5s model. If you want to run other models, you need to download them from ModelZoo. The path is as follows:
-
-https://github.com/sophgo/model-zoo
+TPU-MLIR comes with the yolov5s model. If you want to run other models, you need to download them from ModelZoo provided in the SDK package.
 
 After downloading, put it in the same directory as tpu-mlir. The path in docker should be /workspace/model-zoo
 

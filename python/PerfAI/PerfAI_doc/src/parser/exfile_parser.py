@@ -8,9 +8,6 @@
 # third-party components.
 #
 # ==============================================================================
-# @Time    : 2023/8/7 11:55
-# @Author  : chongqing.zeng@sophgo.com
-# @Project: PerfAI
 import re
 import os
 from collections import namedtuple

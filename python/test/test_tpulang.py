@@ -5801,17 +5801,17 @@ class TPULANG_IR_TESTER(object):
                 rois [RoI_Num,5]: batch,x0,y0,x1,y1
                 but hik gives [RoI_NUM,7] something like,  {a,b,x0,y0,x1,y1,c} , we just need x0,y0,x1,y1; as hik only inference-1 batch.
                 '''
-                rois_sophgo = rois_hik
+                rois_sg = rois_hik
                 if rois_hik.shape[1] == 7:
-                    rois_sophgo = torch.cat(
+                    rois_sg = torch.cat(
                         [torch.zeros(self.RoI_Num).reshape([self.RoI_Num, 1]), rois_hik[:, 2:6]],
                         axis=1).reshape([self.RoI_Num, 5])
-                roi_feats = feats[0].new_zeros(rois_sophgo.size(0), self.out_channels,
+                roi_feats = feats[0].new_zeros(rois_sg.size(0), self.out_channels,
                                                *self.output_size)
 
                 for i in range(self.num_levels):
                     inds = target_lvls == i
-                    rois_ = rois_sophgo[inds, :]
+                    rois_ = rois_sg[inds, :]
                     print("rois_", rois_.shape)
                     roi_feats_t = self.roi_layers[i](feats[i], rois_)
                     roi_feats[inds] = roi_feats_t

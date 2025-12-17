@@ -6,19 +6,11 @@
 
 基础环境配置
 ------------------
-如不满足上述系统环境，则需要使用Docker，从 DockerHub https://hub.docker.com/r/sophgo/tpuc_dev 下载所需的镜像文件，或使用下方命令直接拉取镜像：
-
-
-.. code-block:: shell
-
-   $ docker pull sophgo/tpuc_dev:v3.4
-
-若下载失败，可从官网开发资料 https://developer.sophgo.com/site/index/material/86/all.html 下载所需镜像文件，或使用下方命令下载镜像：
+可以从SDK包中获取所需的镜像文件 ``tpuc_dev_v3.4.tar.gz``:
 
 .. code-block:: shell
    :linenos:
 
-   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/04/15/16/tpuc_dev_v3.4.tar.gz
    $ docker load -i tpuc_dev_v3.4.tar.gz
 
 
@@ -45,7 +37,7 @@
 .. code-block:: shell
 
   # 使用 --privileged 参数以获取root权限，如果不需要root权限，请删除该参数
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
 
 其中， ``myname`` 为容器名称，可以自定义； ``$PWD`` 为当前目录，与容器的 ``/workspace`` 目录同步。
 
@@ -69,7 +61,7 @@
 
 **离线安装**
 
-从Github的 `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_ 处下载最新的 `tpu_mlir-*-py3-none-any.whl`，然后使用pip安装:
+从Github的处下载最新的 `tpu_mlir-*-py3-none-any.whl`，然后使用pip安装:
 
 
 .. code-block:: shell

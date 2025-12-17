@@ -20,8 +20,8 @@
 # -- Project information -----------------------------------------------------
 
 project = u'TPU-MLIR'
-copyright = u'2025, SOPHGO'
-author = u'SOPHGO'
+copyright = u''
+author = u'TPU-MLIR Team'
 
 import os, subprocess, re
 command_line = "git describe --tags --always"
@@ -158,7 +158,7 @@ latex_elements = {
     \fancypagestyle{normal}{
         \fancyhead[R]{}
         \fancyhead[C]{\leftmark}
-        \fancyfoot[C]{Copyright © SOPHGO}
+        \fancyfoot[C]{}
         \fancyfoot[R]{\thepage}
         \renewcommand{\headrulewidth}{0.4pt}
         \renewcommand{\footrulewidth}{0pt}

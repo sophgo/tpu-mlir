@@ -8,7 +8,7 @@
 
 * 编译测试：48小时
 * 性能测试：24小时
-* 精度测试：24小时（当前仅 BM1684X PCIE 需要进行精度测试）
+* 精度测试：24小时（当前仅 BM1684X PCIe 需要进行精度测试）
 
 
 配置系统环境
@@ -25,7 +25,7 @@
 获取 ``model-zoo`` 模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-在工作目录下，从SOPHGO提供的SDK包中获取 ``model-zoo`` 测试包, 并执行以下操作创建并
+在工作目录下，从提供的SDK包中获取 ``model-zoo`` 测试包, 并执行以下操作创建并
 设置好 ``model-zoo`` ：
 
 .. code-block:: shell
@@ -76,7 +76,7 @@ model-zoo的目录结构如下：
 配置SoC设备
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-注意: 如果您的设备是 PCIE 板卡, 可以直接跳过该节内容。
+注意: 如果您的设备是 PCIe 板卡, 可以直接跳过该节内容。
 
 性能测试只依赖于 TPU 硬件对应的 runtime 环境, 所以在工具链编译环境编译完的模型连同 ``model-zoo`` 整个打包, 就可以在 SoC 环境使用 ``tpu_perf`` 进行性能测试。但是, SoC设备上存储有限, 完整的 ``model-zoo`` 与编译输出内容可能无法完整拷贝到 SoC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现在 SoC 设备上运行测试的方法。
 
@@ -120,7 +120,7 @@ model-zoo的目录结构如下：
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 
-这样便可以在 SoC 环境访问测试目录。SoC 测试其余的操作与 PCIE 基本一致, 请参考下文进行操作; 运行环境命令执行位置的差别, 已经在执行处添加说明。
+这样便可以在 SoC 环境访问测试目录。SoC 测试其余的操作与 PCIe 基本一致, 请参考下文进行操作; 运行环境命令执行位置的差别, 已经在执行处添加说明。
 
 
 准备数据集
@@ -137,7 +137,7 @@ ImageNet
 
 .. code-block:: shell
 
-   $ cd path/to/sophon/model-zoo
+   $ cd path/to/model-zoo
    $ mkdir -p dataset/ILSVRC2012/ILSVRC2012_img_val
    $ mv path/to/imagenet-object-localization-challenge/Data/CLS_LOC/val dataset/ILSVRC2012/ILSVRC2012_img_val
    # 也可以通过软链接 ln -s 将数据集目录映射到 dataset/ILSVRC2012/ILSVRC2012_img_val
@@ -177,16 +177,16 @@ Vid4 (可选)
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.4
-   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+   $ docker pull tpuc_dev:v3.4
+   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
 
 如果要让容器在退出后删除，可以添加 ``--rm`` 参数：
 
 .. code-block:: shell
 
-   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4 --rm
+   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4 --r
 
-运行命令后会处于Docker的容器中，从SOPHGO提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装TPU-MLIR:
+运行命令后会处于Docker的容器中，从提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装TPU-MLIR:
 
 .. code-block:: shell
 
@@ -252,9 +252,9 @@ Vid4 (可选)
 
    $ exit
 
-**PCIE板卡**
+**PCIe板卡**
 
-PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`` 性能：
+PCIe 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`` 性能：
 
 .. code-block:: shell
 
@@ -263,7 +263,7 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 
 其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
 
-注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备：
+注意：如果主机上安装了多块加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备：
 
 .. code-block:: shell
 
@@ -306,7 +306,7 @@ SoC 设备使用以下步骤, 测试生成的高优先级模型的 ``bmodel`` �
 
    $ exit
 
-PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`` 精度：
+PCIe 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`` 精度：
 
 .. code-block:: shell
 
@@ -317,7 +317,7 @@ PCIE 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
 
 注意：
 
-- 如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
+- 如果主机上安装了多块加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
 
 .. code-block:: shell
@@ -399,5 +399,4 @@ no module named 'xxx'
 
 精度测试因为内存不足被kill
 --------------------------
-对于YOLO系列的模型精度测试，可能需要4G左右的内存空间。SoC环境如果存在内存不足被kill的情况，可以参考SOPHON
-BSP 开发手册的板卡预制内存布局章节扩大内存。
+对于YOLO系列的模型精度测试，可能需要4G左右的内存空间。SoC环境如果存在内存不足被kill的情况，可以参考 BSP 开发手册的板卡预制内存布局章节扩大内存。

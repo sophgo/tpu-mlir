@@ -45,7 +45,7 @@ Through the above commands, ``yolov5s.onnx`` is compiled into ``yolov5s_bm1684x_
 Generate Raw Profile Data
 --------------------------
 
-Copy the generated ``yolov5s_bm1684x_f16.bmodel`` to the running environment with libsophon. In the same compilation process, the Profile function at runtime is turned off by default to prevent additional time consumption when saving and transmitting profiles. When you need to enable the profile function, set the environment variable ``BMRUNTIME_ENABLE_PROFILE=1`` before running the compiled application. Then use the model testing tool ``bmrt_test`` provided in libsophon to run bmodel and generate profile data. Execute the following command outside of Docker:
+Copy the generated ``yolov5s_bm1684x_f16.bmodel`` to the running environment with driver. In the same compilation process, the Profile function at runtime is turned off by default to prevent additional time consumption when saving and transmitting profiles. When you need to enable the profile function, set the environment variable ``BMRUNTIME_ENABLE_PROFILE=1`` before running the compiled application. Then use the model testing tool ``bmrt_test`` provided in driver to run bmodel and generate profile data. Execute the following command outside of Docker:
 
 .. code-block:: shell
 

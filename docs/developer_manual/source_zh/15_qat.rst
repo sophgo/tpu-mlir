@@ -26,20 +26,20 @@ tpu-mlir QAT实现方案及特点
 
 .. code-block:: shell
 
-    docker pull sophgo/tpuc_dev:v3.4.6-cuda
+    docker pull tpuc_dev:v3.4.6-cuda
 
 此镜像预装了torc2.1.0版本和cuda12.6,为tpu-mq支持的最新版本，另外此镜像也支持tpu-mlir工具直接部署网络到处理器.
 
 
 使用安装包安装
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1、在tpu-mq开源项目https://github.com/sophgo/tpu-mq.git的release区获取最新的安装包，比如 tpu_mq-1.0.7-cp310-cp310-linux_x86_64.whl
+1、在github tpu-mq开源项目release区获取最新的安装包，比如 tpu_mq-1.0.7-cp310-cp310-linux_x86_64.whl
 2、使用pip安装： pip3 install tpu_mq-1.0.7-cp310-cp310-linux_x86_64.whl
 
 
 从源码安装
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1、执行命令获取github上最新代码:git clone https://github.com/sophgo/tpu-mq.git
+1、克隆github上最新的tpu-mq代码
 
 2、进入tpu-mq目录后执行:
 
