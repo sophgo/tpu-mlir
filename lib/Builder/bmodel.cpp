@@ -65,6 +65,10 @@ ModelGen::~ModelGen() {
   }
 }
 
+static uint64_t align_to_4k(uint64_t size) {
+  return (size + 4095) / 4096 * 4096 - size;
+}
+
 Binary ModelGen::WriteBinary(size_t size, uint8_t *data) {
   // ASSERT(size != 0 && data != NULL);
   for (auto &binary : binary_vector_) {
@@ -78,6 +82,11 @@ Binary ModelGen::WriteBinary(size_t size, uint8_t *data) {
   uint64_t start = binary_.size();
   binary_.insert(binary_.end(), size, 0);
   memcpy(binary_.data() + start, data, size);
+  uint64_t bytes = binary_.size();
+  auto pad_4k = align_to_4k(bytes);
+  if (pad_4k > 0) {
+    binary_.insert(binary_.end(), pad_4k, 0);
+  }
   Binary new_bin(start, size);
   binary_vector_.push_back(new_bin);
   return new_bin;
@@ -418,8 +427,15 @@ void ModelGen::Save(const string &filename) {
   header.header_size = sizeof(header);
   header.flatbuffers_size = builder_.GetSize();
   header.binary_size = binary_.size();
+  // 4K align flatbuffer
+  auto pad_size = align_to_4k(header.header_size + header.flatbuffers_size);
+  header.flatbuffers_size += pad_size;
   fout.write((char *)&header, sizeof(header));
   fout.write((char *)builder_.GetBufferPointer(), builder_.GetSize());
+  if (pad_size > 0) {
+    std::vector<uint8_t> pad_buffer(pad_size, 0);
+    fout.write((char *)pad_buffer.data(), pad_size);
+  }
   fout.write((char *)binary_.data(), binary_.size());
   fout.close();
 }
@@ -1106,7 +1122,8 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
                   info.gdma_cmd_mem_size += cmd_group->binary_gdma()->size();
                 }
               }
-              if (model()->chip()->str() == "BM1690") {
+              if (model()->chip()->str() == "BM1690" ||
+                  model()->chip()->str() == "BM1690E") {
                 auto core_cmd = subnet->core_commands()->Get(core_idx);
                 if (core_cmd->hau_commands()) {
                   for (unsigned int j = 0; j < core_cmd->hau_commands()->size();

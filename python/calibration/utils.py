@@ -6,23 +6,26 @@ from utils.mlir_parser import MlirParser
 import warnings
 from typing import List, Tuple, Optional
 
+warnings.formatwarning = lambda message, category, filename, lineno, line: \
+    f"{category.__name__}: {message}\n"
+
 FLOAT_MAP = {
     "bm1684x": "F16",
     "bm1684": "F32",
+    "cv186x": "F16",
+    "cv184x": "BF16",
     "cv183x": "BF16",
     "cv182x": "BF16",
     "cv181x": "BF16",
     "cv180x": "BF16",
     "bm1688": "F16",
-    "cv186x": "F16",
     "bm1690": "F16",
-    "cv184x": "BF16"
 }
 
 chip_support_mix_fp_type = {
     "bm1684x": ["F16", "F32"],
-    "bm1688": ["F16", "F32"],
-    "cv186x": ["F16", "F32"],
+    "bm1688": ["F16", "BF16", "F32"],
+    "cv186x": ["F16", "BF16", "F32"],
     "bm1684": ["F32"],
     "cv183x": ["BF16"],
     "cv182x": ["BF16"],
@@ -131,7 +134,9 @@ def parse_calibration_methods(cali_method: list, debug_cmd: dict):
 
 
 def parse_method_list(input_str):
-    return input_str.split(',')
+    method_list = input_str.split(',')
+    method_list = [m.strip().lower() for m in method_list]
+    return method_list
 
 
 def compactable_method_list(method_list: list):

@@ -40,8 +40,10 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
                                 PatternRewriter &rewriter) const override {
 
     auto picked = pickReorderWeight(op);
-    if (!picked.first)
+    if (!picked.first) {
+      op->setOperand(1, module::getNoneOp(op));
       return failure();
+    }
 
     auto input = op.getOperand(0).getDefiningOp();
     if (!input->hasAttr("ginfo"))
@@ -149,6 +151,10 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
     auto attrs = idx_op->getAttrs();
     auto trans_idx_op = trans_idx.getDefiningOp();
     for (auto &attr : attrs) {
+      auto attr_name = attr.getName().str();
+      if (attr_name == "inline_bytes") {
+        continue;
+      }
       trans_idx_op->setAttr(attr.getName(), attr.getValue());
     }
     load_op->setOperand(0, trans_idx);

@@ -1023,7 +1023,7 @@ class DebugPerformance(DebugBase):
         perfweb_dir = os.path.join(output_dir, "PerfWeb")
         if os.path.exists(perfweb_dir):
             shutil.rmtree(perfweb_dir)
-        if target.properties.chip.upper() in ["BM1688", "CV186X", "BM1690"]:
+        if target.properties.chip.upper() in ["BM1688", "CV186X", "BM1690", "BM1690E"]:
             bmprofile_parse_perfAI(raw_dir,
                                    output_dir,
                                    target.properties.chip.upper(),
@@ -1057,7 +1057,7 @@ class DebugPerformance(DebugBase):
         if os.path.exists(perfdoc_dir):
             shutil.rmtree(perfdoc_dir)
 
-        if target.properties.chip.upper() in ["BM1688", "CV186X", "BM1690"]:
+        if target.properties.chip.upper() in ["BM1688", "CV186X", "BM1690", "BM1690E"]:
             bmprofile_parse_perfAI(
                 raw_dir,
                 output_dir,

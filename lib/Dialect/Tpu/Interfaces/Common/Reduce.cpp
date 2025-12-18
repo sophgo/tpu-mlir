@@ -233,6 +233,9 @@ LogicalResult tpu::ReduceOp::LocalGenSupport() {
   if (module::isCV18xx() || module::isBM1684Family()) {
     return failure();
   }
+  auto runmode = getRunMode(getOperation());
+  if (runmode == RunMode::TPU_DYNAMIC)
+    return failure();
   auto axes = module::getI64Array(getAxes());
   auto dims = module::getShape(getInput()).size();
   bool is_valid = (dims == 4 || (dims == 3 && axes->at(0) == 2));

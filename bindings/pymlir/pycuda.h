@@ -97,6 +97,14 @@ private:
   void cudaUpsampleOp(tpu::UpsampleOp op);
   void cudaUnsqueezeOp(tpu::UnsqueezeOp op);
 
+  void cudaAddOp(top::AddOp op);
+  void cudaConvOp(top::ConvOp op);
+  void cudaScaleOp(top::ScaleOp op);
+  void cudaMaxPoolOp(top::MaxPoolOp op);
+  void cudaAvgPoolOp(top::AvgPoolOp op);
+  void cudaMatMulOp(top::MatMulOp op);
+  void cudaReshapeOp(top::ReshapeOp op);
+
 private:
   cuda_ptr cuda_malloc(size_t bytes);
   void cuda_malloc(std::map<std::string, cuda_ptr> &map, mlir::Value v);

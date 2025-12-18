@@ -115,7 +115,7 @@ cudaError_t convertType(void *src, void *dst, int num_elem,
                                             num_elem);
   } else if (src_type == DT_F32 && dst_type == DT_F16) {
     g_f32ToF16<<<num_blocks, block_size>>>((float *)src, (uint16_t *)dst,
-                                           num_elem, rmode);
+                                           num_elem, cuda::RD_HALF_TO_EVEN);
   } else if (src_type == DT_F16 && dst_type == DT_F32) {
     g_f16ToF32<<<num_blocks, block_size>>>((uint16_t *)src, (float *)dst,
                                            num_elem);
@@ -235,6 +235,17 @@ void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
         (uint8_t *)input0, (uint8_t *)input1, (uint8_t *)output, mul0, mul1,
         shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
   }
+}
+
+void add4DF32(void *input0, void *input1, void *output,
+               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_add4DF32<<<num_blocks, block_size>>>(
+      (float *)input0, (float *)input1, (float *)output,
+      relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
 }
 
 void copyAxis(void *src, void *dst, int outer_dim, int axis_dim, int inner_dim,
@@ -690,6 +701,15 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
   } else {
     mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
   }
+}
+
+void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,
+             int off1, int off2, int off3, int s0, int s1, int s2, int s3,
+             int on, int oc, int oh, int ow) {
+  int num_blocks = CUDA_NUM_BLOCKS(on * oc * oh * ow);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_scale4DF32<<<num_blocks, block_size>>>((float*)src, (float*)scale, (float*)bias, (float*)dst, relu, n, c, h, w, off0, off1, off2, off3,
+                                        s0, s1, s2, s3, on, oc, oh, ow);
 }
 
 } // namespace cuda

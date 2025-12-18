@@ -575,7 +575,7 @@ model_deploy.py
      - LayerGroup优化类型，可选1/2/3, 默认为2。1：简单LayerGroup模式，所有算子会尽可能做Group，编译速度较快；2：通过动态编译计算全局cycle最优的Group分组，适用于推理图编译；3：线性规划LayerGroup模式，适用于模型训练图编译。
    * - addr_mode
      - 否
-     - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc'], 默认为auto
+     - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'], 默认为auto
    * - disable_layer_group
      - 否
      - 是否关闭LayerGroup
@@ -600,6 +600,15 @@ model_deploy.py
    * - log_level
      - 否
      - 日志输出级别, 可选0：正常打印模型转换日志，1：打印图优化 pattern 应用信息
+   * - layer_group_config
+     - 否
+     - 指定 layer group json格式配置文件的路径
+   * - shape_secs_search_strategy
+     - 否
+     - 指定LayerGroup pass中shape_secs的搜索策略，支持0、1和2，默认为0，数值越大，可能得到性能更好的模型，但编译时间也会增加
+   * - disable_structure_detect_optimize
+     - 否
+     - 是否关闭LayerGroup pass中的结构检测优化
 
 对于不同处理器和支持的量化类型对应关系如下表所示：
 

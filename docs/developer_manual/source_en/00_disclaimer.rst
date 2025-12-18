@@ -33,6 +33,14 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.25.0
+     - 2025.11.28
+     - Qwen3-VL support
+       BM1690E support
+   * - v1.24.0
+     - 2025.10.30
+     - MINICPMV4 support
+       Supports peak system and device memory estimation for bmodel
    * - v1.23.0
      - 2025.09.30
      - GLM4.1V support

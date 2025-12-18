@@ -123,6 +123,9 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
   } // end for
   std::vector<NamedAttribute> attrs;
   for (auto &attr : concatOp->getAttrs()) {
+    if (attr.getName() == "only_merge") {
+      continue;
+    }
     attrs.push_back(attr);
   }
   attrs.push_back(rewriter.getNamedAttr(

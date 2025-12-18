@@ -177,6 +177,17 @@ def Tpu_RoundMode: I32EnumAttr<"RoundMode",
 }
 def Tpu_RoundModeAttr : EnumAttr<Tpu_Dialect, Tpu_RoundMode, "round_mode">;
 
+def Tpu_RopeMode: I32EnumAttr<"RopeMode",
+    "rope mode supported by Rope",
+    [
+      I32EnumAttrCase<"interleaved_pairs", 0>,
+      I32EnumAttrCase<"contiguous_halves", 1>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_RopeModeAttr : EnumAttr<Tpu_Dialect, Tpu_RopeMode, "rope_mode">;
+
 def Tpu_PoolMode: I32EnumAttr<"PoolMode",
     "pooling mode supported by PoolOp",
     [
@@ -821,7 +832,7 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu, SupportEarlyStride,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info_kernel", "DumpQuantAgnosticAttrs", "codegen_local_bm1684x_kernel"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info_kernel", "DumpAttrs", "codegen_local_bm1684x_kernel"]>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
@@ -1031,7 +1042,7 @@ def Tpu_BinaryConstShiftOp: Tpu_Op<"BinaryConstShift", [
 
 def Tpu_RopeOp: Tpu_Op<"Rope", [
     SupportElementwise,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "DumpAttrs"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "Rope Operator";
@@ -1073,6 +1084,7 @@ def Tpu_RopeOp: Tpu_Op<"Rope", [
     ins AnyRankedTensor:$input1,
     AnyRankedTensor:$input2,
     AnyRankedTensor:$input3,
+    DefaultValuedAttr<Tpu_RopeModeAttr, "tpu::RopeMode::interleaved_pairs">:$rope_mode,
     DefaultValuedAttr<BoolAttr, "false">:$is_permute_optimize,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$mul1_round_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$mul2_round_mode,
@@ -1083,6 +1095,7 @@ def Tpu_RopeOp: Tpu_Op<"Rope", [
     DefaultValuedAttr<BoolAttr, "true">:$mul1_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$mul2_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$add_saturation,
+    DefaultValuedAttr<BoolAttr, "false">:$force_f32,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multicore
   );
@@ -1321,7 +1334,7 @@ def Tpu_Mmap2RgbmapOp: Tpu_Op<"Mmap2Rgbmap"> {
 
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel", "DumpAttrs"]>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub operator";
@@ -1427,7 +1440,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
 
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "assign_sec_info_kernel", "DumpAttrs"]>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul operator";
@@ -2057,7 +2070,7 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16", [
 
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "DumpAttrs"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
@@ -2122,6 +2135,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multi_core,
     DefaultValuedAttr<BoolAttr, "false">:$fuse_rq,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora,
     OptionalAttr<I64Attr>:$weight_bits,
     AnyTensorOrNone:$multi,
     AnyTensorOrNone:$buffer,
@@ -2190,7 +2204,7 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
 
 def Tpu_AttentionOp: Tpu_Op<"Attention", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "DumpQuantAgnosticAttrs"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "DumpAttrs"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Attention operator";
@@ -2728,7 +2742,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "DumpQuantAgnosticAttrs"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "DumpAttrs"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "requant operation";
@@ -4642,6 +4656,7 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
     AnyTensorOrNone:$buffer, //for BM1684
     DefaultValuedAttr<SI32Attr, "0">:$axis,
     DefaultValuedAttr<BoolAttr, "true">:$if_neg_index,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora,
     OptionalAttr<BoolAttr>:$multicore
   );
 

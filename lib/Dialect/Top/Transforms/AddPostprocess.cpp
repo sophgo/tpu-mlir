@@ -108,7 +108,14 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
       auto s = module::getShape(opd);
       if (s.size() != 4 || width % s[3] != 0) {
         terminator->dump();
-        llvm_unreachable("outputs are not correct");
+        llvm_unreachable("YOLOv5 shape invalid. "
+                         "Expect rank=4 in NCHW: [N, C, H, W] where "
+                         "N=batch_size, C=anchors_per_cell*(num_classes+5), "
+                         "H=grid_h, W=grid_w, "
+                         "and width % W == 0. "
+                         "Example: [1, 255, 80, 80] for num_classes=80, "
+                         "anchors_per_cell=3, input width=640. "
+                         "Got non-4D or width % s[3] != 0.");
       }
       widths.push_back(s[3]);
     }
@@ -121,20 +128,60 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     }
     return;
   }
-  // yolov8
+  // yolov8/yolov11
   if ((post_type == "yolov8" || post_type == "yolov11") && num_opds == 1) {
+    auto s = module::getShape(opds[0]);
+    if (s.size() != 3) {
+      terminator->dump();
+      llvm_unreachable(
+          "YOLOv8/YOLOv11 shape invalid. "
+          "Expect rank=3 in NCW: [N, C, W] where "
+          "N=batch_size, "
+          "C=4(box)+1(objectness)+num_classes, "
+          "W=total_candidates_across_FPN_scales. "
+          "Example: [1, 85, 8400] for num_classes=80 (C=4+1+80=85) and input "
+          "640x640 "
+          "with 3 scales producing 80x80 + 40x40 + 20x20 = 8400 candidates. ");
+    }
     operands.push_back(opds[0]);
     anchors = {0};
+
     return;
   }
+  // yolov8_seg/yolov11_seg
+  if ((post_type == "yolov8_seg" || post_type == "yolov11_seg")) {
+    if (num_opds != 2) {
+      llvm_unreachable(
+          (std::string("YOLOv8_seg/YOLOv11s_seg outputs invalid. ") +
+           "Expect 2 outputs but got " + std::to_string(num_opds))
+              .c_str());
+    }
+    auto s0 = module::getShape(opds[0]).size();
+    auto s1 = module::getShape(opds[1]).size();
+    if (s0 != 3 || s1 != 4) {
+      llvm_unreachable(
+          "YOLOv8_seg/YOLOv11_seg shape invalid. \n"
+          "Expect out0 in NCW: [N, C, W] where "
+          "C=4(box)+num_classes+mask_channels, "
+          "W=total_candidates_across_FPN_scales. "
+          "Example: [1, 116, 8400] for num_classes=80, "
+          "mask_channels=32(C=4+80+32=116) and input "
+          "640x640 "
+          "with 3 scales producing 80x80 + 40x40 + 20x20 = 8400 candidates.\n"
 
-  if ((post_type == "yolov8_seg" || post_type == "yolov11_seg") &&
-      num_opds == 2) {
+          "Expect out1 in NCHW: [N, C, H, W] where "
+          "C=mask_channels, "
+          "H,W=mask_size "
+          "Example: [1, 32, 160, 160] for mask_channels=32 and mask_size=160. "
+
+      );
+    }
     operands.push_back(opds[0]);
     operands.push_back(opds[1]);
     anchors = {0};
     return;
   }
+
   for (auto opd : opds) {
     auto s = module::getShape(opd);
     if (s.size() != 4 || width % s[3] != 0 || num_opds > 3) {

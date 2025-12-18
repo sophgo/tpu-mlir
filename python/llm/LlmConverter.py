@@ -27,9 +27,14 @@ class LlmConverter(BaseConverter):
         super().__init__()
         self.model_path = os.path.normpath(args.model_path)
         self.seq_length = args.seq_length
-        self.max_input_length = args.max_input_length if (
-            args.max_input_length > 0
-            and args.max_input_length < self.seq_length) else self.seq_length
+        if args.input_length_list:
+            self.max_input_length = args.input_length_list[0]
+            self.input_length_list = args.input_length_list
+        else:
+            self.max_input_length = args.max_input_length if (
+                args.max_input_length > 0
+                and args.max_input_length < self.seq_length) else self.seq_length
+            self.input_length_list = [self.max_input_length]
         self.max_prefill_kv_length = args.max_prefill_kv_length
         self.share_prompt = args.share_prompt
         self.quantize = args.quantize
@@ -37,15 +42,19 @@ class LlmConverter(BaseConverter):
         self.q_group_size = args.q_group_size
         self.high_precision = True
         self.symmetric = args.symmetric
-        self.lmhead_with_topk = True if not args.do_sample else False
         self.chip = args.chip
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
         self.dynamic_vit = args.dynamic_vit
         self.use_block_with_kv = args.use_block_with_kv
+        self.same_addr = "0:0" if args.use_same_addr else ""
         self.debug = args.debug
+        self.lora_rank = args.lora_max_rank
+        self.do_lora = self.lora_rank > 0
+        self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
         self.position_shape = [1, self.max_input_length]
         self.num_core = args.num_core
+        self.block_mlir_targes = {}
         if self.num_core == 0:
             if args.chip == "bm1688":
                 self.num_core = 2
@@ -83,9 +92,10 @@ class LlmConverter(BaseConverter):
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.config_dir = os.path.join(self.out_dir, "config")
         self.commands = []
-        self.extern_gen_mlirs = []
-        self.extern_compiles = []
-        self.extern_bmodels = []
+        self.all_gen_mlirs = []
+        self.all_compiles = []
+        self.all_bmodels = []
+        self.all_bmodels_without_bytes = []
         self.extern_block_weights = {}
         # store all weights name because some weights like qkv.weights may be splitted
         self.weights = []
@@ -135,33 +145,24 @@ class LlmConverter(BaseConverter):
                         dirs_exist_ok=True)
 
     def gen_all_mlir(self):
+        if self.do_vit:
+            self.all_gen_mlirs.append(self.gen_vit_mlir)
+        self.all_gen_mlirs.append(self.gen_embedding_lmhead_mlir)
+        if not self.lmhead_with_topk:
+            self.all_gen_mlirs.append(self.gen_sample_head_mlir)
+        for i in range(self.num_layers):
+            self.all_gen_mlirs.append(lambda i=i: self.gen_block_mlir(i))
+
         if self.debug:
-            self.gen_vit_mlir()
-            for func in self.extern_gen_mlirs:
+            for func in self.all_gen_mlirs:
                 func()
-            self.gen_embedding_lmhead_mlir()
-            if not self.lmhead_with_topk:
-                self.gen_sample_head_mlir()
-            for i in range(self.num_layers):
-                self.gen_block_mlir(i)
             return
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = []
 
-            if self.do_vit:
-                futures.append(executor.submit(self.gen_vit_mlir))
-
-            for func in self.extern_gen_mlirs:
+            for func in self.all_gen_mlirs:
                 futures.append(executor.submit(func))
-
-            futures.append(executor.submit(self.gen_embedding_lmhead_mlir))
-
-            if not self.lmhead_with_topk:
-                futures.append(executor.submit(self.gen_sample_head_mlir))
-
-            for i in range(self.num_layers):
-                futures.append(executor.submit(self.gen_block_mlir, i))
 
             # Wait for all threads to complete
             for future in tqdm(concurrent.futures.as_completed(futures),
@@ -300,7 +301,7 @@ class LlmConverter(BaseConverter):
                             row //
                             2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
         else:
-            raise NotImplementedError("Not support now")
+            raise NotImplementedError(f"Not support now: {quant_mode}")
 
         for col in range(unpacked_zeros.shape[1]):
             i = order_map[col % compress_ratio]
@@ -313,6 +314,41 @@ class LlmConverter(BaseConverter):
             return unpacked_weights, pack_int8_weights, unpacked_zeros + 1
         else:
             return unpacked_weights, pack_int8_weights, unpacked_zeros
+
+    def decompressed_weights(self, weight_packed, weight_scale, qzeros):
+        N, K = weight_packed.shape
+        Ns, Ks = weight_scale.shape
+        assert (N == Ns)
+        bits = self.quant_bits
+        compress_ratio = 32 // bits
+        mask = 0xF if bits == 4 else 0xFF
+        unpacked_weights = np.zeros((N, K * compress_ratio), dtype=np.int32)
+        pack_int8_weights = np.zeros((N, K * compress_ratio // 2), dtype=np.uint8)
+        unpacked_zeros = np.zeros((Ns, Ks), dtype=np.uint8)
+        order_map = [i for i in range(compress_ratio)]
+        for row in range(unpacked_weights.shape[1]):
+            i = order_map[row % compress_ratio]
+            unpacked_weights[:, row] = (weight_packed[:, row // compress_ratio] >>
+                                        (bits * i)) & mask
+            if bits == 4:
+                if row % 2 == 0:
+                    pack_int8_weights[:, row // 2] = unpacked_weights[:, row]
+                else:
+                    pack_int8_weights[:, row //
+                                      2] = unpacked_weights[:, row] << 4 | pack_int8_weights[:,
+                                                                                             row //
+                                                                                             2]
+        if qzeros is not None:
+            for col in range(unpacked_zeros.shape[0]):
+                i = order_map[col % compress_ratio]
+                unpacked_zeros[col, :] = (qzeros[col // compress_ratio, :] >> (bits * i)) & mask
+        else:
+            # fill for zero points
+            unpacked_zeros.fill((1 << (bits - 1)))
+
+        if bits == 8:
+            pack_int8_weights = unpacked_weights.astype("uint8")
+        return unpacked_weights, pack_int8_weights, unpacked_zeros
 
     def init_config(self):
         c = self.model_info.config
@@ -332,21 +368,26 @@ class LlmConverter(BaseConverter):
         self.kv_tile = self.num_attention_heads // self.num_key_value_heads
         # for minicpm4
         self.scale_emb = getattr(self.llm_config, "scale_emb", 1.)
+        if self.llm_type == LlmType.GEMMA3:
+            self.scale_emb = self.hidden_size**0.5
         self.scale_depth = getattr(self.llm_config, "scale_depth", 1.)
         self.dim_model_base = getattr(self.llm_config, "dim_model_base", 1.)
         # whether llm head and embedding share weight
         self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', False)
-        # whether to merge lm_head and embedding in bmodel
-        self.do_lmhead_merge = self.tie_word_embeddings and not self.embedding_disk and self.num_device < 2
         self.init_quantization()
 
     def init_quantization(self):
         c = self.model_info.config
         self.quantization_config = getattr(self.llm_config, c.quantization_config, None)
+        if self.quantization_config is None:
+            self.quantization_config = getattr(self.config, c.quantization_config, None)
         if self.quantization_config:
             self.quant_mode = self.quantization_config["quant_method"]
-            self.q_group_size = self.quantization_config["group_size"]
-            self.quant_bits = self.quantization_config["bits"]
+            if self.quant_mode not in ["gptq", "awq", "compressed-tensors", "auto-round"]:
+                raise NotImplementedError(f"Not support quantization method: {self.quant_mode}")
+            if self.quant_mode != "compressed-tensors":
+                self.q_group_size = self.quantization_config["group_size"]
+                self.quant_bits = self.quantization_config["bits"]
             if self.quant_mode == "awq":
                 assert self.quantization_config["version"] == "gemm", (
                     "AWQ only support gemm version for now")
@@ -354,6 +395,30 @@ class LlmConverter(BaseConverter):
                 if self.quantize != "w4f16":
                     print("Warning: AWQ only support w4f16 quantize, change quantize to w4f16")
                     self.quantize = "w4f16"
+            if self.quant_mode == "auto-round":
+                packing_format = self.quantization_config.get("packing_format",
+                                                              "auto_round:auto_gptq")
+                if packing_format == "auto_round:auto_gptq":
+                    self.quant_mode = "gptq"
+                elif packing_format == "auto_round:auto_awq":
+                    self.quant_mode = "awq"
+                else:
+                    raise NotImplementedError(f"Not support packing_format: {packing_format}")
+            if self.quant_mode == "compressed-tensors":
+                format = self.quantization_config.get("format", "pack-quantized")
+                quantization_status = self.quantization_config.get("quantization_status",
+                                                                   "compressed")
+                if format != "pack-quantized" and quantization_status != "compressed":
+                    raise NotImplementedError("Only support compressed pack-quantized now")
+                config_groups = self.quantization_config.get("config_groups", {})
+                assert len(config_groups) == 1, "Only support one group config now"
+                group_0 = config_groups.get("group_0", {})
+                weights_config = group_0.get("weights", {})
+                self.quant_bits = weights_config.get("num_bits")
+                self.q_group_size = weights_config.get("group_size")
+                self.compressed_with_zp = weights_config.get("symmetric", True) is False
+                weight_type = weights_config.get("type")
+                assert (weight_type == "int")
 
         if self.q_group_size < 0:
             self.q_group_size = 0
@@ -366,8 +431,12 @@ class LlmConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
+    def lora_path(self, weight_path: str, dim: int = 0):
+        # dim: which dim the lora rank is
+        return f"lora.{self.lora_rank}.{dim}.{weight_path}"
+
     def gen_embedding_bin(self, embedding_data):
-        embedding_file = '../embedding.bin'
+        embedding_file = os.path.join(self.config_dir, 'embedding.bin')
         if os.path.exists(embedding_file):
             print(f"{embedding_file} already exists. Skipping export.")
             return
@@ -386,15 +455,16 @@ class LlmConverter(BaseConverter):
 
     def gen_embedding_lmhead_mlir(self):
         tqdm.write("generate embedding and lm_head mlir ...")
-        embedding_path = self.model_info.weights[LlmList.EMBEDING] + ".weight"
-        embedding_data = self.model.read(embedding_path)
+        embedding = self.model_info.weights[LlmList.EMBEDING]
+        embedding_data = self.model.read(embedding + ".weight")
         if self.embedding_disk:
             self.gen_embedding_bin(embedding_data)
         else:
             # read embedding weights
-            embedding_weights = {embedding_path: embedding_data}
+            embedding_weights = {embedding + ".weight": embedding_data}
             embedding_npz = "embedding_top_weights.npz"
             np.savez(embedding_npz, **embedding_weights)
+
         # read lm_head weights
         lmhead = self.model_info.weights[LlmList.LMHEAD]
         lmhead_path = lmhead + ".weight"
@@ -404,15 +474,22 @@ class LlmConverter(BaseConverter):
             lmhead_data = embedding_data
         else:
             lmhead_data = self.model.read(lmhead_path)
-        if not self.do_lmhead_merge:
-            lmhead_data = np.ascontiguousarray(np.transpose(lmhead_data, (1, 0)))
-            norm_data = self.model.read(norm_path)
-            lmhead_weights = {lmhead_path: lmhead_data, norm_path: norm_data}
-        else:
-            lmhead_weights = {lmhead_path: lmhead_data}
-
+        lmhead_weights = {lmhead_path: lmhead_data}
         lmhead_npz = "lm_head_top_weights.npz"
         np.savez(lmhead_npz, **lmhead_weights)
+
+        if self.do_lora:
+            embedding_lora_weights = {}
+            self.set_lora_weight(embedding_lora_weights, embedding,
+                                 (self.vocab_size, self.lora_rank),
+                                 (self.lora_rank, self.hidden_size))
+            np.savez("embedding_lora_top_weights.npz", **embedding_lora_weights)
+            lmhead_lora_weights = {}
+            self.set_linear_lora_weight(lmhead_lora_weights, lmhead, self.hidden_size,
+                                        self.vocab_size)
+            # walkaround: avoid lmhead_lora merged with embedding_lora
+            lmhead_lora_weights[f"{lmhead}.lora_A.weight"].fill(1.0)
+            np.savez("lm_head_lora_top_weights.npz", **lmhead_lora_weights)
 
         # gen embedding mlir
         def gen_embedding_by_length(name: str, seq_length: int):
@@ -421,9 +498,9 @@ class LlmConverter(BaseConverter):
                                           name,
                                           Platform.LLM,
                                           input_types=["INT32"],
-                                          weight_file=embedding_npz)
+                                          weight_file=f"../{embedding_npz}")
             input_op = embedding_mlir.create_input_op(self.get_loc("input_ids", embedding_mlir), 0)
-            weight_op = embedding_mlir.create_weight_op(embedding_path,
+            weight_op = embedding_mlir.create_weight_op(embedding + ".weight",
                                                         [self.vocab_size, self.hidden_size])
             new_op = top.GatherOp(embedding_mlir.get_tensor_type(out_shape),
                                   weight_op,
@@ -431,13 +508,7 @@ class LlmConverter(BaseConverter):
                                   axis=0,
                                   loc=self.get_loc(name, embedding_mlir),
                                   ip=embedding_mlir.insert_point).output
-            if self.llm_type in [LlmType.GEMMA3]:
-                new_op = top.MulConstOp(embedding_mlir.get_tensor_type(out_shape),
-                                        new_op,
-                                        const_val=self.hidden_size**0.5,
-                                        loc=self.get_loc(name + ".scale", embedding_mlir),
-                                        ip=embedding_mlir.insert_point).output
-            if self.llm_type == LlmType.MINICPM4:
+            if self.scale_emb != 1.0:
                 new_op = top.MulConstOp(embedding_mlir.get_tensor_type(out_shape),
                                         new_op,
                                         const_val=self.scale_emb,
@@ -445,47 +516,93 @@ class LlmConverter(BaseConverter):
                                         ip=embedding_mlir.insert_point).output
             embedding_mlir.create_return_op([new_op])
             mlir_txt = embedding_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
+                f.write(mlir_txt)
+
+        def gen_embedding_lora_by_length(name: str, seq_length: int):
+            hidden_shape = [1, seq_length, self.hidden_size]
+            lora_mlir = MLIRImporter([[1, seq_length], hidden_shape], [hidden_shape],
+                                     name,
+                                     Platform.LLM,
+                                     input_types=["INT32", "F32"],
+                                     weight_file="../embedding_lora_top_weights.npz")
+            input_op = lora_mlir.create_input_op(self.get_loc("input_ids", lora_mlir), 0)
+            state_op = lora_mlir.create_input_op(self.get_loc("input_states", lora_mlir), 1)
+            lora_a_weight = f"{embedding}.lora_A.weight"
+            weight_op = lora_mlir.create_weight_op(lora_a_weight, [self.vocab_size, self.lora_rank],
+                                                   path=self.lora_path(lora_a_weight, 1))
+            a_op = top.GatherOp(lora_mlir.get_tensor_type([1, seq_length, self.lora_rank]),
+                                weight_op,
+                                input_op,
+                                axis=0,
+                                loc=self.get_loc(f"{name}.lora_A", lora_mlir),
+                                ip=lora_mlir.insert_point).output
+            lora_b_weight = f"{embedding}.lora_B.weight"
+            weight_op = lora_mlir.create_weight_op(lora_b_weight,
+                                                   [self.lora_rank, self.hidden_size],
+                                                   path=self.lora_path(lora_b_weight))
+            b_op = top.MatMulOp(lora_mlir.get_tensor_type(hidden_shape),
+                                a_op,
+                                weight_op,
+                                lora_mlir.none_op,
+                                do_relu=False,
+                                is_lora=True,
+                                loc=self.get_loc(f"{name}.lora_B", lora_mlir),
+                                ip=lora_mlir.insert_point).output
+            if self.scale_emb != 1.0:
+                b_op = top.MulConstOp(lora_mlir.get_tensor_type(hidden_shape),
+                                      b_op,
+                                      const_val=self.scale_emb,
+                                      loc=self.get_loc(name + ".scale", lora_mlir),
+                                      ip=lora_mlir.insert_point).output
+            new_op = top.AddOp(lora_mlir.get_tensor_type(hidden_shape), [state_op, b_op],
+                               loc=self.get_loc(f"{name}.lora_add", lora_mlir),
+                               ip=lora_mlir.insert_point).output
+            lora_mlir.create_return_op([new_op])
+            mlir_txt = lora_mlir.print_module()
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         # gen lm_head mlir
         def gen_lm_head():
+            name = "lm_head"
             out_shape = [[1, self.vocab_size]]
             if self.lmhead_with_topk:
                 out_shape = [[1, 1]]
             lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
                                        out_shape,
-                                       "lm_head",
+                                       name,
                                        Platform.LLM,
-                                       weight_file=lmhead_npz)
+                                       weight_file=f"../{lmhead_npz}")
             input_op = lmhead_mlir.create_input_op(self.get_loc("hidden_states", lmhead_mlir), 0)
-            if not self.do_lmhead_merge:
+            if self.llm_type == LlmType.MINICPM4:
+                input_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.hidden_size]),
+                                          input_op,
+                                          const_val=self.dim_model_base / self.hidden_size,
+                                          loc=self.get_loc(lmhead + ".scale", lmhead_mlir),
+                                          ip=lmhead_mlir.insert_point).output
+            if self.num_device > 1:
                 weight_op = lmhead_mlir.create_weight_op(norm_path, [1, self.hidden_size])
                 input_op = self.rms_norm(lmhead_mlir, input_op, norm)
-                if self.llm_type == LlmType.MINICPM4:
-                    input_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.hidden_size]),
-                                              input_op,
-                                              const_val=self.dim_model_base / self.hidden_size,
-                                              loc=self.get_loc(lmhead + ".scale", lmhead_mlir),
-                                              ip=lmhead_mlir.insert_point).output
-                w_shape = [self.hidden_size, self.vocab_size]
-                lmhead_op = self.linear(lmhead_mlir, lmhead, input_op, w_shape,
-                                        [1, self.vocab_size])
-            else:
-                w_shape = [self.vocab_size, self.hidden_size]
-                weight_op = lmhead_mlir.create_weight_op(lmhead + ".weight", w_shape)
-                lmhead_op = top.MatMulOp(lmhead_mlir.get_tensor_type([self.vocab_size, 1]),
-                                         weight_op,
-                                         input_op,
-                                         lmhead_mlir.none_op,
-                                         do_relu=False,
-                                         right_transpose=True,
-                                         loc=self.get_loc(lmhead, lmhead_mlir),
-                                         ip=lmhead_mlir.insert_point).output
-                lmhead_op = top.ReshapeOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
-                                          lmhead_op,
-                                          loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
-                                          ip=lmhead_mlir.insert_point).output
+
+            w_shape = [self.vocab_size, self.hidden_size]
+            weight_op = lmhead_mlir.create_weight_op(lmhead + ".weight", w_shape)
+            lmhead_op = top.MatMulOp(lmhead_mlir.get_tensor_type([self.vocab_size, 1]),
+                                     weight_op,
+                                     input_op,
+                                     lmhead_mlir.none_op,
+                                     do_relu=False,
+                                     right_transpose=True,
+                                     loc=self.get_loc(lmhead, lmhead_mlir),
+                                     ip=lmhead_mlir.insert_point).output
+            lmhead_op = top.ReshapeOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                      lmhead_op,
+                                      loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
+                                      ip=lmhead_mlir.insert_point).output
             if self.lmhead_with_topk:
                 topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
                                      lmhead_op,
@@ -499,7 +616,60 @@ class LlmConverter(BaseConverter):
                 lmhead_mlir.create_return_op([lmhead_op])
 
             mlir_txt = lmhead_mlir.print_module()
-            with open("lm_head.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
+                f.write(mlir_txt)
+
+        def gen_lm_head_lora():
+            name = "lm_head_lora"
+            out_shape = [1, self.vocab_size]
+            lmhead_mlir = MLIRImporter([[1, self.hidden_size], out_shape], [out_shape],
+                                       name,
+                                       Platform.LLM,
+                                       input_types=["F32", "F32"],
+                                       weight_file="../lm_head_lora_top_weights.npz")
+            input_op = lmhead_mlir.create_input_op(self.get_loc("input_states", lmhead_mlir), 0)
+            state_op = lmhead_mlir.create_input_op(self.get_loc("input_logits", lmhead_mlir), 1)
+            if self.llm_type == LlmType.MINICPM4:
+                input_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.hidden_size]),
+                                          input_op,
+                                          const_val=self.dim_model_base / self.hidden_size,
+                                          loc=self.get_loc(lmhead + ".scale", lmhead_mlir),
+                                          ip=lmhead_mlir.insert_point).output
+            lora_a_weight = f"{lmhead}.lora_A.weight"
+            a_weight_op = lmhead_mlir.create_weight_op(lora_a_weight,
+                                                       [self.lora_rank, self.hidden_size],
+                                                       path=self.lora_path(lora_a_weight))
+            a_op = top.MatMulOp(lmhead_mlir.get_tensor_type([1, self.lora_rank]),
+                                input_op,
+                                a_weight_op,
+                                lmhead_mlir.none_op,
+                                do_relu=False,
+                                right_transpose=True,
+                                is_lora=True,
+                                loc=self.get_loc(f"{name}.lora_A", lmhead_mlir),
+                                ip=lmhead_mlir.insert_point).output
+            lora_b_weight = f"{lmhead}.lora_B.weight"
+            b_weight_op = lmhead_mlir.create_weight_op(lora_b_weight,
+                                                       [self.lora_rank, self.vocab_size],
+                                                       path=self.lora_path(lora_b_weight))
+            b_op = top.MatMulOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                a_op,
+                                b_weight_op,
+                                lmhead_mlir.none_op,
+                                do_relu=False,
+                                is_lora=True,
+                                loc=self.get_loc(f"{name}.lora_B", lmhead_mlir),
+                                ip=lmhead_mlir.insert_point).output
+            new_op = top.AddOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]), [state_op, b_op],
+                               loc=self.get_loc(f"{name}.lora_add", lmhead_mlir),
+                               ip=lmhead_mlir.insert_point).output
+            lmhead_mlir.create_return_op([new_op])
+            mlir_txt = lmhead_mlir.print_module()
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         if not self.embedding_disk:
@@ -509,12 +679,20 @@ class LlmConverter(BaseConverter):
             gen_embedding_by_length("embedding", input_len)
             gen_embedding_by_length("embedding_cache", 1)
         gen_lm_head()
+        if self.do_lora:
+            input_len = self.max_input_length
+            if self.share_prompt:
+                input_len = max(self.max_prefill_kv_length, self.max_input_length)
+            gen_embedding_lora_by_length("embedding_lora", input_len)
+            gen_embedding_lora_by_length("embedding_cache_lora", 1)
+            gen_lm_head_lora()
 
     def gen_sample_head_mlir(self, max_top_k=50, min_tokens_to_keep=5):
         tqdm.write("generate greedy head and sample head mlir ...")
+        name = "greedy_head"
         # greedy head
         greedy_head_mlir = MLIRImporter([[1, self.vocab_size]], [[1, 1]],
-                                        "greedy_head",
+                                        name,
                                         Platform.LLM,
                                         weight_file=None)
         input_op = greedy_head_mlir.create_input_op(self.get_loc("m_logits", greedy_head_mlir), 0)
@@ -526,7 +704,9 @@ class LlmConverter(BaseConverter):
                              ip=greedy_head_mlir.insert_point)
         greedy_head_mlir.create_return_op([topk_op.indices])
         mlir_txt = greedy_head_mlir.print_module()
-        with open(f"greedy_head.mlir", "w") as f:
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
 
         # sample head
@@ -541,13 +721,14 @@ class LlmConverter(BaseConverter):
         sample_head_weights["Constant2"] = np.array([constant1]).astype(np.float32)
         np.savez("sample_head_top_weights.npz", **sample_head_weights)
 
+        name = "sample_head"
         sample_head_mlir = MLIRImporter(
             [[1, self.vocab_size], [1, self.seq_length], [1], [1], [1], [1]],
             [[1, max_top_k], [1, max_top_k]],
-            "sample_head",
+            name,
             Platform.LLM,
             input_types=['F32', 'INT32', 'F32', 'F32', 'INT32', 'F32'],
-            weight_file="sample_head_top_weights.npz")
+            weight_file="../sample_head_top_weights.npz")
         ip = sample_head_mlir.insert_point
 
         def T(shape: list):
@@ -638,7 +819,10 @@ class LlmConverter(BaseConverter):
                                     ip=ip).output
         sample_head_mlir.create_return_op([softmax1_op, topk_op.indices])
         mlir_txt = sample_head_mlir.print_module()
-        with open(f"sample_head.mlir", "w") as f:
+
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
 
     def repeat_kv(self, mlir_gen, kv_op, len: int, prefix: str):
@@ -668,7 +852,8 @@ class LlmConverter(BaseConverter):
                input_op,
                weight_shape: list,
                out_shape: list,
-               force_bias: bool = False):
+               force_bias: bool = False,
+               do_lora: bool = False):
         if self.model.is_exist(proj + ".bias") or force_bias:
             bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
@@ -683,26 +868,60 @@ class LlmConverter(BaseConverter):
                            self.q_group_size] if self.q_group_size > 0 else [weight_shape[1], 1]
             scale_op = mlir_gen.create_weight_op(proj + ".scales", scale_shape)
             zp_op = mlir_gen.create_weight_op(proj + ".qzeros", scale_shape, 'UINT8')
-            return top.A16MatMulOp(mlir_gen.get_tensor_type(out_shape),
-                                   input_op,
-                                   qweight_op,
-                                   scale_op,
-                                   zp_op,
-                                   bias_op,
-                                   right_transpose=True,
-                                   q_group_size=self.q_group_size,
-                                   weight_bits=self.quant_bits,
-                                   loc=self.get_loc(proj, mlir_gen),
-                                   ip=mlir_gen.insert_point).output
-
-        weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
-        return top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
-                            input_op,
-                            weight_op,
-                            bias_op,
-                            do_relu=False,
-                            loc=self.get_loc(proj, mlir_gen),
-                            ip=mlir_gen.insert_point).output
+            new_op = top.A16MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                                     input_op,
+                                     qweight_op,
+                                     scale_op,
+                                     zp_op,
+                                     bias_op,
+                                     right_transpose=True,
+                                     q_group_size=self.q_group_size,
+                                     weight_bits=self.quant_bits,
+                                     loc=self.get_loc(proj, mlir_gen),
+                                     ip=mlir_gen.insert_point).output
+        else:
+            weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
+            new_op = top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                                  input_op,
+                                  weight_op,
+                                  bias_op,
+                                  do_relu=False,
+                                  loc=self.get_loc(proj, mlir_gen),
+                                  ip=mlir_gen.insert_point).output
+        if not do_lora:
+            return new_op
+        if bias_op is not mlir_gen.none_op:
+            raise NotImplementedError("Lora with bias is not supported yet.")
+        # add lora
+        lora_a_weight = f"{proj}.lora_A.weight"
+        lora_b_weight = f"{proj}.lora_B.weight"
+        weight_op = mlir_gen.create_weight_op(lora_a_weight, [self.lora_rank, weight_shape[0]],
+                                              path=self.lora_path(lora_a_weight))
+        lora_a_shape = list(out_shape)
+        lora_a_shape[-1] = self.lora_rank
+        lora_op = top.MatMulOp(mlir_gen.get_tensor_type(lora_a_shape),
+                               input_op,
+                               weight_op,
+                               mlir_gen.none_op,
+                               do_relu=False,
+                               right_transpose=True,
+                               is_lora=True,
+                               loc=self.get_loc(f"{proj}.lora_A", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        weight_op = mlir_gen.create_weight_op(lora_b_weight, [self.lora_rank, weight_shape[1]],
+                                              path=self.lora_path(lora_b_weight))
+        lora_op = top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                               lora_op,
+                               weight_op,
+                               mlir_gen.none_op,
+                               do_relu=False,
+                               is_lora=True,
+                               loc=self.get_loc(f"{proj}.lora_B", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        new_op = top.AddOp(mlir_gen.get_tensor_type(out_shape), [new_op, lora_op],
+                           loc=self.get_loc(proj + ".lora_add", mlir_gen),
+                           ip=mlir_gen.insert_point).output
+        return new_op
 
     # q_embed = (q * cos) + (rotate_half(q) * sin)
     # k_embed = (k * cos) + (rotate_half(k) * sin)
@@ -773,42 +992,88 @@ class LlmConverter(BaseConverter):
                               axis=0,
                               loc=self.get_loc(rotary_sin, mlir_gen),
                               ip=mlir_gen.insert_point).output
-        # ===== q_proj rotary ========
-        q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
-
-        # ===== k_proj rotary ========
-        k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
+        q_op_shape = q_op.type.shape
+        q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
+                          q_op,
+                          sin_op,
+                          cos_op,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("q_proj", mlir_gen),
+                          ip=mlir_gen.insert_point).output
+        k_op_shape = k_op.type.shape
+        k_op = top.RopeOp(mlir_gen.get_tensor_type(k_op_shape),
+                          k_op,
+                          sin_op,
+                          cos_op,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("k_cache", mlir_gen),
+                          ip=mlir_gen.insert_point).output
         return q_op, k_op
 
-    def set_linear_weight(self, path: str, weight_dict: dict):
-        is_quant = self.quant_mode is not None and self.model.is_exist(path + ".qweight")
+    def set_linear_lora_weight(self, weight_dict: dict, path: str, K: int, N: int):
+        self.set_lora_weight(weight_dict, path, (self.lora_rank, K), (self.lora_rank, N))
+
+    def set_lora_weight(self, weight_dict: dict, path: str, A_shape: tuple[int],
+                        B_shape: tuple[int]):
+        lora_a_path = path + ".lora_A.weight"
+        lora_b_path = path + ".lora_B.weight"
+        weight_dict[lora_a_path] = np.zeros(A_shape, dtype=np.float32)
+        weight_dict[lora_b_path] = np.zeros(B_shape, dtype=np.float32)
+
+    def set_linear_weight(self, path: str, weight_dict: dict, do_lora: bool = False):
+        is_quant = False
+        K, N = 0, 0
+        if self.quant_mode is not None:
+            if self.model.is_exist(path + ".qweight") or self.model.is_exist(path +
+                                                                             ".weight_packed"):
+                is_quant = True
         if not is_quant:
             weight_path = path + ".weight"
-            bias_path = path + ".bias"
             if self.model.is_exist(weight_path):
                 data = self.model.read(weight_path)
                 weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
+                K = data.shape[1]
+                N = data.shape[0]
             else:
                 raise RuntimeError("Can't find key: {}".format(weight_path))
-        else:
+        elif self.quant_mode in ["gptq", "awq"]:
             qweight_path = path + ".qweight"
             scale_path = path + ".scales"
             zp_path = path + ".qzeros"
-            bias_path = path + ".bias"
-            if self.model.is_exist(qweight_path):
-                qweight_data = self.model.read(qweight_path)
-                scale_data = self.model.read(scale_path)
+            qweight_data = self.model.read(qweight_path)
+            scale_data = self.model.read(scale_path)
+            zp_data = self.model.read(zp_path)
+            _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
+                qweight_data, zp_data, self.quant_bits, self.quant_mode)
+            weight_dict[qweight_path] = np.ascontiguousarray(np.transpose(
+                pack_int8_weights, (1, 0)))
+            weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
+            weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
+            K = pack_int8_weights.shape[0] * (8 // self.quant_bits)
+            N = pack_int8_weights.shape[1]
+        elif self.quant_mode == "compressed-tensors":
+            qweight_path = path + ".weight_packed"
+            scale_path = path + ".weight_scale"
+            zp_path = path + ".weight_zero_point"
+            qweight_data = self.model.read(qweight_path)
+            scale_data = self.model.read(scale_path)
+            if self.compressed_with_zp:
                 zp_data = self.model.read(zp_path)
-                _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweight_data, zp_data, self.quant_bits, self.quant_mode)
-                weight_dict[qweight_path] = np.ascontiguousarray(
-                    np.transpose(pack_int8_weights, (1, 0)))
-                weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
-                weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
             else:
-                raise RuntimeError("Can't find key: {}".format(qweight_path))
+                zp_data = None
+            _, pack_int8_weights, unpacked_zeros = self.decompressed_weights(
+                qweight_data, scale_data, zp_data)
+            weight_dict[path + ".qweight"] = pack_int8_weights
+            weight_dict[path + ".scales"] = scale_data
+            weight_dict[path + ".qzeros"] = unpacked_zeros
+            K = pack_int8_weights.shape[1] * (8 // self.quant_bits)
+            N = pack_int8_weights.shape[0]
+
+        bias_path = path + ".bias"
         if self.model.is_exist(bias_path):
             weight_dict[bias_path] = self.model.read(bias_path)
+        if do_lora:
+            self.set_linear_lora_weight(weight_dict, path, K, N)
 
     def set_common_weight(self, path: str, weight_dict: dict, type=WeightType.NORMAL):
         weight_path = path + ".weight"
@@ -847,7 +1112,7 @@ class LlmConverter(BaseConverter):
             pre_mlp_ln = TOP_PATH + self.model_info.weights[LlmList.PRE_MLP_LN]
             post_mlp_ln = TOP_PATH + self.model_info.weights[LlmList.POST_MLP_LN]
         norm = self.model_info.weights[LlmList.NORM]
-        do_norm = self.do_lmhead_merge and idx == self.num_layers - 1
+        do_norm = self.num_device < 2 and idx == self.num_layers - 1
         rotary_cos = "rotary_cos"
         rotary_sin = "rotary_sin"
 
@@ -858,10 +1123,10 @@ class LlmConverter(BaseConverter):
             rotary_sin + ".weight": self.sin,
         }
         self.set_common_weight(input_ln, weight_dict, WeightType.RMS_NORM)
-        self.set_linear_weight(q_proj, weight_dict)
-        self.set_linear_weight(k_proj, weight_dict)
-        self.set_linear_weight(v_proj, weight_dict)
-        self.set_linear_weight(o_proj, weight_dict)
+        self.set_linear_weight(q_proj, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(k_proj, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(v_proj, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(o_proj, weight_dict, do_lora=self.do_lora)
         if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
             self.set_common_weight(q_norm, weight_dict, WeightType.RMS_NORM)
             self.set_common_weight(k_norm, weight_dict, WeightType.RMS_NORM)
@@ -869,13 +1134,14 @@ class LlmConverter(BaseConverter):
             self.set_common_weight(pre_mlp_ln, weight_dict, WeightType.RMS_NORM)
             self.set_common_weight(post_mlp_ln, weight_dict, WeightType.RMS_NORM)
         self.set_common_weight(post_attn_ln, weight_dict, WeightType.RMS_NORM)
-        self.set_linear_weight(mlp_gate, weight_dict)
-        self.set_linear_weight(mlp_up, weight_dict)
-        self.set_linear_weight(mlp_down, weight_dict)
+        self.set_linear_weight(mlp_gate, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(mlp_up, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(mlp_down, weight_dict, do_lora=self.do_lora)
         if do_norm:
             self.set_common_weight(norm, weight_dict, WeightType.RMS_NORM)
         if self.extern_block_weights:
             weight_dict.update(self.extern_block_weights)
+        self.weights.extend(list(weight_dict.keys()))
         np.savez(weight_file, **weight_dict)
 
         def gen_mlp(mlir_gen, input_shape, in_op):
@@ -887,19 +1153,26 @@ class LlmConverter(BaseConverter):
             else:
                 new_op = self.rms_norm(mlir_gen, in_op, post_attn_ln)
 
-            gate_op = self.linear(mlir_gen, mlp_gate, new_op,
-                                  [self.hidden_size, self.intermediate_size],
-                                  [1, len, self.intermediate_size])
+            gate_op = self.linear(mlir_gen,
+                                  mlp_gate,
+                                  new_op, [self.hidden_size, self.intermediate_size],
+                                  [1, len, self.intermediate_size],
+                                  do_lora=self.do_lora)
             act_op = self.activate(mlir_gen, gate_op, self.hidden_act, mlp_gate)
-            up_op = self.linear(mlir_gen, mlp_up, new_op,
-                                [self.hidden_size, self.intermediate_size],
-                                [1, len, self.intermediate_size])
+            up_op = self.linear(mlir_gen,
+                                mlp_up,
+                                new_op, [self.hidden_size, self.intermediate_size],
+                                [1, len, self.intermediate_size],
+                                do_lora=self.do_lora)
             new_op = top.MulOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
                                [act_op, up_op],
                                loc=self.get_loc(mlp_up + ".mul", mlir_gen),
                                ip=ip).output
-            down_op = self.linear(mlir_gen, mlp_down, new_op,
-                                  [self.intermediate_size, self.hidden_size], input_shape)
+            down_op = self.linear(mlir_gen,
+                                  mlp_down,
+                                  new_op, [self.intermediate_size, self.hidden_size],
+                                  input_shape,
+                                  do_lora=self.do_lora)
             if self.llm_type in [LlmType.GEMMA3]:
                 down_op = self.rms_norm(mlir_gen, down_op, post_mlp_ln)
             if self.llm_type == LlmType.MINICPM4:
@@ -919,13 +1192,7 @@ class LlmConverter(BaseConverter):
             return new_op
 
         # create block mlir
-        def gen_block():
-            name = f"block_{idx}"
-            if self.share_prompt:
-                input_len = self.max_prefill_kv_length
-                name = f"block_prompt_{idx}"
-            else:
-                input_len = self.max_input_length
+        def gen_block_by_length(name: str, input_len: int, dir: str):
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
@@ -937,7 +1204,7 @@ class LlmConverter(BaseConverter):
                                       [input_shape, kv_shape, kv_shape],
                                       name,
                                       Platform.LLM, ["F32", "INT32", "F32"],
-                                      weight_file=weight_file)
+                                      weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -955,15 +1222,21 @@ class LlmConverter(BaseConverter):
 
             # q_proj
             q_dim = self.num_attention_heads * self.head_dim
-            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, q_dim],
-                               [1, input_len, q_dim])
+            q_op = self.linear(block_mlir,
+                               q_proj,
+                               ln_op, [self.hidden_size, q_dim], [1, input_len, q_dim],
+                               do_lora=self.do_lora)
             # k_proj
-            k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, input_len, self.kv_dim])
+            k_op = self.linear(block_mlir,
+                               k_proj,
+                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
+                               do_lora=self.do_lora)
 
             # v_proj
-            v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, input_len, self.kv_dim])
+            v_op = self.linear(block_mlir,
+                               v_proj,
+                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
+                               do_lora=self.do_lora)
             # reshape q,k,v
             q_op = top.ReshapeOp(T(q_shape),
                                  q_op,
@@ -1006,7 +1279,11 @@ class LlmConverter(BaseConverter):
                                      keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
-            o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
+            o_op = self.linear(block_mlir,
+                               o_proj,
+                               fa_op, [q_dim, self.hidden_size],
+                               input_shape,
+                               do_lora=self.do_lora)
             if self.llm_type == LlmType.GEMMA3:
                 o_op = self.rms_norm(block_mlir, o_op, post_attn_ln)
             if self.llm_type == LlmType.MINICPM4:
@@ -1020,8 +1297,24 @@ class LlmConverter(BaseConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            target = os.path.join(dir, f"{name}.mlir")
+            with open(target, "w") as f:
                 f.write(mlir_txt)
+            self.block_mlir_targes[dir] = name
+
+        def gen_block():
+            name = f"block_{idx}"
+            if self.share_prompt:
+                input_len = self.max_prefill_kv_length
+                name = f"block_prompt_{idx}"
+                gen_block_by_length(name, input_len, name)
+                return
+
+            for input_len in self.input_length_list:
+                gen_block_by_length(name, input_len, f"{name}_{input_len}")
+            return
 
         def gen_block_cache():
             name = f"block_cache_{idx}"
@@ -1039,7 +1332,7 @@ class LlmConverter(BaseConverter):
                 [input_shape, kv_shape, kv_shape],
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
-                weight_file=weight_file)
+                weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1059,13 +1352,20 @@ class LlmConverter(BaseConverter):
 
             # q_proj
             q_dim = self.num_attention_heads * self.head_dim
-            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, q_dim], [1, 1, q_dim])
+            q_op = self.linear(block_mlir,
+                               q_proj,
+                               ln_op, [self.hidden_size, q_dim], [1, 1, q_dim],
+                               do_lora=self.do_lora)
             # k_proj
-            k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, 1, self.kv_dim])
+            k_op = self.linear(block_mlir,
+                               k_proj,
+                               ln_op, [self.hidden_size, self.kv_dim], [1, 1, self.kv_dim],
+                               do_lora=self.do_lora)
             # v_proj
-            v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, 1, self.kv_dim])
+            v_op = self.linear(block_mlir,
+                               v_proj,
+                               ln_op, [self.hidden_size, self.kv_dim], [1, 1, self.kv_dim],
+                               do_lora=self.do_lora)
             # reshape q,k,v
             q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshape"), ip=ip).output
@@ -1082,11 +1382,13 @@ class LlmConverter(BaseConverter):
             k_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
                                    self.head_dim]), [in3_op, k_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(k_proj + ".concat"),
                                 ip=ip).output
             v_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
                                    self.head_dim]), [in4_op, v_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(v_proj + ".concat"),
                                 ip=ip).output
             # ======= fattention =========
@@ -1106,7 +1408,11 @@ class LlmConverter(BaseConverter):
                                      keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
-            o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
+            o_op = self.linear(block_mlir,
+                               o_proj,
+                               fa_op, [q_dim, self.hidden_size],
+                               input_shape,
+                               do_lora=self.do_lora)
             if self.llm_type == LlmType.GEMMA3:
                 o_op = self.rms_norm(block_mlir, o_op, post_attn_ln)
             if self.llm_type == LlmType.MINICPM4:
@@ -1120,7 +1426,9 @@ class LlmConverter(BaseConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         def gen_block_with_kv():
@@ -1129,8 +1437,8 @@ class LlmConverter(BaseConverter):
             input_len = self.max_input_length
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
-            max_kv_len = self.max_prefill_kv_length + self.max_input_length
-            mask_shape = [1, 1, self.max_input_length, max_kv_len]
+            max_kv_len = self.max_prefill_kv_length + input_len
+            mask_shape = [1, 1, input_len, max_kv_len]
             history_shape = [1, self.max_prefill_kv_length, self.num_key_value_heads, self.head_dim]
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
@@ -1141,7 +1449,7 @@ class LlmConverter(BaseConverter):
                 [input_shape, kv_shape, kv_shape],
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
-                weight_file=weight_file)
+                weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1161,14 +1469,20 @@ class LlmConverter(BaseConverter):
 
             # q_proj
             q_dim = self.num_attention_heads * self.head_dim
-            q_op = self.linear(block_mlir, q_proj, ln_op, [self.hidden_size, q_dim],
-                               [1, input_len, q_dim])
+            q_op = self.linear(block_mlir,
+                               q_proj,
+                               ln_op, [self.hidden_size, q_dim], [1, input_len, q_dim],
+                               do_lora=self.do_lora)
             # k_proj
-            k_op = self.linear(block_mlir, k_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, input_len, self.kv_dim])
+            k_op = self.linear(block_mlir,
+                               k_proj,
+                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
+                               do_lora=self.do_lora)
             # v_proj
-            v_op = self.linear(block_mlir, v_proj, ln_op, [self.hidden_size, self.kv_dim],
-                               [1, input_len, self.kv_dim])
+            v_op = self.linear(block_mlir,
+                               v_proj,
+                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
+                               do_lora=self.do_lora)
             # reshape q,k,v
             q_op = top.ReshapeOp(T(q_shape),
                                  q_op,
@@ -1197,11 +1511,13 @@ class LlmConverter(BaseConverter):
             k_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
                                 [in3_op, k_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(k_proj + ".concat"),
                                 ip=ip).output
             v_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
                                 [in4_op, v_op],
                                 axis=1,
+                                only_merge=True,
                                 loc=L(v_proj + ".concat"),
                                 ip=ip).output
             # ======= fattention =========
@@ -1221,7 +1537,11 @@ class LlmConverter(BaseConverter):
                                      keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
-            o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
+            o_op = self.linear(block_mlir,
+                               o_proj,
+                               fa_op, [q_dim, self.hidden_size],
+                               input_shape,
+                               do_lora=self.do_lora)
             if self.llm_type == LlmType.GEMMA3:
                 o_op = self.rms_norm(block_mlir, o_op, post_attn_ln)
             if self.llm_type == LlmType.MINICPM4:
@@ -1235,7 +1555,9 @@ class LlmConverter(BaseConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         if self.use_block_with_kv:
@@ -1281,106 +1603,122 @@ class LlmConverter(BaseConverter):
         ]
         self.run_command(['bash', '-c', ' '.join(parallel_cmd)])
 
-    def compile_embedding(self):
-        name = "embedding"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
-            return
-        deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.half_precision_quantize}',
-            '--quant_input', '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}', f'--model {name}.bmodel'
-        ]
-        if self.debug:
-            deploy_args.append('--debug')
-        self.add_task(deploy_args, f"{name}.log")
-
-    def compile_embedding_cache(self):
-        name = "embedding_cache"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
-            return
-        deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.half_precision_quantize}',
-            '--quant_input', '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}', f'--model {name}.bmodel'
-        ]
-        if self.debug:
-            deploy_args.append('--debug')
-        self.add_task(deploy_args, f"{name}.log")
-
     def compile_lm_head(self):
         name = "lm_head"
-        if os.path.exists(f"{name}.bmodel"):
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.half_precision_quantize}',
-            '--quant_input', f'--chip {self.chip}', f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}', f'--model {name}.bmodel'
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
+            f'--quantize {self.half_precision_quantize}', '--quant_input', f'--chip {self.chip}',
+            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'--model {name}.bmodel'
         ]
         if self.debug:
             deploy_args.append('--debug')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
     def compile_greedy_head(self):
         name = "greedy_head"
-        if os.path.exists(f"{name}.bmodel"):
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--addr_mode io_alone', f'--model {name}.bmodel'
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
+            '--addr_mode io_alone', f'--model {name}.bmodel'
         ]
         if self.debug:
             deploy_args.append('--debug')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
     def compile_sample_head(self):
         name = "sample_head"
-        if os.path.exists(f"{name}.bmodel"):
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--addr_mode io_alone', f'--model {name}.bmodel'
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
+            '--dynamic', '--addr_mode io_alone', f'--model {name}.bmodel'
         ]
         if self.debug:
             deploy_args.append('--debug')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
-    def compile_block(self, layer_id):
-        name = f"block_{layer_id}"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+    def compile_block(self):
+        for dir, name in self.block_mlir_targes.items():
+            model_path = f"{dir}/{name}.bmodel"
+            self.all_bmodels_without_bytes.append(model_path)
+            if os.path.exists(model_path):
+                print(f"{name}.bmodel already exists. Skipping compilation.")
+                continue
+
+            deploy_args = [
+                f'pushd {dir} && ', 'model_deploy.py', f'--mlir {name}.mlir',
+                f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}',
+                '--quant_input', '--quant_output', f'--chip {self.chip}',
+                f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+                f'--model {name}.bmodel'
+            ]
+            if self.high_precision:
+                deploy_args.append('--high_precision')
+            if self.symmetric:
+                deploy_args.append('--q_symmetric')
+            if self.dynamic:
+                deploy_args.append('--dynamic')
+            if self.debug:
+                deploy_args.append('--debug')
+            if self.same_addr:
+                deploy_args.append(f'--same_addr {self.same_addr}')
+            deploy_args.append('&& popd')
+            self.add_task(deploy_args, f"{name}.log")
+
+    def compile_block_cache(self, layer_id):
+        name = f"block_cache_{layer_id}"
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{model_path} already exists. Skipping compilation.")
             return
 
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.quantize}',
-            f'--q_group_size {self.q_group_size}', '--quant_input', '--quant_output',
-            f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
+            f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}', '--quant_input',
+            '--quant_output', f'--chip {self.chip}', '--addr_mode io_alone',
+            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
             f'--model {name}.bmodel'
         ]
         if self.high_precision:
             deploy_args.append('--high_precision')
         if self.symmetric:
             deploy_args.append('--q_symmetric')
-        if self.dynamic:
-            deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
+        if self.same_addr:
+            deploy_args.append(f'--same_addr {self.same_addr}')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
-    def compile_block_cache(self, layer_id):
-        name = f"block_cache_{layer_id}"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+    def compile_block_prompt(self, layer_id):
+        name = f"block_prompt_{layer_id}"
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels_without_bytes.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{model_path} already exists. Skipping compilation.")
             return
 
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.quantize}',
-            f'--q_group_size {self.q_group_size}', '--quant_input', '--quant_output',
-            f'--chip {self.chip}', '--addr_mode io_alone', f'--num_core {self.num_core}',
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
+            f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}', '--quant_input',
+            '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
             f'--num_device {self.num_device}', f'--model {name}.bmodel'
         ]
         if self.high_precision:
@@ -1389,37 +1727,20 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--q_symmetric')
         if self.debug:
             deploy_args.append('--debug')
-        self.add_task(deploy_args, f"{name}.log")
-
-    def compile_block_prompt(self, layer_id):
-        name = f"block_prompt_{layer_id}"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
-            return
-
-        deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--quantize {self.quantize}',
-            f'--q_group_size {self.q_group_size}', '--quant_input', '--quant_output',
-            f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model {name}.bmodel'
-        ]
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.symmetric:
-            deploy_args.append('--q_symmetric')
-        if self.debug:
-            deploy_args.append('--debug')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
     def compile_vit(self):
         if not self.do_vit:
             return
         name = "vit"
-        if os.path.exists(f"{name}.bmodel"):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{model_path} already exists. Skipping compilation.")
             return
         deploy_args = [
-            'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
             f'--num_core {self.num_core}', f'--num_device {self.num_device}',
             f'--model {name}.bmodel'
         ]
@@ -1435,29 +1756,37 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--debug')
         if self.dynamic_vit:
             deploy_args.append('--dynamic')
+        deploy_args.append('&& popd')
+        self.add_task(deploy_args, f"{name}.log")
+
+    def compile_common(self, name, with_size=False):
+        model_path = f"{name}/{name}.bmodel"
+        if not with_size:
+            self.all_bmodels_without_bytes.append(model_path)
+        else:
+            self.all_bmodels.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{model_path} already exists. Skipping compilation.")
+            return
+        deploy_args = [
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
+            f'--quantize {self.half_precision_quantize}', '--quant_input', '--quant_output',
+            f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'--model {name}.bmodel'
+        ]
+        if self.debug:
+            deploy_args.append('--debug')
+        deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
     def combine(self):
         bmodel_list = []
         total_bytes = 0
-        for i in range(self.num_layers):
-            bmodel_list = bmodel_list + [f"block_{i}.bmodel", f"block_cache_{i}.bmodel"]
-            if self.share_prompt:
-                bmodel_list.append(f"block_prompt_{i}.bmodel")
-            total_bytes += os.path.getsize(f"block_{i}.bmodel")
-        if not self.embedding_disk:
-            bmodel_list += ['embedding.bmodel', 'embedding_cache.bmodel']
-            total_bytes += os.path.getsize("embedding.bmodel")
-        if not self.lmhead_with_topk:
-            bmodel_list += ["greedy_head.bmodel", "sample_head.bmodel"]
-        if self.do_vit:
-            bmodel_list += ["vit.bmodel"]
-            total_bytes += os.path.getsize("vit.bmodel")
-        for bmodel in self.extern_bmodels:
+        for bmodel in self.all_bmodels:
             bmodel_list += [bmodel]
             total_bytes += os.path.getsize(bmodel)
-        bmodel_list += ["lm_head.bmodel"]
-        total_bytes += os.path.getsize("lm_head.bmodel")
+        for bmodel in self.all_bmodels_without_bytes:
+            bmodel_list += [bmodel]
 
         combine_args = ['model_tool', '--combine', ' '.join(bmodel_list), '-o', self.out_bmodel]
         self.run_command(['bash', '-c', ' '.join(combine_args)])
@@ -1473,25 +1802,31 @@ class LlmConverter(BaseConverter):
     def compile_all(self):
 
         if self.do_vit:
-            self.compile_vit()
+            self.all_compiles.append(self.compile_vit)
 
         if not self.embedding_disk:
-            self.compile_embedding()
-            self.compile_embedding_cache()
+            self.all_compiles.append(lambda: self.compile_common("embedding", with_size=True))
+            self.all_compiles.append(
+                lambda: self.compile_common("embedding_cache", with_size=False))
 
-        self.compile_lm_head()
+        if self.do_lora:
+            self.all_compiles.append(lambda: self.compile_common("lm_head_lora", with_size=True))
+            self.all_compiles.append(lambda: self.compile_common("embedding_lora", with_size=True))
+            self.all_compiles.append(
+                lambda: self.compile_common("embedding_cache_lora", with_size=False))
+
+        self.all_compiles.append(self.compile_lm_head)
 
         if not self.lmhead_with_topk:
-            self.compile_greedy_head()
-            self.compile_sample_head()
-
+            self.all_compiles.append(self.compile_greedy_head)
+            self.all_compiles.append(self.compile_sample_head)
+        self.all_compiles.append(self.compile_block)
         for i in range(self.num_layers):
-            self.compile_block(i)
-            self.compile_block_cache(i)
+            self.all_compiles.append(lambda i=i: self.compile_block_cache(i))
             if self.share_prompt:
-                self.compile_block_prompt(i)
+                self.all_compiles.append(lambda i=i: self.compile_block_prompt(i))
 
-        for func in self.extern_compiles:
+        for func in self.all_compiles:
             func()
 
         self.execute_tasks()
@@ -1501,6 +1836,10 @@ class LlmConverter(BaseConverter):
 
         # Remove any .npz files
         if not self.debug:
-            for npz_file in os.listdir():
-                if os.path.splitext(npz_file)[-1] == '.npz':
-                    os.remove(npz_file)
+            for dirpath, _, filenames in os.walk('.'):
+                if dirpath.startswith("./config"):
+                    continue
+                for filename in filenames:
+                    if filename.endswith('.npz'):
+                        file_path = os.path.join(dirpath, filename)
+                        os.remove(file_path)

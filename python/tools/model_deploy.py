@@ -132,6 +132,7 @@ class DeployTool:
         self.model_version = args.model_version
         self.iomem_set = args.iomem_set
         self.addr_mode = args.addr_mode
+        self.same_addr = args.same_addr
         self.cuda = args.cuda
         self.q_group_size = args.q_group_size if self.quantize in [
             "w4f16", "w4bf16", "w8f16", "w8bf16"
@@ -152,8 +153,6 @@ class DeployTool:
         self.mute = args.not_gen_bmodel
         self.matmul_perchannel = args.matmul_perchannel
         self.enable_maskrcnn = args.enable_maskrcnn
-        self.future_update_rank = args.future_update_rank
-        self.future_update_list = args.future_update_list
         self.gelu_mode = args.gelu_mode
         self.time_fixed_subnet = args.time_fixed_subnet
         self.subnet_params = args.subnet_params
@@ -191,13 +190,16 @@ class DeployTool:
                 silence=True,
             )
         self.layer_group_config = args.layer_group_config
+        self.shape_secs_search_strategy = args.shape_secs_search_strategy
+        self.structure_detect_opt = not args.disable_structure_detect_opt
         if self.layer_group_config == "":
             gen_layer_group_config(model_name=self.module_name,
                                    chip=self.chip,
                                    quantize=self.quantize,
                                    overwrite=True,
                                    silence=False,
-                                   strategy=args.shape_secs_search_strategy)
+                                   strategy=self.shape_secs_search_strategy,
+                                   structure_detect_opt=self.structure_detect_opt)
 
     def cleanup(self):
         file_clean()
@@ -407,10 +409,9 @@ class DeployTool:
                     group_by_cores=self.group_by_cores,
                     model_version=self.model_version,
                     iomem_set=self.iomem_set,
+                    same_addr=self.same_addr,
                     count_patterns=True if self.patterns_count else False,
                     compress_mode=self.compress_mode,
-                    future_update_rank=self.future_update_rank,
-                    future_update_list=self.future_update_list,
                     debug_info=self.debug_cmd,
                     trunc_final=self.trunc_final,
                     command_mem=command_mem,
@@ -480,7 +481,7 @@ if __name__ == '__main__':
     # ========== Basic Options ===========
     parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
-                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'cv184x', 'sgtpuv8', 'sg2380',
+                        choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'bm1690e', 'cv184x', 'sgtpuv8', 'sg2380',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'sg2262', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
@@ -547,15 +548,19 @@ if __name__ == '__main__':
     # ========== Compiler Options ==============
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2, 3], help="Optimization level")
-    parser.add_argument("--shape_secs_search_strategy", default=0, type=int, choices=[0, 1, 2],
-                        help="Search strategy for layer group passes in shape_secs. \
-                        Higher values may improve model performance, \
-                        but more complie time is cost."
-                        )
     parser.add_argument("--layer_group_config", default="", type=str, help="layer group config file, if not set, use default config")
+    parser.add_argument("--shape_secs_search_strategy", default=0, type=int, choices=[0, 1, 2],
+                        help="Search strategy for layer group pass in shape_secs. \
+                        Higher values may improve model performance, \
+                        but will increase compilation time."
+                        )
+    parser.add_argument("--disable_structure_detect_opt", action='store_true',
+                        help="Disable structure detect optimization in layer group pass")
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
-                        choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc'],
+                        choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'],
                         help="set address assign mode, if not set, auto as default")
+    parser.add_argument("--same_addr", default="", type=str,
+                        help="use same address for the specified inputs and outputs")
     parser.add_argument("--not_gen_bmodel", action="store_true",
                         help="for qat intergation, only gen tpu.mlir")
     parser.add_argument("--use_rewriter_config", action="store_true",
@@ -615,11 +620,6 @@ if __name__ == '__main__':
     # ========== MaskRCNN Options ==============
     parser.add_argument("--enable_maskrcnn", action="store_true", default=False,
                         help="enable maskrcnn")
-    # ========== Future Update Options ==============
-    parser.add_argument("--future_update_rank", default=0, type=int,
-                        help="the rank of matmul, when use the pass of future-update")
-    parser.add_argument("--future_update_list", default="", type=str,
-                        help="the idx list of weight, when use the pass of future-update, suck as 1,2,3")
     parser.add_argument("--debug_cmd", default="", type=str,
                         help="debug cmd")
 

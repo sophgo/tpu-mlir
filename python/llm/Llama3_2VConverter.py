@@ -116,7 +116,7 @@ class Llama3_2VConverter(LlmConverter):
                                           name,
                                           Platform.LLM,
                                           input_types=["INT32"],
-                                          weight_file=embedding_npz)
+                                          weight_file=f"../{embedding_npz}")
             input_op = embedding_mlir.create_input_op(self.get_loc("input_ids", embedding_mlir), 0)
             weight_op = embedding_mlir.create_weight_op(embedding_path,
                                                         [self.vocab_size + 8, self.hidden_size])
@@ -140,19 +140,22 @@ class Llama3_2VConverter(LlmConverter):
                                         ip=embedding_mlir.insert_point).output
             embedding_mlir.create_return_op([new_op])
             mlir_txt = embedding_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         # gen lm_head mlir
         def gen_lm_head():
             out_shape = [[1, self.vocab_size]]
+            name = "lm_head"
             if self.lmhead_with_topk:
                 out_shape = [[1, 1]]
             lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
                                        out_shape,
-                                       "lm_head",
+                                       name,
                                        Platform.LLM,
-                                       weight_file=lmhead_npz)
+                                       weight_file=f"../{lmhead_npz}")
             input_op = lmhead_mlir.create_input_op(self.get_loc("hidden_states", lmhead_mlir), 0)
             if not self.do_lmhead_merge:
                 weight_op = lmhead_mlir.create_weight_op(norm_path, [1, self.hidden_size])
@@ -194,7 +197,9 @@ class Llama3_2VConverter(LlmConverter):
                 lmhead_mlir.create_return_op([lmhead_op])
 
             mlir_txt = lmhead_mlir.print_module()
-            with open("lm_head.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         if not self.embedding_disk:
@@ -376,6 +381,7 @@ class Llama3_2VConverter(LlmConverter):
     @override
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit mlir ...")
+        name = "vit"
         # create weights file
         vit_npz = "vit_top_weights.npz"
         patch_embed = "vision_model.patch_embedding"
@@ -484,10 +490,10 @@ class Llama3_2VConverter(LlmConverter):
         input_types = ['F32', 'INT32', 'INT32']
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
-                                "vit",
+                                name,
                                 Platform.LLM,
                                 input_types,
-                                weight_file=vit_npz)
+                                weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -885,7 +891,10 @@ class Llama3_2VConverter(LlmConverter):
 
         vit_mlir.create_return_op([mulmod_rs_op])
         mlir_txt = vit_mlir.print_module()
-        with open(f"vit.mlir", "w") as f:
+
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
         save_weights()
 
@@ -1017,7 +1026,7 @@ class Llama3_2VConverter(LlmConverter):
                                       [input_shape, kv_shape, kv_shape],
                                       name,
                                       Platform.LLM, ["F32", "INT32", "F32"],
-                                      weight_file=weight_file)
+                                      weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1078,7 +1087,9 @@ class Llama3_2VConverter(LlmConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         # create cross_block mlir
@@ -1100,7 +1111,7 @@ class Llama3_2VConverter(LlmConverter):
                                       [input_shape, past_kv_shape, past_kv_shape],
                                       name,
                                       Platform.LLM, ["F32", "F32", "F32", "F32"],
-                                      weight_file=weight_file)
+                                      weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1319,7 +1330,9 @@ class Llama3_2VConverter(LlmConverter):
 
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         def gen_cross_block_cache():
@@ -1339,7 +1352,7 @@ class Llama3_2VConverter(LlmConverter):
                                       [input_shape],
                                       name,
                                       Platform.LLM, ["F32", "F32", "F32", "F32"],
-                                      weight_file=weight_file)
+                                      weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1465,7 +1478,9 @@ class Llama3_2VConverter(LlmConverter):
 
             block_mlir.create_return_op([new_op])
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         def gen_block_cache():
@@ -1484,7 +1499,7 @@ class Llama3_2VConverter(LlmConverter):
                 [input_shape, kv_shape, kv_shape],
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
-                weight_file=weight_file)
+                weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1562,7 +1577,9 @@ class Llama3_2VConverter(LlmConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         if idx in self.llm_config.cross_attention_layers:
@@ -1571,36 +1588,3 @@ class Llama3_2VConverter(LlmConverter):
         else:
             gen_block()
             gen_block_cache()
-
-    @override
-    def combine(self):
-        bmodel_list = []
-        total_bytes = 0
-        for i in range(self.num_layers):
-            if i not in self.llm_config.cross_attention_layers:
-                bmodel_list = bmodel_list + [f"block_{i}.bmodel", f"block_cache_{i}.bmodel"]
-                total_bytes += os.path.getsize("block_0.bmodel")
-        for i in self.llm_config.cross_attention_layers:
-            bmodel_list = bmodel_list + [f"block_{i}.bmodel", f"block_cache_{i}.bmodel"]
-            total_bytes += os.path.getsize("block_0.bmodel")
-        if not self.embedding_disk:
-            bmodel_list += ['embedding.bmodel', 'embedding_cache.bmodel']
-            total_bytes += os.path.getsize("embedding.bmodel")
-        if not self.lmhead_with_topk:
-            bmodel_list += ["greedy_head.bmodel", "sample_head.bmodel"]
-        if self.do_vit:
-            bmodel_list += ["vit.bmodel"]
-            total_bytes += os.path.getsize("vit.bmodel")
-        bmodel_list += ["lm_head.bmodel"]
-        total_bytes += os.path.getsize("lm_head.bmodel")
-
-        combine_args = ['model_tool', '--combine', ' '.join(bmodel_list), '-o', self.out_bmodel]
-        self.run_command(['bash', '-c', ' '.join(combine_args)])
-        # Get the size of the combined bmodel
-        bmodel_size = os.path.getsize(self.out_bmodel)
-        print(f"Combined bmodel size: {bmodel_size / (1024.0 ** 3)} GB")
-        if bmodel_size > total_bytes * 1.2:
-            raise RuntimeError("Combined bmodel size is too large, please check the model.")
-
-        get_info_args = ['model_tool', '--info', self.out_bmodel, '> ../model.log']
-        self.run_command(['bash', '-c', ' '.join(get_info_args)])

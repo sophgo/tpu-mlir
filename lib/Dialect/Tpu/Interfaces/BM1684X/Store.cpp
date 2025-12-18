@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
+#include "tpu_mlir/Backend/BM168x/BM1690E.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
@@ -248,14 +249,25 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           }
 
           if (need_all_reduce) {
-            BM1690::instance().dl_tensor_stride_move_reduce_gen_cmd(
-                gi.out_addr + cur_local_offset, real_npu_idx,
-                g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
-                real_wslice, c_num_local * c_stride, c_stride, real_wslice, 1,
-                C * D * H * W, D * H * W, W, 1, gdma_format,
-                GDMA_VALUE_DIR_L2S, // 1,
-                0, 1, 4, 0,
-                pid_node); // 1:reduce_psum_op, rw, 4:add, 0:MASTER_THREAD
+            if (module::getChip() == module::Chip::BM1690) {
+              BM1690::instance().dl_tensor_stride_move_reduce_gen_cmd(
+                  gi.out_addr + cur_local_offset, real_npu_idx,
+                  g_addr + cur_global_offset, gi.n_slice, cur_cslice,
+                  real_hslice, real_wslice, c_num_local * c_stride, c_stride,
+                  real_wslice, 1, C * D * H * W, D * H * W, W, 1, gdma_format,
+                  GDMA_VALUE_DIR_L2S, // 1,
+                  0, 1, 4, 0,
+                  pid_node); // 1:reduce_psum_op, rw, 4:add, 0:MASTER_THREAD
+            } else if (module::getChip() == module::Chip::BM1690E) {
+              BM1690E::instance().dl_tensor_stride_move_reduce_gen_cmd(
+                  gi.out_addr + cur_local_offset, real_npu_idx,
+                  g_addr + cur_global_offset, gi.n_slice, cur_cslice,
+                  real_hslice, real_wslice, c_num_local * c_stride, c_stride,
+                  real_wslice, 1, C * D * H * W, D * H * W, W, 1, gdma_format,
+                  GDMA_VALUE_DIR_L2S, // 1,
+                  0, 1, 4, 0,
+                  pid_node); // 1:reduce_psum_op, rw, 4:add, 0:MASTER_THREAD
+            }
           } else {
             BM168x::instance()->dl_tensor_stride_move_gen_cmd(
                 gi.out_addr + cur_local_offset, real_npu_idx,

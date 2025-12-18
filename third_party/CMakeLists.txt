@@ -5,6 +5,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbackend_1688.so
               nntoolchain/lib/libbackend_cv184x.so
               nntoolchain/lib/libbackend_bm1690.so
+              nntoolchain/lib/libbackend_bm1690e.so
               nntoolchain/lib/libbackend_sg2380.so
               nntoolchain/lib/libbackend_sgtpuv8.so
               nntoolchain/lib/libbmlib.so
@@ -24,6 +25,8 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbm1690_kernel_module.a
               # nntoolchain/lib/libcv184x_kernel_module.so
               # nntoolchain/lib/libcv184x_kernel_module.a
+              nntoolchain/lib/libbm1690e_kernel_module.so
+              nntoolchain/lib/libbm1690e_kernel_module.a
               nntoolchain/lib/libsgtpuv8_kernel_module.so
               nntoolchain/lib/libsgtpuv8_kernel_module.a
               nntoolchain/lib/liblibtorch_plugin.so
@@ -49,6 +52,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/ppl/libcmodel_1684x.so
               nntoolchain/ppl/libcmodel_1688.so
               nntoolchain/ppl/libtpuv7_emulator.so
+              nntoolchain/ppl/libtpuv7.1_emulator.so
               # device libs
               nntoolchain/ppl/libbm1684x_kernel_module.so
               nntoolchain/ppl/libbmtpulv60_kernel_module.so

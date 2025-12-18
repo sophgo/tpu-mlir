@@ -124,11 +124,24 @@ class Qwen2_5VLConverter(LlmConverter):
         cos_op = self.mrope(mlir_gen, pos_op, rotary_cos)
         # sin MROPE
         sin_op = self.mrope(mlir_gen, pos_op, rotary_sin)
-        # ===== q_proj rotary ========
-        q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
-
-        # ===== k_proj rotary ========
-        k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
+        q_op_shape = q_op.type.shape
+        q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
+                          q_op,
+                          sin_op,
+                          cos_op,
+                          force_f32=True,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("q_proj", mlir_gen),
+                          ip=mlir_gen.insert_point).output
+        k_op_shape = k_op.type.shape
+        k_op = top.RopeOp(mlir_gen.get_tensor_type(k_op_shape),
+                          k_op,
+                          sin_op,
+                          cos_op,
+                          force_f32=True,
+                          rope_mode=StringAttr.get("contiguous_halves"),
+                          loc=self.get_loc("k_cache", mlir_gen),
+                          ip=mlir_gen.insert_point).output
         return q_op, k_op
 
     def vision_rotary(self):
@@ -252,6 +265,7 @@ class Qwen2_5VLConverter(LlmConverter):
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit mlir ...")
         # create weights file
+        name = "vit"
         vit_npz = "vit_top_weights.npz"
         patch_embed = f"{self.vit_path}.patch_embed.proj"
         rotary_cos = f"{self.vit_path}.rotary.cos"
@@ -313,10 +327,10 @@ class Qwen2_5VLConverter(LlmConverter):
         input_types = ['F32', 'INT32', 'F32', 'F32', 'INT32']
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
-                                "vit",
+                                name,
                                 Platform.LLM,
                                 input_types,
-                                weight_file=vit_npz)
+                                weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -400,6 +414,9 @@ class Qwen2_5VLConverter(LlmConverter):
                               ip=ip).output
         vit_mlir.create_return_op([new_op])
         mlir_txt = vit_mlir.print_module()
-        with open(f"vit.mlir", "w") as f:
+
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
         save_weights()

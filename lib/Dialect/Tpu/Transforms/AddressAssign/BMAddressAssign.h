@@ -19,7 +19,7 @@ namespace tpu {
 class BMAddressAssign {
 public:
   BMAddressAssign() {}
-  void assign(ModuleOp &module, bool reuse_addr);
+  void assign(ModuleOp &module, bool reuse_addr, std::string same_addr);
   static bool isInPlaceOp(Operation *op);
 
 protected:
@@ -39,6 +39,11 @@ protected:
   std::vector<uint32_t>
   getConcatOpLive(Operation *op, std::map<ValueInfo, TensorLive> &liveRange);
   void assignL2SRAM(ModuleOp &module);
+  void assignIOByAddrMode(ModuleOp &module,
+                          std::map<ValueInfo, TensorLive> &liveRange,
+                          std::vector<ValueInfo> &inplace_ops,
+                          std::vector<ValueInfo> &common_ops,
+                          int64_t &start_addr);
   void assignAfter(ModuleOp &module, std::vector<ValueInfo> &inplace_ops);
 
 protected:

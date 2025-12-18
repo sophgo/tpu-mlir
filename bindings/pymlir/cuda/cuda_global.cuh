@@ -227,6 +227,61 @@ __global__ void g_add4DInt8(T0 *a, T1 *b, T2 *out, int32_t mul0, int32_t mul1,
   }
 }
 
+template <typename T0, typename T1, typename T2>
+__global__ void g_add4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
+                            int h0, int w0, int n1, int c1, int h1, int w1,
+                            int on, int oc, int oh, int ow) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int idx_n0 = idx_n % n0;
+    int idx_c0 = idx_c % c0;
+    int idx_h0 = idx_h % h0;
+    int idx_w0 = idx_w % w0;
+    int idx_0 = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_n1 = idx_n % n1;
+    int idx_c1 = idx_c % c1;
+    int idx_h1 = idx_h % h1;
+    int idx_w1 = idx_w % w1;
+    int idx_1 = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
+    float a_data = a[idx_0];
+    float b_data = b[idx_1];
+    a_data = a_data + b_data;
+    if (relu)
+      a_data = max(0.0, a_data);
+    out[dst_idx] = a_data;
+  }
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+__global__ void g_scale4DF32(T0 *a, T1 *s, T2 *b, T3 *out, bool relu, int n0, int c0,
+                            int h0, int w0, int n1, int c1, int h1, int w1,int n2, int c2, int h2, int w2,
+                            int on, int oc, int oh, int ow) {
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (oc * oh * ow);
+  int idx_c = dst_idx % (oc * oh * ow) / (oh * ow);
+  int idx_h = dst_idx % (oh * ow) / ow;
+  int idx_w = dst_idx % ow;
+  if (idx_w < ow && idx_h < oh && idx_c < oc && idx_n < on) {
+    int idx_n0 = idx_n % n0;
+    int idx_c0 = idx_c % c0;
+    int idx_h0 = idx_h % h0;
+    int idx_w0 = idx_w % w0;
+    int idx_0 = ((idx_n0 * c0 + idx_c0) * h0 + idx_h0) * w0 + idx_w0;
+    int idx_1 = idx_c0;
+    float a_data = a[idx_0];
+    float s_data = s[idx_1];
+    float b_data = b[idx_1];
+    a_data = a_data * s_data + b_data;
+    if (relu)
+      a_data = max(0.0, a_data);
+    out[dst_idx] = a_data;
+  }
+}
+
 template <typename T> __global__ void g_neg(T *input, T *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {

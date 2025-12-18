@@ -564,7 +564,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Optimization type of LayerGroup, 1/2/3, default is 2. 1: Simple LayerGroup mode, all operators will be grouped as much as possible, and the compilation speed is faster; 2: Dynamic compilation calculates the global cycle optimal Group grouping, suitable for inference graphs; 3: Linear programming LayerGroup mode, suitable for training graphs.
    * - addr_mode
      - N
-     - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc'], if not set, auto as default
+     - set address assign mode ['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'], if not set, auto as default
    * - disable_layer_group
      - N
      - Whether to disable LayerGroup pass
@@ -589,6 +589,15 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - log_level
      - N
      - Set the log level, the optional values are: 0, 1. 0 means normal model transform info, and 1 means all pattern applied info.
+   * - layer_group_config
+     - N
+     - Specify the LayerGroup configuration file in JSON format.
+   * - shape_secs_search_strategy
+     - N
+     - Specify the search strategy for LayerGroup pass in shape_secs. Options include 0, 1 and 2. The default is 0. Higher values may improve model performance, but will increase compilation time.
+   * - disable_structure_detect_optimize
+     - N
+     - Disable structure detect optimization in LayerGroup pass.
 
 The following table shows the correspondence between different processors and the supported quantize types:
 

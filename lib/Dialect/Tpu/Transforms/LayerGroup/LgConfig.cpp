@@ -14,13 +14,16 @@ namespace tpu {
 
 void LgConfig::dump() {
   llvm::outs() << "Dumping LgConfig!\n";
-  llvm::outs() << "Strategy Using: " << shape_secs_search_strategy_ << "\n";
+  llvm::outs() << "Global Configs:\n";
+  for (const auto &global_config : global_configs_) {
+    llvm::outs() << "  " << global_config.first << " = ";
+    std::visit([](auto &&arg) { llvm::outs() << arg << "\n"; },
+               global_config.second);
+  }
   for (const auto &sc_method : sc_method_configs_) {
     llvm::outs() << "Search Method Config: " << sc_method.first << "\n";
     for (const auto &config : sc_method.second) {
-      llvm::outs() << "  Config Name: " << config.first << "\n";
-      // llvm::outs() << "    Type: " << config.second.dtype << "\n";
-      llvm::outs() << "    Value: ";
+      llvm::outs() << "  " << config.first << " = ";
       std::visit([](auto &&arg) { llvm::outs() << arg << "\n"; },
                  config.second);
     }
@@ -45,14 +48,15 @@ void LgConfig::load(const std::string &config_file) {
   }
   auto &root = *jsonOrErr;
   if (auto *rootObj = root.getAsObject()) {
-    // set shape_secs_search_strategy
+    // set global_configs_
     if (auto shape_secs_search_strategy_int =
             rootObj->getInteger("shape_secs_search_strategy")) {
-      set_shape_secs_search_strategy(
-          static_cast<int>(*shape_secs_search_strategy_int));
-    } else {
-      set_shape_secs_search_strategy(0);
-      llvm::dbgs() << "debugger strategy not found, set to 0\n";
+      global_configs_["shape_secs_search_strategy"] =
+          static_cast<int>(*shape_secs_search_strategy_int);
+    }
+    if (auto structure_detect_opt_bool =
+            rootObj->getBoolean("structure_detect_opt")) {
+      global_configs_["structure_detect_opt"] = *structure_detect_opt_bool;
     }
     // set sc_method_configs
     if (auto sc_method_configs = rootObj->getArray("sc_method_configs")) {

@@ -30,8 +30,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"DumpQuantAgnosticAttrs",
-        /*args=*/(ins "llvm::raw_string_ostream&":$os),
+        /*methodName=*/"DumpAttrs",
+        /*args=*/(ins "llvm::raw_string_ostream&":$os, "bool":$quant_agnostic),
         [{}],
         [{
           for (auto attr : $_op->getAttrs()) {

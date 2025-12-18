@@ -93,6 +93,7 @@ class DumpMode(Enum):
     COMB = 3
     TPULANG = 4
     COMB_ALL = 5
+    OUT_FIXED = 6
 
 
 class CmpState(Enum):
@@ -762,6 +763,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         desired = self.get_ref_data(value)
         if self.dump_mode == DumpMode.TPULANG and self.out_fixed == True:
             actual = raw_data.astype(np.float32)
+        elif self.dump_mode == DumpMode.OUT_FIXED:
+            actual = raw_data.astype(np.float32)
         else:
             actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
@@ -934,9 +937,20 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             if cmp_res.state == CmpState.Fail:
                 success = False
 
+            matches = self.tdb.index_df[self.tdb.index_df["executed_id"] == value_view.cmd_point]
+            if matches.empty:
+                lino = None
+                print(f"Error: No match found for executed_id {value_view.cmd_point}")
+            else:
+                lino = matches.iloc[0]["line-num"]
+                if len(matches) > 1:
+                    for loc in matches.iloc:
+                        if (len(loc.operands) > 0):
+                            lino = loc["line-num"]
+                            # when multi-subnets, use the lino which has operands
+                            break
+
             reports.setdefault(value_view.loc_index, []).append(cmp_res)
-            lino = index_plugin.tdb.index_df.loc[self.tdb.index_df["executed_id"] ==
-                                                 value_view.cmd_point, "line-num"].item()
             self.index_record.setdefault(lino, []).append(cmp_res)
 
         return success

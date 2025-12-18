@@ -9,7 +9,7 @@
 # ==============================================================================
 
 import ctypes as ct
-from profile_helper.bmprofile_common import dictStructure
+from profile_helper.bmprofile_common import dictStructure, global_freq_info
 from enum import Enum
 from debugger.target_common import get_target_context
 from debugger.target_common import DType

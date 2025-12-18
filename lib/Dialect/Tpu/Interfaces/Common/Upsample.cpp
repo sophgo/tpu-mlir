@@ -83,6 +83,8 @@ LogicalResult tpu::UpsampleOp::LocalGenSupport() {
   if (module::isCV18xx() && (getScaleH() >= 16 || getScaleW() >= 16)) {
     return failure();
   }
+  if (getRunMode(getOperation()) == RunMode::TPU_DYNAMIC)
+    return failure();
   return success();
 }
 

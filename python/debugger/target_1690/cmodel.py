@@ -626,7 +626,8 @@ class Memory(CModelMemory):
         m_type = value.mtype
         if m_type == MType.G:
             offset = value.r_addr
-            assert data.dtype == value.np_dtype
+            if data.dtype != value.np_dtype:
+                data = data.astype(value.np_dtype)
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
 
             data_ = np.lib.stride_tricks.as_strided(

@@ -1,2 +1,0 @@
-TORCHVISION_VERSION = 'v0.11.1'
-GITHUB_RES = 'pytorch/vision:{}'.format(TORCHVISION_VERSION)

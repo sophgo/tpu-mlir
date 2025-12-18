@@ -84,7 +84,8 @@ class mlir_net:
                     print("{}th input in npz not match mlir file {}".format(i, self.mlir_file))
             for name in self.mlir_module.input_names:
                 if self.inputs[name].dtype == np.int8 or self.inputs[name].dtype == np.uint8:
-                    self.mlir_module.set_tensor_from_int(name, self.inputs[name].astype(np.float32))
+                    self.mlir_module.set_tensor_from_int(name, self.inputs[name].astype(np.float32),
+                                                         self.inputs[name].shape)
                 else:
                     self.mlir_module.set_tensor(name, self.inputs[name].astype(np.float32),
                                                 self.inputs[name].shape)
@@ -104,10 +105,12 @@ class mlir_net:
                 self.inputs[i_name] = self.preprocess[i].run(inputs_[i])
                 if self.inputs[i_name].dtype == np.int8 or self.inputs[i_name].dtype == np.uint8:
                     self.mlir_module.set_tensor_from_int(i_name,
-                                                         self.inputs[i_name].astype(np.float32))
+                                                         self.inputs[i_name].astype(np.float32),
+                                                         self.inputs[i_name].shape)
                 else:
                     self.mlir_module.set_tensor(
-                        i_name, self.inputs[self.mlir_module.input_names[i]].astype(np.float32))
+                        i_name, self.inputs[self.mlir_module.input_names[i]].astype(np.float32),
+                        self.inputs[self.mlir_module.input_names[i]].shape)
 
         self.mlir_module.invoke()
 

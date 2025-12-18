@@ -667,5 +667,13 @@ tpu::RoundMode get_round_mode(std::string mode) {
   else
     llvm_unreachable("Not Implemented");
 }
+tpu::RopeMode get_rope_mode(std::string mode) {
+  if (mode == "interleaved_pairs")
+    return tpu::RopeMode::interleaved_pairs;
+  else if (mode == "contiguous_halves")
+    return tpu::RopeMode::contiguous_halves;
+  else
+    llvm_unreachable("Not Implemented");
+}
 
 } // namespace tpu_mlir

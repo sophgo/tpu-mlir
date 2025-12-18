@@ -5593,6 +5593,7 @@ The interface definition
         num_heads: int = 8,
         num_levels: int = 4,
         num_points: int = 4,
+         value_proj_ratio: float = 1.0,
         out_name: str = None):
 
         #pass
@@ -5614,15 +5615,16 @@ Explanation of parameters
 * sampling_offsets_bias_ori: Tensor type, the bias of the fully connected layer for calculating the sampling offset with shape (num_heads\*num_levels\*num_points\*2).
 * attention_weights_weight: Tensor type, the weight of the fully connected layer for calculating the attention weight with shape (embed_dims, num_heads\*num_levels\*num_points).
 * attention_weights_bias_ori: Tensor type, the bias of the fully connected layer for calculating the attention weight with shape (num_heads\*num_levels\*num_points).
-* value_proj_weight: Tensor type, the weight of the fully connected layer for calculating the value projection with shape (embed_dims, embed_dims).
-* value_proj_bias_ori: Tensor type, the bias of the fully connected layer for calculating the value projection with shape (embed_dims).
-* output_proj_weight: Tensor type, the weight of the fully connected layer for calculating the output projection with shape (embed_dims, embed_dims).
+* value_proj_weight: Tensor type, the weight of the fully connected layer for calculating the value projection with shape (embed_dims, value_proj_ratio * embed_dims).
+* value_proj_bias_ori: Tensor type, the bias of the fully connected layer for calculating the value projection with shape (value_proj_ratio * embed_dims).
+* output_proj_weight: Tensor type, the weight of the fully connected layer for calculating the output projection with shape (value_proj_ratio * embed_dims, embed_dims).
 * output_proj_bias_ori: Tensor type, the bias of the fully connected layer for calculating the output projection with shape (embed_dims).
 * spatial_shapes: List[List[int]] type, the spatial shape of different level features with shape (num_levels, 2), the last dimension represents (h, w).
 * embed_dims: int type, hidden_size of query, key, and value.
 * num_heads: int type, the number of attention heads, default is 8.
 * num_levels: int type, the number of levels of multi-scale attention, default is 4.
 * num_points: int type, the number of sampling points at each level, default is 4.
+* value_proj_ratio: float type, The expansion ratio of value_proj. Default is 1.0.
 * out_name: string type or None, the name of the output Tensor, and the name will be automatically generated internally if it is None.
 
 Return value

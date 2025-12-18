@@ -5529,6 +5529,7 @@ multi_scale_deformable_attention
         num_heads: int = 8,
         num_levels: int = 4,
         num_points: int = 4,
+         value_proj_ratio: float = 1.0,
         out_name: str = None):
 
         #pass
@@ -5551,15 +5552,16 @@ multi_scale_deformable_attention
 * sampling_offsets_bias_ori: Tensor类型，计算采样偏移量全连接层的偏置，形状为 (num_heads\*num_levels\*num_points\*2)。
 * attention_weights_weight: Tensor类型，计算注意力权重全连接层的权重，形状为 (embed_dims, num_heads\*num_levels\*num_points)。
 * attention_weights_bias_ori: Tensor类型，计算注意力权重全连接层的偏置，形状为 (num_heads\*num_levels\*num_points)。
-* value_proj_weight: Tensor类型，计算值投影全连接层的权重，形状为 (embed_dims, embed_dims)。
-* value_proj_bias_ori: Tensor类型，计算值投影全连接层的偏置，形状为 (embed_dims)。
-* output_proj_weight: Tensor类型，计算输出投影全连接层的权重，形状为 (embed_dims, embed_dims)。
+* value_proj_weight: Tensor类型，计算值投影全连接层的权重，形状为 (embed_dims, value_proj_ratio * embed_dims)。
+* value_proj_bias_ori: Tensor类型，计算值投影全连接层的偏置，形状为 (value_proj_ratio * embed_dims)。
+* output_proj_weight: Tensor类型，计算输出投影全连接层的权重，形状为 (value_proj_ratio * embed_dims, embed_dims)。
 * output_proj_bias_ori: Tensor类型，计算输出投影全连接层的偏置，形状为 (embed_dims)。
 * spatial_shapes: List[List[int]]类型，不同层级特征的空间形状，形状为 (num_levels, 2)，最后一个维度表示 (h, w)。
 * embed_dims: int类型，查询、键、值的hidden_size。
 * num_heads: int类型，注意力头数，默认值为8。
 * num_levels: int类型，多尺度注意力的层级数，默认值为4。
 * num_points: int类型，每个层级的采样点数，默认值为4。
+* value_proj_ratio: float类型，value_proj的扩展比率，默认值为1.0。
 * out_name: string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值

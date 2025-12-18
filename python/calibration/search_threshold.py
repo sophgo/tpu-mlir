@@ -31,7 +31,7 @@ pymlir.set_mem_mode("force_value_mem")
 
 class SearchThreshold:
 
-    def __init__(self, args, selector, tune_ds, shape_pattern_fp_layers):
+    def __init__(self, args, selector, tune_ds, qtable: QuantizeTable = None):
         self.args = args
         self.fp32_mlir = args.mlir_file
         self.chip = args.chip
@@ -47,7 +47,7 @@ class SearchThreshold:
             args.input_num = args.inference_num
         self.mix_prec = MixPrecSearcher(args)
         self.debug_cmd = args.debug_cmd
-        self.fixed_fp_layers = shape_pattern_fp_layers or []
+        self.qtable = qtable
 
     def run_search_calitable(self):
 
@@ -63,8 +63,7 @@ class SearchThreshold:
         calibrator.calibration_method = quantize_method_list
         layer_th_dict = calibrator.gen_multiple_thresholds(all_op_names, quantize_method_list)
         del calibrator
-        mix_table = None if len(self.fixed_fp_layers) == 0 else self.mix_prec._gen_mix_table(
-            self.fixed_fp_layers)
+        mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
 
         result = {}
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
@@ -99,7 +98,7 @@ class SearchThreshold:
         self.mix_prec.logger.print_info("optimal_method_name: {}, optimal_value: {}".format(
             optimal_method_name, optimal_value))
 
-        if optimal_method_name == 'KL':
+        if self.args.tune_num > 0:
             cali_table = self.cali_table_name + "_" + optimal_method_name + "_tune"
         else:
             cali_table = self.cali_table_name + "_" + optimal_method_name + ".1"

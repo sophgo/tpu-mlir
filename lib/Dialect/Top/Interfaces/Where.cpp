@@ -22,11 +22,15 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
   const auto cond_element = module::getNumElements(getCond());
   auto x_const = getXIsConst();
   auto y_const = getYIsConst();
+  std::vector<int64_t> real_output_shape(in0_shape);
 
   std::vector<int64_t> in0_stride, in1_stride, in2_stride;
   if (x_const && y_const == false) {
     auto const_val = getXConstVal().convertToDouble();
     auto in1_shape = shape_expand_dim(module::getShape(getFbrn()), out_dim);
+    for (int64_t i = 0; i < out_dim; ++i) {
+      real_output_shape[i] = std::max(in0_shape[i], in1_shape[i]);
+    }
     const auto fbrn_element = module::getNumElements(getFbrn());
     if (num_element == cond_element && num_element == fbrn_element) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
@@ -49,6 +53,9 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
   } else if (y_const && x_const == false) {
     auto const_val = getYConstVal().convertToDouble();
     auto in1_shape = shape_expand_dim(module::getShape(getTbrn()), out_dim);
+    for (int64_t i = 0; i < out_dim; ++i) {
+      real_output_shape[i] = std::max(in0_shape[i], in1_shape[i]);
+    }
     const auto tbrn_element = module::getNumElements(getTbrn());
     if (num_element == cond_element && num_element == tbrn_element) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
@@ -89,6 +96,10 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
   } else {
     auto in1_shape = shape_expand_dim(module::getShape(getTbrn()), out_dim);
     auto in2_shape = shape_expand_dim(module::getShape(getFbrn()), out_dim);
+    for (int64_t i = 0; i < out_dim; ++i) {
+      real_output_shape[i] =
+          std::max(in0_shape[i], std::max(in1_shape[i], in2_shape[i]));
+    }
     const auto tbrn_element = module::getNumElements(getTbrn());
     const auto fbrn_element = module::getNumElements(getFbrn());
     if (num_element == cond_element && num_element == tbrn_element &&
@@ -113,6 +124,7 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
       }
     }
   }
+  module::setShape(getOutput(), real_output_shape);
   return success();
 }
 

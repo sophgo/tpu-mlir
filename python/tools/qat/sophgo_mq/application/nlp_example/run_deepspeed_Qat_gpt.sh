@@ -1,1 +1,0 @@
-deepspeed deepspeed_Qat_gpt.py --deepspeed_config config.json

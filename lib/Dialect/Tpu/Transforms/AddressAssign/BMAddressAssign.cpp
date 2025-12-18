@@ -59,64 +59,6 @@ bool valuesReturn(Value value) {
   return false;
 }
 
-static int64_t getIOLimit(ModuleOp m) {
-  auto main = module::getMainFuncOp(m);
-  int64_t limit = 0;
-  std::vector<Value> io_v;
-  main.walk([&](top::InputOp op) { io_v.push_back(op.getOutput()); });
-  auto retOp = main.getBody().back().getTerminator();
-  for (auto v : retOp->getOperands()) {
-    io_v.push_back(v);
-  }
-  for (auto v : io_v) {
-    auto l = align_up(module::getAddress(v) + module::getBytes(v),
-                      BM168x::ALIGNMENT);
-    if (l > limit) {
-      limit = l;
-    }
-  }
-  return limit;
-}
-
-static void fix_addr_for_io_tag(mlir::ModuleOp &m, int64_t start, int64_t limit,
-                                int64_t offset) {
-  for (auto func : m.getOps<FuncOp>()) {
-    func.walk([&](Operation *op) {
-      if (isa<top::NoneOp, top::WeightOp, func::ReturnOp>(op)) {
-        // do nothing
-      } else {
-        for (auto v : op->getResults()) {
-          auto addr = module::getAddress(v);
-          if (addr >= start && addr <= limit) {
-            module::setAddress(v, addr + offset);
-          }
-        }
-      }
-    });
-  }
-}
-
-static void fix_addr_for_io_alone(mlir::ModuleOp &m, int64_t start,
-                                  int64_t io_limit, int64_t limit,
-                                  int64_t io_offset, int64_t ctx_offset) {
-  for (auto func : m.getOps<FuncOp>()) {
-    func.walk([&](Operation *op) {
-      if (isa<top::NoneOp, top::WeightOp, func::ReturnOp>(op)) {
-        // do nothing
-      } else {
-        for (auto v : op->getResults()) {
-          auto addr = module::getAddress(v);
-          if (addr >= start && addr < io_limit) {
-            module::setAddress(v, addr + io_offset);
-          } else if (addr >= io_limit && addr < limit) {
-            module::setAddress(v, addr + ctx_offset);
-          }
-        }
-      }
-    });
-  }
-}
-
 /** Set cmd-io-addr to new addresses. (The new addr spaces will NOT be allocated
  * by runtime, they are only used as FAKE addrs.) Inplace optimizations are also
  * kept as many as we can. */
@@ -186,40 +128,10 @@ static void sort_ios(std::vector<Value> &ios) {
 void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
                                               int64_t start_addr,
                                               int64_t addr_limit) {
-  if (module::isAddrMode(module::AddrMode::BASIC)) {
-    module::setNeuronAddr(m, start_addr);
-    module::setNeuronSize(m, addr_limit - start_addr);
-    return;
-  }
   if (module::isAddrMode(module::AddrMode::IO_RELOC)) {
     int64_t new_addr_limit = fix_addr_for_io_reloc(addr_limit, m);
     module::setNeuronAddr(m, start_addr);
     module::setNeuronSize(m, new_addr_limit - start_addr);
-    module::updateModuleTypes();
-    return;
-  }
-  auto io_limit = getIOLimit(m);
-  if (module::isAddrMode(module::AddrMode::IO_TAG)) {
-    // // assert(module::isBM1688());
-    // std::vector<Value> ios;
-    // module::getInputsOutputs(m, ios, ios);
-    // // fix input and output address to IO_TAG
-    // int io_index = 0;
-    // int tag_max = 5;
-    // if (ios.size() > tag_max) {
-    //   // select IO with max 5 data size
-    //   sort_ios(ios);
-    //   for (io_index = 0; io_index < tag_max; io_index++) {
-    //     module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
-    //   }
-    // } else {
-    // for (auto &io : ios) {
-    //   module::setAddress(io, BM168x::IO_ADDR[io_index++]);
-    // }
-    // }
-    // fix other address
-    module::setNeuronAddr(m, start_addr);
-    module::setNeuronSize(m, addr_limit - start_addr);
     module::updateModuleTypes();
     return;
   }
@@ -249,33 +161,25 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
     module::updateModuleTypes();
     return;
   }
-  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
-    if (module::isBM1684X()) {
-      // bm1684x has no mem tag
-      module::setIOAddr(m, start_addr);
-      module::setIOSize(m, io_limit - start_addr);
-      module::setNeuronAddr(m, io_limit);
-      module::setNeuronSize(m, addr_limit - io_limit);
-      return;
-    }
-    if (BM168x::SUPPORT_MEM_TAG) {
-      // bm1688 and bm1690
-      // move address to tag start
-      int64_t io_start = BM168x::IO_START_ADDR;
-      int64_t io_offset = io_start - start_addr;
-      int64_t ctx_offset = start_addr - io_limit;
-      fix_addr_for_io_alone(m, start_addr, io_limit, addr_limit, io_offset,
-                            ctx_offset);
-      module::setIOAddr(m, io_start);
-      module::setIOSize(m, io_limit - start_addr);
-      module::setNeuronAddr(m, start_addr);
-      module::setNeuronSize(m, addr_limit - io_limit);
-      module::updateModuleTypes();
-      return;
+  module::setNeuronAddr(m, start_addr);
+  module::setNeuronSize(m, addr_limit - start_addr);
+  return;
+}
+
+static void erase_vinfo(std::vector<ValueInfo> &ops, const ValueInfo &v_info) {
+  for (auto iter = ops.begin(); iter != ops.end(); iter++) {
+    if (*iter == v_info) {
+      iter = ops.erase(iter);
+      break;
     }
   }
-  llvm_unreachable("unknown addr_mode");
-  return;
+}
+
+static bool noNeedAddress(Value v) {
+  if (module::isNone(v) || 0 != module::getAddress(v)) {
+    return true;
+  }
+  return false;
 }
 
 void BMAddressAssign::assignAfter(ModuleOp &m,
@@ -289,10 +193,15 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
 
   // step 0: assign inplace ops
   std::reverse(inplace_ops.begin(), inplace_ops.end());
+  std::vector<ValueInfo> need_remove;
   // First assign concat ops
   for (auto v_info : inplace_ops) {
     Operation *op = (Operation *)v_info.op;
     if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
+      if (0 != module::getAddress(concatOp.getOutput())) {
+        need_remove.push_back(v_info);
+        continue;
+      }
       auto in0 = concatOp.getInputs()[0];
       in0 = module::getOriValue(in0);
       if (auto rop = dyn_cast<tpu::ReshapeOp>(in0.getDefiningOp())) {
@@ -312,17 +221,14 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
           input = rop.getInput();
         }
 
-        if ((module::isAddrMode(module::AddrMode::IO_TAG) &&
-             module::getAddress(input) >= BM168x::IO_ADDR[0]) ||
-            // in io_alone mode, the io address must always be placed before
-            // other activations
-            (module::isAddrMode(module::AddrMode::IO_ALONE) &&
-             isa<top::InputOp>(input.getDefiningOp()))) {
+        if (module::isAddrMode(module::AddrMode::IO_TAG) &&
+            module::getAddress(input) >= BM168x::IO_ADDR[0]) {
           continue;
         }
         module::setAddress(input, addr + offset);
         offset += module::getBytes(input);
       }
+      need_remove.push_back(v_info);
     }
   }
   // Then assign other inplace ops
@@ -331,14 +237,31 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
     if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
       continue;
     } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
-      auto addr = module::getAddress(reshapeOp.getInput());
-      if (addr == 0) {
-        addr = module::getAddress(module::getOriValue(reshapeOp.getOperand(0)));
+      auto in_addr = module::getAddress(reshapeOp.getInput());
+      auto out_addr = module::getAddress(reshapeOp.getOutput());
+      if (in_addr == 0) {
+        in_addr =
+            module::getAddress(module::getOriValue(reshapeOp.getOperand(0)));
       }
-      if (addr == 0) {
+      if (in_addr == 0 && out_addr == 0) {
         continue;
       }
-      module::setAddress(reshapeOp.getOutput(), addr);
+      if (in_addr != 0 && out_addr != 0) {
+        if (in_addr == out_addr) {
+          need_remove.push_back(v_info);
+        } else {
+          UNREACHABLE_OP("ReshapeOp inplace address conflict!", op);
+        }
+        continue;
+      }
+      if (in_addr != 0) {
+        module::setAddress(reshapeOp.getOutput(), in_addr);
+      } else {
+        module::setAddress(reshapeOp.getInput(), out_addr);
+        auto v = module::getOriValue(reshapeOp.getOperand(0));
+        module::setAddress(v, out_addr);
+      }
+      need_remove.push_back(v_info);
     } else if (auto identityOp = dyn_cast<tpu::IdentityOp>(op)) {
       for (auto it : llvm::enumerate(identityOp.getInput())) {
         auto addr = module::getAddress(module::getOriValue(it.value()));
@@ -372,6 +295,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
         }
       }
       module::setAddress(sliceOp.getOutput(), addr + offset_bytes);
+      need_remove.push_back(v_info);
     } else if (auto weight2activation_op =
                    dyn_cast<tpu::Weight2ActivationOp>(op)) {
       auto addr = module::getAddress(weight2activation_op.getInput());
@@ -445,6 +369,11 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
       }
     });
   }
+  // step 4: remove assigned inplace ops from inplace_ops
+  for (auto &v_info : need_remove) {
+    erase_vinfo(inplace_ops, v_info);
+  }
+  std::reverse(inplace_ops.begin(), inplace_ops.end());
 }
 
 void BMAddressAssign::assignL2SRAM(ModuleOp &m) {
@@ -520,7 +449,94 @@ void BMAddressAssign::assignL2SRAM(ModuleOp &m) {
   assignAfter(m, inplace_ops);
 }
 
-void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
+static inline std::vector<std::pair<int, int>> string2pair(std::string slist) {
+  // slist: "0:0,1:2,4:4"
+  // outpair: [0,0] [1,2] [4,4]
+  std::vector<std::pair<int, int>> outpair;
+  std::string idx_str = "";
+  int first = 0;
+  int second = 0;
+  for (auto s : slist) {
+    if (s == ':') {
+      first = atoi(idx_str.c_str());
+      idx_str = "";
+    } else if (s == ',') {
+      second = atoi(idx_str.c_str());
+      idx_str = "";
+      outpair.emplace_back(first, second);
+    } else if (s == ' ') {
+      continue;
+    } else {
+      idx_str += s;
+    }
+  }
+  if (idx_str.size()) {
+    second = atoi(idx_str.c_str());
+    outpair.emplace_back(first, second);
+  }
+  return outpair;
+}
+
+void BMAddressAssign::assignIOByAddrMode(
+    ModuleOp &m, std::map<ValueInfo, TensorLive> &liveRange,
+    std::vector<ValueInfo> &inplace_ops, std::vector<ValueInfo> &common_ops,
+    int64_t &start_addr) {
+  if (module::isAddrMode(module::AddrMode::IO_TAG)) {
+    std::vector<Value> ios;
+    module::getInputsOutputs(m, ios, ios);
+    sort_ios(ios);
+    int n_tags = ios.size() < 5 ? ios.size() : 5;
+    for (int io_index = 0; io_index < n_tags; io_index++) {
+      module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
+      ValueInfo v_info(ios[io_index].getDefiningOp(),
+                       ios[io_index].cast<OpResult>().getResultNumber());
+      erase_vinfo(common_ops, v_info);
+      erase_vinfo(inplace_ops, v_info);
+      liveRange.erase(v_info);
+    }
+    return;
+  }
+  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
+    int64_t io_start = start_addr;
+    if (BM168x::SUPPORT_MEM_TAG) {
+      io_start = BM168x::IO_START_ADDR;
+    }
+    std::vector<Value> ios;
+    module::getInputsOutputs(m, ios, ios);
+    auto addr = io_start;
+    for (auto &v : ios) {
+      auto v_info =
+          ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
+      auto bytes = liveRange[v_info].tensor_size;
+      if (bytes == 0) {
+        continue;
+      }
+      module::setAddress(v, addr);
+      addr += bytes;
+    }
+    assignAfter(m, inplace_ops);
+    for (auto &v : ios) {
+      auto v_info =
+          ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
+      erase_vinfo(common_ops, v_info);
+      erase_vinfo(inplace_ops, v_info);
+      liveRange.erase(v_info);
+      if (module::getAddress(v) == 0) {
+        UNREACHABLE_OP("IO address assign failed", v_info.op);
+      }
+    }
+    auto io_size = addr - io_start;
+    module::setIOAddr(m, io_start);
+    module::setIOSize(m, io_size);
+    if (!BM168x::SUPPORT_MEM_TAG) {
+      start_addr = addr;
+    }
+    return;
+  }
+}
+
+void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
+                             std::string same_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
   Builder builder(m.getContext());
@@ -648,36 +664,25 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
   }
 
-  // 0. assign io-tag addrs before common_ops.
-  if (module::isAddrMode(module::AddrMode::IO_TAG)) {
-    auto erase_vinfo = [](std::vector<ValueInfo> &ops,
-                          const ValueInfo &v_info) {
-      auto iter = ops.begin();
-      while (iter != ops.end()) {
-        if (*iter == v_info) {
-          iter = ops.erase(iter);
-        } else {
-          ++iter;
-        }
-      }
-    };
-    std::vector<Value> ios;
-    module::getInputsOutputs(m, ios, ios);
-    sort_ios(ios);
-    int n_tags = ios.size() < 5 ? ios.size() : 5;
-    for (int io_index = 0; io_index < n_tags; io_index++) {
-      module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
-      ValueInfo v_info(ios[io_index].getDefiningOp(),
-                       ios[io_index].cast<OpResult>().getResultNumber());
-      erase_vinfo(common_ops, v_info);
-      erase_vinfo(inplace_ops, v_info);
-      liveRange.erase(v_info);
-    }
-  }
+  // 0. assign io-tag/io-alone addrs before common_ops.
+  assignIOByAddrMode(m, liveRange, inplace_ops, common_ops, start_addr);
+  addr = start_addr;
 
   // 1.assign common_ops
   // key: the operation pointer + output index, convert the result to type
   // int64_t
+  // clear ops that no need to assign address
+  std::vector<ValueInfo> remove_ops;
+  for (auto &info : common_ops) {
+    auto v = ((Operation *)info.op)->getResult(info.index);
+    if (noNeedAddress(v)) {
+      remove_ops.emplace_back(info);
+    }
+  }
+  for (auto &info : remove_ops) {
+    erase_vinfo(common_ops, info);
+    liveRange.erase(info);
+  }
   std::map<ValueInfo, int64_t> gaddrMap;
   if (!common_ops.empty()) {
     // FitFirstAssign should make sure op's start liverange ascendingly
@@ -701,8 +706,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   }
 
   // update io address by basic and io_tag
-  if (!module::isAddrMode(module::AddrMode::IO_ALONE) &&
-      !module::isAddrMode(module::AddrMode::IO_RELOC)) {
+  if (!module::isAddrMode(module::AddrMode::IO_RELOC)) {
     updateAddressByAddrMode(m, start_addr, addr);
   }
 
@@ -716,18 +720,22 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   }
   module::updateModuleTypes();
 
-  // update io address by io_alone
-  if (module::isAddrMode(module::AddrMode::IO_ALONE) ||
-      module::isAddrMode(module::AddrMode::IO_RELOC)) {
+  // update io address by io reloc
+  if (module::isAddrMode(module::AddrMode::IO_RELOC)) {
     updateAddressByAddrMode(m, start_addr, addr);
   }
-}
 
-static bool noNeedAddress(Value v) {
-  if (module::isNone(v) || 0 != module::getAddress(v)) {
-    return true;
+  // set the same address pairs
+  if (!same_addr.empty()) {
+    std::vector<std::pair<int, int>> same_idx = string2pair(same_addr);
+    for (auto &pair : same_idx) {
+      std::vector<Value> ins, outs;
+      module::getInputsOutputs(m, ins, outs);
+      module::setAddress(outs[pair.second],
+                         module::getAddress(ins[pair.first]));
+    }
+    module::updateModuleTypes();
   }
-  return false;
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(
@@ -876,10 +884,10 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         });
       }
 
-      if (isa<top::InputOp>(opd) ||
+      if ((isa<top::InputOp>(opd) &&
+           !module::isAddrMode(module::AddrMode::IN_REUSE)) ||
           (isa<ReturnOp>(op) &&
-           (module::isAddrMode(module::AddrMode::IO_ALONE) ||
-            module::isAddrMode(module::AddrMode::IO_RELOC)))) {
+           module::isAddrMode(module::AddrMode::IO_RELOC))) {
         liveRange[v_info].start = 0;
         liveRange[v_info].end = 0xFFFFFFFF;
       }
@@ -1129,13 +1137,6 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     updateSOLOLiveRange(op, cur_info, endPosition);
   } else {
     updateOperandsLiveRange(op, endPosition);
-  }
-  for (auto user : op->getUsers()) {
-    if (isInPlaceOp(user)) {
-      uint32_t maxPosition = endPosition;
-      findInPlaceOpMaxUsePosition(user, maxPosition, ops_loc);
-      updateOperandsLiveRange(op, maxPosition);
-    }
   }
   common_ops.emplace_back(v);
 }

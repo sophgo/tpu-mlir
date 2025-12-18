@@ -51,9 +51,6 @@ private:
   std::shared_ptr<bmodel::RelEntry>
   CreateTensorRelentry(const uint64_t &tensor_addr,
                        const uint64_t &tensor_bytes);
-  bool getOpCoeffLocation(Operation *op, uint64_t coeff_addr,
-                          uint64_t coeff_size,
-                          std::vector<location_t> &locations);
   Offset<bmodel::CoeffMem> CreateCoeffMem(ModuleOp s, uint64_t coeff_addr,
                                           uint64_t coeff_size);
   Offset<Vector<Offset<bmodel::StageIR>>>

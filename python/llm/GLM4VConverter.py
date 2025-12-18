@@ -594,6 +594,7 @@ class GLM4VConverter(LlmConverter):
     @override
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit mlir ...")
+        name = "vit"
         # create weights file
         vit_npz = "vit_top_weights.npz"
         # some name
@@ -676,10 +677,10 @@ class GLM4VConverter(LlmConverter):
 
         # vit_mlir = MLIRImporter(input_shapes, [[2944, 1536]],
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
-                                "vit",
+                                name,
                                 Platform.LLM,
                                 input_types,
-                                weight_file=vit_npz)
+                                weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -840,7 +841,9 @@ class GLM4VConverter(LlmConverter):
 
         vit_mlir.create_return_op([new_op])
         mlir_txt = vit_mlir.print_module()
-        with open(f"vit.mlir", "w") as f:
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
 
     def set_gate_up_weight(self, top_path: str, weight_dict: dict):
@@ -992,7 +995,7 @@ class GLM4VConverter(LlmConverter):
                                       [input_shape, kv_shape, kv_shape],
                                       name,
                                       Platform.LLM, ["F32", "INT32", "F32"],
-                                      weight_file=weight_file)
+                                      weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1053,7 +1056,9 @@ class GLM4VConverter(LlmConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         def gen_block_cache():
@@ -1072,7 +1077,7 @@ class GLM4VConverter(LlmConverter):
                 [input_shape, kv_shape, kv_shape],
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
-                weight_file=weight_file)
+                weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1143,7 +1148,9 @@ class GLM4VConverter(LlmConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         def gen_block_with_kv():
@@ -1164,7 +1171,7 @@ class GLM4VConverter(LlmConverter):
                 [input_shape, kv_shape, kv_shape],
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
-                weight_file=weight_file)
+                weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -1236,7 +1243,9 @@ class GLM4VConverter(LlmConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         save_weights()

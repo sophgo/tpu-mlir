@@ -11,10 +11,10 @@
 #include "progressbar.hpp"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CostCache.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/Debugger.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/IlpTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgCache.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgConfig.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
@@ -76,9 +76,9 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
     return false;
   }
   for (auto op : group_ops) {
-    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
-             SoftmaxOp, RMSNormOp, ReshapeOp, LutOp, MulOp, BinaryShiftOp>(
-            op)) {
+    if (!module::isTpuArOp(op) &&
+        !isa<ActiveOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, SoftmaxOp,
+             RMSNormOp, ReshapeOp, LutOp, BinaryShiftOp>(op)) {
       return false;
     }
     if (isa<ReshapeOp>(op)) {
@@ -93,7 +93,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
       if (op_.getAxis() != shape.size() - 1) {
         return false;
       }
-    } else if (isa<AddOp>(op) || isa<MulOp>(op)) {
+    } else if (module::isTpuArOp(op)) {
       auto shapeB = module::getShape(op->getOperand(1));
       if (shape != shapeB) {
         return false;
@@ -153,7 +153,7 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
              ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp, MulShiftOp, WhereOp,
              BatchNormBwdOp, LutOp, BinaryConstShiftOp, BinaryShiftOp,
-             AddConstOp, ReduceOp, ClipOp, DivOp, RopeOp>(op)) {
+             AddConstOp, ReduceOp, ClipOp, DivOp, RopeOp, ConcatOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -235,7 +235,7 @@ void GroupMethod::set_layer_group_cache(LgInfo lg_info) {
   //     std::make_shared<LgInfo>(lg_info);
 }
 
-void GroupMethod::get_layer_group(LgInfo &lg_info,
+bool GroupMethod::get_layer_group(LgInfo &lg_info,
                                   const std::vector<Operation *> &base_group,
                                   int64_t left, int64_t right,
                                   int64_t base_group_idx, int64_t idx_offset) {
@@ -267,6 +267,17 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
                         "func_start_idx, func_end_idx, cache_key)")
                  << "\n";
   });
+  auto base_group_size = (int64_t)base_group.size();
+  if (left > right || left < 0 || right < 0 || left >= base_group_size ||
+      right >= base_group_size) {
+    LG_DEBUG_WITH_TYPE("lg_info", [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "get_layer_group", "end",
+                          "invalid layer group indices, return false")
+                   << "\n";
+    });
+    return false;
+  }
   for (int idx = left; idx <= right; ++idx) {
     lg_info.group_ops.push_back(base_group[idx]);
   }
@@ -280,11 +291,12 @@ void GroupMethod::get_layer_group(LgInfo &lg_info,
   lg_info.func_end_idx = right + idx_offset;
 
   GROUP_DEBUG_WITH_TYPE("lg_info", lg_info, [&]() {
-    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("set_lg_info", "end",
-                                          "show current `lg_info`")
+    llvm::dbgs() << DEBUGGER_DEFAULT_INFO("get_layer_group", "end",
+                                          "show current lg_info")
                  << "\n";
     lg_info.dump();
   });
+  return true;
 }
 
 GroupMethod::GroupMethod(const LgOptions &options) {
@@ -833,12 +845,12 @@ void GroupMethod::get_group_clusters(
 void GroupMethod::get_group_clusters_with_dynamic_programming(
     std::vector<std::pair<int64_t, int64_t>> &clusters,
     const std::vector<Operation *> &base_group, int group_idx,
-    int64_t idx_offset) {
+    int64_t idx_offset, int64_t max_cluster_size) {
   auto &lg_config = LgConfig::getInstance();
   clusters.clear();
   LgInfo lg_info;
   size_t group_layer_num = base_group.size();
-  const int64_t max_cluster_size = get_max_cluster_size(group_layer_num);
+  // const int64_t max_cluster_size = get_max_cluster_size(group_layer_num);
 
   if (max_cluster_size == 1) {
     for (size_t layer_idx = 0; layer_idx < group_layer_num; ++layer_idx) {
@@ -857,14 +869,11 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
     int64_t group_cost = MAX_COST;
     shape_secs_t shape_secs;
     uint64_t hash_key;
-    LgCostCache::getInstance().get_graph_hash(lg_info, hash_key);
+    LgCache::getInstance().get_graph_hash(lg_info, hash_key, false);
     bool cache_hit = false;
 #pragma omp critical(layer_group_cost_cache)
-    cache_hit =
-        lg_info.shape_secs_search_level
-            ? false
-            : LgCostCache::getInstance().get_cost_from_cache(
-                  hash_key, group_cost, lg_info.shape_secs_search_level);
+    cache_hit = LgCache::getInstance().get_cost_from_cost_cache(
+        hash_key, group_cost, lg_info.shape_secs_search_level);
     if (!cache_hit) {
       // if
       // (LgDebugger::getInstance().is_conditional_debug_group(lg_info.func_start_idx,
@@ -876,7 +885,7 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
         shape_secs = lg_info.shape_secs;
       }
 #pragma omp critical(layer_group_cost_cache)
-      LgCostCache::getInstance().add_cache(hash_key, lg_info);
+      LgCache::getInstance().add_cost_cache(hash_key, lg_info);
     }
     return group_cost;
   };
@@ -887,6 +896,8 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
       { llvm::outs() << "Getting single group cost...\n"; });
   auto single_group_costs = std::vector<std::vector<int64_t>>(
       group_layer_num, std::vector<int64_t>(group_layer_num, MAX_COST));
+  auto shape_secs_search_strategy =
+      lg_config.get_config_value<int>("shape_secs_search_strategy", 0);
   progressbar single_group_bar(max_cluster_size - 1);
 #pragma omp parallel for private(lg_info) schedule(dynamic, 1)
   for (size_t len = 2; len <= max_cluster_size; ++len) {
@@ -899,11 +910,10 @@ void GroupMethod::get_group_clusters_with_dynamic_programming(
       int64_t end_idx = start_idx + len - 1;
       get_layer_group(lg_info, base_group, start_idx, end_idx, group_idx,
                       idx_offset);
-      if (lg_config.get_shape_secs_search_strategy() ==
-          SHAPE_SECS_ALWAYS_BETTER) {
+      if (shape_secs_search_strategy == SHAPE_SECS_ALWAYS_BETTER) {
         lg_info.shape_secs_search_level = 1;
       }
-      int64_t cost = LgCostCache::getInstance().cache_enabled
+      int64_t cost = LgCache::getInstance().cache_enabled
                          ? calc_group_cost_with_cache(lg_info)
                          : calc_group_cost(lg_info);
       single_group_costs[start_idx][end_idx] = cost;
@@ -977,6 +987,371 @@ void GroupMethod::sweep_for_min_cost(
   }
 }
 
+bool GroupMethod::dynamic_programming_with_structure_detect(
+    const std::vector<Operation *> &base_group, int group_idx,
+    int64_t idx_offset) {
+  // detect repeated structures from base_group
+  // consider base group has repeated structures for several times
+  // Remark:
+  // 1.only support detecting one structure now
+  // 2.two structures should be continuous
+
+  // settings
+  int64_t MIN_STRUCTURE_SIZE = 10;
+
+  LgInfo lg_info;
+  auto &lg_cache = LgCache::getInstance();
+  size_t group_layer_num = base_group.size();
+  auto hash_counts = lg_cache.get_hash_counts();
+  auto hash_counts_map = lg_cache.get_hash_counts_map();
+  auto hash_op_map = lg_cache.get_hash_op_map();
+  bool valid = false;
+  int64_t structure_size = -1;
+  int64_t anchor_op_repeated_times = -1;
+
+  // 1.check whether cnt can be considered as repeated times
+  //    a.the structure size should be same
+  //    b.the structures should be continuous
+  //    c.the structures don't need to cover all layers of base_group
+  for (auto iter : hash_counts_map) {
+    auto cnt = iter.first;
+    auto op_hash_set = iter.second;
+    if (cnt <= 2) {
+      continue;
+    }
+    LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "dynamic_programming_with_structure_detect",
+                          "iteration", "try to detect repeated anchor op")
+                   << LOG_KV("base_group_idx", group_idx)
+                   << LOG_KV("group_layer_num", group_layer_num)
+                   << LOG_KV("cnt", cnt) << "\n";
+    });
+    for (auto op_hash : op_hash_set) {
+      auto op_locations = hash_op_map[op_hash];
+      assert(op_locations.size() == cnt);
+      structure_size = op_locations[1] - op_locations[0];
+      if (structure_size < MIN_STRUCTURE_SIZE ||
+          structure_size * (cnt - 2) > group_layer_num) {
+        LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                              "dynamic_programming_with_structure_detect",
+                              "iteration", "structure size judgement")
+                       << LOG_KV("result", "invalid")
+                       << LOG_KV("op_hash", op_hash)
+                       << LOG_KV("structure_size", structure_size)
+                       << LOG_KV("cnt", cnt) << "\n";
+        });
+        continue;
+      }
+      valid = true;
+      anchor_op_repeated_times = cnt;
+      LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "dynamic_programming_with_structure_detect",
+                            "iteration", "structure size judgement")
+                     << LOG_KV("result", "valid") << LOG_KV("op_hash", op_hash)
+                     << LOG_KV("structure_size", structure_size)
+                     << LOG_KV("anchor_op_repeated_times",
+                               anchor_op_repeated_times)
+                     << "\n";
+      });
+      break;
+    }
+    if (valid) {
+      break;
+    }
+  }
+
+  if (valid) {
+    auto structure_start_idx = -1;
+    // 2.find the start location of first structure using sliding window
+    //   try to find continuous structures repeated at least 3 times
+    for (int64_t start_idx = 0; start_idx <= group_layer_num; start_idx += 1) {
+      bool match = true;
+      uint64_t stucture_hash;
+      int64_t MIN_REPEATED_TIMES = 3;
+      for (int64_t t = 0; t < MIN_REPEATED_TIMES; ++t) {
+        auto st = start_idx + t * structure_size;
+        auto ed = st + structure_size - 1;
+        if (!get_layer_group(lg_info, base_group, st, ed, group_idx,
+                             idx_offset)) {
+          match = false;
+          break;
+        }
+        uint64_t temp_hash;
+        lg_cache.get_graph_hash(lg_info, temp_hash, true);
+        if (t == 0) {
+          stucture_hash = temp_hash;
+        } else {
+          if (stucture_hash != temp_hash) {
+            match = false;
+            break;
+          }
+        }
+      }
+      if (match) {
+        structure_start_idx = start_idx;
+        break;
+      }
+    }
+    if (structure_start_idx < 0) {
+      LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "dynamic_programming_with_structure_detect",
+                            "structure_start_idx",
+                            "failed to find the start idx of first structure")
+                     << LOG_KV("base_group_idx", group_idx)
+                     << LOG_KV("group_layer_num", group_layer_num)
+                     << LOG_KV("idx_offset", idx_offset)
+                     << LOG_KV("structure_size", structure_size) << "\n";
+      });
+      return false;
+    }
+    LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "dynamic_programming_with_structure_detect",
+                          "structure_start_idx",
+                          "find the start idx of first structure")
+                   << LOG_KV("base_group_idx", group_idx)
+                   << LOG_KV("group_layer_num", group_layer_num)
+                   << LOG_KV("idx_offset", idx_offset)
+                   << LOG_KV("structure_size", structure_size)
+                   << LOG_KV("structure_start_idx", structure_start_idx)
+                   << "\n";
+
+      if (get_layer_group(lg_info, base_group, structure_start_idx,
+                          structure_start_idx + structure_size - 1, group_idx,
+                          idx_offset)) {
+        lg_info.dump();
+      }
+    });
+    // 3.put two same structures together as a base group
+    //   use dynamic programming with cluster to get patterns from this base
+    //   group sort patterns according to their lengths from long to short use
+    //   these patterns to match the whole base_group
+    auto double_structure_group_size = 2 * structure_size;
+    std::vector<std::pair<int64_t, int64_t>> double_structure_clusters;
+    std::vector<Operation *> double_structure_base_group(
+        base_group.begin() + structure_start_idx,
+        base_group.begin() + structure_start_idx + double_structure_group_size);
+    std::vector<int64_t> structure_cut_result;
+    dynamic_programming_with_cluster(
+        double_structure_base_group, double_structure_clusters,
+        structure_cut_result, group_idx, idx_offset + structure_start_idx,
+        get_max_cluster_size(double_structure_group_size));
+    LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+      llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                          "dynamic_programming_with_structure_detect",
+                          "dynamic_programming_with_cluster",
+                          "get cut_result of double_structure_base_group")
+                   << "\n";
+      int start = 0;
+      for (auto end : structure_cut_result) {
+        get_layer_group(lg_info, double_structure_base_group, start, end, -1,
+                        idx_offset + structure_start_idx);
+        int64_t group_cost = MAX_COST;
+        auto temp_status = is_layer_group_valid(lg_info, true, &group_cost);
+        llvm::dbgs() << temp_status << " ;start[" << start << "] -> end[" << end
+                     << "]; group_cost = " << group_cost << "\n";
+        lg_info.dump();
+        start = end + 1;
+      }
+      llvm::dbgs() << "double_structure_base_group cut results: ";
+      for (size_t j = 0; j < structure_cut_result.size(); ++j) {
+        llvm::dbgs() << structure_cut_result[j] << ", ";
+      }
+      llvm::dbgs() << "\n";
+    });
+
+    if (structure_cut_result.size() > 2) {
+      // 4.a.double_structure_base_group is cut into N patterns (N > 2)
+      //     drop the first and the last patterns which may be incomplete
+      //     use the middle patterns to match the whole base_group
+      std::set<uint64_t> pattern_set;
+      std::set<uint64_t, std::greater<uint64_t>> pattern_len_set;
+      for (size_t i = 1; i + 1 < structure_cut_result.size(); ++i) {
+        int64_t pattern_start = structure_cut_result[i - 1] + 1;
+        int64_t pattern_end = structure_cut_result[i];
+        int64_t pattern_size = pattern_end - pattern_start + 1;
+        uint64_t pattern_hash;
+        get_layer_group(lg_info, double_structure_base_group, pattern_start,
+                        pattern_end, -1, idx_offset + structure_start_idx);
+        lg_cache.get_graph_hash(lg_info, pattern_hash, true);
+        pattern_set.insert(pattern_hash);
+        pattern_len_set.insert(pattern_size);
+        LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+          llvm::dbgs()
+              << DEBUGGER_DEFAULT_INFO(
+                     "dynamic_programming_with_structure_detect",
+                     "pattern_info",
+                     "extract pattern from double_structure_base_group")
+              << LOG_KV("base_group_idx", group_idx) << LOG_KV("pattern_idx", i)
+              << LOG_KV("pattern_start_idx",
+                        pattern_start + structure_start_idx)
+              << LOG_KV("pattern_end_idx", pattern_end + structure_start_idx)
+              << LOG_KV("pattern_size", pattern_size)
+              << LOG_KV("pattern_hash", pattern_hash) << "\n";
+          lg_info.dump();
+        });
+      }
+      // 5.match the whole base_group using the patterns
+      std::vector<std::pair<int64_t, int64_t>> pattern_clusters;
+      std::vector<bool> is_covered(base_group.size(), false);
+      for (auto pattern_len : pattern_len_set) {
+        for (int i = 0; i + pattern_len - 1 < group_layer_num;) {
+          get_layer_group(lg_info, base_group, i, i + pattern_len - 1,
+                          group_idx, idx_offset);
+          uint64_t temp_hash;
+          lg_cache.get_graph_hash(lg_info, temp_hash, true);
+          bool match = pattern_set.find(temp_hash) != pattern_set.end();
+          if (match && !is_covered[i] && !is_covered[i + pattern_len - 1]) {
+            pattern_clusters.push_back(
+                std::make_pair<int64_t, int64_t>(i, pattern_len));
+            for (int64_t j = 0; j < pattern_len; ++j) {
+              is_covered[i + j] = true;
+            }
+            i += pattern_len;
+          } else {
+            i += 1;
+          }
+        }
+      }
+      std::sort(pattern_clusters.begin(), pattern_clusters.end(),
+                [](const std::pair<int64_t, int64_t> &a,
+                   const std::pair<int64_t, int64_t> &b) {
+                  return a.first < b.first;
+                });
+      LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "dynamic_programming_with_structure_detect",
+                            "pattern_clusters",
+                            "show pattern_clusters after structure detection")
+                     << LOG_KV("base_group_idx", group_idx)
+                     << LOG_KV("num_clusters", pattern_clusters.size()) << "\n";
+        for (size_t i = 0; i < pattern_clusters.size(); ++i) {
+          llvm::dbgs() << LOG_KV("pattern_cluster_idx", i)
+                       << LOG_KV("start_idx", pattern_clusters[i].first)
+                       << LOG_KV("end_idx", pattern_clusters[i].first +
+                                                pattern_clusters[i].second - 1)
+                       << LOG_KV("cluster_size", pattern_clusters[i].second)
+                       << "\n";
+        }
+      });
+      int64_t start_idx = 0;
+      std::vector<int64_t> cut_result;
+      auto pattern_clusters_size = pattern_clusters.size();
+      for (int64_t i = 0; i < pattern_clusters_size; ++i) {
+        int64_t cluster_start_idx = pattern_clusters[i].first;
+        int64_t cluster_end_idx =
+            pattern_clusters[i].first + pattern_clusters[i].second - 1;
+        cut_result.push_back(cluster_end_idx); // add current pattern cluster
+        LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+          llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                              "dynamic_programming_with_structure_detect",
+                              "tmp_cut_result",
+                              "cut results from pattern_clusters")
+                       << LOG_KV("base_group_idx", group_idx)
+                       << LOG_KV("cluster_start_idx", cluster_start_idx)
+                       << LOG_KV("cluster_end_idx", cluster_end_idx) << "\n";
+        });
+        bool do_dp = false;
+        int64_t dp_start_idx = -1;
+        int64_t dp_end_idx = -1;
+        if (cluster_start_idx > start_idx) {
+          do_dp = true;
+          dp_start_idx = start_idx;
+          dp_end_idx = cluster_start_idx - 1;
+        } else if (i == pattern_clusters_size - 1 &&
+                   cluster_end_idx < group_layer_num - 1) {
+          do_dp = true;
+          dp_start_idx = cluster_end_idx + 1;
+          dp_end_idx = group_layer_num - 1;
+        }
+        start_idx = cluster_end_idx + 1;
+        if (do_dp) {
+          std::vector<Operation *> non_structure_base_group(
+              base_group.begin() + dp_start_idx,
+              base_group.begin() + dp_end_idx + 1);
+          std::vector<std::pair<int64_t, int64_t>> tmp_clusters;
+          std::vector<int64_t> tmp_cut_result;
+          dynamic_programming_with_cluster(
+              non_structure_base_group, tmp_clusters, tmp_cut_result, group_idx,
+              idx_offset + dp_start_idx, 1);
+          for (auto &idx : tmp_cut_result) {
+            idx += dp_start_idx;
+          }
+          LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+            llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                                "dynamic_programming_with_structure_detect",
+                                "non_structure_base_group",
+                                "get cut_result of non_structure_base_group")
+                         << "\n";
+            int start = dp_start_idx;
+            for (auto end : tmp_cut_result) {
+              auto tmp_start = start - dp_start_idx;
+              auto tmp_end = end - dp_start_idx;
+              get_layer_group(lg_info, non_structure_base_group, tmp_start,
+                              tmp_end, -1, idx_offset + dp_start_idx);
+              int64_t group_cost = MAX_COST;
+              auto temp_status =
+                  is_layer_group_valid(lg_info, true, &group_cost);
+              llvm::dbgs() << temp_status << " ;start[" << start << "] -> end["
+                           << end << "]; group_cost = " << group_cost << "\n";
+              lg_info.dump();
+              start = end + 1;
+            }
+            llvm::dbgs() << "non-structure regions cut results: ";
+            for (size_t j = 0; j < tmp_cut_result.size(); ++j) {
+              llvm::dbgs() << tmp_cut_result[j] << ", ";
+            }
+            llvm::dbgs() << "\n";
+          });
+          cut_result.insert(cut_result.end(), tmp_cut_result.begin(),
+                            tmp_cut_result.end());
+        }
+      }
+      std::sort(cut_result.begin(), cut_result.end());
+      LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "dynamic_programming_with_structure_detect",
+                            "final_cut_result",
+                            "final cut results after structure detection")
+                     << LOG_KV("base_group_idx", group_idx)
+                     << LOG_KV("num_cut_points", cut_result.size()) << "\n";
+        llvm::dbgs() << "base_gorup cut results: ";
+        for (size_t j = 0; j < cut_result.size(); ++j) {
+          llvm::dbgs() << cut_result[j] << ", ";
+        }
+        llvm::dbgs() << "\n";
+      });
+      cut_results_.push_back(std::move(cut_result));
+    } else {
+      std::vector<std::pair<int64_t, int64_t>> base_group_clusters;
+      std::vector<int64_t> cut_result;
+      dynamic_programming_with_cluster(base_group, base_group_clusters,
+                                       cut_result, group_idx, idx_offset,
+                                       structure_size);
+      LG_DEBUG_WITH_TYPE("structure_detect", [&]() {
+        llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
+                            "dynamic_programming_with_structure_detect",
+                            "final_cutresult",
+                            "final cut results after structure detection")
+                     << LOG_KV("base_group_idx", group_idx)
+                     << LOG_KV("num_cut_points", cut_result.size()) << "\n";
+        llvm::dbgs() << "base_gorup cut results: ";
+        for (size_t j = 0; j < cut_result.size(); ++j) {
+          llvm::dbgs() << cut_result[j] << ", ";
+        }
+        llvm::dbgs() << "\n";
+      });
+      cut_results_.push_back(std::move(cut_result));
+    }
+    return true;
+  }
+  return false;
+}
+
 void GroupMethod::dynamic_programming_kernel(
     LgInfo &lg_info, const std::vector<Operation *> &base_group,
     const std::vector<std::pair<int64_t, int64_t>> &clusters,
@@ -990,14 +1365,15 @@ void GroupMethod::dynamic_programming_kernel(
   //     cluster_num, std::vector<int64_t>(cluster_num, 0));
   // auto cut_points = std::vector<std::vector<int64_t>>(
   //     cluster_num, std::vector<int64_t>(cluster_num, 0));
+  auto shape_secs_search_strategy =
+      lg_config.get_config_value<int>("shape_secs_search_strategy", 0);
   for (size_t j = 0; j < cluster_num; ++j) {
     int64_t start_idx = clusters[j].first;
     int64_t end_idx = start_idx + clusters[j].second - 1;
     get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx,
                     idx_offset);
 
-    if (lg_config.get_shape_secs_search_strategy() ==
-        SHAPE_SECS_ALWAYS_BETTER) {
+    if (shape_secs_search_strategy == SHAPE_SECS_ALWAYS_BETTER) {
       lg_info.shape_secs_search_level = 1;
     }
     assert(is_layer_group_valid(lg_info, true, &cost_table[j][j]));
@@ -1046,20 +1422,17 @@ void GroupMethod::dynamic_programming_kernel(
     int64_t group_cost = MAX_COST;
     shape_secs_t shape_secs;
     uint64_t hash_key;
-    LgCostCache::getInstance().get_graph_hash(lg_info, hash_key);
+    LgCache::getInstance().get_graph_hash(lg_info, hash_key, false);
     bool cache_hit = false;
 #pragma omp critical(layer_group_cost_cache)
-    cache_hit =
-        lg_info.shape_secs_search_level
-            ? false
-            : LgCostCache::getInstance().get_cost_from_cache(
-                  hash_key, group_cost, lg_info.shape_secs_search_level);
+    cache_hit = LgCache::getInstance().get_cost_from_cost_cache(
+        hash_key, group_cost, lg_info.shape_secs_search_level);
     if (options_.debugger > 2 && cache_hit) {
       int64_t manual_group_cost = lg_debugger.get_manual_group_cost(lg_info);
       if (manual_group_cost != -1) { // -1 means no manual cost
         lg_info.shape_secs = {};
         lg_info.shape_secs_search_level = 0;
-        LgCostCache::getInstance().add_cache(hash_key, lg_info);
+        LgCache::getInstance().add_cost_cache(hash_key, lg_info);
         return manual_group_cost;
       }
     }
@@ -1069,7 +1442,7 @@ void GroupMethod::dynamic_programming_kernel(
         shape_secs = lg_info.shape_secs;
       }
 #pragma omp critical(layer_group_cost_cache)
-      LgCostCache::getInstance().add_cache(hash_key, lg_info);
+      LgCache::getInstance().add_cost_cache(hash_key, lg_info);
     }
     return group_cost;
   };
@@ -1093,11 +1466,10 @@ void GroupMethod::dynamic_programming_kernel(
       int64_t end_idx = clusters[end].first + clusters[end].second - 1;
       get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx,
                       idx_offset);
-      if (lg_config.get_shape_secs_search_strategy() ==
-          SHAPE_SECS_ALWAYS_BETTER) {
+      if (shape_secs_search_strategy == SHAPE_SECS_ALWAYS_BETTER) {
         lg_info.shape_secs_search_level = 1;
       }
-      int64_t cost = LgCostCache::getInstance().cache_enabled
+      int64_t cost = LgCache::getInstance().cache_enabled
                          ? calc_group_cost_with_cache(lg_info)
                          : calc_group_cost(lg_info);
       single_group_costs[start][end] = cost;
@@ -1155,13 +1527,12 @@ void GroupMethod::dynamic_programming_kernel(
       int64_t end_idx = clusters[end].first + clusters[end].second - 1;
       get_layer_group(lg_info, base_group, start_idx, end_idx, base_group_idx,
                       idx_offset);
-      if (lg_config.get_shape_secs_search_strategy() ==
-          SHAPE_SECS_BETTER_IF_MIGHT_SPLIT) {
+      if (shape_secs_search_strategy == SHAPE_SECS_BETTER_IF_MIGHT_SPLIT) {
         // try to find whether group cost can be reduced
         // TODO: judgment group_cost != MAX_COST have to be removed after
         if (optimal_cut_point != end && group_cost != MAX_COST) {
           lg_info.shape_secs_search_level = 1;
-          int64_t group_cost_opt = LgCostCache::getInstance().cache_enabled
+          int64_t group_cost_opt = LgCache::getInstance().cache_enabled
                                        ? calc_group_cost_with_cache(lg_info)
                                        : calc_group_cost(lg_info);
           if (group_cost_opt < cost) {
@@ -1207,42 +1578,40 @@ void GroupMethod::dynamic_programming_kernel(
   // });
 
   llvm::outs() << "\n";
-  std::vector<int64_t> cut_result;
-  get_layer_cut_result(cut_result, clusters, cut_points, 0, cluster_num - 1);
-  cut_results_.push_back(std::move(cut_result));
-  LLVM_DEBUG({
-    LgInfo lg_info;
-    int start = 0;
-    for (auto end : cut_result) {
-      get_layer_group(lg_info, base_group, start, end, base_group_idx,
-                      idx_offset);
-      int64_t group_cost = MAX_COST;
-      auto temp_status = is_layer_group_valid(lg_info, true, &group_cost);
-      llvm::dbgs() << temp_status << " ;start" << start << " - "
-                   << " end " << end << " = " << group_cost << "\n";
-      start = end + 1;
-    }
+  // std::vector<int64_t> cut_result;
+  // get_layer_cut_result(cut_result, clusters, cut_points, 0, cluster_num - 1);
+  // cut_results_.push_back(std::move(cut_result));
+  // LLVM_DEBUG({
+  //   LgInfo lg_info;
+  //   int start = 0;
+  //   for (auto end : cut_result) {
+  //     get_layer_group(lg_info, base_group, start, end, base_group_idx,
+  //                     idx_offset);
+  //     int64_t group_cost = MAX_COST;
+  //     auto temp_status = is_layer_group_valid(lg_info, true, &group_cost);
+  //     llvm::dbgs() << temp_status << " ;start" << start << " - " << " end "
+  //                  << end << " = " << group_cost << "\n";
+  //     start = end + 1;
+  //   }
 
-    llvm::dbgs() << "\n";
-    llvm::dbgs() << "================FINAL GROUP================\n";
-    for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
-      for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
-        llvm::dbgs() << cut_points[cost_i][cost_j] << ", "
-                     << "";
-      }
-      llvm::dbgs() << "\n";
-    }
-    llvm::dbgs() << "================COST TABLE================\n";
-    for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
-      for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
-        llvm::dbgs() << cost_table[cost_i][cost_j] << ", "
-                     << "";
-      }
-      llvm::dbgs() << "\n";
-    }
-    llvm::dbgs() << "=============================================\n";
-    llvm::dbgs() << "\n";
-  });
+  //   llvm::dbgs() << "\n";
+  //   llvm::dbgs() << "================FINAL GROUP================\n";
+  //   for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+  //     for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+  //       llvm::dbgs() << cut_points[cost_i][cost_j] << ", " << "";
+  //     }
+  //     llvm::dbgs() << "\n";
+  //   }
+  //   llvm::dbgs() << "================COST TABLE================\n";
+  //   for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+  //     for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+  //       llvm::dbgs() << cost_table[cost_i][cost_j] << ", " << "";
+  //     }
+  //     llvm::dbgs() << "\n";
+  //   }
+  //   llvm::dbgs() << "=============================================\n";
+  //   llvm::dbgs() << "\n";
+  // });
 }
 
 void GroupMethod::dynamic_programming_layer_group_with_cluster_debug(
@@ -1287,7 +1656,62 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster_debug(
         cluster_num, std::vector<int64_t>(cluster_num, 0));
     dynamic_programming_kernel(lg_info, debug_group, clusters, cost_table,
                                cut_points, debug_group_idx++, start_idx);
+    std::vector<int64_t> cut_result;
+    get_layer_cut_result(cut_result, clusters, cut_points, 0, cluster_num - 1);
+    cut_results_.push_back(std::move(cut_result));
+    LLVM_DEBUG({
+      LgInfo lg_info;
+      int start = 0;
+      for (auto end : cut_result) {
+        get_layer_group(lg_info, debug_group, start, end, -1, start_idx);
+        int64_t group_cost = MAX_COST;
+        auto temp_status = is_layer_group_valid(lg_info, true, &group_cost);
+        llvm::dbgs() << temp_status << " ;start" << start << " - "
+                     << " end " << end << " = " << group_cost << "\n";
+        start = end + 1;
+      }
+
+      llvm::dbgs() << "\n";
+      llvm::dbgs() << "================FINAL GROUP================\n";
+      for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+        for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+          llvm::dbgs() << cut_points[cost_i][cost_j] << ", "
+                       << "";
+        }
+        llvm::dbgs() << "\n";
+      }
+      llvm::dbgs() << "================COST TABLE================\n";
+      for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+        for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+          llvm::dbgs() << cost_table[cost_i][cost_j] << ", "
+                       << "";
+        }
+        llvm::dbgs() << "\n";
+      }
+      llvm::dbgs() << "=============================================\n";
+      llvm::dbgs() << "\n";
+    });
   }
+}
+
+void GroupMethod::dynamic_programming_with_cluster(
+    const std::vector<Operation *> &base_group,
+    std::vector<std::pair<int64_t, int64_t>> &clusters,
+    std::vector<int64_t> &cut_result, int group_idx, int64_t idx_offset,
+    int64_t max_cluster_size) {
+  clusters.clear();
+  get_group_clusters_with_dynamic_programming(clusters, base_group, group_idx,
+                                              idx_offset, max_cluster_size);
+  auto cluster_num = clusters.size();
+  auto cost_table = std::vector<std::vector<int64_t>>(
+      cluster_num, std::vector<int64_t>(cluster_num, 0));
+  auto cut_points = std::vector<std::vector<int64_t>>(
+      cluster_num, std::vector<int64_t>(cluster_num, 0));
+  LgInfo lg_info;
+  dynamic_programming_kernel(lg_info, base_group, clusters, cost_table,
+                             cut_points, group_idx, idx_offset);
+  get_layer_cut_result(cut_result, clusters, cut_points, 0, cluster_num - 1);
+  return;
 }
 
 void GroupMethod::dynamic_programming_layer_group_with_cluster(
@@ -1307,6 +1731,11 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
   // std::shared_ptr<dot_graph> opt2_dot_graph = std::make_shared<dot_graph>();
   // createSubnetGraph(ops_vector, opt2_dot_graph);
   // for debug
+  auto &lg_config = LgConfig::getInstance();
+  LgCache::getInstance().init(
+      subnet_ops,
+      runmode_ == RunMode::TPU_DYNAMIC); // To disable cache, comment this line.
+  // exit(0);
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
   get_base_groups(base_groups, subnet_ops);
@@ -1314,9 +1743,6 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
     llvm::outs() << llvm::format("total num of base_group is %d\n",
                                  base_groups.size());
   });
-  LgCostCache::getInstance().init(
-      base_groups,
-      runmode_ == RunMode::TPU_DYNAMIC); // To disable cache, comment this line.
   int64_t idx_offset = 0;
   for (size_t i = 0; i < base_groups.size();
        idx_offset += base_groups[i].size(), ++i) {
@@ -1335,9 +1761,18 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
                           "get group clusters of base_groups[%d]", i)
                    << "\n";
     });
+    if (lg_config.get_config_value("structure_detect_opt", true) &&
+        !getenv("DISABLE_STRUCTURE_DETECT_OPT")) {
+      bool structure_detected = dynamic_programming_with_structure_detect(
+          base_groups[i], i, idx_offset);
+      if (structure_detected) {
+        continue;
+      }
+    }
     // get_group_clusters(clusters, base_groups[i], i, idx_offset);
-    get_group_clusters_with_dynamic_programming(clusters, base_groups[i], i,
-                                                idx_offset);
+    get_group_clusters_with_dynamic_programming(
+        clusters, base_groups[i], i, idx_offset,
+        get_max_cluster_size(base_groups[i].size()));
     size_t cluster_num = clusters.size();
     LAYER_GROUP_LOG_DEBUG_BLOCK({
       llvm::outs() << llvm::format(
@@ -1359,6 +1794,42 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
       });
       dynamic_programming_kernel(sub_group, base_groups[i], clusters,
                                  cost_table, cut_points, i, idx_offset);
+      std::vector<int64_t> cut_result;
+      get_layer_cut_result(cut_result, clusters, cut_points, 0,
+                           cluster_num - 1);
+      cut_results_.push_back(std::move(cut_result));
+      LLVM_DEBUG({
+        LgInfo lg_info;
+        int start = 0;
+        for (auto end : cut_result) {
+          get_layer_group(lg_info, base_groups[i], start, end, i, idx_offset);
+          int64_t group_cost = MAX_COST;
+          auto temp_status = is_layer_group_valid(lg_info, true, &group_cost);
+          llvm::dbgs() << temp_status << " ;start" << start << " - "
+                       << " end " << end << " = " << group_cost << "\n";
+          start = end + 1;
+        }
+
+        llvm::dbgs() << "\n";
+        llvm::dbgs() << "================FINAL GROUP================\n";
+        for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+          for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+            llvm::dbgs() << cut_points[cost_i][cost_j] << ", "
+                         << "";
+          }
+          llvm::dbgs() << "\n";
+        }
+        llvm::dbgs() << "================COST TABLE================\n";
+        for (size_t cost_i = 0; cost_i < cluster_num; ++cost_i) {
+          for (int64_t cost_j = 0; cost_j < cluster_num; ++cost_j) {
+            llvm::dbgs() << cost_table[cost_i][cost_j] << ", "
+                         << "";
+          }
+          llvm::dbgs() << "\n";
+        }
+        llvm::dbgs() << "=============================================\n";
+        llvm::dbgs() << "\n";
+      });
     } else {
       LG_DEBUG_WITH_TYPE("lg_step", [&]() {
         llvm::dbgs() << DEBUGGER_DEFAULT_INFO(
@@ -1439,7 +1910,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
   // show_cut_results();
 
   // update lg_infos
-  if (LgCostCache::getInstance().cache_enabled) {
+  if (LgCache::getInstance().cache_enabled) {
     get_final_groups_by_cache(lg_infos, base_groups);
   } else {
     get_final_groups(lg_infos, base_groups);
@@ -2022,9 +2493,9 @@ void GroupMethod::get_final_groups_by_cache(
         bool cache_hit;
         uint64_t hash_key;
         cache_hit =
-            LgCostCache::getInstance().get_graph_hash(lg_info, hash_key);
+            LgCache::getInstance().get_graph_hash(lg_info, hash_key, false);
         if (cache_hit) {
-          cache_hit = LgCostCache::getInstance().get_info_from_cache(
+          cache_hit = LgCache::getInstance().get_info_from_cost_cache(
               hash_key, lg_info.group_cost, lg_info.shape_secs);
         }
         if (!cache_hit) {

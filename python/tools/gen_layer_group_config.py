@@ -32,7 +32,8 @@ def gen_layer_group_config(model_name: str = "",
                            overwrite: bool = False,
                            output: str = "",
                            silence: bool = False,
-                           strategy: int = 0) -> None:
+                           strategy: int = 0,
+                           structure_detect_opt: bool = True) -> None:
     config_filename = "layer_group_config.json"
     if not output:
         if not model_name or not chip or not quantize:
@@ -61,12 +62,14 @@ def gen_layer_group_config(model_name: str = "",
 
     # Add layer group config template
     #######################################################################
-    def get_default_config(chip: str, strategy: int) -> Dict[str, Any]:
+    def get_default_config(chip: str, strategy: int, structure_detect_opt: bool) -> Dict[str, Any]:
         chip = chip.lower()
         if chip == "cv184x":
             return {
                 "shape_secs_search_strategy":
                 strategy,
+                "structure_detect_opt":
+                structure_detect_opt,
                 "sc_method_configs": [
                     {
                         "sc_method": "sc_method_quick_search",
@@ -99,6 +102,8 @@ def gen_layer_group_config(model_name: str = "",
             return {
                 "shape_secs_search_strategy":
                 strategy,
+                "structure_detect_opt":
+                structure_detect_opt,
                 "sc_method_configs": [
                     {
                         "sc_method": "sc_method_quick_search",
@@ -128,7 +133,7 @@ def gen_layer_group_config(model_name: str = "",
                 ],
             }
 
-    config = get_default_config(chip, strategy)
+    config = get_default_config(chip, strategy, structure_detect_opt)
     # Save the config to a file
     save_config(config, config_filename, silence=silence)
 
@@ -157,6 +162,9 @@ if __name__ == "__main__":
                         default=0,
                         choices=[0, 1],
                         help="strategy for layer group search, 0: SEARCH_QUICK, 1: SEARCH_BETTER")
+    parser.add_argument("--disable_structure_detect_opt",
+                        action='store_true',
+                        help="disable structure detect optimization")
     parser.add_argument("--overwrite",
                         action='store_true',
                         help="overwrite the config file if it exists")
@@ -171,4 +179,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     gen_layer_group_config(args.model_name, args.chip, args.quantize, args.overwrite, args.output,
-                           False, args.strategy)
+                           False, args.strategy, not args.disable_structure_detect_opt)

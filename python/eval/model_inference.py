@@ -130,6 +130,8 @@ class bmodel_inference(common_inference):
                 lib_so = 'libcmodel_1684.so'
             elif chip == "BM1690":
                 lib_so = 'libtpuv7_emulator.so'
+            elif chip == "BM1690E":
+                lib_so = 'libtpuv7.1_emulator.so'
             elif chip == "CV184X":
                 lib_so = 'libcmodel_cv184x.so'
             elif chip == "SG2380":

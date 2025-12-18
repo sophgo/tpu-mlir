@@ -91,16 +91,22 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
   return do_nothing(mode);
 }
 
-void tpu::RequantIntOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+void tpu::RequantIntOp::DumpAttrs(llvm::raw_string_ostream &os,
+                                  bool quant_agnostic) {
   for (auto attr : getOperation()->getAttrs()) {
     auto attr_name = attr.getName().str();
-    if (attr_name == "ginfo" || attr_name == "multiplier" || attr_name == "rshift") {
+    if (attr_name == "ginfo" || attr_name == "multiplier" ||
+        attr_name == "rshift") {
       continue;
     }
     os << attr_name << "=";
     attr.getValue().print(os);
     os << "; ";
   }
+
+  if (quant_agnostic)
+    return;
+
   auto rshift_v = getRshift();
   auto multiplier_v = getMultiplier();
   if (rshift_v == 0) {
