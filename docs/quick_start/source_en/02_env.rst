@@ -75,7 +75,7 @@ Download `tpu_mlir-*-py3-none-any.whl` from `Assets <https://github.com/sophgo/t
    $ pip install tpu_mlir-*-py3-none-any.whl
 
 Install the dependency of tpu_mlir
-------------------
+-----------------------------------
 
 tpu_mlir requires different dependencies when processing models of different frameworks, Both the online and offline installation methods require additional dependencies to be installed.
 

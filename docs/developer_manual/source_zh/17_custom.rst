@@ -743,8 +743,7 @@ TpuLang自定义AP算子添加
 
     REGISTER_APLAYER_CLASS(AP_CUSTOM, {op_name});
 
-  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T`中定义成员
-    AP_CUSTOM_{OP_NAME}，其中OP_NAME为大写。
+  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T` 中定义成员AP_CUSTOM_{OP_NAME}，其中OP_NAME为大写。
 
   .. code-block:: c++
 
@@ -787,8 +786,7 @@ TpuLang自定义AP算子添加
 
     int ap_mylayer::forward(void *raw_param, int param_size);
 
-  c. （可选）形状推断函数。此补丁函数用于编译器形状推断，若不实现，默认只有一个输入一个输出，且输出形状跟输入形状
-    相同。补丁函数形式如下：
+  c. （可选）形状推断函数。此补丁函数用于编译器形状推断，若不实现，默认只有一个输入一个输出，且输出形状跟输入形状相同。补丁函数形式如下：
 
   .. code-block:: c++
 
@@ -935,8 +933,7 @@ TpuLang示例
 
     REGISTER_APLAYER_CLASS(AP_CUSTOM_TOPK, ap_topk);
 
-  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T`中定义成员
-    AP_CUSTOM_TOPK。
+  b. 并在./customlayer/include/customap_common.h中的枚举类型 `AP_CUSTOM_LAYER_TYPE_T` 中定义成员AP_CUSTOM_TOPK。
 
   .. code-block:: c++
 

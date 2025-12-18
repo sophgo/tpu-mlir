@@ -1,3 +1,5 @@
+.. _Appendix 02 Basic Elements of TpuLang:
+
 Appendix 02: Basic Elements of TpuLang
 =============================================
 
@@ -122,12 +124,13 @@ The Scalar constructor has two parameters:
 
 * value: Variable type, i.e., int/float type, with no default value, and must be specified.
 * dtype: The data type of the Scalar. If the default value None is used, it is equivalent to "float32."
- Otherwise, it can take values such as "float32," "float16," "int32," "uint32," "int16," "uint16," "int8," and "uint8."
+
+  Otherwise, it can take values such as "float32," "float16," "int32," "uint32," "int16," "uint16," "int8," and "uint8."
 
 
 Example of usage:
 
-   .. code-block:: python
+  .. code-block:: python
 
       pad_val = tpul.Scalar(1.0)
       pad = tpul.pad(input, value=pad_val)
@@ -159,6 +162,7 @@ The interface for the initialization function is as follows, where you choose th
 * The device parameter is of type string and can take values from the range "BM1684X"\|"BM1688"\|"CV183X".
 
 .. _compile:
+
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -217,7 +221,8 @@ Explanation of parameters
 * gdma_check: A boolean. Whether to enable gdma check.
 * layer_group_config: string type, which indicates the layer group configuration file path. The default value is "".
 
-.. _compile:
+.. _compile_f32:
+
 compile_f32
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -338,58 +343,59 @@ Note: If the Tensors in the graph are still used by other graphs, do not call th
 
 Rounding Mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Rounding is the process of discarding extra digits beyond a certain point according to specific rules, yielding a shorter, unambiguous numerical representation.
 Given x, the rounded result is y. The following rounding modes are available:
 
 Half to Even
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
     Round to nearest; when the fractional part is 0.5, round to the nearest even number. Corresponds to :cpp:enumerator:`half_to_even`.
 
 Half Away From Zero
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
     Round to nearest; positive values toward +∞, negative values toward -∞. Corresponds to :cpp:enumerator:`half_away_from_zero`. Formula:
 
     .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x| + 0.5\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x| - 0.5\right\rceil}
 
 Towards Zero
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
     Unconditional truncation toward zero. Corresponds to :cpp:enumerator:`towards_zero`. Formula:
 
     .. math:: \mathsf{y = \mathrm{sign}(x)\left\lfloor|x|\right\rfloor = -\mathrm{sign}(x)\left\lceil-|x|\right\rceil} = {\begin{cases}\mathsf{\lfloor x\rfloor}&{\text{if}}\mathsf{\ \ x > 0,}\\ \mathsf{\lceil x\rceil}&{\text{otherwise}}.\end{cases}}
 
 Down
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
     Round toward -∞. Corresponds to :cpp:enumerator:`down`. Formula:
 
     .. math:: \mathsf{y = \lfloor x\rfloor = -\lceil-x\rceil}
 
 Up
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
     Round toward +∞. Corresponds to :cpp:enumerator:`up`. Formula:
 
     .. math:: \mathsf{y = \lceil x\rceil = -\lfloor-x\rfloor}
 
 Half Up
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
     Round to nearest; when the fractional part is 0.5, round toward +∞. Corresponds to :cpp:enumerator:`half_up`. Formula:
 
     .. math:: \mathsf{y = \lceil x + 0.5\rceil = -\lfloor-x - 0.5\rfloor = \left\lceil\frac{\lfloor 2x\rfloor}{2}\right\rceil}
 
 Half Down
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
     Round to nearest; when the fractional part is 0.5, round toward -∞. Corresponds to :cpp:enumerator:`half_down`. Formula:
 
     .. math:: \mathsf{y = \lfloor x - 0.5\rfloor = -\lceil-x + 0.5\rceil = \left\lfloor\frac{\lceil 2x\rceil}{2}\right\rfloor}
 
 Examples
-"""""""""""""""""""""""""""""""""
+::::::::::::::::::::::::::::::::::
 
 The table below shows the mapping from x to y under different rounding modes.
 
@@ -5043,12 +5049,12 @@ Transfer input tensor from yuv to rgb. Require tensor shape=[n,h*3/2,w], n repre
 Explanation of parameters
 """""""""""""""""""""""""""""""""
 * inputs: Tensor type, representing the input yuv tensor。Its dims must be 3, 1st dim represents `batch`, 2nd dim represents `pixels height`, 3rd dim represents `pixels width`.
-* src_format: Int type, representing the input format. `FORMAT_MAPPING_YUV420P_YU12`=0, `FORMAT_MAPPING_YUV420P_YV12`=1, `FORMAT_MAPPING_NV12`=2, `FORMAT_MAPPING_NV21`=3.
-* dst_format: Int type, representing the output format. `FORMAT_MAPPING_RGB`=4, `FORMAT_MAPPING_BGR`=5.
-* ImageOutFormatAttr: string type, representing the output dtype, currently only support `UINT8`.
-* formula_mode: string type, representing the formula to transfer from yuv to rgb, currently support `_601_limited`, `_601_full`.
-* round_mode: string type, currently support `HalfAwayFromZero`, `HalfToEven`.
-* out_name: string type, representing the name of output tensor, default= `None`.
+* src_format: Int type, representing the input format. `FORMAT_MAPPING_YUV420P_YU12` =0, `FORMAT_MAPPING_YUV420P_YV12` =1, `FORMAT_MAPPING_NV12` =2, `FORMAT_MAPPING_NV21` =3.
+* dst_format: Int type, representing the output format. `FORMAT_MAPPING_RGB` =4, `FORMAT_MAPPING_BGR` =5.
+* ImageOutFormatAttr: string type, representing the output dtype, currently only support `UINT8` .
+* formula_mode: string type, representing the formula to transfer from yuv to rgb, currently support `_601_limited` , `_601_full` .
+* round_mode: string type, currently support `HalfAwayFromZero` , `HalfToEven` .
+* out_name: string type, representing the name of output tensor, default= `None` .
 
 Return value
 """""""""""""""""""""""""""""""""
@@ -5095,9 +5101,11 @@ Parameters
 * list_spatial_scale: List[int] or int, representing the spatial scale corresponding to each feature map level.
         Please note that spatial scale follows mmdetection style, where one int value is initially given, and but its float reciprocal is adapted for roialign.
 * mode: string type, representing the implementation forms, now supporting two modes: DynNormal, or DynFuse.
-        Please note that in DynFuse mode, coordinates of rois can satisfy either mmdetection style, which is 5-length of [batch_id, x0, y0 x1, y1],
-                                          or customized style, which is 7-length of [a, b, x0, y0, x1, y1, c], please customize the position of batch_id.
-                         in DynNormal mode, a customized [a, b, x0, y0 x1, y1, c] coordinates style is adapted in case any customers desire to apply their models.
+        Please note that
+          in DynFuse mode, coordinates of rois can satisfy either mmdetection style, which is 5-length of [batch_id, x0, y0 x1, y1], or customized style, which is 7-length of [a, b, x0, y0, x1, y1, c], please customize the position of batch_id.
+
+          in DynNormal mode, a customized [a, b, x0, y0 x1, y1, c] coordinates style is adapted in case any customers desire to apply their models.
+
 * out_name: string type, representing the name of output tensor, default= `None`.
 
 Returns
@@ -5914,7 +5922,7 @@ merger_matmul
 :::::::::::::::::
 
 The interface definition
-"""""""""""
+"""""""""""""""""""""""""""""""""
     .. code-block:: python
 
       def merger_matmul(

@@ -84,11 +84,11 @@ TPU-MLIR中BM168X及其相关类定义在include/tpu_mlir/Backend文件夹下，
 
 以同步函数tpu_sync_all为例，由于之后要加上多核支持的，所以需要在相关后端cmodel库中定义好，
 
-  1.注意必须和后端的函数名和参数保持一致typedef void (*tpu_sync_all)();
+  1.注意必须和后端的函数名和参数保持一致 ``typedef void (*tpu_sync_all)()``;
 
-  2.在类内部加入该函数成员tpu_sync_all dl_tpu_sync_all;
+  2.在类内部加入该函数成员 ``tpu_sync_all`` ``dl_tpu_sync_all``;
 
-  3.在该类load_functions函数的实现中加入宏，CAST_FUNCTION(tpu_sync_all);该宏可以将dl_tpu_sync_all指向动态库中的函数。
+  3.在该类 ``load_functions`` 函数的实现中加入宏， ``CAST_FUNCTION(tpu_sync_all);`` 该宏可以将 dl_tpu_sync_all 指向动态库中的函数。
 
 获得到该类实例后即可使用动态库中的函数。
 

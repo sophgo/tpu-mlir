@@ -257,6 +257,8 @@ case4:当您的模型是部署在bm1684处理器上时,如果通过上述方法�
 
 注意事项:1.这里需要指定processor参数为bm1684。2. ``bc_inference_num`` 参数是使用 ``bc`` 量化方法时所需的推理数据数量(该数据将从您给定的dataset中抽取),这里图片数量不应太少。3. ``sq``、``smc``、``we`` 和 ``bc`` 方法可单独使用,可以仅仅选择 ``we`` 方法,在操作上直接去掉 ``sq``、``smc`` 和 ``bc`` 参数即可。4. run_calibration过程中会检查每个算子，找到进行shape计算的算子在当前目录生成名为net_name_shape_ops的qtable，将这些算子设置为不量化，里面内容可以手动和下面混精的配置合并作为qtable用在model_deploy中。
 
+.. _mix precision:
+
 TPU-MLIR混合精度量化概述
 ==============================
 
@@ -423,6 +425,7 @@ search_qtable
         --tune_num 0 \
         --debug_cmd mse \
         -o bert_base_squad_uncased-2.11.0.calitable
+
 步骤3: 转FP32 bmodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
