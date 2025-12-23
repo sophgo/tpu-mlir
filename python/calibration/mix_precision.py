@@ -106,7 +106,7 @@ class MixQuantModel:
         if self.using_cuda:
             for k, v in zip(self.module.input_names, data):
                 self.module.set_tensor(k, v)
-            self.module.invoke(False, global_compare_layers)
+            self.module.invoke(False, global_compare_layers if global_compare_layers else [])
         else:
             for k, v in zip(self.module.input_names, data):
                 self.module.set_tensor(k, v, v.shape)

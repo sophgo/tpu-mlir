@@ -99,6 +99,7 @@ private:
   void cudaActiveOp(tpu::ActiveOp op);
   void cudaSubOp(tpu::SubOp op);
   void cudaMulConstOp(tpu::MulConstOp op);
+  void cudaLayerNormOp(tpu::LayerNormOp op);
 
   void cudaAddOp(top::AddOp op);
   void cudaConvOp(top::ConvOp op);
@@ -117,7 +118,9 @@ private:
   void cudaMulConstOp(top::MulConstOp op);
   void cudaMulOp(top::MulOp op);
   void cudaSigmoidOp(top::SigmoidOp op);
-
+  void cudaLayerNormOp(top::LayerNormOp op);
+  void cudaSqueezeOp(top::SqueezeOp op);
+  void cudaGELUOp(top::GELUOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

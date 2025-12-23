@@ -269,6 +269,18 @@ void add4DF32(void *input0, void *input1, void *output,
       relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
 }
 
+void add4DInt32(int32_t *input0, int32_t *input1, int32_t *output,
+               int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_add4DInt32<<<num_blocks, block_size>>>(
+      (int32_t *)input0, (int32_t *)input1, (int32_t *)output,
+      n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+}
+
+
 void sub4DF32(void *input0, void *input1, void *output,
                bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2) {
@@ -491,23 +503,23 @@ void pad4D(void *input, void *output, int n, int c, int h, int w, int pad_h_t,
                                       pad_h_b, pad_w_l, pad_w_r, tbytes);
 }
 
-void permute4D(void *src, void *dst, int n, int c, int h, int w, int o0, int o1,
-               int o2, int o3, int tbytes) {
-  int num = n * c * h * w;
+void permute6D(void *src, void *dst, int n, int c, int d, int h, int w, int d1, int o0, int o1,
+               int o2, int o3, int o4, int o5, int tbytes) {
+  int num = n * c * d * h * w * d1;
   int num_blocks = CUDA_NUM_BLOCKS(num);
   int block_size = CUDA_BLOCK_SIZE;
-  g_permute4D<<<num_blocks, block_size>>>(src, dst, n, c, h, w, o0, o1, o2, o3,
+  g_permute6D<<<num_blocks, block_size>>>(src, dst, n, c, d, h, w, d1, o0, o1, o2, o3, o4, o5,
                                           tbytes);
 }
 
-void slice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
-             int off1, int off2, int off3, int s0, int s1, int s2, int s3,
-             int on, int oc, int oh, int ow, int tbytes) {
-  int num_blocks = CUDA_NUM_BLOCKS(on * oc * oh * ow);
+void slice6D(void *src, void *dst, int n, int c, int d, int h, int w, int d1, int off0,
+             int off1, int off2, int off3, int off4, int off5, int s0, int s1, int s2, int s3,
+             int s4, int s5, int on, int oc, int od, int oh, int ow, int od1, int tbytes) {
+  int num_blocks = CUDA_NUM_BLOCKS(on * oc * od * oh * ow * od1);
   int block_size = CUDA_BLOCK_SIZE;
-  g_slice4D<<<num_blocks, block_size>>>(src, dst, n, c, h, w, off0, off1, off2,
-                                        off3, s0, s1, s2, s3, on, oc, oh, ow,
-                                        tbytes);
+  g_slice6D<<<num_blocks, block_size>>>(src, dst, n, c, d, h, w, d1, off0, off1, off2,
+                                        off3, off4, off5, s0, s1, s2, s3, s4, s5, on, oc, od, oh, ow,
+                                        od1, tbytes);
 }
 
 void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
@@ -518,12 +530,35 @@ void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
                                        tbytes);
 }
 
-void mmF32(void *input, void *right, void *output, int m, int k, int n) {
+void mmF32(void *input, void *right, void *output, bool right_transpose, int m, int k, int n) {
   // Dimensions for blocks and grid
   int num_blocks = CUDA_NUM_BLOCKS(m * n);
   int block_size = CUDA_BLOCK_SIZE;
   g_mmF32<<<num_blocks, block_size>>>((float *)input, (float *)right,
-                                      (float *)output, m, k, n);
+                                      (float *)output, right_transpose, m, k, n);
+}
+
+void mmInt8(void *input, bool left_signed, void *right, bool right_signed, void *output, bool right_transpose, int m, int k, int n) {
+  // Dimensions for blocks and grid
+  int num_blocks = CUDA_NUM_BLOCKS(m * n);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (left_signed && right_signed) {
+    g_mmInt8<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)right,
+                                        (int32_t *)output, right_transpose, m, k, n);
+    return;
+  } else if (left_signed && !right_signed) {
+    g_mmInt8<<<num_blocks, block_size>>>((int8_t *)input, (uint8_t *)right,
+                                        (int32_t *)output, right_transpose, m, k, n);
+    return;
+  } else if (!left_signed && right_signed) {
+    g_mmInt8<<<num_blocks, block_size>>>((uint8_t *)input, (int8_t *)right,
+                                        (int32_t *)output, right_transpose, m, k, n);
+    return;
+  } else if (!left_signed && !right_signed) {
+    g_mmInt8<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)right,
+                                        (int32_t *)output, right_transpose, m, k, n);
+    return;
+  }
 }
 
 void gather(void *indices, void *embedding, void *output, int num_indices,
@@ -579,6 +614,14 @@ void requantInt8(void *input, void *output, int32_t multiplier, int32_t shift,
   int block_size = CUDA_BLOCK_SIZE;
   g_requantInt8<<<num_blocks, block_size>>>(
       (int32_t *)input, output, multiplier, shift, num, out_sign, qdm, relu);
+}
+
+void requantInt16(void *input, void *output, int32_t multiplier, int32_t shift,
+                 int num, bool relu) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_requantInt16<<<num_blocks, block_size>>>(
+      (int32_t *)input, output, multiplier, shift, num, relu);
 }
 
 void requantInt16Perchannel(void *input, void *output, void *multipliers,
@@ -827,6 +870,28 @@ void bmSoftmax(void *input, void *buffer, void *output, int outer_dim,
   } else {
     mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
   }
+}
+
+void bmLayerNorm(void *input, void *output, int outer_dim,
+               int inner_dim, void *weight, void *bias, float eps, data_type_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (type == DT_BF16) {
+    g_layerNormBF16<<<num_blocks, block_size>>>(
+        (float *)input, (float *)output, outer_dim, inner_dim, (float *)weight, (float *)bias, eps);
+  } else if (type == DT_F32 || type == DT_F16) {
+    g_layerNorm<<<num_blocks, block_size>>>(
+        (float *)input, (float *)output, outer_dim, inner_dim, (float *)weight, (float *)bias, eps);
+  } else {
+
+  }
+}
+
+void bmGELU(void *input, void *output, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_GELU<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, size);
 }
 
 void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,

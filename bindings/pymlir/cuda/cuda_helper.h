@@ -85,6 +85,10 @@ void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
 void add4DF32(void *input0, void *input1, void *output,
                bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2);
+void add4DInt32(int32_t *input0, int32_t *input1, int32_t *output,
+                int n0, int c0, int h0, int w0,
+                int n1, int c1, int h1, int w1,
+                int n2, int c2, int h2, int w2);
 void sub4DF32(void *input0, void *input1, void *output,
                bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2);
@@ -109,7 +113,8 @@ void depth2Space(void *input, void *output, int in, int ic, int ih, int iw,
                  int ohstride, int owstride, int block_h, int block_w, bool crd,
                  bool swap_cr, bool inversed, int tbytes);
 
-void mmF32(void *input, void *right, void *output, int m, int k, int n);
+void mmF32(void *input, void *right, void *output, bool right_transpose, int m, int k, int n);
+void mmInt8(void *input, bool left_signed, void *right, bool right_signed, void *output, bool right_transpose, int m, int k, int n);
 void requantInt8Perchannel(void *input, void *output, void *multipliers,
                            void *shifts, int n, int c, int h, int w,
                            bool out_sign, bool qdm = false, bool relu = false);
@@ -117,7 +122,8 @@ void requantInt8Perchannel(void *input, void *output, void *multipliers,
 // requant from int32 to int8
 void requantInt8(void *input, void *output, int32_t multiplier, int32_t shift,
                  int num, bool out_sign, bool qdm = false, bool relu = false);
-
+void requantInt16(void *input, void *output, int32_t multiplier, int32_t shift,
+                 int num, bool relu);
 void requantInt16Perchannel(void *input, void *output, void *multipliers,
                            void *shifts, int n, int c, int h, int w, bool relu = false);
 
@@ -146,16 +152,16 @@ void copyAxis(void *src, void *dst, int outer_dim, int axis_dim, int inner_dim,
 cudaError_t convertType(void *src, void *dst, int num_elem,
                         data_type_t src_type, data_type_t dst_type,
                         rounding_mode_t rmode = RD_TOWARDS_ZERO);
-void permute4D(void *src, void *dst, int n, int c, int h, int w, int o0, int o1,
-               int o2, int o3, int tbytes);
+void permute6D(void *src, void *dst, int n, int c, int d, int h, int w, int d1, int o0, int o1,
+               int o2, int o3, int o4, int o5, int tbytes);
 void upsample4D(void *src, void *dst, int n, int c, int h, int w, int scale_h,
                 int scale_w, int tbytes);
 void print(void *data, int size, data_type_t type);
 
 // input4 , offset4, step4 => output4
-void slice4D(void *src, void *dst, int n, int c, int h, int w, int off0,
-             int off1, int off2, int off3, int s0, int s1, int s2, int s3,
-             int on, int oc, int oh, int ow, int tbytes);
+void slice6D(void *src, void *dst, int n, int c, int d, int h, int w, int d1, int off0,
+             int off1, int off2, int off3, int off4, int off5, int s0, int s1, int s2, int s3,
+             int s4, int s5, int on, int oc, int od, int oh, int ow, int od1, int tbytes);
 void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
             int oh, int ow, int tbytes);
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
@@ -201,6 +207,9 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
 
 void bmSoftmax(void *input, void *buffer, void *output,
                int outer_dim, int axis_dim, int inner_dim, bool log);
+void bmGELU(void *input, void *output, int num);
+void bmLayerNorm(void *input, void *output, int outer_dim,
+               int inner_dim, void *weight, void *bias, float eps, data_type_t type);
 void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type);
 void bmReciprocal(void *input, void *output,  int outer_dim, int inner_dim, data_type_t type);
 

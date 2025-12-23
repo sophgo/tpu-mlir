@@ -276,6 +276,8 @@ void py_cuda::invoke(bool dump_all, const std::vector<std::string>& extra_output
           cudaSoftmaxOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SqueezeOp>(op)) {
           cudaSqueezeOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SqueezeOp>(op)) {
+          cudaSqueezeOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::TileOp>(op)) {
           cudaTileOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::UpsampleOp>(op)) {
@@ -288,6 +290,8 @@ void py_cuda::invoke(bool dump_all, const std::vector<std::string>& extra_output
           cudaScaleOp(topOp);
         } else if (auto topOp = dyn_cast<top::SiLUOp>(op)) {
           cudaSiLUOp(topOp);
+        } else if (auto topOp = dyn_cast<top::GELUOp>(op)) {
+          cudaGELUOp(topOp);
         } else if (auto topOp = dyn_cast<top::SigmoidOp>(op)) {
           cudaSigmoidOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::ActiveOp>(op)) {
@@ -300,6 +304,10 @@ void py_cuda::invoke(bool dump_all, const std::vector<std::string>& extra_output
           cudaMulConstOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulConstOp>(op)) {
           cudaMulConstOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::LayerNormOp>(op)) {
+          cudaLayerNormOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::LayerNormOp>(op)) {
+          cudaLayerNormOp(tpuOp);
         } else {
           op->dump();
           __asm__("int3");
