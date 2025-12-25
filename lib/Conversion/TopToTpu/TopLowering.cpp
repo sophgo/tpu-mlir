@@ -14,6 +14,7 @@ namespace tpu_mlir {
 bool LoweringConfig::isQuantized;
 bool LoweringConfig::doWinograd;
 std::map<std::string, module::Mode> LoweringConfig::quantize_map;
+std::map<std::string, int> LoweringConfig::group_map;
 std::map<std::string, std::set<std::string>> LoweringConfig::split_map;
 
 Value do_transfer(Value in, Value out, bool asymmetric) {

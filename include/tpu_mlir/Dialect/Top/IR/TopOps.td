@@ -1466,6 +1466,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     out_int8_scale:the scaling factor for the output tensor when quantized to 8 bits.;
     out_int8_zp: This optional attribute specifies the zero point for the output tensor that is quantized to 8 bits.;
     dq_type: the quantized data type for dynamic quantization.;
+    q_group_size: the group size for per-group quantization.;
   }];
 
   let arguments = (ins
@@ -1485,8 +1486,8 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     OptionalAttr<F64Attr>:$in_int4_zp,
     OptionalAttr<F64Attr>:$out_int8_scale,
     OptionalAttr<F64Attr>:$out_int8_zp,
-    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type
-
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type,
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let results = (outs AnyTensor:$output);

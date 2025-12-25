@@ -331,6 +331,7 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
 
     int q_group_size =
         (bitwidth == 4 || bitwidth == 8) ? module::getQuantGroupSize() : 0;
+    if (op.getQGroupSize() != 0) q_group_size = op.getQGroupSize();
     bool q_symmetric = q_group_size != 0 ? module::isQuantSymmetric() : false;
     int64_t quant_param_size = !q_group_size ? row : (row * col / q_group_size);
 

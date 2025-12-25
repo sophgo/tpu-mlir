@@ -2114,6 +2114,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     round_mode: the rounding mode to be used during the casting operation.;
     multicore: whether op supports multicore execution.;
     dq_type: the quantized data type for dynamic quantization.;
+    q_group_size: the group size for per-group quantization.;
   }];
 
   let arguments = (ins
@@ -2144,7 +2145,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<BoolAttr>:$multicore,
     OptionalAttr<BoolAttr>:$do_core_parallel,
-    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type,
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let results = (outs AnyRankedTensor:$output);

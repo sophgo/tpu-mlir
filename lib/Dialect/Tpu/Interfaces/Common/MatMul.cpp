@@ -464,7 +464,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     } else {
       return failure();
     }
-    int q_group_size = module::getQuantGroupSize();
+    int q_group_size =
+        getQGroupSize() ? getQGroupSize() : module::getQuantGroupSize();
     int group_num = (a.K + q_group_size - 1) / q_group_size;
     float *tmp_output = new float[a.batch * a.batch_low * a.M * a.N];
     float *cur_group_left =

@@ -240,6 +240,7 @@ struct LoweringConfig {
   static bool isQuantized;
   static bool doWinograd;
   static std::map<std::string, module::Mode> quantize_map;
+  static std::map<std::string, int> group_map;
   static std::map<std::string, std::set<std::string>> split_map;
   static void update(const std::string &name, module::Mode mode) {
     quantize_map[name] = mode;

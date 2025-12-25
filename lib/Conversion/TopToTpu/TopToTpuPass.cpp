@@ -1510,6 +1510,11 @@ void ConvertTopToTpu::runOnOperation() {
             dq_type = "F16";
         }
         op->setAttr("dq_type", builder.getStringAttr(dq_type));
+        int group_size = module::getQuantGroupSize();
+        if (LoweringConfig::group_map.find(name) != LoweringConfig::group_map.end()) {
+          group_size = LoweringConfig::group_map[name];
+        }
+        op->setAttr("q_group_size", builder.getI64IntegerAttr(group_size));
       }
     });
   }
@@ -2407,7 +2412,7 @@ void ConvertTopToTpu::init_qtable() {
   std::vector<std::pair<std::string, std::string>> entries;
   if (is_file) {
     // File mode: parse line by line
-    std::regex map_pattern("\\S+\\s+\\S+");
+    std::regex map_pattern("\\S+\\s+\\S+(\\s+\\d+)?");
     std::regex info_pattern("#.*");
     std::regex empty_pattern("^\\s*$");
 
@@ -2422,9 +2427,12 @@ void ConvertTopToTpu::init_qtable() {
       }
       if (std::regex_match(line, map_pattern)) {
         std::istringstream iss(line);
-        std::string name, mode;
-        iss >> name >> mode;
+        std::string name, mode, group_size;
+        iss >> name >> mode >> group_size;
         entries.emplace_back(name, mode);
+        if (!group_size.empty()) {
+          LoweringConfig::group_map[name] = std::stoi(group_size);
+        }
       } else {
         llvm::errs() << "Error, quantize table content invalid: [" << line
                      << "]\n";
