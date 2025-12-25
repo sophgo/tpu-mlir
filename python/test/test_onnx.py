@@ -38,7 +38,9 @@ class ONNX_IR_TESTER(object):
                  num_core: int = 1,
                  debug_cmd: str = '',
                  cuda: bool = False,
-                 concise_log: bool = False):
+                 concise_log: bool = False,
+                 json_file: str = "",
+                 case_id: int = -1):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -431,9 +433,34 @@ class ONNX_IR_TESTER(object):
             raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
         else:
             self.quant_modes = [self.mode]
+        self.json_file = json_file
+        self.case_id = case_id
+        self.json_cases = None
+        if self.json_file:
+            assert not self.json_file or os.path.exists(
+                self.json_file), f"Path {self.json_file} does not exist"
+            with open(self.json_file, 'r', encoding='utf-8') as file:
+                self.json_cases = json.load(file)
 
     @run_in_log_wrapper
     def test_single(self, case: str):
+        if self.json_cases:
+            # Attion: mlir operator name are not same as onnx test case name always.
+            # For example, onnx test case "ConvBase" maps to mlir operator "Conv",no need to map it again.
+            # So we do not check operator name here.
+
+            # assert self.json_cases["operator"] == case, \
+            #     f"json_cases operator {self.json_cases['operator']} not match case {case}"
+
+            for json_case in self.json_cases["cases"]:
+                if self.case_id >= 0 and json_case["id"] != self.case_id:
+                    continue
+                try:
+                    func = self.test_cases[case][0]
+                    func(case, json_case=json_case)
+                except Exception as e:
+                    print(f"Failed case id {json_case['id']}: {e}")
+            return
         np.random.seed(0)
         torch.manual_seed(7)
         print("Test: {}".format(case))
@@ -1729,15 +1756,25 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
-    def test_Concat(self, case_name):
-        input_shape = {"input1": [1, 2, 64], "input2": [1, 3, 64], "input3": [1, 4, 64]}
-        output_shape = [1, 2 + 3 + 4, 64]
-        graph_txt = """
-            %s (float[1, 2, 64] input1, float[1, 3, 64] input2, float[1, 4, 64] input3) => (float%s output)
-            {
-                output = Concat<axis=1>(input1, input2, input3)
-            }
-            """ % (case_name, output_shape)
+    def test_Concat(self, case_name, json_case=None):
+        shapes = [[1, 2, 64], [1, 3, 64], [1, 4, 64]]
+        axis = 1
+        if json_case:
+            input_shapes = json_case.get('input_shapes', [])
+            if input_shapes:
+                shapes = input_shapes
+                axis = json_case.get('model_params', {}).get('axis', 1)
+        input_defs = []
+        input_names = []
+        for i, shape in enumerate(shapes):
+            input_defs.append(f"float{shape} input{i}")
+            input_names.append(f"input{i}")
+        output_shape = list(shapes[0])
+        output_shape[axis] = sum(shape[axis] for shape in shapes)
+        graph_txt = f"""{case_name} ({", ".join(input_defs)}) => (float{output_shape} output)
+            {{
+                output = Concat<axis={axis}>({", ".join(input_names)})
+            }}"""
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1834,7 +1871,29 @@ class ONNX_IR_TESTER(object):
                                    "fbrn": fbrn_data
                                })
 
-    def test_Relu(self, case_name):
+    def test_Relu(self, case_name, json_case=None):
+        if json_case:
+            input_shapes = json_case["input_shape"]
+            relu_limit = json_case.get('model_params', {}).get('relu_limit', -1.0)
+            for i, shape in enumerate(input_shapes):
+                output_shape = shape
+                if relu_limit > 0:
+                    graph_txt = """
+                        %s (float%s input) => (float%s output)
+                        {
+                            output = Relu<max_value=%f>(input)
+                        }
+                        """ % (case_name, shape, output_shape, relu_limit)
+                else:
+                    graph_txt = """
+                        %s (float%s input) => (float%s output)
+                        {
+                            output = Relu(input)
+                        }
+                        """ % (case_name, shape, output_shape)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def)
+            return
         oc = 64
         input_shape = [1, 16, 128, 128]
         filter_shape = [oc, 16, 3, 3]
@@ -1902,26 +1961,19 @@ class ONNX_IR_TESTER(object):
             graph_def.initializer.extend([weight, bias])
             self.onnx_and_test(graph_def)
 
-    def test_Mul(self, case_name):
-        input_shape = [{
-            "input1": [1, 3, 27, 27],
-            "input2": [1, 3, 27, 27]
-        }, {
-            "input1": [1, 4420, 2],
-            "input2": [1, 4420, 2]
-        }]
-        output_shape = [[1, 3, 27, 27], [1, 4420, 2]]
+    def test_Mul(self, case_name, json_case=None):
+        test_cases = [([1, 3, 27, 27], [1, 3, 27, 27]), ([1, 4420, 2], [1, 4420, 2])]
+        if json_case:
+            input_shapes = json_case.get('input_shapes', [])
+            test_cases = [(input_shapes[0], input_shapes[1])] if input_shapes else test_cases
 
-        for i in range(len(input_shape)):
-            input1 = input_shape[i]["input1"]
-            input2 = input_shape[i]["input2"]
-            output = output_shape[i]
+        for i, (shape1, shape2) in enumerate(test_cases):
             graph_txt = """
                 %s (float%s input1, float%s input2) => (float%s output)
                 {
                     output = Mul(input1, input2)
                 }
-                """ % (case_name, input1, input2, output)
+                """ % (case_name, shape1, shape2, shape1)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -2291,19 +2343,28 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
-    def test_Softmax(self, case_name):
-        input_shapes = [[3, 100, 1, 1], [3, 100, 32], [3, 100, 32, 1], [3, 32, 8, 256]]
-        axiss = [1, 2, -1]
-        for input_shape in input_shapes:
-            for axis in axiss:
-                graph_txt = """
+    def test_Softmax(self, case_name, json_case=None):
+        base_cases = []
+        for shape in [[3, 100, 1, 1], [3, 100, 32], [3, 100, 32, 1], [3, 32, 8, 256]]:
+            for axis in [1, 2, -1]:
+                base_cases.append((shape, axis, False))
+        if json_case:
+            shapes = json_case.get('input_shape', [])
+            shape = shapes[0] if shapes else None
+            axis = [json_case.get('model_params', {}).get('axis', 1)]
+            log = [json_case.get('model_params', {}).get('log', False)]
+            base_cases = [([shape], axis, log)] if shape else base_cases
+
+        for i, (shape, axis, log) in enumerate(base_cases):
+            name = "Softmax" if log == False else "LogSoftmax"
+            graph_txt = """
                     %s (float%s input) => (float%s output)
                     {
                         output = %s<axis=%d>(input)
                     }
-                    """ % (case_name, input_shape, input_shape, case_name, axis)
-                graph_def = onnx.parser.parse_graph(graph_txt)
-                self.onnx_and_test(graph_def)
+                    """ % (name, shape, shape, name, axis)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
 
     def test_LogSoftmax(self, case_name):
         input_shape = [3, 100, 32]
@@ -2563,9 +2624,14 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
-    def test_Div(self, case_name):
+    def test_Div(self, case_name, json_case=None):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
         output_shape = [1, 3, 27, 27]
+        if json_case:
+            input_shapes = json_case.get('input_shapes', [])
+            shape = input_shapes[0]
+            input_shape = {"input1": shape, "input2": shape}
+            output_shape = shape
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
         input_data["input2"] = np.clip(input_data["input2"], 0.01, 10)
 
@@ -4277,8 +4343,11 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(4, 8, 100, 20).float()
         self.torch_and_test(x, Model(), case_name)
 
-    def test_Add(self, case_name):
+    def test_Add(self, case_name, json_case=None):
         shapes = ([1, 3, 27, 27], [2, 6, 56, 56], [4, 9, 56, 56])
+        if json_case:
+            if json_case['input_shapes']:
+                shapes = [json_case['input_shapes'][0]]
         for i, s in enumerate(shapes):
             graph_txt = """
                 %s (float%s a, float%s b) => (float%s output)
@@ -4295,14 +4364,18 @@ class ONNX_IR_TESTER(object):
                                               [a, b, c], [add2_out])
             self.onnx_and_test(graph_def)
 
-    def test_AddConst(self, case_name):
+    def test_AddConst(self, case_name, json_case=None):
         shape = [1, 3, 27, 27]
+        const_val = 1.0
+        if json_case:
+            shape = json_case['input_shapes'][0]
+            const_val = json_case['model_params']['const_val']
         graph_txt = """
-            %s (float%s input, float[1] constant = {1}) => (float%s output)
+            %s (float%s input, float[1] constant = {%f} ) => (float%s output)
             {
                 output = Add(input, constant)
             }
-            """ % (case_name, shape, shape)
+            """ % (case_name, shape, const_val, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -5129,9 +5202,12 @@ class ONNX_IR_TESTER(object):
         }
         self.onnx_and_test_bmodel_only(graph_def, static_shape=False, input_data=input_data)
 
-    def test_Sub(self, case_name):
+    def test_Sub(self, case_name, json_case=None):
         input_shape = [4, 3, 27, 27]
         output_shape = [4, 3, 27, 27]
+        if json_case:
+            if json_case['input_shapes']:
+                output_shape = input_shape = [json_case['input_shapes'][0]]
         graph_txt = """
             %s (float%s input0,float%s input1) => (float%s output)
             {
@@ -5400,8 +5476,11 @@ class ONNX_IR_TESTER(object):
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
-    def test_Abs(self, case_name):
+    def test_Abs(self, case_name, json_case=None):
         input_shape = [1, 16, 64, 64]
+        if json_case:
+            if json_case['input_shapes']:
+                input_shape = json_case['input_shapes'][0]
         graph_txt = """
             %s (float%s input) => (float%s output)
             {
@@ -5581,14 +5660,16 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def)
             print("====== TEST {} Success ======".format(cmp_type))
 
-    def test_And(self, case_name):
+    def test_And(self, case_name, json_case=None):
         shape = [1, 3, 27, 27]
+        if json_case:
+            shape = json_case['input_shape'][0]
         graph_txt = """
-            %s (bool[1, 3, 27, 27] input, bool[1] constant = {1}) => (bool[1, 3, 27, 27] output)
+            %s (bool%s input, bool[1] constant = {1}) => (bool%s output)
             {
                 output = And(input, constant)
             }
-            """ % (case_name)
+            """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -5605,11 +5686,17 @@ class ONNX_IR_TESTER(object):
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
-    def test_Compare(self, case_name):
+    def test_Compare(self, case_name, json_case=None):
         shape = [1, 3, 27, 27]
-        input_shape = {"input1": shape, "input2": shape}
+        modes = ["Greater", "GreaterOrEqual", "Less", "LessOrEqual"]
+        if json_case:
+            input_shapes = json_case.get('input_shapes', [])
+            modes = [json_case.get('model_params', {}).get('mode', 'Greater')]
+            if input_shapes:
+                shape = input_shapes[0]
+
         # "Equal" need not to be tested since equal op between floating number may be invalid
-        for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
+        for cmp_type in modes:
             graph_txt = """
                 %s (float%s input1, float%s input2) => (bool%s output)
                 {
@@ -7958,10 +8045,20 @@ if __name__ == "__main__":
     parser.add_argument("--debug_cmd", default="", type=str, help="debug_cmd")
     parser.add_argument("--cuda", action="store_true", help="test cuda inference")
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
+    parser.add_argument("--json_file",
+                        default="",
+                        help="load json file for test cases, only for single op test, if option `--case` conflict , json file has lower priority")
+    parser.add_argument("--case_id",
+                        default=-1,
+                        type=int,
+                        help="load the specific id case from json file, only for single op test")
+
+
     # yapf: enable
     args = parser.parse_args()
     tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.num_core,
-                            args.debug_cmd, args.cuda, args.concise_log)
+                            args.debug_cmd, args.cuda, args.concise_log, args.json_file,
+                            args.case_id)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
