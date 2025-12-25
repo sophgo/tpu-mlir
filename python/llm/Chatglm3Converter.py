@@ -262,11 +262,11 @@ class Chatglm3Converter(LlmConverter):
             zp_path = path + ".qzeros"
             bias_path = path + ".bias"
             if self.model.is_exist(qweight_path):
-                qweigth_data = self.model.read(qweight_path)
+                qweight_data = self.model.read(qweight_path)
                 scale_data = self.model.read(scale_path)
                 zp_data = self.model.read(zp_path)
                 unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweigth_data, zp_data, self.quant_bits, self.quant_mode)
+                    qweight_data, zp_data, self.quant_bits, self.quant_mode)
                 weight_dict[qweight_path] = np.ascontiguousarray(
                     np.transpose(pack_int8_weights, (1, 0)))
                 weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))

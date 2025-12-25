@@ -296,7 +296,7 @@ class LlmProfiler:
         print(f'    num_layers: {self.num_layers}')
         print(f'    num_attn_heads: {self.num_attn_heads}')
         print(f'    num_kv_heads: {self.num_kv_heads}')
-        print(f'    intermediate_size: {self.interm_size}'),
+        print(f'    intermediate_size: {self.interm_size}')
         print(f'    vocab_size: {self.vocab_size}\n')
 
         print("Prefill:")
