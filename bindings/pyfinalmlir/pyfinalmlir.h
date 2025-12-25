@@ -6,33 +6,34 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include <pybind11/iostream.h>
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/stl/string.h>
+#include <memory>
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/BM168xEvaluator.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 
 class py_final_module {
 public:
   py_final_module() {}
   ~py_final_module();
   void load(std::string filename);
-  py::dict getAllTensor();
+  nb::dict getAllTensor();
   void set_tensor(
       std::string name,
-      py::array_t<float, py::array::c_style | py::array::forcecast> data);
+      nb::ndarray<> data);
   void set_tensor_from_int(
       std::string name,
-      py::array_t<float, py::array::c_style | py::array::forcecast> data);
+      nb::ndarray<> data);
   void invoke();
 
 public:
-  py::list all_tensor_names;
-  py::list all_weight_names;
-  py::list input_names;
-  py::list output_names;
+  nb::list all_tensor_names;
+  nb::list all_weight_names;
+  nb::list input_names;
+  nb::list output_names;
 
 private:
   std::unique_ptr<mlir::MLIRContext> context_;
@@ -40,12 +41,17 @@ private:
   std::unique_ptr<tpu::BM168xEvaluator> evaluator_;
 };
 
-static py::array getPyArray(std::shared_ptr<std::vector<float>> ptr,
-                            const std::vector<int64_t> &shape) {
+static nb::ndarray<> getPyArray(std::shared_ptr<std::vector<float>> ptr,
+                              const std::vector<int64_t> &shape) {
   auto shared_ptr_ptr = new std::shared_ptr<std::vector<float>>(std::move(ptr));
-  py::capsule delete_shared_ptr_ptr(shared_ptr_ptr, [](void *ptr) {
+  nb::capsule delete_shared_ptr_ptr(shared_ptr_ptr, [](void *ptr) noexcept {
     delete reinterpret_cast<std::shared_ptr<std::vector<float>> *>(ptr);
   });
-  return py::array_t<float>(shape, (*shared_ptr_ptr)->data(),
-                            delete_shared_ptr_ptr);
+  std::vector<size_t> shape_sz(shape.begin(), shape.end());
+  std::vector<size_t> strides(shape_sz.size(), sizeof(float));
+  for (int i = static_cast<int>(shape_sz.size()) - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * shape_sz[i + 1];
+  }
+  std::vector<int64_t> strides_int64(strides.begin(), strides.end());
+  return nb::ndarray((*shared_ptr_ptr)->data(), shape_sz.size(), shape_sz.data(), delete_shared_ptr_ptr, strides_int64.data(), nb::dtype<float>());
 }

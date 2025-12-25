@@ -8,11 +8,12 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 
-#include <pybind11/iostream.h>
-#include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/stl/string.h>
 #include <vector>
+#include <memory>
 
 // -------------
 // pure C++ code
@@ -47,13 +48,13 @@ typedef std::map<std::string, std::vector<int64_t>> shape_map_t;
 // Python interface
 // ----------------
 
-namespace py = pybind11;
+namespace nb = nanobind;
 
 class PyCallBack : public CallBack {
 public:
-  explicit PyCallBack(py::function &func) : run_(func) {}
+  explicit PyCallBack(nb::object &func) : run_(func) {}
   void run(std::string layer_name) { run_(layer_name); }
-  py::function run_;
+  nb::object run_;
 };
 
 struct quant_brief_info {
@@ -64,12 +65,18 @@ struct quant_brief_info {
 };
 
 // Warning: buffer in C++. New inference will erase old output
-static py::array getPyArray(std::shared_ptr<std::vector<float>> ptr,
-                            const std::vector<int64_t> &shape) {
+static nb::ndarray<> getPyArray(std::shared_ptr<std::vector<float>> ptr,
+                              const std::vector<int64_t> &shape) {
   auto shared_ptr_ptr = new std::shared_ptr<std::vector<float>>(std::move(ptr));
-  py::capsule delete_shared_ptr_ptr(shared_ptr_ptr, [](void *ptr) {
+  nb::capsule delete_shared_ptr_ptr(shared_ptr_ptr, [](void *ptr) noexcept {
     delete reinterpret_cast<std::shared_ptr<std::vector<float>> *>(ptr);
   });
-  return py::array_t<float>(shape, (*shared_ptr_ptr)->data(),
-                            delete_shared_ptr_ptr);
+  std::vector<size_t> shape_sz(shape.begin(), shape.end());
+  // Create contiguous strides in elements (float)
+  std::vector<size_t> strides(shape_sz.size(), sizeof(float));
+  for (int i = static_cast<int>(shape_sz.size()) - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * shape_sz[i + 1];
+  }
+  std::vector<int64_t> strides_int64(strides.begin(), strides.end());
+  return nb::ndarray((*shared_ptr_ptr)->data(), shape_sz.size(), shape_sz.data(), delete_shared_ptr_ptr, strides_int64.data(), nb::dtype<float>());
 }
