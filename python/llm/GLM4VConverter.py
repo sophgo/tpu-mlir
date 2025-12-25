@@ -220,7 +220,7 @@ class GLM4VConverter(LlmConverter):
         ]
         x_reshape = top.ReshapeOp(mlir_gen.get_tensor_type(x_shape_cal),
                                   x,
-                                  loc=self.get_loc(prefix + "_x.reshpae", mlir_gen),
+                                  loc=self.get_loc(prefix + "_x.reshape", mlir_gen),
                                   ip=mlir_gen.insert_point).output
         x0 = top.SliceOp(mlir_gen.get_tensor_type(x_split_shape),
                          x_reshape,
@@ -288,7 +288,7 @@ class GLM4VConverter(LlmConverter):
                                ip=mlir_gen.insert_point).output
         conc_reshape = top.ReshapeOp(mlir_gen.get_tensor_type(half_shape),
                                      conc_q1,
-                                     loc=self.get_loc(prefix + "_conc.reshpae", mlir_gen),
+                                     loc=self.get_loc(prefix + "_conc.reshape", mlir_gen),
                                      ip=mlir_gen.insert_point).output
         conc_q2 = top.ConcatOp(mlir_gen.get_tensor_type(in_shape), [conc_reshape, x_pass],
                                axis=3,

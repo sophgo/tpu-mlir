@@ -118,7 +118,7 @@ class Chatglm3Converter(LlmConverter):
         ]
         x_reshape = top.ReshapeOp(mlir_gen.get_tensor_type(x_shape_cal),
                                   x,
-                                  loc=self.get_loc(prefix + "_x.reshpae", mlir_gen),
+                                  loc=self.get_loc(prefix + "_x.reshape", mlir_gen),
                                   ip=mlir_gen.insert_point).output
         x0 = top.SliceOp(mlir_gen.get_tensor_type(x_split_shape),
                          x_reshape,
@@ -186,7 +186,7 @@ class Chatglm3Converter(LlmConverter):
                                ip=mlir_gen.insert_point).output
         conc_reshape = top.ReshapeOp(mlir_gen.get_tensor_type(half_shape),
                                      conc_q1,
-                                     loc=self.get_loc(prefix + "_conc.reshpae", mlir_gen),
+                                     loc=self.get_loc(prefix + "_conc.reshape", mlir_gen),
                                      ip=mlir_gen.insert_point).output
         conc_q2 = top.ConcatOp(mlir_gen.get_tensor_type(in_shape), [conc_reshape, x_pass],
                                axis=3,
@@ -409,8 +409,8 @@ class Chatglm3Converter(LlmConverter):
                                force_bias=True)
 
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshpae"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshpae"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshape"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
 
             # rotary cos/sin
@@ -498,8 +498,8 @@ class Chatglm3Converter(LlmConverter):
                                ln_op, [self.hidden_size, self.kv_dim], [1, 1, self.kv_dim],
                                force_bias=True)
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshpae"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshpae"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshape"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
 
             # rotary cos/sin
