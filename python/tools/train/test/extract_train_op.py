@@ -83,6 +83,10 @@ def convert_value(value: str, target_type: type) -> Any:
         else:
             raise ValueError(f"Cannot convert '{value}' to bool")
     elif target_type == str:
+        if isinstance(value, str):
+            value = value.strip()
+            if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+                return value[1:-1]
         return value
     elif target_type in (int, float):
         try:
