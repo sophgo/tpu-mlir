@@ -2209,6 +2209,40 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_MlpOp: Tpu_Op<"Mlp",
+    []> {
+  let summary = "w8a16 / w4a16 / a16 mlp operator";
+
+  let description = [{
+    to do
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyRankedTensor:$weight_gate,
+    AnyTensorOrNone:$scale_gate,
+    AnyTensorOrNone:$zp_gate,
+    AnyTensorOrNone:$bias_gate,
+    AnyRankedTensor:$weight_up,
+    AnyTensorOrNone:$scale_up,
+    AnyTensorOrNone:$zp_up,
+    AnyTensorOrNone:$bias_up,
+    AnyRankedTensor:$weight_down,
+    AnyTensorOrNone:$scale_down,
+    AnyTensorOrNone:$zp_down,
+    AnyTensorOrNone:$bias_down,
+    AnyTensorOrNone:$buffer,
+    DefaultValuedAttr<BoolAttr, "false">:$w_transpose_gate,
+    DefaultValuedAttr<BoolAttr, "false">:$w_transpose_up,
+    DefaultValuedAttr<BoolAttr, "false">:$w_transpose_down,
+    DefaultValuedAttr<BoolAttr, "false">:$quantized,
+    DefaultValuedAttr<I64Attr, "128">:$q_group_size,
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_AttentionOp: Tpu_Op<"Attention", [
     SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["codegen_local_bm1684x_kernel", "LocalGenSupport", "AllowDataSplit", "DumpAttrs"]>,

@@ -94,6 +94,12 @@ class LlmConverter(BaseConverter):
         self.extern_block_weights = {}
         # store all weights name because some weights like qkv.weights may be splitted
         self.weights = []
+        self.use_mlp = True
+        if args.chip not in ["bm1690"]:
+            self.use_mlp = False
+        if self.quant_mode is not None:
+            if self.quant_mode not in ["gptq", "awq"] or self.quant_bits != 4:
+                self.use_mlp = False
 
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
@@ -257,13 +263,18 @@ class LlmConverter(BaseConverter):
         else:
             raise NotImplementedError(f"Unsupported activation type: {act_type}")
 
-    def unpack_weights(self, qweight, qzeros, bits, quant_mode):
+    def unpack_weights(self, qweight, qzeros, bits, quant_mode, path):
         dtype = np.int32
         compress_ratio = 32 // bits
         mask = 0xF if bits == 4 else 0xFF
         K, N = qweight.shape
         Kz, Nz = qzeros.shape
         unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.uint8)
+        unpack_mlp_weights = False
+        if self.use_mlp:
+            if self.model_info.weights[LlmList.MLP_GATE] in path or self.model_info.weights[
+                    LlmList.MLP_UP] in path or self.model_info.weights[LlmList.MLP_DOWN] in path:
+                unpack_mlp_weights = True
 
         if quant_mode == "gptq":
             unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
@@ -279,7 +290,6 @@ class LlmConverter(BaseConverter):
                         pack_int8_weights[
                             row //
                             2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
-
         elif quant_mode == "awq":
             unpacked_weights = np.zeros((K, N * compress_ratio), dtype=dtype)
             pack_int8_weights = np.zeros((K // 2, N * compress_ratio), dtype=np.uint8)
@@ -304,6 +314,20 @@ class LlmConverter(BaseConverter):
 
         if bits == 8:
             pack_int8_weights = unpacked_weights.astype("uint8")
+
+        if unpack_mlp_weights:
+            pack_int8_zeros = np.zeros((Kz // 2, Nz * compress_ratio), dtype=np.uint8)
+            if quant_mode == "gptq":
+                unpacked_zeros += 1
+            if bits == 4:
+                for row in range(unpacked_zeros.shape[0]):
+                    if row % 2 == 0:
+                        pack_int8_zeros[row // 2, :] = unpacked_zeros[row, :]
+                    else:
+                        pack_int8_zeros[row //
+                                        2, :] = unpacked_zeros[row, :] << 4 | pack_int8_zeros[row //
+                                                                                              2, :]
+            return unpacked_weights, pack_int8_weights, pack_int8_zeros
 
         if quant_mode == "gptq":
             return unpacked_weights, pack_int8_weights, unpacked_zeros + 1
@@ -841,6 +865,122 @@ class LlmConverter(BaseConverter):
                            ip=mlir_gen.insert_point).output
         return rs
 
+    def mlp(self,
+            mlir_gen,
+            proj_gate: str,
+            proj_up: str,
+            proj_down: str,
+            input_op,
+            seq_len,
+            hidden_size,
+            intermediate_size,
+            act_type: ActType,
+            force_bias: bool = False,
+            do_lora: bool = False):
+        assert (act_type == "silu")
+        proj_list = [proj_gate, proj_up, proj_down]
+        weight_shape_gate, weight_shape_up, weight_shape_down = [hidden_size, intermediate_size], [
+            hidden_size, intermediate_size
+        ], [intermediate_size, hidden_size]
+        weight_shape_list = [weight_shape_gate, weight_shape_up, weight_shape_down]
+        out_shape_gate, out_shape_up, out_shape_down = [1, seq_len, intermediate_size
+                                                        ], [1, seq_len, intermediate_size
+                                                            ], [1, seq_len, hidden_size]
+        out_shape_list = [out_shape_gate, out_shape_up, out_shape_down]
+        bias_op_list, weight_op_list, qweight_op_list, scale_op_list, zp_op_list = [], [], [], [], []
+        for i in range(len(proj_list)):
+            proj, weight_shape, out_shape = proj_list[i], weight_shape_list[i], out_shape_list[i]
+            if self.model.is_exist(proj + ".bias") or force_bias:
+                bias_shape = [1] * (len(out_shape) - 1) + [out_shape[-1]]
+                bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
+            else:
+                bias_op = mlir_gen.none_op
+            bias_op_list.append(bias_op)
+            if self.quant_mode and (self.model.is_exist(proj + ".qweight") or
+                                    (proj + ".qweight" in self.weights)):
+                if i in [2]:
+                    qweight_op = mlir_gen.create_weight_op(proj + ".qweight", [
+                        weight_shape[0] // (8 // self.quant_bits) // self.q_group_size,
+                        weight_shape[1] * self.q_group_size
+                    ], 'UINT8')
+                    scale_shape = [weight_shape[0] // self.q_group_size, weight_shape[1]
+                                   ] if self.q_group_size > 0 else [1, weight_shape[1]]
+                    scale_op = mlir_gen.create_weight_op(proj + ".scales", scale_shape)
+                    zero_shape = [weight_shape[0] // self.q_group_size // 2, weight_shape[1]
+                                  ] if self.q_group_size > 0 else [1, weight_shape[1]]
+                    zp_op = mlir_gen.create_weight_op(proj + ".qzeros", zero_shape, 'UINT8')
+                else:
+                    qweight_op = mlir_gen.create_weight_op(
+                        proj + ".qweight",
+                        [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)], 'UINT8')
+                    scale_shape = [weight_shape[1], weight_shape[0] // self.q_group_size
+                                   ] if self.q_group_size > 0 else [weight_shape[1], 1]
+                    scale_op = mlir_gen.create_weight_op(proj + ".scales", scale_shape)
+                    zero_shape = [weight_shape[1], weight_shape[0] // self.q_group_size //
+                                  2] if self.q_group_size > 0 else [weight_shape[1], 1]
+                    zp_op = mlir_gen.create_weight_op(proj + ".qzeros", zero_shape, 'UINT8')
+                qweight_op_list.append(qweight_op)
+                scale_op_list.append(scale_op)
+                zp_op_list.append(zp_op)
+            else:
+                if i in [0, 1]:
+                    weight_op = mlir_gen.create_weight_op(proj + ".weight",
+                                                          [weight_shape[1], weight_shape[0]])
+                else:
+                    weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
+                weight_op_list.append(weight_op)
+        assert (len(weight_op_list) == 3 or len(weight_op_list) == 0)
+        if len(weight_op_list) == 3:
+            new_op = top.MlpOp(mlir_gen.get_tensor_type(out_shape),
+                               input_op,
+                               weight_op_list[0],
+                               weight_op_list[1],
+                               weight_op_list[2],
+                               bias_op_list[0],
+                               bias_op_list[1],
+                               bias_op_list[2],
+                               right_transpose_gate=True,
+                               right_transpose_up=True,
+                               right_transpose_down=False,
+                               quantized=False,
+                               q_group_size=self.q_group_size,
+                               weight_bits=self.quant_bits,
+                               scale_gate=mlir_gen.none_op,
+                               scale_up=mlir_gen.none_op,
+                               scale_down=mlir_gen.none_op,
+                               zp_gate=mlir_gen.none_op,
+                               zp_up=mlir_gen.none_op,
+                               zp_down=mlir_gen.none_op,
+                               loc=self.get_loc(proj_list[0] + "_mlp", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        else:
+            new_op = top.MlpOp(mlir_gen.get_tensor_type(out_shape),
+                               input_op,
+                               qweight_op_list[0],
+                               qweight_op_list[1],
+                               qweight_op_list[2],
+                               bias_op_list[0],
+                               bias_op_list[1],
+                               bias_op_list[2],
+                               right_transpose_gate=True,
+                               right_transpose_up=True,
+                               right_transpose_down=False,
+                               quantized=True,
+                               q_group_size=self.q_group_size,
+                               weight_bits=self.quant_bits,
+                               scale_gate=scale_op_list[0],
+                               scale_up=scale_op_list[1],
+                               scale_down=scale_op_list[2],
+                               zp_gate=zp_op_list[0],
+                               zp_up=zp_op_list[1],
+                               zp_down=zp_op_list[2],
+                               loc=self.get_loc(proj_list[0] + "_mlp", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        if not do_lora:
+            return new_op
+        else:
+            raise NotImplementedError("Lora with mlp is not supported yet.")
+
     def linear(self,
                mlir_gen,
                proj: str,
@@ -1026,7 +1166,11 @@ class LlmConverter(BaseConverter):
             weight_path = path + ".weight"
             if self.model.is_exist(weight_path):
                 data = self.model.read(weight_path)
-                weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
+                if self.use_mlp and (self.model_info.weights[LlmList.MLP_GATE] in path
+                                     or self.model_info.weights[LlmList.MLP_UP] in path):
+                    weight_dict[weight_path] = np.ascontiguousarray(data)
+                else:
+                    weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
                 K = data.shape[1]
                 N = data.shape[0]
             else:
@@ -1039,11 +1183,18 @@ class LlmConverter(BaseConverter):
             scale_data = self.model.read(scale_path)
             zp_data = self.model.read(zp_path)
             _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                qweight_data, zp_data, self.quant_bits, self.quant_mode)
-            weight_dict[qweight_path] = np.ascontiguousarray(np.transpose(
-                pack_int8_weights, (1, 0)))
-            weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
-            weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
+                qweight_data, zp_data, self.quant_bits, self.quant_mode, path)
+            if self.use_mlp and (self.model_info.weights[LlmList.MLP_DOWN] in path):
+                weight_dict[qweight_path] = np.ascontiguousarray(
+                    np.transpose(pack_int8_weights.reshape(-1, self.q_group_size, self.hidden_size),
+                                 (0, 2, 1)).reshape(-1, self.hidden_size * self.q_group_size))
+                weight_dict[scale_path] = np.ascontiguousarray(scale_data)
+                weight_dict[zp_path] = np.ascontiguousarray(unpacked_zeros)
+            else:
+                weight_dict[qweight_path] = np.ascontiguousarray(
+                    np.transpose(pack_int8_weights, (1, 0)))
+                weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
+                weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
             K = pack_int8_weights.shape[0] * (8 // self.quant_bits)
             N = pack_int8_weights.shape[1]
         elif self.quant_mode == "compressed-tensors":
@@ -1148,26 +1299,39 @@ class LlmConverter(BaseConverter):
             else:
                 new_op = self.rms_norm(mlir_gen, in_op, post_attn_ln)
 
-            gate_op = self.linear(mlir_gen,
-                                  mlp_gate,
-                                  new_op, [self.hidden_size, self.intermediate_size],
-                                  [1, len, self.intermediate_size],
-                                  do_lora=self.do_lora)
-            act_op = self.activate(mlir_gen, gate_op, self.hidden_act, mlp_gate)
-            up_op = self.linear(mlir_gen,
-                                mlp_up,
-                                new_op, [self.hidden_size, self.intermediate_size],
-                                [1, len, self.intermediate_size],
-                                do_lora=self.do_lora)
-            new_op = top.MulOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
-                               [act_op, up_op],
-                               loc=self.get_loc(mlp_up + ".mul", mlir_gen),
-                               ip=ip).output
-            down_op = self.linear(mlir_gen,
-                                  mlp_down,
-                                  new_op, [self.intermediate_size, self.hidden_size],
-                                  input_shape,
-                                  do_lora=self.do_lora)
+            if not self.use_mlp:
+                gate_op = self.linear(mlir_gen,
+                                      mlp_gate,
+                                      new_op, [self.hidden_size, self.intermediate_size],
+                                      [1, len, self.intermediate_size],
+                                      do_lora=self.do_lora)
+                act_op = self.activate(mlir_gen, gate_op, self.hidden_act, mlp_gate)
+                up_op = self.linear(mlir_gen,
+                                    mlp_up,
+                                    new_op, [self.hidden_size, self.intermediate_size],
+                                    [1, len, self.intermediate_size],
+                                    do_lora=self.do_lora)
+                new_op = top.MulOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
+                                   [act_op, up_op],
+                                   loc=self.get_loc(mlp_up + ".mul", mlir_gen),
+                                   ip=ip).output
+                down_op = self.linear(mlir_gen,
+                                      mlp_down,
+                                      new_op, [self.intermediate_size, self.hidden_size],
+                                      input_shape,
+                                      do_lora=self.do_lora)
+            else:
+                down_op = self.mlp(mlir_gen,
+                                   mlp_gate,
+                                   mlp_up,
+                                   mlp_down,
+                                   new_op,
+                                   len,
+                                   self.hidden_size,
+                                   self.intermediate_size,
+                                   self.hidden_act,
+                                   do_lora=self.do_lora)
+
             if self.llm_type in [LlmType.GEMMA3]:
                 down_op = self.rms_norm(mlir_gen, down_op, post_mlp_ln)
             if self.llm_type == LlmType.MINICPM4:

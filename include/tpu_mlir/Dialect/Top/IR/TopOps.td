@@ -1527,6 +1527,41 @@ def Top_A16MatMulOp: Top_Op<"A16MatMul"> {
   }];
 }
 
+def Top_MlpOp: Top_Op<"Mlp"> {
+  let summary = "w8a16 / w4a16 / a16 mlp operator";
+
+  let description = [{
+    to do
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$weight_gate,
+    AnyTensor:$weight_up,
+    AnyTensor:$weight_down,
+    AnyTensorOrNone:$bias_gate,
+    AnyTensorOrNone:$bias_up,
+    AnyTensorOrNone:$bias_down,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_gate,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_up,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_down,
+    DefaultValuedAttr<BoolAttr, "false">:$quantized,
+    DefaultValuedAttr<I64Attr, "128">:$q_group_size,
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits,
+    AnyTensorOrNone:$scale_gate,
+    AnyTensorOrNone:$scale_up,
+    AnyTensorOrNone:$scale_down,
+    AnyTensorOrNone:$zp_gate,
+    AnyTensorOrNone:$zp_up,
+    AnyTensorOrNone:$zp_down
+  );
+
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    mlp_attr_t parseParam();
+  }];
+}
+
 def Top_AttentionOp: Top_Op<"Attention"> {
   let summary = "Attention operator";
 

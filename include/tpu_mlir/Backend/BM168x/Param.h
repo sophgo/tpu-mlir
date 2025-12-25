@@ -1331,6 +1331,23 @@ typedef struct a16_matmul_spec {
   int use_multi_core;
 } a16_matmul_spec_t;
 
+typedef struct mlp_spec {
+  bool R_trans_gate;
+  bool has_zp_gate;
+  bool has_bias_gate;
+  bool R_trans_up;
+  bool has_zp_up;
+  bool has_bias_up;
+  bool R_trans_down;
+  bool has_zp_down;
+  bool has_bias_down;
+  bool quantized;
+  int weight_bits;
+  int q_group_size;
+  int use_multi_core;
+  uint64_t buffer_addr;
+} mlp_spec_t;
+
 typedef struct batch_matmul_common_spec {
   int Y_dtype;
   int L_trans;
