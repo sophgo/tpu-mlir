@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1690 sha256: bd7cb0e44e3915e33f980b3fe3bbe7b15cc80d75
+#bm1690 sha256: 9eb01e741c41d03f2c2191c59a91174b2a288b9d
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel

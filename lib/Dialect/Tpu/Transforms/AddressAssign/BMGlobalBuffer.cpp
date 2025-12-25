@@ -552,6 +552,50 @@ public:
   bool shouldPrint(tpu::MatMulOp matmulOp) const override { return false; }
 };
 
+class MlpGlobalBuffer : public OpRewriterPatternEx<tpu::MlpOp> {
+public:
+  MlpGlobalBuffer(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<tpu::MlpOp>(context, "MlpGlobalBuffer") {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MlpOp mlpOp,
+                                    PatternRewriter &rewriter) const override {
+
+    if (!module::isNone(mlpOp.getBuffer())) {
+      return failure();
+    }
+
+    if (!supportMultiCore(mlpOp)) {
+      return failure();
+    }
+
+    if (backend::BM168x::L2_SRAM_SIZE <= 0) {
+      return failure();
+    }
+
+    uint64_t num_elements;
+    auto output_shape = module::getShape(mlpOp.getOutput());
+    auto output_dim = output_shape.size();
+    assert(output_dim == 3);
+    auto dtype_size = module::getDtypeSize(mlpOp.getOutput());
+    num_elements = output_shape[0] * output_shape[1] * output_shape[2] *
+                   2; // input + output
+    uint64_t max_num_elements = backend::BM168x::L2_SRAM_SIZE / dtype_size;
+    if (num_elements > max_num_elements) {
+      num_elements = max_num_elements;
+    }
+    if (num_elements > 0) {
+      auto type = module::getStorageType(mlpOp.getOutput());
+      auto buffer_type = RankedTensorType::get({(int64_t)num_elements}, type);
+      auto buffer =
+          tpu::BufferOp::create(mlpOp, buffer_type, tpu::BufferType::L2);
+      mlpOp.setOperand(mlpOp.getNumOperands() - 1, buffer);
+      return success();
+    }
+    return failure();
+  }
+  bool shouldPrint(tpu::MlpOp mlpOp) const override { return false; }
+};
+
 class GridSamplerBuffer : public OpRewriterPatternEx<tpu::GridSamplerOp> {
 public:
   GridSamplerBuffer(mlir::MLIRContext *context)
@@ -2093,6 +2137,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
       InterpGlobalBuffer,
+      MlpGlobalBuffer,
       GridSamplerBuffer,
       GridSampleInDeformableAttnBuffer,
       Pool3DGlobalBuffer,

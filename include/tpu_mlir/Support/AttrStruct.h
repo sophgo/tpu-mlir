@@ -121,6 +121,22 @@ typedef struct {
 } a16matmul_attr_t;
 
 typedef struct {
+  int64_t batch;
+  int64_t len;
+  int64_t hidden_size;
+  int64_t intermediate_size;
+  bool with_bias_gate;
+  bool with_bias_up;
+  bool with_bias_down;
+  bool right_transpose_gate;
+  bool right_transpose_up;
+  bool right_transpose_down;
+  bool quantized;
+  int64_t q_group_size;
+  int64_t weight_bits;
+} mlp_attr_t;
+
+typedef struct {
   int64_t n;
   int64_t c;
   int64_t id;

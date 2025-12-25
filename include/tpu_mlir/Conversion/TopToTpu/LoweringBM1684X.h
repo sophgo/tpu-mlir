@@ -232,5 +232,6 @@ LOWERING_BM1684X(MaskRCNNGetBboxB)
 LOWERING_BM1684X(MaskRCNNMaskPooler)
 LOWERING_BM1684X(Rope)
 LOWERING_BM1684X(MaxPoolingIndicesBwd)
+LOWERING_BM1684X(Mlp)
 } // namespace bm1684x
 } // namespace tpu_mlir
