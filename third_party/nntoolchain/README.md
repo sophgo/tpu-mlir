@@ -15,7 +15,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 
 ## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2025-12-18
 ```bash
-#bm1684x sha256: edf2273f0bdf5fb221fd1bf3c3497ad19d6e895c
+#bm1684x sha256: 22988e8d42a591fadb69da28959884ede5984e5f
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1688 sha256: edf2273f0bdf5fb221fd1bf3c3497ad19d6e895c
+#bm1688 sha256: 22988e8d42a591fadb69da28959884ede5984e5f
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1690 sha256: edf2273f0bdf5fb221fd1bf3c3497ad19d6e895c
+#bm1690 sha256: 22988e8d42a591fadb69da28959884ede5984e5f
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -48,7 +48,7 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#bm1690e sha256: edf2273f0bdf5fb221fd1bf3c3497ad19d6e895c
+#bm1690e sha256: 22988e8d42a591fadb69da28959884ede5984e5f
 cd TPU1686
 source  scripts/envsetup.sh sg2260e
 debug: rebuild_backend_lib_cmodel
@@ -59,7 +59,7 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690e_kernel_module.a
 
-#cv184x sha256: edf2273f0bdf5fb221fd1bf3c3497ad19d6e895c
+#cv184x sha256: 22988e8d42a591fadb69da28959884ede5984e5f
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
