@@ -1147,7 +1147,7 @@ class MixPrecSearcher:
         int8_model = MixQuantModel(self.fp32_mlir,
                                    self.chip,
                                    self.calib_table,
-                                   mix_table=self.qtable)
+                                   mix_table=self.quantize_table)
         for idx in range(self.num_sample):
             data = []
             for name in list(self.ref_activations[idx].keys()):
@@ -1177,7 +1177,7 @@ class MixPrecSearcher:
         int8_model = MixQuantModel(self.fp32_mlir,
                                    self.chip,
                                    self.calib_table,
-                                   mix_table=self.qtable)
+                                   mix_table=self.quantize_table)
         int8_op_names = int8_model.parser.get_op_name_list()
         full_op_list, cur_fp_op_idx = {}, 0
         for int8_op in int8_op_names:
@@ -1268,7 +1268,7 @@ class MixPrecSearcher:
                 mix_model = MixQuantModel(self.fp32_mlir,
                                           self.chip,
                                           self.calib_table,
-                                          mix_table=self.qtable)
+                                          mix_table=self.quantize_table)
                 extra_input = self.get_extra_input_tensor(top_op.name, int8_model.parser)
                 layer_cos, outputs_cos = 0, 0
                 for idx in range(self.num_sample):
@@ -1305,7 +1305,7 @@ class MixPrecSearcher:
         # except Exception as err:
         #     self.logger.print_info('An exception happened: ' + str(err))
         #     pass
-        self.dot_log.gen_dot_graph()
+        # self.dot_log.gen_dot_graph()
         int8_model.clean()
         float_model.clean()
         self.enable_print()

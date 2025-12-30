@@ -18,7 +18,8 @@
 
 namespace tpu_mlir {
 
-template <typename OpTy> static void BackwardOp(OpTy op) {
+template <typename OpTy>
+static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -37,7 +38,8 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy> static void ForwardOp(OpTy op) {
+template <typename OpTy>
+static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -1462,6 +1464,7 @@ void ConvertTopToTpu::runOnOperation() {
       doWinograd.hasValue() ? doWinograd.getValue() : false;
   init_qtable();
   set_add_before_softmax_fp32();
+  set_sub_float();
 
   if (module::isState(module::State::TOP_QUANTIZED)) {
     module::setAsymmetric(true);
@@ -1483,17 +1486,22 @@ void ConvertTopToTpu::runOnOperation() {
         }
       } else {
         auto op_mode = module::getMode();
-        if (LoweringConfig::quantize_map.find(name) != LoweringConfig::quantize_map.end()) {
+        if (LoweringConfig::quantize_map.find(name) !=
+            LoweringConfig::quantize_map.end()) {
           op_mode = LoweringConfig::quantize_map[name];
         }
         std::string dq_type;
-        if (op_mode == module::Mode::INT4F16DYN || op_mode == module::Mode::INT4BF16DYN)
+        if (op_mode == module::Mode::INT4F16DYN ||
+            op_mode == module::Mode::INT4BF16DYN)
           dq_type = "INT4";
-        else if (op_mode == module::Mode::INT8F16DYN || op_mode == module::Mode::INT8BF16DYN)
+        else if (op_mode == module::Mode::INT8F16DYN ||
+                 op_mode == module::Mode::INT8BF16DYN)
           dq_type = "INT8";
-        else if (op_mode == module::Mode::F8E4M3F16DYN || op_mode == module::Mode::F8E4M3BF16DYN)
+        else if (op_mode == module::Mode::F8E4M3F16DYN ||
+                 op_mode == module::Mode::F8E4M3BF16DYN)
           dq_type = "F8E4M3";
-        else if (op_mode == module::Mode::F4F16DYN || op_mode == module::Mode::F4BF16DYN)
+        else if (op_mode == module::Mode::F4F16DYN ||
+                 op_mode == module::Mode::F4BF16DYN)
           dq_type = "FP4";
         else {
           if (module::isBF16Modes())
@@ -2026,6 +2034,75 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
       if (th[0] < 1e-8 || th[1] < 1e-8)
         return;
       if (th[0] / th[1] > 64 || th[1] / th[0] > 64) {
+        if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          if (module::isBM1684Family())
+            LoweringConfig::quantize_map.insert(
+                {module::getName(op).str(), module::Mode::F32});
+          else
+            LoweringConfig::quantize_map.insert(
+                {module::getName(op).str(), module::Mode::F16});
+        }
+      }
+    }
+  });
+}
+
+void ConvertTopToTpu::set_sub_float() {
+  mainFunc_.walk([&](Operation *op) {
+    if (isa<top::SubOp, top::SubConstOp>(op)) {
+      if (LoweringConfig::quantize_map.find(module::getName(op).str()) !=
+          LoweringConfig::quantize_map.end())
+        return;
+      if (module::getMode() != module::Mode::INT8 &&
+          module::getMode() != module::Mode::UINT8 &&
+          module::getMode() != module::Mode::W4INT8)
+        return;
+      auto subop = dyn_cast<top::SubOp>(op);
+      auto subconstop = dyn_cast<top::SubConstOp>(op);
+      int idx = 0;
+      float th[2], out_th = 0.0;
+      th[0] = th[1] = 0.0;
+      if (subop) {
+        if (!module::isCalibratedType(subop.getResult()))
+          return;
+        for (auto in : subop.getInputs()) {
+          if (isa<top::WeightOp>(in.getDefiningOp())) {
+            auto weight =
+                dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
+            float absmax = fabs(weight.get()->at(0));
+            for (int i = 0; i < weight.get()->size(); i++) {
+              float value = fabs(weight.get()->at(i));
+              absmax = value > absmax ? value : absmax;
+            }
+            th[idx++] = absmax;
+          } else {
+            if (!module::isCalibratedType(in))
+              return;
+            auto in_type = module::getCalibratedType(in);
+            th[idx++] = std::max(std::abs(in_type.getMin()),
+                                 std::abs(in_type.getMax()));
+          }
+          if (idx > 2)
+            return;
+        }
+        float _max = module::getCalibratedType(subop.getResult()).getMax();
+        float _min = module::getCalibratedType(subop.getResult()).getMin();
+        out_th = std::max(std::abs(_min), std::abs(_max));
+      } else if (subconstop) {
+        if (!module::isCalibratedType(subconstop.getResult()))
+          return;
+        auto in_type = module::getCalibratedType(subconstop.getInput());
+        th[0] =
+            std::max(std::abs(in_type.getMin()), std::abs(in_type.getMax()));
+        th[1] = std::abs(subconstop.getConstVal().convertToDouble());
+        float _max = module::getCalibratedType(subconstop.getResult()).getMax();
+        float _min = module::getCalibratedType(subconstop.getResult()).getMin();
+        out_th = std::max(std::abs(_min), std::abs(_max));
+      } else {
+        return;
+      }
+      if (out_th < th[0] || out_th < th[1]) {
         if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
             LoweringConfig::quantize_map.end()) {
           if (module::isBM1684Family())

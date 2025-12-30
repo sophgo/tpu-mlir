@@ -153,6 +153,9 @@ if __name__ == '__main__':
             searcher = MixPrecSearcher(args)
             searcher.qtable = quant_table
             searcher.weight_equalization()
+            # run calibration after we by default, or if both we and bc are specified, there is no calitable for bc
+            calibrator = ActivationCalibrator(args, selector, tune_ds)
+            calibrator.run()
         # calibration
         if args.search == 'search_threshold':
             args._logger = logger('Search_Threshold', log_level=log_level)
