@@ -622,6 +622,43 @@ bool isa_shape_subnet_op(Operation *op) {
   return all_special_opds;
 }
 
+bool isa_int_subnet_op(Operation *op) {
+  const auto opds = op->getOperands();
+  assert(opds.size() > 0);
+  int opds_num = 0;
+  for (auto opd : opds) {
+    if (!module::isNone(opd))
+      opds_num++;
+  }
+
+  bool with_int = std::any_of(opds.begin(), opds.end(), [](Value opd) {
+    // check dtype of the opd
+    auto type = opd.getType().cast<RankedTensorType>().getElementType();
+    if (type.isInteger(32)) {
+      return true;
+    }
+    return false;
+  });
+  if (!with_int)
+    return false;
+  if (opds_num < 2)
+    return with_int;
+
+  // for Arith Op with NUM(Operands)>1.  Such Ops may bave a non-scalar weight.
+  bool all_special_opds = std::all_of(opds.begin(), opds.end(), [](Value opd) {
+    auto prev_op = opd.getDefiningOp();
+    auto type = opd.getType().cast<RankedTensorType>().getElementType();
+    if (type.isInteger(32)) {
+      return true;
+    } else if (isa<top::WeightOp>(prev_op)) {
+      return true;
+    } else {
+      return false;
+    }
+  });
+  return all_special_opds;
+}
+
 tpu::RequantMode get_requant_mode(std::string mode) {
   if (mode == "TFLite_LShift")
     return tpu::RequantMode::TFLite_LShift;

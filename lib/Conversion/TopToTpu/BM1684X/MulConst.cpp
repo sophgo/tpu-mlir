@@ -38,6 +38,18 @@ void MulConstTryLowering::Lowering(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);
 }
 
+void MulConstIntLowering::Lowering(PatternRewriter &rewriter,
+                                   top::MulConstOp op) const {
+  if (!isa_int_subnet_op(op))
+    return;
+
+  Type new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()),
+                            IntegerType::get(op.getOutput().getContext(), 32));
+  rewriter.replaceOpWithNewOp<tpu::MulConstOp>(
+      op, new_type, ValueRange{op.getInput()}, op->getAttrs());
+}
+
 void MulConstLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::MulConstOp op) const {
   lowering_common_f32<tpu::MulConstOp>(rewriter, op);

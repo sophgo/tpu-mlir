@@ -1736,6 +1736,14 @@ void ConvertTopToTpu::runOnOperation() {
   }
   host2device_convert_process();
 
+  if (module::isBM1684XFamily() || module::isBM1690Family()) {
+    bm1684x::populateTopIntToTpuConversionPatterns(&patterns);
+  } else if (module::isBM1684Family()) {
+    bm1684::populateTopIntToTpuConversionPatterns(&patterns);
+  }
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  patterns.clear();
+
   // process other ops
   if (module::isBM1684XFamily() || module::isBM1690Family()) {
     bm1684x::populateTopToTpuConversionPatterns(&patterns);

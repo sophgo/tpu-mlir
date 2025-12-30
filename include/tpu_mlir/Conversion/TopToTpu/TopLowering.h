@@ -393,6 +393,28 @@ public:
   bool shouldPrint(OpTy opTy) const override { return false; }
 };
 
+template <typename OpTy>
+class TopIntLowering : public OpRewriterPatternEx<OpTy> {
+public:
+  TopIntLowering(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context) {}
+
+protected:
+  mlir::LogicalResult
+  matchAndRewriteImpl(OpTy opTy,
+                      mlir::PatternRewriter &rewriter) const override {
+    Lowering(rewriter, opTy);
+    return success();
+  }
+
+public:
+  virtual void Lowering(PatternRewriter &rewriter, OpTy opTy) const {
+    UNREACHABLE_OP("Not Implemented", opTy);
+  }
+
+  bool shouldPrint(OpTy opTy) const override { return false; }
+};
+
 // Lowering to a new Operation, with the same operands and same attrs, and
 // newType
 template <typename OpTy>
@@ -604,4 +626,5 @@ void try_insert_device2host(Operation *op, uint32_t idx);
 Value insert_device2host(Value v, Type to, Operation *user = nullptr);
 
 bool isa_shape_subnet_op(Operation *op);
+bool isa_int_subnet_op(Operation *op);
 } // namespace tpu_mlir

@@ -500,6 +500,10 @@ class ReForm(object):
         self.weight = model.graph.initializer
         self.gout = model.graph.output
         self.ginfo = model.graph.value_info
+        self.dtype_info = {
+            info.name: info.type.tensor_type.elem_type
+            for info in model.graph.value_info
+        }
         # store node shape
         self.shape_info = [info for info in model.graph.value_info]
         self.shape_info.extend(model.graph.output)
@@ -950,6 +954,17 @@ class ReForm(object):
 
         for node in self.nodes:
             if node.op_type == "Cast":
+                to_attr = self.get_cast_to_attr(node)
+                input_dtype = self.dtype_info.get(node.input[0], None)
+                if to_attr in [TensorProto.INT64, TensorProto.INT32
+                               ] and input_dtype == TensorProto.FLOAT:
+                    # keep float->int cast
+                    continue
+                if to_attr == TensorProto.FLOAT and input_dtype in [
+                        TensorProto.INT64, TensorProto.INT32
+                ]:
+                    # keep int->float cast
+                    continue
                 cast_ops.append(node)
                 cast_in_dict[node.output[0]] = node.input[0]
                 if node.output[0] in net_out_names: reverse_search = True

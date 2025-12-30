@@ -319,7 +319,8 @@ def Top_CastOp:Top_Op<"Cast"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode,
+    DefaultValuedAttr<StrAttr, "\"\"">:$to
   );
   let results = (outs AnyTensor:$output);
 }

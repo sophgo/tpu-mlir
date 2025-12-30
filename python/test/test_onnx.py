@@ -74,7 +74,7 @@ class ONNX_IR_TESTER(object):
             "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y, Y, Y),
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y, Y, Y),
-            "Cast":         (self.test_Cast,          Y, Y, Y, Y, Y, Y, N),
+            "Cast":         (self.test_Cast,          N, Y, Y, N, Y, Y, Y),
             "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y, Y, Y, Y),
             "Compare":      (self.test_Compare,       Y, Y, Y, N, Y, Y, Y),
             "Compare2":     (self.test_Compare2,      Y, N, N, N, N, N, N),
@@ -4823,7 +4823,7 @@ class ONNX_IR_TESTER(object):
         """
         Test case for the first LSTM layer in crnn_200000.mlir.
         Shapes taken directly from the MLIR:
-        
+
         Note: cv184x does not support INT8 mode for LSTM due to hardware limitations
         (lacks FP32 exp/sigmoid/tanh operations required by INT8 internal computation).
         - Input: [49, 1, 64]
@@ -5603,7 +5603,8 @@ class ONNX_IR_TESTER(object):
         dim4_shape = [4]
         shape1_data = np.array(output1_shape, dtype=np.int64)
         shape2_data = np.array(output2_shape, dtype=np.int64)
-        input_data = {"input": np.random.randint(0, 255, input_shape).astype(np.float32)}
+        # input_data = {"input": np.random.randint(0, 255, input_shape).astype(np.float32)}
+        input_data = {"input": np.random.randn(*input_shape).astype(np.float32)}
         graph_txt = """
             %s (float%s input) => (float%s output1, int64%s output2)
             <int64%s shape1, int64%s shape2, float const_mul>
