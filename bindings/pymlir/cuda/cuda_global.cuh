@@ -10,6 +10,10 @@
 
 #include "cuda_device.cuh"
 #include "cmath"
+#include <algorithm>
+#include <cuda_runtime.h>
+#include <math_constants.h>
+
 namespace tpu_mlir {
 namespace cuda {
 
@@ -401,6 +405,56 @@ __global__ void g_mulConst4DF32(T0 *a, T1 b, T2 *out, bool relu, int n0, int c0,
   }
 }
 
+__global__ void g_subConst4DF32(float *input, float const_v, float*output,
+      bool do_relu, bool reverse, int n, int c, int h, int w){
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (c * h * w);
+  int idx_c = dst_idx % (c * h * w) / (h * w);
+  int idx_h = dst_idx % (h * w) / w;
+  int idx_w = dst_idx % w;
+  if (idx_w < w && idx_h < h && idx_c < c && idx_n < n) {
+    float a_data = input[dst_idx];
+    if (reverse)
+      a_data = const_v - a_data;
+    else
+      a_data = a_data - const_v;
+    if (do_relu)
+      a_data = max(0.0, a_data);
+    output[dst_idx] = a_data;
+  }
+}
+
+template <typename T0>
+__global__ void g_subConst4DI8(T0 *input, int const_v, int8_t *output,
+      bool do_relu, bool reverse, int multi, int shift, int n, int c, int h, int w){
+  int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_n = dst_idx / (c * h * w);
+  int idx_c = dst_idx % (c * h * w) / (h * w);
+  int idx_h = dst_idx % (h * w) / w;
+  int idx_w = dst_idx % w;
+  if (idx_w < w && idx_h < h && idx_c < c && idx_n < n) {
+    int a_data = (int)input[dst_idx];
+    if (reverse)
+      a_data = const_v - a_data*multi;
+    else
+      a_data = a_data*multi - const_v;
+    int val = a_data >> shift;
+    // using rounding half up
+    if (shift > 0 ) {
+      int mant = a_data & ((1ul << shift) - 1);
+      if (mant >= (1ul << (shift-1)))
+        val += 1;
+    }
+    if (do_relu)
+      a_data = max(0, val);
+    else
+      a_data = val;
+    a_data = max(-128, a_data);
+    a_data = min(127, a_data);
+    output[dst_idx] = (int8_t)a_data;
+  }
+}
+
 template <typename T0, typename T1, typename T2>
 __global__ void g_mul4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
                             int h0, int w0, int n1, int c1, int h1, int w1,
@@ -533,6 +587,18 @@ __global__ void g_slice6D(void *src, void *dst, int n, int c, int d, int h, int 
       int src_idx = ((((idx_n * c + idx_c) * d + idx_d) * h + idx_h) * w  + idx_w) * d1 + idx_d1;
       d_copyElement(src, src_idx, dst, dst_idx, tbytes);
     }
+  }
+}
+
+__global__ void g_swapDimInner6D(void *src, void *dst, int outter, int shape, int offset, int inner, int tbytes){
+  int src_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (src_idx < outter * shape * inner) {
+    int outer_idx = src_idx / (inner*shape);
+    int axis_idx = src_idx % (inner*shape) / inner;
+    int inner_idx = src_idx % inner;
+    int new_axis = (axis_idx-offset+shape)%shape;
+    int dst_idx = outer_idx*(shape*inner) + new_axis*inner + inner_idx;
+    d_copyElement(src, src_idx, dst, dst_idx, tbytes);
   }
 }
 
@@ -1265,6 +1331,605 @@ __global__ void g_cvLutMantissa(uint16_t *input, uint16_t *output,
   if (idx < num) {
     output[idx] = d_lutMantissaBF16(input[idx], table0, table1, is_log);
   }
+}
+
+template<typename T>
+__global__ void g_depth2space(
+    const T* input, T* output,
+    int block_h, int block_w,
+    bool inversed,
+    bool swap_output_dims,
+    int is_crd,
+    int n, int c, int h, int w,
+    int instride, int icstride, int ihstride, int iwstride,
+    int on, int oc, int oh, int ow,
+    int onstride, int ocstride, int ohstride, int owstride) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx > n*c*h*w)
+    return;
+  int64_t idx_n = idx / (c * h * w);
+  int64_t idx_c = (idx % (c * h * w)) / (h * w);
+  int64_t idx_h = (idx % (h*w)) / (w);
+  int64_t idx_w = (idx % (h*w)) % w;
+  int64_t new_c, left;
+  if (is_crd) { // oc, block_h, block_w
+    new_c = idx_c / (block_h * block_w);
+    left = idx_c % (block_h * block_w);
+  } else { // bh, bw, oc
+    new_c = idx_c % oc;
+    left = idx_c / oc;
+  }
+  if (swap_output_dims) {
+    int64_t c1 = left / block_w;
+    int64_t c2 = left % block_w;
+    int64_t rleft = c2 * block_h + c1;
+    if (is_crd) {
+      idx_c = new_c * (block_h * block_w) + rleft;
+    } else {
+      idx_c = rleft * oc + new_c;
+    }
+  }
+  int64_t new_h = idx_h * block_h + left / block_w;
+  int64_t new_w = idx_w * block_w + left % block_w;
+  int64_t i_index =
+      idx_n * instride + idx_c * icstride + idx_h * ihstride + idx_w * iwstride;
+  int64_t o_index = idx_n * onstride + new_c * ocstride + new_h * ohstride +
+                    new_w * owstride;
+  if (inversed) {
+    output[i_index] = input[o_index];
+  } else {
+    output[o_index] = input[i_index];
+  }
+}
+
+template<typename T>
+__global__ void depth_to_space_kernel(
+    const T* input, T* output,
+    int block_h, int block_w,
+    bool swap_output_dims,  //
+    int channel_order,      // 0:DCR, 1:CRD, 2:RCD
+    int n, int c, int h, int w) {
+
+    int block_total = block_h * block_w;
+    int output_c = c / block_total;
+
+    //
+    int output_h = swap_output_dims ? w * block_w : h * block_h;
+    int output_w = swap_output_dims ? h * block_h : w * block_w;
+
+    int total_output = n * output_c * output_h * output_w;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx >= total_output) return;
+
+    if (idx == 3)
+      printf("DepthToSpace: block_h=%d, block_w=%d, swap_output_dims=%d, channel_order=%d, n=%d, c=%d, h=%d, w=%d, output_c=%d, output_h=%d, output_w=%d, total_output=%d\n",
+             block_h, block_w, swap_output_dims, channel_order, n, c, h, w,
+             output_c, output_h, output_w, total_output);
+    //
+    int n_idx = idx / (output_c * output_h * output_w);
+    int remaining = idx % (output_c * output_h * output_w);
+    int c_idx = remaining / (output_h * output_w);
+    remaining %= (output_h * output_w);
+    int h_idx = remaining / output_w;
+    int w_idx = remaining % output_w;
+
+    //
+    int orig_h, orig_w;
+    if (swap_output_dims) {
+        orig_h = w_idx;
+        orig_w = h_idx;
+    } else {
+        orig_h = h_idx;
+        orig_w = w_idx;
+    }
+
+    //
+    int block_row = orig_h % block_h;
+    int block_col = orig_w % block_w;
+    int input_h = orig_h / block_h;
+    int input_w = orig_w / block_w;
+
+    //
+    int input_c;
+    if (channel_order == 0) {
+        // DCR: Depth-Column-Row
+        input_c = c_idx * block_total + block_col * block_h + block_row;
+    } else if (channel_order == 1) {
+        // CRD: Column-Row-Depth
+        input_c = block_col * (block_h * output_c) + block_row * output_c + c_idx;
+    } else if (channel_order == 2) {
+        // RCD: Row-Column-Depth
+        input_c = block_row * (block_w * output_c) + block_col * output_c + c_idx;
+    } else {
+        //
+        input_c = c_idx * block_total + block_col * block_h + block_row;
+    }
+
+    if (idx == 3)
+      printf("d2s: n_idx=%d, c_idx=%d, h_idx=%d, w_idx=%d, orig_h=%d, orig_w=%d, \
+        block_row=%d, block_col=%d, input_h=%d, input_w=%d, input_c=%d\n", \
+             n_idx, c_idx, h_idx, w_idx, orig_h, orig_w, block_row, block_col, \
+             input_h, input_w, input_c);
+    //
+    int input_idx = ((n_idx * c + input_c) * h + input_h) * w + input_w;
+    if (idx == 3)
+        printf("d2s: input_idx=%d\n", input_idx);
+    output[idx] = input[input_idx];
+}
+
+
+template<typename T>
+__global__ void space_to_depth_kernel(
+    const T* input, T* output,
+    int block_h, int block_w,
+    bool swap_input_dims,
+    int channel_order,
+    int n, int c, int h, int w) {
+
+    int block_total = block_h * block_w;
+    int output_c = c * block_total;
+
+    //
+    int output_h = swap_input_dims ? w / block_w : h / block_h;
+    int output_w = swap_input_dims ? h / block_h : w / block_w;
+
+    int total_output = n * output_c * output_h * output_w;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx >= total_output) return;
+
+    //
+    int n_idx = idx / (output_c * output_h * output_w);
+    int remaining = idx % (output_c * output_h * output_w);
+    int c_idx = remaining / (output_h * output_w);
+    remaining %= (output_h * output_w);
+    int h_idx = remaining / output_w;
+    int w_idx = remaining % output_w;
+
+    if (idx == 3)
+      printf("SpaceToDepth: block_h=%d, block_w=%d, swap_input_dims=%d, channel_order=%d, n=%d, c=%d, h=%d, w=%d, output_c=%d, output_h=%d, output_w=%d, total_output=%d\n",
+             block_h, block_w, swap_input_dims, channel_order, n, c, h, w,
+             output_c, output_h, output_w, total_output);
+
+    //
+    int depth, block_row, block_col;
+
+    if (channel_order == 0) {
+        // DCR: Depth-Column-Row
+        depth = c_idx / block_total;
+        int block_offset = c_idx % block_total;
+        block_col = block_offset / block_h;
+        block_row = block_offset % block_h;
+    } else if (channel_order == 1) {
+        // CRD: Column-Row-Depth
+        block_col = c_idx / (block_h * output_c);
+        int remaining = c_idx % (block_h * output_c);
+        block_row = remaining / output_c;
+        depth = remaining % output_c;
+    } else if (channel_order == 2) {
+        // RCD: Row-Column-Depth
+        block_row = c_idx / (block_w * output_c);
+        int remaining = c_idx % (block_w * output_c);
+        block_col = remaining / output_c;
+        depth = remaining % output_c;
+    } else {
+        // DCR
+        depth = c_idx / block_total;
+        int block_offset = c_idx % block_total;
+        block_col = block_offset / block_h;
+        block_row = block_offset % block_h;
+    }
+
+    //
+    int input_h, input_w;
+    if (swap_input_dims) {
+        input_h = h_idx * block_w + block_col;
+        input_w = w_idx * block_h + block_row;
+    } else {
+        input_h = h_idx * block_h + block_row;
+        input_w = w_idx * block_w + block_col;
+    }
+
+    //
+    int final_input_h = swap_input_dims ? input_w : input_h;
+    int final_input_w = swap_input_dims ? input_h : input_w;
+
+    //
+    int input_c = depth;
+    if (idx == 3)
+      printf("s2d: n_idx=%d, c_idx=%d, h_idx=%d, w_idx=%d, depth=%d, block_row=%d, block_col=%d, input_h=%d, input_w=%d, final_input_h=%d, final_input_w=%d, input_c=%d\n",
+             n_idx, c_idx, h_idx, w_idx, depth, block_row, block_col,
+             input_h, input_w, final_input_h, final_input_w, input_c);
+    //
+    int input_idx = ((n_idx * c + input_c) * h + final_input_h) * w + final_input_w;
+    if (idx == 3)
+        printf("s2d: input_idx=%d\n", input_idx);
+    output[idx] = input[input_idx];
+}
+
+
+enum ReductionMode {
+    REDUCE_SUM = 0,
+    REDUCE_MEAN,
+    REDUCE_MAX,
+    REDUCE_MIN,
+    REDUCE_L2_NORM,
+    REDUCE_L1_NORM,
+    REDUCE_PROD,     // Product
+    REDUCE_VAR,      // Variance
+    REDUCE_STD,      // Standard deviation
+    REDUCE_ANY,      // Logical OR (for boolean)
+    REDUCE_ALL       // Logical AND (for boolean)
+};
+
+// Helper function to get initial value based on mode
+template<typename T, ReductionMode Mode>
+__device__ __inline__ T getInitialValue() {
+    if (Mode == REDUCE_MAX) {
+        return (T)-CUDART_INF_F;
+    } else if (Mode == REDUCE_MIN) {
+        return (T)CUDART_INF_F;
+    } else if (Mode == REDUCE_PROD) {
+        return T(1);
+    } else if (Mode == REDUCE_ANY) {
+        return T(0);
+    } else if (Mode == REDUCE_ALL) {
+        return T(1);
+    } else {
+        return T(0);
+    }
+}
+
+// Helper function to combine two values based on mode
+template<typename T, ReductionMode Mode>
+__device__ __inline__ T combineValues(T a, T b) {
+    if (Mode == REDUCE_MAX) {
+        return max(a, b);
+    } else if (Mode == REDUCE_MIN) {
+        return min(a, b);
+    } else if (Mode == REDUCE_SUM || Mode == REDUCE_MEAN ||
+               Mode == REDUCE_L2_NORM || Mode == REDUCE_L1_NORM ||
+               Mode == REDUCE_VAR || Mode == REDUCE_STD) {
+        return a + b;
+    } else if (Mode == REDUCE_PROD) {
+        return a * b;
+    } else if (Mode == REDUCE_ANY) {
+        return a || b;
+    } else if (Mode == REDUCE_ALL) {
+        return a && b;
+    }
+    return a;  // Default, should not reach here
+}
+
+// Structure to hold tensor shape information
+struct TensorShape {
+    int dims[8];          // Support up to 8 dimensions
+    int strides[8];       // Strides for each dimension
+    int ndim;             // Number of dimensions (up to 8)
+
+    __host__ __device__ TensorShape() : ndim(0) {}
+
+    __host__ __device__ void init(int n_dim, const int*shape) {
+        ndim = n_dim;
+        for (int i = 0; i < ndim; i++) {
+            dims[i] = shape[i];
+        }
+        for (int i = ndim; i < 8; i++) {
+            dims[i] = 1;  // Fill remaining dimensions with 1
+        }
+        computeStrides();
+    }
+
+    __host__ __device__ void computeStrides() {
+        strides[ndim - 1] = 1;
+        for (int i = ndim - 2; i >= 0; i--) {
+            strides[i] = strides[i + 1] * dims[i + 1];
+        }
+    }
+
+    __host__ __device__ int totalElements() const {
+        int total = 1;
+        for (int i = 0; i < ndim; i++) {
+            total *= dims[i];
+        }
+        return total;
+    }
+
+    __host__ __device__ int linearIndex(const int indices[8]) const {
+        int idx = 0;
+        for (int i = 0; i < ndim; i++) {
+            idx += indices[i] * strides[i];
+        }
+        return idx;
+    }
+
+    __host__ __device__ void computeIndices(int linear_idx, int indices[8]) const {
+        for (int i = 0; i < ndim; i++) {
+            indices[i] = (linear_idx / strides[i]) % dims[i];
+        }
+    }
+};
+
+// Kernel for multi-axis reduction
+template<typename T, ReductionMode Mode, int BlockSize = 256>
+__global__ void multiAxisReductionKernel(
+    const T* __restrict__ input,
+    T* __restrict__ output,
+    TensorShape input_shape,
+    TensorShape output_shape,
+    const int* __restrict__ reduce_mask  // Boolean mask indicating which axes to reduce
+) {
+    // Each thread handles one element in the output tensor
+    int output_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (output_idx < output_shape.totalElements()) {
+        // Compute indices in output tensor
+        int output_indices[8];
+        output_shape.computeIndices(output_idx, output_indices);
+
+        // Convert to input indices (with reduce dimensions as 0)
+        int input_indices[8];
+        int reduce_idx = 0;
+        for (int i = 0; i < input_shape.ndim; i++) {
+            if (reduce_mask[i]) {
+                // This dimension is being reduced, start with 0
+                input_indices[i] = 0;
+            } else {
+                // Copy from output indices
+                input_indices[i] = output_indices[reduce_idx++];
+            }
+        }
+
+        // Initialize reduction value
+        T myVal = getInitialValue<T, Mode>();
+
+        // Calculate total elements to reduce
+        int reduce_total = 1;
+        for (int i = 0; i < input_shape.ndim; i++) {
+            if (reduce_mask[i]) {
+                reduce_total *= input_shape.dims[i];
+            }
+        }
+
+        // Nested loops over reduction dimensions (optimized for up to 4 reduction dims)
+        if (reduce_total > 0) {
+            // Count reduction dimensions
+            int reduce_dims[4];
+            int num_reduce_dims = 0;
+            for (int i = 0; i < input_shape.ndim; i++) {
+                if (reduce_mask[i]) {
+                    reduce_dims[num_reduce_dims++] = i;
+                }
+            }
+
+            // Handle different numbers of reduction dimensions
+            if (num_reduce_dims == 1) {
+                int dim = reduce_dims[0];
+                for (int i0 = 0; i0 < input_shape.dims[dim]; i0++) {
+                    input_indices[dim] = i0;
+                    int idx = input_shape.linearIndex(input_indices);
+                    T element = input[idx];
+                    myVal = combineValues<T, Mode>(myVal, element);
+                }
+            } else if (num_reduce_dims == 2) {
+                int dim1 = reduce_dims[0];
+                int dim2 = reduce_dims[1];
+                for (int i0 = 0; i0 < input_shape.dims[dim1]; i0++) {
+                    input_indices[dim1] = i0;
+                    for (int i1 = 0; i1 < input_shape.dims[dim2]; i1++) {
+                        input_indices[dim2] = i1;
+                        int idx = input_shape.linearIndex(input_indices);
+                        T element = input[idx];
+                        myVal = combineValues<T, Mode>(myVal, element);
+                    }
+                }
+            } else if (num_reduce_dims == 3) {
+                int dim1 = reduce_dims[0];
+                int dim2 = reduce_dims[1];
+                int dim3 = reduce_dims[2];
+                for (int i0 = 0; i0 < input_shape.dims[dim1]; i0++) {
+                    input_indices[dim1] = i0;
+                    for (int i1 = 0; i1 < input_shape.dims[dim2]; i1++) {
+                        input_indices[dim2] = i1;
+                        for (int i2 = 0; i2 < input_shape.dims[dim3]; i2++) {
+                            input_indices[dim3] = i2;
+                            int idx = input_shape.linearIndex(input_indices);
+                            T element = input[idx];
+                            myVal = combineValues<T, Mode>(myVal, element);
+                        }
+                    }
+                }
+            } else if (num_reduce_dims == 4) {
+                int dim1 = reduce_dims[0];
+                int dim2 = reduce_dims[1];
+                int dim3 = reduce_dims[2];
+                int dim4 = reduce_dims[3];
+                for (int i0 = 0; i0 < input_shape.dims[dim1]; i0++) {
+                    input_indices[dim1] = i0;
+                    for (int i1 = 0; i1 < input_shape.dims[dim2]; i1++) {
+                        input_indices[dim2] = i1;
+                        for (int i2 = 0; i2 < input_shape.dims[dim3]; i2++) {
+                            input_indices[dim3] = i2;
+                            for (int i3 = 0; i3 < input_shape.dims[dim4]; i3++) {
+                                input_indices[dim4] = i3;
+                                int idx = input_shape.linearIndex(input_indices);
+                                T element = input[idx];
+                                myVal = combineValues<T, Mode>(myVal, element);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Generic case for more than 4 reduction dimensions
+                // Use a while loop for arbitrary number of reduction dims
+                int reduce_indices[8] = {0};
+                bool done = false;
+
+                while (!done) {
+                    // Set indices for reduction dimensions
+                    int reduce_idx = 0;
+                    for (int i = 0; i < input_shape.ndim; i++) {
+                        if (reduce_mask[i]) {
+                            input_indices[i] = reduce_indices[reduce_idx++];
+                        }
+                    }
+
+                    // Access element
+                    int idx = input_shape.linearIndex(input_indices);
+                    T element = input[idx];
+                    myVal = combineValues<T, Mode>(myVal, element);
+
+                    // Increment reduction indices
+                    int carry = 1;
+                    for (int i = num_reduce_dims - 1; i >= 0 && carry; i--) {
+                        int dim = reduce_dims[i];
+                        reduce_indices[i]++;
+                        if (reduce_indices[i] >= input_shape.dims[dim]) {
+                            reduce_indices[i] = 0;
+                            carry = 1;
+                        } else {
+                            carry = 0;
+                        }
+                    }
+                    done = carry;
+                }
+            }
+
+            // Post-processing based on mode
+            if (Mode == REDUCE_MEAN) {
+                myVal /= reduce_total;
+            } else if (Mode == REDUCE_L2_NORM) {
+                myVal = sqrt(myVal);
+            } else if (Mode == REDUCE_VAR || Mode == REDUCE_STD) {
+                // Note: For variance, this computes sum of squares
+                // Need to compute mean first, then variance
+            }
+        }
+
+        // Write result to output
+        output[output_idx] = myVal;
+    }
+}
+
+// Specialized kernel for variance (requires two passes)
+template<typename T, int BlockSize = 256>
+__global__ void varianceReductionKernel(
+    const T* __restrict__ input,
+    T* __restrict__ output,
+    TensorShape input_shape,
+    TensorShape output_shape,
+    const bool* __restrict__ reduce_mask,
+    T* __restrict__ means_cache = nullptr  // Optional cache for means
+) {
+    int output_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (output_idx < output_shape.totalElements()) {
+        // Similar to multiAxisReductionKernel but with variance calculation
+        // This is simplified - actual implementation needs mean first
+        T sum = T(0);
+        T sum_sq = T(0);
+
+        // Compute mean and sum of squares in one pass (numerically unstable but faster)
+        int reduce_total = 1;
+        for (int i = 0; i < input_shape.ndim; i++) {
+            if (reduce_mask[i]) {
+                reduce_total *= input_shape.dims[i];
+            }
+        }
+
+        if (reduce_total > 0) {
+            // Get indices and compute
+            int output_indices[8];
+            output_shape.computeIndices(output_idx, output_indices);
+
+            int input_indices[8];
+            int reduce_idx = 0;
+            for (int i = 0; i < input_shape.ndim; i++) {
+                if (reduce_mask[i]) {
+                    input_indices[i] = 0;
+                } else {
+                    input_indices[i] = output_indices[reduce_idx++];
+                }
+            }
+
+            // Iterate over reduction dimensions
+            int reduce_dims[4];
+            int num_reduce_dims = 0;
+            for (int i = 0; i < input_shape.ndim; i++) {
+                if (reduce_mask[i]) {
+                    reduce_dims[num_reduce_dims++] = i;
+                }
+            }
+
+            // Single pass for mean and sum of squares
+            T mean_accum = T(0);
+            T m2_accum = T(0);
+            int count = 0;
+
+            // Using Welford's online algorithm for numerical stability
+            if (num_reduce_dims == 1) {
+                int dim = reduce_dims[0];
+                for (int i = 0; i < input_shape.dims[dim]; i++) {
+                    input_indices[dim] = i;
+                    int idx = input_shape.linearIndex(input_indices);
+                    T x = input[idx];
+
+                    count++;
+                    T delta = x - mean_accum;
+                    mean_accum += delta / count;
+                    T delta2 = x - mean_accum;
+                    m2_accum += delta * delta2;
+                }
+            }
+            // ... similar for other dimensions
+
+            if (count > 1) {
+                T variance = m2_accum / (count - 1);  // Sample variance
+                output[output_idx] = variance;
+            } else {
+                output[output_idx] = T(0);
+            }
+        }
+    }
+}
+
+// Optimized kernel for contiguous reduction dimensions
+template<typename T, ReductionMode Mode, int BlockSize = 256>
+__global__ void contiguousAxisReductionKernel(
+    const T* __restrict__ input,
+    T* __restrict__ output,
+    int outer_size,      // Product of dimensions before reduction
+    int reduce_size,     // Size of dimension being reduced
+    int inner_size       // Product of dimensions after reduction
+) {
+    // This kernel is optimized when reducing a single contiguous axis
+
+    // Each block handles inner_size * outer_size outputs
+    int batch = blockIdx.x;
+    int inner_idx = threadIdx.x;
+
+    if (batch < outer_size && inner_idx < inner_size) {
+        T myVal = getInitialValue<T, Mode>();
+
+        // Reduction over the contiguous dimension
+        for (int i = 0; i < reduce_size; i++) {
+            int input_idx = (batch * reduce_size + i) * inner_size + inner_idx;
+            T element = input[input_idx];
+            myVal = combineValues<T, Mode>(myVal, element);
+        }
+
+        // Post-processing
+        if (Mode == REDUCE_MEAN) {
+            myVal /= reduce_size;
+        } else if (Mode == REDUCE_L2_NORM) {
+            myVal = sqrt(myVal);
+        }
+
+        // Write output
+        int output_idx = batch * inner_size + inner_idx;
+        output[output_idx] = myVal;
+    }
 }
 
 } // namespace cuda

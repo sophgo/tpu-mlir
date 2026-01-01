@@ -24,6 +24,10 @@ void py_cuda::cudaSliceOp(tpu::SliceOp op) {
     offset.push_back(0);
     steps.push_back(1);
   }
+  for (int i=0;i<offset.size();i++) {
+    if (offset[i] <0)
+      offset[i] = in_shape[i] + offset[i];
+  }
   cuda::slice6D(input, output, in_shape[0], in_shape[1], in_shape[2], in_shape[3],
                 in_shape[4], in_shape[5],
                 offset[0], offset[1], offset[2], offset[3], offset[4], offset[5],
@@ -49,6 +53,10 @@ void py_cuda::cudaSliceOp(top::SliceOp op) {
     out_shape.push_back(1);
     offset_v.push_back(0);
     steps_v.push_back(1);
+  }
+  for (int i=0;i<offset_v.size();i++) {
+    if (offset_v[i] <0)
+      offset_v[i] = in_shape[i] + offset_v[i];
   }
   cuda::slice6D(input, output, in_shape[0], in_shape[1], in_shape[2], in_shape[3],
                 in_shape[4], in_shape[5],

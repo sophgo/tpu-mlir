@@ -78,7 +78,6 @@ private:
   void cudaCastOp(tpu::CastOp op);
   void cudaConcatOp(tpu::ConcatOp op);
   void cudaDeconvOp(tpu::DeconvOp op);
-  void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
   void cudaGatherOp(tpu::GatherOp op);
   void cudaGenericCpuOp(tpu::GenericCpuOp op);
   void cudaLutOp(tpu::LutOp op);
@@ -100,6 +99,10 @@ private:
   void cudaSubOp(tpu::SubOp op);
   void cudaMulConstOp(tpu::MulConstOp op);
   void cudaLayerNormOp(tpu::LayerNormOp op);
+  void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
+  void cudaReduceOp(tpu::ReduceOp op);
+  void cudaSwapDimInnerOp(tpu::SwapDimInnerOp op);
+  void cudaSubConstOp(tpu::SubConstOp op);
 
   void cudaAddOp(top::AddOp op);
   void cudaConvOp(top::ConvOp op);
@@ -121,6 +124,12 @@ private:
   void cudaLayerNormOp(top::LayerNormOp op);
   void cudaSqueezeOp(top::SqueezeOp op);
   void cudaGELUOp(top::GELUOp op);
+  void cudaDepth2SpaceOp(top::Depth2SpaceOp op);
+  void cudaReduceOp(top::ReduceOp op);
+  void cudaSwapDimInnerOp(top::SwapDimInnerOp op);
+  void cudaUnsqueezeOp(top::UnsqueezeOp op);
+  void cudaSubConstOp(top::SubConstOp op);
+  void cudaGatherOp(top::GatherOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

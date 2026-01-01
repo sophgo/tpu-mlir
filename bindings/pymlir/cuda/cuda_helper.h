@@ -95,6 +95,10 @@ void sub4DF32(void *input0, void *input1, void *output,
 void sub4DInt8(void *input0, bool input0_unsigned, int mul0, int shift0, void *input1, bool input1_unsigned, int mul1, int shift1, void *output, bool output_unsigned,
                bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2);
+void subConst4DF32(void *input, float const_v, void *output,
+               bool relu, bool reverse, int n, int c, int h, int w);
+void subConst4DI8(void *input, bool in_signed, int const_v, void *output,
+               bool do_relu, bool reverse, int multi, int shift, int n, int c, int h, int w);
 void mulConst4DF32(void *input, float const_v, void *output, bool do_relu,
                   int n0, int c0, int h0, int w0);
 void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
@@ -162,6 +166,8 @@ void print(void *data, int size, data_type_t type);
 void slice6D(void *src, void *dst, int n, int c, int d, int h, int w, int d1, int off0,
              int off1, int off2, int off3, int off4, int off5, int s0, int s1, int s2, int s3,
              int s4, int s5, int on, int oc, int od, int oh, int ow, int od1, int tbytes);
+void swapDimInner6D(void *src, void *dst, int n, int c, int d, int h, int w, int d1, int off0,
+             int off1, int off2, int off3, int off4, int off5, int tbytes);
 void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
             int oh, int ow, int tbytes);
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
@@ -172,6 +178,11 @@ void lut256(void *src, void *table, void *dst, int size, data_type_t src_type,
 void gather(void *indices, void *embedding, void *output, int num_indices,
             int embedding_dim, int inner_dim, data_type_t ind_type,
             data_type_t embed_type);
+void bmDepth2Space(void *input, void *output, bool inversed, bool swap_hw, bool crd,
+            int block_h, int block_w, int n, int c, int h, int w,
+            int ins, int ics, int ihs, int iws, int on, int oc, int oh, int ow,
+            int ons, int ocs, int ohs, int ows, data_type_t type);
+
 // -------------------------------------------------------------------------
 // cv18xx only
 
@@ -216,6 +227,7 @@ void bmReciprocal(void *input, void *output,  int outer_dim, int inner_dim, data
 void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,
              int off1, int off2, int off3, int s0, int s1, int s2, int s3,
              int on, int oc, int oh, int ow);
+void bmReduce(void *d_input,void * d_output, int shape_dim, void *input_shape, void *reduce_mask, int mode);
 
 } // namespace cuda
 } // namespace tpu_mlir
