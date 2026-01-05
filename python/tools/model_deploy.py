@@ -113,6 +113,7 @@ class DeployTool:
         self.module = MlirParser(args.mlir)
         self.module_name = self.module.module_name
         self.state = self.module.module_state
+        self.disable_topo_sort = args.disable_topo_sort
         self.disable_layer_group = args.disable_layer_group
         self.gdma_check = not args.disable_gdma_check
         self.opt = args.opt
@@ -428,7 +429,8 @@ class DeployTool:
                         f"{self.prefix}.layer_group_cache.json" if self.quantize != "int8" else
                         f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json"),
                     layer_group_config=self.layer_group_config,
-                    log_level="normal" if self.log_level == 0 else "simple")
+                    log_level="normal" if self.log_level == 0 else "simple",
+                    disable_topo_sort=self.disable_topo_sort)
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -574,6 +576,8 @@ if __name__ == '__main__':
                         help="for qat intergation, only gen tpu.mlir")
     parser.add_argument("--use_rewriter_config", action="store_true",
                         help="use rewriter config to do model deploy.")
+    parser.add_argument("--disable_topo_sort", action="store_true",
+                        help="Whether to disable topo sort pass before layer group pass")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')

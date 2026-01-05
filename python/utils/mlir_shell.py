@@ -683,7 +683,11 @@ def tpu_ada_options(
     layer_group_config: str = "",
     iomem_set: str = "",
     same_addr: str = "",
+    disable_topo_sort: bool = False,
 ):
+    topo_sort_param = ""
+    if not disable_topo_sort:
+        topo_sort_param = "--topo-sort"
     lg_param = ''
     disable_group_overlap = "true" if disable_group_overlap else "false"
     lgcache = "true" if lgcache else "false"
@@ -717,6 +721,7 @@ def tpu_ada_options(
         op_divide_param,
         subnet_param,
         "--op-reorder",
+        topo_sort_param,
         lg_param,
         trunc_param,
         parallel_param,
@@ -973,6 +978,7 @@ def mlir_to_model(
     subnet_params: str = None,
     layer_group_cache: str = "",
     layer_group_config: str = "",
+    disable_topo_sort: bool = False
 ):
     if command_mem is None:
         command_mem = {}
@@ -1006,7 +1012,8 @@ def mlir_to_model(
                               disable_group_overlap=(time_fixed_subnet != None),
                               layer_group_config=layer_group_config,
                               iomem_set=iomem_set,
-                              same_addr=same_addr)
+                              same_addr=same_addr,
+                              disable_topo_sort=disable_topo_sort)
     cmd.extend(options)
 
     cmd.extend(["-o", final_mlir])

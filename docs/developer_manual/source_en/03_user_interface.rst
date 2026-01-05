@@ -604,6 +604,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - disable_structure_detect_optimize
      - N
      - Disable structure detect optimization in LayerGroup pass.
+   * - disable_topo_sort
+     - N
+     - Whether to disable topo-sort pass
 
 The following table shows the correspondence between different processors and the supported quantize types:
 

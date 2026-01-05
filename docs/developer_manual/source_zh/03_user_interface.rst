@@ -615,6 +615,9 @@ model_deploy.py
    * - disable_structure_detect_optimize
      - 否
      - 是否关闭LayerGroup pass中的结构检测优化
+   * - disable_topo_sort
+     - 否
+     - 是否关闭拓扑排序优化
 
 对于不同处理器和支持的量化类型对应关系如下表所示：
 

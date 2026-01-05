@@ -40,6 +40,15 @@ def SubnetDivide : Pass<"subnet-divide", "ModuleOp"> {
   ];
 }
 
+def TopoSort : Pass<"topo-sort", "ModuleOp"> {
+  let summary = "applied before layer-group to minimize number of baseGroups";
+  let constructor = "createTopoSortPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"depth_first", "depth_first", "std::string", /*default=*/"\"true\"", "optional sort stategies">,
+  ];
+}
+
 def LayerGroup : Pass<"layer-group", "ModuleOp"> {
   let summary = "convert to layer group in tpu by tpuc-opt";
   let constructor = "createLayerGroupPass()";
