@@ -13,9 +13,9 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2026-01-17
+## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2026-01-28
 ```bash
-#bm1684x sha256: e193312a6de1d569f2f916b95070664b139fe8c6
+#bm1684x sha256: a520459ed872b26733e35f9c6167cfb097a4da14
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1688 sha256: e193312a6de1d569f2f916b95070664b139fe8c6
+#bm1688 sha256: a520459ed872b26733e35f9c6167cfb097a4da14
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -59,7 +59,7 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690e_kernel_module.a
 
-#cv184x sha256: bd7cb0e44e3915e33f980b3fe3bbe7b15cc80d75
+#cv184x sha256: a520459ed872b26733e35f9c6167cfb097a4da14
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
@@ -87,9 +87,9 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.a
 ```
 
-## tpu-runtime 2026-01-08
+## tpu-runtime 2026-01-28
 
-build from tpu-runtime fe45f3394dbf268e51eb3c552ee91b7454b440f4
+build from tpu-runtime 73b4c550fd3f77da8269c4df0048f23956c29d8c
 
 ```bash
 pushd libsophon
