@@ -44,6 +44,9 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     if (getWeightBits() == 4) {
       N *= 2;
     }
+    if (q_group_size == -1) {
+      q_group_size = w_transpose ? N : K;
+    }
     auto dynamic_quantize_type = getDqType();
     auto new_weight = std::vector<float>(K * N, 0);
     float imax;
@@ -81,8 +84,8 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
         auto zp_i = zp[quant_idx];
         if (dynamic_quantize_type == "F8E4M3") {
           new_weight[i] = f8e4m3_to_f32(weight[i]) - zp_i;
-        // } else if (dynamic_quantize_type == "F8E5M2") {
-        //   new_weight[i] = f8e5m2_to_f32(weight[i]) - zp_i;
+          // } else if (dynamic_quantize_type == "F8E5M2") {
+          //   new_weight[i] = f8e5m2_to_f32(weight[i]) - zp_i;
         } else {
           new_weight[i] = int(weight[i]) - zp_i;
         }

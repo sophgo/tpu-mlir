@@ -457,8 +457,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       imax = 7.0;
     } else if (dynamic_quantize_type == "F8E4M3") {
       imax = get_f8e4m3_max();
-    // } else if (dynamic_quantize_type == "F8E5M2") {
-    //   imax = get_f8e5m2_max();
+      // } else if (dynamic_quantize_type == "F8E5M2") {
+      //   imax = get_f8e5m2_max();
     } else if (dynamic_quantize_type == "F4") {
       imax = get_f4e2m1_max();
     } else {
@@ -466,6 +466,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     }
     int q_group_size =
         getQGroupSize() ? getQGroupSize() : module::getQuantGroupSize();
+    if (q_group_size == -1)
+      q_group_size = a.K;
     int group_num = (a.K + q_group_size - 1) / q_group_size;
     float *tmp_output = new float[a.batch * a.batch_low * a.M * a.N];
     float *cur_group_left =

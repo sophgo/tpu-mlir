@@ -97,9 +97,9 @@ void computePerGroupParam(
     if (is_dynamic_quant && dq_type == "F8E4M3") {
       scale->at(i) = std::abs(abs_max) / f8e4m3_max;
       zp->at(i) = 0.0;
-    // } else if (is_dynamic_quant && dq_type == "F8E5M2") {
-    //   scale->at(i) = std::abs(abs_max) / f8e5m2_max;
-    //   zp->at(i) = 0.0;
+      // } else if (is_dynamic_quant && dq_type == "F8E5M2") {
+      //   scale->at(i) = std::abs(abs_max) / f8e5m2_max;
+      //   zp->at(i) = 0.0;
     } else if (is_dynamic_quant && dq_type == "F4") {
       scale->at(i) = std::abs(abs_max) / f4e2m1_max;
       zp->at(i) = 0.0;
@@ -144,14 +144,15 @@ void computePerGroupParam(
  *  The function for quantizing weight data
  *  Output: inplace-changed int_weight_data, uint_weight_data
  ***/
-void weightQuantization(
-    int bitwidth, bool sign, int row, int col, int q_group_size,
-    std::shared_ptr<std::vector<float>> &weight_f32_data,
-    std::shared_ptr<std::vector<float>> &scale,
-    std::shared_ptr<std::vector<uint8_t>> &zp,
-    std::shared_ptr<std::vector<int8_t>> &int_weight_data,
-    std::shared_ptr<std::vector<uint8_t>> &uint_weight_data,
-    std::string dq_type) {
+void weightQuantization(int bitwidth, bool sign, int row, int col,
+                        int q_group_size,
+                        std::shared_ptr<std::vector<float>> &weight_f32_data,
+                        std::shared_ptr<std::vector<float>> &scale,
+                        std::shared_ptr<std::vector<uint8_t>> &zp,
+                        std::shared_ptr<std::vector<int8_t>> &int_weight_data,
+                        std::shared_ptr<std::vector<uint8_t>> &uint_weight_data,
+                        std::string dq_type) {
+  auto is_dynamic_quant = module::isDynamicQuantize();
   if (!q_group_size) {
     for (auto c = 0; c < row; c++) {
       int offset = c * col;
@@ -179,7 +180,6 @@ void weightQuantization(
       }
     }
   } else {
-    auto is_dynamic_quant = module::isDynamicQuantize();
     for (auto i = 0; i < row * col; i++) {
       int quant_idx = i / q_group_size;
       auto tmp_value = weight_f32_data->at(i) / scale->at(quant_idx);
@@ -189,8 +189,8 @@ void weightQuantization(
       if (bitwidth == 8) {
         if (is_dynamic_quant && dq_type == "F8E4M3") {
           uint_weight_data->at(i) = f32_to_f8e4m3(tmp_value, true);
-        // } else if (is_dynamic_quant && dynamic_quant_type == "F8E5M2") {
-        //   uint_weight_data->at(i) = f32_to_f8e5m2(tmp_value, true);
+          // } else if (is_dynamic_quant && dynamic_quant_type == "F8E5M2") {
+          //   uint_weight_data->at(i) = f32_to_f8e5m2(tmp_value, true);
         } else {
           uint_weight_data->at(i) = to_uint8(tmp_value);
         }
@@ -331,9 +331,12 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
 
     int q_group_size =
         (bitwidth == 4 || bitwidth == 8) ? module::getQuantGroupSize() : 0;
-    if (op.getQGroupSize() != 0) q_group_size = op.getQGroupSize();
+    if (op.getQGroupSize() != 0)
+      q_group_size = op.getQGroupSize();
     bool q_symmetric = q_group_size != 0 ? module::isQuantSymmetric() : false;
-    int64_t quant_param_size = !q_group_size ? row : (row * col / q_group_size);
+    int64_t quant_param_size = (!q_group_size || q_group_size == -1)
+                                   ? row
+                                   : (row * col / q_group_size);
 
     int zp_value = bitwidth == 4 ? 8 : 128;
 
@@ -352,6 +355,8 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
                                zp_int8);
     } else {
       op.setQGroupSize(q_group_size);
+      if (q_group_size == -1)
+        q_group_size = col;
       if (module::isSG2380() || use_dq2)
         computePerGroupParam(trans_weight, row, col, bitwidth, q_group_size,
                              q_symmetric, scale, zp_fp);
@@ -376,7 +381,8 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
                          scale, zp_fp, int_weight_data, uint_weight_data);
     else
       weightQuantization(bitwidth, sign, row, col, q_group_size, trans_weight,
-                         scale, zp_int8, int_weight_data, uint_weight_data, dq_type);
+                         scale, zp_int8, int_weight_data, uint_weight_data,
+                         dq_type);
 
     // 3. create f16 weightOp for scale/zp
     rewriter.setInsertionPoint(op);

@@ -1502,7 +1502,7 @@ void ConvertTopToTpu::runOnOperation() {
           dq_type = "F8E4M3";
         else if (op_mode == module::Mode::F4F16DYN ||
                  op_mode == module::Mode::F4BF16DYN)
-          dq_type = "FP4";
+          dq_type = "F4";
         else {
           if (module::isBF16Modes())
             dq_type = "BF16";
@@ -1511,7 +1511,8 @@ void ConvertTopToTpu::runOnOperation() {
         }
         op->setAttr("dq_type", builder.getStringAttr(dq_type));
         int group_size = module::getQuantGroupSize();
-        if (LoweringConfig::group_map.find(name) != LoweringConfig::group_map.end()) {
+        if (LoweringConfig::group_map.find(name) !=
+            LoweringConfig::group_map.end()) {
           group_size = LoweringConfig::group_map[name];
         }
         op->setAttr("q_group_size", builder.getI64IntegerAttr(group_size));
@@ -2420,7 +2421,7 @@ void ConvertTopToTpu::init_qtable() {
   std::vector<std::pair<std::string, std::string>> entries;
   if (is_file) {
     // File mode: parse line by line
-    std::regex map_pattern("\\S+\\s+\\S+(\\s+\\d+)?");
+    std::regex map_pattern("\\S+\\s+\\S+(\\s+-?\\d+)?");
     std::regex info_pattern("#.*");
     std::regex empty_pattern("^\\s*$");
 
