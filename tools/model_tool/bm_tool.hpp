@@ -158,6 +158,12 @@ void bm_show(const string &filename, bool all) {
          << endl;
     cout << "kernel_module size: " << module_size << endl;
   }
+  bool is_4k_aligned = true;
+  auto bin_offset =
+      model_ctx.header().flatbuffers_size + model_ctx.header().header_size;
+  if (bin_offset % 4096 != 0) {
+    is_4k_aligned = false;
+  }
 
   std::map<std::string, std::shared_ptr<vector<uint32_t>>> cascade_nets;
   size_t max_bdc_cmd_size = 0;
@@ -216,6 +222,13 @@ void bm_show(const string &filename, bool all) {
               std::max(max_bdc_cmd_size, cmd_group->binary_bdc()->size());
           max_gdma_cmd_size =
               std::max(max_gdma_cmd_size, cmd_group->binary_gdma()->size());
+        }
+      }
+      if (is_4k_aligned && net_param->coeff_mem() &&
+          net_param->coeff_mem()->binary_coeff()) {
+        auto coeff_start = net_param->coeff_mem()->binary_coeff()->start();
+        if (coeff_start % 4096 != 0) {
+          is_4k_aligned = false;
         }
       }
     }
@@ -299,6 +312,11 @@ void bm_show(const string &filename, bool all) {
        << ", runtime: " << mem_info.host_neuron_mem_size << ")" << std::endl;
   cout << "estimated SoC CPU peak: " << soc_cpu_peak << endl;
   cout << "estimated PCIE CPU peak: " << pcie_cpu_peak << endl;
+  if (is_4k_aligned) {
+    cout << "bmodel is 4k aligned" << endl;
+  } else {
+    cout << "bmodel is not 4k aligned" << endl;
+  }
 }
 
 // print chip of model
@@ -575,8 +593,8 @@ static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer,
                                  std::string arch) {
   uint32_t len = 96; // default: common gdma instrution size
 
-  if ("BM1688" == arch || "BM1690" == arch || "CV184X" == arch ||
-      "SGTPUV8" == arch || "SG2380" == arch) {
+  if ("BM1688" == arch || "BM1690" == arch || "BM1690E" == arch ||
+      "CV184X" == arch || "SGTPUV8" == arch || "SG2380" == arch) {
     uint32_t cmd_head[2] = {0};
     memcpy(cmd_head, gdma_buffer + start_offset, sizeof(cmd_head));
     uint32_t tsk_type = cmd_head[1] & 0xf;
@@ -1217,6 +1235,22 @@ static void prepare_output(string &path, bool is_dir = false) {
       path = "bm_combined.bmodel";
     }
   }
+}
+
+// refress bmodels
+void bm_refresh(char *bmodel) {
+  ModelGen model_gen;
+  vector<shared_ptr<MODEL_CTX_T>> model_vec;
+  shared_ptr<MODEL_CTX_T> model_info(new MODEL_CTX_T);
+  model_info->model_ctx = make_shared<ModelCtx>(bmodel);
+  if (model_info->model_ctx == NULL || !(*model_info->model_ctx)) {
+    FATAL("file[%s] is not correct", bmodel);
+  }
+  model_vec.push_back(model_info);
+  combine_bmodels(model_gen, model_vec);
+  model_vec.clear();
+  model_gen.Save(std::string(bmodel));
+  cout << "Success: refreshed [" << bmodel << "]." << endl;
 }
 
 // combine bmodels

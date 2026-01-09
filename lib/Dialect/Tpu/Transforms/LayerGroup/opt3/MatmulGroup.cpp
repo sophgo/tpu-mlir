@@ -168,7 +168,8 @@ void speical_layer_group_base::get_batch_size(shape_secs_t &shape_secs) {
     shape_secs.h = in_c;
   }
   if (!col_cut ||
-      (name() == "mlp_group" && module::getChip() != module::Chip::BM1690)) {
+      (name() == "mlp_group" && (module::getChip() != module::Chip::BM1690 &&
+                                 module::getChip() != module::Chip::BM1690E))) {
     shape_secs.h = 1;
   }
   llvm::errs() << "get matmul group n:" << shape_secs.n

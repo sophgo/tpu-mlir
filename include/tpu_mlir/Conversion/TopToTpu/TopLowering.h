@@ -555,6 +555,7 @@ Value do_requantFp(
 tpu::RequantMode get_requant_mode(std::string mode);
 tpu::DequantMode get_dequant_mode(std::string mode);
 tpu::RoundMode get_round_mode(std::string mode);
+tpu::RopeMode get_rope_mode(std::string mode);
 
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar,

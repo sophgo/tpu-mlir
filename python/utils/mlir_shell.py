@@ -25,9 +25,69 @@ import sys
 import re
 import signal
 import psutil
+from contextlib import contextmanager
+import ctypes
 
 # from typing import TextIO
 # from utils.tpuc_cmd_builder import TpucCommandBuilder
+
+
+@contextmanager
+def suppress_output():
+    import sys
+    import os
+    import tempfile
+    import time
+
+    original_stdout_fd = sys.stdout.fileno()
+    original_stderr_fd = sys.stderr.fileno()
+    original_stdout_copy = os.dup(original_stdout_fd)
+    original_stderr_copy = os.dup(original_stderr_fd)
+
+    temp_stdout = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+    temp_stderr = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+    temp_stdout_name = temp_stdout.name
+    temp_stderr_name = temp_stderr.name
+    temp_stdout.close()
+    temp_stderr.close()
+
+    try:
+        temp_stdout_fd = os.open(temp_stdout_name, os.O_WRONLY)
+        temp_stderr_fd = os.open(temp_stderr_name, os.O_WRONLY)
+        os.dup2(temp_stdout_fd, original_stdout_fd)
+        os.dup2(temp_stderr_fd, original_stderr_fd)
+        os.close(temp_stdout_fd)
+        os.close(temp_stderr_fd)
+        yield
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        try:
+            libc = ctypes.CDLL("libc.so.6")
+            libc.fflush(None)
+            time.sleep(0.05)
+        except Exception:
+            pass
+
+        os.dup2(original_stdout_copy, original_stdout_fd)
+        os.dup2(original_stderr_copy, original_stderr_fd)
+
+        os.close(original_stdout_copy)
+        os.close(original_stderr_copy)
+
+        try:
+            with open(temp_stdout_name, 'r+') as f:
+                f.truncate(0)
+            with open(temp_stderr_name, 'r+') as f:
+                f.truncate(0)
+            os.remove(temp_stdout_name)
+            os.remove(temp_stderr_name)
+        except Exception:
+            pass
+
+        sys.stdout.flush()
+        sys.stderr.flush()
 
 
 def _parse_timeout(timeout_str):
@@ -610,8 +670,6 @@ def tpu_ada_options(
     op_divide: bool = False,
     group_by_cores: str = "auto",
     compress_mode: str = "none",
-    future_update_rank: int = 0,
-    future_update_list: str = "",
     trunc_final: list = None,
     opt_post_processor: bool = False,
     lg_debugger: int = 0,
@@ -619,6 +677,7 @@ def tpu_ada_options(
     lgcache: bool = True,
     layer_group_config: str = "",
     iomem_set: str = "",
+    same_addr: str = "",
 ):
     lg_param = ''
     disable_group_overlap = "true" if disable_group_overlap else "false"
@@ -632,6 +691,8 @@ def tpu_ada_options(
         address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
     if iomem_set:
         address_assign_param = '--address-assign="iomem_set={}"'.format(iomem_set)
+    if same_addr:
+        address_assign_param = '--address-assign="same_addr={}"'.format(same_addr)
 
     trunc_param = ""
     if trunc_final:
@@ -640,7 +701,6 @@ def tpu_ada_options(
 
     distribute_param = f"--dev-parallel"
     parallel_param = f"--core-parallel"
-    future_update_param = '--future-update="rank={} weight_list={}"'.format(future_update_rank, future_update_list)
 
     op_divide_param = ""
     if op_divide:
@@ -652,7 +712,6 @@ def tpu_ada_options(
         op_divide_param,
         subnet_param,
         "--op-reorder",
-        future_update_param,
         lg_param,
         trunc_param,
         parallel_param,
@@ -666,13 +725,28 @@ def time_fixed_subnet_options(time_fixed_subnet, subnet_params, layer_group_cach
     all_layers = []
     layer_group_cache_path = layer_group_cache
     with open(layer_group_cache_path, 'r') as f:
-        layer_group_cache = json.load(f)
-        for group in (*layer_group_cache["GroupLayer"], *layer_group_cache["GlobalLayer"]):
-            all_layers.append({
-                "index": group["index"],
-                "group_cost": group["group_cost"],
-                "locs": group.get("locs", group.get("loc")),
-            })
+        layer_group_cache_data = json.load(f)
+        stack = [layer_group_cache_data]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, dict):
+                for key in ("GroupLayer", "GlobalLayer"):
+                    val = node.get(key)
+                    if isinstance(val, list):
+                        for group in val:
+                            if isinstance(group, dict):
+                                all_layers.append({
+                                    "index": group.get("index"),
+                                    "group_cost": group.get("group_cost"),
+                                    "locs": group.get("locs", group.get("loc")),
+                                })
+                for v in node.values():
+                    stack.append(v)
+            elif isinstance(node, list):
+                for item in node:
+                    stack.append(item)
+    if len(all_layers) == 0:
+        raise ValueError("JSON format is incorrect: no GroupLayer or GlobalLayer found")
 
     all_layers = sorted(all_layers, key=lambda x: x['index'])
     subnets = {}
@@ -877,10 +951,9 @@ def mlir_to_model(
     group_by_cores: str = "auto",
     model_version: str = "",
     iomem_set: str = "",
+    same_addr: str = "",
     count_patterns: bool = False,
     compress_mode: str = "none",
-    future_update_rank: int = 0,
-    future_update_list: str = "",
     debug_info: str = "",
     log_level: str = "normal",
     trunc_final: list = None,
@@ -920,14 +993,13 @@ def mlir_to_model(
                               op_divide=op_divide,
                               group_by_cores=group_by_cores,
                               compress_mode=compress_mode,
-                              future_update_rank=future_update_rank,
-                              future_update_list=future_update_list,
                               trunc_final=trunc_final,
                               opt_post_processor=opt_post_processor,
                               lg_debugger=lg_debugger,
                               disable_group_overlap=(time_fixed_subnet != None),
                               layer_group_config=layer_group_config,
-                              iomem_set=iomem_set)
+                              iomem_set=iomem_set,
+                              same_addr=same_addr)
     cmd.extend(options)
 
     cmd.extend(["-o", final_mlir])
@@ -1035,8 +1107,6 @@ def origin_mlir_txt_to_bmodel(*,
                               count_patterns: bool = False,
                               compress_mode: str = "none",
                               log_level: str = "normal",
-                              future_update_rank: int = 0,
-                              future_update_list: str = "",
                               matmul_perchannel: bool = False,
                               gelu_mode: str = "normal",
                               quant_output_bf16: bool = False,
@@ -1060,8 +1130,6 @@ def origin_mlir_txt_to_bmodel(*,
                                   op_divide=op_divide,
                                   group_by_cores=group_by_cores,
                                   compress_mode=compress_mode,
-                                  future_update_rank=future_update_rank,
-                                  future_update_list=future_update_list,
                                   lgcache=lgcache)
     options.extend(new_options)
     new_options = codegen_options(f"{model_name}_{mode}.bmodel", embed_debug_info, model_version,
@@ -1079,15 +1147,9 @@ def origin_mlir_txt_to_bmodel(*,
     mlir_txt = converter.get_mlir_txt()
     weight_option = "weight_in_mem=True"
     if log_level == "quiet":
-        options.insert(0, f'--init="{weight_option}"')
-        with open(os.devnull, "w") as devnull:
-            os.dup2(devnull.fileno(), sys.stdout.fileno())
-            os.dup2(devnull.fileno(), sys.stderr.fileno())
-        try:
+        options.insert(0, f'--init="{weight_option} level=-1"')
+        with suppress_output():
             pymlir.run_pass_pipeline(mlir_txt, options)
-        finally:
-            os.dup2(sys.__stdout__.fileno(), sys.stdout.fileno())
-            os.dup2(sys.__stderr__.fileno(), sys.stderr.fileno())
     else:
         if log_level == "simple":
             options = [opt for opt in options if not opt.startswith('--init')]
@@ -1095,7 +1157,6 @@ def origin_mlir_txt_to_bmodel(*,
         elif log_level == "only-layer-group":
             options = [opt for opt in options if not opt.startswith('--init')]
             options.insert(0, f'--init="{weight_option} level=2"')
-            # pymlir.debug(["layer-group","LayerGroupUtil"]) #todo
         else:
             options.insert(0, f'--init="{weight_option}"')
         print("options: ", options)

@@ -2317,7 +2317,7 @@ static bool backward_update_slice(
               //   return false;
               // }
               for (auto lut_user : user->getUsers()) {
-                if (!tpukernel_support_HWmargins(lut_user))
+                if (!tpukernel_support_HWmargins(lut_user)) {
                   GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
                     llvm::dbgs()
                         << DEBUGGER_DEFAULT_INFO(
@@ -2328,7 +2328,8 @@ static bool backward_update_slice(
                         << LOG_KV("lut_or_cast_op", module::getName(user))
                         << LOG_KV("user", module::getName(lut_user)) << "\n";
                   });
-                return false;
+                  return false;
+                }
               }
               auto val = user->getResult(0);
               if (tensor_infos.find(val) == tensor_infos.end()) {

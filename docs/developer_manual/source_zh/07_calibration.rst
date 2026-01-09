@@ -9,15 +9,17 @@ Calibration
 信息的, 因此这两者都要依赖于在一个微型的训练集子集上进行推理, 收集各个输入的各层输出激活。
 
 tpu-mlir的校准过程包括了门限方法自动寻优(search_threshold),SmoothQuant(sq),Softmax修正(smc),跨层权重均衡(we),偏置修正(bc)以及自动
-混精功能(search_qtable)等方法。总体过程如(:ref:`quantization_process`)所示。其中sq,smc,we,bc,search_qtable
+混精功能(search_qtable,fast_search, mix_search)等方法。总体过程如(:ref:`quantization_process`)所示。其中sq,smc,we,bc,search_qtable
 和search_threshold都是可选择的,可以根据当前要量化的模型的实际情况进行搭配，后面章节也会具体给出各个方法的使用说明。
 上述过程整合在一起统一执行, 最后将各个op的优化后的threshold和
 min/max值输出到一个量化校准参数文件cali_table中, 后续``model_deploy.py``时就可使用这个参数
 文件来进行后续的int8量化。如果您使用了自动混精功能,在生成cali_table的同时,还会生成混合精度表qtable,后续``model_deploy.py``时需使用
 这两个文件来进行后续的int8混合精度量化。
 
+校准过程在推荐的docker中运行，以下的校准算法同时有cpu版本和gpu版本，当模型较大，仅仅模型大小就占用了大部分计算机内存的时候往往使用gpu版本会更快，因为cpu计算启用了并行，小一些的网络往往在gpu上没有优势。根据使用的docker版本不同会自动决定用什么版本。
+
 .. _quantization_process:
-.. figure:: ../assets/quant.png
+.. figure:: ../assets/quant_zh.png
    :height: 22cm
    :align: center
 
@@ -71,7 +73,7 @@ min/max值输出到一个量化校准参数文件cali_table中, 后续``model_de
      - 对于CNN类图片输入网络, 支持直接输入图片, 要求在前面生成mlir文件时,
        model_transform.py命令要指定和训练时完全一致的图片预处理参数
    * - npz或npy文件
-     - 对于非图片输入或图片预处理类型较复杂tpu-mlir暂不支持的情形, 建议额外编写
+     - 对于非图片输入或图片预处理类型较复杂tpu-mlir暂不支持的情形以及多网络多输入情形, 建议额外编写
        脚本将完成预处理后的输入数据保存到npz/npy文件中(npz文件是多个输入tensor
        按字典的方式打包在一起, npy文件是1个文件包含1个tensor),
        run_calibration.py支持直接导入npz/npy文件
@@ -297,12 +299,21 @@ tpu-mlir提供了七种独立的门限计算方法,当我们拿到一个需要�
 search_qtable算法
 ~~~~~~~~~~~~~~~~~~~~~~
 
-search_qtable是集成于校准过程中的自动混精功能,当全int8量化的模型精度无法满足需求时,可以尝试开启search_qtable算法,该算法相比run_sensitive_lyer,
-速度更快,同时提供了自定义门限算法混合以及自动生成qtable功能。
+search_qtable是集成于校准过程中的自动混精功能,当全int8量化的模型精度无法满足需求时,可以尝试使用search_qtable算法,该算法中可以对每层门限尝试使用不同门限算法得到的门限择优选用，相比于search_threshold整个模型使用一种门限算法有更大灵活性，同时可以评估每层算子量化对整个模型精度的影响程度，进行敏感性排序作为混精的参考和自动生成qtable功能。
 
 实现方案:search_qtable的输出会生成混合门限,混合门限是指对模型每一层门限都进行择优选择，也就是从用户所指定的多种门限计算方法结果中选择效果最好的一个,这种选择的依据是
 量化模型当前层输出与原始模型当前层输出的相似度比较。除了输出混合门限,search_qtable还会输出模型的混精层,当用户指定混精模型与原始模型的输出相似度后,search_qtable
 会自动输出满足该相似度所需的最少混精层。
+
+mix_search和fast_search选项
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+search_qtable功能比较复杂，在网络比较大的时候往往运行时间非常长，对计算机内存也有较大要求，与search_threshold和search_qtable并列也提供了mix_search和fast_search选项，条件允许的情况下推荐使用search_qtable，一定情况下也可以尝试fast_search和mix_search。
+
+mix_search实现方法是从网络开始往后选择余弦距离小于min_layer_cos的层尝试将其设置为浮点，观察网络输出是否大于期望的expected_cos，如果满足或者浮点层数量达到max_float_layers或者总网络层数的1/4，则停止继续尝试。由于每次尝试都会进行量化，期间引入了很多模型优化，
+所以算子在浮点网络和量化网络中不一致情况较多，尝试过程会有跳跃，但是相对于全功能的search_qtable时间会缩短很多。此功能需要提前准备量化表作为calibration_table的输入，输出quantize_table。这个算法比较久远，更适合较简单的网络。
+
+fast_search则在search_qtable的框架内提前将算子分类进行区分，选择其中对量化精度影响大的几类算子，在其中进行进一步搜索，另外减少了对比样本个数，在时间敏感的情况下可以优先尝试。
 
 .. _calibration_doc3:
 
@@ -500,7 +511,7 @@ search_qtable:
       --max_float_layers 5 \
       --expected_cos 0.99 \
       --transformer False \
-      --quantize_method_list KL,MSE \
+      --quantize_method_list kl,mse \
       --search search_qtable \
       --quantize_table yolov5s_qtable \
       -o yolov5s_cali_table
@@ -528,7 +539,7 @@ search_qtable:
    * - --input_num
      - 校准图像数量
    * - --inference_num
-     - search_qtable 和 search_threshold 推理过程所需图片数量
+     - search_qtable 和 search_threshold以及mix_search和fast_search推理评估精度所需图片数量
    * - --bc_inference_num
      - bias_correction 推理过程所需图片数量
    * - --tune_list
@@ -554,7 +565,7 @@ search_qtable:
    * - --global_compare_layers
      - 指定全局对比层，例如 layer1,layer2 或 layer1:0.3,layer2:0.7
    * - --search
-     - 指定搜索类型,其中包括search_qtable,search_threshold,false。其中默认为false,不开启搜索
+     - 指定搜索类型,其中包括search_qtable,search_threshold,mix_search,fast_search,false。其中默认为false,不开启搜索
    * - --transformer
      - 是否是transformer模型,search_qtable中如果是transformer模型可分配指定加速策略
    * - --quantize_method_list
@@ -574,9 +585,13 @@ search_qtable:
    * - --cluster
      - 指定search_qtable寻找敏感层时采用聚类算法
    * - --quantize_table
-     - search_qtable输出的混精度量化表
+     - search_qtable和mix_search输出的混精度量化表
+   * - --pre_qtable
+     - search_qtable时候输入的qtable，替代默认识别的的patter和shape op形成的qtable，在此基础上继续搜索
    * - -o
      - 输出门限表
+   * - --calibration_table
+     - 输出门限表，同-o选项，在mix_search时候输入提前计算好的量化表
    * - --debug_cmd
      - debug命令,可以选择校准模式;“percentile9999”采用99.99分位作为初始门限。“max”采用绝对值最大值作为门限。“use_torch_observer_for_cali”采用torch的observer进行校准。"mse"采用octav进行校准。
    * - --debug_log

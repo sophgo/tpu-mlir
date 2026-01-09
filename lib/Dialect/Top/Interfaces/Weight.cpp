@@ -233,7 +233,8 @@ std::shared_ptr<std::vector<int8_t>> WeightOp::read_as_f8e5m2() {
 template <typename T>
 Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
                        const std::vector<T> &data, RankedTensorType &type,
-                       uint32_t store_mode) {
+                       uint32_t store_mode,
+                       mlir::DictionaryAttr::ValueType attrs) {
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
@@ -252,8 +253,8 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
     assert(succeeded(ret));
   }
   auto nameAttr = builder.getStringAttr(new_name);
-  auto newOp =
-      builder.create<top::WeightOp>(NameLoc::get(nameAttr), type, ValueRange{});
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), type,
+                                             ValueRange{}, attrs);
   auto stmodeAttr = builder.getStringAttr(
       store_mode == 0 ? "1N" : store_mode == 1 ? "2N" : "4N");
   if (stmodeAttr != "1N")
@@ -273,25 +274,32 @@ template std::shared_ptr<std::vector<uint8_t>> WeightOp::read();
 template i32_array_t WeightOp::read();
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<float> &data,
-                                RankedTensorType &type, uint32_t store_mode);
+                                RankedTensorType &type, uint32_t store_mode,
+                                mlir::DictionaryAttr::ValueType attrs);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int16_t> &data,
-                                RankedTensorType &type, uint32_t store_mode);
+                                RankedTensorType &type, uint32_t store_mode,
+                                mlir::DictionaryAttr::ValueType attrs);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint16_t> &data,
-                                RankedTensorType &type, uint32_t store_mode);
+                                RankedTensorType &type, uint32_t store_mode,
+                                mlir::DictionaryAttr::ValueType attrs);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int8_t> &data,
-                                RankedTensorType &type, uint32_t store_mode);
+                                RankedTensorType &type, uint32_t store_mode,
+                                mlir::DictionaryAttr::ValueType attrs);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint8_t> &data,
-                                RankedTensorType &type, uint32_t store_mode);
+                                RankedTensorType &type, uint32_t store_mode,
+                                mlir::DictionaryAttr::ValueType attrs);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int32_t> &data,
-                                RankedTensorType &type, uint32_t store_mode);
+                                RankedTensorType &type, uint32_t store_mode,
+                                mlir::DictionaryAttr::ValueType attrs);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint32_t> &data,
-                                RankedTensorType &type, uint32_t store_mode);
+                                RankedTensorType &type, uint32_t store_mode,
+                                mlir::DictionaryAttr::ValueType attrs);
 
 Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   auto type = getType().cast<RankedTensorType>();
@@ -311,10 +319,15 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name =
-      name.empty() ? module::getName(OwnerOp).str() +
-                         module::getName(getOperation()).str() + "_bf16"
-                   : name;
+  std::string new_name;
+  if (name.empty()) {
+    new_name = module::getName(getOperation()).str() + "_bf16";
+    if (!getOperation()->hasOneUse()) {
+      new_name = module::getName(OwnerOp).str() + new_name;
+    }
+  } else {
+    new_name = name;
+  }
   auto new_type = RankedTensorType::get(type.getShape(), builder.getBF16Type());
   if (!module::getWeightInMemFlag()) {
     auto ret =
@@ -322,8 +335,9 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
     ASSERT_THIS(succeeded(ret));
   }
   auto nameAttr = builder.getStringAttr(new_name);
+  auto attrs = getOperation()->getAttrs();
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
-                                             ValueRange{});
+                                             ValueRange{}, attrs);
   if (module::getWeightInMemFlag()) {
     std::string inline_bytes((char *)data_bf16->data(),
                              data_bf16->size() * sizeof(int16_t));
@@ -350,8 +364,10 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = module::getName(OwnerOp).str() +
-                         module::getName(getOperation()).str() + "_f16";
+  std::string new_name = module::getName(getOperation()).str() + "_f16";
+  if (!getOperation()->hasOneUse()) {
+    new_name = module::getName(OwnerOp).str() + new_name;
+  }
   auto new_type = RankedTensorType::get(type.getShape(), builder.getF16Type());
   if (!module::getWeightInMemFlag()) {
     auto ret =
@@ -359,8 +375,9 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
     ASSERT_THIS(succeeded(ret));
   }
   auto nameAttr = builder.getStringAttr(new_name);
+  auto attrs = getOperation()->getAttrs();
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
-                                             ValueRange{});
+                                             ValueRange{}, attrs);
   if (module::getWeightInMemFlag()) {
     std::string inline_bytes((char *)data_f16->data(),
                              data_f16->size() * sizeof(int16_t));
@@ -455,8 +472,10 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale,
 
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = module::getName(OwnerOp).str() +
-                         module::getName(getOperation()).str() + "_f8e4m3";
+  std::string new_name = module::getName(getOperation()).str() + "_f8e4m3";
+  if (!getOperation()->hasOneUse()) {
+    new_name = module::getName(OwnerOp).str() + new_name;
+  }
   auto new_type =
       RankedTensorType::get(type.getShape(), builder.getFloat8E4M3FNType());
   if (!module::getWeightInMemFlag()) {
@@ -465,8 +484,9 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale,
     ASSERT_THIS(succeeded(ret));
   }
   auto nameAttr = builder.getStringAttr(new_name);
+  auto attrs = getOperation()->getAttrs();
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
-                                             ValueRange{});
+                                             ValueRange{}, attrs);
   if (!getScale().has_value()) {
     newOp.getOperation()->setAttr(
         "scale", builder.getF64ArrayAttr(ArrayRef<double>{*weight_scale_v}));
@@ -495,8 +515,10 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = module::getName(OwnerOp).str() +
-                         module::getName(getOperation()).str() + "_f8e5m2";
+  std::string new_name = module::getName(getOperation()).str() + "_f8e5m2";
+  if (!getOperation()->hasOneUse()) {
+    new_name = module::getName(OwnerOp).str() + new_name;
+  }
   auto new_type = RankedTensorType::get(
       type.getShape(),
       builder.getFloat8E5M2Type()); // builder.getFloat8E5M2Type());
@@ -506,8 +528,9 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
     ASSERT_THIS(succeeded(ret));
   }
   auto nameAttr = builder.getStringAttr(new_name);
+  auto attrs = getOperation()->getAttrs();
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
-                                             ValueRange{});
+                                             ValueRange{}, attrs);
   if (module::getWeightInMemFlag()) {
     std::string inline_bytes((char *)data_f8->data(), data_f8->size());
     newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
@@ -532,8 +555,10 @@ Value WeightOp::clone_int(Operation *OwnerOp) {
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = module::getName(OwnerOp).str() +
-                         module::getName(getOperation()).str() + "_int";
+  std::string new_name = module::getName(getOperation()).str() + "_int";
+  if (!getOperation()->hasOneUse()) {
+    new_name = module::getName(OwnerOp).str() + new_name;
+  }
   auto new_type = RankedTensorType::get(type.getShape(), builder.getI32Type());
   if (!module::getWeightInMemFlag()) {
     auto ret =
@@ -541,8 +566,9 @@ Value WeightOp::clone_int(Operation *OwnerOp) {
     ASSERT_THIS(succeeded(ret));
   }
   auto nameAttr = builder.getStringAttr(new_name);
+  auto attrs = getOperation()->getAttrs();
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
-                                             ValueRange{});
+                                             ValueRange{}, attrs);
   if (module::getWeightInMemFlag()) {
     std::string inline_bytes((char *)data_int->data(),
                              data_int->size() * sizeof(int32_t));
@@ -563,8 +589,9 @@ Value WeightOp::clone(llvm::StringRef suffix) {
     auto ret = module::weightFile().cloneTensor(name, suffix);
     ASSERT_THIS(succeeded(ret));
   }
+  auto attrs = getOperation()->getAttrs();
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), getType(),
-                                             ValueRange{});
+                                             ValueRange{}, attrs);
   if (module::getWeightInMemFlag()) {
     newOp.setInlineBytesAttr(getInlineBytesAttr());
   }

@@ -987,7 +987,8 @@ static void l2m_process(ilp_LgInfo &sub_group,
 
     // If tp is deployed concurrently, reduce tasks need to be performed on l2m
     if (sub_group.shape_secs.h_slice_num > 1 &&
-        module::getChip() == module::Chip::BM1690) {
+        (module::getChip() == module::Chip::BM1690 ||
+         module::getChip() == module::Chip::BM1690E)) {
       for (auto itr : sub_group.value_store_to_l2m) {
         auto name = module::getName(itr.first).str();
         uint32_t size = Arch::get_gmem_bytes(itr.first);
@@ -2326,7 +2327,8 @@ ilp_for_single_group(LgPassIR *pass_ir, ilp_LgInfo &sub_group,
   auto &tensor_infos = sub_group.tensor_infos;
   bool l2m_switch = module::isDebugCmdEnable("disable_l2m") ? false : true,
        inc_secs = true;
-  if (module::getChip() != module::Chip::BM1690) {
+  if (module::getChip() != module::Chip::BM1690 &&
+      module::getChip() != module::Chip::BM1690E) {
     l2m_switch = false;
   }
   tmp_dot_graph_log->add_node_label("global_info", "enable_l2m");

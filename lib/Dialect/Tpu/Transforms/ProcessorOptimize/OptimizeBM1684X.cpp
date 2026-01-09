@@ -421,6 +421,10 @@ public:
             context, "MatMulRemoveReshapePattern", benifit) {}
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
+    auto hdim_is_batch = op.getHdimIsBatch();
+    if (hdim_is_batch) {
+      return failure();
+    }
     auto left_op =
         dyn_cast_or_null<tpu::ReshapeOp>(op.getInput().getDefiningOp());
     auto right_op =
@@ -1531,6 +1535,7 @@ public:
       op.replaceAllUsesWith(op.getInput());
       next_op.replaceAllUsesWith(next_op.getInput());
       rewriter.eraseOp(op);
+      rewriter.eraseOp(next_op);
       return success();
     }
 
@@ -4400,7 +4405,16 @@ struct CanCutGridSamplerFusePattern
     op->setOperand(1, permute.getInput());
     op->getResult(0).setType(next_op->getResult(0).getType());
     op->setAttr("need_permute", rewriter.getBoolAttr(true));
-    rewriter.replaceOp(before_op, before_op->getOperand(0));
+    bool hasOtherUsers = false;
+    for (auto *user : before_op->getResult(0).getUsers()) {
+      if (user != op.getOperation() && user != next_op) {
+        hasOtherUsers = true;
+        break;
+      }
+    }
+    if (!hasOtherUsers) {
+      rewriter.replaceOp(before_op, before_op->getOperand(0));
+    }
     rewriter.replaceOp(next_op, ArrayRef<Value>{op.getResult()});
     return success();
   }
@@ -4827,6 +4841,169 @@ public:
   }
 };
 
+class SelfAttnTileHeadPattern2 : public OpRewriterPatternEx4<tpu::SoftmaxOp> {
+public:
+  SelfAttnTileHeadPattern2(mlir::MLIRContext *context, int benefit,
+                           const std::vector<RewriterRule> &rules)
+      : OpRewriterPatternEx4<tpu::SoftmaxOp>(
+            context, "SelfAttnTileHeadPattern2", rules, benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::SoftmaxOp softmaxOp,
+                                    PatternRewriter &rewriter) const override {
+    // ----- match pattern -----
+    if (module::getShape(softmaxOp.getInput()).size() != 4 ||
+        softmaxOp.getAxis() != 3) {
+      return failure();
+    }
+    auto mm_qk = ttp::get_prev_op<tpu::MatMulOp>(
+        softmaxOp.getInput(), {TypeID::get<tpu::MulConstOp>()});
+    if (!mm_qk || !mm_qk.getHdimIsBatch()) {
+      return failure();
+    }
+    auto mm_av = ttp::get_succ_op<tpu::MatMulOp>(softmaxOp.getResult(),
+                                                 {TypeID::get<tpu::CastOp>()});
+    if (!mm_av || !mm_av.getHdimIsBatch()) {
+      return failure();
+    }
+    auto reshape_context = ttp::get_succ_op<tpu::ReshapeOp>(
+        mm_av.getOutput(),
+        {TypeID::get<tpu::CastOp>(), TypeID::get<tpu::MulShiftOp>()});
+    if (!reshape_context ||
+        module::getShape(reshape_context.getOutput()).size() != 3) {
+      return failure();
+    }
+    auto reshape_q = ttp::get_prev_op<tpu::ReshapeOp>(
+        mm_qk.getInput(),
+        {TypeID::get<tpu::CastOp>(), TypeID::get<tpu::MulShiftOp>(),
+         TypeID::get<tpu::RopeOp>()});
+    auto reshape_k = ttp::get_prev_op<tpu::ReshapeOp>(
+        mm_qk.getRight(),
+        {TypeID::get<tpu::CastOp>(), TypeID::get<tpu::RopeOp>()});
+    auto reshape_v = ttp::get_prev_op<tpu::ReshapeOp>(
+        mm_av.getRight(), {TypeID::get<tpu::CastOp>()});
+    if (!reshape_q || !reshape_k || !reshape_v) {
+      return failure();
+    }
+    auto mm_q = ttp::get_prev_op<tpu::MatMulOp>(reshape_q.getInput(),
+                                                {TypeID::get<tpu::CastOp>()});
+    auto mm_k = ttp::get_prev_op<tpu::MatMulOp>(reshape_k.getInput(),
+                                                {TypeID::get<tpu::CastOp>()});
+    auto mm_v = ttp::get_prev_op<tpu::MatMulOp>(reshape_v.getInput(),
+                                                {TypeID::get<tpu::CastOp>()});
+    if (!mm_q || !mm_k || !mm_v || mm_q.getInput() != mm_k.getInput() ||
+        mm_q.getInput() != mm_v.getInput()) {
+      return failure();
+    }
+    Value input = mm_q.getInput();
+
+    /* ----- match rules -----*/
+    int heads = module::getShape(reshape_q.getOutput())[2];
+    int head_per_tile = -1;
+    int head_per_tile_mlp = -1;
+    for (auto &rule : getPatternRules()) {
+      auto exp_shape = getParamVector<int>(rule.params, "out_feature_shape");
+      if (!ttp::is_same_shape(module::getShape(softmaxOp.getOutput()),
+                              exp_shape))
+        continue;
+      head_per_tile = getParam(rule.params, "head_per_tile_attn", 2);
+      head_per_tile_mlp = getParam(rule.params, "head_per_tile_mlp", 8);
+      break;
+    }
+    if (head_per_tile < 0 || head_per_tile_mlp < 0)
+      return failure();
+
+    /* ----- rewrite -----*/
+    assert(heads % head_per_tile == 0);
+    assert(head_per_tile_mlp % head_per_tile == 0);
+
+    rewriter.setInsertionPointAfter(reshape_context);
+    // ===== Loop1, for Attention.
+    auto mm_q_weight_shape = module::getShape(mm_q.getRight());
+    int tile_len = mm_q_weight_shape[mm_q_weight_shape.size() - 1] /
+                   (heads / head_per_tile);
+    auto weight_q_tiles =
+        ttp::split_value(mm_q.getRight(), -1, tile_len, "", rewriter);
+    auto bias_q_tiles =
+        ttp::split_value(mm_q.getBias(), -1, tile_len, "", rewriter);
+    auto multi_q_tiles =
+        ttp::split_value(mm_q.getMulti(), -1, tile_len, "", rewriter);
+    auto weight_k_tiles =
+        ttp::split_value(mm_k.getRight(), -1, tile_len, "", rewriter);
+    auto bias_k_tiles =
+        ttp::split_value(mm_k.getBias(), -1, tile_len, "", rewriter);
+    auto multi_k_tiles =
+        ttp::split_value(mm_k.getMulti(), -1, tile_len, "", rewriter);
+    auto weight_v_tiles =
+        ttp::split_value(mm_v.getRight(), -1, tile_len, "", rewriter);
+    auto bias_v_tiles =
+        ttp::split_value(mm_v.getBias(), -1, tile_len, "", rewriter);
+    auto multi_v_tiles =
+        ttp::split_value(mm_v.getMulti(), -1, tile_len, "", rewriter);
+
+    llvm::SmallVector<Value> context_tiles;
+    for (int i = 0; i < weight_q_tiles.size(); i++) {
+      std::string suffix = "_tile" + std::to_string(i);
+      Value new_q, new_k, new_v, new_act, new_ctx;
+
+      std::vector<int64_t> new_q_shape4d =
+          module::getShape(reshape_q.getOutput());
+      new_q_shape4d[new_q_shape4d.size() - 2] = head_per_tile;
+      new_q = ttp::clone_matmul(
+          mm_q, input, weight_q_tiles[i],
+          bias_q_tiles.empty() ? nullptr : bias_q_tiles[i],
+          multi_q_tiles.empty() ? nullptr : multi_q_tiles[i], rewriter, suffix);
+      new_q = ttp::clone_common_ops_between(mm_q, reshape_q, new_q, rewriter,
+                                            suffix);
+      new_q =
+          ttp::clone_reshape(reshape_q, new_q, new_q_shape4d, rewriter, suffix);
+
+      new_k = ttp::clone_matmul(
+          mm_k, input, weight_k_tiles[i],
+          bias_k_tiles.empty() ? nullptr : bias_k_tiles[i],
+          multi_k_tiles.empty() ? nullptr : multi_k_tiles[i], rewriter, suffix);
+      new_k = ttp::clone_common_ops_between(mm_k, reshape_k, new_k, rewriter,
+                                            suffix);
+      new_k =
+          ttp::clone_reshape(reshape_k, new_k, new_q_shape4d, rewriter, suffix);
+
+      new_q = ttp::clone_common_ops_between(reshape_q, mm_qk, new_q, rewriter,
+                                            suffix);
+      new_k = ttp::clone_common_ops_between(reshape_k, mm_qk, new_k, rewriter,
+                                            suffix);
+      new_act = ttp::clone_matmul(mm_qk, new_q, new_k, nullptr, nullptr,
+                                  rewriter, suffix);
+      new_act = ttp::clone_common_ops_between(mm_qk, mm_av, new_act, rewriter,
+                                              suffix);
+      new_v = ttp::clone_matmul(
+          mm_v, input, weight_v_tiles[i],
+          bias_v_tiles.empty() ? nullptr : bias_v_tiles[i],
+          multi_v_tiles.empty() ? nullptr : multi_v_tiles[i], rewriter, suffix);
+      new_v = ttp::clone_common_ops_between(mm_v, reshape_v, new_v, rewriter,
+                                            suffix);
+      new_v =
+          ttp::clone_reshape(reshape_v, new_v, new_q_shape4d, rewriter, suffix);
+
+      new_v = ttp::clone_common_ops_between(reshape_v, mm_av, new_v, rewriter,
+                                            suffix);
+      std::vector<int64_t> new_ctx_shape3d =
+          module::getShape(reshape_context.getOutput());
+      new_ctx_shape3d[new_ctx_shape3d.size() - 1] /= (heads / head_per_tile);
+      new_ctx = ttp::clone_matmul(mm_av, new_act, new_v, nullptr, nullptr,
+                                  rewriter, suffix);
+      new_ctx = ttp::clone_common_ops_between(mm_av, reshape_context, new_ctx,
+                                              rewriter, suffix);
+      new_ctx = ttp::clone_reshape(reshape_context, new_ctx, new_ctx_shape3d,
+                                   rewriter, suffix);
+      context_tiles.push_back(new_ctx);
+    }
+    Value result = ttp::concat_values(context_tiles, -1, rewriter);
+    result.setType(reshape_context.getOutput().getType());
+    module::setLoc(result, module::getLoc(reshape_context.getOutput()));
+    rewriter.replaceOp(reshape_context, result);
+    return success();
+  }
+};
+
 /** tile FC1 layer of TrV-MLP structure
  *  MM1 -- Active \
  *                 -> Mul ; for each matmul, tile_N and concat.
@@ -4922,6 +5099,69 @@ public:
     Value result = ttp::concat_values(result_tiles, -1, rewriter);
     module::setLoc(result, module::getLoc(mulOp.getOutput()));
     rewriter.replaceOp(mulOp, result);
+    return success();
+  }
+};
+
+class MatMulTilePattern : public OpRewriterPatternEx4<tpu::LayerNormOp> {
+public:
+  MatMulTilePattern(mlir::MLIRContext *context, int benefit,
+                    const std::vector<RewriterRule> &rules)
+      : OpRewriterPatternEx4<tpu::LayerNormOp>(context, "MatMulTilePattern",
+                                               rules, benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::LayerNormOp layernormOp,
+                                    PatternRewriter &rewriter) const override {
+    /* ----- match atttern-----*/
+    auto mm = ttp::get_succ_op<tpu::MatMulOp>(layernormOp.getResult(),
+                                              {TypeID::get<tpu::CastOp>()});
+    if (!mm) {
+      return failure();
+    }
+    /* ----- match rules -----*/
+    int tile_len = -1;
+    std::vector<int64_t> wshape = module::getShape(mm.getRight());
+    for (auto &rule : getPatternRules()) {
+      auto exp_wshape = getParamVector<int>(rule.params, "mm_weight_shape");
+      auto exp_oshape = getParamVector<int>(rule.params, "out_feature_shape");
+      if (!ttp::is_same_shape(wshape, exp_wshape))
+        continue;
+      if (!ttp::is_same_shape(module::getShape(mm.getOutput()), exp_oshape))
+        continue;
+      tile_len = getParam(rule.params, "tile_len", 64);
+      break;
+    }
+    if (tile_len < 0)
+      return failure();
+    /* ----- rewrite -----*/
+    rewriter.setInsertionPointAfter(mm);
+    auto num_tiles = (wshape[1] + tile_len - 1) / tile_len;
+    std::vector<int64_t> tile_lens(num_tiles, tile_len);
+    tile_lens[num_tiles - 1] = wshape[1] - (num_tiles - 1) * tile_len;
+    auto weight_tiles =
+        ttp::split_value(mm.getRight(), -1, tile_lens, "", rewriter);
+    auto bias_tiles =
+        ttp::split_value(mm.getBias(), -1, tile_lens, "", rewriter);
+    auto multi_tiles =
+        ttp::split_value(mm.getMulti(), -1, tile_lens, "", rewriter);
+    llvm::SmallVector<Value> new_mm_tiles;
+    for (int i = 0; i < weight_tiles.size(); i++) {
+      std::string suffix = "_tile" + std::to_string(i);
+      if (i > 0 && !new_mm_tiles.empty()) {
+        rewriter.setInsertionPointAfter(new_mm_tiles.back().getDefiningOp());
+      }
+      auto new_mm = ttp::clone_matmul(
+          mm, mm.getInput(), weight_tiles[i],
+          bias_tiles.empty() ? nullptr : bias_tiles[i],
+          multi_tiles.empty() ? nullptr : multi_tiles[i], rewriter, suffix);
+      new_mm_tiles.push_back(new_mm);
+    }
+    if (!new_mm_tiles.empty()) {
+      rewriter.setInsertionPointAfter(new_mm_tiles.back().getDefiningOp());
+    }
+    auto result = ttp::concat_values(new_mm_tiles, -1, rewriter);
+    module::setLoc(result, module::getLoc(mm.getOutput()));
+    rewriter.replaceOp(mm, result);
     return success();
   }
 };
@@ -6177,7 +6417,6 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                 MoveReshapeInSubGraphPattern,
                 SwapDimMerge,
                 MatMulRequantIntFusion,
-                RemoveReshape,
                 WhereBnbwdFusePattern,
                 UpsampleAddWeightPattern,
                 // ConvMergePattern
@@ -6187,8 +6426,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
   // patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3);
   patterns->add<SplitQuantizedMLP2Pattern, SelfAttnTileHeadPattern,
-                TileTrVPattern, MatmulTileKPattern, TileLayerNormPattern>(
-      ctx, 3, rules);
+                SelfAttnTileHeadPattern2, TileTrVPattern, MatMulTilePattern,
+                MatmulTileKPattern, TileLayerNormPattern>(ctx, 3, rules);
   patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
   // patterns->add<MatmulUsePermutePattern>(ctx, 4);
   patterns->add<MultipleSameActivationMatmulMergePattern>(ctx, 3);

@@ -238,6 +238,7 @@ class MiniCPMV4Converter(LlmConverter):
         ln_q = "resampler.ln_q"
         ln_kv = "resampler.ln_kv"
         ln_post = "resampler.ln_post"
+        name = "vit"
 
         def save_weights():
             weights_dict = dict()
@@ -311,10 +312,10 @@ class MiniCPMV4Converter(LlmConverter):
         input_types = ['F32', 'INT32', 'F32', 'INT32', 'F32']
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
-                                "vit",
+                                name,
                                 Platform.LLM,
                                 input_types,
-                                weight_file=vit_npz)
+                                weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
         # in_shape = [self.num_patches, self.patch_dim]
@@ -493,5 +494,7 @@ class MiniCPMV4Converter(LlmConverter):
 
         vit_mlir.create_return_op([new_op])
         mlir_txt = vit_mlir.print_module()
-        with open(f"vit.mlir", "w") as f:
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)

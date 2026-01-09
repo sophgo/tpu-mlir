@@ -17,7 +17,30 @@ def parse_max_pixels(value):
     If the input is a single number, convert it to an integer.
     If it contains a comma, parse it as a tuple (or list) of two integers, e.g., "128,124".
     """
-    if ',' in value:
+    if '+' in value:
+        s = []
+        parts = value.split('+')
+        for p in parts:
+            dims = p.split(',')
+            pixels = 1
+            for dim in dims:
+                try:
+                    d = int(dim.strip())
+                    pixels *= d
+                except ValueError:
+                    raise argparse.ArgumentTypeError(
+                        "The input values must be integers, e.g., 128,124")
+            s.append(pixels)
+        s = sorted(s, reverse=True)
+        gaps = [s[i] - s[i + 1] for i in range(len(s) - 1)]
+        lt_4096 = any(g < 4096 for g in gaps)
+        any_zero = any((mp == 0) for mp in s)
+        if lt_4096 or any_zero:
+            raise argparse.ArgumentTypeError(
+                f"The gaps between max_pixels should be at least 4096 and no zero values. get:{value}"
+            )
+        return s
+    elif ',' in value:
         parts = value.split(',')
         if len(parts) != 2:
             raise argparse.ArgumentTypeError(
@@ -34,6 +57,29 @@ def parse_max_pixels(value):
         except ValueError:
             raise argparse.ArgumentTypeError(
                 "The input must be an integer or two integers separated by a comma, e.g., 128,124")
+
+
+def parse_input_length_list(value):
+    """
+    Parse a string of input lengths separated by '+', each input length can be a single integer.
+    For example: "16+32+64"
+    """
+    lengths = []
+    parts = value.split('+')
+    for p in parts:
+        try:
+            length = int(p.strip())
+            lengths.append(length)
+        except ValueError:
+            raise argparse.ArgumentTypeError("Each input length must be an integer, e.g., 16+32+64")
+    lengths = sorted(lengths, reverse=True)
+    gaps = [lengths[i] - lengths[i + 1] for i in range(len(lengths) - 1)]
+    lt_64 = any(g < 64 for g in gaps)
+    any_zero = any((l == 0) for l in lengths)
+    if lt_64 or any_zero:
+        raise argparse.ArgumentTypeError(
+            "Warning: The gaps between input lengths should be at least 64 and no zero values.")
+    return lengths
 
 
 if __name__ == '__main__':
@@ -54,6 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_device', type=int, default=1,
                         help="num device for bmodel")
     parser.add_argument('--num_core', type=int, default=0, help="num cores for bmodel")
+    parser.add_argument('--lora_max_rank', type=int, default=0, help="lora rank, default is 0 means no lora")
     parser.add_argument('--symmetric', action='store_true', help='do symmetric quantize')
     parser.add_argument('--embedding_disk', action='store_true',
                         help='export embedding as bin file and inference by cpu')
@@ -63,8 +110,12 @@ if __name__ == '__main__':
                         help='use history kv for prefill, default is False')
     parser.add_argument('--share_prompt', action='store_true',
                         help='share the same prompt for multi dialog, default is False')
+    parser.add_argument('--use_same_addr', action='store_true',
+                        help='use same address between input_states and output_states, default is False')
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
+    parser.add_argument('--input_length_list', type=parse_input_length_list, default=[],
+                        help="a list of input lengths separated by '+', each input length can be a single integer")
     parser.add_argument('--max_prefill_kv_length', type=int, default=0,
                         help='max prefill kv length, default 0 means the same as seq_length')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
@@ -84,6 +135,8 @@ if __name__ == '__main__':
     # yapf: enable
     if args.share_prompt:
         args.use_block_with_kv = True
+    if args.input_length_list and args.max_input_length > 0:
+        raise ValueError("Cannot set both input_length_list and max_input_length.")
     if args.use_block_with_kv:
         if args.max_input_length <= 0:
             args.max_input_length = args.seq_length // 4

@@ -372,7 +372,7 @@ class Chatglm3Converter(LlmConverter):
                                       [input_shape, kv_shape, kv_shape],
                                       name,
                                       Platform.LLM, ["F32", "INT32", "F32"],
-                                      weight_file=weight_file)
+                                      weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -442,7 +442,9 @@ class Chatglm3Converter(LlmConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         def gen_block_cache():
@@ -461,7 +463,7 @@ class Chatglm3Converter(LlmConverter):
                 [input_shape, history_shape, history_shape],
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
-                weight_file=weight_file)
+                weight_file=f"../{weight_file}")
 
             def T(shape: list):
                 return block_mlir.get_tensor_type(shape)
@@ -569,7 +571,9 @@ class Chatglm3Converter(LlmConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            with open(f"{name}.mlir", "w") as f:
+            if not os.path.exists(name):
+                os.makedirs(name)
+            with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
         gen_block()

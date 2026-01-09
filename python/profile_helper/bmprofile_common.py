@@ -22,7 +22,14 @@ class Arch(Enum):
     bm1684x = 3
     bm1688 = 4
     bm1690 = 5
-    cv184x = 7
+    cv184x = 8
+
+    @classmethod
+    def _missing_(cls, value):
+        # Support both arch=7 (old) and arch=8 (new) for CV184X compatibility
+        if value == 7:
+            return cls.cv184x  # Map old value 7 to cv184x (8)
+        return None
 
 
 class BlockType(Enum):

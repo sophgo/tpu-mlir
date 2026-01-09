@@ -224,7 +224,9 @@ class Memory(CModelMemory):
         value = value_ref.value
         m_type = value.mtype
         if m_type == MType.G:
-            assert data.dtype == value.np_dtype, f"{data.dtype} != {value.np_dtype}"
+            # assert data.dtype == value.np_dtype, f"{data.dtype} != {value.np_dtype}"
+            if data.dtype != value.np_dtype:
+                data = data.astype(value.np_dtype)
             offset = value.r_addr
             if value.layout == Layout.continuous_XN:
                 assert value.stride is not None

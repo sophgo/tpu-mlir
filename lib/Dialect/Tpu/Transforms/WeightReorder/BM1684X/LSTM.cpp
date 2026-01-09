@@ -142,3 +142,78 @@ LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewriteImpl(
   }
   return success();
 }
+
+template <>
+LogicalResult WeightReorder<tpu::LSTMOp, BFloat16Type>::matchAndRewriteImpl(
+    tpu::LSTMOp op, PatternRewriter &rewriter) const {
+  if (!module::getStorageType(op.getFilter()).isBF16())
+    return failure();
+
+  auto attr = op.parseParam();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
+  auto filter_bf16 = filterOp.read<uint16_t>();
+
+  auto recurrenceOp = op.getRecurrence().getDefiningOp<top::WeightOp>();
+  auto recurrence_bf16 = recurrenceOp.read<uint16_t>();
+  auto num_filter = module::getNumElements(op.getFilter());
+  auto num_recur = module::getNumElements(op.getRecurrence());
+  auto filter_merged =
+      std::make_shared<std::vector<uint16_t>>(num_filter + num_recur, 0);
+  // BF16 firmware uses the same layout as F32
+  filter_merge(filter_merged, filter_bf16, recurrence_bf16, attr.num_direction,
+               attr.input_size, attr.hidden_size);
+
+  // BF16 uses the same shape as F32: [num_dir, 4*(input+hidden), hidden]
+  std::vector<int64_t> filter_reordered_shape = {
+      attr.num_direction, 4 * attr.input_size + 4 * attr.hidden_size,
+      attr.hidden_size};
+  auto filter_type = module::getStorageType(op.getFilter());
+  auto new_filter_type =
+      RankedTensorType::get(filter_reordered_shape, filter_type);
+  auto newFilterOp = top::WeightOp::create(op, "reordered_filter",
+                                           *filter_merged, new_filter_type);
+  op->setOperand(1, newFilterOp);
+  op->setOperand(2, module::getNoneOp(op));
+  if (attr.have_bias) {
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getStorageType(op.getBias());
+    auto type = op.getBias().getType().cast<RankedTensorType>();
+    // Bias may still be F32 even in BF16 mode, check actual type
+    if (bias_type.isBF16()) {
+      auto bias_bf16 = biasOp.read<uint16_t>();
+      iofg2ifog(bias_bf16, attr.num_direction, attr.hidden_size);
+      auto newBiasOp =
+          top::WeightOp::create(op, "reordered_bias", *bias_bf16, type);
+      op->setOperand(3, newBiasOp);
+    } else {
+      // Bias is F32, use F32 version
+      auto bias_f32 = biasOp.read<float>();
+      iofg2ifog(bias_f32, attr.num_direction, attr.hidden_size);
+      auto newBiasOp =
+          top::WeightOp::create(op, "reordered_bias", *bias_f32, type);
+      op->setOperand(3, newBiasOp);
+    }
+  }
+
+  std::vector<int64_t> init_shape = {attr.num_direction, attr.batch_size,
+                                     attr.hidden_size};
+  if (!attr.have_h0) {
+    auto stype = module::getStorageType(op.getInput());
+    auto initial_h = std::make_shared<std::vector<uint16_t>>(
+        attr.num_direction * attr.batch_size * attr.hidden_size, 0);
+    auto new_type = RankedTensorType::get(init_shape, stype);
+    auto initial_h_Op =
+        top::WeightOp::create(op, "initial_h", *initial_h, new_type);
+    op->setOperand(4, initial_h_Op);
+  }
+  if (!attr.have_c0) {
+    auto stype = module::getStorageType(op.getInput());
+    auto initial_c = std::make_shared<std::vector<uint16_t>>(
+        attr.num_direction * attr.batch_size * attr.hidden_size, 0);
+    auto new_type = RankedTensorType::get(init_shape, stype);
+    auto initial_c_Op =
+        top::WeightOp::create(op, "initial_c", *initial_c, new_type);
+    op->setOperand(5, initial_c_Op);
+  }
+  return success();
+}

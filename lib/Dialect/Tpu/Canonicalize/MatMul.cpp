@@ -60,13 +60,25 @@ struct MatMulWithBias : public OpRewriterPatternEx<tpu::MatMulOp> {
   }
 };
 
-struct MatMul2FAttention : public OpRewriterPatternEx<tpu::MatMulOp> {
-  using OpRewriterPatternEx::OpRewriterPatternEx;
-  MatMul2FAttention(mlir::MLIRContext *context)
-      : OpRewriterPatternEx<tpu::MatMulOp>(context, "MatMul2FAttention") {}
+struct MatMul2FAttention : public OpRewriterPatternEx4<tpu::MatMulOp> {
+  using OpRewriterPatternEx4::OpRewriterPatternEx4;
+  MatMul2FAttention(mlir::MLIRContext *context,
+                    const std::vector<RewriterRule> &rules)
+      : OpRewriterPatternEx4<tpu::MatMulOp>(context, "MatMul2FAttention",
+                                            rules) {}
   LogicalResult matchAndRewriteImpl(tpu::MatMulOp op,
                                     PatternRewriter &rewriter) const override {
-    // return failure();
+    bool use_pattern = true;
+    const auto &rules = getPatternRules();
+    for (const auto &rule : rules) {
+      int val = getParam(rule.params, "use_pattern", /*default*/ 1);
+      if (val == 0) {
+        use_pattern = false;
+        break;
+      }
+    }
+    if (!use_pattern)
+      return failure();
     std::vector<Operation *> op_need_del;
     if (!module::isBM1684X() && !module::isBM1688() &&
         !module::isBM1690Family()) {
@@ -439,7 +451,12 @@ struct MatMulFuseRequant : public OpRewriterPatternEx<tpu::MatMulOp> {
 
 void tpu::MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                 MLIRContext *context) {
-  results.insert<MatMulWithBias, MatMul2FAttention, MatMulFuseRequant>(context);
+  results.insert<MatMulWithBias, MatMulFuseRequant>(context);
+  std::vector<RewriterRule> rules;
+  if (const char *env_config = getenv("TPU_DIALECT_REWRITER_CONFIG")) {
+    rules = loadRewriteConfig(std::string(env_config));
+  }
+  results.insert<MatMul2FAttention>(context, rules);
 }
 
 } // namespace tpu

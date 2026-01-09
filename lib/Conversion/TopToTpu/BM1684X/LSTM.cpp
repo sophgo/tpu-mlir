@@ -70,13 +70,18 @@ void LSTMLowering::LoweringINT4(PatternRewriter &rewriter, top::LSTMOp op,
 }
 void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
                                 bool asymmetric) const {
-  LoweringLSTM(rewriter, op, rewriter.getF32Type());
+  // Use F32 path to avoid BM1688 fp16 memory issues
+  if (module::isBM1688()) {
+    LoweringLSTM(rewriter, op, rewriter.getF32Type());
+  } else {
+    LoweringLSTM(rewriter, op, rewriter.getBF16Type());
+  }
 }
 
 void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::LSTMOp op) const {
   // LoweringLSTM(rewriter, op, rewriter.getBF16Type());
-  LoweringLSTM(rewriter, op, rewriter.getF32Type());
+  LoweringLSTM(rewriter, op, rewriter.getBF16Type());
 }
 
 void LSTMLowering::LoweringF16(PatternRewriter &rewriter,

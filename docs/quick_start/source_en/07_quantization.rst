@@ -25,7 +25,7 @@ The quantization part of the following figure (:ref:calibration) shows the overa
 and bias correction module ``bias_correction``, etc. In the following sections, we will provide the usage details of the above methods based on actual situations.
 
 .. _calibration:
-.. figure:: ../assets/quant.png
+.. figure:: ../assets/quant_en.png
    :height: 20cm
    :align: center
 
@@ -275,7 +275,7 @@ pattern-match
 
 The ``pattern-match`` method is integrated into ``run_calibration`` and does not require explicit parameter specification.
 Currently, there are two type of models for which experience ``qtable`` is provided: one is the YOLO series, and the other is the Transformer series (e.g., BERT).
-After obtaining the ``cali_table`` , if the model matches an existing pattern, a qtable will be generated in the ``path/to/cali_table/`` folder.
+After obtaining the ``cali_table`` , if the model matches an existing pattern, a qtable will be generated in the ``path/to/cali_table/`` folder. Before calibration, purpose of every op is judged, if it is calculating shape or position, it will be set float and included in qtable.
 
 YOLO Series Automatic Mixed Precision Method
 -----------------------------------------------
@@ -557,16 +557,19 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
      - global compare layers, for example: ``layer1,layer2`` or ``layer1:0.3,layer2:0.7``
    * - search
      - Yes
-     - Specify the search type, which includes ``search_qtable``, ``search_threshold``, or false. You need to select ``search_qtable``
+     - Specify the search type, which includes ``search_qtable``, ``search_threshold``, ``mix_search``， ``fast_search`` or false. You need to select ``search_qtable``
    * - transformer
      - N
      - Is it a transformer model? In ``search_qtable``, if it is a transformer model, a specific acceleration strategy can be assigned. The default is False
    * - quantize_method_list
      - N
-     - the calibration method used for searching in ``search_qtable``, default is MSE, with selectable range being MSE, KL, MAX, Percentile9999
+     - the calibration method used for searching in ``search_qtable``, default is MSE, with selectable range being mse, kl, max, percentile9999, combine them with seperator ','
    * - quantize_table
      - Yes
      - qtable output path
+   * - pre_qtable
+     - n
+     - qtable as the base to search from, replace the default pattern match and shape ops as qtable
    * - calibration_table
      - Yes
      - cali_table output path

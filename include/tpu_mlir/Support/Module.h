@@ -237,6 +237,7 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
 void removeAttr(mlir::Operation *op, std::string attr_name);
 
 bool isTpuOp(Operation *op);
+bool isTpuArOp(Operation *op);
 bool isInt4Op(Operation *op);
 bool isCV18xx();
 bool isBM1684Family();
@@ -249,6 +250,7 @@ bool isCV184X();
 bool isSGTPUV8();
 bool isSG2262();
 bool isMultiCoreArch();
+bool isBM1690E();
 
 //-----------------------------------------------------------------
 // Helper Functions for submodule

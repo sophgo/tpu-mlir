@@ -40,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_num', type=int, default=0, help='num of images for calibration')
     parser.add_argument('--cali_method', type=str, default='kl',choices=['mse','max','kl','percentile9999','aciq_laplace', 'aciq_gauss', 'use_mse','use_max','use_kl','use_percentile9999'],
                         help='method of calibration')
-    parser.add_argument('--search', type=str, default='False', choices=['search_threshold', 'search_qtable', 'False'],
+    parser.add_argument('--search', type=str, default='False', choices=['search_threshold', 'search_qtable', 'fast_search', 'mix_search', 'False'],
                         help='choose quantization scheme')
     parser.add_argument('--inference_num', type=int, default=30,
                         help='num of inputs for inference during optimal threshold searching')
@@ -62,8 +62,6 @@ if __name__ == '__main__':
     parser.add_argument('--post_process', type=str, default=None,help='post_process program path')
     parser.add_argument('--global_compare_layers', type=str, default='',
                         help='global compare layers, for example:\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'')
-    parser.add_argument('--transformer', type=str, default='False',
-                        help='model include attention structure')
     parser.add_argument('--quantize_method_list', type=parse_method_list, default='mse',
                         help='threshold method for search_qtable')
     parser.add_argument('--benchmark_method', type=str, default='cos', choices=['cos', 'snr'],
@@ -76,7 +74,6 @@ if __name__ == '__main__':
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
     parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
                         help='Specify the bit width for automatic mixed precision')
-    parser.add_argument('--fast',help='faster search_qtable', action='store_true')
     parser.add_argument('--pre_qtable',type=str, default='', help='path to initial qtable for search_qtable')
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
     parser.add_argument('-o', '--calibration_table', type=str,
@@ -106,6 +103,7 @@ if __name__ == '__main__':
 
     args.cali_method = parse_method_list(args.cali_method)
     args.cali_method = compactable_method_list(args.cali_method)
+    args.quantize_method_list = compactable_method_list(args.quantize_method_list)
     args.debug_cmd = compactable_cmd_method_list(args.debug_cmd)
 
     if args.search != 'False' and args.quantize_table == '':
@@ -124,18 +122,20 @@ if __name__ == '__main__':
         print(f'Use only {args.pre_qtable} as quantize table!')
 
     # mix precision
-    if args.search == 'search_qtable':
+    if args.search.lower() != 'false':
         args._logger = logger('Search_Qtable', log_level=log_level)
         searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
-        if args.mix_mode == '4_8':
+        if args.search == 'search_qtable' and args.mix_mode == '4_8':
             searcherQ.run_4_8()
-        elif args.mix_mode == 'w4a8':
+        elif args.search == 'search_qtable' and args.mix_mode == 'w4a8':
             searcherQ.run_w4a8()
-        else:
-            if args.fast:
-                searcherQ.run_fast()
-            else:
-                searcherQ.run()
+        elif args.search == 'fast_search':
+            searcherQ.run_fast()
+        elif args.search == 'mix_search':
+            searcherQ.mix_prec.qtable = quant_table
+            searcherQ.mix_prec.run()
+        elif args.search == 'search_qtable':
+            searcherQ.run()
     else:
         # smoothquant
         if args.sq:
@@ -151,6 +151,7 @@ if __name__ == '__main__':
         if args.we:
             args._logger = logger('Weight_Equalization', log_level=log_level)
             searcher = MixPrecSearcher(args)
+            searcher.qtable = quant_table
             searcher.weight_equalization()
         # calibration
         if args.search == 'search_threshold':
@@ -166,11 +167,12 @@ if __name__ == '__main__':
             args.input_num = args.bc_inference_num
             args._logger = logger('Bias_Correction', log_level=log_level)
             searcher = MixPrecSearcher(args)
+            searcher.qtable = quant_table
             searcher.run_bias_correction()
             args.input_num = input_num
             if args.search == 'search_threshold':
                 args._logger = logger('Search_Threshold', log_level=log_level)
-                searcher = SearchThreshold(args, selector, tune_ds)
+                searcher = SearchThreshold(args, selector, tune_ds, quant_table)
                 searcher.run_search_calitable()
             elif args.search == 'False':
                 calibrator = ActivationCalibrator(args, selector, tune_ds)

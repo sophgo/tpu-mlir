@@ -20,7 +20,9 @@ void get_scale_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
   float min_err = FLT_MAX;
   int m_limit = (bitwidth == 32) ? INT_MAX : CHAR_MAX;
   for (int n = -32; n < 31; n++) {
-    // If scale_f is >= 1, the loop upper limit should be set to 31 (instead of 32), and larger values require more reduction; we temporarily only consider the case where scale_f <= 1.
+    // If scale_f is >= 1, the loop upper limit should be set to 31 (instead of
+    // 32), and larger values require more reduction; we temporarily only
+    // consider the case where scale_f <= 1.
     //  wxc 20220119
     int m = (int)std::round(scale_f * std::pow(2, n));
     float err = std::abs(m / std::pow(2, n) - scale_f);
@@ -574,6 +576,19 @@ RoundingMode round_mode_convert(tpu::RoundMode mode) {
   }
   llvm_unreachable("Not Implemented");
   return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
+}
+
+RopeMode rope_mode_convert(tpu::RopeMode mode) {
+  switch (mode) {
+  case tpu::RopeMode::interleaved_pairs:
+    return RopeMode::interleaved_pairs;
+  case tpu::RopeMode::contiguous_halves:
+    return RopeMode::contiguous_halves;
+  default:
+    break;
+  }
+  llvm_unreachable("Not Implemented");
+  return RopeMode::interleaved_pairs;
 }
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,

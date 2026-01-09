@@ -6,11 +6,14 @@ General introduction
 
 Calibration is the use of real scene data to tune the proper quantization parameters. Why do we need calibration? When we perform asymmetric quantization of the activation, we need to know the overall dynamic range, i.e., the minmax value, in advance. When applying symmetric quantization to activations, we need to use a suitable quantization threshold algorithm to calculate the quantization threshold based on the overall data distribution of the activation. However, the general trained model does not have the activation statistics. Therefore, both of them need to inference on a miniature sub-training set to collect the output activation of each layer.
 
-The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), softmax correction (smc), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, sq, smc, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
+The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), softmax correction (smc), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable, fast_search, mix_search), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, sq, smc, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
 The above processes are integrated and executed collectively, and the optimized thresholds and min/max values of each operation are output to a quantization calibration parameter file called "cali_table." Subsequently, in the "model_deploy.py" script, these parameters can be used for further int8 quantization. If you have utilized the automatic mixed-precision feature, along with generating the "cali_table," a mixed-precision table "qtable" will also be produced. In the following "model_deploy.py" script, both of these files are required for subsequent int8 mixed-precision quantization.
 
+Calibration runs in recommanded docker environment, following algorithms are implemented in both cpu and gpu version, they are selected according the docker version and hardware environment. For large models who has occupy most host memory before running calibration, the gpu version may be faster, but for small models, cpu version make good use of parallel and is fast enough.
+
+
 .. _quantization_process:
-.. figure:: ../assets/quant.png
+.. figure:: ../assets/quant_en.png
    :height: 22cm
    :align: center
 
@@ -65,7 +68,7 @@ Input format and preprocessing
    * - Original Image
      - For CNN-like vision networks, image input is supported. Image preprocessing arguments must be the same as in training step when generating the mlir file by model_transform.py.
    * - npz or npy file
-     - For cases where non-image inputs or image preprocessing types are not supported at the moment, it is recommended to write an additional script to save the preprocessed input data into npz/npy files (npz file saves multiple tensors in the dictionary, and npy file only contains one tensor). run_calibration.py supports direct input of npz/npy files.
+     - For cases where non-image inputs or image preprocessing types are not supported at the moment or for multi-input models, it is recommended to write an additional script to save the preprocessed input data into npz/npy files (npz file saves multiple tensors in the dictionary, and npy file only contains one tensor). run_calibration.py supports direct input of npz/npy files.
 
 There is no need to specify the preprocessing parameters for the above two formats when calling run_calibration.py to call the mlir file for inference.
 
@@ -262,10 +265,21 @@ During the use of search_threshold, the following points need to be noted: 1. se
 search_qtable Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-search_qtable is an automatic mixed-precision functionality integrated into the calibration process. When the accuracy of a fully int8 quantized model does not meet the requirements, you can try enabling the search_qtable algorithm. This algorithm is faster compared to run_sensitive_lyer. It also offers the ability to mix custom threshold algorithms and automatically generate a qtable.
+search_qtable is an automatic mixed-precision functionality integrated into the calibration process. When the accuracy of a fully int8 quantized model does not meet the requirements, you can try enabling the search_qtable algorithm. multi threshold from different algorithms will be tryed op by op to select the best one, and the influence to model accuracy of layers are sorted, too, which can be referred to in constructing qtable, it also generate a qtable.
 
 Implementation: The output of search_qtable will generate mixed thresholds, meaning it performs optimal selection for the threshold of each layer of the model. That is, it chooses the best result from multiple threshold calculation methods specified by the user for each layer. This choice is based on the comparison of the similarity between the quantized model's current layer output and the original model's current layer output. In addition to generating mixed thresholds, search_qtable will also output the layers of the model that are mixed precision.
 When the user specifies the desired similarity between the mixed precision model and the original model's output, search_qtable will automatically output the minimum number of mixed precision layers required to achieve that similarity level.
+
+mix_search and fast_search Option
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+search_qtable often consumes long compute time when model is large, and it has best result and is firstly recommanded, but it requires large memory and long time too, mix_search and fast_search are provided to have fast try.
+
+In mix_search, from beginning of model, if the op doesn't meet min_layer_cos, it will be set float and check if model meets expected_cos, if amount of layers tried reach max_float_layers or 1/4 of total layers, search will end.
+Because the float model and quantized model may have different layer names due to optimization introduced in lowerring, the search is coarse, and this algorithm is legacy and may be used on simple models.
+
+fast_search is based on search_qtable, and classify layers be their type to narrow search set, the inference number is decreased too, to make it faster in search.
+
 
 .. _calibration_doc3:
 
@@ -463,7 +477,7 @@ search_qtable:
       --max_float_layers 5 \
       --expected_cos 0.99 \
       --transformer False \
-      --quantize_method_list KL,MSE \
+      --quantize_method_list kl,mse \
       --search search_qtable \
       --quantize_table yolov5s_qtable \
       -o yolov5s_cali_table
@@ -518,11 +532,11 @@ search_qtable:
    * - --global_compare_layers
      - Specifies the global comparison layers, for example, layer1,layer2 or layer1:0.3,layer2:0.7
    * - --search
-     - Specifies the type of search, including search_qtable, search_threshold, false. The default is false, which means search is not enabled
+     - Specifies the type of search, including search_qtable, search_threshold, mix_search, fast_search, false. The default is false, which means search is not enabled
    * - --transformer
      - Whether it is a transformer model, if it is, search_qtable can allocate specific acceleration strategies
    * - --quantize_method_list
-     - The threshold methods used for searching in search_qtable, The default is only MSE, but it supports free selection among KL, MSE, MAX, and Percentile9999
+     - The threshold methods used for searching in search_qtable, The default is only MSE, but it supports free selection among kl, mse, max, and percentile9999, combine them with seperator ','.
    * - --benchmark_method
      - Specifies the method for calculating similarity in search_threshold
    * - --kurtosis_analysis
@@ -539,8 +553,12 @@ search_qtable:
      - Specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - --quantize_table
      - The mixed-precision quantization table output by search_qtable
+   * - --pre_qtable
+     - qtable as the base to search from, replace the default pattern match and shape ops as qtable
    * - -o
      - output threshold table
+   * - --calibration_table
+     - same as -o option, output threshold table, also as input prepared threshold table in mix_serach
    * - --debug_cmd
      - debug command to specify calibration mode; “percentile9999” initialize the threshold via percentile function, “max” specifies the maximum of absolute value to be the threshold, “use_torch_observer_for_cali” adopts Torch observer for calibration. "mse" adopts Octav for calibration.
    * - --debug_log

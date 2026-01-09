@@ -295,7 +295,7 @@ LogicalResult tpu::AddOp::LocalGenSupport() {
   return BroadCastBinaryLocalGenSupport(getOperation());
 }
 
-void tpu::AddOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
+void tpu::AddOp::DumpAttrs(llvm::raw_string_ostream &os, bool quant_agnostic) {
   for (auto attr : getOperation()->getAttrs()) {
     auto attr_name = attr.getName().str();
     if (attr_name == "ginfo" || attr_name == "rshifts" ||
@@ -306,6 +306,9 @@ void tpu::AddOp::DumpQuantAgnosticAttrs(llvm::raw_string_ostream &os) {
     attr.getValue().print(os);
     os << "; ";
   }
+
+  if (quant_agnostic)
+    return;
 
   if (getRshifts().has_value()) {
     auto rshift_v = module::getI64Array(getRshifts().value());

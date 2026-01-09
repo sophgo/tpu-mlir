@@ -254,7 +254,7 @@ protected:
         operands_batch2space, attrs_batch2space);
     rewriter.replaceOp(op, op_batch2space);
 
-    return failure();
+    return success();
   }
 };
 
@@ -271,7 +271,6 @@ protected:
     auto prevOp = op->getOperand(0).getDefiningOp();
     auto prevInputOp = prevOp;
     if (!isa<top::InputOp>(prevOp)) {
-      // prevInputOp = prevOp->getOperand(0).getDefiningOp();
       if (isa<tpu::CastOp>(prevOp) && prevOp->hasOneUse()) {
         prevInputOp = prevOp->getOperand(0).getDefiningOp();
       } else {
@@ -304,11 +303,14 @@ protected:
       if (ic == 3 && groups == 1 && dh == 1 && kh > 1 && use_winograd == 0) {
         use_3ic_optimize = 1;
       }
-      op->setAttr("use_3ic_optimize",
-                  rewriter.getI64IntegerAttr(use_3ic_optimize));
-      if (!op.getUse_3icOptimize() || flag) {
+
+      if (use_3ic_optimize == 0 || flag) {
         return failure();
       }
+
+      op->setAttr("use_3ic_optimize",
+                  rewriter.getI64IntegerAttr(use_3ic_optimize));
+
       Value input_value = op->getOperand(0);
       std::string output_name = module::getName(op->getResult(0)).str();
       auto input_ele_type = module::getElementType(input_value);
@@ -344,6 +346,103 @@ protected:
     return failure();
   }
 };
+
+// Conv(n, c_in, h, w) ---->
+// Reshape(n, c_in, h*w, 1) -> Conv(n, c_out, h*w, 1) -> Reshape(n, c_out, h, w)
+class Conv2dPointwiseToReshape : public OpRewriterPatternEx<tpu::Conv2DOp> {
+public:
+  Conv2dPointwiseToReshape(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::Conv2DOp>(context,
+                                           "Conv2dPointwiseToReshape") {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(tpu::Conv2DOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    auto input = op.getInput();
+    auto input_shape = module::getShape(input);
+    auto output_shape = module::getShape(op.getOutput());
+    // only fp backend needs to reshape
+    if (module::getStorageType(input).isInteger(8)) {
+      return failure();
+    }
+
+    // input_shape: [N, C_in, H, W]
+    // output_shape: [N, C_out, H, W]
+    if (input_shape.size() != 4 || output_shape.size() != 4) {
+      return failure();
+    }
+
+    int64_t N = input_shape[0];
+    int64_t C_in = input_shape[1];
+    int64_t H = input_shape[2];
+    int64_t W = input_shape[3];
+    int64_t C_out = output_shape[1];
+
+    if (W <= 16384) { // upper limit of W
+      return failure();
+    }
+
+    auto kernel_shape = module::getI64Array(op.getKernelShapeAttr());
+    if (kernel_shape->at(0) != 1 || kernel_shape->at(1) != 1) {
+      return failure();
+    }
+
+    auto strides = module::getI64Array(op.getStridesAttr());
+    if (strides->at(0) != 1 || strides->at(1) != 1) {
+      return failure();
+    }
+
+    auto dilations = module::getI64Array(op.getDilationsAttr());
+    if (dilations->at(0) != 1 || dilations->at(1) != 1) {
+      return failure();
+    }
+
+    auto pads = module::getI64Array(op.getPadsAttr());
+    for (auto pad : *pads) {
+      if (pad != 0) {
+        return failure();
+      }
+    }
+
+    rewriter.setInsertionPoint(op);
+    auto none_op = module::getNoneOp(op);
+    auto reshape_input_shape = std::vector<int64_t>{N, C_in, H * W, 1};
+    auto reshape_input_type = RankedTensorType::get(
+        reshape_input_shape, module::getElementType(input));
+
+    auto reshape_input_loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(op.getInput()).str() + "_ptwise_reshape"));
+    auto reshape_input_op = rewriter.create<tpu::ReshapeOp>(
+        reshape_input_loc, reshape_input_type, ValueRange{input, none_op});
+    op.setOperand(0, reshape_input_op.getOutput());
+    auto new_conv_type = RankedTensorType::get(
+        {N, C_out, H * W, 1}, module::getElementType(op.getOutput()));
+
+    auto ori_output_name = module::getName(op.getOutput()).str();
+    op->setLoc(NameLoc::get(
+        rewriter.getStringAttr(ori_output_name + "_ptwise_reshape")));
+
+    auto new_conv = rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(
+        op, new_conv_type,
+        ValueRange{reshape_input_op.getOutput(), op.getFilter(), op.getBias()},
+        op->getAttrs());
+
+    rewriter.setInsertionPointAfter(new_conv);
+    auto reshape_output_shape = std::vector<int64_t>{N, C_out, H, W};
+    auto reshape_output_loc =
+        NameLoc::get(rewriter.getStringAttr(ori_output_name));
+    auto reshape_output_type = RankedTensorType::get(
+        reshape_output_shape, module::getElementType(new_conv.getOutput()));
+    auto reshape_output_op = rewriter.create<tpu::ReshapeOp>(
+        reshape_output_loc, reshape_output_type,
+        ValueRange{new_conv.getOutput(), none_op});
+    new_conv.getOutput().replaceAllUsesExcept(reshape_output_op.getOutput(),
+                                              reshape_output_op);
+    return success();
+  }
+};
+
 } // namespace bm1684
 
 namespace tpu {
@@ -353,7 +452,7 @@ void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   patterns->add<LargePadConvPattern>(ctx, 9);
   patterns->add<CastWithoutScalePattern, LargeDilationConvPattern,
                 PermuteReorderPattern, PermutePadSwap, Use3icPadConvPattern,
-                RemoveReshape>(ctx, 8);
+                RemoveReshape, Conv2dPointwiseToReshape>(ctx, 8);
 };
 } // namespace tpu
 

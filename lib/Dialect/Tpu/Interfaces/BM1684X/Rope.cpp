@@ -18,6 +18,7 @@ using namespace tpu_mlir::backend;
 
 void tpu::RopeOp::codegen_global_bm1684x() {
   rope_param_t param{0};
+  param.rope_mode = rope_mode_convert(getRopeMode());
   param.mul1_shift = getMul1Shift();
   param.mul2_shift = getMul2Shift();
   param.add_shift = getAddShift();
@@ -68,6 +69,7 @@ void tpu::RopeOp::codegen_local_bm1684x_kernel(
     std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   const auto &gi = out_group_infos[0];
   rope_param_t param = {0};
+  param.rope_mode = rope_mode_convert(getRopeMode());
   param.buffer_addr = gi.buffer_addr;
   param.mul1_shift = getMul1Shift();
   param.mul2_shift = getMul2Shift();

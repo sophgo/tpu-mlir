@@ -33,10 +33,13 @@ def BModel2MLIR(bmodel_net: BModel):
     from .target_2380.context import SG2380Context
     from .target_cv184x.context import CV184XContext
     from .target_sgtpuv8.context import SGTPUV8Context
+    from .target_1690e.context import BM1690EContext
+    from .target_1690.context import BM1690Context
 
     with use_backend(bmodel_net.chip) as context:
         if (isinstance(context, BM1688Context) or isinstance(context, SG2380Context)
-                or isinstance(context, CV184XContext) or isinstance(context, SGTPUV8Context)):
+                or isinstance(context, CV184XContext) or isinstance(context, SGTPUV8Context)
+                or isinstance(context, BM1690Context) or isinstance(context, BM1690EContext)):
             coeff = bmodel_net.net[0].parameter[0].coeff_mem
             if coeff and context.base_addr[0] != context.base_addr[1]:
                 context.base_addr[1] += len(coeff.data)
@@ -184,9 +187,12 @@ class Block(Node):
                 from .target_1688.context import BM1688Context
                 from .target_2380.context import SG2380Context
                 from .target_1690.context import BM1690Context
+                from .target_1690e.context import BM1690EContext
 
                 if isinstance(context, BM1690Context):
                     from .target_1690.multi_core import MultiCore, MsgCore
+                elif isinstance(context, BM1690EContext):
+                    from .target_1690e.multi_core import MultiCore, MsgCore
                 elif isinstance(context, BM1688Context):
                     from .target_1688.multi_core import MultiCore, MsgCore
                 elif isinstance(context, SG2380Context):

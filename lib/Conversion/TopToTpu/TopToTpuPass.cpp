@@ -18,8 +18,7 @@
 
 namespace tpu_mlir {
 
-template <typename OpTy>
-static void BackwardOp(OpTy op) {
+template <typename OpTy> static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -38,8 +37,7 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy>
-static void ForwardOp(OpTy op) {
+template <typename OpTy> static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -1075,32 +1073,45 @@ public:
     if (!module::isWeight(op.getRight())) {
       return failure();
     }
+    if (op.getIsLora()) {
+      return failure();
+    }
+    auto r_shape = module::getShape(op.getRight());
+    auto N = r_shape.back();
+    auto K = r_shape[0];
+    auto group_size = module::getQuantGroupSize();
+    bool right_transpose = op.getRightTranspose();
+    int slice_axis = -1;
+    if (right_transpose) {
+      std::swap(N, K);
+      slice_axis = 0;
+    }
     // W8A16
     if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8F16) {
-      if (op.getWeightBits() == 8) {
+      if (op.getWeightBits() == 8 || (group_size > 0 && K % group_size != 0)) {
         return failure();
       }
       op.setWeightBits(8);
-      return success();
     }
     // W4A16
-    if (qmode != module::Mode::W4BF16 && qmode != module::Mode::W4F16) {
+    else if (qmode == module::Mode::W4BF16 || qmode == module::Mode::W4F16) {
+      if (op.getWeightBits() == 4 || (group_size > 0 && K % group_size != 0)) {
+        return failure();
+      }
+      op.setWeightBits(4);
+    } else {
       return failure();
     }
-    if (op.getWeightBits() == 4) {
-      return failure();
-    }
-    op.setWeightBits(4);
-    if (module::getQuantGroupSize() <= 0)
+    if (group_size <= 0)
       return success();
     auto out = op.getOutput();
     auto o_shape = module::getShape(out);
     auto o_name = module::getName(out);
-    auto target_mode = (qmode == module::Mode::W4BF16 ? module::Mode::BF16
-                                                      : module::Mode::F16);
+    auto target_mode =
+        ((qmode == module::Mode::W4BF16 || qmode == module::Mode::W8BF16)
+             ? module::Mode::BF16
+             : module::Mode::F16);
     // if has q_group_size, means npu_num must be divided exactly by N
-    auto r_shape = module::getShape(op.getRight());
-    auto N = r_shape.back();
     if (N % backend::Arch::NPU_NUM == 0)
       return success();
     if (N < backend::Arch::NPU_NUM) {
@@ -1116,7 +1127,7 @@ public:
     rewriter.setInsertionPoint(op);
     // op 0
     std::vector<Value> opds0;
-    auto w0 = module::opSliceAxis(rewriter, op.getRight(), -1, 0, N0);
+    auto w0 = module::opSliceAxis(rewriter, op.getRight(), slice_axis, 0, N0);
     opds0.push_back(op.getInput());
     opds0.push_back(w0);
     if (module::isWeight(op.getBias())) {
@@ -1135,7 +1146,7 @@ public:
     LoweringConfig::quantize_map[name0.str()] = qmode;
     // op 1
     std::vector<Value> opds1;
-    auto w1 = module::opSliceAxis(rewriter, op.getRight(), -1, N0, N1);
+    auto w1 = module::opSliceAxis(rewriter, op.getRight(), slice_axis, N0, N1);
     opds1.push_back(op.getInput());
     opds1.push_back(w1);
     if (module::isWeight(op.getBias())) {
@@ -1315,7 +1326,7 @@ public:
       auto next_op = *cur_op->getUsers().begin();
       if (isa<tpu::CastOp>(next_op)) {
         // skip cast
-        next_op->dump();
+        // next_op->dump();
         middle_casts.push_back(next_op);
         cur_op = next_op;
         continue;

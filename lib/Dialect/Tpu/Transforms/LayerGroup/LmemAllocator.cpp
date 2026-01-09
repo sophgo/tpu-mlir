@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CostCache.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgCache.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgConfig.h"
 #include "tpu_mlir/Support/Logger.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -1445,13 +1445,14 @@ bool LmemAllocator::assignLmemAddrWithSecs(LgInfo &lg_info,
     });
     sc_method_quick_search(lg_info, shape_secs, allow_bank_conflict, time_step);
 
-    if (module::getCoreNum() > 1) {
-      sc_method_multi_core(lg_info, shape_secs, allow_bank_conflict, time_step);
-      sc_method_multi_core_v2(lg_info, shape_secs, allow_bank_conflict,
-                              time_step);
-      sc_method_multi_core_v3(lg_info, shape_secs, allow_bank_conflict,
-                              time_step);
-    }
+    // if (module::getCoreNum() > 1) {
+    //   sc_method_multi_core(lg_info, shape_secs, allow_bank_conflict,
+    //   time_step); sc_method_multi_core_v2(lg_info, shape_secs,
+    //   allow_bank_conflict,
+    //                           time_step);
+    //   sc_method_multi_core_v3(lg_info, shape_secs, allow_bank_conflict,
+    //                           time_step);
+    // }
   }
 
   if (min_group_costs_ == -1) {
@@ -2405,11 +2406,12 @@ public:
       if (pass_ir->lg_infos[i].group_ops.size() > 1) {
         auto lmem_allocator = LmemAllocator(options_);
         uint64_t hash_key;
-        auto find_hash_key = LgCostCache::getInstance().get_graph_hash(
+        auto find_hash_key = LgCache::getInstance().get_graph_hash(
             pass_ir->lg_infos[i], hash_key);
         if (find_hash_key) {
-          auto cache_hit = LgCostCache::getInstance().get_shape_secs_from_cache(
-              hash_key, pass_ir->shape_secs[i]);
+          auto cache_hit =
+              LgCache::getInstance().get_shape_secs_from_cost_cache(
+                  hash_key, pass_ir->shape_secs[i]);
           if (cache_hit) {
             pass_ir->lg_infos[i].is_best_shape_secs = true;
           }

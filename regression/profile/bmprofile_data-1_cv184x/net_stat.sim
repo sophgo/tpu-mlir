@@ -1,0 +1,275 @@
+--------------------------------------
+s: start time, b: bd_id, g: gdma_id, e: end time, t: cmd cost time, dr: direction, sz: memsize, bw: bandwidth
+--------------------------------------
+ENGINE_BD                                                                                     ENGINE_GDMA                                                                                   
+                                                                                              Load_15|GDMA_TENSOR|s:0|b:0|g:1|e:12337|t:12338|dr:0|sz:70656|bw:4.00                         
+Cast_18|AR|s:12338|b:1|g:1|e:15281|t:2944                                                     Load_16|GDMA_TENSOR|s:12338|b:0|g:2|e:14013|t:1676|dr:0|sz:9600|bw:4.00                       
+                                                                                              Load_17|GDMA_TENSOR|s:14014|b:0|g:3|e:14348|t:335|dr:0|sz:96|bw:0.27                          
+Conv2D_19|CONV|s:15282|b:2|g:3|e:68081|t:52800                                                Load_15|GDMA_TENSOR|s:15282|b:1|g:4|e:27350|t:12069|dr:0|sz:69120|bw:4.00                     
+Conv2D_19|AR|s:68082|b:3|g:3|e:70193|t:2112                                                                                                                                                 
+Cast_18|AR|s:70194|b:4|g:4|e:73073|t:2880                                                     Store_20|GDMA_TENSOR|s:70194|b:3|g:5|e:81994|t:11801|dr:1|sz:67584|bw:4.00                    
+Conv2D_19|CONV|s:81995|b:5|g:5|e:132394|t:50400                                               Load_15|GDMA_TENSOR|s:81995|b:4|g:6|e:93527|t:11533|dr:0|sz:66048|bw:4.00                     
+Conv2D_19|AR|s:132395|b:6|g:5|e:134410|t:2016                                                                                                                                               
+Cast_18|AR|s:134411|b:7|g:6|e:137162|t:2752                                                   Store_20|GDMA_TENSOR|s:134411|b:6|g:7|e:145675|t:11265|dr:1|sz:64512|bw:4.00                  
+Conv2D_19|CONV|s:145676|b:8|g:7|e:196075|t:50400                                                                                                                                            
+Conv2D_19|AR|s:196076|b:9|g:7|e:198091|t:2016                                                                                                                                               
+                                                                                              Store_20|GDMA_TENSOR|s:198092|b:9|g:8|e:209356|t:11265|dr:1|sz:64512|bw:4.00                  
+                                                                                              Conv2D_25|GDMA_TENSOR|s:209357|b:9|g:9|e:218475|t:9119|dr:0|sz:52224|bw:4.00                  
+                                                                                              Conv2D_25|GDMA_TENSOR|s:218476|b:9|g:10|e:218810|t:335|dr:0|sz:432|bw:1.20                    
+                                                                                              Conv2D_25|GDMA_TENSOR|s:218811|b:9|g:11|e:219145|t:335|dr:0|sz:48|bw:0.13                     
+Conv2D_25|PorD|s:219146|b:10|g:11|e:226057|t:6912                                             Conv2D_25|GDMA_TENSOR|s:219146|b:9|g:12|e:228800|t:9655|dr:0|sz:55296|bw:4.00                 
+Conv2D_25|PorD|s:228801|b:11|g:12|e:235712|t:6912                                             Conv2D_25|GDMA_TENSOR|s:228801|b:10|g:13|e:237383|t:8583|dr:1|sz:49152|bw:4.00                
+                                                                                              Conv2D_25|GDMA_TENSOR|s:237384|b:10|g:14|e:247038|t:9655|dr:0|sz:55296|bw:4.00                
+Conv2D_25|PorD|s:247039|b:12|g:14|e:253950|t:6912                                             Conv2D_25|GDMA_TENSOR|s:247039|b:11|g:15|e:255621|t:8583|dr:1|sz:49152|bw:4.00                
+                                                                                              Conv2D_25|GDMA_TENSOR|s:255622|b:11|g:16|e:264740|t:9119|dr:0|sz:52224|bw:4.00                
+Conv2D_25|PorD|s:264741|b:13|g:16|e:271652|t:6912                                             Conv2D_25|GDMA_TENSOR|s:264741|b:12|g:17|e:273323|t:8583|dr:1|sz:49152|bw:4.00                
+                                                                                              Conv2D_25|GDMA_TENSOR|s:273324|b:13|g:18|e:281906|t:8583|dr:1|sz:49152|bw:4.00                
+                                                                                              Load_29|GDMA_TENSOR|s:281907|b:13|g:19|e:299072|t:17166|dr:0|sz:98304|bw:4.00                 
+                                                                                              Load_30|GDMA_TENSOR|s:299073|b:13|g:20|e:299407|t:335|dr:0|sz:1152|bw:3.20                    
+                                                                                              Load_31|GDMA_TENSOR|s:299408|b:13|g:21|e:299742|t:335|dr:0|sz:96|bw:0.27                      
+Conv2D_33|CONV|s:299743|b:14|g:21|e:308958|t:9216                                             Load_32|GDMA_TENSOR|s:299743|b:13|g:22|e:316908|t:17166|dr:0|sz:98304|bw:4.00                 
+Add_34|AR|s:316909|b:15|g:22|e:319980|t:3072                                                  Load_29|GDMA_TENSOR|s:316909|b:14|g:23|e:334074|t:17166|dr:0|sz:98304|bw:4.00                 
+Add_34|AR|s:319981|b:16|g:22|e:323052|t:3072                                                                                                                                                
+Conv2D_33|CONV|s:334075|b:17|g:23|e:343290|t:9216                                             Load_32|GDMA_TENSOR|s:334075|b:16|g:24|e:351240|t:17166|dr:0|sz:98304|bw:4.00                 
+                                                                                              Store_35|GDMA_TENSOR|s:351241|b:16|g:25|e:368406|t:17166|dr:1|sz:98304|bw:4.00                
+Add_34|AR|s:368407|b:18|g:25|e:371478|t:3072                                                                                                                                                
+Add_34|AR|s:371479|b:19|g:25|e:374550|t:3072                                                                                                                                                
+                                                                                              Store_35|GDMA_TENSOR|s:374551|b:19|g:26|e:391716|t:17166|dr:1|sz:98304|bw:4.00                
+                                                                                              Pad_38|GDMA_TENSOR|s:391717|b:19|g:27|e:460380|t:68664|dr:2|sz:196608|bw:2.67                 
+                                                                                              Pad_38|GDMA_CONSTANT|s:460381|b:19|g:28|e:466102|t:5722                                       
+                                                                                              Load_44|GDMA_TENSOR|s:466103|b:19|g:29|e:483804|t:17702|dr:0|sz:101376|bw:4.00                
+                                                                                              Load_45|GDMA_TENSOR|s:483805|b:19|g:30|e:484139|t:335|dr:0|sz:432|bw:1.20                     
+                                                                                              Load_46|GDMA_TENSOR|s:484140|b:19|g:31|e:484474|t:335|dr:0|sz:48|bw:0.13                      
+Conv2D_49|PorD|s:484475|b:20|g:31|e:498298|t:13824                                            Load_47|GDMA_TENSOR|s:484475|b:19|g:32|e:484865|t:391|dr:0|sz:1344|bw:3.20                    
+                                                                                              Load_48|GDMA_TENSOR|s:484866|b:19|g:33|e:485256|t:391|dr:0|sz:112|bw:0.27                     
+Conv2D_51|CONV|s:498299|b:21|g:33|e:510586|t:12288                                            Load_50|GDMA_TENSOR|s:498299|b:20|g:34|e:518325|t:20027|dr:0|sz:114688|bw:4.00                
+Add_52|AR|s:518326|b:22|g:34|e:522421|t:4096                                                  Load_44|GDMA_TENSOR|s:518326|b:21|g:35|e:536027|t:17702|dr:0|sz:101376|bw:4.00                
+Add_52|AR|s:522422|b:23|g:34|e:526517|t:4096                                                                                                                                                
+Pool2D_54|PorD|s:536028|b:24|g:35|e:540123|t:4096                                             Store_53|GDMA_TENSOR|s:536028|b:23|g:36|e:556054|t:20027|dr:1|sz:114688|bw:4.00               
+Conv2D_49|PorD|s:556055|b:25|g:36|e:569878|t:13824                                            Store_55|GDMA_TENSOR|s:556055|b:24|g:37|e:561060|t:5006|dr:1|sz:28672|bw:4.00                 
+Conv2D_51|CONV|s:569879|b:26|g:37|e:582166|t:12288                                            Load_50|GDMA_TENSOR|s:569879|b:25|g:38|e:589905|t:20027|dr:0|sz:114688|bw:4.00                
+Add_52|AR|s:589906|b:27|g:38|e:594001|t:4096                                                                                                                                                
+Add_52|AR|s:594002|b:28|g:38|e:598097|t:4096                                                                                                                                                
+Pool2D_54|PorD|s:598098|b:29|g:38|e:602193|t:4096                                             Store_53|GDMA_TENSOR|s:598098|b:28|g:39|e:618124|t:20027|dr:1|sz:114688|bw:4.00               
+                                                                                              Store_55|GDMA_TENSOR|s:618125|b:29|g:40|e:623130|t:5006|dr:1|sz:28672|bw:4.00                 
+                                                                                              Pad_58|GDMA_TENSOR|s:623131|b:29|g:41|e:643157|t:20027|dr:2|sz:57344|bw:2.67                  
+                                                                                              Pad_58|GDMA_CONSTANT|s:643158|b:29|g:42|e:644587|t:1430                                       
+                                                                                              Load_64|GDMA_TENSOR|s:644588|b:29|g:43|e:665240|t:20653|dr:0|sz:118272|bw:4.00                
+                                                                                              Load_65|GDMA_TENSOR|s:665241|b:29|g:44|e:665631|t:391|dr:0|sz:504|bw:1.20                     
+                                                                                              Load_66|GDMA_TENSOR|s:665632|b:29|g:45|e:666022|t:391|dr:0|sz:56|bw:0.13                      
+Conv2D_69|PorD|s:666023|b:30|g:45|e:675238|t:9216                                             Load_67|GDMA_TENSOR|s:666023|b:29|g:46|e:666469|t:447|dr:0|sz:2048|bw:4.00                    
+                                                                                              Load_68|GDMA_TENSOR|s:666470|b:29|g:47|e:666916|t:447|dr:0|sz:128|bw:0.27                     
+Conv2D_71|CONV|s:675239|b:31|g:47|e:679334|t:4096                                             Load_70|GDMA_TENSOR|s:675239|b:30|g:48|e:680960|t:5722|dr:0|sz:32768|bw:4.00                  
+Add_72|AR|s:680961|b:32|g:48|e:681984|t:1024                                                  Load_64|GDMA_TENSOR|s:680961|b:31|g:49|e:700987|t:20027|dr:0|sz:114688|bw:4.00                
+Add_72|AR|s:681985|b:33|g:48|e:683008|t:1024                                                                                                                                                
+Conv2D_69|PorD|s:700988|b:34|g:49|e:710203|t:9216                                             Store_73|GDMA_TENSOR|s:700988|b:33|g:50|e:706709|t:5722|dr:1|sz:32768|bw:4.00                 
+Conv2D_71|CONV|s:710204|b:35|g:50|e:714299|t:4096                                             Load_70|GDMA_TENSOR|s:710204|b:34|g:51|e:715925|t:5722|dr:0|sz:32768|bw:4.00                  
+Add_72|AR|s:715926|b:36|g:51|e:716949|t:1024                                                                                                                                                
+Add_72|AR|s:716950|b:37|g:51|e:717973|t:1024                                                                                                                                                
+                                                                                              Store_73|GDMA_TENSOR|s:717974|b:37|g:52|e:723695|t:5722|dr:1|sz:32768|bw:4.00                 
+                                                                                              Pad_76|GDMA_TENSOR|s:723696|b:37|g:53|e:746583|t:22888|dr:2|sz:65536|bw:2.67                  
+                                                                                              Pad_76|GDMA_CONSTANT|s:746584|b:37|g:54|e:748013|t:1430                                       
+                                                                                              Load_82|GDMA_TENSOR|s:748014|b:37|g:55|e:759457|t:11444|dr:0|sz:65536|bw:4.00                 
+                                                                                              Load_83|GDMA_TENSOR|s:759458|b:37|g:56|e:759904|t:447|dr:0|sz:576|bw:1.20                     
+                                                                                              Load_84|GDMA_TENSOR|s:759905|b:37|g:57|e:760351|t:447|dr:0|sz:64|bw:0.13                      
+Conv2D_87|PorD|s:760352|b:38|g:57|e:769567|t:9216                                             Load_85|GDMA_TENSOR|s:760352|b:37|g:58|e:760853|t:502|dr:0|sz:2304|bw:4.00                    
+                                                                                              Load_86|GDMA_TENSOR|s:760854|b:37|g:59|e:761355|t:502|dr:0|sz:144|bw:0.27                     
+Conv2D_89|CONV|s:769568|b:39|g:59|e:779807|t:10240                                            Load_88|GDMA_TENSOR|s:769568|b:38|g:60|e:782441|t:12874|dr:0|sz:73728|bw:4.00                 
+Add_90|AR|s:782442|b:40|g:60|e:785001|t:2560                                                                                                                                                
+Add_90|AR|s:785002|b:41|g:60|e:787561|t:2560                                                                                                                                                
+                                                                                              Store_91|GDMA_TENSOR|s:787562|b:41|g:61|e:800435|t:12874|dr:1|sz:73728|bw:4.00                
+                                                                                              Pad_94|GDMA_TENSOR|s:800436|b:41|g:62|e:826184|t:25749|dr:2|sz:73728|bw:2.67                  
+                                                                                              Pad_94|GDMA_CONSTANT|s:826185|b:41|g:63|e:828329|t:2145                                       
+                                                                                              Load_100|GDMA_TENSOR|s:828330|b:41|g:64|e:828831|t:502|dr:0|sz:72|bw:0.13                     
+                                                                                              Load_101|GDMA_TENSOR|s:828832|b:41|g:65|e:841705|t:12874|dr:0|sz:73728|bw:4.00                
+                                                                                              Load_102|GDMA_TENSOR|s:841706|b:41|g:66|e:842207|t:502|dr:0|sz:648|bw:1.20                    
+Conv2D_105|PorD|s:842208|b:42|g:66|e:853727|t:11520                                           Load_103|GDMA_TENSOR|s:842208|b:41|g:67|e:842793|t:586|dr:0|sz:3360|bw:4.00                   
+                                                                                              Load_104|GDMA_TENSOR|s:842794|b:41|g:68|e:843379|t:586|dr:0|sz:168|bw:0.27                    
+Conv2D_107|CONV|s:853728|b:43|g:68|e:869087|t:15360                                           Load_106|GDMA_TENSOR|s:853728|b:42|g:69|e:868747|t:15020|dr:0|sz:86016|bw:4.00                
+Add_108|AR|s:869088|b:44|g:69|e:872159|t:3072                                                                                                                                               
+Add_108|AR|s:872160|b:45|g:69|e:875231|t:3072                                                                                                                                               
+Pool2D_110|PorD|s:875232|b:46|g:69|e:878303|t:3072                                            Store_109|GDMA_TENSOR|s:875232|b:45|g:70|e:890251|t:15020|dr:1|sz:86016|bw:4.00               
+                                                                                              Store_111|GDMA_TENSOR|s:890252|b:46|g:71|e:894006|t:3755|dr:1|sz:21504|bw:4.00                
+                                                                                              Pad_114|GDMA_TENSOR|s:894007|b:46|g:72|e:901516|t:7510|dr:2|sz:21504|bw:2.67                  
+                                                                                              Pad_114|GDMA_CONSTANT|s:901517|b:46|g:73|e:902052|t:536                                       
+                                                                                              Load_120|GDMA_TENSOR|s:902053|b:46|g:74|e:902638|t:586|dr:0|sz:84|bw:0.13                     
+                                                                                              Load_121|GDMA_TENSOR|s:902639|b:46|g:75|e:917658|t:15020|dr:0|sz:86016|bw:4.00                
+                                                                                              Load_122|GDMA_TENSOR|s:917659|b:46|g:76|e:918244|t:586|dr:0|sz:756|bw:1.20                    
+Conv2D_125|PorD|s:918245|b:47|g:76|e:925156|t:6912                                            Load_123|GDMA_TENSOR|s:918245|b:46|g:77|e:919048|t:804|dr:0|sz:4608|bw:4.00                   
+                                                                                              Load_124|GDMA_TENSOR|s:919049|b:46|g:78|e:919718|t:670|dr:0|sz:192|bw:0.27                    
+Conv2D_127|CONV|s:925157|b:48|g:78|e:929764|t:4608                                            Load_126|GDMA_TENSOR|s:925157|b:47|g:79|e:929447|t:4291|dr:0|sz:24576|bw:4.00                 
+Add_128|AR|s:929765|b:49|g:79|e:930532|t:768                                                                                                                                                
+Add_128|AR|s:930533|b:50|g:79|e:931300|t:768                                                                                                                                                
+                                                                                              Store_129|GDMA_TENSOR|s:931301|b:50|g:80|e:935591|t:4291|dr:1|sz:24576|bw:4.00                
+                                                                                              Pad_132|GDMA_TENSOR|s:935592|b:50|g:81|e:944174|t:8583|dr:2|sz:24576|bw:2.67                  
+                                                                                              Pad_132|GDMA_CONSTANT|s:944175|b:50|g:82|e:944889|t:715                                       
+                                                                                              Load_138|GDMA_TENSOR|s:944890|b:50|g:83|e:945559|t:670|dr:0|sz:96|bw:0.13                     
+                                                                                              Load_139|GDMA_TENSOR|s:945560|b:50|g:84|e:949850|t:4291|dr:0|sz:24576|bw:4.00                 
+                                                                                              Load_140|GDMA_TENSOR|s:949851|b:50|g:85|e:950520|t:670|dr:0|sz:864|bw:1.20                    
+Conv2D_143|PorD|s:950521|b:51|g:85|e:953976|t:3456                                            Load_141|GDMA_TENSOR|s:950521|b:50|g:86|e:951458|t:938|dr:0|sz:5376|bw:4.00                   
+                                                                                              Load_142|GDMA_TENSOR|s:951459|b:50|g:87|e:952240|t:782|dr:0|sz:224|bw:0.27                    
+Conv2D_145|CONV|s:953977|b:52|g:87|e:959352|t:5376                                            Load_144|GDMA_TENSOR|s:953977|b:51|g:88|e:958982|t:5006|dr:0|sz:28672|bw:4.00                 
+Add_146|AR|s:959353|b:53|g:88|e:960248|t:896                                                                                                                                                
+Add_146|AR|s:960249|b:54|g:88|e:961144|t:896                                                                                                                                                
+                                                                                              Store_147|GDMA_TENSOR|s:961145|b:54|g:89|e:966150|t:5006|dr:1|sz:28672|bw:4.00                
+                                                                                              Pad_150|GDMA_TENSOR|s:966151|b:54|g:90|e:976163|t:10013|dr:2|sz:28672|bw:2.67                 
+                                                                                              Pad_150|GDMA_CONSTANT|s:976164|b:54|g:91|e:976878|t:715                                       
+                                                                                              Load_156|GDMA_TENSOR|s:976879|b:54|g:92|e:977660|t:782|dr:0|sz:112|bw:0.13                    
+                                                                                              Load_157|GDMA_TENSOR|s:977661|b:54|g:93|e:978442|t:782|dr:0|sz:1008|bw:1.20                   
+                                                                                              Load_158|GDMA_TENSOR|s:978443|b:54|g:94|e:983448|t:5006|dr:0|sz:28672|bw:4.00                 
+Conv2D_161|PorD|s:983449|b:55|g:94|e:987480|t:4032                                            Load_159|GDMA_TENSOR|s:983449|b:54|g:95|e:984699|t:1251|dr:0|sz:7168|bw:4.00                  
+                                                                                              Load_160|GDMA_TENSOR|s:984700|b:54|g:96|e:985593|t:894|dr:0|sz:256|bw:0.27                    
+Conv2D_163|CONV|s:987481|b:56|g:96|e:994648|t:7168                                            Load_162|GDMA_TENSOR|s:987481|b:55|g:97|e:993202|t:5722|dr:0|sz:32768|bw:4.00                 
+Add_164|AR|s:994649|b:57|g:97|e:995672|t:1024                                                                                                                                               
+Add_164|AR|s:995673|b:58|g:97|e:996696|t:1024                                                                                                                                               
+                                                                                              Store_165|GDMA_TENSOR|s:996697|b:58|g:98|e:1002418|t:5722|dr:1|sz:32768|bw:4.00               
+                                                                                              Pad_168|GDMA_TENSOR|s:1002419|b:58|g:99|e:1013862|t:11444|dr:2|sz:32768|bw:2.67               
+                                                                                              Pad_168|GDMA_CONSTANT|s:1013863|b:58|g:100|e:1014577|t:715                                    
+                                                                                              Load_174|GDMA_TENSOR|s:1014578|b:58|g:101|e:1020299|t:5722|dr:0|sz:32768|bw:4.00              
+                                                                                              Load_175|GDMA_TENSOR|s:1020300|b:58|g:102|e:1021193|t:894|dr:0|sz:1152|bw:1.20                
+                                                                                              Load_176|GDMA_TENSOR|s:1021194|b:58|g:103|e:1022087|t:894|dr:0|sz:128|bw:0.13                 
+Conv2D_179|PorD|s:1022088|b:59|g:103|e:1026695|t:4608                                         Load_177|GDMA_TENSOR|s:1022088|b:58|g:104|e:1023696|t:1609|dr:0|sz:9216|bw:4.00               
+                                                                                              Load_178|GDMA_TENSOR|s:1023697|b:58|g:105|e:1024701|t:1005|dr:0|sz:288|bw:0.27                
+Conv2D_181|CONV|s:1026696|b:60|g:105|e:1035911|t:9216                                         Load_180|GDMA_TENSOR|s:1026696|b:59|g:106|e:1033132|t:6437|dr:0|sz:36864|bw:4.00              
+Add_182|AR|s:1035912|b:61|g:106|e:1037063|t:1152                                                                                                                                            
+Add_182|AR|s:1037064|b:62|g:106|e:1038215|t:1152                                                                                                                                            
+                                                                                              Store_183|GDMA_TENSOR|s:1038216|b:62|g:107|e:1044652|t:6437|dr:1|sz:36864|bw:4.00             
+                                                                                              Pad_186|GDMA_TENSOR|s:1044653|b:62|g:108|e:1057526|t:12874|dr:2|sz:36864|bw:2.67              
+                                                                                              Pad_186|GDMA_CONSTANT|s:1057527|b:62|g:109|e:1058241|t:715                                    
+                                                                                              Load_192|GDMA_TENSOR|s:1058242|b:62|g:110|e:1064678|t:6437|dr:0|sz:36864|bw:4.00              
+                                                                                              Load_193|GDMA_TENSOR|s:1064679|b:62|g:111|e:1065683|t:1005|dr:0|sz:1296|bw:1.20               
+                                                                                              Load_194|GDMA_TENSOR|s:1065684|b:62|g:112|e:1066688|t:1005|dr:0|sz:144|bw:0.13                
+Conv2D_197|PorD|s:1066689|b:63|g:112|e:1071872|t:5184                                         Load_195|GDMA_TENSOR|s:1066689|b:62|g:113|e:1068699|t:2011|dr:0|sz:11520|bw:4.00              
+                                                                                              Load_196|GDMA_TENSOR|s:1068700|b:62|g:114|e:1069816|t:1117|dr:0|sz:320|bw:0.27                
+Conv2D_199|CONV|s:1071873|b:64|g:114|e:1083392|t:11520                                        Load_198|GDMA_TENSOR|s:1071873|b:63|g:115|e:1079024|t:7152|dr:0|sz:40960|bw:4.00              
+Add_200|AR|s:1083393|b:65|g:115|e:1084672|t:1280                                                                                                                                            
+Add_200|AR|s:1084673|b:66|g:115|e:1085952|t:1280                                                                                                                                            
+                                                                                              Store_201|GDMA_TENSOR|s:1085953|b:66|g:116|e:1093104|t:7152|dr:1|sz:40960|bw:4.00             
+                                                                                              Pad_204|GDMA_TENSOR|s:1093105|b:66|g:117|e:1107409|t:14305|dr:2|sz:40960|bw:2.67              
+                                                                                              Pad_204|GDMA_CONSTANT|s:1107410|b:66|g:118|e:1108124|t:715                                    
+                                                                                              Load_210|GDMA_TENSOR|s:1108125|b:66|g:119|e:1115276|t:7152|dr:0|sz:40960|bw:4.00              
+                                                                                              Load_211|GDMA_TENSOR|s:1115277|b:66|g:120|e:1116393|t:1117|dr:0|sz:160|bw:0.13                
+                                                                                              Load_212|GDMA_TENSOR|s:1116394|b:66|g:121|e:1117510|t:1117|dr:0|sz:1440|bw:1.20               
+Conv2D_215|PorD|s:1117511|b:67|g:121|e:1123270|t:5760                                         Load_213|GDMA_TENSOR|s:1117511|b:66|g:122|e:1119968|t:2458|dr:0|sz:14080|bw:4.00              
+                                                                                              Load_214|GDMA_TENSOR|s:1119969|b:66|g:123|e:1121197|t:1229|dr:0|sz:352|bw:0.27                
+Conv2D_217|CONV|s:1123271|b:68|g:123|e:1137350|t:14080                                        Load_216|GDMA_TENSOR|s:1123271|b:67|g:124|e:1131137|t:7867|dr:0|sz:45056|bw:4.00              
+Add_218|AR|s:1137351|b:69|g:124|e:1138758|t:1408                                                                                                                                            
+Add_218|AR|s:1138759|b:70|g:124|e:1140166|t:1408                                                                                                                                            
+Pool2D_220|PorD|s:1140167|b:71|g:124|e:1141574|t:1408                                         Store_219|GDMA_TENSOR|s:1140167|b:70|g:125|e:1148033|t:7867|dr:1|sz:45056|bw:4.00             
+                                                                                              Store_221|GDMA_TENSOR|s:1148034|b:71|g:126|e:1149999|t:1966|dr:1|sz:11264|bw:4.00             
+                                                                                              Pad_224|GDMA_TENSOR|s:1150000|b:71|g:127|e:1153932|t:3933|dr:2|sz:11264|bw:2.67               
+                                                                                              Pad_224|GDMA_CONSTANT|s:1153933|b:71|g:128|e:1154110|t:178                                    
+                                                                                              Load_248|GDMA_TENSOR|s:1154111|b:71|g:129|e:1155339|t:1229|dr:0|sz:176|bw:0.13                
+                                                                                              Load_249|GDMA_TENSOR|s:1155340|b:71|g:130|e:1156568|t:1229|dr:0|sz:1584|bw:1.20               
+                                                                                              Load_250|GDMA_TENSOR|s:1156569|b:71|g:131|e:1164435|t:7867|dr:0|sz:45056|bw:4.00              
+Conv2D_253|PorD|s:1164436|b:72|g:131|e:1167603|t:3168                                         Load_251|GDMA_TENSOR|s:1164436|b:71|g:132|e:1167385|t:2950|dr:0|sz:16896|bw:4.00              
+                                                                                              Load_252|GDMA_TENSOR|s:1167386|b:71|g:133|e:1168726|t:1341|dr:0|sz:384|bw:0.27                
+Conv2D_257|CONV|s:1168727|b:73|g:133|e:1172950|t:4224                                         Load_254|GDMA_TENSOR|s:1168727|b:72|g:134|e:1170871|t:2145|dr:0|sz:12288|bw:4.00              
+                                                                                              Load_255|GDMA_TENSOR|s:1170872|b:72|g:135|e:1172212|t:1341|dr:0|sz:192|bw:0.13                
+                                                                                              Load_256|GDMA_TENSOR|s:1172213|b:72|g:136|e:1173553|t:1341|dr:0|sz:384|bw:0.27                
+Add_259|AR|s:1173554|b:74|g:136|e:1173937|t:384                                               Load_258|GDMA_TENSOR|s:1173554|b:73|g:137|e:1174894|t:1341|dr:0|sz:1728|bw:1.20               
+Add_259|AR|s:1173938|b:75|g:136|e:1174321|t:384                                                                                                                                             
+Conv2D_261|PorD|s:1174895|b:76|g:137|e:1176622|t:1728                                         Load_260|GDMA_TENSOR|s:1174895|b:75|g:138|e:1178112|t:3218|dr:0|sz:18432|bw:4.00              
+Conv2D_265|CONV|s:1178113|b:77|g:138|e:1182720|t:4608                                         Load_262|GDMA_TENSOR|s:1178113|b:76|g:139|e:1179453|t:1341|dr:0|sz:192|bw:0.13                
+Add_266|AR|s:1182721|b:78|g:138|e:1183104|t:384                                               Load_263|GDMA_TENSOR|s:1179454|b:76|g:140|e:1180794|t:1341|dr:0|sz:1728|bw:1.20               
+Add_266|AR|s:1183105|b:79|g:138|e:1183488|t:384                                               Load_264|GDMA_TENSOR|s:1180795|b:76|g:141|e:1184012|t:3218|dr:0|sz:18432|bw:4.00              
+Conv2D_268|PorD|s:1184013|b:80|g:141|e:1185740|t:1728                                         Load_267|GDMA_TENSOR|s:1184013|b:79|g:142|e:1185353|t:1341|dr:0|sz:384|bw:0.27                
+Conv2D_272|CONV|s:1185741|b:81|g:142|e:1190348|t:4608                                         Load_269|GDMA_TENSOR|s:1185741|b:80|g:143|e:1187081|t:1341|dr:0|sz:192|bw:0.13                
+Add_273|AR|s:1190349|b:82|g:142|e:1190732|t:384                                               Load_270|GDMA_TENSOR|s:1187082|b:80|g:144|e:1188422|t:1341|dr:0|sz:1728|bw:1.20               
+Add_273|AR|s:1190733|b:83|g:142|e:1191116|t:384                                               Load_271|GDMA_TENSOR|s:1188423|b:80|g:145|e:1191640|t:3218|dr:0|sz:18432|bw:4.00              
+Conv2D_275|PorD|s:1191641|b:84|g:145|e:1193368|t:1728                                         Load_274|GDMA_TENSOR|s:1191641|b:83|g:146|e:1192981|t:1341|dr:0|sz:384|bw:0.27                
+Conv2D_279|CONV|s:1193369|b:85|g:146|e:1197976|t:4608                                         Load_276|GDMA_TENSOR|s:1193369|b:84|g:147|e:1194709|t:1341|dr:0|sz:192|bw:0.13                
+Add_280|AR|s:1197977|b:86|g:146|e:1198360|t:384                                               Load_277|GDMA_TENSOR|s:1194710|b:84|g:148|e:1196050|t:1341|dr:0|sz:1728|bw:1.20               
+Add_280|AR|s:1198361|b:87|g:146|e:1198744|t:384                                               Load_278|GDMA_TENSOR|s:1196051|b:84|g:149|e:1199268|t:3218|dr:0|sz:18432|bw:4.00              
+Conv2D_282|PorD|s:1199269|b:88|g:149|e:1200996|t:1728                                         Load_281|GDMA_TENSOR|s:1199269|b:87|g:150|e:1200609|t:1341|dr:0|sz:384|bw:0.27                
+Conv2D_283|CONV|s:1200997|b:89|g:150|e:1205604|t:4608                                                                                                                                       
+Add_286|AR|s:1205605|b:90|g:150|e:1205988|t:384                                               Load_284|GDMA_TENSOR|s:1205605|b:89|g:151|e:1205665|t:61|dr:0|sz:352|bw:4.00                  
+Add_286|AR|s:1205989|b:91|g:150|e:1206372|t:384                                               Load_285|GDMA_TENSOR|s:1205666|b:89|g:152|e:1205692|t:27|dr:0|sz:8|bw:0.28                    
+Conv2D_288|CONV|s:1206373|b:92|g:152|e:1207780|t:1408                                         Store_287|GDMA_TENSOR|s:1206373|b:91|g:153|e:1208517|t:2145|dr:1|sz:12288|bw:4.00             
+                                                                                              Store_289|GDMA_TENSOR|s:1208518|b:92|g:154|e:1208695|t:178|dr:1|sz:1024|bw:4.00               
+                                                                                              Permute_292|GDMA_TENSOR|s:1208696|b:92|g:155|e:1208918|t:223|dr:0|sz:1024|bw:4.00             
+Permute_292|AR|s:1208919|b:93|g:155|e:1208982|t:64                                                                                                                                          
+                                                                                              Permute_292|GDMA_TENSOR|s:1208983|b:93|g:156|e:1209160|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_296|GDMA_TENSOR|s:1209161|b:93|g:157|e:1209361|t:201|dr:0|sz:1152|bw:4.00              
+                                                                                              Conv2D_296|GDMA_TENSOR|s:1209362|b:93|g:158|e:1209444|t:83|dr:0|sz:24|bw:0.27                 
+                                                                                              Conv2D_296|GDMA_TENSOR|s:1209445|b:93|g:159|e:1211589|t:2145|dr:0|sz:12288|bw:4.00            
+Conv2D_296|CONV|s:1211590|b:94|g:159|e:1211973|t:384                                                                                                                                        
+                                                                                              Conv2D_296|GDMA_TENSOR|s:1211974|b:94|g:160|e:1212107|t:134|dr:1|sz:768|bw:4.00               
+                                                                                              Permute_297|GDMA_TENSOR|s:1212108|b:94|g:161|e:1212777|t:670|dr:0|sz:768|bw:1.07              
+Permute_297|AR|s:1212778|b:95|g:161|e:1212825|t:48                                                                                                                                          
+                                                                                              Permute_297|GDMA_TENSOR|s:1212826|b:95|g:162|e:1212959|t:134|dr:1|sz:768|bw:4.00              
+                                                                                              Concat_299|GDMA_TENSOR|s:1212960|b:95|g:163|e:1213316|t:357|dr:2|sz:1024|bw:2.67              
+                                                                                              Concat_299|GDMA_TENSOR|s:1213317|b:95|g:164|e:1213584|t:268|dr:2|sz:768|bw:2.67               
+                                                                                              Cast_300|GDMA_MATRIX|s:1213585|b:95|g:165|e:1213896|t:312|dr:0|sz:1792|bw:4.00                
+Cast_300|AR|s:1213897|b:96|g:165|e:1213952|t:56                                                                                                                                             
+                                                                                              Cast_300|GDMA_MATRIX|s:1213953|b:96|g:166|e:1214577|t:625|dr:1|sz:3584|bw:4.00                
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1214578|b:96|g:167|e:1214822|t:245|dr:0|sz:1408|bw:4.00              
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1214823|b:96|g:168|e:1214933|t:111|dr:0|sz:32|bw:0.27                
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1214934|b:96|g:169|e:1222800|t:7867|dr:0|sz:45056|bw:4.00            
+Conv2D_303|CONV|s:1222801|b:97|g:169|e:1224208|t:1408                                         Conv2D_303|GDMA_TENSOR|s:1222801|b:96|g:170|e:1223045|t:245|dr:0|sz:1408|bw:4.00              
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1223046|b:96|g:171|e:1223156|t:111|dr:0|sz:32|bw:0.27                
+Conv2D_303|CONV|s:1224209|b:98|g:171|e:1225616|t:1408                                         Conv2D_303|GDMA_TENSOR|s:1224209|b:97|g:172|e:1224923|t:715|dr:1|sz:4096|bw:4.00              
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1224924|b:97|g:173|e:1225168|t:245|dr:0|sz:1408|bw:4.00              
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1225169|b:97|g:174|e:1225279|t:111|dr:0|sz:32|bw:0.27                
+Conv2D_303|CONV|s:1225617|b:99|g:174|e:1227024|t:1408                                         Conv2D_303|GDMA_TENSOR|s:1225617|b:98|g:175|e:1226331|t:715|dr:1|sz:4096|bw:4.00              
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1226332|b:98|g:176|e:1226576|t:245|dr:0|sz:1408|bw:4.00              
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1226577|b:98|g:177|e:1226687|t:111|dr:0|sz:32|bw:0.27                
+Conv2D_303|CONV|s:1227025|b:100|g:177|e:1228432|t:1408                                        Conv2D_303|GDMA_TENSOR|s:1227025|b:99|g:178|e:1227739|t:715|dr:1|sz:4096|bw:4.00              
+                                                                                              Conv2D_303|GDMA_TENSOR|s:1228433|b:100|g:179|e:1229147|t:715|dr:1|sz:4096|bw:4.00             
+                                                                                              Permute_304|GDMA_TENSOR|s:1229148|b:100|g:180|e:1232723|t:3576|dr:0|sz:16384|bw:4.00          
+Permute_304|AR|s:1232724|b:101|g:180|e:1233747|t:1024                                                                                                                                       
+                                                                                              Permute_304|GDMA_TENSOR|s:1233748|b:101|g:181|e:1236608|t:2861|dr:1|sz:16384|bw:4.00          
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1236609|b:101|g:182|e:1236876|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1236877|b:101|g:183|e:1236987|t:111|dr:0|sz:32|bw:0.27               
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1236988|b:101|g:184|e:1239132|t:2145|dr:0|sz:12288|bw:4.00           
+Conv2D_308|CONV|s:1239133|b:102|g:184|e:1239516|t:384                                         Conv2D_308|GDMA_TENSOR|s:1239133|b:101|g:185|e:1239400|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1239401|b:101|g:186|e:1239511|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1239517|b:103|g:186|e:1239900|t:384                                         Conv2D_308|GDMA_TENSOR|s:1239517|b:102|g:187|e:1239694|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1239695|b:102|g:188|e:1239962|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1239963|b:102|g:189|e:1240073|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1240074|b:104|g:189|e:1240457|t:384                                         Conv2D_308|GDMA_TENSOR|s:1240074|b:103|g:190|e:1240251|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1240252|b:103|g:191|e:1240519|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1240520|b:103|g:192|e:1240630|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1240631|b:105|g:192|e:1241014|t:384                                         Conv2D_308|GDMA_TENSOR|s:1240631|b:104|g:193|e:1240808|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1240809|b:104|g:194|e:1241076|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1241077|b:104|g:195|e:1241187|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1241188|b:106|g:195|e:1241571|t:384                                         Conv2D_308|GDMA_TENSOR|s:1241188|b:105|g:196|e:1241365|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1241366|b:105|g:197|e:1241633|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1241634|b:105|g:198|e:1241744|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1241745|b:107|g:198|e:1242128|t:384                                         Conv2D_308|GDMA_TENSOR|s:1241745|b:106|g:199|e:1241922|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1241923|b:106|g:200|e:1242190|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1242191|b:106|g:201|e:1242301|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1242302|b:108|g:201|e:1242685|t:384                                         Conv2D_308|GDMA_TENSOR|s:1242302|b:107|g:202|e:1242479|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1242480|b:107|g:203|e:1242747|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1242748|b:107|g:204|e:1242858|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1242859|b:109|g:204|e:1243242|t:384                                         Conv2D_308|GDMA_TENSOR|s:1242859|b:108|g:205|e:1243036|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1243037|b:108|g:206|e:1243304|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1243305|b:108|g:207|e:1243415|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1243416|b:110|g:207|e:1243799|t:384                                         Conv2D_308|GDMA_TENSOR|s:1243416|b:109|g:208|e:1243593|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1243594|b:109|g:209|e:1243861|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1243862|b:109|g:210|e:1243972|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1243973|b:111|g:210|e:1244356|t:384                                         Conv2D_308|GDMA_TENSOR|s:1243973|b:110|g:211|e:1244150|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1244151|b:110|g:212|e:1244418|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1244419|b:110|g:213|e:1244529|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1244530|b:112|g:213|e:1244913|t:384                                         Conv2D_308|GDMA_TENSOR|s:1244530|b:111|g:214|e:1244707|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1244708|b:111|g:215|e:1244975|t:268|dr:0|sz:1536|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1244976|b:111|g:216|e:1245086|t:111|dr:0|sz:32|bw:0.27               
+Conv2D_308|CONV|s:1245087|b:113|g:216|e:1245470|t:384                                         Conv2D_308|GDMA_TENSOR|s:1245087|b:112|g:217|e:1245264|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Conv2D_308|GDMA_TENSOR|s:1245471|b:113|g:218|e:1245648|t:178|dr:1|sz:1024|bw:4.00             
+                                                                                              Permute_309|GDMA_TENSOR|s:1245649|b:113|g:219|e:1247793|t:2145|dr:0|sz:12288|bw:4.00          
+Permute_309|AR|s:1247794|b:114|g:219|e:1248561|t:768                                                                                                                                        
+                                                                                              Permute_309|GDMA_TENSOR|s:1248562|b:114|g:220|e:1255713|t:7152|dr:1|sz:12288|bw:1.60          
+                                                                                              Concat_311|GDMA_TENSOR|s:1255714|b:114|g:221|e:1261435|t:5722|dr:2|sz:16384|bw:2.67           
+                                                                                              Concat_311|GDMA_TENSOR|s:1261436|b:114|g:222|e:1265726|t:4291|dr:2|sz:12288|bw:2.67           
+                                                                                              Cast_312|GDMA_MATRIX|s:1265727|b:114|g:223|e:1270732|t:5006|dr:0|sz:28672|bw:4.00             
+Cast_312|AR|s:1270733|b:115|g:223|e:1271628|t:896                                                                                                                                           
+                                                                                              Cast_312|GDMA_MATRIX|s:1271629|b:115|g:224|e:1281641|t:10013|dr:1|sz:57344|bw:4.00            
+--------------------------------------
+API_END total_cycle:1281642|b:115|g:224
+TCYC : 1281642. (bdc_cycle:557744, gdma_cycle:993275)
+GDMA SUMMARY : |dr[0] S2L:2702736|dr[1] L2S:1477632|dr[2] S2S:620288|dr[3] L2L:0
+DDR BW USAGE : 98.48006547%
+#######################################
+
+
+flops: 63714176, runtime: 1.708856ms, ComputationAbility: 0.037285T

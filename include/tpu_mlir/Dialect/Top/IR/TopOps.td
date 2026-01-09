@@ -81,6 +81,7 @@ def BinaryShiftAttr: AnyStrAttrOf<["Add","Sub", "Mul"]>;
 def ImageOutFormatAttr: AnyStrAttrOf<["FLOAT32", "UINT8"]>;
 def Yuv2rgbFormulaAttr: AnyStrAttrOf<["_601_limited", "_601_full"]>;
 def GELUModeAttr: AnyStrAttrOf<["normal", "tanh", "sigm"]>;
+def RopeModeAttr: AnyStrAttrOf<["interleaved_pairs", "contiguous_halves"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -124,6 +125,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     OptionalAttr<I64ArrayAttr>:$allow_split,
     OptionalAttr<I64ArrayAttr>:$indices_idx,
     OptionalAttr<I64ArrayAttr>:$indices_slice,
+    OptionalAttr<StrAttr>:$path,
     //nnvlc param
     OptionalAttr<BoolAttr>:$do_compress,
     OptionalAttr<I64Attr>:$bias0,
@@ -148,7 +150,9 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
                             llvm::StringRef suffix,
                             const std::vector<T>& data,
                             mlir::RankedTensorType& type,
-                            uint32_t store_mode = 0);
+                            uint32_t store_mode = 0,
+                            mlir::DictionaryAttr::ValueType attrs = {}
+                            );
   template<typename T>
   mlir::LogicalResult update(const std::vector<T>& data, size_t count);
   mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");
@@ -367,6 +371,7 @@ def Top_ConcatOp: Top_Op<"Concat"> {
     DefaultValuedAttr<SI32Attr, "1">:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$only_merge,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
   );
 
@@ -1305,12 +1310,14 @@ def Tpu_RopeOp: Top_Op<"Rope"> {
                      When set to true, the result will be clamped to prevent overflow or underflow.;
     mul2_saturation: Similar to mul1_saturation, this attribute specifies whether saturation should be applied to the second multiplication's output.;
     add_saturation: whether to apply saturation to the output of the addition operation.;
+    force_f32: when set to true, forces the computations to be performed in 32-bit floating point format, regardless of the input tensor formats.;
   }];
 
   let arguments = (
     ins AnyTensor:$input1,
     AnyTensor:$input2,
     AnyTensor:$input3,
+    DefaultValuedAttr<RopeModeAttr, "\"interleaved_pairs\"">:$rope_mode,
     DefaultValuedAttr<BoolAttr, "false">:$is_permute_optimize,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$mul1_round_mode,
     DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$mul2_round_mode,
@@ -1320,7 +1327,8 @@ def Tpu_RopeOp: Top_Op<"Rope"> {
     DefaultValuedAttr<SI32Attr, "0">:$add_shift,
     DefaultValuedAttr<BoolAttr, "true">:$mul1_saturation,
     DefaultValuedAttr<BoolAttr, "true">:$mul2_saturation,
-    DefaultValuedAttr<BoolAttr, "true">:$add_saturation
+    DefaultValuedAttr<BoolAttr, "true">:$add_saturation,
+    DefaultValuedAttr<BoolAttr, "false">:$force_f32
   );
 
   let results = (outs AnyTensor:$output);
@@ -1469,6 +1477,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora,
     OptionalAttr<I64Attr>:$weight_bits,
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
@@ -3401,7 +3410,8 @@ def Top_GatherOp: Top_Op<"Gather", [ScalarProducer]> {
     AnyTensor:$indices,
     DefaultValuedAttr<BoolAttr, "true">:$keepdims,
     DefaultValuedAttr<SI32Attr, "0">:$axis,
-    DefaultValuedAttr<BoolAttr, "false">:$is_scalar
+    DefaultValuedAttr<BoolAttr, "false">:$is_scalar,
+    DefaultValuedAttr<BoolAttr, "false">:$is_lora
   );
 
   let results = (outs AnyTensor:$output);

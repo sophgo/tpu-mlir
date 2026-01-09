@@ -79,12 +79,30 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   if (is_idx) {
     auto user = this->getResult().getUsers().begin();
     auto it = *user;
+    auto getWeightOpFromValue = [&](mlir::Value value) -> top::WeightOp {
+      Value currentValue = value;
+      while (auto blockArg = currentValue.dyn_cast<mlir::BlockArgument>()) {
+        auto parentOp = this->getOperation()->getParentOp();
+        if (auto groupOp = dyn_cast<tpu::GroupOp>(parentOp)) {
+          unsigned argIndex = blockArg.getArgNumber();
+          if (argIndex < groupOp->getNumOperands()) {
+            currentValue = groupOp->getOperand(argIndex);
+            continue;
+          }
+        }
+        break;
+      }
+      if (auto definingOp = currentValue.getDefiningOp()) {
+        return dyn_cast<top::WeightOp>(definingOp);
+      }
+      return nullptr;
+    };
     if (isa<tpu::UpsampleOp>(it)) {
       auto g_param = this->getOperation()
                          ->getAttr(LocalGenInterface::kLayerGroupAttrName)
                          .cast<tpu::LayerGroupAttr>();
       int64_t w_slice_size = g_param.getWSlice().size();
-      auto indices = this->getInput().getDefiningOp<top::WeightOp>();
+      auto indices = getWeightOpFromValue(this->getInput());
       auto indices_idx = module::getI64Array(indices.getIndicesIdxAttr());
       auto indices_slice = module::getI64Array(indices.getIndicesSliceAttr());
       int64_t step = h_step * w_slice_size + w_step;
@@ -333,7 +351,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           }
           channel_index++;
         }
-      }      // depth loop
+      } // depth loop
     } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
       for (int64_t i = 0; i < gi.n_slice; i++) {
         int64_t cur_local_offset = i * c_num_local * c_stride * fmt_bytes;

@@ -12,17 +12,6 @@
 
 include "mlir/Pass/PassBase.td"
 
-def FutureUpdate : Pass<"future-update", "ModuleOp"> {
-  let summary = "add some op for updating in future";
-  let constructor = "createFutureUpdatePass()";
-  let dependentDialects = ["TpuDialect"];
-  let options = [
-    Option<"rank", "rank", "int64_t", /*default=*/"0",
-           "lora rank">,
-    Option<"weight_list", "weight_list", "std::string", /*default=*/"\"none\"", "which weight to update">,
-  ];
-}
-
 def OpReorder : Pass<"op-reorder", "ModuleOp"> {
   let summary = "op reorder in tpu by tpuc-opt";
   let constructor = "createOpReorderPass()";
@@ -106,6 +95,8 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
            "record weight offset with its name into a csv map file.">,
     Option<"iomem_set", "iomem_set", "std::string", /*default=*/"",
            "set special input/output as io memory">,
+    Option<"same_addr", "same_addr", "std::string", /*default=*/"",
+           "use same address for the specified tensor.">,
   ];
 }
 

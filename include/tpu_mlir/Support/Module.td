@@ -42,6 +42,7 @@ def Module_Chip: I32EnumAttr<"Chip", "module chip",[
       I32EnumAttrCase<"CV186X",  1003, "cv186x">,
       I32EnumAttrCase<"BM1690",  1004, "bm1690">,
       I32EnumAttrCase<"CV184X",  1005, "cv184x">,
+      I32EnumAttrCase<"BM1690E", 1009, "bm1690e">,
       I32EnumAttrCase<"SG2380",  1006, "sg2380">,
       I32EnumAttrCase<"SGTPUV8",  1007, "sgtpuv8">,
       I32EnumAttrCase<"CV180x",  2000, "cv180x">,
@@ -95,6 +96,7 @@ def Module_AddrMode: I32EnumAttr<"AddrMode", "address mode",[
       I32EnumAttrCase<"IO_TAG", 2, "io_tag">,
       I32EnumAttrCase<"IO_TAG_FUSE", 3, "io_tag_fuse">,
       I32EnumAttrCase<"IO_RELOC", 4, "io_reloc">,
+      I32EnumAttrCase<"IN_REUSE", 5, "in_reuse">,
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";

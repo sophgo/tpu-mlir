@@ -149,6 +149,8 @@ def get_cmodel_so(chip: str):
         return 'libcmodel_1684.so'
     elif chip == "BM1690":
         return 'libtpuv7_emulator.so'
+    elif chip == "BM1690E":
+        return 'libtpuv7.1_emulator.so'
     elif chip == "CV184X":
         return 'libcmodel_cv184x.so'
     elif chip == "SGTPUV8":
@@ -188,6 +190,9 @@ def link_cmodel_so(chip: str):
     lib_path = os.path.join(TPUC_ROOT, "lib", lib_so)
     link_path = os.path.join(TPUC_ROOT, "lib", "libcmodel.so")
     cur_lib = ""
+    if chip == "BM1690E":
+        os.environ['TPU_EMULATOR_PATH'] = lib_path
+        os.environ['TPU_RT_CORE_NUM'] = '4'
     if os.path.islink(link_path):
         cur_lib = os.readlink(link_path)
     if cur_lib != lib_path:
@@ -205,7 +210,7 @@ def _model_inference(inputs: dict,
     is_cv18xx = False
     if model_file.endswith(".bmodel"):
         chip = get_chip_from_model(model_file)
-        if chip == "BM1690" or chip == "SG2262":
+        if chip == "BM1690" or chip == "SG2262" or chip == "BM1690E":
             pyruntime = pyruntime + "tpuv7"
         else:
             pyruntime = pyruntime + "bm"

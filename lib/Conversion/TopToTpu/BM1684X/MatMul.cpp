@@ -680,6 +680,25 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
+        bool right_transpose = op.getRightTranspose();
+        if (right_transpose) {
+          auto filter_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
+          auto filter_f32 = filter_op.read<float>();
+          auto filter_f32T = std::make_shared<std::vector<float>>(
+              filter_f32->size());
+          auto p = op.parseParam();
+          for (size_t n = 0; n < p.N; n++) {
+            for (size_t k = 0; k < p.K; k++) {
+              filter_f32T->at(k * p.N + n) = filter_f32->at(n * p.K + k);
+            }
+          }
+          std::vector<int64_t> new_shape = {p.K, p.N};
+          auto new_type =
+              RankedTensorType::get(new_shape, rewriter.getF32Type());
+          auto new_filter = top::WeightOp::create(
+              op, "filter_f32T", *filter_f32T, new_type);
+          operands[1] = new_filter;
+        }
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
                                                       attrs);
         return;
@@ -726,6 +745,25 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
+        bool right_transpose = op.getRightTranspose();
+        if (right_transpose) {
+          auto filter_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
+          auto filter_f32 = filter_op.read<float>();
+          auto filter_f32T = std::make_shared<std::vector<float>>(
+              filter_f32->size());
+          auto p = op.parseParam();
+          for (size_t n = 0; n < p.N; n++) {
+            for (size_t k = 0; k < p.K; k++) {
+              filter_f32T->at(k * p.N + n) = filter_f32->at(n * p.K + k);
+            }
+          }
+          std::vector<int64_t> new_shape = {p.K, p.N};
+          auto new_type =
+              RankedTensorType::get(new_shape, rewriter.getF32Type());
+          auto new_filter = top::WeightOp::create(
+              op, "filter_f32T", *filter_f32T, new_type);
+          operands[1] = new_filter;
+        }
         if (true == op.getDoRelu()) {
           auto name = module::getName(op->getResult(0));
           auto matmul_loc =

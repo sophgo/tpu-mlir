@@ -100,7 +100,8 @@ class TPULANG_IR_TESTER(object):
                  mode: str = "all",
                  simple: bool = False,
                  no_save: bool = False,
-                 concise_log: bool = False):
+                 concise_log: bool = False,
+                 num_core: int = 1):
         Y, N = True, False
         self.test_function = {
             #############################
@@ -254,6 +255,7 @@ class TPULANG_IR_TESTER(object):
         self.chip = chip.lower()
         self.no_save = no_save
         self.concise_log = concise_log  # use when run regression/main_entry.py
+        self.num_core = num_core
         if self.simple:
             self.support_quant_modes = ["f16"]
         if self.mode == "" or self.mode == "all":
@@ -342,7 +344,8 @@ class TPULANG_IR_TESTER(object):
                                  no_save=self.no_save,
                                  top_mlir_inference=top_mlir_inference,
                                  tpu_mlir_inference=tpu_mlir_inference,
-                                 log_level=log_level)
+                                 log_level=log_level,
+                                 num_core=self.num_core)
         else:
             tpul.compile(model_name,
                          inputs,
@@ -351,7 +354,8 @@ class TPULANG_IR_TESTER(object):
                          dynamic=False,
                          asymmetric=asymmetric,
                          no_save=self.no_save,
-                         log_level=log_level)
+                         log_level=log_level,
+                         num_core=self.num_core)
 
     def test_base_binary_quant(self,
                                case_name,
@@ -4808,18 +4812,19 @@ class TPULANG_IR_TESTER(object):
         """MultiScaleDeformableAttention"""
 
         @tpulang(self.chip)
-        def _test_multi_scale_deformable_attention(
-            dtype="float32",
-            bs=1,
-            num_query=19220,
-            num_value=19220,
-            embed_dims=256,
-            num_heads=8,
-            num_levels=5,
-            num_points=4,
-            spatial_shapes=[[90, 160], [45, 80], [23, 40], [12, 20], [6, 10]],
-        ):
+        def _test_multi_scale_deformable_attention(dtype="float32",
+                                                   bs=1,
+                                                   num_query=19220,
+                                                   num_value=19220,
+                                                   embed_dims=256,
+                                                   num_heads=8,
+                                                   num_levels=5,
+                                                   num_points=4,
+                                                   spatial_shapes=[[90, 160], [45, 80], [23, 40],
+                                                                   [12, 20], [6, 10]],
+                                                   value_proj_ratio=0.5):
             assert bs == 1
+            value_proj_size = int(embed_dims * value_proj_ratio)
             query_data = np.random.randn(bs, num_query, embed_dims).astype(dtype)
             value_data = np.random.randn(bs, num_value, embed_dims).astype(dtype)
             query_pos_data = np.random.randn(bs, num_query, embed_dims).astype(dtype)
@@ -4833,9 +4838,9 @@ class TPULANG_IR_TESTER(object):
                                                             num_points).astype(dtype)
             attention_weights_bias_data = np.random.randn(num_heads * num_levels *
                                                           num_points).astype(dtype)
-            value_proj_weight_data = np.random.randn(embed_dims, embed_dims).astype(dtype)
-            value_proj_bias_data = np.random.randn(embed_dims).astype(dtype)
-            output_proj_weight_data = np.random.randn(embed_dims, embed_dims).astype(dtype)
+            value_proj_weight_data = np.random.randn(embed_dims, value_proj_size).astype(dtype)
+            value_proj_bias_data = np.random.randn(value_proj_size).astype(dtype)
+            output_proj_weight_data = np.random.randn(value_proj_size, embed_dims).astype(dtype)
             output_proj_bias_data = np.random.randn(embed_dims).astype(dtype)
             query = tpul.Tensor(dtype=dtype, shape=[bs, num_query, embed_dims], data=query_data)
             value = tpul.Tensor(dtype=dtype, shape=[bs, num_value, embed_dims], data=value_data)
@@ -4867,15 +4872,15 @@ class TPULANG_IR_TESTER(object):
                                                  data=attention_weights_bias_data,
                                                  ttype="coeff")
             value_proj_weight = tpul.Tensor(dtype=dtype,
-                                            shape=[embed_dims, embed_dims],
+                                            shape=[embed_dims, value_proj_size],
                                             data=value_proj_weight_data,
                                             ttype="coeff")
             value_proj_bias = tpul.Tensor(dtype=dtype,
-                                          shape=[embed_dims],
+                                          shape=[value_proj_size],
                                           data=value_proj_bias_data,
                                           ttype="coeff")
             output_proj_weight = tpul.Tensor(dtype=dtype,
-                                             shape=[embed_dims, embed_dims],
+                                             shape=[value_proj_size, embed_dims],
                                              data=output_proj_weight_data,
                                              ttype="coeff")
             output_proj_bias = tpul.Tensor(dtype=dtype,
@@ -4884,26 +4889,11 @@ class TPULANG_IR_TESTER(object):
                                            ttype="coeff")
 
             output = tpul.multi_scale_deformable_attention(
-                query,
-                None,
-                None,
-                None,
-                key_padding_mask,
-                reference_points,
-                sampling_offsets_weight,
-                sampling_offsets_bias,
-                attention_weights_weight,
-                attention_weights_bias,
-                value_proj_weight,
-                value_proj_bias,
-                output_proj_weight,
-                output_proj_bias,
-                spatial_shapes,
-                embed_dims,
-                num_heads,
-                num_levels,
-                num_points,
-            )
+                query, None, None, None, key_padding_mask, reference_points,
+                sampling_offsets_weight, sampling_offsets_bias, attention_weights_weight,
+                attention_weights_bias, value_proj_weight, value_proj_bias, output_proj_weight,
+                output_proj_bias, spatial_shapes, embed_dims, num_heads, num_levels, num_points,
+                value_proj_ratio)
             self.compile_and_check(self.unique_name(case_name),
                                    [query, key_padding_mask, reference_points], [output])
 
@@ -6456,9 +6446,11 @@ if __name__ == "__main__":
     parser.add_argument("--no_save", action="store_true", help="whether to save mlir/weight in memory instead of hard disk.")
     parser.add_argument("--path", default="", type=str, help="the path to store intermediate file, accept "" or absolute path.")
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
+    parser.add_argument("--num_core", default=1, type=int, help="number of cores to use")
     # yapf: enable
     args = parser.parse_args()
-    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple, args.no_save, args.concise_log)
+    tester = TPULANG_IR_TESTER(args.chip, args.mode, args.simple, args.no_save, args.concise_log,
+                               args.num_core)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_function:

@@ -235,7 +235,15 @@ static void updateModuleTypes(ModuleOp s) {
     Block &entryBlock = func.front();
     auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
     for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
-      returns.push_back(returnOp->getOperand(i).getType());
+      auto v = returnOp->getOperand(i);
+      returns.push_back(v.getType());
+      if (isa_and_nonnull<tpu::GroupOp>(v.getDefiningOp())) {
+        auto groupOp = dyn_cast<tpu::GroupOp>(v.getDefiningOp());
+        auto rv = cast<mlir::OpResult>(v);
+        auto yieldOp =
+            dyn_cast<tpu::YieldOp>(groupOp.getBody().back().getTerminator());
+        yieldOp.getOperand(rv.getResultNumber()).setType(v.getType());
+      }
     }
     auto fnType = builder.getFunctionType(func.getArgumentTypes(),
                                           llvm::ArrayRef<Type>{returns});
@@ -1451,7 +1459,10 @@ bool isBM1684XFamily() {
           chip == Chip::CV186X || chip == Chip::CV184X ||
           chip == Chip::SG2380 || chip == Chip::SGTPUV8);
 }
-bool isBM1690Family() { return (chip == Chip::BM1690 || chip == Chip::SG2262); }
+bool isBM1690Family() {
+  return (chip == Chip::BM1690 || chip == Chip::SG2262 ||
+          chip == Chip::BM1690E);
+}
 bool isSG2380() { return (chip == Chip::SG2380); }
 bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
@@ -1459,6 +1470,7 @@ bool isCV184X() { return (chip == Chip::CV184X); }
 bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 bool isSG2262() { return (chip == Chip::SG2262); }
 bool isMultiCoreArch() { return isBM1690Family() || isSG2380() || isBM1688(); }
+bool isBM1690E() { return (chip == Chip::BM1690E); }
 
 ModuleOp getModuleOp() { return m; }
 
@@ -1920,31 +1932,37 @@ mlir::Value opSliceAxis(PatternRewriter &rewriter, mlir::Value v, int64_t axis,
   auto suffix = std::to_string(axis) + "_" + std::to_string(offset);
   if (isWeight(v)) {
     auto op = v.getDefiningOp<top::WeightOp>();
+    auto attrs = op->getAttrs();
     if (stype.isBF16() || stype.isF16()) {
       auto data = op.read<uint16_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type, 0,
+                                             attrs);
     } else if (stype.isSignedInteger(8) || stype.isSignlessInteger(8)) {
       auto data = op.read<int8_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type, 0,
+                                           attrs);
     } else if (stype.isUnsignedInteger(8)) {
       auto data = op.read<uint8_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<uint8_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<uint8_t>(op, suffix, *new_data, new_type, 0,
+                                            attrs);
     } else if (stype.isF32()) {
       auto data = op.read<float>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<float>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<float>(op, suffix, *new_data, new_type, 0,
+                                          attrs);
     } else if (stype.isInteger(32)) {
       auto data = op.read<int32_t>();
       auto new_data =
           tensor_slice(data->data(), shape, axis, offset, length, mode);
-      return top::WeightOp::create<int32_t>(op, suffix, *new_data, new_type);
+      return top::WeightOp::create<int32_t>(op, suffix, *new_data, new_type, 0,
+                                            attrs);
     }
     op.dump();
     llvm_unreachable("Not Implemented");
@@ -2171,8 +2189,9 @@ void unreachable(const char *info, Operation *op, const char *file,
   if (op != nullptr) {
     auto inputs = op->getOperands();
     if (!inputs.empty()) {
-      for (auto input : inputs)
+      for (auto input : inputs) {
         input.dump();
+      }
     }
     std::cerr << "-> ";
     op->dump();

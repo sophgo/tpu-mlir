@@ -57,6 +57,19 @@ LogicalResult top::CompareOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto binary = (Binary *)p.handle;
+  auto output_shape = computer_broadcast_shape(getOperation());
+  module::setShape(getOutput(), output_shape);
+  auto lhs_shape = module::getShape(getOperand(0));
+  auto rhs_shape = module::getShape(getOperand(1));
+  auto max_ndim = std::max(lhs_shape.size(), rhs_shape.size());
+  auto input0_shape = shape_expand_dim(lhs_shape, max_ndim);
+  auto input1_shape = shape_expand_dim(rhs_shape, max_ndim);
+
+  (*binary)
+      .lhs(p.inputs[0], input0_shape)
+      .rhs(p.inputs[1], input1_shape)
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .setup();
   binary->run();
 
   return success();

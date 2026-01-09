@@ -17,38 +17,38 @@ tpu-mlir QAT实现方案及特点
 
 特点2：客户基本无感；区别于早期需人工深度介入模型转换的方案，本方案基于pytorch fx，能较方便实现模型trace、伪量化节点插入、自定义模块替换等操作，大多数情况下，客户使用较少的用户配置即可完成量化感知训练.
 
-特点3：基于SOPHGO-mq训练框架，该框架基于商汤开源的mqbench修改，增加了对SOPHGO处理器量化特性的支持.
+特点3：基于tpu-mq训练框架，该框架基于商汤开源的mqbench修改，拓展了后端处理器量化特性的支持.
 
 
 安装方法
 -------------------------------------
-建议在SOPHGO提供的docker镜像中使用SOPHGO-mq，镜像可以使用docker pull命令获取：
+建议在docker镜像中使用tpu-mq，镜像可以使用docker pull命令获取：
 
 .. code-block:: shell
 
-    docker pull sophgo/tpuc_dev:v3.3-cuda
+    docker pull sophgo/tpuc_dev:v3.4.6-cuda
 
-此镜像预装了torc2.3.0版本和cuda12.1,为SOPHGO-mq支持的最新版本，另外此镜像也支持tpu-mlir工具直接部署网络到处理器.
+此镜像预装了torc2.1.0版本和cuda12.6,为tpu-mq支持的最新版本，另外此镜像也支持tpu-mlir工具直接部署网络到处理器.
 
 
 使用安装包安装
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1、在SOPHGO-mq开源项目https://github.com/sophgo/sophgo-mq.git的release区获取最新的安装包，比如 sophgo_mq-1.0.1-cp310-cp310-linux_x86_64.whl
-2、使用pip安装： pip3 install sophgo_mq-1.0.1-cp310-cp310-linux_x86_64.whl
+1、在tpu-mq开源项目https://github.com/sophgo/tpu-mq.git的release区获取最新的安装包，比如 tpu_mq-1.0.7-cp310-cp310-linux_x86_64.whl
+2、使用pip安装： pip3 install tpu_mq-1.0.7-cp310-cp310-linux_x86_64.whl
 
 
 从源码安装
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1、执行命令获取github上最新代码:git clone https://github.com/sophgo/sophgo-mq.git
+1、执行命令获取github上最新代码:git clone https://github.com/sophgo/tpu-mq.git
 
-2、进入SOPHGO-mq目录后执行:
+2、进入tpu-mq目录后执行:
 
 .. code-block:: shell
 
-    pip install -r requirements.txt #注:当前要求torch版本为2.3.0
+    pip install -r requirements.txt #注:当前要求torch版本为2.1.0
     python setup.py install
 
-3、执行python -c 'import sophgo_mq'若没有返回任何错误，则说明安装正确，若安装有错，执行pip uninstall sophgo_mq卸载后再尝试.
+3、执行python -c 'import tpu_mq'若没有返回任何错误，则说明安装正确，若安装有错，执行pip uninstall tpu_mq卸载后再尝试.
 
 
 
@@ -66,9 +66,9 @@ tpu-mlir QAT实现方案及特点
 
     import torch
     import torchvision.models as models
-    from sophgo_mq.prepare_by_platform import prepare_by_platform   #初始化接口
-    from sophgo_mq.utils.state import enable_quantization, enable_calibration    #校准和量化开关
-    from sophgo_mq.convert_deploy import convert_deploy                          #转换部署接口
+    from tpu_mq.prepare_by_platform import prepare_by_platform   #初始化接口
+    from tpu_mq.utils.state import enable_quantization, enable_calibration    #校准和量化开关
+    from tpu_mq.convert_deploy import convert_deploy                          #转换部署接口
 	import tpu_mlir			#tpu_mlir模块，引入之后可以实现一键式转换bmodel在处理器上部署
 	from tools.model_runner import mlir_inference  #tpu_mlir的推理模块，可以在量化感知训练阶段使用tpu_mlir的推理直接看到训练模型在处理器上的精度表现
 
@@ -213,7 +213,7 @@ tpu-mlir QAT实现方案及特点
 
    resnet18 qat训练输出模型目录
 
-上图中resnet18_ori.onnx为pytorch原始模型所转的onnx文件，将这个resnet18_ori.onnx用tpu-mlir工具链进行PTQ量化，衡量其对称和非对称量化精度作为比较的baseline。其中的resnet18_cali_table_from_sophgo_mq为导出的量化参数文件，内容如下图(:ref:`r18_qat_cali_table`)：
+上图中resnet18_ori.onnx为pytorch原始模型所转的onnx文件，将这个resnet18_ori.onnx用tpu-mlir工具链进行PTQ量化，衡量其对称和非对称量化精度作为比较的baseline。其中的resnet18_cali_table_from_tpu_mq为导出的量化参数文件，内容如下图(:ref:`r18_qat_cali_table`)：
 
 .. _r18_qat_cali_table:
 .. figure:: ../assets/r18_qat_cali_table.png
@@ -231,7 +231,7 @@ c、上面的min、max是非对称量化时根据激活的qat调优过的scale�
 
 QAT测试环境
 ---------------------------
-量化感知训练输出的网络最终要在SOPHGO处理器上运行，其精度可以使用端到端的推理验证程序来验证，一般在模型部署的环境中测试即可。
+量化感知训练输出的网络最终要在ASIC处理器上运行，其精度可以使用端到端的推理验证程序来验证，一般在模型部署的环境中测试即可。
 在单机上也可以在tpu_mlir阶段使用tpu_mlir提供的模型验证程序在CPU上模拟验证，特别是简单的分类网络可以比较方便的验证其精度。一般步骤如下：
 
 添加cfg文件

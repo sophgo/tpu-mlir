@@ -111,6 +111,7 @@ class MAIN_ENTRY(object):
             "test_pruning",
             "struct_optimize_pattern_test",
             # "struct_optimize_pattern_test2"
+            "test_profile",
         ]
         self.script_extend = [
             "test3", "test4", "test6", "test7", "test8", "test10", "test_llm1", "test_tdb"
@@ -134,7 +135,8 @@ class MAIN_ENTRY(object):
         simple = "--simple" if self.is_basic else ""
         for chip in chips:
             for case, (_, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,
-                       bm1690_support, cv184x_support) in onnx_tester.test_cases.items():
+                       bm1690_support, bm1690e_support,
+                       cv184x_support) in onnx_tester.test_cases.items():
                 if chip == "bm1684" and not bm1684_support:
                     continue
                 if chip == "bm1684x" and not bm1684x_support:
@@ -144,6 +146,10 @@ class MAIN_ENTRY(object):
                 if chip == "cv183x" and not cv183x_support:
                     continue
                 if chip == "cv184x" and not cv184x_support:
+                    continue
+                if chip == "bm1690" and not bm1690_support:
+                    continue
+                if chip == "bm1690e" and not bm1690e_support:
                     continue
                 self.commands.append(
                     f"test_onnx.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_onnx_{case}_{chip}.log\n"
@@ -240,7 +246,7 @@ class MAIN_ENTRY(object):
                     if chip == "bm1688" and not bm1688_support:
                         continue
                     self.commands.append(
-                        f"test_tpulang.py --case {case} --chip {chip} {simple} > {self.log_dir}/test_tpulang_{case}_{chip}.log\n"
+                        f"test_tpulang.py --case {case} --chip {chip} > {self.log_dir}/test_tpulang_{case}_{chip}.log\n"
                     )
             del tpulang_tester
 
@@ -275,7 +281,7 @@ class MAIN_ENTRY(object):
             input_ref = os.path.join(MODEL_PATH, "block_cache_0_input.npz")
             output_ref = os.path.join(MODEL_PATH, "block_cache_0_output.npz")
             bmodel = os.path.join("llm_output",
-                                  model.lower() + f"_{type}_seq2048_bm1684x_1dev",
+                                  model.lower() + f"_{type}_seq2048_bm1684x_1dev", "block_cache_0",
                                   "block_cache_0.bmodel")
             self.run_command([
                 "model_runner.py", "--input", input_ref, "--model", bmodel, "--output", "output.npz"

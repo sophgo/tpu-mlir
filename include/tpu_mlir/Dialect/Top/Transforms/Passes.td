@@ -25,7 +25,7 @@ def Init : Pass<"init", "ModuleOp"> {
            "chip frequance">,
     Option<"weight_in_mem", "weight_in_mem", "bool", /*default=*/"false",
            "whether to save weight in memory instead of hard disk.">,
-    Option<"level", "level", "uint64_t", /*default=*/"",
+    Option<"level", "level", "int64_t", /*default=*/"",
            "log level">,
   ];
 }
@@ -46,7 +46,7 @@ def ProcessorAssign : Pass<"processor-assign", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
   let options = [
     Option<"chip", "chip", "std::string", /*default=*/"",
-           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1688/bm1690/cv184x/sgtpuv8/sg2262">,
+           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1688/bm1690/bm1690e/cv184x/sgtpuv8/sg2262">,
     Option<"mode", "mode", "std::string", /*default=*/"",
            "default quantization mode: INT8/BF16/F16/F32/F8/F8E4M3/F8E5M2">,
     Option<"num_device", "num_device", "int64_t", /*default=*/"1",

@@ -13,9 +13,9 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2025-10-28
+## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2025-11-13
 ```bash
-#bm1684x sha256: 96ce594240b8918d84c7ad6c69818fe7bee42cbc
+#bm1684x sha256: 094843f09a4c188da78682ca5c94474ae55520e5
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1688 sha256: 96ce594240b8918d84c7ad6c69818fe7bee42cbc
+#bm1688 sha256: 094843f09a4c188da78682ca5c94474ae55520e5
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -48,7 +48,18 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#cv184x sha256: 9b12352c69f5fe838b9289f981784e3adf818676
+#bm1690e sha256: 43751446a1f35aaaeccf87da033a46cc27e0417d
+cd TPU1686
+source  scripts/envsetup.sh sg2260e
+debug: rebuild_backend_lib_cmodel
+release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
+cp build/backend_api/libbackend_sg2260e.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690e.so
+export EXTRA_CONFIG="-DDEBUG=OFF -DUSING_FW_DEBUG=OFF" && rebuild_test sgdnn
+cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690e.a
+unset EXTRA_CONFIG && rebuild_firmware
+cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690e_kernel_module.a
+
+#cv184x sha256: b6e89c5840d22e66fbfe71d70acffb0043606c10
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
@@ -76,9 +87,9 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.a
 ```
 
-## tpu-runtime 2025-1-17
+## tpu-runtime 2025-12-9
 
-build from tpu-runtime c07d53dd22fdb6005aac262d3e21f85b7ff390de
+build from tpu-runtime 5a67ee3c1ba0beee128812f7a55b70120882b14d
 
 ```bash
 pushd libsophon
@@ -102,9 +113,9 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 # libbmcpu.so/libusercpu.so are deprecated
 ```
 
-## tpuv7-runtime 2025-09-20
+## tpuv7-runtime 2025-11-18
 
-build from tpuv7-runtime 43871bf2cafb6e0ef07431325db9eba18a037b7f
+build from tpuv7-runtime ff61f7ed6bc0d15ea77f0c0f746acabd6cec8255
 
 ```bash
 mkdir -p build/emulator
@@ -119,3 +130,4 @@ popd
 cp model-runtime/runtime/include/tpuv7_modelrt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 cp cdmlib/host/cdm_runtime/include/tpuv7_rt.h /workspace/tpu-mlir/third_party/nntoolchain/include
 ```
+

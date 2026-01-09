@@ -25,7 +25,6 @@ from .target_common import (
     BaseCmd,
     use_backend,
 )
-from .target_1690.opdef import DmaCmd
 
 
 class EngineType(enum.Enum):

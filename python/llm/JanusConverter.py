@@ -200,6 +200,7 @@ class JanusConverter(LlmConverter):
     @override
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit mlir ...")
+        name = "vit"
         # create weights file
         vit_npz = "vit_top_weights.npz"
         pos_embed = f"{self.vit_path}.pos_embed"
@@ -255,10 +256,10 @@ class JanusConverter(LlmConverter):
         input_types = ['F32']
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
-                                "vit",
+                                name,
                                 Platform.LLM,
                                 input_types,
-                                weight_file=vit_npz)
+                                weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -319,6 +320,8 @@ class JanusConverter(LlmConverter):
 
         vit_mlir.create_return_op([new_op])
         mlir_txt = vit_mlir.print_module()
-        with open(f"vit.mlir", "w") as f:
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)
         save_weights()

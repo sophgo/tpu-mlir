@@ -34,6 +34,7 @@ class Gemma3Converter(LlmConverter):
     @override
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit mlir ...")
+        name = "vit"
         vconfig = self.config.vision_config
         image_size = vconfig.image_size
         patch_size = vconfig.patch_size
@@ -91,9 +92,9 @@ class Gemma3Converter(LlmConverter):
         out_shape = [1, mm_tokens_per_image, self.hidden_size]
         hidden_shape = [1, num_patches, embed_dim]
         vit_mlir = MLIRImporter([in_shape], [out_shape],
-                                "vit",
+                                name,
                                 Platform.LLM, ["F32"],
-                                weight_file=vit_npz)
+                                weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
         def T(shape: list):
@@ -240,5 +241,7 @@ class Gemma3Converter(LlmConverter):
                               ip=ip).output
         vit_mlir.create_return_op([new_op])
         mlir_txt = vit_mlir.print_module()
-        with open("vit.mlir", "w") as f:
+        if not os.path.exists(name):
+            os.makedirs(name)
+        with open(f"{name}/{name}.mlir", "w") as f:
             f.write(mlir_txt)

@@ -15,6 +15,8 @@ LogicalResult top::AbsOp::init(InferenceParameter &p) { return success(); }
 void top::AbsOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::AbsOp::inference(InferenceParameter &p) {
+  auto input_shape = module::getShape(getInput());
+  module::setShape(getOutput(), input_shape);
   auto num_element = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
