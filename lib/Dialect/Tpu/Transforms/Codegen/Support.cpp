@@ -122,8 +122,12 @@ void DoPatternsForDynamic(ModuleOp m) {
         return;
       }
       if (auto core_split = dyn_cast<tpu::CoreSplitOp>(op)) {
-        core_split->setAttr(CodegenAttr::SYNC_ALL_BEGIN,
-                            BoolAttr::get(op->getContext(), true));
+        auto former_op = core_split->getPrevNode();
+        if (!isa_and_nonnull<tpu::CoreSplitOp>(former_op)) {
+          // avoid CoreSplit + CoreSplit case
+          core_split->setAttr(CodegenAttr::SYNC_ALL_BEGIN,
+                              BoolAttr::get(op->getContext(), true));
+        }
       } else if (auto core_join = dyn_cast<tpu::CoreJoinOp>(op)) {
         core_join->setAttr(CodegenAttr::SYNC_ALL_END,
                            BoolAttr::get(op->getContext(), true));
@@ -137,6 +141,24 @@ void DoPatternsForDynamic(ModuleOp m) {
             in_op->setAttr(CodegenAttr::ADDR_JOIN_NEXT,
                            BoolAttr::get(op->getContext(), true));
           }
+        }
+      } else if (auto gop = dyn_cast<tpu::GroupOp>(op)) {
+        auto secs = gop.getNsecs() * gop.getCsecs() * gop.getHsecs() *
+                    gop.getWsecs() * gop.getDsecs();
+        if (secs < 2) {
+          return;
+        }
+        op->setAttr(CodegenAttr::SYNC_ALL_END,
+                    BoolAttr::get(op->getContext(), true));
+        auto former_op = gop->getPrevNode();
+        while (isa_and_nonnull<top::WeightOp, top::NoneOp>(former_op)) {
+          former_op = former_op->getPrevNode();
+        }
+        if (former_op) {
+          // TODO: LayerGroup(1 slice) + LayerGroup(N slice) will fail sync all
+          // Need to be fixed in the future
+          former_op->setAttr(CodegenAttr::SYNC_ALL_END,
+                             BoolAttr::get(op->getContext(), true));
         }
       } else if (op->hasAttrOfType<BoolAttr>("multicore")) {
         op->setAttr(CodegenAttr::SYNC_ALL_BEGIN,
@@ -158,14 +180,7 @@ void DoPatternsForDynamic(ModuleOp m) {
       if (module::isOpInBlock(op)) {
         continue;
       }
-      if (auto lg_op = dyn_cast<tpu::GroupOp>(op)) {
-        // end of layer group will do tpu_sync_all
-        auto secs = lg_op.getNsecs() * lg_op.getCsecs() * lg_op.getHsecs() *
-                    lg_op.getWsecs() * lg_op.getDsecs();
-        if (secs < 2) {
-          continue;
-        }
-      } else if (!op->hasAttrOfType<BoolAttr>(CodegenAttr::SYNC_ALL_END)) {
+      if (!op->hasAttrOfType<BoolAttr>(CodegenAttr::SYNC_ALL_END)) {
         continue;
       }
       auto next_op = op->getNextNode();

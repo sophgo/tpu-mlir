@@ -1574,8 +1574,8 @@ class LlmConverter(BaseConverter):
 
     # ============= compile all code =============
     def add_task(self, command: list[str], log_file: str):
-        command.append(f"> {log_file}\n")
-        cmd = ' '.join(command)
+        command.append(f") > {log_file}\n")
+        cmd = "(" + ' '.join(command)
         self.commands.append(cmd)
 
     def run_command(self, command):
