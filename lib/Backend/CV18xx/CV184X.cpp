@@ -13,7 +13,7 @@ using namespace tpu_mlir::backend;
 
 void CV184X::load_functions() { BM1684X::load_functions(); }
 
-void CV184X::before_codegen() { BM168x::before_codegen(); }
+void CV184X::before_codegen() { BM1684X::before_codegen(); }
 
 void CV184X::after_codegen(int64_t flops) {
   BM168x::after_codegen(flops);
