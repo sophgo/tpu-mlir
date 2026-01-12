@@ -30,7 +30,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = (_param->has_mask != 0) ? input_spec[3].addr : 0ULL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];
@@ -56,7 +56,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = (_param->has_mask != 0) ? input_spec[3].addr : 0ULL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];
@@ -84,7 +84,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = (_param->has_mask != 0) ? input_spec[3].addr : 0ULL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];
@@ -110,7 +110,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = (_param->has_mask != 0) ? input_spec[3].addr : 0ULL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];
@@ -148,7 +148,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = (_param->has_mask != 0) ? input_spec[3].addr : 0ULL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];
@@ -174,7 +174,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = (_param->has_mask != 0) ? input_spec[3].addr : 0ULL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];
@@ -202,7 +202,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = _param->has_mask != 0 ? input_spec[3].addr : 0uLL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];
@@ -228,7 +228,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       _param->ptr_q = input_spec[0].addr;
       _param->ptr_k = input_spec[1].addr;
       _param->ptr_v = input_spec[2].addr;
-      _param->ptr_mask = input_spec[3].addr;
+      _param->ptr_mask = (_param->has_mask != 0) ? input_spec[3].addr : 0ULL;
       _param->b = input_spec->shape[0];
       _param->qm = input_spec->shape[1];
       _param->kvm = (input_spec + 1)->shape[1];

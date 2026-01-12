@@ -68,27 +68,12 @@ class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
   void runOnOperation() override {
-    // group pass by modules
-    auto modules = module::getAllModules();
-    modules_hash = LgCache::getInstance().get_modules_hash(modules);
-    // set multicore flag if support
-    if (module::getCoreNum() > 1) {
-      for (auto m : *modules) {
-        m->walk<WalkOrder::PreOrder>([&](Operation *op) {
-          if (false == module::isOpInBlock(op)) {
-            auto gl = dyn_cast<GlobalGenInterface>(op);
-            if (gl && gl.support_multi_core()) {
-              mlir::Attribute isTrue =
-                  mlir::BoolAttr::get(op->getContext(), true);
-              op->setAttr("multicore", isTrue);
-            }
-          }
-        });
-      }
-    }
     if (module::isDebugCmdEnable("disable_layer_group")) {
       return;
     }
+    // group pass by modules
+    auto modules = module::getAllModules();
+    modules_hash = LgCache::getInstance().get_modules_hash(modules);
     // init global options
     LgOptions options;
     options.opt = opt;

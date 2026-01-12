@@ -4639,7 +4639,8 @@ def Tpu_ShapeTileOp:Tpu_Op<"ShapeTile", [
 }
 
 def Tpu_GatherOp: Tpu_Op<"Gather", [
-  DeclareOpInterfaceMethods<TypeInterface>]> {
+  DeclareOpInterfaceMethods<TypeInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "Gather operator";
   let description = [{
     1.Op Introduction

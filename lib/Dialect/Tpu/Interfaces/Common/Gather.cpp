@@ -86,4 +86,20 @@ mlir::Type tpu::GatherOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_same(op, opd_idx, mode);
 }
 
+ArrayAttr tpu::GatherOp::getIndexingMaps() {
+  MLIRContext *context = getContext();
+  const int axis = getAxis();
+  if (axis != 0) {
+    return {};
+  }
+  MLIRContext *ctx = getContext();
+  auto indice_shape = module::getShape(getIndices());
+  auto num_dims = indice_shape.size();
+  AffineMap indiceMap = AffineMap::getMultiDimIdentityMap(num_dims, context);
+  auto empty_map = AffineMap::get(num_dims, 0, ctx);
+  AffineMap outMap = AffineMap::getMultiDimIdentityMap(num_dims, context);
+  SmallVector<AffineMap> indexingMaps{empty_map, indiceMap, empty_map, outMap};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}
+
 bool tpu::GatherOp::support_multi_core() { return false; }

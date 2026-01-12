@@ -539,10 +539,10 @@ class Qwen3VLConverter(LlmConverter):
         if os.path.exists(model_path):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
-        num_core = self.num_core if not self.dynamic_vit else 1
         deploy_args = [
             f'pushd vit &&', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--num_core {num_core}', f'--num_device {self.num_device}', f'--model {name}.bmodel'
+            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'--model {name}.bmodel'
         ]
         if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
             deploy_args.append('--quantize f16')

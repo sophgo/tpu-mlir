@@ -27,14 +27,9 @@ class LlmConverter(BaseConverter):
         super().__init__()
         self.model_path = os.path.normpath(args.model_path)
         self.seq_length = args.seq_length
-        if args.input_length_list:
-            self.max_input_length = args.input_length_list[0]
-            self.input_length_list = args.input_length_list
-        else:
-            self.max_input_length = args.max_input_length if (
-                args.max_input_length > 0
-                and args.max_input_length < self.seq_length) else self.seq_length
-            self.input_length_list = [self.max_input_length]
+        self.max_input_length = args.max_input_length if (
+            args.max_input_length > 0
+            and args.max_input_length < self.seq_length) else self.seq_length
         self.max_prefill_kv_length = args.max_prefill_kv_length
         self.share_prompt = args.share_prompt
         self.quantize = args.quantize
@@ -54,7 +49,6 @@ class LlmConverter(BaseConverter):
         self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
         self.position_shape = [1, self.max_input_length]
         self.num_core = args.num_core
-        self.block_mlir_targes = {}
         if self.num_core == 0:
             if args.chip == "bm1688":
                 self.num_core = 2
@@ -1193,7 +1187,7 @@ class LlmConverter(BaseConverter):
             return new_op
 
         # create block mlir
-        def gen_block_by_length(name: str, input_len: int, dir: str):
+        def gen_block_by_length(name: str, input_len: int):
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
@@ -1298,23 +1292,20 @@ class LlmConverter(BaseConverter):
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
             mlir_txt = block_mlir.print_module()
-            if not os.path.exists(dir):
-                os.makedirs(dir)
-            target = os.path.join(dir, f"{name}.mlir")
+            if not os.path.exists(name):
+                os.makedirs(name)
+            target = os.path.join(name, f"{name}.mlir")
             with open(target, "w") as f:
                 f.write(mlir_txt)
-            self.block_mlir_targes[dir] = name
 
         def gen_block():
             name = f"block_{idx}"
             if self.share_prompt:
-                input_len = self.max_prefill_kv_length
                 name = f"block_prompt_{idx}"
-                gen_block_by_length(name, input_len, name)
+                gen_block_by_length(name, self.max_prefill_kv_length)
                 return
 
-            for input_len in self.input_length_list:
-                gen_block_by_length(name, input_len, f"{name}_{input_len}")
+            gen_block_by_length(name, self.max_input_length)
             return
 
         def gen_block_cache():
@@ -1607,7 +1598,11 @@ class LlmConverter(BaseConverter):
     def compile_lm_head(self):
         name = "lm_head"
         model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
+        if self.tie_word_embeddings:
+            # share the embedding weights
+            self.all_bmodels_without_bytes.append(model_path)
+        else:
+            self.all_bmodels.append(model_path)
         if os.path.exists(model_path):
             print(f"{name}.bmodel already exists. Skipping compilation.")
             return
@@ -1654,33 +1649,32 @@ class LlmConverter(BaseConverter):
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
-    def compile_block(self):
-        for dir, name in self.block_mlir_targes.items():
-            model_path = f"{dir}/{name}.bmodel"
-            self.all_bmodels_without_bytes.append(model_path)
-            if os.path.exists(model_path):
-                print(f"{name}.bmodel already exists. Skipping compilation.")
-                continue
+    def compile_block(self, layer_id):
+        name = f"block_{layer_id}"
+        model_path = f"{name}/{name}.bmodel"
+        self.all_bmodels_without_bytes.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{name}.bmodel already exists. Skipping compilation.")
+            return
 
-            deploy_args = [
-                f'pushd {dir} && ', 'model_deploy.py', f'--mlir {name}.mlir',
-                f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}',
-                '--quant_input', '--quant_output', f'--chip {self.chip}',
-                f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-                f'--model {name}.bmodel'
-            ]
-            if self.high_precision:
-                deploy_args.append('--high_precision')
-            if self.symmetric:
-                deploy_args.append('--q_symmetric')
-            if self.dynamic:
-                deploy_args.append('--dynamic')
-            if self.debug:
-                deploy_args.append('--debug')
-            if self.same_addr:
-                deploy_args.append(f'--same_addr {self.same_addr}')
-            deploy_args.append('&& popd')
-            self.add_task(deploy_args, f"{name}.log")
+        deploy_args = [
+            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
+            f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}', '--quant_input',
+            '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}', f'--model {name}.bmodel'
+        ]
+        if self.high_precision:
+            deploy_args.append('--high_precision')
+        if self.symmetric:
+            deploy_args.append('--q_symmetric')
+        if self.dynamic:
+            deploy_args.append('--dynamic')
+        if self.debug:
+            deploy_args.append('--debug')
+        if self.same_addr:
+            deploy_args.append(f'--same_addr {self.same_addr}')
+        deploy_args.append('&& popd')
+        self.add_task(deploy_args, f"{name}.log")
 
     def compile_block_cache(self, layer_id):
         name = f"block_cache_{layer_id}"
@@ -1825,8 +1819,9 @@ class LlmConverter(BaseConverter):
         if not self.lmhead_with_topk:
             self.all_compiles.append(self.compile_greedy_head)
             self.all_compiles.append(self.compile_sample_head)
-        self.all_compiles.append(self.compile_block)
+
         for i in range(self.num_layers):
+            self.all_compiles.append(lambda i=i: self.compile_block(i))
             self.all_compiles.append(lambda i=i: self.compile_block_cache(i))
             if self.share_prompt:
                 self.all_compiles.append(lambda i=i: self.compile_block_prompt(i))
