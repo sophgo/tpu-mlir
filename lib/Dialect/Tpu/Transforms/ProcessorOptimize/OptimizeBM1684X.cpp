@@ -4370,8 +4370,8 @@ struct CanCutGridSamplerFusePattern
       return failure();
     }
     auto grid = op.getGrid();
-    auto concat_tail = grid.getDefiningOp<tpu::ConcatOp>();
-    if (concat_tail.getInputs().size() != 2) {
+    auto concat_tail = dyn_cast<tpu::ConcatOp>(grid.getDefiningOp());
+    if (!concat_tail || concat_tail.getInputs().size() != 2) {
       return failure();
     }
     tpu::SliceOp split = nullptr;
