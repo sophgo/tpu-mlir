@@ -390,28 +390,16 @@ size_t dynamic_layer::write_global_ir_impl(void *buffer, bool feign) {
 
 uint64_t dynamic_layer::get_core_mask() {
   if (module::isOpInGroup(op_)) {
+    // layer group not use core mask
+    return 0;
+  }
+  if (module::isOpInBlock(op_) == true) {
+    UNREACHABLE_OP("dynamic_layer::get_core_mask not support op in block", op_);
+  }
+  if (op_->hasAttrOfType<BoolAttr>("multicore") &&
+      op_->getAttrOfType<BoolAttr>("multicore").getValue() == true) {
     auto n = module::getCoreNum();
     return (1ULL << n) - 1;
-  }
-  if (module::isOpInBlock(op_) == false) {
-    if (op_->hasAttrOfType<BoolAttr>("multicore")) {
-      bool support_multi_core =
-          op_->getAttrOfType<BoolAttr>("multicore").getValue();
-      if (support_multi_core) {
-        auto n = module::getCoreNum();
-        return (1ULL << n) - 1;
-      }
-    }
-  }
-  if (op_->hasOneUse()) {
-    if (auto cj_op = dyn_cast<tpu::CoreJoinOp>(*op_->user_begin())) {
-      for (int i = 0; i < cj_op.getNumOperands(); i++) {
-        auto in_op = cj_op.getOperand(i).getDefiningOp();
-        if (in_op == op_) {
-          return (1ULL << i);
-        }
-      }
-    }
   }
   if (op_->hasAttrOfType<IntegerAttr>(CodegenAttr::CORE_ID)) {
     int core_id =

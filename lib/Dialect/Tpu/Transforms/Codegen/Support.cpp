@@ -37,6 +37,22 @@ public:
 LogicalResult UnpackCoreParallelPattern::matchAndRewriteImpl(
     tpu::CoreParallelOp op, PatternRewriter &rewriter) const {
   Operation *last_op = nullptr;
+  // set core id first
+  auto prev_op = op.getBody().front().getTerminator()->getPrevNode();
+  auto join_op = dyn_cast_or_null<tpu::CoreJoinOp>(prev_op);
+  if (!join_op) {
+    UNREACHABLE_OP("CoreJoinOp not found in CoreParallelOp!", op);
+  }
+  int num_inputs = join_op.getNumOperands();
+  assert(num_inputs == module::getCoreNum());
+  for (int i = 0; i < num_inputs; i++) {
+    auto in_op = join_op.getOperand(i).getDefiningOp();
+    if (!in_op) {
+      UNREACHABLE_OP("Defining op not found for CoreJoinOp input!", op);
+    }
+    in_op->setAttr(CodegenAttr::CORE_ID, rewriter.getI32IntegerAttr(i));
+  }
+  // unpack core parallel region
   while (op.getBody().front().empty() == false) {
     auto &inner_op = op.getBody().front().front();
     if (isa<tpu::YieldOp>(inner_op)) {
@@ -74,7 +90,7 @@ LogicalResult UnpackGroupParallelPattern::matchAndRewriteImpl(
   std::vector<Value> results;
   bool first = true;
   for (int i = 0; i < region_num; i++) {
-    int core_mask = i;
+    int core_id = i;
     auto &block = op.getRegion(i).front();
     while (block.empty() == false) {
       auto &inner_op = block.front();
@@ -84,7 +100,7 @@ LogicalResult UnpackGroupParallelPattern::matchAndRewriteImpl(
       rewriter.setInsertionPoint(op);
       auto new_op = rewriter.clone(inner_op);
       new_op->setAttr(CodegenAttr::CORE_ID,
-                      rewriter.getI32IntegerAttr(core_mask));
+                      rewriter.getI32IntegerAttr(core_id));
       if (first) {
         first = false;
         new_op->setAttr(CodegenAttr::SYNC_ALL_BEGIN,
