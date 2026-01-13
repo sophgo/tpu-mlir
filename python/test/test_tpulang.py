@@ -356,6 +356,7 @@ class TPULANG_IR_TESTER(object):
             "Rope": (self.test_Rope, Y, N),
             "RopeMulConst": (self.test_RopeMulConst, Y, Y),
             "ConcattoRope": (self.test_ConcattoRope, Y, N),
+            "RotPosEmb": (self.test_RotPosEmb, Y, N),
             #### error case ####
             "ErrorCase": (self.test_ErrorCase, Y, Y),
             "AttenQuantError": (self.test_AttenQuantError, Y, Y),
@@ -443,7 +444,8 @@ class TPULANG_IR_TESTER(object):
                           asymmetric=False,
                           top_mlir_inference=True,
                           tpu_mlir_inference=True,
-                          log_level='normal'):
+                          log_level='normal',
+                          dynamic=False):
         for input in inputs:
             assert input.ttype == "neuron", "coeff Tensor should not be input {}".format(input.name)
 
@@ -455,6 +457,7 @@ class TPULANG_IR_TESTER(object):
                                  cmp=True,
                                  refs=refs,
                                  mode=mode,
+                                 dynamic=dynamic,
                                  no_save=self.no_save,
                                  top_mlir_inference=top_mlir_inference,
                                  tpu_mlir_inference=tpu_mlir_inference,
@@ -5854,6 +5857,60 @@ class TPULANG_IR_TESTER(object):
                    mul1_saturation=True,
                    mul2_saturation=True,
                    add_saturation=True)
+
+    def test_RotPosEmb(self, case_name):
+        """RotPosEmb"""
+
+        @tpulang(self.chip)
+        def _test_rot_pos_emb(input_shape,
+                              cos_shape,
+                              sin_shape,
+                              dtype="float32",
+                              out_name: str = None):
+
+            t, h, w = 1, 12, 12
+            grid_thw = torch.tensor([[t, h, w]], dtype=torch.int32)
+            merge_size = 1
+            hpos_ids = [
+                torch.arange(h).unsqueeze(1).expand(-1, w).reshape(
+                    h // merge_size,
+                    merge_size,
+                    w // merge_size,
+                    merge_size,
+                ).permute(0, 2, 1, 3).flatten().repeat(t) for t, h, w in grid_thw
+            ]
+            wpos_ids = [
+                torch.arange(w).unsqueeze(0).expand(h, -1).reshape(
+                    h // merge_size,
+                    merge_size,
+                    w // merge_size,
+                    merge_size,
+                ).permute(0, 2, 1, 3).flatten().repeat(t) for t, h, w in grid_thw
+            ]
+            hpos_ids = torch.cat(hpos_ids, dim=0)
+            wpos_ids = torch.cat(wpos_ids, dim=0)
+            pos_ids = torch.stack([hpos_ids, wpos_ids], 1)
+            pos_ids = tpul.Tensor(shape=[t * h * w, 2],
+                                  dtype="int32",
+                                  data=pos_ids.numpy().astype(np.int32))
+            input = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=list(input_shape), data=input)
+            cos = rand_data(cos_shape, dtype)
+            sin = rand_data(sin_shape, dtype)
+            cos = tpul.Tensor(dtype=dtype, shape=list(cos_shape), data=cos)
+            sin = tpul.Tensor(dtype=dtype, shape=list(sin_shape), data=sin)
+            rotary_pos_emb, cos_out, sin_out = tpul.rot_pos_emb(pos_ids,
+                                                                x,
+                                                                cos,
+                                                                sin,
+                                                                out_name=out_name)
+            self.compile_and_check(self.unique_name(case_name), [pos_ids, x, cos, sin],
+                                   [rotary_pos_emb, cos_out, sin_out],
+                                   dynamic=True)
+
+        _test_rot_pos_emb((65536, 24), (65536, 24), (65536, 24),
+                          dtype="float32",
+                          out_name="RotPosEmb")
 
     '''
     #[User-Guide]

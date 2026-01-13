@@ -5434,6 +5434,164 @@ def rope(input: Tensor,
 @auto_name()
 @annotation_check
 @assert_with_out_name
+def rot_pos_emb(pos_ids: Tensor,
+                rotary_pos_emb_full: Tensor,
+                rotary_pos_emb_cos: Tensor,
+                rotary_pos_emb_sin: Tensor,
+                out_name: str = None):
+
+    ### cast pos_ids to int32
+    cast_attr = {
+        "to": Attr("INT32", "string"),
+    }
+    pos_ids_ori = pos_ids
+    pos_ids = Tensor(dtype="int32", name=out_name + "_pos_ids_cast")
+    TpuLang.insert_op("top.Cast", inputs=[pos_ids_ori], outputs=[pos_ids], params=cast_attr)
+
+    ### inputs -> gather -> rotary_pos_emb, cos, sin
+    gather_attr = {"axis": Attr(0, "int32"), "keep_dims": Attr(False, "bool")}
+    input_gather = Tensor(dtype=rotary_pos_emb_full.dtype, name=out_name + "_input_gather")
+    TpuLang.insert_op("top.Gather",
+                      inputs=[rotary_pos_emb_full, pos_ids],
+                      outputs=[input_gather],
+                      params=gather_attr)
+    cos_gather = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather")
+    TpuLang.insert_op("top.Gather",
+                      inputs=[rotary_pos_emb_cos, pos_ids],
+                      outputs=[cos_gather],
+                      params=gather_attr)
+    sin_gather = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather")
+    TpuLang.insert_op("top.Gather",
+                      inputs=[rotary_pos_emb_sin, pos_ids],
+                      outputs=[sin_gather],
+                      params=gather_attr)
+
+    ### rotary_pos_emb,cos,sin -> flatten(1) -> outputs
+    shape_attr = {"step": Attr(1)}
+    shape_attr["start"] = Attr(0)
+    shape_attr["end"] = Attr(1)
+    input_gather_shape0 = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                 name=out_name + "_input_gather_shape0")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[input_gather],
+                      outputs=[input_gather_shape0],
+                      params=shape_attr)
+    cos_gather_shape0 = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_shape0")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[cos_gather],
+                      outputs=[cos_gather_shape0],
+                      params=shape_attr)
+    sin_gather_shape0 = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_shape0")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[sin_gather],
+                      outputs=[sin_gather_shape0],
+                      params=shape_attr)
+
+    shape_attr = {"step": Attr(1)}
+    shape_attr["start"] = Attr(1)
+    shape_attr["end"] = Attr(2)
+    input_gather_shape1 = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                 name=out_name + "_input_gather_shape1")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[input_gather],
+                      outputs=[input_gather_shape1],
+                      params=shape_attr)
+    cos_gather_shape1 = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_shape1")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[cos_gather],
+                      outputs=[cos_gather_shape1],
+                      params=shape_attr)
+    sin_gather_shape1 = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_shape1")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[sin_gather],
+                      outputs=[sin_gather_shape1],
+                      params=shape_attr)
+
+    shape_attr = {"step": Attr(1)}
+    shape_attr["start"] = Attr(2)
+    shape_attr["end"] = Attr(3)
+    input_gather_shape2 = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                 name=out_name + "_input_gather_shape2")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[input_gather],
+                      outputs=[input_gather_shape2],
+                      params=shape_attr)
+    cos_gather_shape2 = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_shape2")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[cos_gather],
+                      outputs=[cos_gather_shape2],
+                      params=shape_attr)
+    sin_gather_shape2 = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_shape2")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[sin_gather],
+                      outputs=[sin_gather_shape2],
+                      params=shape_attr)
+
+    input_shape_mul = Tensor(dtype=input_gather_shape1.dtype, name=out_name + "_input_shape_mul")
+    TpuLang.insert_op("top.Mul",
+                      inputs=[input_gather_shape1, input_gather_shape2],
+                      outputs=[input_shape_mul])
+    cos_shape_mul = Tensor(dtype=cos_gather_shape1.dtype, name=out_name + "_cos_shape_mul")
+    TpuLang.insert_op("top.Mul",
+                      inputs=[cos_gather_shape1, cos_gather_shape2],
+                      outputs=[cos_shape_mul])
+    sin_shape_mul = Tensor(dtype=sin_gather_shape1.dtype, name=out_name + "_sin_shape_mul")
+    TpuLang.insert_op("top.Mul",
+                      inputs=[sin_gather_shape1, sin_gather_shape2],
+                      outputs=[sin_shape_mul])
+
+    concat_attr = {"axis": Attr(0, "int32")}
+    input_shape_concat = Tensor(dtype=input_gather_shape1.dtype,
+                                name=out_name + "_input_shape_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[input_gather_shape0, input_shape_mul],
+                      outputs=[input_shape_concat],
+                      params=concat_attr)
+    cos_shape_concat = Tensor(dtype=cos_gather_shape1.dtype, name=out_name + "_cos_shape_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[cos_gather_shape0, cos_shape_mul],
+                      outputs=[cos_shape_concat],
+                      params=concat_attr)
+    sin_shape_concat = Tensor(dtype=sin_gather_shape1.dtype, name=out_name + "_sin_shape_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[sin_gather_shape0, sin_shape_mul],
+                      outputs=[sin_shape_concat],
+                      params=concat_attr)
+
+    input_gather_reshape = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                  name=out_name + "_input_gather_rehsape")
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[input_gather, input_shape_concat],
+                      outputs=[input_gather_reshape])
+    cos_gather_reshape = Tensor(dtype=rotary_pos_emb_cos.dtype,
+                                name=out_name + "_cos_gather_rehsape")
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[cos_gather, cos_shape_concat],
+                      outputs=[cos_gather_reshape])
+    sin_gather_reshape = Tensor(dtype=rotary_pos_emb_sin.dtype,
+                                name=out_name + "_sin_gather_rehsape")
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[sin_gather, sin_shape_concat],
+                      outputs=[sin_gather_reshape])
+
+    concat_attr = {"axis": Attr(-1, "int32")}
+    cos_gather_concat = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[cos_gather_reshape, cos_gather_reshape],
+                      outputs=[cos_gather_concat],
+                      params=concat_attr)
+    sin_gather_concat = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[sin_gather_reshape, sin_gather_reshape],
+                      outputs=[sin_gather_concat],
+                      params=concat_attr)
+
+    return input_gather_reshape, cos_gather_concat, sin_gather_concat
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
 def interpolate(input: Tensor,
                 scale_h: float,
                 scale_w: float,
