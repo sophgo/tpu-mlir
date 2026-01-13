@@ -66,10 +66,8 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
     dim4 wi_trans_real_shape = {1, cur_w, 1, 1};
     auto wi_trans_tensor = make_tensor<fp32>(wi_trans_block_shape,wi_trans_real_shape,TPU_COMPACT);
     dma::transpose_cw(wi_trans_tensor.view(wi_trans_real_shape),wi.view(shape_local_real_w));
-    dim4 wi_tensor_stride;
-    get_stride<fp32>(&wi_tensor_stride, &wi_trans_real_shape, TPU_COMPACT);
-    wi_tensor_stride.c = 2;
-    wi_tensor_stride.w = 2;
+    dim4 _wi_tensor_stride = get_stride<fp32>(wi_trans_real_shape, TPU_COMPACT);
+    dim4 wi_tensor_stride = {_wi_tensor_stride.n, 2, _wi_tensor_stride.h, 2};
     tiu::move(wi_tensor.view(wi_trans_real_shape,wi_tensor_stride),wi_trans_tensor.view(wi_trans_real_shape));
     dim4 wi_1_block_shape = {1, block_w, 1, 2};
     dim4 wi_1_real_shape = {1, cur_w, 1, 2};
@@ -80,10 +78,8 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
     // //dma指令
     auto wi_1_trans_tensor = make_tensor<fp32>(wi_1_trans_block_shape,wi_1_trans_real_shape,TPU_COMPACT);
     dma::transpose_cw(wi_1_trans_tensor.view(wi_1_trans_real_shape),wi_1.view(shape_local_real_w));
-    dim4 wi_1_tensor_stride;
-    get_stride<fp32>(&wi_1_tensor_stride, &wi_1_trans_real_shape, TPU_COMPACT);
-    wi_1_tensor_stride.c = 2;
-    wi_1_tensor_stride.w = 2;
+    dim4 _wi_1_tensor_stride = get_stride<fp32>(wi_1_trans_real_shape, TPU_COMPACT);
+    dim4 wi_1_tensor_stride = {_wi_1_tensor_stride.n, 2, _wi_1_tensor_stride.h, 2};
     tiu::move(wi_1_tensor.view(wi_1_trans_real_shape,wi_1_tensor_stride),wi_1_trans_tensor.view(wi_1_trans_real_shape));
     int count_h = 0;
     for (auto idx_h = 0; idx_h < H_out; idx_h += block_h) {
@@ -115,9 +111,8 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
       dim4 hi_real_shape = {1, 1, 1, cur_h*2};
       auto hi_tensor = make_tensor<fp32>(hi_block_shape, hi_real_shape);
       tiu::fill(hi_tensor, 0);
-      dim4 hi_tensor_stride;
-      get_stride<fp32>(&hi_tensor_stride, &shape_local_real_H, TPU_ALIGN);
-      hi_tensor_stride.w = 2;
+      dim4 _hi_tensor_stride = get_stride<fp32>(shape_local_real_H, TPU_ALIGN);
+      dim4 hi_tensor_stride = {_hi_tensor_stride.n, _hi_tensor_stride.c, _hi_tensor_stride.h, 2};
       dim4 hi_offset = {0,0,0,1};
       auto hi_tensor_offset = hi_tensor.sub_view(hi_real_shape,hi_offset);
       tiu::move(hi_tensor_offset.view(shape_local_real_H,hi_tensor_stride),hi);
@@ -127,9 +122,8 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
       dim4 hi_1_real_shape = {1, 1, 1, cur_h*2};
       auto hi_1_tensor = make_tensor<fp32>(hi_1_block_shape, hi_1_real_shape);
       tiu::fill(hi_1_tensor, 0);
-      dim4 hi_1_tensor_stride;
-      get_stride<fp32>(&hi_1_tensor_stride, &shape_local_real_H, TPU_ALIGN);
-      hi_1_tensor_stride.w = 2;
+      dim4 _hi_1_tensor_stride = get_stride<fp32>(shape_local_real_H, TPU_ALIGN);
+      dim4 hi_1_tensor_stride = {_hi_1_tensor_stride.n, _hi_1_tensor_stride.c, _hi_1_tensor_stride.h, 2};
       dim4 hi_1_offset = {0,0,0,1};
       auto hi_1_tensor_offset = hi_1_tensor.sub_view(hi_1_real_shape,hi_1_offset);
       tiu::move(hi_1_tensor_offset.view(shape_local_real_H,hi_1_tensor_stride),hi_1);
@@ -141,9 +135,8 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
       tiu::broadcast(hi_bcast_tensor,hi_tensor_reshape);
       auto hi_1_bcast_tensor = make_tensor<fp32>(hi_bcast_block_shape, hi_bcast_real_shape);
       tiu::broadcast(hi_1_bcast_tensor,hi_1_tensor_reshape);
-      dim4 hi_c_bc_stride;
-      get_stride<fp32>(&hi_c_bc_stride, &hi_bcast_real_shape, TPU_ALIGN);
-      hi_c_bc_stride.c = 0;
+      dim4 _hi_c_bc_stride = get_stride<fp32>(hi_bcast_real_shape, TPU_ALIGN);
+      dim4 hi_c_bc_stride = {_hi_c_bc_stride.n, 0, _hi_c_bc_stride.h, _hi_c_bc_stride.w};
       dim4 index_out_real_shape = {1, cur_w, cur_h, 2};
       dim4 index_out_block_shape = {1, block_w, block_h, 2};
       auto hi_bcast_all = hi_bcast_tensor.view(index_out_real_shape, hi_c_bc_stride);
@@ -189,12 +182,10 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
           index_w_dif = 0;
         }
       }
-      dim4 h_stride;
-      get_stride<int16>(&h_stride, &real_index_shape, TPU_COMPACT);
-      h_stride.w = 2;
-      dim4 w_stride;
-      get_stride<int16>(&w_stride, &real_index_shape, TPU_COMPACT);
-      w_stride.w = 2;
+      dim4 _h_stride = get_stride<int16>(real_index_shape, TPU_COMPACT);
+      dim4 h_stride = {_h_stride.n, _h_stride.c, _h_stride.h, 2};
+      dim4 _w_stride = get_stride<int16>(real_index_shape, TPU_COMPACT);
+      dim4 w_stride = {_w_stride.n, _w_stride.c, _w_stride.h, 2};
       dim4 offset = {0,0,0,1};
       dim4 real_index_stride_shape = {1, cur_h * cur_w, 1, 1};
       auto index1_int16 = index1_uint16.view<int16>(real_index_shape);
