@@ -162,6 +162,17 @@ void py_cuda::cuda_to_host(const std::string &name) {
     for (size_t i=0; i<num; i++) {
       buffer[i] = temp[i] * scale;
     }
+  } else if (stype.isFloat8E4M3FN()) {
+    auto num = module::getNumElements(v);
+    auto ctype = module::getCalibratedType(v);
+    float scale = ctype.getMax() / get_f8e4m3_max();
+    uint8_t *temp = new uint8_t[num];
+    CHECK_CUDA(cudaMemcpy(temp, cudaData, num * sizeof(uint8_t),
+                          cudaMemcpyDeviceToHost));
+    for (int i = 0; i < num; i++) {
+      buffer[i] = f8e4m3_to_f32(temp[i]) * scale;
+    }
+    delete[] temp;
   } else {
     v.dump();
     llvm_unreachable("Not Implemented");
@@ -332,6 +343,10 @@ void py_cuda::invoke(bool dump_all, const std::vector<std::string>& extra_output
           cudaSwapDimInnerOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SwapDimInnerOp>(op)) {
           cudaSwapDimInnerOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::RequantFpOp>(op)) {
+          cudaRequantFpOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::RequantFpOp>(op)) {
+          cudaRequantFpOp(tpuOp);
         } else {
           op->dump();
           __asm__("int3");

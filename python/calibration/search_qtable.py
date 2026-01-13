@@ -55,6 +55,8 @@ class SearchQtable:
         self.debug_cmd = args.debug_cmd
         self.qtable = qtable
         self.mix_prec.qtable = qtable
+        self.low_prec, self.high_prec = get_mix_prec(self.args.chip, self.args.mix_mode,
+                                                     self.args.fp_type)
 
     def check_layer_names(self, all_op_names, int8_model, layer_th_dicts, quantize_method_list):
         layer_names = []
@@ -100,7 +102,8 @@ class SearchQtable:
                 else:
                     fp_list.append(layer_name)
             mix_table = self.mix_prec._gen_mix_table(fp_list, self.qtable)
-            mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+            mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                      self.cali_table_name, mix_table)
             similarity = 1 - self.mix_prec.run_model_new(mix_model, False, global_compare_layers,
                                                          layers_rate, predictions_gt, -1, ['cos'])
             self.mix_prec.logger.print_info(f"op_type : {op_type}, similarity : {similarity}")
@@ -169,11 +172,15 @@ class SearchQtable:
                         self.mix_prec.logger.print_info(
                             "adjust layer {} th, with method {}, and threshlod {}".format(
                                 layer_name, method, new_th))
-                        mixmodel = MixQuantModel(self.fp32_mlir,
-                                                 self.chip,
-                                                 new_cali_table_name,
-                                                 mix_table,
-                                                 using_cuda=False)
+                        mixmodel = MixQuantModel(
+                            self.fp32_mlir,
+                            self.chip,
+                            self.low_prec,
+                            self.high_prec,
+                            new_cali_table_name,
+                            mix_table,
+                            #  using_cuda=False)
+                            using_cuda=True)
                         if not self.args.cluster:
                             outputs_cos = 1 - self.mix_prec.run_model(
                                 mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
@@ -201,9 +208,12 @@ class SearchQtable:
                         modified_layers[layer_name][0] += 1
                         mixmodel = MixQuantModel(self.fp32_mlir,
                                                  self.chip,
+                                                 self.low_prec,
+                                                 self.high_prec,
                                                  new_cali_table_name,
                                                  mix_table,
-                                                 using_cuda=False)
+                                                 using_cuda=True)
+                        #  using_cuda=False)
                         if not self.args.cluster:
                             outputs_cos = 1 - self.mix_prec.run_model(
                                 mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
@@ -239,7 +249,6 @@ class SearchQtable:
                                    layers_rate, predictions_gt):
         loss_dict = collections.defaultdict(list)
         fp_layer_list = []
-        mix_mode = 'INT8'
         with open(self.cali_table_name, 'a') as file:
             file.write("\n#int4_op\n")
         for op_name in all_op_names:
@@ -255,11 +264,11 @@ class SearchQtable:
                 fp_layer_list.remove(layer_name)
                 mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
                                                          qtable=self.qtable,
-                                                         mix_mode=mix_mode)
+                                                         high_prec_type=self.high_prec)
                 with open(self.cali_table_name, 'a') as file:
                     file.write(f"{layer_name}")
-                int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name,
-                                               mix_table, "int4")
+                int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec,
+                                               self.high_prec, self.cali_table_name, mix_table)
                 outputs_cos, outputs_snr = self.mix_prec.run_model_new(
                     int4_mix_model, False, global_compare_layers, layers_rate, predictions_gt)
                 if layer_name not in loss_dict:
@@ -279,10 +288,9 @@ class SearchQtable:
 
     def search_sensitve_layer_w4a8(self, layer_names, all_op_names, global_compare_layers,
                                    layers_rate, predictions_gt):
+        # w4a8 is trying w4a8 ops based on int8, use low_prec as mixed type
         loss_dict = collections.defaultdict(list)
         fp_layer_list = []
-        mix_mode = 'W4INT8'
-        sensitive_layer_analysis_dict = {}
         for layer_name in layer_names:
             if self.qtable.exists(layer_name):
                 continue
@@ -293,9 +301,9 @@ class SearchQtable:
                 fp_layer_list.append(layer_name)
                 mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
                                                          qtable=self.qtable,
-                                                         mix_mode=mix_mode)
-                mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name,
-                                          mix_table, "w4a8")
+                                                         high_prec_type=self.low_prec)
+                mix_model = MixQuantModel(self.fp32_mlir, self.chip, None, self.low_prec,
+                                          self.cali_table_name, mix_table)
                 outputs_cos, outputs_snr = self.mix_prec.run_model_new(
                     mix_model, False, global_compare_layers, layers_rate, predictions_gt)
                 if layer_name not in loss_dict:
@@ -321,8 +329,8 @@ class SearchQtable:
                 self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
                     layer_name, layer_type))
                 mix_table = self.mix_prec._gen_mix_table(fp_layer_list, self.qtable)
-                int8_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name,
-                                               mix_table)
+                int8_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec,
+                                               self.high_prec, self.cali_table_name, mix_table)
                 outputs_cos, outputs_snr = self.mix_prec.run_model_fast(
                     int8_mix_model, False, global_compare_layers, layers_rate, predictions_gt,
                     count)
@@ -499,7 +507,8 @@ class SearchQtable:
             set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, False)
             total_fp_layers_analysis = set_fp_layer_list
             mix_table = self.mix_prec._gen_mix_table(total_fp_layers_analysis, self.qtable)
-            mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
+            mixmodel = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                     new_cali_table_name, mix_table)
             outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers,
                                                   layers_rate, predictions_gt)
             self.mix_prec.logger.print_info(
@@ -515,8 +524,8 @@ class SearchQtable:
                         sensitive_layer_analysis_dict, False)
                     total_fp_layers_analysis = set_fp_layer_list
                     mix_table = self.mix_prec._gen_mix_table(total_fp_layers_analysis, self.qtable)
-                    mixmodel = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name,
-                                             mix_table)
+                    mixmodel = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec,
+                                             self.high_prec, new_cali_table_name, mix_table)
                     outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers,
                                                           layers_rate, predictions_gt)
                     self.mix_prec.logger.print_info(
@@ -537,7 +546,14 @@ class SearchQtable:
             qtable = copy.deepcopy(self.qtable)
         else:
             qtable = QuantizeTable()
-        qtable.append_custom(fp_layer_list, [self.mix_prec.mix_mode] * len(fp_layer_list))
+        if self.args.mix_mode in ['wi8ai8_fp', 'wf8af8_fp']:
+            fp_type = FLOAT_MAP[
+                self.args.chip] if self.args.fp_type == 'auto' else self.args.fp_type
+        elif self.args.mix_mode in ['wi4ai8_wi8ai8']:
+            fp_type = self.low_prec
+        else:
+            fp_type = self.high_prec
+        qtable.append_custom(fp_layer_list, [fp_type] * len(fp_layer_list))
         qtable.dump(self.mix_prec.quantize_table)
         self.mix_prec.logger.print_info(f'int8 outputs_cos:{all_int8_cos:.6f} old')
         self.mix_prec.logger.print_info(f"mix model outputs_cos:{outputs_cos:.6f}")
@@ -566,7 +582,8 @@ class SearchQtable:
         all_op_names = get_no_fused_tensors(self.parser, all_op_names)
         quantize_method_list = [x.lower() for x in self.quantize_method_list]
         suffix = "_tune" if self.args.tune_num > 0 else ""
-        calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds, using_cuda=False)
+        calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds, using_cuda=True)
+        # calibrator = ActivationCalibrator(self.args, self.selector, self.tune_ds, using_cuda=False)
         calibrator.calibration_method = quantize_method_list
         layer_th_dicts = calibrator.gen_multiple_thresholds(all_op_names, quantize_method_list)
         del calibrator
@@ -584,9 +601,9 @@ class SearchQtable:
             file.write(data)
         #setp2: float_model and int8_model inference
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
-        using_fp = 'F32' if 'F32' in chip_support_mix_fp_type[self.args.chip] else self.args.fp_type
-        float_model = MixQuantModel(self.fp32_mlir, self.chip, fp_type=using_fp)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+        float_model = MixQuantModel(self.fp32_mlir, self.chip, None, self.high_prec)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                   self.cali_table_name, mix_table)
         float_outputs_cos = 1.0
         layer_cos_list, predictions_gt = [], []
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
@@ -634,9 +651,9 @@ class SearchQtable:
             "Global metrics layer is : {}".format(global_compare_layers))
 
         float_model.clean()
-        int8_model.clean()
+        # int8_model.clean()
         del float_model
-        del int8_model
+        # del int8_model
 
         #step4: search sensitive layer
         t1 = time.time()
@@ -658,11 +675,15 @@ class SearchQtable:
 
         #step6: generate final mix model and print info
         self.mix_prec.dot_log.gen_dot_graph()
-        mixmodel = MixQuantModel(self.fp32_mlir,
-                                 self.chip,
-                                 new_cali_table_name,
-                                 mix_table,
-                                 using_cuda=False)
+        mixmodel = MixQuantModel(
+            self.fp32_mlir,
+            self.chip,
+            self.low_prec,
+            self.high_prec,
+            new_cali_table_name,
+            mix_table,
+            #  using_cuda=False)
+            using_cuda=True)
         outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate,
                                               predictions_gt)
         self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(
@@ -684,9 +705,13 @@ class SearchQtable:
 
         t0 = time.time()
         layer_cos_list, predictions_gt = [], []
-        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        fp_type = 'F32' if (
+            self.args.fp_type == 'auto'
+            and 'F32' in chip_support_mix_fp_type[self.args.chip]) else FLOAT_MAP[self.args.chip]
+        float_model = MixQuantModel(self.fp32_mlir, self.chip, None, fp_type)
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                   self.cali_table_name, mix_table)
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
@@ -720,9 +745,9 @@ class SearchQtable:
                 fp_layer_list.remove(op_name)
             mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
                                                      qtable=self.qtable,
-                                                     mix_mode='INT8')
-            int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name,
-                                           mix_table, "int4")
+                                                     high_prec_type=self.high_prec)
+            int4_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                           self.cali_table_name, mix_table)
             outputs_cos, outputs_snr = self.mix_prec.run_model_new(int4_mix_model, False,
                                                                    global_compare_layers,
                                                                    layers_rate, predictions_gt)
@@ -736,9 +761,11 @@ class SearchQtable:
     def run_fast(self):
         t0 = time.time()
         layer_cos_list, predictions_gt = [], []
-        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        float_model = MixQuantModel(self.fp32_mlir, self.chip, None,
+                                    self.high_prec)  # assume for float mix
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                   self.cali_table_name, mix_table)
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
@@ -786,7 +813,8 @@ class SearchQtable:
             sensitive_layer += [layer for layer in top_5_layers if layer not in sensitive_layer]
 
             mix_table = self.mix_prec._gen_mix_table(sensitive_layer, self.qtable)
-            int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+            int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                       self.cali_table_name, mix_table)
             outputs_cos = self.mix_prec.run_model(int8_model, False, global_compare_layers,
                                                   layers_rate, predictions_gt)
             if (outputs_cos - cos_sim < eps and outputs_cos - cos_sim
@@ -804,9 +832,14 @@ class SearchQtable:
     def run_w4a8(self):
         t0 = time.time()
         layer_cos_list, predictions_gt = [], []
-        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        fp_type = 'F32' if (
+            self.args.fp_type == 'auto'
+            and 'F32' in chip_support_mix_fp_type[self.args.chip]) else FLOAT_MAP[self.args.chip]
+        float_model = MixQuantModel(self.fp32_mlir, self.chip, None, fp_type)
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table)
+        # select w4a8 ops based on int8 base
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, None, self.low_prec,
+                                   self.cali_table_name, mix_table)
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
@@ -843,9 +876,9 @@ class SearchQtable:
                 fp_layer_list.append(op_name)
             mix_table = self.mix_prec._gen_mix_table(mix_ops=fp_layer_list,
                                                      qtable=self.qtable,
-                                                     mix_mode='W4INT8')
-            mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.cali_table_name, mix_table,
-                                      "w4a8")
+                                                     high_prec_type=self.low_prec)
+            mix_model = MixQuantModel(self.fp32_mlir, self.chip, None, self.low_prec,
+                                      self.cali_table_name, mix_table)
             outputs_cos, outputs_snr = self.mix_prec.run_model_new(mix_model, False,
                                                                    global_compare_layers,
                                                                    layers_rate, predictions_gt)

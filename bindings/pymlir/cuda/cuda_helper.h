@@ -43,6 +43,7 @@ typedef enum {
   DT_F16 = 7,       // 16-bit floating-point (Half precision)
   DT_F32 = 8,       // 32-bit floating-point (Single precision)
   DT_F64 = 9,       // 64-bit floating-point (Double precision)
+  DT_F8E4M3 = 10,   // 8-bit float8 e4m3
   DT_UNKNOWN = 1000 // Unknown or invalid data type
 } data_type_t;
 
@@ -82,7 +83,7 @@ void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                int shift0, int shift1, bool sign0, bool sign1, bool sign2,
                bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2);
-void add4DF32(void *input0, void *input1, void *output,
+void add4DF32(void *input0, float scale0, void *input1, float scale1, void *output,
                bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2);
 void add4DInt32(int32_t *input0, int32_t *input1, int32_t *output,
@@ -130,7 +131,10 @@ void requantInt16(void *input, void *output, int32_t multiplier, int32_t shift,
                  int num, bool relu);
 void requantInt16Perchannel(void *input, void *output, void *multipliers,
                            void *shifts, int n, int c, int h, int w, bool relu = false);
-
+void requantF8Perchannel(void *input, void *output, void *scales,
+                            int n, int c, int h, int w, bool relu, bool conv);
+void requantF8(void *input, void *output, float scale,
+                            int n, int c, int h, int w, bool relu);
 // inplace relu
 void doRelu(void *data, int size, data_type_t type);
 
@@ -172,6 +176,9 @@ void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
             int oh, int ow, int tbytes);
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
               data_type_t type);
+void mulShiftFloat(void *input, void *output, float multiplier, float shift, rounding_mode_t round_mode, int size,
+              data_type_t type);
+void quantF8(void *in_f32, void *out_f8, float scale_v, int size);
 // src is i8, table has 256 value
 void lut256(void *src, void *table, void *dst, int size, data_type_t src_type,
             data_type_t dst_type);

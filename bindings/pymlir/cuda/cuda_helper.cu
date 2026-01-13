@@ -30,6 +30,7 @@ size_t get_dtype_bytes(data_type_t type) {
     return 2;
   case DT_INT8:
   case DT_UINT8:
+  case DT_F8E4M3:
     return 1;
   default:
     return 1;
@@ -152,6 +153,9 @@ cudaError_t convertType(void *src, void *dst, int num_elem,
   } else if (src_type == DT_INT16 && dst_type == DT_F32) {
     g_intToF32<<<num_blocks, block_size>>>((int16_t *)src, (float *)dst,
                                            num_elem);
+  } else if (src_type == DT_F8E4M3 && dst_type == DT_F32) {
+    g_f8ToF32<<<num_blocks, block_size>>>((uint8_t *)src, 1.0, (float *)dst,
+                                           num_elem);
   } else {
     // not implemented
     return cudaErrorNotSupported;
@@ -258,14 +262,14 @@ void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
   }
 }
 
-void add4DF32(void *input0, void *input1, void *output,
+void add4DF32(void *input0, float scale0, void *input1, float scale1, void *output,
                bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
                int h1, int w1, int n2, int c2, int h2, int w2) {
   int size = n2 * c2 * h2 * w2;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_add4DF32<<<num_blocks, block_size>>>(
-      (float *)input0, (float *)input1, (float *)output,
+      (float *)input0, scale0, (float *)input1, scale1, (float *)output,
       relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
 }
 
@@ -757,6 +761,24 @@ void requantInt16Perchannel(void *input, void *output, void *multipliers,
       h, w, relu);
 }
 
+void requantF8(void *input, void *output, float scale,
+                            int n, int c, int h, int w, bool relu){
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_requantF8<<<num_blocks, block_size>>>(
+      (float *)input, (uint8_t*)output, scale, n, c,
+      h, w, relu);
+}
+
+void requantF8Perchannel(void *input, void *output, void *scales,
+                            int n, int c, int h, int w, bool relu, bool conv=true){
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_requantF8Perchannel<<<num_blocks, block_size>>>(
+      (float *)input, (uint8_t*)output, (float *)scales, n, c,
+      h, w, relu, conv);
+}
+
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
               data_type_t type) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
@@ -771,6 +793,28 @@ void mulShift(void *input, void *output, int multiplier, int shift, int size,
                                            multiplier, shift, size);
     break;
   }
+}
+
+void mulShiftFloat(void *input, void *output, float multiplier, float shift, rounding_mode_t round_mode, int size,
+              data_type_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  switch (type) {
+  case DT_INT8:
+    g_mulShiftFloat<<<num_blocks, block_size>>>((float *)input, (int8_t *)output,
+                                           multiplier, shift, size, round_mode);
+    break;
+  case DT_UINT8:
+    g_mulShiftFloat<<<num_blocks, block_size>>>((float *)input, (uint8_t *)output,
+                                           multiplier, shift, size, round_mode);
+    break;
+  }
+}
+
+void quantF8(void *in_f32, void *out_f8, float scale_v, int size){
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_f32ToF8<<<num_blocks, block_size>>>((float *)in_f32, scale_v, (uint8_t *)out_f8, size);
 }
 
 void print(void *data, int size, data_type_t type) {

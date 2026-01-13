@@ -265,7 +265,7 @@ __global__ void g_add4DInt8(T0 *a, T1 *b, T2 *out, int32_t mul0, int32_t mul1,
 }
 
 template <typename T0, typename T1, typename T2>
-__global__ void g_add4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
+__global__ void g_add4DF32(T0 *a, float scale0, T1 *b, float scale1, T2 *out, bool relu, int n0, int c0,
                             int h0, int w0, int n1, int c1, int h1, int w1,
                             int on, int oc, int oh, int ow) {
   int dst_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -284,8 +284,8 @@ __global__ void g_add4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
     int idx_h1 = idx_h % h1;
     int idx_w1 = idx_w % w1;
     int idx_1 = ((idx_n1 * c1 + idx_c1) * h1 + idx_h1) * w1 + idx_w1;
-    float a_data = a[idx_0];
-    float b_data = b[idx_1];
+    float a_data = a[idx_0] * scale0;
+    float b_data = b[idx_1] * scale1;
     a_data = a_data + b_data;
     if (relu)
       a_data = max(0.0, a_data);
@@ -800,6 +800,38 @@ __global__ void g_requantInt16Perchannel(int32_t *input, void *output,
   }
 }
 
+__global__ void g_requantF8Perchannel(float *input, uint8_t *output,
+                                        float *scales, int n, int c, int h, int w, bool relu, bool conv=true) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * h * w)) {
+    int idx_c = idx % (c * h * w) / (h * w);
+    if (!conv)
+      idx_c = idx % w;
+    // half up
+    float value = static_cast<float>(input[idx]) *
+                    static_cast<float>(scales[idx_c]);
+    if (relu){
+      value = fmaxf(0.0f, value);
+    }
+    uint8_t f8_value = fp32_to_fp8(value);
+    output[idx] = f8_value;
+  }
+}
+
+__global__ void g_requantF8(float *input, uint8_t *output,
+                                        float scale, int n, int c, int h, int w, bool relu) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * h * w)) {
+    // half up
+    float value = static_cast<float>(input[idx]) * scale;
+    if (relu){
+      value = fmaxf(0.0f, value);
+    }
+    uint8_t f8_value = fp32_to_fp8(value);
+    output[idx] = f8_value;
+  }
+}
+
 template <typename T>
 __global__ void g_mulShift(T *input, T *output, int multiplier, int shift,
                            int size) {
@@ -813,6 +845,28 @@ __global__ void g_mulShift(T *input, T *output, int multiplier, int shift,
       value = fmaxf(0.0f, fminf(255.0f, value));
     }
     output[idx] = static_cast<T>(value);
+  }
+}
+
+template <typename T>
+__global__ void g_mulShiftFloat(float *input, T* output,
+                                float multiplier, float shift, int size, rounding_mode_t rmode){
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    float value = static_cast<float>(input[idx]) * multiplier;
+    value = value + shift;
+    int i_value = 0;
+    if (rmode == RD_HALF_TO_EVEN) {
+      i_value = d_f32ToInt<int32_t>(value, RD_HALF_TO_EVEN); /// not implemented half to even
+    } else if (rmode == RD_HALF_AWAY_FROM_ZERO) {
+      i_value = round(value);
+    }
+    if (std::is_same<T, int8_t>::value) {
+      i_value = max(-128, min(127, i_value));
+    } else if (std::is_same<T, uint8_t>::value) {
+      i_value = max(0, min(255, i_value));
+    }
+    output[idx] = static_cast<T>(i_value);
   }
 }
 
@@ -860,6 +914,20 @@ __global__ void g_f16ToF32(uint16_t *input, float *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     output[idx] = d_RawF16(input[idx]);
+  }
+}
+
+__global__ void g_f32ToF8(float *input, float scale, uint8_t *output, int size, rounding_mode_t rmode = RD_HALF_TO_EVEN) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = fp32_to_fp8(input[idx]*scale);
+  }
+}
+
+__global__ void g_f8ToF32(uint8_t *input, float scale, float *output, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = f8_to_fp32(input[idx], scale);
   }
 }
 

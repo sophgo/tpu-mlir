@@ -12,6 +12,7 @@
 #include "cuda/cuda_helper.h"
 #include "pymlir.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <cuda_runtime.h>
 #include <cudnn.h>
@@ -103,6 +104,7 @@ private:
   void cudaReduceOp(tpu::ReduceOp op);
   void cudaSwapDimInnerOp(tpu::SwapDimInnerOp op);
   void cudaSubConstOp(tpu::SubConstOp op);
+  void cudaRequantFpOp(tpu::RequantFpOp op);
 
   void cudaAddOp(top::AddOp op);
   void cudaConvOp(top::ConvOp op);
@@ -130,6 +132,7 @@ private:
   void cudaUnsqueezeOp(top::UnsqueezeOp op);
   void cudaSubConstOp(top::SubConstOp op);
   void cudaGatherOp(top::GatherOp op);
+  void cudaRequantFpOp(top::RequantFpOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

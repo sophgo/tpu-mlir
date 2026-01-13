@@ -58,7 +58,7 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
                           &beta, outf32_desc, output);
       out_f32.reset();
       return;
-    } else{
+    } else {
       auto in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
       cudnnPoolingForward(cudnn_, pooling_desc, &alpha, input_desc, in_f32.get(),
                           &beta, outf32_desc, out_f32.get());
@@ -69,8 +69,13 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
   cudnnDestroyTensorDescriptor(outf32_desc);
   cudnnDestroyPoolingDescriptor(pooling_desc);
   if (!is_avg) {
-    cuda::convertType(out_f32.get(), output, num_out, cuda::DT_F32,
-                      getCudaType(op.getOutput()), cuda::RD_HALF_TO_EVEN);
+    if (module::getStorageType(op.getInput()).isFloat8E4M3FN()){
+      cuda::requantF8(out_f32.get(), getCudaData(op.getOutput()), 1.0,
+                            p.n, p.c, p.oh, p.ow, p.do_relu);
+    } else {
+      cuda::convertType(out_f32.get(), output, num_out, cuda::DT_F32,
+                        getCudaType(op.getOutput()), cuda::RD_HALF_TO_EVEN);
+    }
     out_f32.reset();
     return;
   }
@@ -89,6 +94,11 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
     bool relu = sign && p.do_relu;
     cuda::requantInt8(out_i32.get(), output, multi, rs, num_out, sign, false,
                       relu);
+  } else if (module::getStorageType(op.getInput()).isFloat8E4M3FN()){
+    auto  scale = op.getFp8OutScale()->convertToDouble();
+    cuda::requantF8(out_f32.get(), getCudaData(op.getOutput()), scale,
+                          p.n, p.c, p.oh, p.ow, p.do_relu);
+    out_f32.reset();
   } else {
     cuda::convertType(out_f32.get(), output, num_out, cuda::DT_F32,
                       getCudaType(op.getOutput()));

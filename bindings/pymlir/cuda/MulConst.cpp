@@ -11,16 +11,15 @@
 #include "cuda_helper.h"
 
 void py_cuda::cudaMulConstOp(tpu::MulConstOp op) {
+  double const_v = op.getConstVal().convertToDouble();
   if (module::isUniformQuantized(op.getInput())) {
     cuda::mulShift(getCudaData(op.getInput()), getCudaData(op.getOutput()), op.getMultiplier(), op.getRshift(), module::getNumElements(op.getInput()), getCudaType(op.getOutput()));
   } else if (module::getStorageType(op.getInput()).isF32()) {
-    double const_v = op.getConstVal().convertToDouble();
     int64_t n0, c0, h0, w0;
     module::getNCHW(op.getOutput(), n0, c0, h0, w0, false);
     cuda::mulConst4DF32(getCudaData(op.getInput()), const_v, getCudaData(op.getOutput()), op.getDoRelu(),
                   n0, c0, h0, w0);
-  } else {
-    double const_v = op.getConstVal().convertToDouble();
+  } else if (module::getStorageType(op.getInput()).isF16() || module::getStorageType(op.getInput()).isBF16()){
     int64_t n0, c0, h0, w0;
     module::getNCHW(op.getOutput(), n0, c0, h0, w0, false);
     auto input_f32 = newCudaData(op.getInput(), cuda::DT_F32);
@@ -31,6 +30,37 @@ void py_cuda::cudaMulConstOp(tpu::MulConstOp op) {
                   getCudaType(op.getOutput()));
     input_f32.reset();
     output_f32.reset();
+  } else if (module::getStorageType(op.getInput()).isFloat8E4M3FN()) {
+    // maybe used as dequant of fp8 or in fp8 mulconst
+    const_v = F16(const_v, true);
+    int64_t n0, c0, h0, w0;
+    module::getNCHW(op.getOutput(), n0, c0, h0, w0, false);
+    auto input_f32 = newCudaData(op.getInput(), cuda::DT_F32);
+    if (module::getStorageType(op.getOutput()).isFloat8E4M3FN()){
+      auto output_f32 = newCudaData(op.getOutput(), cuda::DT_F32);
+      cuda::mulConst4DF32(input_f32.get(), const_v, output_f32.get(), op.getDoRelu(),
+                    n0, c0, h0, w0);
+      cuda::requantF8(output_f32.get(), getCudaData(op.getOutput()), 1.0 , n0, c0, h0, w0, op.getDoRelu());
+      output_f32.reset();
+    } else {
+      auto ctype = module::getCalibratedType(op.getInput());
+      if (!ctype)
+        UNREACHABLE_OP("need calibrated type for fp8 dequant", op);
+      double scale = ctype.getMax() / get_f8e4m3_max();
+      if (module::getStorageType(op.getOutput()).isF32()) {
+        auto output_f32 = getCudaData(op.getOutput());
+        cuda::mulConst4DF32(input_f32.get(), scale, output_f32, op.getDoRelu(),
+                      n0, c0, h0, w0);
+      } else {
+        auto output_f32 = cuda_malloc(module::getNumElements(op.getOutput()) * sizeof(float));
+        cuda::mulConst4DF32(input_f32.get(), scale, output_f32.get(), op.getDoRelu(),
+                      n0, c0, h0, w0);
+        cuda::convertType(output_f32.get(), getCudaData(op.getOutput()), module::getNumElements(op.getOutput()), cuda::DT_F32,
+                      getCudaType(op.getOutput()));
+        output_f32.reset();
+      }
+    }
+    input_f32.reset();
   }
 }
 

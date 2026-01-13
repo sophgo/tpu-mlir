@@ -434,3 +434,21 @@ def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, logs=
                            extra_info=logs)
     qtable.dump(quantize_table)
     return qtable
+
+
+def get_mix_prec(chip: str, mix_mode: str = 'wi8ai8_fp', fp_type: str = 'F32'):
+    if fp_type != 'auto' and fp_type not in chip_support_mix_fp_type[chip]:
+        print(f'parameter error, fp_type:{fp_type} not support by {chip}')
+        return None, None
+    fp_type = 'F32' if ('F32' in chip_support_mix_fp_type[chip] and fp_type == 'auto') else fp_type
+    if mix_mode in ['wi8ai8_fp']:
+        return 'INT8', fp_type
+    elif mix_mode in ['wf8af8_fp']:
+        return 'F8E4M3', fp_type
+    elif mix_mode in ['wi4ai4_wi8ai8']:
+        return 'INT4', 'INT8'
+    elif mix_mode in ['wi4ai8_wi8ai8']:
+        return 'W4INT8', 'INT8'
+    else:
+        print(f'not support {mix_mode} and {fp_type}')
+        return None, None

@@ -86,14 +86,14 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
       cudnnSetTensor4dDescriptor(bias_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
                                 1, 1, 1, p.N);
       float alpha = 1.0f, beta = 1.0f;
-      if (!module::getStorageType(op.getInput()).isF32()) {
+      if (module::getStorageType(op.getInput()).isF32() || module::getStorageType(op.getInput()).isFloat8E4M3FN()) {
+        auto bias = getCudaData(op.getBias());
+        CHECK_CUDNN(cudnnAddTensor(cudnn_, &alpha, bias_desc, bias, &beta,
+                                  outf32_desc, out_f32.get()));
+      } else {
         // assume, only int8 bias in int32, otherwise use float bias
         auto bias = newCudaData(op.getBias(), cuda::DT_F32);
         CHECK_CUDNN(cudnnAddTensor(cudnn_, &alpha, bias_desc, bias.get(), &beta,
-                                  outf32_desc, out_f32.get()));
-      } else {
-        auto bias = getCudaData(op.getBias());
-        CHECK_CUDNN(cudnnAddTensor(cudnn_, &alpha, bias_desc, bias, &beta,
                                   outf32_desc, out_f32.get()));
       }
       cudnnDestroyTensorDescriptor(bias_desc);
@@ -124,6 +124,21 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
       cuda::requantInt16(out_f32.get(), output, multipler, rshift, num_out, relu);
     } else {
       llvm_unreachable("not support matmul output type other than int8/int16");
+    }
+  } else if (module::getStorageType(op.getInput()).isFloat8E4M3FN()) {
+    // should support per-channel.... FIXME!
+    f64_array_t scales = module::getF64Array(op.getOutF8Scales().value());
+    auto output = getCudaData(op.getOutput());
+    if (scales->size() == 1) {
+      cuda::requantF8(out_f32.get(), output, scales->at(0), 1, p.batch, p.M, p.N, p.do_relu);
+    } else {
+      std::vector<float> oscale(scales->begin(), scales->end());
+      auto cudaMults = cuda_malloc(scales->size()*sizeof(float));
+      CHECK_CUDA(cudaMemcpy(cudaMults.get(), oscale.data(), oscale.size() * sizeof(float),
+                          cudaMemcpyHostToDevice));
+      cuda::requantF8Perchannel(out_f32.get(), output, cudaMults.get(),
+                                  1, p.batch, p.M, p.N, p.do_relu, false);
+      cudaMults.reset();
     }
   } else {
     if (!out_stype.isF32()) {

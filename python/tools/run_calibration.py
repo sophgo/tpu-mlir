@@ -72,7 +72,8 @@ if __name__ == '__main__':
     parser.add_argument('--custom_operator', type=parse_optype_list, default=[],
                         help="When custom_mode is selected, it is used to specify a custom operator type")
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
-    parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
+    # parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
+    parser.add_argument('--mix_mode', default='wi8ai8_fp', type=str, choices=['wi8ai8_fp', 'wi4ai4_wi8ai8', 'wi4ai8_wi8ai8', 'wf8af8_fp'],
                         help='Specify the bit width for automatic mixed precision')
     parser.add_argument('--pre_qtable',type=str, default='', help='path to initial qtable for search_qtable')
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
@@ -125,9 +126,9 @@ if __name__ == '__main__':
     if args.search.lower() != 'false':
         args._logger = logger('Search_Qtable', log_level=log_level)
         searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
-        if args.search == 'search_qtable' and args.mix_mode == '4_8':
+        if args.search == 'search_qtable' and args.mix_mode == 'wi4ai4_wi8ai8':
             searcherQ.run_4_8()
-        elif args.search == 'search_qtable' and args.mix_mode == 'w4a8':
+        elif args.search == 'search_qtable' and args.mix_mode == 'wi4ai8_wi8ai8':
             searcherQ.run_w4a8()
         elif args.search == 'fast_search':
             searcherQ.run_fast()

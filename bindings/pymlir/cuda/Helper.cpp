@@ -48,6 +48,8 @@ data_type_t py_cuda::getCudaType(mlir::Value v) {
     return DT_UINT16;
   } else if (stype.isInteger(16)) {
     return DT_INT16;
+  } else if (stype.isFloat8E4M3FN()) {
+    return DT_F8E4M3;
   }
   v.dump();
   llvm_unreachable("Not Supported");

@@ -166,11 +166,27 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
                                   cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign,
                                   qdm, relu);
     }
+    cudaMults.reset();
+    cudaShifts.reset();
   }else {
     // directly copy float output
     if (!module::getStorageType(op.getOutput()).isF32()) {
-      cuda::convertType(out_f32.get(), getCudaData(op.getOutput()), num_out,
+      if (module::getStorageType(op.getOutput()).isFloat8E4M3FN()){
+        //consider if input is f8 but output is f16/f32.... FIXME!
+        bool relu = p.do_relu;
+        auto cudaMults = cuda_malloc(p.oc * sizeof(float));
+        f64_array_t quant_scale_v = module::getF64Array(op.getOutF8Scales().value());
+        std::vector<float> scale_v(quant_scale_v->begin(), quant_scale_v->end());
+        auto output = getCudaData(op.getOutput());
+        CHECK_CUDA(cudaMemcpy(cudaMults.get(), scale_v.data(), scale_v.size() * sizeof(float),
+                          cudaMemcpyHostToDevice));
+        cuda::requantF8Perchannel(out_f32.get(), output, cudaMults.get(),
+                                    p.n, p.oc, p.oh, p.ow, relu, true);
+        cudaMults.reset();
+      } else {
+        cuda::convertType(out_f32.get(), getCudaData(op.getOutput()), num_out,
                         cuda::DT_F32, getCudaType(op.getOutput()));
+      }
     } else {
       cudaMemcpy(getCudaData(op.getOutput()), out_f32.get(),
                  num_out * sizeof(float), cudaMemcpyDeviceToDevice);

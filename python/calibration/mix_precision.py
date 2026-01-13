@@ -59,34 +59,23 @@ class MixQuantModel:
     def __init__(self,
                  fp32_mlir,
                  chip: str,
+                 mode: str = None,
+                 high_prec: str = None,
                  calib_table: str = None,
                  mix_table: str = None,
-                 fp_type: str = 'auto',
                  using_cuda=False):
         self.fp32_mlir = fp32_mlir
         self.chip = chip
         self.calib_table = None
         self.mix_table = None
-        if calib_table and fp_type == "int4":
-            self.mode = "INT4"
+        self.mode = mode
+        self.high_prec = high_prec
+        if self.mode is None:
+            self.mode = self.high_prec
+
+        if calib_table:
             self.calib_table = calib_table
             self.mix_table = mix_table
-        elif calib_table and fp_type == "w4a8":
-            self.mode = "W4INT8"
-            self.calib_table = calib_table
-            self.mix_table = mix_table
-        elif calib_table:
-            self.mode = "INT8"
-            self.calib_table = calib_table
-            self.mix_table = mix_table
-        else:
-            if fp_type == 'auto':
-                self.mode = FLOAT_MAP[chip]
-            else:
-                self.mode = fp_type
-                if fp_type not in chip_support_mix_fp_type[self.chip]:
-                    print(f'parameter error, fp_type:{fp_type} not support by {chip}')
-                    exit(1)
 
         self.quanted_mlir_file = '{}.{}.tune.mlir'.format(fp32_mlir,
                                                           'mix' if mix_table else self.mode)
@@ -181,14 +170,8 @@ class MixPrecSearcher:
             raise RuntimeError("quantize_table is needed for MixPrecSearcher")
         self.loss_table = self.quantize_table + '_loss.txt'
         self.chip = args.chip
-        if args.fp_type == 'auto':
-            self.mix_mode = FLOAT_MAP[self.chip]
-        else:
-            self.mix_mode = args.fp_type
-            if args.fp_type not in chip_support_mix_fp_type[self.chip]:
-                print('parameter error, fp_type:{args.fp_type} not support by {self.chip}')
-                exit(1)
-
+        self.low_prec, self.high_prec = get_mix_prec(self.args.chip, self.args.mix_mode,
+                                                     self.args.fp_type)
         self.parser = MlirParser(args.mlir_file)
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
@@ -296,16 +279,16 @@ class MixPrecSearcher:
     def _gen_mix_table(self,
                        mix_ops: List[str],
                        qtable: QuantizeTable = None,
-                       mix_mode: str = None):
+                       high_prec_type: str = None):
         target_file = "tmp_mix_table.txt"
         if qtable is None:
             qtable = QuantizeTable()
         else:
             qtable = copy.deepcopy(qtable)
-        if mix_mode is None:
-            mix_modes = [self.mix_mode] * len(mix_ops)
+        if high_prec_type is None:
+            mix_modes = [self.high_prec] * len(mix_ops)
         else:
-            mix_modes = [mix_mode] * len(mix_ops)
+            mix_modes = [high_prec_type] * len(mix_ops)
         qtable.append_custom(mix_ops, mix_modes)
         qtable.dump(target_file)
         return target_file
@@ -778,7 +761,7 @@ class MixPrecSearcher:
             outputs = model.infer(data, global_compare_layers)
         for op in model.module.all_tensor_names:
             qinfo = model.module.get_tensor_qinfo(op)
-            if qinfo.dtype != "I8" and qinfo.dtype != "U8":
+            if qinfo.dtype != "I8" and qinfo.dtype != "U8" and qinfo.dtype != "F8E4" and qinfo.dtype != "U16" and qinfo.dtype != "I16" and qinfo.dtype != "I32" and qinfo.dtype != "U32":
                 float_ops.append(op)
         return float_ops
 
@@ -845,7 +828,7 @@ class MixPrecSearcher:
             for idx in range(self.num_sample):
                 ret |= self.gen_ref_tensor(idx, op, self.ref_activations, float_model)
             if ret:
-                self.dot_log.add_node_label(op, f'gen {self.mix_mode} tensor')
+                self.dot_log.add_node_label(op, f'gen {self.high_prec} tensor')
 
     def skip_op(self, op, top_ops, have_int8_next, fp_layer_list, all_pre_layers):
         if op.name not in top_ops:
@@ -861,7 +844,7 @@ class MixPrecSearcher:
             self.dot_log.add_node_label(op.name, f'meet quant skip op, type:{op.type}, continue')
             return True
         if op.name in fp_layer_list:
-            self.dot_log.add_node_label(op.name, f'op is {self.mix_mode} layer, continue')
+            self.dot_log.add_node_label(op.name, f'op is {self.high_prec} layer, continue')
             return True
         if not have_int8_next:
             self.dot_log.add_node_label(op.name, f'not call gen_ref_tensor, continue')
@@ -878,8 +861,8 @@ class MixPrecSearcher:
         tmp = ','.join(next_top_ops)
         fp_layer_list_copy.extend(next_top_ops)
         mix_table = self._gen_mix_table(fp_layer_list_copy)
-        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table,
-                                  self.args.fp_type)
+        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                  self.calib_table, mix_table, self.args.fp_type)
         for i, input in enumerate(mix_model.parser.get_pre_op_by_op_name(op.name)):
             if input in fp_layer_list_copy:
                 if input not in self.ref_activations[0]:
@@ -895,10 +878,10 @@ class MixPrecSearcher:
         fp_layer_list.extend(top_op_names[top_op_names.index(last_fp_op) +
                                           1:top_op_names.index(op) + 1])
         self.dot_log.add_node_label(
-            op, f'cos too low, set {self.mix_mode} from {last_fp_op} till {op}')
+            op, f'cos too low, set {self.high_prec} from {last_fp_op} till {op}')
         mix_table = self._gen_mix_table(fp_layer_list, self.qtable)
-        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table,
-                                  self.args.fp_type)
+        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                  self.calib_table, mix_table)
         int8_op_names = mix_model.parser.get_op_name_list()
         if op not in int8_op_names or last_fp_op not in int8_op_names:
             for _op in top_op_names[top_op_names.index(last_fp_op) + 1:top_op_names.index(op) + 1]:
@@ -924,7 +907,7 @@ class MixPrecSearcher:
             fp32_out = self.get_input_fp32_tensor(idx, op)
             cos = cos_sim(mix_layer_out.reshape(-1), fp32_out.reshape(-1))
             if idx == 0:
-                self.dot_log.add_node_label(op, f'first {self.mix_mode} layer:{op} cos:{cos:.6f}')
+                self.dot_log.add_node_label(op, f'first {self.high_prec} layer:{op} cos:{cos:.6f}')
             outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
         outputs_cos = outputs_cos / self.num_sample
         return False, outputs_cos, mix_model, fp_layer_list
@@ -933,13 +916,14 @@ class MixPrecSearcher:
                          global_compare_layers, layers_rate, all_pre_layers, all_int8_cos):
         outputs_cos = 0
         self.dot_log = net_dot_log('mix_prec_result', float_model.parser, self.logger)
-        self.dot_log.add_new_log_region(f'compute cos and set {self.mix_mode} layer')
+        self.dot_log.add_new_log_region(f'compute cos and set {self.high_prec} layer')
         top_op_names = self.parser.get_op_name_list()
         max_fp32_layer_num = min(len(top_op_names) // 4, self.args.max_float_layers)
         fp_op_names = float_model.parser.get_op_name_list()
         # top_ops = {op.name: op for op in self.parser.ops}
         mix_table = self._gen_mix_table(fp_layer_list, self.qtable)
-        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table)
+        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                  self.calib_table, mix_table)
         int8_op_names = mix_model.parser.get_op_name_list()
         # full_op_list = self.get_full_op_list(float_model, mix_model, fp_op_names, int8_op_names)
         cur_fp_op = fp_op_names[0]
@@ -989,8 +973,8 @@ class MixPrecSearcher:
                         global_compare_layers, layers_rate, predictions_gt)
                     if skip:
                         mix_table = self._gen_mix_table(fp_layer_list, self.qtable)
-                        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table,
-                                                  mix_table)
+                        mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec,
+                                                  self.high_prec, self.calib_table, mix_table)
                         int8_op_names = mix_model.parser.get_op_name_list()
                         continue
                     self.dot_log.add_node_label(op, f'end new int8 layers:{new_int8_layers}')
@@ -1005,10 +989,10 @@ class MixPrecSearcher:
                     if len(fp_layer_list) > max_fp32_layer_num:
                         self.dot_log.add_node_label(
                             op,
-                            f'job fail, the number of layers of {self.mix_mode} exceeded the maximum'
+                            f'job fail, the number of layers of {self.high_prec} exceeded the maximum'
                         )
                         print(
-                            f'job finished, the number of layers of {self.mix_mode} exceeded the maximum {max_fp32_layer_num}'
+                            f'job finished, the number of layers of {self.high_prec} exceeded the maximum {max_fp32_layer_num}'
                         )
                         break
                     if outputs_cos < all_int8_cos:
@@ -1041,7 +1025,7 @@ class MixPrecSearcher:
         with open(self.loss_table, "w") as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# sample number: {}\n".format(self.num_sample))
-            f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
+            f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.high_prec))
             f.write("###\n")
             for idx, layer in enumerate(layer_cos_list):
                 loss_msg = "No.{:<4}: Layer: {:<50}\t\t\tCos: {:.6f}".format(
@@ -1052,7 +1036,7 @@ class MixPrecSearcher:
             qtable = QuantizeTable()
         else:
             qtable = copy.deepcopy(self.qtable)
-        qtable.append_custom(fp_layer_list, [self.mix_mode] * len(fp_layer_list))
+        qtable.append_custom(fp_layer_list, [self.high_prec] * len(fp_layer_list))
         qtable.dump(self.quantize_table)
         self.logger.print_info(f'int8 outputs_cos:{all_int8_cos:.6f} old')
         self.logger.print_info(f"mix model outputs_cos:{outputs_cos:.6f}")
@@ -1064,11 +1048,12 @@ class MixPrecSearcher:
         layer_cos_list, predictions_gt, fp_layer_list = [], [], []
         os.system('rm -rf tensor_diff_fp32_vs_int8;mkdir -p tensor_diff_fp32_vs_int8/')
         global_compare_layers, layers_rate, all_pre_layers = self.extract_global_layers()
-        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        float_model = MixQuantModel(self.fp32_mlir, self.chip, None, self.high_prec)
         _ = self.run_model(float_model, True, global_compare_layers, layers_rate, predictions_gt)
 
         mix_table = None if self.qtable is None else self._gen_mix_table([], self.qtable)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table)
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                   self.calib_table, mix_table)
         outputs_cos = self.run_model(int8_model, False, global_compare_layers, layers_rate,
                                      predictions_gt)
         if outputs_cos > self.args.expected_cos:
@@ -1109,7 +1094,7 @@ class MixPrecSearcher:
         # set all layer as float
         self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
         self.disable_print()
-        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        float_model = MixQuantModel(self.fp32_mlir, self.chip, None, self.high_prec)
         global_compare_layers = None
         layers_rate = None
         all_pre_layers = None
@@ -1146,6 +1131,8 @@ class MixPrecSearcher:
         outputs_cos = 0
         int8_model = MixQuantModel(self.fp32_mlir,
                                    self.chip,
+                                   self.low_prec,
+                                   self.high_prec,
                                    self.calib_table,
                                    mix_table=self.quantize_table)
         for idx in range(self.num_sample):
@@ -1176,6 +1163,8 @@ class MixPrecSearcher:
         top_ops = {op.name: op for op in self.parser.ops}
         int8_model = MixQuantModel(self.fp32_mlir,
                                    self.chip,
+                                   self.low_prec,
+                                   self.high_prec,
                                    self.calib_table,
                                    mix_table=self.quantize_table)
         int8_op_names = int8_model.parser.get_op_name_list()
@@ -1208,12 +1197,12 @@ class MixPrecSearcher:
                         self.dot_log.add_node_label(op.name, 'gen int8 tensor')
                 else:
                     self.dot_log.add_node_label(
-                        op.name, f'next_layer is {self.mix_mode}, not need to gen int8 tensor')
+                        op.name, f'next_layer is {self.high_prec}, not need to gen int8 tensor')
             if op.name in fp_op_names:
                 for idx in range(self.num_sample):
                     ret = self.gen_ref_tensor(idx, op.name, self.ref_activations, float_model)
                 if ret:
-                    self.dot_log.add_node_label(op.name, f'gen {self.mix_mode} tensor')
+                    self.dot_log.add_node_label(op.name, f'gen {self.high_prec} tensor')
             if op.name not in top_ops:
                 self.dot_log.add_node_label(op.name, 'op not in top dialect')
                 continue
@@ -1228,7 +1217,7 @@ class MixPrecSearcher:
                                             f'meet quant skip op, type:{op.type}, continue')
                 continue
             if op.name in fp_layer_list:
-                self.dot_log.add_node_label(op.name, f'op is {self.mix_mode} layer, continue')
+                self.dot_log.add_node_label(op.name, f'op is {self.high_prec} layer, continue')
                 continue
             if not have_int8_next:
                 continue
@@ -1267,6 +1256,8 @@ class MixPrecSearcher:
                 np.savez(weight_file_name, **weight_file_dict)
                 mix_model = MixQuantModel(self.fp32_mlir,
                                           self.chip,
+                                          self.low_prec,
+                                          self.high_prec,
                                           self.calib_table,
                                           mix_table=self.quantize_table)
                 extra_input = self.get_extra_input_tensor(top_op.name, int8_model.parser)
