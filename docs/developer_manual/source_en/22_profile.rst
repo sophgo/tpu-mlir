@@ -7,7 +7,7 @@ Analyse TPU Performance with TPU Profile
 As the following figure shows, a whole TPU application depends on the cooperation of software and hardware:
 
 **Software**
-Host provides **libsophon**, driver software packs. Driver abstracts the mechanism of basic communication and resource management, defines function interfaces. **Libsophon** implements various concrete functions for TPU inference, such as BMLib and TPU-RUNTIME.
+Host provides driver software packs and correspoding interfaces. Driver abstracts the mechanism of basic communication and resource management, defines function interfaces. The driver software packs implements various concrete functions for TPU inference, such as BMLib and TPU-RUNTIME.
 
 - **BMLib** (``libbmlib.so``) wraps the driver interfaces for compatibility and portability of applications, improving performance and simplicity of programming.
 - **TPU-RUNTIME** (``libbmrt.so``) implements loading, management, execution, and so on.
@@ -26,10 +26,10 @@ TPU Profile is a tool for visualizing the profile binary data in HTML formats, w
 
 This article uses Profile data and TPU Profile tools to visualize the complete running process of the model, providing an intuitive understanding of the internal TPU.
 
-2. Compile Bmodel
+1. Compile Bmodel
 ---------------------
 
-(This operation and the following operations will use `TPU MLIR <https://github.com/sophgo/tpu-mlir>`_)
+(This operation and the following operations will use tpu-mlir)
 
 Due to the fact that the profile data will save some layer information during compilation to the BModel (resulting in a larger BModel size), it is disabled by default. To enable it, call `model_deploy.py` with the ``--debug`` option. If this option is not used during compilation, some data obtained by enabling profile during visualization may be missing.
 
@@ -65,9 +65,9 @@ Convert top MLIR to BModel with FP16 precision:
     --model yolov5s_1684x_f16.bmodel \
     --debug  # Record profile data
 
-Using the above commands, compile `yolov5s.onnx` into `yolov5s_bm1684x_f16.bmodel`. For more usage, please refer to the `TPU MLIR <https://github.com/sophgo/tpu-mlir>`_ repository.
+Using the above commands, compile `yolov5s.onnx` into `yolov5s_bm1684x_f16.bmodel`. For more usage, please refer to the tpu-mlir repository.
 
-3. Generate Profile Binary Data
+1. Generate Profile Binary Data
 -----------------------------------
 
 Similar to the compilation process, the profile function at runtime is disabled by default to prevent additional time consumption during profile saving and transmission. To enable it, set the environment variable:
@@ -76,7 +76,7 @@ Similar to the compilation process, the profile function at runtime is disabled 
 
   export BMRUNTIME_ENABLE_PROFILE=1
 
-Below, use the model testing tool provided in libsophon, ``bmrt_test``, as an application to generate profile data:
+Below, use the model testing tool provided in the driver, ``bmrt_test``, as an application to generate profile data:
 
 ::
 

@@ -74,27 +74,36 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
     auto qtype = module::getUniformQuantizedType(op.getInput());
     auto scale = qtype.getScale();
     auto stype = module::getStorageType(op.getInput());
-    if (stype.isInteger(8) == false) {
-      UNREACHABLE_OP("Not Implemented for quant type other than int8", op);
-    }
-    if (is_cv18xx) {
-      if (out_type.isF32()) {
-        cuda::cvScaleToF32(input, output, BF16(scale), num_elem);
+    if (stype.isInteger(8)) {
+      if (is_cv18xx) {
+        if (out_type.isF32()) {
+          cuda::cvScaleToF32(input, output, BF16(scale), num_elem);
+        } else {
+          cuda::cvScaleToBF16(input, output, BF16(scale), num_elem);
+        }
       } else {
-        cuda::cvScaleToBF16(input, output, BF16(scale), num_elem);
-      }
-    } else {
-      if (out_type.isF32()) {
-        cuda::int8ScaleToF32(input, output, scale, num_elem,
-                             !stype.isUnsignedInteger());
-      } else if (out_type.isBF16()) {
-        cuda::int8ScaleToBF16(input, output, scale, num_elem,
+        if (out_type.isF32()) {
+          cuda::int8ScaleToF32(input, output, scale, num_elem,
                               !stype.isUnsignedInteger());
+        } else if (out_type.isBF16()) {
+          cuda::int8ScaleToBF16(input, output, scale, num_elem,
+                                !stype.isUnsignedInteger());
+        } else if (out_type.isF16()) {
+          cuda::int8ScaleToF16(input, output, scale, num_elem,
+                              !stype.isUnsignedInteger());
+        } else {
+          UNREACHABLE_OP("Not Implemented", op);
+        }
+      }
+    } else if (stype.isInteger(16)) {
+      if (out_type.isF32()) {
+        cuda::int16ScaleToF32(input, output, scale, num_elem);
+      } else if (out_type.isBF16()) {
+        cuda::int16ScaleToBF16(input, output, scale, num_elem);
       } else if (out_type.isF16()) {
-        cuda::int8ScaleToF16(input, output, scale, num_elem,
-                             !stype.isUnsignedInteger());
+        cuda::int16ScaleToF16(input, output, scale, num_elem);
       } else {
-        UNREACHABLE_OP("Not Implemented", op);
+        UNREACHABLE_OP("Not Implemented data type", op);
       }
     }
   } else {

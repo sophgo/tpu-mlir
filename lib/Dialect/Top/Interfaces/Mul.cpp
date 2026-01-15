@@ -68,7 +68,7 @@ void top::MulOp::shape_inference() {
   for (int i = 0; i < getNumOperands(); i++) {
     auto value = getInputs()[i];
     broadcast_tensor_reshape(getOutput(), value);
-    has_scalar = has_scalar || module::isScalar(value.getDefiningOp());
+    has_scalar = has_scalar && module::isScalar(value.getDefiningOp());
   }
   auto out_shape = module::getShape(getOutput());
   if (out_shape.size() == 1 && out_shape[0] == 1 && has_scalar) {

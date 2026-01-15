@@ -23,7 +23,7 @@
 
 .. include:: get_resource.rst
 
-建立 ``model_yolov5s_pt`` 目录，并把模型文件和图片文件都放入 ``model_yolov5s_pt`` 目录中。
+建立 ``model_yolov5s_pt`` 目录，并把模型文件和图片文件都放入 ``model_yolov5s_pt`` 目录中。你可以从 tpu-mlir-resource.tar（SDK包中提供）中获取 yolov5s.pt。
 
 操作如下:
 
@@ -31,7 +31,7 @@
    :linenos:
 
    $ mkdir model_yolov5s_pt && cd model_yolov5s_pt
-   $ wget -O yolov5s.pt "https://github.com/sophgo/tpu-mlir/raw/master/regression/model/yolov5s.pt"
+   $ mv path/to/yolov5s.pt .
    $ cp -rf tpu_mlir_resource/dataset/COCO2017 .
    $ cp -rf tpu_mlir_resource/image .
    $ mkdir workspace && cd workspace

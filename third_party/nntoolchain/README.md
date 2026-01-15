@@ -13,9 +13,9 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2025-11-13
+## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2026-01-10
 ```bash
-#bm1684x sha256: 094843f09a4c188da78682ca5c94474ae55520e5
+#bm1684x sha256: 1de5a393b3a264cfe081871cf70c69ed6c255923
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
@@ -26,7 +26,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1688 sha256: 094843f09a4c188da78682ca5c94474ae55520e5
+#bm1688 sha256: 1de5a393b3a264cfe081871cf70c69ed6c255923
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
@@ -37,7 +37,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
 /workspace/tpu-mlir/lib/PplBackend/build.sh
 
-#bm1690 sha256: d2064a85b09fd5ef58448a9bff70db739c656560
+#bm1690 sha256: 1de5a393b3a264cfe081871cf70c69ed6c255923
 cd TPU1686
 source  scripts/envsetup.sh sg2260
 debug: rebuild_backend_lib_cmodel
@@ -48,7 +48,7 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
 
-#bm1690e sha256: 43751446a1f35aaaeccf87da033a46cc27e0417d
+#bm1690e sha256: 1de5a393b3a264cfe081871cf70c69ed6c255923
 cd TPU1686
 source  scripts/envsetup.sh sg2260e
 debug: rebuild_backend_lib_cmodel
@@ -59,7 +59,7 @@ cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nnt
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690e_kernel_module.a
 
-#cv184x sha256: b6e89c5840d22e66fbfe71d70acffb0043606c10
+#cv184x sha256: 1de5a393b3a264cfe081871cf70c69ed6c255923
 cd TPU1686
 source  scripts/envsetup.sh mars3
 debug: rebuild_backend_lib_cmodel
@@ -67,15 +67,15 @@ release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_mars3.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_cv184x.so
 cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_cv184x.so
 
-#cv184x sha256: 4498fe9ae93429e3c7b79df24db596dc2e42aef4
-cd TPU1686
-source  scripts/envsetup.sh sg2380
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
-cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
+#sg2380 sha256: 4498fe9ae93429e3c7b79df24db596dc2e42aef4
+# cd TPU1686
+# source  scripts/envsetup.sh sg2380
+# debug: rebuild_backend_lib_cmodel
+# release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
+# cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
+# cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#SGTPUV8 sha256: 9b12352c69f5fe838b9289f981784e3adf818676
+#SGTPUV8 sha256: 1de5a393b3a264cfe081871cf70c69ed6c255923
 cd TPU1686
 source  scripts/envsetup.sh sgtpuv8
 debug: rebuild_backend_lib_cmodel
@@ -87,14 +87,14 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.a
 ```
 
-## tpu-runtime 2025-12-9
+## tpu-runtime 2026-01-08
 
-build from tpu-runtime 5a67ee3c1ba0beee128812f7a55b70120882b14d
+build from tpu-runtime fe45f3394dbf268e51eb3c552ee91b7454b440f4
 
 ```bash
 pushd libsophon
 mkdir -p build && cd build
-cmake -G Ninja -DPLATFORM=cmodel -DCMAKE_BUILD_TYPE=DEBUG ../ # release version has problem
+cmake -G Ninja -DPLATFORM=cmodel -DCMAKE_BUILD_TYPE=Debug ../ # release version has problem
 ninja
 cp -P tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp -P bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/

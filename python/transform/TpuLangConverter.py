@@ -379,7 +379,7 @@ class Graph:
         # operators that needs no quantization.
         assign_ops = ["Permute", "Reshape", "Tile", "Split", "Repeat", "Relu", \
                       "Unsqueeze", "Unsqueeze", "Expand", "Slice", "Copy", \
-                      "LeakyRelu", "Abs", "Pad", "Rope"]
+                      "LeakyRelu", "Abs", "Pad", "Rope", "Interp"]
         for op in self.operators:
             op_name = op.op_name.split('.')[1] in assign_ops
             if op_name and len(op.outputs) == 1 and op.inputs[0].is_quantized:

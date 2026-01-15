@@ -77,6 +77,7 @@ def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_
 def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5","yolov8"]>;
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def BinaryShiftAttr: AnyStrAttrOf<["Add","Sub", "Mul"]>;
+def DqTypeAttr: AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4"]>;
 
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
@@ -2112,6 +2113,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     fuse_rq: fuse the requantization step with the matrix multiplication operation.;
     round_mode: the rounding mode to be used during the casting operation.;
     multicore: whether op supports multicore execution.;
+    dq_type: the quantized data type for dynamic quantization.;
+    q_group_size: the group size for per-group quantization.;
   }];
 
   let arguments = (ins
@@ -2141,7 +2144,9 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     AnyTensorOrNone:$buffer,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<BoolAttr>:$multicore,
-    OptionalAttr<BoolAttr>:$do_core_parallel
+    OptionalAttr<BoolAttr>:$do_core_parallel,
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type,
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2181,6 +2186,7 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
     w_transpose: whether the weight tensor should be transposed;
     q_group_size: the group size for per-group quantization.;
     multicore: whether op supports multicore execution.;
+    dq_type: the quantized data type for dynamic quantization.;
   }];
 
   let arguments = (ins
@@ -2195,7 +2201,8 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul",
     // do per-group quant if q_group_size > 0, otherwise per-channel
     DefaultValuedAttr<I64Attr, "0">:$q_group_size,
     OptionalAttr<BoolAttr>:$multicore,
-    OptionalAttr<BoolAttr>:$do_core_parallel
+    OptionalAttr<BoolAttr>:$do_core_parallel,
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type
   );
 
   let hasCanonicalizer = 1;
@@ -3204,7 +3211,7 @@ def Tpu_SelectiveScanOp: Tpu_Op<"SelectiveScan"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_SplitOp:Tpu_BaseOp<"Split"> {
+def Tpu_CoreSplitOp:Tpu_Op<"CoreSplit"> {
   let summary = "split tensor to continues pieces";
   let description = [{
     1.Op Introduction
@@ -3219,12 +3226,14 @@ def Tpu_SplitOp:Tpu_BaseOp<"Split"> {
     input(act.): input tensor.;
   }];
   let arguments = (ins
-    AnyRankedTensor:$input
+    AnyRankedTensor:$input,
+    SI32Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "true">:$multicore
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
 }
 
-def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
+def Tpu_CoreJoinOp:Tpu_Op<"CoreJoin"> {
   let summary = "Join tensor to continues pieces";
   let description = [{
     1.Op Introduction
@@ -3237,7 +3246,9 @@ def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
     inputs(act.): input tensor.;
   }];
   let arguments = (ins
-    Variadic<AnyRankedTensor>:$inputs
+    Variadic<AnyRankedTensor>:$inputs,
+    SI32Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "true">:$multicore
   );
   let results = (outs AnyRankedTensor:$output);
 }

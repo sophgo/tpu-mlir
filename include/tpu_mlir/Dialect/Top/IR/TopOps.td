@@ -82,6 +82,7 @@ def ImageOutFormatAttr: AnyStrAttrOf<["FLOAT32", "UINT8"]>;
 def Yuv2rgbFormulaAttr: AnyStrAttrOf<["_601_limited", "_601_full"]>;
 def GELUModeAttr: AnyStrAttrOf<["normal", "tanh", "sigm"]>;
 def RopeModeAttr: AnyStrAttrOf<["interleaved_pairs", "contiguous_halves"]>;
+def DqTypeAttr: AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -318,7 +319,8 @@ def Top_CastOp:Top_Op<"Cast"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode,
+    DefaultValuedAttr<StrAttr, "\"\"">:$to
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1464,6 +1466,8 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     in_int4_zp: the zero point for input tensors that are quantized to 4 bits.;
     out_int8_scale:the scaling factor for the output tensor when quantized to 8 bits.;
     out_int8_zp: This optional attribute specifies the zero point for the output tensor that is quantized to 8 bits.;
+    dq_type: the quantized data type for dynamic quantization.;
+    q_group_size: the group size for per-group quantization.;
   }];
 
   let arguments = (ins
@@ -1482,7 +1486,9 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
     OptionalAttr<F64Attr>:$out_int8_scale,
-    OptionalAttr<F64Attr>:$out_int8_zp
+    OptionalAttr<F64Attr>:$out_int8_zp,
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type,
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let results = (outs AnyTensor:$output);
@@ -1511,7 +1517,8 @@ def Top_A16MatMulOp: Top_Op<"A16MatMul"> {
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
     DefaultValuedAttr<I64Attr, "128">:$q_group_size,
-    DefaultValuedAttr<I64Attr, "8">:$weight_bits
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits,
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type
   );
 
   let results = (outs AnyTensor:$output);

@@ -8,9 +8,6 @@
 # third-party components.
 #
 # ==============================================================================
-# @Time    : 2023/7/18 10:50
-# @Author  : chongqing.zeng@sophgo.com
-# @Project : PerfAI
 import pandas as pd
 from numpy import transpose
 from openpyxl import load_workbook

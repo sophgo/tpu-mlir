@@ -8,7 +8,7 @@ If the test time exceeds the following time limit, it will be considered abnorma
 
 * Compilation test: 48 hours
 * Performance test: 24 hours
-* Accuracy test: 24 hours (currently only BM1684X PCIE needs to perform accuracy test)
+* Accuracy test: 24 hours (currently only BM1684X PCIe needs to perform accuracy test)
 
 Configure the system environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,7 +24,7 @@ If you are using Docker for the first time, use the methods in :ref:`Environment
 Get the ``model-zoo`` model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In your working directory, get the ``model-zoo`` test package from the SDK package provided by SOPHGO, then create and set up ``model-zoo`` as follows:
+In your working directory, get the ``model-zoo`` test package from the SDK package, then create and set up ``model-zoo`` as follows:
 
 .. code-block:: shell
 
@@ -74,7 +74,7 @@ In addition, tpu hardware needs to be invoked for performance and accuracy tests
 Configure SoC device
 ~~~~~~~~~~~~~~~~~~
 
-Note: If your device is a PCIE board, you can skip this section directly.
+Note: If your device is a PCIe board, you can skip this section directly.
 
 The performance test only depends on the runtime environment for the TPU hardware, so after packaging models, compiled in the toolchain compilation environment, and ``model-zoo``, the performance test can be carried out in the SoC environment by ``tpu_perf``. However, the complete ``model-zoo`` as well as compiled output contents may not be fully copied to the SoC since the storage on the SoC device is limited. Here is a method to run tests on SoC devices through linux nfs remote file system mounts.
 
@@ -118,7 +118,7 @@ Install the client on the SoC device and mount the shared directory:
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 
-In this way, the test directory is accessible in the SoC environment. The rest of the SoC test operation is basically the same as that of PCIE. Please refer to the following content for operation. The difference in command execution position and operating environment has been explained in the execution place.
+In this way, the test directory is accessible in the SoC environment. The rest of the SoC test operation is basically the same as that of PCIe. Please refer to the following content for operation. The difference in command execution position and operating environment has been explained in the execution place.
 
 
 Prepare dataset
@@ -135,7 +135,7 @@ After unzipping, move the data under ``Data/CLS_LOC/val`` to a directory like mo
 
 .. code-block:: shell
 
-   $ cd path/to/sophon/model-zoo
+   $ cd path/to/model-zoo
    $ mkdir -p dataset/ILSVRC2012/ILSVRC2012_img_val
    $ mv path/to/imagenet-object-localization-challenge/Data/CLS_LOC/val dataset/ILSVRC2012/ILSVRC2012_img_val
    # It is also possible to map the dataset directory to dataset/ILSVRC2012/ILSVRC2012_img_val through the soft link ln -s
@@ -175,16 +175,16 @@ It is recommended to use the toolchain software in a docker environment, see :re
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.4
-   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+   $ docker pull tpuc_dev:v3.4
+   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
 
 If you want to keep the container after it exits, simply remove the ``--rm`` parameter:
 
 .. code-block:: shell
 
-   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4 --rm
+   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4 --rm
 
-After running the command, it will be in a Docker container. You can the latest ``tpu-mlir`` wheel installation package from the SDK package provided by SOPHGO, such as ``tpu_mlir-*-py3-none-any.whl``. Install tpu_mlir in the Docker container:
+After running the command, it will be in a Docker container. You can the latest ``tpu-mlir`` wheel installation package from the SDK package, such as ``tpu_mlir-*-py3-none-any.whl``. Install tpu_mlir in the Docker container:
 
 .. code-block:: shell
 
@@ -252,9 +252,9 @@ Running the test needs to be done in an environment outside Docker, it is assume
 
    $ exit
 
-**PCIE board**
+**PCIe board**
 
-Run the following commands under the PCIE board to test the performance of the generated high priority model ``bmodel`` :
+Run the following commands under the PCIe board to test the performance of the generated high priority model ``bmodel`` :
 
 .. code-block:: shell
 
@@ -263,7 +263,7 @@ Run the following commands under the PCIE board to test the performance of the g
 
 where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
 
-Note: If multiple SOPHGO accelerator cards are installed on the host, you can
+Note: If multiple accelerator cards are installed on the host, you can
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 ``tpu_perf``. Such as:
 
@@ -306,7 +306,7 @@ Running the test needs to be done in an environment outside Docker, it is assume
 
    $ exit
 
-Run the following commands under the PCIE board to test the precision of the generated high priority model ``bmodel`` :
+Run the following commands under the PCIe board to test the precision of the generated high priority model ``bmodel`` :
 
 .. code-block:: shell
 
@@ -317,7 +317,7 @@ where the ``--target`` is used to specify the processor model, which currently s
 
 Note:
 
-- If multiple SOPHGO accelerator cards are installed on the host, you can
+- If multiple accelerator cards are installed on the host, you can
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
 ``tpu_perf``. Such as:
 

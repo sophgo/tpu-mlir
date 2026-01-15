@@ -32,6 +32,7 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.scale = getScale().convertToDouble();
   common.hasmask = !module::isNone(getMask());
   common.high_precision = module::isHighPrecision();
+  common.keep_dim = getKeepDims();
 
   BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
                                input_spec->data(), output_spec->data());
@@ -67,6 +68,7 @@ int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
     common.dim = getDim();
     common.scale = getScale().convertToDouble();
     common.hasmask = !module::isNone(getMask());
+    common.keep_dim = getKeepDims();
   }
   return BM168x::call_ppl_dyn_func("api_dyn_fattention_global", &param,
                                    input_spec->data(), output_spec->data(),

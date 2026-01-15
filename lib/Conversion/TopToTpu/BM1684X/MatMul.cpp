@@ -680,6 +680,13 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
+        auto dq_type =
+            rewriter.getNamedAttr("dq_type", op.getDqTypeAttr());
+        attrs.push_back(dq_type);
+        auto q_group_size =
+            rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
+        attrs.push_back(q_group_size);
+
         bool right_transpose = op.getRightTranspose();
         if (right_transpose) {
           auto filter_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
@@ -745,6 +752,13 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
         auto weight_bits =
             rewriter.getNamedAttr("weight_bits", op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
+        auto dq_type =
+            rewriter.getNamedAttr("dq_type", op.getDqTypeAttr());;
+        attrs.push_back(dq_type);
+        auto q_group_size =
+            rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
+        attrs.push_back(q_group_size);
+
         bool right_transpose = op.getRightTranspose();
         if (right_transpose) {
           auto filter_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());

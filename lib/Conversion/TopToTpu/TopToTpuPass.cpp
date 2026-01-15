@@ -18,7 +18,8 @@
 
 namespace tpu_mlir {
 
-template <typename OpTy> static void BackwardOp(OpTy op) {
+template <typename OpTy>
+static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(out, module::getShape(in));
@@ -37,7 +38,8 @@ static void Backward(Value in) {
   }
 }
 
-template <typename OpTy> static void ForwardOp(OpTy op) {
+template <typename OpTy>
+static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
   auto new_type = module::getTypeLike(in, module::getShape(out));
@@ -1087,14 +1089,22 @@ public:
       slice_axis = 0;
     }
     // W8A16
-    if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8F16) {
+    if (qmode == module::Mode::W8BF16 || qmode == module::Mode::W8F16 ||
+        qmode == module::Mode::F8E4M3F16DYN ||
+        qmode == module::Mode::F8E4M3BF16DYN ||
+        qmode == module::Mode::INT8F16DYN ||
+        qmode == module::Mode::INT8BF16DYN) {
       if (op.getWeightBits() == 8 || (group_size > 0 && K % group_size != 0)) {
         return failure();
       }
       op.setWeightBits(8);
     }
     // W4A16
-    else if (qmode == module::Mode::W4BF16 || qmode == module::Mode::W4F16) {
+    else if (qmode == module::Mode::W4BF16 || qmode == module::Mode::W4F16 ||
+             qmode == module::Mode::INT4F16DYN ||
+             qmode == module::Mode::INT4BF16DYN ||
+             qmode == module::Mode::F4F16DYN ||
+             qmode == module::Mode::F4BF16DYN) {
       if (op.getWeightBits() == 4 || (group_size > 0 && K % group_size != 0)) {
         return failure();
       }
@@ -1108,9 +1118,7 @@ public:
     auto o_shape = module::getShape(out);
     auto o_name = module::getName(out);
     auto target_mode =
-        ((qmode == module::Mode::W4BF16 || qmode == module::Mode::W8BF16)
-             ? module::Mode::BF16
-             : module::Mode::F16);
+        (module::isBF16Modes() ? module::Mode::BF16 : module::Mode::F16);
     // if has q_group_size, means npu_num must be divided exactly by N
     if (N % backend::Arch::NPU_NUM == 0)
       return success();
@@ -1162,6 +1170,12 @@ public:
     auto m1_op =
         rewriter.create<top::MatMulOp>(loc1, type1, opds1, op->getAttrs());
     m1_op.removeWeightBitsAttr();
+    if (module::isDynamicQuantize()) {
+      if (module::isF16Modes())
+        m1_op.setDqTypeAttr(mlir::StringAttr::get(m1_op.getContext(), "F16"));
+      else
+        m1_op.setDqTypeAttr(mlir::StringAttr::get(m1_op.getContext(), "BF16"));
+    }
     auto name1 = module::getName(m1_op.getOutput());
     LoweringConfig::quantize_map[name1.str()] = target_mode;
 
@@ -1450,6 +1464,7 @@ void ConvertTopToTpu::runOnOperation() {
       doWinograd.hasValue() ? doWinograd.getValue() : false;
   init_qtable();
   set_add_before_softmax_fp32();
+  set_sub_float();
 
   if (module::isState(module::State::TOP_QUANTIZED)) {
     module::setAsymmetric(true);
@@ -1459,7 +1474,51 @@ void ConvertTopToTpu::runOnOperation() {
     module::setAsymmetric(isAsymmetric);
     calibration_process();
   }
-
+  if (module::isDynamicQuantize()) {
+    Builder builder(ctx_);
+    mainFunc_.walk([&](Operation *op) {
+      auto name = module::getName(op).str();
+      if (!isa<top::MatMulOp>(op)) {
+        if (module::isF16Modes()) {
+          LoweringConfig::quantize_map[name] = qmode("F16");
+        } else {
+          LoweringConfig::quantize_map[name] = qmode("BF16");
+        }
+      } else {
+        auto op_mode = module::getMode();
+        if (LoweringConfig::quantize_map.find(name) !=
+            LoweringConfig::quantize_map.end()) {
+          op_mode = LoweringConfig::quantize_map[name];
+        }
+        std::string dq_type;
+        if (op_mode == module::Mode::INT4F16DYN ||
+            op_mode == module::Mode::INT4BF16DYN)
+          dq_type = "INT4";
+        else if (op_mode == module::Mode::INT8F16DYN ||
+                 op_mode == module::Mode::INT8BF16DYN)
+          dq_type = "INT8";
+        else if (op_mode == module::Mode::F8E4M3F16DYN ||
+                 op_mode == module::Mode::F8E4M3BF16DYN)
+          dq_type = "F8E4M3";
+        else if (op_mode == module::Mode::F4F16DYN ||
+                 op_mode == module::Mode::F4BF16DYN)
+          dq_type = "F4";
+        else {
+          if (module::isBF16Modes())
+            dq_type = "BF16";
+          else
+            dq_type = "F16";
+        }
+        op->setAttr("dq_type", builder.getStringAttr(dq_type));
+        int group_size = module::getQuantGroupSize();
+        if (LoweringConfig::group_map.find(name) !=
+            LoweringConfig::group_map.end()) {
+          group_size = LoweringConfig::group_map[name];
+        }
+        op->setAttr("q_group_size", builder.getI64IntegerAttr(group_size));
+      }
+    });
+  }
   if (module::isBM1690Family() && !LoweringConfig::isQuantized &&
       module::getMode() == module::Mode::F8E4M3) {
     mainFunc_.walk([&](Operation *op) {
@@ -1677,6 +1736,14 @@ void ConvertTopToTpu::runOnOperation() {
     patterns.clear();
   }
   host2device_convert_process();
+
+  if (module::isBM1684XFamily() || module::isBM1690Family()) {
+    bm1684x::populateTopIntToTpuConversionPatterns(&patterns);
+  } else if (module::isBM1684Family()) {
+    bm1684::populateTopIntToTpuConversionPatterns(&patterns);
+  }
+  applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  patterns.clear();
 
   // process other ops
   if (module::isBM1684XFamily() || module::isBM1690Family()) {
@@ -1995,6 +2062,75 @@ void ConvertTopToTpu::set_add_before_softmax_fp32() {
   });
 }
 
+void ConvertTopToTpu::set_sub_float() {
+  mainFunc_.walk([&](Operation *op) {
+    if (isa<top::SubOp, top::SubConstOp>(op)) {
+      if (LoweringConfig::quantize_map.find(module::getName(op).str()) !=
+          LoweringConfig::quantize_map.end())
+        return;
+      if (module::getMode() != module::Mode::INT8 &&
+          module::getMode() != module::Mode::UINT8 &&
+          module::getMode() != module::Mode::W4INT8)
+        return;
+      auto subop = dyn_cast<top::SubOp>(op);
+      auto subconstop = dyn_cast<top::SubConstOp>(op);
+      int idx = 0;
+      float th[2], out_th = 0.0;
+      th[0] = th[1] = 0.0;
+      if (subop) {
+        if (!module::isCalibratedType(subop.getResult()))
+          return;
+        for (auto in : subop.getInputs()) {
+          if (isa<top::WeightOp>(in.getDefiningOp())) {
+            auto weight =
+                dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
+            float absmax = fabs(weight.get()->at(0));
+            for (int i = 0; i < weight.get()->size(); i++) {
+              float value = fabs(weight.get()->at(i));
+              absmax = value > absmax ? value : absmax;
+            }
+            th[idx++] = absmax;
+          } else {
+            if (!module::isCalibratedType(in))
+              return;
+            auto in_type = module::getCalibratedType(in);
+            th[idx++] = std::max(std::abs(in_type.getMin()),
+                                 std::abs(in_type.getMax()));
+          }
+          if (idx > 2)
+            return;
+        }
+        float _max = module::getCalibratedType(subop.getResult()).getMax();
+        float _min = module::getCalibratedType(subop.getResult()).getMin();
+        out_th = std::max(std::abs(_min), std::abs(_max));
+      } else if (subconstop) {
+        if (!module::isCalibratedType(subconstop.getResult()))
+          return;
+        auto in_type = module::getCalibratedType(subconstop.getInput());
+        th[0] =
+            std::max(std::abs(in_type.getMin()), std::abs(in_type.getMax()));
+        th[1] = std::abs(subconstop.getConstVal().convertToDouble());
+        float _max = module::getCalibratedType(subconstop.getResult()).getMax();
+        float _min = module::getCalibratedType(subconstop.getResult()).getMin();
+        out_th = std::max(std::abs(_min), std::abs(_max));
+      } else {
+        return;
+      }
+      if (out_th < th[0] || out_th < th[1]) {
+        if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+            LoweringConfig::quantize_map.end()) {
+          if (module::isBM1684Family())
+            LoweringConfig::quantize_map.insert(
+                {module::getName(op).str(), module::Mode::F32});
+          else
+            LoweringConfig::quantize_map.insert(
+                {module::getName(op).str(), module::Mode::F16});
+        }
+      }
+    }
+  });
+}
+
 // match kv cache
 void ConvertTopToTpu::match_kv_cache(std::vector<Operation *> &kv_cache) {
   mainFunc_.walk([&](Operation *op) {
@@ -2285,7 +2421,7 @@ void ConvertTopToTpu::init_qtable() {
   std::vector<std::pair<std::string, std::string>> entries;
   if (is_file) {
     // File mode: parse line by line
-    std::regex map_pattern("\\S+\\s+\\S+");
+    std::regex map_pattern("\\S+\\s+\\S+(\\s+-?\\d+)?");
     std::regex info_pattern("#.*");
     std::regex empty_pattern("^\\s*$");
 
@@ -2300,9 +2436,12 @@ void ConvertTopToTpu::init_qtable() {
       }
       if (std::regex_match(line, map_pattern)) {
         std::istringstream iss(line);
-        std::string name, mode;
-        iss >> name >> mode;
+        std::string name, mode, group_size;
+        iss >> name >> mode >> group_size;
         entries.emplace_back(name, mode);
+        if (!group_size.empty()) {
+          LoweringConfig::group_map[name] = std::stoi(group_size);
+        }
       } else {
         llvm::errs() << "Error, quantize table content invalid: [" << line
                      << "]\n";

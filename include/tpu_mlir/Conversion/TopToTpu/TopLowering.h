@@ -240,6 +240,7 @@ struct LoweringConfig {
   static bool isQuantized;
   static bool doWinograd;
   static std::map<std::string, module::Mode> quantize_map;
+  static std::map<std::string, int> group_map;
   static std::map<std::string, std::set<std::string>> split_map;
   static void update(const std::string &name, module::Mode mode) {
     quantize_map[name] = mode;
@@ -316,11 +317,19 @@ protected:
     case module::Mode::F16:
     case module::Mode::W8F16:
     case module::Mode::W4F16:
+    case module::Mode::INT8F16DYN:
+    case module::Mode::INT4F16DYN:
+    case module::Mode::F8E4M3F16DYN:
+    case module::Mode::F4F16DYN:
       LoweringF16(rewriter, opTy);
       break;
     case module::Mode::BF16:
     case module::Mode::W8BF16:
     case module::Mode::W4BF16:
+    case module::Mode::INT8BF16DYN:
+    case module::Mode::INT4BF16DYN:
+    case module::Mode::F8E4M3BF16DYN:
+    case module::Mode::F4BF16DYN:
       LoweringBF16(rewriter, opTy);
       break;
     case module::Mode::F8:
@@ -366,6 +375,28 @@ template <typename OpTy>
 class TopShapeLowering : public OpRewriterPatternEx<OpTy> {
 public:
   TopShapeLowering(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<OpTy>(context) {}
+
+protected:
+  mlir::LogicalResult
+  matchAndRewriteImpl(OpTy opTy,
+                      mlir::PatternRewriter &rewriter) const override {
+    Lowering(rewriter, opTy);
+    return success();
+  }
+
+public:
+  virtual void Lowering(PatternRewriter &rewriter, OpTy opTy) const {
+    UNREACHABLE_OP("Not Implemented", opTy);
+  }
+
+  bool shouldPrint(OpTy opTy) const override { return false; }
+};
+
+template <typename OpTy>
+class TopIntLowering : public OpRewriterPatternEx<OpTy> {
+public:
+  TopIntLowering(mlir::MLIRContext *context)
       : OpRewriterPatternEx<OpTy>(context) {}
 
 protected:
@@ -595,4 +626,5 @@ void try_insert_device2host(Operation *op, uint32_t idx);
 Value insert_device2host(Value v, Type to, Operation *user = nullptr);
 
 bool isa_shape_subnet_op(Operation *op);
+bool isa_int_subnet_op(Operation *op);
 } // namespace tpu_mlir

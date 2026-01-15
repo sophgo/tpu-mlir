@@ -69,6 +69,7 @@ cp -rf ${PROJECT_ROOT}/python/* ${release_archive}/python/
 # batch convert import path -> absolute path
 python3 ${PROJECT_ROOT}/release_tools/import_rewriter.py --project-root ${release_archive} --module-type tools
 python3 ${PROJECT_ROOT}/release_tools/import_rewriter.py --project-root ${release_archive} --module-type utils
+python3 ${PROJECT_ROOT}/release_tools/sensitive_replace.py --path ${release_archive}
 
 cp -rf /usr/local/python_packages/caffe/ ${release_archive}/python/caffe/
 cp ${PROJECT_ROOT}/release_tools/{__init__.py,entryconfig.py} ${release_archive}

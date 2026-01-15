@@ -81,12 +81,20 @@ public:
   // for BM1684
   uint32_t get_global_ir_length(ir_layer_info_t *ir_layer_info);
   int32_t get_local_ir_length(ir_layer_info_t *ir_layer_info);
-  int global_ir_version() { return 0; }
-
-  int local_ir_version() { return 0; }
+  uint32_t get_global_magic() {
+    // 0x0F00FFFF is old verion
+    // 0x1F00FFFF support ir_op_info_t header
+    return 0x1F00FFFF;
+  }
+  uint32_t get_local_magic() {
+    // local layer still use old version magic
+    return 0x0F00FFFF;
+  }
 
   size_t write_local_ir(void *buffer, const std::map<int, int> &consume_table);
   size_t write_global_ir(void *buffer);
+  uint64_t get_core_mask();
+  uint32_t get_global_flag();
 
 protected:
   size_t write_global_ir_impl(void *buffer, bool feign = false);

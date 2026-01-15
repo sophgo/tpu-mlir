@@ -22,6 +22,16 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       >(patterns->getContext());
 }
 
+void populateTopIntToTpuConversionPatterns(RewritePatternSet *patterns) {
+  patterns->add<
+      // clang-format off
+      CastIntLowering,
+      AddIntLowering,
+      MulIntLowering
+      // clang-format on
+      >(patterns->getContext());
+}
+
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off
@@ -31,6 +41,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ArccosLowering,
       ArctanhLowering,
       AvgPoolLowering,
+      CastLowering,
       ClipLowering,
       ConcatLowering,
       ConvLowering,

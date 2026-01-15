@@ -58,6 +58,7 @@ void py_cuda::load(std::string filename) {
     auto buffer =
         std::make_shared<std::vector<float>>(module::getNumElements(v));
     buffer_map_[name] = std::move(buffer);
+    // std::cout << "66 output name: " << name << " size " << module::getNumElements(v)*sizeof(float) << " addr " << buffer_map_[name] << std::endl;
   }
 }
 
@@ -68,6 +69,7 @@ void py_cuda::cuda_malloc(std::map<std::string, cuda_ptr> &map, mlir::Value v) {
   cuda_ptr wrapper(cuda_mem);
   map[name] = std::move(wrapper);
   value_map_[name] = v;
+  // std::cout << "cudamalloc value name: " << name << " size " << module::getBytes(v) << " addr " << cuda_mem << std::endl;
 }
 
 cuda_ptr py_cuda::cuda_malloc(size_t bytes) {
@@ -96,11 +98,13 @@ void py_cuda::cuda_to_host(const std::string &name) {
         std::make_shared<std::vector<float>>(module::getNumElements(v));
     buffer_map_[name] = std::move(buffer);
     it_buffer = buffer_map_.find(name);
+    // std::cout << "99 output name: " << name << " size " << module::getNumElements(v)*sizeof(float) << " addr " << buffer_map_[name] << std::endl;
   }
   auto buffer = it_buffer->second->data();
 
   auto stype = module::getStorageType(v);
   if (stype.isF32()) {
+    // std::cout << "cuda_to_host F32 name: " << name << " size " << module::getNumElements(v)*sizeof(float) << " addr " << cudaData << std::endl;
     auto bytes = it_buffer->second->size() * sizeof(float);
     CHECK_CUDA(cudaMemcpy(buffer, cudaData, bytes, cudaMemcpyDeviceToHost));
   } else if (module::isUniformQuantized(v) && stype.isInteger(8)) {
@@ -148,6 +152,16 @@ void py_cuda::cuda_to_host(const std::string &name) {
       buffer[i] = f16_to_f32(temp[i]);
     }
     delete[] temp;
+  } else if (stype.isInteger(16)) {
+    auto num = module::getNumElements(v);
+    auto qtype = module::getUniformQuantizedType(v);
+    int16_t * temp = new int16_t[num];
+    auto scale = qtype.getScale();
+    CHECK_CUDA(cudaMemcpy(temp, cudaData, num * sizeof(int16_t),
+                          cudaMemcpyDeviceToHost));
+    for (size_t i=0; i<num; i++) {
+      buffer[i] = temp[i] * scale;
+    }
   } else {
     v.dump();
     llvm_unreachable("Not Implemented");
@@ -180,7 +194,7 @@ void py_cuda::set_tensor(
   }
 }
 
-void py_cuda::invoke(bool dump_all) {
+void py_cuda::invoke(bool dump_all, const std::vector<std::string>& extra_outputs) {
   auto m = module_.get();
   for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
@@ -214,6 +228,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaConvOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::ConcatOp>(op)) {
           cudaConcatOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ConcatOp>(op)) {
+          cudaConcatOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::CastOp>(op)) {
           cudaCastOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::DeconvOp>(op)) {
@@ -224,6 +240,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaGenericCpuOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::GatherOp>(op)) {
           cudaGatherOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::GatherOp>(op)) {
+          cudaGatherOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::LutOp>(op)) {
           cudaLutOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::MatMulOp>(op)) {
@@ -232,6 +250,8 @@ void py_cuda::invoke(bool dump_all) {
           cudaMatMulOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulOp>(op)) {
           cudaMulOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MulOp>(op)) {
+          cudaMulOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::MulShiftOp>(op)) {
           cudaMulShiftOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::ReshapeOp>(op)) {
@@ -250,21 +270,71 @@ void py_cuda::invoke(bool dump_all) {
           cudaPReluOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::PermuteOp>(op)) {
           cudaPermuteOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::PermuteOp>(op)) {
+          cudaPermuteOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SliceOp>(op)) {
           cudaSliceOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SliceOp>(op)) {
+          cudaSliceOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SoftmaxOp>(op)) {
           cudaSoftmaxOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SoftmaxOp>(op)) {
+          cudaSoftmaxOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::SqueezeOp>(op)) {
           cudaSqueezeOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SqueezeOp>(op)) {
+          cudaSqueezeOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::TileOp>(op)) {
           cudaTileOp(tpuOp);
         } else if (auto tpuOp = dyn_cast<tpu::UpsampleOp>(op)) {
           cudaUpsampleOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::UpsampleOp>(op)) {
+          cudaUpsampleOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::UnsqueezeOp>(op)) {
           cudaUnsqueezeOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::UnsqueezeOp>(op)) {
+          cudaUnsqueezeOp(topOp);
         } else if (auto topOp = dyn_cast<top::ScaleOp>(op)) {
           cudaScaleOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SiLUOp>(op)) {
+          cudaSiLUOp(topOp);
+        } else if (auto topOp = dyn_cast<top::GELUOp>(op)) {
+          cudaGELUOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SigmoidOp>(op)) {
+          cudaSigmoidOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ActiveOp>(op)) {
+          cudaActiveOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SubOp>(op)) {
+          cudaSubOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SubOp>(op)) {
+          cudaSubOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SubConstOp>(op)) {
+          cudaSubConstOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SubConstOp>(op)) {
+          cudaSubConstOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MulConstOp>(op)) {
+          cudaMulConstOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MulConstOp>(op)) {
+          cudaMulConstOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::LayerNormOp>(op)) {
+          cudaLayerNormOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::LayerNormOp>(op)) {
+          cudaLayerNormOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::Depth2SpaceOp>(op)) {
+          cudaDepth2SpaceOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::Depth2SpaceOp>(op)) {
+          cudaDepth2SpaceOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ReduceOp>(op)) {
+          cudaReduceOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ReduceOp>(op)) {
+          cudaReduceOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SwapDimInnerOp>(op)) {
+          cudaSwapDimInnerOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SwapDimInnerOp>(op)) {
+          cudaSwapDimInnerOp(tpuOp);
         } else {
+          op->dump();
+          __asm__("int3");
           UNREACHABLE_OP("Not Implemented", op);
         }
         // 3. after inference, check input is still need, or remove from cuda
@@ -284,7 +354,7 @@ void py_cuda::invoke(bool dump_all) {
             }
           }
           if (!need) {
-            if (dump_all) {
+            if (dump_all || std::find(extra_outputs.begin(), extra_outputs.end(), name) != extra_outputs.end()) {
               cudaDeviceSynchronize();
               cuda_to_host(name);
             }

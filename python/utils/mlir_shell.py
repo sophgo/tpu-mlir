@@ -577,7 +577,9 @@ def lowering_options(mode: str,
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={} align={}\"".format(
             mode, customization_format, aligned_input)
         options.extend([fuse_pre_param])
-    qw = "qtable={} weightFileName={}".format(quantize_table, weight_name) if quantize_table else ""
+    qw = "weightFileName={}".format(weight_name)
+    if quantize_table:
+        qw = "qtable={} {}".format(quantize_table, qw)
     lower_param = "--convert-top-to-tpu=\"{} asymmetric={} doWinograd={}" \
                   " q_group_size={} q_symmetric={} matmul_perchannel={} gelu_mode={}\"".format(
         qw, asymmetric, do_winograd, q_group_size, q_symmetric, matmul_perchannel, gelu_mode)
@@ -613,7 +615,7 @@ def mlir_lowering(top_mlir: str,
                   gelu_mode: str = "normal"):
     mode = mode.upper()
     cmd = ["tpuc-opt", top_mlir]
-    weight_name = ""
+    weight_name = tpu_mlir[:-len(".mlir")] + "_weights.npz"
     if quantize_table:
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
@@ -646,10 +648,13 @@ def tpu_opt_options(quant_input: bool = False,
                     quant_input_list: str = "",
                     quant_output_list: str = "",
                     mlir_disable_threading: bool = True,
-                    quant_output_bf16: bool = False):
+                    quant_output_bf16: bool = False,
+                    quant_input_int8: bool = False,
+                    quant_output_int8: bool = False):
     # generate final mlir
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={} quant_output_bf16={}"'.format(
-        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16)
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={} quant_output_bf16={} quant_input_int8={} quant_output_int8={} "'.format(
+        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16,
+        quant_input_int8, quant_output_int8)
     # yapf: disable
     options = []
     if mlir_disable_threading:
@@ -678,7 +683,11 @@ def tpu_ada_options(
     layer_group_config: str = "",
     iomem_set: str = "",
     same_addr: str = "",
+    disable_topo_sort: bool = False,
 ):
+    topo_sort_param = ""
+    if not disable_topo_sort:
+        topo_sort_param = "--topo-sort"
     lg_param = ''
     disable_group_overlap = "true" if disable_group_overlap else "false"
     lgcache = "true" if lgcache else "false"
@@ -712,6 +721,7 @@ def tpu_ada_options(
         op_divide_param,
         subnet_param,
         "--op-reorder",
+        topo_sort_param,
         lg_param,
         trunc_param,
         parallel_param,
@@ -959,6 +969,8 @@ def mlir_to_model(
     trunc_final: list = None,
     command_mem: dict = None,
     quant_output_bf16: bool = False,
+    quant_input_int8: bool = False,
+    quant_output_int8: bool = False,
     opt_post_processor: bool = False,
     gdma_check: bool = True,
     lg_debugger: int = 0,
@@ -966,13 +978,14 @@ def mlir_to_model(
     subnet_params: str = None,
     layer_group_cache: str = "",
     layer_group_config: str = "",
+    disable_topo_sort: bool = False
 ):
     if command_mem is None:
         command_mem = {}
     cmd = ["tpuc-opt", tpu_mlir]
     debug_cmd = f"--debug_cmd={debug_info}"
     options = tpu_opt_options(
-        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16=quant_output_bf16
+        quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16=quant_output_bf16, quant_input_int8=quant_input_int8, quant_output_int8=quant_output_int8
     )
     cmd.extend(options)
 
@@ -999,7 +1012,8 @@ def mlir_to_model(
                               disable_group_overlap=(time_fixed_subnet != None),
                               layer_group_config=layer_group_config,
                               iomem_set=iomem_set,
-                              same_addr=same_addr)
+                              same_addr=same_addr,
+                              disable_topo_sort=disable_topo_sort)
     cmd.extend(options)
 
     cmd.extend(["-o", final_mlir])

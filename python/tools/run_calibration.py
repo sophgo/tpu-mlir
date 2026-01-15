@@ -22,7 +22,7 @@ from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
 from calibration.utils import gen_shape_pattern_qtable, QuantizeTable
-from calibration.utils import parse_method_list, compactable_method_list, compactable_cmd_method_list
+from calibration.utils import parse_method_list, compactable_method_list, compactable_cmd_method_list, parse_optype_list
 from utils.log_setting import logger
 from utils.misc import parse_debug_cmd
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--kurtosis_analysis', help='kurtosis analysis', action="store_true")
     parser.add_argument('--part_quantize', default=None, choices=['N_mode', 'H_mode', 'custom_mode'],
                         help="quantize operators of specific operator type")
-    parser.add_argument('--custom_operator', nargs='*', default=[],
+    parser.add_argument('--custom_operator', type=parse_optype_list, default=[],
                         help="When custom_mode is selected, it is used to specify a custom operator type")
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
     parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
@@ -153,6 +153,9 @@ if __name__ == '__main__':
             searcher = MixPrecSearcher(args)
             searcher.qtable = quant_table
             searcher.weight_equalization()
+            # run calibration after we by default, or if both we and bc are specified, there is no calitable for bc
+            calibrator = ActivationCalibrator(args, selector, tune_ds)
+            calibrator.run()
         # calibration
         if args.search == 'search_threshold':
             args._logger = logger('Search_Threshold', log_level=log_level)

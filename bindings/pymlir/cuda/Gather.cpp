@@ -27,3 +27,22 @@ void py_cuda::cudaGatherOp(tpu::GatherOp op) {
   cuda::gather(in_ptr, embed_ptr, out_ptr, num_in, embed_dim, inner_dim,
                in_type, out_type);
 }
+
+void py_cuda::cudaGatherOp(top::GatherOp op) {
+  auto in = op.getIndices();
+  auto embed = op.getInput();
+  auto out = op.getOutput();
+  void *in_ptr = getCudaData(in);
+  void *embed_ptr = getCudaData(embed);
+  void *out_ptr = getCudaData(out);
+  auto in_type = getCudaType(in);
+  auto out_type = getCudaType(out);
+  int num_in = module::getNumElements(in);
+  int num_embed = module::getNumElements(embed);
+  auto embed_shape = module::getShape(embed);
+  int embed_dim = embed_shape[0];
+  int inner_dim = num_embed / embed_dim;
+  cuda::gather(in_ptr, embed_ptr, out_ptr, num_in, embed_dim, inner_dim,
+               in_type, out_type);
+}
+

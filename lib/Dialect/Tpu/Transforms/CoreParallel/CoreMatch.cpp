@@ -311,8 +311,7 @@ static void common_match(PatternRewriter &rewriter,
       auto next_op = *op->getUsers().begin();
       // Disable the in-place operation since it complicates the process of
       // address assignment. TODO: refine address assignment.
-      if (isa<ReturnOp, tpu::ReshapeOp, tpu::ConcatOp, tpu::IdentityOp>(
-              next_op)) {
+      if (isa<ReturnOp, tpu::ConcatOp, tpu::IdentityOp>(next_op)) {
         break;
       }
       next_ops.push_back(next_op);

@@ -17,7 +17,7 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::RopeOp::codegen_global_bm1684x() {
-  rope_param_t param{0};
+  rope_spec_t param{0};
   param.rope_mode = rope_mode_convert(getRopeMode());
   param.mul1_shift = getMul1Shift();
   param.mul2_shift = getMul2Shift();
@@ -68,7 +68,7 @@ void tpu::RopeOp::codegen_local_bm1684x_kernel(
     std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
     std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   const auto &gi = out_group_infos[0];
-  rope_param_t param = {0};
+  rope_spec_t param = {0};
   param.rope_mode = rope_mode_convert(getRopeMode());
   param.buffer_addr = gi.buffer_addr;
   param.mul1_shift = getMul1Shift();
@@ -88,19 +88,46 @@ void tpu::RopeOp::codegen_local_bm1684x_kernel(
 
 // dynamic codegen
 int64_t tpu::RopeOp::dyn_codegen_local_bm1684x(void *buffer) {
-  UNREACHABLE_THIS("Not Implemented");
-  return 0;
+  if (!buffer) {
+    return sizeof(rope_spec_t);
+  }
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
+  rope_spec_t param = {0};
+  param.rope_mode = rope_mode_convert(getRopeMode());
+  param.buffer_addr = gi.buffer_addr;
+  param.mul1_shift = getMul1Shift();
+  param.mul2_shift = getMul2Shift();
+  param.add_shift = getAddShift();
+  param.mul1_round_mode = round_mode_convert(getMul1RoundMode());
+  param.mul2_round_mode = round_mode_convert(getMul2RoundMode());
+  param.add_round_mode = round_mode_convert(getAddRoundMode());
+  param.mul1_saturation = getMul1Saturation();
+  param.mul2_saturation = getMul2Saturation();
+  param.add_saturation = getAddSaturation();
+  param.is_permute_optimize = getIsPermuteOptimize();
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::RopeOp::dyn_codegen_global_bm1684x(void *buffer) {
-  UNREACHABLE_THIS("Not Implemented");
-  return 0;
+  if (!buffer) {
+    return sizeof(rope_spec_t);
+  }
+  rope_spec_t param = {0};
+  param.rope_mode = rope_mode_convert(getRopeMode());
+  param.mul1_shift = getMul1Shift();
+  param.mul2_shift = getMul2Shift();
+  param.add_shift = getAddShift();
+  param.mul1_round_mode = round_mode_convert(getMul1RoundMode());
+  param.mul2_round_mode = round_mode_convert(getMul2RoundMode());
+  param.add_round_mode = round_mode_convert(getAddRoundMode());
+  param.mul1_saturation = getMul1Saturation();
+  param.mul2_saturation = getMul2Saturation();
+  param.add_saturation = getAddSaturation();
+  param.is_permute_optimize = getIsPermuteOptimize();
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::RopeOp::get_fw_type_bm1684x() {
-  UNREACHABLE_THIS("Not Implemented");
-  return 0;
-}
+int64_t tpu::RopeOp::get_fw_type_bm1684x() { return FW_BMNET_ROPE; }

@@ -53,7 +53,7 @@ public:
   void set_tensor(
       std::string name,
       py::array_t<float, py::array::c_style | py::array::forcecast> data);
-  void invoke(bool dump_all);
+  void invoke(bool dump_all, const std::vector<std::string>& extra_outputs);
   py::array get_tensor(std::string name);
   py::dict get_all_tensor();
 
@@ -78,7 +78,6 @@ private:
   void cudaCastOp(tpu::CastOp op);
   void cudaConcatOp(tpu::ConcatOp op);
   void cudaDeconvOp(tpu::DeconvOp op);
-  void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
   void cudaGatherOp(tpu::GatherOp op);
   void cudaGenericCpuOp(tpu::GenericCpuOp op);
   void cudaLutOp(tpu::LutOp op);
@@ -96,6 +95,14 @@ private:
   void cudaTileOp(tpu::TileOp op);
   void cudaUpsampleOp(tpu::UpsampleOp op);
   void cudaUnsqueezeOp(tpu::UnsqueezeOp op);
+  void cudaActiveOp(tpu::ActiveOp op);
+  void cudaSubOp(tpu::SubOp op);
+  void cudaMulConstOp(tpu::MulConstOp op);
+  void cudaLayerNormOp(tpu::LayerNormOp op);
+  void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
+  void cudaReduceOp(tpu::ReduceOp op);
+  void cudaSwapDimInnerOp(tpu::SwapDimInnerOp op);
+  void cudaSubConstOp(tpu::SubConstOp op);
 
   void cudaAddOp(top::AddOp op);
   void cudaConvOp(top::ConvOp op);
@@ -104,6 +111,25 @@ private:
   void cudaAvgPoolOp(top::AvgPoolOp op);
   void cudaMatMulOp(top::MatMulOp op);
   void cudaReshapeOp(top::ReshapeOp op);
+  void cudaSiLUOp(top::SiLUOp op);
+  void cudaConcatOp(top::ConcatOp op);
+  void cudaUpsampleOp(top::UpsampleOp op);
+  void cudaPermuteOp(top::PermuteOp op);
+  void cudaSliceOp(top::SliceOp op);
+  void cudaSoftmaxOp(top::SoftmaxOp op);
+  void cudaSubOp(top::SubOp op);
+  void cudaMulConstOp(top::MulConstOp op);
+  void cudaMulOp(top::MulOp op);
+  void cudaSigmoidOp(top::SigmoidOp op);
+  void cudaLayerNormOp(top::LayerNormOp op);
+  void cudaSqueezeOp(top::SqueezeOp op);
+  void cudaGELUOp(top::GELUOp op);
+  void cudaDepth2SpaceOp(top::Depth2SpaceOp op);
+  void cudaReduceOp(top::ReduceOp op);
+  void cudaSwapDimInnerOp(top::SwapDimInnerOp op);
+  void cudaUnsqueezeOp(top::UnsqueezeOp op);
+  void cudaSubConstOp(top::SubConstOp op);
+  void cudaGatherOp(top::GatherOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);

@@ -55,8 +55,34 @@ static void RequantizeInt8(PatternRewriter &rewriter, top::ScatterNDOp op,
   auto new_data = do_transfer(data, output, asymmetric);
   operands.push_back(new_data);
   operands.push_back(op.getIndices());
-  auto new_updates = do_transfer(updates, output, asymmetric);
-  operands.push_back(new_updates);
+  if (isa<top::WeightOp>(updates.getDefiningOp())) {
+    // qunat update with output scale
+    if (!module::isCalibratedType(output)) {
+      llvm_unreachable("output should be calibrated type");
+    }
+    auto out_qtype = module::getCalibratedType(output);
+    auto min = out_qtype.getMin();
+    auto max = out_qtype.getMax();
+    float abs_max = std::max(std::abs(min), std::abs(max));
+    float scale = abs_max / 127.0f;
+    auto update_op = cast<top::WeightOp>(updates.getDefiningOp());
+    auto update_f32 = update_op.read<float>();
+    auto update_int8 =
+        std::make_shared<std::vector<int8_t>>(update_f32->size());
+    for (size_t i = 0; i < update_f32->size(); ++i) {
+      int32_t quant_val = std::round(update_f32->at(i) / scale);
+      quant_val = std::max(-128, std::min(127, quant_val));
+      update_int8->at(i) = static_cast<int8_t>(quant_val);
+    }
+    auto new_type = RankedTensorType::get(module::getShape(updates),
+                                          rewriter.getIntegerType(8, true));
+    auto new_updates =
+        top::WeightOp::create(op, "updates_int8", *update_int8, new_type);
+    operands.push_back(new_updates);
+  } else {
+    auto new_updates = do_transfer(updates, output, asymmetric);
+    operands.push_back(new_updates);
+  }
 
   auto noneOp = module::getNoneOp(op);
   // operands.push_back(noneOp); // indices_coeff

@@ -3,7 +3,7 @@ TPU-MLIR简介
 
 TPU-MLIR是算能深度学习处理器的编译器工程。该工程提供了一套完整的工具链, 其可以将
 不同框架下预训练的神经网络, 转化为可以在算能智能视觉深度学习处理器上高效运算的模型文件 ``bmodel``/``cvimodel``。
-代码已经开源到github: https://github.com/sophgo/tpu-mlir 。
+代码已经开源到github。
 
 论文<https://arxiv.org/abs/2210.15016> 描述了TPU-MLIR的整体设计思路。
 

@@ -45,7 +45,7 @@ class LlmConverter(BaseConverter):
         self.chip = args.chip
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
-        self.dynamic_vit = args.dynamic_vit
+        self.dynamic_vit = args.dynamic
         self.use_block_with_kv = args.use_block_with_kv
         self.same_addr = "0:0" if args.use_same_addr else ""
         self.debug = args.debug
@@ -88,6 +88,7 @@ class LlmConverter(BaseConverter):
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev"
         else:
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core"
+        folder_name += "_dynamic" if args.dynamic else "_static"
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.config_dir = os.path.join(self.out_dir, "config")
@@ -1573,8 +1574,8 @@ class LlmConverter(BaseConverter):
 
     # ============= compile all code =============
     def add_task(self, command: list[str], log_file: str):
-        command.append(f"> {log_file}\n")
-        cmd = ' '.join(command)
+        command.append(f") > {log_file}\n")
+        cmd = "(" + ' '.join(command)
         self.commands.append(cmd)
 
     def run_command(self, command):
@@ -1759,7 +1760,7 @@ class LlmConverter(BaseConverter):
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
-    def compile_common(self, name, with_size=False):
+    def compile_common(self, name, with_size=False, io_alone=False):
         model_path = f"{name}/{name}.bmodel"
         if not with_size:
             self.all_bmodels_without_bytes.append(model_path)
@@ -1776,6 +1777,8 @@ class LlmConverter(BaseConverter):
         ]
         if self.debug:
             deploy_args.append('--debug')
+        if io_alone:
+            deploy_args.append('--addr_mode io_alone')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
@@ -1810,10 +1813,12 @@ class LlmConverter(BaseConverter):
                 lambda: self.compile_common("embedding_cache", with_size=False))
 
         if self.do_lora:
-            self.all_compiles.append(lambda: self.compile_common("lm_head_lora", with_size=True))
-            self.all_compiles.append(lambda: self.compile_common("embedding_lora", with_size=True))
             self.all_compiles.append(
-                lambda: self.compile_common("embedding_cache_lora", with_size=False))
+                lambda: self.compile_common("lm_head_lora", with_size=True, io_alone=True))
+            self.all_compiles.append(
+                lambda: self.compile_common("embedding_lora", with_size=True, io_alone=True))
+            self.all_compiles.append(
+                lambda: self.compile_common("embedding_cache_lora", with_size=False, io_alone=True))
 
         self.all_compiles.append(self.compile_lm_head)
 

@@ -386,6 +386,7 @@ void sort_per_dim(const sort_param_t &param, const int *shape, int dims,
                   const float *input, float *sorted_values,
                   float *sorted_indices);
 
+RoundingMode round_mode_convert(std::string mode);
 RoundingMode round_mode_convert(tpu::RoundMode mode);
 
 RopeMode rope_mode_convert(tpu::RopeMode mode);

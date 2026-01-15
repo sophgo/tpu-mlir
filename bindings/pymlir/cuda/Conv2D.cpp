@@ -18,7 +18,6 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   cuda_ptr in_f32;
   int ih = p.ih, iw = p.iw;
   int pad_h = p.phb, pad_w = p.pwr;
-  // pad input
   if (!need_pad) {
     if (!module::getStorageType(op.getInput()).isF32()) {
       in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
@@ -156,12 +155,17 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
                           cudaMemcpyHostToDevice));
     CHECK_CUDA(cudaMemcpy(cudaShifts.get(), rs.data(),
                           rs.size() * sizeof(int32_t), cudaMemcpyHostToDevice));
-    bool sign = !out_stype.isUnsignedInteger(8);
-    bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
-    bool relu = sign && p.do_relu;
-    cuda::requantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
-                                cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign,
-                                qdm, relu);
+    if (out_stype.isInteger(16)) { // output int16 to improve accuracy when next op is float
+      cuda::requantInt16Perchannel(out_i32.get(), output, cudaMults.get(),
+                                  cudaShifts.get(), p.n, p.oc, p.oh, p.ow, p.do_relu);
+    } else {
+      bool sign = !out_stype.isUnsignedInteger(8);
+      bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
+      bool relu = sign && p.do_relu;
+      cuda::requantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
+                                  cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign,
+                                  qdm, relu);
+    }
   }else {
     // directly copy float output
     if (!module::getStorageType(op.getOutput()).isF32()) {

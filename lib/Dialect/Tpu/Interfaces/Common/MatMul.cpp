@@ -10,6 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float4.h"
 #include "tpu_mlir/Support/Float8.h"
 
 // clang-format off
@@ -446,11 +447,165 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   auto matmul = (MatMul *)p.handle;
 
   auto a = dynparseParam();
-  matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
-                a.batch_low, a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
-                a.input_zp, a.right_transpose, a.left_transpose,
-                a.output_transpose, a.hdim_is_batch);
-  matmul->run();
+  auto dynamic_quantize_type = getDqType();
+  if (module::isDynamicQuantize() && !module::isWeight(getRight()) &&
+      dynamic_quantize_type != "F16" && dynamic_quantize_type != "BF16") {
+    float imax;
+    if (dynamic_quantize_type == "INT8") {
+      imax = 127.0;
+    } else if (dynamic_quantize_type == "INT4") {
+      imax = 7.0;
+    } else if (dynamic_quantize_type == "F8E4M3") {
+      imax = get_f8e4m3_max();
+      // } else if (dynamic_quantize_type == "F8E5M2") {
+      //   imax = get_f8e5m2_max();
+    } else if (dynamic_quantize_type == "F4") {
+      imax = get_f4e2m1_max();
+    } else {
+      return failure();
+    }
+    int q_group_size =
+        getQGroupSize() ? getQGroupSize() : module::getQuantGroupSize();
+    if (q_group_size == -1)
+      q_group_size = a.K;
+    int group_num = (a.K + q_group_size - 1) / q_group_size;
+    float *tmp_output = new float[a.batch * a.batch_low * a.M * a.N];
+    float *cur_group_left =
+        new float[a.batch * a.batch_low * a.M * q_group_size];
+    float *cur_group_right =
+        new float[a.batch * a.batch_low * q_group_size * a.N];
+    float *cur_group_left_max = new float[a.batch * a.batch_low * a.M];
+    float *cur_group_right_max = new float[a.batch * a.batch_low * a.N];
+    for (int gi = 0; gi < group_num; gi++) {
+      for (int b = 0; b < a.batch * a.batch_low; b++) {
+        for (int row = 0; row < a.M; row++) {
+          cur_group_left_max[b * a.M + row] = 1e-8;
+          for (int col = 0; col < q_group_size; col++) {
+            if (gi * q_group_size + col < a.K) {
+              cur_group_left_max[b * a.M + row] =
+                  std::max(cur_group_left_max[b * a.M + row],
+                           std::abs(p.inputs[0][b * a.M * a.K + row * a.K +
+                                                gi * q_group_size + col]));
+            }
+          }
+        }
+        for (int row = 0; row < a.N; row++) {
+          cur_group_right_max[b * a.N + row] = 1e-8;
+          for (int col = 0; col < q_group_size; col++) {
+            int right_act_idx;
+            if (a.right_transpose)
+              right_act_idx =
+                  b * a.K * a.N + row * a.K + gi * q_group_size + col;
+            else
+              right_act_idx =
+                  b * a.K * a.N + (gi * q_group_size + col) * a.N + row;
+            if (gi * q_group_size + col < a.K) {
+              cur_group_right_max[b * a.N + row] =
+                  std::max(cur_group_right_max[b * a.N + row],
+                           std::abs(p.inputs[1][right_act_idx]));
+            }
+          }
+        }
+      }
+      for (int b = 0; b < a.batch * a.batch_low; b++) {
+        for (int row = 0; row < a.M; row++) {
+          for (int col = 0; col < q_group_size; col++) {
+            int act_idx = b * a.M * a.K + row * a.K + gi * q_group_size + col;
+            if (gi * q_group_size + col < a.K) {
+              if (dynamic_quantize_type == "INT8" ||
+                  dynamic_quantize_type == "INT4")
+                cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                               col] =
+                    std::round(p.inputs[0][act_idx] /
+                               cur_group_left_max[b * a.M + row] * imax);
+              else if (dynamic_quantize_type == "F8E4M3")
+                cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                               col] =
+                    F8E4M3(p.inputs[0][act_idx],
+                           cur_group_left_max[b * a.M + row] / imax, true);
+              // else if (dynamic_quantize_type == "F8E5M2")
+              //   cur_group_left[b * a.M * q_group_size + row * q_group_size +
+              //                  col] =
+              //       F8E5M2(p.inputs[0][act_idx],
+              //              cur_group_left_max[b * a.M + row] / imax, true);
+              else if (dynamic_quantize_type == "F4")
+                cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                               col] =
+                    F4E2M1(p.inputs[0][act_idx],
+                           cur_group_left_max[b * a.M + row] / imax);
+            } else {
+              cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                             col] = 0;
+            }
+          }
+        }
+        for (int row = 0; row < a.N; row++) {
+          for (int col = 0; col < q_group_size; col++) {
+            int right_act_idx;
+            if (a.right_transpose)
+              right_act_idx =
+                  b * a.K * a.N + row * a.K + gi * q_group_size + col;
+            else
+              right_act_idx =
+                  b * a.K * a.N + (gi * q_group_size + col) * a.N + row;
+            if (gi * q_group_size + col < a.K) {
+              if (dynamic_quantize_type == "INT8" ||
+                  dynamic_quantize_type == "INT4")
+                cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+                    std::round(p.inputs[1][right_act_idx] /
+                               cur_group_right_max[b * a.N + row] * imax);
+              else if (dynamic_quantize_type == "F8E4M3")
+                cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+                    F8E4M3(p.inputs[1][right_act_idx],
+                           cur_group_right_max[b * a.N + row] / imax, true);
+              // else if (dynamic_quantize_type == "F8E5M2")
+              //   cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+              //       F8E5M2(p.inputs[1][right_act_idx],
+              //              cur_group_right_max[b * a.N + row] / imax, true);
+              else if (dynamic_quantize_type == "F4")
+                cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+                    F4E2M1(p.inputs[1][right_act_idx],
+                           cur_group_right_max[b * a.N + row] / imax);
+            } else {
+              cur_group_right[b * a.N * q_group_size + col * a.N + row] = 0;
+            }
+          }
+        }
+      }
+      matmul->setup(cur_group_left, cur_group_right, nullptr, tmp_output,
+                    a.batch, a.batch_low, a.M, q_group_size, a.N, false, -1.0,
+                    0, 0, false, false, false, false);
+      matmul->run();
+      // accumulate result
+      for (int b = 0; b < a.batch * a.batch_low; b++) {
+        for (int row = 0; row < a.M; row++) {
+          for (int col = 0; col < a.N; col++) {
+            p.outputs[0][b * a.M * a.N + row * a.N + col] +=
+                tmp_output[b * a.M * a.N + row * a.N + col] *
+                (cur_group_left_max[b * a.M + row] / imax) *
+                (cur_group_right_max[b * a.N + col] / imax);
+          }
+        }
+      }
+    }
+    auto num_elem = module::getNumElements(getOutput());
+    if (module::isF16Modes()) {
+      F16(p.outputs[0], p.outputs[0], num_elem);
+    } else {
+      BF16(p.outputs[0], p.outputs[0], num_elem);
+    }
+    delete[] tmp_output;
+    delete[] cur_group_left;
+    delete[] cur_group_right;
+    delete[] cur_group_left_max;
+    delete[] cur_group_right_max;
+  } else {
+    matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
+                  a.batch_low, a.M, a.K, a.N, a.do_relu, a.relu_limit,
+                  a.right_zp, a.input_zp, a.right_transpose, a.left_transpose,
+                  a.output_transpose, a.hdim_is_batch);
+    matmul->run();
+  }
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   bool is_cv18xx = module::isCV18xx();

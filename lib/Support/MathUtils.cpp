@@ -551,6 +551,30 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
   return 0;
 }
 
+RoundingMode round_mode_convert(std::string mode) {
+  if (mode == "HalfAwayFromZero") {
+    return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
+  } else if (mode == "HalfUp") {
+    return RoundingMode::ROUNDING_HALF_UP;
+  } else if (mode == "HalfDown") {
+    return RoundingMode::ROUNDING_HALF_DOWN;
+  } else if (mode == "HalfToEven") {
+    return RoundingMode::ROUNDING_HALF_TO_EVEN;
+  } else if (mode == "HalfToOdd") {
+    return RoundingMode::ROUNDING_HALF_TO_ODD;
+  } else if (mode == "HalfTowardsZero") {
+    return RoundingMode::ROUNDING_HALF_TOWARDS_ZERO;
+  } else if (mode == "TowardsZero") {
+    return RoundingMode::ROUNDING_TOWARDS_ZERO;
+  } else if (mode == "Up") {
+    return RoundingMode::ROUNDING_UP;
+  } else if (mode == "Down") {
+    return RoundingMode::ROUNDING_DOWN;
+  }
+  llvm_unreachable("Not Implemented");
+  return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
+}
+
 RoundingMode round_mode_convert(tpu::RoundMode mode) {
   switch (mode) {
   case tpu::RoundMode::HalfAwayFromZero:

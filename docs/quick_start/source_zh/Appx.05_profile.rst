@@ -46,7 +46,7 @@ TPU Profile是将Profile数据转换为可视化网页的工具。首先先生�
 生成Profile原始数据
 --------------------------
 
-将生成的 ``yolov5s_bm1684x_f16.bmodel`` 拷贝到已安装libsophon的运行环境上。同编译过程，运行时的Profile功能默认是关闭的，防止在做profile保存与传输时产生额外时间消耗。需要开启profile功能时，在运行编译好的bmodel前设置环境变量 ``BMRUNTIME_ENABLE_PROFILE=1`` 即可。然后用libsophon中提供的模型测试工具 ``bmrt_test`` 运行bmodel，生成profile数据。在Docker外执行如下命令：
+将生成的 ``yolov5s_bm1684x_f16.bmodel`` 拷贝到已安装驱动的运行环境上。同编译过程，运行时的Profile功能默认是关闭的，防止在做profile保存与传输时产生额外时间消耗。需要开启profile功能时，在运行编译好的bmodel前设置环境变量 ``BMRUNTIME_ENABLE_PROFILE=1`` 即可。然后用驱动中提供的模型测试工具 ``bmrt_test`` 运行bmodel，生成profile数据。在Docker外执行如下命令：
 
 .. code-block:: shell
 

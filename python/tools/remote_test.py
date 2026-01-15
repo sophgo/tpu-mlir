@@ -164,7 +164,7 @@ class RemoteRunner:
         remote_path = os.path.dirname(remote_bmodel_file)
 
         pre_remote_cmd = None
-        remote_cmd = '/opt/sophon/libsophon-current/bin/bmrt_test --bmodel ' + remote_bmodel_file
+        remote_cmd = 'bmrt_test --bmodel ' + remote_bmodel_file
         post_remote_cmd = None
         if debug == 'profile':
             pre_remote_cmd = f'cd {remote_path} && rm -rf ./bmprofile*'

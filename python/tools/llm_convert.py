@@ -17,30 +17,7 @@ def parse_max_pixels(value):
     If the input is a single number, convert it to an integer.
     If it contains a comma, parse it as a tuple (or list) of two integers, e.g., "128,124".
     """
-    if '+' in value:
-        s = []
-        parts = value.split('+')
-        for p in parts:
-            dims = p.split(',')
-            pixels = 1
-            for dim in dims:
-                try:
-                    d = int(dim.strip())
-                    pixels *= d
-                except ValueError:
-                    raise argparse.ArgumentTypeError(
-                        "The input values must be integers, e.g., 128,124")
-            s.append(pixels)
-        s = sorted(s, reverse=True)
-        gaps = [s[i] - s[i + 1] for i in range(len(s) - 1)]
-        lt_4096 = any(g < 4096 for g in gaps)
-        any_zero = any((mp == 0) for mp in s)
-        if lt_4096 or any_zero:
-            raise argparse.ArgumentTypeError(
-                f"The gaps between max_pixels should be at least 4096 and no zero values. get:{value}"
-            )
-        return s
-    elif ',' in value:
+    if ',' in value:
         parts = value.split(',')
         if len(parts) != 2:
             raise argparse.ArgumentTypeError(
@@ -59,27 +36,9 @@ def parse_max_pixels(value):
                 "The input must be an integer or two integers separated by a comma, e.g., 128,124")
 
 
-def parse_input_length_list(value):
-    """
-    Parse a string of input lengths separated by '+', each input length can be a single integer.
-    For example: "16+32+64"
-    """
-    lengths = []
-    parts = value.split('+')
-    for p in parts:
-        try:
-            length = int(p.strip())
-            lengths.append(length)
-        except ValueError:
-            raise argparse.ArgumentTypeError("Each input length must be an integer, e.g., 16+32+64")
-    lengths = sorted(lengths, reverse=True)
-    gaps = [lengths[i] - lengths[i + 1] for i in range(len(lengths) - 1)]
-    lt_64 = any(g < 64 for g in gaps)
-    any_zero = any((l == 0) for l in lengths)
-    if lt_64 or any_zero:
-        raise argparse.ArgumentTypeError(
-            "Warning: The gaps between input lengths should be at least 64 and no zero values.")
-    return lengths
+def deprecated_option(cond, msg):
+    if cond:
+        raise RuntimeError(msg)
 
 
 if __name__ == '__main__':
@@ -114,16 +73,12 @@ if __name__ == '__main__':
                         help='use same address between input_states and output_states, default is False')
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
-    parser.add_argument('--input_length_list', type=parse_input_length_list, default=[],
-                        help="a list of input lengths separated by '+', each input length can be a single integer")
     parser.add_argument('--max_prefill_kv_length', type=int, default=0,
                         help='max prefill kv length, default 0 means the same as seq_length')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
                         help="max pixels for vit, for example: 240,420 or 100800")
     parser.add_argument('--dynamic', action='store_true',
                         help='enable dynamic compiling for llm prefill')
-    parser.add_argument("--dynamic_vit", action='store_true',
-                        help='enable dynamic compiling for vit')
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
     parser.add_argument("--again", action='store_true',
@@ -131,7 +86,14 @@ if __name__ == '__main__':
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
                         help='output mlir/bmodel path, default `./tmp`')
+    #========== DEPRECATED Options ==============
+    parser.add_argument("--dynamic_vit", action='store_true',
+                        help='enable dynamic compiling for vit')
+    parser.add_argument('--input_length_list', action="store_true",
+                        help="a list of input lengths separated by '+', each input length can be a single integer")
     args = parser.parse_args()
+    deprecated_option(args.dynamic_vit, "DEPRECATED,default is dynamic compiling")
+    deprecated_option(args.input_length_list, "DEPRECATED, please use --dynamic to enable dynamic compiling")
     # yapf: enable
     if args.share_prompt:
         args.use_block_with_kv = True

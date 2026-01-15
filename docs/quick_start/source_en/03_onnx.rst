@@ -345,16 +345,16 @@ Model performance test
 
 The following operations need to be performed outside of Docker,
 
-Install the ``libsophon``
+Install the driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Please refer to the ``libsophon`` manual to install ``libsophon``.
+Please refer to the driver manual to install.
 
 
 Check the performance of ``BModel``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After installing ``libsophon``, you can use ``bmrt_test`` to test the accuracy and performance of the ``bmodel``. You can choose a suitable model by estimating the maximum fps of the model based on the output of ``bmrt_test``.
+After installing driver, you can use ``bmrt_test`` to test the accuracy and performance of the ``bmodel``. You can choose a suitable model by estimating the maximum fps of the model based on the output of ``bmrt_test``.
 
 .. code-block:: shell
 

@@ -5349,7 +5349,7 @@ Parameters
 * save_path: String type, representing the abs path of saving results on host.
 * out_fixed: Bool type, representing whether to get results in fixed number.
 * dump_cmd_info: Bool type, enable to save atomic cmd info at `save_path`.
-* skip_check: Bool tyoe, set to True to disable data check to decrease time cost for CMODEL/PCIE mode.
+* skip_check: Bool tyoe, set to True to disable data check to decrease time cost for CMODEL/PCIe mode.
 * run_by_op: Bool type, enable to run_by_op, decrease time cost but may cause timeout error when some OPs contain too many atomic cmds.
 * desire_op: List type, specify this option to dump specific tensors, dump all tensor as defalut.
 * is_soc: Bool type, representing whether to use in SoC mode.

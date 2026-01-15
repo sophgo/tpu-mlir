@@ -322,7 +322,7 @@ search_qtable
 单输入模型校准数据集准备与使用说明（以mobilenet-v2为例）：
 
 1.建立目录结构
-  建立 ``mobilenet-v2`` 目录, 并把模型文件和图片文件都放入 ``mobilenet-v2`` 目录中。
+  建立 ``mobilenet-v2`` 目录, 并把模型文件和图片文件都放入 ``mobilenet-v2`` 目录中。你可以从 tpu-mlir-resource.tar（SDK包中提供）中获取 mobilenet_v2.pt。
 2.准备校准数据集
   --dataset使用ILSVRC2012数据集, 其中包含1000类图片, 每类1000张图片, 这里仅使用其中的100张图片进行校准
 3.数据集格式
@@ -339,7 +339,7 @@ search_qtable
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
+   $ mv path/to/mobilenet_v2.pt .
    $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ mkdir workspace && cd workspace
 

@@ -26,6 +26,17 @@ SHAPE_LOWERING_BM1684(ConstantFill)
 SHAPE_LOWERING_BM1684(Shape)
 SHAPE_LOWERING_BM1684(Slice)
 
+void populateTopIntToTpuConversionPatterns(RewritePatternSet *patterns);
+#define INT_LOWERING_BM1684(OP)                                                \
+  struct OP##IntLowering : public TopIntLowering<top::OP##Op> {                \
+    OP##IntLowering(MLIRContext *ctx) : TopIntLowering<top::OP##Op>(ctx) {}    \
+    void Lowering(PatternRewriter &rewriter, top::OP##Op op) const override;   \
+  };
+
+INT_LOWERING_BM1684(Cast)
+INT_LOWERING_BM1684(Add)
+INT_LOWERING_BM1684(Mul)
+
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 #define LOWERING_BM1684(OP)                                                    \
@@ -43,6 +54,7 @@ LOWERING_BM1684(Arg)
 LOWERING_BM1684(Arccos)
 LOWERING_BM1684(Arctanh)
 LOWERING_BM1684(AvgPool)
+LOWERING_BM1684(Cast)
 LOWERING_BM1684(Clip)
 LOWERING_BM1684(Concat)
 LOWERING_BM1684(Conv)

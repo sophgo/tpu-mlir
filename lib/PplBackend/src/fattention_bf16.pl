@@ -7,13 +7,10 @@ template <bool is_GQA>
 void flash_attention_bf16_v1(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
                              bf16 *ptr_v, bf16 *ptr_mask, int b, int qm,
                              int kvm, int d, int q_head, int kv_head,
-                             float sqrt_d, int has_mask, const int g_core_num,
+                             float sqrt_d, int has_mask, const int core_num,
                              const int dmax, const int block_m,
                              const int block_k, const int block_h) {
-  ppl::set_core_num(g_core_num);
   int head_rep = q_head / kv_head;
-
-  int core_num = get_core_num();
   int core_index = get_core_index();
   if (core_index >= core_num)
     return;
@@ -219,8 +216,8 @@ void flash_attention_bf16_v1(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
 __KERNEL__ void flash_attention_mha_bf16(
     bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k, bf16 *ptr_v, bf16 *ptr_mask, int b,
     int qm, int kvm, int d, int q_head, int kv_head, float sqrt_d, int has_mask,
-    const int g_core_num, const int dmax, const int block_m, const int block_k,
-    const int block_h) {
+    const int g_core_num, const int dmax, const int keep_dim, const int block_m,
+    const int block_k, const int block_h) {
   flash_attention_bf16_v1<false>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
                                  kvm, d, q_head, kv_head, sqrt_d, has_mask,
                                  g_core_num, dmax, block_m, block_k, block_h);
@@ -229,8 +226,8 @@ __KERNEL__ void flash_attention_mha_bf16(
 __KERNEL__ void flash_attention_gqa_bf16(
     bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k, bf16 *ptr_v, bf16 *ptr_mask, int b,
     int qm, int kvm, int d, int q_head, int kv_head, float sqrt_d, int has_mask,
-    const int g_core_num, const int dmax, const int block_m, const int block_k,
-    const int block_h) {
+    const int g_core_num, const int dmax, const int keep_dim, const int block_m,
+    const int block_k, const int block_h) {
   flash_attention_bf16_v1<true>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
                                 kvm, d, q_head, kv_head, sqrt_d, has_mask,
                                 g_core_num, dmax, block_m, block_k, block_h);
@@ -246,6 +243,7 @@ __TEST__ void flash_attention_gqa_main() {
   int b = 1;
   int q_head = 12;
   int kv_head = 2;
+  const int keep_dim = 0;
   const int dmax = 128;
   const int block_m = 320;
   const int block_k = 96;
@@ -272,5 +270,5 @@ __TEST__ void flash_attention_gqa_main() {
   int g_core_num = 1;
   flash_attention_gqa_bf16(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
                            d, q_head, kv_head, sqrt_d, has_mask, g_core_num,
-                           dmax, block_m, block_k, block_h);
+                           dmax, keep_dim, block_m, block_k, block_h);
 }

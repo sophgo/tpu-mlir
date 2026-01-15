@@ -23,6 +23,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
 std::unique_ptr<OperationPass<ModuleOp>> createStripIOQuant();
+std::unique_ptr<OperationPass<ModuleOp>> createTopoSortPass();
 std::unique_ptr<OperationPass<ModuleOp>> createLayerGroupPass();
 std::unique_ptr<OperationPass<ModuleOp>> createDynCodegenPass();
 std::unique_ptr<OperationPass<ModuleOp>> createProcessorOptimizePass();

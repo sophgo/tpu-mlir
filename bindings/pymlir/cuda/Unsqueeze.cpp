@@ -16,3 +16,10 @@ void py_cuda::cudaUnsqueezeOp(tpu::UnsqueezeOp op) {
   auto size = module::getBytes(op.getOutput());
   CHECK_CUDA(cudaMemcpy(output, input, size, cudaMemcpyDeviceToDevice));
 }
+
+void py_cuda::cudaUnsqueezeOp(top::UnsqueezeOp op) {
+  void *input = getCudaData(op.getInput());
+  void *output = getCudaData(op.getOutput());
+  auto size = module::getBytes(op.getOutput());
+  CHECK_CUDA(cudaMemcpy(output, input, size, cudaMemcpyDeviceToDevice));
+}

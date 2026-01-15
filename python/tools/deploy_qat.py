@@ -399,7 +399,7 @@ class FakeQuantNodelProcessor:
 
         print("导出qtable")
         with open(self.qtable_name, 'w') as f:
-            f.write("# qtable from sophgo_mq\n")
+            f.write("# qtable from tpu-mq\n")
             f.write("# op_name  quantize_mode\n")
             for entry in self.q_table.values():
                 line = ' '.join(map(str, entry))

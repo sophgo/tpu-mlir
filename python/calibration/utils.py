@@ -139,6 +139,12 @@ def parse_method_list(input_str):
     return method_list
 
 
+def parse_optype_list(input_str):
+    optype_list = input_str.split(',')
+    optype_list = [m.strip() for m in optype_list]
+    return optype_list
+
+
 def compactable_method_list(method_list: list):
     cali_methods = []
     for method in method_list:

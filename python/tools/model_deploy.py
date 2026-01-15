@@ -95,6 +95,8 @@ class DeployTool:
         self.quant_input_list = args.quant_input_list
         self.quant_output_list = args.quant_output_list
         self.quant_output_bf16 = args.quant_output_bf16
+        self.quant_input_int8 = args.quant_input_int8
+        self.quant_output_int8 = args.quant_output_int8
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
         self.lg_debugger = args.lg_debugger
@@ -111,6 +113,7 @@ class DeployTool:
         self.module = MlirParser(args.mlir)
         self.module_name = self.module.module_name
         self.state = self.module.module_state
+        self.disable_topo_sort = args.disable_topo_sort
         self.disable_layer_group = args.disable_layer_group
         self.gdma_check = not args.disable_gdma_check
         self.opt = args.opt
@@ -134,9 +137,8 @@ class DeployTool:
         self.addr_mode = args.addr_mode
         self.same_addr = args.same_addr
         self.cuda = args.cuda
-        self.q_group_size = args.q_group_size if self.quantize in [
-            "w4f16", "w4bf16", "w8f16", "w8bf16"
-        ] else 0
+        self.q_group_size = args.q_group_size if (self.quantize.endswith('dyn') or self.quantize
+                                                  in ["w4f16", "w4bf16", "w8f16", "w8bf16"]) else 0
         self.q_symmetric = args.q_symmetric
         if self.quantize in ("int8", "int4", 'w4int8'):
             if self.asymmetric:
@@ -416,6 +418,8 @@ class DeployTool:
                     trunc_final=self.trunc_final,
                     command_mem=command_mem,
                     quant_output_bf16=self.quant_output_bf16,
+                    quant_input_int8=self.quant_input_int8,
+                    quant_output_int8=self.quant_output_int8,
                     opt_post_processor=self.opt_post_processor,
                     gdma_check=self.gdma_check,
                     lg_debugger=self.lg_debugger,
@@ -425,7 +429,8 @@ class DeployTool:
                         f"{self.prefix}.layer_group_cache.json" if self.quantize != "int8" else
                         f"{self.prefix.removesuffix('_sym')}.layer_group_cache.json"),
                     layer_group_config=self.layer_group_config,
-                    log_level="normal" if self.log_level == 0 else "simple")
+                    log_level="normal" if self.log_level == 0 else "simple",
+                    disable_topo_sort=self.disable_topo_sort)
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -486,11 +491,13 @@ if __name__ == '__main__':
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
                         choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16',
-                                 'W4F16', 'W4BF16', 'W4INT8', "F8E4M3", "F8E5M2", 'QDQ'],
+                                 'W4F16', 'W4BF16', 'W4INT8', "F8E4M3", "F8E5M2", 'QDQ',
+                                 "INT8F16DYN", "INT8BF16DYN", "INT4F16DYN", "INT4BF16DYN",
+                                 "F8E4M3F16DYN", "F8E4M3BF16DYN", "F4F16DYN", "F4BF16DYN"],
                         help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
     # ========== Quantization Options ==============
-    parser.add_argument("--calibration_table",
+    parser.add_argument("--calibration_table", type=str,
                         help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table",
                         help="table of OPs that quantized to specific mode")
@@ -506,6 +513,10 @@ if __name__ == '__main__':
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output_bf16", action="store_true",
                         help="force output to be bf16 type")
+    parser.add_argument("--quant_input_int8", action="store_true",
+                        help="force quant input to be int8/uint8 type")
+    parser.add_argument("--quant_output_int8", action="store_true",
+                        help="force quant output to be int8/uint8 type")
     parser.add_argument("--quant_input_list", default="", type=str,
                         help="choose index to strip cast, such as 1,3 means first & third input`s cast")
     parser.add_argument("--quant_output_list", default="", type=str,
@@ -565,6 +576,8 @@ if __name__ == '__main__':
                         help="for qat intergation, only gen tpu.mlir")
     parser.add_argument("--use_rewriter_config", action="store_true",
                         help="use rewriter config to do model deploy.")
+    parser.add_argument("--disable_topo_sort", action="store_true",
+                        help="Whether to disable topo sort pass before layer group pass")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')
@@ -572,13 +585,12 @@ if __name__ == '__main__':
     parser.add_argument("--disable_gdma_check", action='store_true', help='disable gdma addr check')
     parser.add_argument("--trunc_final", nargs="*", help="assign op to be trunced in final mlir.")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
-    parser.add_argument("--lg_debugger", default=0, type=int, choices=[0, 1, 2, 3, 4],
+    parser.add_argument("--lg_debugger", default=0, type=int, choices=[0, 1, 2, 3],
                         help="lg_debugger level for layer group pass. \
                         0: do nothing; \
                         1: do LayerGroup and create debugger file; \
                         2: only create debugger file; \
-                        3: do LayerGroup with debugger file; \
-                        4: do partial LayerGroup with debugger file."
+                        3: do LayerGroup with debugger file."
                         )
     # ========== Other Options ==============
     # for cv18xx
@@ -628,10 +640,12 @@ if __name__ == '__main__':
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
     deprecated_option(args.ignore_f16_overflow, "DEPRECATED, please use --high_precision")
     if args.quant_output_bf16:
-        if args.quantize == "BF16":
+        if args.quantize in ["BF16", "INT8BF16DYN", "INT4BF16DYN", "F8E4M3BF16DYN", "F4BF16DYN"]:
             RuntimeError("quantize is BF16, please use --quant_output instead")
         if args.quant_output:
             RuntimeError("quant_output and quant_output_bf16 can't both be true")
+    if args.quant_output_bf16 and args.quant_output_int8:
+        RuntimeError("quant_output_bf16 and quant_output_int8 can't both be true")
 
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
@@ -641,6 +655,8 @@ if __name__ == '__main__':
     # lowering to tpu/tosa
     if args.not_gen_bmodel:
         tool.do_validate = False
+    if args.quantize.lower().endswith('dyn'):
+        RuntimeError("Dynamic quantization is not supported in deploy yet.")
     lowering_patterns = tool.lowering()
     # generate model
     if args.time_fixed_subnet == 'custom' and not args.subnet_params:

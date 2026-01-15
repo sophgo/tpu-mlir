@@ -30,7 +30,7 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
     Option<"weightFileName", "weightFileName", "std::string", /*default=*/"",
            "weight file name to save">,
     Option<"quantGroupSize", "q_group_size", "int", /*default=*/"0",
-           "group size for per-group W4A16/W8A16 quant">,
+           "group size for per-group W4A16/W8A16/XXXDYN quant">,
     Option<"quantSymmetric", "q_symmetric", "bool", /*default=*/"false",
            "true for symmetrci w4a16/w8a16 quant, false for asymmetric">,
     Option<"matmulPerchannel", "matmul_perchannel", "bool", /*default=*/"false",

@@ -336,7 +336,7 @@ Prepare working directory
 Preparation and Usage Instructions for Single-Input Model Calibration Dataset (Taking mobilenet-v2 as an Example) :
 
 1. Establish a directory structure
-  Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory.
+  Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory. You can get mobilenet_v2.pt from tpu-mlir-resource.tar (provided in SDK package).
 2. Prepare the calibration dataset
   --dataset uses the ILSVRC2012 dataset, which contains 1000 types of images, with 1000 images in each type. Here, only 100 images from these are used for calibration
 3. Dataset format
@@ -352,7 +352,7 @@ Single-Input Model:
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
+   $ mv path/to/mobilenet_v2.pt .
    $ cp -rf tpu_mlir_resource/dataset/ILSVRC2012 .
    $ mkdir workspace && cd workspace
 
