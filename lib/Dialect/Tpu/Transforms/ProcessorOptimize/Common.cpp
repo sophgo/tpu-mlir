@@ -322,7 +322,7 @@ PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
     return success();
   } else if (isa<tpu::SoftmaxOp, tpu::CastOp, tpu::MulConstOp, tpu::AddConstOp,
                  tpu::MulShiftOp, tpu::ReluOp, tpu::RequantIntOp, tpu::ActiveOp,
-                 tpu::BinaryShiftOp,
+                 tpu::BinaryShiftOp, tpu::LayerNormOp,
                  tpu::BinaryConstShiftOp /** ex. tpu::SigmoidOp */
                  >(nextOp)) {
     /**
@@ -335,6 +335,17 @@ PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
           softmax_axis < 0 ? softmax_axis + order->size() : softmax_axis;
       auto new_axis = order->at(softmax_axis);
       softmax_op.setAxis(new_axis);
+    }
+
+    if (auto layernorm_op = dyn_cast<tpu::LayerNormOp>(nextOp)) {
+      auto layernorm_axis = layernorm_op.getAxis();
+      layernorm_axis =
+          layernorm_axis < 0 ? layernorm_axis + order->size() : layernorm_axis;
+      auto new_axis = order->at(layernorm_axis);
+      if (layernorm_axis != new_axis) {
+        return failure();
+      }
+      layernorm_op.setAxis(new_axis);
     }
     auto nextOp = *op.getOutput().user_begin();
 

@@ -64,10 +64,11 @@ struct MulToMulConst : public OpRewriterPatternEx<MulOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
-    auto storage_type = module::getStorageType(op.getOutput());
-    if (!storage_type.isF32()) {
-      return failure();
-    }
+
+    // auto storage_type = module::getStorageType(op.getOutput());
+    // if (!storage_type.isF32()) {
+    //   return failure();
+    // }
 
     int is_const[2];
 

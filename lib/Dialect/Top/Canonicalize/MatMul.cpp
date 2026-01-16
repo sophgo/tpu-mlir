@@ -185,7 +185,8 @@ struct NoKeepDimsAddReshape : public OpRewriterPatternEx<MatMulOp> {
   }
 };
 
-// Matmul + Reshape + Permute0 + (Permute1) + (Reshape2) + n*(slice + squeeze)
+// Matmul + Requant(may not exist)+ Reshape + Permute0 + (Permute1) + (Reshape2)
+// + n*(slice + squeeze(may not exist) )
 // => Matmul + Reshape + n*(slice + squeeze + Permute2 + (Reshape3))
 struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
   using OpRewriterPatternEx::OpRewriterPatternEx;
@@ -198,6 +199,13 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
 
     // check topo
     auto nextOp = *op->user_begin();
+    auto requantOp = dyn_cast_or_null<RequantIntOp>(nextOp);
+    if (requantOp) {
+      if (requantOp->hasOneUse() == false) {
+        return failure();
+      }
+      nextOp = *requantOp->user_begin();
+    }
     auto reshape_after_matmul = dyn_cast_or_null<ReshapeOp>(nextOp);
     if (!reshape_after_matmul) {
       return failure();
@@ -238,6 +246,7 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
     }
     std::vector<SliceOp> slice_vec;
     int slice_axis;
+    bool squeeze_flag = true;
     for (auto user : before_slice.getUsers()) {
       auto slice = dyn_cast<SliceOp>(user);
       if (!slice) {
@@ -246,7 +255,8 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
         auto squeeze =
             dyn_cast<SqueezeOp>(*slice.getOutput().getUsers().begin());
         if (!squeeze) {
-          return failure();
+          // return failure();
+          squeeze_flag = false;
         }
       }
       auto slice_in_shape = module::getShape(slice.getInput());
@@ -257,8 +267,14 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
           diff.push_back(std::make_pair(i, slice_out_shape[i]));
         }
       }
-      if (diff.size() > 1 || diff[0].second != 1) {
-        return failure();
+      if (squeeze_flag) {
+        if (diff.size() > 1 || diff[0].second != 1) {
+          return failure();
+        }
+      } else {
+        if (diff.size() != 1) {
+          return failure();
+        }
       }
       slice_axis = diff[0].first;
       slice_vec.push_back(slice);
@@ -280,23 +296,39 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
     auto reshape_output_shape =
         module::getShape(reshape_after_matmul.getOutput());
     // check-1.1: 64x49x288 -> 64x49x3x3x32: 3x3 is from 288
-    if ((matmul_output_shape.size() + 2 != reshape_output_shape.size() ||
-         !std::equal(matmul_output_shape.begin(), matmul_output_shape.end() - 1,
-                     reshape_output_shape.begin())) &&
-        // check-1.2: 25x14x14x2304 -> 25x196x3x12x64
-        (matmul_output_shape.size() + 1 != reshape_output_shape.size() ||
-         !(matmul_output_shape.size() >= 3 && reshape_output_shape.size() > 2 &&
-           matmul_output_shape[0] == reshape_output_shape[0] &&
-           matmul_output_shape[1] * matmul_output_shape[2] ==
-               reshape_output_shape[1]))) {
-      return failure();
-    }
-    if (reshape_output_shape[order0[slice_axis]] != slice_vec.size()) {
-      return failure();
+    if (squeeze_flag) {
+      if ((matmul_output_shape.size() + 2 != reshape_output_shape.size() ||
+           !std::equal(matmul_output_shape.begin(),
+                       matmul_output_shape.end() - 1,
+                       reshape_output_shape.begin())) &&
+          // check-1.2: 25x14x14x2304 -> 25x196x3x12x64
+          (matmul_output_shape.size() + 1 != reshape_output_shape.size() ||
+           !(matmul_output_shape.size() >= 3 &&
+             reshape_output_shape.size() > 2 &&
+             matmul_output_shape[0] == reshape_output_shape[0] &&
+             matmul_output_shape[1] * matmul_output_shape[2] ==
+                 reshape_output_shape[1]))) {
+        return failure();
+      }
+      if (reshape_output_shape[order0[slice_axis]] != slice_vec.size()) {
+        return failure();
+      }
+    } else {
+      // check-1.3: 8x36x1x2304 -> 8x36x36x64
+      if (matmul_output_shape.size() != reshape_output_shape.size() ||
+          matmul_output_shape.size() != 4 ||
+          matmul_output_shape[0] != reshape_output_shape[0] ||
+          matmul_output_shape[1] != reshape_output_shape[1] ||
+          matmul_output_shape[3] !=
+              reshape_output_shape[2] * reshape_output_shape[3]
+
+      ) {
+        return failure();
+      }
     }
 
     // check-2: trans_dim is the same as split_dim
-    std::vector<int> order_final(order0.size());
+    std::vector<int64_t> order_final(order0.size());
     if (permute1) {
       auto order1 = *module::getI64Array(permute1.getOrder());
       for (int i = 0; i < order0.size(); ++i) {
@@ -348,91 +380,162 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
       slice_output.setLoc(NameLoc::get(rewriter.getStringAttr(
           module::getName(slice_output).str() + "_r_new")));
       slice_op.shape_inference();
-      auto squeeze_op =
-          dyn_cast<SqueezeOp>(*slice_op.getOutput().getUsers().begin());
-      squeeze_op->setAttr("axes", rewriter.getI64ArrayAttr(new_slice_axis));
+      if (squeeze_flag) {
+        auto squeeze_op =
+            dyn_cast<SqueezeOp>(*slice_op.getOutput().getUsers().begin());
+        squeeze_op->setAttr("axes", rewriter.getI64ArrayAttr(new_slice_axis));
 
-      auto squeeze_out = squeeze_op.getOutput();
-      auto squeeze_out_type = squeeze_out.getType();
-      auto squeeze_out_shape = module::getShape(squeeze_out).vec();
-      if (reshape2) {
-        squeeze_out_shape = reshape2_inshape;
-        squeeze_out_shape.erase(squeeze_out_shape.begin() + slice_axis);
-        squeeze_out_type = RankedTensorType::get(
-            squeeze_out_shape, module::getElementType(squeeze_out));
-      }
-      auto inv_order_size = squeeze_out_shape.size();
-      // calculate permute order
-      std::vector<int64_t> inv_order(inv_order_size);
-      std::iota(inv_order.begin(), inv_order.end(), 0);
-      auto permute_in_shape = reshape_output_shape.vec();
-      permute_in_shape.erase(permute_in_shape.begin() + new_slice_axis);
-
-      for (int64_t i = 0; i < inv_order_size; ++i) {
-        if (order_final[i + 1] < order_final[0]) {
-          inv_order[i] = order_final[i + 1];
-        } else {
-          inv_order[i] = order_final[i + 1] - 1;
-        }
-      }
-      squeeze_out.setType(
-          UnrankedTensorType::get(module::getElementType(squeeze_out)));
-      squeeze_out.setLoc(NameLoc::get(rewriter.getStringAttr(
-          module::getName(squeeze_out).str() + "_r_new")));
-      squeeze_op.shape_inference();
-
-      std::vector<mlir::Operation *> users;
-      for (auto user : squeeze_out.getUsers()) {
-        users.emplace_back(user);
-      }
-
-      // don't worry, if the new permute is not reused, it will be folded.
-      for (auto user : users) {
-        std::vector<NamedAttribute> attrs;
-        attrs.push_back(rewriter.getNamedAttr(
-            "order", rewriter.getI64ArrayAttr(inv_order)));
-        auto name = module::getName(squeeze_op->getResults()[0]);
-        auto permute_loc = NameLoc::get(
-            rewriter.getStringAttr(name.str() + "_r_permute_for_" +
-                                   module::getName(user->getResult(0))));
-        std::vector<Value> operands;
-        operands.emplace_back(squeeze_out);
-        // rewriter.setInsertionPointAfterValue(squeeze_out);
-        rewriter.setInsertionPoint(user);
-        auto new_permute_op = rewriter.create<PermuteOp>(
-            permute_loc, squeeze_out_type, operands, attrs);
-
-        // squeeze_op.getOutput().replaceAllUsesExcept(new_permute_op.getOutput(),
-        //                                             new_permute_op);
-
-        auto last_output = new_permute_op.getOutput();
-
+        auto squeeze_out = squeeze_op.getOutput();
+        auto squeeze_out_type = squeeze_out.getType();
+        auto squeeze_out_shape = module::getShape(squeeze_out).vec();
         if (reshape2) {
-          rewriter.setInsertionPoint(user);
-          auto reshape3_outshape = reshape2_outshape;
-          reshape3_outshape.erase(reshape3_outshape.begin() + slice_axis);
-          auto reshape3_type = RankedTensorType::get(
-              reshape3_outshape, module::getElementType(last_output));
-          auto reshape3_loc = NameLoc::get(rewriter.getStringAttr(
-              permute_loc.getName().str() + "_r_reshape3"));
-          auto reshape3_op = rewriter.create<ReshapeOp>(
-              reshape3_loc, reshape3_type, ValueRange{last_output});
-          // new_permute_op.getOutput().replaceAllUsesExcept(reshape3_op.getOutput(),
-          // reshape3_op);
-          last_output = reshape3_op.getOutput();
+          squeeze_out_shape = reshape2_inshape;
+          squeeze_out_shape.erase(squeeze_out_shape.begin() + slice_axis);
+          squeeze_out_type = RankedTensorType::get(
+              squeeze_out_shape, module::getElementType(squeeze_out));
         }
+        auto inv_order_size = squeeze_out_shape.size();
+        // caculate permute order
+        std::vector<int64_t> inv_order(inv_order_size);
+        std::iota(inv_order.begin(), inv_order.end(), 0);
+        auto permute_in_shape = reshape_output_shape.vec();
+        permute_in_shape.erase(permute_in_shape.begin() + new_slice_axis);
 
-        std::vector<Value> user_operands;
-        for (auto opd : user->getOperands()) {
-          if (opd == squeeze_out) {
-            user_operands.emplace_back(last_output);
+        for (int64_t i = 0; i < inv_order_size; ++i) {
+          if (order_final[i + 1] < order_final[0]) {
+            inv_order[i] = order_final[i + 1];
           } else {
-            user_operands.emplace_back(opd);
+            inv_order[i] = order_final[i + 1] - 1;
           }
         }
-        user->setOperands(user_operands);
+        squeeze_out.setType(
+            UnrankedTensorType::get(module::getElementType(squeeze_out)));
+        squeeze_out.setLoc(NameLoc::get(rewriter.getStringAttr(
+            module::getName(squeeze_out).str() + "_r_new")));
+        squeeze_op.shape_inference();
+
+        std::vector<mlir::Operation *> users;
+        for (auto user : squeeze_out.getUsers()) {
+          users.emplace_back(user);
+        }
+
+        // don't worry, if the new permute is not reused, it will be folded.
+        for (auto user : users) {
+          std::vector<NamedAttribute> attrs;
+          attrs.push_back(rewriter.getNamedAttr(
+              "order", rewriter.getI64ArrayAttr(inv_order)));
+          auto name = module::getName(squeeze_op->getResults()[0]);
+          auto permute_loc = NameLoc::get(
+              rewriter.getStringAttr(name.str() + "_r_permute_for_" +
+                                     module::getName(user->getResult(0))));
+          std::vector<Value> operands;
+          operands.emplace_back(squeeze_out);
+          // rewriter.setInsertionPointAfterValue(squeeze_out);
+          rewriter.setInsertionPoint(user);
+          auto new_permute_op = rewriter.create<PermuteOp>(
+              permute_loc, squeeze_out_type, operands, attrs);
+
+          // squeeze_op.getOutput().replaceAllUsesExcept(new_permute_op.getOutput(),
+          //                                             new_permute_op);
+
+          auto last_output = new_permute_op.getOutput();
+
+          if (reshape2) {
+            rewriter.setInsertionPoint(user);
+            auto reshape3_outshape = reshape2_outshape;
+            reshape3_outshape.erase(reshape3_outshape.begin() + slice_axis);
+            auto reshape3_type = RankedTensorType::get(
+                reshape3_outshape, module::getElementType(last_output));
+            auto reshape3_loc = NameLoc::get(rewriter.getStringAttr(
+                permute_loc.getName().str() + "_r_reshape3"));
+            auto reshape3_op = rewriter.create<ReshapeOp>(
+                reshape3_loc, reshape3_type, ValueRange{last_output});
+            // new_permute_op.getOutput().replaceAllUsesExcept(reshape3_op.getOutput(),
+            // reshape3_op);
+            last_output = reshape3_op.getOutput();
+          }
+
+          std::vector<Value> user_operands;
+          for (auto opd : user->getOperands()) {
+            if (opd == squeeze_out) {
+              user_operands.emplace_back(last_output);
+            } else {
+              user_operands.emplace_back(opd);
+            }
+          }
+          user->setOperands(user_operands);
+        }
+      } else {
+        // rewrite for no squeeze case
+        auto slice_out = slice_op.getResult();
+        auto slice_out_type = slice_out.getType();
+        auto slice_out_shape = module::getShape(slice_out).vec();
+
+        auto permuted_shape = slice_out_shape;
+        for (size_t i = 0; i < slice_out_shape.size(); ++i) {
+          permuted_shape[i] = slice_out_shape[order_final[i]];
+        }
+        auto permuted_type = RankedTensorType::get(
+            permuted_shape, module::getElementType(slice_out));
+        if (reshape2) {
+          slice_out_shape = reshape2_inshape;
+          slice_out_shape[slice_axis] = 1;
+          slice_out_type = RankedTensorType::get(
+              slice_out_shape, module::getElementType(slice_out));
+        } else {
+          slice_out_shape = module::getShape(permute_output).vec();
+          slice_out_shape[slice_axis] = 1;
+        }
+
+        std::vector<int64_t> inv_order = order_final;
+
+        std::vector<mlir::Operation *> users;
+        for (auto user : slice_out.getUsers()) {
+          users.emplace_back(user);
+        }
+
+        for (auto user : users) {
+          std::vector<NamedAttribute> attrs;
+          attrs.push_back(rewriter.getNamedAttr(
+              "order", rewriter.getI64ArrayAttr(inv_order)));
+          auto name = module::getName(slice_op.getResult());
+          auto permute_loc = NameLoc::get(
+              rewriter.getStringAttr(name.str() + "_r_permute_for_" +
+                                     module::getName(user->getResult(0))));
+          std::vector<Value> operands;
+          operands.emplace_back(slice_out);
+
+          rewriter.setInsertionPoint(user);
+          auto new_permute_op = rewriter.create<PermuteOp>(
+              permute_loc, permuted_type, operands, attrs);
+
+          auto last_output = new_permute_op.getOutput();
+
+          if (reshape2) {
+            rewriter.setInsertionPoint(user);
+            auto reshape3_outshape = reshape2_outshape;
+            auto reshape3_type = RankedTensorType::get(
+                reshape3_outshape, module::getElementType(last_output));
+            auto reshape3_loc = NameLoc::get(rewriter.getStringAttr(
+                permute_loc.getName().str() + "_r_reshape3"));
+            auto reshape3_op = rewriter.create<ReshapeOp>(
+                reshape3_loc, reshape3_type, ValueRange{last_output});
+            last_output = reshape3_op.getOutput();
+          }
+
+          std::vector<Value> user_operands;
+          for (auto opd : user->getOperands()) {
+            if (opd == slice_out) {
+              user_operands.emplace_back(last_output);
+            } else {
+              user_operands.emplace_back(opd);
+            }
+          }
+          user->setOperands(user_operands);
+        }
       }
     }
+
     if (reshape2) {
       rewriter.eraseOp(reshape2);
     }

@@ -20,6 +20,7 @@ namespace tpu_mlir {
 
 namespace bm1684x {
 class MatMulHdimBatchPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
+  // Case0: MatMul -> Reshape -> Permute(0213)   (Swin/ViT QKV head split etc.)
   // Case1: Permute -> MatMul <- Permute
   // Case2: Reshape -> MatMul <- Permute
   // Case3: Left    -> MatMul <- Permute
@@ -56,6 +57,40 @@ protected:
     auto right = op.getRight();
     auto stype = module::getStorageType(left);
     auto hdim_is_batch = op.getHdimIsBatch();
+
+    // Case0: fold trailing Reshape + Permute(0213) into MatMul with
+    // hdim_is_batch. Top canonicalize (e.g. MatmulWithPermuteAndSplit) may
+    // erase an inner Permute; this output-side chain must still be recognized
+    // for weight MatMuls where inputs are not wrapped by Permute.
+    if (!stype.isF32() && !hdim_is_batch && op->hasOneUse()) {
+      auto reshape_op = dyn_cast<tpu::ReshapeOp>(*op->user_begin());
+      if (reshape_op && reshape_op->hasOneUse()) {
+        auto permute_op = dyn_cast<tpu::PermuteOp>(*reshape_op->user_begin());
+        if (permute_op) {
+          auto order = module::getI64Array(permute_op.getOrder());
+          if (order && order->size() == 4 && order->at(0) == 0 &&
+              order->at(1) == 2 && order->at(2) == 1 && order->at(3) == 3) {
+            auto mshape = module::getShape(op.getOutput());
+            auto rshape = module::getShape(reshape_op.getOutput());
+            auto pshape = module::getShape(permute_op.getOutput());
+            if (mshape.size() == 4 && rshape.size() == 4 &&
+                mshape[0] == rshape[0] && mshape[1] == rshape[1] &&
+                mshape[3] == rshape[2] * rshape[3] && pshape.size() == 4 &&
+                pshape[0] == rshape[0] && pshape[1] == rshape[2] &&
+                pshape[2] == rshape[1] && pshape[3] == rshape[3]) {
+              op->setAttr("hdim_is_batch", rewriter.getBoolAttr(true));
+              module::setShape(op->getResult(0), pshape);
+              permute_op.getOutput().replaceAllUsesWith(op.getOutput());
+              rewriter.eraseOp(permute_op);
+              rewriter.eraseOp(reshape_op);
+              module::setLocSuffix(op, "hdim_is_batch");
+              return success();
+            }
+          }
+        }
+      }
+    }
+
     if (stype.isF32() || hdim_is_batch) {
       return failure();
     }
@@ -152,7 +187,77 @@ protected:
           rewriter.eraseOp(l_trans_op);
           rewriter.eraseOp(r_trans_op);
         }
-      } else if (isa<tpu::ReshapeOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
+      } else if (isa<tpu::PermuteOp>(l_op) && isa<tpu::CastOp>(r_op)) {
+        // Case1.1
+        // Left  ->       Permute -\              Left        -\
+        //                          ->  MatMul ->               -> MatMul
+        // Right -> Permute(cast) -/              Right (cast)-/
+
+        auto l_trans_op = dyn_cast<tpu::PermuteOp>(l_op);
+        auto r_cast_op = dyn_cast<tpu::CastOp>(r_op);
+        auto r_trans_op =
+            dyn_cast<tpu::PermuteOp>(r_cast_op.getInput().getDefiningOp());
+        if (!r_trans_op) {
+          return failure();
+        }
+        if (!l_trans_op->hasOneUse() || !r_trans_op->hasOneUse()) {
+          return failure();
+        }
+        auto l_order = module::getI64Array(l_trans_op.getOrder());
+        auto r_order = module::getI64Array(r_trans_op.getOrder());
+        if (false == (l_order->size() == 4 && l_order->at(0) == 0 &&
+                      l_order->at(1) == 2 && r_order->size() == 4 &&
+                      r_order->at(0) == 0 && r_order->at(1) == 2)) {
+          return failure();
+        }
+        auto l_trans = op.getLeftTranspose();
+        auto r_trans = op.getRightTranspose();
+        if (l_order->at(2) == 3 && l_order->at(3) == 1) {
+          l_trans = !l_trans;
+        }
+        if (r_order->at(2) == 3 && r_order->at(3) == 1) {
+          r_trans = !r_trans;
+        }
+        auto r_cast_output_type =
+            r_cast_op.getResult().getType().cast<RankedTensorType>();
+        auto r_permute_input = r_trans_op.getInput();
+        auto r_permute_input_shape = module::getShape(r_permute_input);
+        auto target_elem_type = r_cast_output_type.getElementType();
+        auto new_r_castop = rewriter.create<tpu::CastOp>(
+            r_cast_op.getLoc(),
+            RankedTensorType::get(r_permute_input_shape, target_elem_type),
+            r_permute_input);
+        if (l_trans == true && r_trans == false) {
+          std::vector<int64_t> new_l_order = {0, 3, 2, 1};
+          l_trans_op->setAttr("order", rewriter.getI64ArrayAttr(new_l_order));
+          auto l_input_type =
+              l_trans_op.getInput().getType().cast<RankedTensorType>();
+          auto l_input_shape = module::getShape(l_trans_op.getInput());
+          std::vector<int64_t> new_l_output_shape;
+          for (auto idx : new_l_order) {
+            new_l_output_shape.push_back(l_input_shape[idx]);
+          }
+          auto new_l_output_type = RankedTensorType::get(
+              new_l_output_shape, l_input_type.getElementType());
+          l_trans_op.getResult().setType(new_l_output_type);
+          module::setLocSuffix(l_trans_op, "reorder");
+          op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+          op->setOperand(1, new_r_castop.getInput());
+          rewriter.eraseOp(r_cast_op);
+          rewriter.eraseOp(r_trans_op);
+        } else {
+          op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+          op->setAttr("left_transpose", rewriter.getBoolAttr(l_trans));
+          op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
+          op->setOperand(0, l_trans_op.getInput());
+          op->setOperand(1, new_r_castop.getOutput());
+          rewriter.eraseOp(r_cast_op);
+          rewriter.eraseOp(l_trans_op);
+          rewriter.eraseOp(r_trans_op);
+        }
+      }
+
+      else if (isa<tpu::ReshapeOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
         // Case2
         // Left  -> Reshape -\              Left(+ Reshape)-\
         //                   ->  MatMul ->                  -> MatMul
