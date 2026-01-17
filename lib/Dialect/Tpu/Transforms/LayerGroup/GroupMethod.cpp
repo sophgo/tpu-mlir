@@ -3274,8 +3274,7 @@ bool GroupMethod::load_hash_lg(std::vector<LgInfo> &lg_infos,
   }
 
   if (!file_opened) {
-    llvm::errs()
-        << "Error: Failed to open hash file from all available paths:\n";
+    llvm::errs() << "Failed to open hash file from all available paths:\n";
     for (const auto &[path, description] : path_priority) {
       llvm::errs() << "  - " << description << ": " << path << "\n";
     }

@@ -41,6 +41,7 @@ class MLIRImporter(object):
                  do_declare: bool = True,
                  run_mode: str = "STATIC",
                  no_save: bool = False,
+                 lora_rank: int = 0,
                  weight_file: str = ""):
         """
             input_shape: List[List], put module input shape. ex: [[1, 3, 224, 224]]
@@ -53,6 +54,7 @@ class MLIRImporter(object):
         self.chip = "ALL"
         self.run_mode = run_mode
         self.platform = platform
+        self.lora_rank = lora_rank
         if weight_file == "":
             self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
         else:
@@ -304,8 +306,11 @@ class MLIRImporter(object):
             output_txt = "({})".format(output_txt)
             result_types = output_txt[1:-1]
             result_var_name = ",".join([f"%1#{var_id}" for var_id in range(self.num_output)])
+        lora_info = ""
+        if self.lora_rank > 0:
+            lora_info = ", module.lora_rank={}".format(self.lora_rank)
         main_func = """
-            module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\", module.top_run_mode=\"{run_mode}\"}} {{
+            module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\", module.top_run_mode=\"{run_mode}\"{lora_info}}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
                     %1:{last_output_num} = \"Placeholder.Op\"() : () -> {output}
@@ -318,6 +323,7 @@ class MLIRImporter(object):
                    state=self.state,
                    chip=self.chip,
                    run_mode=self.run_mode,
+                   lora_info=lora_info,
                    args=args_txt,
                    output=output_txt,
                    last_output_num=self.num_output,

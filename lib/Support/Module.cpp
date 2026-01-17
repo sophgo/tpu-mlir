@@ -43,6 +43,7 @@ struct Attr {
   static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET =
       "module.dynamic_coeff_offset";
   static constexpr llvm::StringRef HIGH_PRECISION = "module.high_precision";
+  static constexpr llvm::StringRef LORA_RANK = "module.lora_rank";
 };
 
 static ModuleOp m = nullptr;
@@ -1385,6 +1386,18 @@ State getState() {
 void setState(State state) {
   auto s = stringifyState(state);
   m->setAttr(Attr::STATE, StringAttr::get(ctx, s));
+}
+
+int64_t getLoraRank() {
+  if (m->hasAttrOfType<IntegerAttr>(Attr::LORA_RANK)) {
+    return m->getAttrOfType<IntegerAttr>(Attr::LORA_RANK).getInt();
+  }
+  return 0;
+}
+
+void setLoraRank(int64_t rank) {
+  auto intType = IntegerType::get(ctx, 64);
+  m->setAttr(Attr::LORA_RANK, IntegerAttr::get(intType, rank));
 }
 
 Platform getPlatform() { return platform; }

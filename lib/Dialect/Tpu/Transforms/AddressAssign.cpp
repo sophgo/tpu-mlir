@@ -111,6 +111,34 @@ public:
   bool shouldPrint(tpu::ConcatOp op) const override { return false; }
 };
 
+class ReorderWeightsByNamePattern : public OpRewriterPatternEx<func::FuncOp> {
+public:
+  ReorderWeightsByNamePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<func::FuncOp>(context,
+                                          "ReorderWeightsByNamePattern") {}
+
+  LogicalResult matchAndRewriteImpl(func::FuncOp func,
+                                    PatternRewriter &rewriter) const override {
+    auto weights = func.getOps<top::WeightOp>();
+    std::vector<top::WeightOp> weights_v = {weights.begin(), weights.end()};
+    std::sort(weights_v.begin(), weights_v.end(),
+              [](top::WeightOp a, top::WeightOp b) {
+                return module::getName(a.getOutput()) <
+                       module::getName(b.getOutput());
+              });
+    // make sure lora weights are in front of other weights
+    auto *cur_op = &func.getBody().front().front();
+    if (isa<top::NoneOp>(cur_op)) {
+      cur_op = cur_op->getNextNode();
+    }
+    for (auto weight : weights_v) {
+      weight->moveBefore(cur_op);
+    }
+    return success();
+  }
+  bool shouldPrint(func::FuncOp func) const override { return false; }
+};
+
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
   AddressAssignPass() {}
@@ -133,6 +161,10 @@ public:
         module::applyPatternOnce<ConcatMergePattern>(s);
         module::applyPatternOnce<ConcatFusePattern>(s);
         module::applyPatternOnce<ConcatSlicePattern>(s);
+        if (module::getLoraRank() > 0) {
+          // make sure all weight ops are reordered by name
+          module::applyPatternOnce<ReorderWeightsByNamePattern>(s);
+        }
         BMAddressAssign addr_assign;
         addr_assign.assign(s, reuse_addr, same_addr);
       }

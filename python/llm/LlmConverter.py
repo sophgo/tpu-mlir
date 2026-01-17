@@ -1199,6 +1199,7 @@ class LlmConverter(BaseConverter):
                                       [input_shape, kv_shape, kv_shape],
                                       name,
                                       Platform.LLM, ["F32", "INT32", "F32"],
+                                      lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
             def T(shape: list):
@@ -1324,6 +1325,7 @@ class LlmConverter(BaseConverter):
                 [input_shape, kv_shape, kv_shape],
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
             def T(shape: list):

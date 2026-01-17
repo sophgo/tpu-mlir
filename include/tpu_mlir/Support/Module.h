@@ -125,6 +125,8 @@ std::shared_ptr<std::vector<StringRef>> getOutputs();
 bool isBF16Modes();
 bool isF16Modes();
 bool isF8Modes();
+int64_t getLoraRank();
+void setLoraRank(int64_t rank);
 
 Platform getPlatform();
 bool isPlatform(Platform plt);

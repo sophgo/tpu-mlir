@@ -523,6 +523,11 @@ struct CommonMatch : public OpRewriterPatternEx3 {
                 left_op)) {
           continue;
         }
+        if (left_op->hasAttrOfType<BoolAttr>("is_lora") &&
+            left_op->getAttrOfType<BoolAttr>("is_lora").getValue()) {
+          // lora can't match, or weight order will be changed
+          continue;
+        }
         if (module::isOpInBlock(left_op)) {
           continue;
         }
