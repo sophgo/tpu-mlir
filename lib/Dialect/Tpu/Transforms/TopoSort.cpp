@@ -237,6 +237,9 @@ class TopoSortPass : public TopoSortBase<TopoSortPass> {
 public:
   TopoSortPass() {}
   void runOnOperation() override {
+    if (module::isPlatform(module::Platform::LLM)) {
+      return;
+    }
     // init
     std::vector<std::unique_ptr<BaseStragegy>> strategies;
     if (depth_first == "true") {
