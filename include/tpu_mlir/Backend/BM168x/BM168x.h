@@ -122,6 +122,11 @@ typedef int (*bmcpu_dtype)(void *bmcpu_handle, int op_type, const void *param,
                            const std::vector<int> &input_dtypes,
                            std::vector<int> &output_dtypes);
 
+typedef void (*fill_constant_gen_global_cmd_stride)(
+    uint64_t global_mem_start_addr, const void * const_val, int32_t data_format,
+    int N, int C, int H, int W, uint32_t n_stride, uint32_t c_stride, uint32_t h_stride, uint32_t w_stride,
+    bool enable_stride, CMD_ID_NODE *pid_node);
+
 namespace tpu_mlir {
 namespace backend {
 
@@ -310,6 +315,7 @@ public:
   bmcpu_process dl_bmcpu_process;
   bmcpu_reshape dl_bmcpu_reshape;
   bmcpu_dtype dl_bmcpu_dtype;
+  fill_constant_gen_global_cmd_stride dl_fill_constant_gen_global_cmd_stride;
 
   template <typename FPtrTy>
   FPtrTy CpuCastToFPtr(const char *symbolName) {

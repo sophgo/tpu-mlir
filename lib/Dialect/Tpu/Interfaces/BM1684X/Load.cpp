@@ -7,12 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Common/AffineUtils.h"
+#include "mlir/IR/AffineExpr.h"
+#include "mlir/IR/AffineMap.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
+#include <algorithm>
+#include <mutex>
+#include <thread>
 
 using namespace tpu_mlir::backend;
+
+static AffineSharedCache g_load_affine_shared_cache;
+static AffineAnchorCache g_load_affine_anchor_cache;
+static std::mutex g_load_affine_cache_mutex;
 
 void tpu::LoadOp::codegen_global_bm1684x() {
   llvm_unreachable("global not support");
@@ -187,35 +197,402 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     g_addr = module::getAddress(getInput());
   }
   // llvm::errs() <<"loadOp g_addr:"<<g_addr<<"\n";
-#if 0
-  //note: trick for imgToCol pattern
-  const auto defBySliceOp = [&] (Value v) {
-      std::function<std::pair<bool, Operation *>(Value)>
-         f = [&f] (Value v) -> std::pair<bool, Operation *> {
-      if (isa<BlockArgument>(v)) {
-        auto argument = cast<BlockArgument>(v);
-        int index = argument.getArgNumber();
-        auto op = argument.getOwner()->getParentOp();
-        if (isa<FunctionOpInterface>(op))
-          return std::make_pair(false, nullptr);
-        else {
-          auto in = op->getOpOperand(index).get();
-          return  f(in);
+
+  // step1： auto vectorize. step2:  auto tensorize.
+  // step3:  auto tensorize with STRIDE optimization.
+  // step4:  codegen for each tensor
+
+  if (getOperation()->hasAttr("indexing_map_s2l")) {
+    auto indexingMapAttr =
+        getOperation()->getAttr("indexing_map_s2l").dyn_cast<AffineMapAttr>();
+    auto indexingMap = indexingMapAttr.getValue();
+
+    assert(D == 1);
+    std::vector<int64_t> oShape = module::getShape(getOutput());
+    std::vector<int64_t> oShape_ext = {N, C, H, W};
+    std::vector<int64_t> iShape = module::getShape(getInput());
+
+    std::vector<int64_t> oStride = getCompactStrideFromShape(oShape);
+    std::vector<int64_t> oStride_ext = getCompactStrideFromShape(oShape_ext);
+    std::vector<int64_t> iStride = getCompactStrideFromShape(iShape);
+
+    // Step 1/2 combined: Row-scan approach
+    // Instead of greedy vectorize + tensorize, directly scan rows (n,c,h)
+    // and find contiguous W-blocks by checking adjacent affine-mapped offsets.
+    std::vector<int64_t> lShape_ext = {gi.n_slice, real_cslice,
+                                       real_hslice * real_wslice};
+    if (real_cslice % Arch::NPU_NUM == 0) {
+      lShape_ext[0] *= real_cslice / Arch::NPU_NUM;
+      lShape_ext[1] = Arch::NPU_NUM;
+    }
+    const std::vector<int64_t> lStride_ext =
+        getCompactStrideFromShape(lShape_ext);
+
+    const int64_t lStride_ext_0 = lStride_ext[0];
+    const int64_t lStride_ext_1 = lStride_ext[1];
+    const int64_t lStride_HW = real_hslice * real_wslice;
+    const int64_t real_cslice_lStride = real_cslice * lStride_HW;
+    const bool same_o_shape = (oShape == oShape_ext);
+    const int64_t map_num_inputs = indexingMap.getNumInputs();
+
+    const int64_t oStride_ext_0 = oStride_ext[0];
+    const int64_t oStride_ext_1 = oStride_ext[1];
+    const int64_t oStride_ext_2 = oStride_ext[2];
+    const int64_t oStride_ext_3 = oStride_ext[3];
+
+    const int64_t n_idx = gi.n_idx;
+    const int64_t c_idx = gi.c_idx;
+    const int64_t h_idx = gi.h_idx;
+    const int64_t w_idx = gi.w_idx;
+
+    std::vector<FreeTensorDmaInfo> free_tensor_dma_infos;
+
+    // When real_wslice == 1, H elements are contiguous in local memory
+    // (stride=1), so scan along H instead of W to find larger contiguous
+    // blocks.
+    const bool hslice_as_wslice = (real_wslice == 1 && real_hslice > 1);
+    const int64_t scan_size = hslice_as_wslice ? real_hslice : real_wslice;
+    const int64_t rows_per_n =
+        hslice_as_wslice ? real_cslice : real_cslice * real_hslice;
+    const int64_t total_rows = gi.n_slice * rows_per_n;
+
+    // Build cache key for this affine pattern
+    const std::string shared_cache_key =
+        build_affine_shared_cache_key(indexingMap, iShape, oShape, gi.n_slice,
+                                      real_cslice, real_hslice, real_wslice);
+    const AffineOffsetKey offset_key = {n_idx, c_idx, h_idx, w_idx};
+
+    // Compile affine map for fast evaluation
+    const auto compiled_map = compileAffineMap(indexingMap);
+    const auto safeDeltaDims = computeSafeDeltaDims(indexingMap);
+
+    // Analyze contiguous block structure for fast scanning
+    // Determine which input dimension is the scan dimension
+    int scan_dim_idx = -1;
+    if (hslice_as_wslice) {
+      // scanning along h, which is oCoord_ext_2
+      if (map_num_inputs == 4 && same_o_shape) {
+        scan_dim_idx = 2;
+      } else if (map_num_inputs == (int64_t)oShape.size()) {
+        // For non-4D, approximate: scan maps to the second-to-last position
+        scan_dim_idx = map_num_inputs - 2;
+      }
+    } else {
+      // scanning along w, which is oCoord_ext_3 (or last dim)
+      if (map_num_inputs == 4 && same_o_shape) {
+        scan_dim_idx = 3;
+      } else {
+        scan_dim_idx = map_num_inputs - 1;
+      }
+    }
+    AffineBlockAnalysis block_analysis;
+    if (scan_dim_idx >= 0) {
+      block_analysis =
+          analyzeContiguousBlocks(indexingMap, scan_dim_idx, iStride);
+    }
+
+    // Check cache: exact match + safe delta reuse
+    bool full_cache_hit = false;
+    {
+      std::lock_guard<std::mutex> lock(g_load_affine_cache_mutex);
+      full_cache_hit = affine_cache_lookup_with_delta(
+          g_load_affine_shared_cache, g_load_affine_anchor_cache,
+          shared_cache_key, offset_key, iStride, oStride, iShape, oShape,
+          compiled_map, safeDeltaDims, /*is_load=*/true, same_o_shape,
+          free_tensor_dma_infos);
+    }
+
+    if (!full_cache_hit) {
+
+      // Process a range of rows [row_begin, row_end) and append results to
+      // out_infos
+      auto process_row_range = [&](int64_t row_begin, int64_t row_end,
+                                   std::vector<FreeTensorDmaInfo> &out_infos) {
+        std::vector<int64_t> map_input_coords(map_num_inputs, 0);
+        std::vector<int64_t> iCoords(compiled_map.results.size());
+        RowPatternCache row_cache;
+
+        for (int64_t row = row_begin; row < row_end; ++row) {
+          int64_t n_local, c_local, h_local_base;
+          if (hslice_as_wslice) {
+            n_local = row / real_cslice;
+            c_local = row % real_cslice;
+            h_local_base = 0;
+          } else {
+            n_local = row / rows_per_n;
+            int64_t rem = row % rows_per_n;
+            c_local = rem / real_hslice;
+            h_local_base = rem % real_hslice;
+          }
+
+          // Try row pattern cache: reuse block pattern from a previous row
+          // with the same (c_local, h_local_base) but different n_local
+          RowPatternKey rp_key{c_local, h_local_base};
+          auto rp_it = row_cache.find(rp_key);
+          if (rp_it != row_cache.end() && !rp_it->second.blocks.empty()) {
+            const auto &pattern = rp_it->second;
+            // Compute gOffset delta by evaluating only the first block's
+            // position for the current n_local
+            auto get_mapped_gOffset_quick = [&](int64_t cur_pos,
+                                                int64_t &gOff) -> bool {
+              int64_t oCoord_ext_0 = n_local + n_idx;
+              int64_t oCoord_ext_1 = c_local + c_idx;
+              int64_t oCoord_ext_2 =
+                  (hslice_as_wslice ? cur_pos : h_local_base) + h_idx;
+              int64_t oCoord_ext_3 = (hslice_as_wslice ? 0 : cur_pos) + w_idx;
+              if (map_num_inputs == 4 && same_o_shape) {
+                map_input_coords[0] = oCoord_ext_0;
+                map_input_coords[1] = oCoord_ext_1;
+                map_input_coords[2] = oCoord_ext_2;
+                map_input_coords[3] = oCoord_ext_3;
+              } else {
+                int64_t oOffset =
+                    oCoord_ext_0 * oStride_ext_0 +
+                    oCoord_ext_1 * oStride_ext_1 +
+                    oCoord_ext_2 * oStride_ext_2 +
+                    oCoord_ext_3 * oStride_ext_3;
+                map_input_coords = offset_2_coords(oOffset, oStride);
+                if ((int64_t)map_input_coords.size() != map_num_inputs)
+                  return false;
+              }
+              evalCompiledMapInto(compiled_map, map_input_coords, iCoords);
+              if (!is_coords_valid(iCoords, iShape))
+                return false;
+              gOff = coords_2_offset(iCoords, iStride);
+              return true;
+            };
+
+            const auto &first_block = pattern.blocks.front();
+            int64_t cur_first_gOffset = 0;
+            bool delta_valid = get_mapped_gOffset_quick(
+                first_block.scan_pos, cur_first_gOffset);
+
+            if (delta_valid) {
+              int64_t g_delta = cur_first_gOffset - pattern.ref_first_gOffset;
+              // Verify delta is uniform by checking last block too
+              bool delta_ok = true;
+              if (pattern.blocks.size() > 1) {
+                const auto &last_block = pattern.blocks.back();
+                int64_t cur_last_gOffset = 0;
+                if (get_mapped_gOffset_quick(last_block.scan_pos,
+                                             cur_last_gOffset)) {
+                  int64_t expected =
+                      last_block.gOffset + g_delta;
+                  if (cur_last_gOffset != expected)
+                    delta_ok = false;
+                } else {
+                  delta_ok = false;
+                }
+              }
+
+              if (delta_ok) {
+                // Compute lOffset delta for different n_local
+                int64_t n_l_delta =
+                    (n_local - pattern.ref_n_local) * real_cslice_lStride;
+                for (const auto &blk : pattern.blocks) {
+                  int64_t new_lOffset = blk.lOffset + n_l_delta;
+                  int64_t new_l_nidx = new_lOffset / lStride_ext_0;
+                  int64_t new_l_cidx =
+                      (new_lOffset % lStride_ext_0) / lStride_ext_1;
+                  out_infos.push_back(FreeTensorDmaInfo{
+                      blk.gOffset + g_delta, new_lOffset, 1, 1, 1,
+                      blk.entry_W, blk.entry_W, blk.entry_W, blk.entry_W,
+                      new_l_nidx, new_l_cidx});
+                }
+                continue; // row done via cache
+              }
+            }
+          }
+
+          // Full scan for this row (cache miss or delta invalid)
+          auto get_mapped_gOffset = [&](int64_t cur_pos,
+                                        int64_t &gOff) -> bool {
+            int64_t oCoord_ext_0 = n_local + n_idx;
+            int64_t oCoord_ext_1 = c_local + c_idx;
+            int64_t oCoord_ext_2 =
+                (hslice_as_wslice ? cur_pos : h_local_base) + h_idx;
+            int64_t oCoord_ext_3 = (hslice_as_wslice ? 0 : cur_pos) + w_idx;
+
+            if (map_num_inputs == 4 && same_o_shape) {
+              map_input_coords[0] = oCoord_ext_0;
+              map_input_coords[1] = oCoord_ext_1;
+              map_input_coords[2] = oCoord_ext_2;
+              map_input_coords[3] = oCoord_ext_3;
+            } else {
+              int64_t oOffset =
+                  oCoord_ext_0 * oStride_ext_0 + oCoord_ext_1 * oStride_ext_1 +
+                  oCoord_ext_2 * oStride_ext_2 + oCoord_ext_3 * oStride_ext_3;
+              map_input_coords = offset_2_coords(oOffset, oStride);
+              if ((int64_t)map_input_coords.size() != map_num_inputs) {
+                return false;
+              }
+            }
+
+            evalCompiledMapInto(compiled_map, map_input_coords, iCoords);
+            if (!is_coords_valid(iCoords, iShape)) {
+              return false;
+            }
+            gOff = coords_2_offset(iCoords, iStride);
+            return true;
+          };
+
+          // Collect blocks for this row (for caching)
+          std::vector<RowBlockEntry> row_blocks;
+          int64_t scan_pos = 0;
+          while (scan_pos < scan_size) {
+            int64_t gOffset = 0;
+            if (!get_mapped_gOffset(scan_pos, gOffset)) {
+              scan_pos++;
+              continue;
+            }
+
+            int64_t entry_W = findContiguousLength(
+                block_analysis, scan_pos, scan_size, gOffset,
+                get_mapped_gOffset);
+
+            int64_t h_local = hslice_as_wslice ? scan_pos : h_local_base;
+            int64_t w_local = hslice_as_wslice ? 0 : scan_pos;
+            int64_t lOffset = n_local * real_cslice_lStride +
+                              c_local * lStride_HW + h_local * real_wslice +
+                              w_local;
+            int64_t l_nidx = lOffset / lStride_ext_0;
+            int64_t l_cidx = (lOffset % lStride_ext_0) / lStride_ext_1;
+
+            out_infos.push_back(FreeTensorDmaInfo{gOffset, lOffset, 1, 1, 1,
+                                                  entry_W, entry_W, entry_W,
+                                                  entry_W, l_nidx, l_cidx});
+            row_blocks.push_back(
+                RowBlockEntry{scan_pos, entry_W, gOffset, lOffset,
+                              l_nidx, l_cidx});
+
+            scan_pos += entry_W;
+          }
+
+          // Store row pattern for future reuse (only first occurrence)
+          if (!row_blocks.empty() &&
+              row_cache.find(rp_key) == row_cache.end()) {
+            RowPattern pattern;
+            pattern.ref_n_local = n_local;
+            pattern.ref_first_gOffset = row_blocks.front().gOffset;
+            pattern.blocks = std::move(row_blocks);
+            row_cache[rp_key] = std::move(pattern);
+          }
         }
-      } else if (isa<tpu::ReshapeOp>(v.getDefiningOp())) {
-        auto in = v.getDefiningOp()->getOpOperand(0).get();
-        return f(in);
-      } else if (isa<tpu::SliceOp>(v.getDefiningOp())) {
-        auto sliceOp = cast<tpu::SliceOp>(v.getDefiningOp());
-        if (sliceOp.getDiscard())
-          return std::make_pair(true, v.getDefiningOp());
-        else
-          return std::make_pair(false, nullptr);
-      } else
-        return std::make_pair(false, nullptr);};
-    return f(v);};
-  auto [fromSlice, sliceOp] = defBySliceOp(getInput());
-#endif
+      };
+
+      constexpr int kMaxThreads =16;
+      int hw_threads = static_cast<int>(std::thread::hardware_concurrency());
+      if (hw_threads <= 0)
+        hw_threads = 1;
+      int num_threads = std::min<int64_t>(kMaxThreads, total_rows);
+      num_threads = std::min(num_threads, hw_threads);
+
+      if (num_threads <= 1 || total_rows < 64) {
+        process_row_range(0, total_rows, free_tensor_dma_infos);
+      } else {
+        std::vector<std::thread> workers;
+        workers.reserve(num_threads);
+        std::vector<std::vector<FreeTensorDmaInfo>> thread_infos(num_threads);
+        int64_t rows_per_thread = (total_rows + num_threads - 1) / num_threads;
+
+        for (int t = 0; t < num_threads; ++t) {
+          int64_t begin = t * rows_per_thread;
+          int64_t end = std::min<int64_t>(total_rows, begin + rows_per_thread);
+          workers.emplace_back([&, t, begin, end]() {
+            process_row_range(begin, end, thread_infos[t]);
+          });
+        }
+        for (auto &th : workers) {
+          th.join();
+        }
+        for (int t = 0; t < num_threads; ++t) {
+          free_tensor_dma_infos.insert(free_tensor_dma_infos.end(),
+                                       thread_infos[t].begin(),
+                                       thread_infos[t].end());
+        }
+      }
+
+      // Step 3: Stride fusion
+      free_tensor_dma_infos =
+          fuse_dma_info_with_stride(free_tensor_dma_infos, DIM_H, lStride_ext);
+      free_tensor_dma_infos =
+          fuse_dma_info_with_stride(free_tensor_dma_infos, DIM_C, lStride_ext);
+      // Sort + relaxed DIM_N: enable only when real_cslice <= NPU_NUM.
+      // When C fits in one NPU group, ceiling_func(entry_C, NPU_NUM) == 1
+      // for all entries, ensuring l_real_stride.N matches l_aligned_stride.N.
+      if (real_cslice <= (int64_t)Arch::NPU_NUM) {
+        const int64_t lStride_ext_0 = lStride_ext[0];
+        std::sort(free_tensor_dma_infos.begin(), free_tensor_dma_infos.end(),
+                  [lStride_ext_0](const FreeTensorDmaInfo &a,
+                                  const FreeTensorDmaInfo &b) {
+                    if (a.entry_C != b.entry_C)
+                      return a.entry_C < b.entry_C;
+                    if (a.entry_H != b.entry_H)
+                      return a.entry_H < b.entry_H;
+                    if (a.entry_W != b.entry_W)
+                      return a.entry_W < b.entry_W;
+                    if (a.g_stride_c != b.g_stride_c)
+                      return a.g_stride_c < b.g_stride_c;
+                    if (a.g_stride_h != b.g_stride_h)
+                      return a.g_stride_h < b.g_stride_h;
+                    int64_t a_cpos = a.lOffset % lStride_ext_0;
+                    int64_t b_cpos = b.lOffset % lStride_ext_0;
+                    if (a_cpos != b_cpos)
+                      return a_cpos < b_cpos;
+                    return a.l_nidx < b.l_nidx;
+                  });
+      }
+      free_tensor_dma_infos =
+          fuse_dma_info_with_stride(free_tensor_dma_infos, DIM_N, lStride_ext);
+
+      // Store result in cache + anchor cache
+      {
+        std::lock_guard<std::mutex> lock(g_load_affine_cache_mutex);
+        affine_cache_store(g_load_affine_shared_cache, shared_cache_key,
+                           offset_key, free_tensor_dma_infos);
+        affine_anchor_store(g_load_affine_anchor_cache, shared_cache_key,
+                            offset_key, free_tensor_dma_infos);
+      }
+    } // end if (!full_cache_hit)
+
+    // step last: codegen
+
+    auto l_aligned_stride = BM168x::getLocalStride(
+        lShape_ext[0], lShape_ext[1], 1, lShape_ext[2], fmt_bytes, gi.eu_align);
+
+    for (auto &free_tensor_dma_info : free_tensor_dma_infos) {
+
+      int64_t npu_idx, local_addr, global_addr;
+      // All blocks are valid data (padding filtered out earlier)
+      global_addr = free_tensor_dma_info.gOffset * fmt_bytes + g_addr;
+
+      std::vector<int64_t> lOffset_coords =
+          offset_2_coords(free_tensor_dma_info.lOffset, lStride_ext);
+      local_addr = (lOffset_coords[0] * l_aligned_stride.N +
+                    lOffset_coords[1] / Arch::NPU_NUM * l_aligned_stride.C +
+                    lOffset_coords[2]) *
+                       fmt_bytes +
+                   gi.out_addr;
+      npu_idx = lOffset_coords[1] % Arch::NPU_NUM;
+
+      auto l_real_stride = BM168x::getLocalStride(
+          free_tensor_dma_info.entry_N, free_tensor_dma_info.entry_C,
+          free_tensor_dma_info.entry_H, free_tensor_dma_info.entry_W, fmt_bytes,
+          gi.eu_align);
+
+      // Generate DMA command for valid data block
+      BM168x::instance()->dl_tensor_stride_move_gen_cmd(
+          local_addr, npu_idx, global_addr, free_tensor_dma_info.entry_N,
+          free_tensor_dma_info.entry_C, free_tensor_dma_info.entry_H,
+          free_tensor_dma_info.entry_W, free_tensor_dma_info.g_stride_n,
+          free_tensor_dma_info.g_stride_c, free_tensor_dma_info.g_stride_h, 1,
+          l_real_stride.N, l_real_stride.C, l_real_stride.H, l_real_stride.W,
+          gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
+    }
+    return;
+  }
+  // ==================== Affine Opt END ======================== //
+
   // int64_t dhw = D * H * W;
   // int64_t eu_num = BM168x::eu_num(fmt_bytes);
   int64_t use_3ic = getUse_3icOptimize();
@@ -351,7 +728,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           }
           channel_index++;
         }
-      } // depth loop
+      }      // depth loop
     } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
       for (int64_t i = 0; i < gi.n_slice; i++) {
         int64_t cur_local_offset = i * c_num_local * c_stride * fmt_bytes;

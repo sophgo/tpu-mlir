@@ -590,6 +590,9 @@ model_deploy.py
    * - disable_gdma_check
      - 否
      - 是否关闭gdma地址检查
+   * - enable_affine
+     - 否
+     - 开启 affine-opt pass，用于优化全局 permute/reshape/slice/pad 类操作；默认关闭，仅在显式指定时生效
    * - do_winograd
      - 否
      - 是否使用WinoGrad卷积, 仅用于BM1684平台

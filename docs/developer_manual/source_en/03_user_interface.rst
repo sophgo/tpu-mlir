@@ -579,6 +579,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - disable_gdma_check
      - N
      - Whether to disable gdma address check
+   * - enable_affine
+     - N
+     - Enable the affine-opt pass to optimize global permute/reshape/slice/pad operations. Disabled by default and only enabled when explicitly specified.
    * - do_winograd
      - N
      - if do WinoGrad convolution, only for BM1684

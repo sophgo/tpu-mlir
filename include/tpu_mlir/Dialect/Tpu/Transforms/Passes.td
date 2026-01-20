@@ -240,4 +240,14 @@ def OptPostProcessor : Pass<"opt-post-processor", "ModuleOp"> {
   let constructor = "createOptPostProcessorPass()";
   let dependentDialects = ["TpuDialect"];
 }
+
+def AffineOpt : Pass<"affine-opt", "ModuleOp"> {
+  let summary = "Affine optimization pass for TPU operators";
+  let constructor = "createAffineOptPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"min_continuous_bytes", "min-continuous-bytes", "int64_t", /*default=*/"512",
+           "minimum continuous bytes for DMA optimization">,
+  ];
+}
 #endif

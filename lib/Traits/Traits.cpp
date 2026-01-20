@@ -43,6 +43,10 @@ LogicalResult verifyTpuTypeRestrictTrait(Operation *op) {
 }
 
 LogicalResult verifyInOutSameShapeTrait(Operation *op) {
+  if (op->hasAttr("indexing_map") || op->hasAttr("indexing_map_s2l") ||
+      op->hasAttr("indexing_map_l2s")) {
+    return mlir::success();
+  }
   auto in_shape =
       op->getOperand(0).getType().cast<RankedTensorType>().getShape();
   auto out_shape =

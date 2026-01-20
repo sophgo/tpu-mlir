@@ -3638,7 +3638,8 @@ def Tpu_LoadOp : Tpu_Op<"Load",
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
     DefaultValuedAttr<BoolAttr, "false">:$is_idx_weight,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info
+    OptionalAttr<Tpu_CompressAttr>:$compress_info,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -3920,7 +3921,9 @@ def Tpu_LutOp : Tpu_Op<"Lut", [
     AnyRankedTensor:$table,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multicore,
-    OptionalAttr<BoolAttr>:$do_core_parallel
+    OptionalAttr<BoolAttr>:$do_core_parallel,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5379,7 +5382,9 @@ def Tpu_PadOp : Tpu_Op<"Pad", [
 
     DefaultValuedAttr<BoolAttr, "false">:$with_insert_zero,
     OptionalAttr<I64ArrayAttr>:$insert_zeros,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -5416,7 +5421,9 @@ def Tpu_PermuteOp : Tpu_Op<"Permute", [
     AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multicore,
-    OptionalAttr<BoolAttr>:$do_core_parallel
+    OptionalAttr<BoolAttr>:$do_core_parallel,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -6055,7 +6062,9 @@ def Tpu_ReshapeOp : Tpu_Op<"Reshape", [
     AnyRankedTensor:$input,
     DefaultValuedAttr<I64ArrayAttr, "{}">:$shape,
     Optional<AnyTensorOrNone>:$buffer,
-    DefaultValuedAttr<I64Attr, "-1">:$flatten_start_dim
+    DefaultValuedAttr<I64Attr, "-1">:$flatten_start_dim,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -7073,7 +7082,9 @@ def Tpu_SliceOp : Tpu_Op<"Slice", [
     I64ArrayAttr:$ends,
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$axes,
     DefaultValuedAttr<I64ArrayAttr, "{}">:$hasparamConvert_axes,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
@@ -7321,7 +7332,10 @@ def Tpu_StoreOp : Tpu_Op<"Store",
     AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info
+    OptionalAttr<Tpu_CompressAttr>:$compress_info,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s,
+    OptionalAttr<I64ArrayAttr>:$paddings,
+    OptionalAttr<F64Attr>:$pad_const_val
   );
   let results = (outs AnyRankedTensor:$output);
 }
