@@ -172,7 +172,9 @@ def cut_mlir(
     mlir_name = os.path.basename(fn)
     if module_state == '"TOP_F32"':
         tgt_name = mlir_name.replace("_origin", "")
-        cmd = [f"tpuc-opt {mlir_name} --shape-infer --canonicalize --extra-optimize -o {tgt_name}.mlir"]
+        cmd = [
+            f"tpuc-opt {mlir_name} --shape-infer --canonicalize --extra-optimize -o {tgt_name}.mlir"
+        ]
         _os_system(cmd)
         mlir_name = tgt_name
 
@@ -293,9 +295,7 @@ def cut_final_mlir(final_mlir: str, cfg_file: str, ref_data: str):
     # 1. cut final mlir
     new_final_mlir = os.path.splitext(final_mlir)[0] + "_cut.mlir"
     cmd1 = [
-        "tpuc-opt", final_mlir,
-        f"--cut-final-mlir=\"config_file={cfg_file}\"",
-        "-o", new_final_mlir
+        "tpuc-opt", final_mlir, f"--cut-final-mlir=\"config_file={cfg_file}\"", "-o", new_final_mlir
     ]
     try:
         _os_system(cmd1)
@@ -307,8 +307,7 @@ def cut_final_mlir(final_mlir: str, cfg_file: str, ref_data: str):
     # 2. run codegen
     bmodel_file = new_final_mlir.replace(".mlir", ".bmodel")
     cmd2 = [
-        "tpuc-opt", new_final_mlir,
-        f"--codegen=\"model_file={bmodel_file} embed_debug_info=true\"",
+        "tpuc-opt", new_final_mlir, f"--codegen=\"model_file={bmodel_file} embed_debug_info=true\"",
         "-o", "/dev/null"
     ]
     try:
@@ -357,9 +356,8 @@ def cut_final_mlir(final_mlir: str, cfg_file: str, ref_data: str):
 
 if __name__ == "__main__":
     print("TPU-MLIR {}".format(pymlir.__version__))
-    parser = argparse.ArgumentParser(
-        description="cut .MLIR file with certain input/output names.",
-        epilog=f"""
+    parser = argparse.ArgumentParser(description="cut .MLIR file with certain input/output names.",
+                                     epilog=f"""
 {colored('Examples:', 'cyan')}
 {colored('# case.1: cut final.mlir in order to debug intermediate results of bmodel.', 'orange')}
   {colored('# 1.a:', 'cyan')} cut final.mlir with both input_names and output_names. \\
@@ -382,8 +380,7 @@ if __name__ == "__main__":
   {colored('# 2.c:', 'cyan')} cut top.mlir/tpu.mlir with output_names and backtrace layer-number.
   {colored('($) mlir_cut.py --mlir xxx_top/tpu.mlir --mode bt --output_names output1,output2 --num 3 (--ref_data xxx_top_outputs.npz)', 'cyan')}
         """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     # yapf: disable
     parser.add_argument("--mlir", required=True, help="model name")
     parser.add_argument("--mode", choices=['io','bt','ft'], help="""
@@ -469,6 +466,6 @@ if __name__ == "__main__":
     if args.do_verify:
         assert args.ref_data is not None, "ref_data is required for verification"
         infer_cmd = f"model_runner.py --input {args.ref_data} --model {new_mlir} --output _outputs.npz"
-        compare_cmd = f"npz_tool.py compare {args.ref_data} _outputs.npz -v"
+        compare_cmd = f"npz_tool.py compare _outputs.npz {args.ref_data} -vv"
         _os_system([infer_cmd])
         _os_system([compare_cmd])
