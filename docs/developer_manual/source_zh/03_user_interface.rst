@@ -584,7 +584,7 @@ model_deploy.py
      - LayerGroup优化类型，可选1/2/3, 默认为2。1：简单LayerGroup模式，所有算子会尽可能做Group，编译速度较快；2：通过动态编译计算全局cycle最优的Group分组，适用于推理图编译；3：线性规划LayerGroup模式，适用于模型训练图编译。
    * - addr_mode
      - 否
-     - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'], 默认为auto
+     - 设置地址分配模式['auto', 'basic', 'io_alone', 'io_tag_fuse', 'io_reloc', 'in_reuse'], 默认为auto
    * - disable_layer_group
      - 否
      - 是否关闭LayerGroup
