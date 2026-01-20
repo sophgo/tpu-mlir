@@ -3724,7 +3724,6 @@ Processor Support
 * BM1688:  Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
-
 roll
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -3760,6 +3759,36 @@ Processor Support
 * BM1688:  Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 * BM1684X: Data type can be FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16.
 
+cumsum
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+Definition
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+        def cumsum(input: Tensor, axis: int = -1, out_name: str = None):
+        #pass
+
+Description
+""""""""""""""""""""""""""""""""""""""""""""""
+Calculates the cumulative sum of elements along a specified dimension of a tensor. It returns a tensor where each element is the sum of all elements up to and including the current position in the specified dimension.
+This operation is considered a **global operation**.
+
+Parameters
+""""""""""""""""""""""""""""""""""""""""""""""
+* input: Tensor type. the input tensor.
+* axis: int, It is a dimension to calculate the cumulative sum。
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Returns
+""""""""""""""""""""""""""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor Support
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688:  Data type can be FLOAT32/INT32/UINT32.
+* BM1684X: Data type can be FLOAT32/INT32/UINT32.
 
 
 Sort Operator

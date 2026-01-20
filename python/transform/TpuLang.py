@@ -6255,3 +6255,21 @@ def scatterND(input: Tensor, indices: Tensor, updates: Tensor, out_name: str = N
 
     TpuLang.insert_op("top.ScatterND", inputs=[input, indices, updates], outputs=[output])
     return output
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def cumsum(input: Tensor, axis: int = -1, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int32", "uint32"]
+    assert len(input.shape) <= 4
+    if axis < 0:
+        axis = len(input.shape) + axis
+    else:
+        assert axis < len(input.shape), "axis is invalid"
+    attr = {
+        "axis": Attr(axis),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.CumSum", inputs=[input, None], outputs=[output], params=attr)
+    return output

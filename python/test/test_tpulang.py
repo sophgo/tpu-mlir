@@ -73,6 +73,117 @@ def rand_indices2(shape, dtype):
     return data.reshape(shape).astype(dtype=dtype)
 
 
+from typing import Any, Dict, Optional
+import warnings
+import inspect
+
+
+def generate_torch_ref(op_name: str, device: str = "cpu", **kwargs) -> Dict[str, Any]:
+    """
+    Generate the calling results based on the given torch operator name and parameters, and save them to an npz file.
+
+    Parameters:
+        op_name: The torch operator name, such as "cumsum", "matmul", "conv2d", etc.
+        device: The computational device, default is "cpu", can be "cuda" or "cuda:0", etc.
+        **kwargs: Parameters passed to the torch operator
+    Returns:
+        A dictionary containing the results and metadata
+    Example:
+        # Invoke the cumsum operator
+        result = generate_torch_ref(
+            op_name="cumsum",
+            input=torch.tensor([1, 2, 3, 4]),
+            dim=0
+        )
+
+        # Invoke the matmul operator
+        result = generate_torch_ref(
+            op_name="matmul",
+            input=torch.randn(3, 4),
+            other=torch.randn(4, 5)
+        )
+    """
+
+    # Set device
+    device = torch.device(device)
+
+    # Prepare parameters: Move torch tensors in the parameters to the specified device
+    processed_kwargs = {}
+    for key, value in kwargs.items():
+        if isinstance(value, torch.Tensor):
+            processed_kwargs[key] = value.to(device)
+        else:
+            processed_kwargs[key] = value
+
+    try:
+        # Get the torch operator function
+        if hasattr(torch, op_name):
+            op_func = getattr(torch, op_name)
+        else:
+            # Attempt to find it in torch.nn.functional
+            import torch.nn.functional as F
+            if hasattr(F, op_name):
+                op_func = getattr(F, op_name)
+            else:
+                raise AttributeError(
+                    f"Torch operator '{op_name}' not found in torch or torch.nn.functional")
+
+        # Check if the function is callable
+        if not callable(op_func):
+            raise TypeError(f"'{op_name}' is not a callable function")
+
+        # Invoke the torch operator
+        with torch.no_grad():
+            result = op_func(**processed_kwargs)
+
+        # Convert the result to a numpy array (if it is a tensor)
+        if isinstance(result, torch.Tensor):
+            result_numpy = result.cpu().numpy()
+            result_type = "tensor"
+        elif isinstance(result, (tuple, list)):
+            # Handle operators with multiple return values
+            result_numpy = [r.cpu().numpy() if isinstance(r, torch.Tensor) else r for r in result]
+            result_type = "tuple"
+        else:
+            result_numpy = result
+            result_type = "other"
+
+        # Prepare data to be saved
+        save_data = {
+            "op_name": op_name,
+            "result": result_numpy,
+        }
+        return save_data
+
+    except Exception as e:
+        error_msg = f"Error executing torch.{op_name}: {str(e)}"
+        print(f"Error: {error_msg}")
+        return {
+            "success": False,
+            "op_name": op_name,
+            "error": str(e),
+        }
+
+
+def generate_torch_ref_advanced(op_name: str,
+                                input_tensor: torch.Tensor,
+                                device: str = "cpu",
+                                **kwargs) -> Dict[str, Any]:
+    """
+    Advanced version of the torch operator generation function, specifically designed to handle operators that require input parameters, such as sum.
+
+    Parameters:
+        op_name: Name of the torch operator
+        input_tensor: Input tensor
+        device: Computing device
+        **kwargs: Other parameters
+
+    Returns:
+        Result dictionary
+    """
+    return generate_torch_ref(op_name=op_name, device=device, input=input_tensor, **kwargs)
+
+
 def tpulang(chip):
 
     def wrapper(func):
@@ -132,6 +243,7 @@ class TPULANG_IR_TESTER(object):
             "Copy": (self.test_Copy, Y, Y),
             "Cos": (self.test_Cos, Y, Y),
             "Cosh": (self.test_Cosh, Y, Y),
+            "CumSum": (self.test_CumSum, Y, Y),
             "Deconv2d": (self.test_Deconv2d, Y, Y),
             # "Deconv3d": (self.test_Deconv3d,            N, N), # not support
             # "Dequantint": (self.test_dequantint,        Y, Y),
@@ -326,6 +438,7 @@ class TPULANG_IR_TESTER(object):
                           model_name,
                           inputs,
                           outputs,
+                          refs=None,
                           is_quantized=False,
                           asymmetric=False,
                           top_mlir_inference=True,
@@ -340,6 +453,7 @@ class TPULANG_IR_TESTER(object):
                                  inputs,
                                  outputs,
                                  cmp=True,
+                                 refs=refs,
                                  mode=mode,
                                  no_save=self.no_save,
                                  top_mlir_inference=top_mlir_inference,
@@ -351,6 +465,7 @@ class TPULANG_IR_TESTER(object):
                          inputs,
                          outputs,
                          cmp=True,
+                         refs=refs,
                          dynamic=False,
                          asymmetric=asymmetric,
                          no_save=self.no_save,
@@ -6180,6 +6295,28 @@ class TPULANG_IR_TESTER(object):
                                    is_quantized=is_quantized)
 
         _test_model_def([1, 256, 256], 64, 4)
+
+    #######################################################################
+    # CumSum
+    # ------------
+
+    def test_CumSum(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_cumsum(in_shape: List[int], axis=0, dtype="float32", is_quantized=False):
+            x_data = rand_data(in_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            out = tpul.cumsum(x, axis)
+            result = generate_torch_ref(op_name="cumsum", input=torch.Tensor(x_data), dim=axis)
+            self.compile_and_check(self.unique_name(case_name), [x], [out],
+                                   is_quantized=False,
+                                   refs=result)
+
+        _test_cumsum([1, 1, 1], 0, "float32")
+        _test_cumsum([1], 0, "float32")
+        _test_cumsum([4, 64, 3, 5], 0, "float32")
+        _test_cumsum([2, 6, 20, 5], -3, "uint32", is_quantized=True)
+        _test_cumsum([2, 6, 20, 5], -1, "int32", is_quantized=True)
 
     def test_ErrorCase(self, case_name):
 
