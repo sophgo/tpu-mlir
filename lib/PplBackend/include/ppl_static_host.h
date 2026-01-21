@@ -123,4 +123,30 @@ static inline void parse_output_slice_shape(const local_sec_info_t *sec_info,
   parse_output_slice_shape_with_d(sec_info, spec, slice_shape_5d);
   tpu_local_shape_5d_to_4d((dim5 *)slice_shape_5d, (dim4 *)slice_shape);
 }
+
+static inline int get_dtype_bytes(int data_type) {
+  int data_byte_size = 0;
+  switch (data_type) {
+  case DTYPE_FP32:
+    data_byte_size = 4;
+    break;
+  case DTYPE_FP16:
+  case DTYPE_BFP16:
+  case DTYPE_INT16:
+  case DTYPE_UINT16:
+    data_byte_size = 2;
+    break;
+  case DTYPE_INT8:
+  case DTYPE_UINT8:
+  case DTYPE_F8E4M3:
+  case DTYPE_F8E5M2:
+    data_byte_size = 1;
+    break;
+  default:
+    data_byte_size = 4;
+    break;
+  }
+  return data_byte_size;
+}
+
 #endif

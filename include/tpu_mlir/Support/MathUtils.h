@@ -358,6 +358,10 @@ bool to_all_int8(const std::vector<float> &data, float &scale,
 void swap_dim_data(float *input, float *output, std::vector<int64_t> &ishape,
                    std::vector<int64_t> &offsets);
 
+void insert_replace(float *input, float *dst, float *output,
+                    std::vector<int64_t> &ishape, std::vector<int64_t> &dshape,
+                    int64_t axis, int64_t offset);
+
 void idx_to_list(int64_t idx, const std::vector<int64_t> &dim,
                  std::vector<int64_t> &idx_res);
 

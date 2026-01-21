@@ -43,7 +43,8 @@ class Qwen3VLConverter(LlmConverter):
         self.vnum_heads = self.vconfig.num_heads
         self.vhead_dim = self.embed_dim // self.vnum_heads
         self.vintermediate_size = self.vconfig.intermediate_size
-        self.position_shape = [3, self.max_input_length]
+        self.position_shape = [1, 3, self.max_input_length
+                               ] if self.use_insert else [3, self.max_input_length]
         self.deepstack_visual_indexes = self.vconfig.deepstack_visual_indexes
         self.num_position_embeddings = self.vconfig.num_position_embeddings
         self.mrope_section = getattr(self.llm_config.rope_scaling, 'mrope_section', [24, 20, 20])
@@ -95,6 +96,40 @@ class Qwen3VLConverter(LlmConverter):
         freqs_t = np.tile(freqs_t, (1, 2))  # [1, 128]
         return freqs_t.astype(np.float32)
 
+    def mrope_batch(self, mlir_gen, in_op, name: str):
+        dim = in_op.type.shape[-1]
+        weight_op = mlir_gen.create_weight_op(name + ".weight",
+                                              [self.seq_length, self.head_dim // 2])
+        in_op = top.GatherOp(mlir_gen.get_tensor_type([self.batch, 3, dim, self.head_dim // 2]),
+                             weight_op,
+                             in_op,
+                             axis=0,
+                             loc=self.get_loc(name, mlir_gen),
+                             ip=mlir_gen.insert_point).output
+        new_op = top.PermuteOp(mlir_gen.get_tensor_type([3, self.head_dim // 2, self.batch, dim]),
+                               in_op,
+                               order=[1, 3, 0, 2],
+                               loc=self.get_loc(name + ".permute", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        new_op = top.ReshapeOp(mlir_gen.get_tensor_type([3 * self.head_dim // 2, self.batch, dim]),
+                               new_op,
+                               shape=[3 * self.head_dim // 2, self.batch, -1],
+                               loc=self.get_loc(name + ".reshape", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        weight_op = mlir_gen.create_weight_op("mrope_interleave_idx", [1, self.head_dim])
+        new_op = top.GatherOp(mlir_gen.get_tensor_type([1, self.head_dim, self.batch, dim]),
+                              new_op,
+                              weight_op,
+                              axis=0,
+                              loc=self.get_loc(name + ".gather", mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        new_op = top.PermuteOp(mlir_gen.get_tensor_type([self.batch, dim, 1, self.head_dim]),
+                               new_op,
+                               order=[2, 3, 0, 1],
+                               loc=self.get_loc(name + ".permute2", mlir_gen),
+                               ip=mlir_gen.insert_point).output
+        return new_op
+
     def mrope(self, mlir_gen, in_op, name: str):
         dim = in_op.type.shape[-1]
         weight_op = mlir_gen.create_weight_op(name + ".weight",
@@ -131,10 +166,14 @@ class Qwen3VLConverter(LlmConverter):
 
     @override
     def apply_rotary_pos(self, mlir_gen, pos_op, q_op, k_op, rotary_cos: str, rotary_sin: str):
-        # cos MROPE
-        cos_op = self.mrope(mlir_gen, pos_op, rotary_cos)
-        # sin MROPE
-        sin_op = self.mrope(mlir_gen, pos_op, rotary_sin)
+        # cos & sin MROPE
+        is_decode = pos_op.type.shape[-1] == 1
+        if is_decode and self.use_insert:
+            cos_op = self.mrope_batch(mlir_gen, pos_op, rotary_cos)
+            sin_op = self.mrope_batch(mlir_gen, pos_op, rotary_sin)
+        else:
+            cos_op = self.mrope(mlir_gen, pos_op, rotary_cos)
+            sin_op = self.mrope(mlir_gen, pos_op, rotary_sin)
         q_op_shape = q_op.type.shape
         q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
                           q_op,

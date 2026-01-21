@@ -59,6 +59,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_device', type=int, default=1,
                         help="num device for bmodel")
     parser.add_argument('--num_core', type=int, default=0, help="num cores for bmodel")
+    parser.add_argument('-b', '--batch', type=int, default=1,
+                        help='batch size for bmodel')
     parser.add_argument('--lora_max_rank', type=int, default=0, help="lora rank, default is 0 means no lora")
     parser.add_argument('--symmetric', action='store_true', help='do symmetric quantize')
     parser.add_argument('--embedding_disk', action='store_true',

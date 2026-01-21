@@ -138,8 +138,8 @@ class MLIR_IR_TESTER(object):
             # MLIR Test Case, Alphabetically
             #############################
             # case:  (test_function,      bm1684x_support, bm1688_support)
-            #"error0": (self.test_error0, Y, Y),
-            "case1": (self.test_case1, Y, Y),
+            "error0": (self.test_error0, Y, Y),
+            "insert": (self.test_insert, Y, Y),
         }
         # currently test_mlir.py only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
@@ -224,7 +224,7 @@ class MLIR_IR_TESTER(object):
 
         return False
 
-    def _create_location(self, block_mlir: MLIRImporter, names: Union[str, List[str]]) -> Location:
+    def _L(self, block_mlir: MLIRImporter, names: Union[str, List[str]]) -> Location:
         """
         Create MLIR location.
 
@@ -242,7 +242,7 @@ class MLIR_IR_TESTER(object):
         else:
             raise TypeError(f"Unsupported type for names: {type(names)}")
 
-    def _get_tensor_type(self, block_mlir: MLIRImporter, shape: List[int]):
+    def _T(self, block_mlir: MLIRImporter, shape: List[int]):
         """
         Get MLIR tensor type for shape.
 
@@ -268,7 +268,7 @@ class MLIR_IR_TESTER(object):
         """
         inputs = []
         for i, shape in enumerate(input_shapes):
-            loc = self._create_location(block_mlir, f"in{i}")
+            loc = self._L(block_mlir, f"in{i}")
             input_op = block_mlir.create_input_op(loc, i)
             inputs.append(input_op)
         return inputs
@@ -384,7 +384,9 @@ class MLIR_IR_TESTER(object):
                                    tolerance=tolerance,
                                    debug=self.debug)
             except Exception as e:
-                print(f"[Error] Mode {mode} failed for {case_name}: {e}")
+                # print(f"[Error] Mode {mode} failed for {case_name}: {e}")
+                raise RuntimeError(
+                    f"Deployment failed for case '{case_name}' in mode '{mode}'") from e
 
     def test_error0(self, case_name):
         """Test case error0: Complex RMSNorm + Rope operations with Reshape."""
@@ -410,42 +412,42 @@ class MLIR_IR_TESTER(object):
 
         in0, in1, in2, in3 = input_ops
         # First RMSNorm + Rope
-        rmsnorm0 = top.RMSNormOp(self._get_tensor_type(block_mlir, input_shapes[0]),
+        rmsnorm0 = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
                                  in0,
                                  weight_ops[0],
                                  eps=1e-6,
-                                 loc=self._create_location(block_mlir, "rmsnorm0"),
+                                 loc=self._L(block_mlir, "rmsnorm0"),
                                  ip=ip).output
 
-        rope0 = top.RopeOp(self._get_tensor_type(block_mlir, input_shapes[0]),
+        rope0 = top.RopeOp(self._T(block_mlir, input_shapes[0]),
                            rmsnorm0,
                            in1,
                            in2,
                            rope_mode=StringAttr.get("contiguous_halves"),
-                           loc=self._create_location(block_mlir, "rope0"),
+                           loc=self._L(block_mlir, "rope0"),
                            ip=ip).output
 
         # Reshape
-        reshape = top.ReshapeOp(self._get_tensor_type(block_mlir, output_shapes[1]),
+        reshape = top.ReshapeOp(self._T(block_mlir, output_shapes[1]),
                                 in3,
                                 shape=[1, -1, 16, 128],
-                                loc=self._create_location(block_mlir, "reshape"),
+                                loc=self._L(block_mlir, "reshape"),
                                 ip=ip).output
 
         # Second RMSNorm + Rope
-        rmsnorm1 = top.RMSNormOp(self._get_tensor_type(block_mlir, output_shapes[1]),
+        rmsnorm1 = top.RMSNormOp(self._T(block_mlir, output_shapes[1]),
                                  reshape,
                                  weight_ops[1],
                                  eps=1e-6,
-                                 loc=self._create_location(block_mlir, "rmsnorm1"),
+                                 loc=self._L(block_mlir, "rmsnorm1"),
                                  ip=ip).output
 
-        rope1 = top.RopeOp(self._get_tensor_type(block_mlir, output_shapes[1]),
+        rope1 = top.RopeOp(self._T(block_mlir, output_shapes[1]),
                            rmsnorm1,
                            in1,
                            in2,
                            rope_mode=StringAttr.get("contiguous_halves"),
-                           loc=self._create_location(block_mlir, "rope1"),
+                           loc=self._L(block_mlir, "rope1"),
                            ip=ip).output
 
         # Create return operation
@@ -457,16 +459,17 @@ class MLIR_IR_TESTER(object):
         # Deploy for each quantization mode
         self._deploy_test_case(case_name, tolerance=(0.1, 0.1))
 
-    def test_case1(self, case_name):
+    def test_insert(self, case_name):
         """Test case1: Simple RMSNorm operation."""
         input_shapes = [
-            [1, 1024, 8, 128],  # in0
-            [1, 1, 8, 128],  # in1
+            [16, 64, 8, 128],  # in0
+            [16, 4, 8, 128],  # in1
         ]
-        weight_shapes = [[1, 1, 1, 128]  # weight0
-                         ]
+        weight_shapes = [
+            [1, 1, 1, 128],  # weight0
+        ]
         output_shapes = [
-            [1, 1024, 8, 128],  # out0
+            [16, 64, 8, 128],  # out0
         ]
 
         # Create MLIR importer
@@ -474,24 +477,23 @@ class MLIR_IR_TESTER(object):
             case_name, input_shapes, weight_shapes, output_shapes, ["F32", "F32"])
         in0_op, in1_op = input_ops
         # Create RMSNorm operation
-        op0 = top.RMSNormOp(self._get_tensor_type(block_mlir, input_shapes[0]),
+        op0 = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
                             in0_op,
                             weight_ops[0],
                             eps=1e-6,
-                            loc=self._create_location(block_mlir, "rmsnorm0"),
+                            loc=self._L(block_mlir, "rmsnorm0"),
                             ip=ip).output
-        '''
-        op1 = top.InsertOp(T(in0_shape),
-                         op0,
-                         in1_op,
-                         axis=1,
-                         offset=127,
-                         loc=L("insert0"),
-                         ip=ip).output
-        '''
+
+        op1 = top.InsertOp(self._T(block_mlir, input_shapes[0]),
+                           op0,
+                           in1_op,
+                           axis=1,
+                           offset=32,
+                           loc=self._L(block_mlir, "insert0"),
+                           ip=ip).output
 
         # Create return operation
-        block_mlir.create_return_op([op0])
+        block_mlir.create_return_op([op1])
 
         # Save MLIR text, weights, and inputs
         self._save_mlir_and_data(case_name,

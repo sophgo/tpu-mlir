@@ -5622,6 +5622,37 @@ def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
   let results = (outs AnyRankedTensor:$output);
 }
 
+def TPU_InsertOp: Tpu_Op<"Insert" ,[InOutSameShape]> {
+  let summary = "Insert operator.";
+
+  let description = [{
+    1.Op Introduction
+    insert the rhs tensor into input tensor at the specified axis and position.
+
+    2.Math formula
+    ```math
+            output = Insert(input, rhs, axis, offset)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    rhs(w.): the tensor to be inserted;
+    axis: the axis along which to insert the rhs tensor.
+    offset: the position at which the rhs tensor is inserted.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$rhs,
+    I64Attr:$axis,
+    I64Attr:$offset
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]>  {

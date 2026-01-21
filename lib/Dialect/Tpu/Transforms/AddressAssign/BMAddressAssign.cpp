@@ -236,6 +236,14 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
     Operation *op = (Operation *)v_info.op;
     if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
       continue;
+    } else if (auto insertOp = dyn_cast<tpu::InsertOp>(op)) {
+      auto in_addr = module::getAddress(insertOp.getInput());
+      if (in_addr != 0) {
+        module::setAddress(insertOp.getOutput(), in_addr);
+      } else {
+        UNREACHABLE_OP("InsertOp inplace address conflict!", op);
+      }
+      need_remove.push_back(v_info);
     } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
       auto in_addr = module::getAddress(reshapeOp.getInput());
       auto out_addr = module::getAddress(reshapeOp.getOutput());
@@ -1191,6 +1199,8 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {
     return true;
   } else if (isa<tpu::IdentityOp, tpu::AutoIncreaseOp>(op)) {
+    return true;
+  } else if (auto insertOp = dyn_cast<tpu::InsertOp>(op)) {
     return true;
   }
   return false;

@@ -1553,6 +1553,35 @@ void swap_dim_data(float *input, float *output, std::vector<int64_t> &ishape,
   }
 }
 
+void insert_replace(float *input, float *dst, float *output,
+                    std::vector<int64_t> &ishape, std::vector<int64_t> &dshape,
+                    int64_t axis, int64_t offset) {
+  int64_t outer_size = 1;
+  int64_t inner_size = 1;
+  int64_t replace_size = dshape[axis];
+  for (int i = 0; i < ishape.size(); ++i) {
+    if (i < axis) {
+      outer_size *= ishape[i];
+    } else if (i > axis) {
+      inner_size *= ishape[i];
+    }
+  }
+
+  int64_t before_size = offset * inner_size;
+  int64_t replace_total = replace_size * inner_size;
+  int64_t total_num = ishape[axis] * inner_size * outer_size;
+  memcpy(output, input, total_num * sizeof(float));
+
+#pragma omp parallel for schedule(static, omp_schedule(outer_size))
+  for (int64_t outer = 0; outer < outer_size; ++outer) {
+    int64_t dst_base = outer * dshape[axis] * inner_size;
+    int64_t output_base = outer * ishape[axis] * inner_size;
+    float *p_dst = dst + dst_base;
+    float *p_output = output + output_base;
+    memcpy(p_output + before_size, p_dst, replace_total * sizeof(float));
+  }
+}
+
 std::shared_ptr<std::vector<float>>
 binary_add(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
            const llvm::ArrayRef<int64_t> &b_shape,

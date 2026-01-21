@@ -34,6 +34,8 @@ class LlmConverter(BaseConverter):
         self.share_prompt = args.share_prompt
         self.quantize = args.quantize
         self.num_device = args.num_device
+        self.batch = args.batch
+        self.use_insert = self.batch > 1
         self.q_group_size = args.q_group_size
         self.high_precision = True
         self.symmetric = args.symmetric
@@ -47,7 +49,8 @@ class LlmConverter(BaseConverter):
         self.lora_rank = args.lora_max_rank
         self.do_lora = self.lora_rank > 0
         self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
-        self.position_shape = [1, self.max_input_length]
+        self.position_shape = [1, 1, self.max_input_length
+                               ] if self.use_insert else [1, self.max_input_length]
         self.num_core = args.num_core
         if self.num_core == 0:
             if args.chip == "bm1688":
@@ -76,10 +79,11 @@ class LlmConverter(BaseConverter):
         self.out_dir = os.path.abspath(args.out_dir)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.model_name = os.path.basename(self.model_path).lower()
+        batch_str = f"_{self.batch}b" if self.batch > 1 else ""
         if args.chip == "bm1684x":
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}"
         else:
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}"
         folder_name += "_dynamic" if args.dynamic else "_static"
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
@@ -1319,6 +1323,7 @@ class LlmConverter(BaseConverter):
 
         def gen_mlp(mlir_gen, input_shape, in_op):
             ip = mlir_gen.insert_point
+            batch = input_shape[0]
             len = input_shape[1]
             new_op = in_op
             if self.llm_type in [LlmType.GEMMA3]:
@@ -1330,15 +1335,15 @@ class LlmConverter(BaseConverter):
                 gate_op = self.linear(mlir_gen,
                                       mlp_gate,
                                       new_op, [self.hidden_size, self.intermediate_size],
-                                      [1, len, self.intermediate_size],
+                                      [batch, len, self.intermediate_size],
                                       do_lora=self.do_lora)
                 act_op = self.activate(mlir_gen, gate_op, self.hidden_act, mlp_gate)
                 up_op = self.linear(mlir_gen,
                                     mlp_up,
                                     new_op, [self.hidden_size, self.intermediate_size],
-                                    [1, len, self.intermediate_size],
+                                    [batch, len, self.intermediate_size],
                                     do_lora=self.do_lora)
-                new_op = top.MulOp(mlir_gen.get_tensor_type([1, len, self.intermediate_size]),
+                new_op = top.MulOp(mlir_gen.get_tensor_type([batch, len, self.intermediate_size]),
                                    [act_op, up_op],
                                    loc=self.get_loc(mlp_up + ".mul", mlir_gen),
                                    ip=ip).output
@@ -1348,6 +1353,7 @@ class LlmConverter(BaseConverter):
                                       input_shape,
                                       do_lora=self.do_lora)
             else:
+                # TODO: support multi batch
                 down_op = self.mlp(mlir_gen,
                                    mlp_gate,
                                    mlp_up,
@@ -1502,18 +1508,20 @@ class LlmConverter(BaseConverter):
 
         def gen_block_cache():
             name = f"block_cache_{idx}"
-            input_shape = [1, 1, self.hidden_size]
+            input_shape = [self.batch, 1, self.hidden_size]
             id_shape = list(self.position_shape)
+            if self.use_insert:
+                id_shape[0] = self.batch
             id_shape[-1] = 1
-            mask_shape = [1, 1, 1, self.seq_length + 1]
-            history_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
+            mask_shape = [self.batch, 1, 1, self.seq_length + 1]
+            history_shape = [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]
 
-            q_shape = [1, 1, self.num_attention_heads, self.head_dim]
-            kv_shape = [1, 1, self.num_key_value_heads, self.head_dim]
-
+            q_shape = [self.batch, 1, self.num_attention_heads, self.head_dim]
+            kv_shape = [self.batch, 1, self.num_key_value_heads, self.head_dim]
+            output_shapes = [input_shape] if self.use_insert else [input_shape, kv_shape, kv_shape]
             block_mlir = MLIRImporter(
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
-                [input_shape, kv_shape, kv_shape],
+                output_shapes,
                 name,
                 Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
                 lora_rank=self.lora_rank,
@@ -1539,17 +1547,17 @@ class LlmConverter(BaseConverter):
             q_dim = self.num_attention_heads * self.head_dim
             q_op = self.linear(block_mlir,
                                q_proj,
-                               ln_op, [self.hidden_size, q_dim], [1, 1, q_dim],
+                               ln_op, [self.hidden_size, q_dim], [self.batch, 1, q_dim],
                                do_lora=self.do_lora)
             # k_proj
             k_op = self.linear(block_mlir,
                                k_proj,
-                               ln_op, [self.hidden_size, self.kv_dim], [1, 1, self.kv_dim],
+                               ln_op, [self.hidden_size, self.kv_dim], [self.batch, 1, self.kv_dim],
                                do_lora=self.do_lora)
             # v_proj
             v_op = self.linear(block_mlir,
                                v_proj,
-                               ln_op, [self.hidden_size, self.kv_dim], [1, 1, self.kv_dim],
+                               ln_op, [self.hidden_size, self.kv_dim], [self.batch, 1, self.kv_dim],
                                do_lora=self.do_lora)
             # reshape q,k,v
             q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
@@ -1561,30 +1569,51 @@ class LlmConverter(BaseConverter):
             # rotary cos/sin
             q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
                                                rotary_sin)
-            return_ops.append(k_op)
-            return_ops.append(v_op)
+            if not self.use_insert:
+                return_ops.append(k_op)
+                return_ops.append(v_op)
             # ====== kv concat ========
-            k_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
-                                   self.head_dim]), [in3_op, k_op],
-                                axis=1,
-                                only_merge=True,
-                                loc=L(k_proj + ".concat"),
-                                ip=ip).output
-            v_op = top.ConcatOp(T([1, self.seq_length + 1, self.num_key_value_heads,
-                                   self.head_dim]), [in4_op, v_op],
-                                axis=1,
-                                only_merge=True,
-                                loc=L(v_proj + ".concat"),
-                                ip=ip).output
+            if not self.use_insert:
+                k_op = top.ConcatOp(T(
+                    [1, self.seq_length + 1, self.num_key_value_heads, self.head_dim]),
+                                    [in3_op, k_op],
+                                    axis=1,
+                                    only_merge=True,
+                                    loc=L(k_proj + ".concat"),
+                                    ip=ip).output
+                v_op = top.ConcatOp(T(
+                    [1, self.seq_length + 1, self.num_key_value_heads, self.head_dim]),
+                                    [in4_op, v_op],
+                                    axis=1,
+                                    only_merge=True,
+                                    loc=L(v_proj + ".concat"),
+                                    ip=ip).output
+            else:
+                k_op = top.InsertOp(T(
+                    [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                                    in3_op,
+                                    rhs=k_op,
+                                    axis=1,
+                                    offset=self.seq_length - 1,
+                                    loc=L(k_proj + ".insert"),
+                                    ip=ip).output
+                v_op = top.InsertOp(T(
+                    [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                                    in4_op,
+                                    rhs=v_op,
+                                    axis=1,
+                                    offset=self.seq_length - 1,
+                                    loc=L(v_proj + ".insert"),
+                                    ip=ip).output
             # ======= fattention =========
-            fa_op = top.FAttentionOp(T([1, 1, q_dim]),
+            fa_op = top.FAttentionOp(T([self.batch, 1, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
                                      in2_op,
                                      block_mlir.none_op,
                                      scale=self.head_dim**-0.5,
-                                     batch=1,
+                                     batch=self.batch,
                                      q_head=self.num_attention_heads,
                                      kv_head=self.num_key_value_heads,
                                      dim=self.head_dim,
@@ -1893,6 +1922,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--debug')
         if self.same_addr:
             deploy_args.append(f'--same_addr {self.same_addr}')
+        if self.use_insert:
+            deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
