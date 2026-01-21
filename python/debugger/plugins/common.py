@@ -172,7 +172,13 @@ class FinalMlirIndexPlugin(TdbPlugin):
         loc_df = ret['df']
         self.final_mlir: FinalMlirIndex = ret['final_mlir']
 
+        if hasattr(tdb.op_df, 'cmd_type'):
+            tdb.op_df['cmd_type'] = tdb.op_df['cmd_type'].astype(str)
+        if hasattr(loc_df, 'cmd_type'):
+            loc_df['cmd_type'] = loc_df['cmd_type'].astype(str)
+
         tdb.index_df = pd.merge(tdb.op_df, loc_df, how="outer")
+
         tdb.index_df = tdb.index_df.set_index("cmd_index", drop=True)
         # replace all NaN values with zeros
         tdb.index_df["loc_index"] = tdb.index_df["loc_index"].fillna(-1)
