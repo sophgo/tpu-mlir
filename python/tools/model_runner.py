@@ -213,6 +213,13 @@ def link_cmodel_so(chip: str, is_rvti: bool = False):
         os.system(cmd)
 
 
+def link_bmlib_so(chip: str):
+    src = "libbmlib_bm1684x2.so.0" if chip == "BM1684X2" else "libbmlib.so.0"
+    src_path = os.path.join(TPUC_ROOT, "lib", src)
+    link_so_0 = os.path.join(TPUC_ROOT, "lib", "libbmlib.so.0")
+    os.system(f'ln -sf "{src_path}" "{link_so_0}"')
+
+
 def _model_inference(inputs: dict,
                      model_file: str,
                      dump_all=True,
@@ -231,6 +238,7 @@ def _model_inference(inputs: dict,
         with FileLock("/tmp/cmodel_so.lock"):
             link_cmodel_so(chip, is_rvti)
             link_custom_so(chip)
+            link_bmlib_so(chip)
             pyrtlib = importlib.import_module(pyruntime)
             model = pyrtlib.Model(model_file, 0, decrypt_lib)
         net = model.Net(model.networks[0])

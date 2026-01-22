@@ -81,7 +81,8 @@ VER_FILE=${PROJECT_ROOT}/third_party/nntoolchain/ppl/version
 LIBS=("libcmodel_bm1684x.a"  "libbm1684x_kernel_module.a"
       "libcmodel_bm1688.a"   "libbmtpulv60_kernel_module.a"
       "libcmodel_bm1690.a"   "libbm1690_kernel_module.a"
-      "libcmodel_bm1690e.a"  "libbm1690e_kernel_module.a")
+      "libcmodel_bm1690e.a"  "libbm1690e_kernel_module.a"
+      "libcmodel_bm1684x2.a" "libbm1684x2_kernel_module.a")
 mapfile -t libs_md5_list < <(
   for lib in "${LIBS[@]}"; do
     rel="$NNTC_LIB_PATH/$lib"
@@ -103,13 +104,14 @@ fi
 echo "rebuilding ppl..."
 pushd "$DIR"
 # dyn pio
-chips=("bm1684x" "bm1688" "bm1690" "sg2260e")
+chips=("bm1684x" "bm1688" "bm1690" "sg2260e" "bm1684x2")
 for chip in "${chips[@]}"; do
   build_dir="build_${chip}_dyn"
   clean_up "$build_dir"
   pushd "$build_dir"
   for file in `ls ../src/*.pl`
   do
+    # echo "ppl-compile $file --chip $chip --mode 5 --O2 --o . --rv"
     ppl-compile $file --chip $chip --mode 5 --O2 --o .
   done
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}

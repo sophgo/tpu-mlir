@@ -26,6 +26,7 @@ extern "C" {
 #define PPL_CV184X "cv184x"
 #define PPL_BM1690E "bm1690e"
 #define PPL_BM1684XE "bm1684xe"
+#define PPL_BM1684X2 "bm1684x2"
 
 // -------------------------------------------------------------------
 // Constant Definition

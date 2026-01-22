@@ -64,8 +64,13 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
     tiu::fill(wi_tensor, 0);
     dim4 wi_trans_block_shape = {1, block_w, 1, 1};
     dim4 wi_trans_real_shape = {1, cur_w, 1, 1};
+#ifdef __bm1684x2__
+    auto wi_trans_tensor = make_tensor<fp32>(wi_trans_block_shape,wi_trans_real_shape,TPU_ROW_ALIGN);
+    tiu::transpose_cw(wi_trans_tensor.view(wi_trans_real_shape),wi.view(shape_local_real_w));
+#else
     auto wi_trans_tensor = make_tensor<fp32>(wi_trans_block_shape,wi_trans_real_shape,TPU_COMPACT);
     dma::transpose_cw(wi_trans_tensor.view(wi_trans_real_shape),wi.view(shape_local_real_w));
+#endif
     dim4 _wi_tensor_stride = get_stride<fp32>(wi_trans_real_shape, TPU_COMPACT);
     dim4 wi_tensor_stride = {_wi_tensor_stride.n, 2, _wi_tensor_stride.h, 2};
     tiu::move(wi_tensor.view(wi_trans_real_shape,wi_tensor_stride),wi_trans_tensor.view(wi_trans_real_shape));
@@ -76,8 +81,13 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
     dim4 wi_1_trans_block_shape = {1, block_w, 1, 1};
     dim4 wi_1_trans_real_shape = {1, cur_w, 1, 1};
     // //dma指令
+#ifdef __bm1684x2__
+    auto wi_1_trans_tensor = make_tensor<fp32>(wi_1_trans_block_shape,wi_1_trans_real_shape,TPU_ROW_ALIGN);
+    tiu::transpose_cw(wi_1_trans_tensor.view(wi_1_trans_real_shape),wi_1.view(shape_local_real_w));
+#else
     auto wi_1_trans_tensor = make_tensor<fp32>(wi_1_trans_block_shape,wi_1_trans_real_shape,TPU_COMPACT);
     dma::transpose_cw(wi_1_trans_tensor.view(wi_1_trans_real_shape),wi_1.view(shape_local_real_w));
+#endif
     dim4 _wi_1_tensor_stride = get_stride<fp32>(wi_1_trans_real_shape, TPU_COMPACT);
     dim4 wi_1_tensor_stride = {_wi_1_tensor_stride.n, 2, _wi_1_tensor_stride.h, 2};
     tiu::move(wi_1_tensor.view(wi_1_trans_real_shape,wi_1_tensor_stride),wi_1_trans_tensor.view(wi_1_trans_real_shape));
@@ -194,6 +204,18 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
       auto index1_h_tensor = index1_h_int16_offset.view(real_index_stride_shape, h_stride);
       tiu::sub(index1_h_tensor, index1_h_tensor, index_h_dif, 0, RM_DOWN, false);
       tiu::sub(index1_w_tensor, index1_w_tensor, index_w_dif, 0, RM_DOWN, false);
+#ifdef __bm1684x2__
+      // bm1684x2: gather_hw index is uint32, each element packs {int16 h, int16 w}
+      // packed = (h << 16) + (w & 0xFFFF)
+      dim4 block_index_stride_shape = {1, block_h * block_w, 1, 1};
+      auto idx1_w_u32 = make_tensor<uint32>(block_index_stride_shape, real_index_stride_shape, TPU_COMPACT);
+      auto idx1_h_u32 = make_tensor<uint32>(block_index_stride_shape, real_index_stride_shape, TPU_COMPACT);
+      tiu::cast(idx1_w_u32, index1_w_tensor);
+      tiu::cast(idx1_h_u32, index1_h_tensor);
+      auto index1_u32 = make_tensor<uint32>(block_index_stride_shape, real_index_stride_shape, TPU_COMPACT);
+      tiu::mul(idx1_h_u32, idx1_h_u32, 65536);
+      tiu::add(index1_u32, idx1_h_u32, idx1_w_u32);
+#endif
 
       for (auto idx_c = 0; idx_c < C; idx_c += block_c){
         int c = min(block_c, C - idx_c);
@@ -228,16 +250,12 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
         auto output1_tensor = make_tensor<T>(real_output_block_shape, output_real_shape);
         auto output2_tensor = make_tensor<T>(real_output_block_shape, output_real_shape);
         dim4 out_offset = {0, idx_c, idx_h, idx_w};
-        if constexpr (std::is_same_v<T, bf16>) {
-          tiu::gather_hw(output1_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index1_uint16.view<uint16>(real_index_shape));
-          dma::store(res_gtensor.sub_view(output_real_shape, out_offset), output1_tensor.view(output_real_shape));
-        } else if constexpr (std::is_same_v<T, fp16>) {
-          tiu::gather_hw(output1_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index1_uint16.view<uint16>(real_index_shape));
-          dma::store(res_gtensor.sub_view(output_real_shape, out_offset), output1_tensor.view(output_real_shape));
-        } else {
-          tiu::gather_hw(output1_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index1_uint16.view<uint16>(real_index_shape));
-          dma::store(res_gtensor.sub_view(output_real_shape, out_offset), output1_tensor.view(output_real_shape));
-        }
+#ifdef __bm1684x2__
+        tiu::gather_hw(output1_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index1_u32);
+#else
+        tiu::gather_hw(output1_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index1_uint16.view<uint16>(real_index_shape));
+#endif
+        dma::store(res_gtensor.sub_view(output_real_shape, out_offset), output1_tensor.view(output_real_shape));
       }
       count_h++;
     }

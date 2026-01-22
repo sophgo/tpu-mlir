@@ -147,6 +147,11 @@ void api_interp_global(void *param, size_t param_size, void *input_spec,
   } else if (chip_str == PPL_BM1684X) {
     npu_size = 256 * 1024;
     npu_num = 64;
+  } else if (chip_str == PPL_BM1684X2) {
+    npu_size = 256 * 1024;
+    npu_num = 16;
+  } else {
+    assert(false && "unsupport chip");
   }
   block_h = static_cast<int>(std::floor(
       npu_size / dtype_size / (W_in + W_out * 16 / npu_num + W_out * 6)));
@@ -239,6 +244,9 @@ int api_dyn_interp_global(void *param, void *input_spec, void *output_spec,
     } else if (chip_str == PPL_BM1684X) {
       npu_size = 256 * 1024;
       npu_num = 64;
+    } else if (chip_str == PPL_BM1684X2) {
+      npu_size = 256 * 1024;
+      npu_num = 16;
     }
     block_h = static_cast<int>(std::floor(
         npu_size / dtype_size / (W_in + W_out * 16 / npu_num + W_out * 6)));
