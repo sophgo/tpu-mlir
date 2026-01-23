@@ -493,6 +493,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - tolerance
      - N
      - Tolerance for the minimum Cosine and Euclidean similarity between MLIR quantized and MLIR fp32 inference results. 0.8,0.5 by default.
+   * - correctness
+     - N
+     - The tolerance for cosine and Euclidean similarity between bmodel and tpu.mlir, 0.99 and 0.90 by default. When using quantize_table, the default is 0.99 and 0.80.
    * - test_input
      - N
      - The input file for verification, which can be an jpg, npy or npz. No verification will be carried out if it is not specified

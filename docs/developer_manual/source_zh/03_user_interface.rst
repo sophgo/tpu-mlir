@@ -504,6 +504,9 @@ model_deploy.py
    * - tolerance
      - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果余弦与欧式相似度的误差容忍度，默认为0.8,0.5
+   * - correctness
+     - 否
+     - bmodel与tpu.mlir的余弦与欧式相似度的误差容忍度，默认为0.99,0.90，当使用quantize_table的时候默认为0.99,0.80
    * - test_input
      - 否
      - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会正确性验证

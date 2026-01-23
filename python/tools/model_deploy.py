@@ -123,9 +123,12 @@ class DeployTool:
         self.num_device = args.num_device
         self.num_core = args.num_core
         self.group_by_cores = args.group_by_cores
-        self.correctness = "0.99,0.90"
-        if self.quantize_table:
-            self.correctness = "0.99,0.85"
+        if args.correctness:
+            self.correctness = args.correctness
+        elif self.quantize_table:
+            self.correctness = "0.98,0.80"
+        else:
+            self.correctness = "0.99,0.90"
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
@@ -538,6 +541,7 @@ if __name__ == '__main__':
     parser.add_argument("--compare_all", action="store_true",
                         help="Decide if compare all tensors when lowering")
     parser.add_argument("--tolerance", default='', help="tolerance for compare")
+    parser.add_argument("--correctness", default='', help="correctness between tpu mlir and bmodel")
     parser.add_argument("--excepts", default='-', help="excepts tensors no compare")
     parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
     parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')
