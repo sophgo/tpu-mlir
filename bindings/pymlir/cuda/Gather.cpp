@@ -11,6 +11,7 @@
 #include "cuda_helper.h"
 
 void py_cuda::cudaGatherOp(tpu::GatherOp op) {
+  // no int8 implementation, f32, f16, bf16
   auto in = op.getIndices();
   auto embed = op.getInput();
   auto out = op.getOutput();
@@ -19,12 +20,21 @@ void py_cuda::cudaGatherOp(tpu::GatherOp op) {
   void *out_ptr = getCudaData(out);
   auto in_type = getCudaType(in);
   auto out_type = getCudaType(out);
+  auto ax = op.getAxis();
+  if (ax < 0) {
+    ax += module::getShape(embed).size();
+  }
   int num_in = module::getNumElements(in);
-  int num_embed = module::getNumElements(embed);
   auto embed_shape = module::getShape(embed);
-  int embed_dim = embed_shape[0];
-  int inner_dim = num_embed / embed_dim;
-  cuda::gather(in_ptr, embed_ptr, out_ptr, num_in, embed_dim, inner_dim,
+  int outer_dims = 1;
+  for (int i=0; i<ax; i++) {
+    outer_dims *= embed_shape[i];
+  }
+  int inner_dims = 1;
+  for (int i=ax+1;i<embed_shape.size();i++) {
+    inner_dims *= embed_shape[i];
+  }
+  cuda::cudaGather(in_ptr, embed_ptr, out_ptr, num_in, outer_dims, embed_shape[ax], inner_dims,
                in_type, out_type);
 }
 
@@ -37,12 +47,21 @@ void py_cuda::cudaGatherOp(top::GatherOp op) {
   void *out_ptr = getCudaData(out);
   auto in_type = getCudaType(in);
   auto out_type = getCudaType(out);
+  auto ax = op.getAxis();
+  if (ax < 0) {
+    ax += module::getShape(embed).size();
+  }
   int num_in = module::getNumElements(in);
-  int num_embed = module::getNumElements(embed);
   auto embed_shape = module::getShape(embed);
-  int embed_dim = embed_shape[0];
-  int inner_dim = num_embed / embed_dim;
-  cuda::gather(in_ptr, embed_ptr, out_ptr, num_in, embed_dim, inner_dim,
+  int outer_dims = 1;
+  for (int i=0; i<ax; i++) {
+    outer_dims *= embed_shape[i];
+  }
+  int inner_dims = 1;
+  for (int i=ax+1;i<embed_shape.size();i++) {
+    inner_dims *= embed_shape[i];
+  }
+  cuda::cudaGather(in_ptr, embed_ptr, out_ptr, num_in, outer_dims, embed_shape[ax], inner_dims,
                in_type, out_type);
 }
 

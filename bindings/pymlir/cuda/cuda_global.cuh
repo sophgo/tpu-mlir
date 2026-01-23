@@ -1263,6 +1263,25 @@ __global__ void g_gather(T0 *indices, T1 *embedding, T1 *output,
   }
 }
 
+template <typename T0, typename T1>
+__global__ void g_cugather(T0 *indices, T1 *embedding, T1 *output,
+                         int num_indices, int outer_dims, int ax_dim, int inner_dims) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int outer_idx = idx / num_indices;
+  int indices_idx = idx % num_indices;
+  if (outer_idx < outer_dims && indices_idx < num_indices) {
+    int index = static_cast<int>(indices[indices_idx]);
+    if (index < 0) {
+      index += ax_dim;
+    }
+    int src_idx = outer_idx * ax_dim * inner_dims;
+    int dst_idx = outer_idx * num_indices * inner_dims + indices_idx * inner_dims;
+    for (int i = 0; i < inner_dims; i++) {
+      output[dst_idx + i] = embedding[src_idx + index* inner_dims + i];
+    }
+  }
+}
+
 // -------------------------------------------------------------------------
 // ------- cv18xx functions
 __global__ void g_cvInt8ScaleToF32(int8_t *input, float *output, float scale,
@@ -1974,8 +1993,9 @@ __global__ void contiguousAxisReductionKernel(
     // This kernel is optimized when reducing a single contiguous axis
 
     // Each block handles inner_size * outer_size outputs
-    int batch = blockIdx.x;
-    int inner_idx = threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int batch = idx / inner_size*outer_size;
+    int inner_idx = idx % inner_size;
 
     if (batch < outer_size && inner_idx < inner_size) {
         T myVal = getInitialValue<T, Mode>();

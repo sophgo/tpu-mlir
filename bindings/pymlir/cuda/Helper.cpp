@@ -22,6 +22,23 @@ void *py_cuda::getCudaData(mlir::Value v) {
   } else {
     if (activation_map_.find(name) != activation_map_.end()) {
       return activation_map_[name].get();
+    } else if (infer_map_.find(name) != infer_map_.end()) {
+      auto buffer = infer_map_[name];
+      void *data_ptr = buffer->data();
+      auto num = module::getNumElements(v);
+      auto dtype = getCudaType(v);
+      // need to check if convert is enough?
+      if (dtype == cuda::DT_F32) {
+        activation_map_[name] = std::move(
+            cuda_malloc(num * cuda::get_dtype_bytes(cuda::DT_F32)));
+        CHECK_CUDA(cudaMemcpy(activation_map_[name].get(), data_ptr,
+                              num * sizeof(float), cudaMemcpyHostToDevice));
+        return activation_map_[name].get();
+      } else {
+        auto new_data = newCudaData(data_ptr, num, DT_F32, dtype);
+        activation_map_[name] = std::move(new_data);
+        return activation_map_[name].get();
+      }
     }
     UNREACHABLE_OP("Can't find activation data", v.getDefiningOp());
   }

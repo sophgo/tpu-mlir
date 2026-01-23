@@ -58,6 +58,9 @@ public:
   py::array get_tensor(std::string name);
   py::dict get_all_tensor();
 
+  bool is_cuda_support_op(Operation *op);
+  Operation * get_weight_target_op(Operation *weight_op);
+
 private:
   // -------------------------------------------------------------------
   // -------------- helper functions -----------------------------------
@@ -137,7 +140,13 @@ private:
 private:
   cuda_ptr cuda_malloc(size_t bytes);
   void cuda_malloc(std::map<std::string, cuda_ptr> &map, mlir::Value v);
-  void cuda_to_host(const std::string &name);
+  void cuda_to_host(const std::string &name, bool for_infer);
+  bool is_no_mem_op(Operation *op);
+
+  void mix_load(ModuleOp m);
+  void gpu_load(ModuleOp m);
+  void gpu_invoke(bool dump_all, const std::vector<std::string>& extra_outputs);
+  void mix_invoke(bool dump_all, const std::vector<std::string>& extra_outputs);
 
 public:
   py::list input_names;
@@ -148,11 +157,15 @@ private:
   OwningOpRef<ModuleOp> module_;
   cudnnHandle_t cudnn_;
   bool dump_all_;
+  bool mix_mode_ = false;
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
   std::map<std::string, mlir::Value> value_map_;
   std::map<std::string, cuda_ptr> input_map_;
   std::map<std::string, cuda_ptr> weight_map_;
   std::map<std::string, cuda_ptr> activation_map_;
-  std::map<std::string, std::shared_ptr<std::vector<float>>> buffer_map_;
+  //should remove buffer map, convert type only wen get tensor... FIXME
+  std::map<std::string, std::shared_ptr<std::vector<float>>> buffer_map_; // cpu mems, only active for dump
+  std::map<std::string, std::shared_ptr<std::vector<float>>> infer_map_; // cpu mems, for cpu inference, including weights and active
+  std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map; // cpu infer ops
 };

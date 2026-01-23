@@ -673,6 +673,57 @@ void gather(void *indices, void *embedding, void *output, int num_indices,
   }
 }
 
+void cudaGather(void *indices, void *embedding, void *output, int num_indices,
+            int outer_dims, int ax_dim, int inner_dims, data_type_t ind_type,
+            data_type_t embed_type) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dims * num_indices);
+  int block_size = CUDA_BLOCK_SIZE;
+  auto dbytes = get_dtype_bytes(embed_type);
+  if (ind_type == DT_UINT16) {
+    if (dbytes == 1) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (uint16_t *)indices, (uint8_t *)embedding, (uint8_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    } else if (dbytes == 2) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (uint16_t *)indices, (uint16_t *)embedding, (uint16_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    } else if (dbytes == 4) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (uint16_t *)indices, (uint32_t *)embedding, (uint32_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    }
+  } else if (ind_type == DT_INT32) {
+    if (dbytes == 1) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (int32_t *)indices, (uint8_t *)embedding, (uint8_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    } else if (dbytes == 2) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (int32_t *)indices, (uint16_t *)embedding, (uint16_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    } else if (dbytes == 4) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (int32_t *)indices, (uint32_t *)embedding, (uint32_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    }
+  } else if (ind_type == DT_F32) {
+    if (dbytes == 1) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (float *)indices, (uint8_t *)embedding, (uint8_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    } else if (dbytes == 2) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (float *)indices, (uint16_t *)embedding, (uint16_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    } else if (dbytes == 4) {
+      g_cugather<<<num_blocks, block_size>>>(
+          (float *)indices, (uint32_t *)embedding, (uint32_t *)output,
+          num_indices, outer_dims, ax_dim, inner_dims);
+    }
+  }
+}
+
 void bmDepth2Space(void *input, void *output, bool inversed, bool swap_hw, bool crd, int block_h, int block_w,
   int n, int c, int h, int w, int ins, int ics, int ihs, int iws,
   int on, int oc, int oh, int ow, int ons, int ocs, int ohs, int ows, data_type_t type)
@@ -1128,8 +1179,8 @@ void bmReduce(
       }
 
       // Launch optimized kernel
-      dim3 blocks(outer_size);
-      dim3 threads(min(1024, inner_size));
+      int blocks = CUDA_NUM_BLOCKS(outer_size*inner_size);
+      int threads = CUDA_BLOCK_SIZE;
       switch (mode_enum) {
           case REDUCE_SUM:
               contiguousAxisReductionKernel<float, REDUCE_SUM><<<blocks, threads, 0, stream>>>(

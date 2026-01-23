@@ -185,6 +185,9 @@ void lut256(void *src, void *table, void *dst, int size, data_type_t src_type,
 void gather(void *indices, void *embedding, void *output, int num_indices,
             int embedding_dim, int inner_dim, data_type_t ind_type,
             data_type_t embed_type);
+void cudaGather(void *indices, void *embedding, void *output, int num_indices,
+            int outer_dims, int ax_dim, int inner_dims, data_type_t ind_type,
+            data_type_t embed_type);
 void bmDepth2Space(void *input, void *output, bool inversed, bool swap_hw, bool crd,
             int block_h, int block_w, int n, int c, int h, int w,
             int ins, int ics, int ihs, int iws, int on, int oc, int oh, int ow,
