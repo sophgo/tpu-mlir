@@ -1298,6 +1298,11 @@ public:
         }
       }
     }
+    auto name = module::getName(op.getOperation()).str();
+    if (LoweringConfig::quantize_map.find(name) !=
+        LoweringConfig::quantize_map.end()) {
+      return failure();
+    }
     if (is_fp) {
       auto lutOp = rewriter.create<tpu::LutOp>(out.getLoc(), out.getType(),
                                                ValueRange{in, in});
@@ -1305,6 +1310,7 @@ public:
       auto table = create_lookup_table_fp(in, new_out, getActivateFunc(op));
       lutOp->setOperand(1, table);
       out.replaceAllUsesWith(new_out);
+      rewriter.eraseOp(op);
     } else {
       auto lutOp = rewriter.create<tpu::LutOp>(out.getLoc(), out.getType(),
                                                ValueRange{in, in});
@@ -1314,6 +1320,9 @@ public:
           ROUNDING_HALF_AWAY_FROM_ZERO, module::isAsymmetric());
       lutOp->setOperand(1, table);
       out.replaceAllUsesWith(new_out);
+      auto cast_op = dyn_cast<tpu::CastOp>(out.getDefiningOp());
+      rewriter.eraseOp(cast_op);
+      rewriter.eraseOp(op);
     }
     return success();
   }
@@ -1571,9 +1580,11 @@ void ConvertTopToTpu::runOnOperation() {
           if (isa<top::AddOp>(user)) {
             auto name = module::getName(user).str();
             if (LoweringConfig::quantize_map.find(name) !=
-                    LoweringConfig::quantize_map.end() &&
-                (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
-                 LoweringConfig::quantize_map[name] == module::Mode::BF16)) {
+                        LoweringConfig::quantize_map.end() &&
+                    (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
+                     LoweringConfig::quantize_map[name] ==
+                         module::Mode::BF16) ||
+                LoweringConfig::quantize_map[name] == module::Mode::F32) {
               mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
               if (module::getMode() == module::Mode::INT8 ||
                   module::getMode() == module::Mode::INT4) {
