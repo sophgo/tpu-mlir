@@ -470,7 +470,21 @@ class BMProfileParser:
         return int(new_name)
 
     def enum_val(self, name, enum_type):
-        return enum_cast(self.int_val(name), enum_type)
+        try:
+            return enum_cast(self.int_val(name), enum_type)
+        except:
+            if enum_type == Arch:
+                arch_str = self.str_val(name).upper()
+                arch_map = {
+                    "BM1684": Arch.bm1684,
+                    "BM1684X": Arch.bm1684x,
+                    "BM1688": Arch.bm1688,
+                    "BM1690": Arch.bm1690,
+                    "CV184X": Arch.cv184x,
+                }
+                return arch_map.get(arch_str, Arch.UNKNOWN)
+            else:
+                raise ValueError(f"Cannot parse enum value for {name}")
 
     def shape_val(self, name):
         shape_str = self.str_val(name)
