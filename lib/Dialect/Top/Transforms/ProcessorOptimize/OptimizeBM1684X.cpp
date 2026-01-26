@@ -2507,6 +2507,7 @@ protected:
           ValueRange{dividend, rsqrtOp.getOutput()}, op->getAttrs());
       mulOp->removeAttr(rewriter.getStringAttr("is_reverse"));
       out.replaceAllUsesWith(mulOp.getOutput());
+      op->erase();
     } else {
       return failure();
     }
