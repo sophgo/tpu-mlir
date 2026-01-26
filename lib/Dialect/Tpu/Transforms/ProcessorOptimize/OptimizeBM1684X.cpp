@@ -309,7 +309,7 @@ protected:
       }
 
       // transpose the weight
-      auto weight_type = module::getElementType(weight_op.getOutput());
+      auto weight_type = module::getStorageType(weight_op.getOutput());
       auto weight_shape = module::getShape(weight_op.getOutput());
       if (weight_shape.size() != 4) {
         return failure();
