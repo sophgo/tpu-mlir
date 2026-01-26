@@ -22,9 +22,10 @@
 - ``-s``, ``--seq_length`` (integer, 必填)
   指定转换时使用的序列长度。
 
-- ``-q``, ``--quantize`` (string, 必填)
+- ``-q``, ``--quantize`` (string, 默认值: auto)
   指定 bmodel 的量化类型，必须从下面的选项中选择：
 
+  - ``auto``
   - ``bf16``
   - ``w8bf16``
   - ``w4bf16``
@@ -84,8 +85,8 @@
 
 .. code-block:: bash
 
-   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-AWQ -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
-   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-GPTQ-Int4 -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-AWQ -s 384 -c bm1684x -o qwen2.5_0.5b
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-GPTQ-Int4 -s 384 -c bm1684x -o qwen2.5_0.5b
 
 
 

@@ -473,7 +473,7 @@ class BMProfileParser:
         try:
             return enum_cast(self.int_val(name), enum_type)
         except:
-            if enum_type == Arch:
+            if enum_type == Arch or name == "arch":
                 arch_str = self.str_val(name).upper()
                 arch_map = {
                     "BM1684": Arch.bm1684,

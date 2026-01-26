@@ -169,7 +169,6 @@
     $ llm_convert.py \
         -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ \
         -s 2048 \
-        -q w4bf16 \
         -c bm1684x \
         --max_pixels 672,896 \
         -o qwen2.5vl_3b
@@ -668,7 +667,7 @@ llm_convert.py
      - 指定序列最大长度
    * - quantize
      - 是
-     - 指定量化类型, 如w4bf16/w4f16/bf16/f16
+     - 指定量化类型, 如auto/w4bf16/w4f16/bf16/f16
    * - q_group_size
      - 否
      - 每组量化的组大小

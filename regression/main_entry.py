@@ -274,8 +274,8 @@ class MAIN_ENTRY(object):
         for model, type in zip(LLM_MODELS, QUANT_TYPES):
             MODEL_PATH = os.path.join(NNMODELS_PATH, "llm_models", model)
             self.run_command([
-                "llm_convert.py", "-m", MODEL_PATH, "-s", "2048", "-q", type, "-c", "bm1684x",
-                "--out_dir", "llm_output", "--max_pixels", "672,896"
+                "llm_convert.py", "-m", MODEL_PATH, "-s", "2048", "-c", "bm1684x", "--out_dir",
+                "llm_output", "--max_pixels", "672,896"
             ])
             # check result
             input_ref = os.path.join(MODEL_PATH, "block_cache_0_input.npz")

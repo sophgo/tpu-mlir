@@ -170,7 +170,6 @@ Support LLM models
     $ llm_convert.py \
         -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ \
         -s 2048 \
-        -q w4bf16 \
         -c bm1684x \
         --max_pixels 672,896 \
         -o qwen2.5vl_3b
@@ -658,7 +657,7 @@ Convert the LLM model into bmodel, the parameters are as follows:
      - Specifies the maximum sequence length
    * - quantize
      - Yes
-     - Specifies the quantization type, e.g., w4bf16/w4f16/bf16/f16
+     - Specifies the quantization type, e.g., auto/w4bf16/w4f16/bf16/f16
    * - q_group_size
      - No
      - Specifies the group size for quantization

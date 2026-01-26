@@ -56,7 +56,6 @@ class LlmConverter(BaseConverter):
                 self.num_core = 8
             else:
                 self.num_core = 1
-        self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
         self.quant_mode = None
         self.quant_bits = 0
         self.vit_f16_out_bf16 = False  # force vit f16, output bf16
@@ -72,8 +71,7 @@ class LlmConverter(BaseConverter):
         self.cos, self.sin = self.rotary_embedding()
         cpu_count = os.cpu_count()
         self.max_workers = max(cpu_count, 4)
-        # check dtype
-        self.check_dtype()
+
         # get file path
         self.out_dir = os.path.abspath(args.out_dir)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -107,23 +105,14 @@ class LlmConverter(BaseConverter):
         os.chdir(ori_path)
         print(f"Success: {self.model_path} has converted to {self.out_dir}")
 
-    def check_dtype(self):
+    def get_dtype(self):
         if hasattr(self.llm_config, "dtype"):
             dtype = self.llm_config.dtype
         elif hasattr(self.llm_config, "torch_dtype"):
             dtype = self.llm_config.torch_dtype
         else:
-            return
-        if self.quant_mode == "awq" and self.quantize == "w4f16":
-            return  # skip check for awq w4f16
-        if (dtype == torch.bfloat16 and self.half_precision_quantize
-                == "f16") or (dtype == torch.float16 and self.half_precision_quantize == "bf16"):
-            print(
-                f"Warning: Please make sure your type({self.quantize}) is correct. Your torch dtype is {dtype}."
-            )
-            choice = input("Continue ? (Y/n):").strip().lower()
-            if choice != "y":
-                sys.exit(0)
+            dtype = None
+        return dtype
 
     def gen_config(self):
         import shutil
@@ -371,25 +360,47 @@ class LlmConverter(BaseConverter):
         self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', False)
         self.init_quantization()
 
+    def get_qtype(self, dtype, bits):
+        if dtype == torch.float16:
+            if bits == 4:
+                return "w4f16"
+            elif bits == 8:
+                return "w8f16"
+            elif bits == 16:
+                return "f16"
+        elif dtype == torch.bfloat16:
+            if bits == 4:
+                return "w4bf16"
+            elif bits == 8:
+                return "w8bf16"
+            elif bits == 16:
+                return "bf16"
+        raise NotImplementedError(f"Not support quantize type: {dtype} with bits: {bits}")
+
     def init_quantization(self):
         c = self.model_info.config
         self.quantization_config = getattr(self.llm_config, c.quantization_config, None)
+        dtype = self.get_dtype()
         if self.quantization_config is None:
             self.quantization_config = getattr(self.config, c.quantization_config, None)
-        if self.quantization_config:
+        real_quantize = None
+        if self.quantization_config is None:
+            if self.quantize == "auto":
+                raise RuntimeError("No quantization config found, please set quantize type")
+            real_quantize = self.get_qtype(dtype, 16)
+            if real_quantize is None:
+                real_quantize = self.quantize
+            self.half_precision_quantize = "bf16" if "bf16" in real_quantize else "f16"
+            if self.half_precision_quantize not in self.quantize:
+                # example: --quantize w4bf16, but config is float16. Not match
+                raise RuntimeError(f"Quantize {self.quantize} mismatch with model dtype :{dtype}")
+        else:
             self.quant_mode = self.quantization_config["quant_method"]
             if self.quant_mode not in ["gptq", "awq", "compressed-tensors", "auto-round"]:
                 raise NotImplementedError(f"Not support quantization method: {self.quant_mode}")
             if self.quant_mode != "compressed-tensors":
                 self.q_group_size = self.quantization_config["group_size"]
                 self.quant_bits = self.quantization_config["bits"]
-            if self.quant_mode == "awq":
-                assert self.quantization_config["version"] == "gemm", (
-                    "AWQ only support gemm version for now")
-                assert self.quant_bits == 4, ("AWQ only support quant bits == 4 for now")
-                if self.quantize != "w4f16":
-                    print("Warning: AWQ only support w4f16 quantize, change quantize to w4f16")
-                    self.quantize = "w4f16"
             if self.quant_mode == "auto-round":
                 packing_format = self.quantization_config.get("packing_format",
                                                               "auto_round:auto_gptq")
@@ -399,7 +410,14 @@ class LlmConverter(BaseConverter):
                     self.quant_mode = "awq"
                 else:
                     raise NotImplementedError(f"Not support packing_format: {packing_format}")
-            if self.quant_mode == "compressed-tensors":
+            if self.quant_mode == "awq":
+                assert self.quantization_config["version"] == "gemm", (
+                    "AWQ only support gemm version for now")
+                assert self.quant_bits == 4, ("AWQ only support quant bits == 4 for now")
+                if self.quantize != "w4f16" and self.quantize != "auto":
+                    print("Warning: AWQ only support w4f16 quantize, change quantize to w4f16")
+                real_quantize = "w4f16"
+            elif self.quant_mode == "compressed-tensors":
                 format = self.quantization_config.get("format", "pack-quantized")
                 quantization_status = self.quantization_config.get("quantization_status",
                                                                    "compressed")
@@ -414,8 +432,17 @@ class LlmConverter(BaseConverter):
                 self.compressed_with_zp = weights_config.get("symmetric", True) is False
                 weight_type = weights_config.get("type")
                 assert (weight_type == "int")
-
+                real_quantize = self.get_qtype(dtype, self.quant_bits)
+            elif self.quant_mode == "gptq":
+                real_quantize = self.get_qtype(dtype, self.quant_bits)
+            if self.quantize != "auto" and self.quantize != real_quantize:
+                print(
+                    f"Warning: {self.quantize} is different from quantization config {real_quantize}. Force to {real_quantize}"
+                )
+            self.quantize = real_quantize
+            self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
         if self.q_group_size < 0:
+            # avoid special value, like -1
             self.q_group_size = 0
 
     def get_loc(self, names, mlir):
