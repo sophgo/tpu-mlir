@@ -55,16 +55,16 @@ void py_cuda::cudaSoftmaxOp(tpu::SoftmaxOp op) {
                       getCudaType(op.getOutput()));
       f32_input.reset();
     } else {
-      auto in_stype = module::getUniformQuantizedType(op.getInput());
-      auto in_scale = in_stype.getScale();
+      auto exp_table = getCudaData(op.getTable());
       auto f32_input = newCudaData(op.getInput(), cuda::DT_F32);
-      auto f32_output = newCudaData(op.getOutput(), cuda::DT_F32);
-      cuda::int8ScaleToF32(getCudaData(op.getInput()), f32_input.get(), in_scale, outer_dim*inner_dim*axis_dim, !module::getStorageType(op.getInput()).isUnsignedInteger());
-      cuda::bmSoftmax(f32_input.get(), buffer.get(), f32_output.get(),
-                    outer_dim, axis_dim, inner_dim, op.getLog());
       auto out_stype = module::getUniformQuantizedType(op.getOutput());
       auto out_scale = out_stype.getScale();
-      cuda::f32ScaleToInt8(buffer.get(), getCudaData(op.getOutput()), out_scale, outer_dim*inner_dim*axis_dim, !module::getStorageType(op.getOutput()).isUnsignedInteger(), cuda::RD_HALF_AWAY_FROM_ZERO);
+      auto out_zp = out_stype.getZeroPoint();
+      cuda::bmSoftmax(f32_input.get(), buffer.get(), f32_output.get(),
+                    outer_dim, axis_dim, inner_dim, exp_table, 
+                    out_scale, out_zp);
+      cuda::f32ScaleToInt8(f32_output.get(), output, 1.0, outer_dim * inner_dim * axis_dim, !module::getStorageType(op.getOutput()).isUnsignedInteger(), cuda::RD_HALF_AWAY_FROM_ZERO);
+      f32_input.reset();
     }
     f32_output.reset();
     buffer.reset();

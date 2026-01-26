@@ -445,7 +445,6 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     init(p);
   }
   auto matmul = (MatMul *)p.handle;
-
   auto a = dynparseParam();
   auto dynamic_quantize_type = getDqType();
   if (module::isDynamicQuantize() && !module::isWeight(getRight()) &&

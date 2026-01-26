@@ -23,7 +23,7 @@ struct bfloat16 {
 
   __device__ bfloat16() : value(0) {}
   __device__ bfloat16(uint16_t v) : value(v) {}
-  __device__ bfloat16(float val, bool half_up = true) {
+  __device__ bfloat16(float val, bool half_up = false) {
     if (half_up) {
       uint32_t u32_val = *((uint32_t *)(&val));
       uint32_t lsb = (u32_val >> 16) & 1;
@@ -32,8 +32,16 @@ struct bfloat16 {
       /* HW behavior */
       // infinity set to max finite positive value
       value = ((value & 0x7f80) == 0x7f80) ? 0x7f7f : value;
-    } else {
-      value = ((uint16_t *)(&val))[1];
+    } else { // half to even
+      uint32_t u32_val = *((uint32_t *)(&val));
+      uint16_t high = ((uint16_t *)(&u32_val))[1];
+      uint16_t low = ((uint16_t *)(&u32_val))[0];
+      if (low > 0x8000 || (low == 0x8000 && (high & 1))) {
+        high += 1;
+      }
+      value = high;
+      // infinity set to max finite positive value to match HW
+      value = ((value & 0x7f80) == 0x7f80) ? 0x7f7f : value;
     }
   }
 
@@ -43,7 +51,7 @@ struct bfloat16 {
   }
 };
 
-__device__ float d_BF16(float data, bool round_up = true) {
+__device__ float d_BF16(float data, bool round_up = false) {
   bfloat16 in_bf16(data, round_up);
   return static_cast<float>(in_bf16);
 }
@@ -53,7 +61,7 @@ __device__ float d_RawBF16(uint16_t data) {
   return static_cast<float>(in_bf16);
 }
 
-__device__ uint16_t d_BF16Raw(float data, bool round_up = true) {
+__device__ uint16_t d_BF16Raw(float data, bool round_up = false) {
   bfloat16 in_bf16(data, round_up);
   return in_bf16.value;
 }
@@ -206,7 +214,7 @@ __device__ uint8_t fp32_to_fp8(const float single, bool is_e5m2=false, bool satu
   uint32_t int_value = __float_as_int(single);
   uint32_t exp = (int_value >> 23) & 0xff;
   bool sign = int_value >> 31;
-  uint32_t frac = (int_value & (1ul<<23-1));
+  uint32_t frac = (int_value & ((1ul<<23)-1));
 
   if (exp > (127 - FP8_EXP_BIAS) && exp < 0xff) {
     const uint32_t mantissa = frac;

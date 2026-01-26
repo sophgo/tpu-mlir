@@ -228,10 +228,14 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
 
 void bmSoftmax(void *input, void *buffer, void *output,
                int outer_dim, int axis_dim, int inner_dim, bool log);
+void bmSoftmax(void *input, void *buffer, void *output,
+               int outer_dim, int axis_dim, int inner_dim, void* exp_table,
+               float scale, float zp);
 void bmGELU(void *input, void *output, int num);
 void bmLayerNorm(void *input, void *output, int outer_dim,
                int inner_dim, void *weight, void *bias, float eps, data_type_t type);
-void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type);
+void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type, 
+           void *exp_table = nullptr);
 void bmReciprocal(void *input, void *output,  int outer_dim, int inner_dim, data_type_t type);
 
 void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,

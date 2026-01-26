@@ -622,7 +622,8 @@ __global__ void g_tile4D(void *src, void *dst, int n, int c, int h, int w,
 __global__ void g_GELU(float* input, float *output, int num) {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   if(i<num){
-    float value = 0.5*input[i]*(1.0+erff(input[i]/sqrt(2.0)));
+    double input_i = input[i];
+    double value = 0.5*input_i*(1.0+erf(input_i/sqrt(2.0)));
     output[i] = value;
   }
 }
@@ -1124,12 +1125,12 @@ __global__ void g_layerNorm(float *input, float *output, int outer_dim,
     float mean = sum / inner_dim;
     float rstd = 0.0f;
     for (int inner_idx = 0;inner_idx< inner_dim; inner_idx ++) {
-      float diff = base_ptr[inner_idx] - mean;
+      const float diff = base_ptr[inner_idx] - mean;
       rstd += diff * diff;
     }
     rstd = rstd / inner_dim;
     rstd += eps;
-    float inv_std = rsqrtf(rstd);
+    float inv_std = 1.0f / sqrtf(rstd);
     for (int inner_idx = 0;inner_idx< inner_dim; inner_idx ++) {
       float val = base_ptr[inner_idx];
       float norm = (val - mean) * inv_std;
@@ -1160,7 +1161,7 @@ __global__ void g_layerNormBF16(float *input, float *output, int outer_dim,
       rstd += d_BF16(d_BF16(diff * diff)*scale);
     }
     rstd = d_BF16(rstd + eps);
-    float inv_std = d_BF16(rsqrtf(rstd));
+    float inv_std = d_BF16(1.0f / d_BF16(sqrtf(rstd)));
     for (int inner_idx = 0;inner_idx< inner_dim; inner_idx ++) {
       float val = base_ptr[inner_idx];
       float norm = d_BF16(d_BF16(val - mean) * inv_std);
@@ -1390,14 +1391,21 @@ __global__ void g_cvLutSlope(uint16_t *input, uint16_t *output,
   }
 }
 
-__global__ void g_bmExp(float *input, float *output, int outer_dim, int axis_dim, int inner_dim) {
+__global__ void g_bmExp(float *input, float *output, int outer_dim, int axis_dim, int inner_dim, float *exp_table) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int out_idx = idx / (axis_dim * inner_dim);
   int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
   int inner_idx = idx % inner_dim;
   if (out_idx < outer_dim && axis_idx < axis_dim && inner_idx < inner_dim) {
-    float value = __expf(input[idx]);
-    output[idx] = value;
+    if (exp_table != nullptr) {
+      int32_t table_idx = static_cast<int32_t>(-input[idx]);
+      table_idx = max(0, min(255, table_idx));
+      float value = exp_table[table_idx];
+      output[idx] = value;
+    } else {
+      float value = __expf(input[idx]);
+      output[idx] = value;
+    }
   }
 }
 
@@ -1406,7 +1414,7 @@ __global__ void g_bmReciprocal(float *input, float *output, int outer_dim, int i
   int out_idx = idx / inner_dim;
   int inner_idx = idx % inner_dim;
   if (out_idx < outer_dim && inner_idx < inner_dim) {
-    float value = 1.0/(input[idx]);
+    float value = 1.0/input[idx];
     output[idx] = value;
   }
 }

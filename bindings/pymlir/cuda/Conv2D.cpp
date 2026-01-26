@@ -72,6 +72,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   if (p.groups > 1) {
     CHECK_CUDNN(cudnnSetConvolutionGroupCount(conv_desc, p.groups));
   }
+  // CHECK_CUDNN(cudnnSetConvolutionMathType(conv_desc, CUDNN_FMA_MATH));
   // prepare input output memory
   cuda_ptr out_f32 = cuda_malloc(num_out * sizeof(float));
 
@@ -135,7 +136,6 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   if (p.do_relu) {
     doRelu(out_f32.get(), num_out, cuda::DT_F32);
   }
-
   if (module::isUniformQuantized(op.getOutput())) {
     auto out_i32 =
         newCudaData(out_f32.get(), num_out, cuda::DT_F32, cuda::DT_INT32);

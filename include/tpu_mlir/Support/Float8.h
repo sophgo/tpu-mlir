@@ -36,8 +36,8 @@ float f8e5m2_to_f16(uint8_t src);
 /*
   convert f32 to f8e4m3 and back to f32
 */
-float F8E4M3(float src, float step, bool satu);
-float F8E5M2(float src, float step, bool satu);
+float F8E4M3(float src, double step, bool satu);
+float F8E5M2(float src, double step, bool satu);
 void F8E4M3(const float *p_src, float *p_dst, int num, float step, bool satu);
 void F8E5M2(const float *p_src, float *p_dst, int num, float step, bool satu);
 

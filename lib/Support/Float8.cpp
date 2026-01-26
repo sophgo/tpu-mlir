@@ -256,11 +256,11 @@ float get_f8e5m2_max() { return float(57344.0); }
 
 float get_f8e5m2_min() { return float(1.5258789E-05); }
 
-float F8E4M3(float src, float step, bool satu) {
+float F8E4M3(float src, double step, bool satu) {
   return f8e4m3_to_f32(f32_to_f8e4m3(src / step, satu));
 }
 
-float F8E5M2(float src, float step, bool satu) {
+float F8E5M2(float src, double step, bool satu) {
   return f8e5m2_to_f32(f32_to_f8e5m2(src / step, satu));
 }
 

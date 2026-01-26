@@ -9,6 +9,9 @@
 
 #include "../pycuda.h"
 #include "cuda_helper.h"
+#include <fstream>
+#include <string>
+#include <cstring>
 
 cuda::rounding_mode_t rmode_convert(tpu::RoundMode mode) {
   switch (mode) {

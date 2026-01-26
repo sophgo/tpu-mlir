@@ -36,29 +36,20 @@ void py_cuda::cudaMulConstOp(tpu::MulConstOp op) {
     int64_t n0, c0, h0, w0;
     module::getNCHW(op.getOutput(), n0, c0, h0, w0, false);
     auto input_f32 = newCudaData(op.getInput(), cuda::DT_F32);
-    if (module::getStorageType(op.getOutput()).isFloat8E4M3FN()){
+    if (module::getStorageType(op.getOutput()).isF32()) {
+      cuda::mulConst4DF32(input_f32.get(), const_v, getCudaData(op.getOutput()), op.getDoRelu(),
+                    n0, c0, h0, w0);
+    } else {
       auto output_f32 = newCudaData(op.getOutput(), cuda::DT_F32);
       cuda::mulConst4DF32(input_f32.get(), const_v, output_f32.get(), op.getDoRelu(),
                     n0, c0, h0, w0);
-      cuda::requantF8(output_f32.get(), getCudaData(op.getOutput()), 1.0 , n0, c0, h0, w0, op.getDoRelu());
-      output_f32.reset();
-    } else {
-      auto ctype = module::getCalibratedType(op.getInput());
-      if (!ctype)
-        UNREACHABLE_OP("need calibrated type for fp8 dequant", op);
-      double scale = ctype.getMax() / get_f8e4m3_max();
-      if (module::getStorageType(op.getOutput()).isF32()) {
-        auto output_f32 = getCudaData(op.getOutput());
-        cuda::mulConst4DF32(input_f32.get(), scale, output_f32, op.getDoRelu(),
-                      n0, c0, h0, w0);
-      } else {
-        auto output_f32 = cuda_malloc(module::getNumElements(op.getOutput()) * sizeof(float));
-        cuda::mulConst4DF32(input_f32.get(), scale, output_f32.get(), op.getDoRelu(),
-                      n0, c0, h0, w0);
+      if (module::getStorageType(op.getOutput()).isFloat8E4M3FN()){
+        cuda::requantF8(output_f32.get(), getCudaData(op.getOutput()), 1.0 , n0, c0, h0, w0, op.getDoRelu());
+      } else if (module::getStorageType(op.getOutput()).isF16() || module::getStorageType(op.getOutput()).isBF16()) {
         cuda::convertType(output_f32.get(), getCudaData(op.getOutput()), module::getNumElements(op.getOutput()), cuda::DT_F32,
-                      getCudaType(op.getOutput()));
-        output_f32.reset();
+                        getCudaType(op.getOutput()));
       }
+      output_f32.reset();
     }
     input_f32.reset();
   }

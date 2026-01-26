@@ -25,7 +25,6 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   bool out_transpose = op.getOutputTranspose();
   if (left_transpose || out_transpose)
     UNREACHABLE_OP("Not support left/out transpose in matmul", op);
-
   if (module::isUniformQuantized(op.getInput())) {
     for (size_t b=0; b<p.batch;b++) {
       auto cur_in = (int8_t *)getCudaData(op.getInput()) + b*batch_elem_left;
@@ -100,7 +99,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
       cudnnDestroyTensorDescriptor(outf32_desc);
     }
   }
-  if (module::isUniformQuantized(op.getInput())) {
+  if (module::isUniformQuantized(op.getOutput())) {
     // 3. multiplier + shift i32 => i8
     // should consider per-channel quant
     if(module::getStorageType(op.getOutput()).isInteger(8)) {

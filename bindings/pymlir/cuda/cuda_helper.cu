@@ -1032,11 +1032,12 @@ void cvLutSlope(void *input, void *output, void *table0, void *table1, int num,
       (uint16_t *)table1, num, scale, offset);
 }
 
-void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type) {
+void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type,
+           void *exp_table) {
   int num_blocks = CUDA_NUM_BLOCKS(outer_dim*axis_dim*inner_dim);
   int block_size = CUDA_BLOCK_SIZE;
   g_bmExp<<<num_blocks, block_size>>>(
-      (float *)input, (float *)output, outer_dim, axis_dim, inner_dim);
+      (float *)input, (float *)output, outer_dim, axis_dim, inner_dim, (float *)exp_table);
 }
 
 void bmReciprocal(void *input, void *output, int outer_dim, int inner_dim, data_type_t type) {
@@ -1101,6 +1102,35 @@ void bmSoftmax(void *input, void *buffer, void *output, int outer_dim,
   } else {
     mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
   }
+}
+
+void bmSoftmax(void *input, void *buffer, void *output, int outer_dim,
+               int axis_dim, int inner_dim, void* exp_table, float scale,
+               float zp) {
+  // get max => buffer
+  maxAxis(input, buffer, outer_dim, axis_dim, inner_dim, DT_F32);
+
+  // sub max => output
+  subAxis(input, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
+
+  // exp => output
+  bmExp(output, output, outer_dim, axis_dim, inner_dim, DT_F32, exp_table);
+
+  // sum => buffer
+  sumAxis(output, buffer, outer_dim, axis_dim, inner_dim, DT_F32);
+
+  // 1/sum => buffer
+  bmReciprocal(buffer, buffer, outer_dim, inner_dim, DT_F32);
+
+  mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
+  float add_val = zp;
+  float *add_val_dev = nullptr;
+  cudaMalloc((void **)&add_val_dev, sizeof(float));
+  cudaMemcpy(add_val_dev, &add_val, sizeof(float), cudaMemcpyHostToDevice);
+  add4DF32(
+      output, 1/scale, add_val_dev, 1, output, false, outer_dim, axis_dim,
+      inner_dim, 1, 1, 1, 1, 1, outer_dim, axis_dim, inner_dim, 1);
+  cudaFree(add_val_dev);
 }
 
 void bmLayerNorm(void *input, void *output, int outer_dim,
