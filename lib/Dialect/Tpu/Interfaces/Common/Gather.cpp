@@ -89,15 +89,18 @@ mlir::Type tpu::GatherOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 ArrayAttr tpu::GatherOp::getIndexingMaps() {
   MLIRContext *context = getContext();
   const int axis = getAxis();
-  if (axis != 0) {
+  int input_dims = module::getShape(getInput()).size();
+  int indices_dims = module::getShape(getIndices()).size();
+  int output_dims = module::getShape(getOutput()).size();
+  bool keep_dims = (input_dims + indices_dims - 1) == output_dims;
+  if (axis != 0 || keep_dims == false) {
     return {};
   }
   MLIRContext *ctx = getContext();
-  auto indice_shape = module::getShape(getIndices());
-  auto num_dims = indice_shape.size();
-  AffineMap indiceMap = AffineMap::getMultiDimIdentityMap(num_dims, context);
-  auto empty_map = AffineMap::get(num_dims, 0, ctx);
-  AffineMap outMap = AffineMap::getMultiDimIdentityMap(num_dims, context);
+  AffineMap indiceMap =
+      AffineMap::getMultiDimIdentityMap(indices_dims, context);
+  auto empty_map = AffineMap::get(input_dims, 0, ctx);
+  AffineMap outMap = AffineMap::getMultiDimIdentityMap(indices_dims, context);
   SmallVector<AffineMap> indexingMaps{empty_map, indiceMap, empty_map, outMap};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
