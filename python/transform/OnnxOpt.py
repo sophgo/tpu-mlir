@@ -969,6 +969,8 @@ class ReForm(object):
                 cast_in_dict[node.output[0]] = node.input[0]
                 if node.output[0] in net_out_names: reverse_search = True
                 continue
+
+        for node in self.nodes:
             if node.op_type == "Constant":
                 continue
             for i in range(len(node.input)):
