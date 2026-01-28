@@ -165,6 +165,9 @@ if __name__ == '__main__':
     elif config.model_type in ['janus']:
         from llm.JanusConverter import JanusConverter
         converter = JanusConverter(args, config)
+    elif config.model_type in ['paddleocr_vl']:
+        from llm.PaddleOCRVLConverter import PaddleOCRVLConverter
+        converter = PaddleOCRVLConverter(args, config)
     else:
         raise RuntimeError("Unsupported model type: {}".format(config.model_type))
     converter.run()
