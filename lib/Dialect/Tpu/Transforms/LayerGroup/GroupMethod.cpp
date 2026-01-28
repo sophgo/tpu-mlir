@@ -3274,10 +3274,13 @@ bool GroupMethod::load_hash_lg(std::vector<LgInfo> &lg_infos,
   }
 
   if (!file_opened) {
-    llvm::errs() << "Failed to open hash file from all available paths:\n";
-    for (const auto &[path, description] : path_priority) {
-      llvm::errs() << "  - " << description << ": " << path << "\n";
-    }
+    LAYER_GROUP_LOG_DEBUG_BLOCK(
+        llvm::dbgs() << "Can not open hash file from all available "
+                        "paths:\n";
+        for (const auto &[path, description]
+             : path_priority) {
+          llvm::dbgs() << "  - " << description << ": " << path << "\n";
+        });
     return false;
   }
 

@@ -34,9 +34,11 @@ void LgConfig::load(const std::string &config_file) {
   // Load the debugger configuration json file
   auto bufferOrErr = llvm::MemoryBuffer::getFile(config_file);
   if (!bufferOrErr) {
-    llvm::errs() << "Failed to open config file: "
-                 << bufferOrErr.getError().message()
-                 << ", using default layer group config!\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({
+      llvm::errs() << "Can not open config file: "
+                   << bufferOrErr.getError().message()
+                   << ", using default layer group config!\n";
+    });
     return;
   }
   // Parse JSON

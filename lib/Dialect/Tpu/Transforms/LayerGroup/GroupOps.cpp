@@ -50,9 +50,11 @@ get_ddr_access_statistic_before_layergroup(::mlir::func::FuncOp func) {
     }
   });
   // file.close();
-  llvm::errs() << "output_bytes: " << output_bytes
-               << ", before group, NetStatisticPass total_bytes: "
-               << total_bytes << "\n";
+  LAYER_GROUP_LOG_DEBUG_BLOCK({
+    llvm::errs() << "output_bytes: " << output_bytes
+                 << ", before group, NetStatisticPass total_bytes: "
+                 << total_bytes << "\n";
+  });
 }
 
 void GroupOps::init(LgOptions &options, MLIRContext *ctx) {
