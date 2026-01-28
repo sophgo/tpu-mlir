@@ -3396,6 +3396,40 @@ def hsigmoid(input: Tensor,
     return output
 
 
+@to_scalar(2)
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def pow(base: Union[Tensor, Scalar, float],
+        expn: Union[Tensor, Scalar, float],
+        out_name: str = None):
+    assert isinstance(base, Tensor) or isinstance(expn, Tensor), \
+        f"At least one of 'base' or 'expr' must be a Tensor. " \
+        f"Received: base={type(base).__name__}, expr={type(expn).__name__}"
+    if isinstance(expn, Scalar):
+        assert expn.dtype == "float32", "expn scalar dtype must be float32"
+        output = Tensor(base.shape, dtype=base.dtype, name=out_name)
+        if expn.value == 1.0:
+            return base
+        elif expn.value == 2.0:
+            TpuLang.insert_op("top.Mul", inputs=[base, base], outputs=[output])
+            return output
+        else:
+            attr_pow = {"exponent": Attr(expn.value, 'float64')}
+            TpuLang.insert_op("top.Pow", inputs=[base], outputs=[output], params=attr_pow)
+            return output
+    elif isinstance(base, Scalar):
+        assert base.dtype == "float32", "base scalar dtype must be float32"
+        output = Tensor(expn.shape, dtype=expn.dtype, name=out_name)
+        attr_pow = {"const_val": Attr(base.value, 'float64')}
+        TpuLang.insert_op("top.Pow2", inputs=[expn], outputs=[output], params=attr_pow)
+        return output
+    else:
+        output = Tensor(base.shape, dtype=base.dtype, name=out_name)
+        TpuLang.insert_op("top.Pow3", inputs=[base, expn], outputs=[output])
+        return output
+
+
 ######### Sort Operator ############
 @auto_name()
 @annotation_check

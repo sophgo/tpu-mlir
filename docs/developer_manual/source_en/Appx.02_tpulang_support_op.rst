@@ -3431,6 +3431,74 @@ Processor support
 * BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 * BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
 
+
+pow
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+The interface definition
+"""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def pow(base: Union[Tensor, float, Scalar],
+               expn: Union[Tensor, float, Scalar],
+               out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+Power function.
+If both base and expn are Tensors, they must have the same shape, and the operation performs element-wise calculation: :math:`y_i = {base_i}^{expn_i}`;
+If base is a Tensor and expn is a Scalar or float, the operation performs element-wise calculation: :math:`y_i = {base_i}^{expn}`;
+If base is a Scalar or float and expn is a Tensor, the operation performs element-wise calculation: :math:`y_i = {base}^{expn_i}`;
+The case where both base and expn are Scalars or floats is not supported.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* base: A Tensor, float, or Scalar type, representing the base of the power operation.
+* expn: A Tensor, float, or Scalar type, representing the exponent of the power operation.
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+* BM1684X: The input data type can be FLOAT32/FLOAT16/INT8/UINT8.
+
+    .. code-block:: python
+
+      def hsigmoid(input: Tensor,
+                scale: List[float]=None,
+                zero_point: List[int]=None,
+                out_name: str = None):
+          #pass
+
+Description of the function
+"""""""""""""""""""""""""""""""""
+The hsigmoid (hard sigmoid) activation function, implemented on an element-wise basis. :math:`y = min(1, max(0, \frac{x}{6} + 0.5))`.
+This operation belongs to **local operations**.
+
+Explanation of parameters
+"""""""""""""""""""""""""""""""""
+* tensor: A Tensor type, representing the input Tensor.
+* scale: List[float] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two floats [tensor_i0_scale, output_scale].
+* zero_point: List[int] type or None, specifying quantization parameters. A value of None indicates non-quantized computation. If provided, it must be a list of two integers [tensor_i0_zero_point, output_zero_point].
+* out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
+
+Return value
+"""""""""""""""""""""""""""""""""
+Returns a Tensor with the same shape and data type as the input Tensor.
+
+Processor support
+"""""""""""""""""""""""""""""""""
+* BM1688: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+* BM1684X: The input data type can be FLOAT32/INT8/UINT8. FLOAT16 data is automatically converted to FLOAT32.
+
+
 Data Arrange Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

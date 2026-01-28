@@ -296,6 +296,7 @@ class TPULANG_IR_TESTER(object):
             "Ors": (self.test_Ors, Y, Y),
             "Pad": (self.test_Pad, Y, Y),
             "Permute": (self.test_Permute, Y, Y),
+            "Pow": (self.test_Pow, Y, Y),
             "Prelu": (self.test_PRelu, Y, Y),
             "Reduce": (self.test_Reduce, Y, Y),
             "Relu": (self.test_Relu, Y, Y),
@@ -3454,6 +3455,46 @@ class TPULANG_IR_TESTER(object):
                                        case_name,
                                        scale=3.0,
                                        dtype="int8")
+
+    #######################################################################
+    # Pow
+    # ------------
+    def test_Pow(self, case_name):
+        """pow"""
+
+        @tpulang(self.chip)
+        def _test_pow1(shape_base: List[int], expn_val: float, dtype="float32"):
+            base_data = rand_data(shape_base, dtype)
+            base = tpul.Tensor(dtype=dtype, shape=shape_base, data=base_data)
+            expn = tpul.Scalar(expn_val)
+            pow1 = tpul.pow(base, expn)
+            self.compile_and_check(self.unique_name(case_name), [base], [pow1],
+                                   is_quantized=dtype != "float32")
+
+        @tpulang(self.chip)
+        def _test_pow2(shape_expn: List[int], base_val: float, dtype="float32"):
+            expn_data = rand_data(shape_expn, dtype)
+            expn = tpul.Tensor(dtype=dtype, shape=shape_expn, data=expn_data)
+            base = tpul.Scalar(base_val)
+            pow2 = tpul.pow(base, expn)
+            self.compile_and_check(self.unique_name(case_name), [expn], [pow2],
+                                   is_quantized=dtype != "float32")
+
+        @tpulang(self.chip)
+        def _test_pow3(shape: List[int], dtype="float32"):
+            base_data = rand_data(shape, dtype)
+            base_data = np.abs(base_data) + 1e-6
+            base = tpul.Tensor(dtype=dtype, shape=shape, data=base_data)
+            expn_data = rand_data(shape, dtype)
+            expn = tpul.Tensor(dtype=dtype, shape=shape, data=expn_data)
+            pow3 = tpul.pow(base, expn)
+            self.compile_and_check(self.unique_name(case_name), [base, expn], [pow3],
+                                   is_quantized=dtype != "float32")
+
+        _test_pow1([1, 32, 28, 28], 2.0, dtype="float32")
+        _test_pow1([1, 32, 28, 28], 2.5, dtype="float32")
+        _test_pow2([1, 32, 28, 28], 2.5, dtype="float32")
+        _test_pow3([1, 32, 28, 28], dtype="float32")
 
     #######################################################################
     # Arg
