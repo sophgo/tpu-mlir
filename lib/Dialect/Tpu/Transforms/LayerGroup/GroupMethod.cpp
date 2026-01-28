@@ -697,7 +697,9 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     return false;
   }
 
-  *group_cost = lmem_allocator->get_min_group_cost();
+  if (group_cost != nullptr) {
+    *group_cost = lmem_allocator->get_min_group_cost();
+  }
   //   if (calc_cost) {
   // // remove it after pid_node is extractedb
   // #pragma omp critical(get_cycle)

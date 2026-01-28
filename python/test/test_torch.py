@@ -1086,26 +1086,31 @@ class TORCH_IR_TESTER(object):
     # RMSNorm
     # ------------
     def test_RMSNorm(self):
-        normalize_shape = [80]
+
+        def _test_RMSNorm(input_shape, normalize_shape, eps):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.weight = torch.nn.Parameter(torch.randn(normalize_shape))
+                    self.prelu = nn.PReLU()
+
+                def forward(self, hidden_states: torch.Tensor):
+                    input_dtype = hidden_states.dtype
+                    hidden_states = hidden_states + 1
+                    variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
+                    hidden_states = hidden_states * torch.rsqrt(variance + eps)
+                    rmsnorm_out = self.weight * hidden_states
+                    return rmsnorm_out, self.prelu(rmsnorm_out)
+
+            self.trace_and_test([input_shape], Model())
+
         eps = 1e-5
-
-        class Model(torch.nn.Module):
-
-            def __init__(self):
-                super(Model, self).__init__()
-                self.weight = torch.nn.Parameter(torch.randn(normalize_shape))
-                self.prelu = nn.PReLU()
-
-            def forward(self, hidden_states: torch.Tensor):
-                input_dtype = hidden_states.dtype
-                variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
-                hidden_states = hidden_states * torch.rsqrt(variance + eps)
-                rmsnorm_out = self.weight * hidden_states
-
-                return rmsnorm_out, self.prelu(rmsnorm_out)
-
-        input_shape = [14, 25, 40] + normalize_shape
-        self.trace_and_test([input_shape], Model())
+        _test_RMSNorm([14, 25, 40, 80], [80], eps)
+        self.group_opt = 0
+        _test_RMSNorm([6192, 1024], [1024], eps)
+        self.group_opt = 2
 
     #######################################################################
     # Normalize
