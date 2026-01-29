@@ -102,28 +102,55 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   if (module::isUniformQuantized(op.getOutput())) {
     // 3. multiplier + shift i32 => i8
     // should consider per-channel quant
+    auto output = getCudaData(op.getOutput());
+    int shift_num = op.getFuseRq() ? p.N : 1;
+    auto rshift_v = module::getI64Array(op.getRshifts(), shift_num, 0);
+    auto multiplier_v = module::getI64Array(op.getMultipliers(), shift_num, 1);
+    std::vector<int32_t> m(multiplier_v->begin(), multiplier_v->end());
+    std::vector<int32_t> r(rshift_v->begin(), rshift_v->end());
+    cuda_ptr cudaMults;
+    cuda_ptr cudaShifts;
+    int32_t multipler = 0;
+    int32_t rshift = 0;
+    if (shift_num > 1) {
+      cudaMults = cuda_malloc(m.size()*sizeof(int32_t));
+      cudaShifts = cuda_malloc(r.size()*sizeof(int32_t));
+      CHECK_CUDA(cudaMemcpy(cudaMults.get(), m.data(), m.size() * sizeof(int32_t),
+                          cudaMemcpyHostToDevice));
+      CHECK_CUDA(cudaMemcpy(cudaShifts.get(), r.data(), r.size() * sizeof(int32_t),
+                          cudaMemcpyHostToDevice));
+    } else {
+      multipler = multiplier_v->at(0);
+      rshift = rshift_v->at(0);
+    }
     if(module::getStorageType(op.getOutput()).isInteger(8)) {
-      auto output = getCudaData(op.getOutput());
-      auto rshift_v = module::getI64Array(op.getRshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(op.getMultipliers(), 1, 1);
-      int32_t multipler = multiplier_v->at(0);
-      int32_t rshift = rshift_v->at(0);
       bool sign = !out_stype.isUnsignedInteger(8);
       bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
       bool relu = sign && p.do_relu;
-      cuda::requantInt8(out_f32.get(), output, multipler, rshift, num_out, sign,
-                        qdm, relu);
+      if (shift_num > 1) {
+        cuda::requantInt8Perchannel(out_f32.get(), output, cudaMults.get(),
+                                  cudaShifts.get(), p.batch * p.M, p.N, 1, 1, sign, qdm,
+                                  relu);
+      } else{
+        cuda::requantInt8(out_f32.get(), output, multipler, rshift, num_out, sign,
+                          qdm, relu);
+      }
     } else if (module::getStorageType(op.getOutput()).isInteger(16)) {
-      auto output = getCudaData(op.getOutput());
-      auto rshift_v = module::getI64Array(op.getRshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(op.getMultipliers(), 1, 1);
-      int32_t multipler = multiplier_v->at(0);
-      int32_t rshift = rshift_v->at(0);
       bool relu = p.do_relu;
-      cuda::requantInt16(out_f32.get(), output, multipler, rshift, num_out, relu);
+      if (shift_num > 1) {
+        cuda::requantInt16Perchannel(out_f32.get(), output, cudaMults.get(),
+                                  cudaShifts.get(), p.batch * p.M, p.N, 1, 1, relu);
+      } else{
+        cuda::requantInt16(out_f32.get(), output, multipler, rshift, num_out, relu);
+      }
     } else {
       llvm_unreachable("not support matmul output type other than int8/int16");
     }
+    if (shift_num > 1) {
+      cudaMults.reset();
+      cudaShifts.reset();
+    }
+    out_f32.reset();
   } else if (module::getStorageType(op.getInput()).isFloat8E4M3FN()) {
     // should support per-channel.... FIXME!
     f64_array_t scales = module::getF64Array(op.getOutF8Scales().value());
