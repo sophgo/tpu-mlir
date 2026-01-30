@@ -973,6 +973,8 @@ class ReForm(object):
         for node in self.nodes:
             if node.op_type == "Constant":
                 continue
+            if node.op_type == "Cast":
+                continue
             for i in range(len(node.input)):
                 if node.input[i] in cast_in_dict:
                     node.input[i] = find_cast(cast_in_dict[node.input[i]], cast_in_dict)
