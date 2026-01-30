@@ -78,6 +78,13 @@ sub_blocks = {
         'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape',
         'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.MatMul'
     ],
+    "bert_block_large_pt": [
+        'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute',
+        'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Permute', 'top.Permute',
+        'top.MatMul', 'top.MulConst', 'top.Add', 'top.Softmax', 'top.MatMul', 'top.Permute',
+        'top.Reshape', 'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU',
+        'top.MatMul'
+    ],
     "insert_mul_bert_block": [
         'top.Add', 'top.LayerNorm', 'top.Mul', 'top.MatMul', 'top.MatMul', 'top.MatMul',
         'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute', 'top.Permute',
@@ -463,7 +470,8 @@ class MatchPattern:
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if next_op_type == 'top.MatMul':
                             append_unduplicated(fp_layer_list, next_op[0])
-                if model_block_name.startswith('insert_mul_bert_block'):
+                if model_block_name.startswith(
+                        'insert_mul_bert_block') or model_block_name == 'bert_block_large_pt':
                     if op_type == 'top.GELU' and all_tensors[i] in fp_layer_list:
                         fp_layer_list.remove(all_tensors[i])
                     elif op_type == 'top.Add':

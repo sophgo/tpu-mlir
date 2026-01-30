@@ -414,12 +414,16 @@ def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, logs=
             print('parameter error, fp_type:{args.fp_type} not support by {args.chip}')
             exit(1)
 
-    if '/' in cali_table_name:
+    if '/' in cali_table_name and '/' not in args.quantize_table:
+        # assume set path in calitable but not in quantize table
         last_index = cali_table_name.rfind('/')
-        quantize_table = cali_table_name[:last_index + 1] + "shape_pattern_qtable"
+        if args.quantize_table:
+            quantize_table = cali_table_name[:last_index + 1] + args.quantize_table
+        else:
+            quantize_table = cali_table_name[:last_index + 1] + "shape_pattern_qtable"
     else:
         if args.quantize_table:
-            quantize_table = args.quantize_table + "_shape_pattern_part"
+            quantize_table = args.quantize_table
         else:
             quantize_table = "shape_pattern_qtable"
 
