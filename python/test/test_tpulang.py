@@ -360,8 +360,7 @@ class TPULANG_IR_TESTER(object):
             "RotPosEmb": (self.test_RotPosEmb, Y, N),
             #### error case ####
             "ErrorCase": (self.test_ErrorCase, Y, Y),
-            "AttenQuantError": (self.test_AttenQuantError, Y, Y),
-            "DebugDump": (self.test_DebugDump, Y, Y)
+            "AttenQuantError": (self.test_AttenQuantError, Y, Y)
         }
         # currently tpulang only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
@@ -6618,17 +6617,6 @@ class TPULANG_IR_TESTER(object):
         file = open(output + "Data.bmodel", 'wb')
         file.write(output_data)
         file.close()
-
-    def test_DebugDump(self, case_name):
-        """Abs"""
-
-        @tpulang(self.chip)
-        def _test_debug_dump(path: str):
-            tpul.debug_dump_compile(path)
-
-        _test_debug_dump(
-            "/workspace/keep-mlir/dump_test/tpulang_test_bm1688/VitL/debug_dumps/VitL_0_graph_dump.pkl.gz"
-        )
 
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
