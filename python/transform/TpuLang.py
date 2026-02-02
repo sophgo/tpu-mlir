@@ -239,7 +239,9 @@ def compile(
                                   embed_debug_info=embed_debug_info,
                                   addr_mode=addr_mode,
                                   lgcache=False,
-                                  lghash_dir=lghash_dir)
+                                  enable_lghash=enable_lghash,
+                                  lghash_dir=lghash_dir,
+                                  num_core=num_core)
 
 
 def mlir_compile(name: str,
@@ -411,7 +413,9 @@ def compile_f32(name: str,
                                       embed_debug_info=embed_debug_info,
                                       addr_mode=addr_mode,
                                       lgcache=False,
-                                      lghash_dir=lghash_dir)
+                                      enable_lghash=enable_lghash,
+                                      lghash_dir=lghash_dir,
+                                      num_core=num_core)
 
 
 def mlir_compile_f32(name: str,
