@@ -26,4 +26,5 @@ TPU-MLIR快速入门手册
    Appx.04_modelzoo_test
    Appx.05_profile
    Appx.06_debugger
-   Appx.07_supported_ops
+   Appx.07_vis_tools
+   Appx.08_supported_ops
