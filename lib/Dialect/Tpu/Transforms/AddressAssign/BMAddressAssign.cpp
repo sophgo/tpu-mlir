@@ -481,29 +481,6 @@ static inline std::vector<std::pair<int, int>> string2pair(std::string slist) {
   return outpair;
 }
 
-// To handle cases that inplace ops share the same address with ios
-static void inplace_addr_update(std::vector<ValueInfo> &inplace_ops,
-                                const ValueInfo &v_info) {
-  Operation *v_op = (Operation *)v_info.op;
-  Value v_result = v_op->getResult(v_info.index);
-  int64_t v_addr = module::getAddress(v_result);
-
-  for (auto &inplace_info : inplace_ops) {
-    Operation *inplace_op = (Operation *)inplace_info.op;
-    Value inplace_input = inplace_op->getOperand(0);
-    Value inplace_output = inplace_op->getResult(inplace_info.index);
-
-    // case1：current io is inplace op
-    if (inplace_op == v_op) {
-      module::setAddress(inplace_input, v_addr);
-    }
-    // case2：current io is input of inplace op
-    else if (inplace_input == v_result) {
-      module::setAddress(inplace_output, v_addr);
-    }
-  }
-}
-
 void BMAddressAssign::assignIOByAddrMode(
     ModuleOp &m, std::map<ValueInfo, TensorLive> &liveRange,
     std::vector<ValueInfo> &inplace_ops, std::vector<ValueInfo> &common_ops,
@@ -517,7 +494,6 @@ void BMAddressAssign::assignIOByAddrMode(
       module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
       ValueInfo v_info(ios[io_index].getDefiningOp(),
                        ios[io_index].cast<OpResult>().getResultNumber());
-      inplace_addr_update(inplace_ops, v_info);
       erase_vinfo(common_ops, v_info);
       erase_vinfo(inplace_ops, v_info);
       liveRange.erase(v_info);
