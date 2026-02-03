@@ -461,7 +461,7 @@ if __name__ == '__main__':
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--add_postprocess", default="", type=str.lower,
-                        choices=['','yolov3','yolov5','yolov7','yolov8','yolov8_seg','yolov11','yolov11_seg','ssd','bnr', 'mmap2rgbmap'], help="add postprocess for model")
+                        choices=['','yolov3','yolov5','yolov7','yolov8','yolov8_seg','yolov11','yolov11_seg','yolov26','ssd','bnr', 'mmap2rgbmap'], help="add postprocess for model")
     parser.add_argument("--pruning", default="", type=str,
                         help="path of the pruning config file")
     parser.add_argument("--onnx_sim", default="", type=str, choices=['', 'skip_fuse_bn'],
