@@ -5621,6 +5621,7 @@ The interface definition
                 mul1_saturation: bool = True,
                 mul2_saturation: bool = True,
                 add_saturation: bool = True,
+                rope_mode: str = 'interleaved_pairs',
                 out_name: str = None):
             #pass
 
@@ -5644,6 +5645,7 @@ Explanation of parameters
 * mul1_saturation: bool type, indicating whether the calculation result of mul1 in RoPE requires saturation processing. The default is True saturation processing, and no modification is needed unless necessary.
 * mul2_saturation: bool type, indicating whether the calculation result of mul2 in RoPE requires saturation processing. The default is True saturation processing, and no modification is needed unless necessary.
 * add_saturation: bool type, indicating whether the add calculation result in RoPE requires saturation processing. The default is True saturation processing, and no modification is needed unless necessary.
+* rope_mode: Type String, representing the method of rotary position in RoPE. The default value is "interleaved_pairs", and the range is "interleaved_pairs", "contiguous_halves".
 * out_name: output name, type string, default to None.
 
 Return value

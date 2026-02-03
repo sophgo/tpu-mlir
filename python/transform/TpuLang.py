@@ -5633,7 +5633,11 @@ def rope(input: Tensor,
          mul1_saturation: bool = True,
          mul2_saturation: bool = True,
          add_saturation: bool = True,
+         rope_mode: str = 'interleaved_pairs',
          out_name: str = None):
+
+    assert rope_mode in ["interleaved_pairs",
+                         "contiguous_halves"], f"rope_mode:{rope_mode} is not supported"
 
     attr = {
         "is_permute_optimize": Attr(is_permute_optimize, "bool"),
@@ -5642,7 +5646,8 @@ def rope(input: Tensor,
         "add_round_mode": Attr(round_mode_convert(add_round_mode), data_type="string"),
         "mul1_saturation": Attr(mul1_saturation, "bool"),
         "mul2_saturation": Attr(mul2_saturation, "bool"),
-        "add_saturation": Attr(add_saturation, "bool")
+        "add_saturation": Attr(add_saturation, "bool"),
+        "rope_mode": Attr(rope_mode, data_type="string"),
     }
 
     if input.dtype not in ["float32", "float16"]:

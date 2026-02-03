@@ -5532,6 +5532,7 @@ rope
                 mul1_saturation: bool = True,
                 mul2_saturation: bool = True,
                 add_saturation: bool = True,
+                rope_mode: str = 'interleaved_pairs',
                 out_name: str = None):
             #pass
 
@@ -5555,6 +5556,7 @@ rope
 * mul1_saturation: bool 类型, 表示RoPE中的mul1计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
 * mul2_saturation: bool 类型, 表示RoPE中的mul2计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
 * add_saturation: bool 类型, 表示RoPE中的add计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* rope_mode: string类型，表示RoPE中旋转位置的方式。默认值是"interleaved_pairs",范围是“interleaved_pairs”，“contiguous_halves”。
 * out_name: output name, string类型，默认为None。
 
 返回值
