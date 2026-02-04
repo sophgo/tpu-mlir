@@ -1028,6 +1028,9 @@ public:
       return failure();
     }
     if (auto rope_op = dyn_cast<tpu::RopeOp>(nextOp)) {
+      if (rope_op.getIsPermuteOptimize()) {
+        return failure();
+      }
       /**
        * weight        ->         permuted_weight   ->
        *               -> Rope =>                    -> Rope -> perm
@@ -1036,82 +1039,100 @@ public:
        */
       // #############################  inW0   ###############################
       auto inW0 = rope_op.getInput2();
-      if (!module::isWeight(inW0)) {
-        return failure();
-      }
       std::vector<int64_t> inW0_shape = module::getShape(inW0);
       std::vector<int64_t> new_inW0_shape = {inW0_shape[0], inW0_shape[2],
                                              inW0_shape[1], inW0_shape[3]};
       auto newType = module::getTypeLike(inW0, new_inW0_shape);
-      auto weight0_op = inW0.getDefiningOp<top::WeightOp>();
-      auto weight0_type = module::getElementType(weight0_op.getOutput());
-      if (weight0_type.isF16() || weight0_type.isBF16()) {
-        auto weight0_data = weight0_op.read<uint16_t>();
-        auto weight0_tp =
-            std::make_shared<std::vector<uint16_t>>(weight0_data->size(), 0);
-        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
-                         ps);
-        auto weight0 = tpu_mlir::top::WeightOp::create<uint16_t>(
-            rope_op, "transposed_rope_weight0", *weight0_tp, newType);
-        rope_op.setOperand(1, weight0);
-      } else if (weight0_type.isF32()) {
-        auto weight0_data = weight0_op.read<float>();
-        auto weight0_tp =
-            std::make_shared<std::vector<float>>(weight0_data->size(), 0);
-        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
-                         ps);
-        auto weight0 = tpu_mlir::top::WeightOp::create<float>(
-            rope_op, "transposed_rope_weight0", *weight0_tp, newType);
-        rope_op.setOperand(1, weight0);
-      } else if (weight0_type.isInteger(8)) {
-        auto weight0_data = weight0_op.read<uint8_t>();
-        auto weight0_tp =
-            std::make_shared<std::vector<uint8_t>>(weight0_data->size(), 0);
-        function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
-                         ps);
-        auto weight0 = tpu_mlir::top::WeightOp::create<uint8_t>(
-            rope_op, "transposed_rope_weight0", *weight0_tp, newType);
-        rope_op.setOperand(1, weight0);
+
+      if (module::isWeight(inW0)) {
+        auto weight0_op = inW0.getDefiningOp<top::WeightOp>();
+        auto weight0_type = module::getElementType(weight0_op.getOutput());
+        if (weight0_type.isF16() || weight0_type.isBF16()) {
+          auto weight0_data = weight0_op.read<uint16_t>();
+          auto weight0_tp =
+              std::make_shared<std::vector<uint16_t>>(weight0_data->size(), 0);
+          function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
+                           ps);
+          auto weight0 = tpu_mlir::top::WeightOp::create<uint16_t>(
+              rope_op, "transposed_rope_weight0", *weight0_tp, newType);
+          rope_op.setOperand(1, weight0);
+        } else if (weight0_type.isF32()) {
+          auto weight0_data = weight0_op.read<float>();
+          auto weight0_tp =
+              std::make_shared<std::vector<float>>(weight0_data->size(), 0);
+          function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
+                           ps);
+          auto weight0 = tpu_mlir::top::WeightOp::create<float>(
+              rope_op, "transposed_rope_weight0", *weight0_tp, newType);
+          rope_op.setOperand(1, weight0);
+        } else if (weight0_type.isInteger(8)) {
+          auto weight0_data = weight0_op.read<uint8_t>();
+          auto weight0_tp =
+              std::make_shared<std::vector<uint8_t>>(weight0_data->size(), 0);
+          function_permute(weight0_data->data(), weight0_tp->data(), inW0_shape,
+                           ps);
+          auto weight0 = tpu_mlir::top::WeightOp::create<uint8_t>(
+              rope_op, "transposed_rope_weight0", *weight0_tp, newType);
+          rope_op.setOperand(1, weight0);
+        }
+      } else {
+        auto rope_name = module::getName(rope_op.getOutput()).str();
+        auto reshape_loc =
+            module::getLocLike(inW0, "_reshape_" + rope_name + "_w0");
+
+        rewriter.setInsertionPoint(rope_op);
+        auto reshape_op = rewriter.create<tpu::ReshapeOp>(reshape_loc, newType,
+                                                          ValueRange{inW0});
+        rope_op.setOperand(1, reshape_op.getOutput());
       }
 
       // #############################  inW1   ###############################
       auto inW1 = rope_op.getInput3();
-      if (!module::isWeight(inW1)) {
-        return failure();
-      }
       std::vector<int64_t> inW1_shape = module::getShape(inW1);
       std::vector<int64_t> new_inW1_shape = {inW1_shape[0], inW1_shape[2],
                                              inW1_shape[1], inW1_shape[3]};
       auto newType1 = module::getTypeLike(inW1, new_inW1_shape);
-      auto weight1_op = inW1.getDefiningOp<top::WeightOp>();
-      auto weight1_type = module::getElementType(weight1_op.getOutput());
-      if (weight1_type.isF16() || weight1_type.isBF16()) {
-        auto weight1_data = weight1_op.read<uint16_t>();
-        auto weight1_tp =
-            std::make_shared<std::vector<uint16_t>>(weight1_data->size(), 0);
-        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
-                         ps);
-        auto weight1 = tpu_mlir::top::WeightOp::create<uint16_t>(
-            rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
-        rope_op.setOperand(2, weight1);
-      } else if (weight1_type.isF32()) {
-        auto weight1_data = weight1_op.read<float>();
-        auto weight1_tp =
-            std::make_shared<std::vector<float>>(weight1_data->size(), 0);
-        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
-                         ps);
-        auto weight1 = tpu_mlir::top::WeightOp::create<float>(
-            rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
-        rope_op.setOperand(2, weight1);
-      } else if (weight1_type.isInteger(8)) {
-        auto weight1_data = weight1_op.read<uint8_t>();
-        auto weight1_tp =
-            std::make_shared<std::vector<uint8_t>>(weight1_data->size(), 0);
-        function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
-                         ps);
-        auto weight1 = tpu_mlir::top::WeightOp::create<uint8_t>(
-            rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
-        rope_op.setOperand(2, weight1);
+
+      if (module::isWeight(inW1)) {
+        auto weight1_op = inW1.getDefiningOp<top::WeightOp>();
+        auto weight1_type = module::getElementType(weight1_op.getOutput());
+        if (weight1_type.isF16() || weight1_type.isBF16()) {
+          auto weight1_data = weight1_op.read<uint16_t>();
+          auto weight1_tp =
+              std::make_shared<std::vector<uint16_t>>(weight1_data->size(), 0);
+          function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
+                           ps);
+          auto weight1 = tpu_mlir::top::WeightOp::create<uint16_t>(
+              rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
+          rope_op.setOperand(2, weight1);
+        } else if (weight1_type.isF32()) {
+          auto weight1_data = weight1_op.read<float>();
+          auto weight1_tp =
+              std::make_shared<std::vector<float>>(weight1_data->size(), 0);
+          function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
+                           ps);
+          auto weight1 = tpu_mlir::top::WeightOp::create<float>(
+              rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
+          rope_op.setOperand(2, weight1);
+        } else if (weight1_type.isInteger(8)) {
+          auto weight1_data = weight1_op.read<uint8_t>();
+          auto weight1_tp =
+              std::make_shared<std::vector<uint8_t>>(weight1_data->size(), 0);
+          function_permute(weight1_data->data(), weight1_tp->data(), inW1_shape,
+                           ps);
+          auto weight1 = tpu_mlir::top::WeightOp::create<uint8_t>(
+              rope_op, "transposed_rope_weight1", *weight1_tp, newType1);
+          rope_op.setOperand(2, weight1);
+        }
+      } else {
+        auto rope_name = module::getName(rope_op.getOutput()).str();
+        auto reshape_loc =
+            module::getLocLike(inW1, "_reshape_" + rope_name + "_w1");
+
+        rewriter.setInsertionPoint(rope_op);
+        auto reshape_op = rewriter.create<tpu::ReshapeOp>(reshape_loc, newType1,
+                                                          ValueRange{inW1});
+        rope_op.setOperand(2, reshape_op.getOutput());
       }
 
       rope_op->setAttr("is_permute_optimize", rewriter.getBoolAttr(true));
