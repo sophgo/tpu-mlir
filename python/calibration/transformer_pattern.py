@@ -253,6 +253,28 @@ openclip_blocks = {
     'l2_norm_block': ['top.Abs', 'top.Mul', 'top.Reduce', 'top.Sqrt', 'top.Div'],
 }
 
+yolo26_blocks = {
+    'trans_block': [
+        'top.SiLU', 'top.Slice', 'top.Slice', 'top.Conv', 'top.Reshape', 'top.Slice', 'top.Slice',
+        'top.Slice', 'top.Permute', 'top.Reshape', 'top.MatMul', 'top.Conv', 'top.MulConst',
+        'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Add', 'top.Conv', 'top.Add',
+        'top.Conv', 'top.SiLU', 'top.Conv', 'top.Add'
+    ],
+    'typical_block_nsm': [
+        'top.Slice', 'top.Slice', 'top.Conv', 'top.Conv', 'top.SiLU', 'top.SiLU', 'top.Conv',
+        'top.SiLU', 'top.Conv', 'top.SiLU', 'top.Add', 'top.Conv', 'top.SiLU', 'top.Conv',
+        'top.SiLU', 'top.Add', 'top.Concat', 'top.Conv', 'top.SiLU', 'top.Concat'
+    ],
+    'typical_block_lx': [
+        'top.SiLU', 'top.Slice', 'top.Slice', 'top.Conv', 'top.Conv', 'top.SiLU', 'top.SiLU',
+        'top.Conv', 'top.SiLU', 'top.Conv', 'top.SiLU', 'top.Add', 'top.Conv', 'top.SiLU',
+        'top.Conv', 'top.SiLU', 'top.Add', 'top.Concat', 'top.Conv', 'top.SiLU', 'top.Conv',
+        'top.Conv', 'top.SiLU', 'top.SiLU', 'top.Conv', 'top.SiLU', 'top.Conv', 'top.SiLU',
+        'top.Add', 'top.Conv', 'top.SiLU', 'top.Conv', 'top.SiLU', 'top.Add', 'top.Concat',
+        'top.Conv', 'top.SiLU', 'top.Concat'
+    ]
+}
+
 # "detr_pattern": ['top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Conv', 'top.Scale', 'top.Add']
 
 N_mode = [
@@ -342,8 +364,65 @@ class MatchPattern:
                 first_text_mlp_end_index = first_text_block_index + 31  # 31 is the index of the second mlp matmul in openclip text block
 
         split_fuse_fp_layer_list = []
+        split_fuse_fp_layer_list_extend = []
         if flag == 1:
             if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
+                # test if is yolo26
+                yolo26_block_counts = {
+                    name: type_tensors_str.count(''.join(map(str, sub_block)))
+                    for name, sub_block in yolo26_blocks.items()
+                }
+                if yolo26_block_counts['trans_block'] > 0 and (
+                        yolo26_block_counts['typical_block_nsm'] > 0
+                        or yolo26_block_counts['typical_block_lx'] > 0):
+                    #handle yolo26
+                    concat_ops = [
+                        x for x in all_tensors
+                        if self.parser.get_op_type_by_op_name(x) == 'top.Concat'
+                    ]
+                    pos_concat = None
+                    conf_concat = None
+                    for concat_op in concat_ops:
+                        next_ops = self.parser.get_next_op_by_op_name(concat_op)
+                        if all(
+                                self.parser.get_op_type_by_op_name(x) == 'top.Slice'
+                                for x in next_ops) and len(next_ops) == 2:
+                            concat_ = []
+                            for next_op in next_ops:
+                                next_next_ops = self.parser.get_next_op_by_op_name(next_op)
+                                if len(next_next_ops) == 1 and self.parser.get_op_type_by_op_name(
+                                        next_next_ops[0]) in ['top.Add', 'top.Sub']:
+                                    next_next_op = self.parser.get_next_op_by_op_name(
+                                        next_next_ops[0])
+                                    if len(next_next_op
+                                           ) == 1 and self.parser.get_op_type_by_op_name(
+                                               next_next_op[0]) == 'top.Concat':
+                                        concat_.append(next_next_op[0])
+                            if (len(concat_) == 2) and concat_[0] == concat_[1]:
+                                pos_concat = concat_op
+                                conf_concat = concat_[0]
+                            else:
+                                break
+                        else:
+                            continue
+                    if pos_concat is None or conf_concat is None:
+                        return split_fuse_fp_layer_list, 0, self._logs
+                    next_mul = self.parser.get_next_op_by_op_name(conf_concat)
+                    next_concat = self.parser.get_next_op_by_op_name(next_mul[0])
+                    pre_concat = self.parser.get_pre_op_by_op_name(next_concat[0])
+                    pre_sig = [x for x in pre_concat if x != next_mul[0]]
+                    conf_concat = self.parser.get_pre_op_by_op_name(pre_sig[0])[0]
+                    pre_ops = self.parser.get_pre_op_by_op_name(
+                        pos_concat) + self.parser.get_pre_op_by_op_name(conf_concat)
+                    while len(pre_ops) > 0:
+                        op_ = pre_ops.pop()
+                        split_fuse_fp_layer_list_extend.append(op_)
+                        pop_ = self.parser.get_pre_op_by_op_name(op_)
+                        if len(pop_) != 1 or len(self.parser.get_next_op_by_op_name(pop_[0])) != 1:
+                            continue
+                        else:
+                            pre_ops.append(pop_[0])
+                    flag = 2  # means two stage float
                 for op_name in all_tensors:
                     # detect the last conv of yolo head
                     # the pre op of the last conv should be SiLU or LeakyRelu
@@ -385,7 +464,7 @@ class MatchPattern:
                         for op in new_ops:
                             if op not in fp_layer_list:
                                 split_fuse_fp_layer_list.append(op)
-                return split_fuse_fp_layer_list, flag, self._logs
+                return split_fuse_fp_layer_list, split_fuse_fp_layer_list_extend, flag, self._logs
 
             for i in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
@@ -532,4 +611,4 @@ class MatchPattern:
                         if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
                             append_unduplicated(fp_layer_list, all_tensors[i])
-        return fp_layer_list, flag, self._logs
+        return fp_layer_list, [], flag, self._logs

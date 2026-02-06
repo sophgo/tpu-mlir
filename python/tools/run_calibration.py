@@ -113,9 +113,16 @@ if __name__ == '__main__':
     shape_ops = ShapeOps(args)
     shape_fp_layers = shape_ops.run()
     matcher = MatchPattern(args)
-    transformer_fp_layers, flag, match_log = matcher.run()
+    transformer_fp_layers, transformer_fp_layers_extend, flag, match_log = matcher.run()
     transformer_fp_layers = [item for item in transformer_fp_layers if item not in shape_fp_layers]
-    quant_table = gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, match_log)
+    transformer_fp_layers_extend = [
+        item for item in transformer_fp_layers_extend if item not in shape_fp_layers
+    ]
+    if flag == 2:
+        shape_fp_layers = shape_fp_layers + transformer_fp_layers
+        transformer_fp_layers = transformer_fp_layers_extend
+    quant_table = gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, flag, args,
+                                           match_log)
     if args.pre_qtable != '':
         quant_table.read(args.pre_qtable)
         quant_table.shape_layer_list = []

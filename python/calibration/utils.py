@@ -318,17 +318,17 @@ class QuantizeTable:
             f.write("# op_name   quantize_mode\n")
 
             # Write all layers with their respective mix_modes
-            f.write("# custom layers\n")
-            for layer, mode in zip(self.custom_layer_list, self.custom_mix_mode):
-                f.write(f"{layer} {mode}\n")
-            f.write("# shape layers\n")
-            for layer in self.shape_layer_list:
-                if layer not in self.custom_layer_list:
-                    f.write(f"{layer} {self.shape_mix_mode}\n")
             f.write("# pattern layers\n")
             for layer in self.pattern_layer_list:
                 if layer not in self.custom_layer_list and layer not in self.shape_layer_list:
                     f.write(f"{layer} {self.pattern_mix_mode}\n")
+            f.write("# shape layers\n")
+            for layer in self.shape_layer_list:
+                if layer not in self.custom_layer_list:
+                    f.write(f"{layer} {self.shape_mix_mode}\n")
+            f.write("# custom layers\n")
+            for layer, mode in zip(self.custom_layer_list, self.custom_mix_mode):
+                f.write(f"{layer} {mode}\n")
 
     def read(self, quantize_table: str) -> List[Tuple[str, str]]:
         """
@@ -401,11 +401,15 @@ class QuantizeTable:
         return f"QuantizeTableWriter(chip='{self.chip}', total_layers={self.get_total_layers()}, mix_modes={counts})"
 
 
-def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, logs=None):
+def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, flag, args, logs=None):
     chip = args.chip
     cali_table_name = args.calibration_table
     if args.fp_type == 'auto':
-        shape_mix_mode = FLOAT_MAP[args.chip]
+        if flag == 2:
+            shape_mix_mode = 'F32' if 'F32' in chip_support_mix_fp_type[args.chip] else FLOAT_MAP[
+                args.chip]
+        else:
+            shape_mix_mode = FLOAT_MAP[args.chip]
         pattern_mix_mode = FLOAT_MAP[args.chip]
     else:
         shape_mix_mode = args.fp_type
