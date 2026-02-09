@@ -88,6 +88,22 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
              RMSNormOp, ReshapeOp, LutOp, BinaryShiftOp>(op)) {
       return false;
     }
+    // for elementwise binary operations
+    // only support broadcasting on the last dim
+    // and the shape size should be the same
+    if (isa<BinaryShiftOp>(op) || module::isTpuArOp(op)) {
+      auto lshape = module::getShape(op->getOperand(0));
+      auto rshape = module::getShape(op->getOperand(1));
+      if (lshape.size() != rshape.size()) {
+        return false;
+      }
+      auto size = lshape.size();
+      for (int i = 0; i < size - 1; i++) {
+        if (lshape[i] != rshape[i]) {
+          return false;
+        }
+      }
+    }
     if (isa<ReshapeOp>(op)) {
       auto ishape = module::getShape(op->getOperand(0));
       auto oshape = module::getShape(op->getResult(0));
