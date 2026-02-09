@@ -879,10 +879,10 @@ int omp_schedule(int count) {
 }
 
 void function_relu(float *src, float *dst, int64_t size, float relu_limit,
-                   mlir::Type elem_type) {
+                   mlir::Type elem_type, float zero_point) {
 #pragma omp parallel for schedule(static, omp_schedule(size))
   for (int64_t i = 0; i < size; ++i) {
-    dst[i] = src[i] > 0 ? src[i] : 0;
+    dst[i] = src[i] > zero_point ? src[i] : zero_point;
     if (relu_limit > 0.f && dst[i] > relu_limit) {
       dst[i] = relu_limit;
     }

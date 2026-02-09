@@ -20,7 +20,7 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
   auto in1 = op.getInputs()[1];
   auto shape0 = module::getShape(in0);
   auto shape1 = module::getShape(in1);
-  if (shape0.size() != shape1.size()) {
+  if (shape0.size() != 1 && shape1.size() != 1 && shape0.size() != shape1.size()) {
     UNREACHABLE_OP("Not supported", op);
   }
   int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
@@ -30,17 +30,30 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
   if (shape0.size() > 4 && (n0 != n1)) {
     UNREACHABLE_OP("Not Implemented", op);
   }
+  if (shape0.size() == 1 && (n0 != 1 || c0 != 1 || h0 != 1 || w0 != 1)) {
+    UNREACHABLE_OP("Not Implemented", op);
+  }
+  if (shape1.size() == 1 && (n1 != 1 || c1 != 1 || h1 != 1 || w1 != 1)) {
+    UNREACHABLE_OP("Not Implemented", op);
+  }
   if (module::isUniformQuantized(op.getOutput())) {
     auto input0 = getCudaData(in0);
     auto input1 = getCudaData(in1);
     auto output = getCudaData(out);
+    auto input0_qtype = module::getUniformQuantizedType(in0);
+    auto input1_qtype = module::getUniformQuantizedType(in1);
+    auto output_qtype = module::getUniformQuantizedType(out);
+    auto input0_zp = isa<top::WeightOp>(op.getInputs()[0].getDefiningOp()) ? 0 : input0_qtype.getZeroPoint();
+    auto input1_zp = isa<top::WeightOp>(op.getInputs()[1].getDefiningOp()) ? 0 : input1_qtype.getZeroPoint();
+    auto output_zp = output_qtype.getZeroPoint();
     if (module::isCV18xx()) {
       auto multiplier_v =
           module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
       auto rshift_v = module::getI64Array(op.getRshifts(), 1, 0);
       cuda::cvAdd4DInt8(input0, input1, output, multiplier_v->at(0),
                         multiplier_v->at(1), rshift_v->at(0), op.getDoRelu(), n0,
-                        c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+                        c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2,
+                        input0_zp, input1_zp, output_zp);
     } else {
       auto sign0 = !module::getStorageType(in0).isUnsignedInteger(8);
       auto sign1 = !module::getStorageType(in1).isUnsignedInteger(8);
@@ -52,7 +65,8 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
       cuda::add4DInt8(input0, input1, output, multiplier_v->at(0),
                       multiplier_v->at(1), rshift_v->at(0), rshift_v->at(1),
                       sign0, sign1, out_sign, op.getDoRelu(), n0, c0, h0, w0, n1,
-                      c1, h1, w1, n2, c2, h2, w2);
+                      c1, h1, w1, n2, c2, h2, w2,
+                      input0_zp, input1_zp, output_zp);
     }
   } else {
     if (module::getStorageType(out).isFloat8E4M3FN()) {
@@ -91,12 +105,12 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
       output_ui16.reset();
       input0_ui16.reset();
       input1_ui16.reset();
-    }
-    else if (module::getStorageType(in0).isF32()) {
+    } else if (module::getStorageType(in0).isF32()) {
       auto input0 = getCudaData(in0);
       auto input1 = getCudaData(in1);
       auto output = getCudaData(out);
-      cuda::add4DF32(input0, 1.0, input1, 1.0, output, op.getDoRelu(),
+      auto coeff_ = module::getF64Array(op.getCoeff(), 2, 1);
+      cuda::add4DF32(input0, coeff_->at(0), input1, coeff_->at(1), output, op.getDoRelu(),
                      n0, c0, h0, w0,
                      n1, c1, h1, w1,
                      n2, c2, h2, w2);
@@ -105,7 +119,8 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
       auto input0 = newCudaData(in0, cuda::DT_F32);
       auto input1 = newCudaData(in1, cuda::DT_F32);
       auto output = cuda_malloc(module::getNumElements(out) * sizeof(float));
-      cuda::add4DF32(input0.get(), 1.0, input1.get(), 1.0, output.get(), op.getDoRelu(),
+      auto coeff_ = module::getF64Array(op.getCoeff(), 2, 1);
+      cuda::add4DF32(input0.get(), coeff_->at(0), input1.get(), coeff_->at(1), output.get(), op.getDoRelu(),
                      n0, c0, h0, w0,
                      n1, c1, h1, w1,
                      n2, c2, h2, w2);

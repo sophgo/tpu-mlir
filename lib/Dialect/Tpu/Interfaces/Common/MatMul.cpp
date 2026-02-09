@@ -85,9 +85,6 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     } else {
       // trans hw
       p.M = a_s[a_dims - 1];
-      for (int i = 0; i < a_dims - 2; i++) {
-        p.batch *= a_s[i];
-      }
     }
   } else {
     p.M = a_s[a_dims - 2];
@@ -336,9 +333,6 @@ matmul_attr_t tpu::MatMulOp::dynparseParam() {
     } else {
       // trans hw
       p.M = a_s[a_dims - 1];
-      for (int i = 0; i < a_dims - 2; i++) {
-        p.batch *= a_s[i];
-      }
     }
   } else {
     p.M = a_s[a_dims - 2];

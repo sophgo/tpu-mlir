@@ -112,7 +112,7 @@ static inline void get_factory(T num, std::vector<T> &factors,
 int omp_schedule(int count);
 
 void function_relu(float *src, float *dst, int64_t size, float relu_limit = 0.f,
-                   mlir::Type elem_type = nullptr);
+                   mlir::Type elem_type = nullptr, float zero_point = 0.f);
 
 template <typename T>
 void topk_indices(std::vector<std::pair<int, T>> &result, const T *items,

@@ -19,5 +19,14 @@ void py_cuda::cudaMulShiftOp(tpu::MulShiftOp op) {
   auto num = module::getBytes(op.getOutput());
   int32_t m = op.getMultiplier();
   int32_t s = op.getRshift();
-  cuda::mulShift(input, output, m, s, num, getCudaType(op.getInput()));
+  int32_t input_zp = 0, output_zp = 0;
+  if (module::isUniformQuantized(op.getInput())) {
+    auto qtype = module::getUniformQuantizedType(op.getInput());
+    input_zp = qtype.getZeroPoint();
+  }
+  if (module::isUniformQuantized(op.getOutput())) {
+    auto qtype = module::getUniformQuantizedType(op.getOutput());
+    output_zp = qtype.getZeroPoint();
+  }
+  cuda::mulShift(input, output, m, s, num, getCudaType(op.getInput()), input_zp, output_zp);
 }

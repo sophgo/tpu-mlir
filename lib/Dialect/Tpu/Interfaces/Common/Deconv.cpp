@@ -26,7 +26,7 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.with_bias = getWithBias();
-  ;
+
   p.g = getGroup();
   p.n = ishape[0];
   p.ic = ishape[1];

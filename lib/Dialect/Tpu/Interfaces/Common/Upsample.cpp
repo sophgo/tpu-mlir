@@ -34,7 +34,13 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
 
   if (getDoRelu()) {
     auto limit = getReluLimit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+    float zero_point = 0.f;
+    if (module::isUniformQuantized(getOutput())) {
+      auto qtype = module::getUniformQuantizedType(getOutput());
+      zero_point = qtype.getZeroPoint();
+    }
+    function_relu(p.outputs[0], p.outputs[0], num_elem, limit, nullptr,
+                  zero_point);
   }
   return success();
 }

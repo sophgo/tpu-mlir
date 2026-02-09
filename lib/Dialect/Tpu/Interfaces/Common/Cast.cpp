@@ -15,19 +15,19 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 
-static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int num,
-                             bool is_tpu) {
+static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale,
+                             int zero_point, int num, bool is_tpu) {
   // int8 / uint8 ==> bf16 / fp32
   if (is_tpu) {
     scale = BF16(scale);
 #pragma omp parallel for schedule(static, omp_schedule(num))
     for (int i = 0; i < num; i++) {
-      p_dst[i] = bf16_mul(BF16(p_src[i], false), scale);
+      p_dst[i] = bf16_mul(BF16(p_src[i], false) - zero_point, scale);
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num))
     for (int i = 0; i < num; i++) {
-      p_dst[i] = p_src[i] * scale;
+      p_dst[i] = (p_src[i] - zero_point) * scale;
     }
   }
 }
@@ -74,11 +74,13 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   } else if (isOutQuant && fInput) {
     // FP32|BF16|F16|... => INT8|UINT8|...
     auto qtype = module::getUniformQuantizedType(getOutput());
+    auto zero_point = qtype.getZeroPoint();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       float v;
       if (is_cv18xx) {
         v = bf16_mul(BF16(p.inputs[0][i], false), BF16(1. / qtype.getScale()));
+        v += zero_point;
       } else {
         if (in_type.isBF16()) {
           v = requant(BF16(p.inputs[0][i], false), qtype);
@@ -92,8 +94,8 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     // INT8|UINT8|... ==> FP32|BF16|F16|...
     auto qtype = module::getUniformQuantizedType(getInput());
     if (is_cv18xx) {
-      cvi_int8_to_bf16(p.inputs[0], p.outputs[0], qtype.getScale(), num_elem,
-                       is_tpu);
+      cvi_int8_to_bf16(p.inputs[0], p.outputs[0], qtype.getScale(),
+                       qtype.getZeroPoint(), num_elem, is_tpu);
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; i++) {

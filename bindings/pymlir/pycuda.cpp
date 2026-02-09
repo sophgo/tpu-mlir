@@ -133,9 +133,7 @@ void py_cuda::mix_load(ModuleOp m) {
             auto buffer =
                 std::make_shared<std::vector<float>>(module::getNumElements(v));
             buffer_map_[name] = std::move(buffer);
-            auto buffer_infer =
-                std::make_shared<std::vector<float>>(module::getNumElements(v));
-            infer_map_[name] = std::move(buffer_infer);
+            infer_map_[name] = buffer_map_[name];
             value_map_[name] = v;
           }
         }
@@ -166,12 +164,6 @@ void py_cuda::mix_load(ModuleOp m) {
           }
         }
         value_map_[name] = v;
-      // } else if (is_no_mem_op(op)) { // all cuda supported
-      //   auto v = op->getResult(0);
-      //   auto name = module::getName(v).str();
-      //   auto in = module::getName(op->getOperand(0)).str();
-      //   buffer_map_[name] = buffer_map_[in];
-      //   value_map_[name] = v;
       } else {
         if (is_cuda_support_op(op)) {
           for (auto r : op->getResults()) {
@@ -458,6 +450,7 @@ void py_cuda::gpu_invoke(bool dump_all, const std::vector<std::string>& extra_ou
           cuda_malloc(activation_map_, out);
         }
         // 2. inference
+        // printf("cuda invoke op: %s\n", op->getName().getStringRef().str().c_str());
         if (auto tpuOp = dyn_cast<tpu::AddOp>(op)) {
           cudaAddOp(tpuOp);
         } else if (auto topOp = dyn_cast<top::AddOp>(op)) {
@@ -581,12 +574,17 @@ void py_cuda::gpu_invoke(bool dump_all, const std::vector<std::string>& extra_ou
           __asm__("int3");
           UNREACHABLE_OP("Not Implemented", op);
         }
+        // printf("cuda invoke op %s success.\n", op->getName().getStringRef().str().c_str());
         // 3. after inference, check input is still need, or remove from cuda
         for (auto in : op->getOperands()) {
           if (!module::isActive(in)) {
             continue;
           }
           auto name = module::getName(in).str();
+          if (activation_map_.find(name) == activation_map_.end()) {
+            // avoid erase inputs twice, like mul(x,x)
+            continue;
+          }
           if (isa<top::InputOp>(in.getDefiningOp())) {
             continue;
           }
@@ -617,6 +615,7 @@ void py_cuda::gpu_invoke(bool dump_all, const std::vector<std::string>& extra_ou
 
 void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_outputs) {
   auto m = module_.get();
+  std::vector<std::string> skip_h2d_outputs;
   for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
       if (isa<top::NoneOp, top::InputOp, top::WeightOp, func::FuncOp,
@@ -630,13 +629,26 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
       } else if (!is_cuda_support_op(op)) {
         auto infer_op = dyn_cast<InferenceInterface>(op);
         auto name = module::getName(op).str();
+        // printf("CPU invoke op %s.\n", op->getName().getStringRef().str().c_str());
         if (failed(infer_op.inference(*inference_map[name]))) {
           infer_op.dump();
           llvm_unreachable("invoke failed!!");
         }
+        // printf("CPU invoke op %s success.\n", op->getName().getStringRef().str().c_str());
+        for (auto result : op->getResults()) {
+          if (result.getType().isa<NoneType>()) {
+            continue;
+          } else if (0 == module::getNumElements(result)) {
+            continue;
+          } else {
+            auto o_name = module::getName(result).str();
+            if (output_names_.end() != std::find(output_names_.begin(), output_names_.end(), o_name)) {
+              skip_h2d_outputs.push_back(o_name);
+            }
+          }
+        }
         // output tensor locates in cpu, and if it is needed to gpu op, it will be
         // copied to gpu in getCudaData and newCudaData
-        // std::cout << "invoke cpu op: " << op->getName().getStringRef().str() << std::endl;
       } else {
         // 1. alloc output mem in cuda
         for (auto out : op->getResults()) {
@@ -649,8 +661,8 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
           }
           cuda_malloc(activation_map_, out);
         }
-        // std::cout << "invoke cuda op: " << op->getName().getStringRef().str() << std::endl;
         // 2. inference
+        // printf("CUDA invoke op %s.\n", op->getName().getStringRef().str().c_str());
         if (auto tpuOp = dyn_cast<tpu::AddOp>(op)) {
           cudaAddOp(tpuOp);
         } else if (auto topOp = dyn_cast<top::AddOp>(op)) {
@@ -774,12 +786,18 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
           __asm__("int3");
           UNREACHABLE_OP("Not Implemented", op);
         }
+        CHECK_CUDA(cudaGetLastError());
+        // printf("CUDA invoke op %s success.\n", op->getName().getStringRef().str().c_str());
         // 3. after inference, check input is still need, or remove from cuda
         for (auto in : op->getOperands()) {
           if (!module::isActive(in)) {
             continue;
           }
           auto name = module::getName(in).str();
+          if (activation_map_.find(name) == activation_map_.end()) {
+            // avoid erase inputs twice, like mul(x,x)
+            continue;
+          }
           if (isa<top::InputOp>(in.getDefiningOp())) {
             continue;
           }
@@ -805,7 +823,7 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
           auto name = module::getName(out).str();
           if (buffer_map_.find(name) != buffer_map_.end()) {
             cudaDeviceSynchronize();
-            cuda_to_host(name,false);
+            cuda_to_host(name, false);
           }
           if (infer_map_.find(name) != infer_map_.end()) {
             cudaDeviceSynchronize();
@@ -818,6 +836,9 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
   // after inference, copy result to buffer
   cudaDeviceSynchronize();
   for (auto &name : output_names_) {
+    if (std::find(skip_h2d_outputs.begin(), skip_h2d_outputs.end(), name) != skip_h2d_outputs.end()) {
+      continue;
+    }
     cuda_to_host(name, false);
   }
 }

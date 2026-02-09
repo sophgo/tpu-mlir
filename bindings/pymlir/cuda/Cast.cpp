@@ -54,21 +54,22 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
   if (isOutQuant && fInput) {
     auto qtype = module::getUniformQuantizedType(op.getOutput());
     auto scale = qtype.getScale();
+    auto zero_point = qtype.getZeroPoint();
     if (is_cv18xx) {
       bool is_bf16 = in_type.isBF16();
-      cuda::cvQuantInt8(input, output, BF16(1. / scale), num_elem, is_bf16);
+      cuda::cvQuantInt8(input, output, BF16(1. / scale), num_elem, is_bf16, zero_point);
     } else if (in_type.isF32()) {
       auto rmode = rmode_convert(op.getRoundMode());
       cuda::f32ScaleToInt8(input, output, 1. / scale, num_elem,
-                            !out_type.isUnsignedInteger(8), rmode);
+                            !out_type.isUnsignedInteger(8), rmode, zero_point);
     } else if (in_type.isBF16()) {
       auto rmode = rmode_convert(op.getRoundMode());
       cuda::bf16ScaleToInt8(input, output, 1. / scale, num_elem,
-                            !out_type.isUnsignedInteger(8), rmode);
+                            !out_type.isUnsignedInteger(8), rmode, zero_point);
     } else if (in_type.isF16()) {
       auto rmode = rmode_convert(op.getRoundMode());
       cuda::f16ScaleToInt8(input, output, 1. / scale, num_elem,
-                           !out_type.isUnsignedInteger(8), rmode);
+                           !out_type.isUnsignedInteger(8), rmode, zero_point);
     } else {
       UNREACHABLE_OP("Not Implemented", op);
     }
@@ -76,41 +77,43 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
   } else if (fOutput && isInQuant) {
     auto qtype = module::getUniformQuantizedType(op.getInput());
     auto scale = qtype.getScale();
+    auto zero_point = qtype.getZeroPoint();
     auto stype = module::getStorageType(op.getInput());
     if (stype.isInteger(8)) {
       if (is_cv18xx) {
         if (out_type.isF32()) {
-          cuda::cvScaleToF32(input, output, BF16(scale), num_elem);
+          cuda::cvScaleToF32(input, output, BF16(scale), num_elem, zero_point);
         } else {
-          cuda::cvScaleToBF16(input, output, BF16(scale), num_elem);
+          cuda::cvScaleToBF16(input, output, BF16(scale), num_elem, zero_point);
         }
       } else {
         if (out_type.isF32()) {
           cuda::int8ScaleToF32(input, output, scale, num_elem,
-                              !stype.isUnsignedInteger());
+                              !stype.isUnsignedInteger(), zero_point);
         } else if (out_type.isBF16()) {
           cuda::int8ScaleToBF16(input, output, scale, num_elem,
-                                !stype.isUnsignedInteger());
+                                !stype.isUnsignedInteger(), zero_point);
         } else if (out_type.isF16()) {
           cuda::int8ScaleToF16(input, output, scale, num_elem,
-                              !stype.isUnsignedInteger());
+                              !stype.isUnsignedInteger(), zero_point);
         } else {
           UNREACHABLE_OP("Not Implemented", op);
         }
       }
     } else if (stype.isInteger(16)) {
       if (out_type.isF32()) {
-        cuda::int16ScaleToF32(input, output, scale, num_elem);
+        cuda::int16ScaleToF32(input, output, scale, num_elem, zero_point);
       } else if (out_type.isBF16()) {
-        cuda::int16ScaleToBF16(input, output, scale, num_elem);
+        cuda::int16ScaleToBF16(input, output, scale, num_elem, zero_point);
       } else if (out_type.isF16()) {
-        cuda::int16ScaleToF16(input, output, scale, num_elem);
+        cuda::int16ScaleToF16(input, output, scale, num_elem, zero_point);
       } else {
         UNREACHABLE_OP("Not Implemented data type", op);
       }
     }
   } else {
+    cuda::rounding_mode_t rmode = is_cv18xx ? cuda::RD_TOWARDS_ZERO : cuda::RD_HALF_TO_EVEN;
     cuda::convertType(input, output, num_elem, getCudaType(op.getInput()),
-                      getCudaType(op.getOutput()));
+                      getCudaType(op.getOutput()), rmode);
   }
 }

@@ -36,9 +36,20 @@ void py_cuda::cudaLayerNormOp(tpu::LayerNormOp op) {
     auto output_f32 = cuda_malloc(outer_dim * inner_dim * sizeof(float));
     auto weight_f32 = have_weight? newCudaData(op.getWeight(), cuda::DT_F32): nullptr;
     auto bias_f32 = have_bias? newCudaData(op.getBias(), cuda::DT_F32): nullptr;
-    cuda::bmLayerNorm(input_f32.get(), output_f32.get(), outer_dim,
-                      inner_dim, have_weight ? weight_f32.get() : nullptr,
-                      have_bias ? bias_f32.get() : nullptr, eps_, getCudaType(op.getInput()));
+    if (module::isCV18xx()) {
+      auto table = newCudaData(op.getTable(), cuda::DT_F32);
+      auto mtable = newCudaData(op.getMantissaTable(), cuda::DT_F32);
+      cuda::cvLayerNorm(input_f32.get(), output_f32.get(), outer_dim,
+                        inner_dim, have_weight ? weight_f32.get() : nullptr,
+                        have_bias ? bias_f32.get() : nullptr,
+                        table.get(), mtable.get(), eps_);
+      table.reset();
+      mtable.reset();
+    } else {
+      cuda::bmLayerNorm(input_f32.get(), output_f32.get(), outer_dim,
+                        inner_dim, have_weight ? weight_f32.get() : nullptr,
+                        have_bias ? bias_f32.get() : nullptr, eps_, getCudaType(op.getInput()));
+    }
     cuda::convertType(output_f32.get(), getCudaData(op.getOutput()),
                       outer_dim * inner_dim, cuda::DT_F32,
                       getCudaType(op.getOutput()));
