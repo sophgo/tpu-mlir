@@ -128,6 +128,7 @@ find_package(ZLIB REQUIRED)
 aux_source_directory(src APP_SRC_FILES)
 
 # build main test
+add_definitions(-DPPL_TUNE)
 aux_source_directory(host HOST_SRC_FILES)
 add_executable(main ${APP_SRC_FILES}
                ${HOST_SRC_FILES}

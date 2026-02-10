@@ -28,6 +28,10 @@ void set_group_num(int num);
 
 void set_block_num(int num);
 
+void set_block_num_max() {
+  set_block_num(INT32_MAX);
+}
+
 int get_group_num();
 
 int get_block_num();
@@ -45,6 +49,7 @@ void cancel_tpu_poll();
 void parallel_start();
 void parallel_end();
 
+// please remove these apis later
 void sync_engine(int sync_type, bool all_core);
 
 void sync_core() { sync_engine(SYNC_ALL, false); }
@@ -58,10 +63,6 @@ void sync_hau() { sync_engine(HAU_SYNC, false); }
 void sync_tiu_dma(bool all_core = false) {
   sync_engine(TIU_DMA_SYNC, all_core);
 }
-
-void msg_send(int msg_idx, int wait_cnt, bool is_dma);
-
-void msg_wait(int msg_idx, int send_cnt, bool is_dma);
 
 void fence();
 
@@ -84,6 +85,20 @@ int chip_num();
 int chip_id();
 
 int *chip_map();
+
+int rank();
+
+int get_ccl_msg_id();
+
+int get_used_port_num();
+
+int *get_used_ports();
+
+int get_port(int chip_id, int peer_chipid, int send_or_recv);
+
+void sccl_init(int num_ranks, int rank, int *chip_map, int sccl_algo);
+
+void rvt_kernel_start();
 
 /************************************************************************************
  */

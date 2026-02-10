@@ -1,18 +1,15 @@
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/file.h>
-#include <ppl_jit.h>
 #include "host_def.h"
+#include <fcntl.h>
+#include <ppl_jit.h>
+#include <sys/file.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 static thread_local void *m_cmdid_node = NULL;
 
-void ppl_set_node(void *cmdid_node)
-{
-    m_cmdid_node = cmdid_node;
-}
+void ppl_set_node(void *cmdid_node) { m_cmdid_node = cmdid_node; }
 
 static int execCompileCommand(const std::string &command, std::string &output) {
   char buffer[256];
@@ -30,23 +27,23 @@ static int execCompileCommand(const std::string &command, std::string &output) {
 namespace fs = std::filesystem;
 const std::string RESULT_FILE = "compiled";
 
-int acquireLock(const fs::path& lockPath) {
-    int fd = open(lockPath.c_str(), O_CREAT | O_RDWR, 0666);
-    if (fd == -1) {
-        throw std::runtime_error("Procecss " + std::to_string(getpid()) +
-                                 ": Failed to open: " + lockPath.string());
-    }
-    if (flock(fd, LOCK_EX) == -1) {
-        close(fd);
-        throw std::runtime_error("Procecss " + std::to_string(getpid()) +
-                                 ": File lock failure: " + lockPath.string());
-    }
-    return fd;
+int acquireLock(const fs::path &lockPath) {
+  int fd = open(lockPath.c_str(), O_CREAT | O_RDWR, 0666);
+  if (fd == -1) {
+    throw std::runtime_error("Procecss " + std::to_string(getpid()) +
+                             ": Failed to open: " + lockPath.string());
+  }
+  if (flock(fd, LOCK_EX) == -1) {
+    close(fd);
+    throw std::runtime_error("Procecss " + std::to_string(getpid()) +
+                             ": File lock failure: " + lockPath.string());
+  }
+  return fd;
 }
 
 void releaseLock(int fd) {
-    flock(fd, LOCK_UN);
-    close(fd);
+  flock(fd, LOCK_UN);
+  close(fd);
 }
 
 typedef void (*KERNEL_FUNC)(void *);
@@ -177,7 +174,8 @@ public:
       }
       auto set_id = (NODE_FUNC)dlsym(handle, "set_id_node");
       set_id(pid_node);
-      auto kernel_func = (KERNEL_FUNC)dlsym(handle, func_name.c_str());
+      auto func_entry_name = func_name + "_entry";
+      auto kernel_func = (KERNEL_FUNC)dlsym(handle, func_entry_name.c_str());
       if (!kernel_func) {
         printf("get ppl kernel func failed! %s\n", dlerror());
         dlclose(handle);
@@ -259,7 +257,7 @@ private:
     fs::path result_file = fs::path(path) / RESULT_FILE;
     int ret = 0;
     if (fs::exists(result_file)) {
-        return ret;
+      return ret;
     }
     // file lock
     int lockFd = -1;
@@ -275,14 +273,14 @@ private:
       ret >>= 8;
       switch (ret) {
       case 0: {
-      #ifdef DDEBUG
+#ifdef DDEBUG
         printf("[compile jit success]\n");
-      #endif
+#endif
         std::ofstream ofs(result_file);
         if (!ofs) {
           throw std::runtime_error(
-            "Procecss " + std::to_string(getpid()) +
-            ": Creat flag file failed: " + result_file.string());
+              "Procecss " + std::to_string(getpid()) +
+              ": Creat flag file failed: " + result_file.string());
           ofs.close();
         }
         break;
@@ -294,8 +292,8 @@ private:
       }
       default: {
         cmd.str("");
-        cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name << " "
-            << inc_path << " " << path << " " << chip << " " << args;
+        cmd << "ppl_jit.sh " << std::quoted(file_name) << " " << func_name
+            << " " << inc_path << " " << path << " " << chip << " " << args;
         ret = system(cmd.str().c_str());
         if (ret != 0) {
           printf("run ppl_jit failed with ret 0x%x!\n", ret);
@@ -310,8 +308,8 @@ private:
   }
 };
 
-int ppl_jit_call(const char *file_name, const char *func_name,
-                  const char *args, void *st) {
+int ppl_jit_call(const char *file_name, const char *func_name, const char *args,
+                 void *st) {
   std::string work_dir =
       getenv("PPL_WORK_PATH") ? getenv("PPL_WORK_PATH") : getenv("PWD");
   std::string cache_dir = getenv("PPL_CACHE_PATH")

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "tpuDNN.h"
 #include <cstdint>
 #include <cstddef>
 #include<vector>
@@ -105,6 +105,8 @@ typedef enum {
   TPUDNN_ACTIVE_EXP2 = 40,
   TPUDNN_ACTIVE_TRUNC = 41,
   TPUDNN_ACTIVE_ARCTAN = 42,
+  TPUDNN_ACTIVE_ISNEGINF = 43,
+  TPUDNN_ACTIVE_ISPOSINF = 44,
 } tensor_active_type_t;
 
 typedef enum {
@@ -135,6 +137,7 @@ typedef struct
   int dilation_h;
   int dilation_w;
   int groups;
+  tpudnnDataType_t calDtype;
 }tpudnnConv2dParam_t;
 
 typedef struct
@@ -179,6 +182,20 @@ typedef enum {
     PAGED_ATTENTION_PREFILL = 2,
     PAGED_ATTENTION_DECODE = 3,
 } AttentionMode_t;
+typedef enum {
+  XOR = 0,
+  AND,
+  OR,
+} BitwiseMode_t;
+
+typedef enum {
+  TPUDNN_EQ = 0,
+  TPUDNN_NE,
+  TPUDNN_GT,
+  TPUDNN_GE,
+  TPUDNN_LT,
+  TPUDNN_LE,
+} CompareMode_t;
 
 /**
  * @brief tpudnnCreateDeviceTensor
@@ -285,6 +302,19 @@ static inline bool tpudnnIsTensorContiguous(const tpudnnTensor_t *tensor)
     return true;
 }
 
+static inline bool tpudnnIsTensorInner3DContiguous(const tpudnnTensor_t* t)
+{
+    bool succ = true;
+    if ( t->dim < 3 ) { return false; }
+    int stride = 1;
+    for (int i = t->dim - 1; i >= t->dim - 3; i--)
+    {
+        if ( t->stride[i] == stride ) { stride *= t->shape[i]; }
+        else { succ = false; break;}
+    }
+    return succ;
+}
+
 static inline bool tpudnnIsTensorTransposed ( const tpudnnTensor_t * tensor )
 {
     if ( tensor->dim < 2 || tpudnnIsTensorContiguous ( tensor ) )
@@ -337,7 +367,22 @@ static inline tpudnnTensor_t tpudnnUndefinedTensor()
     return tensor;
 }
 
+static inline void tpudnnProcessZeroDim( tpudnnTensor_t * tensor )
+{
+    if ( tensor->dim != 0) return;
+    tensor->dim = 1; tensor->shape[0] = 1; tensor->stride[0] = 1;
+    return;
+}
+
 tpudnnStatus_t tpudnnBinaryAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    tpudnnTensor_t other,
+    float scalar,
+    tpudnnTensor_t output,
+    int binary_type);
+
+tpudnnStatus_t tpudnnBinaryWStrideAsync(
     tpudnnHandle_t handle,
     tpudnnTensor_t input,
     tpudnnTensor_t other,
@@ -366,6 +411,14 @@ tpudnnStatus_t tpudnnMatmulAsync(
     tpudnnTensor_t left,
     tpudnnTensor_t right,
     tpudnnTensor_t bias,
+    tpudnnTensor_t output);
+
+tpudnnStatus_t tpudnnMatmulAsync_f32io_16_cal(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t left,
+    tpudnnTensor_t right,
+    tpudnnTensor_t bias,
+    tpudnnDataType_t calDtype,
     tpudnnTensor_t output);
 
 tpudnnStatus_t tpudnnSliceScatterAsync(
@@ -416,6 +469,7 @@ tpudnnStatus_t tpudnnWhereAsync(
 tpudnnStatus_t tpudnnNorm2Async(
     tpudnnHandle_t handle,
     const tpudnnTensor_t input,
+    const tpudnnTensor_t buffer,
     int keepdim,
     tpudnnTensor_t output);
 
@@ -557,6 +611,12 @@ tpudnnStatus_t tpudnnPoolingForwardAsync (
     tpudnnTensor_t output,
     TPUDNN_PoolingDescriptor_t pooling_desc);
 
+tpudnnStatus_t tpudnnAvgPoolingBackwardAsync (
+    tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    tpudnnTensor_t output,
+    int kernel_size);
+
 tpudnnStatus_t tpudnnMaxPoolingWithMaskForwardAsync (
     tpudnnHandle_t handle,
     tpudnnTensor_t input,
@@ -664,6 +724,30 @@ tpudnnStatus_t tpudnnTopkAsync(
     bool sorted,
     tpudnnTensor_t value,
     tpudnnTensor_t index);
+
+tpudnnStatus_t tpudnnFastTopkAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    tpudnnTensor_t value,
+    tpudnnTensor_t index,
+    tpudnnTensor_t value_buffer,
+    tpudnnTensor_t index_buffer,
+    tpudnnTensor_t mask_buffer,
+    int k,
+    int axis,
+    bool largest,
+    bool sorted);
+
+tpudnnStatus_t tpudnnNoauxTcTopkAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t values,
+    tpudnnTensor_t indices,
+    tpudnnTensor_t scores,
+    int batch_size,
+    int total_size,
+    int n_groups,
+    int topk_groups,
+    int top_k);
 
 tpudnnStatus_t tpudnnConjAsync(
     tpudnnHandle_t handle,
@@ -788,6 +872,12 @@ tpudnnStatus_t tpudnnConv2dBackwardAsync (
     tpudnnTensor_t grad_weight,
     tpudnnTensor_t grad_bias);
 
+tpudnnStatus_t tpudnnMaskedSelectAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    tpudnnTensor_t mask,
+    tpudnnTensor_t output);
+
 tpudnnStatus_t tpudnnConv3dAsync (
     tpudnnHandle_t handle,
     tpudnnTensor_t input,
@@ -833,7 +923,8 @@ tpudnnStatus_t tpudnnInfCheckAndUnscaleAsync(
     tpudnnHandle_t handle,
     std::vector<tpudnnTensor_t>& inputs,
     tpudnnTensor_t found_inf,
-    float inv_scale);
+    tpudnnTensor_t buffer,
+    tpudnnTensor_t inv_scale);
 
 tpudnnStatus_t tpudnnRmsNormForwardAsync(
     tpudnnHandle_t handle,
@@ -992,6 +1083,19 @@ tpudnnStatus_t tpudnnC2CAllToAll(
     int cur_rank,
     const int *chip_map);
 
+tpudnnStatus_t tpudnnCdmaInst(
+        tpudnnHandle_t handle,
+        void* input,
+        void* output,
+        int count,
+        int src_rank,
+        int dst_rank,
+        int test_case,
+        const char* uuid,
+        int nranks,
+        int cur_rank,
+        const int* chip_map);
+
 tpudnnStatus_t tpudnnMaskedFillAsync(
     tpudnnHandle_t handle,
     const tpudnnTensor_t input,
@@ -1057,17 +1161,49 @@ tpudnnStatus_t tpudnnPagedAttentionAsync (
     tpudnnTensor_t Kbuffer,
     tpudnnTensor_t Vbuffer,
     tpudnnTensor_t input_lengths_tensor,
+    tpudnnTensor_t cache_lengths_tensor,
     int            rope_head_size,
     int*           input_lengths,
     int*           cache_lengths,
     int            num_input_lengths,
-    int slots_size,
-    int fetch_size,
-    int mask_size,
-    int block_size,
-    float C,
-    int attention_mode // 2: prefile, 3: decode
+    int            slots_size,
+    int            fetch_size,
+    int            mask_size,
+    int            block_size,
+    float          C,
+    int            attention_mode // 2: prefile, 3: decode
     );
+tpudnnStatus_t tpudnnPagedAttentionFp8Async (
+    tpudnnHandle_t handle,
+    tpudnnTensor_t OUT,
+    tpudnnTensor_t Q,
+    tpudnnTensor_t K,
+    tpudnnTensor_t V,
+    tpudnnTensor_t Kcache,
+    tpudnnTensor_t Kscale,
+    tpudnnTensor_t Vcache,
+    tpudnnTensor_t Vscale,
+    tpudnnTensor_t Vcache_buffer,
+    tpudnnTensor_t cos,
+    tpudnnTensor_t sin,
+    tpudnnTensor_t save_slots,
+    tpudnnTensor_t fetch_slots,
+    tpudnnTensor_t mask,
+    tpudnnTensor_t Qbuffer,
+    tpudnnTensor_t Kbuffer,
+    tpudnnTensor_t Vbuffer,
+    tpudnnTensor_t input_lenghts_tensor,
+    int            rope_head_size,
+    int*           input_lengths,
+    int*           cache_lengths,
+    int            num_input_lengths,
+    int            slots_size,
+    int            fetch_size,
+    int            mask_size,
+    int            block_size,
+    int            fa_block_size,
+    float          C,
+    int            attention_mode);
 tpudnnStatus_t tpudnnLatentAttentionAsync (
     tpudnnHandle_t handle,
     tpudnnTensor_t OUT,
@@ -1080,19 +1216,20 @@ tpudnnStatus_t tpudnnLatentAttentionAsync (
     tpudnnTensor_t PEcache,
     tpudnnTensor_t cos,
     tpudnnTensor_t sin,
+    tpudnnTensor_t KVU,
     tpudnnTensor_t mask,
     int*           input_lengths,
     int            num_input_lengths,
-    int n_heads,
-    int decode_num,
-    int q_lora_rank,
-    int kv_lora_rank,
-    int qk_nope_head_dim,
-    int qk_rope_head_dim,
-    int v_head_dim,
-    int mask_size,
-    int max_cache_size,
-    float C,
+    int            n_heads,
+    int            generate_token,
+    int            q_lora_rank,
+    int            kv_lora_rank,
+    int            qk_nope_head_dim,
+    int            qk_rope_head_dim,
+    int            v_head_dim,
+    int            mask_size,
+    int            max_cache_size,
+    float          C,
     AttentionMode_t attention_mode);
 
     tpudnnStatus_t tpudnnPagedLatentAttentionAsync (
@@ -1107,22 +1244,24 @@ tpudnnStatus_t tpudnnLatentAttentionAsync (
     tpudnnTensor_t PEcache,
     tpudnnTensor_t cos,
     tpudnnTensor_t sin,
+    tpudnnTensor_t KVU,
     tpudnnTensor_t mask,
     tpudnnTensor_t block_table,
     tpudnnTensor_t save_slots,
-    int max_paged_block_num,
-    int block_size,
+    int            max_paged_block_num,
+    int            block_size,
     int*           input_lengths,
+    int*           cache_lengths,
     int            num_input_lengths,
-    int n_heads,
-    int decode_num,
-    int q_lora_rank,
-    int kv_lora_rank,
-    int qk_nope_head_dim,
-    int qk_rope_head_dim,
-    int v_head_dim,
-    int mask_size,
-    float C,
+    int            n_heads,
+    int            generate_token,
+    int            q_lora_rank,
+    int            kv_lora_rank,
+    int            qk_nope_head_dim,
+    int            qk_rope_head_dim,
+    int            v_head_dim,
+    int            mask_size,
+    float          C,
     AttentionMode_t attention_mode);
 
 tpudnnStatus_t tpudnnPagedLatentAttentionFp8Async(
@@ -1137,12 +1276,17 @@ tpudnnStatus_t tpudnnPagedLatentAttentionFp8Async(
     tpudnnTensor_t PEcache,
     tpudnnTensor_t cos,
     tpudnnTensor_t sin,
+    tpudnnTensor_t KVU,
     tpudnnTensor_t mask,
     tpudnnTensor_t WUQ_scale,
     tpudnnTensor_t WUKV_scale,
+    tpudnnTensor_t input_length_tensor,
+    tpudnnTensor_t cache_length_tensor,
     tpudnnTensor_t block_table,
     tpudnnTensor_t save_slots,
+    tpudnnTensor_t topk_indices,
     const int*     seqlen,
+    const int*     cache_seqlen,
     int            batch,
     int            num_heads,
     int            generate_token,
@@ -1155,6 +1299,7 @@ tpudnnStatus_t tpudnnPagedLatentAttentionFp8Async(
     int            quant_block_size,
     int            max_paged_block_num,
     int            paged_cache_block_size,
+    int            topk_size,
     float          softmax_scale,
     int            with_w8a16,
     AttentionMode_t attn_mode);
@@ -1171,6 +1316,7 @@ tpudnnStatus_t tpudnnLatentAttentionFp8Async(
     tpudnnTensor_t PEcache,
     tpudnnTensor_t cos,
     tpudnnTensor_t sin,
+    tpudnnTensor_t KVU,
     tpudnnTensor_t mask,
     tpudnnTensor_t WUQ_scale,
     tpudnnTensor_t WUKV_scale,
@@ -1222,6 +1368,7 @@ tpudnnStatus_t tpudnnLlamaAttentionBackwardAsync(
     tpudnnTensor_t RoPE_sin,
     tpudnnTensor_t mask,
     tpudnnTensor_t input_length,
+    tpudnnTensor_t buffer,
     int mask_max,
     float C);
 
@@ -1312,6 +1459,19 @@ tpudnnStatus_t tpudnnMmW8A16DqAsync (
     tpudnnTensor_t output,
     int blocksize);
 
+tpudnnStatus_t tpudnnHDTAsync (
+    tpudnnHandle_t handle,
+    tpudnnTensor_t output,
+    tpudnnTensor_t input,
+    float scale);
+
+tpudnnStatus_t tpudnnRoPEAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t output,
+    tpudnnTensor_t input,
+    tpudnnTensor_t cos,
+    tpudnnTensor_t sin);
+
 tpudnnStatus_t tpudnnGDMAD2DAsync(
     tpudnnHandle_t handle,
     tpudnnTensor_t src,
@@ -1363,6 +1523,10 @@ tpudnnStatus_t tpudnnEnableProfile(
 tpudnnStatus_t tpudnnDisableProfile(
     tpudnnHandle_t handle);
 
+tpudnnStatus_t tpudnnResetOpTimer();
+tpudnnStatus_t tpudnnDumpOpTimer();
+
+
 tpudnnStatus_t tpudnnMultiHeadAttentionAsync(
     tpudnnHandle_t handle,
     tpudnnTensor_t OUT, // {batch, seq, head, head_dim}
@@ -1397,18 +1561,13 @@ tpudnnStatus_t tpudnnIndexAdd(
     tpudnnTensor_t add,
     int axis);
 
-tpudnnStatus_t tpudnnC2CDescriptor(
+tpudnnStatus_t tpudnnIndexPutImpl(
     tpudnnHandle_t handle,
-    tpudnnCmd_t* vsdma_cmd,
-    int vsdma_engine_num,
-    tpudnnCmd_t* cdma_cmd,
-    int cdma_engine_num,
-    tpudnnCmd_t gdma_cmd,
-    void* reduce_data,
-    int reduce_size,
-    int nranks,
-    int cur_rank,
-    const int *chip_map);
+    tpudnnTensor_t io,
+    tpudnnTensor_t indices,
+    tpudnnTensor_t value,
+    int axis,
+    bool accumulate);
 
 tpudnnStatus_t tpudnnDynLibExecuteAsync(
                     tpudnnHandle_t handle,
@@ -1429,12 +1588,13 @@ tpudnnStatus_t tpudnnDynLibExecuteAsyncCompact(
                     char *args,
                     size_t argBytes);
 
-tpudnnStatus_t tpudnnScatterAddAsync(
+tpudnnStatus_t tpudnnScatterAsync(
     tpudnnHandle_t handle,
     tpudnnTensor_t input,
     tpudnnTensor_t src,
     tpudnnTensor_t indices,
-    int dim);
+    int dim,
+    int inplace_add);
 
 tpudnnStatus_t tpudnnFusedMoEGroupedTopkMultiCoreAsync(
     tpudnnHandle_t handle,
@@ -1476,5 +1636,119 @@ tpudnnStatus_t tpudnnFusedMoEFusedExpertsMultiCoreAsync(
     tpudnnTensor_t sigmoid,
     tpudnnTensor_t m0,
     bool save_mid_res);
+
+tpudnnStatus_t tpudnnFusedAddNormMMAsync(
+    const tpudnnHandle_t handle,
+    tpudnnTensor_t input0,
+    tpudnnTensor_t input1,
+    tpudnnTensor_t w,
+    tpudnnTensor_t b,
+    tpudnnTensor_t gamma,
+    tpudnnTensor_t beta,
+    float eps,
+    tpudnnTensor_t out_add,
+    tpudnnTensor_t mean,
+    tpudnnTensor_t rstd,
+    tpudnnTensor_t output);
+
+tpudnnStatus_t tpudnnFusedNormMMAsync(
+    const tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    tpudnnTensor_t w,
+    tpudnnTensor_t b,
+    tpudnnTensor_t gamma,
+    tpudnnTensor_t beta,
+    float eps,
+    tpudnnTensor_t mean,
+    tpudnnTensor_t rstd,
+    tpudnnTensor_t output);
+
+tpudnnStatus_t tpudnnReorderConv2dGradAsync(
+    const tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    tpudnnTensor_t output);
+
+tpudnnStatus_t tpudnnDummyAsync(const tpudnnHandle_t handle);
+
+tpudnnStatus_t tpudnnBitwiseConstAsync(const tpudnnHandle_t handle,
+                                       tpudnnTensor_t input,
+                                       tpudnnTensor_t output, int scalar,
+                                       BitwiseMode_t mode);
+tpudnnStatus_t tpudnnBitwiseAsync(const tpudnnHandle_t handle,
+                                  tpudnnTensor_t input, tpudnnTensor_t other,
+                                  tpudnnTensor_t output, BitwiseMode_t mode);
+
+tpudnnStatus_t tpudnnCompareAsync(const tpudnnHandle_t handle,
+                                  tpudnnTensor_t input, tpudnnTensor_t other,
+                                  tpudnnTensor_t output, CompareMode_t mode);
+tpudnnStatus_t
+tpudnnCompareConstAsync(const tpudnnHandle_t handle, tpudnnTensor_t input,
+                        tpudnnTensor_t output, float scalar, CompareMode_t mode,
+                        bool inversed); // True tensor compare with scalar,
+                                        // False scalar compare with tensor
+
+tpudnnStatus_t tpudnnShiftConstAsync(const tpudnnHandle_t handle,
+                                     tpudnnTensor_t input,
+                                     tpudnnTensor_t output, char value,
+                                     bool left);
+tpudnnStatus_t tpudnnShiftAsync(const tpudnnHandle_t handle,
+                                tpudnnTensor_t input, tpudnnTensor_t other,
+                                tpudnnTensor_t output, bool left);
+
+tpudnnStatus_t tpudnnMinimumConstAsync(tpudnnHandle_t handle,
+                                       tpudnnTensor_t input,
+                                       tpudnnTensor_t output, float scalar);
+tpudnnStatus_t tpudnnMaximumConstAsync(tpudnnHandle_t handle,
+                                       tpudnnTensor_t input,
+                                       tpudnnTensor_t output, float scalar);
+tpudnnStatus_t tpudnnMinimumAsync(tpudnnHandle_t handle, tpudnnTensor_t input,
+                                  tpudnnTensor_t other, tpudnnTensor_t output);
+tpudnnStatus_t tpudnnMaximumAsync(tpudnnHandle_t handle, tpudnnTensor_t input,
+                                  tpudnnTensor_t other, tpudnnTensor_t output);
+
+tpudnnStatus_t tpudnnPowerAsync(const tpudnnHandle_t handle,
+                                tpudnnTensor_t input, tpudnnTensor_t other,
+                                tpudnnTensor_t output);
+tpudnnStatus_t tpudnnPowerScalarAsync(const tpudnnHandle_t handle,
+                                      tpudnnTensor_t input,
+                                      tpudnnTensor_t output, float scalar);
+tpudnnStatus_t tpudnnScalarPowerAsync(const tpudnnHandle_t handle,
+                                      tpudnnTensor_t input,
+                                      tpudnnTensor_t output, float scalar);
+
+tpudnnStatus_t tpudnnAtan2ScalarAsync(const tpudnnHandle_t handle,
+                                      tpudnnTensor_t input,
+                                      tpudnnTensor_t output, float scalar);
+tpudnnStatus_t tpudnnScalarAtan2Async(const tpudnnHandle_t handle,
+                                      tpudnnTensor_t input,
+                                      tpudnnTensor_t output, float scalar);
+tpudnnStatus_t tpudnnAtan2Async(const tpudnnHandle_t handle,
+                                tpudnnTensor_t input, tpudnnTensor_t other,
+                                tpudnnTensor_t output);
+tpudnnStatus_t tpudnnRemainderAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t input,
+    float other,
+    tpudnnTensor_t output);
+
+tpudnnStatus_t tpudnnAdamWBackwardMultiCoreAsync(
+    tpudnnHandle_t handle,
+    tpudnnTensor_t weight_out,
+    tpudnnTensor_t m_out,
+    tpudnnTensor_t v_out,
+    tpudnnTensor_t vmax_out,
+    tpudnnTensor_t grad_weight,
+    tpudnnTensor_t weight_in,
+    tpudnnTensor_t m_in,
+    tpudnnTensor_t v_in,
+    tpudnnTensor_t vmax_in,
+    tpudnnTensor_t t,
+    float lr,
+    float beta1,
+    float beta2,
+    float eps,
+    float weight_decay,
+    bool amsgrad,
+    bool maximize);
 
 } // extern "C"

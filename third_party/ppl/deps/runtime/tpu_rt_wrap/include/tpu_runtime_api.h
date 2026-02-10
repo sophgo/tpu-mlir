@@ -169,6 +169,17 @@ tpuError_t tpuEventSynchronize(tpuEvent_t event);
 tpuKernelModule_t tpuKernelModuleLoad(const char* data, size_t size, tpuStream_t stream);
 
 /**
+ * @brief Load TPU kernel module from memory data
+ * @param data Pointer to kernel module data
+ * @param size Data size in bytes
+ * @param stream Stream handle
+ * @param flag Load flag
+ * @return tpuKernelModule_t Kernel module handle
+ */
+tpuKernelModule_t tpuKernelLoadModuleFlag(const char* data, size_t size, tpuStream_t stream, uint32_t flag);
+
+
+/**
  * @brief Load TPU kernel module from file
  * @param file File path
  * @param stream Stream handle
@@ -177,6 +188,15 @@ tpuKernelModule_t tpuKernelModuleLoad(const char* data, size_t size, tpuStream_t
 tpuKernelModule_t tpuKernelModuleLoadFromFile(const char* file, tpuStream_t stream);
 
 /**
+ * @brief Load TPU kernel module from file
+ * @param file File path
+ * @param stream Stream handle
+ * @param flag Load flag
+ * @return tpuKernelModule_t Kernel module handle
+ */
+tpuKernelModule_t tpuKernelModuleLoadFromFileFlag(const char* file, tpuStream_t stream, uint32_t flag);
+
+/**
  * @brief Unload TPU kernel module
  * @param module Kernel module handle
  * @param stream Stream handle
@@ -188,9 +208,10 @@ tpuError_t tpuKernelUnloadModule(tpuKernelModule_t module, tpuStream_t stream);
  * @brief Unload TPU kernel module
  * @param module Kernel module handle
  * @param stream Stream handle
+ * @param flag Unload flag
  * @return tpuError_t Error code
  */
-tpuError_t tpuKernelUnloadModule(tpuKernelModule_t module, tpuStream_t stream);
+tpuError_t tpuKernelUnloadModuleFlag(tpuKernelModule_t module, tpuStream_t stream, uint32_t flag);
 
 /**
  * @brief Launch TPU kernel synchronously

@@ -486,6 +486,199 @@ void fconv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
         result_add, DT_NONE, true, saturate, false);
 } // sg.fconv or sg.fconva
 
+// pooling
+template <typename DataType>
+void pool_max(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+              padding_t *pad, dim2 *stride, dim2 *dilation);
+template <typename DataType>
+void fpool_max(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+               padding_t *pad, dim2 *stride, dim2 *dilation) {
+  return pool_max(dst, src, kernel, pad, stride, dilation);
+}
+
+template <typename DataType>
+void pool_min(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+              padding_t *pad, dim2 *stride, dim2 *dilation);
+template <typename DataType>
+void fpool_min(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+               padding_t *pad, dim2 *stride, dim2 *dilation) {
+  return pool_min(dst, src, kernel, pad, stride, dilation);
+}
+
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+               padding_t *pad, dim2 *stride, dim2 *dilation, dim2 *ins,
+               float scale, int rshift /*Useless*/);
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+               padding_t *pad, dim2 *stride, dim2 *dilation, dim2 *ins,
+               float scale) {
+  return fpool_avg(dst, src, kernel, pad, stride, dilation, ins, scale, 0);
+}
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+               padding_t *pad, dim2 *stride, dim2 *dilation, float scale) {
+  return fpool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
+                   scale);
+}
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+               padding_t *pad, dim2 *stride, dim2 *dilation, dim2 *ins) {
+  return fpool_avg(dst, src, kernel, pad, stride, dilation, ins, 1.0f);
+}
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
+               padding_t *pad, dim2 *stride, dim2 *dilation) {
+  return fpool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
+                   1.0f);
+}
+
+template <typename DataType0, typename DataType1>
+void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, dim2 *kernel,
+              padding_t *pad, dim2 *stride, dim2 *dilation, dim2 *ins,
+              int scale, int rshift);
+template <typename DataType0, typename DataType1>
+void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, dim2 *kernel,
+              padding_t *pad, dim2 *stride, dim2 *dilation, int scale,
+              int rshift) {
+  return pool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
+                  scale, rshift);
+}
+template <typename DataType0, typename DataType1>
+void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, dim2 *kernel,
+              padding_t *pad, dim2 *stride, dim2 *dilation, int scale) {
+  return pool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
+                  scale, 0);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void fdeconv(tensor<DataType0> &dst, tensor<DataType1> &src,
+             tensor<DataType1> &weight, DataType2 &bias, int oc, dim2 *k_shape,
+             dim2 *dilation, padding_t *pad, dim2 *insert, bool result_add,
+             data_type_t out_dtype, bool has_bias);
+
+template <typename DataType0, typename DataType1, typename DataType2>
+void fdeconv(tensor<DataType0> &dst, tensor<DataType1> &src,
+             tensor<DataType1> &weight, int oc, dim2 *k_shape, dim2 *dilation,
+             padding_t *pad, dim2 *insert, bool result_add,
+             data_type_t out_dtype) {
+  tensor<DataType0> *bias = nullptr;
+  fdeconv(dst, src, weight, bias, oc, k_shape, dilation, pad, insert,
+          result_add, out_dtype, false);
+}
+
+template <typename DataType>
+void fdw_conv(tensor<DataType> &dst, tensor<DataType> &src,
+              tensor<DataType> &weight, tensor<DataType> &bias, dim2 *k_shape,
+              dim2 *stride, dim2 *dilation, padding_t *pad, bool has_bias);
+
+template <typename DataType>
+void fdw_conv(tensor<DataType> &dst, tensor<DataType> &src,
+              tensor<DataType> &weight, dim2 *k_shape, dim2 *stride,
+              dim2 *dilation, padding_t *pad) {
+  tensor<DataType> *bias = nullptr;
+  fdw_conv(dst, src, weight, bias, k_shape, stride, dilation, pad, false);
+}
+
+template <typename DataType0, typename DataType1>
+void fdw_deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
+                tensor<DataType1> &weight, tensor<DataType1> &bias,
+                dim2 *k_shape, dim2 *dilation, padding_t *pad, dim2 *insert,
+                data_type_t out_dtype, bool has_bias);
+////////////////////////////////   INT   //////////////////////////////////////
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5,
+          typename DataType6>
+void deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
+            tensor<DataType2> &weight, DataType3 &bias, int oc, dim2 *k_shape,
+            dim2 *dilation, padding_t *pad, dim2 *ins, DataType4 &pad_val,
+            DataType5 insert_val, bool result_relu, bool result_add,
+            data_type_t out_dtype, bool has_bias, bool sym, DataType6 &quant);
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void deconv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
+                tensor<DataType2> &weight, DataType3 &bias, int oc,
+                dim2 *k_shape, dim2 *dilation, padding_t *pad, dim2 *ins,
+                bool result_relu, data_type_t out_dtype, bool has_bias,
+                uint8 rshift) {
+  deconv(dst, src, weight, bias, oc, k_shape, dilation, pad, ins, 0, /*pad val*/
+         0,                         /*insert val*/
+         result_relu, false,        /*result add*/
+         out_dtype, has_bias, true, /*sym*/
+         rshift);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3>
+void deconv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, int oc, dim2 *k_shape,
+                 dim2 *dilation, padding_t *pad, dim2 *ins, int pad_val,
+                 int insert_val, bool result_add, data_type_t out_dtype,
+                 DataType3 kzp_val) {
+  tensor<DataType1> *bias = nullptr;
+  deconv(dst, src, weight, bias, oc, k_shape, dilation, pad, ins, pad_val,
+         insert_val, false, /*result_relu*/ result_add, out_dtype, false,
+         /*has_bias*/ false, /*sym*/ kzp_val);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5,
+          typename DataType6>
+void deconv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, int oc, dim2 *k_shape,
+                 dim2 *dilation, padding_t *pad, dim2 *ins,
+                 tensor<DataType4> &pad_insert_val, bool result_add,
+                 data_type_t out_dtype, tensor<DataType6> &kzp) {
+  tensor<DataType1> *bias = nullptr;
+  deconv(dst, src, weight, bias, oc, k_shape, dilation, pad, ins,
+         pad_insert_val, 0, /*insert_val*/ false, /*result_relu*/ result_add,
+         out_dtype, false,
+         /*has_bias*/ false, /*sym*/ kzp);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType5>
+void dw_conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
+             DataType3 &bias, dim2 *k_shape, dim2 *stride, dim2 *dilation,
+             padding_t *pad, DataType4 &pad_val, bool result_relu,
+             data_type_t out_dtype, bool has_bias, uint8 rshift, bool rq,
+             DataType5 &requant, bool saturate, rounding_mode_t round);
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4, typename DataType6>
+void dw_conv_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
+                tensor<DataType2> &weight, DataType3 &bias, dim2 *k_shape,
+                dim2 *stride, dim2 *dilation, padding_t *pad,
+                DataType4 &pad_val, bool result_relu, data_type_t out_dtype,
+                bool has_bias, tensor<DataType6> &requant, bool saturate,
+                rounding_mode_t round) {
+  dw_conv(dst, src, weight, bias, k_shape, stride, dilation, pad, pad_val,
+          result_relu, out_dtype, has_bias, 0, /*rshfit*/ true, /*rq*/ requant,
+          saturate, round);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void dw_conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
+             DataType3 &bias, dim2 *k_shape, dim2 *stride, dim2 *dilation,
+             padding_t *pad, DataType4 &pad_val, bool result_relu,
+             data_type_t out_dtype, bool has_bias, uint8 rshift,
+             rounding_mode_t round) {
+  tensor<DataType1> *requant = nullptr;
+  dw_conv(dst, src, weight, bias, k_shape, stride, dilation, pad, pad_val,
+          result_relu, out_dtype, has_bias, rshift, false, requant, false,
+          round);
+}
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void dw_deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
+               tensor<DataType2> &weight, DataType3 &bias, dim2 *k_shape,
+               dim2 *dilation, padding_t *pad, dim2 *ins, DataType4 &pad_val,
+               bool result_relu, data_type_t out_dtype, bool has_bias,
+               uint8 rshift, rounding_mode_t round);
+
 } // namespace tiu
 
 namespace hau {}

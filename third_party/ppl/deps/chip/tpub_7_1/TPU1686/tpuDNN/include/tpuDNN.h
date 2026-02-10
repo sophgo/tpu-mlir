@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <tuple>
 
 extern "C"
 {
@@ -11,7 +12,11 @@ extern "C"
         TPUDNN_STATUS_FAILED
     };
 
+#ifdef __cplusplus
+    typedef class TPUDNNInterface *tpudnnHandle_t;
+#else
     typedef void *tpudnnHandle_t;
+#endif
 
     tpudnnHandle_t tpudnnCreate(int deviceID = 0);
     void tpudnnDestroy(tpudnnHandle_t handle);
@@ -27,6 +32,7 @@ extern "C"
     tpudnnStatus_t tpudnnGetC2CRing(int world_size, int *chipMap);
     tpudnnStatus_t tpudnnGetUniqueId(tpudnnHandle_t handle, char* uniqueId);
     tpudnnHandle_t tpudnnHandleFromStream(int deviceID, void* stream, void* module);
+    tpudnnHandle_t tpudnnHandleFromStreamV2(int deviceID, void* stream, std::tuple<void*, void*> module);
     tpudnnStatus_t tpudnnLaunchKernel(tpudnnHandle_t handle, const char *kernelName,
                                       void *arg, size_t argBytes, int groupNum, int groupSize);
     tpudnnStatus_t tpudnnSync(tpudnnHandle_t handle);

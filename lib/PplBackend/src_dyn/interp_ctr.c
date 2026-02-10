@@ -1,6 +1,6 @@
-#include "ppl_dyn_fw.h"
 #include "interp_linear.c"
 #include "interp_nearest.c"
+#include "ppl_dyn_fw.h"
 
 // global
 void dynamic_glb_interp_linear_layer_ctrl(void *ctx, void *param,
@@ -24,7 +24,7 @@ void dynamic_glb_interp_linear_layer_ctrl(void *ctx, void *param,
     _param->W_in = in_w;
     _param->H_out = out_h;
     _param->W_out = out_w;
-    interp_linear_fp32(_param);
+    interp_linear_fp32_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_BFP16) {
     tpu_kernel_api_interp_linear_bf16_t *_param =
         (tpu_kernel_api_interp_linear_bf16_t *)param;
@@ -38,7 +38,7 @@ void dynamic_glb_interp_linear_layer_ctrl(void *ctx, void *param,
     _param->W_in = in_w;
     _param->H_out = out_h;
     _param->W_out = out_w;
-    interp_linear_bf16(_param);
+    interp_linear_bf16_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_FP16) {
     tpu_kernel_api_interp_linear_fp16_t *_param =
         (tpu_kernel_api_interp_linear_fp16_t *)param;
@@ -52,7 +52,7 @@ void dynamic_glb_interp_linear_layer_ctrl(void *ctx, void *param,
     _param->W_in = in_w;
     _param->H_out = out_h;
     _param->W_out = out_w;
-    interp_linear_fp16(_param);
+    interp_linear_fp16_entry(_param);
   } else {
     TPUKERNEL_ERR("%s, interp_linear not support dtype=%d\n", __func__,
                   input_spec->dtype);
@@ -84,7 +84,7 @@ void dynamic_glb_interp_nearest_layer_ctrl(void *ctx, void *param,
     _param->W_in = in_w;
     _param->H_out = out_h;
     _param->W_out = out_w;
-    interp_nearest_fp32(_param);
+    interp_nearest_fp32_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_BFP16) {
     tpu_kernel_api_interp_nearest_bf16_t *_param =
         (tpu_kernel_api_interp_nearest_bf16_t *)param;
@@ -98,7 +98,7 @@ void dynamic_glb_interp_nearest_layer_ctrl(void *ctx, void *param,
     _param->W_in = in_w;
     _param->H_out = out_h;
     _param->W_out = out_w;
-    interp_nearest_bf16(_param);
+    interp_nearest_bf16_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_FP16) {
     tpu_kernel_api_interp_nearest_fp16_t *_param =
         (tpu_kernel_api_interp_nearest_fp16_t *)param;
@@ -112,7 +112,7 @@ void dynamic_glb_interp_nearest_layer_ctrl(void *ctx, void *param,
     _param->W_in = in_w;
     _param->H_out = out_h;
     _param->W_out = out_w;
-    interp_nearest_fp16(_param);
+    interp_nearest_fp16_entry(_param);
   } else {
     TPUKERNEL_ERR("%s, interp_linear not support dtype=%d\n", __func__,
                   input_spec->dtype);

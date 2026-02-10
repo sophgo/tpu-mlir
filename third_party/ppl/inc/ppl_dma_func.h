@@ -4,7 +4,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 #include "ppl_defs.h"
 #include "ppl_tpu.h"
@@ -13,6 +12,8 @@
 namespace ppl {
 namespace dma {
 
+void send_msg(int msg_id, int msg_cnt);
+void wait_msg(int msg_id, int msg_cnt);
 template <typename DataType>
 void load(tensor<DataType> &dst, gtensor<DataType> &src);
 template <typename DataType>
@@ -52,12 +53,10 @@ void store_transpose(gtensor<DataType> &dst, tensor<DataType> &src,
 }
 
 template <typename DataType>
-void load_broadcast(tensor<DataType> &dst, gtensor<DataType> &src,
-                    int num = 0);
+void load_broadcast(tensor<DataType> &dst, gtensor<DataType> &src, int num = 0);
 
 template <typename DataType>
-void broadcast(tensor<DataType> &dst, tensor<DataType> &src,
-               int num = 0);
+void broadcast(tensor<DataType> &dst, tensor<DataType> &src, int num = 0);
 
 template <typename DataType>
 void move(tensor<DataType> &dst, tensor<DataType> &src);
@@ -283,73 +282,89 @@ void gather_h(gtensor<DataType0> &dst, gtensor<DataType1> &param,
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(tensor<DataType0> &dst, tensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               tensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               tensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(tensor<DataType0> &dst, tensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               gtensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(tensor<DataType0> &dst, gtensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               gtensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               tensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               tensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(gtensor<DataType0> &dst, tensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               gtensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_c(gtensor<DataType0> &dst, gtensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos = 0, bool inplace_add = false);
+               gtensor<DataType2> &index, int start_pos = 0,
+               bool inplace_add = false);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, tensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               tensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, gtensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               tensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, tensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               gtensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(tensor<DataType0> &dst, gtensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               gtensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, tensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               tensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, gtensor<DataType1> &param,
-               tensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               tensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, tensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               gtensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1, typename DataType2>
 void scatter_h(gtensor<DataType0> &dst, gtensor<DataType1> &param,
-               gtensor<DataType2> &index, int start_pos=0, int inplace_add=0);
+               gtensor<DataType2> &index, int start_pos = 0,
+               int inplace_add = 0);
 
 template <typename DataType0, typename DataType1>
-uint nonzero(gtensor<DataType0> &dst, tensor<DataType1> &src);
+uint nonzero(gtensor<DataType0> &dst, tensor<DataType1> &src, int base_idx = 0);
 
 template <typename DataType0, typename DataType1>
-uint nonzero(gtensor<DataType0> &dst, gtensor<DataType1> &src);
+uint nonzero(gtensor<DataType0> &dst, gtensor<DataType1> &src, int base_idx = 0);
 
 template <typename DataType0, typename DataType1>
 unsigned int mask_select(gtensor<DataType0> &dst, tensor<DataType0> &src,
@@ -409,7 +424,7 @@ void move_vcoll(int dst_v_idx, tensor<DataType> &src);
 
 template <typename DataType1, typename DataType2>
 void reduce(gtensor<DataType1> &dst, DataType2 &src, all_reduce_psum_t psum,
-            all_reduce_opcode_t opcode);
+            all_reduce_opcode_t opcode, float scale = 0.0f);
 
 } // namespace dma
 } // namespace ppl

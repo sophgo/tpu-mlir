@@ -11,7 +11,11 @@ extern "C"
         TPUDNN_STATUS_FAILED
     };
 
+#ifdef __cplusplus
+    typedef class TPUDNNInterface *tpudnnHandle_t;
+#else
     typedef void *tpudnnHandle_t;
+#endif
 
     tpudnnHandle_t tpudnnCreate(int deviceID = 0);
     void tpudnnDestroy(tpudnnHandle_t handle);

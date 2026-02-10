@@ -40,7 +40,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_mha_f16(_param);
+      flash_attention_mha_f16_entry(_param);
     } else {
       tpu_kernel_api_flash_attention_gqa_f16_t *_param =
           (tpu_kernel_api_flash_attention_gqa_f16_t *)param;
@@ -66,7 +66,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_gqa_f16(_param);
+      flash_attention_gqa_f16_entry(_param);
     }
   } else if (input_spec->dtype == FW_DTYPE_BFP16) {
     if (is_mha) {
@@ -94,7 +94,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_mha_bf16(_param);
+      flash_attention_mha_bf16_entry(_param);
     } else {
       tpu_kernel_api_flash_attention_gqa_bf16_t *_param =
           (tpu_kernel_api_flash_attention_gqa_bf16_t *)param;
@@ -120,7 +120,7 @@ void dynamic_glb_flash_attention_layer_ctrl(void *ctx, void *param,
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_gqa_bf16(_param);
+      flash_attention_gqa_bf16_entry(_param);
     }
   }
 }
@@ -158,7 +158,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_mha_f16_high_precision(_param);
+      flash_attention_mha_f16_high_precision_entry(_param);
     } else {
       tpu_kernel_api_flash_attention_gqa_f16_high_precision_t *_param =
           (tpu_kernel_api_flash_attention_gqa_f16_high_precision_t *)param;
@@ -184,7 +184,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_gqa_f16_high_precision(_param);
+      flash_attention_gqa_f16_high_precision_entry(_param);
     }
   } else if (input_spec->dtype == FW_DTYPE_BFP16) {
     if (is_mha) {
@@ -212,7 +212,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_mha_bf16_high_precision(_param);
+      flash_attention_mha_bf16_high_precision_entry(_param);
     } else {
       tpu_kernel_api_flash_attention_gqa_bf16_high_precision_t *_param =
           (tpu_kernel_api_flash_attention_gqa_bf16_high_precision_t *)param;
@@ -238,7 +238,7 @@ void dynamic_glb_flash_attention_heigh_prec_layer_ctrl(
       if (_param->g_core_num > tpu_core_num()) {
         _param->g_core_num = tpu_core_num();
       }
-      flash_attention_gqa_bf16_high_precision(_param);
+      flash_attention_gqa_bf16_high_precision_entry(_param);
     }
   }
 }

@@ -7,6 +7,10 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "tpu_defs.h"
+#ifdef __RTTHREAD__
+#include "rtklibc.h"
+#include "sg_common.h"
+#endif
 
 typedef enum {
     FUNC_TYPE_1,
@@ -29,19 +33,28 @@ __attribute__((constructor)) void tpu_kernel_register_##func() {   \
 
 
 #if defined(__sg2260__)
-  __attribute__((weak)) int tp_debug(const char *, ...);
+    #ifndef __RTTHREAD__
+    __attribute__((weak)) int tp_debug(const char *, ...);
+    #endif
 #endif
 
 #if defined(USING_CMODEL)
   #include <stdlib.h>
   #define TPUKERNEL_LOG(format, ...) printf("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
-#elif defined(USING_FW_DEBUG) && !defined(USING_FAKE_DDR_MODE)
+#elif defined(DEBUG) && !defined(USING_FAKE_DDR_MODE)
 
 #if defined(__sg2260__)
   #define TPUKERNEL_LOG(format, ...) tp_debug("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
 #elif defined(__cv184x__)
   #include <stdlib.h>
   #define TPUKERNEL_LOG(format, ...) printf("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
+#elif defined(__sg2260e__)
+  // PLD only support printf now
+  #define TPUKERNEL_LOG(format, ...) \
+  do { \
+    printf("[%d] " format, tpu_core_index(), ##__VA_ARGS__); \
+    fflush(stdout); \
+  } while(0)
 #else
   extern void fw_log(char *fmt, ...);
   #define TPUKERNEL_LOG(format, ...) fw_log("[%d] " format, tpu_core_index(), ##__VA_ARGS__)
@@ -75,6 +88,9 @@ extern int get_atomic_cmodel_assert_enable();
 
 #if defined(__sg2260__)
   #define ASSERT_LOG(format, ...) tp_debug("[%d]" format, tpu_core_index(), ##__VA_ARGS__)
+#elif defined(__sg2260e__)
+  // PLD only support printf now
+  #define ASSERT_LOG(format, ...) printf("[%d]" format, tpu_core_index(), ##__VA_ARGS__)
 #else
   extern void fw_log(char *fmt, ...);
   #define ASSERT_LOG(format, ...) fw_log("[%d]" format, tpu_core_index(), ##__VA_ARGS__)
@@ -211,7 +227,11 @@ typedef struct {
     bool          do_sym_saturate;
     rounding_mode_t round_mode;
     local_addr_t addr;
-    int multiplier;
+    union
+    {
+        int multiplier;
+        float rescale;
+    };
     int shift;
     int yzp;
 } requant_int_info_t;
@@ -246,6 +266,12 @@ typedef enum {
     ALL_REDUCE_ADD = 4,
 } all_reduce_opcode_t;
 
+typedef enum {
+    ALIGN_STRIDE = 0,
+    COMPACT_STRIDE = 1,
+    ROW_ALIGN_STRIDE = 6
+} stride_info_t;
+
 // using examples:
 //    optional_info_t v = OPTIONAL_VALUE(DT_FP32, {.f32=1.2});
 //    optional_info_t a = OPTIONAL_ADDR(DT_FP32, 0x10000})
@@ -266,6 +292,14 @@ void tpu_poll();
 void tpu_poll_descriptor();
 
 void tpu_poll_empty();
+
+// These functions are for debug purposes only.
+// If you use them in kernel code, it will not
+// pass the regression testings.
+void tpu_bdc_poll();
+void tpu_gdma_poll();
+void tpu_sdma_poll();
+/////////////////////////////////////////////
 
 void tpu_hau_poll();
 
@@ -331,6 +365,8 @@ int tpu_get_ic_parallel(data_type_t dtype);
 
 dim2 tpu_cube_shape(data_type_t dtype);
 
+int tpu_max_core_num();
+
 int tpu_local_mem_size_per_npu();
 
 int tpu_l2_sram_size();
@@ -350,6 +386,12 @@ void *tpu_local_mem_addr(int start_idx, local_addr_t addr);
 void *tpu_local_mem_addr_unified(local_addr_t addr);
 
 void *tpu_l2_sram_addr(l2_sram_addr_t addr);
+
+int tpu_cal_store_mode(
+    local_addr_t addr,
+    const dim4 *shape,
+    const dim4 *stride,
+    data_type_t dtype);
 
 // atomic cmd limits
 
@@ -1014,8 +1056,8 @@ void tpu_gdma_cpy_reduce_L12L2(
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_cpy_reduce_S2L2(
     system_addr_t dst_addr,
@@ -1024,8 +1066,8 @@ void tpu_gdma_cpy_reduce_S2L2(
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_cpy_reduce_L22L2(
     system_addr_t dst_addr,
@@ -1034,8 +1076,8 @@ void tpu_gdma_cpy_reduce_L22L2(
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_lossy_compress_reduce_S2L2(
     system_addr_t dst_addr,
@@ -1043,8 +1085,8 @@ void tpu_gdma_lossy_compress_reduce_S2L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_lossy_compress_reduce_L12L2(
     system_addr_t dst_addr,
@@ -1052,8 +1094,8 @@ void tpu_gdma_lossy_compress_reduce_L12L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_lossy_compress_reduce_L22L2(
     system_addr_t dst_addr,
@@ -1061,8 +1103,8 @@ void tpu_gdma_lossy_compress_reduce_L22L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_lossy_decompress_reduce_S2L2(
     system_addr_t dst_addr,
@@ -1070,8 +1112,8 @@ void tpu_gdma_lossy_decompress_reduce_S2L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_lossy_decompress_reduce_L22L2(
     system_addr_t dst_addr,
@@ -1079,8 +1121,8 @@ void tpu_gdma_lossy_decompress_reduce_L22L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_random_mask_init_seed_S2L(
     system_addr_t mask_addr,
@@ -1106,8 +1148,8 @@ void tpu_gdma_cpy_reduce_S2S(
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_cpy_reduce_L2S(
     system_addr_t dst_addr,
@@ -1116,8 +1158,8 @@ void tpu_gdma_cpy_reduce_L2S(
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_gdma_cpy_reduce_mac_S2S(
     system_addr_t dst_addr,
@@ -1177,15 +1219,27 @@ void tpu_bdc_qt0_quant(
     data_type_t      dst_dtype,
     data_type_t      src_dtype);
 
-void tpu_bdc_reduce(
+void tpu_bdc_hw_reduce(
     local_addr_t R_addr,
     local_addr_t A_addr,
     const dim4 *shape,
-    int A_short_str,
-    int B_short_str,
+    const dim4 *R_stride,
+    const dim4 *A_stride,
     int A_sign,
-    data_type_t idtype,
     data_type_t odtype,
+    data_type_t idtype,
+    int reduce_op,
+    int saturate);
+
+void tpu_bdc_w_reduce(
+    local_addr_t R_addr,
+    local_addr_t A_addr,
+    const dim4 *shape,
+    const dim4 *R_stride,
+    const dim4 *A_stride,
+    int A_sign,
+    data_type_t odtype,
+    data_type_t idtype,
     int reduce_op,
     int saturate);
 
@@ -1305,6 +1359,36 @@ void tpu_bdc_fp8_bq_mm2_wblock_nt(
     int R_fp8_type,
     int saturate);
 
+void tpu_bdc_fp4_bq_mm2_nt(
+    local_addr_t Y_addr,
+    local_addr_t L_addr,
+    local_addr_t R_addr,
+    local_addr_t L_scale_addr,
+    local_addr_t R_scale_addr,
+    int L_row_num,
+    int L_col_num,
+    int R_col_num,
+    int gsize,
+    int add_result,
+    data_type_t scale_dtype, //INT8/FP8
+    data_type_t Y_dtype); //FP16/BFP16/FP32
+
+void tpu_bdc_fp4_bq_mm2_nt_requant(
+    local_addr_t Y_addr,
+    local_addr_t L_addr,
+    local_addr_t R_addr,
+    local_addr_t L_scale_addr,
+    local_addr_t R_scale_addr,
+    local_addr_t RQ_addr,
+    int L_row_num,
+    int L_col_num,
+    int R_col_num,
+    int gsize,
+    int add_result,
+    int is_rq_const,
+    data_type_t scale_dtype, //INT8/FP8
+    data_type_t Y_dtype); //FP16/BFP16/FP32
+
 /*
   gdma_c_gather
   input_shape is (1, src_C, H, W).
@@ -1319,60 +1403,44 @@ void tpu_gdma_c_gather_S2L(
     system_addr_t  input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    scalar_t       const_val,
-    int            stride_enable,
+    scalar_t       C,
+    const dim4    *shape,
+    int            param_c,
+    const dim4    *output_stride,
+    const dim4    *param_stride,
     data_type_t    dtype);
 void tpu_gdma_c_gather_L2S(
     system_addr_t  output_addr,
     local_addr_t   input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    scalar_t       const_val,
-    int            stride_enable,
+    scalar_t       C,
+    const dim4    *shape,
+    int            param_c,
+    const dim4    *output_stride,
+    const dim4    *param_stride,
     data_type_t    dtype);
 void tpu_gdma_c_gather_L2L(
     local_addr_t   output_addr,
     local_addr_t   input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    scalar_t       const_val,
-    int            stride_enable,
-    data_type_t    dtype);
+    scalar_t      C,
+    const dim4   *shape,
+    int           param_c,
+    const dim4   *output_stride,
+    const dim4   *param_stride,
+    data_type_t   dtype);
 void tpu_gdma_c_gather_S2S(
     system_addr_t  output_addr,
     system_addr_t  input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    scalar_t       const_val,
-    int            stride_enable,
+    scalar_t       C,
+    const dim4    *shape,
+    int            param_c,
+    const dim4    *output_stride,
+    const dim4    *param_stride,
     data_type_t    dtype);
 /*
   gdma_c_scatter
@@ -1389,58 +1457,40 @@ void tpu_gdma_c_scatter_S2L(
     system_addr_t  input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    int            stride_enable,
+    const dim4    *shape,
+    int            param_c,
+    const dim4    *output_stride,
+    const dim4    *param_stride,
     data_type_t    dtype);
 void tpu_gdma_c_scatter_L2S(
     system_addr_t  output_addr,
     local_addr_t   input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    int            inplace_add,
-    int            stride_enable,
+    const dim4    *shape,
+    int            param_c,
+    const dim4    *output_stride,
+    const dim4    *param_stride,
     data_type_t    dtype);
 void tpu_gdma_c_scatter_L2L(
     local_addr_t   output_addr,
     local_addr_t   input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    int            stride_enable,
-    data_type_t    dtype);
+    const dim4   *shape,
+    int           param_c,
+    const dim4   *output_stride,
+    const dim4   *param_stride,
+    data_type_t   dtype);
 void tpu_gdma_c_scatter_S2S(
     system_addr_t  output_addr,
     system_addr_t  input_addr,
     addr_t         index_addr,
     bool           index_is_local,
-    u32            src_C,
-    u32            dst_C,
-    u32            H,
-    u32            W,
-    u32            src_C_stride,
-    u32            dst_C_stride,
-    u32            start_pos,
-    int            inplace_add,
-    int            stride_enable,
+    const dim4    *shape,
+    int            param_c,
+    const dim4    *output_stride,
+    const dim4    *param_stride,
     data_type_t    dtype);
 
 void tpu_gdma_random_mask_set_seed(const int seed);
@@ -1653,8 +1703,8 @@ void tpu_sdma_cpy_reduce_S2L2(
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_sdma_cpy_reduce_L22L2(
     system_addr_t dst_addr,
@@ -1663,8 +1713,8 @@ void tpu_sdma_cpy_reduce_L22L2(
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_sdma_lossy_compress(
     system_addr_t dst_addr,
@@ -1686,8 +1736,8 @@ void tpu_sdma_lossy_compress_reduce_S2L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_sdma_lossy_compress_reduce_L22L2(
     system_addr_t dst_addr,
@@ -1695,8 +1745,8 @@ void tpu_sdma_lossy_compress_reduce_L22L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_sdma_lossy_decompress_reduce_S2L2(
     system_addr_t dst_addr,
@@ -1704,8 +1754,8 @@ void tpu_sdma_lossy_decompress_reduce_S2L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 void tpu_sdma_lossy_decompress_reduce_L22L2(
     system_addr_t dst_addr,
@@ -1713,8 +1763,8 @@ void tpu_sdma_lossy_decompress_reduce_L22L2(
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
-    int reduce_psum_op,
-    int reduce_opcode);
+    all_reduce_psum_t reduce_psum_op,
+    all_reduce_opcode_t reduce_opcode);
 
 unsigned int tpu_sdma_get_filter_num();
 
@@ -1803,7 +1853,7 @@ void tpu_cdma_write(
     int             is_fill_const,
     int             const_val,
     data_type_t     dtype,
-#if defined(__sg2260e__)
+#if defined(__sg2260e__) || defined(__bm1684x2__)
     int             opcode,
 #endif
     int             stride_enable,
@@ -1811,12 +1861,13 @@ void tpu_cdma_write(
     int             nchw_copy,
     u32             msg_en,
     u32             msg_id,
-    u32             wcnt);
+    u32             wcnt,
+    int             port);
 #else
     int             nchw_copy);
 #endif
 
-#if defined(__sg2260e__)
+#if defined(__sg2260e__) || defined(__bm1684x2__)
 void tpu_cdma_read(
     int             src_chipid,
     int             dst_chipid,
@@ -1838,7 +1889,18 @@ void tpu_cdma_read(
     unsigned int    dst_h_stride,
     data_type_t     dtype,
     int             opcode,
-    int             stride_enable);
+    int             stride_enable,
+    int             port);
+
+void tpu_cdma_gather(
+    int             chip_id,
+    system_addr_t   dst_addr,
+    system_addr_t   index_list_addr,
+    int             index_list_num,
+    int             length_shift,
+    data_type_t     dtype,
+    int             opcode,
+    int             port);
 
 void tpu_cdma_scatter(
     int             chip_id,
@@ -1850,14 +1912,16 @@ void tpu_cdma_scatter(
     int             opcode,
     u32             msg_en,
     u32             msg_id,
-    u32             wcnt);
+    u32             wcnt,
+    int             port);
 
 void tpu_cdma_remote_msgsend(
     int             chip_id,
     system_addr_t   index_list_addr,
     int             index_list_num,
     u32             msg_id,
-    u32             wcnt);
+    u32             wcnt,
+    int             port);
 #endif
 
 #if defined(__sg2260__) && defined(USING_CMODEL)
@@ -6048,12 +6112,25 @@ void tpu_bdc_random_gen_load_state(
 void tpu_bdc_clamp(
     local_addr_t dst_addr,
     local_addr_t src_addr,
-    scalar_t max_const_val,
     scalar_t min_const_val,
+    scalar_t max_const_val,
     const dim4 *shape,
     const dim4 *dst_stride,
     const dim4 *src_stride,
     data_type_t dtype);
+
+void tpu_bdc_fp4_mul(
+    local_addr_t dst_addr,
+    local_addr_t src0_addr,
+    local_addr_t src1_addr,
+    const dim4 *shape,
+    const dim4 *dst_stride,
+    const dim4 *src0_stride,
+    const dim4 *src1_stride,
+    data_type_t dst_dtype,
+    data_type_t src0_dtype,
+    data_type_t src1_dtype
+);
 
 void tpu_bdc_end();
 
@@ -6254,13 +6331,14 @@ int tpu_chip_id();
 int tpu_chip_num();
 int tpu_rank();
 int* tpu_chip_map();
-int tpu_use_ring();
-void tpu_sccl_init(int chip_num, int rank, int* chip_map, int use_ring);
+int tpu_sccl_algo();
+void tpu_sccl_init(int chip_num, int rank, int* chip_map, int sccl_algo);
 
 int tpu_get_local_msg_id();
 int tpu_get_global_msg_id();
 int tpu_get_ccl_msg_id();
 int tpu_get_schedule_msg_id();
+int tpu_get_core_sync_msg_id();
 
 // descriptor mode interface
 void tpu_run_commands(const tpu_engine_command_info_t* commands, u32 engine_num);
@@ -6275,6 +6353,10 @@ void read_bw_registers(bw_info_t *info);
 void show_bw_info(double freq);
 void enable_bw_perf();
 void disable_bw_perf(double freq);
+
+// Sync primitives across cores
+void tpu_acquire_lock(int lock_id);
+void tpu_release_lock(int lock_id);
 
 // memcheck
 void tpu_mem_record_add(system_addr_t addr, u64 size, u64 info);

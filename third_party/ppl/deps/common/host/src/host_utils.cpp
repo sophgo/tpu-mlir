@@ -2,6 +2,8 @@
 #include <cassert>
 #include <string>
 
+AutoTuner gTunner;
+
 int get_chip() {
   static int chip = -1;
   if (chip == -1) {

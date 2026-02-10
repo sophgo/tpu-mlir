@@ -151,5 +151,6 @@ inline static u64 gdma_get_lane_mask() {
   // #endif
   return lane_mask;
 }
+uint64_t pack_scale_val(uint32_t multiplier, int shift, int offset);
 
 #endif

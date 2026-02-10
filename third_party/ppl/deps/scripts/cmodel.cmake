@@ -162,7 +162,7 @@ message(NOTICE "EXTRA_CFLAGS: ${EXTRA_CFLAGS}")
 message(NOTICE "EXTRA_LDIRS: ${EXTRA_LDIRS}")
 find_package(ZLIB REQUIRED)
 aux_source_directory(src APP_SRC_FILES)
-
+add_definitions(-DPPL_TUNE)
 add_executable(main ${APP_SRC_FILES}
                     ${CUS_TOP}/host/src/cnpy.cpp
                     ${CUS_TOP}/host/src/host_utils.cpp)
@@ -179,8 +179,12 @@ set_target_properties(main PROPERTIES OUTPUT_NAME test_case)
 install(TARGETS main DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
 aux_source_directory(device KERNEL_SRC_FILES)
-add_library(firmware SHARED ${KERNEL_SRC_FILES} ${CUS_TOP}/dev/utils/src/ppl_helper.c ${KERNEL_CHECKER})
+add_library(firmware SHARED ${KERNEL_SRC_FILES}
+                            ${CUS_TOP}/dev/utils/src/dev_cnpy.c
+                            ${CUS_TOP}/dev/utils/src/ppl_helper.c
+                            ${CUS_TOP}/dev/utils/src/tensor_dump.c
+                            ${KERNEL_CHECKER})
 target_compile_options(firmware PRIVATE ${EXTRA_PLFLAGS})
-target_link_libraries(firmware PRIVATE ${FIRMWARE_CMODEL} m)
+target_link_libraries(firmware PRIVATE ${FIRMWARE_CMODEL} m ${ZLIB_LIBRARIES})
 set_target_properties(firmware PROPERTIES OUTPUT_NAME cmodel)
 install(TARGETS firmware DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/lib)

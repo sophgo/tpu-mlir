@@ -1,6 +1,7 @@
 #ifndef RVT_API_H
 #define RVT_API_H
 #include <inttypes.h>
+#include <stdbool.h>
 
 typedef struct {
   union {
@@ -40,11 +41,10 @@ void rvt_cfg_ctrl1(uint64_t rs);
 void rvt_cfg_ctrl1_tf32(bool is_tf32);
 void rvt_cfg_ctrl1_jump_cnt(uint64_t jump_cnt);
 void rvt_cfg_ctrl1_dis_auto_dep_id(bool dis_auto_dep_id);
+void rvt_kernel_start();
 
 bool rvt_is_parallel_state();
 void rvt_parallel(uint8_t en);
-void rvt_auto_dep_id(uint8_t en);
-void rvt_max_cmd_num(uint32_t num);
 
 int rvt_get_local_msg_id();
 int rvt_get_global_msg_id();

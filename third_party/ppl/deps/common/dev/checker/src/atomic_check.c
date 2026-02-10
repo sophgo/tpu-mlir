@@ -7,6 +7,16 @@ static inline scalar_t *get_scalar(ppl_variable_t *var) {
   return (var && var->type == 1) ? (scalar_t *)(var->context) : NULL;
 }
 
+bool is_constant(ppl_variable_t* var) {
+  if (!var) {
+    return true;
+  }
+  if (var->type == 1) {
+    return true;
+  }
+  return false;
+}
+
 static inline uint32_t get_addr_or_scalar(ppl_variable_t *var) {
   if (!var)
     return 0;
@@ -615,10 +625,10 @@ void fused_cmp_check(ppl_tensor_t *R0, ppl_tensor_t *R1, ppl_variable_t *A,
   uint32_t C_addr = get_addr_or_scalar(C);
   uint32_t D_addr = get_addr_or_scalar(D);
 
-  bool A_is_const = (A && A->type == 1);
-  bool B_is_const = (B && B->type == 1);
-  bool C_is_const = (C && C->type == 1);
-  bool D_is_const = (D && D->type == 1);
+  bool A_is_const = is_constant(A);
+  bool B_is_const = is_constant(B);
+  bool C_is_const = is_constant(C);
+  bool D_is_const = is_constant(D);
 
   ppl_tensor_t *A_tensor = (A && A->type == 0) ? get_tensor(A) : NULL;
   ppl_tensor_t *B_tensor = (B && B->type == 0) ? get_tensor(B) : NULL;
@@ -674,22 +684,22 @@ void conv_quant_check(ppl_tensor_t *input, ppl_tensor_t *output,
   PREC output_prec = PRECISION(output->dtype);
   int output_c = output->shape.c;
 
-  int kernel_is_const = (weight && weight->type == 1) ? 1 : 0;
+  int kernel_is_const = is_constant(weight);
   uint32_t weight_addr = get_addr_or_scalar(weight);
   PREC weight_prec = kernel_is_const ? INT8 : PRECISION(weight_tensor->dtype);
   int weight_sign = kernel_is_const ? 0 : SIGN(weight_tensor->dtype);
 
   uint32_t bias_addr = get_addr_or_scalar(bias);
   int bias_sign = bias ? SIGN(bias_tensor->dtype) : 0;
-  int bias_is_const = bias ? bias->type == 1 : 1;
+  int bias_is_const = is_constant(bias);
 
   uint32_t pad_ins_addr = pad_ins ? get_addr_or_scalar(pad_ins) : 0;
   uint32_t kzp_addr = kzp ? get_addr_or_scalar(kzp) : 0;
   uint32_t requant_addr = requant ? get_addr_or_scalar(requant) : 0;
 
-  int pad_ins_is_const = (pad_ins && pad_ins->type == 1) ? 1 : 0;
-  int kzp_is_const = (kzp && kzp->type == 1) ? 1 : 0;
-  int requant_is_const = (requant && requant->type == 1) ? 1 : 0;
+  int pad_ins_is_const = is_constant(pad_ins);
+  int kzp_is_const = is_constant(kzp);
+  int requant_is_const = is_constant(requant);
 
   int input_sign = SIGN(input->dtype);
   int res_sign = SIGN(output->dtype);
@@ -747,7 +757,7 @@ void conv_fp_check(ppl_tensor_t *input, ppl_tensor_t *output,
                    u32 ins_const_val, int do_relu, int saturate,
                    PAD_MODE pad_mode) {
   // weight
-  int kernel_is_const = (weight && weight->type == 1) ? 1 : 0;
+  int kernel_is_const = is_constant(weight);
   u32 weight_addr =
       weight ? (weight->type == 0 ? ((ppl_tensor_t *)weight->context)->addr
                                   : *((u32 *)weight->context))
@@ -756,7 +766,7 @@ void conv_fp_check(ppl_tensor_t *input, ppl_tensor_t *output,
       kernel_is_const ? 0 : SIGN(((ppl_tensor_t *)weight->context)->dtype);
 
   // bias
-  int bias_is_const = (bias && bias->type == 1) ? 1 : 0;
+  int bias_is_const = is_constant(bias);
   u32 bias_addr = bias
                       ? (bias->type == 0 ? ((ppl_tensor_t *)bias->context)->addr
                                          : *((u32 *)bias->context))
@@ -767,7 +777,7 @@ void conv_fp_check(ppl_tensor_t *input, ppl_tensor_t *output,
           : 0;
 
   // pad_ins
-  int pad_ins_is_const = (pad_ins && pad_ins->type == 1) ? 1 : 0;
+  int pad_ins_is_const = is_constant(pad_ins);
   u32 pad_ins_addr =
       pad_ins ? (pad_ins->type == 0 ? ((ppl_tensor_t *)pad_ins->context)->addr
                                     : *((u32 *)pad_ins->context))
@@ -775,7 +785,7 @@ void conv_fp_check(ppl_tensor_t *input, ppl_tensor_t *output,
 
   // rescale
   int do_rescale = (rescale != NULL);
-  int rescale_is_const = (rescale && rescale->type == 1) ? 1 : 0;
+  int rescale_is_const = is_constant(rescale);
   u32 rescale_addr =
       rescale ? (rescale->type == 0 ? ((ppl_tensor_t *)rescale->context)->addr
                                     : *((u32 *)rescale->context))
@@ -802,6 +812,50 @@ void conv_fp_check(ppl_tensor_t *input, ppl_tensor_t *output,
       bias_sign, do_rescale, rescale_is_const, pad_mode);
 }
 
+
+// Conv2DFpBackwardOp
+void conv_bw_check(ppl_tensor_t *input, ppl_tensor_t *grad,
+            ppl_variable_t *pad_ins, ppl_tensor_t *res,
+            int kh, int kw, int ins_h, int ins_w, int dh, int dw,
+            int stride_h, int stride_w,
+            int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r,
+            int result_add, u32 insert_const_val,
+            PAD_MODE pad_mode) {
+  u32 input_addr = input->addr;
+  u32 grad_addr = grad->addr;
+  u32 res_addr = res->addr;
+
+  int N = input->shape.n;
+  int IC = input->shape.c;
+  int IH = input->shape.h;
+  int IW = input->shape.w;
+  int OC = grad->shape.c;
+  int OH = grad->shape.h;
+  int OW = grad->shape.w;
+
+  int input_prec = PRECISION(input->dtype);
+  int res_prec = PRECISION(res->dtype);
+  int *input_stride = (int *)&input->stride;
+  FP8_TYPE input_fp8_type = FP8TYPE(input->dtype);
+  FP8_TYPE grad_fp8_type = FP8TYPE(grad->dtype);
+  FP8_TYPE res_fp8_type = FP8TYPE(res->dtype);
+
+  // pad_ins
+  int pad_ins_is_const = is_constant(pad_ins);
+  u32 pad_ins_addr =
+      pad_ins ? (pad_ins->type == 0 ? ((ppl_tensor_t *)pad_ins->context)->addr
+                                    : *((u32 *)pad_ins->context))
+              : 0;
+  atomic_conv_bw_check(
+    input_addr, grad_addr, pad_ins_addr, res_addr,
+    N, IC, IH, IW, OC, OH, OW, kh, kw, ins_h, ins_w, dh, dw,
+    stride_h, stride_w, pad_h_t, pad_h_b, pad_w_l, pad_w_r,
+    pad_ins_is_const, result_add, insert_const_val,
+    input_stride, pad_mode, input_prec, res_prec,
+    input_fp8_type, grad_fp8_type, res_fp8_type
+  );
+}
+
 void cpy_cross_npu_check(ppl_tensor_t *src, ppl_tensor_t *dst) {
   u32 src_addr = src->addr;
   u32 dst_addr = dst->addr;
@@ -821,7 +875,7 @@ void dq0_check(ppl_tensor_t *input, ppl_variable_t *B_tensor,
   PREC R_prec = PRECISION(output->dtype);
 
   uint32_t B_addr = get_addr_or_scalar(B_tensor);
-  int B_is_const = (B_tensor == NULL || B_tensor->type != 0) ? 1 : 0;
+  int B_is_const = is_constant(B_tensor);
 
   atomic_dq_f32mode_check(input->addr, B_addr, output->addr, output->shape.n,
                           output->shape.c, output->shape.h, output->shape.w,
@@ -843,7 +897,7 @@ void dq1_check(ppl_tensor_t *input, ppl_variable_t *B_tensor,
   PREC R_prec = PRECISION(output->dtype);
 
   uint32_t B_addr = get_addr_or_scalar(B_tensor);
-  int B_is_const = (B_tensor == NULL || B_tensor->type != 0) ? 1 : 0;
+  int B_is_const = is_constant(B_tensor);
 
   atomic_dq_i32mode_check(input->addr,  // A_addr
                           B_addr,       // B_addr
@@ -875,7 +929,7 @@ void rq0_check(ppl_tensor_t *input, ppl_variable_t *scale, ppl_tensor_t *output,
   PREC R_prec = PRECISION(output->dtype);
 
   uint32_t B_addr = get_addr_or_scalar(scale);
-  int B_is_const = (scale == NULL || scale->type != 0) ? 1 : 0;
+  int B_is_const = is_constant(scale);
 
   float scale_val = (B_is_const ? scale_value : 1.0f);
   float zp_val = (B_is_const ? offset : 0.0f);
@@ -894,7 +948,7 @@ void rq1_check(ppl_tensor_t *input, ppl_variable_t *quant, ppl_tensor_t *output,
   u32 A_addr = input->addr;
   u32 R_addr = output->addr;
   u32 B_addr = 0;
-  int B_is_const = (quant == NULL || quant->type == 1) ? 1 : 0;
+  int B_is_const = is_constant(quant);
 
   B_addr = get_addr_or_scalar(quant);
 
@@ -954,7 +1008,7 @@ void depthwise_check(ppl_tensor_t *input, ppl_tensor_t *output,
   }
 
   int do_rq = false;
-  int rq_is_const = (rq == NULL || rq->type == 1);
+  int rq_is_const = is_constant(rq);
   u32 rq_addr = get_addr_or_scalar(rq);
 
   PREC in_prec = PRECISION(input->dtype);

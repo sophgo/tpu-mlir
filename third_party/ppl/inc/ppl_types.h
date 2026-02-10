@@ -7,8 +7,6 @@
 #pragma once
 #include "ppl_defs.h"
 
-namespace ppl {
-
 enum comparision_mode_t {
   GREATER = 0,
   LESS = 1,
@@ -32,7 +30,7 @@ enum coeff_table_mode_t {
   COS = 3,
   TAN = 4,
   ARCSIN = 5,
-  ERF_TAYLOR = 6,
+  ERF = 6,
   SERIAL_NUMBER = 30, // int32 uint32
 };
 
@@ -52,6 +50,7 @@ enum align_mode_t {
 enum tensor_mode_t {
   L2 = 1,
   GLOBAL = 2,
+  LOCAL = 3,
 };
 
 enum data_type_t {
@@ -85,6 +84,7 @@ enum all_reduce_opcode_t {
   ALL_REDUCE_AMAX = 5,
   ALL_REDUCE_SUM = 6,
   ALL_REDUCE_POWERSUM = 7,
+  ALL_REDUCE_MAC = 8,
 };
 
 enum all_reduce_psum_t {
@@ -101,7 +101,10 @@ enum sync_type { TIU_DMA_SYNC = 0x1, SDMA_SYNC = 0x10, HAU_SYNC = 0x100 };
 
 #define SYNC_ALL TIU_DMA_SYNC & SDMA_SYNC & HAU_SYNC
 
+namespace ppl {
 struct dim4 {
+  // Please do not modify the value of dim4.
+  // If you need to modify it, please create a new dim4
   int n, c, h, w;
   dim4();
   dim4(const dim4 &);
@@ -117,14 +120,18 @@ struct dim4 {
 };
 
 struct dim2 {
+  // Please do not modify the value of dim2.
+  // If you need to modify it, please create a new dim2
   int h, w;
   dim2();
-  // dim2(const dim4 &);
-  dim2 &operator=(const dim4 &);
+  // dim2(const dim2 &);
+  dim2 &operator=(const dim2 &);
   dim2(int _h, int _w);
 };
 
 struct padding_t {
+  // Please do not modify the value of padding_t.
+  // If you need to modify it, please create a new padding_t
   int top, bottom, left, right;
   padding_t();
   padding_t(const padding_t &);

@@ -10,8 +10,7 @@ OPTION_ARG=""
 if [ x$ARG != x ]; then
   OPTION_ARG="--const-arg $ARG"
 fi
-
-ppl-compile "$SRC"  --I $INC  --x ir --chip $CHIP -D__${CHIP}__ --O3 --desc --device ${OPTION_ARG} -o ${OUT}
+ppl-compile "$SRC"  --I $INC  --x ir --chip $CHIP -D__${CHIP}__ --O3 --desc --device ${OPTION_ARG} --function ${FUNC_NAME} -o ${OUT}
 ret=$?
 if [ $ret -eq 17 ]; then
     echo "Error: Local address assign failed!"

@@ -869,15 +869,15 @@ extern "C"
         sg_data_type_t dtype,
         bool weight_keep_f32);
 
-    tpudnnStatus_t tpudnnClipFloat(
+    tpudnnStatus_t tpudnnClip(
         tpudnnHandle_t handle,
         void* input,
         void* output,
         const int* shape,
         int dims,
         sg_data_type_t dtype,
-        float min,
-        float max,
+        ValUnion min,
+        ValUnion max,
         int if_relu,
         float relu_upper_limit
     );
@@ -1770,6 +1770,29 @@ extern "C"
         int dims,
         sg_data_type_t dtype);
 
+    tpudnnStatus_t tpudnnAdamWBackwardMultiCore(
+        tpudnnHandle_t handle,
+        void *weight_out,
+        void *m_out,
+        void *v_out,
+        void *vmax_out,
+        void *grad_weight,
+        void *weight_in,
+        void *m_in,
+        void *v_in,
+        void *vmax_in,
+        void *t,
+        float lr,
+        float beta1,
+        float beta2,
+        float eps,
+        float weight_decay,
+        bool amsgrad,
+        bool maximize,
+        int *shape,
+        int dims,
+        sg_data_type_t dtype);
+
     tpudnnStatus_t tpudnnLlamaMlpForwardMultiCore(
         tpudnnHandle_t handle,
         void *input,
@@ -2198,6 +2221,15 @@ extern "C"
         void *    input,
         void *    weight,
         void *    output);
+
+    tpudnnStatus_t tpudnnMsgSyncCoreEngines(
+        tpudnnHandle_t        handle,
+        void *    input,
+        void *    output,
+        const int *shape,
+        int dims,
+        sg_data_type_t dtype
+    );
 
     tpudnnStatus_t tpudnnPixelNorm(
         tpudnnHandle_t handle,
@@ -2913,7 +2945,10 @@ extern "C"
     tpudnnStatus_t tpudnnL2mTest(
         tpudnnHandle_t      handle,
         void *  input,
-        void *  output);
+        void *  output,
+        const int* shape,
+        int dims,
+        sg_data_type_t dtype);
     tpudnnStatus_t tpudnnMsgCentralStressTest(
         tpudnnHandle_t         handle,
         int                 loop

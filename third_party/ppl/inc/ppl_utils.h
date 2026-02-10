@@ -29,75 +29,36 @@ template <typename T> void swap(T &a, T &b) {
 }
 
 template <typename T>
-void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode,
-                int start_idx = 0) {
-  int eu_num = get_eu_num<T>();
-  if (mode == TPU_ALIGN) {
-    stride->h = shape->w;
-    stride->c = shape->h * stride->h;
-    stride->c = align(stride->c, eu_num);
-    stride->n = div_up(start_idx + shape->c, LANE_NUM) * stride->c;
-    stride->w = 1;
-
-  } else if (mode == TPU_COMPACT) {
-    stride->h = shape->w;
-    stride->c = shape->h * stride->h;
-    stride->n = div_up(start_idx + shape->c, LANE_NUM) * stride->c;
-    stride->w = 1;
-
-  } else if (mode == TPU_ROW_ALIGN) {
-    stride->n = div_up(start_idx + shape->c, LANE_NUM) * stride->c;
-    stride->c = shape->h * stride->h;
-    stride->h = div_up(shape->w, eu_num);
-    stride->w = 1;
-
-  } else {
-    stride->n = shape->c * shape->h * shape->w;
-    stride->c = shape->h * shape->w;
-    stride->h = shape->w;
-    stride->w = 1;
-  }
-}
-
-template <typename T>
 dim4 &get_stride(dim4 &shape, align_mode_t mode, int start_idx = 0) {
   int eu_num = get_eu_num<T>();
-  dim4 stride;
+  int stride_n = 0;
+  int stride_c = 0;
+  int stride_h = 0;
+  int stride_w = 0;
   if (mode == TPU_ALIGN) {
-    stride.h = shape.w;
-    stride.c = shape.h * stride.h;
-    stride.c = align(stride.c, eu_num);
-    stride.n = div_up(start_idx + shape.c, LANE_NUM) * stride.c;
-    stride.w = 1;
+    stride_h = shape.w;
+    stride_c = shape.h * stride_h;
+    stride_c = align(stride_c, eu_num);
+    stride_n = div_up(start_idx + shape.c, LANE_NUM) * stride_c;
+    stride_w = 1;
   } else if (mode == TPU_COMPACT) {
-    stride.h = shape.w;
-    stride.c = shape.h * stride.h;
-    stride.n = div_up(start_idx + shape.c, LANE_NUM) * stride.c;
-    stride.w = 1;
+    stride_h = shape.w;
+    stride_c = shape.h * stride_h;
+    stride_n = div_up(start_idx + shape.c, LANE_NUM) * stride_c;
+    stride_w = 1;
   } else if (mode == TPU_ROW_ALIGN) {
-    stride.n = div_up(start_idx + shape.c, LANE_NUM) * stride.c;
-    stride.c = shape.h * stride.h;
-    stride.h = div_up(shape.w, eu_num);
-    stride.w = 1;
+    stride_n = div_up(start_idx + shape.c, LANE_NUM) * stride_c;
+    stride_c = shape.h * stride_h;
+    stride_h = div_up(shape.w, eu_num);
+    stride_w = 1;
   } else {
-    stride.n = shape.c * shape.h * shape.w;
-    stride.c = shape.h * shape.w;
-    stride.h = shape.w;
-    stride.w = 1;
+    stride_n = shape.c * shape.h * shape.w;
+    stride_c = shape.h * shape.w;
+    stride_h = shape.w;
+    stride_w = 1;
   }
+  dim4 stride = {stride_n, stride_c, stride_h, stride_w};
   return stride;
-}
-
-template <typename U, typename V>
-void aligned_stride_4d(dim4 *aligned_stride, dim4 *shape, U start_idx,
-                       V eu_size) {
-  int eu_num = EU_BYTES / eu_size;
-  aligned_stride->h = shape->w;
-  aligned_stride->c = shape->h * aligned_stride->h;
-  aligned_stride->c = align(aligned_stride->c, eu_num);
-  aligned_stride->n =
-      div_up(start_idx + shape->c, LANE_NUM) * aligned_stride->c;
-  aligned_stride->w = 1;
 }
 
 template <typename T> data_type_t convert_dtype() {
@@ -136,17 +97,17 @@ template <typename T> data_type_t convert_dtype() {
   }
 }
 
-template <typename T> int dim4_index(const dim4 *d, T index) {
+template <typename T> int dim4_index(const dim4 &d, T index) {
   if (index < 0 && index >= -4)
     index = index + 4;
   if (index == 0)
-    return d->n;
+    return d.n;
   else if (index == 1)
-    return d->c;
+    return d.c;
   else if (index == 2)
-    return d->h;
+    return d.h;
   else if (index == 3)
-    return d->w;
+    return d.w;
   else
     return -1;
 }
@@ -175,21 +136,17 @@ gtensor<dtype> &make_gtensor(dim4 &shape, tensor_mode_t mode, dtype *addr,
 template <typename dtype>
 gtensor<dtype> &make_gtensor_permute(dim4 &mem_shape, tensor_mode_t mode,
                                      dtype *addr, int order[4]) {
-  dim4 stride_permute;
-  dim4 shape_permute;
-  dim4 mem_stride;
-  mem_stride.n = mem_shape.c * mem_shape.h * mem_shape.w;
-  mem_stride.c = mem_shape.h * mem_shape.w;
-  mem_stride.h = mem_shape.w;
-  mem_stride.w = 1;
-  stride_permute.n = dim4_index(&mem_stride, order[0]);
-  stride_permute.c = dim4_index(&mem_stride, order[1]);
-  stride_permute.h = dim4_index(&mem_stride, order[2]);
-  stride_permute.w = dim4_index(&mem_stride, order[3]);
-  shape_permute.n = dim4_index(&mem_shape, order[0]);
-  shape_permute.c = dim4_index(&mem_shape, order[1]);
-  shape_permute.h = dim4_index(&mem_shape, order[2]);
-  shape_permute.w = dim4_index(&mem_shape, order[3]);
+  int mem_stride_n = mem_shape.c * mem_shape.h * mem_shape.w;
+  int mem_stride_c = mem_shape.h * mem_shape.w;
+  int mem_stride_h = mem_shape.w;
+  int mem_stride_w = 1;
+  dim4 mem_stride = {mem_stride_n, mem_stride_c, mem_stride_h, mem_stride_w};
+  dim4 stride_permute = {
+      dim4_index(mem_stride, order[0]), dim4_index(mem_stride, order[1]),
+      dim4_index(mem_stride, order[2]), dim4_index(mem_stride, order[3])};
+  dim4 shape_permute = {
+      dim4_index(mem_shape, order[0]), dim4_index(mem_shape, order[1]),
+      dim4_index(mem_shape, order[2]), dim4_index(mem_shape, order[3])};
   return make_gtensor<dtype>(shape_permute, mode, addr, stride_permute);
 }
 
@@ -228,8 +185,97 @@ template <typename DataType> int get_nic() {
                        std::is_same_v<DataType, fp4>) {
     return LANE_NUM * 2;
   } else {
+#if defined(__sg2262__)
+    if constexpr (std::is_same_v<DataType, int8> ||
+                  std::is_same_v<DataType, uint8> ||
+                  std::is_same_v<DataType, fp16> ||
+                  std::is_same_v<DataType, bf16>) {
+      return 16;
+    } else if constexpr (std::is_same_v<DataType, fp8e4m3> ||
+                         std::is_same_v<DataType, fp8e5m2>) {
+      return 32;
+    } else {
+      static_assert(false, "unsupported data type");
+    }
+#elif defined(__bm1684x2__)
+    if constexpr (std::is_same_v<DataType, int8> ||
+                  std::is_same_v<DataType, uint8> ||
+                  std::is_same_v<DataType, fp8e4m3> ||
+                  std::is_same_v<DataType, fp8e5m2>) {
+      return 32;
+    } else if constexpr (std::is_same_v<DataType, fp16> ||
+                         std::is_same_v<DataType, bf16>) {
+      return 16;
+    } else {
+      static_assert(false, "unsupported data type");
+    }
+#elif defined(__mars3__)
+    if constexpr (std::is_same_v<DataType, int8> ||
+                  std::is_same_v<DataType, uint8>) {
+      return 16;
+    } else {
+      return 8;
+    }
+#else
     return LANE_NUM / get_data_size<DataType>();
+#endif
   }
+}
+
+/************************************************************************************
+ */
+/************************************************************************************
+ */
+/*        deprecated */
+/**************************************************************************************/
+/**************************************************************************************/
+
+template <typename T>
+void get_stride(dim4 *stride, dim4 *shape, align_mode_t mode,
+                int start_idx = 0) {
+  int eu_num = get_eu_num<T>();
+  int stride_n = 0;
+  int stride_c = 0;
+  int stride_h = 0;
+  int stride_w = 0;
+  if (mode == TPU_ALIGN) {
+    stride_h = shape->w;
+    stride_c = shape->h * stride_h;
+    stride_c = align(stride_c, eu_num);
+    stride_n = div_up(start_idx + shape->c, LANE_NUM) * stride_c;
+    stride_w = 1;
+
+  } else if (mode == TPU_COMPACT) {
+    stride_h = shape->w;
+    stride_c = shape->h * stride_h;
+    stride_n = div_up(start_idx + shape->c, LANE_NUM) * stride_c;
+    stride_w = 1;
+
+  } else if (mode == TPU_ROW_ALIGN) {
+    stride_n = div_up(start_idx + shape->c, LANE_NUM) * stride_c;
+    stride_c = shape->h * stride_h;
+    stride_h = div_up(shape->w, eu_num);
+    stride_w = 1;
+
+  } else {
+    stride_n = shape->c * shape->h * shape->w;
+    stride_c = shape->h * shape->w;
+    stride_h = shape->w;
+    stride_w = 1;
+  }
+  *stride = {stride_n, stride_c, stride_h, stride_w};
+}
+
+template <typename U, typename V>
+void aligned_stride_4d(dim4 *aligned_stride, dim4 *shape, U start_idx,
+                       V eu_size) {
+  int eu_num = EU_BYTES / eu_size;
+  aligned_stride->h = shape->w;
+  aligned_stride->c = shape->h * aligned_stride->h;
+  aligned_stride->c = align(aligned_stride->c, eu_num);
+  aligned_stride->n =
+      div_up(start_idx + shape->c, LANE_NUM) * aligned_stride->c;
+  aligned_stride->w = 1;
 }
 
 } // namespace ppl
