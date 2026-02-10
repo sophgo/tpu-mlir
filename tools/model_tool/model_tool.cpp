@@ -80,6 +80,14 @@ static void show_chip(const string &filename) {
   }
 }
 
+static void show_kernel_mode(const string &filename) {
+  if (isCv18xx(filename)) {
+    cout << "cv18xx not supported!" << endl;
+    return;
+  }
+  bm_show_kernel_mode(filename);
+}
+
 static void show_weight(const string &filename) {
   if (isCv18xx(filename)) {
     cout << "cv18xx not supported!" << endl;
@@ -497,6 +505,8 @@ int main(int argc, char **argv) {
     decrypt(argc, argv);
   } else if (cmd == "--chip") {
     show_chip(argv[2]);
+  } else if (cmd == "--kernel_mode") {
+    show_kernel_mode(argv[2]);
   } else if (cmd == "--is_dynamic") {
     show_dynamic(argv[2]);
   } else if (cmd == "--extract") {

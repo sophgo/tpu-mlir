@@ -21,7 +21,7 @@ import mlir.dialects.top as top
 from transform.MLIRImporter import MLIRImporter, Platform
 
 # Constants
-SUPPORTED_CHIPS = ["bm1684x", "bm1688"]
+SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e"]
 SUPPORTED_MODES = ["f32", "f16"]
 
 
@@ -31,7 +31,10 @@ def deploy_case_bmodel(case_name: str,
                        tolerance: Tuple[float, float] = (0.98, 0.95),
                        test_reference: Optional[str] = None,
                        num_core: int = 1,
-                       debug: bool = False) -> None:
+                       debug: bool = False,
+                       dynamic: bool = False,
+                       rvti: bool = False,
+                       disable_lg: bool = False) -> None:
     """
     Run `model_deploy.py` for a single case/chip/mode.
 
@@ -48,18 +51,22 @@ def deploy_case_bmodel(case_name: str,
     cos_tol, euclidean_tol = tolerance
     test_reference_arg = (f"--test_reference {test_reference} "
                           if test_reference is not None else "")
-    debug_arg = "--debug " if debug else ""
-    deploy_cmd = (f"model_deploy.py --mlir {case_name}.mlir "
-                  f"--chip {chip} "
-                  f"--test_input {case_name}_input.npz "
-                  f"{test_reference_arg}"
-                  f"--model {bmodel_name} "
-                  f"--quantize {mode.upper()} "
-                  f"--tolerance {cos_tol},{euclidean_tol} "
-                  f"--num_core {num_core} "
-                  f"{debug_arg}")
+    deploy_cmd = [
+        f"model_deploy.py --mlir {case_name}.mlir", f"--chip {chip}",
+        f"--test_input {case_name}_input.npz", f"{test_reference_arg}", f"--model {bmodel_name}",
+        f"--quantize {mode.upper()}", f"--tolerance {cos_tol},{euclidean_tol}",
+        f"--num_core {num_core}", "--high_precision"
+    ]
+    if debug:
+        deploy_cmd.append("--debug")
+    if dynamic:
+        deploy_cmd.append("--dynamic")
+    if rvti:
+        deploy_cmd.append("--rvti")
+    if disable_lg:
+        deploy_cmd.append("--disable_layer_group")
     print(deploy_cmd)
-    assert os.system(deploy_cmd) == 0
+    assert os.system(" ".join(deploy_cmd)) == 0
 
 
 def rand_data(shape: List[int],
@@ -124,13 +131,7 @@ class MLIR_IR_TESTER(object):
     _id = 0  # Class variable for generating unique names
 
     # This class is built for testing single operator transform.
-    def __init__(self,
-                 chip: str = "bm1684x",
-                 mode: str = "all",
-                 simple: bool = False,
-                 concise_log: bool = False,
-                 num_core: int = 1,
-                 debug: bool = False):
+    def __init__(self, args):
         Y, N = True, False
         # Test function registry with chip support
         self._test_functions = {
@@ -140,17 +141,21 @@ class MLIR_IR_TESTER(object):
             # case:  (test_function,      bm1684x_support, bm1688_support)
             "error0": (self.test_error0, Y, Y),
             "insert": (self.test_insert, Y, Y),
+            "fattention": (self.test_fattention, Y, Y),
         }
         # currently test_mlir.py only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
-        self.mode = mode.lower()
-        self.simple = simple
-        self.chip = chip.lower()
-        self.concise_log = concise_log  # use when run regression/main_entry.py
-        self.num_core = num_core
-        self.debug = debug
+        self.mode = args.mode.lower()
+        self.simple = args.simple
+        self.chip = args.chip.lower()
+        self.concise_log = args.concise_log  # use when run regression/main_entry.py
+        self.num_core = args.num_core
+        self.debug = args.debug
+        self.dynamic = args.dynamic
+        self.rvti = args.rvti
+        self.disable_lg = args.disable_lg
         if self.chip not in SUPPORTED_CHIPS:
-            raise ValueError(f"Unsupported chip: {chip}. Supported: {SUPPORTED_CHIPS}")
+            raise ValueError(f"Unsupported chip: {self.chip}. Supported: {SUPPORTED_CHIPS}")
 
         # Set quantization modes
         self.support_quant_modes = SUPPORTED_MODES
@@ -382,7 +387,11 @@ class MLIR_IR_TESTER(object):
                                    chip=self.chip,
                                    mode=mode,
                                    tolerance=tolerance,
-                                   debug=self.debug)
+                                   debug=self.debug,
+                                   dynamic=self.dynamic,
+                                   num_core=self.num_core,
+                                   rvti=self.rvti,
+                                   disable_lg=self.disable_lg)
             except Exception as e:
                 # print(f"[Error] Mode {mode} failed for {case_name}: {e}")
                 raise RuntimeError(
@@ -506,6 +515,77 @@ class MLIR_IR_TESTER(object):
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
 
+    def test_fattention(self, case_name):
+        """Test case fattention: Fused attention with multiple inputs/outputs."""
+        input_shapes = [
+            [1, 64, 16, 128],  # Q
+            [1, 64, 16, 128],  # K
+            [1, 64, 16, 128],  # V
+        ]
+        weight_shapes = [
+            [1, 1, 1, 128],  # weight0
+            [1, 1, 1, 128],  # weight1
+            [1, 1, 1, 128],  # weight2
+        ]
+        output_shapes = [
+            [1, 64, 16, 128],  # out0
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32", "F32", "F32"])
+
+        in0_op, in1_op, in2_op = input_ops
+        q_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+                             in0_op,
+                             weight_ops[0],
+                             eps=1e-6,
+                             loc=self._L(block_mlir, "rmsnorm0"),
+                             ip=ip).output
+        k_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+                             in1_op,
+                             weight_ops[1],
+                             eps=1e-6,
+                             loc=self._L(block_mlir, "rmsnorm1"),
+                             ip=ip).output
+        v_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+                             in2_op,
+                             weight_ops[2],
+                             eps=1e-6,
+                             loc=self._L(block_mlir, "rmsnorm2"),
+                             ip=ip).output
+
+        op = top.FAttentionOp(self._T(block_mlir, output_shapes[0]),
+                              q_op,
+                              k_op,
+                              v_op,
+                              block_mlir.none_op,
+                              block_mlir.none_op,
+                              batch=1,
+                              q_head=16,
+                              kv_head=16,
+                              dim=128,
+                              scale=0.0883883476,
+                              mq=64,
+                              mk=64,
+                              keep_dims=True,
+                              loc=self._L(block_mlir, "fattention"),
+                              ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([op])
+
+        # Save MLIR text, weights, and inputs
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 input_shapes,
+                                 weight_shapes,
+                                 input_descs=[self.Desc('float32', -5, 5) for _ in input_shapes],
+                                 weight_descs=None)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name)
+
 
 def test_one_case_in_all(tester: MLIR_IR_TESTER, case: str, error_cases: List,
                          success_cases: List) -> None:
@@ -569,7 +649,7 @@ def main():
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x', 'bm1688'], help="chip platform name")
+                        choices=SUPPORTED_CHIPS, help="chip platform name")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16'], help="quantize modes, only supports fp for now")
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
@@ -578,10 +658,12 @@ def main():
     parser.add_argument("--report", default="", type=str, help="report file name")
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
     parser.add_argument("--num_core", default=1, type=int, help="number of cores to use")
+    parser.add_argument("--dynamic", action="store_true", help='enable dynamic compile and inference')
+    parser.add_argument("--rvti", action="store_true", help='enable rvti, only for bm1684x2 and bm1690e')
+    parser.add_argument("--disable_lg", action="store_true", help='disable layergroup')
     # yapf: enable
     args = parser.parse_args()
-    tester = MLIR_IR_TESTER(args.chip, args.mode, args.simple, args.concise_log, args.num_core,
-                            args.debug)
+    tester = MLIR_IR_TESTER(args)
     # Handle show_all flag
     if args.show_all:
         print("====== Show All Cases ============")

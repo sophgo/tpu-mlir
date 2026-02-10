@@ -32,7 +32,7 @@ setup(
         "graphviz==0.20.1",
         "pycocotools==2.0.6",
         "scikit-image==0.21.0",
-        "transformers==4.51.1",
+        "transformers==5.1.0",
         "scikit-learn==1.6.1",
         "onnxruntime_extensions==0.14.0",
         "pandas==2.0.3",

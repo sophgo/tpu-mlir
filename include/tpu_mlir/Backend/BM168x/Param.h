@@ -24,6 +24,7 @@ extern "C" {
 #define PPL_SG2262 "sg2262"
 #define PPL_SG2380 "sg2380"
 #define PPL_CV184X "cv184x"
+#define PPL_BM1690E "bm1690e"
 #define PPL_BM1684XE "bm1684xe"
 
 // -------------------------------------------------------------------

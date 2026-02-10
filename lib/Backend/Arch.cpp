@@ -86,6 +86,9 @@ void Arch::init(uint64_t freq) {
     case module::Chip::CV184X:
       chip_str = PPL_CV184X;
       break;
+    case module::Chip::BM1690E:
+      chip_str = PPL_BM1690E;
+      break;
     default:
       // llvm::errs() << "ppl unsupport this chip\n";
       break;

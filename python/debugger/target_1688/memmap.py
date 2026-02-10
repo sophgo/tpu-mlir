@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class BM1688Info(TPUInfo):
 
     def __init__(self) -> None:
-        super().__init__("libcmodel_1688.so")
+        super().__init__("libcmodel_bm1688.so")
 
     def load_lib_info(self):
         self.NPU_NUM = self.lib.tpu_npu_num()

@@ -132,6 +132,7 @@ class DeployTool:
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
+        self.rvti = args.rvti
         self.compare_all = args.compare_all
 
         self.skip_validation = args.skip_validation
@@ -437,7 +438,8 @@ class DeployTool:
                     enable_lghash=self.enable_lghash,
                     lghash_dir=self.lghash_dir,
                     log_level="normal" if self.log_level == 0 else "simple",
-                    disable_topo_sort=self.disable_topo_sort)
+                    disable_topo_sort=self.disable_topo_sort,
+                    rvti=self.rvti)
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -588,6 +590,7 @@ if __name__ == '__main__':
                         help="Whether to disable topo sort pass before layer group pass")
     parser.add_argument("--enable_lghash", action='store_true', help="dump hash file if set, load hash file by default whether set or not")
     parser.add_argument("--lghash_dir", default="", type=str, help='directory to dump and load lghash file')
+    parser.add_argument("--rvti", action='store_true', help="enable RVTI kernel module")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')
@@ -661,6 +664,8 @@ if __name__ == '__main__':
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:
         assert (0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
+    if args.rvti:
+        args.dynamic = True
     tool = DeployTool(args)
     # lowering to tpu/tosa
     if args.not_gen_bmodel:

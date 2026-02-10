@@ -254,6 +254,7 @@ bool isSGTPUV8();
 bool isSG2262();
 bool isMultiCoreArch();
 bool isBM1690E();
+bool isBM1690();
 
 //-----------------------------------------------------------------
 // Helper Functions for submodule

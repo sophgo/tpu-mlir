@@ -21,7 +21,7 @@ from .memmap import *
 
 
 class BM1684XRunner(CModelRunner):
-    lib_name = "libcmodel_1684x.so"
+    lib_name = "libcmodel_bm1684x.so"
 
     def __init__(self, memory_size):
         super().__init__()

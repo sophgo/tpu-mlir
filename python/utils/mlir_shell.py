@@ -889,10 +889,12 @@ def codegen_options(model: str,
                     embed_debug_info: bool = False,
                     model_version: str = "",
                     bmodel_only: bool = False,
-                    gdma_check: bool = True):
+                    gdma_check: bool = True,
+                    rvti: bool = False):
     options = [
-        '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={} gdma_check={}"'.format(
-          model, str(embed_debug_info).capitalize(), str(model_version).lower(), str(bmodel_only).capitalize(), str(gdma_check).capitalize())
+        '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={} gdma_check={} rvti={}"'.format(
+          model, str(embed_debug_info).capitalize(), str(model_version).lower(), str(bmodel_only).capitalize(),
+          str(gdma_check).capitalize(), str(rvti).capitalize())
     ]
     return options
 
@@ -983,6 +985,7 @@ def mlir_to_model(
     disable_topo_sort: bool = False,
     enable_lghash: bool = False,
     lghash_dir: str = "",
+    rvti: bool = False,
 ):
     if command_mem is None:
         command_mem = {}
@@ -1060,7 +1063,11 @@ def mlir_to_model(
 
     # codegen based on final mlir
     cmd = ["tpuc-opt", final_mlir]
-    options = codegen_options(bmodel_path, embed_debug_info, model_version, gdma_check=gdma_check)
+    options = codegen_options(bmodel_path,
+                              embed_debug_info,
+                              model_version,
+                              gdma_check=gdma_check,
+                              rvti=rvti)
     cmd.extend(options)
     cmd.extend(["-o /dev/null"])
     _os_system(cmd, log_level=log_level)

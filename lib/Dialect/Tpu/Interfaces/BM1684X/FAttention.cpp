@@ -48,8 +48,8 @@ int64_t tpu::FAttentionOp::get_fw_type_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!module::isBM1684X() && !module::isBM1688() &&
-      module::getChip() != module::Chip::BM1690) {
+  if (!module::isBM1684X() && !module::isBM1688() && !module::isBM1690() &&
+      !module::isBM1690E()) {
     UNREACHABLE_THIS("Not Implemented");
   }
   auto op = getOperation();
