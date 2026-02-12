@@ -663,7 +663,12 @@ class LlmConverter(BaseConverter):
                 # topk_op.values, topk_op.indices
                 lmhead_mlir.create_return_op([topk_op.indices])
             else:
-                lmhead_mlir.create_return_op([lmhead_op])
+                softmax_op = top.SoftmaxOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                           lmhead_op,
+                                           axis=1,
+                                           loc=self.get_loc(lmhead + ".softmax", lmhead_mlir),
+                                           ip=lmhead_mlir.insert_point).output
+                lmhead_mlir.create_return_op([softmax_op])
 
             mlir_txt = lmhead_mlir.print_module()
             if not os.path.exists(name):
