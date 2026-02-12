@@ -11,15 +11,44 @@
 
 using namespace tpu_mlir::backend;
 
+static std::pair<std::string, bool>
+normalizeCompareConstModeAndInversed(llvm::StringRef mode, bool inversed) {
+  if (!inversed) {
+    return {mode.str(), false};
+  }
+
+  if (mode == "Greater") {
+    return {"Less", false};
+  }
+  if (mode == "GreaterOrEqual") {
+    return {"LessOrEqual", false};
+  }
+  if (mode == "Less") {
+    return {"Greater", false};
+  }
+  if (mode == "LessOrEqual") {
+    return {"GreaterOrEqual", false};
+  }
+
+  if (mode == "Equal" || mode == "NotEqual" || mode == "And" || mode == "Not" ||
+      mode == "Xor") {
+    return {mode.str(), false};
+  }
+
+  return {mode.str(), inversed};
+}
+
 // =========================================
 // GlobalGenInterface
 // =========================================
 
 void tpu::CompareConstOp::codegen_global_bm1684x() {
   constbinary_global_spec_t spec = {0};
+  auto mode_and_inversed =
+      normalizeCompareConstModeAndInversed(getMode(), getInversed());
   spec.common.B_const_val = getConstVal().convertToDouble();
-  spec.common.inversed = getInversed();
-  spec.common.binary_type = BM168x::compare_mode(getMode());
+  spec.common.inversed = mode_and_inversed.second;
+  spec.common.binary_type = BM168x::compare_mode(mode_and_inversed.first);
   spec.common.if_relu = 0;
   spec.common.rshift_A = 0;
   spec.common.scale_A = 1;
@@ -51,9 +80,11 @@ void tpu::CompareConstOp::codegen_local_bm1684x_kernel(
     std::shared_ptr<std::vector<tensor_spec_t>> input_spec,
     std::shared_ptr<std::vector<tensor_spec_t>> output_spec) {
   constbinary_local_spec_t spec = {0};
+  auto mode_and_inversed =
+      normalizeCompareConstModeAndInversed(getMode(), getInversed());
   spec.common.B_const_val = getConstVal().convertToDouble();
-  spec.common.inversed = getInversed();
-  spec.common.binary_type = BM168x::compare_mode(getMode());
+  spec.common.inversed = mode_and_inversed.second;
+  spec.common.binary_type = BM168x::compare_mode(mode_and_inversed.first);
   spec.common.if_relu = 0;
   spec.common.rshift_A = 0;
   spec.common.scale_A = 1;
@@ -72,9 +103,11 @@ int64_t tpu::CompareConstOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(constbinary_local_param_t);
   constbinary_local_param_t param = {0};
+  auto mode_and_inversed =
+      normalizeCompareConstModeAndInversed(getMode(), getInversed());
   param.spec.common.B_const_val = getConstVal().convertToDouble();
-  param.spec.common.inversed = getInversed();
-  param.spec.common.binary_type = BM168x::compare_mode(getMode());
+  param.spec.common.inversed = mode_and_inversed.second;
+  param.spec.common.binary_type = BM168x::compare_mode(mode_and_inversed.first);
   param.spec.common.if_relu = 0;
   param.spec.common.rshift_A = 0;
   param.spec.common.scale_A = 1;
@@ -89,9 +122,11 @@ int64_t tpu::CompareConstOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(constbinary_global_spec_t);
   constbinary_global_spec_t spec = {0};
+  auto mode_and_inversed =
+      normalizeCompareConstModeAndInversed(getMode(), getInversed());
   spec.common.B_const_val = getConstVal().convertToDouble();
-  spec.common.inversed = getInversed();
-  spec.common.binary_type = BM168x::compare_mode(getMode());
+  spec.common.inversed = mode_and_inversed.second;
+  spec.common.binary_type = BM168x::compare_mode(mode_and_inversed.first);
   spec.common.if_relu = 0;
   spec.common.rshift_A = 0;
   spec.common.scale_A = 1;
