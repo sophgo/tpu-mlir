@@ -406,7 +406,7 @@ class MatchPattern:
                         else:
                             continue
                     if pos_concat is None or conf_concat is None:
-                        return split_fuse_fp_layer_list, 0, self._logs
+                        return split_fuse_fp_layer_list, [], 0, self._logs
                     next_mul = self.parser.get_next_op_by_op_name(conf_concat)
                     next_concat = self.parser.get_next_op_by_op_name(next_mul[0])
                     pre_concat = self.parser.get_pre_op_by_op_name(next_concat[0])
