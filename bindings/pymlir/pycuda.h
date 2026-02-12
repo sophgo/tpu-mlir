@@ -59,7 +59,7 @@ public:
   py::dict get_all_tensor();
 
   bool is_cuda_support_op(Operation *op);
-  Operation * get_weight_target_op(Operation *weight_op);
+  std::vector<Operation *> get_weight_target_op(Operation *weight_op);
 
 private:
   // -------------------------------------------------------------------

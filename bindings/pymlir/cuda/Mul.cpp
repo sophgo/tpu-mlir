@@ -17,11 +17,6 @@ void py_cuda::cudaMulOp(tpu::MulOp op) {
   module::getNCHW(op.getInputs()[0], n0, c0, h0, w0, false);
   module::getNCHW(op.getInputs()[1], n1, c1, h1, w1, false);
   module::getNCHW(op.getOutput(), n2, c2, h2, w2, false);
-  auto shape0 = module::getShape(op.getInputs()[0]);
-  auto shape1 = module::getShape(op.getInputs()[1]);
-  if (shape0.size() != shape1.size()) {
-    UNREACHABLE_OP("Not supported", op);
-  }
   if (module::isUniformQuantized(op.getInputs()[0])) {
     auto multiplier = op.getMultiplier();
     auto rshift = op.getRshift();

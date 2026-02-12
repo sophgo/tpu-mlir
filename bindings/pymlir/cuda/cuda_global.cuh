@@ -628,6 +628,14 @@ __global__ void g_GELU(float* input, float *output, int num) {
   }
 }
 
+__global__ void g_Floor(float* input, float *output, int num) {
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  if(i<num){
+    double input_i = input[i];
+    double value = floor(input_i);
+    output[i] = value;
+  }
+}
 
 __global__ void g_copyAxis(void *src, void *dst, int outer_dim, int axis_dim,
                            int inner_dim, int offset, int num, int tbytes) {
@@ -2002,15 +2010,15 @@ __global__ void contiguousAxisReductionKernel(
 
     // Each block handles inner_size * outer_size outputs
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int batch = idx / inner_size*outer_size;
+    int outer_idx = idx / inner_size;
     int inner_idx = idx % inner_size;
 
-    if (batch < outer_size && inner_idx < inner_size) {
+    if (outer_idx < outer_size && inner_idx < inner_size) {
         T myVal = getInitialValue<T, Mode>();
 
         // Reduction over the contiguous dimension
         for (int i = 0; i < reduce_size; i++) {
-            int input_idx = (batch * reduce_size + i) * inner_size + inner_idx;
+            int input_idx = (outer_idx * reduce_size + i) * inner_size + inner_idx;
             T element = input[input_idx];
             myVal = combineValues<T, Mode>(myVal, element);
         }
@@ -2023,7 +2031,7 @@ __global__ void contiguousAxisReductionKernel(
         }
 
         // Write output
-        int output_idx = batch * inner_size + inner_idx;
+        int output_idx = outer_idx * inner_size + inner_idx;
         output[output_idx] = myVal;
     }
 }

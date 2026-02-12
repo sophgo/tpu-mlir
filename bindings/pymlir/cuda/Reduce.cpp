@@ -70,7 +70,7 @@ void py_cuda::cudaReduceOp(tpu::ReduceOp op) {
     auto in_f32 = getCudaData(op.getInput());
     auto out_f32 = getCudaData(op.getOutput());
     cuda::bmReduce(in_f32, out_f32, num_dims, (void *)_in_shape.data(), (void *)reduce_mask.data(), (int)getReductionMode(type_val));
-  } {
+  } else {
     auto in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
     auto out_f32 = newCudaData(op.getOutput(), cuda::DT_F32);
     cuda::bmReduce(in_f32.get(), out_f32.get(), num_dims, (void *)_in_shape.data(), (void *)reduce_mask.data(), (int)getReductionMode(type_val));

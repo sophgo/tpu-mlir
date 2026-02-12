@@ -45,7 +45,6 @@ void py_cuda::gpu_load(ModuleOp m) {
     auto buffer =
         std::make_shared<std::vector<float>>(module::getNumElements(v));
     buffer_map_[name] = std::move(buffer);
-    // std::cout << "66 output name: " << name << " size " << module::getNumElements(v)*sizeof(float) << " addr " << buffer_map_[name] << std::endl;
   }
 }
 
@@ -107,11 +106,13 @@ bool py_cuda::is_no_mem_op(Operation *op) {
   return false;
 }
 
-Operation * py_cuda::get_weight_target_op(Operation *weight_op) {
+std::vector<Operation *> py_cuda::get_weight_target_op(Operation *weight_op) {
   assert(!weight_op->getUsers().empty());
-  assert(std::distance(weight_op->getUsers().begin(), weight_op->getUsers().end())== 1 &&
-         "weight has multiple target ops, not support yet");
-  return *weight_op->getUsers().begin();
+  std::vector<Operation *> target_op;
+  for (auto user : weight_op->getUsers()) {
+    target_op.push_back(user);
+  }
+  return target_op;
 }
 
 // load module in cpu and gpu
@@ -153,14 +154,16 @@ void py_cuda::mix_load(ModuleOp m) {
       } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
         auto v = wOp.getOutput();
         auto name = module::getName(v).str();
-        if (is_cuda_support_op(get_weight_target_op(wOp))) {
-          cuda_malloc(weight_map_, wOp);
-          auto data = wOp.read_as_byte();
-          auto mem = weight_map_[name].get();
-          CHECK_CUDA(
-              cudaMemcpy(mem, data->data(), data->size(), cudaMemcpyHostToDevice));
-        } else {
-          infer_map_[name] = wOp.read_as_float();
+        for (auto u: get_weight_target_op(wOp)) {
+          if (is_cuda_support_op(u)) {
+            cuda_malloc(weight_map_, wOp);
+            auto data = wOp.read_as_byte();
+            auto mem = weight_map_[name].get();
+            CHECK_CUDA(
+                cudaMemcpy(mem, data->data(), data->size(), cudaMemcpyHostToDevice));
+          } else {
+            infer_map_[name] = wOp.read_as_float();
+          }
         }
         value_map_[name] = v;
       // } else if (is_no_mem_op(op)) { // all cuda supported
@@ -271,7 +274,6 @@ void py_cuda::cuda_malloc(std::map<std::string, cuda_ptr> &map, mlir::Value v) {
   cuda_ptr wrapper(cuda_mem);
   map[name] = std::move(wrapper);
   value_map_[name] = v;
-  // std::cout << "cudamalloc value name: " << name << " size " << module::getBytes(v) << " addr " << cuda_mem << std::endl;
 }
 
 cuda_ptr py_cuda::cuda_malloc(size_t bytes) {
@@ -300,13 +302,10 @@ void py_cuda::cuda_to_host(const std::string &name, bool for_infer=false) {
         std::make_shared<std::vector<float>>(module::getNumElements(v));
     buffer_map_[name] = std::move(buffer);
     it_buffer = buffer_map_.find(name);
-    // std::cout << "99 output name: " << name << " size " << module::getNumElements(v)*sizeof(float) << " addr " << buffer_map_[name] << std::endl;
   }
   auto buffer = it_buffer->second->data();
 
-  // std::cout << "cuda_to_host name: " << name << " size " << module::getNumElements(v)*sizeof(float) << " addr " << cudaData << " infer " << for_infer<< std::endl;
   auto stype = module::getStorageType(v);
-  // stype.dump();
   if (for_infer) {
     // convert type with out scaling
     assert(infer_map_.find(name) != infer_map_.end() && "infer map not found");
@@ -322,7 +321,6 @@ void py_cuda::cuda_to_host(const std::string &name, bool for_infer=false) {
     return;
   }
   if (stype.isF32()) {
-    // std::cout << "cuda_to_host F32 name: " << name << " size " << module::getNumElements(v)*sizeof(float) << " addr " << cudaData << std::endl;
     auto bytes = it_buffer->second->size() * sizeof(float);
     CHECK_CUDA(cudaMemcpy(buffer, cudaData, bytes, cudaMemcpyDeviceToHost));
   } else if (module::isUniformQuantized(v) && stype.isInteger(8)) {
@@ -639,10 +637,6 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
         // output tensor locates in cpu, and if it is needed to gpu op, it will be
         // copied to gpu in getCudaData and newCudaData
         // std::cout << "invoke cpu op: " << op->getName().getStringRef().str() << std::endl;
-        // if (buffer_map_.find(name) == buffer_map_.end()) {
-        //   std::cout << "invoke cpu op result not in buffer: " << op->getName().getStringRef().str() << std::endl;
-        // }
-        // op->dump();
       } else {
         // 1. alloc output mem in cuda
         for (auto out : op->getResults()) {
@@ -654,10 +648,8 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
             continue;
           }
           cuda_malloc(activation_map_, out);
-          // std::cout << "alloc cuda mem for: " << name << std::endl;
         }
         // std::cout << "invoke cuda op: " << op->getName().getStringRef().str() << std::endl;
-        // op->dump();
         // 2. inference
         if (auto tpuOp = dyn_cast<tpu::AddOp>(op)) {
           cudaAddOp(tpuOp);
@@ -804,7 +796,6 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
               cuda_to_host(name, false);
             }
             activation_map_.erase(name);
-            // std::cout << "release cuda activation: " << name << std::endl;
           }
         }
         for (auto out : op->getResults()) {
@@ -815,12 +806,10 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
           if (buffer_map_.find(name) != buffer_map_.end()) {
             cudaDeviceSynchronize();
             cuda_to_host(name,false);
-            // std::cout << "copy output to buffer: " << name << std::endl;
           }
           if (infer_map_.find(name) != infer_map_.end()) {
             cudaDeviceSynchronize();
             cuda_to_host(name, true);
-            // std::cout << "copy output to infer buffer: " << name << std::endl;
           }
         }
       }
@@ -843,7 +832,6 @@ void py_cuda::invoke(bool dump_all, const std::vector<std::string>& extra_output
 py::array py_cuda::get_tensor(std::string name) {
   auto it_buffer = buffer_map_.find(name);
   if (it_buffer == buffer_map_.end()) {
-    std::cout << name << std::endl;
     llvm_unreachable("can't get_tensor name in buffer");
   }
   auto data = it_buffer->second;

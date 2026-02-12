@@ -1155,6 +1155,13 @@ void bmGELU(void *input, void *output, int size) {
       (float *)input, (float *)output, size);
 }
 
+void bmFloor(void *input, void *output, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_Floor<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, size);
+}
+
 void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,
              int off1, int off2, int off3, int s0, int s1, int s2, int s3,
              int on, int oc, int oh, int ow) {

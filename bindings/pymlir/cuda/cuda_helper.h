@@ -232,9 +232,10 @@ void bmSoftmax(void *input, void *buffer, void *output,
                int outer_dim, int axis_dim, int inner_dim, void* exp_table,
                float scale, float zp);
 void bmGELU(void *input, void *output, int num);
+void bmFloor(void *input, void *output, int num);
 void bmLayerNorm(void *input, void *output, int outer_dim,
                int inner_dim, void *weight, void *bias, float eps, data_type_t type);
-void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type, 
+void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type,
            void *exp_table = nullptr);
 void bmReciprocal(void *input, void *output,  int outer_dim, int inner_dim, data_type_t type);
 

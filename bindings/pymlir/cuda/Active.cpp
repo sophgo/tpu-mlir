@@ -19,13 +19,21 @@ void py_cuda::cudaActiveOp(tpu::ActiveOp op) {
   cudnnActivationDescriptor_t activation_desc;
   cudnnOpTensorDescriptor_t mul_desc;
 
-  if (op.getMode() == tpu::ActiveMode::GELU) {
+  if (op.getMode() == tpu::ActiveMode::GELU || op.getMode() == tpu::ActiveMode::FLOOR) {
     if (module::getStorageType(op.getInput()).isF32()) {
-      cuda::bmGELU(getCudaData(op.getInput()), getCudaData(op.getOutput()), num_out);
+      if (op.getMode() == tpu::ActiveMode::GELU) {
+        cuda::bmGELU(getCudaData(op.getInput()), getCudaData(op.getOutput()), num_out);
+      } else {
+        cuda::bmFloor(getCudaData(op.getInput()), getCudaData(op.getOutput()), num_out);
+      }
     } else {
       auto input_f32 = newCudaData(op.getInput(), cuda::DT_F32);
       auto output_f32 = cuda_malloc(num_out * sizeof(float));
-      cuda::bmGELU(input_f32.get(), output_f32.get(), num_out);
+      if (op.getMode() == tpu::ActiveMode::GELU) {
+        cuda::bmGELU(input_f32.get(), output_f32.get(), num_out);
+      } else {
+        cuda::bmFloor(input_f32.get(), output_f32.get(), num_out);
+      }
       cuda::convertType(output_f32.get(), getCudaData(op.getOutput()),
                         num_out, cuda::DT_F32,
                         getCudaType(op.getOutput()));
