@@ -3190,6 +3190,41 @@ def Tpu_CorrelationOp: Tpu_Op<"Correlation"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_ConcatVolumeOp: Tpu_Op<"ConcatVolume", [
+  DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
+  let summary = "Concat volume operator for stereo matching";
+
+  let description = [{
+  Build concatenated cost volume for stereo matching.
+  Concatenate left and right features with disparity shift.
+
+  2.Math formula
+  for i in range(max_disp):
+    if i > 0:
+        output[:, :C, i, :, :] = left_feature[:, :, :, :]
+        output[:, C:, i, :, i:] = right_feature[:, :, :, :-i]
+    else:
+        output[:, :C, i, :, :] = left_feature
+        output[:, C:, i, :, :] = right_feature
+
+  3.activation and weight
+  input(act.): left_feature (B, C, H, W), right_feature (B, C, H, W)
+
+  4.attribute
+  max_disp: Maximum disparity value, determines the disparity dimension size.
+
+  5.output
+  output: Cost volume (B, 2*C, max_disp, H, W)
+  }];
+
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    DefaultValuedAttr<I64Attr, "0">:$max_disp
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_SelectiveScanOp: Tpu_Op<"SelectiveScan"> {
   let summary = "2D Selective Scan Operator (specialized for VMamba)";
   let description = [{

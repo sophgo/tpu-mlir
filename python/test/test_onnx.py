@@ -387,6 +387,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
+            "ConcatVolume":  (self.test_ConcatVolume,   N, Y, Y, N, N, N, N),
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N, N),
             "SelectiveScan":   (self.test_SelectiveScan,    N, Y, N, N, N, N, N),
         }
@@ -7867,6 +7868,50 @@ class ONNX_IR_TESTER(object):
                                 dynamic_axes=dynamic_axes)
         finally:
             self.dynamic = False
+
+    def test_ConcatVolume(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self, max_disp):
+                super(Model, self).__init__()
+                self.max_disp = max_disp
+
+            def forward(self, refimg_fea, targetimg_fea):
+                B, C, H, W = refimg_fea.shape
+                volume = refimg_fea.new_zeros([B, 2 * C, self.max_disp, H, W])
+                for i in range(self.max_disp):
+                    if i > 0:
+                        volume[:, :C, i, :, :] = refimg_fea[:, :, :, :]
+                        volume[:, C:, i, :, i:] = targetimg_fea[:, :, :, :-i]
+                    else:
+                        volume[:, :C, i, :, :] = refimg_fea
+                        volume[:, C:, i, :, :] = targetimg_fea
+                return volume.contiguous()
+
+        left = torch.randn(1, 12, 24, 30).float()
+        right = torch.randn(1, 12, 24, 30).float()
+        max_disp = 8
+        model = Model(max_disp)
+
+        in_names = ["in_0", "in_1"]
+        onnx_file = case_name + ".onnx"
+        torch.onnx.export(model, (left, right),
+                          onnx_file,
+                          export_params=True,
+                          verbose=True,
+                          opset_version=14,
+                          input_names=in_names)
+        onnx_model = onnx.load(onnx_file)
+        in_data = {
+            "in_0": left.numpy().astype(np.float32),
+            "in_1": right.numpy().astype(np.float32),
+        }
+        self.onnx_and_test(onnx_model.graph,
+                           name=case_name,
+                           input_data=in_data,
+                           check_last=True,
+                           support_modes=["f32", "f16", "bf16", "int8"])
 
     def test_Correlation(self, case_name):
 
