@@ -244,11 +244,11 @@ class Phi3Converter(Chatglm3Converter):
             zp_path = path + ".qzeros"
             bias_path = path + ".bias"
             if self.model.is_exist(qweight_path):
-                qweigth_data = self.model.read(qweight_path)
+                qweight_data = self.model.read(qweight_path)
                 scale_data = self.model.read(scale_path)
                 zp_data = self.model.read(zp_path)
                 unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweigth_data, zp_data, self.quant_bits, self.quant_mode)
+                    qweight_data, zp_data, self.quant_bits, self.quant_mode)
 
                 if 'qkv_proj' in qweight_path:
                     weight_dict[path + '_q.qweight'] = np.ascontiguousarray(
@@ -420,8 +420,8 @@ class Phi3Converter(Chatglm3Converter):
                                [1, self.seq_length, self.kv_dim])
 
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshpae"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshpae"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshape"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
 
             # rotary cos/sin
@@ -502,8 +502,8 @@ class Phi3Converter(Chatglm3Converter):
             v_op = self.linear(block_mlir, qkv_w + '_v', ln_op, [self.hidden_size, self.kv_dim],
                                [1, 1, self.kv_dim])
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshpae"), ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshpae"), ip=ip).output
+            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(qkv_w + "_q.reshape"), ip=ip).output
+            k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(qkv_w + "_k.reshape"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
 
             # rotary cos/sin
