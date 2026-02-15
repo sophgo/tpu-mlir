@@ -16,7 +16,6 @@ import argparse
 from pathlib import Path
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-from utils.log_setting import setup_logger
 
 logger = setup_logger('root', log_level="INFO")
 
@@ -347,10 +346,119 @@ def _sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
 
+def _softmax(x, axis=-1):
+    x = x - np.max(x, axis=axis, keepdims=True)
+    e = np.exp(x)
+    return e / np.sum(e, axis=axis, keepdims=True)
+
+
+def postproc_yolov8(outputs, imsize, anchors=None):
+    """
+    YOLOv8 DFL postprocess.
+    outputs: list of np.ndarray
+    imsize: (h, w)
+    yolo converted from pt to onnx with following
+    """
+    H, W = imsize
+
+    n_out = len(outputs)
+    assert n_out % 2 == 0, f"Expected even number of outputs, got {n_out}"
+    nl = n_out // 2
+
+    reg_outs = outputs[:nl]
+    cls_outs = outputs[nl:]
+
+    c_reg = reg_outs[0].shape[1]       # 4 * reg_max
+    c_cls = cls_outs[0].shape[1]       # num_classes
+
+    reg_max = c_reg // 4
+    num_classes = c_cls
+
+    reg_maps = {}
+    cls_maps = {}
+
+    for i in range(nl):
+        reg = reg_outs[i]
+        cls = cls_outs[i]
+
+        for out in (reg, cls):
+            if out.ndim != 4:
+                raise ValueError(f"Unexpected ndim={out.ndim}, shape={out.shape}")
+            bs, _, ny, nx = out.shape
+            if bs != 1:
+                raise ValueError("Only batch_size=1 is supported")
+
+        bs, _, ny, nx = reg.shape
+        stride_y = H / ny
+        stride_x = W / nx
+        assert abs(stride_y - stride_x) < 1e-6, f"Non-square stride: {stride_y} vs {stride_x}"
+        stride = stride_y
+
+        reg_maps[stride] = reg
+        cls_maps[stride] = cls
+
+    strides = sorted(reg_maps.keys())
+    if set(strides) != set(cls_maps.keys()):
+        raise ValueError(f"Mismatch reg/cls strides: reg={sorted(reg_maps.keys())}, cls={sorted(cls_maps.keys())}")
+
+    all_boxes = []
+    all_scores = []
+
+    for stride in strides:
+        reg = reg_maps[stride]   # (1, 4*reg_max, ny, nx)
+        cls = cls_maps[stride]   # (1, num_classes, ny, nx)
+
+        bs, c_reg, ny, nx = reg.shape
+        reg_max = c_reg // 4
+
+        reg = reg.reshape(bs, 4, reg_max, ny, nx)
+        reg = np.transpose(reg, (0, 3, 4, 1, 2))
+
+        # softmax
+        prob = _softmax(reg, axis=-1)                   # (1, ny, nx, 4, reg_max)
+        bins = np.arange(reg_max, dtype=reg.dtype)
+        dist = (prob * bins).sum(-1)                    # (1, ny, nx, 4)
+
+        dist = dist * stride                            # (1, ny, nx, 4)
+        l = dist[..., 0]
+        t = dist[..., 1]
+        r = dist[..., 2]
+        b = dist[..., 3]
+
+        gy, gx = np.meshgrid(np.arange(ny), np.arange(nx), indexing="ij")
+        cx = (gx + 0.5) * stride
+        cy = (gy + 0.5) * stride
+
+        # xyxy
+        x1 = cx - l[0]
+        y1 = cy - t[0]
+        x2 = cx + r[0]
+        y2 = cy + b[0]
+
+        boxes = np.stack([x1, y1, x2, y2], axis=-1).reshape(-1, 4)
+
+        # classify: (1, C, ny, nx) -> (ny*nx, C)
+        bs, c_cls, ny_c, nx_c = cls.shape
+        assert ny_c == ny and nx_c == nx
+        cls = _sigmoid(cls)
+        cls = np.transpose(cls, (0, 2, 3, 1))  # (1, ny, nx, C)
+        scores = cls.reshape(-1, c_cls)
+
+        all_boxes.append(boxes)
+        all_scores.append(scores)
+
+
+    boxes_xyxy = np.concatenate(all_boxes, axis=0)
+    scores = np.concatenate(all_scores, axis=0)
+
+    return scores, boxes_xyxy
+
+
 def postproc(outputs, imsize, anchors=ANCHORS):
     z = []
     for out in outputs:
         # bs, 3, 20, 20, 85
+        print(out.shape)
         if len(out.shape) == 5:
             bs, _, ny, nx, _ = out.shape
         else:
@@ -377,7 +485,6 @@ def postproc(outputs, imsize, anchors=ANCHORS):
     boxes_xyxy[:, 2] = boxes[:, 0] + boxes[:, 2] / 2.
     boxes_xyxy[:, 3] = boxes[:, 1] + boxes[:, 3] / 2.
     return scores, boxes_xyxy
-
 
 def cal_coco_result(annotations_file, result_json_file):
     if not os.path.exists(result_json_file):
@@ -424,7 +531,11 @@ class coco_mAP(base_class):
             batch1_output = []
             for output in outputs:
                 batch1_output.append(np.expand_dims(output[i, ...], axis=0))
-            scores, boxes_xyxy = postproc(batch1_output, self.args.net_input_dims)
+            if self.args.postprocess_type.endswith("yolov8"):
+                scores, boxes_xyxy = postproc_yolov8(batch1_output, self.args.net_input_dims)
+            else:
+                scores, boxes_xyxy = postproc(batch1_output, self.args.net_input_dims)
+
             dets = multiclass_nms(boxes_xyxy,
                                   scores,
                                   nms_thr=self.args.nms_threshold,
