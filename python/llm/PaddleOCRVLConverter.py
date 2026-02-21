@@ -460,7 +460,7 @@ class PaddleOCRVLConverter(LlmConverter):
             f'--num_core {self.num_core}', f'--num_device {self.num_device}',
             f'--disable_layer_group', f'--model {name}.bmodel'
         ]
-        deploy_args.append('--quantize F32')
+        deploy_args.append('--quantize F16')
         deploy_args.append('--quant_output_bf16')
         if self.high_precision:
             deploy_args.append('--high_precision')
