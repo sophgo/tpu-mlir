@@ -44,13 +44,16 @@ public:
     assert(num_core > 0);
     module::setCoreNum(num_core);
     auto mode = module::AddrMode::BASIC;
+    backend::Arch::init(0);
+    if (addr_mode == "auto" && (module::isBM1688() || module::isCV184X())) {
+      mode = module::AddrMode::IO_TAG;
+    }
     if (addr_mode != "auto") {
       mode = module::symbolizeAddrMode(addr_mode).value_or(
           module::AddrMode::BASIC);
     }
     module::setAddrMode(mode);
     module::setHighPrecision(high_precision);
-    backend::Arch::init(0);
     // for cv18xx , input only support fp32
     if (module::isCV18xx()) {
       input_type_process(mOp);

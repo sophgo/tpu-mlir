@@ -289,6 +289,28 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
       if (addr == 0) {
         continue;
       }
+      if (module::isAddrMode(module::AddrMode::IO_TAG)) {
+        bool pass_this_sliceOp = false;
+        for (const auto &user : sliceOp.getOutput().getUsers()) {
+          if (isa<tpu::ReshapeOp>(user)) {
+            auto reshape_addr =
+                module::getAddress(dyn_cast<tpu::ReshapeOp>(user).getOutput());
+            if (reshape_addr == 0) {
+              continue;
+            }
+            if (std::find(std::begin(BM168x::IO_ADDR),
+                          std::end(BM168x::IO_ADDR), reshape_addr)) {
+              pass_this_sliceOp = true;
+              module::setAddress(sliceOp.getOutput(), reshape_addr);
+            }
+          }
+        }
+        if (pass_this_sliceOp) {
+          need_remove.push_back(v_info);
+          continue;
+        }
+      }
+
       auto p = sliceOp.parseParam();
       int axis;
       for (axis = 0; axis < 4 && p.offset_4[axis] == 0; axis++)
@@ -489,17 +511,128 @@ static inline std::vector<std::pair<int, int>> string2pair(std::string slist) {
   return outpair;
 }
 
+// To handle cases that inplace ops share the same address with ios
+static void inplace_addr_update(std::vector<ValueInfo> &inplace_ops,
+                                const ValueInfo &v_info) {
+  Operation *v_op = (Operation *)v_info.op;
+  Value v_result = v_op->getResult(v_info.index);
+  int64_t v_addr = module::getAddress(v_result);
+
+  for (auto &inplace_info : inplace_ops) {
+    Operation *inplace_op = (Operation *)inplace_info.op;
+    Value inplace_input = inplace_op->getOperand(0);
+    // model output is inplace op
+    if (inplace_op == v_op) {
+      if (module::getAddress(inplace_input) == 0) { // addr is not assigned
+        // if sliceop, only assign tag_addr when axis == 0
+        if (auto sliceOp = dyn_cast<tpu::SliceOp>(inplace_op)) {
+          auto p = sliceOp.parseParam();
+          int axis;
+          for (axis = 0; axis < 4 && p.offset_4[axis] == 0; axis++)
+            ;
+          if (p.offset_4[axis] != 0)
+            continue;
+        }
+      }
+      if (auto concatOp = dyn_cast<tpu::ConcatOp>(inplace_op)) {
+        continue;
+      }
+      module::setAddress(inplace_input, v_addr);
+    }
+  }
+}
+
 void BMAddressAssign::assignIOByAddrMode(
     ModuleOp &m, std::map<ValueInfo, TensorLive> &liveRange,
     std::vector<ValueInfo> &inplace_ops, std::vector<ValueInfo> &common_ops,
     int64_t &start_addr) {
   if (module::isAddrMode(module::AddrMode::IO_TAG)) {
-    std::vector<Value> ios;
+    std::vector<Value> inputs, outputs, ios;
+    module::getInputsOutputs(m, inputs, outputs);
     module::getInputsOutputs(m, ios, ios);
+    // skip multi subnets
+    int num_subnets = 0;
+    m.walk<WalkOrder::PostOrder>([&](func::FuncOp func) {
+      if (auto call = module::getCallOp(func)) {
+        num_subnets++;
+      }
+    });
+    if (num_subnets > 1) {
+      module::setAddrMode(module::AddrMode::BASIC);
+      return;
+    }
+    // handle case subnet has the same io
+    // manifest as all op are inplaced in any subnet
+    if (inplace_ops.size() > 0) {
+      bool subnet_is_total_inpalced = false;
+      auto modules = module::getAllModules();
+      std::set<Operation *> inplaces;
+      for (const auto &info : inplace_ops) {
+        inplaces.insert(info.op);
+      }
+      for (auto s : *modules) {
+        for (auto func : s.getOps<FuncOp>()) {
+          if (func.getName() == "main") {
+            continue;
+          }
+          Block &entryBlock = func.front();
+          std::vector<Value> subnet_inputs;
+          for (auto it : func.front().getArguments()) {
+            subnet_inputs.push_back(it);
+          }
+          auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
+          for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
+            auto v = returnOp->getOperand(i);
+            subnet_is_total_inpalced = true;
+            while (inplaces.find(v.getDefiningOp()) != inplaces.end()) {
+              v = v.getDefiningOp()->getOperand(0);
+            }
+            if (std::find(subnet_inputs.begin(), subnet_inputs.end(), v) ==
+                subnet_inputs.end()) {
+              subnet_is_total_inpalced = false;
+            }
+          }
+          if (subnet_is_total_inpalced) {
+            module::setAddrMode(module::AddrMode::BASIC);
+            return;
+          }
+        }
+      }
+    }
+
+    // assign io addr
     sort_ios(ios);
     int n_tags = ios.size() < 5 ? ios.size() : 5;
     for (int io_index = 0; io_index < n_tags; io_index++) {
       module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
+      ValueInfo v_info(ios[io_index].getDefiningOp(),
+                       ios[io_index].cast<OpResult>().getResultNumber());
+      inplace_addr_update(inplace_ops, v_info);
+    }
+
+    // handle case that output use same address in some inplace case
+    // e.g. return %1,%1;
+    std::set<int64_t> io_addr_set;
+    for (int io_index = 0; io_index < n_tags; io_index++) {
+      auto addr = module::getAddress(ios[io_index]);
+      if (io_addr_set.find(addr) != io_addr_set.end()) {
+        for (auto &v : ios)
+          module::setShape(v, module::getShape(v));
+        for (auto &inplace_info : inplace_ops) {
+          Operation *inplace_op = (Operation *)inplace_info.op;
+          Value inplace_input = inplace_op->getOperand(0);
+          Value inplace_output = inplace_op->getResult(inplace_info.index);
+          module::setShape(inplace_input, module::getShape(inplace_input));
+          module::setShape(inplace_output, module::getShape(inplace_output));
+        }
+        module::setAddrMode(module::AddrMode::BASIC);
+        return;
+      }
+      io_addr_set.insert(addr);
+    }
+
+    // v_info should be removed at last in case back to addr_mode=basic
+    for (int io_index = 0; io_index < n_tags; io_index++) {
       ValueInfo v_info(ios[io_index].getDefiningOp(),
                        ios[io_index].cast<OpResult>().getResultNumber());
       erase_vinfo(common_ops, v_info);
@@ -1093,6 +1226,11 @@ void BMAddressAssign::updateLiveRangeofBMOps(
           liveRange[pre_v].tensor_size = tensor_size;
         } else {
           liveRange[pre_v].tensor_size = 0;
+        }
+        if (module::isAddrMode(module::AddrMode::IO_TAG)) {
+          // for IO_TAG, concat may be partily inplaced, because ios_nums must <
+          // 5
+          liveRange[pre_v].tensor_size = tensor_size;
         }
 
         DEBUG_WITH_TYPE("live_range", {

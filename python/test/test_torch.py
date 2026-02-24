@@ -148,6 +148,7 @@ class TORCH_IR_TESTER(object):
             "Remainder":        (self.test_Remainder,         Y, Y, N, N, Y),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y, Y),
+            "ReshapeConcat":    (self.test_ReshapeConcat,     N, Y, Y, Y, Y),
             "Depth2Space":      (self.test_D2SPattern,        N, Y, Y, N, Y),
             "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N, Y),
             "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N, N),
@@ -1649,6 +1650,34 @@ class TORCH_IR_TESTER(object):
 
         in_shape = (512, 1024)
         self.trace_and_test([in_shape], Model())
+
+    #######################################################################
+    # ReshapeConcat
+    # ------------
+    def test_ReshapeConcat(self):
+        """ReshapeConcat"""
+
+        def _test_ReshapeConcat(in0_shape, in1_shape, dim=None):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, x2):
+                    # +1 set to no io_tag_addr
+                    x = x + 1
+                    x2 = x2 + 1
+                    x1 = x.reshape(1, 3, 8, 128)
+                    if dim is None:
+                        y1 = torch.concat((x1, x2))
+                    else:
+                        y1 = torch.concat((x1, x2), dim=dim)
+                    return y1
+
+            self.trace_and_test([in0_shape, in1_shape], Model())
+
+        _test_ReshapeConcat((1, 3, 32, 32), (1, 3, 8, 128), 1)
 
     #######################################################################
     # Depth2Space
@@ -3983,12 +4012,7 @@ class TORCH_IR_TESTER(object):
                 qk2 = qk1 + mask.permute(0, 2, 1, 3)
                 w = torch.nn.functional.softmax(qk2, dim=-1)
                 wv1 = (w @ v1).permute(0, 2, 1, 3)
-                v1 = v.permute(0, 2, 1, 3)
-                qk1 = qk.permute(0, 2, 1, 3)
-                qk2 = qk1 + mask.permute(0, 2, 1, 3)
-                w = torch.nn.functional.softmax(qk2, dim=-1)
-                wv2 = (w @ v1).permute(0, 2, 1, 3)
-                return wv1, wv2
+                return wv1
 
         self.trace_and_test([[5, 16, 8, 16], [5, 16, 8, 16], [5, 16, 8, 64]], Model0())
         # Permute will be converted to Reshape when there is 1 in shape
