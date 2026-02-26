@@ -94,6 +94,10 @@ void PrintOps(std::string ops_name, const std::vector<Operation *> &ops) {
 }
 
 bool isLgSupport(Operation *op) {
+  if (module::isDebugCmdEnable("global_op_type-" +
+                               op->getName().getStringRef().str())) {
+    return false;
+  }
   bool res = false;
   if (isa<top::WeightOp, top::InputOp>(op)) {
     res = true;

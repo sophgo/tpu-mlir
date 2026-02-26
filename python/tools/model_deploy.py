@@ -103,6 +103,11 @@ class DeployTool:
         if self.lg_debugger == 0 and args.debug:
             self.lg_debugger = 1
         self.debug_cmd = args.debug_cmd
+        if args.global_op_types:
+            for op_type in args.global_op_types.split(","):
+                op_type = op_type.strip()
+                if op_type:
+                    self.debug_cmd += ",global_op_type-tpu.{}".format(op_type)
         self.bmodel_path = args.model
         self.ref_npz = args.test_reference
         self.fazzy_match = args.fazzy_match
@@ -645,6 +650,8 @@ if __name__ == '__main__':
     # ========== MaskRCNN Options ==============
     parser.add_argument("--enable_maskrcnn", action="store_true", default=False,
                         help="enable maskrcnn")
+    parser.add_argument("--global_op_types", default="", type=str,
+                        help="comma-separated op type names to force global, e.g. 'Upsample,Deconv'")
     parser.add_argument("--debug_cmd", default="", type=str,
                         help="debug cmd")
 
