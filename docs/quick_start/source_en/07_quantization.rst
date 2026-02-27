@@ -819,3 +819,80 @@ Parameter Description
    * - o
      - Y
      - output quantization table
+
+example of multi-input calibration dataset
+==============================================
+
+For multi-input models, the calibration dataset can be saved in npz file, each npz contains one sample, and key of npz complies with model inputs, following is open_clip as example.
+
+.. open_clip.png:
+.. figure:: ../assets/open_clip.png
+   :align: center
+
+   OpenClip multi-input model
+
+As there are three inputs in open_clip, one floating-point image and two integer idx and mask, you can create a calibration dataset following the function below:
+
+.. code-block:: shell
+
+  def process_images(input_dir, output_file, image_size=(224, 224),
+                    normalize=False, mean=None, std=None,samples=100,
+                    channels_first=True, dtype='float32'):
+      # Get all image files
+      extensions = ['*.jpg', '*.jpeg', '*.JPG', '*.JPEG']
+      image_files = []
+      for ext in extensions:
+          image_files.extend(Path(input_dir).glob(ext))
+
+      image_files = list(set(image_files))  # Remove duplicates
+
+      # Default normalization (ImageNet stats)
+      if normalize:
+          if mean is None:
+              mean = [0.485, 0.456, 0.406]
+          if std is None:
+              std = [0.229, 0.224, 0.225]
+
+      # Build transformation pipeline
+      transform_list = [transforms.Resize(image_size)]
+
+      if normalize:
+          transform_list.extend([
+              transforms.ToTensor(),
+              transforms.Normalize(mean=mean, std=std)
+          ])
+      else:
+          transform_list.append(transforms.ToTensor())
+
+      transform = transforms.Compose(transform_list)
+
+      # Process images
+      filenames = []
+
+      for i, img_path in enumerate(image_files):
+          try:
+              inputs={}
+              img = Image.open(img_path).convert('RGB')
+              tensor = transform(img)
+
+              # Convert to numpy
+              img_array = tensor.numpy()  # default float32
+              img_array = np.expand_dims(img_array, axis=0)
+              inputs['pixel_values'] = img_array
+              inputs['input_ids'] = np.random.randint(0,100,size=(2,77))
+              inputs['attention_mask'] = np.random.randint(0,1,size=(2,77))
+              np.savez(f'{output_file}_{i}',**inputs)
+              if i+1 >= samples:
+                  print(f"Processed {i + 1}/{len(image_files)} images")
+                  break
+              filenames.append(str(img_path.name))
+
+              if (i + 1) % 10 == 0:
+                  print(f"Processed {i + 1}/{len(image_files)} images")
+
+          except Exception as e:
+              print(f"Error processing {img_path}: {e}")
+
+
+
+  **NOTE: above code is for demo only, pre-processing must be aligned with training phase when creating npz files for calibration. Real calibration data can be captured during training.**
