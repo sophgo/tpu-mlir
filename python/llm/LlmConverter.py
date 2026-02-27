@@ -1510,10 +1510,11 @@ class LlmConverter(BaseConverter):
             name = f"block_cache_{idx}"
             input_shape = [self.batch, 1, self.hidden_size]
             id_shape = list(self.position_shape)
+            mask_len = self.seq_length if self.use_insert else self.seq_length + 1
             if self.use_insert:
                 id_shape[0] = self.batch
             id_shape[-1] = 1
-            mask_shape = [self.batch, 1, 1, self.seq_length + 1]
+            mask_shape = [self.batch, 1, 1, mask_len]
             history_shape = [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]
 
             q_shape = [self.batch, 1, self.num_attention_heads, self.head_dim]
@@ -1618,7 +1619,7 @@ class LlmConverter(BaseConverter):
                                      kv_head=self.num_key_value_heads,
                                      dim=self.head_dim,
                                      mq=1,
-                                     mk=self.seq_length + 1,
+                                     mk=mask_len,
                                      keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
@@ -1945,6 +1946,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--high_precision')
         if self.symmetric:
             deploy_args.append('--q_symmetric')
+        if self.dynamic:
+            deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
         deploy_args.append('&& popd')
