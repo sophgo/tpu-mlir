@@ -71,8 +71,8 @@ void py_cuda::cudaSubOp(tpu::SubOp op) {
     module::getNCHW(out, n2, c2, h2, w2, false);
     if (module::getStorageType(in0).isFloat8E4M3FN()) {
       auto scales = module::getF64Array(op.getF8Scales(), 2, 1.);
-      cuda::mulConst4DF32(input0_f32.get(), scales->at(0), input0_f32.get(), false, n0, c0, h0, w0);
-      cuda::mulConst4DF32(input1_f32.get(), scales->at(1), input1_f32.get(), false, n1, c1, h1, w1);
+      cuda::mulConst6DF32(input0_f32.get(), scales->at(0), input0_f32.get(), false, n0, c0, h0, w0, 1, 1);
+      cuda::mulConst6DF32(input1_f32.get(), scales->at(1), input1_f32.get(), false, n1, c1, h1, w1, 1, 1);
     }
     cuda::sub4DF32(input0_f32.get(), input1_f32.get(), output_f32.get(), op.getDoRelu(), op.getIsReverse(),
                     n0, c0, h0, w0,

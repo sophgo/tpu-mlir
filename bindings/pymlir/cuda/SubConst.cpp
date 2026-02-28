@@ -39,7 +39,8 @@ void py_cuda::cudaSubConstOp(tpu::SubConstOp op) {
     auto output_f32 = newCudaData(op.getOutput(), cuda::DT_F32);
     if (module::getStorageType(op.getInput()).isFloat8E4M3FN()) {
       double scale = op.getF8Scale().convertToDouble();
-      cuda::mulConst4DF32(input_f32.get(), scale, input_f32.get(), false, n0, c0, h0, w0);
+      cuda::mulConst6DF32(input_f32.get(), scale, input_f32.get(), false,
+                          n0, c0, h0, w0, 1, 1);
     }
     cuda::subConst4DF32(input_f32.get(), const_v, output_f32.get(), op.getDoRelu(), is_reverse,
                   n0, c0, h0, w0);

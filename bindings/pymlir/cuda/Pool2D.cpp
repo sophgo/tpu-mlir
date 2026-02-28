@@ -82,7 +82,7 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
     }
     if (module::getStorageType(op.getInput()).isFloat8E4M3FN()){
       cuda::requantF8(out_f32.get(), getCudaData(op.getOutput()), 1.0,
-                            p.n, p.c, p.oh, p.ow, p.do_relu);
+                            1, 1, p.n, p.c, p.oh, p.ow, p.do_relu);
     } else {
       cuda::convertType(out_f32.get(), output, num_out, cuda::DT_F32,
                         getCudaType(op.getOutput()), cuda::RD_HALF_TO_EVEN);
@@ -125,7 +125,7 @@ void py_cuda::cudaPool2DOp(tpu::Pool2DOp op) {
     }
     auto scale = op.getFp8OutScale()->convertToDouble();
     cuda::requantF8(out_f32.get(), getCudaData(op.getOutput()), scale,
-                          p.n, p.c, p.oh, p.ow, p.do_relu);
+                          1, 1, p.n, p.c, p.oh, p.ow, p.do_relu);
     out_f32.reset();
   } else {
     if (op.getDoRelu()) {

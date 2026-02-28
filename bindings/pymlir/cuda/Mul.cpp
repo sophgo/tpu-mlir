@@ -61,8 +61,8 @@ void py_cuda::cudaMulOp(tpu::MulOp op) {
           llvm_unreachable("should have out scale for Mul in f8 mode");
         f64_array_t scales = module::getF64Array(op.getOutF8Scales().value());
         [[maybe_unused]] auto out_scale = scales->at(0);
-        cuda::mulConst4DF32(output_f32.get(), out_scale, output_f32.get(), false,
-                  n2, c2, h2, w2);
+        cuda::mulConst6DF32(output_f32.get(), out_scale, output_f32.get(), false,
+                  n2, c2, h2, w2, 1, 1);
     }
     cuda::convertType(output_f32.get(), getCudaData(op.getOutput()), module::getNumElements(op.getOutput()), cuda::DT_F32,
                       getCudaType(op.getOutput()));

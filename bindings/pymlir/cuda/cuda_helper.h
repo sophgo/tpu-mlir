@@ -132,14 +132,16 @@ void mulInt8(void *a, void *b, void *o, int n0, int c0, int h0, int w0, int n1,
              bool is_cv18xx = false);
 
 // add: i8 * i32 >> s0 + i8 * i32 >> s1 = int8 (half away from zero)
-void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-               int shift0, int shift1, bool sign0, bool sign1, bool sign2,
-               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
-               int h1, int w1, int n2, int c2, int h2, int w2,
-               int input0_zp = 0, int input1_zp = 0, int output_zp = 0);
-void add4DF32(void *input0, float scale0, void *input1, float scale1, void *output,
-               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
-               int h1, int w1, int n2, int c2, int h2, int w2);
+void add6DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+              int shift0, int shift1, bool sign0, bool sign1, bool sign2,
+              bool relu, int i0, int i1, int i2, int i3, int i4, int i5,
+              int j0, int j1, int j2, int j3, int j4, int j5,
+              int o0, int o1, int o2, int o3, int o4, int o5,
+              int input0_zp = 0, int input1_zp = 0, int output_zp = 0);
+void add6DF32(void *input0, float scale0, void *input1, float scale1, void *output,
+               bool relu, int i0, int i1, int i2, int i3, int i4, int i5,
+              int j0, int j1, int j2, int j3, int j4, int j5,
+              int o0, int o1, int o2, int o3, int o4, int o5);
 void add4DInt32(int32_t *input0, int32_t *input1, int32_t *output,
                 int n0, int c0, int h0, int w0,
                 int n1, int c1, int h1, int w1,
@@ -156,8 +158,8 @@ void subConst4DF32(void *input, float const_v, void *output,
 void subConst4DI8(void *input, bool in_signed, int const_v, void *output, bool out_signed,
                bool do_relu, bool reverse, int multi, int shift,
                int n, int c, int h, int w, int output_zp = 0);
-void mulConst4DF32(void *input, float const_v, void *output, bool do_relu,
-                  int n0, int c0, int h0, int w0);
+void mulConst6DF32(void *input, float const_v, void *output, bool do_relu,
+                  int s0, int s1, int s2, int s3, int s4, int s5);
 void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
                   int n0, int c0, int h0, int w0,
                   int n1, int c1, int h1, int w1,
@@ -208,7 +210,7 @@ void requantInt16Perchannel(void *input, void *output, void *multipliers,
 void requantF8Perchannel(void *input, void *output, void *scales,
                             int n, int c, int h, int w, bool relu, bool conv);
 void requantF8(void *input, void *output, float scale,
-                            int n, int c, int h, int w, bool relu);
+                            int s0, int s1, int s2, int s3, int s4, int s5, bool relu);
 // inplace relu
 void doRelu(void *data, int size, data_type_t type, int zero_point = 0);
 
@@ -301,9 +303,10 @@ void cvMulShiftInt8(void *input, void *output, int multiplier, int shift,
                     int size);
 
 // add: (int8 * int32 + int8 * int32) >> shift = int8 (half up)
-void cvAdd4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-                 int shift, bool relu, int n0, int c0, int h0, int w0, int n1,
-                 int c1, int h1, int w1, int on, int oc, int oh, int ow,
+void cvAdd6DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+                 int shift, bool relu, int i0, int i1, int i2, int i3, int i4, int i5,
+                 int j0, int j1, int j2, int j3, int j4, int j5,
+                 int o0, int o1, int o2, int o3, int o4, int o5,
                  int input0_zp = 0, int input1_zp = 0, int output_zp = 0);
 
 void cvPReluInt8(void *input, void *slope, void *output, int outer_dim,

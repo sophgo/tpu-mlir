@@ -228,7 +228,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   } else if (out_stype.isFloat8E4M3FN()) {
     f64_array_t scales = module::getF64Array(op.getOutF8Scales().value());
     if (scales->size() == 1) {
-      cuda::requantF8(out_f32.get(), output, scales->at(0), 1, batch_size, p.M, p.N, p.do_relu);
+      cuda::requantF8(out_f32.get(), output, scales->at(0), 1, 1, 1, batch_size, p.M, p.N, p.do_relu);
     } else {
       std::vector<float> oscale(scales->begin(), scales->end());
       auto cudaMults = cuda_malloc(scales->size()*sizeof(float));
