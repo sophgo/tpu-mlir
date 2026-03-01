@@ -466,7 +466,7 @@ class PaddleOCRVLConverter(LlmConverter):
             deploy_args.append('--high_precision')
         if self.debug:
             deploy_args.append('--debug')
-        if self.dynamic_vit:
+        if self.dynamic:
             deploy_args.append('--dynamic')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")

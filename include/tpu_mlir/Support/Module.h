@@ -153,6 +153,7 @@ Location getLoc();
 MLIRContext *getCtx();
 
 top::NoneOp getNoneOp(Operation *op);
+int getNumUsers(Value v);
 Value getOriValue(Value v);
 Operation *getNextOp(Operation *op, int i = 0);
 Value getOperand(Operation *op, int i);

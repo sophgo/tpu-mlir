@@ -110,6 +110,13 @@ top::NoneOp getNoneOp(Operation *op) {
   return NoneOp;
 }
 
+int getNumUsers(Value v) {
+  if (!v) {
+    return 0;
+  }
+  return std::distance(v.getUsers().begin(), v.getUsers().end());
+}
+
 static ModuleOp getModuleOp(Value v) {
   auto parent_op = v.getParentBlock()->getParentOp();
   while (parent_op != nullptr && !isa<ModuleOp>(parent_op)) {
@@ -312,8 +319,13 @@ static void removeUnusedOp(ModuleOp submodule) {
   for (auto iter = all_ops.rbegin(); iter != all_ops.rend(); iter++) {
     if (isOpInGroup((*iter)))
       continue;
-    if ((*iter)->use_empty()) {
-      (*iter)->erase();
+    auto op = *iter;
+    if (op->hasAttrOfType<mlir::BoolAttr>("placeholder") &&
+        op->getAttrOfType<mlir::BoolAttr>("placeholder").getValue()) {
+      continue;
+    }
+    if (op->use_empty()) {
+      op->erase();
     }
   }
 }

@@ -55,8 +55,9 @@ class ActType:
 
 class WeightType:
     NORMAL = "Normal"
-    RMS_NORM = "RMSNorm"
-    LAYER_NORM = "LayerNorm"
+    RMSNORM = "RMSNorm"
+    ZEROCENTERED_RMSNORM = "ZeroCenteredRMSNorm"
+    LAYERNORM = "LayerNorm"
 
 
 class LlmList:

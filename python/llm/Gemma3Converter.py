@@ -17,6 +17,7 @@ class Gemma3Converter(LlmConverter):
         super().__init__(args, config)
         self.do_vit = True
         self.vit_f16_out_bf16 = True  # Gemma3 vit is f16, but we force output to bf16
+        self.rmsnorm_type = WeightType.ZEROCENTERED_RMSNORM
 
     @override
     def load_pretrained(self, config):
@@ -82,7 +83,7 @@ class Gemma3Converter(LlmConverter):
             weights_dict[patch_embedding + ".bias"] = patch_embed_bias
             # mm projector
             weights_dict[mm_projector_mm] = self.model.read(mm_projector_mm)
-            self.set_common_weight(mm_projector_norm, weights_dict, WeightType.RMS_NORM)
+            self.set_common_weight(mm_projector_norm, weights_dict, self.rmsnorm_type)
             # save to npz
             np.savez(vit_npz, **weights_dict)
 

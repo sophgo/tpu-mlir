@@ -589,7 +589,7 @@ if __name__ == '__main__':
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'],
                         help="set address assign mode, if not set, auto as default")
     parser.add_argument("--same_addr", default="", type=str,
-                        help="use same address for the specified inputs and outputs")
+                        help="use same address for the specified inputs and outputs, like 0:0,1:2,4:4")
     parser.add_argument("--not_gen_bmodel", action="store_true",
                         help="for qat intergation, only gen tpu.mlir")
     parser.add_argument("--use_rewriter_config", action="store_true",

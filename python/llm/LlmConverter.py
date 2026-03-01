@@ -42,12 +42,11 @@ class LlmConverter(BaseConverter):
         self.chip = args.chip
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
-        self.dynamic_vit = args.dynamic
         self.use_block_with_kv = args.use_block_with_kv
-        self.same_addr = "0:0" if args.use_same_addr else ""
         self.debug = args.debug
         self.lora_rank = args.lora_max_rank
         self.do_lora = self.lora_rank > 0
+        self.rmsnorm_type = WeightType.RMSNORM
         self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
         self.position_shape = [1, 1, self.max_input_length
                                ] if self.use_insert else [1, self.max_input_length]
@@ -255,6 +254,35 @@ class LlmConverter(BaseConverter):
                               ip=mlir_gen.insert_point).output
         else:
             raise NotImplementedError(f"Unsupported activation type: {act_type}")
+
+    def l2norm(self, mlir_gen, in_op, name, eps=1e-6):
+        # x * torch.rsqrt((x * x).sum(dim=dim, keepdim=True) + eps)
+        input_shape = list(in_op.type.shape)
+        new_shape = list(input_shape)
+        new_shape[-1] = 1
+        new_op = top.MulOp(mlir_gen.get_tensor_type(input_shape), [in_op, in_op],
+                           loc=self.get_loc(name + ".mul", mlir_gen),
+                           ip=mlir_gen.insert_point).output
+        new_op = top.ReduceOp(mlir_gen.get_tensor_type(new_shape),
+                              new_op,
+                              axes=[len(input_shape) - 1],
+                              keepdims=True,
+                              mode=StringAttr.get("ReduceSum"),
+                              loc=self.get_loc(name + ".reduce", mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        new_op = top.AddConstOp(mlir_gen.get_tensor_type(new_shape),
+                                new_op,
+                                const_val=eps,
+                                loc=self.get_loc(name + ".eps", mlir_gen),
+                                ip=mlir_gen.insert_point).output
+        new_op = top.RsqrtOp(mlir_gen.get_tensor_type(new_shape),
+                             new_op,
+                             loc=self.get_loc(name + ".rsqrt", mlir_gen),
+                             ip=mlir_gen.insert_point).output
+        new_op = top.MulOp(mlir_gen.get_tensor_type(input_shape), [in_op, new_op],
+                           loc=self.get_loc(name + ".l2norm", mlir_gen),
+                           ip=mlir_gen.insert_point).output
+        return new_op
 
     def unpack_weights(self, qweight, qzeros, bits, quant_mode, path):
         dtype = np.int32
@@ -1262,7 +1290,7 @@ class LlmConverter(BaseConverter):
             raise RuntimeError("Can't find key: {}".format(path))
         if has_weight:
             data = self.model.read(weight_path)
-            if type == WeightType.RMS_NORM and self.llm_type in [LlmType.GEMMA3]:
+            if type == WeightType.ZEROCENTERED_RMSNORM:
                 data = data + 1.0  # GEMMA3 RMSNorm weight is not same as others
             weight_dict[weight_path] = data
         if has_bias:
@@ -1299,23 +1327,23 @@ class LlmConverter(BaseConverter):
             rotary_cos + ".weight": self.cos,
             rotary_sin + ".weight": self.sin,
         }
-        self.set_common_weight(input_ln, weight_dict, WeightType.RMS_NORM)
+        self.set_common_weight(input_ln, weight_dict, self.rmsnorm_type)
         self.set_linear_weight(q_proj, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(k_proj, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(v_proj, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(o_proj, weight_dict, do_lora=self.do_lora)
         if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
-            self.set_common_weight(q_norm, weight_dict, WeightType.RMS_NORM)
-            self.set_common_weight(k_norm, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(q_norm, weight_dict, self.rmsnorm_type)
+            self.set_common_weight(k_norm, weight_dict, self.rmsnorm_type)
         if self.llm_type in [LlmType.GEMMA3]:
-            self.set_common_weight(pre_mlp_ln, weight_dict, WeightType.RMS_NORM)
-            self.set_common_weight(post_mlp_ln, weight_dict, WeightType.RMS_NORM)
-        self.set_common_weight(post_attn_ln, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(pre_mlp_ln, weight_dict, self.rmsnorm_type)
+            self.set_common_weight(post_mlp_ln, weight_dict, self.rmsnorm_type)
+        self.set_common_weight(post_attn_ln, weight_dict, self.rmsnorm_type)
         self.set_linear_weight(mlp_gate, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(mlp_up, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(mlp_down, weight_dict, do_lora=self.do_lora)
         if do_norm:
-            self.set_common_weight(norm, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
         if self.extern_block_weights:
             weight_dict.update(self.extern_block_weights)
         self.weights.extend(list(weight_dict.keys()))
@@ -1895,8 +1923,6 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
-        if self.same_addr:
-            deploy_args.append(f'--same_addr {self.same_addr}')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
@@ -1921,8 +1947,6 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--q_symmetric')
         if self.debug:
             deploy_args.append('--debug')
-        if self.same_addr:
-            deploy_args.append(f'--same_addr {self.same_addr}')
         if self.use_insert:
             deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
@@ -1977,7 +2001,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--high_precision')
         if self.debug:
             deploy_args.append('--debug')
-        if self.dynamic_vit:
+        if self.dynamic:
             deploy_args.append('--dynamic')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")

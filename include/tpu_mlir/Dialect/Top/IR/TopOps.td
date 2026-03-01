@@ -127,6 +127,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     OptionalAttr<I64ArrayAttr>:$indices_idx,
     OptionalAttr<I64ArrayAttr>:$indices_slice,
     OptionalAttr<StrAttr>:$path,
+    OptionalAttr<BoolAttr>:$placeholder,
     //nnvlc param
     OptionalAttr<BoolAttr>:$do_compress,
     OptionalAttr<I64Attr>:$bias0,
@@ -1974,6 +1975,70 @@ def Top_FAttentionOp: Top_Op<"FAttention"> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_ChunkGatedDeltaRuleOp: Top_Op<"ChunkGatedDeltaRule"> {
+  let summary = "Chunk Gated Delta Rule operator";
+
+  let description = [{
+    1.Op Introduction
+    The ChunkGatedDeltaRule operator implements a chunk-wise gated delta rule attention mechanism,
+    specialized for efficient linear attention with recurrent state updates.
+    The input sequence is split into fixed-size chunks. Within each chunk, intra-chunk attention
+    is computed using gated decay factors derived from g. Across chunks, a recurrent state is
+    maintained and updated to propagate inter-chunk information. The gating signal g controls
+    exponential decay, and beta modulates key/value contributions via element-wise scaling.
+
+    2.Math formula
+    ```math
+        scale = 1 / sqrt(k_head_dim)
+        query = query * scale
+        v_beta = value * beta,  k_beta = key * beta
+
+        // Chunk decay
+        g_cumsum = cumsum(g, dim=-1)
+        decay_mask = tril(exp(tril(g_cumsum[:, :, :, :, None] - g_cumsum[:, :, :, None, :])))
+        attn = I + resolve_lower_triangular(-(k_beta @ key^T) * decay_mask)
+        v_new_chunk = attn @ v_beta
+        k_cumdecay = attn @ (k_beta * exp(g_cumsum))
+
+        // Intra-chunk attention
+        intra_chunk_attn = masked_fill(query @ key^T * decay_mask, upper_tri_mask, 0)
+
+        // Inter-chunk recurrence (for each chunk i)
+        v_prime = k_cumdecay_i @ S_{i-1}
+        v_new = v_new_chunk_i - v_prime
+        output_i = (query_i * exp(g_i)) @ S_{i-1} + intra_chunk_attn_i @ v_new
+        S_i = S_{i-1} * exp(g_last_i) + (key_i * exp(g_last_i - g_i))^T @ v_new
+    ```
+
+    3.activation and weight
+    query(act.): query tensor with shape (B, num_heads, S, k_head_dim).;
+    key(act.): key tensor with shape (B, num_heads, S, k_head_dim).;
+    value(act.): value tensor with shape (B, num_heads, S, v_head_dim).;
+    g(act.): gating signal tensor with shape (B, num_heads, S), controls the exponential decay rate per position.;
+    beta(act.): scaling factor tensor with shape (B, num_heads, S), modulates key and value contributions.;
+    recurrent_state(act.): initial recurrent state tensor with shape (B, num_heads, k_head_dim, v_head_dim), carries information across chunks.;
+    eye(act.): identity matrix tensor with shape (chunk_size, chunk_size), used for constructing the intra-chunk attention transform.;
+
+    4.attribute
+    chunk_size: the size of each chunk that the input sequence is split into. The sequence is padded to be divisible by chunk_size.;
+  }];
+
+  let arguments = (
+    ins AnyTensor:$query,
+    AnyTensor:$key,
+    AnyTensor:$value,
+    AnyTensor:$g,
+    AnyTensor:$beta,
+    AnyTensor:$recurrent_state,
+    AnyTensor:$eye,
+    I64Attr:$chunk_size,
+    F64Attr:$scale
+  );
+
+  let results = (outs AnyTensor:$attn_out,
+                      AnyTensor:$new_recurrent_state);
 }
 
 def Top_ReverseOp:Top_Op<"Reverse"> {

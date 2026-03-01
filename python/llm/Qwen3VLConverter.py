@@ -277,7 +277,7 @@ class Qwen3VLConverter(LlmConverter):
         position_shape = [patches, 2]
         out_dim = patches // (self.spatial_merge_size**2)
         out_shape = [out_dim, self.hidden_size]
-        if self.dynamic_vit:
+        if self.dynamic:
             input_shapes = [in_shape, position_shape, [patches, 4], [patches, 4, 1]]
             input_types = ['F32', 'INT32', 'INT32', 'F32']
         else:
@@ -420,7 +420,7 @@ class Qwen3VLConverter(LlmConverter):
                                           2)  # by fast_pos_embed_interpolate, need to be reordered
         in3_op = vit_mlir.create_input_op(L('pos_weight'),
                                           3)  # by fast_pos_embed_interpolate, need to be reordered
-        if not self.dynamic_vit:
+        if not self.dynamic:
             in4_op = vit_mlir.create_input_op(L('attention_mask'), 4)
         else:
             in4_op = vit_mlir.none_op
@@ -593,7 +593,7 @@ class Qwen3VLConverter(LlmConverter):
             deploy_args.append('--high_precision')
         if self.debug:
             deploy_args.append('--debug')
-        if self.dynamic_vit:
+        if self.dynamic:
             deploy_args.append('--dynamic')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")

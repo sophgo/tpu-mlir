@@ -196,7 +196,7 @@ class MLIRImporter(object):
         input_op = top.InputOp(**init_args)
         return input_op.output
 
-    def create_weight_op(self, name, output_shape, data_type="F32", path=None):
+    def create_weight_op(self, name, output_shape, data_type="F32", path=None, placeholder=False):
         if name in self.load_weight:
             _op, _shape, _type = self.load_weight[name]
             if _shape != output_shape or _type != data_type:
@@ -207,6 +207,8 @@ class MLIRImporter(object):
             attrs["inline_bytes"] = StringAttr.get(tensor.buffer.tobytes())
         if path is not None:
             attrs["path"] = StringAttr.get(path)
+        if placeholder:
+            attrs["placeholder"] = BoolAttr.get(True)
         tensor_type = RankedTensorType.get(output_shape, self.mlir_type[data_type])
         op = Operation.create("top.Weight",
                               results=[tensor_type],
