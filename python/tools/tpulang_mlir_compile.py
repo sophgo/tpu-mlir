@@ -25,7 +25,12 @@ def main():
                         type=str,
                         default="./tmp_model_origin.mlir",
                         help='Path to the model file')
-    parser.add_argument('-c', '--chip', type=str, help='bm1688 or bm1684x')
+    parser.add_argument('-c',
+                        '--chip',
+                        type=str,
+                        default="bm1688",
+                        choices=["bm1688", "bm1684x"],
+                        help='bm1688 or bm1684x')
     parser.add_argument(
         '-t',
         '--tag',
@@ -43,24 +48,45 @@ def main():
                         type=str,
                         default="./",
                         help="layer_group_config_path")
+    parser.add_argument('-d',
+                        '--dynamic',
+                        action='store_true',
+                        default=False,
+                        help='set if the model is dynamic, default is false')
+    parser.add_argument('-n',
+                        '--num-core',
+                        type=int,
+                        choices=[1, 2],
+                        default=1,
+                        help='core num for currnet model, default is 1')
     args = parser.parse_args()
 
     print(f"Model path: {args.model_path}")
     start_time = time.perf_counter()
     tpul.init(args.chip)
     if args.tag:
-        name = f"tmp_model_{args.tag}"
+        name = f"tmp_model_{args.tag}_{args.chip}"
     else:
-        name = "tmp_model"
+        name = "tmp_model_{args.chip}"
     if args.mode == "f32":
-        tpul.mlir_compile_f32(name, args.model_path, layer_group_config=args.layer_group_config)
+        tpul.mlir_compile_f32(name,
+                              args.model_path,
+                              layer_group_config=args.layer_group_config,
+                              dynamic=args.dynamic,
+                              num_core=args.num_core)
     elif args.mode == "f16":
         tpul.mlir_compile_f32(name,
                               args.model_path,
                               mode='f16',
-                              layer_group_config=args.layer_group_config)
+                              layer_group_config=args.layer_group_config,
+                              dynamic=args.dynamic,
+                              num_core=args.num_core)
     elif args.mode == "int8":
-        tpul.mlir_compile(name, args.model_path, layer_group_config=args.layer_group_config)
+        tpul.mlir_compile(name,
+                          args.model_path,
+                          layer_group_config=args.layer_group_config,
+                          dynamic=args.dynamic,
+                          num_core=args.num_core)
     tpul.deinit()
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
@@ -69,6 +95,8 @@ def main():
     print(f"tag: {args.tag}")
     print(f"mode: {args.mode}")
     print(f"layer_group_config: {args.layer_group_config}")
+    print(f"dynamic: {args.dynamic}")
+    print(f"num_core: {args.num_core}")
     print(f" Processing completed!")
     print(f" Total time: {elapsed_time:.4f} seconds")
 

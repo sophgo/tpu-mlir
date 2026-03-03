@@ -271,7 +271,8 @@ def mlir_compile(name: str,
                  addr_mode='auto',
                  gdma_check=False,
                  layer_group_config="",
-                 disable_topo_sort=False):
+                 disable_topo_sort=False,
+                 num_core=1):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -296,7 +297,8 @@ def mlir_compile(name: str,
                                  asymmetric=asymmetric,
                                  ctm_format=ctm_format,
                                  fuse=fuse,
-                                 addr_mode=addr_mode)
+                                 addr_mode=addr_mode,
+                                 num_core=num_core)
     bmodel_generate_and_inference(model_name=name,
                                   quant_mode="int8",
                                   inference=bmodel_inference,
@@ -452,7 +454,8 @@ def mlir_compile_f32(name: str,
                      gdma_check=False,
                      layer_group_config="",
                      spec_op_mode: dict = {"mean_std_scale": "f16"},
-                     disable_topo_sort=False):
+                     disable_topo_sort=False,
+                     num_core=1):
     support_quant_mode = ['f32', 'f16', 'bf16']
     assert mode in support_quant_mode + ['all']
     assert addr_mode in ['auto', 'io_reloc']
@@ -500,7 +503,8 @@ def mlir_compile_f32(name: str,
                                      log_level=log_level,
                                      chip=TpuLang.chip,
                                      addr_mode=addr_mode,
-                                     quantize_table=qtable)
+                                     quantize_table=qtable,
+                                     num_core=num_core)
         bmodel_generate_and_inference(model_name=name,
                                       quant_mode=m,
                                       inference=bmodel_inference,
