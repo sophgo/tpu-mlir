@@ -210,7 +210,7 @@ static bool is_valid_order(std::vector<int64_t> shape,
         }
       }
     } // end for check continous order
-  } // end num_dims > 4
+  }   // end num_dims > 4
   return valid_order;
 }
 
@@ -304,6 +304,19 @@ struct PermuteFuse : public OpRewriterPatternEx<PermuteOp> {
 
   LogicalResult matchAndRewriteImpl(PermuteOp op,
                                     PatternRewriter &rewriter) const override {
+    // skip with PermuteBeforeGridSampler in GridSampler(H=1) path.
+    auto users = op.getOutput().getUsers();
+    for (auto user : users) {
+      auto grid_sampler = dyn_cast<top::GridSamplerOp>(user);
+      if (!grid_sampler) {
+        continue;
+      }
+      auto grid_sampler_shape = module::getShape(grid_sampler);
+      if (grid_sampler_shape.size() == 4 && grid_sampler_shape[2] == 1) {
+        return failure();
+      }
+    }
+
     auto in = op.getInput();
     if (in.hasOneUse() == false) {
       return failure();
