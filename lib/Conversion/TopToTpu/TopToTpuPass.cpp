@@ -399,6 +399,43 @@ public:
   bool shouldPrint(top::SubConstOp op) const override { return false; }
 };
 
+struct SetAddConstSignPattern : public OpRewriterPatternEx<top::AddConstOp> {
+public:
+  SetAddConstSignPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::AddConstOp>(context,
+                                             "SetAddConstSignPattern") {}
+  LogicalResult matchAndRewriteImpl(top::AddConstOp op,
+                                    PatternRewriter &rewriter) const override {
+    Value in = op.getInput();
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(in) || !module::isCalibratedType(out)) {
+      return failure();
+    }
+    auto in_qtype = module::getCalibratedType(in);
+    auto out_qtype = module::getCalibratedType(out);
+    auto out_type = out.getType().cast<RankedTensorType>();
+    if (in_qtype.getMin() >= 0 && out_qtype.getMin() >= 0) {
+      auto const_val = op.getConstVal().convertToDouble();
+      if (const_val < 0) {
+        auto new_out_type = quant::CalibratedQuantizedType::get(
+            module::getStorageType(out), out_qtype.getMax() * (-0.1),
+            out_qtype.getMax());
+        auto new_type =
+            RankedTensorType::get(out_type.getShape(), new_out_type);
+        out.setType(new_type);
+        Forward(out);
+        return success();
+      } else {
+        return failure();
+      }
+    } else {
+      return failure();
+    }
+    return failure();
+  }
+  bool shouldPrint(top::AddConstOp op) const override { return false; }
+};
+
 struct SetSubSignPattern : public OpRewriterPatternEx<top::SubOp> {
 public:
   SetSubSignPattern(mlir::MLIRContext *context)
@@ -1818,7 +1855,7 @@ void ConvertTopToTpu::calibration_process() {
     patterns.clear();
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, KeepAddSignPattern,
                  KeepSignPattern<top::AbsOp>,
-                 SetSubConstSignPattern>(ctx_);
+                 SetSubConstSignPattern, SetAddConstSignPattern>(ctx_);
 
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
@@ -1905,7 +1942,7 @@ void ConvertTopToTpu::calibration_process() {
   patterns.clear();
   patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>,
                KeepAddSignPattern, KeepSignPattern<top::AbsOp>,
-               SetSubConstSignPattern>(ctx_);
+               SetSubConstSignPattern, SetAddConstSignPattern>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   patterns.clear();
   patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);

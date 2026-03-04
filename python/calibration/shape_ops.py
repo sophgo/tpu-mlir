@@ -66,6 +66,7 @@ class ShapeOps:
         shape_generator = ['top.Shape', 'top.Size']
         shape_consumer = ['top.Reshape', 'top.Interp']
         shape_generator_second_output = ['top.TopK']  # maybe maxpooling
+        shape_generator_first_output = ['top.Arg']
         shape_consumer_second_input = ['top.GatherElements'
                                        ]  # maybe 'top.Gather', 'top.Scatter', 'top.ScatterND',
         transparent_ops = [
@@ -78,11 +79,24 @@ class ShapeOps:
             'top.Squeeze',
             'top.Unsqueeze',
         ]
-        is_generator = lambda op_name: self.parser.get_op_type_by_op_name(op_name
-                                                                          ) in shape_generator
-        is_second_output_generator = lambda op_name: self.parser.get_op_type_by_op_name(
-            op_name) in shape_generator_second_output
-        is_consumer = lambda op_name: self.parser.get_op_type_by_op_name(op_name) in shape_consumer
+        is_cast_to_int = lambda op_name: self.parser.get_op_type_by_op_name(
+            op_name) == 'top.Cast' and self.parser.get_op_by_op_name(op_name).attrs[
+                'to'] in ['"INT32"', '"INT16"', '"INT8"']
+        is_cast_to_float = lambda op_name: self.parser.get_op_type_by_op_name(
+            op_name) == 'top.Cast' and self.parser.get_op_by_op_name(op_name).attrs[
+                'to'] in ['"F32"', '"F16"']
+        is_where_index = lambda op_name, input_op: self.parser.get_op_type_by_op_name(
+            op_name) == 'top.Where' and input_op == self.parser.get_op_by_op_name(op_name).opds[0]
+        is_generator = lambda op_name: (self.parser.get_op_type_by_op_name(op_name) in
+                                        shape_generator) or is_cast_to_int(op_name)
+        is_second_output_generator = lambda op_name: (self.parser.get_op_type_by_op_name(
+            op_name) in shape_generator_second_output) and \
+            (self.parser.get_op_by_op_name(op_name).outputs[1] == op_name if len(self.parser.get_op_by_op_name(op_name).outputs) > 1 else False)
+        is_first_output_generator = lambda op_name: (self.parser.get_op_type_by_op_name(
+            op_name) in shape_generator_first_output) and \
+            (self.parser.get_op_by_op_name(op_name).outputs[0] == op_name)
+        is_consumer = lambda op_name: (self.parser.get_op_type_by_op_name(op_name) in shape_consumer
+                                       ) or is_cast_to_float(op_name)
         is_transparent = lambda op_name: self.parser.get_op_type_by_op_name(op_name
                                                                             ) in transparent_ops
 
@@ -92,9 +106,28 @@ class ShapeOps:
         is_output = lambda op_name: op_name in outputs
 
         shape_ops = [x.name for x in self.parser.ops if is_generator(x.name)]  #op names
-        shape_ops_second_output = [
-            x.outputs[1] for x in self.parser.ops if is_second_output_generator(x.name)
+        ext_shape_ops_first_output = [
+            x for x in self.parser.ops if is_first_output_generator(x.name)
         ]
+        multi_output_ops = [x for x in self.parser.ops if len(x.outputs) > 1]
+        ext_shape_ops_second_output = [
+            x for x in multi_output_ops if is_second_output_generator(x.name)
+        ]
+        has_input = lambda op_name, op: op_name in op.opds
+        ext_shape_ops = []
+        for op in ext_shape_ops_first_output:
+            ext_shape_ops.extend([
+                x for x in self.parser.get_next_op_by_op_name(op.name)
+                if has_input(op.outputs[0], self.parser.get_op_by_op_name(x))
+            ])
+        for op in ext_shape_ops_second_output:
+            ext_shape_ops.extend([
+                x for x in self.parser.get_next_op_by_op_name(op.name)
+                if has_input(op.outputs[1], self.parser.get_op_by_op_name(x))
+            ])
+
+        shape_ops = list(set(shape_ops + ext_shape_ops))
+
         shape_consumer_second_input_tensor = [
             x.opds[1] for x in self.parser.ops
             if x.type in shape_consumer_second_input and len(x.opds) > 1
@@ -102,7 +135,7 @@ class ShapeOps:
         is_second_input_consumer = lambda op_name: op_name in shape_consumer_second_input_tensor
         while True:
             no_new_shape_op = True
-            for op in shape_ops + shape_ops_second_output:  # in fact, tensor names
+            for op in shape_ops:  # in fact, tensor names
                 if is_output(op):
                     continue
                 next_ops = self.parser.get_next_op_by_op_name(op)
@@ -112,14 +145,15 @@ class ShapeOps:
                     elif is_output(op_):
                         shape_ops.append(op_)
                         no_new_shape_op = False
-                    elif is_consumer(op_) or is_second_input_consumer(op_):
+                    elif is_consumer(op_) or is_second_input_consumer(op_) or is_where_index(
+                            op_, op):
                         continue
                     elif is_transparent(op_):
                         shape_ops.append(op_)
                         no_new_shape_op = False
                     else:
                         continue
-            for op in shape_ops + shape_ops_second_output:
+            for op in shape_ops:
                 pre_ops = self.parser.get_pre_op_by_op_name(op)
                 for op in pre_ops:
                     if op in shape_ops or is_generator(op):
@@ -129,10 +163,12 @@ class ShapeOps:
                         shape_ops.append(op)
                     else:  #maybe some math op is calculating ratio and shape, the output may be shape but the ratio may be not from shape
                         continue
-            new_op, shape_ops = self.find_forward_all_input_shapes(shape_ops +
-                                                                   shape_ops_second_output)
+            new_op, shape_ops = self.find_forward_all_input_shapes(shape_ops)
             if new_op:
                 no_new_shape_op = False
             if no_new_shape_op:
                 break
+        shape_ops = list(
+            set(shape_ops + [x.name for x in ext_shape_ops_second_output] +
+                [x.name for x in ext_shape_ops_first_output]))  # remove duplicates
         return shape_ops
