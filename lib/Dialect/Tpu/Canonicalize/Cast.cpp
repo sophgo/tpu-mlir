@@ -23,8 +23,16 @@ public:
     auto in = op.getInput();
     auto in_type = in.getType();
     auto out_type = op.getOutput().getType();
+    bool preserve_output_loc = module::isOpBlockReturnOp(op);
+    NameLoc output_loc;
+    if (preserve_output_loc) {
+      output_loc = module::getLoc(op.getOutput());
+    }
     if (type_need_cast(in_type, out_type) == false) {
       // for example, int32 cast int32 => remove this one cast
+      if (preserve_output_loc) {
+        module::setLoc(in, output_loc);
+      }
       rewriter.replaceOp(op, {in});
       return success();
     }
@@ -51,6 +59,9 @@ public:
     }
     if (out_type == pre_cast_in.getType()) {
       // for example, int32 cast f16 cast int32 => remove these two cast
+      if (preserve_output_loc) {
+        module::setLoc(pre_cast_in, output_loc);
+      }
       rewriter.replaceOp(op, {pre_cast_in});
       return success();
     }
