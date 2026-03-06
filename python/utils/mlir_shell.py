@@ -677,6 +677,7 @@ def tpu_ada_options(
     compress_mode: str = "none",
     trunc_final: list = None,
     opt_post_processor: bool = False,
+    weight_deduplicate: bool = False,
     lg_debugger: int = 0,
     disable_group_overlap: bool = False,
     lgcache: bool = True,
@@ -717,6 +718,7 @@ def tpu_ada_options(
     if op_divide:
         op_divide_param = "--op-divide"
     opt_post_processor_param = "--opt-post-processor" if opt_post_processor else ""
+    weight_deduplicate_param = "--weight-deduplicate" if weight_deduplicate else ""
     options = [
         distribute_param,
         "--weight-reorder",
@@ -729,6 +731,7 @@ def tpu_ada_options(
         parallel_param,
         opt_post_processor_param,
         "--after-layergroup-weight-reorder",
+        weight_deduplicate_param,
         address_assign_param
     ]
     return options
@@ -976,6 +979,7 @@ def mlir_to_model(
     quant_input_int8: bool = False,
     quant_output_int8: bool = False,
     opt_post_processor: bool = False,
+    weight_deduplicate: bool = False,
     gdma_check: bool = True,
     lg_debugger: int = 0,
     time_fixed_subnet: str = None,
@@ -1015,6 +1019,7 @@ def mlir_to_model(
                               compress_mode=compress_mode,
                               trunc_final=trunc_final,
                               opt_post_processor=opt_post_processor,
+                              weight_deduplicate=weight_deduplicate,
                               lg_debugger=lg_debugger,
                               disable_group_overlap=(time_fixed_subnet != None),
                               layer_group_config=layer_group_config,

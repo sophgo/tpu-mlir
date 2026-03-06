@@ -177,6 +177,7 @@ class DeployTool:
         if self.trunc_final:
             self.compare_all = True
         self.opt_post_processor = args.opt_post_processor
+        self.weight_deduplicate = args.weight_deduplicate
 
         self.context_dir = os.path.splitext(self.bmodel_path)[0]
         os.makedirs(self.context_dir, exist_ok=True)
@@ -432,6 +433,7 @@ class DeployTool:
                     quant_input_int8=self.quant_input_int8,
                     quant_output_int8=self.quant_output_int8,
                     opt_post_processor=self.opt_post_processor,
+                    weight_deduplicate=self.weight_deduplicate,
                     gdma_check=self.gdma_check,
                     lg_debugger=self.lg_debugger,
                     time_fixed_subnet=self.time_fixed_subnet,
@@ -635,6 +637,8 @@ if __name__ == '__main__':
     # for cv184x
     parser.add_argument("--opt_post_processor", action="store_true", default=False,
                         help="opt_post_processor")
+    parser.add_argument("--weight_deduplicate", action="store_true", default=False,
+                        help="enable weight deduplicate pass")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                     help='used for regression test, check if patterns are successfully applied a specific number of times')
