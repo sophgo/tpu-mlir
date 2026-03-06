@@ -6253,7 +6253,7 @@ class ONNX_IR_TESTER(object):
             {
                 arg_output = ArgMax<axis=%d, select_last_index=1>(input)
                 reduce_output_1 = ReduceMax<axes=%s>(input)
-                reduce_output_2 = ReduceMean<axes=%s>(input)
+                reduce_output_2 = ReduceMax<axes=%s>(input)
             }
             """ % (case_name, input_shape, output_shape, output_shape, output_shape, arg_axis,
                    reduce_axes, reduce_axes)

@@ -3983,7 +3983,12 @@ class TORCH_IR_TESTER(object):
                 qk2 = qk1 + mask.permute(0, 2, 1, 3)
                 w = torch.nn.functional.softmax(qk2, dim=-1)
                 wv1 = (w @ v1).permute(0, 2, 1, 3)
-                return wv1
+                v1 = v.permute(0, 2, 1, 3)
+                qk1 = qk.permute(0, 2, 1, 3)
+                qk2 = qk1 + mask.permute(0, 2, 1, 3)
+                w = torch.nn.functional.softmax(qk2, dim=-1)
+                wv2 = (w @ v1).permute(0, 2, 1, 3)
+                return wv1, wv2
 
         self.trace_and_test([[5, 16, 8, 16], [5, 16, 8, 16], [5, 16, 8, 64]], Model0())
         # Permute will be converted to Reshape when there is 1 in shape
