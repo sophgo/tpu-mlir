@@ -2276,6 +2276,14 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
          dyn_cast<tpu::GenericCpuOp>(user).getCpuOpName() != "quant")) {
       continue;
     }
+    if (user_op->getBlock() == user->getBlock()) {
+      if (!user->isBeforeInBlock(user_op)) {
+        // skip the user before the desired op, or the returned op may be after
+        // current op causing error. example is the output of topk which has
+        // multi users, and first of it is cast several op after the target user
+        continue;
+      }
+    }
     if (type_need_cast(user->getResult(0).getType(), to) == false) {
       return user->getResult(0);
     }
