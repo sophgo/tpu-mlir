@@ -43,6 +43,7 @@ class LlmType:
     GEMMA3 = "gemma3_text"
     MINICPM4 = "minicpm"
     GLM4V = "glm4v_text"
+    LFM2 = "lfm2_text"
 
 
 class ActType:
@@ -353,5 +354,29 @@ QWEN3VL_INFO = ModelInfo(
         LlmList.MLP_DOWN: "mlp.down_proj",
         # ================================
         LlmList.NORM: "model.language_model.norm",
+        LlmList.LMHEAD: "lm_head",
+    })
+
+LFM2_INFO = ModelInfo(
+    ModelConfig(),
+    weights={
+        LlmList.LAYERS: "model.language_model.layers",
+        LlmList.EMBEDING: "model.language_model.embed_tokens",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "operator_norm",
+        # --------- self_attn ---------
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.Q_NORM: "self_attn.q_layernorm",
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.K_NORM: "self_attn.k_layernorm",
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.O_PROJ: "self_attn.out_proj",
+        # --------- mlp ---------------
+        LlmList.POST_ATTN_LN: "ffn_norm",
+        LlmList.MLP_GATE: "feed_forward.w1",
+        LlmList.MLP_UP: "feed_forward.w3",
+        LlmList.MLP_DOWN: "feed_forward.w2",
+        # ================================
+        LlmList.NORM: "model.language_model.embedding_norm",
         LlmList.LMHEAD: "lm_head",
     })

@@ -183,6 +183,9 @@ if __name__ == '__main__':
     elif config.model_type in ['paddleocr_vl']:
         from llm.PaddleOCRVLConverter import PaddleOCRVLConverter
         converter = PaddleOCRVLConverter(args, config)
+    elif config.model_type in ['lfm2_vl']:
+        from llm.LFM2VLConverter import LFM2VLConverter
+        converter = LFM2VLConverter(args, config)
     else:
         raise RuntimeError("Unsupported model type: {}".format(config.model_type))
     converter.run()
