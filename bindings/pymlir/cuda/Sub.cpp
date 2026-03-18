@@ -26,10 +26,9 @@ void py_cuda::cudaSubOp(tpu::SubOp op) {
     auto in1_unsign = module::getStorageType(in1).isUnsignedInteger();
     auto out_unsign = module::getStorageType(out).isUnsignedInteger();
     auto in0_qtype = module::getUniformQuantizedType(in0);
-    auto in1_qtype = module::getUniformQuantizedType(in1);
     auto out_qtype = module::getUniformQuantizedType(out);
     auto in0_zp = in0_qtype.getZeroPoint();
-    auto in1_zp = in1_qtype.getZeroPoint();
+    auto in1_zp = isa<top::WeightOp>(in1.getDefiningOp()) ? 0 : module::getUniformQuantizedType(in1).getZeroPoint();
     auto out_zp = out_qtype.getZeroPoint();
     if (out_unsign)
       UNREACHABLE_OP("Not supported, and not possible", op);

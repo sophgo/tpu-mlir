@@ -39,10 +39,9 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
     auto input1 = getCudaData(in1);
     auto output = getCudaData(out);
     auto input0_qtype = module::getUniformQuantizedType(in0);
-    auto input1_qtype = module::getUniformQuantizedType(in1);
     auto output_qtype = module::getUniformQuantizedType(out);
     auto input0_zp = isa<top::WeightOp>(op.getInputs()[0].getDefiningOp()) ? 0 : input0_qtype.getZeroPoint();
-    auto input1_zp = isa<top::WeightOp>(op.getInputs()[1].getDefiningOp()) ? 0 : input1_qtype.getZeroPoint();
+    auto input1_zp = isa<top::WeightOp>(op.getInputs()[1].getDefiningOp()) ? 0 : module::getUniformQuantizedType(in1).getZeroPoint();
     auto output_zp = output_qtype.getZeroPoint();
     if (module::isCV18xx()) {
       auto multiplier_v =

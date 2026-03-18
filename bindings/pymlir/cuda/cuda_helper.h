@@ -11,6 +11,7 @@
 #include <cuda_runtime.h>
 #include <cudnn.h>
 #include <stdio.h>
+#include <type_traits>
 
 namespace tpu_mlir {
 namespace cuda {
@@ -97,6 +98,29 @@ typedef enum {
   ACTIVE_QGELU = 37,
 } active_mode_t;
 
+typedef enum {
+  BILINEAR = 0,
+  NEAREST = 1
+} grid_sample_interpolation_mode_t;
+
+typedef enum {
+  ZEROS = 0,
+  BORDER = 1,
+  REFLECTION = 2
+} grid_sample_padding_mode_t;
+
+
+typedef enum {
+  CAFFE_SUPPORT = 0,
+  TENSORFLOW_SUPPORT = 1,
+  CAFFE_NEAREST = 2,
+  TENSORFLOW_NEAREST = 3,
+  PYTORCH_SUPPORT = 4,
+  PYTORCH_NEAREST = 5,
+  OPENCV_BILINEAR = 6,
+  ONNX_NEAREST = 7,
+} interp_platform_t;
+
 size_t get_dtype_bytes(data_type_t type);
 // -------------------------------------------------------------------------
 // --- host functions ---
@@ -158,18 +182,40 @@ void subConst4DF32(void *input, float const_v, void *output,
 void subConst4DI8(void *input, bool in_signed, int const_v, void *output, bool out_signed,
                bool do_relu, bool reverse, int multi, int shift,
                int n, int c, int h, int w, int output_zp = 0);
+void addConstI8(void *input, int const_v, void *output, int multi, int shift,
+                int input_zp, int output_zp, int size, bool in_signed,
+                bool out_signed, bool do_relu);
+void maxConstI8(void *input, int const_v, void *output, int multi, int shift,
+                int input_zp, int output_zp, int size, bool in_signed,
+                bool out_signed, bool do_relu);
+void minConstI8(void *input, int const_v, void *output, int multi, int shift,
+                int input_zp, int output_zp, int size, bool in_signed,
+                bool out_signed, bool do_relu);
 void mulConst6DF32(void *input, float const_v, void *output, bool do_relu,
                   int s0, int s1, int s2, int s3, int s4, int s5);
 void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
                   int n0, int c0, int h0, int w0,
                   int n1, int c1, int h1, int w1,
                   int n2, int c2, int h2, int w2);
-
+void divMDF32(void *input0, void *input1, void *output, int64_t *shape0,
+              int64_t *shape1, int64_t *shape2, int num_dims);
 void neg(void *input, void *output, int size, data_type_t type);
 // zero pad
 void pad4D(void *input, void *output, int n, int c, int h, int w, int pad_h_t,
-           int pad_h_b, int pad_w_l, int pad_w_r, int tbytes, int pad_value = 0);
-
+           int pad_h_b, int pad_w_l, int pad_w_r, int tbytes, float pad_value = 0);
+template <typename T,
+          typename std::enable_if<std::is_arithmetic<T>::value &&
+                                  !std::is_same<typename std::decay<T>::type, bool>::value,
+                                  int>::type = 0>
+inline void pad4D(void *input, void *output, int n, int c, int h, int w, int pad_h_t,
+           int pad_h_b, int pad_w_l, int pad_w_r, int tbytes, T pad_value) {
+  pad4D(input, output, n, c, h, w, pad_h_t, pad_h_b, pad_w_l, pad_w_r,
+        tbytes, static_cast<float>(pad_value));
+}
+void pad4D(void *input, void *output, int n, int c, int h, int w, int pad_h_t,
+           int pad_h_b, int pad_w_l, int pad_w_r, int tbytes, bool is_edge);
+void insertZero4D(void *input, void *output, int n, int c, int h, int w,
+                  int ins_h, int ins_w, int tbytes);
 void depth2Space(void *input, void *output, int in, int ic, int ih, int iw,
                  int on, int oc, int oh, int ow, int instride, int icstride,
                  int ihstride, int iwstride, int onstride, int ocstride,
@@ -264,6 +310,9 @@ void lut256(void *src, void *table, void *dst, int size, data_type_t src_type,
 void gather(void *indices, void *embedding, void *output, int num_indices,
             int embedding_dim, int inner_dim, data_type_t ind_type,
             data_type_t embed_type);
+void gatherElements(void *indices, void *input, void *output,
+                    int index_axis_dim, int input_axis_dim, int outer_dim,
+                    int inner_dim, data_type_t index_type, data_type_t input_type);
 void cudaGather(void *indices, void *embedding, void *output, int num_indices,
             int outer_dims, int ax_dim, int inner_dims, data_type_t ind_type,
             data_type_t embed_type);
@@ -333,6 +382,7 @@ void bmABSVAL(void *input, void *output, int num);
 void bmActive(void *input, void *output, int num, active_mode_t mode);
 void bmActive(void *input, void *output, int num, active_mode_t mode, double coeff);
 void bmActive(void *input, void *output, int num, active_mode_t mode, double coeff1, double coeff2);
+void clip(void *input, void *output, int num, double min_val, double max_val);
 void bmLayerNorm(void *input, void *output, int outer_dim,
                int inner_dim, void *weight, void *bias, float eps, data_type_t type);
 void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim, data_type_t type,
@@ -342,10 +392,24 @@ void bmReciprocal(void *input, void *output,  int outer_dim, int inner_dim, data
 void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,
              int off1, int off2, int off3, int s0, int s1, int s2, int s3,
              int on, int oc, int oh, int ow);
-void bmReduce(void *d_input,void * d_output, int shape_dim, void *input_shape, void *reduce_mask, int mode, bool is_cv18xx = false);
+void bmReduce(void *d_input, void *d_output, int shape_dim, void *input_shape,
+              void *reduce_mask, int mode, bool is_cv18xx = false);
 void cvLayerNorm(void *input, void *output, int outer_dim,
                int inner_dim, void *weight, void *bias, void *table,
                void *mtable, float eps);
 void RightBitShift(void *input, void *output, int shift, int size, int tbytes);
+void GridSample4D(void *input, void *grid, void *output, int n, int c, int h,
+                  int w, int out_h, int out_w, bool align_corners,
+                  grid_sample_interpolation_mode_t interpolation_mode,
+                  grid_sample_padding_mode_t padding_mode);
+void argIndex(void *input, void *output_idx, void *output_val, int outer_dim, int axis_dim,
+              int inner_dim, bool is_argmax, bool is_cv18xx = false);
+void argIndex(void *input, void *arg_values, void *output_idx, int outer_dim, int axis_dim,
+              int inner_dim, int input_bytes, float scale);
+void interp(void *input, void *output, int n, int c, int h, int w, int out_h, int out_w,
+            float scale_h, float scale_w, bool align_corners, bool half_pixel,
+            interp_platform_t platform);
+void GQA(void *Q, void *K, void *V, void *mask, void *output, int batch, int M_q, int M_k,
+         int q_head, int kv_head, int dim, float scale, bool is_bf16);
 } // namespace cuda
 } // namespace tpu_mlir
