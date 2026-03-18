@@ -22,6 +22,11 @@ void tpu::SortOp::codegen_global_bm1684x() {
   sort_per_dim_param_t param = {0};
   param.buffer_addr = module::getAddress(getBuffer());
   param.axis = getAxis();
+  if (param.axis < 0) {
+    auto shape = module::getShape(getInput());
+    int dims = shape.size();
+    param.axis += dims;
+  }
   param.descending = getDescending();
   param.is_argsort = module::isNone(getValues());
   BM168x::call_global_func("backend_api_sort_per_dim_global", &param,
@@ -38,6 +43,11 @@ int64_t tpu::SortOp::dyn_codegen_global_bm1684x(void *buffer) {
   sort_per_dim_param_t param = {0};
   param.buffer_addr = module::getAddress(getBuffer());
   param.axis = getAxis();
+  if (param.axis < 0) {
+    auto shape = module::getShape(getInput());
+    int dims = shape.size();
+    param.axis += dims;
+  }
   param.descending = getDescending();
   param.is_argsort = module::isNone(getValues());
   return BM168x::dynamic_spec_to_buffer(buffer, param);
