@@ -243,7 +243,7 @@ GEMMA3_INFO = ModelInfo(
         LlmList.LMHEAD: "language_model.model.lm_head",
     })
 
-# qwen2.5o
+# qwen2.5o/qwen3_asr
 QWEN2_5O_INFO = ModelInfo(
     ModelConfig(),
     weights={

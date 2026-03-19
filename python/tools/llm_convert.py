@@ -89,6 +89,8 @@ if __name__ == '__main__':
                         help='enable rvti, only for bm1684x2 and bm1690e')
     parser.add_argument("--again", action='store_true',
                         help='continue to convert the model, default is False')
+    parser.add_argument("--qwen_asr", action='store_true',
+                        help='convert Qwen_ASR, default is False')
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
                         help='output mlir/bmodel path, default `./tmp`')
@@ -128,6 +130,8 @@ if __name__ == '__main__':
         args.max_shape = None
 
     from transformers import AutoConfig
+    if args.qwen_asr:
+        import qwen_asr  # otherwise AutoConfig will fail
     config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
 
     if config.model_type in ["qwen3", "qwen2", "llama", "minicpm"]:
@@ -157,6 +161,9 @@ if __name__ == '__main__':
     elif config.model_type in ['qwen2_5_omni']:
         from llm.Qwen2_5OConverter import Qwen2_5OConverter
         converter = Qwen2_5OConverter(args, config)
+    elif config.model_type in ['qwen3_asr']:
+        from llm.Qwen3AsrConverter import Qwen3AsrConverter
+        converter = Qwen3AsrConverter(args, config)
     elif config.model_type in ['internvl_chat']:
         from llm.InternVL3Converter import InternVL3Converter
         converter = InternVL3Converter(args, config)
