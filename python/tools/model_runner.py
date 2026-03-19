@@ -564,6 +564,8 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
             dtype = np.bool_
         elif node.type == 'tensor(int32)':
             dtype = np.int32
+        elif node.type == 'tensor(int16)':
+            dtype = np.int16
         if not only_one:
             assert (name in inputs)
             data[name] = inputs[name].astype(dtype)
