@@ -49,7 +49,6 @@ class Qwen3_5Converter(LlmConverter):
     @override
     def load_pretrained(self, config):
         super().load_pretrained(config)
-        self.llm_type = LlmType.QWEN3
         self.model_info = QWEN3VL_INFO
 
     @override
@@ -1562,13 +1561,13 @@ class Qwen3_5Converter(LlmConverter):
                 times = num_v_heads // num_k_heads
                 q_op = top.TileOp(T([self.batch, 1, num_k_heads, times * head_k_dim]),
                                   q_op,
-                                  reps=[1, 1, 1, times],
+                                  tile=[1, 1, 1, times],
                                   loc=L(in_proj_qkv + ".q_tile"),
                                   ip=ip).output
 
                 k_op = top.TileOp(T([self.batch, 1, num_k_heads, times * head_k_dim]),
                                   k_op,
-                                  reps=[1, 1, 1, times],
+                                  tile=[1, 1, 1, times],
                                   loc=L(in_proj_qkv + ".k_tile"),
                                   ip=ip).output
 

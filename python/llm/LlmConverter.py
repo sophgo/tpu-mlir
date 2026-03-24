@@ -44,6 +44,7 @@ class LlmConverter(BaseConverter):
         self.dynamic = args.dynamic
         self.use_block_with_kv = args.use_block_with_kv
         self.debug = args.debug
+        self.only_mlir = args.only_mlir
         self.lora_rank = args.lora_max_rank
         self.do_lora = self.lora_rank > 0
         self.rmsnorm_type = WeightType.RMSNORM
@@ -79,11 +80,14 @@ class LlmConverter(BaseConverter):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.model_name = os.path.basename(self.model_path).lower()
         batch_str = f"_{self.batch}b" if self.batch > 1 else ""
-        if args.chip == "bm1684x":
+        if self.only_mlir:
+            folder_name = f"tmp_mlir_analyse"
+        elif args.chip == "bm1684x":
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}"
+            folder_name += "_dynamic" if args.dynamic else "_static"
         else:
             folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}"
-        folder_name += "_dynamic" if args.dynamic else "_static"
+            folder_name += "_dynamic" if args.dynamic else "_static"
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.config_dir = os.path.join(self.out_dir, "config")
@@ -110,7 +114,8 @@ class LlmConverter(BaseConverter):
         if not self.again:
             self.gen_all_mlir()
         del self.model
-        self.compile_all()
+        if not self.only_mlir:
+            self.compile_all()
         os.chdir(ori_path)
         print(f"Success: {self.model_path} has converted to {self.out_dir}")
 
@@ -143,8 +148,13 @@ class LlmConverter(BaseConverter):
         self.all_gen_mlirs.append(self.gen_embedding_lmhead_mlir)
         if not self.lmhead_with_topk:
             self.all_gen_mlirs.append(self.gen_sample_head_mlir)
-        for i in range(self.num_layers):
-            self.all_gen_mlirs.append(lambda i=i: self.gen_block_mlir(i))
+        if not self.only_mlir:
+            for i in range(self.num_layers):
+                self.all_gen_mlirs.append(lambda i=i: self.gen_block_mlir(i))
+        else:
+            self.all_gen_mlirs.append(lambda i=0: self.gen_block_mlir(i))
+            if self.llm_type == LlmType.QWEN3_5:
+                self.all_gen_mlirs.append(lambda i=3: self.gen_block_mlir(i))
 
         if self.debug:
             for func in self.all_gen_mlirs:

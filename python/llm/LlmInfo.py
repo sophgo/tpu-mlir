@@ -37,6 +37,7 @@ class LlmType:
     LLAMA = "llama"
     MLLAMA = "mllama"
     QWEN3 = "qwen3"
+    QWEN3_5 = "qwen3_5_text"
     CHATGLM3 = "chatglm"
     GEMMA3 = "gemma3_text"
     MINICPM4 = "minicpm"

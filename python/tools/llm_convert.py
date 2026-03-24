@@ -81,6 +81,7 @@ if __name__ == '__main__':
                         help='enable dynamic compiling for llm prefill')
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
+    parser.add_argument('--only_mlir', action='store_true', help='only export mlir file, do not convert to bmodel')
     parser.add_argument('--rvti', action='store_true',
                         help='enable rvti, only for bm1684x2 and bm1690e')
     parser.add_argument("--again", action='store_true',
