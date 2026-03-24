@@ -28,15 +28,29 @@ void CastTryLowering::Lowering(PatternRewriter &rewriter,
 void CastIntLowering::Lowering(PatternRewriter &rewriter,
                                top::CastOp op) const {
   auto to = op.getTo();
+  Type out_element_type;
   if (to == "INT32") {
-    auto round_mode = op.getRoundModeAttr().str();
-    auto new_type = RankedTensorType::get(module::getShape(op.getOutput()),
-                                          rewriter.getIntegerType(32, true));
-    auto newOp =
-        lowering_common<tpu::CastOp>(rewriter, op.getOperation(), new_type);
-    newOp.setRoundModeAttr(
-        tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
+    out_element_type = rewriter.getIntegerType(32, true);
+  } else if (to == "UINT32") {
+    out_element_type = rewriter.getIntegerType(32, false);
+  } else if (to == "INT16") {
+    out_element_type = rewriter.getIntegerType(16, true);
+  } else if (to == "UINT16") {
+    out_element_type = rewriter.getIntegerType(16, false);
+  } else if (to == "INT8") {
+    out_element_type = rewriter.getIntegerType(8, true);
+  } else if (to == "UINT8") {
+    out_element_type = rewriter.getIntegerType(8, false);
+  } else {
+    return;
   }
+  auto round_mode = op.getRoundModeAttr().str();
+  auto new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()), out_element_type);
+  auto newOp =
+      lowering_common<tpu::CastOp>(rewriter, op.getOperation(), new_type);
+  newOp.setRoundModeAttr(
+      tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
 }
 
 void CastLowering::LoweringF32(PatternRewriter &rewriter,

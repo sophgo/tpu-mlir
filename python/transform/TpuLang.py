@@ -30,6 +30,21 @@ import inspect
 logger = logging.getLogger("root")
 
 device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
+MLIRImporterTypeStr = {
+    "float64": "F64",
+    "float32": "F32",
+    "float16": "F16",
+    "int8": "INT8",
+    "int16": "INT16",
+    "int32": "INT32",
+    "int64": "INT64",
+    "uint8": "UINT8",
+    "uint16": "UINT16",
+    "uint32": "UINT32",
+    "uint64": "UINT64",
+    "bool": "BOOL",
+    "dict": "DICT",
+}
 
 
 def simplify_value(value):
@@ -1758,6 +1773,7 @@ def cast(tensor_i: Tensor,
     shape = tensor_i.shape
     attr = {
         "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+        "to": Attr(MLIRImporterTypeStr[out_dtype], data_type="string"),
     }
     assert round_mode not in ["half_up", "half_down"], \
             f"cast does not suooprt round mode {round_mode}"
