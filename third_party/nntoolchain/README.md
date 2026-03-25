@@ -14,8 +14,9 @@ cp bmcompiler/libbackend/libbackend_bm1684.so /workspace/tpu-mlir/third_party/nn
 ```
 
 ## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2026-02-04
+
 ```bash
-#bm1684x sha256: 4c58792e468249faae1c621ea02b149b1ee1b76f
+#bm1684x sha256: aa2f9da3ec09a1f837352dd22bd859e0f6466221
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 debug: rebuild_backend_lib_cmodel
