@@ -94,6 +94,8 @@ class SearchQtable:
             for layer_name in layer_names
         }
         cos_threshold = max(0.999, self.args.expected_cos)
+        min_similarity = float('inf')
+        min_similarity_op_type = None
         for op_type in op_types:
             fp_list = []
             for layer_name in layer_names:
@@ -107,8 +109,13 @@ class SearchQtable:
             similarity = 1 - self.mix_prec.run_model_new(mix_model, False, global_compare_layers,
                                                          layers_rate, predictions_gt, -1, ['cos'])
             self.mix_prec.logger.print_info(f"op_type : {op_type}, similarity : {similarity}")
+            if similarity < min_similarity:
+                min_similarity = similarity
+                min_similarity_op_type = op_type
             if similarity < float_outputs_cos * cos_threshold:
                 sensitive_op_type.append(op_type)
+        if len(sensitive_op_type) == 0:
+            sensitive_op_type.append(min_similarity_op_type)
         self.mix_prec.logger.print_info(
             f"sensitive_op_type : {sensitive_op_type}, please pay attention to these types of operations"
         )
@@ -577,7 +584,7 @@ class SearchQtable:
     def run(self):
         t0 = time.time()
 
-        #setp1: generate op th dict of defined methods(KL, Max, Percentile9999, MSE)
+        #step1: generate op th dict of defined methods(KL, Max, Percentile9999, MSE)
         all_op_names = self.parser.get_op_name_list()
         all_op_names = get_no_fused_tensors(self.parser, all_op_names)
         quantize_method_list = [x.lower() for x in self.quantize_method_list]
@@ -599,9 +606,9 @@ class SearchQtable:
                 data = file.read()
         with open(self.cali_table_name, 'w') as file:
             file.write(data)
-        #setp2: float_model and int8_model inference
+        #step2: float_model and int8_model inference
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
-        float_model = MixQuantModel(self.fp32_mlir, self.chip, None, self.high_prec)
+        float_model = MixQuantModel(self.fp32_mlir, None, None, "F32")
         int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
                                    self.cali_table_name, mix_table)
         float_outputs_cos = 1.0
