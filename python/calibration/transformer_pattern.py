@@ -372,6 +372,18 @@ class MatchPattern:
         split_fuse_fp_layer_list = []
         split_fuse_fp_layer_list_extend = []
         if flag == 1:
+
+            def get_next_op_by_op_name(parser, op_name):
+                op_output_tensor = []
+                for op in parser.ops:
+                    if op_name in op.opds:
+                        op_names = split_fuseop(op.name)
+                        valid_op_names = [
+                            x for x in op_names if x in parser.get_op_output_name_list()
+                        ]
+                        op_output_tensor.extend(valid_op_names)
+                return op_output_tensor
+
             if model_block_name == 'yolo_block' or model_block_name == 'yolo_block_12':
                 # test if is yolo26
                 yolo26_block_counts = {
@@ -388,18 +400,19 @@ class MatchPattern:
                     ]
                     pos_concat = None
                     conf_concat = None
+
                     for concat_op in concat_ops:
-                        next_ops = self.parser.get_next_op_by_op_name(concat_op)
+                        next_ops = get_next_op_by_op_name(self.parser, concat_op)
                         if all(
                                 self.parser.get_op_type_by_op_name(x) == 'top.Slice'
                                 for x in next_ops) and len(next_ops) == 2:
                             concat_ = []
                             for next_op in next_ops:
-                                next_next_ops = self.parser.get_next_op_by_op_name(next_op)
+                                next_next_ops = get_next_op_by_op_name(self.parser, next_op)
                                 if len(next_next_ops) == 1 and self.parser.get_op_type_by_op_name(
                                         next_next_ops[0]) in ['top.Add', 'top.Sub']:
-                                    next_next_op = self.parser.get_next_op_by_op_name(
-                                        next_next_ops[0])
+                                    next_next_op = get_next_op_by_op_name(
+                                        self.parser, next_next_ops[0])
                                     if len(next_next_op
                                            ) == 1 and self.parser.get_op_type_by_op_name(
                                                next_next_op[0]) == 'top.Concat':
@@ -413,8 +426,8 @@ class MatchPattern:
                             continue
                     if pos_concat is None or conf_concat is None:
                         return split_fuse_fp_layer_list, [], 0, self._logs
-                    next_mul = self.parser.get_next_op_by_op_name(conf_concat)
-                    next_concat = self.parser.get_next_op_by_op_name(next_mul[0])
+                    next_mul = get_next_op_by_op_name(self.parser, conf_concat)
+                    next_concat = get_next_op_by_op_name(self.parser, next_mul[0])
                     pre_concat = self.parser.get_pre_op_by_op_name(next_concat[0])
                     pre_sig = [x for x in pre_concat if x != next_mul[0]]
                     conf_concat = self.parser.get_pre_op_by_op_name(pre_sig[0])[0]
@@ -424,7 +437,7 @@ class MatchPattern:
                         op_ = pre_ops.pop()
                         split_fuse_fp_layer_list_extend.append(op_)
                         pop_ = self.parser.get_pre_op_by_op_name(op_)
-                        if len(pop_) != 1 or len(self.parser.get_next_op_by_op_name(pop_[0])) != 1:
+                        if len(pop_) != 1 or len(get_next_op_by_op_name(self.parser, pop_[0])) != 1:
                             continue
                         else:
                             pre_ops.append(pop_[0])
@@ -436,7 +449,7 @@ class MatchPattern:
                     # the next op of the next op should not be Conv
                     op_type = self.parser.get_op_type_by_op_name(op_name)
                     if op_type != 'top.Conv': continue
-                    next_ops = self.parser.get_next_op_by_op_name(op_name)
+                    next_ops = get_next_op_by_op_name(self.parser, op_name)
                     pre_ops = self.parser.get_pre_op_by_op_name(op_name)
                     if len(next_ops) != 1 or len(pre_ops) != 1: continue
                     next_op_type = self.parser.get_op_type_by_op_name(next_ops[0])
@@ -445,7 +458,7 @@ class MatchPattern:
                         continue
                     if pre_op_type not in ['top.SiLU', 'top.LeakyRelu']:
                         continue
-                    next_next_ops = self.parser.get_next_op_by_op_name(next_ops[0])
+                    next_next_ops = get_next_op_by_op_name(self.parser, next_ops[0])
                     nn_op_types = [self.parser.get_op_type_by_op_name(_) for _ in next_next_ops]
                     if any(_ == 'top.Conv' for _ in nn_op_types):
                         continue
@@ -456,9 +469,8 @@ class MatchPattern:
                         if current_op in fp_layer_list:
                             continue
                         append_unduplicated(fp_layer_list, current_op)
-                        next_ops = self.parser.get_next_op_by_op_name(current_op)
+                        next_ops = get_next_op_by_op_name(self.parser, current_op)
                         ops_after_last_conv.extend(next_ops)
-
                 for item in fp_layer_list:
                     if not is_fuseop(item):
                         if isinstance(item, (list, tuple)):
@@ -488,7 +500,7 @@ class MatchPattern:
                         fp_layer_list.remove(all_tensors[i])
                     if i < first_ln_index and op_type != 'top.Input' and count >= 20:
                         if op_type == 'top.Add':
-                            next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
+                            next_ops = get_next_op_by_op_name(self.parser, all_tensors[i])
                             if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(
                                     next_ops[0]) != 'top.LayerNorm':
                                 append_unduplicated(
@@ -500,10 +512,10 @@ class MatchPattern:
                     if op_type == 'top.Add':
                         append_unduplicated(fp_layer_list, all_tensors[i])
                     if op_type == 'top.SiLU':
-                        next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_op = get_next_op_by_op_name(self.parser, all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if len(next_op) == 1 and next_op_type == 'top.Mul':
-                            next_next_op = self.parser.get_next_op_by_op_name(next_op[0])
+                            next_next_op = get_next_op_by_op_name(self.parser, next_op[0])
                             next_next_op_type = self.parser.get_op_type_by_op_name(next_next_op[0])
                             if next_next_op_type == 'top.MatMul':
                                 append_unduplicated(fp_layer_list, next_next_op[0])
@@ -529,7 +541,7 @@ class MatchPattern:
                         if len(pre_ops) == 1 and pre_op_types[0] == 'top.Softmax':
                             append_unduplicated(fp_layer_list, all_tensors[i])
                     if op_type == 'top.Add':
-                        next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_ops = get_next_op_by_op_name(self.parser, all_tensors[i])
                         next_op_types = [
                             self.parser.get_op_type_by_op_name(next_op) for next_op in next_ops
                         ]
@@ -551,7 +563,7 @@ class MatchPattern:
                         append_unduplicated(fp_layer_list, all_tensors[i])
                 if model_block_name == 'bert_block' or model_block_name == 'bert_block_1':
                     if op_type == 'top.GELU':
-                        next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_op = get_next_op_by_op_name(self.parser, all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if next_op_type == 'top.MatMul':
                             append_unduplicated(fp_layer_list, next_op[0])
@@ -560,7 +572,7 @@ class MatchPattern:
                     if op_type == 'top.GELU' and all_tensors[i] in fp_layer_list:
                         fp_layer_list.remove(all_tensors[i])
                     elif op_type == 'top.Add':
-                        next_ops = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_ops = get_next_op_by_op_name(self.parser, all_tensors[i])
                         if len(next_ops) != 1 or self.parser.get_op_type_by_op_name(
                                 next_ops[0]) != 'top.LayerNorm':
                             append_unduplicated(fp_layer_list, all_tensors[i])
@@ -598,7 +610,7 @@ class MatchPattern:
                         # Div op name will be changed by adding '_inv' suffix when deploying.
                         append_unduplicated(fp_layer_list, f'{all_tensors[i]}_inv')
                     elif op_type == 'top.Mul':
-                        next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_op = get_next_op_by_op_name(self.parser, all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         if len(next_op) == 1 and next_op_type == 'top.Reduce':
                             append_unduplicated(fp_layer_list, all_tensors[i])
@@ -608,7 +620,7 @@ class MatchPattern:
                         if len(pre_op) == 1 and pre_op_type == 'top.Div':
                             append_unduplicated(fp_layer_list, all_tensors[i])
                     elif op_type == 'top.Add':
-                        next_op = self.parser.get_next_op_by_op_name(all_tensors[i])
+                        next_op = get_next_op_by_op_name(self.parser, all_tensors[i])
                         next_op_type = self.parser.get_op_type_by_op_name(next_op[0])
                         pre_ops = self.parser.get_pre_op_by_op_name(all_tensors[i])
                         pre_op_types = [
