@@ -260,6 +260,12 @@ yolo26_blocks = {
         'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Add', 'top.Conv', 'top.Add',
         'top.Conv', 'top.SiLU', 'top.Conv', 'top.Add'
     ],
+    'trans_block_v1': [
+        'top.SiLU', 'top.Slice', 'top.Slice', 'top.Conv', 'top.Reshape', 'top.Conv', 'top.Reshape',
+        'top.Conv', 'top.Reshape', 'top.Permute', 'top.MatMul', 'top.Conv', 'top.MulConst',
+        'top.Softmax', 'top.Permute', 'top.MatMul', 'top.Reshape', 'top.Add', 'top.Conv', 'top.Add',
+        'top.Conv', 'top.SiLU', 'top.Conv', 'top.Add'
+    ],
     'typical_block_nsm': [
         'top.Slice', 'top.Slice', 'top.Conv', 'top.Conv', 'top.SiLU', 'top.SiLU', 'top.Conv',
         'top.SiLU', 'top.Conv', 'top.SiLU', 'top.Add', 'top.Conv', 'top.SiLU', 'top.Conv',
@@ -372,9 +378,9 @@ class MatchPattern:
                     name: type_tensors_str.count(''.join(map(str, sub_block)))
                     for name, sub_block in yolo26_blocks.items()
                 }
-                if yolo26_block_counts['trans_block'] > 0 and (
-                        yolo26_block_counts['typical_block_nsm'] > 0
-                        or yolo26_block_counts['typical_block_lx'] > 0):
+                if (yolo26_block_counts['trans_block'] > 0 or yolo26_block_counts['trans_block_v1']
+                        > 0) and (yolo26_block_counts['typical_block_nsm'] > 0
+                                  or yolo26_block_counts['typical_block_lx'] > 0):
                     #handle yolo26
                     concat_ops = [
                         x for x in all_tensors
