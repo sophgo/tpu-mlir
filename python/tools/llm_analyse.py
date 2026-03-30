@@ -218,8 +218,16 @@ def export_llm_excel(modules_data,
     hdr_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     key_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
     sum_fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
-    edit_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
-    phase_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+    edit_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    phase_fill = PatternFill(start_color="F4B084", end_color="F4B084", fill_type="solid")
+    # Overview section styles
+    param_hdr_fill = PatternFill(start_color="3B3838", end_color="3B3838", fill_type="solid")
+    param_hdr_font = Font(bold=True, color="FFFFFF", size=11)
+    ratio_hdr_fill = PatternFill(start_color="BF8F00", end_color="BF8F00", fill_type="solid")
+    ratio_hdr_font = Font(bold=True, color="FFFFFF", size=11)
+    mod_hdr_fill = PatternFill(start_color="2E75B6", end_color="2E75B6", fill_type="solid")
+    mod_hdr_font = Font(bold=True, color="FFFFFF", size=11)
+    phase_font = Font(bold=True, color="833C0B")
     bold = Font(bold=True)
     thin = Border(*(Side(style="thin"), ) * 4)
     center = Alignment(horizontal="center", wrap_text=True)
@@ -261,9 +269,11 @@ def export_llm_excel(modules_data,
     ws0.title = "Overview"
 
     # Row 1: header
-    ws0.cell(row=1, column=1, value="Parameter").font = bold
-    ws0.cell(row=1, column=2, value="Value").font = bold
-    ws0.cell(row=1, column=3, value="Unit").font = bold
+    for c, h in enumerate(["Parameter", "Value", "Unit"], 1):
+        cell = ws0.cell(row=1, column=c, value=h)
+        cell.font = param_hdr_font
+        cell.fill = param_hdr_fill
+        cell.border = thin
 
     # Rows 2-10: editable parameters
     params = [
@@ -286,8 +296,11 @@ def export_llm_excel(modules_data,
         ws0.cell(row=r, column=3, value=unit)
 
     # Row 11: Special Ratio header + rows 12-15
-    ws0.cell(row=11, column=1, value="Special Ratio").font = Font(bold=True, size=11)
-    ws0.cell(row=11, column=2, value="Value").font = bold
+    for c, h in enumerate(["Special Ratio", "Value"], 1):
+        cell = ws0.cell(row=11, column=c, value=h)
+        cell.font = ratio_hdr_font
+        cell.fill = ratio_hdr_fill
+        cell.border = thin
     special_ratios = [
         ("FAttention Ratio", 3.0, "0%"),
         ("Gather Ratio", 5.0, "0%"),
@@ -308,8 +321,8 @@ def export_llm_excel(modules_data,
     ]
     for c, h in enumerate(sum_headers, 1):
         cell = ws0.cell(row=sum_hdr, column=c, value=h)
-        cell.font = hdr_font
-        cell.fill = hdr_fill
+        cell.font = mod_hdr_font
+        cell.fill = mod_hdr_fill
         cell.alignment = center
         cell.border = thin
 
@@ -470,7 +483,7 @@ def export_llm_excel(modules_data,
         for c in range(1, len(sum_headers) + 1):
             cell = ws0.cell(row=r, column=c)
             cell.fill = phase_fill
-            cell.font = bold
+            cell.font = phase_font
             cell.border = thin
         ws0.cell(row=r, column=1, value=label)
         if rows:
@@ -495,27 +508,80 @@ def export_llm_excel(modules_data,
 
     # ============ TTFT and Tokens/s ============
     ttft_r = phase_r + 3
+    # Styles for result section
+    result_fill = PatternFill(start_color="2F75B5", end_color="2F75B5", fill_type="solid")
+    result_font = Font(bold=True, color="FFFFFF", size=12)
+    util_label_font = Font(bold=True, color="333333", size=10)
+    util_fill = PatternFill(start_color="D6E4F0", end_color="D6E4F0", fill_type="solid")
+    util_font = Font(bold=True, color="1F4E79", size=10)
+
+    # -- TTFT row --
     c_ttft_label = ws0.cell(row=ttft_r, column=1, value="TTFT (s)")
-    c_ttft_label.font = bold
-    c_ttft_label.fill = phase_fill
+    c_ttft_label.font = result_font
+    c_ttft_label.fill = result_fill
     c_ttft_label.border = thin
     c_ttft = ws0.cell(row=ttft_r, column=2)
     c_ttft.value = f"=F{phase_r}"
     c_ttft.number_format = "#,##0.000000"
-    c_ttft.font = bold
-    c_ttft.fill = phase_fill
+    c_ttft.font = result_font
+    c_ttft.fill = result_fill
     c_ttft.border = thin
+    # Prefill compute utilization
+    c_pcl = ws0.cell(row=ttft_r, column=3, value="MFU Util")
+    c_pcl.font = util_label_font
+    c_pcl.fill = util_fill
+    c_pcl.border = thin
+    c_pcu = ws0.cell(row=ttft_r, column=4)
+    c_pcu.value = f"=IF(F{phase_r}=0,0,C{phase_r}/{TOPS_REF}/1000/F{phase_r})"
+    c_pcu.number_format = "0.00%"
+    c_pcu.font = util_font
+    c_pcu.fill = util_fill
+    c_pcu.border = thin
+    # Prefill BW utilization
+    c_pbl = ws0.cell(row=ttft_r, column=5, value="BW Util")
+    c_pbl.font = util_label_font
+    c_pbl.fill = util_fill
+    c_pbl.border = thin
+    c_pbu = ws0.cell(row=ttft_r, column=6)
+    c_pbu.value = f"=IF(F{phase_r}=0,0,D{phase_r}/{BW_REF}/1000/F{phase_r})"
+    c_pbu.number_format = "0.00%"
+    c_pbu.font = util_font
+    c_pbu.fill = util_fill
+    c_pbu.border = thin
 
+    # -- Tokens/s row --
     c_tps_label = ws0.cell(row=ttft_r + 1, column=1, value="Tokens/s")
-    c_tps_label.font = bold
-    c_tps_label.fill = phase_fill
+    c_tps_label.font = result_font
+    c_tps_label.fill = result_fill
     c_tps_label.border = thin
     c_tps = ws0.cell(row=ttft_r + 1, column=2)
     c_tps.value = f"=IF(F{phase_r+1}=0,0,1/F{phase_r+1})"
     c_tps.number_format = "#,##0.00"
-    c_tps.font = bold
-    c_tps.fill = phase_fill
+    c_tps.font = result_font
+    c_tps.fill = result_fill
     c_tps.border = thin
+    # Decode compute utilization
+    c_dcl = ws0.cell(row=ttft_r + 1, column=3, value="MFU Util")
+    c_dcl.font = util_label_font
+    c_dcl.fill = util_fill
+    c_dcl.border = thin
+    c_dcu = ws0.cell(row=ttft_r + 1, column=4)
+    c_dcu.value = f"=IF(F{phase_r+1}=0,0,C{phase_r+1}/{TOPS_REF}/1000/F{phase_r+1})"
+    c_dcu.number_format = "0.00%"
+    c_dcu.font = util_font
+    c_dcu.fill = util_fill
+    c_dcu.border = thin
+    # Decode BW utilization
+    c_dbl = ws0.cell(row=ttft_r + 1, column=5, value="BW Util")
+    c_dbl.font = util_label_font
+    c_dbl.fill = util_fill
+    c_dbl.border = thin
+    c_dbu = ws0.cell(row=ttft_r + 1, column=6)
+    c_dbu.value = f"=IF(F{phase_r+1}=0,0,D{phase_r+1}/{BW_REF}/1000/F{phase_r+1})"
+    c_dbu.number_format = "0.00%"
+    c_dbu.font = util_font
+    c_dbu.fill = util_fill
+    c_dbu.border = thin
 
     # ============ Model Architecture section ============
     arch_r = ttft_r + 3
@@ -590,10 +656,10 @@ def main():
                         help="Quantization mode (default: f16)")
     parser.add_argument("-v", "--vector_tops", type=float, default=None,
                         help="Vector compute power in TOPS (default: tops/8)")
-    parser.add_argument("-r", "--uarch_rate", type=float, default=0.7,
-                        help="uArch Rate ratio (default: 0.7)")
-    parser.add_argument("-u", "--bw_util", type=float, default=0.7,
-                        help="Bandwidth utilization ratio (default: 0.7)")
+    parser.add_argument("-r", "--uarch_rate", type=float, default=0.8,
+                        help="uArch Rate ratio (default: 0.8)")
+    parser.add_argument("-u", "--bw_util", type=float, default=0.8,
+                        help="Bandwidth utilization ratio (default: 0.8)")
     parser.add_argument("-p", "--parallelism", type=float, default=0.5,
                         help="Parallelism ratio for Est.Time (default: 0.5)")
     parser.add_argument('--max_input_length', type=int, default=0,

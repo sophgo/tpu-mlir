@@ -1871,7 +1871,7 @@ class LlmConverter(BaseConverter):
         deploy_args = [
             f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
             f'--quantize {self.half_precision_quantize}', '--quant_input', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
+            f'--num_core {self.num_core}', f'--num_device {self.num_device}', '--addr_mode basic',
             f'--model {name}.bmodel'
         ]
         if self.debug:
@@ -1920,10 +1920,18 @@ class LlmConverter(BaseConverter):
             return
 
         deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
-            f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}', '--quant_input',
-            '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}', f'--model {name}.bmodel'
+            f'pushd {name} && ',
+            'model_deploy.py',
+            f'--mlir {name}.mlir',
+            f'--quantize {self.quantize}',
+            f'--q_group_size {self.q_group_size}',
+            '--quant_input',
+            '--quant_output',
+            f'--chip {self.chip}',
+            f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}',
+            f'--model {name}.bmodel',
+            '--addr_mode basic',
         ]
         if self.high_precision:
             deploy_args.append('--high_precision')
@@ -1971,10 +1979,18 @@ class LlmConverter(BaseConverter):
             return
 
         deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
-            f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}', '--quant_input',
-            '--quant_output', f'--chip {self.chip}', f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}', f'--model {name}.bmodel'
+            f'pushd {name} && ',
+            'model_deploy.py',
+            f'--mlir {name}.mlir',
+            f'--quantize {self.quantize}',
+            f'--q_group_size {self.q_group_size}',
+            '--quant_input',
+            '--quant_output',
+            f'--chip {self.chip}',
+            f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}',
+            f'--model {name}.bmodel',
+            '--addr_mode basic',
         ]
         if self.high_precision:
             deploy_args.append('--high_precision')
@@ -1997,9 +2013,14 @@ class LlmConverter(BaseConverter):
             print(f"{model_path} already exists. Skipping compilation.")
             return
         deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model {name}.bmodel'
+            f'pushd {name} && ',
+            'model_deploy.py',
+            f'--mlir {name}.mlir',
+            f'--chip {self.chip}',
+            f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}',
+            f'--model {name}.bmodel',
+            '--addr_mode basic',
         ]
         if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
             deploy_args.append('--quantize f16')
@@ -2026,15 +2047,23 @@ class LlmConverter(BaseConverter):
             print(f"{model_path} already exists. Skipping compilation.")
             return
         deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
-            f'--quantize {self.half_precision_quantize}', '--quant_input', '--quant_output',
-            f'--chip {self.chip}', f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model {name}.bmodel'
+            f'pushd {name} && ',
+            'model_deploy.py',
+            f'--mlir {name}.mlir',
+            f'--quantize {self.half_precision_quantize}',
+            '--quant_input',
+            '--quant_output',
+            f'--chip {self.chip}',
+            f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}',
+            f'--model {name}.bmodel',
         ]
         if self.debug:
             deploy_args.append('--debug')
         if io_alone:
             deploy_args.append('--addr_mode io_alone')
+        else:
+            deploy_args.append('--addr_mode basic')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 

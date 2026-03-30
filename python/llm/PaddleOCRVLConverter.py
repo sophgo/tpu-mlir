@@ -456,9 +456,15 @@ class PaddleOCRVLConverter(LlmConverter):
             print(f"{model_path} already exists. Skipping compilation.")
             return
         deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--disable_layer_group', f'--model {name}.bmodel'
+            f'pushd {name} && ',
+            'model_deploy.py',
+            f'--mlir {name}.mlir',
+            f'--chip {self.chip}',
+            f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}',
+            f'--disable_layer_group',
+            f'--model {name}.bmodel',
+            '--addr_mode basic',
         ]
         deploy_args.append('--quantize F16')
         deploy_args.append('--quant_output_bf16')

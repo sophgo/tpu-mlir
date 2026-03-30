@@ -418,9 +418,14 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
             print(f"{model_path} already exists. Skipping compilation.")
             return
         deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model {name}.bmodel'
+            f'pushd {name} && ',
+            'model_deploy.py',
+            f'--mlir {name}.mlir',
+            f'--chip {self.chip}',
+            f'--num_core {self.num_core}',
+            f'--num_device {self.num_device}',
+            f'--model {name}.bmodel',
+            '--addr_mode basic',
         ]
         deploy_args.append(f'--quantize {self.half_precision_quantize}')
         deploy_args.append('--quant_output')
