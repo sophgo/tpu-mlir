@@ -86,6 +86,8 @@ check_sensitive_words() {
         ["bitmain"]="forbidden word"
         ["aisc"]="forbidden word"
         ["集成电路"]="forbidden word"
+        ["sophon"]="forbidden word"
+        ["sophgo"]="forbidden word"
     )
 
     # Replacement words (case insensitive)
@@ -101,8 +103,6 @@ check_sensitive_words() {
 
     # Case-sensitive words (must match exactly)
     declare -A case_sensitive_words=(
-        ["SOPHON"]="SOPHON"
-        ["SOPHGO"]="SOPHGO"
         ["PCIe"]="PCIe"
         ["SoC"]="SoC"
     )

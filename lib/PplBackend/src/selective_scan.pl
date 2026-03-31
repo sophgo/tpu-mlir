@@ -160,8 +160,7 @@ void selective_scan(T *ptr_res, T *ptr_C, T *ptr_deltaA,
           // auto C_block_down_slice = block_C_down.sub_view(real_shape_slice, c_down_slice_offset);
 
 
-            dim4 slice_stride;
-            get_stride<T>(&slice_stride, &real_shape_slice, TPU_ALIGN);
+            dim4 slice_stride = get_stride<T>(real_shape_slice, TPU_ALIGN);
             auto deltaA_up_block_slice_tmp =
                 block_deltaA_up.sub_view(real_shape_slice, delta_up_slice_offset);
             auto deltaA_up_block_slice =

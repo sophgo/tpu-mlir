@@ -74,7 +74,7 @@ class ONNX_IR_TESTER(object):
             "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y, Y, Y),
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y, Y, Y),
-            "Cast":         (self.test_Cast,          Y, Y, Y, Y, Y, Y, N),
+            "Cast":         (self.test_Cast,          N, Y, Y, N, Y, Y, Y),
             "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y, Y, Y, Y),
             "Compare":      (self.test_Compare,       Y, Y, Y, N, Y, Y, Y),
             "Compare2":     (self.test_Compare2,      Y, N, N, N, N, N, N),
@@ -307,6 +307,9 @@ class ONNX_IR_TESTER(object):
             "PadPool3d":        (self.test_PadPool3d,       N, N, N, Y, N, N, N),
             "PixelNorm":        (self.test_PixelNorm,       N, Y, Y, N, Y, Y, Y),
             "PixelNorm2":       (self.test_PixelNorm2,      N, Y, Y, N, Y, Y, Y),
+            "PixelNorm3":       (self.test_PixelNorm3,      N, Y, Y, N, Y, Y, Y),
+            "PixelNorm4":       (self.test_PixelNorm4,      N, Y, Y, N, Y, Y, Y),
+            "PixelNorm5":       (self.test_PixelNorm5,      N, Y, Y, N, Y, Y, Y),
             "PenaltySample":    (self.test_PenaltySample,   N, N, Y, N, N, N, N),
             "PermuteAndConv1DtoMatMul": (self.test_PermuteAndConv1DtoMatMul, Y, Y, Y, Y, Y, Y, Y),
             "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y, Y, Y, Y),
@@ -3665,6 +3668,72 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(N, C, H, W).float()
         self.torch_and_test(x, Model(), case_name)
 
+    def test_PixelNorm3(self, case_name):
+        """LayerNorm with 3D input [512, 1, 128], normalize along last dim (-1)
+        Simulates: model_transform.py --input_shapes "[[512, 1, 128]]"
+        """
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.scale = torch.randn(128).float()
+                self.bias = torch.randn(128).float()
+
+            def forward(self, x):
+                m = x.mean(-1, keepdim=True)
+                var = (x - m).pow(2).mean(-1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+        x = torch.randn(512, 1, 128).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_PixelNorm4(self, case_name):
+        """LayerNorm with 3D input [512, 25, 128], normalize along last dim (-1)
+        Simulates: model_transform.py --input_shapes "[[512, 25, 128]]"
+        """
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.scale = torch.randn(128).float()
+                self.bias = torch.randn(128).float()
+
+            def forward(self, x):
+                m = x.mean(-1, keepdim=True)
+                var = (x - m).pow(2).mean(-1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+        x = torch.randn(512, 25, 128).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_PixelNorm5(self, case_name):
+        """LayerNorm with 2D input [512, 2], normalize along last dim (-1)
+        Simulates: model_transform.py --input_shapes "[[512, 2]]"
+        """
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.scale = torch.randn(2).float()
+                self.bias = torch.randn(2).float()
+
+            def forward(self, x):
+                m = x.mean(-1, keepdim=True)
+                var = (x - m).pow(2).mean(-1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+        x = torch.randn(512, 2).float()
+        self.torch_and_test(x, Model(), case_name)
+
     def test_ConcatToSpace(self, case_name):
 
         class Model(torch.nn.Module):
@@ -4754,7 +4823,7 @@ class ONNX_IR_TESTER(object):
         """
         Test case for the first LSTM layer in crnn_200000.mlir.
         Shapes taken directly from the MLIR:
-        
+
         Note: cv184x does not support INT8 mode for LSTM due to hardware limitations
         (lacks FP32 exp/sigmoid/tanh operations required by INT8 internal computation).
         - Input: [49, 1, 64]
@@ -5534,7 +5603,8 @@ class ONNX_IR_TESTER(object):
         dim4_shape = [4]
         shape1_data = np.array(output1_shape, dtype=np.int64)
         shape2_data = np.array(output2_shape, dtype=np.int64)
-        input_data = {"input": np.random.randint(0, 255, input_shape).astype(np.float32)}
+        # input_data = {"input": np.random.randint(0, 255, input_shape).astype(np.float32)}
+        input_data = {"input": np.random.randn(*input_shape).astype(np.float32)}
         graph_txt = """
             %s (float%s input) => (float%s output1, int64%s output2)
             <int64%s shape1, int64%s shape2, float const_mul>

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgCache.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgConfig.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include <fstream>
@@ -19,6 +20,7 @@
       ".layer_group_config.json"
 
 using namespace llvm;
+uint64_t modules_hash = 0;
 
 namespace tpu_mlir {
 namespace tpu {
@@ -27,7 +29,7 @@ bool force_group_by_cores(const std::string &option) {
   if (module::getCoreNum() < 2) {
     return false;
   }
-  if (option == "true") {
+  if (option == "true" || option == "True") {
     return true;
   } else if (option == "auto" || option == "false") {
     // auto as false
@@ -38,9 +40,9 @@ bool force_group_by_cores(const std::string &option) {
 }
 
 bool force_lgcache(const std::string &option) {
-  if (option == "true") {
+  if (option == "true" || option == "True") {
     return true;
-  } else if (option == "false") {
+  } else if (option == "false" || option == "False") {
     // auto as false
     return false;
   }
@@ -66,30 +68,20 @@ class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
   void runOnOperation() override {
-    // group pass by modules
-    auto modules = module::getAllModules();
-    // set multicore flag if support
-    for (auto m : *modules) {
-      m->walk<WalkOrder::PreOrder>([&](Operation *op) {
-        if (false == module::isOpInBlock(op)) {
-          auto gl = dyn_cast<GlobalGenInterface>(op);
-          if (gl && gl.support_multi_core()) {
-            mlir::Attribute isTrue =
-                mlir::BoolAttr::get(op->getContext(), true);
-            op->setAttr("multicore", isTrue);
-          }
-        }
-      });
-    }
     if (module::isDebugCmdEnable("disable_layer_group")) {
       return;
     }
+    // group pass by modules
+    auto modules = module::getAllModules();
+    modules_hash = LgCache::getInstance().get_modules_hash(modules);
     // init global options
     LgOptions options;
     options.opt = opt;
     options.group_by_cores = force_group_by_cores(group_by_cores);
     options.nnvlc_mode = force_nnvlc_mode(compress_mode);
     options.lgcache = force_lgcache(lgcache);
+    options.enable_lghash = force_lgcache(enable_lghash);
+    options.lghash_dir = lghash_dir;
     options.num_core = module::getCoreNum();
     options.debugger = debugger;
     options.debugger_filename = debugger_filename;
@@ -102,6 +94,12 @@ public:
     }
     auto &lg_config = LgConfig::getInstance();
     lg_config.load(options.config_filename);
+
+    auto combine_hashes = [](uint64_t h1, uint64_t h2) -> uint64_t {
+      return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+    };
+    uint64_t config_hash = lg_config.get_config_hash();
+    modules_hash = combine_hashes(modules_hash, config_hash);
 
     for (auto s : *modules) {
       for (auto f : s.getOps<FuncOp>()) {

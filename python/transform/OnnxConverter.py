@@ -862,12 +862,33 @@ class OnnxConverter(BaseConverter):
 
     def convert_cast_op(self, onnx_node):
         assert (onnx_node.op_type == "Cast")
-        if self.isWeight(onnx_node.inputs[0]):
-            data = self.getWeight(onnx_node.inputs[0])
-            self.addWeight(onnx_node.name, data)
+        # breakpoint()
+        if onnx_node.attrs['to'] in [np.int64, np.int32]:
+            # cast to int32
+            op = self.getOp(onnx_node.inputs[0])
+            new_op = top.CastOp(self.unranked_type,
+                                op,
+                                round_mode=StringAttr.get("TowardsZero"),
+                                to="INT32",
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, new_op)
+        elif onnx_node.attrs['to'] == np.float32:
+            # cast to float32
+            op = self.getOp(onnx_node.inputs[0])
+            new_op = top.CastOp(self.unranked_type,
+                                op,
+                                to="F32",
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, new_op)
         else:
-            op = self.getOperand(onnx_node.inputs[0])
-            self.addOperand(onnx_node.name, op)
+            if self.isWeight(onnx_node.inputs[0]):
+                data = self.getWeight(onnx_node.inputs[0])
+                self.addWeight(onnx_node.name, data)
+            else:
+                op = self.getOperand(onnx_node.inputs[0])
+                self.addOperand(onnx_node.name, op)
 
     def convert_ceil_op(self, onnx_node):
         assert (onnx_node.op_type == "Ceil")
@@ -1374,18 +1395,14 @@ class OnnxConverter(BaseConverter):
 
         # 5D Resize conversion: Single 5D GridSample for D, H, W dimensions
         # Only perform shape inference when all conditions are met
-        if (len(scale_factor) == 5 and 
-            not use_size and
-            scale_factor[-3] > 1.0 and 
-            scale_factor[-2] > 1.0 and 
-            scale_factor[-1] > 1.0 and 
-            coord_mode == b'half_pixel' and 
-            mode == b'linear'):
-            
+        if (len(scale_factor) == 5 and not use_size and scale_factor[-3] > 1.0
+                and scale_factor[-2] > 1.0 and scale_factor[-1] > 1.0
+                and coord_mode == b'half_pixel' and mode == b'linear'):
+
             # Get input shape (only when needed for conversion)
             input_name = onnx_node.inputs[0]
             input_shape_5d = None
-            
+
             # Try to get value_info first, run shape inference if not found
             value_info = self.get_value_info(input_name)
             if value_info is None:
@@ -1395,35 +1412,42 @@ class OnnxConverter(BaseConverter):
                     value_info = self.get_value_info(input_name)
                 except Exception as e:
                     logger.warning(f"[5D Resize] Shape inference failed: {e}")
-            
+
             # Get shape
             if value_info is not None:
                 input_shape_5d = self.get_shape_from_value_info_proto(value_info)
                 if not input_shape_5d or len(input_shape_5d) != 5:
                     input_shape_5d = None
-            
+
             # Only proceed if we successfully got the input shape
             if input_shape_5d is None:
                 logger.warning(f"[5D Resize] Cannot get input shape, fallback to InterpOp")
                 # Fallback to default InterpOp handling
-                self.resize_to_interp(onnx_node, op, scale_h, scale_w, mode, coord_mode, target_shape=target_shape)
+                self.resize_to_interp(onnx_node,
+                                      op,
+                                      scale_h,
+                                      scale_w,
+                                      mode,
+                                      coord_mode,
+                                      target_shape=target_shape)
                 return
-            
+
             # Calculate actual output shape from input shape and scale factors
             actual_output_shape = [int(input_shape_5d[i] * scale_factor[i]) for i in range(5)]
-            
+
             input_shape = input_shape_5d
             N, C = int(input_shape[0]), int(input_shape[1])
             D_in, H_in, W_in = int(input_shape[-3]), int(input_shape[-2]), int(input_shape[-1])
-            D_out, H_out, W_out = int(actual_output_shape[-3]), int(actual_output_shape[-2]), int(actual_output_shape[-1])
-            
+            D_out, H_out, W_out = int(actual_output_shape[-3]), int(actual_output_shape[-2]), int(
+                actual_output_shape[-1])
+
             # Generate 5D grid: [1, D_out, H_out, W_out, 3]
             # Grid coordinates are (x, y, z) corresponding to (W, H, D)
             # D/H/W dimension coordinates
             d_scale = D_out / D_in
             d_indices = np.arange(D_out, dtype=np.float32)
             d_input = (d_indices + 0.5) / d_scale - 0.5
-            d_coords = 2 * (d_input + 0.5) / D_in - 1.0        
+            d_coords = 2 * (d_input + 0.5) / D_in - 1.0
             h_scale = H_out / H_in
             h_indices = np.arange(H_out, dtype=np.float32)
             h_input = (h_indices + 0.5) / h_scale - 0.5
@@ -1432,21 +1456,21 @@ class OnnxConverter(BaseConverter):
             w_indices = np.arange(W_out, dtype=np.float32)
             w_input = (w_indices + 0.5) / w_scale - 0.5
             w_coords = 2 * (w_input + 0.5) / W_in - 1.0
-            
+
             # Create 3D meshgrid with indexing='ij' to get [D_out, H_out, W_out] shape
             D_mesh, H_mesh, W_mesh = np.meshgrid(d_coords, h_coords, w_coords, indexing='ij')
-            
+
             # Stack as [D_out, H_out, W_out, 3] with order (x, y, z) = (W, H, D)
             grid_base = np.stack([W_mesh, H_mesh, D_mesh], axis=-1)
-            
+
             # Add batch dimension: [1, D_out, H_out, W_out, 3]
             grid_5d = grid_base[None, ...]
-            
+
             # Add grid as weight
             grid_name = onnx_node.name + "_grid_5d"
             self.addWeight(grid_name, grid_5d)
             grid_op = self.getWeightOp(grid_name)
-            
+
             # Create 5D GridSamplerOp
             gridsample_op = top.GridSamplerOp(
                 self.unranked_type,
@@ -1456,9 +1480,8 @@ class OnnxConverter(BaseConverter):
                 padding_mode=1,  # zeros
                 align_corners=0,  # align_corners=0 for half_pixel mode
                 loc=self.get_loc(onnx_node.name),
-                ip=self.mlir.insert_point
-            ).output
-            
+                ip=self.mlir.insert_point).output
+
             self.addOperand(onnx_node.name, gridsample_op)
         else:
             self.resize_to_interp(onnx_node,

@@ -90,13 +90,24 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       ReshapeTryLowering,
       TileTryLowering,
       ScatterElementsTryLowering,
-      ReverseTryLowering
+      ReverseTryLowering,
+      CastTryLowering
       // clang-format on
       >(patterns->getContext());
   // TODO: GT LT GE LE MIN MAX SQRT ...
   patterns->add<ShapeArithConvert<top::AddOp>, ShapeArithConvert<top::SubOp>,
                 ShapeArithConvert<top::MulOp>, ShapeArithConvert<top::DivOp>>(
       patterns->getContext());
+}
+
+void populateTopIntToTpuConversionPatterns(RewritePatternSet *patterns) {
+  patterns->add<
+      // clang-format off
+      CastIntLowering,
+      AddIntLowering,
+      MulConstIntLowering
+      // clang-format on
+      >(patterns->getContext());
 }
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
@@ -199,6 +210,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SqrtLowering,
       SqueezeLowering,
       SwapDimInnerLowering,
+      InsertLowering,
       WhereLowering,
       MaskedFillLowering,
       CompareLowering,
@@ -251,7 +263,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MaskRCNNGetBboxBLowering,
       MaskRCNNMaskPoolerLowering,
       RopeLowering,
-      MaxPoolingIndicesBwdLowering
+      MaxPoolingIndicesBwdLowering,
+      MlpLowering
       // clang-format on
       >(patterns->getContext());
 }

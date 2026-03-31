@@ -7,20 +7,11 @@ First check whether the current system environment meets ubuntu 22.04 and python
 
 Basic Environment Configuration
 ---------------------------------
-If you do not meet the above system environment, you need to use Docker, download the required image file from DockerHub https://hub.docker.com/r/sophgo/tpuc_dev, or use the following command to pull the image directly:
-
-
-.. code-block:: shell
-   :linenos:
-
-   $ docker pull sophgo/tpuc_dev:v3.4
-
-If the pulling fails, you can download the required image file from the official website development materials https://developer.sophgo.com/site/index/material/86/all.html, or use the following command to download and load the image:
+You can get the required image file `tpuc_dev_v3.4.tar.gz` from the SDK package:
 
 .. code-block:: shell
    :linenos:
 
-   $ wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/04/15/16/tpuc_dev_v3.4.tar.gz
    $ docker load -i tpuc_dev_v3.4.tar.gz
 
 
@@ -47,7 +38,7 @@ If you download the image file, make sure the image file is in the current direc
 .. code-block:: shell
 
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
 
 where ``myname`` is the name of the container, which can be customized; ``$PWD`` is the current directory, synchronized with the container's ``/workspace`` directory.
 
@@ -68,7 +59,7 @@ Download and install directly from pypi, the latest version will be installed by
 
 **Offline installation**
 
-Download `tpu_mlir-*-py3-none-any.whl` from `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_ on Github, then install with pip:
+Download `tpu_mlir-*-py3-none-any.whl` from Github, then install with pip:
 
 .. code-block:: shell
 

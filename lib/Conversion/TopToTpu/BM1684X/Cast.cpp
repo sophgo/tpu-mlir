@@ -12,6 +12,33 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void CastTryLowering::Lowering(PatternRewriter &rewriter,
+                               top::CastOp op) const {
+  if (!isa_shape_subnet_op(op))
+    return;
+
+  std::vector<NamedAttribute> attrs;
+  Type new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()),
+                            IntegerType::get(op.getOutput().getContext(), 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeCastOp>(op, new_type, op.getInput(),
+                                                attrs);
+}
+
+void CastIntLowering::Lowering(PatternRewriter &rewriter,
+                               top::CastOp op) const {
+  auto to = op.getTo();
+  if (to == "INT32") {
+    auto round_mode = op.getRoundModeAttr().str();
+    auto new_type = RankedTensorType::get(module::getShape(op.getOutput()),
+                                          rewriter.getIntegerType(32, true));
+    auto newOp =
+        lowering_common<tpu::CastOp>(rewriter, op.getOperation(), new_type);
+    newOp.setRoundModeAttr(
+        tpu::RoundModeAttr::get(op.getContext(), get_round_mode(round_mode)));
+  }
+}
+
 void CastLowering::LoweringF32(PatternRewriter &rewriter,
                                top::CastOp op) const {
   auto round_mode = op.getRoundModeAttr().str();

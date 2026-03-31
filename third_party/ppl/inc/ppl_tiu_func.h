@@ -6,6 +6,7 @@
 
 #pragma once
 #include "ppl_defs.h"
+#include "ppl_param.h"
 #include "ppl_tpu.h"
 #include "ppl_types.h"
 #include "ppl_utils.h"
@@ -14,6 +15,8 @@
 namespace ppl {
 namespace tiu {
 
+void send_msg(int msg_id, int msg_cnt);
+void wait_msg(int msg_id, int msg_cnt);
 template <typename DataType>
 void broadcast(tensor<DataType> &dst, tensor<DataType> &src, int num = 0);
 
@@ -112,36 +115,43 @@ void mm(tensor<DataType0> &dst, DataType1 left, tensor<DataType2> &right,
 
 //=================== mm fp32 ===================
 // tpu_bdc_fp32_mm
-void fmm(tensor<fp32> &dst, tensor<fp32> &left, tensor<fp32> &right, fp32 &bias,
-         bool result_add) {
+template <typename DTYPE = fp32>
+void fmm(tensor<DTYPE> &dst, tensor<DTYPE> &left, tensor<DTYPE> &right,
+         DTYPE &bias, bool result_add) {
   mm(dst, left, right, bias, false, false, result_add, 0, 0, false, RM_HALF_UP);
 }
-void fmm(tensor<fp32> &dst, tensor<fp32> &left, tensor<fp32> &right,
+template <typename DTYPE = fp32>
+void fmm(tensor<DTYPE> &dst, tensor<DTYPE> &left, tensor<DTYPE> &right,
          bool result_add) {
-  tensor<fp32> *bias = nullptr;
+  tensor<DTYPE> *bias = nullptr;
   mm(dst, left, right, bias, false, false, result_add, 0, 0, false, RM_HALF_UP);
 }
 
 // tpu_bdc_fp32_mm_L_trans
-void fmm(tensor<fp32> &dst, tensor<fp32> &left, tensor<fp32> &right, fp32 &bias,
-         bool ltrans, bool result_add) {
+template <typename DTYPE = fp32>
+void fmm(tensor<DTYPE> &dst, tensor<DTYPE> &left, tensor<DTYPE> &right,
+         DTYPE &bias, bool ltrans, bool result_add) {
   mm(dst, left, right, bias, ltrans, false, result_add, 0, 0, false,
      RM_HALF_UP);
 }
-void fmm(tensor<fp32> &dst, tensor<fp32> &left, tensor<fp32> &right,
+template <typename DTYPE = fp32>
+void fmm(tensor<DTYPE> &dst, tensor<DTYPE> &left, tensor<DTYPE> &right,
          bool ltrans, bool result_add) {
-  tensor<fp32> *bias = nullptr;
+  tensor<DTYPE> *bias = nullptr;
   mm(dst, left, right, bias, ltrans, false, result_add, 0, 0, false,
      RM_HALF_UP);
 }
 
 // tpu_bdc_fp32_mm_L_const
-void fmm(tensor<fp32> &dst, fp32 &left, tensor<fp32> &right, fp32 &bias,
+template <typename DTYPE = fp32>
+void fmm(tensor<DTYPE> &dst, DTYPE &left, tensor<DTYPE> &right, DTYPE &bias,
          bool result_add) {
   mm(dst, left, right, bias, false, false, result_add, 0, 0, false, RM_HALF_UP);
 }
-void fmm(tensor<fp32> &dst, fp32 &left, tensor<fp32> &right, bool result_add) {
-  tensor<fp32> *bias = nullptr;
+template <typename DTYPE = fp32>
+void fmm(tensor<DTYPE> &dst, DTYPE &left, tensor<DTYPE> &right,
+         bool result_add) {
+  tensor<DTYPE> *bias = nullptr;
   mm(dst, left, right, bias, false, false, result_add, 0, 0, false, RM_HALF_UP);
 }
 
@@ -218,11 +228,11 @@ template <typename DataType0, typename DataType1, typename DataType2>
 void fmul_cast(tensor<DataType0> &dst, tensor<DataType1> &src0,
                tensor<DataType2> &src1, bool saturation = false);
 template <typename DataType0, typename DataType1>
-void fmul_cast(tensor<DataType0> &dst, float src0_c,
-               tensor<DataType1> &src1, bool saturation = false);
+void fmul_cast(tensor<DataType0> &dst, float src0_c, tensor<DataType1> &src1,
+               bool saturation = false);
 template <typename DataType0, typename DataType1>
-void fmul_cast(tensor<DataType0> &dst, tensor<DataType1> &src0,
-               float src1_c, bool saturation = false);
+void fmul_cast(tensor<DataType0> &dst, tensor<DataType1> &src0, float src1_c,
+               bool saturation = false);
 template <typename DataType>
 void fmul_cast(tensor<DataType> &dst, float src0_c, float src1_c,
                bool saturation = false);
@@ -295,7 +305,7 @@ void fdiv(tensor<DataType> &dst, tensor<DataType> &src, float C,
 template <typename DataType>
 void fdiv(tensor<DataType> &dst, float C, tensor<DataType> &src,
           int num_iter = 3);
- // Conv2DFpOp
+// Conv2DFpOp
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void fconv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
@@ -304,138 +314,93 @@ void fconv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
 // Conv2DFpOp without bias
 template <typename DataType0, typename DataType1, typename DataType2>
 void fconv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
-          int oc, conv_param kernel, conv_param pad,
-           conv_param insert, data_type_t out_dtype, bool result_add){
+           int oc, conv_param kernel, conv_param pad, conv_param insert,
+           data_type_t out_dtype, bool result_add) {
   int bias = 0;
   fconv(dst, src, weight, bias, oc, kernel, pad, insert, out_dtype, result_add);
 }
-template <typename DataType0, typename DataType1, typename DataType2>
-void fdeconv(tensor<DataType0> &dst, tensor<DataType1> &src,
-             tensor<DataType1> &weight, DataType2 &bias, int oc, dim2 *k_shape,
-             dim2 *dilation, padding_t *pad, dim2 *insert, bool result_add,
-             data_type_t out_dtype, bool has_bias);
-
-template <typename DataType0, typename DataType1, typename DataType2>
-void fdeconv(tensor<DataType0> &dst, tensor<DataType1> &src,
-             tensor<DataType1> &weight, int oc, dim2 *k_shape, dim2 *dilation,
-             padding_t *pad, dim2 *insert, bool result_add,
-             data_type_t out_dtype) {
-  tensor<DataType0> *bias = nullptr;
-  fdeconv(dst, src, weight, bias, oc, k_shape, dilation, pad, insert,
-          result_add, out_dtype, false);
-}
-
-template <typename DataType>
-void fdw_conv(tensor<DataType> &dst, tensor<DataType> &src,
-              tensor<DataType> &weight, tensor<DataType> &bias, dim2 *k_shape,
-              dim2 *stride, dim2 *dilation, padding_t *pad, bool has_bias);
-
-template <typename DataType>
-void fdw_conv(tensor<DataType> &dst, tensor<DataType> &src,
-              tensor<DataType> &weight, dim2 *k_shape, dim2 *stride,
-              dim2 *dilation, padding_t *pad) {
-  tensor<DataType> *bias = nullptr;
-  fdw_conv(dst, src, weight, bias, k_shape, stride, dilation, pad, false);
-}
-
-template <typename DataType0, typename DataType1>
-void fdw_deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
-                tensor<DataType1> &weight, tensor<DataType1> &bias,
-                dim2 *k_shape, dim2 *dilation, padding_t *pad, dim2 *insert,
-                data_type_t out_dtype, bool has_bias);
-
+// DeConv2DFpOp
 template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5,
-          typename DataType6>
-void deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
-            tensor<DataType2> &weight, DataType3 &bias, int oc, dim2 *k_shape,
-            dim2 *dilation, padding_t *pad, dim2 *ins, DataType4 &pad_val,
-            DataType5 insert_val, bool result_relu, bool result_add,
-            data_type_t out_dtype, bool has_bias, bool sym, DataType6 &quant);
-
+          typename DataType3>
+void fdeconv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
+             DataType3 &bias, int oc, deconv_param kernel, deconv_param pad,
+             deconv_param insert, data_type_t out_dtype, bool result_add);
+// DeConv2DFpOp without bias
+template <typename DataType0, typename DataType1, typename DataType2>
+void fdeconv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
+             int oc, deconv_param kernel, deconv_param pad, deconv_param insert,
+             data_type_t out_dtype, bool result_add) {
+  int bias = 0;
+  fdeconv(dst, src, weight, bias, oc, kernel, pad, insert, out_dtype,
+          result_add);
+}
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void deconv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
                 tensor<DataType2> &weight, DataType3 &bias, int oc,
-                dim2 *k_shape, dim2 *dilation, padding_t *pad, dim2 *ins,
-                bool result_relu, data_type_t out_dtype, bool has_bias,
-                uint8 rshift) {
-  deconv(dst, src, weight, bias, oc, k_shape, dilation, pad, ins, 0, /*pad val*/
-         0,                         /*insert val*/
-         result_relu, false,        /*result add*/
-         out_dtype, has_bias, true, /*sym*/
-         rshift);
-}
+                deconv_param kernel, deconv_param pad, deconv_param insert,
+                int8 rshift);
+
+template <typename DataType0, typename DataType1, typename DataType2,
+          typename DataType3, typename DataType4>
+void deconv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 tensor<DataType2> &weight, DataType3 &bias, int oc,
+                 deconv_param kernel, deconv_param pad, deconv_param insert,
+                 DataType4 kzp_val, data_type_t out_dtype, bool result_add);
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void deconv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
-                 tensor<DataType2> &weight, int oc, dim2 *k_shape,
-                 dim2 *dilation, padding_t *pad, dim2 *ins, int pad_val,
-                 int insert_val, bool result_add, data_type_t out_dtype,
-                 DataType3 kzp_val) {
-  tensor<DataType1> *bias = nullptr;
-  deconv(dst, src, weight, bias, oc, k_shape, dilation, pad, ins, pad_val,
-         insert_val, false, /*result_relu*/ result_add, out_dtype, false,
-         /*has_bias*/ false, /*sym*/ kzp_val);
+                 tensor<DataType2> &weight, int oc, deconv_param kernel,
+                 deconv_param pad, deconv_param insert, DataType3 kzp_val,
+                 data_type_t out_dtype, bool result_add) {
+  int bias = 0;
+  deconv_asym(dst, src, weight, bias, oc, kernel, pad, insert, kzp_val,
+              out_dtype, result_add);
 }
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5,
-          typename DataType6>
-void deconv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
-                 tensor<DataType2> &weight, int oc, dim2 *k_shape,
-                 dim2 *dilation, padding_t *pad, dim2 *ins,
-                 tensor<DataType4> &pad_insert_val, bool result_add,
-                 data_type_t out_dtype, tensor<DataType6> &kzp) {
-  tensor<DataType1> *bias = nullptr;
-  deconv(dst, src, weight, bias, oc, k_shape, dilation, pad, ins,
-         pad_insert_val, 0, /*insert_val*/ false, /*result_relu*/ result_add,
-         out_dtype, false,
-         /*has_bias*/ false, /*sym*/ kzp);
+// DwConv2DFpOpdw_conv
+template <typename DataType>
+void fdw_conv(tensor<DataType> &dst, tensor<DataType> &src,
+              tensor<DataType> &weight, tensor<DataType> &bias,
+              conv_param kernel, conv_param pad, conv_param insert);
+// DwConv2DFpOp without bias
+template <typename DataType>
+void fdw_conv(tensor<DataType> &dst, tensor<DataType> &src,
+              tensor<DataType> &weight, conv_param kernel, conv_param pad,
+              conv_param insert) {
+  int bias = 0;
+  fdw_conv(dst, src, weight, bias, kernel, pad, insert);
 }
-
+// DwDeConv2DFpOp
+template <typename DataType0, typename DataType1>
+void fdw_deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
+                tensor<DataType1> &weight, tensor<DataType1> &bias,
+                deconv_param kernel, deconv_param pad, deconv_param insert,
+                data_type_t out_dtype);
 template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType5>
-void dw_conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
-             DataType3 &bias, dim2 *k_shape, dim2 *stride, dim2 *dilation,
-             padding_t *pad, DataType4 &pad_val, bool result_relu,
-             data_type_t out_dtype, bool has_bias, uint8 rshift, bool rq,
-             DataType5 &requant, bool saturate, rounding_mode_t round);
-
-template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4, typename DataType6>
-void dw_conv_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-                tensor<DataType2> &weight, DataType3 &bias, dim2 *k_shape,
-                dim2 *stride, dim2 *dilation, padding_t *pad,
-                DataType4 &pad_val, bool result_relu, data_type_t out_dtype,
-                bool has_bias, tensor<DataType6> &requant, bool saturate,
-                rounding_mode_t round) {
-  dw_conv(dst, src, weight, bias, k_shape, stride, dilation, pad, pad_val,
-          result_relu, out_dtype, has_bias, 0, /*rshfit*/ true, /*rq*/ requant,
-          saturate, round);
-}
-
+          typename DataType3>
+void dw_conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
+                 DataType2 &weight, DataType3 &bias, conv_param kernel,
+                 conv_param pad, conv_param insert, int8 rshift,
+                 rounding_mode_t round);
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3, typename DataType4>
-void dw_conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
-             DataType3 &bias, dim2 *k_shape, dim2 *stride, dim2 *dilation,
-             padding_t *pad, DataType4 &pad_val, bool result_relu,
-             data_type_t out_dtype, bool has_bias, uint8 rshift,
-             rounding_mode_t round) {
-  tensor<DataType1> *requant = nullptr;
-  dw_conv(dst, src, weight, bias, k_shape, stride, dilation, pad, pad_val,
-          result_relu, out_dtype, has_bias, rshift, false, requant, false,
-          round);
-}
-
+void dw_conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
+                  DataType2 &weight, DataType3 &bias, conv_param kernel,
+                  conv_param pad, conv_param insert, DataType4 kzp,
+                  data_type_t out_dtype, bool result_add);
+// dw_deconv_sym
 template <typename DataType0, typename DataType1, typename DataType2,
-          typename DataType3, typename DataType4>
+          typename DataType3>
 void dw_deconv(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, DataType3 &bias, dim2 *k_shape,
-               dim2 *dilation, padding_t *pad, dim2 *ins, DataType4 &pad_val,
-               bool result_relu, data_type_t out_dtype, bool has_bias,
-               uint8 rshift, rounding_mode_t round);
+               DataType2 &weight, DataType3 &bias, conv_param kernel,
+               conv_param pad, conv_param insert, int8 rshift,
+               rounding_mode_t round);
+// ConvFpBackwardOp
+template <typename DataType0, typename DataType1, typename DataType2>
+void fconv_bw(tensor<DataType0> &dst, tensor<DataType1> &src,
+              tensor<DataType2> &grad, conv_param kernel, conv_param pad,
+              conv_param insert);
 
 template <typename DataType>
 void bitwise_and(tensor<DataType> &dst, tensor<DataType> &src0,
@@ -482,7 +447,7 @@ template <typename DataType0, typename DataType1>
 void fmax(tensor<DataType0> &dst, tensor<DataType0> &src, DataType1 C);
 
 template <typename DataType>
-void fadd(tensor<DataType> &dst, tensor<DataType> &src0, tensor<DataType> &src1,
+void fadd(tensor<DataType> &dst, tensor<DataType>& src0, tensor<DataType> &src1,
           bool saturation = 0);
 template <typename DataType>
 void fadd(tensor<DataType> &dst, tensor<DataType> &src, float C,
@@ -834,8 +799,8 @@ void min_lt_select(tensor<DataType0> &dst0, tensor<DataType1> &dst1,
                    DataType2 &src0, DataType3 &src1, DataType4 &src2,
                    DataType5 &src3);
 
-template <typename DataType>
-void reduce(tensor<DataType> &dst, tensor<DataType> &src,
+template <typename DataType0, typename DataType1>
+void reduce(tensor<DataType0> &dst, tensor<DataType1> &src,
             all_reduce_opcode_t opcode, bool saturation = false);
 /*
  * Note:
@@ -898,59 +863,76 @@ template <typename DataType>
 void ceiling(tensor<DataType> &dst, tensor<DataType> &src) {
   return round(dst, src, RM_UP);
 }
+// pooling ops
+template <typename DataType>
+void pool_max(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+              pool_param pad, pool_param insert);
+template <typename DataType>
+void pool_max(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+              pool_param pad) {
+  pool_param inst_param = pool::param::insert(0, 1, 1, 0, 0);
+  return pool_max(dst, src, kernel, pad, inst_param);
+}
 
 template <typename DataType>
-void pool_max(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
-              padding_t *pad, dim2 *stride, dim2 *dilation);
-template <typename DataType>
-void fpool_max(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
-               padding_t *pad, dim2 *stride, dim2 *dilation);
+void pool_min(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+              pool_param pad, pool_param insert);
+
+template <typename DataType0, typename DataType1>
+void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, pool_param kernel,
+              pool_param pad, pool_param insert, int scale, int rshift);
+template <typename DataType0, typename DataType1>
+void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, pool_param kernel,
+              pool_param pad, int scale, int rshift) {
+  pool_param inst_param = pool::param::insert(0, 1, 1, 0, 0);
+  return pool_avg(dst, src, kernel, pad, inst_param, scale, rshift);
+}
+template <typename DataType0, typename DataType1>
+void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, pool_param kernel,
+              pool_param pad, int scale) {
+  pool_param inst_param = pool::param::insert(0, 1, 1, 0, 0);
+  return pool_avg(dst, src, kernel, pad, inst_param, scale, 0);
+}
 
 template <typename DataType>
-void pool_min(tensor<DataType> &dst, tensor<DataType> &, dim2 *kernel,
-              padding_t *pad, dim2 *stride, dim2 *dilation);
-template <typename DataType>
-void fpool_min(tensor<DataType> &dst, tensor<DataType> &, dim2 *kernel,
-               padding_t *pad, dim2 *stride, dim2 *dilation);
+void fpool_max(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+               pool_param pad, pool_param insert) {
 
-template <typename DataType>
-void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
-               padding_t *pad, dim2 *stride, dim2 *dilation, dim2 *ins,
-               float scale);
-template <typename DataType>
-void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
-               padding_t *pad, dim2 *stride, dim2 *dilation, float scale) {
-  return fpool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
-                   scale);
+  return pool_max(dst, src, kernel, pad, insert);
 }
 template <typename DataType>
-void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
-               padding_t *pad, dim2 *stride, dim2 *dilation, dim2 *ins) {
-  return fpool_avg(dst, src, kernel, pad, stride, dilation, ins, 1.0f);
+void fpool_max(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+               pool_param pad) {
+  pool_param inst_param = pool::param::insert(0, 1, 1, 0, 0);
+  return pool_max(dst, src, kernel, pad, inst_param);
 }
 template <typename DataType>
-void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, dim2 *kernel,
-               padding_t *pad, dim2 *stride, dim2 *dilation) {
-  return fpool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
-                   1.0f);
+void fpool_min(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+               pool_param pad, pool_param insert) {
+  return pool_min(dst, src, kernel, pad, insert);
 }
 
 template <typename DataType0, typename DataType1>
-void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, dim2 *kernel,
-              padding_t *pad, dim2 *stride, dim2 *dilation, dim2 *ins,
-              int scale, int rshift);
-template <typename DataType0, typename DataType1>
-void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, dim2 *kernel,
-              padding_t *pad, dim2 *stride, dim2 *dilation, int scale,
-              int rshift) {
-  return pool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
-                  scale, rshift);
+void fpool_avg(tensor<DataType0> &dst, tensor<DataType1> &src,
+               pool_param kernel, pool_param pad, pool_param insert,
+               float scale, int rshift);
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+               pool_param pad, pool_param insert, float scale) {
+  return fpool_avg(dst, src, kernel, pad, insert, scale, 0);
 }
-template <typename DataType0, typename DataType1>
-void pool_avg(tensor<DataType0> &dst, tensor<DataType1> &src, dim2 *kernel,
-              padding_t *pad, dim2 *stride, dim2 *dilation, int scale) {
-  return pool_avg(dst, src, kernel, pad, stride, dilation, (dim2 *)nullptr,
-                  scale, 0);
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+               pool_param pad) {
+  pool_param inst_param = pool::param::insert(0, 1, 1, 0, 0);
+  return fpool_avg(dst, src, kernel, pad, inst_param, 1.0f, 0);
+}
+
+template <typename DataType>
+void fpool_avg(tensor<DataType> &dst, tensor<DataType> &src, pool_param kernel,
+               pool_param pad, float scale) {
+  pool_param inst_param = pool::param::insert(0, 1, 1, 0, 0);
+  return fpool_avg(dst, src, kernel, pad, inst_param, scale, 0);
 }
 
 template <typename DataType>
@@ -988,9 +970,9 @@ void conv(tensor<DataType0> &dst, tensor<DataType1> &src, DataType2 &weight,
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void conv_sym_impl(tensor<DataType0> &dst, tensor<DataType1> &src,
-              tensor<DataType2> &weight, DataType3 &bias, int oc,
-              conv_param kernel, conv_param pad, conv_param insert,
-              int8 rshift);
+                   tensor<DataType2> &weight, DataType3 &bias, int oc,
+                   conv_param kernel, conv_param pad, conv_param insert,
+                   int8 rshift);
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
@@ -1026,9 +1008,10 @@ void conv_sym(tensor<DataType0> &dst, tensor<DataType1> &src,
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3, typename DataType4>
 void conv_sym_rq_compound(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, DataType3 &bias, int oc,
-               conv_param kernel, conv_param pad, conv_param insert,
-               DataType4 &requant, int rshift, int out_zp, int staturate) {
+                          tensor<DataType2> &weight, DataType3 &bias, int oc,
+                          conv_param kernel, conv_param pad, conv_param insert,
+                          DataType4 &requant, int rshift, int out_zp,
+                          int staturate) {
   int sym_rshift = 0;
   conv_sym(dst, src, weight, bias, oc, kernel, pad, insert, sym_rshift);
   if constexpr (!std::is_same<DataType0, int16>::value) {
@@ -1053,19 +1036,19 @@ void conv_sym_rq_compound(tensor<DataType0> &dst, tensor<DataType1> &src,
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3, typename DataType4>
 void conv_rq_impl(tensor<DataType0> &dst, tensor<DataType1> &src,
-                   DataType2 &weight, DataType3 &bias, int oc,
-                   conv_param kernel, conv_param pad, conv_param insert,
-                   DataType4 &requant, int rshift, int out_zp, int saturate);
+                  DataType2 &weight, DataType3 &bias, int oc, conv_param kernel,
+                  conv_param pad, conv_param insert, DataType4 &requant,
+                  int rshift, int out_zp, int saturate);
 // tpu_bdc_conv2d_requant_C (only in bm1690)
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, DataType3 &bias, int oc,
-               conv_param kernel, conv_param pad, conv_param insert,
-               int multiplier, int8 rshift, short out_zp, int staturate) {
+                 tensor<DataType2> &weight, DataType3 &bias, int oc,
+                 conv_param kernel, conv_param pad, conv_param insert,
+                 int multiplier, int8 rshift, short out_zp, int staturate) {
 #if defined(__bm1684x__)
   conv_sym_rq_compound(dst, src, weight, bias, oc, kernel, pad, insert,
-                      multiplier, rshift, out_zp, staturate);
+                       multiplier, rshift, out_zp, staturate);
 #else
   conv_rq_impl(dst, src, weight, bias, oc, kernel, pad, insert, multiplier,
                rshift, out_zp, staturate);
@@ -1074,13 +1057,13 @@ void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
 // without bias
 template <typename DataType0, typename DataType1, typename DataType2>
 void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, int oc, conv_param kernel,
-               conv_param pad, conv_param insert, int multiplier,
-               int8 rshift, short out_zp, int staturate) {
+                 tensor<DataType2> &weight, int oc, conv_param kernel,
+                 conv_param pad, conv_param insert, int multiplier, int8 rshift,
+                 short out_zp, int staturate) {
   int bias = 0;
 #if defined(__bm1684x__)
   conv_sym_rq_compound(dst, src, weight, bias, oc, kernel, pad, insert,
-                      multiplier, rshift, out_zp, staturate);
+                       multiplier, rshift, out_zp, staturate);
 #else
   conv_rq_impl(dst, src, weight, bias, oc, kernel, pad, insert, multiplier,
                rshift, out_zp, staturate);
@@ -1091,32 +1074,32 @@ void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3, typename DataType4>
 void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, DataType3 &bias, int oc,
-               conv_param kernel, conv_param pad, conv_param insert,
-               DataType4 &requant, int staturate) {
+                 tensor<DataType2> &weight, DataType3 &bias, int oc,
+                 conv_param kernel, conv_param pad, conv_param insert,
+                 DataType4 &requant, int staturate) {
   int rq_shift = 0;
   int out_zp = 0;
 #if defined(__bm1684x__)
-  conv_sym_rq_compound(dst, src, weight, bias, oc, kernel, pad, insert,
-                      requant, rq_shift, out_zp, staturate);
+  conv_sym_rq_compound(dst, src, weight, bias, oc, kernel, pad, insert, requant,
+                       rq_shift, out_zp, staturate);
 #else
   conv_rq_impl(dst, src, weight, bias, oc, kernel, pad, insert, requant,
-                 rq_shift, out_zp, staturate);
+               rq_shift, out_zp, staturate);
 #endif
 }
 // without bias
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
-               tensor<DataType2> &weight, int oc, conv_param kernel,
-               conv_param pad, conv_param insert, DataType3 &requant,
-               int staturate) {
+                 tensor<DataType2> &weight, int oc, conv_param kernel,
+                 conv_param pad, conv_param insert, DataType3 &requant,
+                 int staturate) {
   int bias = 0;
   int rq_shift = 0;
   int out_zp = 0;
 #if defined(__bm1684x__)
-  conv_sym_rq_compound(dst, src, weight, bias, oc, kernel, pad, insert,
-                      requant, rq_shift, out_zp, staturate);
+  conv_sym_rq_compound(dst, src, weight, bias, oc, kernel, pad, insert, requant,
+                       rq_shift, out_zp, staturate);
 #else
   conv_rq_impl(dst, src, weight, bias, oc, kernel, pad, insert, requant,
                rq_shift, out_zp, staturate);
@@ -1127,16 +1110,16 @@ void conv_sym_rq(tensor<DataType0> &dst, tensor<DataType1> &src,
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3, typename DataType4>
 void conv_asym_impl(tensor<DataType0> &dst, tensor<DataType1> &src,
-                   DataType2 &weight, DataType3 &bias, int oc,
-                   conv_param kernel, conv_param pad, conv_param insert,
-                   DataType4 &kzp, data_type_t out_dtype, int result_add);
+                    DataType2 &weight, DataType3 &bias, int oc,
+                    conv_param kernel, conv_param pad, conv_param insert,
+                    DataType4 &kzp, data_type_t out_dtype, int result_add);
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void conv_asym(tensor<DataType0> &dst, tensor<DataType1> &src,
-               DataType2 &weight, int oc, conv_param kernel,
-               conv_param pad, conv_param insert, DataType3 &kzp,
-               data_type_t out_dtype, bool result_add) {
+               DataType2 &weight, int oc, conv_param kernel, conv_param pad,
+               conv_param insert, DataType3 &kzp, data_type_t out_dtype,
+               bool result_add) {
   int bias = 0;
   conv_asym_impl(dst, src, weight, bias, oc, kernel, pad, insert, kzp,
                  out_dtype, result_add);
@@ -1196,6 +1179,9 @@ void fcot_base(tensor<DataType> &dst, tensor<DataType> &src);
 
 template <typename DataType>
 void fexp_base(tensor<DataType> &dst, tensor<DataType> &src);
+
+template <typename DataType>
+void ferf_base(tensor<DataType> &dst, tensor<DataType> &src);
 
 template <typename DataType0, typename DataType1>
 void fexp_part(tensor<DataType0> &dst, tensor<DataType1> &src);
@@ -1330,14 +1316,39 @@ void fmm2_dq2_tt(tensor<DataType0> &dst, DataType1 &x, tensor<DataType2> &w,
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void fmm2_bq_nt(tensor<DataType0> &dst, DataType1 &x, tensor<DataType2> &w,
-                tensor<DataType3> &xs, tensor<DataType3> &ws, int gsize, bool w_block,
-                bool result_add, bool saturate = false);
+                tensor<DataType3> &xs, tensor<DataType3> &ws, int gsize,
+                bool w_block, bool result_add, bool saturate = false);
 
 template <typename DataType0, typename DataType1, typename DataType2,
           typename DataType3>
 void fmm2_bq_f4(tensor<DataType0> &dst, DataType1 &x, tensor<DataType2> &w,
-                tensor<DataType3> &xs, tensor<DataType3> &ws, tensor<DataType3> &os, int gsize,
-                bool result_add, bool saturate = false);
+                tensor<DataType3> &xs, tensor<DataType3> &ws,
+                tensor<DataType3> &os, int gsize, bool result_add,
+                bool saturate = false);
+
+template <typename DataType>
+void arange_broadcast(tensor<DataType> &dst, int start, int step, int num,
+                      int c = LANE_NUM) {
+  int max_len = 64;
+  int num_treated = ppl::min(max_len, num);
+  dim4 table_real_shape = {1, c, 1, num_treated};
+  auto table_real = dst.view(table_real_shape);
+  tiu::load_coeff(table_real, SERIAL_NUMBER);
+  for (int i = num_treated; i < num; i += num_treated) {
+    int val = i;
+    int cur_w = ppl::min(num_treated, num - i);
+    dim4 cur_shape = {1, c, 1, cur_w};
+    dim4 offset = {0, 0, 0, i};
+    auto sub_tensor = dst.sub_view(cur_shape, offset);
+    tiu::add(sub_tensor, table_real, val);
+  }
+  if (step != 1) {
+    tiu::mul(dst, dst, step);
+  }
+  if (start != 0) {
+    tiu::add(dst, dst, start);
+  }
+}
 /************************************************************************************
  */
 /************************************************************************************
@@ -1347,8 +1358,6 @@ void fmm2_bq_f4(tensor<DataType0> &dst, DataType1 &x, tensor<DataType2> &w,
 /**************************************************************************************/
 
 // Use arange_broadcast in ppl_wrapper_func.h instead
-template <typename DataType>
-void arange_broadcast(tensor<DataType> &dst, int start, int step, int num);
 
 // Use load_coeff instead
 template <typename DataType>

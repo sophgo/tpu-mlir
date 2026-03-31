@@ -12,6 +12,26 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
+void AddIntLowering::Lowering(PatternRewriter &rewriter, top::AddOp op) const {
+  if (!isa_int_subnet_op(op))
+    return;
+
+  std::vector<Value> operands;
+  for (auto in : op.getOperands()) {
+    if (module::isWeight(in)) {
+      auto wOp = in.getDefiningOp<top::WeightOp>();
+      operands.push_back(wOp.clone_int(op));
+    } else {
+      operands.push_back(in);
+    }
+  }
+  Type new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()),
+                            IntegerType::get(op.getOutput().getContext(), 32));
+  rewriter.replaceOpWithNewOp<tpu::AddOp>(op, new_type, operands,
+                                          op->getAttrs());
+}
+
 void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
                                bool asymmetric) const {
   std::vector<Value> operands;

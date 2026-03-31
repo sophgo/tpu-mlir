@@ -169,7 +169,6 @@
     $ llm_convert.py \
         -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ \
         -s 2048 \
-        -q w4bf16 \
         -c bm1684x \
         --max_pixels 672,896 \
         -o qwen2.5vl_3b
@@ -483,6 +482,12 @@ model_deploy.py
    * - quant_output_list
      - 否
      - 选择要转换的索引，例如 1,3 表示第一个和第三个输出的强制转换
+   * - quant_input_int8
+     - 否
+     - 在指定量化为INT8和quant_input情况下，如果输入第一个算子为浮点，默认输入会使用浮点，启用此参数则强制输入为INT8，使用bmodel时其scale应忽略
+   * - quant_output_int8
+     - 否
+     - 在指定量化为INT8和quant_output情况下，如果输入最后一个算子为浮点，默认输出会保持浮点，启用此参数则强制输出为INT8
    * - quantize_table
      - 否
      - 指定混精度量化表路径, 如果没有指定则按quantize类型量化; 否则优先按量化表量化
@@ -498,6 +503,9 @@ model_deploy.py
    * - tolerance
      - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果余弦与欧式相似度的误差容忍度，默认为0.8,0.5
+   * - correctness
+     - 否
+     - bmodel与tpu.mlir的余弦与欧式相似度的误差容忍度，默认为0.99,0.90，当使用quantize_table的时候默认为0.99,0.80
    * - test_input
      - 否
      - 指定输入文件用于验证, 可以是jpg或npy或npz; 可以不指定, 则不会正确性验证
@@ -609,6 +617,9 @@ model_deploy.py
    * - disable_structure_detect_optimize
      - 否
      - 是否关闭LayerGroup pass中的结构检测优化
+   * - disable_topo_sort
+     - 否
+     - 是否关闭拓扑排序优化
 
 对于不同处理器和支持的量化类型对应关系如下表所示：
 
@@ -657,7 +668,7 @@ llm_convert.py
      - 指定序列最大长度
    * - quantize
      - 是
-     - 指定量化类型, 如w4bf16/w4f16/bf16/f16
+     - 指定量化类型, 如auto/w4bf16/w4f16/bf16/f16
    * - q_group_size
      - 否
      - 每组量化的组大小

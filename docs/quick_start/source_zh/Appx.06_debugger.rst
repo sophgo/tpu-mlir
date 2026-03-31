@@ -37,16 +37,16 @@
 
 .. **切换bmodel运行模式**
 
-.. 配置好TPU-MLIR的Docker中环境后，输入以下命令可切换CModel和PCIE模式：
+.. 配置好TPU-MLIR的Docker中环境后，输入以下命令可切换CModel和PCIe模式：
 
 .. .. code-block:: shell
 
 ..    # CModel模式
 ..    $ use_cmodel
-..    # PCIE模式
+..    # PCIe模式
 ..    $ use_processor
 
-.. 默认为CMmodel模式，使用TDB时，支持PCIE模式的平台目前仅有bm1684x。
+.. 默认为CMmodel模式，使用TDB时，支持PCIe模式的平台目前仅有bm1684x。
 
 
 启动TDB

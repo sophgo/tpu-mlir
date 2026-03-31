@@ -24,7 +24,7 @@ jobs:
     - name: Build package
       run: |
         . release_pip.sh
-        tar -czvf tpu-mlir-resource.tar regression/
+        tar -czvf tpu-mlir-resource.tar regression/{model,cali_tables,config,dataset,image,npz_input}
         cp -rf install/docs/TPU-MLIR_* ./
         cp install/docs/TPU-MLIR快速入门指南.pdf ./TPU-MLIR_Quick_Start_ZH.pdf
         cp install/docs/TPU-MLIR开发参考手册.pdf ./TPU-MLIR_Technical_Reference_Manual_ZH.pdf

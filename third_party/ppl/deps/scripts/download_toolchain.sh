@@ -4,7 +4,7 @@ set -ex
 function get_chip_code()
 {
   local chip=$1
-  local chip_map_json="${PPL_RUNTIME_PATH}/chip/chip_map_dev.json"
+  local chip_map_json="${PPL_RUNTIME_PATH}/chip/chip_map.json"
   # check chip is already the chip code
   local is_value=$(grep -o "\"[^\"]*\": \"$chip\"" "$chip_map_json")
   if [[ -n "$is_value" ]]; then
@@ -17,7 +17,7 @@ function get_chip_code()
     echo "$value"
     return
   fi
-  echo "Error: chip '$chip' not found in chip_map_dev.json!" >&2
+  echo "Error: chip '$chip' not found in chip_map.json!" >&2
   exit 1
 }
 

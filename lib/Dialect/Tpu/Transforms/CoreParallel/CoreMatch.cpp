@@ -311,8 +311,7 @@ static void common_match(PatternRewriter &rewriter,
       auto next_op = *op->getUsers().begin();
       // Disable the in-place operation since it complicates the process of
       // address assignment. TODO: refine address assignment.
-      if (isa<ReturnOp, tpu::ReshapeOp, tpu::ConcatOp, tpu::IdentityOp>(
-              next_op)) {
+      if (isa<ReturnOp, tpu::ConcatOp, tpu::IdentityOp>(next_op)) {
         break;
       }
       next_ops.push_back(next_op);
@@ -522,6 +521,11 @@ struct CommonMatch : public OpRewriterPatternEx3 {
         // inPlace op
         if (isa<tpu::ReshapeOp, tpu::SliceOp, tpu::ConcatOp, tpu::GroupOp>(
                 left_op)) {
+          continue;
+        }
+        if (left_op->hasAttrOfType<BoolAttr>("is_lora") &&
+            left_op->getAttrOfType<BoolAttr>("is_lora").getValue()) {
+          // lora can't match, or weight order will be changed
           continue;
         }
         if (module::isOpInBlock(left_op)) {

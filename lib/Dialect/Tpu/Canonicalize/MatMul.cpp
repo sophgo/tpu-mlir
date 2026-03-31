@@ -373,6 +373,8 @@ struct MatMul2FAttention : public OpRewriterPatternEx4<tpu::MatMulOp> {
         return failure();
       }
     }
+    auto out_shape = module::getShape(reshape_op.getOutput());
+    bool keep_dims = out_shape.size() == 4;
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
@@ -389,7 +391,7 @@ struct MatMul2FAttention : public OpRewriterPatternEx4<tpu::MatMulOp> {
     attrs.push_back(
         rewriter.getNamedAttr("mk", rewriter.getI64IntegerAttr(mk)));
     attrs.push_back(
-        rewriter.getNamedAttr("keep_dims", rewriter.getBoolAttr(true)));
+        rewriter.getNamedAttr("keep_dims", rewriter.getBoolAttr(keep_dims)));
     std::vector<Value> operands;
     operands.push_back(q_in);
 

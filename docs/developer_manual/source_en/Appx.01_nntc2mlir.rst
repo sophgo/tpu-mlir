@@ -1,7 +1,7 @@
 Appendix.01: Migrating from NNTC to tpu-mlir
 ============================================
 
-NNTC is using docker version sophgo/tpuc_dev:v2.1, for MLIR docker version
+NNTC is using docker version tpuc_dev:v2.1, for MLIR docker version
 reference and environment initialization please refer to :ref:`Environment Setup <docker configuration>`.
 
 

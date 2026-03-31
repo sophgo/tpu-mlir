@@ -53,7 +53,8 @@ void GELULowering::LoweringINT8(PatternRewriter &rewriter, top::GELUOp op,
 
 void GELULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::GELUOp op) const {
-  if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
+  if ((module::isBM1684X() || module::isBM1690Family() ||
+       module::isHighPrecision()) &&
       !module::isCV184X()) {
     LoweringF32(rewriter, op);
   } else {
@@ -64,7 +65,8 @@ void GELULowering::LoweringBF16(PatternRewriter &rewriter,
 
 void GELULowering::LoweringF16(PatternRewriter &rewriter,
                                top::GELUOp op) const {
-  if (module::isBM1684XFamily() || module::isBM1690Family()) {
+  if (module::isBM1684X() || module::isBM1690Family() ||
+      module::isHighPrecision()) {
     LoweringF32(rewriter, op);
   } else {
     auto op_ = update_attr(op);

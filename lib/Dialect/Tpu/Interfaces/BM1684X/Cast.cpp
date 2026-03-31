@@ -137,6 +137,7 @@ void tpu::CastOp::codegen_local_bm1684x_kernel(
   bool qOutput = module::isUniformQuantized(getOutput());
   auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());
+  auto round_mode = round_mode_convert(getRoundMode());
   bool fInput = in_type.isIntOrIndex() == false;
   bool fOutput = out_type.isIntOrIndex() == false;
   auto gi = out_group_infos[0];
@@ -148,7 +149,7 @@ void tpu::CastOp::codegen_local_bm1684x_kernel(
     cast_local_spec_t spec = {0};
     spec.common.src_dtype = BM168x::getDataType(getInput());
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
-    spec.common.round_mode = ROUND_INF;
+    spec.common.round_mode = round_mode;
 
     BM168x::call_local_func("backend_api_cast_local", &spec, sizeof(spec),
                             &sec_info, input_spec->data(), output_spec->data());
@@ -172,7 +173,7 @@ void tpu::CastOp::codegen_local_bm1684x_kernel(
       param.input_dtype = BM168x::getDataType(getInput());
       param.output_dtype = BM168x::getDataType(getOutput());
       param.mode = 0;
-      param.round_mode = ROUND_INF;
+      param.round_mode = round_mode;
       BM168x::call_local_func("backend_api_requant_float_local", &param,
                               sizeof(param));
     } else {

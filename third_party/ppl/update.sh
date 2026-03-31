@@ -45,7 +45,7 @@ tar xvf ${ppl_package}
 mv ppl_${version}/* .
 rm -rf ppl_${version}
 rm -rf ${ppl_package}
-rm -rf samples examples docker python runtime/bm1690/tpuv7-runtime* requirements.txt envsetup.sh
+rm -rf doc dist samples examples docker python runtime/bm1690/tpuv7-runtime* requirements.txt envsetup.sh
 find .  -name "*.so*" -exec rm -f {} +
 find .  -name "*.a" -exec rm -f {} +
 chmod +x bin/*

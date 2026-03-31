@@ -37,10 +37,12 @@ private:
   CreateShapeVector(const ArrayRef<int64_t> &shape);
   Offset<Vector<Offset<bmodel::Tensor>>>
   CreateTensorVector(const std::vector<Value> &values, int devid = 0);
-  Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call);
+  Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call,
+                                      uint32_t &run_core);
   Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call,
                                       std::unique_ptr<SubnetIr> subnet_ir_,
-                                      std::unique_ptr<Context> &context);
+                                      std::unique_ptr<Context> &context,
+                                      uint32_t &run_core);
   Offset<bmodel::SubNet> CreateCPUSubNet(ModuleOp s, func::CallOp call);
   Offset<bmodel::SubNet> CreateSwitchSubNet(ModuleOp s, func::CallOp call);
   Offset<bmodel::SubNet> CreateMergeSubNet(ModuleOp s, func::CallOp call);

@@ -22,7 +22,7 @@ from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
 from calibration.utils import gen_shape_pattern_qtable, QuantizeTable
-from calibration.utils import parse_method_list, compactable_method_list, compactable_cmd_method_list
+from calibration.utils import parse_method_list, compactable_method_list, compactable_cmd_method_list, parse_optype_list
 from utils.log_setting import logger
 from utils.misc import parse_debug_cmd
 
@@ -69,10 +69,11 @@ if __name__ == '__main__':
     parser.add_argument('--kurtosis_analysis', help='kurtosis analysis', action="store_true")
     parser.add_argument('--part_quantize', default=None, choices=['N_mode', 'H_mode', 'custom_mode'],
                         help="quantize operators of specific operator type")
-    parser.add_argument('--custom_operator', nargs='*', default=[],
+    parser.add_argument('--custom_operator', type=parse_optype_list, default=[],
                         help="When custom_mode is selected, it is used to specify a custom operator type")
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
-    parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
+    # parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
+    parser.add_argument('--mix_mode', default='wi8ai8_fp', type=str, choices=['wi8ai8_fp', 'wi4ai4_wi8ai8', 'wi4ai8_wi8ai8', 'wf8af8_fp'],
                         help='Specify the bit width for automatic mixed precision')
     parser.add_argument('--pre_qtable',type=str, default='', help='path to initial qtable for search_qtable')
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
@@ -112,9 +113,16 @@ if __name__ == '__main__':
     shape_ops = ShapeOps(args)
     shape_fp_layers = shape_ops.run()
     matcher = MatchPattern(args)
-    transformer_fp_layers, flag, match_log = matcher.run()
+    transformer_fp_layers, transformer_fp_layers_extend, flag, match_log = matcher.run()
     transformer_fp_layers = [item for item in transformer_fp_layers if item not in shape_fp_layers]
-    quant_table = gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, match_log)
+    transformer_fp_layers_extend = [
+        item for item in transformer_fp_layers_extend if item not in shape_fp_layers
+    ]
+    if flag == 2:
+        shape_fp_layers = shape_fp_layers + transformer_fp_layers
+        transformer_fp_layers = transformer_fp_layers_extend
+    quant_table = gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, flag, args,
+                                           match_log)
     if args.pre_qtable != '':
         quant_table.read(args.pre_qtable)
         quant_table.shape_layer_list = []
@@ -125,9 +133,9 @@ if __name__ == '__main__':
     if args.search.lower() != 'false':
         args._logger = logger('Search_Qtable', log_level=log_level)
         searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
-        if args.search == 'search_qtable' and args.mix_mode == '4_8':
+        if args.search == 'search_qtable' and args.mix_mode == 'wi4ai4_wi8ai8':
             searcherQ.run_4_8()
-        elif args.search == 'search_qtable' and args.mix_mode == 'w4a8':
+        elif args.search == 'search_qtable' and args.mix_mode == 'wi4ai8_wi8ai8':
             searcherQ.run_w4a8()
         elif args.search == 'fast_search':
             searcherQ.run_fast()
@@ -153,6 +161,9 @@ if __name__ == '__main__':
             searcher = MixPrecSearcher(args)
             searcher.qtable = quant_table
             searcher.weight_equalization()
+            # run calibration after we by default, or if both we and bc are specified, there is no calitable for bc
+            calibrator = ActivationCalibrator(args, selector, tune_ds)
+            calibrator.run()
         # calibration
         if args.search == 'search_threshold':
             args._logger = logger('Search_Threshold', log_level=log_level)

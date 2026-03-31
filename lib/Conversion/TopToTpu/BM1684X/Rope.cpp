@@ -14,13 +14,12 @@ namespace bm1684x {
 
 void RopeLowering::LoweringF32(PatternRewriter &rewriter,
                                top::RopeOp op) const {
-
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");
   Operation *newOp;
   newOp = lowering_common_f32<tpu::RopeOp>(rewriter, op);
-  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   newOp->setAttr("rope_mode",
                  tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }
@@ -45,12 +44,12 @@ void RopeLowering::LoweringBF16(PatternRewriter &rewriter,
     LoweringF32(rewriter, op);
     return;
   }
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");
   Operation *newOp;
   newOp = lowering_common_bf16<tpu::RopeOp>(rewriter, op);
-  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   newOp->setAttr("rope_mode",
                  tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }
@@ -61,12 +60,12 @@ void RopeLowering::LoweringF16(PatternRewriter &rewriter,
     LoweringF32(rewriter, op);
     return;
   }
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   module::removeAttr(op, "mul1_round_mode");
   module::removeAttr(op, "mul2_round_mode");
   module::removeAttr(op, "add_round_mode");
   Operation *newOp;
   newOp = lowering_common_f16<tpu::RopeOp>(rewriter, op);
-  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   newOp->setAttr("rope_mode",
                  tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }
@@ -81,6 +80,7 @@ void RopeLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto mul1_round_mode = get_round_mode(op.getMul1RoundModeAttr().str());
   auto mul2_round_mode = get_round_mode(op.getMul2RoundModeAttr().str());
   auto add_round_mode = get_round_mode(op.getAddRoundModeAttr().str());
+  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   Operation *newOp;
   // redundant processing to prevent uniform quant input but si8/ui8 output
   auto new_type = (module::isUniformQuantized(op.getInput1()) &&
@@ -94,7 +94,6 @@ void RopeLowering::LoweringQuantized(PatternRewriter &rewriter,
                  tpu::RoundModeAttr::get(op.getContext(), mul2_round_mode));
   newOp->setAttr("add_round_mode",
                  tpu::RoundModeAttr::get(op.getContext(), add_round_mode));
-  auto rope_mode = get_rope_mode(op.getRopeModeAttr().str());
   newOp->setAttr("rope_mode",
                  tpu::RopeModeAttr::get(op.getContext(), rope_mode));
 }

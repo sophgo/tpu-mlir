@@ -551,6 +551,30 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
   return 0;
 }
 
+RoundingMode round_mode_convert(std::string mode) {
+  if (mode == "HalfAwayFromZero") {
+    return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
+  } else if (mode == "HalfUp") {
+    return RoundingMode::ROUNDING_HALF_UP;
+  } else if (mode == "HalfDown") {
+    return RoundingMode::ROUNDING_HALF_DOWN;
+  } else if (mode == "HalfToEven") {
+    return RoundingMode::ROUNDING_HALF_TO_EVEN;
+  } else if (mode == "HalfToOdd") {
+    return RoundingMode::ROUNDING_HALF_TO_ODD;
+  } else if (mode == "HalfTowardsZero") {
+    return RoundingMode::ROUNDING_HALF_TOWARDS_ZERO;
+  } else if (mode == "TowardsZero") {
+    return RoundingMode::ROUNDING_TOWARDS_ZERO;
+  } else if (mode == "Up") {
+    return RoundingMode::ROUNDING_UP;
+  } else if (mode == "Down") {
+    return RoundingMode::ROUNDING_DOWN;
+  }
+  llvm_unreachable("Not Implemented");
+  return RoundingMode::ROUNDING_HALF_AWAY_FROM_ZERO;
+}
+
 RoundingMode round_mode_convert(tpu::RoundMode mode) {
   switch (mode) {
   case tpu::RoundMode::HalfAwayFromZero:
@@ -1526,6 +1550,35 @@ void swap_dim_data(float *input, float *output, std::vector<int64_t> &ishape,
            first_part * sizeof(float));
     memcpy((void *)p_out, (void *)(p_in + first_part),
            second_part * sizeof(float));
+  }
+}
+
+void insert_replace(float *input, float *dst, float *output,
+                    std::vector<int64_t> &ishape, std::vector<int64_t> &dshape,
+                    int64_t axis, int64_t offset) {
+  int64_t outer_size = 1;
+  int64_t inner_size = 1;
+  int64_t replace_size = dshape[axis];
+  for (int i = 0; i < ishape.size(); ++i) {
+    if (i < axis) {
+      outer_size *= ishape[i];
+    } else if (i > axis) {
+      inner_size *= ishape[i];
+    }
+  }
+
+  int64_t before_size = offset * inner_size;
+  int64_t replace_total = replace_size * inner_size;
+  int64_t total_num = ishape[axis] * inner_size * outer_size;
+  memcpy(output, input, total_num * sizeof(float));
+
+#pragma omp parallel for schedule(static, omp_schedule(outer_size))
+  for (int64_t outer = 0; outer < outer_size; ++outer) {
+    int64_t dst_base = outer * dshape[axis] * inner_size;
+    int64_t output_base = outer * ishape[axis] * inner_size;
+    float *p_dst = dst + dst_base;
+    float *p_output = output + output_base;
+    memcpy(p_output + before_size, p_dst, replace_total * sizeof(float));
   }
 }
 

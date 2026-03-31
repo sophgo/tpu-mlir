@@ -69,7 +69,7 @@ def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_
 def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 def StoreModeAttr: AnyStrAttrOf<["1N", "2N", "4N"]>;
-def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5","yolov8","yolov11"]>;
+def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5","yolov8","yolov11","yolov26"]>;
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
 def AutoPadModeAttr:AnyStrAttrOf<["SAME_UPPER","SAME_LOWER","NOTSET","VALID"]>;
@@ -82,6 +82,7 @@ def ImageOutFormatAttr: AnyStrAttrOf<["FLOAT32", "UINT8"]>;
 def Yuv2rgbFormulaAttr: AnyStrAttrOf<["_601_limited", "_601_full"]>;
 def GELUModeAttr: AnyStrAttrOf<["normal", "tanh", "sigm"]>;
 def RopeModeAttr: AnyStrAttrOf<["interleaved_pairs", "contiguous_halves"]>;
+def DqTypeAttr: AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -318,7 +319,8 @@ def Top_CastOp:Top_Op<"Cast"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode
+    DefaultValuedAttr<RoundModeAttr, "\"HalfAwayFromZero\"">:$round_mode,
+    DefaultValuedAttr<StrAttr, "\"\"">:$to
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1464,6 +1466,8 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     in_int4_zp: the zero point for input tensors that are quantized to 4 bits.;
     out_int8_scale:the scaling factor for the output tensor when quantized to 8 bits.;
     out_int8_zp: This optional attribute specifies the zero point for the output tensor that is quantized to 8 bits.;
+    dq_type: the quantized data type for dynamic quantization.;
+    q_group_size: the group size for per-group quantization.;
   }];
 
   let arguments = (ins
@@ -1482,7 +1486,9 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
     OptionalAttr<F64Attr>:$out_int8_scale,
-    OptionalAttr<F64Attr>:$out_int8_zp
+    OptionalAttr<F64Attr>:$out_int8_zp,
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type,
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let results = (outs AnyTensor:$output);
@@ -1511,12 +1517,48 @@ def Top_A16MatMulOp: Top_Op<"A16MatMul"> {
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
     DefaultValuedAttr<I64Attr, "128">:$q_group_size,
-    DefaultValuedAttr<I64Attr, "8">:$weight_bits
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits,
+    DefaultValuedAttr<DqTypeAttr, "\"NONE\"">:$dq_type
   );
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
     a16matmul_attr_t parseParam();
+  }];
+}
+
+def Top_MlpOp: Top_Op<"Mlp"> {
+  let summary = "w8a16 / w4a16 / a16 mlp operator";
+
+  let description = [{
+    to do
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$weight_gate,
+    AnyTensor:$weight_up,
+    AnyTensor:$weight_down,
+    AnyTensorOrNone:$bias_gate,
+    AnyTensorOrNone:$bias_up,
+    AnyTensorOrNone:$bias_down,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_gate,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_up,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_down,
+    DefaultValuedAttr<BoolAttr, "false">:$quantized,
+    DefaultValuedAttr<I64Attr, "128">:$q_group_size,
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits,
+    AnyTensorOrNone:$scale_gate,
+    AnyTensorOrNone:$scale_up,
+    AnyTensorOrNone:$scale_down,
+    AnyTensorOrNone:$zp_gate,
+    AnyTensorOrNone:$zp_up,
+    AnyTensorOrNone:$zp_down
+  );
+
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    mlp_attr_t parseParam();
   }];
 }
 
@@ -4699,6 +4741,37 @@ def Top_SwapDimInnerOp: Top_Op<"SwapDimInner"> {
 
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+}
+
+def Top_InsertOp: Top_Op<"Insert"> {
+  let summary = "Insert the rhs tensor into input tensor at the specified axis and position.";
+
+  let description = [{
+    1.Op Introduction
+    insert the rhs tensor into input tensor at the specified axis and position.
+
+    2.Math formula
+    ```math
+            output = Insert(input, rhs, axis, offset)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor;
+
+    4.attributes
+    rhs(w.): the tensor to be inserted;
+    axis: the axis along which to insert the rhs tensor.
+    offset: the position at which the rhs tensor is inserted.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$rhs,
+    I64Attr:$axis,
+    I64Attr:$offset
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_ScatterElementsOp: Top_Op<"ScatterElements"> {

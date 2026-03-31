@@ -48,6 +48,18 @@ SHAPE_LOWERING_BM1684X(Clip)
 SHAPE_LOWERING_BM1684X(Pow)
 SHAPE_LOWERING_BM1684X(Tile)
 SHAPE_LOWERING_BM1684X(ScatterElements)
+SHAPE_LOWERING_BM1684X(Cast)
+
+void populateTopIntToTpuConversionPatterns(RewritePatternSet *patterns);
+#define INT_LOWERING_BM1684X(OP)                                               \
+  struct OP##IntLowering : public TopIntLowering<top::OP##Op> {                \
+    OP##IntLowering(MLIRContext *ctx) : TopIntLowering<top::OP##Op>(ctx) {}    \
+    void Lowering(PatternRewriter &rewriter, top::OP##Op op) const override;   \
+  };
+
+INT_LOWERING_BM1684X(Cast)
+INT_LOWERING_BM1684X(Add)
+INT_LOWERING_BM1684X(MulConst)
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
@@ -174,6 +186,7 @@ LOWERING_BM1684X(SubConst)
 LOWERING_BM1684X(Sqrt)
 LOWERING_BM1684X(SwapChannel)
 LOWERING_BM1684X(SwapDimInner)
+LOWERING_BM1684X(Insert)
 LOWERING_BM1684X(Swish)
 LOWERING_BM1684X(Tan)
 LOWERING_BM1684X(Tanh)
@@ -220,5 +233,6 @@ LOWERING_BM1684X(MaskRCNNGetBboxB)
 LOWERING_BM1684X(MaskRCNNMaskPooler)
 LOWERING_BM1684X(Rope)
 LOWERING_BM1684X(MaxPoolingIndicesBwd)
+LOWERING_BM1684X(Mlp)
 } // namespace bm1684x
 } // namespace tpu_mlir

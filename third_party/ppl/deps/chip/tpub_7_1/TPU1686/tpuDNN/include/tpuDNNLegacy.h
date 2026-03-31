@@ -111,7 +111,9 @@ extern "C"
         int                 dims,
         sg_active_type_t    active_type,
         const float*        coeff,
-        sg_data_type_t      dtype);
+        sg_data_type_t      dtype,
+        int                 group_num,
+        int                 group_size);
 
     tpudnnStatus_t tpudnnLoraMatmulMultiCore(
         tpudnnHandle_t handle,
@@ -869,15 +871,15 @@ extern "C"
         sg_data_type_t dtype,
         bool weight_keep_f32);
 
-    tpudnnStatus_t tpudnnClipFloat(
+    tpudnnStatus_t tpudnnClip(
         tpudnnHandle_t handle,
         void* input,
         void* output,
         const int* shape,
         int dims,
         sg_data_type_t dtype,
-        float min,
-        float max,
+        ValUnion min,
+        ValUnion max,
         int if_relu,
         float relu_upper_limit
     );
@@ -1175,16 +1177,6 @@ extern "C"
         const int*       crop_sizes,
         void *  output_mem,
         sg_data_type_t   sgdtype);
-
-    tpudnnStatus_t tpudnnActiveMultiCore(
-        tpudnnHandle_t handle,
-        void *input,
-        void *output,
-        const int *shape,
-        int dims,
-        sg_active_type_t active_type,
-        const float *coeff,
-        sg_data_type_t dtype);
 
     tpudnnStatus_t tpudnnMatmulMultiCore(
         tpudnnHandle_t handle,
@@ -1770,6 +1762,29 @@ extern "C"
         int dims,
         sg_data_type_t dtype);
 
+    tpudnnStatus_t tpudnnAdamWBackwardMultiCore(
+        tpudnnHandle_t handle,
+        void *weight_out,
+        void *m_out,
+        void *v_out,
+        void *vmax_out,
+        void *grad_weight,
+        void *weight_in,
+        void *m_in,
+        void *v_in,
+        void *vmax_in,
+        void *t,
+        float lr,
+        float beta1,
+        float beta2,
+        float eps,
+        float weight_decay,
+        bool amsgrad,
+        bool maximize,
+        int *shape,
+        int dims,
+        sg_data_type_t dtype);
+
     tpudnnStatus_t tpudnnLlamaMlpForwardMultiCore(
         tpudnnHandle_t handle,
         void *input,
@@ -2133,6 +2148,18 @@ extern "C"
         sg_data_type_t      dtype,
         void *     output);
 
+    tpudnnStatus_t tpudnnIndexSelectMultiCore(
+        tpudnnHandle_t         handle,
+        void *     input,
+        void *     index,
+        const int          *input_shape,
+        int                 shape_dims,
+        int                 index_num,
+        int                 axis, // axis to do index_select
+        int                 const_val, // fill_value if index not found in input
+        sg_data_type_t      dtype,
+        void *     output);
+
     tpudnnStatus_t tpudnnLLama2Attention(
         tpudnnHandle_t handle,
         void * Q,
@@ -2198,6 +2225,15 @@ extern "C"
         void *    input,
         void *    weight,
         void *    output);
+
+    tpudnnStatus_t tpudnnMsgSyncCoreEngines(
+        tpudnnHandle_t        handle,
+        void *    input,
+        void *    output,
+        const int *shape,
+        int dims,
+        sg_data_type_t dtype
+    );
 
     tpudnnStatus_t tpudnnPixelNorm(
         tpudnnHandle_t handle,
@@ -2913,7 +2949,10 @@ extern "C"
     tpudnnStatus_t tpudnnL2mTest(
         tpudnnHandle_t      handle,
         void *  input,
-        void *  output);
+        void *  output,
+        const int* shape,
+        int dims,
+        sg_data_type_t dtype);
     tpudnnStatus_t tpudnnMsgCentralStressTest(
         tpudnnHandle_t         handle,
         int                 loop
@@ -2994,7 +3033,8 @@ extern "C"
         int input_dtype,
         int weight_dtype,
         int weight_scale_dtype,
-        int quant);
+        int quant,
+        bool stress_test);
 
     tpudnnStatus_t tpudnnFastExpBF16(
         tpudnnHandle_t handle,
@@ -3036,6 +3076,12 @@ extern "C"
         const int attention_mode,
         sg_data_type_t dtype);
 
+    tpudnnStatus_t tpudnnGDMAD2D(
+        tpudnnHandle_t handle,
+        void* src,
+        void* dst,
+        size_t size,
+        int loop);
 #ifdef USING_PLD_TEST
     tpudnnStatus_t tpudnnPldTest(
         tpudnnHandle_t        handle,
@@ -3096,6 +3142,25 @@ extern "C"
         int*               chip_map,
         unsigned long long *input_global_addr,
         unsigned long long *output_global_addr);
+
+    tpudnnStatus_t tpudnnPldCdmaMultiCore(
+        tpudnnHandle_t     handle,
+        void *             src,
+        void *             dst,
+        pld_test_id_t      id,
+        int                N,
+        int                C,
+        int                H,
+        int                W,
+        int                len,
+        sg_data_type_t     data_type,
+        int                reduce_op_index,
+        int                chip_id,
+        int                world_size,
+        int*               chip_map,
+        unsigned long long *input_global_addr,
+        unsigned long long *output_global_addr,
+        int                core_num);
 
     tpudnnStatus_t tpudnnPldCdmaMsg(
         tpudnnHandle_t     handle,

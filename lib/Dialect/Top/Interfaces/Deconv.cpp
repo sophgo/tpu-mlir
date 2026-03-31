@@ -98,6 +98,7 @@ deconv_attr_t top::DeconvOp::dynparseParam() {
 
   ASSERT_THIS(in_shape.size() > 2);
   int spacial_rank = in_shape.size() - 2;
+  auto origin_spacial_rank = spacial_rank;
   if (spacial_rank != getKernelShape().size()) {
     // have 1d to 2d
     in_shape.push_back(1);
@@ -134,6 +135,10 @@ deconv_attr_t top::DeconvOp::dynparseParam() {
                    dilation->at(i) * (filter_spacial_shape[i] - 1) +
                    output_paddding->at(i) + 1;
     out_shape.push_back(out_dim);
+  }
+  if (origin_spacial_rank != spacial_rank) {
+    // recvoer 1d from 2d
+    out_shape.pop_back();
   }
   module::setShape(getOutput(), out_shape);
 

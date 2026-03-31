@@ -3,7 +3,7 @@
 // CHECK-LABEL: module @AvgPool1d
 // CHECK:      %[[POOLING0:.*]] = "tpu.Pool1D"(%[[INPUT:.*]]#0) {{{.*}}}  : (tensor<1x16x128xf32>) -> tensor<1x16x64xf32> loc({{.*}})
 // CHECK:      %[[POOLING1:.*]] = "tpu.Pool1D"(%[[INPUT]]#1) {{{.*}}}  : (tensor<1x16x128xf32>) -> tensor<1x16x64xf32> loc({{.*}})
-// CHECK:      %[[JOIN:.*]] = "tpu.Join"(%[[POOLING0]], %[[POOLING1]]) : (tensor<1x16x64xf32>, tensor<1x16x64xf32>) -> tensor<1x32x64xf32> loc({{.*}})
+// CHECK:      %[[JOIN:.*]] = "tpu.CoreJoin"(%[[POOLING0]], %[[POOLING1]]) {{{.*}}} : (tensor<1x16x64xf32>, tensor<1x16x64xf32>) -> tensor<1x32x64xf32> loc({{.*}})
 
 #loc = loc(unknown)
 module @AvgPool1d attributes {module.FLOPs = 6144 : i64, module.asymmetric = false, module.chip = "bm1688", module.cores = 2 : i64, module.devices = 1 : i64, module.mode = "F16", module.platform = "ONNX", module.q_group_size = 0 : i64, module.state = "TPU_LOWERED", module.weight_file = "avgpool1d_tpu_lowered_bm1688_f16_weight.npz"} {
@@ -27,7 +27,7 @@ module @AvgPool1d attributes {module.FLOPs = 6144 : i64, module.asymmetric = fal
 // CHECK-LABEL: module @AvgPool2d
 // CHECK:      %[[POOLING0:.*]] = "tpu.Pool2D"(%[[INPUT:.*]]#0) {{{.*}}}  : (tensor<1x16x128x128xf32>) -> tensor<1x16x64x64xf32> loc({{.*}})
 // CHECK:      %[[POOLING1:.*]] = "tpu.Pool2D"(%[[INPUT]]#1) {{{.*}}}  : (tensor<1x16x128x128xf32>) -> tensor<1x16x64x64xf32> loc({{.*}})
-// CHECK:      %[[JOIN:.*]] = "tpu.Join"(%[[POOLING0]], %[[POOLING1]]) : (tensor<1x16x64x64xf32>, tensor<1x16x64x64xf32>) -> tensor<1x32x64x64xf32> loc({{.*}})
+// CHECK:      %[[JOIN:.*]] = "tpu.CoreJoin"(%[[POOLING0]], %[[POOLING1]]) {{{.*}}} : (tensor<1x16x64x64xf32>, tensor<1x16x64x64xf32>) -> tensor<1x32x64x64xf32> loc({{.*}})
 #loc = loc(unknown)
 module @AvgPool2d attributes {module.FLOPs = 524288 : i64, module.asymmetric = false, module.chip = "bm1688", module.cores = 2 : i64, module.devices = 1 : i64, module.mode = "F16", module.platform = "ONNX", module.q_group_size = 0 : i64, module.state = "TPU_LOWERED", module.weight_file = "avgpool2d_tpu_lowered_bm1688_f16_weight.npz"} {
   func.func @main(%arg0: tensor<1x32x128x128xf32> loc(unknown)) -> tensor<1x32x64x64xf32> {
@@ -46,7 +46,7 @@ module @AvgPool2d attributes {module.FLOPs = 524288 : i64, module.asymmetric = f
 // CHECK:      %[[POOLING1:.*]] = "tpu.Pool3D"(%[[INPUT]]#1, %0) {{{.*}}}  : (tensor<1x8x16x32x64xf32>, none) -> tensor<1x8x8x16x32xf32> loc({{.*}})
 // CHECK:      %[[POOLING2:.*]] = "tpu.Pool3D"(%[[INPUT]]#2, %0) {{{.*}}}  : (tensor<1x8x16x32x64xf32>, none) -> tensor<1x8x8x16x32xf32> loc({{.*}})
 // CHECK:      %[[POOLING3:.*]] = "tpu.Pool3D"(%[[INPUT]]#3, %0) {{{.*}}}  : (tensor<1x8x16x32x64xf32>, none) -> tensor<1x8x8x16x32xf32> loc({{.*}})
-// CHECK:      %[[JOIN:.*]] = "tpu.Join"(%[[POOLING0]], %[[POOLING1]], %[[POOLING2]], %[[POOLING3]], %[[V0:.*]], %[[V1:.*]], %[[V2:.*]], %[[V3:.*]]) : (tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>) -> tensor<2x32x8x16x32xf32> loc({{.*}})
+// CHECK:      %[[JOIN:.*]] = "tpu.CoreJoin"(%[[POOLING0]], %[[POOLING1]], %[[POOLING2]], %[[POOLING3]], %[[V0:.*]], %[[V1:.*]], %[[V2:.*]], %[[V3:.*]]) {{{.*}}} : (tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>, tensor<1x8x8x16x32xf32>) -> tensor<2x32x8x16x32xf32> loc({{.*}})
 #loc = loc(unknown)
 module @AvgPool3d attributes {module.FLOPs = 2097152 : i64, module.asymmetric = false, module.chip = "bm1690", module.cores = 8 : i64, module.devices = 1 : i64, module.mode = "F16", module.platform = "ONNX", module.q_group_size = 0 : i64, module.state = "TPU_LOWERED", module.weight_file = "avgpool3d_tpu_lowered_bm1688_f16_weight.npz"} {
   func.func @main(%arg0: tensor<2x32x16x32x64xf32> loc(unknown)) -> tensor<2x32x8x16x32xf32> {

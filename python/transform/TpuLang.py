@@ -10,6 +10,7 @@ import time
 from typing import List, Union, Tuple, Optional
 
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator, Scalar, to_scalar, annotation_check, generate_name, auto_name, assert_with_out_name
+from .TpuLangConverter import DebugDumper
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.model_deploy import getCustomFormat
 # from deprecated.sphinx import deprecated
@@ -24,10 +25,35 @@ import numpy as np
 import math
 import logging
 from copy import deepcopy
+import inspect
 
 logger = logging.getLogger("root")
 
 device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
+
+
+def simplify_value(value):
+    if isinstance(value, Tensor):
+        return {
+            'id': value.id,
+            'dtype': value.dtype,
+            'shape': value.shape,
+            'name': value.name,
+            'ttype': value.ttype,
+            'is_quantized': value.is_quantized,
+            'scale': value.scale,
+            'zero_point': value.zero_point,
+            'is_preprocess': value.is_preprocess
+        }
+    elif isinstance(value, dict):
+        return {k: simplify_value(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [simplify_value(v) for v in value]
+    elif isinstance(value, tuple):
+
+        return tuple(simplify_value(v) for v in value)
+    else:
+        return value
 
 
 class TpuLang:
@@ -48,7 +74,24 @@ class TpuLang:
 
     @staticmethod
     def insert_op(op_name: str, inputs: List[Tensor], outputs: List[Tensor], params: dict = {}):
-        op = Operator(op_name, params=params, inputs=inputs, outputs=outputs)
+        caller_frame = inspect.currentframe().f_back
+        # caller_info = inspect.getframeinfo(caller_frame)
+        caller_tpulang_op_func_name = caller_frame.f_code.co_name
+        caller_args = inspect.getargvalues(caller_frame)
+        args_info = {
+            'args': caller_args.args,
+            'values': {
+                k: simplify_value(caller_args.locals[k])
+                for k in caller_args.args
+            }
+        }
+
+        op = Operator(op_name,
+                      params=params,
+                      inputs=inputs,
+                      outputs=outputs,
+                      caller_tpulang_op_func_name=caller_tpulang_op_func_name,
+                      args_info=args_info)
         TpuLang.graph.insert_op(op)
 
 
@@ -78,6 +121,23 @@ def reset_graph(graph: Graph = None):
         TpuLang.graph.reset()
 
 
+def debug_dump_compile(file_path: str):
+    reset_default_graph()
+    dump_data = DebugDumper.inspect_dump_file(TpuLang.graph, file_path)
+    dump_compile_args = dump_data['compile_args']
+    TpuLang.chip = dump_compile_args['chip']
+    TpuLang.device = dump_compile_args['device']
+    TpuLang.graph = dump_data['graph']
+    if dump_compile_args['interface'] == 'compile':
+        # print("Re-compile model from debug dump file:", file_path)
+        compile(dump_compile_args['name'], None, None, False, None, 'f32',
+                dump_compile_args['dynamic'], dump_compile_args['asymmetric'],
+                dump_compile_args['no_save'], dump_compile_args['opt'], False, False,
+                dump_compile_args['log_level'], dump_compile_args['embed_debug_info'],
+                dump_compile_args['addr_mode'], dump_compile_args['gdma_check'],
+                dump_compile_args['layer_group_config'], 'load')
+
+
 def compile(
         name: str,
         inputs: List[Tensor],
@@ -96,7 +156,14 @@ def compile(
         addr_mode='auto',
         gdma_check=False,
         layer_group_config="",
-        num_core=1):
+        num_core=1,
+        enable_lghash=False,
+        lghash_dir="",
+        debug_dump_mode='normal'):
+    if debug_dump_mode not in ['normal', 'dump', 'load']:
+        raise ValueError(
+            f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
+        )
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -105,10 +172,23 @@ def compile(
         logger.info("TPU-MLIR {}".format(pymlir.__version__))
     assert addr_mode in ['auto', 'io_reloc']
     assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
-       (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
-       f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
-    TpuLang.graph.inputs = inputs
-    TpuLang.graph.outputs = outputs
+         (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
+         f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
+    if debug_dump_mode != 'load':
+        TpuLang.graph.inputs = inputs
+        TpuLang.graph.outputs = outputs
+    if debug_dump_mode == 'dump':
+        params = list(inspect.signature(compile).parameters.keys())
+        all_locals = locals()
+        exclude_params = [
+            'inputs', 'outputs', 'cmp', 'refs', 'mode', 'mlir_inference', 'bmodel_inference',
+            'layer_group_config'
+        ]
+        compile_args = {param: all_locals[param] for param in params if param not in exclude_params}
+        compile_args['interface'] = 'compile'
+        compile_args['chip'] = TpuLang.chip
+        compile_args['device'] = TpuLang.device
+        DebugDumper.dump(name, TpuLang.graph, compile_args)
     TpuLang.graph.quantized_type_inference()
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="quantized", no_save=no_save)
     ctm_format = None
@@ -142,7 +222,9 @@ def compile(
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
                                       gdma_check=gdma_check,
-                                      layer_group_config=layer_group_config)
+                                      layer_group_config=layer_group_config,
+                                      enable_lghash=enable_lghash,
+                                      lghash_dir=lghash_dir)
     else:
         origin_mlir_txt_to_bmodel(converter=converter,
                                   model_name=name,
@@ -156,7 +238,60 @@ def compile(
                                   opt=opt,
                                   embed_debug_info=embed_debug_info,
                                   addr_mode=addr_mode,
-                                  lgcache=False)
+                                  lgcache=False,
+                                  enable_lghash=enable_lghash,
+                                  lghash_dir=lghash_dir,
+                                  num_core=num_core)
+
+
+def mlir_compile(name: str,
+                 mlir_path: str,
+                 cmp=False,
+                 refs=None,
+                 dynamic=False,
+                 asymmetric=False,
+                 opt=2,
+                 mlir_inference=False,
+                 bmodel_inference=False,
+                 log_level: str = 'normal',
+                 embed_debug_info=False,
+                 addr_mode='auto',
+                 gdma_check=False,
+                 layer_group_config=""):
+    supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
+    if log_level not in supported_log_levels:
+        raise ValueError(
+            f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
+    if log_level != 'quiet':
+        logger.info("TPU-MLIR {}".format(pymlir.__version__))
+    assert addr_mode in ['auto', 'io_reloc']
+    ctm_format = None
+    fuse = False
+    mlir_file = name + '.mlir'
+    mlir_origin = os.path.basename(mlir_path)
+    mlir_opt_for_top(mlir_origin, mlir_file, log_level=log_level)
+    if log_level != "quiet":
+        print("Mlir file generated:{}".format(mlir_file))
+    compare = cmp and refs != None
+    model_lowering_and_inference(model_name=name,
+                                 quant_mode="int8",
+                                 inference=mlir_inference,
+                                 cmp=compare,
+                                 log_level=log_level,
+                                 chip=TpuLang.chip,
+                                 asymmetric=asymmetric,
+                                 ctm_format=ctm_format,
+                                 fuse=fuse,
+                                 addr_mode=addr_mode)
+    bmodel_generate_and_inference(model_name=name,
+                                  quant_mode="int8",
+                                  inference=bmodel_inference,
+                                  log_level=log_level,
+                                  dynamic=dynamic,
+                                  opt=opt,
+                                  embed_debug_info=embed_debug_info,
+                                  gdma_check=gdma_check,
+                                  layer_group_config=layer_group_config)
 
 
 def compile_f32(name: str,
@@ -178,9 +313,29 @@ def compile_f32(name: str,
                 gdma_check=False,
                 layer_group_config="",
                 spec_op_mode: dict = None,
-                num_core=1):
-    TpuLang.graph.inputs = inputs
-    TpuLang.graph.outputs = outputs
+                num_core=1,
+                enable_lghash=False,
+                lghash_dir="",
+                debug_dump_mode='normal'):
+    if debug_dump_mode not in ['normal', 'dump', 'load']:
+        raise ValueError(
+            f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
+        )
+    if debug_dump_mode != 'load':
+        TpuLang.graph.inputs = inputs
+        TpuLang.graph.outputs = outputs
+    if debug_dump_mode == 'dump':
+        params = list(inspect.signature(compile).parameters.keys())
+        all_locals = locals()
+        exclude_params = [
+            'inputs', 'outputs', 'cmp', 'refs', 'mode', 'mlir_inference', 'bmodel_inference',
+            'layer_group_config'
+        ]
+        compile_args = {param: all_locals[param] for param in params if param not in exclude_params}
+        compile_args['interface'] = 'compile'
+        compile_args['chip'] = TpuLang.chip
+        compile_args['device'] = TpuLang.device
+        DebugDumper.dump(name, TpuLang.graph, compile_args)
     TpuLang.graph.quantized_type_inference()
     support_quant_mode = ['f32', 'f16', 'bf16']
     assert mode in support_quant_mode + ['all']
@@ -242,7 +397,9 @@ def compile_f32(name: str,
                                           opt=opt,
                                           embed_debug_info=embed_debug_info,
                                           gdma_check=gdma_check,
-                                          layer_group_config=layer_group_config)
+                                          layer_group_config=layer_group_config,
+                                          enable_lghash=enable_lghash,
+                                          lghash_dir=lghash_dir)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter,
@@ -255,7 +412,86 @@ def compile_f32(name: str,
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
                                       addr_mode=addr_mode,
-                                      lgcache=False)
+                                      lgcache=False,
+                                      enable_lghash=enable_lghash,
+                                      lghash_dir=lghash_dir,
+                                      num_core=num_core)
+
+
+def mlir_compile_f32(name: str,
+                     mlir_path: str,
+                     cmp=False,
+                     refs=None,
+                     mode='f32',
+                     dynamic=False,
+                     opt=2,
+                     mlir_inference=False,
+                     bmodel_inference=False,
+                     top_mlir_inference=False,
+                     tpu_mlir_inference=False,
+                     log_level: str = 'normal',
+                     embed_debug_info=False,
+                     addr_mode='auto',
+                     gdma_check=False,
+                     layer_group_config="",
+                     spec_op_mode: dict = {"mean_std_scale": "f16"}):
+    support_quant_mode = ['f32', 'f16', 'bf16']
+    assert mode in support_quant_mode + ['all']
+    assert addr_mode in ['auto', 'io_reloc']
+    supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
+    if log_level not in supported_log_levels:
+        raise ValueError(
+            f"Invalid log_level: '{log_level}'. Supported values are {supported_log_levels}.")
+    mode_list = [mode]
+    if mode == 'all':
+        mode_list = ['f32', 'f16', 'bf16']
+    qtable = ""
+    if spec_op_mode:
+        keys_to_remove = [
+            op_name for op_name in spec_op_mode if op_name not in TpuLang.graph.contained_func
+        ]
+
+        for op_name in keys_to_remove:
+            # print(f"Deleting {op_name} from spec_op_mode")
+            del spec_op_mode[op_name]
+        if spec_op_mode:
+            for op_name, mode in spec_op_mode.items():
+                assert op_name in TpuLang.graph.contained_func, f"Op '{op_name}' not found in graph"
+                assert (lower_mode :=
+                        mode.lower()) in support_quant_mode, f"Invalid quant mode: {mode}"
+                spec_op_mode[op_name] = lower_mode.upper()
+            qtable = ",".join(f"{op.outputs[0].name}:{spec_op_mode[op.src_func]}"
+                              for op in TpuLang.graph.operators if op.src_func in spec_op_mode)
+
+    mlir_file = name + '.mlir'
+    mlir_origin = os.path.basename(mlir_path)
+    mlir_opt_for_top(mlir_origin, mlir_file, log_level=log_level)
+    if log_level != "quiet":
+        print("Mlir file generated:{}".format(mlir_file))
+    compare = cmp and refs != None
+    top_mlir_inference = top_mlir_inference and mlir_inference
+    tpu_mlir_inference = tpu_mlir_inference and mlir_inference
+    if top_mlir_inference:
+        model_top_inference(model_name=name, cmp=compare, log_level=log_level)
+    for m in mode_list:
+        tpu_mlir_compare = cmp and top_mlir_inference
+        model_lowering_and_inference(model_name=name,
+                                     quant_mode=m,
+                                     inference=tpu_mlir_inference,
+                                     cmp=tpu_mlir_compare,
+                                     log_level=log_level,
+                                     chip=TpuLang.chip,
+                                     addr_mode=addr_mode,
+                                     quantize_table=qtable)
+        bmodel_generate_and_inference(model_name=name,
+                                      quant_mode=m,
+                                      inference=bmodel_inference,
+                                      log_level=log_level,
+                                      dynamic=dynamic,
+                                      opt=opt,
+                                      embed_debug_info=embed_debug_info,
+                                      gdma_check=gdma_check,
+                                      layer_group_config=layer_group_config)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level: str = 'normal'):
@@ -335,7 +571,9 @@ def bmodel_generate_and_inference(model_name: str,
                                   log_level: str = 'normal',
                                   embed_debug_info: bool = False,
                                   gdma_check: bool = False,
-                                  layer_group_config: str = ""):
+                                  layer_group_config: str = "",
+                                  enable_lghash: bool = False,
+                                  lghash_dir: str = ""):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
@@ -351,7 +589,9 @@ def bmodel_generate_and_inference(model_name: str,
                   log_level=log_level,
                   embed_debug_info=embed_debug_info,
                   gdma_check=gdma_check,
-                  layer_group_config=layer_group_config)
+                  layer_group_config=layer_group_config,
+                  enable_lghash=enable_lghash,
+                  lghash_dir=lghash_dir)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"
@@ -3382,6 +3622,40 @@ def hsigmoid(input: Tensor,
     return output
 
 
+@to_scalar(2)
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def pow(base: Union[Tensor, Scalar, float],
+        expn: Union[Tensor, Scalar, float],
+        out_name: str = None):
+    assert isinstance(base, Tensor) or isinstance(expn, Tensor), \
+        f"At least one of 'base' or 'expr' must be a Tensor. " \
+        f"Received: base={type(base).__name__}, expr={type(expn).__name__}"
+    if isinstance(expn, Scalar):
+        assert expn.dtype == "float32", "expn scalar dtype must be float32"
+        output = Tensor(base.shape, dtype=base.dtype, name=out_name)
+        if expn.value == 1.0:
+            return base
+        elif expn.value == 2.0:
+            TpuLang.insert_op("top.Mul", inputs=[base, base], outputs=[output])
+            return output
+        else:
+            attr_pow = {"exponent": Attr(expn.value, 'float64')}
+            TpuLang.insert_op("top.Pow", inputs=[base], outputs=[output], params=attr_pow)
+            return output
+    elif isinstance(base, Scalar):
+        assert base.dtype == "float32", "base scalar dtype must be float32"
+        output = Tensor(expn.shape, dtype=expn.dtype, name=out_name)
+        attr_pow = {"const_val": Attr(base.value, 'float64')}
+        TpuLang.insert_op("top.Pow2", inputs=[expn], outputs=[output], params=attr_pow)
+        return output
+    else:
+        output = Tensor(base.shape, dtype=base.dtype, name=out_name)
+        TpuLang.insert_op("top.Pow3", inputs=[base, expn], outputs=[output])
+        return output
+
+
 ######### Sort Operator ############
 @auto_name()
 @annotation_check
@@ -3802,6 +4076,7 @@ def multi_scale_deformable_attention(
     num_levels: int = 4,
     num_points: int = 4,
     value_proj_ratio: float = 1.0,
+    grid_sampler_mode: int = 0,
     out_name: str = None,
 ):
     assert query.shape[0] == 1
@@ -4526,7 +4801,7 @@ def multi_scale_deformable_attention(
                           params=sampling_grids_permute_attr)
         # grid_sampler
         sampling_grid_l_grid_sampler_attr = {
-            "mode": Attr(0, "int64"),
+            "mode": Attr(grid_sampler_mode, "int64"),
             "padding_mode": Attr(0, "int64"),
             "align_corners": Attr(False, 'bool'),
         }
@@ -4633,6 +4908,7 @@ def deformable_attention(value: Tensor,
                          sampling_locations: Tensor,
                          attention_weights: Tensor,
                          value_spatial_shapes: List[List[int]],
+                         grid_sampler_mode: int = 0,
                          out_name: str = None):
     # value: [bs, num_keys, num_heads, embed_dims//num_heads]
     # sampling_locations: [bs, num_queries, num_heads, num_levels, num_points, 2]
@@ -4752,7 +5028,7 @@ def deformable_attention(value: Tensor,
                           outputs=[reshape2_out],
                           params=reshape2_attr)
         grid_sampler_attr = {
-            "mode": Attr(0, "int64"),
+            "mode": Attr(grid_sampler_mode, "int64"),
             "padding_mode": Attr(0, "int64"),
             "align_corners": Attr(False, 'bool'),
         }
@@ -5357,7 +5633,11 @@ def rope(input: Tensor,
          mul1_saturation: bool = True,
          mul2_saturation: bool = True,
          add_saturation: bool = True,
+         rope_mode: str = 'interleaved_pairs',
          out_name: str = None):
+
+    assert rope_mode in ["interleaved_pairs",
+                         "contiguous_halves"], f"rope_mode:{rope_mode} is not supported"
 
     attr = {
         "is_permute_optimize": Attr(is_permute_optimize, "bool"),
@@ -5366,7 +5646,8 @@ def rope(input: Tensor,
         "add_round_mode": Attr(round_mode_convert(add_round_mode), data_type="string"),
         "mul1_saturation": Attr(mul1_saturation, "bool"),
         "mul2_saturation": Attr(mul2_saturation, "bool"),
-        "add_saturation": Attr(add_saturation, "bool")
+        "add_saturation": Attr(add_saturation, "bool"),
+        "rope_mode": Attr(rope_mode, data_type="string"),
     }
 
     if input.dtype not in ["float32", "float16"]:
@@ -5413,6 +5694,164 @@ def rope(input: Tensor,
 
     TpuLang.insert_op("top.Rope", inputs=[input, weight0, weight1], outputs=[output], params=attr)
     return output
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def rot_pos_emb(pos_ids: Tensor,
+                rotary_pos_emb_full: Tensor,
+                rotary_pos_emb_cos: Tensor,
+                rotary_pos_emb_sin: Tensor,
+                out_name: str = None):
+
+    ### cast pos_ids to int32
+    cast_attr = {
+        "to": Attr("INT32", "string"),
+    }
+    pos_ids_ori = pos_ids
+    pos_ids = Tensor(dtype="int32", name=out_name + "_pos_ids_cast")
+    TpuLang.insert_op("top.Cast", inputs=[pos_ids_ori], outputs=[pos_ids], params=cast_attr)
+
+    ### inputs -> gather -> rotary_pos_emb, cos, sin
+    gather_attr = {"axis": Attr(0, "int32"), "keep_dims": Attr(False, "bool")}
+    input_gather = Tensor(dtype=rotary_pos_emb_full.dtype, name=out_name + "_input_gather")
+    TpuLang.insert_op("top.Gather",
+                      inputs=[rotary_pos_emb_full, pos_ids],
+                      outputs=[input_gather],
+                      params=gather_attr)
+    cos_gather = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather")
+    TpuLang.insert_op("top.Gather",
+                      inputs=[rotary_pos_emb_cos, pos_ids],
+                      outputs=[cos_gather],
+                      params=gather_attr)
+    sin_gather = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather")
+    TpuLang.insert_op("top.Gather",
+                      inputs=[rotary_pos_emb_sin, pos_ids],
+                      outputs=[sin_gather],
+                      params=gather_attr)
+
+    ### rotary_pos_emb,cos,sin -> flatten(1) -> outputs
+    shape_attr = {"step": Attr(1)}
+    shape_attr["start"] = Attr(0)
+    shape_attr["end"] = Attr(1)
+    input_gather_shape0 = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                 name=out_name + "_input_gather_shape0")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[input_gather],
+                      outputs=[input_gather_shape0],
+                      params=shape_attr)
+    cos_gather_shape0 = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_shape0")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[cos_gather],
+                      outputs=[cos_gather_shape0],
+                      params=shape_attr)
+    sin_gather_shape0 = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_shape0")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[sin_gather],
+                      outputs=[sin_gather_shape0],
+                      params=shape_attr)
+
+    shape_attr = {"step": Attr(1)}
+    shape_attr["start"] = Attr(1)
+    shape_attr["end"] = Attr(2)
+    input_gather_shape1 = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                 name=out_name + "_input_gather_shape1")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[input_gather],
+                      outputs=[input_gather_shape1],
+                      params=shape_attr)
+    cos_gather_shape1 = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_shape1")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[cos_gather],
+                      outputs=[cos_gather_shape1],
+                      params=shape_attr)
+    sin_gather_shape1 = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_shape1")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[sin_gather],
+                      outputs=[sin_gather_shape1],
+                      params=shape_attr)
+
+    shape_attr = {"step": Attr(1)}
+    shape_attr["start"] = Attr(2)
+    shape_attr["end"] = Attr(3)
+    input_gather_shape2 = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                 name=out_name + "_input_gather_shape2")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[input_gather],
+                      outputs=[input_gather_shape2],
+                      params=shape_attr)
+    cos_gather_shape2 = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_shape2")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[cos_gather],
+                      outputs=[cos_gather_shape2],
+                      params=shape_attr)
+    sin_gather_shape2 = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_shape2")
+    TpuLang.insert_op("top.Shape",
+                      inputs=[sin_gather],
+                      outputs=[sin_gather_shape2],
+                      params=shape_attr)
+
+    input_shape_mul = Tensor(dtype=input_gather_shape1.dtype, name=out_name + "_input_shape_mul")
+    TpuLang.insert_op("top.Mul",
+                      inputs=[input_gather_shape1, input_gather_shape2],
+                      outputs=[input_shape_mul])
+    cos_shape_mul = Tensor(dtype=cos_gather_shape1.dtype, name=out_name + "_cos_shape_mul")
+    TpuLang.insert_op("top.Mul",
+                      inputs=[cos_gather_shape1, cos_gather_shape2],
+                      outputs=[cos_shape_mul])
+    sin_shape_mul = Tensor(dtype=sin_gather_shape1.dtype, name=out_name + "_sin_shape_mul")
+    TpuLang.insert_op("top.Mul",
+                      inputs=[sin_gather_shape1, sin_gather_shape2],
+                      outputs=[sin_shape_mul])
+
+    concat_attr = {"axis": Attr(0, "int32")}
+    input_shape_concat = Tensor(dtype=input_gather_shape1.dtype,
+                                name=out_name + "_input_shape_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[input_gather_shape0, input_shape_mul],
+                      outputs=[input_shape_concat],
+                      params=concat_attr)
+    cos_shape_concat = Tensor(dtype=cos_gather_shape1.dtype, name=out_name + "_cos_shape_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[cos_gather_shape0, cos_shape_mul],
+                      outputs=[cos_shape_concat],
+                      params=concat_attr)
+    sin_shape_concat = Tensor(dtype=sin_gather_shape1.dtype, name=out_name + "_sin_shape_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[sin_gather_shape0, sin_shape_mul],
+                      outputs=[sin_shape_concat],
+                      params=concat_attr)
+
+    input_gather_reshape = Tensor(dtype=rotary_pos_emb_full.dtype,
+                                  name=out_name + "_input_gather_rehsape")
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[input_gather, input_shape_concat],
+                      outputs=[input_gather_reshape])
+    cos_gather_reshape = Tensor(dtype=rotary_pos_emb_cos.dtype,
+                                name=out_name + "_cos_gather_rehsape")
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[cos_gather, cos_shape_concat],
+                      outputs=[cos_gather_reshape])
+    sin_gather_reshape = Tensor(dtype=rotary_pos_emb_sin.dtype,
+                                name=out_name + "_sin_gather_rehsape")
+    TpuLang.insert_op("top.Reshape",
+                      inputs=[sin_gather, sin_shape_concat],
+                      outputs=[sin_gather_reshape])
+
+    concat_attr = {"axis": Attr(-1, "int32")}
+    cos_gather_concat = Tensor(dtype=rotary_pos_emb_cos.dtype, name=out_name + "_cos_gather_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[cos_gather_reshape, cos_gather_reshape],
+                      outputs=[cos_gather_concat],
+                      params=concat_attr)
+    sin_gather_concat = Tensor(dtype=rotary_pos_emb_sin.dtype, name=out_name + "_sin_gather_concat")
+    TpuLang.insert_op("top.Concat",
+                      inputs=[sin_gather_reshape, sin_gather_reshape],
+                      outputs=[sin_gather_concat],
+                      params=concat_attr)
+
+    return input_gather_reshape, cos_gather_concat, sin_gather_concat
 
 
 @auto_name()
@@ -6238,4 +6677,22 @@ def scatterND(input: Tensor, indices: Tensor, updates: Tensor, out_name: str = N
     output = Tensor(dtype=o_dtype, name=out_name)
 
     TpuLang.insert_op("top.ScatterND", inputs=[input, indices, updates], outputs=[output])
+    return output
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def cumsum(input: Tensor, axis: int = -1, out_name: str = None):
+    assert input.dtype in ["float32", "float16", "int32", "uint32"]
+    assert len(input.shape) <= 4
+    if axis < 0:
+        axis = len(input.shape) + axis
+    else:
+        assert axis < len(input.shape), "axis is invalid"
+    attr = {
+        "axis": Attr(axis),
+    }
+    output = Tensor(dtype=input.dtype, name=out_name)
+    TpuLang.insert_op("top.CumSum", inputs=[input, None], outputs=[output], params=attr)
     return output

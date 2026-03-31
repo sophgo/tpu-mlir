@@ -73,6 +73,117 @@ def rand_indices2(shape, dtype):
     return data.reshape(shape).astype(dtype=dtype)
 
 
+from typing import Any, Dict, Optional
+import warnings
+import inspect
+
+
+def generate_torch_ref(op_name: str, device: str = "cpu", **kwargs) -> Dict[str, Any]:
+    """
+    Generate the calling results based on the given torch operator name and parameters, and save them to an npz file.
+
+    Parameters:
+        op_name: The torch operator name, such as "cumsum", "matmul", "conv2d", etc.
+        device: The computational device, default is "cpu", can be "cuda" or "cuda:0", etc.
+        **kwargs: Parameters passed to the torch operator
+    Returns:
+        A dictionary containing the results and metadata
+    Example:
+        # Invoke the cumsum operator
+        result = generate_torch_ref(
+            op_name="cumsum",
+            input=torch.tensor([1, 2, 3, 4]),
+            dim=0
+        )
+
+        # Invoke the matmul operator
+        result = generate_torch_ref(
+            op_name="matmul",
+            input=torch.randn(3, 4),
+            other=torch.randn(4, 5)
+        )
+    """
+
+    # Set device
+    device = torch.device(device)
+
+    # Prepare parameters: Move torch tensors in the parameters to the specified device
+    processed_kwargs = {}
+    for key, value in kwargs.items():
+        if isinstance(value, torch.Tensor):
+            processed_kwargs[key] = value.to(device)
+        else:
+            processed_kwargs[key] = value
+
+    try:
+        # Get the torch operator function
+        if hasattr(torch, op_name):
+            op_func = getattr(torch, op_name)
+        else:
+            # Attempt to find it in torch.nn.functional
+            import torch.nn.functional as F
+            if hasattr(F, op_name):
+                op_func = getattr(F, op_name)
+            else:
+                raise AttributeError(
+                    f"Torch operator '{op_name}' not found in torch or torch.nn.functional")
+
+        # Check if the function is callable
+        if not callable(op_func):
+            raise TypeError(f"'{op_name}' is not a callable function")
+
+        # Invoke the torch operator
+        with torch.no_grad():
+            result = op_func(**processed_kwargs)
+
+        # Convert the result to a numpy array (if it is a tensor)
+        if isinstance(result, torch.Tensor):
+            result_numpy = result.cpu().numpy()
+            result_type = "tensor"
+        elif isinstance(result, (tuple, list)):
+            # Handle operators with multiple return values
+            result_numpy = [r.cpu().numpy() if isinstance(r, torch.Tensor) else r for r in result]
+            result_type = "tuple"
+        else:
+            result_numpy = result
+            result_type = "other"
+
+        # Prepare data to be saved
+        save_data = {
+            "op_name": op_name,
+            "result": result_numpy,
+        }
+        return save_data
+
+    except Exception as e:
+        error_msg = f"Error executing torch.{op_name}: {str(e)}"
+        print(f"Error: {error_msg}")
+        return {
+            "success": False,
+            "op_name": op_name,
+            "error": str(e),
+        }
+
+
+def generate_torch_ref_advanced(op_name: str,
+                                input_tensor: torch.Tensor,
+                                device: str = "cpu",
+                                **kwargs) -> Dict[str, Any]:
+    """
+    Advanced version of the torch operator generation function, specifically designed to handle operators that require input parameters, such as sum.
+
+    Parameters:
+        op_name: Name of the torch operator
+        input_tensor: Input tensor
+        device: Computing device
+        **kwargs: Other parameters
+
+    Returns:
+        Result dictionary
+    """
+    return generate_torch_ref(op_name=op_name, device=device, input=input_tensor, **kwargs)
+
+
 def tpulang(chip):
 
     def wrapper(func):
@@ -132,6 +243,7 @@ class TPULANG_IR_TESTER(object):
             "Copy": (self.test_Copy, Y, Y),
             "Cos": (self.test_Cos, Y, Y),
             "Cosh": (self.test_Cosh, Y, Y),
+            "CumSum": (self.test_CumSum, Y, Y),
             "Deconv2d": (self.test_Deconv2d, Y, Y),
             # "Deconv3d": (self.test_Deconv3d,            N, N), # not support
             # "Dequantint": (self.test_dequantint,        Y, Y),
@@ -184,6 +296,7 @@ class TPULANG_IR_TESTER(object):
             "Ors": (self.test_Ors, Y, Y),
             "Pad": (self.test_Pad, Y, Y),
             "Permute": (self.test_Permute, Y, Y),
+            "Pow": (self.test_Pow, Y, Y),
             "Prelu": (self.test_PRelu, Y, Y),
             "Reduce": (self.test_Reduce, Y, Y),
             "Relu": (self.test_Relu, Y, Y),
@@ -244,9 +357,10 @@ class TPULANG_IR_TESTER(object):
             "Rope": (self.test_Rope, Y, N),
             "RopeMulConst": (self.test_RopeMulConst, Y, Y),
             "ConcattoRope": (self.test_ConcattoRope, Y, N),
+            "RotPosEmb": (self.test_RotPosEmb, Y, N),
             #### error case ####
             "ErrorCase": (self.test_ErrorCase, Y, Y),
-            "AttenQuantError": (self.test_AttenQuantError, Y, Y),
+            "AttenQuantError": (self.test_AttenQuantError, Y, Y)
         }
         # currently tpulang only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
@@ -326,11 +440,13 @@ class TPULANG_IR_TESTER(object):
                           model_name,
                           inputs,
                           outputs,
+                          refs=None,
                           is_quantized=False,
                           asymmetric=False,
                           top_mlir_inference=True,
                           tpu_mlir_inference=True,
-                          log_level='normal'):
+                          log_level='normal',
+                          dynamic=False):
         for input in inputs:
             assert input.ttype == "neuron", "coeff Tensor should not be input {}".format(input.name)
 
@@ -340,7 +456,9 @@ class TPULANG_IR_TESTER(object):
                                  inputs,
                                  outputs,
                                  cmp=True,
+                                 refs=refs,
                                  mode=mode,
+                                 dynamic=dynamic,
                                  no_save=self.no_save,
                                  top_mlir_inference=top_mlir_inference,
                                  tpu_mlir_inference=tpu_mlir_inference,
@@ -351,6 +469,7 @@ class TPULANG_IR_TESTER(object):
                          inputs,
                          outputs,
                          cmp=True,
+                         refs=refs,
                          dynamic=False,
                          asymmetric=asymmetric,
                          no_save=self.no_save,
@@ -3338,6 +3457,46 @@ class TPULANG_IR_TESTER(object):
                                        dtype="int8")
 
     #######################################################################
+    # Pow
+    # ------------
+    def test_Pow(self, case_name):
+        """pow"""
+
+        @tpulang(self.chip)
+        def _test_pow1(shape_base: List[int], expn_val: float, dtype="float32"):
+            base_data = rand_data(shape_base, dtype)
+            base = tpul.Tensor(dtype=dtype, shape=shape_base, data=base_data)
+            expn = tpul.Scalar(expn_val)
+            pow1 = tpul.pow(base, expn)
+            self.compile_and_check(self.unique_name(case_name), [base], [pow1],
+                                   is_quantized=dtype != "float32")
+
+        @tpulang(self.chip)
+        def _test_pow2(shape_expn: List[int], base_val: float, dtype="float32"):
+            expn_data = rand_data(shape_expn, dtype)
+            expn = tpul.Tensor(dtype=dtype, shape=shape_expn, data=expn_data)
+            base = tpul.Scalar(base_val)
+            pow2 = tpul.pow(base, expn)
+            self.compile_and_check(self.unique_name(case_name), [expn], [pow2],
+                                   is_quantized=dtype != "float32")
+
+        @tpulang(self.chip)
+        def _test_pow3(shape: List[int], dtype="float32"):
+            base_data = rand_data(shape, dtype)
+            base_data = np.abs(base_data) + 1e-6
+            base = tpul.Tensor(dtype=dtype, shape=shape, data=base_data)
+            expn_data = rand_data(shape, dtype)
+            expn = tpul.Tensor(dtype=dtype, shape=shape, data=expn_data)
+            pow3 = tpul.pow(base, expn)
+            self.compile_and_check(self.unique_name(case_name), [base, expn], [pow3],
+                                   is_quantized=dtype != "float32")
+
+        _test_pow1([1, 32, 28, 28], 2.0, dtype="float32")
+        _test_pow1([1, 32, 28, 28], 2.5, dtype="float32")
+        _test_pow2([1, 32, 28, 28], 2.5, dtype="float32")
+        _test_pow3([1, 32, 28, 28], dtype="float32")
+
+    #######################################################################
     # Arg
     # ------------
 
@@ -5740,6 +5899,60 @@ class TPULANG_IR_TESTER(object):
                    mul2_saturation=True,
                    add_saturation=True)
 
+    def test_RotPosEmb(self, case_name):
+        """RotPosEmb"""
+
+        @tpulang(self.chip)
+        def _test_rot_pos_emb(input_shape,
+                              cos_shape,
+                              sin_shape,
+                              dtype="float32",
+                              out_name: str = None):
+
+            t, h, w = 1, 12, 12
+            grid_thw = torch.tensor([[t, h, w]], dtype=torch.int32)
+            merge_size = 1
+            hpos_ids = [
+                torch.arange(h).unsqueeze(1).expand(-1, w).reshape(
+                    h // merge_size,
+                    merge_size,
+                    w // merge_size,
+                    merge_size,
+                ).permute(0, 2, 1, 3).flatten().repeat(t) for t, h, w in grid_thw
+            ]
+            wpos_ids = [
+                torch.arange(w).unsqueeze(0).expand(h, -1).reshape(
+                    h // merge_size,
+                    merge_size,
+                    w // merge_size,
+                    merge_size,
+                ).permute(0, 2, 1, 3).flatten().repeat(t) for t, h, w in grid_thw
+            ]
+            hpos_ids = torch.cat(hpos_ids, dim=0)
+            wpos_ids = torch.cat(wpos_ids, dim=0)
+            pos_ids = torch.stack([hpos_ids, wpos_ids], 1)
+            pos_ids = tpul.Tensor(shape=[t * h * w, 2],
+                                  dtype="int32",
+                                  data=pos_ids.numpy().astype(np.int32))
+            input = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=list(input_shape), data=input)
+            cos = rand_data(cos_shape, dtype)
+            sin = rand_data(sin_shape, dtype)
+            cos = tpul.Tensor(dtype=dtype, shape=list(cos_shape), data=cos)
+            sin = tpul.Tensor(dtype=dtype, shape=list(sin_shape), data=sin)
+            rotary_pos_emb, cos_out, sin_out = tpul.rot_pos_emb(pos_ids,
+                                                                x,
+                                                                cos,
+                                                                sin,
+                                                                out_name=out_name)
+            self.compile_and_check(self.unique_name(case_name), [pos_ids, x, cos, sin],
+                                   [rotary_pos_emb, cos_out, sin_out],
+                                   dynamic=True)
+
+        _test_rot_pos_emb((65536, 24), (65536, 24), (65536, 24),
+                          dtype="float32",
+                          out_name="RotPosEmb")
+
     '''
     #[User-Guide]
     [Q1] differences among modes
@@ -5801,17 +6014,17 @@ class TPULANG_IR_TESTER(object):
                 rois [RoI_Num,5]: batch,x0,y0,x1,y1
                 but hik gives [RoI_NUM,7] something like,  {a,b,x0,y0,x1,y1,c} , we just need x0,y0,x1,y1; as hik only inference-1 batch.
                 '''
-                rois_sophgo = rois_hik
+                rois_sg = rois_hik
                 if rois_hik.shape[1] == 7:
-                    rois_sophgo = torch.cat(
+                    rois_sg = torch.cat(
                         [torch.zeros(self.RoI_Num).reshape([self.RoI_Num, 1]), rois_hik[:, 2:6]],
                         axis=1).reshape([self.RoI_Num, 5])
-                roi_feats = feats[0].new_zeros(rois_sophgo.size(0), self.out_channels,
+                roi_feats = feats[0].new_zeros(rois_sg.size(0), self.out_channels,
                                                *self.output_size)
 
                 for i in range(self.num_levels):
                     inds = target_lvls == i
-                    rois_ = rois_sophgo[inds, :]
+                    rois_ = rois_sg[inds, :]
                     print("rois_", rois_.shape)
                     roi_feats_t = self.roi_layers[i](feats[i], rois_)
                     roi_feats[inds] = roi_feats_t
@@ -6180,6 +6393,28 @@ class TPULANG_IR_TESTER(object):
                                    is_quantized=is_quantized)
 
         _test_model_def([1, 256, 256], 64, 4)
+
+    #######################################################################
+    # CumSum
+    # ------------
+
+    def test_CumSum(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_cumsum(in_shape: List[int], axis=0, dtype="float32", is_quantized=False):
+            x_data = rand_data(in_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            out = tpul.cumsum(x, axis)
+            result = generate_torch_ref(op_name="cumsum", input=torch.Tensor(x_data), dim=axis)
+            self.compile_and_check(self.unique_name(case_name), [x], [out],
+                                   is_quantized=False,
+                                   refs=result)
+
+        _test_cumsum([1, 1, 1], 0, "float32")
+        _test_cumsum([1], 0, "float32")
+        _test_cumsum([4, 64, 3, 5], 0, "float32")
+        _test_cumsum([2, 6, 20, 5], -3, "uint32", is_quantized=True)
+        _test_cumsum([2, 6, 20, 5], -1, "int32", is_quantized=True)
 
     def test_ErrorCase(self, case_name):
 

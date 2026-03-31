@@ -31,6 +31,8 @@ typedef struct {
   bool group_by_cores;
   NnvlcMode nnvlc_mode;
   bool lgcache;
+  bool enable_lghash;
+  std::string lghash_dir;
   int64_t num_core;
   int64_t debugger;
   std::string debugger_filename;

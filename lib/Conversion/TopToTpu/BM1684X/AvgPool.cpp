@@ -139,12 +139,16 @@ void AvgPoolLowering::LoweringF8(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   bool isE4 = module::getMode() == module::Mode::F8E4M3;
-  double fp_out_scale;
+  double fp_out_scale = 1.0;
   assert(op->getNumOperands() == 1);
-  double out_scale = module::getCalibratedType(poolOp.getOutput()).getMax();
-  double in_scale = module::getCalibratedType(poolOp.getInput()).getMax();
-  fp_out_scale = in_scale / out_scale;
   Operation *newOp;
+  double out_scale = 1.0;
+  double in_scale = 1.0;
+  if (isE4) {
+    out_scale = module::getCalibratedType(poolOp.getOutput()).getMax();
+    in_scale = module::getCalibratedType(poolOp.getInput()).getMax();
+    fp_out_scale = in_scale / out_scale;
+  }
   if (poolOp.getKernelShape().size() == 3) {
     newOp =
         lowering_common_f8<tpu::Pool3DOp>(rewriter, op, isE4, 2).getOperation();

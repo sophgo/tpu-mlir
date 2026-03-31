@@ -6,7 +6,7 @@ TPU Profile工具使用及分析
 
 完整的TPU推理应用是通过软硬件相互配合完成的，如下图所示：
 
-软件方面，Host端实现了libsophon、驱动两个软件包。驱动负责对实际的Host与设备基础通信和资源管理机制的抽象，提供了基础的功能接口。对于TPU推理来说，libsophon提供了具体的功能，其中BMLib(`libbmlib.so`)实现对驱动接口封装，提供兼容保证，简化调用流程，提升编程的效率和可移植性，TPU-RUNTIME(`libbmrt.so`)提供了模型(bmodel)的加载、管理与执行等功能。
+软件方面，Host端实现了驱动与对应接口封装。驱动负责对实际的Host与设备基础通信和资源管理机制的抽象，提供了基础的功能接口。对于TPU推理来说，其中BMLib(`libbmlib.so`)实现对驱动接口封装，提供兼容保证，简化调用流程，提升编程的效率和可移植性，TPU-RUNTIME(`libbmrt.so`)提供了模型(bmodel)的加载、管理与执行等功能。
 
 硬件方面，TPU内部主要由MCU、GDMA、TIU三个engine来完成工作的。
 
@@ -20,10 +20,10 @@ TPU Profile是将Profile数据转换为可视化网页的工具。Profile数据�
 
 本文主要是利用Profile数据及TPU Profile工具，可视化模型的完整运行流程，来让读者对TPU内部有一个直观的认识。
 
-2. 编译bmodel
+1. 编译bmodel
 --------------------
 
-(本操作及下面操作会用到 `TPU-MLIR <https://github.com/sophgo/tpu-mlir>`_)
+(本操作及下面操作会用到 tpu-mlir)
 
 由于Profile数据会编译中的一些layer信息保存到bmodel中，导致bmodel体积变大，所以默认是关闭的。打开方式是在调用 `model_deploy.py` 加上 ``--debug`` 选项。如果在编译时未开启该选项，运行时开启Profile得到的数据在可视化时，会有部分数据缺失。
 
@@ -57,12 +57,12 @@ TPU Profile是将Profile数据转换为可视化网页的工具。Profile数据�
      --model yolov5s_1684x_f16.bmodel \
      --debug # 记录profile数据
 
-通过以上命令，将 ``yolov5s.onnx`` 编译成了 ``yolov5s_bm1684x_f16.bmodel``。更多用法可以参见 `TPU-MLIR <https://github.com/sophgo/tpu-mlir>`_。
+通过以上命令，将 ``yolov5s.onnx`` 编译成了 ``yolov5s_bm1684x_f16.bmodel``。更多用法可以参见 tpu-mlir。
 
 3. 生成Profile原始数据
 ---------------------------
 
-同编译过程，运行时的Profile功能默认是关闭的，防止在做profile保存与传输时产生额外时间消耗。需要开启profile功能时，在运行编译好的应用前设置环境变量 ``BMRUNTIME_ENABLE_PROFILE=1`` 即可。下面用libsophon中提供的模型测试工具 ``bmrt_test`` 来作为应用，生成profile数据。
+同编译过程，运行时的Profile功能默认是关闭的，防止在做profile保存与传输时产生额外时间消耗。需要开启profile功能时，在运行编译好的应用前设置环境变量 ``BMRUNTIME_ENABLE_PROFILE=1`` 即可。下面用驱动中提供的模型测试工具 ``bmrt_test`` 来作为应用，生成profile数据。
 
 .. code-block:: shell
 
@@ -119,7 +119,7 @@ tpu-mlir提供了 ``tpu_profile.py`` 脚本，来把生成的二进制profile数
 
 整体运行过程可以分为三个部分 A 段, B–E 段, F 段。其中，A 段是利用MCU将用户空间的输入数据搬运到计算指令空间；F 段是利用MCU将计算指令空间的输出数据搬回到用户空间。下面主要对 B–E 段的模型计算过程进行说明。
 
-熟悉 `TPU-MLIR <https://github.com/sophgo/tpu-mlir>`_ 的同学应该清楚，完整的网络并不是 Layer By Layer 来运行的，中间会经过将多个 Layer 根据硬件资源和调度关系进行融合，将加载、计算、保存分离出来，去掉中间不必要的数据搬进与搬出，形成一个 Layer Group，并划分成多个 Slice 来周期运行。整个网络根据结构可能会分成多个 Layer Group。可以观察 B、C、D 段的 Layer Pattern，中间有半高的加载保存操作，而且呈现了一定周期的循环，根据这些，我们可以判断出 B、C、D 是三个被融合后的 Layer Group。而且后面 E 段并没有明显的周期，这几个 Layer 是没有被融合的 Global Layer。整体上看，网络中只有 20% 的部分没有被融合，在这个层面上看，网络结构对于编译器相对比较友好。
+熟悉 tpu-mlir 的同学应该清楚，完整的网络并不是 Layer By Layer 来运行的，中间会经过将多个 Layer 根据硬件资源和调度关系进行融合，将加载、计算、保存分离出来，去掉中间不必要的数据搬进与搬出，形成一个 Layer Group，并划分成多个 Slice 来周期运行。整个网络根据结构可能会分成多个 Layer Group。可以观察 B、C、D 段的 Layer Pattern，中间有半高的加载保存操作，而且呈现了一定周期的循环，根据这些，我们可以判断出 B、C、D 是三个被融合后的 Layer Group。而且后面 E 段并没有明显的周期，这几个 Layer 是没有被融合的 Global Layer。整体上看，网络中只有 20% 的部分没有被融合，在这个层面上看，网络结构对于编译器相对比较友好。
 
 .. image:: ../assets/whole_mem_chart.png
    :alt: 内存时空图

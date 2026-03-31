@@ -43,6 +43,7 @@ struct Attr {
   static constexpr llvm::StringRef DYNAMIC_COEFF_OFFSET =
       "module.dynamic_coeff_offset";
   static constexpr llvm::StringRef HIGH_PRECISION = "module.high_precision";
+  static constexpr llvm::StringRef LORA_RANK = "module.lora_rank";
 };
 
 static ModuleOp m = nullptr;
@@ -1200,13 +1201,17 @@ bool getTrain() {
 bool isBF16Modes() {
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
   auto mode = symbolizeMode(s).value_or(Mode::F32);
-  return mode == Mode::BF16 || mode == Mode::W8BF16 || mode == Mode::W4BF16;
+  return mode == Mode::BF16 || mode == Mode::W8BF16 || mode == Mode::W4BF16 ||
+         mode == Mode::INT8BF16DYN || mode == Mode::INT4BF16DYN ||
+         mode == Mode::F8E4M3BF16DYN || mode == Mode::F4BF16DYN;
 }
 
 bool isF16Modes() {
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
   auto mode = symbolizeMode(s).value_or(Mode::F32);
-  return mode == Mode::F16 || mode == Mode::W8F16 || mode == Mode::W4F16;
+  return mode == Mode::F16 || mode == Mode::W8F16 || mode == Mode::W4F16 ||
+         mode == Mode::INT8F16DYN || mode == Mode::INT4F16DYN ||
+         mode == Mode::F8E4M3F16DYN || mode == Mode::F4F16DYN;
 }
 
 bool isF8Modes() {
@@ -1276,6 +1281,15 @@ bool isAsymmetric() {
 
 void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
+}
+
+bool isDynamicQuantize() {
+  if (m->hasAttrOfType<StringAttr>(Attr::MODE)) {
+    auto mode = m->getAttrOfType<StringAttr>(Attr::MODE).getValue();
+    auto imode = symbolizeMode(mode);
+    return (imode >= Mode::INT8F16DYN && imode <= Mode::F4BF16DYN);
+  }
+  return false;
 }
 
 int getQuantGroupSize() {
@@ -1372,6 +1386,18 @@ State getState() {
 void setState(State state) {
   auto s = stringifyState(state);
   m->setAttr(Attr::STATE, StringAttr::get(ctx, s));
+}
+
+int64_t getLoraRank() {
+  if (m->hasAttrOfType<IntegerAttr>(Attr::LORA_RANK)) {
+    return m->getAttrOfType<IntegerAttr>(Attr::LORA_RANK).getInt();
+  }
+  return 0;
+}
+
+void setLoraRank(int64_t rank) {
+  auto intType = IntegerType::get(ctx, 64);
+  m->setAttr(Attr::LORA_RANK, IntegerAttr::get(intType, rank));
 }
 
 Platform getPlatform() { return platform; }

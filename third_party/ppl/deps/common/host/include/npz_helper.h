@@ -60,7 +60,7 @@ void load_npz(std::string file_path, char *data, size_t data_size,
 
 void npz_add(cnpy::npz_t &npz, std::string key, char *data, dim4 shape,
              int dtype) {
-  size_t element_size = shape.n * shape.c * shape.h * shape.w;
+  size_t element_size = (size_t)shape.n * shape.c * shape.h * shape.w;
   std::vector<float> float_val;
   convert_src_to_float(float_val, data, element_size, dtype);
 

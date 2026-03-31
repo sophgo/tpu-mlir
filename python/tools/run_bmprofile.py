@@ -389,7 +389,7 @@ def bmprofile(path: str):
     basename = os.path.basename(path)
 
     ret, log = subprocess.getstatusoutput(
-        f"""ssh {remote} 'export BMRUNTIME_ENABLE_PROFILE=1 ; cd {name} ; /opt/sophon/libsophon-current/bin/bmrt_test --bmodel {basename}' """
+        f"""ssh {remote} 'export BMRUNTIME_ENABLE_PROFILE=1 ; cd {name} ; bmrt_test --bmodel {basename}' """
     )
     if ret != 0:
         raise RuntimeError(f"bmrt_test failed: {log}")

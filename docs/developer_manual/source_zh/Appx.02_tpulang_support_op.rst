@@ -3381,6 +3381,44 @@ hsigmoid激活函数，逐元素实现功能 :math:`y = min(1, max(0, \frac{x}{6
 * BM1688：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 * BM1684X：输入数据类型可以是FLOAT32/INT8/UINT8。FLOAT16数据会自动转换为FLOAT32。
 
+pow
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+      def pow(base: Union[Tensor, Scalar, float],
+            expn: Union[Tensor, Scalar, float],
+            out_name: str = None):
+          #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+power函数。
+
+如果base和expn均为Tensor，则要求两者shape相同，逐元素计算 :math:`y_i = {base_i}^{expn_i}`;
+如果base为Tensor，expn为Scalar或float，则逐元素计算 :math:`y_i = {base_i}^{expn}`；
+如果base为Scalar或float，expn为Tensor，则逐元素计算 :math:`y_i = {base}^{expn_i}`；
+不支持base和expn均为Scalar或float的情况。
+该操作属于 **本地操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* base：Tensor类型或Scalar、float，表示幂操作的指数。
+* expn：Tensor类型或Scalar、float，表示幂操作的底数。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的形状和数据类型与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/FLOAT16。
+* BM1684X：输入数据类型可以是FLOAT32/FLOAT16。
+
 Data Arrange Operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3706,6 +3744,38 @@ roll
 """"""""""""""""""""""""""""""""""""""""""""""
 * BM1688：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
 * BM1684X：输入数据类型可以是FLOAT32/FLOAT16/UINT8/INT8/INT16/UINT16。
+
+
+cumsum
+:::::::::::::::::::::::::::::::::::::::::::::::::
+
+接口定义
+""""""""""""""""""""""""""""""""""""""""""""""
+
+    .. code-block:: python
+
+        def cumsum(input: Tensor, axis: int = -1, out_name: str = None):
+        #pass
+
+功能描述
+""""""""""""""""""""""""""""""""""""""""""""""
+input 参数在 axis 维度上的累积和。
+该操作属于 **全局操作** 。
+
+参数说明
+""""""""""""""""""""""""""""""""""""""""""""""
+* input：Tensor类型，表示输入操作Tensor。
+* axis： int 类型， 进行操作的维度。
+* out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
+
+返回值
+""""""""""""""""""""""""""""""""""""""""""""""
+返回一个Tensor，该Tensor的数据类型和形状与输入Tensor相同。
+
+处理器支持
+""""""""""""""""""""""""""""""""""""""""""""""
+* BM1688：输入数据类型可以是FLOAT32/INT32/UINT32。
+* BM1684X：输入数据类型可以是FLOAT32/INT32/UINT32。
 
 
 Sort Operator
@@ -5468,6 +5538,7 @@ rope
                 mul1_saturation: bool = True,
                 mul2_saturation: bool = True,
                 add_saturation: bool = True,
+                rope_mode: str = 'interleaved_pairs',
                 out_name: str = None):
             #pass
 
@@ -5491,6 +5562,7 @@ rope
 * mul1_saturation: bool 类型, 表示RoPE中的mul1计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
 * mul2_saturation: bool 类型, 表示RoPE中的mul2计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
 * add_saturation: bool 类型, 表示RoPE中的add计算结果是否需要饱和处理, 默认为True饱和处理, 非必要不修改。
+* rope_mode: string类型，表示RoPE中旋转位置的方式。默认值是"interleaved_pairs",范围是“interleaved_pairs”，“contiguous_halves”。
 * out_name: output name, string类型，默认为None。
 
 返回值

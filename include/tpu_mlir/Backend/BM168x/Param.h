@@ -1331,6 +1331,23 @@ typedef struct a16_matmul_spec {
   int use_multi_core;
 } a16_matmul_spec_t;
 
+typedef struct mlp_spec {
+  bool R_trans_gate;
+  bool has_zp_gate;
+  bool has_bias_gate;
+  bool R_trans_up;
+  bool has_zp_up;
+  bool has_bias_up;
+  bool R_trans_down;
+  bool has_zp_down;
+  bool has_bias_down;
+  bool quantized;
+  int weight_bits;
+  int q_group_size;
+  int use_multi_core;
+  uint64_t buffer_addr;
+} mlp_spec_t;
+
 typedef struct batch_matmul_common_spec {
   int Y_dtype;
   int L_trans;
@@ -1532,6 +1549,11 @@ typedef struct swap_dim_spec {
   // int offset[MAX_SHAPE_DIMS];
 } swap_dim_spec_t;
 
+typedef struct insert_spec {
+  int axis;
+  int offset;
+} insert_spec_t;
+
 typedef struct swap_channel_param {
   int order[3];
   int shape_dim;
@@ -1608,6 +1630,7 @@ typedef struct flash_attention_common_spec {
   float scale;
   int hasmask;
   bool high_precision;
+  bool keep_dim;
 } flash_attention_common_spec_t;
 
 typedef struct flash_attention_global_spec {
@@ -1750,7 +1773,7 @@ typedef struct rope_spec {
   int32_t add_round_mode;
   int32_t is_permute_optimize;
   int32_t rope_mode;
-} rope_param_t;
+} rope_spec_t;
 
 typedef struct where_spec {
   int order;
@@ -2388,5 +2411,28 @@ typedef struct {
   GridSamplePaddingMode padding_mode;
   int dtype;
 } grid_sample_in_deformable_attn_global_param_t;
+
+typedef struct core_split_spec {
+  int axis;
+} core_split_spec_t;
+
+typedef struct core_join_spec {
+  int axis;
+} core_join_spec_t;
+
+typedef enum ir_flag_e {
+  IR_DO_NOTHING = 0,
+  IR_SYNC_ALL_BEGIN = 1 << 0,  // do core sync before op execution
+  IR_SYNC_ALL_END = 1 << 1,    // do core sync after op execution
+  IR_ADDR_JOIN_START = 1 << 2, // join start address of all cores
+  IR_ADDR_JOIN_NEXT = 1 << 3   // join next address of all cores
+} ir_flag_t;
+
+typedef struct ir_op_header {
+  uint32_t magic;
+  uint32_t context_len; // length of ir info, not include header itself
+  uint64_t core_mask;   // which core to run, bit0: core0, bit1: core1, ...
+  uint32_t flag;        // see ir_flag_t
+} ir_op_header_t;
 
 #endif

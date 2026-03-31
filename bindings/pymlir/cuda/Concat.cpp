@@ -63,3 +63,30 @@ void py_cuda::cudaConcatOp(tpu::ConcatOp op) {
     cuda::doRelu(dst, num_out, getCudaType(op.getOutput()));
   }
 }
+
+void py_cuda::cudaConcatOp(top::ConcatOp op) {
+  auto out_shape = module::getShape(op.getOutput());
+  int axis = op.getAxis();
+  int outer_dim = 1, axis_dim = 1, inner_dim = 1;
+  for (int i = 0; i < axis; i++) {
+    outer_dim *= out_shape[i];
+  }
+  axis_dim = out_shape[axis];
+  for (int i = axis + 1; i < out_shape.size(); i++) {
+    inner_dim *= out_shape[i];
+  }
+  auto dst = getCudaData(op.getOutput());
+  int offset = 0;
+  for (auto in : op.getInputs()) {
+    auto src = getCudaData(in);
+    auto in_shape = module::getShape(in);
+    cuda::copyAxis(src, dst, outer_dim, axis_dim, inner_dim, offset,
+                    in_shape[axis], sizeof(float));
+    offset += in_shape[axis];
+  }
+  if (op.getDoRelu()) {
+    int num_out = module::getNumElements(op.getOutput());
+    cuda::doRelu(dst, num_out, getCudaType(op.getOutput()));
+  }
+}
+

@@ -8,9 +8,6 @@
 # third-party components.
 #
 # ==============================================================================
-# @Time    : 2023/7/25 17:55
-# @Author  : chongqing.zeng@sophgo.com
-# @Project: PerfAI
 import pandas as pd
 import sys
 from openpyxl.utils import get_column_letter

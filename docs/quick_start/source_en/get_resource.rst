@@ -1,4 +1,4 @@
-Please download ``tpu-mlir-resource.tar`` from `Assets <https://github.com/sophgo/tpu-mlir/releases/>`_ and unzip it, and rename the folder to ``tpu_mlir_resource`` :
+Please obtain ``tpu-mlir-resource.tar`` from SDK package and unzip it, and rename the folder to ``tpu_mlir_resource`` :
 
 .. code-block:: shell
 

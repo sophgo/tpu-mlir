@@ -75,9 +75,9 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
 // [offset, offset+num_core)
 tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
                            int num_core = 1) {
-  if (getRunMode(op) == RunMode::TPU_DYNAMIC) {
-    return nullptr;
-  }
+  // if (getRunMode(op) == RunMode::TPU_DYNAMIC) {
+  //   return nullptr;
+  // }
   auto indexMap = op.getIndexingMaps();
   if (!indexMap || indexMap.empty())
     return nullptr;
@@ -160,11 +160,18 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
        llvm::enumerate(operandsMap, op->getOperands())) {
     if (auto outTypes = getSplitTypes(valueMap, value, ArrayRef(shapeParallel),
                                       splitDim, splitMax)) {
-      auto name = module::getName(value) + "_" + Twine(index).str();
-      auto nameLoc = NameLoc::get(rewriter.getStringAttr(name));
-
-      splitOps.push_back(rewriter.create<tpu::SplitOp>(
-          nameLoc, TypeRange(outTypes.value()), value));
+      std::vector<Location> locs_v;
+      for (int i = 0; i < outTypes->size(); i++) {
+        auto name = module::getName(value) + "_split_" + Twine(i).str();
+        locs_v.push_back(NameLoc::get(rewriter.getStringAttr(name)));
+      }
+      auto nameLoc = FusedLoc::get(rewriter.getContext(), locs_v);
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(
+          rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(splitDim)));
+      auto new_op = rewriter.create<tpu::CoreSplitOp>(
+          nameLoc, TypeRange(outTypes.value()), value, attrs);
+      splitOps.push_back(new_op.getOperation());
     } else {
       splitOps.push_back(value.getDefiningOp());
     }
@@ -226,10 +233,13 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
     for (auto cpOp : computeOps) {
       operands.push_back(cpOp->getResult(i));
     }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(splitDim)));
     joinValues.push_back(rewriter
-                             .create<tpu::JoinOp>(op->getLoc(),
-                                                  op->getResultTypes()[i],
-                                                  operands)
+                             .create<tpu::CoreJoinOp>(op->getLoc(),
+                                                      op->getResultTypes()[i],
+                                                      operands, attrs)
                              .getResult());
   }
   rewriter.create<tpu::YieldOp>(op->getLoc(), joinValues);

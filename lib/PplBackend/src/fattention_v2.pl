@@ -5,13 +5,10 @@ using namespace ppl;
 template <bool is_GQA, typename T>
 void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
                         int b, int qm, int kvm, int d, int q_head, int kv_head,
-                        float sqrt_d, int has_mask, const int g_core_num,
-                        const int dmax, const int block_m, const int block_k,
-                        const int block_h, float pool_pad) {
-  ppl::set_core_num(g_core_num);
+                        float sqrt_d, int has_mask, const int core_num,
+                        const int dmax, const int keep_dim, const int block_m,
+                        const int block_k, const int block_h, float pool_pad) {
   int head_rep = q_head / kv_head;
-
-  int core_num = get_core_num();
   int core_index = get_core_index();
   if (core_index >= core_num)
     return;
@@ -201,39 +198,43 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
 __KERNEL__ void flash_attention_mha_bf16_high_precision(
     bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k, bf16 *ptr_v, bf16 *ptr_mask, int b,
     int qm, int kvm, int d, int q_head, int kv_head, float sqrt_d, int has_mask,
-    const int g_core_num, const int dmax, const int block_m, const int block_k,
-    const int block_h) {
-  flash_attention_v2<false, bf16>(
-      ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, d, q_head, kv_head,
-      sqrt_d, has_mask, g_core_num, dmax, block_m, block_k, block_h, -1.5e10);
+    const int g_core_num, const int dmax, const int keep_dim, const int block_m,
+    const int block_k, const int block_h) {
+  flash_attention_v2<false, bf16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
+                                  kvm, d, q_head, kv_head, sqrt_d, has_mask,
+                                  g_core_num, dmax, keep_dim, block_m, block_k,
+                                  block_h, -1.5e10);
 }
 
 __KERNEL__ void flash_attention_gqa_bf16_high_precision(
     bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k, bf16 *ptr_v, bf16 *ptr_mask, int b,
     int qm, int kvm, int d, int q_head, int kv_head, float sqrt_d, int has_mask,
-    const int g_core_num, const int dmax, const int block_m, const int block_k,
-    const int block_h) {
-  flash_attention_v2<true, bf16>(
-      ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, d, q_head, kv_head,
-      sqrt_d, has_mask, g_core_num, dmax, block_m, block_k, block_h, -1.5e10);
+    const int g_core_num, const int dmax, const int keep_dim, const int block_m,
+    const int block_k, const int block_h) {
+  flash_attention_v2<true, bf16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
+                                 kvm, d, q_head, kv_head, sqrt_d, has_mask,
+                                 g_core_num, dmax, keep_dim, block_m, block_k,
+                                 block_h, -1.5e10);
 }
 
 __KERNEL__ void flash_attention_mha_f16_high_precision(
     fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k, fp16 *ptr_v, fp16 *ptr_mask, int b,
     int qm, int kvm, int d, int q_head, int kv_head, float sqrt_d, int has_mask,
-    const int g_core_num, const int dmax, const int block_m, const int block_k,
-    const int block_h) {
-  flash_attention_v2<false, fp16>(
-      ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, d, q_head, kv_head,
-      sqrt_d, has_mask, g_core_num, dmax, block_m, block_k, block_h, -15000);
+    const int g_core_num, const int dmax, const int keep_dim, const int block_m,
+    const int block_k, const int block_h) {
+  flash_attention_v2<false, fp16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
+                                  kvm, d, q_head, kv_head, sqrt_d, has_mask,
+                                  g_core_num, dmax, keep_dim, block_m, block_k,
+                                  block_h, -15000);
 }
 
 __KERNEL__ void flash_attention_gqa_f16_high_precision(
     fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k, fp16 *ptr_v, fp16 *ptr_mask, int b,
     int qm, int kvm, int d, int q_head, int kv_head, float sqrt_d, int has_mask,
-    const int g_core_num, const int dmax, const int block_m, const int block_k,
-    const int block_h) {
-  flash_attention_v2<true, fp16>(
-      ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, d, q_head, kv_head,
-      sqrt_d, has_mask, g_core_num, dmax, block_m, block_k, block_h, -15000);
+    const int g_core_num, const int dmax, const int keep_dim, const int block_m,
+    const int block_k, const int block_h) {
+  flash_attention_v2<true, fp16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
+                                 kvm, d, q_head, kv_head, sqrt_d, has_mask,
+                                 g_core_num, dmax, keep_dim, block_m, block_k,
+                                 block_h, -15000);
 }

@@ -32,6 +32,7 @@ protected:
       Operation *from,
       Operation *to); // must be a block with single input and single output
   void set_add_before_softmax_fp32();
+  void set_sub_float();
   template <typename opType>
   bool find_in_block(Operation *from, Operation *to,
                      std::vector<Operation *> &ops);

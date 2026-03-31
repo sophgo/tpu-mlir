@@ -35,6 +35,18 @@ void print_local_mem_data(local_addr_t local_offset, int start_idx,
 
 void print_tensor_data(void *tensor, bool is_rv);
 
+static void tpu_poll_with_check_parallel() {
+  bool has_para = false;
+  if (tpu_is_parallel_state()) {
+    has_para = true;
+    tpu_parallel_end();
+  }
+  tpu_poll();
+  if (has_para) {
+    tpu_parallel_start();
+  }
+}
+
 static void check_tensor_overflow(void *__parent, void *__sub_tensor,
                                   const char *var_name) {
   ppl_tensor_t *parent = (ppl_tensor_t *)__parent;
@@ -60,7 +72,7 @@ static void check_tensor_overflow(void *__parent, void *__sub_tensor,
     size_t max_size = 1;
     max_size += (sub_tensor->shape.n - 1) * sub_tensor->stride.n;
     int c_shape = sub_tensor->shape.c;
-    if (sub_tensor->mode == 0) {
+    if (sub_tensor->mode == 3) {
       c_shape = (c_shape + NPU_NUM - 1) / NPU_NUM;
     }
     max_size += (c_shape - 1) * sub_tensor->stride.c;

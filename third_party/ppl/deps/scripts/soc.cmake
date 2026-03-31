@@ -177,7 +177,7 @@ if(NOT EXISTS ${ZLIB_LIB})
 else()
     message(STATUS "zlib is already installed at ${ZLIB_INSTALL_DIR}.")
 endif()
-
+add_definitions(-DPPL_TUNE)
 aux_source_directory(src APP_SRC_FILES)
 foreach(app_src IN LISTS APP_SRC_FILES)
   get_filename_component(app ${app_src} NAME_WE)

@@ -104,6 +104,7 @@ public:
 
   void load(const std::string &config_file);
   void dump();
+  uint64_t get_config_hash() const;
 
 private:
   LgConfig() { clear(); }

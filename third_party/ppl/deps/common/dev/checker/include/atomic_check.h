@@ -89,6 +89,14 @@ void conv_fp_check(ppl_tensor_t *input, ppl_tensor_t *output,
                    u32 ins_const_val, int do_relu, int saturate,
                    PAD_MODE pad_mode);
 
+void conv_bw_check(ppl_tensor_t *input, ppl_tensor_t *grad,
+                   ppl_variable_t *pad_ins, ppl_tensor_t *res,
+                   int kh, int kw, int ins_h, int ins_w, int dh, int dw,
+                   int stride_h, int stride_w,
+                   int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r,
+                   int result_add, u32 insert_const_val,
+                   PAD_MODE pad_mode);
+
 void cpy_cross_npu_check(ppl_tensor_t *src, ppl_tensor_t *dst);
 
 void dq0_check(ppl_tensor_t *input, ppl_variable_t *B_tensor,
@@ -286,5 +294,7 @@ void check_matmul(ppl_tensor_t* lhs,
 void check_mm(ppl_tensor_t* left, ppl_tensor_t* right, ppl_tensor_t* dst);
 
 void check_size(ppl_tensor_t* a, ppl_tensor_t* b);
+
+bool is_constant(ppl_variable_t* var);
 
 #endif /* ATOMIC_CHECK */
