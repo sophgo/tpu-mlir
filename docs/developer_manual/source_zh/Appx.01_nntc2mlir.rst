@@ -1,7 +1,7 @@
 附录01：从 NNTC 迁移至 TPU-MLIR
 ===============================
 
-NNTC 所使用 Docker 版本为 sophgo/tpuc_dev:v2.1, MLIR 使用的版本及环境初始化请参考
+NNTC 所使用 Docker 版本为 tpuc_dev:v2.1, MLIR 使用的版本及环境初始化请参考
 :ref:`开发环境配置 <docker configuration>` 。
 
 下面将以 yolov5s 为例, 讲解NNTC和TPU-MLIR在量化方面的异同, 浮点模型编译方面可以直接

@@ -30,17 +30,14 @@ llmc_tpu
 
 This project originates from `ModelTC/llmc <https://github.com/ModelTC/llmc>`_. `ModelTC/llmc` is an excellent project specifically designed for compressing Large Language Models (LLMs). It leverages state-of-the-art compression algorithms to enhance efficiency and reduce model size without compromising prediction accuracy. If you want to learn more about the llmc project, please visit `<https://github.com/ModelTC/llmc>`_.
 
-This project is based on `ModelTC/llmc` with some customized modifications to support the Sophgo processor.
+This project is based on `ModelTC/llmc` with some customized modifications to support the deep learning processor.
 
 Environment Setup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. **Download This Project**
 
-.. code-block:: shell
-   :linenos:
-
-   git clone git@github.com:sophgo/llmc-tpu.git
+Clone the llmc-tpu repository from GitHub.
 
 
 2. **Prepare the LLM or VLM Model for Quantization,Place the model you need to quantize in the same-level directory as llmc-tpu**

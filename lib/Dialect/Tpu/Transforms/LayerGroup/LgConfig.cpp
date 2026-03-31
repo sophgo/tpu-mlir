@@ -34,9 +34,11 @@ void LgConfig::load(const std::string &config_file) {
   // Load the debugger configuration json file
   auto bufferOrErr = llvm::MemoryBuffer::getFile(config_file);
   if (!bufferOrErr) {
-    llvm::errs() << "Failed to open config file: "
-                 << bufferOrErr.getError().message()
-                 << ", using default layer group config!\n";
+    LAYER_GROUP_LOG_DEBUG_BLOCK({
+      llvm::errs() << "Can not open config file: "
+                   << bufferOrErr.getError().message()
+                   << ", using default layer group config!\n";
+    });
     return;
   }
   // Parse JSON
@@ -152,6 +154,25 @@ void LgConfig::load(const std::string &config_file) {
     llvm::WithColor(llvm::outs(), llvm::raw_ostream::GREEN) << llvm::format(
         "Load debugger file \"%s\" success!\n", config_file.c_str());
   }
+}
+
+uint64_t LgConfig::get_config_hash() const {
+  std::string buffer;
+  llvm::raw_string_ostream os(buffer);
+
+  // os << "Strategy Using: " << shape_secs_search_strategy_ << "\n";
+  for (const auto &sc_method : sc_method_configs_) {
+    os << "Search Method Config: " << sc_method.first << "\n";
+    for (const auto &config : sc_method.second) {
+      os << "  Config Name: " << config.first << "\n";
+      os << "    Value: ";
+      std::visit([&os](auto &&arg) { os << arg << "\n"; }, config.second);
+    }
+  }
+
+  os.flush();
+
+  return llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
 }
 
 } // namespace tpu

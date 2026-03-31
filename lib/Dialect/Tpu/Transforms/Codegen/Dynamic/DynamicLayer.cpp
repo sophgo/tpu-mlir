@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Support.h"
 using namespace llvm;
 
 using namespace tpu_mlir::backend;
@@ -214,6 +215,23 @@ DynamicTensorType to_dynamic_tensor_type(Value v) {
   return DYNAMIC_NEURON;
 }
 
+static void __dump_id_name_dict(Value v, std::string prefix) {
+  // printf("dynamic %s: %d:\"%s\" \n", prefix.c_str(), get_tensor_id(v),
+  //             module::getName(v).str().c_str());
+  const char *need = getenv("NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA");
+  if (!need)
+    return;
+  if (strcmp(need, "1") == 0) {
+    const char *path = getenv("DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH");
+    if (path) {
+      FILE *fp = fopen(path, "a");
+      fprintf(fp, "%d:\"%s\",", get_tensor_id(v),
+              module::getName(v).str().c_str());
+      fclose(fp);
+    }
+  }
+}
+
 std::vector<dynamic_global_tensor_spec>
 dynamic_layer::get_input_global_tensor_specs() {
   std::vector<dynamic_global_tensor_spec> specs;
@@ -234,23 +252,9 @@ dynamic_layer::get_input_global_tensor_specs() {
     spec.host_data = nullptr;
     spec.elem_num = module::getNumElements(v);
     specs.emplace_back(spec);
+    __dump_id_name_dict(v, "input");
   }
   return specs;
-}
-
-static void __dump_id_name_dict(Value v) {
-  const char *need = getenv("NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA");
-  if (!need)
-    return;
-  if (strcmp(need, "1") == 0) {
-    const char *path = getenv("DYNAMIC_LAYER_OUTPUT_ID_DICT_PATH");
-    if (path) {
-      FILE *fp = fopen(path, "a");
-      fprintf(fp, "%d:\"%s\",", get_tensor_id(v),
-              module::getName(v).str().c_str());
-      fclose(fp);
-    }
-  }
 }
 
 std::vector<dynamic_global_tensor_spec>
@@ -273,7 +277,7 @@ dynamic_layer::get_output_global_tensor_specs() {
     spec.host_data = nullptr;
     spec.elem_num = module::getNumElements(v);
     specs.emplace_back(spec);
-    __dump_id_name_dict(v);
+    __dump_id_name_dict(v, "output");
   }
   return specs;
 }
@@ -348,7 +352,7 @@ size_t dynamic_layer::write_local_tensor_specs(
 }
 
 size_t dynamic_layer::get_global_ir_length() {
-  size_t overhead = sizeof(uint32_t) * 2; // Magic + Len
+  size_t overhead = sizeof(ir_op_header_t);
   return overhead + this->write_global_ir_impl(nullptr, true);
 }
 
@@ -384,25 +388,78 @@ size_t dynamic_layer::write_global_ir_impl(void *buffer, bool feign) {
   }
 }
 
-const uint32_t Magic = 0xf00ffff;
+uint64_t dynamic_layer::get_core_mask() {
+  if (module::isOpInGroup(op_)) {
+    // layer group not use core mask
+    return 0;
+  }
+  if (module::isOpInBlock(op_) == true) {
+    UNREACHABLE_OP("dynamic_layer::get_core_mask not support op in block", op_);
+  }
+  if (op_->hasAttrOfType<BoolAttr>("multicore") &&
+      op_->getAttrOfType<BoolAttr>("multicore").getValue() == true) {
+    auto n = module::getCoreNum();
+    return (1ULL << n) - 1;
+  }
+  if (op_->hasAttrOfType<IntegerAttr>(CodegenAttr::CORE_ID)) {
+    int core_id =
+        op_->getAttrOfType<IntegerAttr>(CodegenAttr::CORE_ID).getInt();
+    return (1ULL << core_id);
+  }
+
+  // default only execute in core 0
+  return 1ULL;
+}
+
+uint32_t dynamic_layer::get_global_flag() {
+  uint32_t flag = 0;
+  if (op_->hasAttrOfType<BoolAttr>(CodegenAttr::SYNC_ALL_BEGIN)) {
+    bool sync_all_begin =
+        op_->getAttrOfType<BoolAttr>(CodegenAttr::SYNC_ALL_BEGIN).getValue();
+    if (sync_all_begin) {
+      flag |= IR_SYNC_ALL_BEGIN;
+    }
+  }
+  if (op_->hasAttrOfType<BoolAttr>(CodegenAttr::SYNC_ALL_END)) {
+    bool sync_all_end =
+        op_->getAttrOfType<BoolAttr>(CodegenAttr::SYNC_ALL_END).getValue();
+    if (sync_all_end) {
+      flag |= IR_SYNC_ALL_END;
+    }
+  }
+  if (op_->hasAttrOfType<BoolAttr>(CodegenAttr::ADDR_JOIN_START)) {
+    bool addr_join_start =
+        op_->getAttrOfType<BoolAttr>(CodegenAttr::ADDR_JOIN_START).getValue();
+    if (addr_join_start) {
+      flag |= IR_ADDR_JOIN_START;
+    }
+  }
+  if (op_->hasAttrOfType<BoolAttr>(CodegenAttr::ADDR_JOIN_NEXT)) {
+    bool addr_join_next =
+        op_->getAttrOfType<BoolAttr>(CodegenAttr::ADDR_JOIN_NEXT).getValue();
+    if (addr_join_next) {
+      flag |= IR_ADDR_JOIN_NEXT;
+    }
+  }
+  return flag;
+}
 
 size_t dynamic_layer::write_local_ir(void *buffer,
                                      const std::map<int, int> &consume_table) {
   auto buffer_u32 = static_cast<uint32_t *>(buffer);
-  *buffer_u32 = Magic; // For sanity check
-  *buffer_u32++ |= this->local_ir_version();
-  auto len = this->write_local_ir_impl(buffer_u32 + 1, consume_table);
-  *buffer_u32 = len;
+  buffer_u32[0] = get_local_magic();
+  auto len = this->write_local_ir_impl(&buffer_u32[2], consume_table);
+  buffer_u32[1] = len;
   return len + 2 * sizeof(uint32_t);
 }
 
 size_t dynamic_layer::write_global_ir(void *buffer) {
-  auto buffer_u32 = static_cast<uint32_t *>(buffer);
-  *buffer_u32 = Magic; // For sanity check
-  *buffer_u32++ |= this->global_ir_version();
-  auto len = this->write_global_ir_impl(buffer_u32 + 1);
-  *buffer_u32 = len;
-  return len + 2 * sizeof(uint32_t);
+  ir_op_header_t *header = (ir_op_header_t *)buffer;
+  header->magic = get_global_magic();
+  header->context_len = this->write_global_ir_impl(header + 1);
+  header->core_mask = get_core_mask();
+  header->flag = get_global_flag();
+  return header->context_len + sizeof(ir_op_header_t);
 }
 
 uint32_t dynamic_layer::get_global_ir_length(ir_layer_info_t *ir_layer_info) {
@@ -458,10 +515,10 @@ uint32_t push_back_layer_global_tensor(
   }
 
   /*TODO process shape layer*/
-  ir_tensor_info.tensor_type = module::isWeight(v) ? IR_TENSOR_TYPE_COEFF
-                               : module::isShapeRelatedOp(v)
-                                   ? IR_TENSOR_TYPE_SHAPE
-                                   : IR_TENSOR_TYPE_NEURON;
+  ir_tensor_info.tensor_type =
+      module::isWeight(v) ? IR_TENSOR_TYPE_COEFF
+                          : module::isShapeRelatedOp(v) ? IR_TENSOR_TYPE_SHAPE
+                                                        : IR_TENSOR_TYPE_NEURON;
 
   ir_tensor_info.is_io_tensor = 0;
   if (is_layer_in) {

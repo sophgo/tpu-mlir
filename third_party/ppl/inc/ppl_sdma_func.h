@@ -11,6 +11,12 @@
 namespace ppl {
 namespace sdma {
 
+void send_msg(int msg_id, int msg_cnt, int port = DEFAULT_SDMA_PORT);
+void wait_msg(int msg_id, int msg_cnt, int port = DEFAULT_SDMA_PORT);
+
+void vsdma_initialize();
+void vsdma_poll();
+
 template <typename DataType0, typename DataType1>
 void fill(gtensor<DataType0> &dst, DataType1 C,
           int port_id = DEFAULT_SDMA_PORT);

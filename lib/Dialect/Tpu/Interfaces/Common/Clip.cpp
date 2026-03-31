@@ -7,14 +7,24 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::ClipOp::init(InferenceParameter &p) { return success(); }
 void tpu::ClipOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ClipOp::inference(InferenceParameter &p) {
+  auto out_type = module::getStorageType(getOutput());
   auto min_v = static_cast<float>(getMin().convertToDouble());
   auto max_v = static_cast<float>(getMax().convertToDouble());
+  if (out_type.isF16()) {
+    min_v = f16_to_f32(f32_to_f16(min_v));
+    max_v = f16_to_f32(f32_to_f16(max_v));
+  } else if (out_type.isBF16()) {
+    min_v = bf16_to_f32(f32_to_bf16(min_v, true));
+    max_v = bf16_to_f32(f32_to_bf16(max_v, true));
+  }
+
   auto num_element = module::getNumElements(getOutput());
   assert(!module::isUniformQuantized(getOutput()) && "Not Implemented");
 

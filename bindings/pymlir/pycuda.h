@@ -12,6 +12,7 @@
 #include "cuda/cuda_helper.h"
 #include "pymlir.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <cuda_runtime.h>
 #include <cudnn.h>
@@ -53,9 +54,12 @@ public:
   void set_tensor(
       std::string name,
       py::array_t<float, py::array::c_style | py::array::forcecast> data);
-  void invoke(bool dump_all);
+  void invoke(bool dump_all, const std::vector<std::string>& extra_outputs);
   py::array get_tensor(std::string name);
   py::dict get_all_tensor();
+
+  bool is_cuda_support_op(Operation *op);
+  Operation * get_weight_target_op(Operation *weight_op);
 
 private:
   // -------------------------------------------------------------------
@@ -78,7 +82,6 @@ private:
   void cudaCastOp(tpu::CastOp op);
   void cudaConcatOp(tpu::ConcatOp op);
   void cudaDeconvOp(tpu::DeconvOp op);
-  void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
   void cudaGatherOp(tpu::GatherOp op);
   void cudaGenericCpuOp(tpu::GenericCpuOp op);
   void cudaLutOp(tpu::LutOp op);
@@ -96,6 +99,15 @@ private:
   void cudaTileOp(tpu::TileOp op);
   void cudaUpsampleOp(tpu::UpsampleOp op);
   void cudaUnsqueezeOp(tpu::UnsqueezeOp op);
+  void cudaActiveOp(tpu::ActiveOp op);
+  void cudaSubOp(tpu::SubOp op);
+  void cudaMulConstOp(tpu::MulConstOp op);
+  void cudaLayerNormOp(tpu::LayerNormOp op);
+  void cudaDepth2SpaceOp(tpu::Depth2SpaceOp op);
+  void cudaReduceOp(tpu::ReduceOp op);
+  void cudaSwapDimInnerOp(tpu::SwapDimInnerOp op);
+  void cudaSubConstOp(tpu::SubConstOp op);
+  void cudaRequantFpOp(tpu::RequantFpOp op);
 
   void cudaAddOp(top::AddOp op);
   void cudaConvOp(top::ConvOp op);
@@ -104,11 +116,37 @@ private:
   void cudaAvgPoolOp(top::AvgPoolOp op);
   void cudaMatMulOp(top::MatMulOp op);
   void cudaReshapeOp(top::ReshapeOp op);
+  void cudaSiLUOp(top::SiLUOp op);
+  void cudaConcatOp(top::ConcatOp op);
+  void cudaUpsampleOp(top::UpsampleOp op);
+  void cudaPermuteOp(top::PermuteOp op);
+  void cudaSliceOp(top::SliceOp op);
+  void cudaSoftmaxOp(top::SoftmaxOp op);
+  void cudaSubOp(top::SubOp op);
+  void cudaMulConstOp(top::MulConstOp op);
+  void cudaMulOp(top::MulOp op);
+  void cudaSigmoidOp(top::SigmoidOp op);
+  void cudaLayerNormOp(top::LayerNormOp op);
+  void cudaSqueezeOp(top::SqueezeOp op);
+  void cudaGELUOp(top::GELUOp op);
+  void cudaDepth2SpaceOp(top::Depth2SpaceOp op);
+  void cudaReduceOp(top::ReduceOp op);
+  void cudaSwapDimInnerOp(top::SwapDimInnerOp op);
+  void cudaUnsqueezeOp(top::UnsqueezeOp op);
+  void cudaSubConstOp(top::SubConstOp op);
+  void cudaGatherOp(top::GatherOp op);
+  void cudaRequantFpOp(top::RequantFpOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);
   void cuda_malloc(std::map<std::string, cuda_ptr> &map, mlir::Value v);
-  void cuda_to_host(const std::string &name);
+  void cuda_to_host(const std::string &name, bool for_infer);
+  bool is_no_mem_op(Operation *op);
+
+  void mix_load(ModuleOp m);
+  void gpu_load(ModuleOp m);
+  void gpu_invoke(bool dump_all, const std::vector<std::string>& extra_outputs);
+  void mix_invoke(bool dump_all, const std::vector<std::string>& extra_outputs);
 
 public:
   py::list input_names;
@@ -119,11 +157,15 @@ private:
   OwningOpRef<ModuleOp> module_;
   cudnnHandle_t cudnn_;
   bool dump_all_;
+  bool mix_mode_ = false;
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
   std::map<std::string, mlir::Value> value_map_;
   std::map<std::string, cuda_ptr> input_map_;
   std::map<std::string, cuda_ptr> weight_map_;
   std::map<std::string, cuda_ptr> activation_map_;
-  std::map<std::string, std::shared_ptr<std::vector<float>>> buffer_map_;
+  //should remove buffer map, convert type only wen get tensor... FIXME
+  std::map<std::string, std::shared_ptr<std::vector<float>>> buffer_map_; // cpu mems, only active for dump
+  std::map<std::string, std::shared_ptr<std::vector<float>>> infer_map_; // cpu mems, for cpu inference, including weights and active
+  std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map; // cpu infer ops
 };

@@ -125,6 +125,8 @@ std::shared_ptr<std::vector<StringRef>> getOutputs();
 bool isBF16Modes();
 bool isF16Modes();
 bool isF8Modes();
+int64_t getLoraRank();
+void setLoraRank(int64_t rank);
 
 Platform getPlatform();
 bool isPlatform(Platform plt);
@@ -133,6 +135,7 @@ int64_t getFLOPs();
 void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
+bool isDynamicQuantize();
 int getQuantGroupSize();
 void setQuantGroupSize(int q_group_size);
 bool isQuantSymmetric();

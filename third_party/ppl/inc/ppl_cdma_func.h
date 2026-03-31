@@ -15,7 +15,7 @@ template <typename DataType>
 void write(gtensor<DataType> &dst, const gtensor<DataType> &src, int src_chipid,
            int dst_chipid, bool is_fill_const, int const_val,
            bool stride_enable, bool nchw_copy, int opcode = 0, int msg_en = 0,
-           int msg_id = 0, int wcnt = 0);
+           int msg_id = 0, int wcnt = 0, int port = DEFAULT_CDMA_PORT);
 
 template <typename DataType>
 void write(gtensor<DataType> &dst, const gtensor<DataType> &src) {
@@ -36,7 +36,7 @@ void write(gtensor<DataType> &dst, const gtensor<DataType> &src, int src_chipid,
 
 template <typename DataType>
 void read(gtensor<DataType> &dst, gtensor<DataType> &src, int src_chipid,
-          int dst_chipid, int opcode, int stride_enable);
+          int dst_chipid, int opcode, int stride_enable, int port = DEFAULT_CDMA_PORT);
 
 template <typename DataType>
 void read(gtensor<DataType> &dst, gtensor<DataType> &src) {
@@ -130,20 +130,18 @@ void recv(gtensor<DataType> &dst, gtensor<DataType> &src, int src_chipid,
 
 template <typename DataType>
 void remote_msgsend(gtensor<DataType> &index_list, int chip_id,
-                    int index_list_num, int msg_id, int wcnt);
+                    int index_list_num, int msg_id, int wcnt, int port = DEFAULT_CDMA_PORT);
 
 template <typename DataType1, typename DataType2>
 void scatter(gtensor<DataType1> &src, gtensor<DataType2> &index_list,
              int chip_id, int index_list_num, int length_shift, int opcode = 0,
-             int msg_en = 0, int msg_id = 0, int wcnt = 0);
+             int msg_en = 0, int msg_id = 0, int wcnt = 0, int port = DEFAULT_CDMA_PORT);
+
+template <typename DataType1, typename DataType2>
+void gather(gtensor<DataType1> &dst, gtensor<DataType2> &index_list,
+            int chip_id, int index_list_num, int length_shift, int opcode = 0, int port = DEFAULT_CDMA_PORT);
 
 void initialize();
-
-int get_port(int self, int peer, int direction);
-
-void send_msg(int port, int msg_id, int wait_cnt);
-
-void wait_msg(int port, int msg_id, int send_cnt);
 
 void tx_send_msg(int port, int msg_id, int wait_cnt);
 

@@ -40,6 +40,15 @@ def SubnetDivide : Pass<"subnet-divide", "ModuleOp"> {
   ];
 }
 
+def TopoSort : Pass<"topo-sort", "ModuleOp"> {
+  let summary = "applied before layer-group to minimize number of baseGroups";
+  let constructor = "createTopoSortPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"depth_first", "depth_first", "std::string", /*default=*/"\"true\"", "optional sort stategies">,
+  ];
+}
+
 def LayerGroup : Pass<"layer-group", "ModuleOp"> {
   let summary = "convert to layer group in tpu by tpuc-opt";
   let constructor = "createLayerGroupPass()";
@@ -50,12 +59,15 @@ def LayerGroup : Pass<"layer-group", "ModuleOp"> {
     Option<"group_by_cores", "group_by_cores", "std::string", /*default=*/"\"auto\"", "whether force group by cores">,
     Option<"compress_mode", "compress_mode", "std::string", /*default=*/"\"none\"", "compress mode">,
     Option<"lgcache", "lgcache", "std::string", /*default=*/"\"true\"", "whether to dump cut_results">,
+    Option<"enable_lghash", "enable_lghash", "std::string", /*default=*/"\"false\"", "whether to dump lghash with layer group info">,
+    Option<"lghash_dir", "lghash_dir", "std::string", /*default=*/"\"\"","directory to dump and load lghash file">,
     Option<"debugger", "debugger", "int64_t", /*default=*/"0",
            "0: do nothing; "
            "1: do LayerGroup and create debugger file; "
            "2: only create debugger file; "
            "3: do LayerGroup with debugger file; "
-           "4: do partial LayerGroup with debugger file.">,
+           "4: do partial LayerGroup with debugger file; "
+           "5: check the single group interval given by debugger file.">,
     Option<"debugger_filename", "debugger_filename", "std::string", /*default=*/"\"\"", "debugger file name">,
     Option<"disable_group_overlap", "disable_group_overlap", "bool", /*default=*/"false", "disable group overlap">,
     Option<"config_filename", "config_filename", "std::string", /*default=*/"\"\"", "config file name">,
@@ -155,6 +167,10 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
            "choose index to strip output quant.">,
     Option<"quant_output_bf16", "quant_output_bf16", "bool", /*default=*/"false",
            "force output to be bf16 type">,
+    Option<"quant_input_int8", "quant_input_int8", "bool", /*default=*/"false",
+           "force input to int8/uint8 type in quantize to INT8 mode">,
+    Option<"quant_output_int8", "quant_output_int8", "bool", /*default=*/"false",
+           "force output to int8/uint8 type in quantize to INT8 mode">,
   ];
 }
 

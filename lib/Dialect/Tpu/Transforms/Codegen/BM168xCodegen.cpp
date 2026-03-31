@@ -16,8 +16,10 @@
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
 #include "tpu_mlir/Backend/CV18xx/CV184X.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Support.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <algorithm>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SHA256.h>
 
@@ -125,6 +127,9 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
 void BMCodegen::run(ModuleOp s, bool embed_debug_info, bool gdma_check) {
   // record the line number of operation in module.
   DynCodegenInit();
+  // patterns for easy codegen by dynamic
+  DoPatternsForDynamic(s);
+
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(s, inputs, outputs);
@@ -132,6 +137,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info, bool gdma_check) {
   if (module::getDeviceNum() > 1) {
     module::getSubModuleId(s, cascade.device_id, cascade.step);
   }
+
   // checkAndUpdateHidden(inputs, outputs);
 
   auto coeff_addr = module::getCoeffAddr(s);
@@ -172,6 +178,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info, bool gdma_check) {
   auto context = std::make_unique<Context>();
   int dynamic_mode = module::isBM1684Family() ? 1 : 2;
   bool first_dynamic = false;
+  uint32_t max_run_core = 1;
 
   s.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
     if (func == module::getMainFuncOp(s)) {
@@ -186,14 +193,19 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info, bool gdma_check) {
 
       switch (mode) {
       case RunMode::TPU_STATIC: {
+        uint32_t run_core = 1;
         profile_ctx.set_profile_start(subnet_id);
-        auto subnet = CreateSubNet(s, call);
+        auto subnet = CreateSubNet(s, call, run_core);
+        max_run_core = std::max(max_run_core, run_core);
         subnet_v.push_back(subnet);
         profile_ctx.set_profile_end(subnet_id);
       } break;
       case RunMode::TPU_DYNAMIC: {
+        uint32_t run_core = 1;
         auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
-        auto subnet = CreateSubNet(s, call, std::move(subnet_ir_), context);
+        auto subnet =
+            CreateSubNet(s, call, std::move(subnet_ir_), context, run_core);
+        max_run_core = std::max(max_run_core, run_core);
         subnet_v.push_back(subnet);
       } break;
       case RunMode::CPU: {
@@ -247,16 +259,9 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info, bool gdma_check) {
   // create subnet
   npb.add_sub_net(subnets);
   npb.add_cpu_mem_size(0);
-  // multi-core
-  if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
-    auto bufferNum = multi_core->getCodebuffer().size();
-    if (module::getCoreNum() > 1 && bufferNum > 1) {
-      assert(module::getCoreNum() == bufferNum &&
-             "The code buffer size does not match the core number defined in "
-             "Module.");
-      npb.add_core_num(module::getCoreNum());
-    }
-  }
+  // multi-core, max run core in all subnets
+  npb.add_core_num(max_run_core);
+
   // io alone
   npb.add_io_addr(io_addr);
   npb.add_io_size(io_size);
@@ -1325,6 +1330,9 @@ void codegenCoreParallelOp(
   // message0.
   int id = parallelOp.getOffset();
   for (auto globalOp : parallelOp.getOps<GlobalGenInterfaceDecorator>()) {
+    if (isa<tpu::CoreSplitOp, tpu::CoreJoinOp>(globalOp.getOperation())) {
+      continue;
+    }
     multi_core->useCore(id++);
     multi_core->syncAll(); // begin compute sync-all
     codegenGlobalLayer(globalOp);
@@ -1657,7 +1665,8 @@ void BMCodegen::codegen(FuncOp funcOp) {
   });
 }
 
-Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
+Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call,
+                                               uint32_t &run_core) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(s, call.getCallee());
   codegen(func);
@@ -1758,7 +1767,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
                           cmd_group_v->end());
     }
   }
-
+  run_core = std::max(uint32_t(core_commands.size()), 1u);
   cmd_group_all->insert(cmd_group_all->end(), cmd_group_vs.begin(),
                         cmd_group_vs.end());
   auto cmd_group = builder.CreateVector(cmd_group_vs);
@@ -1774,6 +1783,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
   snb.add_output_tensor(output_tensor);
   snb.add_id(subnet_id);
   snb.add_next_subnet_ids(next_ids);
+  snb.add_run_core(run_core);
   return snb.Finish();
 }
 
@@ -2068,10 +2078,36 @@ void BMCodegen::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
   }
 }
 
+static bool run_multi_core(FuncOp func) {
+  bool multi_core = false;
+  func.walk<WalkOrder::PreOrder>([&](Operation *op) {
+    if (isa<tpu::GroupParallelOp, tpu::CoreParallelOp, tpu::CoreSplitOp,
+            tpu::CoreJoinOp>(op)) {
+      multi_core = true;
+      return WalkResult::interrupt();
+    }
+    if (auto g_op = dyn_cast<GroupOp>(op)) {
+      auto total_secs = g_op.getNsecs() * g_op.getCsecs() * g_op.getHsecs() *
+                        g_op.getWsecs() * g_op.getDsecs();
+      if (total_secs > 1) {
+        multi_core = true;
+        return WalkResult::interrupt();
+      }
+    }
+    if (op->hasAttrOfType<BoolAttr>("multicore") &&
+        op->getAttrOfType<BoolAttr>("multicore").getValue()) {
+      multi_core = true;
+      return WalkResult::interrupt();
+    }
+    return WalkResult::advance();
+  });
+  return multi_core;
+}
+
 Offset<bmodel::SubNet>
 BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call,
                         std::unique_ptr<SubnetIr> subnet_ir_,
-                        std::unique_ptr<Context> &context) {
+                        std::unique_ptr<Context> &context, uint32_t &run_core) {
   auto func = module::getFuncOp(s, call.getCallee());
   std::vector<Value> inputs;
   std::vector<Value> outputs;
@@ -2112,6 +2148,10 @@ BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call,
     }
   }
 
+  run_core = 1;
+  if (module::getCoreNum() > 1 && run_multi_core(func)) {
+    run_core = module::getCoreNum();
+  }
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
   std::function<void(Operation *, SubnetIr *)> task =
@@ -2135,6 +2175,7 @@ BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call,
   snb.add_ir_len(subnet_ir_->get_ir_len());
   snb.add_id(subnet_id);
   snb.add_next_subnet_ids(next_ids);
+  snb.add_run_core(run_core);
   return snb.Finish();
 }
 

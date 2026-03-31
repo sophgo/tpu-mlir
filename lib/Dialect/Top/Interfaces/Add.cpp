@@ -90,7 +90,7 @@ void top::AddOp::shape_inference() {
   for (int i = 0; i < getNumOperands(); i++) {
     auto value = getInputs()[i];
     broadcast_tensor_reshape(getOutput(), value);
-    has_scalar = has_scalar || module::isScalar(value.getDefiningOp());
+    has_scalar = has_scalar && module::isScalar(value.getDefiningOp());
   }
   auto inputs = getInputs();
   // shape value inference can only support shape and weight

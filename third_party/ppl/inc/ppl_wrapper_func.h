@@ -29,6 +29,30 @@ template <typename T> auto getSignMask() {
   }
 }
 
+template <typename T>
+void sign_mul(tensor<T> &out, tensor<T> &in, tensor<T> &mul, tensor<T> &tmp) {
+  if constexpr (std::is_same<T, float>::value) {
+    int sign_mask = 0x80000000;
+    auto t_sign_int = tmp.template view<int32>();
+    auto in_int = in.template view<int32>();
+    auto mul_int = mul.template view<int32>();
+    auto out_int = out.template view<int32>();
+    tiu::bitwise_and(t_sign_int, in_int, sign_mask);
+    tiu::bitwise_or(out_int, t_sign_int, mul_int);
+  } else if constexpr (std::is_same<T, fp16>::value ||
+                       std::is_same<T, bf16>::value) {
+    int16_t sign_mask = 0x8000;
+    auto t_sign_int = tmp.template view<int16>();
+    auto in_int = in.template view<int16>();
+    auto mul_int = mul.template view<int16>();
+    auto out_int = out.template view<int16>();
+    tiu::bitwise_and(t_sign_int, in_int, sign_mask);
+    tiu::bitwise_or(out_int, t_sign_int, mul_int);
+  } else {
+    static_assert(false, "Unsupported DataType");
+  }
+}
+
 template <typename T> float log_approximation(T x) {
   if (x <= 0) {
     return -1;
@@ -46,6 +70,66 @@ template <typename T> float log_approximation(T x) {
   }
   return 2 * sum;
 }
+
+// log_approximation: Series Expansion Method
+// Using the series expansion of the inverse hyperbolic tangent function:
+// ln(x) = 2 * [ (x-1)/(x+1) + 1/3 * ((x-1)/(x+1))^3 + 1/5 * ((x-1)/(x+1))^5 + ... ]
+// Convergence condition: x > 0. Convergence is slow for large x values.
+// log_approximation_range_poly: Range Reduction + Polynomial Approximation Method
+// 1. Range reduction: x = m * 2^k, m ∈ [1, 2)
+// 2. Polynomial approximation: ln(m) ≈ z * (c1 + z*(c2 + z*c3)), z = m-1
+// 3. Final result: ln(x) = k*ln(2) + ln(m)
+// Has good accuracy over the entire positive real number domain, especially suitable for large
+template <typename T>
+float log_approximation_range_poly(T x) {
+  if (x <= 0) {
+    return -1.0f;
+  }
+
+  // Precomputed constants
+  const float LN2 = 0.6931471805599453f;
+  const float LN10 = 2.302585092994046f;
+
+  // Direct return for common large values
+  if (x == 10.0f) return LN10;
+  if (x == 100.0f) return 2.0f * LN10;
+  if (x == 1000.0f) return 3.0f * LN10;
+  if (x == 10000.0f) return 4.0f * LN10;
+
+  // Convert to float to ensure type consistency
+  float m = static_cast<float>(x);
+  int k = 0;
+
+  // Range reduction: decompose m into m * 2^k, where m ∈ [1, 2)
+  while (m >= 2.0f) {
+    m = m / 2.0f;
+    k = k + 1;
+  }
+
+  while (m < 1.0f) {
+    m = m * 2.0f;
+    k = k - 1;
+  }
+
+  // Now m ∈ [1, 2)
+  // Use polynomial approximation to compute ln(m), where m = 1 + z, z ∈ [0, 1)
+  float z = m - 1.0f;
+
+  // Use a 3rd-order polynomial to approximate ln(1+z), coefficients optimized for the range [0, 1)
+  const float c1 = 0.99949556f;
+  const float c2 = -0.49190896f;
+  const float c3 = 0.28947478f;
+
+  float z2 = z * z;
+  float z3 = z2 * z;
+
+  float log_m = z * (c1 + z * (c2 + z * c3));
+
+  // Final result: ln(x) = k * ln(2) + ln(m)
+  float result = static_cast<float>(k) * LN2 + log_m;
+  return result;
+}
+
 
 template <typename DataType>
 void prelu(tensor<DataType> &out, tensor<DataType> &in, float alpha) {
@@ -150,27 +234,7 @@ void farcsin(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::farcsin_base(t_arcsin, t_05sub);
   tiu::fmul(t_sqrt1, t_sqrt2, t_arcsin);
   tiu::fmul(t_mul2, t_sqrt1, 2.0);
-  auto sign_mask = getSignMask<DataType>();
-  if constexpr (std::is_same<DataType, float>::value) {
-    sign_mask = 0x80000000;
-    auto t_sign_int = t_sign.template view<int32>();
-    auto in_int = in.template view<int32>();
-    auto t_mul2_int = t_mul2.template view<int32>();
-    auto out_int = out.template view<int32>();
-    tiu::bitwise_and(t_sign_int, in_int, sign_mask);
-    tiu::bitwise_or(out_int, t_sign_int, t_mul2_int);
-  } else if constexpr (std::is_same<DataType, fp16>::value ||
-                       std::is_same<DataType, bf16>::value) {
-    sign_mask = 0x8000;
-    auto t_sign_int = t_sign.template view<int16>();
-    auto in_int = in.template view<int16>();
-    auto t_mul2_int = t_mul2.template view<int16>();
-    auto out_int = out.template view<int16>();
-    tiu::bitwise_and(t_sign_int, in_int, sign_mask);
-    tiu::bitwise_or(out_int, t_sign_int, t_mul2_int);
-  } else {
-    static_assert(false, "Unsupported DataType");
-  }
+  sign_mul(out, in, t_mul2, t_sign);
 }
 
 template <typename DataType>
@@ -212,27 +276,7 @@ void ftan(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fsub(t_sub, C1, t_tanx_sub_025pi);
   tiu::fdiv(t_c_div, C2, t_sub);
   tiu::fsub(t_sub_c, t_c_div, C1);
-  auto sign_mask = getSignMask<DataType>();
-  if constexpr (std::is_same<DataType, float>::value) {
-    sign_mask = 0x80000000;
-    auto t_and_int = t_and.template view<int32>();
-    auto t_rem_int = t_rem.template view<int32>();
-    auto out_int = out.template view<int32>();
-    auto t_sub_c_int = t_sub_c.template view<int32>();
-    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
-    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
-  } else if constexpr (std::is_same<DataType, fp16>::value ||
-                       std::is_same<DataType, bf16>::value) {
-    sign_mask = 0x8000;
-    auto t_and_int = t_and.template view<int16>();
-    auto t_rem_int = t_rem.template view<int16>();
-    auto out_int = out.template view<int16>();
-    auto t_sub_c_int = t_sub_c.template view<int16>();
-    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
-    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
-  } else {
-    static_assert(false, "Unsupported DataType");
-  }
+  sign_mul(out, t_rem, t_sub_c, t_and);
 }
 
 template <typename DataType>
@@ -245,7 +289,6 @@ void fcot(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   float C1 = 1;
   float C2 = 2;
 
-  auto sign_mask = getSignMask<DataType>();
   auto t_mul = make_tensor<DataType>(shape, real_shape);
   auto t_csub = make_tensor<DataType>(shape, real_shape);
   auto t_round = make_tensor<DataType>(shape, real_shape);
@@ -270,26 +313,7 @@ void fcot(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape,
   tiu::fsub(t_sub, C1, t_tanx_sub_025pi);
   tiu::fdiv(t_c_div, C2, t_sub);
   tiu::fsub(t_sub_c, t_c_div, C1);
-  if constexpr (std::is_same<DataType, float>::value) {
-    sign_mask = 0x80000000;
-    auto t_and_int = t_and.template view<int32>();
-    auto t_rem_int = t_rem.template view<int32>();
-    auto t_sub_c_int = t_sub_c.template view<int32>();
-    auto out_int = out.template view<int32>();
-    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
-    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
-  } else if constexpr (std::is_same<DataType, fp16>::value ||
-                       std::is_same<DataType, bf16>::value) {
-    sign_mask = 0x8000;
-    auto t_and_int = t_and.template view<int16>();
-    auto t_rem_int = t_rem.template view<int16>();
-    auto out_int = out.template view<int16>();
-    auto t_sub_c_int = t_sub_c.template view<int16>();
-    tiu::bitwise_and(t_and_int, t_rem_int, sign_mask);
-    tiu::bitwise_or(out_int, t_and_int, t_sub_c_int);
-  } else {
-    static_assert(false, "Unsupported DataType");
-  }
+  sign_mul(out, t_rem, t_sub_c, t_and);
 }
 
 template <typename DataType>
@@ -394,9 +418,15 @@ void exp_no_overflow(tensor<DataType> &out, tensor<DataType> &in, dim4 *shape) {
   exp_no_overflow(out, in, shape, shape);
 }
 
+template <typename DataType>
+void fexp(tensor<DataType> &out, tensor<DataType> &in, dim4 *block_shape,
+          dim4 *real_shape) {
+  exp_no_overflow(out, in, block_shape, real_shape);
+}
+
 template <typename T>
-void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input, dim4 *block_shape,
-                  dim4 *shape) {
+void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input,
+                  dim4 *block_shape, dim4 *shape) {
   auto local_input_exp = make_tensor<T>(block_shape, shape);
   // tiu::fexp(local_input_exp, local_input);
   exp_no_overflow(local_input_exp, local_input, block_shape, shape);
@@ -408,6 +438,26 @@ void sigmoid_fp32(tensor<T> &local_output, tensor<T> &local_input, dim4 *block_s
   tiu::fadd(local_output_pre, local_input_exp_reciprocal, 1);
 
   tiu::fdiv(local_output, 1, local_output_pre, 3);
+}
+
+template <typename T>
+void ferf(tensor<T> &out, tensor<T> &in, dim4 *block_shape, dim4 *real_shape) {
+  auto tmp1 = make_tensor<T>(block_shape, real_shape);
+  auto tmp2 = make_tensor<T>(block_shape, real_shape);
+  auto tmp3 = make_tensor<T>(block_shape, real_shape);
+  auto tmp4 = make_tensor<T>(block_shape, real_shape);
+  tiu::abs(tmp1, in);
+  tiu::fmul(tmp2, tmp1, float(0.5));
+  tiu::fadd(tmp1, tmp2, float(1.0));
+  tiu::fdiv(tmp2, float(1), tmp1);
+  tiu::ferf_base(tmp1, tmp2);
+
+  tiu::fmul(tmp4, in, in);
+  tiu::fsub(tmp3, tmp1, tmp4);
+  tiu::fexp_base(tmp1, tmp3);
+  tiu::fmul(tmp3, tmp1, tmp2);
+  tiu::fsub(tmp2, float(1), tmp3);
+  sign_mul(out, in, tmp2, tmp3);
 }
 
 template <typename DataType>
@@ -556,7 +606,7 @@ template <typename T>
 void pow_f32(tensor<T> &out, float in1, tensor<T> &in2, dim4 *shape,
              dim4 *real_shape) {
   auto t_mul = tensor<T>(shape);
-  float x = log_approximation(in1);
+  float x = log_approximation_range_poly(in1);
   tiu::fmul(t_mul, in2, x);
   exp_no_overflow(out, t_mul, shape, real_shape);
 }
@@ -707,29 +757,25 @@ void quick_pooling(tensor<DataType> &out_tensor, tensor<DataType> &in_tensor,
   dim4 in_reduce_w = {n, c, h, opti_w};
   dim4 out_reduce_w = {n, c, h, 1};
 
-  dim2 kernel = {slice, 1};
-  padding_t pad = {0, 0, 0, 0};
-  dim2 stride = {1, 1};
-  dim2 dilation = {1, 1};
   dim4 tmp_block_shape = {in_block_shape->n, in_block_shape->c, 1, opti_w};
-  // tensor<DataType> tmp_tensor(tmp_block_shape);
   auto tmp_tensor = tensor<DataType>(tmp_block_shape);
+  pool_param kernel_param0 = pool::param::kernel(slice, 1, 1, 1);
+  pool_param pad_param = pool::param::padding(0, 0, 0, 0, 0);
   if (mode == 0) {
     tiu::fpool_max(tmp_tensor.view(out_reduce_h), in_tensor.view(in_reduce_h),
-                   &kernel, &pad, &stride, &dilation);
+                   kernel_param0, pad_param);
   } else {
     tiu::fpool_avg(tmp_tensor.view(out_reduce_h), in_tensor.view(in_reduce_h),
-                   &kernel, &pad, &stride, &dilation, 1.0);
+                   kernel_param0, pad_param);
   }
-  kernel.h = 1;
-  kernel.w = opti_w;
+  pool_param kernel_param1 = pool::param::kernel(1, opti_w, 1, 1);
   if (mode == 0) {
     tiu::fpool_max(out_tensor.view(out_reduce_w), tmp_tensor.view(in_reduce_w),
-                   &kernel, &pad, &stride, &dilation);
+                   kernel_param1, pad_param);
 
   } else {
     tiu::fpool_avg(out_tensor.view(out_reduce_w), tmp_tensor.view(in_reduce_w),
-                   &kernel, &pad, &stride, &dilation, scale);
+                   kernel_param1, pad_param, scale);
   }
 }
 
@@ -778,9 +824,11 @@ void fp_avg_pool_2d_count_include_padding(tensor<DataType> &dst,
       (iw + left_pad_w + right_pad_w_ori - kw) / stride_w + 1 >= ow) {
     right_pad_w_ori = right_pad_w;
   }
-
+  pool_param kernel_param = pool::param::kernel(kh, kw, stride_h, stride_w);
+  pool_param new_pad_param =
+      pool::param::padding(0, up_pad_h, down_pad_h, left_pad_w, right_pad_w);
   padding_t new_pad = {up_pad_h, down_pad_h, left_pad_w, right_pad_w};
-  tiu::fpool_avg(dst, src, kernel, &new_pad, stride, dilation, 1.0 / kw / kw);
+  tiu::fpool_avg(dst, src, kernel_param, new_pad, 1.0 / kw / kw);
   if (avg_pooling_mode == 1) {
     // vertical pad compensate
     for (int y = 0; y < oh; y++) {

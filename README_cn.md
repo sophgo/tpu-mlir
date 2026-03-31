@@ -73,7 +73,7 @@ git clone git@hf.co:Qwen/Qwen2.5-VL-3B-Instruct-AWQ
 2) 在docker环境下编译 `Qwen2.5-VL`, 如下:
 
 ``` shell
-llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048 -q w4bf16  -c bm1684x  --max_pixels 672,896 -o qwen2.5vl_3b
+llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048  -c bm1684x  --max_pixels 672,896 -o qwen2.5vl_3b
 ```
 
 `llm_convert.py` 支持的主要参数如下:
@@ -82,13 +82,13 @@ llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048 -q w4bf16  -c bm
 | ------------- | -------- | ----- | ------------------- |
 | model_path    |  m       | 是    | 指定权重路径        |
 | seq_length    |  s       | 是    | 指定序列最大长度    |
-| quantize      |  q       | 是    | 指定量化类型, w4bf16/w4f16/bf16/f16等等 |
+| quantize      |  q       | 是    | 指定量化类型, auto/w4bf16/w4f16/bf16/f16等等 |
 | q_group_size  |  g       | 否    | 指定每组量化的组大小, 默认64 |
 | chip          |  c       | 是    | 指定平台, 如bm1684x/bm1688/cv186ah |
 | max_pixels    |  -       | 否    | 多模态参数, 指定最大尺寸, 可以是`672,896`,也可以是`602112`  |
 | out_dir       |  o       | 是    | 指定输出目录 |
 
-执行完成后在指定目录会生成对应的bmodel
+执行完成后在指定目录会生成对应的bmodel。本例中的模型是已经量化的模型，所以不需要指定`--quantize`。
 
 3) 在PCIE或者SoC环境运行bmodel, 如下:
 

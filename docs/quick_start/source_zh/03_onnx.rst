@@ -343,16 +343,16 @@ int8对称bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` :
 
 以下操作需要在Docker外执行，
 
-安装 ``libsophon`` 环境
+安装驱动环境
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-请参考 ``libsophon`` 使用手册安装 ``libsophon`` 。
+请参考驱动使用手册安装 。
 
 
 检查 ``BModel`` 的性能
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-安装好 ``libsophon`` 后，可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确性及性能。可以根据 ``bmrt_test`` 输出的性能结果，来估算模型最大的fps，来选择合适的模型。
+安装好驱动后，可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确性及性能。可以根据 ``bmrt_test`` 输出的性能结果，来估算模型最大的fps，来选择合适的模型。
 
 .. code-block:: shell
 

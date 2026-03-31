@@ -128,13 +128,15 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     }
     return;
   }
-  // yolov8/yolov11
-  if ((post_type == "yolov8" || post_type == "yolov11") && num_opds == 1) {
+  // yolov8/yolov11/yolov26
+  if ((post_type == "yolov8" || post_type == "yolov11" ||
+       post_type == "yolov26") &&
+      num_opds == 1) {
     auto s = module::getShape(opds[0]);
     if (s.size() != 3) {
       terminator->dump();
       llvm_unreachable(
-          "YOLOv8/YOLOv11 shape invalid. "
+          "YOLOv8/YOLOv11/YOLOv26 shape invalid. "
           "Expect rank=3 in NCW: [N, C, W] where "
           "N=batch_size, "
           "C=4(box)+1(objectness)+num_classes, "

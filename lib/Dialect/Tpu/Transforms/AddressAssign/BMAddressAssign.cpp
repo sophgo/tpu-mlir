@@ -236,6 +236,14 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
     Operation *op = (Operation *)v_info.op;
     if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
       continue;
+    } else if (auto insertOp = dyn_cast<tpu::InsertOp>(op)) {
+      auto in_addr = module::getAddress(insertOp.getInput());
+      if (in_addr != 0) {
+        module::setAddress(insertOp.getOutput(), in_addr);
+      } else {
+        UNREACHABLE_OP("InsertOp inplace address conflict!", op);
+      }
+      need_remove.push_back(v_info);
     } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
       auto in_addr = module::getAddress(reshapeOp.getInput());
       auto out_addr = module::getAddress(reshapeOp.getOutput());
@@ -326,10 +334,14 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
 
   // step 2: populate groupParallel address to its regions.
   for (auto func : m.getOps<FuncOp>()) {
-    for (auto groupParallelOp : func.getOps<tpu::GroupParallelOp>()) {
-      for (auto [value, region] : llvm::zip(groupParallelOp.getResults(),
-                                            groupParallelOp.getParallel())) {
+    for (auto gOp : func.getOps<tpu::GroupParallelOp>()) {
+      for (auto [value, region] :
+           llvm::zip(gOp.getResults(), gOp.getParallel())) {
         region.back().getTerminator()->getOperand(0).setType(value.getType());
+        for (auto op : region.back().getOps<tpu::ReshapeOp>()) {
+          auto addr = module::getAddress(op.getOutput());
+          module::setAddress(op.getInput(), addr);
+        }
       }
     }
   }
@@ -338,7 +350,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
     func.walk<WalkOrder::PreOrder>([&](tpu::CoreParallelOp parallelOp) {
       for (auto &op : parallelOp.getRegion().getOps()) {
         llvm::TypeSwitch<Operation &>(op)
-            .Case([&](tpu::SplitOp splitOp) {
+            .Case([&](tpu::CoreSplitOp splitOp) {
               int64_t address = module::getAddress(splitOp->getOperand(0));
               if (address != 0) {
                 for (auto v : splitOp->getResults()) {
@@ -351,7 +363,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
               for (auto [joinOpValue, returnType] : llvm::zip(
                        yieldOp->getOperands(), parallelOp->getResultTypes())) {
                 joinOpValue.setType(returnType);
-                if (!isa<tpu::JoinOp>(joinOpValue.getDefiningOp()))
+                if (!isa<tpu::CoreJoinOp>(joinOpValue.getDefiningOp()))
                   continue;
                 int64_t address = module::getAddress(joinOpValue);
                 if (address == 0) {
@@ -1187,6 +1199,8 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {
     return true;
   } else if (isa<tpu::IdentityOp, tpu::AutoIncreaseOp>(op)) {
+    return true;
+  } else if (auto insertOp = dyn_cast<tpu::InsertOp>(op)) {
     return true;
   }
   return false;

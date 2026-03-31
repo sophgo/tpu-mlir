@@ -20,15 +20,16 @@ LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
   auto output_shape = computer_broadcast_shape(getOperation());
   module::setShape(getOutput(), output_shape);
   auto num_elem = module::getNumElements(getOutput());
+  auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());
   auto asym = module::isAsymmetric();
   double const_v = getConstVal().convertToDouble();
-  if (out_type.isFloat8E4M3FN()) {
+  if (in_type.isFloat8E4M3FN()) {
     const_v = F16(const_v, true);
   }
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
-    p.outputs[0][i] = p.inputs[0][i] * const_v;
+    p.outputs[0][i] = p.inputs[0][i] * (float)const_v;
   }
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {

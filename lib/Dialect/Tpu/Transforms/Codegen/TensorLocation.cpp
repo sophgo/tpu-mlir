@@ -254,11 +254,12 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
 
   { // coreGroup slice
     Value value;
-    if (auto splitOp = dyn_cast_if_present<tpu::SplitOp>(v.getDefiningOp())) {
+    if (auto splitOp =
+            dyn_cast_if_present<tpu::CoreSplitOp>(v.getDefiningOp())) {
       value = splitOp.getOperand();
     } else {
       auto joinOp = llvm::find_if(v.getUsers(), [](Operation *op) {
-        return isa_and_present<tpu::JoinOp>(op);
+        return isa_and_present<tpu::CoreJoinOp>(op);
       });
       if (joinOp != std::end(v.getUsers()))
         value = joinOp->getResult(0);

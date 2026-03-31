@@ -206,7 +206,7 @@ SmallVector<Operation *> createTempCoreParallelOp(Operation *_op,
       auto name = module::getName(value) + "_" + Twine(index).str();
       auto nameLoc = NameLoc::get(builder.getStringAttr(name));
 
-      splitOps.push_back(builder.create<tpu::SplitOp>(
+      splitOps.push_back(builder.create<tpu::CoreSplitOp>(
           nameLoc, TypeRange(outTypes.value()), value));
     } else {
       splitOps.push_back(value.getDefiningOp());
@@ -268,7 +268,8 @@ void removeTempCoreParallelOp(SmallVector<Operation *> ops) {
   std::set<Operation *> splits;
   for (auto op : ops) {
     for (auto v : op->getOperands()) {
-      if (auto splitOp = dyn_cast_or_null<tpu::SplitOp>(v.getDefiningOp())) {
+      if (auto splitOp =
+              dyn_cast_or_null<tpu::CoreSplitOp>(v.getDefiningOp())) {
         splits.insert(splitOp.getOperation());
       }
     }

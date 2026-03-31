@@ -14,4 +14,4 @@
 #include "ppl_sdma_func.h"
 #include "ppl_cdma_func.h"
 #include "ppl_param.h"
-// #include "ppl_deprecate.h"
+#include "ppl_deprecate.h"

@@ -21,9 +21,10 @@ Below is an explanation of the command-line arguments supported by this tool:
 - ``-s``, ``--seq_length`` (integer, required)
   Specify the sequence length to be used during the conversion.
 
-- ``-q``, ``--quantize`` (string, required)
+- ``-q``, ``--quantize`` (string, default: auto)
   Specify the quantization type for the bmodel. You must choose from the following options:
 
+  - ``auto``
   - ``bf16``
   - ``w8bf16``
   - ``w4bf16``
@@ -83,6 +84,6 @@ Also supports AWQ and GPTQ models, such as Qwen2.5-0.5B-Instruct-AWQ and Qwen2.5
 
 .. code-block:: bash
 
-   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-AWQ -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
-   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-GPTQ-Int4 -s 384 -q w4bf16 -c bm1684x -o qwen2.5_0.5b
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-AWQ -s 384 -c bm1684x -o qwen2.5_0.5b
+   llm_convert.py -m /workspace/Qwen2.5-0.5B-Instruct-GPTQ-Int4 -s 384 -c bm1684x -o qwen2.5_0.5b
 

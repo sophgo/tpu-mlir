@@ -2317,6 +2317,14 @@ static bool backward_update_slice(
               //   return false;
               // }
               for (auto lut_user : user->getUsers()) {
+                if (std::find(lg_info.group_ops.begin(),
+                              lg_info.group_ops.end(),
+                              user) == lg_info.group_ops.end()) {
+                  if (module::isBM1684Family()) {
+                    return false;
+                  }
+                  continue;
+                }
                 if (!tpukernel_support_HWmargins(lut_user)) {
                   GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
                     llvm::dbgs()

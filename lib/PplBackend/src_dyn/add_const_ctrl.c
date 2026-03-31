@@ -1,6 +1,6 @@
-#include "ppl_dyn_fw.h"
 #include "add_const_fp.c"
 #include "add_const_fp_local.c"
+#include "ppl_dyn_fw.h"
 
 // global
 void dynamic_glb_add_const_fp_layer_ctrl(void *ctx, void *param,
@@ -20,7 +20,7 @@ void dynamic_glb_add_const_fp_layer_ctrl(void *ctx, void *param,
     _param->C = input_spec->shape[1];
     _param->H = input_spec->shape[2];
     _param->W = input_spec->shape[3];
-    add_const_f16(_param);
+    add_const_f16_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_BFP16) {
     tpu_kernel_api_add_const_bf16_t *_param =
         (tpu_kernel_api_add_const_bf16_t *)param;
@@ -30,7 +30,7 @@ void dynamic_glb_add_const_fp_layer_ctrl(void *ctx, void *param,
     _param->C = input_spec->shape[1];
     _param->H = input_spec->shape[2];
     _param->W = input_spec->shape[3];
-    add_const_bf16(_param);
+    add_const_bf16_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_FP32) {
     tpu_kernel_api_add_const_f32_t *_param =
         (tpu_kernel_api_add_const_f32_t *)param;
@@ -40,7 +40,7 @@ void dynamic_glb_add_const_fp_layer_ctrl(void *ctx, void *param,
     _param->C = input_spec->shape[1];
     _param->H = input_spec->shape[2];
     _param->W = input_spec->shape[3];
-    add_const_f32(_param);
+    add_const_f32_entry(_param);
   }
 }
 
@@ -62,7 +62,7 @@ void dynamic_add_const_fp_layer_ctrl(void *ctx, void *param,
     _param->C = shape[1];
     _param->H = shape[2];
     _param->W = shape[3];
-    add_const_f16_local(_param);
+    add_const_f16_local_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_BFP16) {
     tpu_kernel_api_add_const_bf16_local_t *_param =
         (tpu_kernel_api_add_const_bf16_local_t *)param;
@@ -72,7 +72,7 @@ void dynamic_add_const_fp_layer_ctrl(void *ctx, void *param,
     _param->C = shape[1];
     _param->H = shape[2];
     _param->W = shape[3];
-    add_const_bf16_local(_param);
+    add_const_bf16_local_entry(_param);
   } else if (input_spec->dtype == FW_DTYPE_FP32) {
     tpu_kernel_api_add_const_f32_local_t *_param =
         (tpu_kernel_api_add_const_f32_local_t *)param;
@@ -82,7 +82,7 @@ void dynamic_add_const_fp_layer_ctrl(void *ctx, void *param,
     _param->C = shape[1];
     _param->H = shape[2];
     _param->W = shape[3];
-    add_const_f32_local(_param);
+    add_const_f32_local_entry(_param);
   }
   set_out_info(top, tensor_info->in_refs, tensor_info->out_refs, sec_info);
 }

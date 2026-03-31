@@ -157,19 +157,6 @@ void print_value(const void *data, data_type_t dtype) {
   }
 }
 
-static void tpu_poll_with_check_parallel() {
-  bool has_para = false;
-  if (tpu_is_parallel_state()) {
-    has_para = true;
-    tpu_parallel_end();
-  }
-  tpu_poll();
-  if (has_para) {
-    tpu_parallel_start();
-  }
-}
-
-
 void print_local_mem_data(local_addr_t local_offset, int start_idx,
                           const dim4 *shape, const dim4 *stride,
                           data_type_t dtype, int lane_num, bool is_rv) {

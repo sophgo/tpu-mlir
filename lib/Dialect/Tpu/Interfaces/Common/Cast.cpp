@@ -97,7 +97,19 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; i++) {
-        p.outputs[0][i] = dequant(p.inputs[0][i], qtype);
+        // p.outputs[0][i] = dequant(p.inputs[0][i], qtype);
+        if (out_type.isF16()) {
+          p.outputs[0][i] =
+              F16(F16(qtype.getScale()) *
+                  F16(p.inputs[0][i] - (float)qtype.getZeroPoint()));
+        } else if (out_type.isBF16()) {
+          p.outputs[0][i] =
+              BF16(BF16(qtype.getScale()) *
+                   BF16(p.inputs[0][i] - (float)qtype.getZeroPoint()));
+        } else {
+          p.outputs[0][i] = (float)qtype.getScale() *
+                            (p.inputs[0][i] - (float)qtype.getZeroPoint());
+        }
       }
     }
     //   } else if (isInQuant && isOutQuant)  {
@@ -126,10 +138,10 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     //         p.outputs[0][i] = saturate(v, out_type);
     //       }
     //     }
-  } else if (in_type.isF32() && out_type.isInteger(32)) {
+  } else if (fInput && out_type.isInteger(32)) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = round(p.inputs[0][i]);
+      p.outputs[0][i] = to_int<float>(p.inputs[0][i], round_mode);
     }
   } else {
     std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);

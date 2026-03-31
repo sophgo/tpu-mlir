@@ -46,10 +46,9 @@ std::vector<Value> collectValuesByName(ModuleOp submodule,
   // sort values w.r.t. inputOp > globalOp > localOp.
   std::sort(results.begin(), results.end(), [&](Value a, Value b) {
     auto getOpPriority = [](Operation *op) -> int {
-      return isa<top::InputOp>(op)      ? 0
-             : !module::isOpInGroup(op) ? 1
-             : isa<tpu::StoreOp>(op)    ? 2
-                                        : 3;
+      return isa<top::InputOp>(op)
+                 ? 0
+                 : !module::isOpInGroup(op) ? 1 : isa<tpu::StoreOp>(op) ? 2 : 3;
     };
     return getOpPriority(a.getDefiningOp()) < getOpPriority(b.getDefiningOp());
   });
@@ -468,7 +467,7 @@ void augment_sub_funcs_with_new_args(std::vector<Value> &new_inputs,
 void augment_sub_funcs_with_new_rets(std::vector<Value> &new_outputs) {
   for (auto new_output : new_outputs) {
     if (module::isOpInGroup(new_output.getDefiningOp()) ||
-        isa<top::InputOp, tpu::YieldOp, tpu::StoreOp, tpu::JoinOp>(
+        isa<top::InputOp, tpu::YieldOp, tpu::StoreOp, tpu::CoreJoinOp>(
             new_output.getDefiningOp())) {
       continue;
     }
@@ -604,7 +603,8 @@ void prune_unused_vars(ModuleOp submodule, const bool remove_unused_local_ops) {
       used_values.insert(module::getName(output).str());
     }
   }
-  // 1. Reverse order & Recursively prune. mainfunc->callOp->subfunc->groupOp->...
+  // 1. Reverse order & Recursively prune.
+  // mainfunc->callOp->subfunc->groupOp->...
   OpBuilder builder(main_func);
   std::vector<func::CallOp> call_ops;
   main_func.walk([&](func::CallOp call_op) { call_ops.push_back(call_op); });
@@ -817,12 +817,14 @@ private:
       addr_limit = assign_new_addrs(values, addr_limit);
     }
     // update neuron size
-    module::setNeuronSize(submodule, addr_limit - module::getNeuronAddr(submodule));
+    module::setNeuronSize(submodule,
+                          addr_limit - module::getNeuronAddr(submodule));
     module::updateModuleTypes();
     /// 1.2 fix addrs for special ops.
     // 1.2.1 ReshapeOps.
     submodule.walk([&](tpu::ReshapeOp op) {
-      if (module::getAddress(op.getInput()) == module::getAddress(op.getOutput()))
+      if (module::getAddress(op.getInput()) ==
+          module::getAddress(op.getOutput()))
         return WalkResult::skip();
       int64_t new_addr = std::max(module::getAddress(op.getOutput()),
                                   module::getAddress(op.getInput()));
@@ -836,13 +838,14 @@ private:
       for (auto val : vals) {
         module::setAddress(val, new_addr);
       }
-      llvm::outs() << "assign new addr for ReshapeOp: " << "\n";
+      llvm::outs() << "assign new addr for ReshapeOp: "
+                   << "\n";
       op.dump();
       return WalkResult::advance();
     });
     // 1.2.2 splitop and joinop
     submodule.walk([&](tpu::CoreParallelOp op) {
-      op.walk([&](tpu::SplitOp splitOp) {
+      op.walk([&](tpu::CoreSplitOp splitOp) {
         int64_t base_addr = module::getAddress(splitOp->getResult(0));
         int64_t new_base_addr = module::getAddress(op->getOperand(0));
         int64_t offset = new_base_addr - base_addr;
@@ -850,11 +853,12 @@ private:
           for (auto val : splitOp->getResults()) {
             module::setAddress(val, module::getAddress(val) + offset);
           }
-          llvm::outs() << "assign new addr for CoreParallelOp: " << "\n";
+          llvm::outs() << "assign new addr for CoreParallelOp: "
+                       << "\n";
           op.dump();
         }
       });
-      op.walk([&](tpu::JoinOp joinOp) {
+      op.walk([&](tpu::CoreJoinOp joinOp) {
         int64_t base_addr = module::getAddress(joinOp->getOperand(0));
         int64_t new_base_addr = module::getAddress(op->getResult(0));
         int64_t offset = new_base_addr - base_addr;
@@ -862,7 +866,8 @@ private:
           for (auto val : joinOp->getOperands()) {
             module::setAddress(val, module::getAddress(val) + offset);
           }
-          llvm::outs() << "assign new addr for CoreParallelOp: " << "\n";
+          llvm::outs() << "assign new addr for CoreParallelOp: "
+                       << "\n";
           op.dump();
         }
       });

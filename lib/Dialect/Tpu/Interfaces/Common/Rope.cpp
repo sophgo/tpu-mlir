@@ -59,13 +59,19 @@ LogicalResult tpu::RopeOp::inference(InferenceParameter &p) {
 
   auto rope_mode = rope_mode_convert(getRopeMode());
   if (rope_mode == 1) {
-    int half_num_element = num_element / 2;
-    for (int i = 0; i < num_element; i++) {
-      float temp = temp_input[i];
-      if (i < half_num_element) {
-        temp_input[i + half_num_element] = temp;
-      } else {
-        temp_input[i - half_num_element] = -temp;
+    int half_w = input_shape[3] / 2;
+    for (int n = 0; n < input_shape[0]; n++) {
+      for (int c = 0; c < input_shape[1]; c++) {
+        for (int h = 0; h < input_shape[2]; h++) {
+          for (int w = 0; w < half_w; w++) {
+            int offset = n * input_shape[1] * input_shape[2] * input_shape[3] +
+                         c * input_shape[2] * input_shape[3] +
+                         h * input_shape[3];
+            float temp = temp_input[offset + w + half_w];
+            temp_input[offset + w + half_w] = temp_input[offset + w];
+            temp_input[offset + w] = -temp;
+          }
+        }
       }
     }
   } else {

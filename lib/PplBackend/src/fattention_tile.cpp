@@ -61,7 +61,8 @@ using ATTENTION = std::function<int(
     unsigned long long v1, unsigned long long v2, unsigned long long v3,
     unsigned long long v4, unsigned long long v5, int32_t v6, int32_t v7,
     int32_t v8, int32_t v9, int32_t v10, int32_t v11, float v12, int32_t v13,
-    int32_t v14, int32_t v15, int32_t v16, int32_t v17, int32_t v18)>;
+    int32_t v14, int32_t v15, int32_t v16, int32_t v17, int32_t v18,
+    int32_t v19)>;
 
 static ATTENTION get_attention_func(bool is_fp16, bool is_mha,
                                     bool high_precision) {
@@ -103,6 +104,7 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
                       int &block_h) {
   int ret = 0;
   int dmax = align_up(d, 32 /*eu num*/);
+  int keep_dim = 0;
   std::string chip_str = getenv("CHIP");
   bool is_mha = q_head == kv_head;
   bool is_decode = qm == 1;
@@ -123,8 +125,8 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
     printf("fattention block_m:%d, block_k:%d, block_h:%d\n", block_m, block_k,
            block_h);
     ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, d, q_head,
-               kv_head, sqrt_d, has_mask, core_num, dmax, block_m, block_k,
-               block_h);
+               kv_head, sqrt_d, has_mask, core_num, dmax, keep_dim, block_m,
+               block_k, block_h);
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       printf("block is not suitable, have another try !!!\n");

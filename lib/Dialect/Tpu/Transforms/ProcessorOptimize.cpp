@@ -51,6 +51,20 @@ public:
       populateOptimizeBM1684Patterns(&patterns);
     }
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
+
+    // set multicore flag if support
+    if (module::getCoreNum() > 1) {
+      mOp->walk<WalkOrder::PreOrder>([&](Operation *op) {
+        if (false == module::isOpInBlock(op)) {
+          auto gl = dyn_cast<GlobalGenInterface>(op);
+          if (gl && gl.support_multi_core()) {
+            mlir::Attribute isTrue =
+                mlir::BoolAttr::get(op->getContext(), true);
+            op->setAttr("multicore", isTrue);
+          }
+        }
+      });
+    }
   }
 };
 

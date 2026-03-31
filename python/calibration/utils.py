@@ -139,6 +139,12 @@ def parse_method_list(input_str):
     return method_list
 
 
+def parse_optype_list(input_str):
+    optype_list = input_str.split(',')
+    optype_list = [m.strip() for m in optype_list]
+    return optype_list
+
+
 def compactable_method_list(method_list: list):
     cali_methods = []
     for method in method_list:
@@ -312,17 +318,17 @@ class QuantizeTable:
             f.write("# op_name   quantize_mode\n")
 
             # Write all layers with their respective mix_modes
-            f.write("# custom layers\n")
-            for layer, mode in zip(self.custom_layer_list, self.custom_mix_mode):
-                f.write(f"{layer} {mode}\n")
-            f.write("# shape layers\n")
-            for layer in self.shape_layer_list:
-                if layer not in self.custom_layer_list:
-                    f.write(f"{layer} {self.shape_mix_mode}\n")
             f.write("# pattern layers\n")
             for layer in self.pattern_layer_list:
                 if layer not in self.custom_layer_list and layer not in self.shape_layer_list:
                     f.write(f"{layer} {self.pattern_mix_mode}\n")
+            f.write("# shape layers\n")
+            for layer in self.shape_layer_list:
+                if layer not in self.custom_layer_list:
+                    f.write(f"{layer} {self.shape_mix_mode}\n")
+            f.write("# custom layers\n")
+            for layer, mode in zip(self.custom_layer_list, self.custom_mix_mode):
+                f.write(f"{layer} {mode}\n")
 
     def read(self, quantize_table: str) -> List[Tuple[str, str]]:
         """
@@ -395,11 +401,15 @@ class QuantizeTable:
         return f"QuantizeTableWriter(chip='{self.chip}', total_layers={self.get_total_layers()}, mix_modes={counts})"
 
 
-def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, logs=None):
+def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, flag, args, logs=None):
     chip = args.chip
     cali_table_name = args.calibration_table
     if args.fp_type == 'auto':
-        shape_mix_mode = FLOAT_MAP[args.chip]
+        if flag == 2:
+            shape_mix_mode = 'F32' if 'F32' in chip_support_mix_fp_type[args.chip] else FLOAT_MAP[
+                args.chip]
+        else:
+            shape_mix_mode = FLOAT_MAP[args.chip]
         pattern_mix_mode = FLOAT_MAP[args.chip]
     else:
         shape_mix_mode = args.fp_type
@@ -408,12 +418,16 @@ def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, logs=
             print('parameter error, fp_type:{args.fp_type} not support by {args.chip}')
             exit(1)
 
-    if '/' in cali_table_name:
+    if '/' in cali_table_name and '/' not in args.quantize_table:
+        # assume set path in calitable but not in quantize table
         last_index = cali_table_name.rfind('/')
-        quantize_table = cali_table_name[:last_index + 1] + "shape_pattern_qtable"
+        if args.quantize_table:
+            quantize_table = cali_table_name[:last_index + 1] + args.quantize_table
+        else:
+            quantize_table = cali_table_name[:last_index + 1] + "shape_pattern_qtable"
     else:
         if args.quantize_table:
-            quantize_table = args.quantize_table + "_shape_pattern_part"
+            quantize_table = args.quantize_table
         else:
             quantize_table = "shape_pattern_qtable"
 
@@ -428,3 +442,21 @@ def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, args, logs=
                            extra_info=logs)
     qtable.dump(quantize_table)
     return qtable
+
+
+def get_mix_prec(chip: str, mix_mode: str = 'wi8ai8_fp', fp_type: str = 'F32'):
+    if fp_type != 'auto' and fp_type not in chip_support_mix_fp_type[chip]:
+        print(f'parameter error, fp_type:{fp_type} not support by {chip}')
+        return None, None
+    fp_type = 'F32' if ('F32' in chip_support_mix_fp_type[chip] and fp_type == 'auto') else fp_type
+    if mix_mode in ['wi8ai8_fp']:
+        return 'INT8', fp_type
+    elif mix_mode in ['wf8af8_fp']:
+        return 'F8E4M3', fp_type
+    elif mix_mode in ['wi4ai4_wi8ai8']:
+        return 'INT4', 'INT8'
+    elif mix_mode in ['wi4ai8_wi8ai8']:
+        return 'W4INT8', 'INT8'
+    else:
+        print(f'not support {mix_mode} and {fp_type}')
+        return None, None

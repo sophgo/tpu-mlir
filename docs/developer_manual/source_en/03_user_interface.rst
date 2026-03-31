@@ -170,7 +170,6 @@ Support LLM models
     $ llm_convert.py \
         -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ \
         -s 2048 \
-        -q w4bf16 \
         -c bm1684x \
         --max_pixels 672,896 \
         -o qwen2.5vl_3b
@@ -472,6 +471,12 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - quant_output_list
      - N
      - Choose index to strip cast, such as 1,3 means first & third output`s cast
+   * - quant_input_int8
+     - N
+     - When quant_input and quantize to INT8 mode, if first op is float, the input is kept float, enable this param to force the input to int8/uint8, the scale of input should be ignored
+   * - quant_output_int8
+     - N
+     - When quant_output and quantize to INT8 mode, if last op is float, the output is kept float, enable this param to force the output to int8/uint8
    * - quantize_table
      - N
      - Specify the path to the mixed precision quantization table. If not specified, quantization is performed according to the quantize type; otherwise, quantization is prioritized according to the quantization table
@@ -487,6 +492,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - tolerance
      - N
      - Tolerance for the minimum Cosine and Euclidean similarity between MLIR quantized and MLIR fp32 inference results. 0.8,0.5 by default.
+   * - correctness
+     - N
+     - The tolerance for cosine and Euclidean similarity between bmodel and tpu.mlir, 0.99 and 0.90 by default. When using quantize_table, the default is 0.99 and 0.80.
    * - test_input
      - N
      - The input file for verification, which can be an jpg, npy or npz. No verification will be carried out if it is not specified
@@ -598,6 +606,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - disable_structure_detect_optimize
      - N
      - Disable structure detect optimization in LayerGroup pass.
+   * - disable_topo_sort
+     - N
+     - Whether to disable topo-sort pass
 
 The following table shows the correspondence between different processors and the supported quantize types:
 
@@ -646,7 +657,7 @@ Convert the LLM model into bmodel, the parameters are as follows:
      - Specifies the maximum sequence length
    * - quantize
      - Yes
-     - Specifies the quantization type, e.g., w4bf16/w4f16/bf16/f16
+     - Specifies the quantization type, e.g., auto/w4bf16/w4f16/bf16/f16
    * - q_group_size
      - No
      - Specifies the group size for quantization

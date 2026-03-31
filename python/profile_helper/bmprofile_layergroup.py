@@ -121,7 +121,7 @@ def parse_perfdoc(perf_doc_csv, bmodel):
             group = False
             core_group = False
         if group or core_group:
-            if "tpu.Split" not in line:
+            if "tpu.CoreSplit" not in line:
                 group_line.append(line_no)
         elif len(group_line) > 0:
             groups[len(groups)] = group_line.copy()

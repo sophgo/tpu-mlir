@@ -35,14 +35,16 @@ typedef enum {
 } tpuRtStatus_t;
 
 typedef struct tpuRtModule {
-	// void *lib_handle;
 	char lib_name[LIB_MAX_NAME_LEN];
 	unsigned char md5[MD5SUM_LEN];
+	uint32_t dest;
 } tpuRtModule;
 
 struct tpuRtCheckModule {
 	unsigned char md5[MD5SUM_LEN];
 	int loaded;
+	int dest;
+	int api_id;
 };
 
 typedef struct tpuRtLaunchOutput {
@@ -64,12 +66,10 @@ struct c2c_port_info {
 	uint16_t dst_device_id;
 	uint8_t src_pcie_id;
 	uint8_t dst_pcie_id;
-	int8_t send_port;
+	int8_t send_port;  /* dma port */
 	int8_t recv_port;
 };
 
-void sgTimeRecord(tpuRtTimeRecord *time);
-uint32_t sgTimeCalculate(tpuRtTimeRecord time_start, tpuRtTimeRecord time_end);
 
 /**
  * @name    tpuRtInit
@@ -102,6 +102,17 @@ tpuRtStatus_t tpuRtGetDeviceCount(int *count);
  *          Other code Fails.
  */
 tpuRtStatus_t tpuRtGetDevice(int *device);
+
+/**
+ * @name    tpuRtGetFd
+ * @brief   To get device fd in current pid/tid
+ * @ingroup tpuv7_rt
+ *
+ * @param [out]  fd  file descriptor
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtGetFd(int *fd);
 
 /**
  * @name    tpuRtSetDevice
@@ -210,19 +221,6 @@ tpuRtStatus_t tpuRtMallocHost(void **ptr, unsigned long long size);
 tpuRtStatus_t tpuRtFreeHost(void *ptr);
 
 /**
- * @name    tpuRtMemset
- * @brief   To set device memory
- * @ingroup tpuv7_rt
- *
- * @param [in]	devPtr		memory ptr
- * @param [in]  value	memory value
- * @param [in]  size	memory size
- * @retval  tpuRtSuccess  Succeeds.
- *          Other code Fails.
- */
-tpuRtStatus_t tpuRtMemset(void *devPtr, int value, unsigned long long size);
-
-/**
  * @name    tpuRtMemcpyS2D
  * @brief   To copy date from system to device
  * @ingroup tpuv7_rt
@@ -261,19 +259,6 @@ tpuRtStatus_t tpuRtMemcpyD2S(void *hostPtr, const void *devPtr, unsigned long lo
  */
 tpuRtStatus_t tpuRtMemcpyD2D(void *dstDevPtr, const void *srcDevPtr, unsigned long long size);
 
-/**
- * @name    tpuRtMemsetAsync
- * @brief   To set device memory asynchronously
- * @ingroup tpuv7_rt
- *
- * @param [in]	dstDevPtr	memory ptr
- * @param [in]  value		memory value
- * @param [in]  size		memory size
- * @param [in]  stream		stream
- * @retval  tpuRtSuccess  Succeeds.
- *          Other code Fails.
- */
-tpuRtStatus_t tpuRtMemsetAsync(void *devPtr, int value, unsigned long long size, tpuRtStream_t stream);
 
 /**
  * @name    tpuRtMemcpyS2DAsync
@@ -446,6 +431,18 @@ tpuRtStatus_t tpuRtEventQuery(tpuRtEvent_t event);
  *          Other code Fails.
  */
 tpuRtStatus_t tpuRtEventSynchronize(tpuRtEvent_t event);
+
+/**
+ * @name    tpuRtEventElapsedTime
+ * @brief   To get elapsed time between two events
+ * @ingroup tpuv7_rt
+ *
+ * @param [in]	start	event ptr
+ * @param [in]	end	event ptr
+ * @param [out]	ms	elapsed time in ms
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
 tpuRtStatus_t tpuRtEventElapsedTime(float *ms, tpuRtEvent_t start, tpuRtEvent_t end);
 
 /**
@@ -473,6 +470,19 @@ tpuRtKernelModule_t tpuRtKernelLoadModuleFileForCV(const char *module_file, tpuR
 tpuRtKernelModule_t tpuRtKernelLoadModuleFile(const char *module_file, tpuRtStream_t stream);
 
 /**
+ * @name    tpuRtKernelLoadModuleFileFlag
+ * @brief   To load module
+ * @ingroup tpuv7_rt
+ *
+ * @param [in]	module_file	module path
+ * @param [in]	stream		stream
+ * @param [in]	flag		load flag
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtKernelModule_t tpuRtKernelLoadModuleFileFlag(const char *module_file, tpuRtStream_t stream, uint32_t flag);
+
+/**
  * @name    tpuRtKernelLoadModule
  * @brief   To load module from data
  * @ingroup tpuv7_rt
@@ -483,7 +493,23 @@ tpuRtKernelModule_t tpuRtKernelLoadModuleFile(const char *module_file, tpuRtStre
  * @retval  tpuRtSuccess  Succeeds.
  *          Other code Fails.
  */
+
 tpuRtKernelModule_t tpuRtKernelLoadModule(const char *data, size_t length, tpuRtStream_t stream);
+
+/**
+ * @name    tpuRtKernelLoadModuleFlag
+ * @brief   To load module from data
+ * @ingroup tpuv7_rt
+ *
+ * @param [in]	data	date buffer
+ * @param [in]	length	date size
+ * @param [in]	stream	stream
+ * @param [in]	flag	load flag
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+
+tpuRtKernelModule_t tpuRtKernelLoadModuleFlag(const char *data, size_t length, tpuRtStream_t stream, uint32_t flag);
 
 /**
  * @name    tpuRtKernelLoadModule
@@ -575,6 +601,19 @@ tpuRtStatus_t tpuRtKernelUnloadModule(tpuRtKernelModule_t p_module, tpuRtStream_
 
 /**
  * @name    tpuRtKernelUnloadModule
+ * @brief   To unload module
+ * @ingroup tpuv7_rt
+ *
+ * @param [in]	p_module	module ptr
+ * @param [in]	stream		stream
+ * @param [in]	flag	load flag
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtKernelUnloadModuleFlag(tpuRtKernelModule_t p_module, tpuRtStream_t stream, uint32_t flag);
+
+/**
+ * @name    tpuRtKernelUnloadModule
  * @brief   To get unique id
  * @ingroup tpuv7_rt
  *
@@ -585,7 +624,7 @@ tpuRtStatus_t tpuRtKernelUnloadModule(tpuRtKernelModule_t p_module, tpuRtStream_
 tpuRtStatus_t tpuRtGetUniqueId(char *uuid);
 
 /**
- * @name    tpuRtKernelLaunchCDMA
+ * @name    tpuRtKernelLaunchWithLock
  * @brief   To launch kernel of cdma op
  * @ingroup tpuv7_rt
  *
@@ -595,19 +634,19 @@ tpuRtStatus_t tpuRtGetUniqueId(char *uuid);
  * @param [in]	size		data size
  * @param [in]	block_num	block num
  * @param [in]	stream		stream
- * @param [in]	cdma_only	if cdma only
+ * @param [in]	trans_t		transmission type, 1 = cdma
  * @param [in]	uuid		unique id
  * @param [in]	rank_id		rank id
  * @param [in]	rank_num	rank num
  * @retval  tpuRtSuccess  Succeeds.
  *          Other code Fails.
  */
-tpuRtStatus_t tpuRtKernelLaunchCDMA(tpuRtKernelModule_t module, const char *func_name,
+tpuRtStatus_t tpuRtKernelLaunchWithLock(tpuRtKernelModule_t module, const char *func_name,
 				void *args, uint32_t size, uint64_t block_num, tpuRtStream_t stream,
-				int cdma_only, char *uuid, int rank_id, int rank_num);
+				int trans_t, char *uuid, int rank_id, int rank_num);
 
 /**
- * @name    tpuRtKernelLaunchCDMA
+ * @name    tpuRtKernelLaunchWithLockAsync
  * @brief   To launch kernel of cdma op asynchronously
  * @ingroup tpuv7_rt
  *
@@ -617,16 +656,16 @@ tpuRtStatus_t tpuRtKernelLaunchCDMA(tpuRtKernelModule_t module, const char *func
  * @param [in]	size		data size
  * @param [in]	block_num	block num
  * @param [in]	stream		stream
- * @param [in]	cdma_only	if cdma only
+ * @param [in]	trans_t		transmission type, 1 = cdma
  * @param [in]	uuid		unique id
  * @param [in]	rank_id		rank id
  * @param [in]	rank_num	rank num
  * @retval  tpuRtSuccess  Succeeds.
  *          Other code Fails.
  */
-tpuRtStatus_t tpuRtKernelLaunchCDMAAsync(tpuRtKernelModule_t module, const char *func_name,
+tpuRtStatus_t tpuRtKernelLaunchWithLockAsync(tpuRtKernelModule_t module, const char *func_name,
 				void *args, uint32_t size, uint64_t block_num, tpuRtStream_t stream,
-				int cdma_only, char *uuid, int rank_id, int rank_num);
+				int trans_t, char *uuid, int rank_id, int rank_num);
 
 /**
  * @name    tpuRtSetupC2C
@@ -727,6 +766,15 @@ tpuRtStatus_t tpuRtGetPeakMemory(uint64_t *value);
  */
 tpuRtStatus_t tpuRtResetPeakMemory(void);
 
+
+/*The legacy interface will be deprecated in two versions. Please use the tpuRtKernelLaunchWithLock interface as a replacement.*/
+tpuRtStatus_t tpuRtKernelLaunchCDMA(tpuRtKernelModule_t module, const char *func_name,
+	void *args, uint32_t size, uint64_t block_num, tpuRtStream_t stream,
+	int cdma_only, char *uuid, int rank_id, int rank_num);
+
+tpuRtStatus_t tpuRtKernelLaunchCDMAAsync(tpuRtKernelModule_t module, const char *func_name,
+	void *args, uint32_t size, uint64_t block_num, tpuRtStream_t stream,
+	int cdma_only, char *uuid, int rank_id, int rank_num);
 
 #ifdef __cplusplus
 }

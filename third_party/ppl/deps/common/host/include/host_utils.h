@@ -1,6 +1,7 @@
 #ifndef __HOST_UTILS_H__
 #define __HOST_UTILS_H__
 #include "host_def.h"
+#include "autotune.h"
 #include <algorithm>
 
 template <typename T>

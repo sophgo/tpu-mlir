@@ -11,10 +11,47 @@
 #include "cuda_helper.h"
 
 void py_cuda::cudaMulOp(tpu::MulOp op) {
-  auto out = op.getOutput();
-  if (!module::isUniformQuantized(out)) {
+  if (op.getInputs().size() != 2)
     UNREACHABLE_OP("Not Implemented", op);
+  int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
+  module::getNCHW(op.getInputs()[0], n0, c0, h0, w0, false);
+  module::getNCHW(op.getInputs()[1], n1, c1, h1, w1, false);
+  module::getNCHW(op.getOutput(), n2, c2, h2, w2, false);
+  auto shape0 = module::getShape(op.getInputs()[0]);
+  auto shape1 = module::getShape(op.getInputs()[1]);
+  if (shape0.size() != shape1.size()) {
+    UNREACHABLE_OP("Not supported", op);
   }
+  if (module::isUniformQuantized(op.getInputs()[0])) {
+    auto multiplier = op.getMultiplier();
+    auto rshift = op.getRshift();
+
+    cuda::mulInt8(getCudaData(op.getInputs()[0]), getCudaData(op.getInputs()[1]), getCudaData(op.getOutput()), n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2,
+            !module::getStorageType(op.getInputs()[0]).isUnsignedInteger(), !module::getStorageType(op.getInputs()[1]).isUnsignedInteger(), !module::getStorageType(op.getOutput()).isUnsignedInteger(), multiplier, rshift,
+             false, op.getDoRelu());
+  } else if (module::getStorageType(op.getInputs()[0]).isF32()) {
+    cuda::mul4DF32(getCudaData(op.getInputs()[0]), getCudaData(op.getInputs()[1]), getCudaData(op.getOutput()), op.getDoRelu(),
+                  n0, c0, h0, w0,
+                  n1, c1, h1, w1,
+                  n2, c2, h2, w2);
+  } else {
+    auto input0_f32 = newCudaData(op.getInputs()[0], cuda::DT_F32);
+    auto input1_f32 = newCudaData(op.getInputs()[1], cuda::DT_F32);
+    auto output_f32 = newCudaData(op.getOutput(), cuda::DT_F32);
+    cuda::mul4DF32(input0_f32.get(), input1_f32.get(), output_f32.get(), op.getDoRelu(),
+                  n0, c0, h0, w0,
+                  n1, c1, h1, w1,
+                  n2, c2, h2, w2);
+    cuda::convertType(output_f32.get(), getCudaData(op.getOutput()), module::getNumElements(op.getOutput()), cuda::DT_F32,
+                      getCudaType(op.getOutput()));
+    input0_f32.reset();
+    input1_f32.reset();
+    output_f32.reset();
+  }
+}
+
+void py_cuda::cudaMulOp(top::MulOp op) {
+  auto out = op.getOutput();
   auto num_inputs = op.getInputs().size();
   if (2 != num_inputs) {
     UNREACHABLE_OP("Not Implemented", op);
@@ -24,25 +61,20 @@ void py_cuda::cudaMulOp(tpu::MulOp op) {
   auto input0 = getCudaData(in0);
   auto input1 = getCudaData(in1);
   auto output = getCudaData(out);
-  auto num_in0 = module::getNumElements(in0);
-  auto num_in1 = module::getNumElements(in1);
-  auto num_out = module::getNumElements(out);
-  int multiplier = op.getMultiplier();
-  int rshift = op.getRshift();
-  bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
-  bool sign0 = !module::getStorageType(in0).isUnsignedInteger(8);
-  bool sign1 = !module::getStorageType(in1).isUnsignedInteger(8);
-  bool sign2 = !module::getStorageType(out).isUnsignedInteger(8);
-  if (num_out == num_in0 && num_out == num_in1) {
-    cuda::mulInt8(input0, input1, output, sign0, sign1, sign2, multiplier,
-                  rshift, num_out, qdm, op.getDoRelu());
-  } else {
-    int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
-    module::getNCHW(in0, n0, c0, h0, w0);
-    module::getNCHW(in1, n1, c1, h1, w1);
-    module::getNCHW(out, n2, c2, h2, w2);
-    cuda::mulInt8(input0, input1, output, n0, c0, h0, w0, n1, c1, h1, w1, n2,
-                  c2, h2, w2, sign0, sign1, sign2, multiplier, rshift, qdm,
-                  op.getDoRelu());
+  auto shape0 = module::getShape(in0);
+  auto shape1 = module::getShape(in1);
+  if (shape0.size() != shape1.size()) {
+    UNREACHABLE_OP("Not supported", op);
   }
+  int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
+  module::getNCHW(in0, n0, c0, h0, w0, false);
+  module::getNCHW(in1, n1, c1, h1, w1, false);
+  module::getNCHW(out, n2, c2, h2, w2, false);
+  if (shape0.size() > 4 && (n0 != n1)) {
+    UNREACHABLE_OP("Not Implemented", op);
+  }
+  cuda::mul4DF32(input0, input1, output, op.getDoRelu(),
+                  n0, c0, h0, w0,
+                  n1, c1, h1, w1,
+                  n2, c2, h2, w2);
 }

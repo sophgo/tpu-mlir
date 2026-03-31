@@ -5,6 +5,7 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
+#pragma clang diagnostic ignored "-Wreturn-stack-address"
 #include "ppl_types.h"
 #include "ppl_utils.h"
 
@@ -20,6 +21,10 @@ template <typename DataType> char *to_string(tensor<DataType> &src);
 
 template <typename DataType> char *to_string(gtensor<DataType> &src);
 
+template <typename DataType>void dump(const char* npz_path, const char* array_name, tensor<DataType> &src);
+
+template <typename DataType>void dump(const char* npz_path, const char* array_name, gtensor<DataType> &src);
+
 /* Map pyhsics global address/tensor to a pointer/int64 of operation
  * system/cpu/scalar */
 template <typename DataType> int64 get_gmem_addr(gtensor<DataType> &src);
@@ -28,6 +33,13 @@ template <typename DataType> int64 get_gmem_addr(DataType *src);
 template <typename DataType> DataType *get_gmem_ptr(gtensor<DataType> &src);
 template <typename DataType> DataType *get_gmem_ptr(DataType *src);
 
+template <typename DataType> DataType *get_lmem_ptr(tensor<DataType> &src);
+template <typename DataType> DataType *get_lmem_ptr(DataType *src);
+
+template <typename DataType>
+void memset(DataType *dst, int value, int bytes);
+template <typename DataType>
+void memcpy(DataType *dst, DataType *src, int bytes);
 
 // template <typename DataType>
 // uint64 get_gmem_addr(DataType *address);
@@ -35,20 +47,21 @@ template <typename DataType> DataType *get_gmem_ptr(DataType *src);
 template <typename DataType> DataType get_value(int64 gaddr);
 
 template <typename DataType>
-void invalid_cache(DataType *read_addr = nullptr, int64 read_size = 64);
-
+void invalid_cache(DataType *read_addr, int64 read_size = 64);
 template <typename DataType>
 void invalid_cache(gtensor<DataType> &src, int64 read_size = 64);
 
 template <typename DataType>
-void flush_cache(DataType *write_addr = nullptr, int64 write_size = 64);
+void flush_cache(DataType *write_addr, int64 write_size = 64);
+template <typename DataType>
+void flush_cache(gtensor<DataType> &src, int64 write_size = 64);
 
 template <typename DataType>
 DataType *sort(DataType *data, int size, bool ascending = true);
 
 template <typename T> void disable_pingpong(tensor<T> &tensor);
 
-void set_config_auto_sync(bool enable);
+void set_config_auto_sync(bool enable, bool enable_parallel = false);
 void set_config_memory_alloc_method(memory_alloc_method_t method);
 
 void set_memory_alloc_method(memory_alloc_method_t method) {
@@ -117,9 +130,26 @@ int min(int, int);
 int max(int, int);
 
 float log(float x);
+float log2(float x);
 float sqrt(float x);
 float floor(float x);
 float ceiling(float x);
 float trunc(float x);
 float round(float x);
+float exp(float x);
+float exp2(float x);
+float pow(float base, float exponent);
+float abs(float x);
+
+/*****************************************/
+/*              autotune                 */
+/*****************************************/
+template <typename KernelType, typename TunerType>
+void autotune_decorator(KernelType kernel_fn, TunerType config);
+template <typename... Args>
+void* autotune(const char *key, Args... arg);
+void* autotune_config(const char* config);
+template <typename DataType>
+void* autotune_heuristics(DataType heur_fn);
+
 } // namespace ppl

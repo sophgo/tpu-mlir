@@ -19,4 +19,22 @@ template <typename DataType>
 conv_param insert(DataType insert_val=0, int dilation_h=1, int dilation_w=1, int ins_h=0, int ins_w=0);
 conv_param kernel(int kh, int kw, int stride_h, int stride_w, bool do_relu=false, bool kernel_rotate=false);
 } // namespace conv::param
+namespace deconv::param {
+template <typename DataType>
+deconv_param padding(DataType padv, int up_pad, int down_pad, int left_pad, int right_pad, int mode=0);
+template <typename DataType>
+deconv_param padding(tensor<DataType> &padv, int up_pad, int down_pad, int left_pad, int right_pad, int mode=0);
+template <typename DataType>
+deconv_param insert(DataType insert_val=0, int dilation_h=1, int dilation_w=1, int ins_h=0, int ins_w=0);
+deconv_param kernel(int kh, int kw, int stride_h, int stride_w, bool do_relu=false, bool kernel_rotate=true);
+}
+namespace pool::param {
+template <typename DataType>
+pool_param padding(DataType padv, int up_pad, int down_pad, int left_pad, int right_pad, int mode=0);
+template <typename DataType>
+pool_param padding(tensor<DataType> &padv, int up_pad, int down_pad, int left_pad, int right_pad, int mode=0);
+template <typename DataType>
+pool_param insert(DataType insert_val=0, int dilation_h=1, int dilation_w=1, int ins_h=0, int ins_w=0);
+pool_param kernel(int kh, int kw, int stride_h, int stride_w, bool do_relu=false, bool kernel_rotate=false);
+} // namespace conv::param
 } // namespace ppl

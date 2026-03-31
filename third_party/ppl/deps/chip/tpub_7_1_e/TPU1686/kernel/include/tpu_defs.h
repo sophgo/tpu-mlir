@@ -22,7 +22,7 @@ typedef unsigned int u32;
 #define THREAD
 #endif
 
-#ifdef __sg2262__
+#if defined(__sg2262__) || defined(__bm1684x2__)
 typedef enum {
     DT_INT8   = (0 << 1) | 1,
     DT_UINT8  = (0 << 1) | 0,

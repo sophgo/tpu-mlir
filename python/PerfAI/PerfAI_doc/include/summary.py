@@ -8,9 +8,6 @@
 # third-party components.
 #
 # ==============================================================================
-# @Time    : 2023/8/7 11:23
-# @Author  : chongqing.zeng@sophgo.com
-# @Project: PerfAI
 """
 Note: The functionality to generate summary and layer information
     is temporarily not maintained due to the incomplete state of the

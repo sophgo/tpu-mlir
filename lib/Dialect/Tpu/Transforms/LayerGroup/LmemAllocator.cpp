@@ -2419,9 +2419,10 @@ public:
         auto shape_secs = pass_ir->shape_secs[i];
         auto ret = lmem_allocator.assignLmemAddrWithSecs(
             pass_ir->lg_infos[i], pass_ir->time_steps[i],
-            pass_ir->shape_secs[i]);
+            pass_ir->lg_infos[i].shape_secs);
 
         if (ret) {
+          pass_ir->shape_secs[i] = pass_ir->lg_infos[i].shape_secs;
           aggressive_slice_for_multicore(lmem_allocator, pass_ir->lg_infos[i],
                                          pass_ir->time_steps[i],
                                          pass_ir->shape_secs[i], shape_secs);

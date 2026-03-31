@@ -275,7 +275,6 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
       if (!getOutF8Scales().has_value())
         llvm_unreachable("should have out scale for conv2d in f8 mode");
       f64_array_t quant_scale_v = module::getF64Array(getOutF8Scales().value());
-
       for (int i = 0; i < quant_scale_v.get()->size(); i++) {
         size_t n = module::getShape(getOutput())[0];
         size_t out_c_num = (num_elem / n) / quant_scale_v.get()->size();
@@ -317,9 +316,9 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
-      int64_t shift = per_axis       ? rshift_v->at(ic)
-                      : use_winograd ? rshift_v->at(1)
-                                     : rshift_v->at(0);
+      int64_t shift = per_axis
+                          ? rshift_v->at(ic)
+                          : use_winograd ? rshift_v->at(1) : rshift_v->at(0);
       int64_t multi = 1;
       if (qmode != tpu::RequantMode::OnlyShift) {
         multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);

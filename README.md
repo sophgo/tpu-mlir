@@ -74,7 +74,7 @@ git clone git@hf.co:Qwen/Qwen2.5-VL-3B-Instruct-AWQ
 2) In a Docker environment, compile `Qwen2.5-VL`:
 
 ```shell
-llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048 -q w4bf16 -c bm1684x --max_pixels 672,896 -o qwen2.5vl_3b
+llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048 -c bm1684x --max_pixels 672,896 -o qwen2.5vl_3b
 ```
 
 The main arguments supported by `llm_convert.py` are:
@@ -83,13 +83,14 @@ The main arguments supported by `llm_convert.py` are:
 | ------------- | ----- | --------- | ------------------------------------------------------------------------------------ |
 | model_path    | m     | Yes       | Path to the model weights                                                            |
 | seq_length    | s     | Yes       | Maximum sequence length                                                               |
-| quantize      | q     | Yes       | Quantization type (e.g., `w4bf16`/`w4f16`/`bf16`/`f16`, etc.)                         |
+| quantize      | q     | Yes       | Quantization type (e.g., `auto`/`w4bf16`/`w4f16`/`bf16`/`f16`,etc.)                  |
 | q_group_size  | g     | No        | Group size for quantization; default is 64                                           |
 | chip          | c     | Yes       | Target platform (e.g., `bm1684x`/`bm1688`/`cv186ah`)                                  |
 | max_pixels    | —     | No        | Multi-modal parameter; maximum resolution, e.g., `672,896` or single integer `602112` |
 | out_dir       | o     | Yes       | Output directory                                                                      |
 
 After the conversion completes, the corresponding bmodel file will be generated in the specified output directory.
+The example here is quantized already, so no need to set `--quantize`
 
 3) Run the bmodel in a PCIe or SoC environment:
 

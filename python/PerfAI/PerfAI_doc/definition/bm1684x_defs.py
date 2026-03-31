@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2023/8/7 11:47
-# @Author  : chongqing.zeng@sophgo.com
-# @Project: PerfAI
 from enum import Enum
 import ctypes as ct
 from src.common.common import dictStructure

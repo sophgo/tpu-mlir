@@ -128,36 +128,39 @@ static uint32_t __SR(uint64_t rs) {
   return id;
 }
 
-static uint16_t __prec_to_teew(int prec, bool subtype) {
+static uint16_t __prec_to_teew(int prec) {
   switch (prec) {
-  case 0:
-    return (1 << 4) | (TEEW_E8 << 1) | subtype;
-  case 1:
-    return (TEEW_E16 << 1) | subtype;
-  case 2:
-    return (TEEW_E32 << 1) | subtype;
-  case 3:
-    return (1 << 4) | (TEEW_E16 << 1) | subtype;
-  case 4:
-    return (1 << 4) | (TEEW_E32 << 1) | subtype;
-  case 6:
-    return (1 << 4) | (TEEW_E4 << 1) | subtype;
-  case 7:
-    return (TEEW_E8 << 1) | subtype;
-  case 10:
-    return (TEEW_E16 << 1) | subtype;
-  case 11:
-    return (TEEW_E16 << 1) | 1;
-  default:
-    return 0;
+    case 0:  return TEEW_E8;
+    case 1:  return TEEW_E16;
+    case 2:  return TEEW_E32;
+    case 3:  return TEEW_E16;
+    case 4:  return TEEW_E32;
+    case 5:  return TEEW_E4;
+    case 6:  return TEEW_E4;
+    case 7:  return TEEW_E8;
+    default: return 0;
+  }
+  return 0;
+}
+
+static uint16_t __prec_to_itype(int prec) {
+  switch (prec) {
+    case 0:  return 1;
+    case 1:  return 0;
+    case 2:  return 0;
+    case 3:  return 1;
+    case 4:  return 1;
+    case 5:  return 0;
+    case 6:  return 1;
+    case 7:  return 0;
+    default: return 0;
   }
   return 0;
 }
 
 static uint64_t pack_scale_val(uint32_t multiplier, int shift, int offset) {
   uint64_t scale = (uint64_t)multiplier;
-  scale |=
-      (((uint64_t)shift & 0xff) << 32) | (((uint64_t)offset & 0xffff) << 40);
+  scale |= (((uint64_t)shift & 0xff) << 32) | (((uint64_t)offset & 0xffff) << 40);
   return scale;
 }
 
@@ -242,79 +245,67 @@ void rvt_cfgtcr_cwdim2(TCR trd, uint64_t rs1_id, uint64_t rs2_id,
                        const uint32_t _reset, const uint32_t _update);
 
 static TCR rvt_cr(int ca, int prec, bool sign, uint64_t *val) {
-  uint16_t teew = __prec_to_teew(prec, sign);
+  uint16_t teew = __prec_to_teew(prec);
   if (rand() % 2) {
-    rvt_cfgtcr(ca, __SR((uint64_t)teew << 59 | (*val & 0xffffffffffffff)), 0);
-  } else {
-    uint32_t itype = (prec == 0 || prec == 3 || prec == 4 || prec == 6)
-                         ? TYPE_INTEGAL
-                         : TYPE_FLOAT;
-    rvt_cfgcr32(ca, __SR((uint64_t)teew << 59 | (*val & 0xffffffffffffff)),
-                itype, teew >> 1, sign);
+    teew = (__prec_to_itype(prec) << 4) | (teew << 1) | sign;
+    rvt_cfgtcr(ca, __SR((uint64_t)teew << 59 | (ival & 0xffffffffffffff)), 0);
+  }else {
+    uint32_t itype = __prec_to_itype(prec);
+    rvt_cfgcr32(ca,  __SR(ival & 0xffffffffffffff), itype, teew, sign);
   }
   return ca;
 }
 
 static TCR rvt_tr(int ta, int prec, bool sign, uint32_t offset, LAYOUT_E layout,
                   array4_t shape, int *strides) {
-  uint16_t teew = __prec_to_teew(prec, sign);
-  if (rand() % 2) {
+  uint16_t teew = __prec_to_teew(prec);
+  if(rand() % 2) {
+    teew = (__prec_to_itype(prec) << 4) | (teew << 1) | sign;
     uint64_t rs_id = (__pack_teew_layout(teew, layout) << 48) | offset;
     uint64_t rs1_id = (rs_id >> 48) & 0xffff;
-    uint64_t rs2_id = rs_id & 0xffffffffffff;
+    uint64_t rs2_id = rs_id & 0xffffffffffffULL;
     rvt_cfgtcr2(ta, __SR(rs1_id), __SR(rs2_id), 0);
   } else {
+    teew = (__prec_to_itype(prec) << 4) | (teew << 1) | sign;
     rvt_cfgtcr(ta, __SR((__pack_teew_layout(teew, layout) << 48) | offset), 0);
   }
-
-  if (shape.h < (1 << 16) && shape.w < (1 << 16) && shape.c < (1 << 16) &&
-      shape.n < (1 << 16)) {
+  int random_choice = rand() % 4;
+  bool within_16bit = shape.h < (1 << 16) && shape.w < (1 << 16) && shape.c < (1 << 16)
+        && shape.n < (1 << 16);
+  if (random_choice == 0 && within_16bit) {
     uint64_t size = (((uint64_t)shape.n & 0xffff) << 48) |
-                    (((uint64_t)shape.c & 0xffff) << 32) |
-                    (((uint64_t)shape.h & 0xffff) << 16) |
-                    ((uint64_t)shape.w & 0xffff);
+                        (((uint64_t)shape.c & 0xffff) << 32) |
+                        (((uint64_t)shape.h & 0xffff) << 16) |
+                        ((uint64_t)shape.w & 0xffff);
     rvt_cfgtcr_dim4(ta, __SR(size), 1);
+  } else if (random_choice == 1) {
+    rvt_cfgtcr_dim1(ta, __SR(shape.n), 0, 0, 0);
+    rvt_cfgtcr_dim1(ta, __SR(shape.c), 1, 0, 0);
+    rvt_cfgtcr_dim1(ta, __SR(shape.h), 2, 0, 0);
+    rvt_cfgtcr_dim1(ta, __SR(shape.w), 3, 0, 1);
+  } else if (random_choice == 2) {
+    int64_t hw_val = (((uint64_t)shape.h & 0xffffffff) << 32) |
+              ((uint64_t)shape.w & 0xffffffff);
+    uint64_t cw_val = (((uint64_t)shape.c & 0xffffffff) << 32) |
+          ((uint64_t)shape.w & 0xffffffff);
+    uint64_t nc_val = (((uint64_t)shape.n & 0xffffffff) << 32) |
+          ((uint64_t)shape.c & 0xffffffff);
+    rvt_cfgtcr_hwdim(ta, __SR(hw_val), 0, 0);
+    rvt_cfgtcr_cwdim(ta, __SR(cw_val), 0, 0);
+    rvt_cfgtcr_ncdim(ta, __SR(nc_val), 0, 1);
   } else {
-    uint64_t hw_size = (((uint64_t)shape.h & 0xffffffff) << 32) |
-                       (((uint64_t)shape.w & 0xffffffff));
-    uint64_t nc_size = (((uint64_t)shape.n & 0xffffffff) << 32) |
-                       (((uint64_t)shape.c & 0xffffffff));
-    int rand_choice = rand() % 3;
-    if (rand_choice) {
-      rvt_cfgtcr_hwdim(ta, __SR(hw_size), 0, 0);
-      rvt_cfgtcr_ncdim(ta, __SR(nc_size), 0, 1);
+    uint64_t rs1_hwdim = (uint64_t)(shape.h) & 0xffffffff;
+    uint64_t rs2_hwdim = (uint64_t)(shape.w) & 0xffffffff;
 
-    } else if (rand_choice) {
-      uint64_t hw_val = (((uint64_t)shape.h & 0xffffffff) << 32) |
-                        ((uint64_t)shape.w & 0xffffffff);
+    uint64_t rs1_ncdim = (uint64_t)(shape.n) & 0xffffffff;
+    uint64_t rs2_ncdim = (uint64_t)(shape.c) & 0xffffffff;
 
-      uint64_t cw_val = (((uint64_t)shape.c & 0xffffffff) << 32) |
-                        ((uint64_t)shape.w & 0xffffffff);
+    uint64_t rs1_cwdim = (uint64_t)(shape.c) & 0xffffffff;
+    uint64_t rs2_cwdim = (uint64_t)(shape.w) & 0xffffffff;
 
-      uint64_t nc_val = ((uint64_t)shape.n & 0xffffffff) << 32 |
-                        ((uint64_t)shape.c & 0xffffffff);
-
-      rvt_cfgtcr_hwdim(ta, __SR(hw_val), 0, 0);
-      rvt_cfgtcr_cwdim(ta, __SR(cw_val), 0, 0);
-      rvt_cfgtcr_ncdim(ta, __SR(nc_val), 0, 1);
-
-    } else {
-      // 1. hwdim2: stride_h = rs1 & 0xffffffff, stride_w = rs2 & 0xffffffff
-      uint64_t rs1_hwdim = (uint64_t)(shape.h) & 0xffffffff;
-      uint64_t rs2_hwdim = (uint64_t)(shape.w) & 0xffffffff;
-
-      // 2. ncdim2: stride_n = rs1 & 0xffffffff, stride_c = rs2 & 0xffffffff
-      uint64_t rs1_ncdim = (uint64_t)(shape.n) & 0xffffffff;
-      uint64_t rs2_ncdim = (uint64_t)(shape.c) & 0xffffffff;
-
-      // 3. cwdim2: stride_h = rs1 & 0xffffffff, stride_w = rs2 & 0xffffffff
-      uint64_t rs1_cwdim = (uint64_t)(shape.c) & 0xffffffff;
-      uint64_t rs2_cwdim = (uint64_t)(shape.w) & 0xffffffff;
-
-      rvt_cfgtcr_hwdim2(ta, __SR(rs1_hwdim), __SR(rs2_hwdim), 0, 0);
-      rvt_cfgtcr_ncdim2(ta, __SR(rs1_ncdim), __SR(rs2_ncdim), 0, 0);
-      rvt_cfgtcr_cwdim2(ta, __SR(rs1_cwdim), __SR(rs2_cwdim), 0, 1);
-    }
+    rvt_cfgtcr_hwdim2(ta, __SR(rs1_hwdim),  __SR(rs2_hwdim), 0, 0);
+    rvt_cfgtcr_ncdim2(ta,  __SR(rs1_ncdim),  __SR(rs2_ncdim), 0, 0);
+    rvt_cfgtcr_cwdim2(ta,  __SR(rs1_cwdim),  __SR(rs2_cwdim), 0, 1);
   }
 
   if (strides || layout == FREE_LAYOUT) {
@@ -326,7 +317,7 @@ static TCR rvt_tr(int ta, int prec, bool sign, uint32_t offset, LAYOUT_E layout,
       uint64_t rs_stride_w = (uint64_t)strides[3];
       uint64_t rs_stride_n = (uint64_t)strides[0];
       uint64_t rs_stride_c = (uint64_t)strides[1];
-      rvt_cfgtcr_hwstride2(ta, __SR(rs_stride_h), __SR(rs_stride_w), 0);
+      rvt_cfgtcr_hwstride2(ta, __SR(rs_stride_h),  __SR(rs_stride_w), 0);
       rvt_cfgtcr_ncstride2(ta, __SR(rs_stride_n), __SR(rs_stride_c), 1);
     }
   }
@@ -405,64 +396,52 @@ static inline TCR ca0() { return 0; }
 
 static TCR rvt_gr(int ga, int prec, bool sign, uint64_t addr, LAYOUT_E layout,
                   array4_t shape, int *strides) {
-  uint16_t teew = __prec_to_teew(prec, sign);
+  uint16_t teew = __prec_to_teew(prec);
+  teew = (__prec_to_itype(prec) << 4) | (teew << 1) | sign;
   rvt_cfgtcr(ga, __SR((__pack_teew_layout(teew, layout) << 48) | addr), 0);
-  if (shape.h < (1 << 16) && shape.w < (1 << 16) && shape.c < (1 << 16) &&
-      shape.n < (1 << 16)) {
+  int random_choice = rand() % 4;
+  bool within_16bit = shape.h < (1 << 16) && shape.w < (1 << 16) && shape.c < (1 << 16)
+        && shape.n < (1 << 16);
+  if (random_choice == 0 && within_16bit) {
     uint64_t size = (((uint64_t)shape.n & 0xffff) << 48) |
-                    (((uint64_t)shape.c & 0xffff) << 32) |
-                    (((uint64_t)shape.h & 0xffff) << 16) |
-                    ((uint64_t)shape.w & 0xffff);
+                        (((uint64_t)shape.c & 0xffff) << 32) |
+                        (((uint64_t)shape.h & 0xffff) << 16) |
+                        ((uint64_t)shape.w & 0xffff);
     rvt_cfgtcr_dim4(ga, __SR(size), 1);
+  } else if (random_choice == 1) {
+    rvt_cfgtcr_dim1(ga, __SR(shape.n), 0, 0, 0);
+    rvt_cfgtcr_dim1(ga, __SR(shape.c), 1, 0, 0);
+    rvt_cfgtcr_dim1(ga, __SR(shape.h), 2, 0, 0);
+    rvt_cfgtcr_dim1(ga, __SR(shape.w), 3, 0, 1);
+  } else if (random_choice == 2) {
+    int64_t hw_val = (((uint64_t)shape.h & 0xffffffff) << 32) |
+              ((uint64_t)shape.w & 0xffffffff);
+    uint64_t cw_val = (((uint64_t)shape.c & 0xffffffff) << 32) |
+          ((uint64_t)shape.w & 0xffffffff);
+    uint64_t nc_val = (((uint64_t)shape.n & 0xffffffff) << 32) |
+          ((uint64_t)shape.c & 0xffffffff);
+    rvt_cfgtcr_hwdim(ga, __SR(hw_val), 0, 0);
+    rvt_cfgtcr_cwdim(ga, __SR(cw_val), 0, 0);
+    rvt_cfgtcr_ncdim(ga, __SR(nc_val), 0, 1);
   } else {
-    uint64_t hw_size = (((uint64_t)shape.h & 0xffffffff) << 32) |
-                       (((uint64_t)shape.w & 0xffffffff));
-    uint64_t nc_size = (((uint64_t)shape.n & 0xffffffff) << 32) |
-                       (((uint64_t)shape.c & 0xffffffff));
-    int rand_choice = rand() % 3;
-    if (rand_choice) {
-      rvt_cfgtcr_hwdim(ga, __SR(hw_size), 0, 0);
-      rvt_cfgtcr_ncdim(ga, __SR(nc_size), 0, 1);
+    uint64_t rs1_hwdim = (uint64_t)(shape.h) & 0xffffffff;
+    uint64_t rs2_hwdim = (uint64_t)(shape.w) & 0xffffffff;
 
-    } else if (rand_choice) {
-      uint64_t hw_val = (((uint64_t)shape.h & 0xffffffff) << 32) |
-                        ((uint64_t)shape.w & 0xffffffff);
+    uint64_t rs1_ncdim = (uint64_t)(shape.n) & 0xffffffff;
+    uint64_t rs2_ncdim = (uint64_t)(shape.c) & 0xffffffff;
 
-      uint64_t cw_val = (((uint64_t)shape.c & 0xffffffff) << 32) |
-                        ((uint64_t)shape.w & 0xffffffff);
+    uint64_t rs1_cwdim = (uint64_t)(shape.c) & 0xffffffff;
+    uint64_t rs2_cwdim = (uint64_t)(shape.w) & 0xffffffff;
 
-      uint64_t nc_val = ((uint64_t)shape.n & 0xffffffff) << 32 |
-                        ((uint64_t)shape.c & 0xffffffff);
-
-      rvt_cfgtcr_hwdim(ga, __SR(hw_val), 0, 0);
-      rvt_cfgtcr_cwdim(ga, __SR(cw_val), 0, 0);
-      rvt_cfgtcr_ncdim(ga, __SR(nc_val), 0, 1);
-
-    } else {
-      // 1. hwdim2: stride_h = rs1 & 0xffffffff, stride_w = rs2 & 0xffffffff
-      uint64_t rs1_hwdim = (uint64_t)(shape.h) & 0xffffffff;
-      uint64_t rs2_hwdim = (uint64_t)(shape.w) & 0xffffffff;
-
-      // 2. ncdim2: stride_n = rs1 & 0xffffffff, stride_c = rs2 & 0xffffffff
-      uint64_t rs1_ncdim = (uint64_t)(shape.n) & 0xffffffff;
-      uint64_t rs2_ncdim = (uint64_t)(shape.c) & 0xffffffff;
-
-      // 3. cwdim2: stride_h = rs1 & 0xffffffff, stride_w = rs2 & 0xffffffff
-      uint64_t rs1_cwdim = (uint64_t)(shape.c) & 0xffffffff;
-      uint64_t rs2_cwdim = (uint64_t)(shape.w) & 0xffffffff;
-
-      rvt_cfgtcr_hwdim2(ga, __SR(rs1_hwdim), __SR(rs2_hwdim), 0, 0);
-      rvt_cfgtcr_ncdim2(ga, __SR(rs1_ncdim), __SR(rs2_ncdim), 0, 0);
-      rvt_cfgtcr_cwdim2(ga, __SR(rs1_cwdim), __SR(rs2_cwdim), 0, 1);
-    }
+    rvt_cfgtcr_hwdim2(ga, __SR(rs1_hwdim),  __SR(rs2_hwdim), 0, 0);
+    rvt_cfgtcr_ncdim2(ga,  __SR(rs1_ncdim),  __SR(rs2_ncdim), 0, 0);
+    rvt_cfgtcr_cwdim2(ga,  __SR(rs1_cwdim),  __SR(rs2_cwdim), 0, 1);
   }
 
   if (strides) {
     assert(layout == FREE_LAYOUT);
-    rvt_cfgtcr_hwstride(
-        ga, __SR((uint64_t)strides[2] << 32 | (uint64_t)strides[3]), 0);
-    rvt_cfgtcr_ncstride(
-        ga, __SR((uint64_t)strides[0] << 32 | (uint64_t)strides[1]), 1);
+    rvt_cfgtcr_hwstride(ga, __SR((uint64_t)strides[2] << 32 | (uint64_t)strides[3]), 0);
+    rvt_cfgtcr_ncstride(ga, __SR((uint64_t)strides[0] << 32 | (uint64_t)strides[1]), 1);
   }
   return ga;
 }

@@ -5,7 +5,7 @@ TPU-MLIR is a compiler project for Deep Learning processors. This project
 provides a complete toolchain, which can convert pre-trained neural networks
 under different frameworks into binary files ``bmodel`` that can be efficiently
 run on the processors.
-The code has been open-sourced to github: https://github.com/sophgo/tpu-mlir .
+The code has been open-sourced to github.
 
 The overall architecture of TPU-MLIR is as follows:
 

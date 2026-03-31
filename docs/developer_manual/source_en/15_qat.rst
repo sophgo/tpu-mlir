@@ -28,13 +28,13 @@ tpu-mq is recommanded to be used in docker container, the docker image can be pu
 
 .. code-block:: shell
 
-    docker pull sophgo/tpuc_dev:v3.4.6-cuda
+    docker pull tpuc_dev:v3.4.6-cuda
 
 The docker image includes pytorch 2.1.0 and cuda 12.6, and intergrated the environment for tpu-mlir.
 
 Install with setup package
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Download setup package from download area of open-source project https://github.com/sophgo/tpu-mq.git, for example, tpu_mq-1.0.7-cp310-cp310-linux_x86_64.whl, install with:
+Download setup package from download area of open-source project, for example, tpu_mq-1.0.7-cp310-cp310-linux_x86_64.whl, install with:
 
 .. code-block:: shell
 
@@ -43,7 +43,7 @@ Download setup package from download area of open-source project https://github.
 
 Install from source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-1、Run the command to get the latest code on github: git clone https://github.com/sophgo/tpu-mq.git
+1、Run the command to get the latest code on github tpu-mq repository:
 
 2、Execute after entering the tpu-mq directory:
 
