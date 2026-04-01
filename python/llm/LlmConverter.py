@@ -34,6 +34,7 @@ class LlmConverter(BaseConverter):
         self.share_prompt = args.share_prompt
         self.quantize = args.quantize
         self.num_device = args.num_device
+        self.distribute_strategy = getattr(args, 'distribute_strategy', 'tp')
         self.batch = args.batch
         self.use_insert = self.batch > 1
         self.q_group_size = args.q_group_size
@@ -91,6 +92,9 @@ class LlmConverter(BaseConverter):
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
         self.config_dir = os.path.join(self.out_dir, "config")
+        if self.distribute_strategy == "pp":
+            self.num_device_pp = args.num_device
+            self.num_device = 1
         self.commands = []
         self.all_gen_mlirs = []
         self.all_compiles = []
@@ -2086,6 +2090,71 @@ class LlmConverter(BaseConverter):
 
         get_info_args = ['model_tool', '--info', self.out_bmodel, '> ../model.log']
         self.run_command(['bash', '-c', ' '.join(get_info_args)])
+
+        # PP distribute: split into num_device groups and combine separately
+        if self.distribute_strategy == 'pp' and self.num_device_pp > 1:
+            self._pp_combine(bmodel_list)
+
+    def _pp_combine(self, bmodel_list):
+        import re
+        import math
+
+        # Classify bmodels into categories
+        embedding_vit_group = []  # embedding_xxx and vit_xxx
+        block_models = {}  # layer_id -> list of bmodels (block + block_cache + block_prompt)
+        add_group = []  # add operations for residual connections
+        remaining_group = []  # lm_head, greedy_head, sample_head, etc.
+
+        block_pattern = re.compile(r'block(?:_cache|_prompt)?_(\d+)')
+        embedding_vit_pattern = re.compile(r'(embedding|vit)')
+        add_pattern = re.compile(r'add')
+        for bmodel in bmodel_list:
+            basename = os.path.basename(bmodel)
+            m = block_pattern.match(basename)
+            if m:
+                layer_id = int(m.group(1))
+                block_models.setdefault(layer_id, []).append(bmodel)
+            elif embedding_vit_pattern.search(basename):
+                embedding_vit_group.append(bmodel)
+            elif add_pattern.search(basename):
+                add_group.append(bmodel)
+            else:
+                remaining_group.append(bmodel)
+        # Split block layers into (num_device_pp - 2) groups
+        num_block_groups = self.num_device_pp - 2
+        sorted_layer_ids = sorted(block_models.keys())
+        total_layers = len(sorted_layer_ids)
+        layers_per_group = math.ceil(total_layers /
+                                     num_block_groups) if num_block_groups > 0 else total_layers
+
+        groups = []
+        # Group 0: embedding + vit
+        groups.append(embedding_vit_group)
+        # Groups 1 to num_device_pp-2: block layers
+        for g in range(num_block_groups):
+            start = g * layers_per_group
+            end = min((g + 1) * layers_per_group, total_layers)
+            group_bmodels = []
+            for lid in sorted_layer_ids[start:end]:
+                group_bmodels.extend(block_models[lid])
+            groups.append(group_bmodels)
+        if add_group:
+            groups[1].extend(add_group)  # Add residual connections to the first block group
+        # Last group: remaining (lm_head, greedy_head, sample_head, etc.)
+        groups.append(remaining_group)
+
+        # Combine each group separately
+        out_base, out_ext = os.path.splitext(self.out_bmodel)
+        for i, group in enumerate(groups):
+            if not group:
+                print(f"PP group {i} is empty, skipping.")
+                continue
+            group_out = f"{out_base}_dev{i}{out_ext}"
+            combine_args = ['model_tool', '--combine', ' '.join(group), '-o', group_out]
+            self.run_command(['bash', '-c', ' '.join(combine_args)])
+            group_size = os.path.getsize(group_out)
+            print(f"PP group {i} bmodel size: {group_size / (1024.0 ** 3):.4f} GB, "
+                  f"models: {len(group)}, output: {group_out}")
 
     def compile_all(self):
 

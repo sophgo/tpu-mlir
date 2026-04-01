@@ -58,6 +58,9 @@ if __name__ == '__main__':
                         help="chip type for bmodel")
     parser.add_argument('--num_device', type=int, default=1,
                         help="num device for bmodel")
+    parser.add_argument('--distribute_strategy', type=str, default="tp",
+                        choices=["tp", "pp"],
+                        help="distribute strategy for bmodel, only used when num_device > 1")
     parser.add_argument('--num_core', type=int, default=0, help="num cores for bmodel")
     parser.add_argument('-b', '--batch', type=int, default=1,
                         help='batch size for bmodel')
