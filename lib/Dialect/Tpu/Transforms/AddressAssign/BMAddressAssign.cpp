@@ -602,7 +602,8 @@ void BMAddressAssign::assignIOByAddrMode(
 
     // assign io addr
     sort_ios(ios);
-    int n_tags = ios.size() < 5 ? ios.size() : 5;
+    int io_num = BM168x::get_io_addr_num();
+    int n_tags = ios.size() < io_num ? ios.size() : io_num;
     for (int io_index = 0; io_index < n_tags; io_index++) {
       module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
       ValueInfo v_info(ios[io_index].getDefiningOp(),

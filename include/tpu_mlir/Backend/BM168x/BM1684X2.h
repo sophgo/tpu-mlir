@@ -62,11 +62,11 @@ private:
     TAG_USERS = 0,
     TAG_WEIGHT = (1ul << 40),
     TAG_ACTIVATION = (2ul << 40),
-    TAG_IO0 = (3ul << 40),
-    TAG_IO1 = (4ul << 40),
-    TAG_IO2 = (5ul << 40),
-    TAG_IO3 = (6ul << 40),
-    TAG_IO4 = (7ul << 40),
+    TAG_IOALONE = (3ul << 40),
+    TAG_IO0 = (4ul << 40),
+    TAG_IO1 = (5ul << 40),
+    TAG_IO2 = (6ul << 40),
+    TAG_IO3 = (7ul << 40),
     TAG_PRIVATE = (29ul << 40),
     TAG_SHARED_8CH = (28ul << 40),
     TAG_SHARED_32CH = (27ul << 40)
@@ -90,12 +90,12 @@ protected:
     GMEM_START_ADDR = 0x1000000000UL;
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
+    IO_START_ADDR = GMEM_START_ADDR | TAG_IOALONE;
     L2_SRAM_START_ADDR = GMEM_START_ADDR | TAG_SHARED_8CH;
     IO_ADDR[0] = GMEM_START_ADDR | TAG_IO0;
     IO_ADDR[1] = GMEM_START_ADDR | TAG_IO1;
     IO_ADDR[2] = GMEM_START_ADDR | TAG_IO2;
     IO_ADDR[3] = GMEM_START_ADDR | TAG_IO3;
-    IO_ADDR[4] = GMEM_START_ADDR | TAG_IO4;
     SUPPORT_MEM_TAG = true;
     LIB_BACKEND_NAME = "libbackend_bm1684x2.so";
     // GDMA format
