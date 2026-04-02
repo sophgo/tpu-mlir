@@ -21,6 +21,7 @@ class Platform:
     CAFFE = "CAFFE"
     TPULANG = "TPULANG"
     LLM = "LLM"
+    LLM_QUANTIZED = "LLM_QUANTIZED"
 
 
 def get_weight_file(model_name: str, state: str, chip: str):

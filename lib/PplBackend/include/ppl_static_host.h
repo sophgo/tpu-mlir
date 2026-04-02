@@ -1,6 +1,7 @@
 #ifndef PPL_STATIC_HOST_H
 #define PPL_STATIC_HOST_H
 #include <cstdint>
+#include <string>
 // #include "tpu_defs.h"
 #include "tpu_mlir/Backend/BM168x/Param.h"
 
@@ -147,6 +148,28 @@ static inline int get_dtype_bytes(int data_type) {
     break;
   }
   return data_byte_size;
+}
+
+static inline void get_chip_info(int *npu_num, int *npu_size) {
+  std::string chip_str = getenv("CHIP");
+  if (chip_str == PPL_BM1688) {
+    *npu_size = 128 * 1024;
+    *npu_num = 32;
+  } else if (chip_str == PPL_BM1684X) {
+    *npu_size = 256 * 1024;
+    *npu_num = 64;
+  } else if (chip_str == PPL_BM1684X2) {
+    *npu_size = 256 * 1024;
+    *npu_num = 16;
+  } else if (chip_str == PPL_BM1690E) {
+    *npu_size = 256 * 1024;
+    *npu_num = 64;
+  } else if (chip_str == PPL_BM1690) {
+    *npu_num = 64;
+    *npu_size = 256 * 1024;
+  } else {
+    assert(false && "unsupport chip");
+  }
 }
 
 #endif

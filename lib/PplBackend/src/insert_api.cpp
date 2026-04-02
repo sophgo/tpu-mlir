@@ -1,3 +1,12 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2026 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "insert_api.h"
 #include "ppl_static_host.h"
 #include <assert.h>

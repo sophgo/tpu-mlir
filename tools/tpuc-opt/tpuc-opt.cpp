@@ -16,7 +16,7 @@
 #include "tpu_mlir/InitAll.h"
 using namespace mlir;
 
-const std::string PluginPrePass[] = {"--init"};
+std::vector<std::string> PluginPrePass = {"--init"};
 std::vector<std::string> PluginPostPass;
 
 int main(int argc, char **argv) {
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     argc -= 1;
   }
 
-  int num_pre = sizeof(PluginPrePass) / sizeof(PluginPrePass[0]);
+  int num_pre = PluginPrePass.size();
   int num_post = PluginPostPass.size();
   int new_argc = num_pre + argc + num_post;
   char *new_argv[new_argc];

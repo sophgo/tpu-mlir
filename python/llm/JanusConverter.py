@@ -257,7 +257,7 @@ class JanusConverter(LlmConverter):
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 name,
-                                Platform.LLM,
+                                self.platform,
                                 input_types,
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point

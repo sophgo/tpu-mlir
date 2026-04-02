@@ -50,6 +50,7 @@ class LlmConverter(BaseConverter):
         self.lora_rank = args.lora_max_rank
         self.do_lora = self.lora_rank > 0
         self.rmsnorm_type = WeightType.RMSNORM
+        self.platform = Platform.LLM
         self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
         self.position_shape = [1, 1, self.max_input_length
                                ] if self.use_insert else [1, self.max_input_length]
@@ -132,6 +133,17 @@ class LlmConverter(BaseConverter):
         else:
             dtype = None
         return dtype
+
+    def is_key_quantized(self, key: str):
+        if not self.quant_mode:
+            return False
+        if self.model.is_exist(key + ".qweight"):
+            return True
+        if self.model.is_exist(key + ".weight_packed"):
+            return True
+        if key + ".qweight" in self.weights:
+            return True
+        return False
 
     def gen_config(self):
         import shutil
@@ -523,6 +535,8 @@ class LlmConverter(BaseConverter):
         if self.q_group_size < 0:
             # avoid special value, like -1
             self.q_group_size = 0
+        if self.quant_mode:
+            self.platform = Platform.LLM_QUANTIZED
 
     def get_loc(self, names, mlir):
         if isinstance(names, str):
@@ -597,7 +611,7 @@ class LlmConverter(BaseConverter):
             out_shape = [1, seq_length, self.hidden_size]
             embedding_mlir = MLIRImporter([[1, seq_length]], [out_shape],
                                           name,
-                                          Platform.LLM,
+                                          self.platform,
                                           input_types=["INT32"],
                                           weight_file=f"../{embedding_npz}")
             input_op = embedding_mlir.create_input_op(self.get_loc("input_ids", embedding_mlir), 0)
@@ -626,7 +640,7 @@ class LlmConverter(BaseConverter):
             hidden_shape = [1, seq_length, self.hidden_size]
             lora_mlir = MLIRImporter([[1, seq_length], hidden_shape], [hidden_shape],
                                      name,
-                                     Platform.LLM,
+                                     self.platform,
                                      input_types=["INT32", "F32"],
                                      weight_file="../embedding_lora_top_weights.npz")
             input_op = lora_mlir.create_input_op(self.get_loc("input_ids", lora_mlir), 0)
@@ -677,7 +691,7 @@ class LlmConverter(BaseConverter):
             lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
                                        out_shape,
                                        name,
-                                       Platform.LLM,
+                                       self.platform,
                                        weight_file=f"../{lmhead_npz}")
             input_op = lmhead_mlir.create_input_op(self.get_loc("hidden_states", lmhead_mlir), 0)
             if self.llm_type == LlmType.MINICPM4:
@@ -727,7 +741,7 @@ class LlmConverter(BaseConverter):
             out_shape = [1, self.vocab_size]
             lmhead_mlir = MLIRImporter([[1, self.hidden_size], out_shape], [out_shape],
                                        name,
-                                       Platform.LLM,
+                                       self.platform,
                                        input_types=["F32", "F32"],
                                        weight_file="../lm_head_lora_top_weights.npz")
             input_op = lmhead_mlir.create_input_op(self.get_loc("input_states", lmhead_mlir), 0)
@@ -794,7 +808,7 @@ class LlmConverter(BaseConverter):
         # greedy head
         greedy_head_mlir = MLIRImporter([[1, self.vocab_size]], [[1, 1]],
                                         name,
-                                        Platform.LLM,
+                                        self.platform,
                                         weight_file=None)
         input_op = greedy_head_mlir.create_input_op(self.get_loc("m_logits", greedy_head_mlir), 0)
         topk_op = top.TopKOp(*greedy_head_mlir.get_tensor_type([[1, 1], [1, 1]]),
@@ -827,7 +841,7 @@ class LlmConverter(BaseConverter):
             [[1, self.vocab_size], [1, self.seq_length], [1], [1], [1], [1]],
             [[1, max_top_k], [1, max_top_k]],
             name,
-            Platform.LLM,
+            self.platform,
             input_types=['F32', 'INT32', 'F32', 'F32', 'INT32', 'F32'],
             weight_file="../sample_head_top_weights.npz")
         ip = sample_head_mlir.insert_point
@@ -994,8 +1008,7 @@ class LlmConverter(BaseConverter):
             else:
                 bias_op = mlir_gen.none_op
             bias_op_list.append(bias_op)
-            if self.quant_mode and (self.model.is_exist(proj + ".qweight") or
-                                    (proj + ".qweight" in self.weights)):
+            if self.is_key_quantized(proj):
                 assert (is_expert == False)
                 if i in [2]:
                     qweight_op = mlir_gen.create_weight_op(proj + ".qweight", [
@@ -1102,8 +1115,7 @@ class LlmConverter(BaseConverter):
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
         else:
             bias_op = mlir_gen.none_op
-        if self.quant_mode and (self.model.is_exist(proj + ".qweight") or
-                                (proj + ".qweight" in self.weights)):
+        if self.is_key_quantized(proj):
             qweight_op = mlir_gen.create_weight_op(
                 proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)],
                 'UINT8')
@@ -1417,10 +1429,8 @@ class LlmConverter(BaseConverter):
     def set_linear_weight(self, path: str, weight_dict: dict, do_lora: bool = False):
         is_quant = False
         K, N = 0, 0
-        if self.quant_mode is not None:
-            if self.model.is_exist(path + ".qweight") or self.model.is_exist(path +
-                                                                             ".weight_packed"):
-                is_quant = True
+        if self.is_key_quantized(path):
+            is_quant = True
         if not is_quant:
             weight_path = path + ".weight"
             if self.model.is_exist(weight_path):
@@ -1766,7 +1776,7 @@ class LlmConverter(BaseConverter):
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32", "F32"],
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -1895,7 +1905,7 @@ class LlmConverter(BaseConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 output_shapes,
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
@@ -2034,7 +2044,7 @@ class LlmConverter(BaseConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
@@ -2274,6 +2284,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
+        deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
@@ -2298,8 +2309,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--q_symmetric')
         if self.debug:
             deploy_args.append('--debug')
-        if self.use_insert:
-            deploy_args.append('--disable_gdma_check')
+        deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
@@ -2333,6 +2343,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
+        deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
@@ -2367,6 +2378,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--debug')
         if self.dynamic:
             deploy_args.append('--dynamic')
+        deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 
@@ -2397,6 +2409,7 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--addr_mode io_alone')
         else:
             deploy_args.append('--addr_mode basic')
+        deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
 

@@ -157,6 +157,7 @@ if __name__ == '__main__':
         converter = Qwen3VLConverter(args, config)
     elif config.model_type in ['qwen3_5']:
         from llm.Qwen3_5Converter import Qwen3_5Converter
+        args.dynamic = True  # Qwen3.5 always use dynamic compiling
         converter = Qwen3_5Converter(args, config)
     elif config.model_type in ['qwen2_5_omni']:
         from llm.Qwen2_5OConverter import Qwen2_5OConverter

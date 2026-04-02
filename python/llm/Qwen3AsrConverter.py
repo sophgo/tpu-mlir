@@ -117,7 +117,7 @@ class Qwen3AsrConverter(LlmConverter):
 
         audio_mlir = MLIRImporter([in_shape], [out_shape],
                                   name,
-                                  Platform.LLM,
+                                  self.platform,
                                   input_types,
                                   weight_file=f"../{audio_npz}")
         ip = audio_mlir.insert_point

@@ -114,7 +114,7 @@ class Llama3_2VConverter(LlmConverter):
             out_shape = [1, seq_length, self.hidden_size]
             embedding_mlir = MLIRImporter([[1, seq_length]], [out_shape],
                                           name,
-                                          Platform.LLM,
+                                          self.platform,
                                           input_types=["INT32"],
                                           weight_file=f"../{embedding_npz}")
             input_op = embedding_mlir.create_input_op(self.get_loc("input_ids", embedding_mlir), 0)
@@ -154,7 +154,7 @@ class Llama3_2VConverter(LlmConverter):
             lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
                                        out_shape,
                                        name,
-                                       Platform.LLM,
+                                       self.platform,
                                        weight_file=f"../{lmhead_npz}")
             input_op = lmhead_mlir.create_input_op(self.get_loc("hidden_states", lmhead_mlir), 0)
             if not self.do_lmhead_merge:
@@ -491,7 +491,7 @@ class Llama3_2VConverter(LlmConverter):
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 name,
-                                Platform.LLM,
+                                self.platform,
                                 input_types,
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
@@ -1025,7 +1025,7 @@ class Llama3_2VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32", "F32"],
                                       weight_file=f"../{weight_file}")
 
             def T(shape: list):
@@ -1110,7 +1110,7 @@ class Llama3_2VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, id_shape, row_mask, mask_shape],
                                       [input_shape, past_kv_shape, past_kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "F32", "F32", "F32"],
+                                      self.platform, ["F32", "F32", "F32", "F32"],
                                       weight_file=f"../{weight_file}")
 
             def T(shape: list):
@@ -1351,7 +1351,7 @@ class Llama3_2VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, mask_shape, history_shape, history_shape],
                                       [input_shape],
                                       name,
-                                      Platform.LLM, ["F32", "F32", "F32", "F32"],
+                                      self.platform, ["F32", "F32", "F32", "F32"],
                                       weight_file=f"../{weight_file}")
 
             def T(shape: list):
@@ -1498,7 +1498,7 @@ class Llama3_2VConverter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
             def T(shape: list):

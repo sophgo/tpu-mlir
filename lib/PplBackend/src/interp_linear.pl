@@ -1,4 +1,13 @@
-#include "ppl.h"  // PPL 代码依赖的头文件
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2026 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
+#include "ppl.h"
 using namespace ppl;
 #include "ppl_wrapper_func.h"
 #ifdef __bm1690__

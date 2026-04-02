@@ -94,7 +94,7 @@ class Gemma3Converter(LlmConverter):
         hidden_shape = [1, num_patches, embed_dim]
         vit_mlir = MLIRImporter([in_shape], [out_shape],
                                 name,
-                                Platform.LLM, ["F32"],
+                                self.platform, ["F32"],
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 

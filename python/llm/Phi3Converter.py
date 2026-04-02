@@ -390,7 +390,7 @@ class Phi3Converter(Chatglm3Converter):
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32", "F32"],
                                       weight_file=f"../{weight_file}")
 
             def T(shape: list):
@@ -472,7 +472,7 @@ class Phi3Converter(Chatglm3Converter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
             def T(shape: list):

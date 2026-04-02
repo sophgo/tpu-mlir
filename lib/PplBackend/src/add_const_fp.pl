@@ -1,3 +1,12 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2026 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "ppl.h"
 #include "ppl_wrapper_func.h"
 using namespace ppl;
@@ -48,16 +57,19 @@ void add_const_fp(T *ptr_dst, T *ptr_src, float rhs, int N, int C, int H, int W,
     }
   }
 }
-__KERNEL__ void add_const_f32(float *ptr_dst, float *ptr_src, float rhs, int N, int C,
-                   int H, int W, const int block_w, bool relu) {
+__KERNEL__ void add_const_f32(float *ptr_dst, float *ptr_src, float rhs, int N,
+                              int C, int H, int W, const int block_w,
+                              bool relu) {
   add_const_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, relu);
 }
-__KERNEL__ void add_const_f16(fp16 *ptr_dst, fp16 *ptr_src, float rhs, int N, int C, int H,
-                   int W, const int block_w, bool relu) {
+__KERNEL__ void add_const_f16(fp16 *ptr_dst, fp16 *ptr_src, float rhs, int N,
+                              int C, int H, int W, const int block_w,
+                              bool relu) {
   add_const_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, relu);
 }
-__KERNEL__ void add_const_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs, int N, int C,
-                    int H, int W, const int block_w, bool relu) {
+__KERNEL__ void add_const_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs, int N,
+                               int C, int H, int W, const int block_w,
+                               bool relu) {
   add_const_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, relu);
 }
 
@@ -114,19 +126,19 @@ void add_const_mc_fp(T *ptr_dst, T *ptr_src, float rhs, int N, int C, int H,
     }
   }
 }
-__KERNEL__ void add_const_mc_f32(float *ptr_dst, float *ptr_src, float rhs, int N, int C,
-                       int H, int W, const int block_w, const int core_num,
-                       bool relu) {
+__KERNEL__ void add_const_mc_f32(float *ptr_dst, float *ptr_src, float rhs,
+                                 int N, int C, int H, int W, const int block_w,
+                                 const int core_num, bool relu) {
   add_const_mc_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, core_num, relu);
 }
-__KERNEL__ void add_const_mc_fp16(fp16 *ptr_dst, fp16 *ptr_src, float rhs, int N, int C,
-                       int H, int W, const int block_w, const int core_num,
-                       bool relu) {
+__KERNEL__ void add_const_mc_fp16(fp16 *ptr_dst, fp16 *ptr_src, float rhs,
+                                  int N, int C, int H, int W, const int block_w,
+                                  const int core_num, bool relu) {
   add_const_mc_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, core_num, relu);
 }
-__KERNEL__ void add_const_mc_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs, int N, int C,
-                       int H, int W, const int block_w, const int core_num,
-                       bool relu) {
+__KERNEL__ void add_const_mc_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs,
+                                  int N, int C, int H, int W, const int block_w,
+                                  const int core_num, bool relu) {
   add_const_mc_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, core_num, relu);
 }
 

@@ -15,14 +15,23 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 void tpu::ChunkGatedDeltaRuleOp::codegen_global_bm1684x() {
-  // auto op = getOperation();
-  // auto input_spec = BM168x::get_input_spec(op);
-  // auto output_spec = BM168x::get_output_spec(op);
-
-  // BM168x::call_ppl_global_func("api_ChunkGatedDeltaRule_global", &param,
-  // sizeof(param),
-  //                              input_spec->data(), output_spec->data());
-  UNREACHABLE_THIS("Not Support static codegen now");
+#if 0
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  chunk_gated_delta_rule_spec_t param = {0};
+  param.num_k_heads = getNumKHeads();
+  param.num_v_heads = getNumVHeads();
+  param.d = getD();
+  param.chunk_size = getChunkSize();
+  param.use_qk_l2norm = getUseQkL2norm();
+  param.scale = static_cast<float>(getScale().convertToDouble());
+  BM168x::call_ppl_global_func("api_chunk_gated_delta_rule_global", &param,
+                               sizeof(param), input_spec->data(),
+                               output_spec->data());
+#endif
+  UNREACHABLE_THIS(
+      "Not Support static global codegen for ChunkGatedDeltaRuleOp");
 }
 
 int64_t tpu::ChunkGatedDeltaRuleOp::get_fw_type_bm1684x() {
@@ -33,19 +42,17 @@ int64_t tpu::ChunkGatedDeltaRuleOp::get_fw_type_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ChunkGatedDeltaRuleOp::dyn_codegen_global_bm1684x(void *buffer) {
-  // auto op = getOperation();
-  // auto input_spec = BM168x::get_input_spec(op);
-  // auto output_spec = BM168x::get_output_spec(op);
-  // chunk_gated_delta_rule_global_spec_t param = {0};
-  // auto &common = param.common;
-  // common.high_precision = module::isHighPrecision();
-  // if (buffer) {
-  //   // get_param(op, common);
-  // }
-  // return BM168x::call_ppl_dyn_func("api_dyn_chunk_gated_delta_rule_global",
-  // &param,
-  //                                  input_spec->data(), output_spec->data(),
-  //                                  buffer);
-  // TODO: support dynamic codegen
-  return 0;
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  chunk_gated_delta_rule_spec_t param = {0};
+  param.num_k_heads = getNumKHeads();
+  param.num_v_heads = getNumVHeads();
+  param.d = getD();
+  param.chunk_size = getChunkSize();
+  param.use_qk_l2norm = getUseQkL2norm();
+  param.scale = static_cast<float>(getScale().convertToDouble());
+  return BM168x::call_ppl_dyn_func("api_dyn_chunk_gated_delta_rule_global",
+                                   &param, input_spec->data(),
+                                   output_spec->data(), buffer);
 }

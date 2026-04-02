@@ -281,7 +281,7 @@ class InternVL3Converter(LlmConverter):
         vit_mlir = MLIRImporter([[1, 3, self.image_size, self.image_size]],
                                 [[self.num_image_token, self.hidden_size]],
                                 name,
-                                Platform.LLM, ['F32'],
+                                self.platform, ['F32'],
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 

@@ -1115,6 +1115,9 @@ public:
     if (op.getIsLora()) {
       return failure();
     }
+    if (module::isPlatform(module::Platform::LLM_QUANTIZED)) {
+      return failure();
+    }
     auto r_shape = module::getShape(op.getRight());
     auto N = r_shape.back();
     auto K = r_shape[0];

@@ -664,6 +664,8 @@ def main():
                         help="Parallelism ratio for Est.Time (default: 0.5)")
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
+    parser.add_argument('--max_pixels', type=str, default="",
+                        help='max input pixels for vision models, default "" means no vision input')
     parser.add_argument("-o", "--out_dir", required=True,
                         help="Output directory path (default: <out_dir>/<out_dir>_analysis.xlsx)")
     args = parser.parse_args()
@@ -678,7 +680,9 @@ def main():
     # TODO: Add llm_converter.py call here to generate MLIRs if needed
     # e.g. convert_model(args.model_path, args.model_dir, ...)
     # ------------------------------------------------------------------
-    if config.model_type in ["qwen2_5_vl", "qwen2_vl"]:
+    if args.max_pixels:
+        max_pixels = args.max_pixels
+    elif config.model_type in ["qwen2_5_vl", "qwen2_vl"]:
         max_pixels = "672,896"
     else:
         max_pixels = "768,768"

@@ -53,19 +53,18 @@ class Qwen3_5Converter(LlmConverter):
 
     @override
     def rotary_embedding(self):
-        from transformers.models.qwen2_vl.modeling_qwen2_vl import Qwen2VLRotaryEmbedding
-        rotary_embed = Qwen2VLRotaryEmbedding(self.llm_config)
+        from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5TextRotaryEmbedding
+        rotary_embed = Qwen3_5TextRotaryEmbedding(self.llm_config)
         position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
             1, 1, self.seq_length).expand(3, 1, self.seq_length)
         x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
         cos, sin = rotary_embed(x, position_ids)
         cos = cos[0].reshape(self.seq_length, 1, -1)
         sin = sin[0].reshape(self.seq_length, 1, -1)
-        assert (cos.shape[-1] == self.head_dim)
-        assert (sin.shape[-1] == self.head_dim)
+        end_dim = cos.shape[-1] // 2
         # half
-        cos = cos[:, :, :self.head_dim // 2]
-        sin = sin[:, :, :self.head_dim // 2]
+        cos = cos[:, :, :end_dim]
+        sin = sin[:, :, :end_dim]
         return cos.numpy(), sin.numpy()  #[seq, 1, 64]
 
     def apply_interleaved_mrope(self, freqs):
@@ -86,74 +85,41 @@ class Qwen3_5Converter(LlmConverter):
         return freqs_t
 
     def get_mrope_index(self):
-        freqs = np.arange(0, 3 * self.head_dim // 2,
-                          dtype=np.int32).reshape(3, 1, self.head_dim // 2)
-        freqs_t = self.apply_interleaved_mrope(freqs)  # [1, 64]
-        freqs_t = np.tile(freqs_t, (1, 2))  # [1, 128]
+        mrope_dim = sum(self.mrope_section)
+        freqs = np.arange(0, 3 * mrope_dim, dtype=np.int32).reshape(3, 1, mrope_dim)
+        freqs_t = self.apply_interleaved_mrope(freqs)  # [1, 32]
+        freqs_t = np.tile(freqs_t, (1, 2))  # [1, 64]
         return freqs_t.astype(np.float32)
-
-    def mrope_batch(self, mlir_gen, in_op, name: str):
-        dim = in_op.type.shape[-1]
-        weight_op = mlir_gen.create_weight_op(name + ".weight",
-                                              [self.seq_length, self.head_dim // 2])
-        in_op = top.GatherOp(mlir_gen.get_tensor_type([self.batch, 3, dim, self.head_dim // 2]),
-                             weight_op,
-                             in_op,
-                             axis=0,
-                             loc=self.get_loc(name, mlir_gen),
-                             ip=mlir_gen.insert_point).output
-        new_op = top.PermuteOp(mlir_gen.get_tensor_type([3, self.head_dim // 2, self.batch, dim]),
-                               in_op,
-                               order=[1, 3, 0, 2],
-                               loc=self.get_loc(name + ".permute", mlir_gen),
-                               ip=mlir_gen.insert_point).output
-        new_op = top.ReshapeOp(mlir_gen.get_tensor_type([3 * self.head_dim // 2, self.batch, dim]),
-                               new_op,
-                               shape=[3 * self.head_dim // 2, self.batch, -1],
-                               loc=self.get_loc(name + ".reshape", mlir_gen),
-                               ip=mlir_gen.insert_point).output
-        weight_op = mlir_gen.create_weight_op("mrope_interleave_idx", [1, self.head_dim])
-        new_op = top.GatherOp(mlir_gen.get_tensor_type([1, self.head_dim, self.batch, dim]),
-                              new_op,
-                              weight_op,
-                              axis=0,
-                              loc=self.get_loc(name + ".gather", mlir_gen),
-                              ip=mlir_gen.insert_point).output
-        new_op = top.PermuteOp(mlir_gen.get_tensor_type([self.batch, dim, 1, self.head_dim]),
-                               new_op,
-                               order=[2, 3, 0, 1],
-                               loc=self.get_loc(name + ".permute2", mlir_gen),
-                               ip=mlir_gen.insert_point).output
-        return new_op
 
     def mrope(self, mlir_gen, in_op, name: str):
         dim = in_op.type.shape[-1]
-        weight_op = mlir_gen.create_weight_op(name + ".weight",
-                                              [self.seq_length, 1, self.head_dim // 2])
-        in_op = top.GatherOp(mlir_gen.get_tensor_type([3, dim, 1, self.head_dim // 2]),
+        cos_dim = self.cos.shape[-1]
+        mrope_dim = sum(self.mrope_section) * 2
+        weight_op = mlir_gen.create_weight_op(name + ".weight", [self.seq_length, 1, cos_dim])
+        in_op = top.GatherOp(mlir_gen.get_tensor_type([3, dim, 1, cos_dim]),
                              weight_op,
                              in_op,
                              axis=0,
                              loc=self.get_loc(name, mlir_gen),
                              ip=mlir_gen.insert_point).output
-        new_op = top.PermuteOp(mlir_gen.get_tensor_type([3, self.head_dim // 2, 1, dim]),
+        new_op = top.PermuteOp(mlir_gen.get_tensor_type([3, cos_dim, 1, dim]),
                                in_op,
                                order=[0, 3, 2, 1],
                                loc=self.get_loc(name + ".permute", mlir_gen),
                                ip=mlir_gen.insert_point).output
-        new_op = top.ReshapeOp(mlir_gen.get_tensor_type([3 * self.head_dim // 2, 1, dim]),
+        new_op = top.ReshapeOp(mlir_gen.get_tensor_type([3 * cos_dim, 1, dim]),
                                new_op,
-                               shape=[3 * self.head_dim // 2, 1, -1],
+                               shape=[3 * cos_dim, 1, -1],
                                loc=self.get_loc(name + ".reshape", mlir_gen),
                                ip=mlir_gen.insert_point).output
-        weight_op = mlir_gen.create_weight_op("mrope_interleave_idx", [1, self.head_dim])
-        new_op = top.GatherOp(mlir_gen.get_tensor_type([1, self.head_dim, 1, dim]),
+        weight_op = mlir_gen.create_weight_op("mrope_interleave_idx", [1, mrope_dim])
+        new_op = top.GatherOp(mlir_gen.get_tensor_type([1, mrope_dim, 1, dim]),
                               new_op,
                               weight_op,
                               axis=0,
                               loc=self.get_loc(name + ".gather", mlir_gen),
                               ip=mlir_gen.insert_point).output
-        new_op = top.PermuteOp(mlir_gen.get_tensor_type([1, dim, 1, self.head_dim]),
+        new_op = top.PermuteOp(mlir_gen.get_tensor_type([1, dim, 1, mrope_dim]),
                                new_op,
                                order=[0, 3, 2, 1],
                                loc=self.get_loc(name + ".permute2", mlir_gen),
@@ -163,31 +129,81 @@ class Qwen3_5Converter(LlmConverter):
     @override
     def apply_rotary_pos(self, mlir_gen, pos_op, q_op, k_op, rotary_cos: str, rotary_sin: str):
         # cos & sin MROPE
-        is_decode = pos_op.type.shape[-1] == 1
-        if is_decode and self.use_insert:
-            cos_op = self.mrope_batch(mlir_gen, pos_op, rotary_cos)
-            sin_op = self.mrope_batch(mlir_gen, pos_op, rotary_sin)
-        else:
-            cos_op = self.mrope(mlir_gen, pos_op, rotary_cos)
-            sin_op = self.mrope(mlir_gen, pos_op, rotary_sin)
-        q_op_shape = q_op.type.shape
-        q_op = top.RopeOp(mlir_gen.get_tensor_type(q_op_shape),
-                          q_op,
-                          sin_op,
-                          cos_op,
-                          rope_mode=StringAttr.get("contiguous_halves"),
-                          loc=self.get_loc("q_proj", mlir_gen),
-                          ip=mlir_gen.insert_point).output
-        k_op_shape = k_op.type.shape
-        k_op = top.RopeOp(mlir_gen.get_tensor_type(k_op_shape),
-                          k_op,
-                          sin_op,
-                          cos_op,
-                          rope_mode=StringAttr.get("contiguous_halves"),
-                          loc=self.get_loc("k_cache", mlir_gen),
-                          ip=mlir_gen.insert_point).output
-        # q_op = self.rotary_pos(mlir_gen, q_op, cos_op, sin_op, "q_proj")
-        # k_op = self.rotary_pos(mlir_gen, k_op, cos_op, sin_op, "k_cache")
+        q_shape = list(q_op.type.shape)
+        k_shape = list(k_op.type.shape)
+        seqlen = q_shape[1]
+        cos_op = self.mrope(mlir_gen, pos_op, rotary_cos)
+        sin_op = self.mrope(mlir_gen, pos_op, rotary_sin)
+        mrope_dim = sum(self.mrope_section) * 2
+        pass_dim = q_shape[-1] - mrope_dim
+        # q rotary
+        q_rot_shape = [1, seqlen, self.num_attention_heads, mrope_dim]
+        q_pass_shape = [1, seqlen, self.num_attention_heads, pass_dim]
+        q_rot = top.SliceOp(mlir_gen.get_tensor_type(q_rot_shape),
+                            q_op,
+                            mlir_gen.none_op,
+                            mlir_gen.none_op,
+                            mlir_gen.none_op,
+                            offset=[0, 0, 0, 0],
+                            steps=[1, 1, 1, 1],
+                            ends=q_rot_shape,
+                            loc=self.get_loc("q_proj.slice", mlir_gen),
+                            ip=mlir_gen.insert_point).output
+        q_pass = top.SliceOp(mlir_gen.get_tensor_type(q_pass_shape),
+                             q_op,
+                             mlir_gen.none_op,
+                             mlir_gen.none_op,
+                             mlir_gen.none_op,
+                             offset=[0, 0, 0, mrope_dim],
+                             steps=[1, 1, 1, 1],
+                             ends=q_shape,
+                             loc=self.get_loc("q_proj.slice2", mlir_gen),
+                             ip=mlir_gen.insert_point).output
+        q_embed = top.RopeOp(mlir_gen.get_tensor_type(q_rot_shape),
+                             q_rot,
+                             sin_op,
+                             cos_op,
+                             rope_mode=StringAttr.get("contiguous_halves"),
+                             loc=self.get_loc("q_proj.rope", mlir_gen),
+                             ip=mlir_gen.insert_point).output
+        q_op = top.ConcatOp(mlir_gen.get_tensor_type(q_shape), [q_embed, q_pass],
+                            axis=3,
+                            loc=self.get_loc("q_proj", mlir_gen),
+                            ip=mlir_gen.insert_point).output
+        # k rotary
+        k_rot_shape = [1, seqlen, self.num_key_value_heads, mrope_dim]
+        k_pass_shape = [1, seqlen, self.num_key_value_heads, pass_dim]
+        k_rot = top.SliceOp(mlir_gen.get_tensor_type(k_rot_shape),
+                            k_op,
+                            mlir_gen.none_op,
+                            mlir_gen.none_op,
+                            mlir_gen.none_op,
+                            offset=[0, 0, 0, 0],
+                            steps=[1, 1, 1, 1],
+                            ends=k_rot_shape,
+                            loc=self.get_loc("k_proj.slice", mlir_gen),
+                            ip=mlir_gen.insert_point).output
+        k_pass = top.SliceOp(mlir_gen.get_tensor_type(k_pass_shape),
+                             k_op,
+                             mlir_gen.none_op,
+                             mlir_gen.none_op,
+                             mlir_gen.none_op,
+                             offset=[0, 0, 0, mrope_dim],
+                             steps=[1, 1, 1, 1],
+                             ends=k_shape,
+                             loc=self.get_loc("k_proj.slice2", mlir_gen),
+                             ip=mlir_gen.insert_point).output
+        k_embed = top.RopeOp(mlir_gen.get_tensor_type(k_rot_shape),
+                             k_rot,
+                             sin_op,
+                             cos_op,
+                             rope_mode=StringAttr.get("contiguous_halves"),
+                             loc=self.get_loc("k_proj.rope", mlir_gen),
+                             ip=mlir_gen.insert_point).output
+        k_op = top.ConcatOp(mlir_gen.get_tensor_type(k_shape), [k_embed, k_pass],
+                            axis=3,
+                            loc=self.get_loc("k_cache", mlir_gen),
+                            ip=mlir_gen.insert_point).output
         return q_op, k_op
 
     def vision_rotary(self):
@@ -270,7 +286,7 @@ class Qwen3_5Converter(LlmConverter):
             input_shapes,
             [out_shape] * out_num,
             "vit",  # all vit use the same name
-            Platform.LLM,
+            self.platform,
             input_types,
             weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
@@ -606,13 +622,14 @@ class Qwen3_5Converter(LlmConverter):
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
             mask_shape = [1, 1, input_len, input_len]
+            q_dim = self.num_attention_heads * self.head_dim
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32", "F32"],
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -633,7 +650,6 @@ class Qwen3_5Converter(LlmConverter):
             # q_proj
             ## For Qwen3.5, q_proj is fused with gate, so the output dim is 2x q_dim, and will be splitted later
             ## TODO: maybe we can split weight, but need to consider the case of lora
-            q_dim = self.num_attention_heads * self.head_dim
             q_gate_op = self.linear(
                 block_mlir,
                 q_proj,
@@ -641,30 +657,34 @@ class Qwen3_5Converter(LlmConverter):
                 [self.hidden_size, q_dim * 2],  # q_proj with gate, so output dim is 2x q_dim
                 [1, input_len, q_dim * 2],
                 do_lora=self.do_lora)
-            q_op = top.SliceOp(T([1, input_len, q_dim]),
+            q_gate_op = top.ReshapeOp(T([1, input_len, self.num_attention_heads,
+                                         2 * self.head_dim]),
+                                      q_gate_op,
+                                      shape=[1, -1, self.num_attention_heads, 2 * self.head_dim],
+                                      loc=L(q_proj + ".reshape"),
+                                      ip=ip).output
+            q_op = top.SliceOp(T(q_shape),
                                q_gate_op,
                                block_mlir.none_op,
                                block_mlir.none_op,
                                block_mlir.none_op,
-                               offset=[0, 0, 0],
-                               steps=[1, 1, 1],
-                               ends=[1, input_len, q_dim],
+                               offset=[0, 0, 0, 0],
+                               steps=[1, 1, 1, 1],
+                               ends=[1, input_len, self.num_attention_heads, self.head_dim],
                                loc=self.get_loc(q_proj + ".q_slice", block_mlir),
                                ip=ip).output
-            gate_op = top.SliceOp(T([1, input_len, q_dim]),
+            gate_op = top.SliceOp(T(q_shape),
                                   q_gate_op,
                                   block_mlir.none_op,
                                   block_mlir.none_op,
                                   block_mlir.none_op,
-                                  offset=[0, 0, q_dim],
-                                  steps=[1, 1, 1],
-                                  ends=[1, input_len, q_dim * 2],
+                                  offset=[0, 0, 0, self.head_dim],
+                                  steps=[1, 1, 1, 1],
+                                  ends=[1, input_len, self.num_attention_heads, 2 * self.head_dim],
                                   loc=self.get_loc(q_proj + ".gate_slice", block_mlir),
                                   ip=ip).output
 
-            gate_op = top.SigmoidOp(T([1, input_len, q_dim]),
-                                    gate_op,
-                                    loc=L(mlp_gate + ".gate_sigmoid"),
+            gate_op = top.SigmoidOp(T(q_shape), gate_op, loc=L(mlp_gate + ".gate_sigmoid"),
                                     ip=ip).output
 
             # k_proj
@@ -679,11 +699,6 @@ class Qwen3_5Converter(LlmConverter):
                                ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
                                do_lora=self.do_lora)
             # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape),
-                                 q_op,
-                                 shape=[1, -1, self.num_attention_heads, self.head_dim],
-                                 loc=L(q_proj + ".reshape"),
-                                 ip=ip).output
             k_op = top.ReshapeOp(T(kv_shape),
                                  k_op,
                                  shape=[1, -1, self.num_key_value_heads, self.head_dim],
@@ -719,6 +734,11 @@ class Qwen3_5Converter(LlmConverter):
                                      keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
+            gate_op = top.ReshapeOp(T([1, input_len, q_dim]),
+                                    gate_op,
+                                    shape=[1, -1, q_dim],
+                                    loc=L(mlp_gate + ".gate_reshape"),
+                                    ip=ip).output
             fa_op = top.MulOp(T([1, input_len, q_dim]), [fa_op, gate_op],
                               loc=L(mlp_gate + ".gate_mul"),
                               ip=ip).output
@@ -766,7 +786,7 @@ class Qwen3_5Converter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 output_shapes,
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
@@ -793,27 +813,33 @@ class Qwen3_5Converter(LlmConverter):
                                     ln_op, [self.hidden_size, q_dim * 2],
                                     [self.batch, 1, q_dim * 2],
                                     do_lora=self.do_lora)
-            q_op = top.SliceOp(T([self.batch, 1, q_dim]),
+            q_gate_op = top.ReshapeOp(T([1, 1, self.num_attention_heads, 2 * self.head_dim]),
+                                      q_gate_op,
+                                      shape=[1, -1, self.num_attention_heads, 2 * self.head_dim],
+                                      loc=L(q_proj + ".reshape"),
+                                      ip=ip).output
+            q_op = top.SliceOp(T([self.batch, 1, self.num_attention_heads, self.head_dim]),
                                q_gate_op,
                                block_mlir.none_op,
                                block_mlir.none_op,
                                block_mlir.none_op,
-                               offset=[0, 0, 0],
-                               steps=[1, 1, 1],
-                               ends=[self.batch, 1, q_dim],
+                               offset=[0, 0, 0, 0],
+                               steps=[1, 1, 1, 1],
+                               ends=[self.batch, 1, self.num_attention_heads, self.head_dim],
                                loc=self.get_loc(q_proj + ".q_slice", block_mlir),
                                ip=ip).output
-            gate_op = top.SliceOp(T([self.batch, 1, q_dim]),
+            gate_op = top.SliceOp(T([self.batch, 1, self.num_attention_heads, self.head_dim]),
                                   q_gate_op,
                                   block_mlir.none_op,
                                   block_mlir.none_op,
                                   block_mlir.none_op,
-                                  offset=[0, 0, q_dim],
-                                  steps=[1, 1, 1],
-                                  ends=[self.batch, 1, q_dim * 2],
+                                  offset=[0, 0, 0, self.head_dim],
+                                  steps=[1, 1, 1, 1],
+                                  ends=[self.batch, 1, self.num_attention_heads, 2 * self.head_dim],
                                   loc=self.get_loc(q_proj + ".gate_slice", block_mlir),
                                   ip=ip).output
-            gate_op = top.SigmoidOp(T([self.batch, 1, q_dim]),
+
+            gate_op = top.SigmoidOp(T([self.batch, 1, self.num_attention_heads, self.head_dim]),
                                     gate_op,
                                     loc=L(mlp_gate + ".gate_sigmoid"),
                                     ip=ip).output
@@ -827,8 +853,7 @@ class Qwen3_5Converter(LlmConverter):
                                v_proj,
                                ln_op, [self.hidden_size, self.kv_dim], [self.batch, 1, self.kv_dim],
                                do_lora=self.do_lora)
-            # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape), q_op, loc=L(q_proj + ".reshape"), ip=ip).output
+            # reshape k,v
             k_op = top.ReshapeOp(T(kv_shape), k_op, loc=L(k_proj + ".reshape"), ip=ip).output
             v_op = top.ReshapeOp(T(kv_shape), v_op, loc=L("v_cache"), ip=ip).output
             q_op = self.rms_norm(block_mlir, q_op, q_norm)
@@ -889,6 +914,11 @@ class Qwen3_5Converter(LlmConverter):
                                      keep_dims=False,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
+            gate_op = top.ReshapeOp(T([self.batch, 1, q_dim]),
+                                    gate_op,
+                                    shape=[self.batch, 1, q_dim],
+                                    loc=L(mlp_gate + ".gate_reshape"),
+                                    ip=ip).output
             fa_op = top.MulOp(T([self.batch, 1, q_dim]), [fa_op, gate_op],
                               loc=L(mlp_gate + ".gate_mul"),
                               ip=ip).output
@@ -924,7 +954,7 @@ class Qwen3_5Converter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
@@ -1078,6 +1108,7 @@ class Qwen3_5Converter(LlmConverter):
         conv1d = TOP_PATH + "linear_attn.conv1d"
         dt_bias = TOP_PATH + "linear_attn.dt_bias"
         in_proj_a = TOP_PATH + "linear_attn.in_proj_a"
+        in_proj_a_bias = TOP_PATH + "linear_attn.in_proj_a.bias"
         in_proj_b = TOP_PATH + "linear_attn.in_proj_b"
         in_proj_qkv = TOP_PATH + "linear_attn.in_proj_qkv"
         in_proj_z = TOP_PATH + "linear_attn.in_proj_z"
@@ -1086,6 +1117,7 @@ class Qwen3_5Converter(LlmConverter):
         weight_file = f"block_{idx}_top_weights.npz"
         A_log_data = self.model.read(A_log)
         A_log_data = -np.exp(A_log_data)
+        chunk_size = 64
 
         weight_dict = {A_log + ".weight": A_log_data}
         self.set_common_weight(input_ln, weight_dict, self.rmsnorm_type)
@@ -1093,6 +1125,7 @@ class Qwen3_5Converter(LlmConverter):
         self.set_common_weight(conv1d, weight_dict)
         self.set_common_weight(dt_bias, weight_dict)
         self.set_linear_weight(in_proj_a, weight_dict, do_lora=self.do_lora)
+        weight_dict[in_proj_a_bias] = self.model.read(dt_bias)
         self.set_linear_weight(in_proj_b, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(in_proj_qkv, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(in_proj_z, weight_dict, do_lora=self.do_lora)
@@ -1103,11 +1136,24 @@ class Qwen3_5Converter(LlmConverter):
         self.set_linear_weight(mlp_up, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(mlp_down, weight_dict, do_lora=self.do_lora)
         self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
+        # eye
         eye_key = TOP_PATH + "linear_attn.eye"
-        weight_dict[eye_key] = np.eye(64, dtype=np.float32)
+        weight_dict[eye_key] = np.eye(chunk_size, dtype=np.float32)
+        ones = np.ones((chunk_size, chunk_size), dtype=np.float32)
+        # triu_mask
+        triu_mask_key = TOP_PATH + "linear_attn.triu_mask"
+        triu_mask = np.triu(ones, k=0)
+        weight_dict[triu_mask_key] = triu_mask
+        # strict triu_mask
+        strict_triu_mask_key = TOP_PATH + "linear_attn.strict_triu_mask"
+        strict_triu_mask = np.triu(ones, k=1)
+        weight_dict[strict_triu_mask_key] = strict_triu_mask
+        # tril_mask
+        tril_mask_key = TOP_PATH + "linear_attn.tril_mask"
+        tril_mask = np.tril(ones, k=0)
+        weight_dict[tril_mask_key] = tril_mask
         np.savez(weight_file, **weight_dict)
 
-        chunk_size = 64
         num_v_heads = self.llm_config.linear_num_value_heads
         num_k_heads = self.llm_config.linear_num_key_heads
         head_k_dim = self.llm_config.linear_key_head_dim
@@ -1178,10 +1224,9 @@ class Qwen3_5Converter(LlmConverter):
             input_shape = [1, input_len, self.hidden_size]
             conv_shape = [1, conv_dim, conv_kernel_size]
             recurrent_shape = [1, num_v_heads, head_v_dim, head_v_dim]
-            block_mlir = MLIRImporter([input_shape, recurrent_shape],
-                                      [input_shape, conv_shape, recurrent_shape],
+            block_mlir = MLIRImporter([input_shape, recurrent_shape], [input_shape, conv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "F32"],
+                                      self.platform, ["F32", "F32"],
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -1195,23 +1240,28 @@ class Qwen3_5Converter(LlmConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("recurrent_states"), 1)
-            in0_op = self.rms_norm(block_mlir, in0_op, input_ln)
+            in0_norm_op = self.rms_norm(block_mlir, in0_op, input_ln)
             mixed_qkv_op = self.linear(block_mlir,
                                        in_proj_qkv,
-                                       in0_op, [self.hidden_size, conv_dim],
+                                       in0_norm_op, [self.hidden_size, conv_dim],
                                        [1, input_len, conv_dim],
                                        do_lora=self.do_lora)
             z_op = self.linear(block_mlir,
                                in_proj_z,
-                               in0_op, [self.hidden_size, value_dim], [1, input_len, value_dim],
+                               in0_norm_op, [self.hidden_size, value_dim],
+                               [1, input_len, value_dim],
                                do_lora=self.do_lora)
+            z_op = self.activate(block_mlir, z_op, ActType.SILU, in_proj_z)
             b_op = self.linear(block_mlir,
                                in_proj_b,
-                               in0_op, [self.hidden_size, num_v_heads], [1, input_len, num_v_heads],
+                               in0_norm_op, [self.hidden_size, num_v_heads],
+                               [1, input_len, num_v_heads],
                                do_lora=self.do_lora)
             a_op = self.linear(block_mlir,
                                in_proj_a,
-                               in0_op, [self.hidden_size, num_v_heads], [1, input_len, num_v_heads],
+                               in0_norm_op, [self.hidden_size, num_v_heads],
+                               [1, input_len, num_v_heads],
+                               force_bias=True,
                                do_lora=self.do_lora)
             mixed_qkv_op = top.PermuteOp(T([1, conv_dim, input_len]),
                                          mixed_qkv_op,
@@ -1223,16 +1273,16 @@ class Qwen3_5Converter(LlmConverter):
                                      block_mlir.none_op,
                                      block_mlir.none_op,
                                      block_mlir.none_op,
-                                     offset=[0, 0, input_len - conv_kernel_size],
+                                     offset=[0, 0, -conv_kernel_size],
                                      steps=[1, 1, 1],
                                      ends=[1, conv_dim, input_len],
-                                     loc=L(conv1d + ".conv_state_slice"),
+                                     loc=L("conv_states"),
                                      ip=ip).output
             return_ops = [conv_state]
             # conv1d to conv2d
             mixed_qkv_op = top.ReshapeOp(T([1, conv_dim, 1, input_len]),
                                          mixed_qkv_op,
-                                         shape=[1, conv_dim, 1, input_len],
+                                         shape=[1, conv_dim, 1, -1],
                                          loc=L(in_proj_qkv + ".reshape_to_conv2d"),
                                          ip=ip).output
             weight_op = block_mlir.create_weight_op(conv1d + ".weight",
@@ -1283,35 +1333,26 @@ class Qwen3_5Converter(LlmConverter):
                                ends=[1, num_k_heads * 2 + num_v_heads, head_v_dim, input_len],
                                loc=L(in_proj_qkv + ".v_slice_after_conv"),
                                ip=ip).output
-            q_op = top.PermuteOp(T([1, num_k_heads, input_len, head_k_dim]),
+            q_op = top.PermuteOp(T([1, input_len, num_k_heads, head_k_dim]),
                                  q_op,
-                                 order=[0, 1, 3, 2],
+                                 order=[0, 3, 1, 2],
                                  loc=L(in_proj_qkv + ".q_permute_after_conv"),
                                  ip=ip).output
-            k_op = top.PermuteOp(T([1, num_k_heads, input_len, head_k_dim]),
+            k_op = top.PermuteOp(T([1, input_len, num_k_heads, head_k_dim]),
                                  k_op,
-                                 order=[0, 1, 3, 2],
+                                 order=[0, 3, 1, 2],
                                  loc=L(in_proj_qkv + ".k_permute_after_conv"),
                                  ip=ip).output
-            v_op = top.PermuteOp(T([1, num_v_heads, input_len, head_v_dim]),
+            v_op = top.PermuteOp(T([1, input_len, num_v_heads, head_v_dim]),
                                  v_op,
-                                 order=[0, 1, 3, 2],
+                                 order=[0, 3, 1, 2],
                                  loc=L(in_proj_qkv + ".v_permute_after_conv"),
                                  ip=ip).output
             beta_op = top.SigmoidOp(T([1, input_len, num_v_heads]),
                                     b_op,
                                     loc=L(in_proj_b + ".sigmoid"),
                                     ip=ip).output
-            beta_op = top.PermuteOp(T([1, num_v_heads, input_len]),
-                                    beta_op,
-                                    order=[0, 2, 1],
-                                    loc=L(in_proj_b + ".beta_permute"),
-                                    ip=ip).output
             # g = -self.A_log.float().exp() * F.softplus(a.float() + self.dt_bias)
-            weight_op = block_mlir.create_weight_op(dt_bias, [1, 1, num_v_heads])
-            a_op = top.AddOp(T([1, input_len, num_v_heads]), [a_op, weight_op],
-                             loc=L(in_proj_a + ".add"),
-                             ip=ip).output
             a_op = top.SoftplusOp(T([1, input_len, num_v_heads]),
                                   a_op,
                                   loc=L(in_proj_a + ".softplus"),
@@ -1320,29 +1361,31 @@ class Qwen3_5Converter(LlmConverter):
             g_op = top.MulOp(T([1, input_len, num_v_heads]), [a_op, weight_op],
                              loc=L(in_proj_a + ".mul"),
                              ip=ip).output
-            g_op = top.PermuteOp(T([1, num_v_heads, input_len]),
-                                 g_op,
-                                 order=[0, 2, 1],
-                                 loc=L(in_proj_a + ".g_permute"),
-                                 ip=ip).output
             # ================= chunk_gated_delta_rule ==================
-            eye_op = block_mlir.create_weight_op(eye_key, [1, 1, 1, chunk_size, chunk_size])
-            outputs = top.ChunkGatedDeltaRuleOp(T([1, input_len, num_v_heads, head_v_dim]),
-                                                T([1, num_v_heads, head_v_dim, head_v_dim]),
-                                                q_op,
-                                                k_op,
-                                                v_op,
-                                                g_op,
-                                                beta_op,
-                                                in1_op,
-                                                eye_op,
-                                                chunk_size=chunk_size,
-                                                scale=scale,
-                                                loc=L(TOP_PATH + "chunk_gated_delta_rule"),
-                                                ip=ip)
-            core_attn_out = outputs.attn_out
-            new_recurrent_state = outputs.new_recurrent_state
-            return_ops.append(new_recurrent_state)
+            triu_mask_op = block_mlir.create_weight_op(triu_mask_key, [chunk_size, chunk_size])
+            strict_triu_mask_op = block_mlir.create_weight_op(strict_triu_mask_key,
+                                                              [chunk_size, chunk_size])
+            tril_mask_op = block_mlir.create_weight_op(tril_mask_key, [chunk_size, chunk_size])
+            eye_op = block_mlir.create_weight_op(eye_key, [chunk_size, chunk_size])
+            core_attn_out = top.ChunkGatedDeltaRuleOp(T([1, input_len, num_v_heads, head_v_dim]),
+                                                      q_op,
+                                                      k_op,
+                                                      v_op,
+                                                      g_op,
+                                                      beta_op,
+                                                      in1_op,
+                                                      triu_mask_op,
+                                                      strict_triu_mask_op,
+                                                      tril_mask_op,
+                                                      eye_op,
+                                                      num_k_heads=num_k_heads,
+                                                      num_v_heads=num_v_heads,
+                                                      d=head_v_dim,
+                                                      chunk_size=chunk_size,
+                                                      use_qk_l2norm=True,
+                                                      scale=scale,
+                                                      loc=L(TOP_PATH + "chunk_gated_delta_rule"),
+                                                      ip=ip).attn_out
 
             # RmsNormGated
             core_attn_op = self.rms_norm(block_mlir,
@@ -1352,7 +1395,7 @@ class Qwen3_5Converter(LlmConverter):
             # -> [1, input_len, value_dim]
             core_attn_op = top.ReshapeOp(T([1, input_len, value_dim]),
                                          core_attn_op,
-                                         shape=[1, input_len, value_dim],
+                                         shape=[1, -1, value_dim],
                                          loc=L(in_proj_qkv + ".core_attn_reshape"),
                                          ip=ip).output
             core_attn_op = top.MulOp(T([1, input_len, value_dim]), [core_attn_op, z_op],
@@ -1384,9 +1427,9 @@ class Qwen3_5Converter(LlmConverter):
             conv_state_shape = [self.batch, conv_dim, conv_kernel_size]
             recurrent_state_shape = [self.batch, num_v_heads, head_v_dim, head_v_dim]
             block_mlir = MLIRImporter([input_shape, conv_state_shape, recurrent_state_shape],
-                                      [input_shape, conv_state_shape, recurrent_state_shape],
+                                      [input_shape, conv_state_shape],
                                       name,
-                                      Platform.LLM, ["F32", "F32", "F32"],
+                                      self.platform, ["F32", "F32", "F32"],
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -1401,58 +1444,37 @@ class Qwen3_5Converter(LlmConverter):
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("conv_state"), 1)
             in2_op = block_mlir.create_input_op(L("recurrent_state"), 2)
-            return_ops = []
-            in0_op = self.rms_norm(block_mlir, in0_op, input_ln)
             # eye_key no use, just the same with block
-            block_mlir.create_weight_op(eye_key, [1, 1, 1, chunk_size, chunk_size],
+            block_mlir.create_weight_op(triu_mask_key, [chunk_size, chunk_size], placeholder=True)
+            block_mlir.create_weight_op(strict_triu_mask_key, [chunk_size, chunk_size],
                                         placeholder=True)
+            block_mlir.create_weight_op(tril_mask_key, [chunk_size, chunk_size], placeholder=True)
+            block_mlir.create_weight_op(eye_key, [chunk_size, chunk_size], placeholder=True)
+            return_ops = []
+            in0_norm_op = self.rms_norm(block_mlir, in0_op, input_ln)
+            # z/a/b
+            z_op = self.linear(block_mlir,
+                               in_proj_z,
+                               in0_norm_op, [self.hidden_size, value_dim],
+                               [self.batch, 1, value_dim],
+                               do_lora=self.do_lora)
             # q_proj
             mixed_qkv_op = self.linear(block_mlir,
                                        in_proj_qkv,
-                                       in0_op, [self.hidden_size, conv_dim],
+                                       in0_norm_op, [self.hidden_size, conv_dim],
                                        [self.batch, 1, conv_dim],
                                        do_lora=self.do_lora)
-            z_op = self.linear(block_mlir,
-                               in_proj_z,
-                               in0_op, [self.hidden_size, value_dim], [self.batch, 1, value_dim],
-                               do_lora=self.do_lora)
-            b_op = self.linear(block_mlir,
-                               in_proj_b,
-                               in0_op, [self.hidden_size, num_v_heads],
-                               [self.batch, 1, num_v_heads],
-                               do_lora=self.do_lora)
-            a_op = self.linear(block_mlir,
-                               in_proj_a,
-                               in0_op, [self.hidden_size, num_v_heads],
-                               [self.batch, 1, num_v_heads],
-                               do_lora=self.do_lora)
-
             mixed_qkv_op = top.ReshapeOp(T([self.batch, conv_dim, 1]),
                                          mixed_qkv_op,
                                          loc=L(in_proj_qkv + ".reshape"),
                                          ip=ip).output
-            z_op = top.ReshapeOp(T([self.batch, num_v_heads, 1, head_v_dim]),
-                                 z_op,
-                                 shape=[self.batch, num_v_heads, 1, head_v_dim],
-                                 loc=L(in_proj_z + ".reshape"),
-                                 ip=ip).output
             # use_precomputed_states, causal_conv1d_update
-            mixed_qkv_op = top.ConcatOp(T([self.batch, conv_dim, conv_kernel_size + 1]),
-                                        [in1_op, mixed_qkv_op],
-                                        axis=2,
-                                        only_merge=False,
-                                        loc=L(conv1d + ".concat"),
-                                        ip=ip).output
-            mixed_qkv_op = top.SliceOp(T([self.batch, conv_dim, conv_kernel_size]),
-                                       mixed_qkv_op,
-                                       block_mlir.none_op,
-                                       block_mlir.none_op,
-                                       block_mlir.none_op,
-                                       offset=[0, 0, 1],
-                                       steps=[1, 1, 1],
-                                       ends=[self.batch, conv_dim, conv_kernel_size + 1],
-                                       loc=L(conv1d + ".slice"),
-                                       ip=ip).output
+            mixed_qkv_op = top.ConcatSliceOp(T([self.batch, conv_dim, conv_kernel_size]),
+                                             in1_op,
+                                             mixed_qkv_op,
+                                             axis=2,
+                                             loc=L(conv1d + ".concat"),
+                                             ip=ip).output
             return_ops.append(mixed_qkv_op)  # new conv state
             weight_op = block_mlir.create_weight_op(conv1d + ".weight",
                                                     [1, conv_dim, conv_kernel_size])
@@ -1467,6 +1489,30 @@ class Qwen3_5Converter(LlmConverter):
                                         mode=StringAttr.get("ReduceSum"),
                                         loc=L(conv1d + ".reduce_sum"),
                                         ip=ip).output
+            b_op = self.linear(block_mlir,
+                               in_proj_b,
+                               in0_norm_op, [self.hidden_size, num_v_heads],
+                               [self.batch, 1, num_v_heads],
+                               do_lora=self.do_lora)
+            beta_op = top.SigmoidOp(T([self.batch, 1, num_v_heads]),
+                                    b_op,
+                                    loc=L(in_proj_b + ".sigmoid"),
+                                    ip=ip).output
+            # g = -self.A_log.float().exp() * F.softplus(a.float() + self.dt_bias)
+            a_op = self.linear(block_mlir,
+                               in_proj_a,
+                               in0_norm_op, [self.hidden_size, num_v_heads],
+                               [self.batch, 1, num_v_heads],
+                               force_bias=True,
+                               do_lora=self.do_lora)
+            a_op = top.SoftplusOp(T([self.batch, 1, num_v_heads]),
+                                  a_op,
+                                  loc=L(in_proj_a + ".softplus"),
+                                  ip=ip).output
+            weight_op = block_mlir.create_weight_op(A_log + ".weight", [1, 1, num_v_heads])
+            g_op = top.MulOp(T([self.batch, 1, num_v_heads]), [a_op, weight_op],
+                             loc=L(in_proj_a + ".mul"),
+                             ip=ip).output
             mixed_qkv_op = self.activate(block_mlir, mixed_qkv_op, ActType.SILU, conv1d)
             q_op = top.SliceOp(T([1, key_dim]),
                                mixed_qkv_op,
@@ -1498,135 +1544,35 @@ class Qwen3_5Converter(LlmConverter):
                                ends=[1, conv_dim],
                                loc=L(in_proj_qkv + ".v_slice"),
                                ip=ip).output
-            q_op = top.ReshapeOp(T([self.batch, 1, num_k_heads, head_k_dim]),
-                                 q_op,
-                                 shape=[self.batch, 1, num_k_heads, head_k_dim],
-                                 loc=L(in_proj_qkv + ".q_reshape"),
-                                 ip=ip).output
-            k_op = top.ReshapeOp(T([self.batch, 1, num_k_heads, head_k_dim]),
-                                 k_op,
-                                 shape=[self.batch, 1, num_k_heads, head_k_dim],
-                                 loc=L(in_proj_qkv + ".k_reshape"),
-                                 ip=ip).output
-            v_op = top.ReshapeOp(T([self.batch, num_v_heads, 1, head_v_dim]),
-                                 v_op,
-                                 shape=[self.batch, 1, num_v_heads, head_v_dim],
-                                 loc=L(in_proj_qkv + ".v_reshape"),
-                                 ip=ip).output
-            beta_op = top.SigmoidOp(T([self.batch, 1, num_v_heads]),
-                                    b_op,
-                                    loc=L(in_proj_b + ".sigmoid"),
-                                    ip=ip).output
-            beta_op = top.ReshapeOp(T([self.batch, num_v_heads, 1, 1]),
-                                    beta_op,
-                                    shape=[self.batch, num_v_heads, 1, 1],
-                                    loc=L(in_proj_b + ".reshape"),
-                                    ip=ip).output
-            # g = -self.A_log.float().exp() * F.softplus(a.float() + self.dt_bias)
-            weight_op = block_mlir.create_weight_op(dt_bias, [1, 1, num_v_heads])
-            a_op = top.AddOp(T([self.batch, 1, num_v_heads]), [a_op, weight_op],
-                             loc=L(in_proj_a + ".add"),
-                             ip=ip).output
-            a_op = top.SoftplusOp(T([self.batch, 1, num_v_heads]),
-                                  a_op,
-                                  loc=L(in_proj_a + ".softplus"),
-                                  ip=ip).output
-            weight_op = block_mlir.create_weight_op(A_log + ".weight", [1, 1, num_v_heads])
-            g_op = top.MulOp(T([self.batch, 1, num_v_heads]), [a_op, weight_op],
-                             loc=L(in_proj_a + ".mul"),
-                             ip=ip).output
             # ========== recurreent_gated_delta_rule =================
-            q_op = self.l2norm(block_mlir, q_op, in_proj_qkv + ".q_l2norm", eps=1e-6)
-            k_op = self.l2norm(block_mlir, k_op, in_proj_qkv + ".k_l2norm", eps=1e-6)
-            q_op = top.MulConstOp(T([self.batch, 1, num_k_heads, head_k_dim]),
-                                  q_op,
-                                  const_val=scale,
-                                  loc=L(in_proj_qkv + ".q_scale"),
-                                  ip=ip).output
-            g_op = top.ExpOp(T([self.batch, 1, num_v_heads]),
-                             g_op,
-                             loc=L(in_proj_a + ".exp"),
-                             ip=ip).output
-            g_op = top.ReshapeOp(T([self.batch, num_v_heads, 1, 1]),
-                                 g_op,
-                                 shape=[self.batch, num_v_heads, 1, 1],
-                                 loc=L(in_proj_a + ".g_reshape"),
-                                 ip=ip).output
-            recurrent_op = top.MulOp(T([self.batch, num_v_heads, head_v_dim, head_v_dim]),
-                                     [in2_op, g_op],
-                                     loc=L(in_proj_a + ".recurrent"),
-                                     ip=ip).output
-            if num_k_heads < num_v_heads:
-                # repeat interleave q_op and k_op to match value heads
-                times = num_v_heads // num_k_heads
-                q_op = top.TileOp(T([self.batch, 1, num_k_heads, times * head_k_dim]),
-                                  q_op,
-                                  tile=[1, 1, 1, times],
-                                  loc=L(in_proj_qkv + ".q_tile"),
-                                  ip=ip).output
-
-                k_op = top.TileOp(T([self.batch, 1, num_k_heads, times * head_k_dim]),
-                                  k_op,
-                                  tile=[1, 1, 1, times],
-                                  loc=L(in_proj_qkv + ".k_tile"),
-                                  ip=ip).output
-
-            q_op = top.ReshapeOp(T([self.batch, num_v_heads, 1, head_k_dim]),
-                                 q_op,
-                                 shape=[self.batch, num_v_heads, 1, head_k_dim],
-                                 loc=L(in_proj_qkv + ".q_reshape2"),
-                                 ip=ip).output
-            k_op = top.ReshapeOp(T([self.batch, num_v_heads, head_k_dim, 1]),
-                                 k_op,
-                                 shape=[self.batch, num_v_heads, head_k_dim, 1],
-                                 loc=L(in_proj_qkv + ".k_reshape2"),
-                                 ip=ip).output
-            kv_mem_op = top.MulOp(T([self.batch, num_v_heads, head_v_dim, head_v_dim]),
-                                  [recurrent_op, k_op],
-                                  loc=L(in_proj_a + ".kv_mem"),
-                                  ip=ip).output
-            kv_mem_op = top.ReduceOp(T([self.batch, num_v_heads, 1, head_v_dim]),
-                                     kv_mem_op,
-                                     axes=[2],
-                                     keepdims=True,
-                                     mode=StringAttr.get("ReduceSum"),
-                                     loc=L(in_proj_a + ".kv_mem_reduce"),
-                                     ip=ip).output
-            delta_op = top.SubOp(T([self.batch, num_v_heads, 1, head_v_dim]), [v_op, kv_mem_op],
-                                 loc=L(in_proj_qkv + ".delta"),
-                                 ip=ip).output
-            delta_op = top.MulOp(T([self.batch, num_v_heads, 1, head_v_dim]), [delta_op, beta_op],
-                                 loc=L(in_proj_b + ".delta_mul"),
-                                 ip=ip).output
-            delta_op = top.MulOp(T([self.batch, num_v_heads, head_k_dim, head_v_dim]),
-                                 [delta_op, k_op],
-                                 loc=L(in_proj_b + ".delta_k_mul"),
-                                 ip=ip).output
-            recurrent_op = top.AddOp(T([self.batch, num_v_heads, head_v_dim, head_v_dim]),
-                                     [recurrent_op, delta_op],
-                                     loc=L(in_proj_a + ".recurrent_update"),
-                                     ip=ip).output
-            return_ops.append(recurrent_op)  # new recurrent state
-            core_attn_op = top.MatMulOp(T([self.batch, num_v_heads, 1, head_v_dim]),
-                                        q_op,
-                                        recurrent_op,
-                                        block_mlir.none_op,
-                                        loc=L("core_attention"),
-                                        ip=ip).output
+            core_attn_op = top.RecurrentGatedDeltaRuleOp(
+                T([self.batch, 1, num_v_heads, head_v_dim]),
+                q_op,
+                k_op,
+                v_op,
+                g_op,
+                beta_op,
+                in2_op,
+                num_k_heads=num_k_heads,
+                num_v_heads=num_v_heads,
+                d=head_v_dim,
+                use_qk_l2norm=True,
+                scale=scale,
+                loc=L(TOP_PATH + "recurrent_gated_delta_rule"),
+                ip=ip).attn_out
             # RmsNormGated
             core_attn_op = self.rms_norm(block_mlir,
                                          core_attn_op,
                                          linear_norm,
                                          eps=self.rms_norm_eps)
-            core_attn_op = top.MulOp(T([self.batch, num_v_heads, 1, head_v_dim]),
-                                     [core_attn_op, z_op],
-                                     loc=L(in_proj_z + ".core_attn_mul"),
-                                     ip=ip).output
-            o_op = top.ReshapeOp(T([self.batch, 1, value_dim]),
-                                 core_attn_op,
-                                 shape=[self.batch, 1, value_dim],
-                                 loc=L(out_proj + ".reshape"),
-                                 ip=ip).output
+            core_attn_op = top.ReshapeOp(T([self.batch, 1, value_dim]),
+                                         core_attn_op,
+                                         loc=L(TOP_PATH + ".core_attn_reshape"),
+                                         ip=ip).output
+            z_op = self.activate(block_mlir, z_op, ActType.SILU, in_proj_z)
+            o_op = top.MulOp(T([self.batch, 1, value_dim]), [core_attn_op, z_op],
+                             loc=L(TOP_PATH + ".core_attn_mul"),
+                             ip=ip).output
             o_op = self.linear(block_mlir,
                                out_proj,
                                o_op, [value_dim, self.hidden_size],
@@ -1679,6 +1625,7 @@ class Qwen3_5Converter(LlmConverter):
             deploy_args.append('--q_symmetric')
         if self.debug:
             deploy_args.append('--debug')
-        deploy_args.append(f'--same_addr 0:0,1:1,2:2')
+        deploy_args.append(f'--same_addr 0:0,1:1')
+        deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")

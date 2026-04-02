@@ -128,7 +128,7 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 "vit",
-                                Platform.LLM,
+                                self.platform,
                                 input_types,
                                 weight_file=f'../{vit_npz}')
         ip = vit_mlir.insert_point
@@ -267,7 +267,7 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
 
         audio_mlir = MLIRImporter([in_shape], [out_shape],
                                   name,
-                                  Platform.LLM,
+                                  self.platform,
                                   input_types,
                                   weight_file=f"../{audio_npz}")
         ip = audio_mlir.insert_point

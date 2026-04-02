@@ -678,7 +678,7 @@ class GLM4VConverter(LlmConverter):
         # vit_mlir = MLIRImporter(input_shapes, [[2944, 1536]],
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 name,
-                                Platform.LLM,
+                                self.platform,
                                 input_types,
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
@@ -994,7 +994,7 @@ class GLM4VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32", "F32"],
                                       weight_file=f"../{weight_file}")
 
             def T(shape: list):
@@ -1076,7 +1076,7 @@ class GLM4VConverter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
             def T(shape: list):
@@ -1170,7 +1170,7 @@ class GLM4VConverter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
             def T(shape: list):

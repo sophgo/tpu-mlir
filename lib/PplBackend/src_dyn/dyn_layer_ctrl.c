@@ -1,3 +1,12 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2026 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "ppl_dyn_fw.h"
 
 #ifdef USING_CMODEL
@@ -44,11 +53,11 @@ void *call_ppl_global_func(void *ctx, int type_id, void *param,
   layer_func(ctx, param, input_spec, output_spec);
 }
 
-typedef void (*ppl_local_layer_func_t)(void *ctx, void *param, 
+typedef void (*ppl_local_layer_func_t)(void *ctx, void *param,
                                        local_sec_info_t *sec_info,
                                        local_output_info_t *top,
                                        dynamic_local_tensor_info_t *tensor_info);
-void *call_ppl_local_func(void* ctx, int type_id, void *param, 
+void *call_ppl_local_func(void* ctx, int type_id, void *param,
                           local_sec_info_t *sec_info,
                           local_output_info_t *top,
                           dynamic_local_tensor_info_t *tensor_info) {

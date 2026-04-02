@@ -196,6 +196,41 @@ def npz_fp16_to_fp32(args):
     np.savez(args[1], **npz_out)
 
 
+def npz_fp32_to_bf16(args):
+    if len(args) < 2:
+        print("Usage: {} fp32_to_bf16 in.npz out.npz".format(sys.argv[0]))
+        exit(-1)
+    npz_in = np.load(args[0])
+    npz_out = {}
+    for s in npz_in:
+        fp32_arr = npz_in[s]
+        if fp32_arr.dtype == np.float32:
+            u32 = fp32_arr.view(np.uint32)
+            # Round to nearest even: add rounding bias based on LSB of result + truncated bits
+            rounding_bias = ((u32 >> 16) & 1) + np.uint32(0x7FFF)
+            bf16_arr = (u32 + rounding_bias) >> 16
+            npz_out[s] = bf16_arr.astype(np.uint16)
+        else:
+            npz_out[s] = fp32_arr
+    np.savez(args[1], **npz_out)
+
+
+def npz_fp32_to_fp16(args):
+    if len(args) < 2:
+        print("Usage: {} fp32_to_fp16 in.npz out.npz".format(sys.argv[0]))
+        exit(-1)
+    npz_in = np.load(args[0])
+    npz_out = {}
+    for s in npz_in:
+        fp32_arr = npz_in[s]
+        if fp32_arr.dtype == np.float32:
+            fp16_arr = fp32_arr.astype(np.float16)
+            npz_out[s] = fp16_arr.view(np.uint16)
+        else:
+            npz_out[s] = fp32_arr
+    np.savez(args[1], **npz_out)
+
+
 def npz_reshape(args):
     if len(args) < 3:
         print("Usage: {} reshape in.npz arr shape".format(sys.argv[0]))

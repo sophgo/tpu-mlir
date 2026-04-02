@@ -237,7 +237,8 @@ class TopoSortPass : public TopoSortBase<TopoSortPass> {
 public:
   TopoSortPass() {}
   void runOnOperation() override {
-    if (module::isPlatform(module::Platform::LLM)) {
+    if (module::isPlatform(module::Platform::LLM) ||
+        module::isPlatform(module::Platform::LLM_QUANTIZED)) {
       return;
     }
     // init

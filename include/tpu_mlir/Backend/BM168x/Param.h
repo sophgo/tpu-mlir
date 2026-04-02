@@ -2421,6 +2421,27 @@ typedef struct {
   int dtype;
 } grid_sample_in_deformable_attn_global_param_t;
 
+typedef struct chunk_gated_delta_rule_spec {
+  int num_k_heads;
+  int num_v_heads;
+  int d;
+  int chunk_size;
+  bool use_qk_l2norm;
+  float scale;
+} chunk_gated_delta_rule_spec_t;
+
+typedef struct recurrent_gated_delta_rule_spec {
+  int num_k_heads;
+  int num_v_heads;
+  int d;
+  bool use_qk_l2norm;
+  float scale;
+} recurrent_gated_delta_rule_spec_t;
+
+typedef struct concat_slice_spec {
+  int axis;
+} concat_slice_spec_t;
+
 typedef struct core_split_spec {
   int axis;
 } core_split_spec_t;
