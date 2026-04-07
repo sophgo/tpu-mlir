@@ -13,6 +13,7 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "tpu_mlir/Support/ActiveUtils.h"
 #include "tpu_mlir/Support/Float8.h"
+#include "tpu_mlir/Support/GenericCpuFunc.h"
 #include <filesystem>
 #include <regex>
 
@@ -397,6 +398,72 @@ public:
     return failure();
   }
   bool shouldPrint(top::SubConstOp op) const override { return false; }
+};
+
+struct ScatterNDInputFollowOutputPattern
+    : public OpRewriterPatternEx<top::ScatterNDOp> {
+public:
+  ScatterNDInputFollowOutputPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::ScatterNDOp>(
+            context, "ScatterNDInputFollowOutputPattern") {}
+
+  LogicalResult matchAndRewriteImpl(top::ScatterNDOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto op_code = (CPU_SCATTER_OP_T)op.getReduction();
+    if (op_code != CPU_SCATTER_ASSIGN) {
+      return failure();
+    }
+    auto input = op.getInputData();
+    auto output = op.getOutput();
+    auto updates = op.getUpdates();
+    if (!module::isCalibratedType(input) || !module::isCalibratedType(output) ||
+        (!module::isCalibratedType(updates) &&
+         !isa<top::WeightOp>(updates.getDefiningOp()))) {
+      return failure();
+    }
+    auto input_qtype = module::getCalibratedType(input);
+    auto output_qtype = module::getCalibratedType(output);
+    static bool warning_printed = false;
+    if (!(input_qtype.getMax() == output_qtype.getMax() &&
+          input_qtype.getMin() == output_qtype.getMin())) {
+      if (input.hasOneUse() == false) {
+        if (!warning_printed) {
+          llvm::errs()
+              << "ScatterND input/updates has more than one use, maybe not "
+                 "best to use "
+                 "output calibration info, check if not accurate enough\n";
+          warning_printed = true;
+        }
+      }
+      auto in_type = input.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(in_type.getShape(), output_qtype);
+      input.setType(new_type);
+      Backward(input);
+    }
+    if (!isa<top::WeightOp>(updates.getDefiningOp())) {
+      // if updates is weight, it will use output cali info to quant in
+      // lowering.
+      auto updates_qtype = module::getCalibratedType(updates);
+      if (!(updates_qtype.getMax() == output_qtype.getMax() &&
+            updates_qtype.getMin() == output_qtype.getMin())) {
+        if (updates.hasOneUse() == false) {
+          if (!warning_printed) {
+            llvm::errs()
+                << "ScatterND input/updates has more than one use, maybe not "
+                   "best to use "
+                   "output calibration info, check if not accurate enough\n";
+            warning_printed = true;
+          }
+        }
+        auto in_type = updates.getType().cast<RankedTensorType>();
+        auto new_type = RankedTensorType::get(in_type.getShape(), output_qtype);
+        updates.setType(new_type);
+        Backward(updates);
+      }
+    }
+    return success();
+  }
+  bool shouldPrint(top::ScatterNDOp op) const override { return false; }
 };
 
 struct SetAddConstSignPattern : public OpRewriterPatternEx<top::AddConstOp> {
@@ -1881,6 +1948,16 @@ void ConvertTopToTpu::calibration_process() {
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
+
+    // backward propgate calibration info for connected scatternd
+    // above scatternd backward didn't hit if input has more users
+    if (!module::isCV18xx()) {
+      patterns.add<ScatterNDInputFollowOutputPattern>(ctx_);
+      GreedyRewriteConfig config;
+      config.useTopDownTraversal = false; // reverse order already
+      applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
+      patterns.clear();
+    }
 
     if (module::isBM1684XFamily() || module::isBM1690Family()) {
       patterns.add<BackwardAddThToMuls<top::AddOp>>(ctx_);
