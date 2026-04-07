@@ -5379,8 +5379,8 @@ def Top_RopeOp : Top_Op<"Rope"> {
 
     3.activation and weight
     input1(act.): input tensor;
-    input2(act.): input tensor;
-    input3(act.): input tensor;
+    input2(act./w.): input tensor or dynamic weight tensor;
+    input3(act./w.): input tensor or dynamic weight tensor;
 
     4.attributes
     is_permute_optimize:whether to apply optimization for permuting the input tensors.;
