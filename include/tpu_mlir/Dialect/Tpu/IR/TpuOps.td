@@ -4954,7 +4954,7 @@ def Tpu_MinOp : Tpu_Op<"Min", [
 }
 
 def Tpu_MlpOp : Tpu_Op<"Mlp",
-    []> {
+    [DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "w8a16 / w4a16 / a16 mlp operator";
 
   let description = [{
@@ -4975,13 +4975,17 @@ def Tpu_MlpOp : Tpu_Op<"Mlp",
     AnyTensorOrNone:$scale_down,
     AnyTensorOrNone:$zp_down,
     AnyTensorOrNone:$bias_down,
+    AnyTensorOrNone:$expert_id,
     AnyTensorOrNone:$buffer,
-    DefaultValuedAttr<BoolAttr, "false">:$w_transpose_gate,
-    DefaultValuedAttr<BoolAttr, "false">:$w_transpose_up,
+    DefaultValuedAttr<BoolAttr, "true">:$w_transpose_gate,
+    DefaultValuedAttr<BoolAttr, "true">:$w_transpose_up,
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose_down,
+    DefaultValuedAttr<BoolAttr, "false">:$is_expert,
     DefaultValuedAttr<BoolAttr, "false">:$quantized,
     DefaultValuedAttr<I64Attr, "128">:$q_group_size,
-    DefaultValuedAttr<I64Attr, "8">:$weight_bits
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits,
+    DefaultValuedAttr<I64Attr, "1">:$num_expert,
+    DefaultValuedAttr<I64Attr, "1">:$num_expert_per_tok
   );
 
   let results = (outs AnyRankedTensor:$output);

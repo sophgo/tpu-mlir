@@ -13,6 +13,7 @@ from .LlmLoad import *
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
+import math
 
 import concurrent.futures
 import subprocess
@@ -420,6 +421,14 @@ class LlmConverter(BaseConverter):
         self.hidden_act = getattr(self.llm_config, c.hidden_act, ActType.SILU)
         self.kv_dim = self.num_key_value_heads * self.head_dim
         self.kv_tile = self.num_attention_heads // self.num_key_value_heads
+        # for moe
+        self.num_experts = getattr(self.llm_config, "num_experts", 1)
+        self.num_experts_per_tok = getattr(self.llm_config, "num_experts_per_tok", 1)
+        self.moe_intermediate_size = getattr(self.llm_config, "moe_intermediate_size", 1)
+        self.shared_expert_intermediate_size = getattr(self.llm_config,
+                                                       "shared_expert_intermediate_size", 1)
+        self.mlp_only_layers = getattr(self.llm_config, "mlp_only_layers", [])
+        self.decoder_sparse_step = getattr(self.llm_config, "decoder_sparse_step", 1)
         # for minicpm4
         self.scale_emb = getattr(self.llm_config, "scale_emb", 1.)
         if self.llm_type == LlmType.GEMMA3:
@@ -944,21 +953,37 @@ class LlmConverter(BaseConverter):
             proj_up: str,
             proj_down: str,
             input_op,
+            experts_id,
             seq_len,
             hidden_size,
             intermediate_size,
             act_type: ActType,
+            is_expert: bool = False,
+            num_experts: int = 1,
+            num_experts_per_tok: int = 1,
             force_bias: bool = False,
             do_lora: bool = False):
         assert (act_type == "silu")
         proj_list = [proj_gate, proj_up, proj_down]
-        weight_shape_gate, weight_shape_up, weight_shape_down = [hidden_size, intermediate_size], [
-            hidden_size, intermediate_size
-        ], [intermediate_size, hidden_size]
+        if is_expert:
+            weight_shape_gate, weight_shape_up, weight_shape_down = [
+                num_experts, hidden_size, intermediate_size
+            ], [num_experts, hidden_size,
+                intermediate_size], [num_experts, intermediate_size, hidden_size]
+        else:
+            weight_shape_gate, weight_shape_up, weight_shape_down = [
+                hidden_size, intermediate_size
+            ], [hidden_size, intermediate_size], [intermediate_size, hidden_size]
         weight_shape_list = [weight_shape_gate, weight_shape_up, weight_shape_down]
-        out_shape_gate, out_shape_up, out_shape_down = [1, seq_len, intermediate_size
-                                                        ], [1, seq_len, intermediate_size
-                                                            ], [1, seq_len, hidden_size]
+        if is_expert:
+            out_shape_gate, out_shape_up, out_shape_down = [
+                seq_len, num_experts_per_tok, intermediate_size
+            ], [seq_len, num_experts_per_tok,
+                intermediate_size], [seq_len, num_experts_per_tok, hidden_size]
+        else:
+            out_shape_gate, out_shape_up, out_shape_down = [1, seq_len, intermediate_size
+                                                            ], [1, seq_len, intermediate_size
+                                                                ], [1, seq_len, hidden_size]
         out_shape_list = [out_shape_gate, out_shape_up, out_shape_down]
         bias_op_list, weight_op_list, qweight_op_list, scale_op_list, zp_op_list = [], [], [], [], []
         for i in range(len(proj_list)):
@@ -971,6 +996,7 @@ class LlmConverter(BaseConverter):
             bias_op_list.append(bias_op)
             if self.quant_mode and (self.model.is_exist(proj + ".qweight") or
                                     (proj + ".qweight" in self.weights)):
+                assert (is_expert == False)
                 if i in [2]:
                     qweight_op = mlir_gen.create_weight_op(proj + ".qweight", [
                         weight_shape[0] // (8 // self.quant_bits) // self.q_group_size,
@@ -997,8 +1023,12 @@ class LlmConverter(BaseConverter):
                 zp_op_list.append(zp_op)
             else:
                 if i in [0, 1]:
-                    weight_op = mlir_gen.create_weight_op(proj + ".weight",
-                                                          [weight_shape[1], weight_shape[0]])
+                    if is_expert:
+                        weight_op = mlir_gen.create_weight_op(
+                            proj + ".weight", [weight_shape[0], weight_shape[2], weight_shape[1]])
+                    else:
+                        weight_op = mlir_gen.create_weight_op(proj + ".weight",
+                                                              [weight_shape[1], weight_shape[0]])
                 else:
                     weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
                 weight_op_list.append(weight_op)
@@ -1012,12 +1042,16 @@ class LlmConverter(BaseConverter):
                                bias_op_list[0],
                                bias_op_list[1],
                                bias_op_list[2],
+                               experts_id,
                                right_transpose_gate=True,
                                right_transpose_up=True,
                                right_transpose_down=False,
+                               is_expert=is_expert,
                                quantized=False,
                                q_group_size=self.q_group_size,
                                weight_bits=self.quant_bits,
+                               num_expert=num_experts,
+                               num_expert_per_tok=num_experts_per_tok,
                                scale_gate=mlir_gen.none_op,
                                scale_up=mlir_gen.none_op,
                                scale_down=mlir_gen.none_op,
@@ -1035,6 +1069,7 @@ class LlmConverter(BaseConverter):
                                bias_op_list[0],
                                bias_op_list[1],
                                bias_op_list[2],
+                               experts_id,
                                right_transpose_gate=True,
                                right_transpose_up=True,
                                right_transpose_down=False,
@@ -1130,6 +1165,157 @@ class LlmConverter(BaseConverter):
                            loc=self.get_loc(proj + ".lora_add", mlir_gen),
                            ip=mlir_gen.insert_point).output
         return new_op
+
+    def moe(self,
+            mlir_gen,
+            proj_shared_gate: str,
+            proj_shared_expert_gate: str,
+            proj_shared_expert_up: str,
+            proj_shared_expert_down: str,
+            proj_gate: str,
+            proj_experts_gate: str,
+            proj_experts_up: str,
+            proj_experts_down: str,
+            input_op,
+            seq_len,
+            act_type: ActType,
+            num_split_fused_moe: 1,
+            force_bias: bool = False,
+            do_lora: bool = False):
+        assert (act_type == "silu")
+        assert (not self.quant_mode)
+        # shared gate
+        shared_gate = self.linear(mlir_gen, proj_shared_gate, input_op, [self.hidden_size, 1],
+                                  [1, seq_len, 1])
+        sigmoid = top.SigmoidOp(mlir_gen.get_tensor_type([1, seq_len, 1]),
+                                shared_gate,
+                                loc=self.get_loc(proj_shared_gate + "_sigmoid", mlir_gen),
+                                ip=mlir_gen.insert_point).output
+        # shared mlp
+        if self.use_mlp:
+            shared_mlp = self.mlp(mlir_gen,
+                                  proj_shared_expert_gate,
+                                  proj_shared_expert_up,
+                                  proj_shared_expert_down,
+                                  input_op,
+                                  mlir_gen.none_op,
+                                  seq_len,
+                                  self.hidden_size,
+                                  self.intermediate_size,
+                                  act_type,
+                                  is_expert=False)
+        else:
+            shared_mlp_gate = self.linear(mlir_gen, proj_shared_expert_gate, input_op,
+                                          [self.hidden_size, self.intermediate_size],
+                                          [1, seq_len, self.intermediate_size])
+            shared_mlp_up = self.linear(mlir_gen, proj_shared_expert_up, input_op,
+                                        [self.hidden_size, self.intermediate_size],
+                                        [1, seq_len, self.intermediate_size])
+            shared_mlp_silu = self.activate(mlir_gen, shared_mlp_gate, act_type,
+                                            proj_shared_expert_gate)
+            shared_mlp_mul = top.MulOp(mlir_gen.get_tensor_type(
+                [1, seq_len, self.intermediate_size]), [shared_mlp_silu, shared_mlp_up],
+                                       loc=self.get_loc(proj_shared_expert_gate + "_mul", mlir_gen),
+                                       ip=mlir_gen.insert_point).output
+            shared_mlp = self.linear(mlir_gen, proj_shared_expert_down, shared_mlp_mul,
+                                     [self.intermediate_size, self.hidden_size],
+                                     [1, seq_len, self.hidden_size])
+        shared_output = top.MulOp(mlir_gen.get_tensor_type([1, seq_len, self.hidden_size]),
+                                  [shared_mlp, sigmoid],
+                                  loc=self.get_loc(proj_shared_gate + "_mul", mlir_gen),
+                                  ip=mlir_gen.insert_point).output
+        # gate
+        gate = self.linear(mlir_gen, proj_gate, input_op, [self.hidden_size, self.num_experts],
+                           [1, seq_len, self.num_experts])
+        softmax = top.SoftmaxOp(mlir_gen.get_tensor_type([1, seq_len, self.num_experts]),
+                                gate,
+                                axis=2,
+                                loc=self.get_loc(proj_gate + "_softmax", mlir_gen),
+                                ip=mlir_gen.insert_point).output
+        topk = top.TopKOp(mlir_gen.get_tensor_type([1, seq_len, self.num_experts_per_tok]),
+                          mlir_gen.get_tensor_type([1, seq_len, self.num_experts_per_tok]),
+                          softmax,
+                          axis=2,
+                          K=self.num_experts_per_tok,
+                          loc=self.get_loc([proj_gate + "_values", proj_gate + "_indices"],
+                                           mlir_gen),
+                          ip=mlir_gen.insert_point)
+        routing_scores, expert_ids = topk.values, topk.indices
+        # experts mlp
+        if num_split_fused_moe < 1:
+            experts_mlp = self.mlp(mlir_gen,
+                                   proj_experts_gate,
+                                   proj_experts_up,
+                                   proj_experts_down,
+                                   input_op,
+                                   expert_ids,
+                                   seq_len,
+                                   self.hidden_size,
+                                   self.moe_intermediate_size,
+                                   act_type,
+                                   is_expert=True,
+                                   num_experts=self.num_experts,
+                                   num_experts_per_tok=self.num_experts_per_tok
+                                   )  #[batch(1) * seq_len, num_experts_per_tok, hidden_size]
+        else:
+            split_size = math.ceil(self.moe_intermediate_size / num_split_fused_moe)
+            for split_id in range(num_split_fused_moe):
+                if split_id == num_split_fused_moe - 1:
+                    split_size = self.moe_intermediate_size - split_id * split_size
+                experts_mlp_split = self.mlp(mlir_gen,
+                                             proj_experts_gate + ".split" + str(split_id),
+                                             proj_experts_up + ".split" + str(split_id),
+                                             proj_experts_down + ".split" + str(split_id),
+                                             input_op,
+                                             expert_ids,
+                                             seq_len,
+                                             self.hidden_size,
+                                             split_size,
+                                             act_type,
+                                             is_expert=True,
+                                             num_experts=self.num_experts,
+                                             num_experts_per_tok=self.num_experts_per_tok)
+                if split_id == 0:
+                    experts_mlp = experts_mlp_split
+                else:
+                    experts_mlp = top.AddOp(mlir_gen.get_tensor_type(
+                        [seq_len, self.num_experts_per_tok, self.hidden_size]),
+                                            [experts_mlp, experts_mlp_split],
+                                            loc=self.get_loc(
+                                                proj_experts_gate + "_experts_mlp" + str(split_id),
+                                                mlir_gen),
+                                            ip=mlir_gen.insert_point).output
+        routing_scores_reshape = top.ReshapeOp(
+            mlir_gen.get_tensor_type([seq_len, self.num_experts_per_tok, 1]),
+            routing_scores,
+            shape=[-1, self.num_experts_per_tok, 1],
+            loc=self.get_loc(proj_experts_gate + "_routing_scores", mlir_gen),
+            ip=mlir_gen.insert_point).output
+        experts_mlp_scores = top.MulOp(
+            mlir_gen.get_tensor_type([seq_len, self.num_experts_per_tok,
+                                      self.hidden_size]), [experts_mlp, routing_scores_reshape],
+            loc=self.get_loc(proj_experts_gate + "_experts_mlp_scores", mlir_gen),
+            ip=mlir_gen.insert_point).output
+        experts_mlp_reduce = top.ReduceOp(mlir_gen.get_tensor_type([seq_len, self.hidden_size]),
+                                          experts_mlp_scores,
+                                          axes=[1],
+                                          keepdims=False,
+                                          mode=StringAttr.get("ReduceSum"),
+                                          loc=self.get_loc(proj_experts_gate + "_reducesum",
+                                                           mlir_gen),
+                                          ip=mlir_gen.insert_point).output
+        experts_mlp_output = top.ReshapeOp(mlir_gen.get_tensor_type([1, seq_len, self.hidden_size]),
+                                           experts_mlp_reduce,
+                                           shape=[1, -1, self.hidden_size],
+                                           loc=self.get_loc(
+                                               proj_experts_gate + "_experts_mlp_output", mlir_gen),
+                                           ip=mlir_gen.insert_point).output
+        # moe block res
+        moe_block_res = top.AddOp(mlir_gen.get_tensor_type([1, seq_len, self.hidden_size]),
+                                  [shared_output, experts_mlp_output],
+                                  loc=self.get_loc(proj_experts_gate + "_moe_block_res", mlir_gen),
+                                  ip=mlir_gen.insert_point).output
+        return moe_block_res
 
     # q_embed = (q * cos) + (rotate_half(q) * sin)
     # k_embed = (k * cos) + (rotate_half(k) * sin)
@@ -1239,8 +1425,12 @@ class LlmConverter(BaseConverter):
             weight_path = path + ".weight"
             if self.model.is_exist(weight_path):
                 data = self.model.read(weight_path)
-                if self.use_mlp and (self.model_info.weights[LlmList.MLP_GATE] in path
-                                     or self.model_info.weights[LlmList.MLP_UP] in path):
+                if self.use_mlp and (
+                        self.model_info.weights[LlmList.MLP_GATE] in path
+                        or self.model_info.weights[LlmList.MLP_UP] in path
+                        #  or self.model_info.weights[LlmList.SHARED_EXPERT_GATE] in path
+                        #  or self.model_info.weights[LlmList.SHARED_EXPERT_UP] in path
+                ):
                     weight_dict[weight_path] = np.ascontiguousarray(data)
                 else:
                     weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
@@ -1312,6 +1502,50 @@ class LlmConverter(BaseConverter):
         if has_path:
             weight_dict[path] = self.model.read(path)
 
+    def split_fused_moe(self):
+
+        def align(x, a):
+            return int((x + a - 1) / a) * a
+
+        def local_mem_need(batch, input_w, middle_w, dtype):
+            input_size = math.ceil(batch / npu_num[self.chip]) * align(
+                1 * input_w, tpu_eu_num[dtype]) * dtype_size[dtype]
+            weight0_size = math.ceil(middle_w / npu_num[self.chip]) * align(
+                1 * input_w, tpu_eu_num[dtype]) * dtype_size[dtype]
+            weight1_size = weight0_size
+            weight2_size = weight0_size
+            middle_buffer_f16_size = math.ceil(batch / npu_num[self.chip]) * align(
+                1 * middle_w, tpu_eu_num[dtype]) * dtype_size[dtype]
+            middle_buffer_f32_size = math.ceil(batch / npu_num[self.chip]) * align(
+                1 * middle_w, tpu_eu_num["f32"]) * dtype_size["f32"]
+            exp_coeff_size = align(1 * sfu_taylor_exp_len["f32"],
+                                   tpu_eu_num["f32"]) * dtype_size["f32"]
+            output_size = math.ceil(batch / npu_num[self.chip]) * align(
+                1 * input_w, tpu_eu_num["f32"]) * dtype_size["f32"]
+            middle_buffer_w_f16_size = math.ceil(middle_w / npu_num[self.chip]) * align(
+                1 * input_w, tpu_eu_num[dtype]) * dtype_size[dtype]
+            return input_size + weight0_size + weight1_size + weight2_size + middle_buffer_f16_size + middle_buffer_f32_size * 5 + exp_coeff_size + output_size + middle_buffer_w_f16_size
+
+        batch = 1
+        num_split = 1
+        dtype = self.quantize
+        assert dtype in ["bf16", "f16"]
+        npu_num = {"bm1684x": 64, "bm1688": 32, "bm1690": 64}
+        dtype_size = {"bf16": 2, "f16": 2, "f32": 4}
+        sfu_taylor_exp_len = {"bf16": 7, "f16": 7, "f32": 10}
+        if self.chip in ["bm1684x", "bm1690"]:
+            tpu_eu_num = {"bf16": 32, "f16": 32, "f32": 16}
+        elif self.chip in ["bm1688"]:
+            tpu_eu_num = {"bf16": 8, "f16": 8, "f32": 4}
+        local_mem_size = {"bm1684x": 2**18, "bm1690": 2**18, "bm1688": 2**17}
+        while (num_split < self.moe_intermediate_size):
+            middle_w = math.ceil(self.moe_intermediate_size / num_split)
+            mem_need = local_mem_need(batch, self.hidden_size, middle_w, dtype)
+            if (mem_need < local_mem_size[self.chip]):
+                break
+            num_split += 1
+        return num_split
+
     def gen_block_mlir(self, idx: int):
         tqdm.write(f"generate block_{idx} mlir ...")
         # torch path
@@ -1324,9 +1558,19 @@ class LlmConverter(BaseConverter):
         v_proj = TOP_PATH + self.model_info.weights[LlmList.V_PROJ]
         o_proj = TOP_PATH + self.model_info.weights[LlmList.O_PROJ]
         post_attn_ln = TOP_PATH + self.model_info.weights[LlmList.POST_ATTN_LN]
-        mlp_gate = TOP_PATH + self.model_info.weights[LlmList.MLP_GATE]
-        mlp_up = TOP_PATH + self.model_info.weights[LlmList.MLP_UP]
-        mlp_down = TOP_PATH + self.model_info.weights[LlmList.MLP_DOWN]
+        if self.llm_type in [LlmType.QWEN2_MOE]:
+            shared_gate = TOP_PATH + self.model_info.weights[LlmList.SHARED_GATE]
+            shared_expert_gate = TOP_PATH + self.model_info.weights[LlmList.SHARED_EXPERT_GATE]
+            shared_expert_up = TOP_PATH + self.model_info.weights[LlmList.SHARED_EXPERT_UP]
+            shared_expert_down = TOP_PATH + self.model_info.weights[LlmList.SHARED_EXPERT_DOWN]
+            gate = TOP_PATH + self.model_info.weights[LlmList.GATE]
+            experts_gate = TOP_PATH + self.model_info.weights[LlmList.EXPERTS_GATE]
+            experts_up = TOP_PATH + self.model_info.weights[LlmList.EXPERTS_UP]
+            experts_down = TOP_PATH + self.model_info.weights[LlmList.EXPERTS_DOWN]
+        else:
+            mlp_gate = TOP_PATH + self.model_info.weights[LlmList.MLP_GATE]
+            mlp_up = TOP_PATH + self.model_info.weights[LlmList.MLP_UP]
+            mlp_down = TOP_PATH + self.model_info.weights[LlmList.MLP_DOWN]
         if self.llm_type in [LlmType.GEMMA3]:
             pre_mlp_ln = TOP_PATH + self.model_info.weights[LlmList.PRE_MLP_LN]
             post_mlp_ln = TOP_PATH + self.model_info.weights[LlmList.POST_MLP_LN]
@@ -1353,9 +1597,73 @@ class LlmConverter(BaseConverter):
             self.set_common_weight(pre_mlp_ln, weight_dict, self.rmsnorm_type)
             self.set_common_weight(post_mlp_ln, weight_dict, self.rmsnorm_type)
         self.set_common_weight(post_attn_ln, weight_dict, self.rmsnorm_type)
-        self.set_linear_weight(mlp_gate, weight_dict, do_lora=self.do_lora)
-        self.set_linear_weight(mlp_up, weight_dict, do_lora=self.do_lora)
-        self.set_linear_weight(mlp_down, weight_dict, do_lora=self.do_lora)
+        if self.llm_type in [LlmType.QWEN2_MOE]:
+            self.set_linear_weight(shared_gate, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(shared_expert_gate, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(shared_expert_up, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(shared_expert_down, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(gate, weight_dict, do_lora=self.do_lora)
+            gate_prefix, gate_suffix = experts_gate.split("expert_id")
+            up_prefix, up_suffix = experts_up.split("expert_id")
+            down_prefix, down_suffix = experts_down.split("expert_id")
+            experts_gate_data_list = []
+            experts_up_data_list = []
+            experts_down_data_list = []
+            # set every single expert weight
+            for expert_id in range(self.num_experts):
+                real_experts_gate = gate_prefix + str(expert_id) + gate_suffix
+                real_experts_up = up_prefix + str(expert_id) + up_suffix
+                real_experts_down = down_prefix + str(expert_id) + down_suffix
+                self.set_linear_weight(real_experts_gate, weight_dict, do_lora=self.do_lora)
+                self.set_linear_weight(real_experts_up, weight_dict, do_lora=self.do_lora)
+                self.set_linear_weight(real_experts_down, weight_dict, do_lora=self.do_lora)
+                experts_gate_data_list.append(weight_dict[real_experts_gate + ".weight"])
+                experts_up_data_list.append(weight_dict[real_experts_up + ".weight"])
+                experts_down_data_list.append(weight_dict[real_experts_down + ".weight"])
+                del weight_dict[real_experts_gate + ".weight"]
+                del weight_dict[real_experts_up + ".weight"]
+                del weight_dict[real_experts_down + ".weight"]
+            # combine experts weight as one
+            experts_gate_data = (np.concatenate(experts_gate_data_list,
+                                                axis=0)).reshape(self.num_experts, self.hidden_size,
+                                                                 self.moe_intermediate_size)
+            experts_up_data = (np.concatenate(experts_up_data_list,
+                                              axis=0)).reshape(self.num_experts, self.hidden_size,
+                                                               self.moe_intermediate_size)
+            experts_down_data = (np.concatenate(experts_down_data_list,
+                                                axis=0)).reshape(self.num_experts,
+                                                                 self.moe_intermediate_size,
+                                                                 self.hidden_size)
+            weight_dict[experts_gate + ".weight"] = np.ascontiguousarray(
+                np.transpose(experts_gate_data, (0, 2, 1)))
+            weight_dict[experts_up + ".weight"] = np.ascontiguousarray(
+                np.transpose(experts_up_data, (0, 2, 1)))
+            weight_dict[experts_down + ".weight"] = np.ascontiguousarray(experts_down_data)
+            # split experts weight if need
+            num_split_fused_moe = self.split_fused_moe()
+            if num_split_fused_moe > 1:
+                for split_id in range(num_split_fused_moe):
+                    split_size = math.ceil(self.moe_intermediate_size / num_split_fused_moe)
+                    start = split_id * split_size
+                    end = (split_id + 1) * split_size if (
+                        (split_id + 1) *
+                        split_size) <= self.moe_intermediate_size else self.moe_intermediate_size
+                    weight_dict[experts_gate + ".split" + str(split_id) +
+                                ".weight"] = np.ascontiguousarray(
+                                    weight_dict[experts_gate + ".weight"][:, start:end, :])
+                    weight_dict[experts_up + ".split" + str(split_id) +
+                                ".weight"] = np.ascontiguousarray(
+                                    weight_dict[experts_up + ".weight"][:, start:end, :])
+                    weight_dict[experts_down + ".split" + str(split_id) +
+                                ".weight"] = np.ascontiguousarray(
+                                    weight_dict[experts_down + ".weight"][:, start:end, :])
+                del weight_dict[experts_gate + ".weight"]
+                del weight_dict[experts_up + ".weight"]
+                del weight_dict[experts_down + ".weight"]
+        else:
+            self.set_linear_weight(mlp_gate, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(mlp_up, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(mlp_down, weight_dict, do_lora=self.do_lora)
         if do_norm:
             self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
         if self.extern_block_weights:
@@ -1373,40 +1681,57 @@ class LlmConverter(BaseConverter):
             else:
                 new_op = self.rms_norm(mlir_gen, in_op, post_attn_ln)
 
-            if not self.use_mlp:
-                gate_op = self.linear(mlir_gen,
-                                      mlp_gate,
-                                      new_op, [self.hidden_size, self.intermediate_size],
-                                      [batch, len, self.intermediate_size],
-                                      do_lora=self.do_lora)
-                act_op = self.activate(mlir_gen, gate_op, self.hidden_act, mlp_gate)
-                up_op = self.linear(mlir_gen,
-                                    mlp_up,
-                                    new_op, [self.hidden_size, self.intermediate_size],
-                                    [batch, len, self.intermediate_size],
-                                    do_lora=self.do_lora)
-                new_op = top.MulOp(mlir_gen.get_tensor_type([batch, len, self.intermediate_size]),
-                                   [act_op, up_op],
-                                   loc=self.get_loc(mlp_up + ".mul", mlir_gen),
-                                   ip=ip).output
-                down_op = self.linear(mlir_gen,
-                                      mlp_down,
-                                      new_op, [self.intermediate_size, self.hidden_size],
-                                      input_shape,
-                                      do_lora=self.do_lora)
-            else:
-                # TODO: support multi batch
-                down_op = self.mlp(mlir_gen,
-                                   mlp_gate,
-                                   mlp_up,
-                                   mlp_down,
+            if self.llm_type in [LlmType.QWEN2_MOE] and (idx not in self.mlp_only_layers) and (
+                    self.num_experts > 0) and ((idx + 1) % self.decoder_sparse_step == 0):
+                down_op = self.moe(mlir_gen,
+                                   shared_gate,
+                                   shared_expert_gate,
+                                   shared_expert_up,
+                                   shared_expert_down,
+                                   gate,
+                                   experts_gate,
+                                   experts_up,
+                                   experts_down,
                                    new_op,
                                    len,
-                                   self.hidden_size,
-                                   self.intermediate_size,
                                    self.hidden_act,
+                                   num_split_fused_moe=num_split_fused_moe,
                                    do_lora=self.do_lora)
-
+            else:
+                if not self.use_mlp:
+                    gate_op = self.linear(mlir_gen,
+                                          mlp_gate,
+                                          new_op, [self.hidden_size, self.intermediate_size],
+                                          [batch, len, self.intermediate_size],
+                                          do_lora=self.do_lora)
+                    act_op = self.activate(mlir_gen, gate_op, self.hidden_act, mlp_gate)
+                    up_op = self.linear(mlir_gen,
+                                        mlp_up,
+                                        new_op, [self.hidden_size, self.intermediate_size],
+                                        [batch, len, self.intermediate_size],
+                                        do_lora=self.do_lora)
+                    new_op = top.MulOp(mlir_gen.get_tensor_type(
+                        [batch, len, self.intermediate_size]), [act_op, up_op],
+                                       loc=self.get_loc(mlp_up + ".mul", mlir_gen),
+                                       ip=ip).output
+                    down_op = self.linear(mlir_gen,
+                                          mlp_down,
+                                          new_op, [self.intermediate_size, self.hidden_size],
+                                          input_shape,
+                                          do_lora=self.do_lora)
+                else:
+                    # TODO: support multi batch
+                    down_op = self.mlp(mlir_gen,
+                                       mlp_gate,
+                                       mlp_up,
+                                       mlp_down,
+                                       new_op,
+                                       mlir_gen.none_op,
+                                       len,
+                                       self.hidden_size,
+                                       self.intermediate_size,
+                                       self.hidden_act,
+                                       do_lora=self.do_lora)
             if self.llm_type in [LlmType.GEMMA3]:
                 down_op = self.rms_norm(mlir_gen, down_op, post_mlp_ln)
             if self.llm_type == LlmType.MINICPM4:
@@ -1416,7 +1741,11 @@ class LlmConverter(BaseConverter):
                                          loc=self.get_loc(mlp_down + ".scale", mlir_gen),
                                          ip=ip).output
             last_name = "output_states"
-            new_name = last_name if idx != self.num_layers - 1 else f"{mlp_down}.add"
+            if self.llm_type in [LlmType.QWEN2_MOE] and (idx not in self.mlp_only_layers) and (
+                    self.num_experts > 0) and ((idx + 1) % self.decoder_sparse_step == 0):
+                new_name = last_name if idx != self.num_layers - 1 else f"{experts_down}.add"
+            else:
+                new_name = last_name if idx != self.num_layers - 1 else f"{mlp_down}.add"
             new_op = top.AddOp(mlir_gen.get_tensor_type(input_shape), [in_op, down_op],
                                loc=self.get_loc(new_name, mlir_gen),
                                ip=ip).output

@@ -34,6 +34,7 @@ class ModelConfig:
 # only for llm, not for vlm
 class LlmType:
     QWEN2 = "qwen2"
+    QWEN2_MOE = "qwen2_moe"
     LLAMA = "llama"
     MLLAMA = "mllama"
     QWEN3 = "qwen3"
@@ -92,6 +93,15 @@ class LlmList:
     MLP_UP = "MLP_UP"
     MLP_DOWN = "MLP_DOWN"
     MLP_GATE_UP = "MLP_GATE_UP"
+    # MoE
+    SHARED_GATE = "SHARED_GATE"
+    SHARED_EXPERT_GATE = "SHARED_EXPERT_GATE"
+    SHARED_EXPERT_UP = "SHARED_EXPERT_UP"
+    SHARED_EXPERT_DOWN = "SHARED_EXPERT_DOWN"
+    GATE = "GATE"
+    EXPERTS_GATE = "EXPERTS_GATE"
+    EXPERTS_UP = "EXPERTS_UP"
+    EXPERTS_DOWN = "EXPERTS_DOWN"
     # ===============================
     NORM = "NORM"
     LMHEAD = "LMHEAD"
@@ -122,6 +132,14 @@ COMMON_INFO = ModelInfo(
         LlmList.MLP_GATE: "mlp.gate_proj",
         LlmList.MLP_UP: "mlp.up_proj",
         LlmList.MLP_DOWN: "mlp.down_proj",
+        LlmList.SHARED_GATE: "mlp.shared_expert_gate",  #qwen2_moe
+        LlmList.SHARED_EXPERT_GATE: "mlp.shared_expert.gate_proj",
+        LlmList.SHARED_EXPERT_UP: "mlp.shared_expert.up_proj",
+        LlmList.SHARED_EXPERT_DOWN: "mlp.shared_expert.down_proj",
+        LlmList.GATE: "mlp.gate",
+        LlmList.EXPERTS_GATE: "mlp.experts.expert_id.gate_proj",
+        LlmList.EXPERTS_UP: "mlp.experts.expert_id.up_proj",
+        LlmList.EXPERTS_DOWN: "mlp.experts.expert_id.down_proj",
         # ================================
         LlmList.NORM: "model.norm",
         LlmList.LMHEAD: "lm_head",

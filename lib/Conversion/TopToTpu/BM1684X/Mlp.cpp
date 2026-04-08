@@ -175,6 +175,8 @@ void MlpLowering::LoweringBF16(PatternRewriter &rewriter, top::MlpOp op) const {
     operands.push_back(noneOp);
   }
 
+  // expert_id
+  operands.push_back(op.getExpertId());
   // buffer
   operands.push_back(module::getNoneOp(op));
   // attrs
@@ -202,6 +204,18 @@ void MlpLowering::LoweringBF16(PatternRewriter &rewriter, top::MlpOp op) const {
   auto q_group_size_attr =
       rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
   attrs.push_back(q_group_size_attr);
+
+  auto is_expert_attr =
+      rewriter.getNamedAttr("is_expert", op.getIsExpertAttr());
+  attrs.push_back(is_expert_attr);
+
+  auto num_expert_attr =
+      rewriter.getNamedAttr("num_expert", op.getNumExpertAttr());
+  attrs.push_back(num_expert_attr);
+
+  auto num_expert_per_tok_attr =
+      rewriter.getNamedAttr("num_expert_per_tok", op.getNumExpertPerTokAttr());
+  attrs.push_back(num_expert_per_tok_attr);
 
   rewriter.replaceOpWithNewOp<tpu::MlpOp>(op, newType, operands, attrs);
 }
@@ -355,6 +369,8 @@ void MlpLowering::LoweringF16(PatternRewriter &rewriter, top::MlpOp op) const {
     operands.push_back(noneOp);
   }
 
+  // expert_id
+  operands.push_back(op.getExpertId());
   // buffer
   operands.push_back(module::getNoneOp(op));
   // attrs
@@ -382,6 +398,18 @@ void MlpLowering::LoweringF16(PatternRewriter &rewriter, top::MlpOp op) const {
   auto q_group_size_attr =
       rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
   attrs.push_back(q_group_size_attr);
+
+  auto is_expert_attr =
+      rewriter.getNamedAttr("is_expert", op.getIsExpertAttr());
+  attrs.push_back(is_expert_attr);
+
+  auto num_expert_attr =
+      rewriter.getNamedAttr("num_expert", op.getNumExpertAttr());
+  attrs.push_back(num_expert_attr);
+
+  auto num_expert_per_tok_attr =
+      rewriter.getNamedAttr("num_expert_per_tok", op.getNumExpertPerTokAttr());
+  attrs.push_back(num_expert_per_tok_attr);
 
   rewriter.replaceOpWithNewOp<tpu::MlpOp>(op, newType, operands, attrs);
 }

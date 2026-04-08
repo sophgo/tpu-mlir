@@ -134,7 +134,7 @@ if __name__ == '__main__':
         import qwen_asr  # otherwise AutoConfig will fail
     config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
 
-    if config.model_type in ["qwen3", "qwen2", "llama", "minicpm"]:
+    if config.model_type in ["qwen3", "qwen2", "llama", "minicpm", "qwen2_moe"]:
         from llm.LlmConverter import LlmConverter
         converter = LlmConverter(args, config)
     elif config.model_type in ["mllama"]:

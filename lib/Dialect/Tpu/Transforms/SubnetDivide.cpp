@@ -523,6 +523,12 @@ public:
           kCustomPluginTypes::PLUGIN_FORCEDYNAMICRUN, &ret, api_name.c_str(),
           values.data(), values.size() * sizeof(custom_param_t), nullptr);
       return ret;
+    } else if (isa<tpu::MlpOp>(op)) {
+      auto is_expert = dyn_cast<MlpOp>(op).getIsExpert();
+      std::vector<int64_t> in_shape =
+          module::getShape(dyn_cast<MlpOp>(op).getInput());
+      bool multi_batch = in_shape[0] * in_shape[1] > 1;
+      return is_expert && multi_batch;
     }
     return false;
   }

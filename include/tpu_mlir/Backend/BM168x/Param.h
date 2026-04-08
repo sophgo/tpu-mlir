@@ -1348,9 +1348,12 @@ typedef struct mlp_spec {
   bool has_zp_down;
   bool has_bias_down;
   bool quantized;
+  bool is_expert;
   int weight_bits;
   int q_group_size;
   int use_multi_core;
+  int num_expert;
+  int num_expert_per_tok;
   uint64_t buffer_addr;
 } mlp_spec_t;
 
