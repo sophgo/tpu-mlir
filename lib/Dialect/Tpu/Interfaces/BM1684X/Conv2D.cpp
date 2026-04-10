@@ -350,25 +350,22 @@ void tpu::Conv2DOp::codegen_local_bm1684x_kernel(
   module::getNCHW(getInput(), N, C, H, W);
   if (sec_info.h_slice != H) {
     int kh_consider_dh = (attr.kh - 1) * (attr.dh) + 1;
-    int cal_h_idx = sec_info.out_h_idx * attr.sh - attr.pht;
-    int cal_h_slice = (sec_info.out_h_slice - 1) * attr.sh + kh_consider_dh;
-    cal_h_slice = std::min(cal_h_slice, cal_h_slice + cal_h_idx);
-    cal_h_idx = std::max(0, cal_h_idx);
-    p.spec.unused_ht_for_input = cal_h_idx - std::max(0, sec_info.h_idx);
-    int h_end = std::min(sec_info.h_idx + sec_info.h_slice, (int)H);
-    p.spec.unused_hb_for_input = std::max(0, h_end - (cal_h_idx + cal_h_slice));
+    int req_h_start = sec_info.out_h_idx * attr.sh - attr.pht;
+    int req_h_end =
+        req_h_start + (sec_info.out_h_slice - 1) * attr.sh + kh_consider_dh;
+    p.spec.unused_ht_for_input = std::max(0, req_h_start - sec_info.h_idx);
+    p.spec.unused_hb_for_input =
+        std::max(0, sec_info.h_idx + sec_info.h_slice - req_h_end);
   }
 
   if (sec_info.w_slice != W) {
     int kw_consider_dw = (attr.kw - 1) * (attr.dw) + 1;
-    int cal_w_idx = sec_info.out_w_idx * attr.sw - attr.pwl;
-    int cal_w_slice = (sec_info.out_w_slice - 1) * attr.sw + kw_consider_dw;
-    cal_w_slice = std::min(cal_w_slice, cal_w_slice + cal_w_idx);
-    cal_w_idx = std::max(0, cal_w_idx);
-
-    p.spec.unused_wl_for_input = cal_w_idx - std::max(0, sec_info.w_idx);
-    int w_end = std::min(sec_info.w_idx + sec_info.w_slice, (int)W);
-    p.spec.unused_wr_for_input = std::max(0, w_end - (cal_w_idx + cal_w_slice));
+    int req_w_start = sec_info.out_w_idx * attr.sw - attr.pwl;
+    int req_w_end =
+        req_w_start + (sec_info.out_w_slice - 1) * attr.sw + kw_consider_dw;
+    p.spec.unused_wl_for_input = std::max(0, req_w_start - sec_info.w_idx);
+    p.spec.unused_wr_for_input =
+        std::max(0, sec_info.w_idx + sec_info.w_slice - req_w_end);
   }
 
   common.ipad_value = 0;
