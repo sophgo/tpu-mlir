@@ -13,8 +13,8 @@ from typing_extensions import override
 
 class Gemma3Converter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader=loader)
         self.do_vit = True
         self.vit_f16_out_bf16 = True  # Gemma3 vit is f16, but we force output to bf16
         self.rmsnorm_type = WeightType.ZEROCENTERED_RMSNORM

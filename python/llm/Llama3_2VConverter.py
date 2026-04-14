@@ -44,8 +44,8 @@ class MllamaRotaryEmbedding(torch.nn.Module):
 
 class Llama3_2VConverter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader=loader)
 
         self.do_vit = True
         # vision config

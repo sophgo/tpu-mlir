@@ -13,8 +13,8 @@ int64_max = np.iinfo(np.int64).max
 
 class InternVL3Converter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader=loader)
         self.do_vit = True
         # modify weight info
         for i in ["LAYERS", "EMBEDING", "NORM", "LMHEAD"]:

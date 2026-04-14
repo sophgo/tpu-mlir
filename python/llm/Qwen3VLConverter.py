@@ -11,8 +11,8 @@ from typing_extensions import override
 
 class Qwen3VLConverter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader=loader)
         self.max_pixels = args.max_pixels
         if self.max_pixels == 0 or self.max_pixels % (32 * 32) != 0:
             raise RuntimeError(

@@ -15,6 +15,7 @@ elif [ "$1" = "script" ]; then
     cmake --build ${BUILD_PATH} --target check-tpumlir
     echo "::RUN script and model test."
     #pip show openai || pip install openai
+    pip show gguf || pip install gguf==0.19.0
     #python3 $PROJECT_ROOT/regression/llm_code_reviewer/gerrit_compare.py tpu-mlir
     $REGRESSION_PATH/main_entry.py --test_type basic --test_set script model
 elif [ "$1" = "model" ]; then

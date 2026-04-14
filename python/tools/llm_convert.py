@@ -12,6 +12,9 @@ import argparse
 import importlib
 import os
 import pymlir
+import logging
+
+from llm.log_config import setup_logging
 
 
 def parse_max_pixels(value):
@@ -95,7 +98,7 @@ if __name__ == '__main__':
     # yapf: disable
     parser = argparse.ArgumentParser(description='llm_exporter', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-m', '--model_path', type=str, required=True,
-                        help='original weight, like ./Qwen2-7B-Instruct')
+                        help='original weight, like ./Qwen2-7B-Instruct or ./model.gguf')
     parser.add_argument('-s', '--seq_length', type=int, required=True,
                         help="sequence length")
     parser.add_argument('-q', '--quantize', type=str, default="auto",
@@ -155,6 +158,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_length_list', action="store_true",
                         help="a list of input lengths separated by '+', each input length can be a single integer")
     args = parser.parse_args()
+    setup_logging(debug=args.debug)
     deprecated_option(args.dynamic_vit, "DEPRECATED,default is dynamic compiling")
     deprecated_option(args.input_length_list, "DEPRECATED, please use --dynamic to enable dynamic compiling")
     # yapf: enable
@@ -183,25 +187,39 @@ if __name__ == '__main__':
         args.out_dir = auto_out_dir(args.model_path, args.chip, args.quantize)
         print("Info: --out_dir not set, using '{}'".format(args.out_dir))
 
-    from transformers import AutoConfig
+    is_gguf = os.path.isfile(args.model_path) and args.model_path.lower().endswith('.gguf')
 
-    # Qwen-ASR uses a custom model type; importing qwen_asr registers it with
-    # transformers so AutoConfig can resolve it.
-    _path_lower = args.model_path.lower()
-    if "qwen" in _path_lower and "asr" in _path_lower:
-        import qwen_asr  # noqa: F401
-    try:
-        config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
-    except Exception as e:
-        raise RuntimeError("Failed to load model config from '{}': {}\n"
-                           "Hint: your transformers/torchvision may be outdated. "
-                           "Try updating them and run again:\n"
-                           "    pip3 install transformers torchvision -U".format(
-                               args.model_path, e)) from e
+    if is_gguf:
+        from llm.ModelHandle import GGUFModelHandle, create_gguf_config
 
-    module_name, class_name, opts = find_converter_spec(config.model_type)
+        print("Detected GGUF model: {}".format(args.model_path))
+        loader = GGUFModelHandle(args.model_path, args=args)
+        reader = loader.model.reader
+        arch_field = reader.get_field("general.architecture")
+        architecture = arch_field.contents() if arch_field else "qwen3"
+        print("GGUF model architecture: {}".format(architecture))
+        config = create_gguf_config(reader, args.quantize, args.seq_length)
+        model_type = architecture
+    else:
+        from transformers import AutoConfig
+        from llm.ModelHandle import SafetensorsModelHandle
 
-    # Resolve max_pixels: user value > per-model default > generic 768x768.
+        _path_lower = args.model_path.lower()
+        if "qwen" in _path_lower and "asr" in _path_lower:
+            import qwen_asr  # noqa: F401
+        try:
+            config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
+        except Exception as e:
+            raise RuntimeError("Failed to load model config from '{}': {}\n"
+                               "Hint: your transformers/torchvision may be outdated. "
+                               "Try updating them and run again:\n"
+                               "    pip3 install transformers torchvision -U".format(
+                                   args.model_path, e)) from e
+        loader = SafetensorsModelHandle(args.model_path)
+        model_type = config.model_type
+
+    module_name, class_name, opts = find_converter_spec(model_type)
+
     if args.max_pixels is None:
         default_shape = opts.get("default_max_shape", (768, 768))
         args.max_shape = [int(default_shape[0]), int(default_shape[1])]
@@ -214,15 +232,15 @@ if __name__ == '__main__':
         raise ValueError(
             "max_pixels (={}, from {}x{}) must be a multiple of {}*{} for model_type '{}'.".format(
                 args.max_pixels, args.max_shape[0], args.max_shape[1], pixel_multiple,
-                pixel_multiple, config.model_type))
+                pixel_multiple, model_type))
 
     if opts.get("force_dynamic") and not args.dynamic:
-        print("Info: forcing --dynamic for model_type '{}'".format(config.model_type))
+        print("Info: forcing --dynamic for model_type '{}'".format(model_type))
         args.dynamic = True
 
     if args.dry_run:
         print("=== llm_convert dry-run ===")
-        for k in ("model_path", "model_type:" + config.model_type, "out_dir", "chip", "quantize",
+        for k in ("model_path", "model_type:" + model_type, "out_dir", "chip", "quantize",
                   "seq_length", "max_input_length", "max_prefill_kv_length", "max_shape",
                   "max_pixels", "num_device", "distribute_strategy", "num_core", "batch", "dynamic",
                   "embedding_disk", "do_sample", "use_block_with_kv", "share_prompt",
@@ -238,5 +256,5 @@ if __name__ == '__main__':
 
     module = importlib.import_module(module_name)
     converter_cls = getattr(module, class_name)
-    converter = converter_cls(args, config)
+    converter = converter_cls(args, config, loader=loader)
     converter.run()

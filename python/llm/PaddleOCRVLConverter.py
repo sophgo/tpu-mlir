@@ -32,8 +32,8 @@ class SigLIPRotaryEmbedding(torch.nn.Module):
 
 class PaddleOCRVLConverter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader=loader)
         self.max_pixels = args.max_pixels  #784*784
         if args.max_pixels == 0:
             raise RuntimeError("max_pixels is 0, please set max_pixels to a value greater than 0.")

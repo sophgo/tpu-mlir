@@ -74,8 +74,8 @@ SigLIP_MODEL_CONFIG = {
 
 class JanusConverter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader=loader)
 
         self.do_vit = True
         self.debug = False

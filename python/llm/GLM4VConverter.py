@@ -106,8 +106,8 @@ class Glm4vVisionEmbeddings(nn.Module):
 
 class GLM4VConverter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader=loader)
         self.max_pixels = args.max_pixels
         if args.max_pixels == 0:
             raise RuntimeError("max_pixels is 0, please set max_pixels to a value greater than 0.")

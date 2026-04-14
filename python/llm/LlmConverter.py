@@ -6,10 +6,14 @@
 # ==============================================================================
 import torch
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 from transform.MLIRImporter import MLIRImporter, Platform
 from transform.BaseConverter import BaseConverter
 from .LlmInfo import *
 from .LlmLoad import *
+from .ModelHandle import ModelHandle, SafetensorsModelHandle, GGUFModelHandle
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
@@ -24,7 +28,7 @@ import mlir.dialects.top as top
 
 class LlmConverter(BaseConverter):
 
-    def __init__(self, args, config):
+    def __init__(self, args, config, loader=None):
         super().__init__()
         self.model_path = os.path.normpath(args.model_path)
         self.seq_length = args.seq_length
@@ -55,7 +59,7 @@ class LlmConverter(BaseConverter):
         self.position_shape = [1, 1, self.max_input_length
                                ] if self.use_insert else [1, self.max_input_length]
         self.num_core = args.num_core if args.num_core > 0 else self.get_core_num(self.chip)
-
+        self.loader = loader
         self.quant_mode = None
         self.quant_bits = 0
         self.vit_f16_out_bf16 = False  # force vit f16, output bf16
@@ -129,7 +133,7 @@ class LlmConverter(BaseConverter):
         if not self.only_mlir:
             self.compile_all()
         os.chdir(ori_path)
-        print(f"Success: {self.model_path} has converted to {self.out_dir}")
+        logger.info("Success: %s has converted to %s", self.model_path, self.out_dir)
 
     def get_dtype(self):
         if hasattr(self.llm_config, "dtype"):
@@ -152,18 +156,7 @@ class LlmConverter(BaseConverter):
         return False
 
     def gen_config(self):
-        import shutil
-        # copy model json file to config dir
-        if self.config_dir.startswith(os.path.abspath(self.model_path)):
-            os.rmdir(self.bmodel_dir)
-            os.rmdir(self.out_dir)
-            raise RuntimeError("Can't run under original model path!")
-        shutil.copytree(self.model_path,
-                        self.config_dir,
-                        ignore=shutil.ignore_patterns("*.safetensors", ".*", "*.pth", "*.pt",
-                                                      "*.py", "*.bin", "*.bin.index.json",
-                                                      "model.safetensors.index.json"),
-                        dirs_exist_ok=True)
+        self.loader.gen_config(self)
 
     @staticmethod
     def save_mlir_module(mlir_module, name: str):
@@ -299,12 +292,14 @@ class LlmConverter(BaseConverter):
                     for future in futures:
                         if not future.done():
                             future.cancel()
-                    print(f"Error:gen mlir failed: {e}")
+                    logger.error("gen mlir failed: %s", e)
                     sys.exit(1)
 
     def load_pretrained(self, config):
         self.config = config
-        self.model = LlmLoad(self.model_path)
+        if self.loader is None:
+            self.loader = SafetensorsModelHandle(self.model_path)
+        self.model = self.loader
         self.model_type = self.config.model_type
         self.model_info = COMMON_INFO
         # default llm_config is model config; but in vlm, maybe it is not the same
@@ -315,6 +310,19 @@ class LlmConverter(BaseConverter):
         self.llm_type = self.llm_config.model_type
 
     def rotary_embedding(self):
+        if isinstance(self.loader, GGUFModelHandle):
+            rope_theta = getattr(self.llm_config, 'rope_theta', 1000000.0)
+            inv_freq = 1.0 / (rope_theta
+                              **(np.arange(0, self.head_dim, 2, dtype=np.float32) / self.head_dim))
+            t = np.arange(self.seq_length, dtype=np.float32)
+            freqs = np.outer(t, inv_freq)
+            cos = np.cos(freqs).astype(np.float32)
+            sin = np.sin(freqs).astype(np.float32)
+            cos = np.concatenate([cos, cos], axis=1)
+            sin = np.concatenate([sin, sin], axis=1)
+            cos = cos.reshape(self.seq_length, 1, self.head_dim)
+            sin = sin.reshape(self.seq_length, 1, self.head_dim)
+            return cos, sin
         from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
         rotary_embed = LlamaRotaryEmbedding(config=self.llm_config)
         position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(1, self.seq_length)
@@ -415,112 +423,6 @@ class LlmConverter(BaseConverter):
                            ip=mlir_gen.insert_point).output
         return new_op
 
-    def unpack_weights(self, qweight, qzeros, bits, quant_mode, path):
-        dtype = np.int32
-        compress_ratio = 32 // bits
-        mask = 0xF if bits == 4 else 0xFF
-        K, N = qweight.shape
-        Kz, Nz = qzeros.shape
-        unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.uint8)
-        unpack_mlp_weights = False
-        if self.use_mlp:
-            if self.model_info.weights[LlmList.MLP_GATE] in path or self.model_info.weights[
-                    LlmList.MLP_UP] in path or self.model_info.weights[LlmList.MLP_DOWN] in path:
-                unpack_mlp_weights = True
-
-        if quant_mode == "gptq":
-            unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
-            pack_int8_weights = np.zeros((K * compress_ratio // 2, N), dtype=np.uint8)
-            order_map = [i for i in range(compress_ratio)]
-            for row in range(unpacked_weights.shape[0]):
-                i = order_map[row % compress_ratio]
-                unpacked_weights[row, :] = (qweight[row // compress_ratio, :] >> (bits * i)) & mask
-                if bits == 4:
-                    if row % 2 == 0:
-                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
-                    else:
-                        pack_int8_weights[
-                            row //
-                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
-        elif quant_mode == "awq":
-            unpacked_weights = np.zeros((K, N * compress_ratio), dtype=dtype)
-            pack_int8_weights = np.zeros((K // 2, N * compress_ratio), dtype=np.uint8)
-            order_map = [0, 4, 1, 5, 2, 6, 3, 7]
-            for col in range(unpacked_weights.shape[1]):
-                i = order_map[col % compress_ratio]
-                unpacked_weights[:, col] = (qweight[:, col // compress_ratio] >> (bits * i)) & mask
-            if bits == 4:
-                for row in range(unpacked_weights.shape[0]):
-                    if row % 2 == 0:
-                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
-                    else:
-                        pack_int8_weights[
-                            row //
-                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
-        else:
-            raise NotImplementedError(f"Not support now: {quant_mode}")
-
-        for col in range(unpacked_zeros.shape[1]):
-            i = order_map[col % compress_ratio]
-            unpacked_zeros[:, col] = (qzeros[:, col // compress_ratio] >> (bits * i)) & mask
-
-        if bits == 8:
-            pack_int8_weights = unpacked_weights.astype("uint8")
-
-        if unpack_mlp_weights:
-            pack_int8_zeros = np.zeros((Kz // 2, Nz * compress_ratio), dtype=np.uint8)
-            if quant_mode == "gptq":
-                unpacked_zeros += 1
-            if bits == 4:
-                for row in range(unpacked_zeros.shape[0]):
-                    if row % 2 == 0:
-                        pack_int8_zeros[row // 2, :] = unpacked_zeros[row, :]
-                    else:
-                        pack_int8_zeros[row //
-                                        2, :] = unpacked_zeros[row, :] << 4 | pack_int8_zeros[row //
-                                                                                              2, :]
-            return unpacked_weights, pack_int8_weights, pack_int8_zeros
-
-        if quant_mode == "gptq":
-            return unpacked_weights, pack_int8_weights, unpacked_zeros + 1
-        else:
-            return unpacked_weights, pack_int8_weights, unpacked_zeros
-
-    def decompressed_weights(self, weight_packed, weight_scale, qzeros):
-        N, K = weight_packed.shape
-        Ns, Ks = weight_scale.shape
-        assert (N == Ns)
-        bits = self.quant_bits
-        compress_ratio = 32 // bits
-        mask = 0xF if bits == 4 else 0xFF
-        unpacked_weights = np.zeros((N, K * compress_ratio), dtype=np.int32)
-        pack_int8_weights = np.zeros((N, K * compress_ratio // 2), dtype=np.uint8)
-        unpacked_zeros = np.zeros((Ns, Ks), dtype=np.uint8)
-        order_map = [i for i in range(compress_ratio)]
-        for row in range(unpacked_weights.shape[1]):
-            i = order_map[row % compress_ratio]
-            unpacked_weights[:, row] = (weight_packed[:, row // compress_ratio] >>
-                                        (bits * i)) & mask
-            if bits == 4:
-                if row % 2 == 0:
-                    pack_int8_weights[:, row // 2] = unpacked_weights[:, row]
-                else:
-                    pack_int8_weights[:, row //
-                                      2] = unpacked_weights[:, row] << 4 | pack_int8_weights[:,
-                                                                                             row //
-                                                                                             2]
-        if qzeros is not None:
-            for col in range(unpacked_zeros.shape[0]):
-                i = order_map[col % compress_ratio]
-                unpacked_zeros[col, :] = (qzeros[col // compress_ratio, :] >> (bits * i)) & mask
-        else:
-            # fill for zero points
-            unpacked_zeros.fill((1 << (bits - 1)))
-
-        if bits == 8:
-            pack_int8_weights = unpacked_weights.astype("uint8")
-        return unpacked_weights, pack_int8_weights, unpacked_zeros
-
     def init_config(self):
         c = self.model_info.config
         self.num_layers = getattr(self.llm_config, c.num_hidden_layers)
@@ -573,74 +475,7 @@ class LlmConverter(BaseConverter):
         raise NotImplementedError(f"Not support quantize type: {dtype} with bits: {bits}")
 
     def init_quantization(self):
-        c = self.model_info.config
-        self.quantization_config = getattr(self.llm_config, c.quantization_config, None)
-        dtype = self.get_dtype()
-        if self.quantization_config is None:
-            self.quantization_config = getattr(self.config, c.quantization_config, None)
-        real_quantize = None
-        if self.quantization_config is None:
-            if self.quantize == "auto":
-                raise RuntimeError("No quantization config found, please set quantize type")
-            real_quantize = self.get_qtype(dtype, 16)
-            if real_quantize is None:
-                real_quantize = self.quantize
-            self.half_precision_quantize = "bf16" if "bf16" in real_quantize else "f16"
-            if self.half_precision_quantize not in self.quantize:
-                # example: --quantize w4bf16, but config is float16. Not match
-                raise RuntimeError(f"Quantize {self.quantize} mismatch with model dtype :{dtype}")
-        else:
-            self.quant_mode = self.quantization_config["quant_method"]
-            if self.quant_mode not in ["gptq", "awq", "compressed-tensors", "auto-round"]:
-                raise NotImplementedError(f"Not support quantization method: {self.quant_mode}")
-            if self.quant_mode != "compressed-tensors":
-                self.q_group_size = self.quantization_config["group_size"]
-                self.quant_bits = self.quantization_config["bits"]
-            if self.quant_mode == "auto-round":
-                packing_format = self.quantization_config.get("packing_format",
-                                                              "auto_round:auto_gptq")
-                if packing_format == "auto_round:auto_gptq":
-                    self.quant_mode = "gptq"
-                elif packing_format == "auto_round:auto_awq":
-                    self.quant_mode = "awq"
-                else:
-                    raise NotImplementedError(f"Not support packing_format: {packing_format}")
-            if self.quant_mode == "awq":
-                assert self.quantization_config["version"] == "gemm", (
-                    "AWQ only support gemm version for now")
-                assert self.quant_bits == 4, ("AWQ only support quant bits == 4 for now")
-                if self.quantize != "w4f16" and self.quantize != "auto":
-                    print("Warning: AWQ only support w4f16 quantize, change quantize to w4f16")
-                real_quantize = "w4f16"
-            elif self.quant_mode == "compressed-tensors":
-                format = self.quantization_config.get("format", "pack-quantized")
-                quantization_status = self.quantization_config.get("quantization_status",
-                                                                   "compressed")
-                if format != "pack-quantized" and quantization_status != "compressed":
-                    raise NotImplementedError("Only support compressed pack-quantized now")
-                config_groups = self.quantization_config.get("config_groups", {})
-                assert len(config_groups) == 1, "Only support one group config now"
-                group_0 = config_groups.get("group_0", {})
-                weights_config = group_0.get("weights", {})
-                self.quant_bits = weights_config.get("num_bits")
-                self.q_group_size = weights_config.get("group_size")
-                self.compressed_with_zp = weights_config.get("symmetric", True) is False
-                weight_type = weights_config.get("type")
-                assert (weight_type == "int")
-                real_quantize = self.get_qtype(dtype, self.quant_bits)
-            elif self.quant_mode == "gptq":
-                real_quantize = self.get_qtype(dtype, self.quant_bits)
-            if self.quantize != "auto" and self.quantize != real_quantize:
-                print(
-                    f"Warning: {self.quantize} is different from quantization config {real_quantize}. Force to {real_quantize}"
-                )
-            self.quantize = real_quantize
-            self.half_precision_quantize = "bf16" if "bf16" in self.quantize else "f16"
-        if self.q_group_size < 0:
-            # avoid special value, like -1
-            self.q_group_size = 0
-        if self.quant_mode:
-            self.platform = Platform.LLM_QUANTIZED
+        self.loader.init_quantization(self)
 
     def get_loc(self, names, mlir):
         if isinstance(names, str):
@@ -657,7 +492,7 @@ class LlmConverter(BaseConverter):
     def gen_embedding_bin(self, embedding_data):
         embedding_file = os.path.join(self.config_dir, 'embedding.bin')
         if os.path.exists(embedding_file):
-            print(f"{embedding_file} already exists. Skipping export.")
+            logger.info("%s already exists. Skipping export.", embedding_file)
             return
         import ctypes
         weight = torch.from_numpy(embedding_data)
@@ -674,6 +509,10 @@ class LlmConverter(BaseConverter):
 
     def gen_embedding_lmhead_mlir(self):
         tqdm.write("generate embedding and lm_head mlir ...")
+        if isinstance(self.loader, GGUFModelHandle):
+            self.loader.check_lmhead_quant_consistency(self)
+            self.loader.save_quantized_embedding(self)
+            self.loader.save_quantized_lmhead(self)
         embedding = self.model_info.weights[LlmList.EMBEDING]
         embedding_data = self.model.read(embedding + ".weight")
         if self.embedding_disk:
@@ -1503,90 +1342,10 @@ class LlmConverter(BaseConverter):
         weight_dict[lora_b_path] = np.zeros(B_shape, dtype=np.float32)
 
     def set_linear_weight(self, path: str, weight_dict: dict, do_lora: bool = False):
-        is_quant = False
-        K, N = 0, 0
-        if self.is_key_quantized(path):
-            is_quant = True
-        if not is_quant:
-            weight_path = path + ".weight"
-            if self.model.is_exist(weight_path):
-                data = self.model.read(weight_path)
-                if self.use_mlp and (
-                        self.model_info.weights[LlmList.MLP_GATE] in path
-                        or self.model_info.weights[LlmList.MLP_UP] in path
-                        #  or self.model_info.weights[LlmList.SHARED_EXPERT_GATE] in path
-                        #  or self.model_info.weights[LlmList.SHARED_EXPERT_UP] in path
-                ):
-                    weight_dict[weight_path] = np.ascontiguousarray(data)
-                else:
-                    weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
-                K = data.shape[1]
-                N = data.shape[0]
-            else:
-                raise RuntimeError("Can't find key: {}".format(weight_path))
-        elif self.quant_mode in ["gptq", "awq"]:
-            qweight_path = path + ".qweight"
-            scale_path = path + ".scales"
-            zp_path = path + ".qzeros"
-            qweight_data = self.model.read(qweight_path)
-            scale_data = self.model.read(scale_path)
-            zp_data = self.model.read(zp_path)
-            _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                qweight_data, zp_data, self.quant_bits, self.quant_mode, path)
-            if self.use_mlp and (self.model_info.weights[LlmList.MLP_DOWN] in path):
-                weight_dict[qweight_path] = np.ascontiguousarray(
-                    np.transpose(pack_int8_weights.reshape(-1, self.q_group_size, self.hidden_size),
-                                 (0, 2, 1)).reshape(-1, self.hidden_size * self.q_group_size))
-                weight_dict[scale_path] = np.ascontiguousarray(scale_data)
-                weight_dict[zp_path] = np.ascontiguousarray(unpacked_zeros)
-            else:
-                weight_dict[qweight_path] = np.ascontiguousarray(
-                    np.transpose(pack_int8_weights, (1, 0)))
-                weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))
-                weight_dict[zp_path] = np.ascontiguousarray(np.transpose(unpacked_zeros, (1, 0)))
-            K = pack_int8_weights.shape[0] * (8 // self.quant_bits)
-            N = pack_int8_weights.shape[1]
-        elif self.quant_mode == "compressed-tensors":
-            qweight_path = path + ".weight_packed"
-            scale_path = path + ".weight_scale"
-            zp_path = path + ".weight_zero_point"
-            qweight_data = self.model.read(qweight_path)
-            scale_data = self.model.read(scale_path)
-            if self.compressed_with_zp:
-                zp_data = self.model.read(zp_path)
-            else:
-                zp_data = None
-            _, pack_int8_weights, unpacked_zeros = self.decompressed_weights(
-                qweight_data, scale_data, zp_data)
-            weight_dict[path + ".qweight"] = pack_int8_weights
-            weight_dict[path + ".scales"] = scale_data
-            weight_dict[path + ".qzeros"] = unpacked_zeros
-            K = pack_int8_weights.shape[1] * (8 // self.quant_bits)
-            N = pack_int8_weights.shape[0]
-
-        bias_path = path + ".bias"
-        if self.model.is_exist(bias_path):
-            weight_dict[bias_path] = self.model.read(bias_path)
-        if do_lora:
-            self.set_linear_lora_weight(weight_dict, path, K, N)
+        self.loader.set_linear_weight(self, path, weight_dict, do_lora)
 
     def set_common_weight(self, path: str, weight_dict: dict, type=WeightType.NORMAL):
-        weight_path = path + ".weight"
-        bias_path = path + ".bias"
-        has_weight = self.model.is_exist(weight_path)
-        has_bias = self.model.is_exist(bias_path)
-        has_path = self.model.is_exist(path)
-        if not has_weight and not has_bias and not has_path:
-            raise RuntimeError("Can't find key: {}".format(path))
-        if has_weight:
-            data = self.model.read(weight_path)
-            if type == WeightType.ZEROCENTERED_RMSNORM:
-                data = data + 1.0  # GEMMA3 RMSNorm weight is not same as others
-            weight_dict[weight_path] = data
-        if has_bias:
-            weight_dict[bias_path] = self.model.read(bias_path)
-        if has_path:
-            weight_dict[path] = self.model.read(path)
+        self.loader.set_common_weight(self, path, weight_dict, type)
 
     def split_fused_moe(self):
 
@@ -1633,6 +1392,9 @@ class LlmConverter(BaseConverter):
         return num_split
 
     def gen_block_mlir(self, idx: int):
+        return self._gen_block_mlir_impl(idx)
+
+    def _gen_block_mlir_impl(self, idx: int):
         tqdm.write(f"generate block_{idx} mlir ...")
         # torch path
         TOP_PATH = f'{self.model_info.weights[LlmList.LAYERS]}.{idx}.'
@@ -2279,11 +2041,16 @@ class LlmConverter(BaseConverter):
         name = f"block_{layer_id}"
         if self.register_bmodel(name, with_size=False):
             return
+        quantize_param = self.quantize
+        extra_deploy_args = []
+        if isinstance(self.loader, GGUFModelHandle):
+            quantize_param, extra_deploy_args = self.loader.compile_block_args(self, layer_id)
         self.submit_deploy_task(
             name,
             [
-                f'--quantize {self.quantize}',
+                f'--quantize {quantize_param}',
                 f'--q_group_size {self.q_group_size}',
+            ] + extra_deploy_args + [
                 '--quant_input',
                 '--quant_output',
             ],
@@ -2295,11 +2062,18 @@ class LlmConverter(BaseConverter):
         name = f"block_cache_{layer_id}"
         if self.register_bmodel(name):
             return
+        quantize_param = self.quantize
+        extra_deploy_args = []
+        if isinstance(self.loader, GGUFModelHandle):
+            quantize_param, extra_deploy_args = self.loader.compile_block_args(self,
+                                                                               layer_id,
+                                                                               is_cache=True)
         self.submit_deploy_task(
             name,
             [
-                f'--quantize {self.quantize}',
+                f'--quantize {quantize_param}',
                 f'--q_group_size {self.q_group_size}',
+            ] + extra_deploy_args + [
                 '--quant_input',
                 '--quant_output',
             ],
@@ -2365,7 +2139,7 @@ class LlmConverter(BaseConverter):
         self.run_command(['bash', '-c', ' '.join(combine_args)])
         # Get the size of the combined bmodel
         bmodel_size = os.path.getsize(self.out_bmodel)
-        print(f"Combined bmodel size: {bmodel_size / (1024.0 ** 3)} GB")
+        logger.info("Combined bmodel size: %.2f GB", bmodel_size / (1024.0**3))
         if bmodel_size > total_bytes * 1.2:
             raise RuntimeError("Combined bmodel size is too large, please check the model.")
 
