@@ -18,29 +18,42 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
   }
   auto in0 = op.getInputs()[0];
   auto in1 = op.getInputs()[1];
-  auto shape0 = module::getShape(in0);
-  auto shape1 = module::getShape(in1);
-  if (shape0.size() != shape1.size()) {
+  auto shape0 = std::vector<int64_t>(module::getShape(in0));
+  auto shape1 = std::vector<int64_t>(module::getShape(in1));
+  auto shape2 = std::vector<int64_t>(module::getShape(out));
+  if (shape0.size() != 1 && shape1.size() != 1 && (shape0.size() != shape1.size() || shape0.size() > 6)) {
     UNREACHABLE_OP("Not supported", op);
   }
-  int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
-  module::getNCHW(in0, n0, c0, h0, w0, false);
-  module::getNCHW(in1, n1, c1, h1, w1, false);
-  module::getNCHW(out, n2, c2, h2, w2, false);
-  if (shape0.size() > 4 && (n0 != n1)) {
-    UNREACHABLE_OP("Not Implemented", op);
+  while (shape0.size() < 6) {
+    shape0.emplace(shape0.begin(), 1);
   }
+  while (shape1.size() < 6) {
+    shape1.emplace(shape1.begin(), 1);
+  }
+  while (shape2.size() < 6) {
+    shape2.emplace(shape2.begin(), 1);
+  }
+
   if (module::isUniformQuantized(op.getOutput())) {
     auto input0 = getCudaData(in0);
     auto input1 = getCudaData(in1);
     auto output = getCudaData(out);
+    auto input0_qtype = module::getUniformQuantizedType(in0);
+    auto input1_qtype = module::getUniformQuantizedType(in1);
+    auto output_qtype = module::getUniformQuantizedType(out);
+    auto input0_zp = isa<top::WeightOp>(op.getInputs()[0].getDefiningOp()) ? 0 : input0_qtype.getZeroPoint();
+    auto input1_zp = isa<top::WeightOp>(op.getInputs()[1].getDefiningOp()) ? 0 : input1_qtype.getZeroPoint();
+    auto output_zp = output_qtype.getZeroPoint();
     if (module::isCV18xx()) {
       auto multiplier_v =
           module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
       auto rshift_v = module::getI64Array(op.getRshifts(), 1, 0);
-      cuda::cvAdd4DInt8(input0, input1, output, multiplier_v->at(0),
-                        multiplier_v->at(1), rshift_v->at(0), op.getDoRelu(), n0,
-                        c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+      cuda::cvAdd6DInt8(input0, input1, output, multiplier_v->at(0),
+                        multiplier_v->at(1), rshift_v->at(0), op.getDoRelu(),
+                        shape0[0], shape0[1], shape0[2], shape0[3], shape0[4], shape0[5],
+                        shape1[0], shape1[1], shape1[2], shape1[3], shape1[4], shape1[5],
+                        shape2[0], shape2[1], shape2[2], shape2[3], shape2[4], shape2[5],
+                        input0_zp, input1_zp, output_zp);
     } else {
       auto sign0 = !module::getStorageType(in0).isUnsignedInteger(8);
       auto sign1 = !module::getStorageType(in1).isUnsignedInteger(8);
@@ -49,10 +62,13 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
           module::getI64Array(op.getMultipliers(), op.getInputs().size(), 1);
       auto rshift_v =
           module::getI64Array(op.getRshifts(), op.getInputs().size(), 0);
-      cuda::add4DInt8(input0, input1, output, multiplier_v->at(0),
+      cuda::add6DInt8(input0, input1, output, multiplier_v->at(0),
                       multiplier_v->at(1), rshift_v->at(0), rshift_v->at(1),
-                      sign0, sign1, out_sign, op.getDoRelu(), n0, c0, h0, w0, n1,
-                      c1, h1, w1, n2, c2, h2, w2);
+                      sign0, sign1, out_sign, op.getDoRelu(),
+                      shape0[0], shape0[1], shape0[2], shape0[3], shape0[4], shape0[5],
+                      shape1[0], shape1[1], shape1[2], shape1[3], shape1[4], shape1[5],
+                      shape2[0], shape2[1], shape2[2], shape2[3], shape2[4], shape2[5],
+                      input0_zp, input1_zp, output_zp);
     }
   } else {
     if (module::getStorageType(out).isFloat8E4M3FN()) {
@@ -64,10 +80,10 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
       auto output_f32 = cuda_malloc(module::getNumElements(out) * sizeof(float));
       auto output_ui16 = cuda_malloc(module::getNumElements(out) * sizeof(uint16_t));
 
-      cuda::mulConst4DF32(input0.get(), F16(in_scales->at(0)), input0.get(), false,
-                    n0, c0, h0, w0);
-      cuda::mulConst4DF32(input1.get(), F16(in_scales->at(1)), input1.get(), false,
-                    n1, c1, h1, w1);
+      cuda::mulConst6DF32(input0.get(), F16(in_scales->at(0)), input0.get(), false,
+                    shape0[0], shape0[1], shape0[2], shape0[3], shape0[4], shape0[5]);
+      cuda::mulConst6DF32(input1.get(), F16(in_scales->at(1)), input1.get(), false,
+                    shape1[0], shape1[1], shape1[2], shape1[3], shape1[4], shape1[5]);
       cuda::convertType(input0.get(), input0_ui16.get(), module::getNumElements(in0),
           cuda::DT_F32, cuda::DT_F16);
       cuda::convertType(input1.get(), input1_ui16.get(), module::getNumElements(in1),
@@ -76,39 +92,40 @@ void py_cuda::cudaAddOp(tpu::AddOp op) {
           cuda::DT_F16, cuda::DT_F32);
       cuda::convertType(input1_ui16.get(), input1.get(), module::getNumElements(in1),
           cuda::DT_F16, cuda::DT_F32);
-      cuda::add4DF32(input0.get(), 1, input1.get(), 1, output_f32.get(), op.getDoRelu(),
-                     n0, c0, h0, w0,
-                     n1, c1, h1, w1,
-                     n2, c2, h2, w2);
+      cuda::add6DF32(input0.get(), 1, input1.get(), 1, output_f32.get(), op.getDoRelu(),
+                     shape0[0], shape0[1], shape0[2], shape0[3], shape0[4], shape0[5],
+                     shape1[0], shape1[1], shape1[2], shape1[3], shape1[4], shape1[5],
+                     shape2[0], shape2[1], shape2[2], shape2[3], shape2[4], shape2[5]);
       cuda::convertType(output_f32.get(), output_ui16.get(), module::getNumElements(out),
           cuda::DT_F32, cuda::DT_F16);
       cuda::convertType(output_ui16.get(), output_f32.get(), module::getNumElements(out),
           cuda::DT_F16, cuda::DT_F32);
-      cuda::requantF8(output_f32.get(), getCudaData(out), 1.0 , n2, c2, h2, w2, op.getDoRelu());
+      cuda::requantF8(output_f32.get(), getCudaData(out), 1.0 , shape2[0], shape2[1], shape2[2], shape2[3], shape2[4], shape2[5], op.getDoRelu());
       input0.reset();
       input1.reset();
       output_f32.reset();
       output_ui16.reset();
       input0_ui16.reset();
       input1_ui16.reset();
-    }
-    else if (module::getStorageType(in0).isF32()) {
+    } else if (module::getStorageType(in0).isF32()) {
       auto input0 = getCudaData(in0);
       auto input1 = getCudaData(in1);
       auto output = getCudaData(out);
-      cuda::add4DF32(input0, 1.0, input1, 1.0, output, op.getDoRelu(),
-                     n0, c0, h0, w0,
-                     n1, c1, h1, w1,
-                     n2, c2, h2, w2);
+      auto coeff_ = module::getF64Array(op.getCoeff(), 2, 1);
+      cuda::add6DF32(input0, coeff_->at(0), input1, coeff_->at(1), output, op.getDoRelu(),
+                     shape0[0], shape0[1], shape0[2], shape0[3], shape0[4], shape0[5],
+                     shape1[0], shape1[1], shape1[2], shape1[3], shape1[4], shape1[5],
+                     shape2[0], shape2[1], shape2[2], shape2[3], shape2[4], shape2[5]);
       return;
     } else {
       auto input0 = newCudaData(in0, cuda::DT_F32);
       auto input1 = newCudaData(in1, cuda::DT_F32);
       auto output = cuda_malloc(module::getNumElements(out) * sizeof(float));
-      cuda::add4DF32(input0.get(), 1.0, input1.get(), 1.0, output.get(), op.getDoRelu(),
-                     n0, c0, h0, w0,
-                     n1, c1, h1, w1,
-                     n2, c2, h2, w2);
+      auto coeff_ = module::getF64Array(op.getCoeff(), 2, 1);
+      cuda::add6DF32(input0.get(), coeff_->at(0), input1.get(), coeff_->at(1), output.get(), op.getDoRelu(),
+                     shape0[0], shape0[1], shape0[2], shape0[3], shape0[4], shape0[5],
+                     shape1[0], shape1[1], shape1[2], shape1[3], shape1[4], shape1[5],
+                     shape2[0], shape2[1], shape2[2], shape2[3], shape2[4], shape2[5]);
       cuda::convertType(output.get(), getCudaData(out), module::getNumElements(out), cuda::DT_F32,
                         getCudaType(out));
       input0.reset();
@@ -130,20 +147,23 @@ void py_cuda::cudaAddOp(top::AddOp op) {
   auto input0 = getCudaData(in0);
   auto input1 = getCudaData(in1);
   auto output = getCudaData(out);
-  auto shape0 = module::getShape(in0);
-  auto shape1 = module::getShape(in1);
-  if (shape0.size() != shape1.size()) {
+  auto shape0 = std::vector<int64_t>(module::getShape(in0));
+  auto shape1 = std::vector<int64_t>(module::getShape(in1));
+  auto shape2 = std::vector<int64_t>(module::getShape(out));
+  if (shape0.size() != shape1.size() || shape0.size()>6) {
     UNREACHABLE_OP("Not supported", op);
   }
-  int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
-  module::getNCHW(in0, n0, c0, h0, w0, false);
-  module::getNCHW(in1, n1, c1, h1, w1, false);
-  module::getNCHW(out, n2, c2, h2, w2, false);
-  if (shape0.size() > 4 && (n0 != n1)) {
-    UNREACHABLE_OP("Not Implemented", op);
+  while (shape0.size() < 6) {
+    shape0.emplace(shape0.begin(), 1);
   }
-  cuda::add4DF32(input0, 1.0, input1, 1.0, output, op.getDoRelu(),
-                  n0, c0, h0, w0,
-                  n1, c1, h1, w1,
-                  n2, c2, h2, w2);
+  while (shape1.size() < 6) {
+    shape1.emplace(shape1.begin(), 1);
+  }
+  while (shape2.size() < 6) {
+    shape2.emplace(shape2.begin(), 1);
+  }
+  cuda::add6DF32(input0, 1.0, input1, 1.0, output, op.getDoRelu(),
+                  shape0[0], shape0[1], shape0[2], shape0[3], shape0[4], shape0[5],
+                  shape1[0], shape1[1], shape1[2], shape1[3], shape1[4], shape1[5],
+                  shape2[0], shape2[1], shape2[2], shape2[3], shape2[4], shape2[5]);
 }

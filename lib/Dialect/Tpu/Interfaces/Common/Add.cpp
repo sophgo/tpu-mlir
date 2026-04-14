@@ -206,8 +206,9 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       }
     }
   } else {
+    int32_t shift_len = module::isCV18xx() ? 1 : 2;
     auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
-    auto rshift_v = module::getI64Array(getRshifts(), 2, 0);
+    auto rshift_v = module::getI64Array(getRshifts(), shift_len, 0);
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto lhs_num_elem = module::getNumElements(getInputs()[0]);
     auto rhs_num_elem = module::getNumElements(getInputs()[1]);
@@ -232,15 +233,15 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
       for (int i = 0; i < rhs_num_elem; i++) {
         rhs_tmp[i] = applyMultiplierAndRShift(
-            p.inputs[1][i], multiplier_v->at(1), rshift_v->at(1));
+            p.inputs[1][i], multiplier_v->at(1), rshift_v->at(shift_len - 1));
       }
     } else {
       auto r_qtype = module::getUniformQuantizedType(getInputs()[1]);
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
       for (int i = 0; i < rhs_num_elem; i++) {
-        rhs_tmp[i] =
-            applyMultiplierAndRShift(p.inputs[1][i] - r_qtype.getZeroPoint(),
-                                     multiplier_v->at(1), rshift_v->at(1));
+        rhs_tmp[i] = applyMultiplierAndRShift(
+            p.inputs[1][i] - r_qtype.getZeroPoint(), multiplier_v->at(1),
+            rshift_v->at(shift_len - 1));
       }
     }
     auto binary = (Binary *)p.handle;

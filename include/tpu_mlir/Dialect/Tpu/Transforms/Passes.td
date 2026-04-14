@@ -126,6 +126,12 @@ def AfterLayerGroupWeightReorder : Pass<"after-layergroup-weight-reorder", "Modu
   let dependentDialects = ["TpuDialect"];
 }
 
+def WeightDeduplicate : Pass<"weight-deduplicate", "ModuleOp"> {
+  let summary = "deduplicate identical top.Weight ops by content";
+  let constructor = "createWeightDeduplicatePass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def Codegen : Pass<"codegen", "ModuleOp"> {
   let summary = "codegen in tpu by tpuc-opt";
   let constructor = "createCodegenPass()";
@@ -141,6 +147,8 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
            "dump bmodel only.">,
     Option<"gdma_check", "gdma_check", "bool", /*default=*/"true",
            "gdma address check.">,
+    Option<"rvti", "rvti", "bool", /*default=*/"false",
+           "using rvti command">,
   ];
 }
 

@@ -461,6 +461,22 @@ public:
         applyPatternsAndFoldGreedily(func, std::move(patterns));
       }
       module::applyPatternOnce<CallOpReorderPattern>(s);
+      // move placeholder weight to first subnet
+      auto main_func = module::getMainFuncOp(s);
+      std::vector<top::WeightOp> placeholder_weights;
+      for (auto weight : main_func.getOps<top::WeightOp>()) {
+        if (weight.getPlaceholder()) {
+          placeholder_weights.push_back(weight);
+        }
+      }
+      if (placeholder_weights.size() > 0) {
+        auto call = *main_func.getOps<func::CallOp>().begin();
+        auto func = module::getFuncOp(s, call.getCallee());
+        auto &entry_block = func.getBody().front();
+        for (auto weight : placeholder_weights) {
+          weight->moveBefore(&entry_block, entry_block.begin());
+        }
+      }
     }
 
     module::removeUnusedOp();
@@ -1151,6 +1167,10 @@ public:
     // remove the unused op
     for (auto op : to_move_ops) {
       if (!op->getUsers().empty()) {
+        continue;
+      }
+      if (op->hasAttrOfType<mlir::BoolAttr>("placeholder") &&
+          op->getAttrOfType<mlir::BoolAttr>("placeholder").getValue()) {
         continue;
       }
       op->erase();

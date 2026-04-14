@@ -905,6 +905,9 @@ void init_buffer_avail_space(BufferAvailSpace &buffer_avail_space,
   this only for Lut BM1684
 */
 bool assignL2memAddr(LgInfo &lg_info, BasicTimeStepPtr &time_step) {
+  if (module::isBM1684X2()) {
+    return false;
+  }
   auto &l2mem_buffer = time_step->get_l2mem_buffer();
   int l2mem_start_addr = (0x22000 + 0x80000);
   int l2mem_pos = l2mem_start_addr;

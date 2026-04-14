@@ -33,7 +33,7 @@ public:
       return;
     }
     BMCodegen bm_codegen;
-    bm_codegen.init(mOp, filename, bmodel_only);
+    bm_codegen.init(mOp, filename, bmodel_only, rvti);
     int num_device = module::getDeviceNum();
     int num_submodule = module::getNumSubModule();
     if (num_device > num_submodule) {

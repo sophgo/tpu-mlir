@@ -38,72 +38,72 @@ size_t get_dtype_bytes(data_type_t type) {
 }
 
 void f32ScaleToInt8(void *input, void *output, float scale, int size, bool sign,
-                    rounding_mode_t rmode) {
+                    rounding_mode_t rmode, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_f32ScaleToInt8<<<num_blocks, block_size>>>((float *)input, output, scale,
-                                               size, sign, rmode);
+                                               size, sign, rmode, zero_point);
 }
 
 void bf16ScaleToInt8(void *input, void *output, float scale, int size,
-                     bool sign, rounding_mode_t rmode) {
+                     bool sign, rounding_mode_t rmode, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_bf16ScaleToInt8<<<num_blocks, block_size>>>((uint16_t *)input, output,
-                                                scale, size, sign, rmode);
+                                                scale, size, sign, rmode, zero_point);
 }
 
 void f16ScaleToInt8(void *input, void *output, float scale, int size, bool sign,
-                    rounding_mode_t rmode) {
+                    rounding_mode_t rmode, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_f16ScaleToInt8<<<num_blocks, block_size>>>((uint16_t *)input, output, scale,
-                                               size, sign, rmode);
+                                               size, sign, rmode, zero_point);
 }
 
 void int8ScaleToF32(void *input, void *output, float scale, int size,
-                    bool sign) {
+                    bool sign, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_int8ScaleToF32<<<num_blocks, block_size>>>(input, (float *)output, scale,
-                                               size, sign);
+                                               size, sign, zero_point);
 }
 
 void int8ScaleToBF16(void *input, void *output, float scale, int size,
-                     bool sign) {
+                     bool sign, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_int8ScaleToBF16<<<num_blocks, block_size>>>(input, (uint16_t *)output,
-                                                scale, size, sign);
+                                                scale, size, sign, zero_point);
 }
 
 void int8ScaleToF16(void *input, void *output, float scale, int size,
-                    bool sign) {
+                    bool sign, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_int8ScaleToF16<<<num_blocks, block_size>>>(input, (uint16_t *)output, scale,
-                                               size, sign);
+                                               size, sign, zero_point);
 }
 
-void int16ScaleToF32(void *input, void *output, float scale, int size) {
+void int16ScaleToF32(void *input, void *output, float scale, int size, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_int16ScaleToF32<<<num_blocks, block_size>>>(input, (float *)output, scale,
-                                               size);
+                                               size, zero_point);
 }
 
-void int16ScaleToBF16(void *input, void *output, float scale, int size) {
+void int16ScaleToBF16(void *input, void *output, float scale, int size, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_int16ScaleToBF16<<<num_blocks, block_size>>>(input, (uint16_t *)output, scale,
-                                               size);
+                                               size, zero_point);
 }
 
-void int16ScaleToF16(void *input, void *output, float scale, int size) {
+void int16ScaleToF16(void *input, void *output, float scale, int size, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_int16ScaleToF16<<<num_blocks, block_size>>>(input, (uint16_t *)output, scale,
-                                               size);
+                                               size, zero_point);
 }
 
 cudaError_t convertType(void *src, void *dst, int num_elem,
@@ -156,6 +156,9 @@ cudaError_t convertType(void *src, void *dst, int num_elem,
   } else if (src_type == DT_F8E4M3 && dst_type == DT_F32) {
     g_f8ToF32<<<num_blocks, block_size>>>((uint8_t *)src, 1.0, (float *)dst,
                                            num_elem);
+  } else if (src_type == DT_F32 && dst_type == DT_F8E4M3) {
+    g_f32ToF8<<<num_blocks, block_size>>>((float *)src, 1.0, (uint8_t *)dst,
+                                           num_elem);
   } else {
     // not implemented
     return cudaErrorNotSupported;
@@ -186,91 +189,103 @@ void mulInt8(void *a, void *b, void *o, bool a_sign, bool b_sign, bool o_sign,
 void mulInt8(void *a, void *b, void *o, int n0, int c0, int h0, int w0, int n1,
              int c1, int h1, int w1, int n2, int c2, int h2, int w2,
              bool a_sign, bool b_sign, bool o_sign, int multiplier, int rshift,
-             bool qdm, bool relu) {
+             bool relu, int azp, int bzp, int ozp, cuda::requant_mode_t rqmode,
+             cuda::rounding_mode_t rmode, bool is_cv18xx) {
   int num_blocks = CUDA_NUM_BLOCKS(n2 * c2 * h2 * w2);
   int block_size = CUDA_BLOCK_SIZE;
   if (a_sign && b_sign && o_sign) {
     g_mulInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (int8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
-        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+        n2, c2, h2, w2, multiplier, rshift, relu, azp, bzp, ozp, rqmode, rmode, is_cv18xx);
   } else if (!a_sign && !b_sign && !o_sign) {
     g_mulInt8<<<num_blocks, block_size>>>(
         (uint8_t *)a, (uint8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1,
-        w1, n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+        w1, n2, c2, h2, w2, multiplier, rshift, relu, azp, bzp, ozp, rqmode, rmode, is_cv18xx);
   } else if (a_sign && b_sign && !o_sign) {
     g_mulInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (int8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
-        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+        n2, c2, h2, w2, multiplier, rshift, relu, azp, bzp, ozp, rqmode, rmode, is_cv18xx);
   } else if (a_sign && !b_sign && o_sign) {
     g_mulInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (uint8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
-        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+        n2, c2, h2, w2, multiplier, rshift, relu, azp, bzp, ozp, rqmode, rmode, is_cv18xx);
   } else if (!a_sign && b_sign && o_sign) {
     g_mulInt8<<<num_blocks, block_size>>>(
         (uint8_t *)a, (int8_t *)b, (int8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
-        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+        n2, c2, h2, w2, multiplier, rshift, relu, azp, bzp, ozp, rqmode, rmode, is_cv18xx);
   } else if (a_sign && !b_sign && !o_sign) {
     g_mulInt8<<<num_blocks, block_size>>>(
         (int8_t *)a, (uint8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
-        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+        n2, c2, h2, w2, multiplier, rshift, relu, azp, bzp, ozp, rqmode, rmode, is_cv18xx);
   } else if (!a_sign && b_sign && !o_sign) {
     g_mulInt8<<<num_blocks, block_size>>>(
         (uint8_t *)a, (int8_t *)b, (uint8_t *)o, n0, c0, h0, w0, n1, c1, h1, w1,
-        n2, c2, h2, w2, multiplier, rshift, qdm, relu);
+        n2, c2, h2, w2, multiplier, rshift, relu, azp, bzp, ozp, rqmode, rmode, is_cv18xx);
   }
 }
 
-void add4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+void add6DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
                int shift0, int shift1, bool a_sign, bool b_sign, bool o_sign,
-               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
-               int h1, int w1, int n2, int c2, int h2, int w2) {
-  int size = n2 * c2 * h2 * w2;
+               bool relu, int i0, int i1, int i2, int i3, int i4, int i5,
+               int j0, int j1, int j2, int j3, int j4, int j5,
+               int o0, int o1, int o2, int o3, int o4, int o5,
+               int input0_zp, int input1_zp, int output_zp) {
+  int size = o0 * o1 * o2 * o3 * o4 * o5;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   if (a_sign && b_sign && o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (int8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   } else if (!a_sign && b_sign && o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (uint8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   } else if (a_sign && !b_sign && o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (int8_t *)input0, (uint8_t *)input1, (int8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   } else if (a_sign && b_sign && !o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (int8_t *)input0, (int8_t *)input1, (uint8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   } else if (!a_sign && !b_sign && o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (uint8_t *)input0, (uint8_t *)input1, (int8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   } else if (!a_sign && b_sign && !o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (uint8_t *)input0, (int8_t *)input1, (uint8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   } else if (a_sign && !b_sign && !o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (int8_t *)input0, (uint8_t *)input1, (uint8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   } else if (!a_sign && !b_sign && !o_sign) {
-    g_add4DInt8<<<num_blocks, block_size>>>(
+    g_add6DInt8<<<num_blocks, block_size>>>(
         (uint8_t *)input0, (uint8_t *)input1, (uint8_t *)output, mul0, mul1,
-        shift0, shift1, relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        shift0, shift1, relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+        o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
   }
 }
 
-void add4DF32(void *input0, float scale0, void *input1, float scale1, void *output,
-               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
-               int h1, int w1, int n2, int c2, int h2, int w2) {
-  int size = n2 * c2 * h2 * w2;
+void add6DF32(void *input0, float scale0, void *input1, float scale1, void *output, bool relu,
+              int i0, int i1, int i2, int i3, int i4, int i5,
+              int j0, int j1, int j2, int j3, int j4, int j5,
+              int o0, int o1, int o2, int o3, int o4, int o5) {
+  int size = o0*o1*o2*o3*o4*o5;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  g_add4DF32<<<num_blocks, block_size>>>(
+  g_add6DF32<<<num_blocks, block_size>>>(
       (float *)input0, scale0, (float *)input1, scale1, (float *)output,
-      relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+      relu, i0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5, o0, o1, o2, o3, o4, o5);
 }
 
 void add4DInt32(int32_t *input0, int32_t *input1, int32_t *output,
@@ -298,37 +313,37 @@ void sub4DF32(void *input0, void *input1, void *output,
 
 void sub4DInt8(void *input0, bool input0_unsigned, int mul0, int shift0, void *input1, bool input1_unsigned, int mul1, int shift1, void *output, bool output_unsigned,
                bool relu, bool reverse, int n0, int c0, int h0, int w0, int n1, int c1,
-               int h1, int w1, int n2, int c2, int h2, int w2) {
+               int h1, int w1, int n2, int c2, int h2, int w2, int input0_zp, int input1_zp, int output_zp) {
   int size = n2 * c2 * h2 * w2;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   if (input0_unsigned && input1_unsigned) {
     g_sub4DInt8<<<num_blocks, block_size>>>(
         (uint8_t *)input0, mul0, shift0, (uint8_t *)input1, mul1, shift1, (int8_t *)output,
-        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2, input0_zp, input1_zp, output_zp);
   } else if (input0_unsigned && !input1_unsigned) {
     g_sub4DInt8<<<num_blocks, block_size>>>(
         (uint8_t *)input0, mul0, shift0, (int8_t *)input1, mul1, shift1, (int8_t *)output,
-        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2, input0_zp, input1_zp, output_zp);
   } else if (!input0_unsigned && input1_unsigned) {
     g_sub4DInt8<<<num_blocks, block_size>>>(
         (int8_t *)input0, mul0, shift0, (uint8_t *)input1, mul1, shift1, (int8_t *)output,
-        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2, input0_zp, input1_zp, output_zp);
   } else {
     g_sub4DInt8<<<num_blocks, block_size>>>(
         (int8_t *)input0, mul0, shift0, (int8_t *)input1, mul1, shift1, (int8_t *)output,
-        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+        relu, reverse, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2, input0_zp, input1_zp, output_zp);
   }
 }
 
-void mulConst4DF32(void *input, float const_v, void *output, bool do_relu,
-                  int n0, int c0, int h0, int w0) {
-  int size = n0 * c0 * h0 * w0;
+void mulConst6DF32(void *input, float const_v, void *output, bool do_relu,
+                  int s0, int s1, int s2, int s3, int s4, int s5) {
+  int size = s0*s1*s2*s3*s4*s5;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  g_mulConst4DF32<<<num_blocks, block_size>>>(
+  g_mulConst6DF32<<<num_blocks, block_size>>>(
       (float *)input, const_v, (float *)output,
-      do_relu, n0, c0, h0, w0);
+      do_relu, s0, s1, s2, s3, s4, s5);
 }
 
 void subConst4DF32(void *input, float const_v, void *output,
@@ -341,19 +356,28 @@ void subConst4DF32(void *input, float const_v, void *output,
       do_relu, reverse, n, c, h, w);
 }
 
-void subConst4DI8(void *input, bool in_signed, int const_v, void *output,
-               bool do_relu, bool reverse, int multi, int shift, int n, int c, int h, int w){
+void subConst4DI8(void *input, bool in_signed, int const_v, void *output, bool out_signed,
+               bool do_relu, bool reverse, int multi, int shift,
+               int n, int c, int h, int w, int output_zp){
   int size = n * c * h * w;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  if (in_signed)
+  if (in_signed && out_signed)
     g_subConst4DI8<<<num_blocks, block_size>>>(
-        (int8_t *)input, const_v, (int8_t *)output,
-        do_relu, reverse, multi, shift, n, c, h, w);
+        (int8_t *)input, const_v, (int8_t *)output, out_signed,
+        do_relu, reverse, multi, shift, n, c, h, w, output_zp);
+  else if (!in_signed && out_signed)
+    g_subConst4DI8<<<num_blocks, block_size>>>(
+        (uint8_t *)input, const_v, (int8_t *)output, out_signed,
+        do_relu, reverse, multi, shift, n, c, h, w, output_zp);
+  else if (in_signed && !out_signed)
+    g_subConst4DI8<<<num_blocks, block_size>>>(
+        (int8_t *)input, const_v, (uint8_t *)output, out_signed,
+        do_relu, reverse, multi, shift, n, c, h, w, output_zp);
   else
     g_subConst4DI8<<<num_blocks, block_size>>>(
-        (uint8_t *)input, const_v, (int8_t *)output,
-        do_relu, reverse, multi, shift, n, c, h, w);
+        (uint8_t *)input, const_v, (uint8_t *)output, out_signed,
+        do_relu, reverse, multi, shift, n, c, h, w, output_zp);
 }
 
 void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
@@ -474,29 +498,29 @@ void addAxis(void *input, void *add, void *output, int outer_dim, int axis_dim,
 }
 
 void mulAxis(void *input, void *mul, void *output, int outer_dim, int axis_dim,
-             int inner_dim, data_type_t type) {
+             int inner_dim, data_type_t type, bool log) {
   int num_blocks = CUDA_NUM_BLOCKS(outer_dim * axis_dim * inner_dim);
   int block_size = CUDA_BLOCK_SIZE;
   if (type == DT_BF16) {
     g_mulAxisBF16<<<num_blocks, block_size>>>(
         (uint16_t *)input, (uint16_t *)mul, (uint16_t *)output, outer_dim,
-        axis_dim, inner_dim);
+        axis_dim, inner_dim, log);
   } else if (type == DT_INT8) {
     g_mulAxis<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)mul,
                                           (int8_t *)output, outer_dim, axis_dim,
-                                          inner_dim);
+                                          inner_dim, log);
   } else if (type == DT_UINT8) {
     g_mulAxis<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)mul,
                                           (uint8_t *)output, outer_dim,
-                                          axis_dim, inner_dim);
+                                          axis_dim, inner_dim, log);
   } else if (type == DT_F32) {
     g_mulAxis<<<num_blocks, block_size>>>((float *)input, (float *)mul,
                                           (float *)output, outer_dim, axis_dim,
-                                          inner_dim);
+                                          inner_dim, log);
   } else if (type == DT_INT32) {
     g_mulAxis<<<num_blocks, block_size>>>((int32_t *)input, (int32_t *)mul,
                                           (int32_t *)output, outer_dim,
-                                          axis_dim, inner_dim);
+                                          axis_dim, inner_dim, log);
   } else {
   }
 }
@@ -523,13 +547,13 @@ void neg(void *input, void *output, int size, data_type_t type) {
 // -------------------------------------------------------------------------
 // ------- nn functions
 void pad4D(void *input, void *output, int n, int c, int h, int w, int pad_h_t,
-           int pad_h_b, int pad_w_l, int pad_w_r, int tbytes) {
+           int pad_h_b, int pad_w_l, int pad_w_r, int tbytes, int pad_value) {
   int oh = h + pad_h_t + pad_h_b;
   int ow = w + pad_w_l + pad_w_r;
   int num_blocks = CUDA_NUM_BLOCKS(n * c * oh * ow);
   int block_size = CUDA_BLOCK_SIZE;
   g_pad4D<<<num_blocks, block_size>>>(input, output, n, c, h, w, pad_h_t,
-                                      pad_h_b, pad_w_l, pad_w_r, tbytes);
+                                      pad_h_b, pad_w_l, pad_w_r, tbytes, pad_value);
 }
 
 void permute6D(void *src, void *dst, int n, int c, int d, int h, int w, int d1, int o0, int o1,
@@ -583,41 +607,47 @@ void swapDimInner6D(void *src, void *dst, int n, int c, int d, int h, int w, int
   cudaFree(buffer);
 }
 
-void tile4D(void *src, void *dst, int n, int c, int h, int w, int on, int oc,
-            int oh, int ow, int tbytes) {
-  int num_blocks = CUDA_NUM_BLOCKS(on * oc * oh * ow);
+void tile(void *src, void *dst, int64_t *in_shape, int64_t *out_shape, int num_dims, int out_elems, int tbytes) {
+  int num_blocks = CUDA_NUM_BLOCKS(out_elems);
   int block_size = CUDA_BLOCK_SIZE;
-  g_tile4D<<<num_blocks, block_size>>>(src, dst, n, c, h, w, on, oc, oh, ow,
-                                       tbytes);
+  g_tile<<<num_blocks, block_size>>>(src, dst, in_shape, out_shape, num_dims, tbytes);
 }
 
-void mmF32(void *input, void *right, void *output, bool right_transpose, int m, int k, int n) {
+void mmF32(void *input, void *right, void *output, int m, int k, int n,
+    bool left_tranpose, bool right_transpose, bool output_transpose,
+    float left_zp, float right_zp) {
   // Dimensions for blocks and grid
   int num_blocks = CUDA_NUM_BLOCKS(m * n);
   int block_size = CUDA_BLOCK_SIZE;
   g_mmF32<<<num_blocks, block_size>>>((float *)input, (float *)right,
-                                      (float *)output, right_transpose, m, k, n);
+                                      (float *)output, m, k, n, left_tranpose, right_transpose, output_transpose,
+                                      left_zp, right_zp);
 }
 
-void mmInt8(void *input, bool left_signed, void *right, bool right_signed, void *output, bool right_transpose, int m, int k, int n) {
+void mmInt8(void *input, bool left_signed, void *right, bool right_signed, void *output, int m, int k, int n,
+    bool left_transpose, bool right_transpose, bool output_transpose, int left_zp, int right_zp) {
   // Dimensions for blocks and grid
   int num_blocks = CUDA_NUM_BLOCKS(m * n);
   int block_size = CUDA_BLOCK_SIZE;
   if (left_signed && right_signed) {
     g_mmInt8<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)right,
-                                        (int32_t *)output, right_transpose, m, k, n);
+                                        (int32_t *)output, m, k, n, left_transpose, right_transpose, output_transpose,
+                                        left_zp, right_zp);
     return;
   } else if (left_signed && !right_signed) {
     g_mmInt8<<<num_blocks, block_size>>>((int8_t *)input, (uint8_t *)right,
-                                        (int32_t *)output, right_transpose, m, k, n);
+                                        (int32_t *)output, m, k, n, left_transpose, right_transpose, output_transpose,
+                                        left_zp, right_zp);
     return;
   } else if (!left_signed && right_signed) {
     g_mmInt8<<<num_blocks, block_size>>>((uint8_t *)input, (int8_t *)right,
-                                        (int32_t *)output, right_transpose, m, k, n);
+                                        (int32_t *)output, m, k, n, left_transpose, right_transpose, output_transpose,
+                                        left_zp, right_zp);
     return;
   } else if (!left_signed && !right_signed) {
     g_mmInt8<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)right,
-                                        (int32_t *)output, right_transpose, m, k, n);
+                                        (int32_t *)output, m, k, n, left_transpose, right_transpose, output_transpose,
+                                        left_zp, right_zp);
     return;
   }
 }
@@ -731,7 +761,7 @@ void bmDepth2Space(void *input, void *output, bool inversed, bool swap_hw, bool 
   int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
   int block_size = CUDA_BLOCK_SIZE;
 
-  if (type == DT_INT8 || type == DT_UINT8) {
+  if (type == DT_INT8 || type == DT_UINT8 || type == DT_F8E4M3) {
     g_depth2space<<<num_blocks, block_size>>>(
         (uint8_t *)input, (uint8_t *)output, block_h, block_w, inversed, swap_hw, crd, n, c, h, w, ins, ics, ihs, iws, on, oc, oh, ow, ons, ocs, ohs, ows);
     return;
@@ -779,46 +809,70 @@ void bmDepth2Space(void *input, void *output, bool inversed, bool swap_hw, bool 
 
 void requantInt8Perchannel(void *input, void *output, void *multipliers,
                            void *shifts, int n, int c, int h, int w,
-                           bool out_sign, bool qdm, bool relu) {
+                           bool out_sign, bool qdm, bool relu, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
   int block_size = CUDA_BLOCK_SIZE;
   g_requantInt8Perchannel<<<num_blocks, block_size>>>(
       (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
-      h, w, out_sign, qdm, relu);
+      h, w, out_sign, qdm, relu, zero_point);
+}
+
+void requantInt8Perchannel(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c, int h, int w,
+                           bool out_sign, bool relu, int zero_point,
+                           bool is_cv18xx, requant_mode_t qmode,
+                           rounding_mode_t rmode) {
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_requantInt8Perchannel<<<num_blocks, block_size>>>(
+      (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
+      h, w, out_sign, relu, zero_point, is_cv18xx, qmode, rmode);
+}
+
+void requantInt8Perchannel(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c, int h, int w,
+                           bool out_sign, bool relu, void* zero_points,
+                           bool is_cv18xx, requant_mode_t qmode,
+                           rounding_mode_t rmode) {
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_requantInt8Perchannel<<<num_blocks, block_size>>>(
+      (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
+      h, w, out_sign, relu, (int32_t *)zero_points, is_cv18xx, qmode, rmode);
 }
 
 void requantInt8(void *input, void *output, int32_t multiplier, int32_t shift,
-                 int num, bool out_sign, bool qdm, bool relu) {
+                 int num, bool out_sign, bool qdm, bool relu, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(num);
   int block_size = CUDA_BLOCK_SIZE;
   g_requantInt8<<<num_blocks, block_size>>>(
-      (int32_t *)input, output, multiplier, shift, num, out_sign, qdm, relu);
+      (int32_t *)input, output, multiplier, shift, num, out_sign, qdm, relu, zero_point);
 }
 
 void requantInt16(void *input, void *output, int32_t multiplier, int32_t shift,
-                 int num, bool relu) {
+                 int num, bool relu, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(num);
   int block_size = CUDA_BLOCK_SIZE;
   g_requantInt16<<<num_blocks, block_size>>>(
-      (int32_t *)input, output, multiplier, shift, num, relu);
+      (int32_t *)input, output, multiplier, shift, num, relu, zero_point);
 }
 
 void requantInt16Perchannel(void *input, void *output, void *multipliers,
-                           void *shifts, int n, int c, int h, int w, bool relu) {
+                           void *shifts, int n, int c, int h, int w, bool relu,
+                           int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
   int block_size = CUDA_BLOCK_SIZE;
   g_requantInt16Perchannel<<<num_blocks, block_size>>>(
       (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
-      h, w, relu);
+      h, w, relu, zero_point);
 }
 
 void requantF8(void *input, void *output, float scale,
-                            int n, int c, int h, int w, bool relu){
-  int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+                            int s0, int s1, int s2, int s3, int s4, int s5, bool relu){
+  int num_blocks = CUDA_NUM_BLOCKS(s0 * s1 * s2 * s3 * s4 * s5);
   int block_size = CUDA_BLOCK_SIZE;
   g_requantF8<<<num_blocks, block_size>>>(
-      (float *)input, (uint8_t*)output, scale, n, c,
-      h, w, relu);
+      (float *)input, (uint8_t*)output, scale, s0, s1, s2, s3, s4, s5, relu);
 }
 
 void requantF8Perchannel(void *input, void *output, void *scales,
@@ -831,17 +885,17 @@ void requantF8Perchannel(void *input, void *output, void *scales,
 }
 
 void mulShift(void *input, void *output, int multiplier, int shift, int size,
-              data_type_t type) {
+              data_type_t type, int input_zp, int output_zp) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   switch (type) {
   case DT_INT8:
     g_mulShift<<<num_blocks, block_size>>>((int8_t *)input, (int8_t *)output,
-                                           multiplier, shift, size);
+                                           multiplier, shift, size, input_zp, output_zp);
     break;
   case DT_UINT8:
     g_mulShift<<<num_blocks, block_size>>>((uint8_t *)input, (uint8_t *)output,
-                                           multiplier, shift, size);
+                                           multiplier, shift, size, input_zp, output_zp);
     break;
   }
 }
@@ -857,6 +911,22 @@ void mulShiftFloat(void *input, void *output, float multiplier, float shift, rou
     break;
   case DT_UINT8:
     g_mulShiftFloat<<<num_blocks, block_size>>>((float *)input, (uint8_t *)output,
+                                           multiplier, shift, size, round_mode);
+    break;
+  }
+}
+
+void mulShiftDouble(void *input, void *output, double multiplier, double shift, rounding_mode_t round_mode, int size,
+              data_type_t type) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  switch (type) {
+  case DT_INT8:
+    g_mulShiftDouble<<<num_blocks, block_size>>>((float *)input, (int8_t *)output,
+                                           multiplier, shift, size, round_mode);
+    break;
+  case DT_UINT8:
+    g_mulShiftDouble<<<num_blocks, block_size>>>((float *)input, (uint8_t *)output,
                                            multiplier, shift, size, round_mode);
     break;
   }
@@ -897,18 +967,27 @@ void print(void *data, int size, data_type_t type) {
   }
 }
 
-void doRelu(void *data, int size, data_type_t type) {
+void doRelu(void *data, int size, data_type_t type, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   switch (type) {
   case DT_F32:
-    g_doRelu<<<num_blocks, block_size>>>((float *)data, size);
+    g_doRelu<<<num_blocks, block_size>>>((float *)data, size, zero_point);
     break;
   case DT_INT32:
-    g_doRelu<<<num_blocks, block_size>>>((int32_t *)data, size);
+    g_doRelu<<<num_blocks, block_size>>>((int32_t *)data, size, zero_point);
     break;
   case DT_INT8:
-    g_doRelu<<<num_blocks, block_size>>>((int8_t *)data, size);
+    g_doRelu<<<num_blocks, block_size>>>((int8_t *)data, size, zero_point);
+    break;
+  case DT_BF16:
+    g_doReluF16<<<num_blocks, block_size>>>((uint16_t *)data, size, zero_point);
+    break;
+  case DT_F16:
+    g_doReluF16<<<num_blocks, block_size>>>((uint16_t *)data, size, zero_point);
+    break;
+  case DT_F8E4M3:
+    g_doReluF8<<<num_blocks, block_size>>>((uint8_t *)data, size, zero_point);
     break;
   }
 }
@@ -967,42 +1046,45 @@ void depth2Space(void *input, void *output, int in, int ic, int ih, int iw,
 
 // -------------------------------------------------------------------------
 // ------- cv18xx functions
-void cvScaleToF32(void *input, void *output, float scale, int size) {
+void cvScaleToF32(void *input, void *output, float scale, int size, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_cvInt8ScaleToF32<<<num_blocks, block_size>>>((int8_t *)input,
-                                                 (float *)output, scale, size);
+                                                 (float *)output, scale, size, zero_point);
 }
 
-void cvScaleToBF16(void *input, void *output, float scale, int size) {
+void cvScaleToBF16(void *input, void *output, float scale, int size, float zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   g_cvInt8ScaleToBF16<<<num_blocks, block_size>>>(
-      (int8_t *)input, (uint16_t *)output, scale, size);
+      (int8_t *)input, (uint16_t *)output, scale, size, zero_point);
 }
 
 void cvQuantInt8(void *input, void *output, float scale, int size,
-                 bool is_bf16) {
+                 bool is_bf16, int zero_point) {
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
   if (!is_bf16) {
     g_cvF32ScaleToInt8<<<num_blocks, block_size>>>(
-        (float *)input, (int8_t *)output, scale, size);
+        (float *)input, (int8_t *)output, scale, size, zero_point);
   } else {
     g_cvBF16ScaleToInt8<<<num_blocks, block_size>>>(
-        (uint16_t *)input, (int8_t *)output, scale, size);
+        (uint16_t *)input, (int8_t *)output, scale, size, zero_point);
   }
 }
 
-void cvAdd4DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
-                 int shift, bool relu, int n0, int c0, int h0, int w0, int n1,
-                 int c1, int h1, int w1, int on, int oc, int oh, int ow) {
-  int size = on * oc * oh * ow;
+void cvAdd6DInt8(void *input0, void *input1, void *output, int mul0, int mul1,
+                 int shift, bool relu, int i0, int i1, int i2, int i3, int i4, int i5,
+                 int j0, int j1, int j2, int j3, int j4, int j5,
+                 int o0, int o1, int o2, int o3, int o4, int o5,
+                 int input0_zp, int input1_zp, int output_zp) {
+  int size = o0 * o1 * o2 * o3 * o4 * o5;
   int num_blocks = CUDA_NUM_BLOCKS(size);
   int block_size = CUDA_BLOCK_SIZE;
-  g_cvAdd4DInt8<<<num_blocks, block_size>>>(
+  g_cvAdd6DInt8<<<num_blocks, block_size>>>(
       (int8_t *)input0, (int8_t *)input1, (int8_t *)output, mul0, mul1, shift,
-      relu, n0, c0, h0, w0, n1, c1, h1, w1, on, oc, oh, ow);
+      relu, j0, i1, i2, i3, i4, i5, j0, j1, j2, j3, j4, j5,
+      o0, o1, o2, o3, o4, o5, input0_zp, input1_zp, output_zp);
 }
 
 void cvPReluInt8(void *input, void *slope, void *output, int outer_dim,
@@ -1063,10 +1145,10 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
   // get max => buffer
   maxAxis(input, buffer, outer_dim, axis_dim, inner_dim, DT_BF16);
   // sub max => output
-  subAxis(input, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
+  subAxis(input, buffer, log ? input : output, outer_dim, axis_dim, inner_dim, DT_BF16);
 
   // exp => output
-  cvLutSlope(output, output, table0, table1, outer_dim * inner_dim * axis_dim,
+  cvLutSlope(log ? input : output, output, table0, table1, outer_dim * inner_dim * axis_dim,
              scale, offset);
   // sum => buffer
   sumAxis(output, buffer, outer_dim, axis_dim, inner_dim, DT_BF16);
@@ -1074,7 +1156,7 @@ void cvSoftmax(void *input, void *buffer, void *output, void *table0,
   cvLutMantissa(buffer, buffer, table2, table3, outer_dim * inner_dim, log);
 
   if (log) {
-    addAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
+    subAxis(input, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
   } else {
     mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_BF16);
   }
@@ -1097,11 +1179,7 @@ void bmSoftmax(void *input, void *buffer, void *output, int outer_dim,
   // 1/sum => buffer
   bmReciprocal(buffer, buffer, outer_dim, inner_dim, DT_F32);
 
-  if (log) {
-    addAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
-  } else {
-    mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32);
-  }
+  mulAxis(output, buffer, output, outer_dim, axis_dim, inner_dim, DT_F32, log);
 }
 
 void bmSoftmax(void *input, void *buffer, void *output, int outer_dim,
@@ -1127,9 +1205,9 @@ void bmSoftmax(void *input, void *buffer, void *output, int outer_dim,
   float *add_val_dev = nullptr;
   cudaMalloc((void **)&add_val_dev, sizeof(float));
   cudaMemcpy(add_val_dev, &add_val, sizeof(float), cudaMemcpyHostToDevice);
-  add4DF32(
-      output, 1/scale, add_val_dev, 1, output, false, outer_dim, axis_dim,
-      inner_dim, 1, 1, 1, 1, 1, outer_dim, axis_dim, inner_dim, 1);
+  add6DF32(
+      output, 1/scale, add_val_dev, 1, output, false, 1, 1, outer_dim, axis_dim,
+      inner_dim, 1, 1, 1, 1, 1, 1, 1, 1, 1, outer_dim, axis_dim, inner_dim, 1);
   cudaFree(add_val_dev);
 }
 
@@ -1148,11 +1226,178 @@ void bmLayerNorm(void *input, void *output, int outer_dim,
   }
 }
 
-void bmGELU(void *input, void *output, int size) {
-  int num_blocks = CUDA_NUM_BLOCKS(size);
+void cvLayerNorm(void *input, void *output, int outer_dim,
+               int inner_dim, void *weight, void *bias, void *table,
+               void *mtable, float eps) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_layerNormBF16<<<num_blocks, block_size>>>(
+    (float *)input, (float *)output, outer_dim, inner_dim, (float *)weight,
+    (float *)bias, (float *)table, (float *)mtable, eps);
+}
+
+void bmGELU(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
   int block_size = CUDA_BLOCK_SIZE;
   g_GELU<<<num_blocks, block_size>>>(
-      (float *)input, (float *)output, size);
+      (float *)input, (float *)output, num);
+}
+
+void bmABSVAL(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_ABSVAL<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num);
+}
+
+void bmActive(void *input, void *output, int num, active_mode_t mode) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  switch (mode) {
+    case ACTIVE_ABSVAL:
+      g_ABSVAL<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_CEIL:
+      g_CEIL<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_ERF:
+      g_ERF<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_EXP:
+      g_EXP<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_LN:
+      g_LN<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_LOG2:
+      g_LOG2<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SQRT:
+      g_SQRT<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_RSQRT:
+      g_RSQRT<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SQUARE:
+      g_SQUARE<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SILU:
+      g_SILU<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SIGMOID:
+      g_SIGMOID<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_LOG_SIGMOID:
+      g_LOG_SIGMOID<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_ARCCOS:
+      g_ARCCOS<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_ARCTANH:
+      g_ARCTANH<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_TAN:
+      g_TAN<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_TANH:
+      g_TANH<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_GELU:
+      g_GELU<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_TGELU:
+      g_TGELU<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_QGELU:
+      g_QGELU<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SOFT_PLUS:
+      g_SOFT_PLUS<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_FLOOR:
+      g_FLOOR<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SOFT_SIGN:
+      g_SOFT_SIGN<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_MISH:
+      g_MISH<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_COS:
+      g_COS<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_COSH:
+      g_COSH<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SIN:
+      g_SIN<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SINH:
+      g_SINH<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_ROUND:
+      g_ROUND<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_SIGN:
+      g_SIGN<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    case ACTIVE_HSWISH:
+      g_HSWISH<<<num_blocks, block_size>>>(
+          (float *)input, (float *)output, num);
+      break;
+    default:
+      break;
+  }
+}
+
+void bmActive(void *input, void *output, int num, active_mode_t mode, double coeff) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (mode == ACTIVE_ELU) {
+    g_ELU<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, coeff);
+  } else if (mode == ACTIVE_SWISH) {
+    g_SWISH<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, coeff);
+  }
+}
+
+void bmActive(void *input, void *output, int num, active_mode_t mode, double coeff1, double coeff2) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (mode == ACTIVE_HSIGMOID) {
+    g_HSIGMOID<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, coeff2, coeff1);
+  }
 }
 
 void scale4D(void *src, void *scale, void * bias, void *dst, bool relu, int n, int c, int h, int w, int off0,
@@ -1170,7 +1415,8 @@ void bmReduce(
   int shape_dim,
   void *input_shape,
   void *reduce_mask,
-  int mode
+  int mode,
+  bool is_cv18xx_quant
 ) {
   enum ReductionMode mode_enum = static_cast<ReductionMode>(mode);
   TensorShape in_shape;
@@ -1214,35 +1460,35 @@ void bmReduce(
       switch (mode_enum) {
           case REDUCE_SUM:
               contiguousAxisReductionKernel<float, REDUCE_SUM><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           case REDUCE_MEAN:
               contiguousAxisReductionKernel<float, REDUCE_MEAN><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           case REDUCE_MAX:
               contiguousAxisReductionKernel<float, REDUCE_MAX><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           case REDUCE_MIN:
               contiguousAxisReductionKernel<float, REDUCE_MIN><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           case REDUCE_L2_NORM:
               contiguousAxisReductionKernel<float, REDUCE_L2_NORM><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           case REDUCE_L1_NORM:
               contiguousAxisReductionKernel<float, REDUCE_L1_NORM><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           case REDUCE_PROD:
               contiguousAxisReductionKernel<float, REDUCE_PROD><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           case REDUCE_VAR:
               contiguousAxisReductionKernel<float, REDUCE_VAR><<<blocks, threads, 0, stream>>>(
-                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size);
+                  (float *)d_input, (float *)d_output, outer_size, reduce_size, inner_size, is_cv18xx_quant);
               break;
           default:
               break;
@@ -1251,7 +1497,7 @@ void bmReduce(
       // Launch kernel based on mode
       int blockSize = 256;
       int numBlocks = (out_shape.totalElements() + blockSize - 1) / blockSize;
-      int * d_mask =nullptr;
+      int *d_mask = nullptr;
       cudaMalloc(&d_mask, sizeof(int) * 8);
       cudaMemcpy(d_mask, reduce_mask, sizeof(int) * 8, cudaMemcpyHostToDevice);
       switch (mode) {
@@ -1295,5 +1541,84 @@ void bmReduce(
   cudaStreamSynchronize(stream);
 }
 
-} // namespace cuda
-} // namespace tpu_mlir
+void rotateKernelWeight(void *src, void *dst, int oc, int ic, int kh, int kw,
+                        int group, int tbytes) {
+  int total = oc * ic * kh * kw / group;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+
+  if (tbytes == 4) {
+    g_rotateKernelWeight<float><<<num_blocks, block_size>>>(
+        (float *)src, (float *)dst, oc, ic / group, kh, kw);
+  } else if (tbytes == 2) {
+    g_rotateKernelWeight<uint16_t><<<num_blocks, block_size>>>(
+        (uint16_t *)src, (uint16_t *)dst, oc, ic / group, kh, kw);
+  } else if (tbytes == 1) {
+    g_rotateKernelWeight<uint8_t><<<num_blocks, block_size>>>(
+        (uint8_t *)src, (uint8_t *)dst, oc, ic / group, kh, kw);
+  }
+}
+
+void padTensorForDeconv(void *dst, void *src, int n, int ic, int ih, int iw,
+                        int kh, int kw, int dh, int dw, int sh, int sw,
+                        int pad_h, int pad_h_after, int pad_w, int pad_w_after,
+                        int output_pad_h, int output_pad_w, float pad_value,
+                        int tbytes) {
+  // Calculate output dimensions
+  int pad_top = dh * (kh - 1) - pad_h;
+  int pad_left = dw * (kw - 1) - pad_w;
+  int oh = (ih - 1) * sh + 1 + dh * (2 * kh - 2 - pad_h - pad_h_after) + output_pad_h;
+  int ow = (iw - 1) * sw + 1 + dw * (2 * kw - 2 - pad_w - pad_w_after) + output_pad_w;
+
+  int total = n * ic * oh * ow;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+
+  if (tbytes == 4) {
+    g_padTensorForDeconv<float><<<num_blocks, block_size>>>(
+        (float *)dst, (float *)src, n, ic, ih, iw, oh, ow, sh, sw,
+        pad_top, pad_left, pad_value);
+  } else if (tbytes == 2) {
+    g_padTensorForDeconv<uint16_t><<<num_blocks, block_size>>>(
+        (uint16_t *)dst, (uint16_t *)src, n, ic, ih, iw, oh, ow, sh, sw,
+        pad_top, pad_left, (uint16_t)pad_value);
+  } else if (tbytes == 1) {
+    g_padTensorForDeconv<uint8_t><<<num_blocks, block_size>>>(
+        (uint8_t *)dst, (uint8_t *)src, n, ic, ih, iw, oh, ow, sh, sw,
+        pad_top, pad_left, (uint8_t)pad_value);
+  }
+}
+
+void PReluF32(void *input, void *slope, void *output, int outer_dim, int inner_dim,
+             int num_slope) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_PReluF32<<<num_blocks, block_size>>>(
+      (float *)input, (float *)slope, (float *)output, outer_dim, inner_dim, num_slope);
+}
+
+void PReluInt8(void *input, void *slope, int shift, void *output, int outer_dim, int inner_dim,
+             int num_slope) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * inner_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_PReluInt8<<<num_blocks, block_size>>>(
+      (int8_t *)input, (int8_t *)slope, shift, (int8_t *)output, outer_dim, inner_dim, num_slope);
+}
+
+void RightBitShift(void *input, void *output, int shift,int n_elem, int tbytes) {
+  int num_blocks = CUDA_NUM_BLOCKS(n_elem);
+  int block_size = CUDA_BLOCK_SIZE;
+  if (tbytes == 4) {
+    g_RightBitShift<<<num_blocks, block_size>>>(
+        (int32_t *)input, (int32_t *)output, shift);
+  } else if (tbytes == 2) {
+    g_RightBitShift<<<num_blocks, block_size>>>(
+        (int16_t *)input, (int16_t *)output, shift);
+  } else if (tbytes == 1) {
+    g_RightBitShift<<<num_blocks, block_size>>>(
+        (int8_t *)input, (int8_t *)output, shift);
+  }
+}
+
+}
+}

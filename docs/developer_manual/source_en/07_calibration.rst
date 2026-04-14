@@ -9,15 +9,45 @@ Calibration is the use of real scene data to tune the proper quantization parame
 The calibration process in tpu-mlir includes automatic threshold search method (search_threshold), SmoothQuant(sq), softmax correction (smc), cross-layer weight equalization (we), bias correction (bc), and an automatic mixed precision feature (search_qtable, fast_search, mix_search), among other methods. The overall process is shown in(:ref:`quantization_process`). Among these, sq, smc, we, bc, search_qtable, and search_threshold are optional and can be combined according to the actual situation of the model to be quantized. Subsequent sections will also provide specific instructions for the use of each method.
 The above processes are integrated and executed collectively, and the optimized thresholds and min/max values of each operation are output to a quantization calibration parameter file called "cali_table." Subsequently, in the "model_deploy.py" script, these parameters can be used for further int8 quantization. If you have utilized the automatic mixed-precision feature, along with generating the "cali_table," a mixed-precision table "qtable" will also be produced. In the following "model_deploy.py" script, both of these files are required for subsequent int8 mixed-precision quantization.
 
-Calibration runs in recommanded docker environment, following algorithms are implemented in both cpu and gpu version, they are selected according the docker version and hardware environment. For large models who has occupy most host memory before running calibration, the gpu version may be faster, but for small models, cpu version make good use of parallel and is fast enough.
-
-
 .. _quantization_process:
 .. figure:: ../assets/quant_en.png
    :height: 22cm
    :align: center
 
    Overall process of quantization
+
+Introduction to the Working Environment
+------------------------------------------
+Calibration runs in tpu-mlir recommanded docker environment, there are two docker image with and without gpu support, tpuc_dev:v3.4 and tpuc_dev:v3.4.6-cuda, the cuda image is much bigger.
+Following calibration algorithms are implemented in both cpu and gpu version, and partial op whose inference constitute the bulk of search_qtable duration have gpu support, too. Those ops with only cpu support will drop back to cpu automatically according the docker version and hardware environment.
+You can try different docker versions according to model size and hardware environment.For large models that may occupy most host memory before running calibration, the gpu version may be faster, but for small models, cpu version make good use of parallel and is fast enough.
+
+    **NOTE: don't use cpu version of tpu-mlir package in cuda docker environment, it will cause run_calibration exception**
+
+If some ops don't support gpu acceleration, the data change between cpu and gpu may hinder the acceleration, you can check the model_transform generated F32 mlir to see if all ops have gpu support:
+
+    top::AddOp， top::AvgPoolOp， top::MatMulOp， top::ReshapeOp，top::SiLUOp，
+    top::ConcatOp， top::UpsampleOp， top::PermuteOp， top::SliceOp， top::SoftmaxOp，
+    top::SubOp， top::MulConstOp， top::MulOp， top::SigmoidOp， top::LayerNormOp，
+    top::SqueezeOp， top::GELUOp， top::Depth2SpaceOp， top::ReduceOp， top::SwapDimInnerOp，
+    top::UnsqueezeOp， top::SubConstOp， top::GatherOp， top::RequantFpOp
+
+You can build cuda image based on cpu image if it is not convenient to pull the large cuda image:
+1. pull cpu image: docker pull tpuc_dev:v3.4
+2. pull latest tpu-mlir source or download required docker file only: docker/requirements_cuda.txt and docker/tpuc_dev_cuda_python.Dockerfile
+3. in tpu-mlir project docker director or directory with the two files, build docker image:
+
+.. code-block:: shell
+   :linenos:
+
+   mkdir build
+   cp tpuc_dev_cuda_python.Dockerfile build
+   cp requirements_cuda.txt build
+   cd build
+   docker build . -f tpuc_dev_cuda_python.Dockerfile --tag sophgo/tpuc_dev:v3.4.6-cuda
+   cd ..
+   rm -rf ./build
+
 
 Introduction to the Default Process
 -----------------------------------

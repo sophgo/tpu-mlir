@@ -660,6 +660,16 @@ void BM168x::end_env() {
   }
 }
 
+int BM168x::get_io_addr_num() {
+  int num = sizeof(IO_ADDR) / sizeof(IO_ADDR[0]);
+  for (int i = num - 1; i >= 0; i--) {
+    if (IO_ADDR[i] != 0) {
+      return i + 1;
+    }
+  }
+  return 0;
+}
+
 void BM168x::bmcpu_setup() {
   std::string Err;
   cpuopDL =

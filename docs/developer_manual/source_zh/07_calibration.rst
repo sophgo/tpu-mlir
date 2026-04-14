@@ -5,8 +5,8 @@ Calibration
 --------------------
 所谓校准, 就是用真实场景数据来调校出恰当的量化参数, 为何需要校准？当我们对激活进行非对称量化时,
 需要预先知道其总体的动态范围, 即min/max值,对激活进行对称量化时, 需要预先使用合适的量化门限算法
-在激活总体数据分布的基础上计算得到其量化门限, 而一般训练输出的模型是不带有激活这些数据统计
-信息的, 因此这两者都要依赖于在一个微型的训练集子集上进行推理, 收集各个输入的各层输出激活。
+在激活总体数据分布的基础上计算得到其量化门限, 而一般训练输出的模型是不带有激活这些数据统计信息的,
+因此这两者都要依赖于在一个微型的训练集子集上进行推理, 收集各个输入的各层输出激活。
 
 tpu-mlir的校准过程包括了门限方法自动寻优(search_threshold),SmoothQuant(sq),Softmax修正(smc),跨层权重均衡(we),偏置修正(bc)以及自动
 混精功能(search_qtable,fast_search, mix_search)等方法。总体过程如(:ref:`quantization_process`)所示。其中sq,smc,we,bc,search_qtable
@@ -16,7 +16,6 @@ min/max值输出到一个量化校准参数文件cali_table中, 后续``model_de
 文件来进行后续的int8量化。如果您使用了自动混精功能,在生成cali_table的同时,还会生成混合精度表qtable,后续``model_deploy.py``时需使用
 这两个文件来进行后续的int8混合精度量化。
 
-校准过程在推荐的docker中运行，以下的校准算法同时有cpu版本和gpu版本，当模型较大，仅仅模型大小就占用了大部分计算机内存的时候往往使用gpu版本会更快，因为cpu计算启用了并行，小一些的网络往往在gpu上没有优势。根据使用的docker版本不同会自动决定用什么版本。
 
 .. _quantization_process:
 .. figure:: ../assets/quant_zh.png
@@ -24,6 +23,39 @@ min/max值输出到一个量化校准参数文件cali_table中, 后续``model_de
    :align: center
 
    量化流程图
+
+
+工作环境搭建
+---------------------
+校准过程在tpu-mlir推荐的docker中运行，docker镜像有两个版本，tpuc_dev:v3.4和tpuc_dev:v3.4.6-cuda,其中cuda版本中包含了gpu加速环境，所以体积较大。
+以下章节介绍的校准算法同时有cpu版本和gpu版本；校准过程search_qtable时候的模型推理涉及的算子也进行了部分支持，在cuda环境中会自动调用gpu版本的算法和算子。没有支持的计算会回退到cpu进行，这些会根据算子支持和docker版本自动选择。
+考虑拉取docker镜像的成本和硬件环境以及模型的大小选择合适的docker版本，当模型较大，仅仅模型大小就和计算机内存相当的时候往往使用gpu版本会更快，而cpu版本计算启用了并行而且减少了cpu和gpu之间的数据交换，小一些的网络往往在gpu上优势不明显。
+
+    **注意：在cuda环境的docker中不要使用cpu版本的tpu-mlir安装包，会造成run_calibration异常**
+
+回退cpu计算会引起更多的数据交换影响加速效果，可以查看model_transform生成的F32模型中的算子是否包含在以下gpu加速算子列表中选择使用cuda版本docker:
+
+    top::AddOp， top::AvgPoolOp， top::MatMulOp， top::ReshapeOp，top::SiLUOp，
+    top::ConcatOp， top::UpsampleOp， top::PermuteOp， top::SliceOp， top::SoftmaxOp，
+    top::SubOp， top::MulConstOp， top::MulOp， top::SigmoidOp， top::LayerNormOp，
+    top::SqueezeOp， top::GELUOp， top::Depth2SpaceOp， top::ReduceOp， top::SwapDimInnerOp，
+    top::UnsqueezeOp， top::SubConstOp， top::GatherOp， top::RequantFpOp
+
+cuda版本的docker拉取较慢或者网络不允许情况下可以基于tpuc_dev:v3.4版本的docker自己构建cuda环境，具体步骤如下：
+1. 基于tpuc_dev:v3.4版本的docker构建新的docker镜像，拉取最新的tpu-mlir项目或者只下载docker目录，确认其中docker目录下有requirements_cuda.txt文件和tpuc_dev_cuda_python.Dockerfile文件。
+2. 进入docker目录，执行以下命令构建新的docker镜像：
+
+.. code-block:: shell
+   :linenos:
+
+   mkdir build
+   cp tpuc_dev_cuda_python.Dockerfile build
+   cp requirements_cuda.txt build
+   cd build
+   docker build . -f tpuc_dev_cuda_python.Dockerfile --tag sophgo/tpuc_dev:v3.4.6-cuda
+   cd ..
+   rm -rf ./build
+
 
 默认流程介绍
 --------------------

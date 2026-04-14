@@ -148,6 +148,7 @@ class TORCH_IR_TESTER(object):
             "Remainder":        (self.test_Remainder,         Y, Y, N, N, Y),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y, Y),
+            "ReshapeConcat":    (self.test_ReshapeConcat,     N, Y, Y, Y, Y),
             "Depth2Space":      (self.test_D2SPattern,        N, Y, Y, N, Y),
             "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N, Y),
             "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N, N),
@@ -266,6 +267,8 @@ class TORCH_IR_TESTER(object):
         if self.chip in ["bm1688", "cv186x"] and bm1688_support:
             return True
         if self.chip == "cv184x" and cv184x_support:
+            return True
+        if self.chip == "bm1684x2" and bm1684x_support:
             return True
         return False
 
@@ -608,7 +611,25 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([input_shape], Model())
 
-        return dict(case1=case1, case2=case2, case3=case3)
+        def case4(conv_fun, input_shape):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.conv1 = conv_fun(3, 32, 6, 2, 2, 1, 1, True, 'zeros')
+                    self.conv2 = conv_fun(3, 32, 6, 2, 2, 1, 1, True, 'zeros')
+                    # self.conv1 = conv_fun(3, 32, 6, 2, 2)
+                    # self.conv2 = conv_fun(3, 32, 6, 2, 2)
+
+                def forward(self, x):
+                    y = self.conv1(x)
+                    z = self.conv2(x)
+                    return y + z
+
+            self.trace_and_test([input_shape], Model())
+
+        return dict(case1=case1, case2=case2, case3=case3, case4=case4)
 
     def test_Conv1d(self):
         """Conv 1D"""
@@ -627,6 +648,15 @@ class TORCH_IR_TESTER(object):
         test["case1"](nn.Conv2d, (4, 8, 28, 28))
         test["case2"](F.conv2d, (1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same")
         test["case2"](F.conv2d, (2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1)
+
+        # tests for yolov5s:
+        test["case2"](F.conv2d, (1, 3, 768, 4096), (6, 6),
+                      32,
+                      has_bias=True,
+                      stride=2,
+                      padding=2,
+                      dilation=1)
+        test["case4"](nn.Conv2d, (1, 3, 768, 4096))
 
     def test_Conv2Img2Col(self):
         """Convert Conv to img2col"""
@@ -1649,6 +1679,34 @@ class TORCH_IR_TESTER(object):
 
         in_shape = (512, 1024)
         self.trace_and_test([in_shape], Model())
+
+    #######################################################################
+    # ReshapeConcat
+    # ------------
+    def test_ReshapeConcat(self):
+        """ReshapeConcat"""
+
+        def _test_ReshapeConcat(in0_shape, in1_shape, dim=None):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, x2):
+                    # +1 set to no io_tag_addr
+                    x = x + 1
+                    x2 = x2 + 1
+                    x1 = x.reshape(1, 3, 8, 128)
+                    if dim is None:
+                        y1 = torch.concat((x1, x2))
+                    else:
+                        y1 = torch.concat((x1, x2), dim=dim)
+                    return y1
+
+            self.trace_and_test([in0_shape, in1_shape], Model())
+
+        _test_ReshapeConcat((1, 3, 32, 32), (1, 3, 8, 128), 1)
 
     #######################################################################
     # Depth2Space
@@ -2982,6 +3040,7 @@ class TORCH_IR_TESTER(object):
         _test_concat((1, 3, 32, 32), (1, 6, 32, 32), 1)
         _test_concat((2, 32, 16), (3, 32, 16))
         _test_concat((32, 32), (32, 16), -1)
+        _test_concat((1, 32, 192, 1024), (1, 32, 192, 1024), 1)
 
     #######################################################################
     # Dropout
@@ -3983,12 +4042,7 @@ class TORCH_IR_TESTER(object):
                 qk2 = qk1 + mask.permute(0, 2, 1, 3)
                 w = torch.nn.functional.softmax(qk2, dim=-1)
                 wv1 = (w @ v1).permute(0, 2, 1, 3)
-                v1 = v.permute(0, 2, 1, 3)
-                qk1 = qk.permute(0, 2, 1, 3)
-                qk2 = qk1 + mask.permute(0, 2, 1, 3)
-                w = torch.nn.functional.softmax(qk2, dim=-1)
-                wv2 = (w @ v1).permute(0, 2, 1, 3)
-                return wv1, wv2
+                return wv1
 
         self.trace_and_test([[5, 16, 8, 16], [5, 16, 8, 16], [5, 16, 8, 64]], Model0())
         # Permute will be converted to Reshape when there is 1 in shape
@@ -4132,7 +4186,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv184x', 'cv186x', 'bm1690', 'sgtpuv8'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv184x', 'cv186x', 'bm1690', 'bm1690e','sgtpuv8', 'bm1684x2'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")

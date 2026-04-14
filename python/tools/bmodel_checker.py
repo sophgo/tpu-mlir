@@ -13,6 +13,16 @@ from debugger.plugins.data_checker import DataCheck, DumpMode
 from tdb import TdbInterface
 from debugger.tdb_support import commom_args
 import argparse
+import sys
+
+
+def debug_hook(type, value, tb):
+    import pdb
+    pdb.post_mortem(tb)
+
+
+# add pdb hook for debug.
+# sys.excepthook = debug_hook
 
 
 def parse_args(argv=None):

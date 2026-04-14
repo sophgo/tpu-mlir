@@ -35,8 +35,11 @@ void *py_cuda::getCudaData(mlir::Value v) {
                               num * sizeof(float), cudaMemcpyHostToDevice));
         return activation_map_[name].get();
       } else {
-        auto new_data = newCudaData(data_ptr, num, DT_F32, dtype);
+        auto tmp = cuda_malloc(num * sizeof(float));
+        CHECK_CUDA(cudaMemcpy(tmp.get(), data_ptr, num * sizeof(float),cudaMemcpyHostToDevice));
+        auto new_data = newCudaData(tmp.get(), num, DT_F32, dtype);
         activation_map_[name] = std::move(new_data);
+        tmp.reset();
         return activation_map_[name].get();
       }
     }

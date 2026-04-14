@@ -30,6 +30,21 @@ import inspect
 logger = logging.getLogger("root")
 
 device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
+MLIRImporterTypeStr = {
+    "float64": "F64",
+    "float32": "F32",
+    "float16": "F16",
+    "int8": "INT8",
+    "int16": "INT16",
+    "int32": "INT32",
+    "int64": "INT64",
+    "uint8": "UINT8",
+    "uint16": "UINT16",
+    "uint32": "UINT32",
+    "uint64": "UINT64",
+    "bool": "BOOL",
+    "dict": "DICT",
+}
 
 
 def simplify_value(value):
@@ -130,12 +145,23 @@ def debug_dump_compile(file_path: str):
     TpuLang.graph = dump_data['graph']
     if dump_compile_args['interface'] == 'compile':
         # print("Re-compile model from debug dump file:", file_path)
-        compile(dump_compile_args['name'], None, None, False, None, 'f32',
-                dump_compile_args['dynamic'], dump_compile_args['asymmetric'],
-                dump_compile_args['no_save'], dump_compile_args['opt'], False, False,
-                dump_compile_args['log_level'], dump_compile_args['embed_debug_info'],
-                dump_compile_args['addr_mode'], dump_compile_args['gdma_check'],
-                dump_compile_args['layer_group_config'], 'load')
+        compile(dump_compile_args['name'],
+                None,
+                None,
+                False,
+                None,
+                'f32',
+                dump_compile_args['dynamic'],
+                dump_compile_args['asymmetric'],
+                dump_compile_args['no_save'],
+                dump_compile_args['opt'],
+                False,
+                False,
+                dump_compile_args['log_level'],
+                dump_compile_args['embed_debug_info'],
+                dump_compile_args['addr_mode'],
+                dump_compile_args['gdma_check'],
+                debug_dump_mode='load')
 
 
 def compile(
@@ -159,7 +185,8 @@ def compile(
         num_core=1,
         enable_lghash=False,
         lghash_dir="",
-        debug_dump_mode='normal'):
+        debug_dump_mode='normal',
+        disable_topo_sort=False):
     if debug_dump_mode not in ['normal', 'dump', 'load']:
         raise ValueError(
             f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
@@ -224,7 +251,8 @@ def compile(
                                       gdma_check=gdma_check,
                                       layer_group_config=layer_group_config,
                                       enable_lghash=enable_lghash,
-                                      lghash_dir=lghash_dir)
+                                      lghash_dir=lghash_dir,
+                                      disable_topo_sort=disable_topo_sort)
     else:
         origin_mlir_txt_to_bmodel(converter=converter,
                                   model_name=name,
@@ -257,7 +285,9 @@ def mlir_compile(name: str,
                  embed_debug_info=False,
                  addr_mode='auto',
                  gdma_check=False,
-                 layer_group_config=""):
+                 layer_group_config="",
+                 disable_topo_sort=False,
+                 num_core=1):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -282,7 +312,8 @@ def mlir_compile(name: str,
                                  asymmetric=asymmetric,
                                  ctm_format=ctm_format,
                                  fuse=fuse,
-                                 addr_mode=addr_mode)
+                                 addr_mode=addr_mode,
+                                 num_core=num_core)
     bmodel_generate_and_inference(model_name=name,
                                   quant_mode="int8",
                                   inference=bmodel_inference,
@@ -291,7 +322,8 @@ def mlir_compile(name: str,
                                   opt=opt,
                                   embed_debug_info=embed_debug_info,
                                   gdma_check=gdma_check,
-                                  layer_group_config=layer_group_config)
+                                  layer_group_config=layer_group_config,
+                                  disable_topo_sort=disable_topo_sort)
 
 
 def compile_f32(name: str,
@@ -316,7 +348,8 @@ def compile_f32(name: str,
                 num_core=1,
                 enable_lghash=False,
                 lghash_dir="",
-                debug_dump_mode='normal'):
+                debug_dump_mode='normal',
+                disable_topo_sort=False):
     if debug_dump_mode not in ['normal', 'dump', 'load']:
         raise ValueError(
             f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
@@ -399,7 +432,8 @@ def compile_f32(name: str,
                                           gdma_check=gdma_check,
                                           layer_group_config=layer_group_config,
                                           enable_lghash=enable_lghash,
-                                          lghash_dir=lghash_dir)
+                                          lghash_dir=lghash_dir,
+                                          disable_topo_sort=disable_topo_sort)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter,
@@ -434,7 +468,9 @@ def mlir_compile_f32(name: str,
                      addr_mode='auto',
                      gdma_check=False,
                      layer_group_config="",
-                     spec_op_mode: dict = {"mean_std_scale": "f16"}):
+                     spec_op_mode: dict = {"mean_std_scale": "f16"},
+                     disable_topo_sort=False,
+                     num_core=1):
     support_quant_mode = ['f32', 'f16', 'bf16']
     assert mode in support_quant_mode + ['all']
     assert addr_mode in ['auto', 'io_reloc']
@@ -482,7 +518,8 @@ def mlir_compile_f32(name: str,
                                      log_level=log_level,
                                      chip=TpuLang.chip,
                                      addr_mode=addr_mode,
-                                     quantize_table=qtable)
+                                     quantize_table=qtable,
+                                     num_core=num_core)
         bmodel_generate_and_inference(model_name=name,
                                       quant_mode=m,
                                       inference=bmodel_inference,
@@ -491,7 +528,8 @@ def mlir_compile_f32(name: str,
                                       opt=opt,
                                       embed_debug_info=embed_debug_info,
                                       gdma_check=gdma_check,
-                                      layer_group_config=layer_group_config)
+                                      layer_group_config=layer_group_config,
+                                      disable_topo_sort=disable_topo_sort)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level: str = 'normal'):
@@ -573,7 +611,8 @@ def bmodel_generate_and_inference(model_name: str,
                                   gdma_check: bool = False,
                                   layer_group_config: str = "",
                                   enable_lghash: bool = False,
-                                  lghash_dir: str = ""):
+                                  lghash_dir: str = "",
+                                  disable_topo_sort: bool = False):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
@@ -591,7 +630,8 @@ def bmodel_generate_and_inference(model_name: str,
                   gdma_check=gdma_check,
                   layer_group_config=layer_group_config,
                   enable_lghash=enable_lghash,
-                  lghash_dir=lghash_dir)
+                  lghash_dir=lghash_dir,
+                  disable_topo_sort=disable_topo_sort)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"
@@ -1733,6 +1773,7 @@ def cast(tensor_i: Tensor,
     shape = tensor_i.shape
     attr = {
         "round_mode": Attr(round_mode_convert(round_mode), data_type="string"),
+        "to": Attr(MLIRImporterTypeStr[out_dtype], data_type="string"),
     }
     assert round_mode not in ["half_up", "half_down"], \
             f"cast does not suooprt round mode {round_mode}"

@@ -323,9 +323,355 @@ struct Conv1x1Convkxk2dMerge : public OpRewriterPatternEx<ConvOp> {
   }
 };
 
+// Convert Conv -> Reshape -> multiple Slices to multiple Convs
+// This pattern handles cases where a Conv output is reshaped and then
+// sliced into multiple parts along the channel dimension
+struct ConvReshapeSlicePattern : public OpRewriterPatternEx<ConvOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  ConvReshapeSlicePattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<ConvOp>(context, "ConvReshapeSlicePattern") {}
+
+  LogicalResult matchAndRewriteImpl(ConvOp convOp,
+                                    PatternRewriter &rewriter) const override {
+    // Check if Conv output has exactly one user
+    if (!convOp->hasOneUse()) {
+      return failure();
+    }
+
+    // Check if the user is a ReshapeOp
+    auto reshapeOp = dyn_cast<ReshapeOp>(*convOp->user_begin());
+    if (!reshapeOp) {
+      return failure();
+    }
+
+    // Check if Reshape output has multiple users
+    auto reshapeUsers = reshapeOp->getUsers();
+    if (std::distance(reshapeUsers.begin(), reshapeUsers.end()) != 3) {
+      return failure();
+    }
+
+    // Collect all SliceOp users of the Reshape
+    std::vector<SliceOp> sliceOps;
+
+    for (auto user : reshapeUsers) {
+      auto sliceOp = dyn_cast<SliceOp>(user);
+      if (!sliceOp) {
+        return failure();
+      }
+      sliceOps.push_back(sliceOp);
+    }
+
+    // For simplicity, we'll handle a specific common case:
+    // Conv [N, C, H, W] -> Reshape [N, X, Y, H*W] -> Slices along axis Y
+    // This is common in attention mechanisms and transformer blocks
+
+    // Get shapes
+    auto convOutputShape = module::getShape(convOp.getOutput());
+    auto reshapeOutputShape = module::getShape(reshapeOp.getOutput());
+
+    // Only handle 4D tensors
+    if (convOutputShape.size() != 4 || reshapeOutputShape.size() != 4) {
+      return failure();
+    }
+
+    // Check if reshape is of the form [N, X, Y, H*W]
+    if (reshapeOutputShape[0] != convOutputShape[0] || // N must match
+        reshapeOutputShape[3] !=
+            convOutputShape[2] * convOutputShape[3]) { // H*W must match
+      return failure();
+    }
+
+    // Check if X * Y = C (channels)
+    if (reshapeOutputShape[1] * reshapeOutputShape[2] != convOutputShape[1]) {
+      return failure();
+    }
+
+    int sliceAxis = -1;
+    std::vector<std::pair<int64_t, int64_t>> sliceRanges; // (start, size)
+
+    for (auto sliceOp : sliceOps) {
+      // Get slice attributes - use hasparamConvert_axes since axes may be empty
+      auto axes = module::getI64Array(sliceOp.getAxesAttr());
+      auto paramAxes =
+          module::getI64Array(sliceOp.getHasparamConvertAxesAttr());
+
+      // Determine which axis is being sliced
+      // First check paramAxes (hasparamConvert_axes), then axes
+      std::vector<int64_t> axisVec;
+      if (paramAxes && !paramAxes->empty()) {
+        axisVec.assign(paramAxes->begin(), paramAxes->end());
+      } else if (axes && !axes->empty()) {
+        axisVec.assign(axes->begin(), axes->end());
+      } else {
+        // If no axes specified, infer from offset/ends
+        auto offset = module::getI64Array(sliceOp.getOffsetAttr());
+        auto ends = module::getI64Array(sliceOp.getEndsAttr());
+        auto steps = module::getI64Array(sliceOp.getStepsAttr());
+
+        if (!offset || !ends || !steps) {
+          return failure();
+        }
+
+        // Find dimensions where offset != 0 or end != max or step != 1
+        for (size_t i = 0; i < offset->size(); i++) {
+          bool isSliced = false;
+          ends->at(i) = ends->at(i) > reshapeOutputShape[i]
+                            ? reshapeOutputShape[i]
+                            : ends->at(i);
+          ends->at(i) =
+              ends->at(i) < 0 ? reshapeOutputShape[i] + i : ends->at(i);
+          offset->at(i) = offset->at(i) > reshapeOutputShape[i]
+                              ? reshapeOutputShape[i]
+                              : offset->at(i);
+          offset->at(i) =
+              offset->at(i) < 0 ? reshapeOutputShape[i] + i : offset->at(i);
+          if (steps->at(i) < 0)
+            return failure(); // not implemented
+
+          // Check if offset is non-zero
+          if (offset->at(i) != 0) {
+            isSliced = true;
+          }
+
+          // Check if end is not the full dimension
+          if (ends->at(i) != reshapeOutputShape[i]) {
+            isSliced = true;
+          }
+
+          // Check if step is not 1
+          if (steps->at(i) != 1) {
+            isSliced = true;
+          }
+
+          if (isSliced) {
+            axisVec.push_back(i);
+          }
+        }
+      }
+
+      if (axisVec.size() != 1) {
+        return failure(); // Only handle single axis slices
+      }
+
+      int currentAxis = axisVec[0];
+      if (sliceAxis == -1) {
+        sliceAxis = currentAxis;
+      } else if (sliceAxis != currentAxis) {
+        return failure(); // All slices must be along same axis
+      }
+
+      auto offset = module::getI64Array(sliceOp.getOffsetAttr());
+      auto ends = module::getI64Array(sliceOp.getEndsAttr());
+      auto sliceShape = module::getShape(sliceOp.getOutput());
+
+      int64_t sliceStart = offset->at(sliceAxis);
+      int64_t sliceEnd = ends->at(sliceAxis);
+      int64_t sliceSize = sliceShape[sliceAxis];
+
+      // Verify slice size matches end - start
+      if (sliceEnd - sliceStart != sliceSize) {
+        return failure();
+      }
+
+      sliceRanges.push_back({sliceStart, sliceSize});
+    }
+
+    {
+      auto sliceCheck = sliceRanges;
+      // Sort slices by offset
+      std::sort(sliceCheck.begin(), sliceCheck.end(),
+                [](auto a, auto b) { return a.first < b.first; });
+
+      // Check if slices are contiguous and cover the entire dimension
+      int64_t currentPos = 0;
+      for (auto [start, size] : sliceCheck) {
+        if (start != currentPos) {
+          return failure(); // Slices must be contiguous
+        }
+        currentPos += size;
+      }
+      if (currentPos != reshapeOutputShape[sliceAxis]) {
+        return failure(); // Slices must cover entire dimension
+      }
+    }
+
+    // Now we understand the pattern
+    // Conv [N, C, H, W] -> Reshape [N, X, Y, H*W] -> Slices along axis
+
+    int64_t N = convOutputShape[0];
+    int64_t C = convOutputShape[1];
+    int64_t H = convOutputShape[2];
+    int64_t W = convOutputShape[3];
+    int64_t X = reshapeOutputShape[1];
+    int64_t Y = reshapeOutputShape[2];
+    int64_t HW = H * W;
+
+    // Verify the reshape pattern
+    if (X * Y != C || HW != reshapeOutputShape[3]) {
+      return failure();
+    }
+
+    // Determine which dimension is being sliced
+    // sliceAxis = 1 means slicing X dimension
+    // sliceAxis = 2 means slicing Y dimension
+    if (sliceAxis != 1 && sliceAxis != 2) {
+      return failure(); // Only handle slicing along X or Y dimension
+    }
+
+    // Get Conv weights and bias
+    auto weight = convOp.getFilter();
+    auto bias = convOp.getBias();
+    auto weightShape = module::getShape(weight);
+
+    // Only handle standard convolutions
+    if (convOp.getGroup() != 1) {
+      return failure();
+    }
+
+    // Check if weight is a WeightOp
+    auto weightOp = dyn_cast<WeightOp>(weight.getDefiningOp());
+    if (!weightOp) {
+      return failure();
+    }
+
+    auto weightData = weightOp.read_as_float();
+
+    // For each slice, create new Convs
+    for (size_t i = 0; i < sliceOps.size(); i++) {
+      auto sliceOp = sliceOps[i];
+      auto [sliceStart, sliceSize] = sliceRanges[i];
+
+      // Check if slice output has a Reshape user
+      ReshapeOp postSliceReshape = nullptr;
+      if (sliceOp->hasOneUse()) {
+        auto user = *sliceOp->user_begin();
+        postSliceReshape = dyn_cast<ReshapeOp>(user);
+      }
+
+      // For slicing along Y dimension (axis 2), we need to handle X separately
+      // With column-major mapping c = x*Y + y, slicing along Y gives
+      // non-contiguous channels: for each x, we get a contiguous block
+      // of size sliceSize starting at x*Y + sliceStart
+      if (sliceAxis == 2) {
+        // Slicing along Y dimension in [N, X, Y, HW]
+        // With column-major mapping c = x*Y + y, slicing along Y gives
+        // non-contiguous channels: for each x, we get a contiguous block
+        // of size sliceSize starting at x*Y + sliceStart
+        // We need to extract all these channels and concatenate them
+        // to create a single Conv with X*sliceSize output channels
+
+        // Collect all weight rows and bias values for all x positions
+        std::vector<float> combinedWeightData;
+        std::vector<float> combinedBiasData;
+
+        size_t weightElementSize =
+            weightShape[1] * weightShape[2] * weightShape[3];
+
+        // For each x position, extract the corresponding channels
+        for (int64_t x = 0; x < X; x++) {
+          for (int64_t y = sliceStart; y < sliceStart + sliceSize; y++) {
+            // Calculate channel index based on column-major mapping: c = x*Y +
+            // y
+            int64_t channel = x * Y + y;
+
+            // Verify channel is within bounds
+            if (channel >= convOutputShape[1]) {
+              return failure();
+            }
+
+            // Extract weight row for this channel
+            size_t rowStart = channel * weightElementSize;
+            size_t rowEnd = rowStart + weightElementSize;
+
+            combinedWeightData.insert(combinedWeightData.end(),
+                                      weightData->begin() + rowStart,
+                                      weightData->begin() + rowEnd);
+
+            // Extract bias for this channel if bias exists
+            if (!module::isNone(bias)) {
+              auto biasOp = dyn_cast<WeightOp>(bias.getDefiningOp());
+              if (biasOp) {
+                auto biasData = biasOp.read_as_float();
+                combinedBiasData.push_back((*biasData)[channel]);
+              }
+            }
+          }
+        }
+
+        // Create combined weight for the new Conv
+        int64_t totalChannels = X * sliceSize;
+        std::vector<int64_t> combinedWeightShape = {
+            totalChannels, weightShape[1], weightShape[2], weightShape[3]};
+
+        auto combinedWeight = WeightOp::create_float(
+            convOp,
+            module::getName(weight).str() + "_slice_" + std::to_string(i),
+            combinedWeightData, combinedWeightShape,
+            module::getStorageType(weight));
+
+        // Create combined bias if bias exists
+        Value combinedBias = module::getNoneOp(convOp);
+        if (!combinedBiasData.empty()) {
+          std::vector<int64_t> combinedBiasShape = {totalChannels};
+          combinedBias = WeightOp::create_float(
+              convOp,
+              module::getName(bias).str() + "_slice_" + std::to_string(i),
+              combinedBiasData, combinedBiasShape,
+              module::getStorageType(bias));
+        }
+
+        // Create new Conv with combined weight/bias
+        std::vector<int64_t> newConvOutputShape = {N, totalChannels, H, W};
+        auto newConvOutputType = RankedTensorType::get(
+            newConvOutputShape, module::getElementType(convOp.getOutput()));
+
+        auto newConvLoc = NameLoc::get(
+            rewriter.getStringAttr(module::getName(convOp.getOutput()).str() +
+                                   "_slice_" + std::to_string(i)));
+
+        auto newConv = rewriter.create<ConvOp>(
+            newConvLoc, newConvOutputType,
+            ValueRange{convOp.getInput(), combinedWeight, combinedBias},
+            convOp->getAttrs());
+
+        // Always reshape Conv output to match the original slice output shape
+        // The Conv produces [N, X*sliceSize, H, W]
+        // We need to reshape it to [N, X, sliceSize, HW] to match slice output
+        std::vector<int64_t> reshapeShape = {N, X, sliceSize, HW};
+        auto reshapeType = RankedTensorType::get(
+            reshapeShape, module::getElementType(newConv.getOutput()));
+
+        auto reshapeLoc = NameLoc::get(rewriter.getStringAttr(
+            module::getName(newConv.getOutput()).str() + "_reshape"));
+
+        auto reshapeOpAfterConv = rewriter.create<ReshapeOp>(
+            reshapeLoc, reshapeType, ValueRange{newConv.getOutput()});
+
+        reshapeOpAfterConv.setShapeAttr(rewriter.getI64ArrayAttr(reshapeShape));
+        reshapeOpAfterConv.setFlattenStartDimAttr(
+            reshapeOp.getFlattenStartDimAttr());
+
+        // Replace slice output
+        sliceOp.getOutput().replaceAllUsesWith(reshapeOpAfterConv.getOutput());
+      } else {
+        return failure();
+      }
+    }
+
+    // Clean up old operations
+    for (auto sliceOp : sliceOps) {
+      rewriter.eraseOp(sliceOp);
+    }
+    rewriter.eraseOp(reshapeOp);
+    rewriter.eraseOp(convOp);
+
+    return success();
+  }
+};
+
 void ConvOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
-  results
-      .insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d, Conv1x1Convkxk2dMerge>(
-          context);
+  results.insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d, Conv1x1Convkxk2dMerge,
+                 ConvReshapeSlicePattern>(context);
 }

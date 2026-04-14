@@ -34,7 +34,8 @@ int64_t tpu::ReduceOp::getBufferSize_bm1684x(
       // FP16/FP32 reduce ==> in_wslice -> npu_num -> 1
       buffer_size += 2 * ceiling_func(in_cslice, npu_num) * in_hslice * eu_num *
                      dtype_size;
-    } else if (dims == 3 && axes->at(0) == 2) {
+    } else if ((dims == 3 && axes->at(0) == 2) ||
+               (dims == 4 && axes->at(0) == 2 && in_wslice == 1)) {
       buffer_size += 2 * ceiling_func(in_cslice, npu_num) * eu_num * dtype_size;
     }
     return buffer_size;

@@ -310,9 +310,11 @@ void ModelGen::AddBmodelType(const uint32_t type) { bmodel_type_ = type; }
 
 void ModelGen::AddNumDevice(int num_device) { this->num_device_ = num_device; }
 
-void ModelGen::AddKernelModule(std::string &file_name, Binary &tpu_module) {
+void ModelGen::AddKernelModule(std::string &file_name, Binary &tpu_module,
+                               bool is_rvti) {
   kernel_module_.file_name = file_name;
   kernel_module_.binary = tpu_module;
+  kernel_module_.mode = is_rvti ? 1 : 0;
 }
 
 void ModelGen::AddCpuModule(std::string &file_name, Binary &cpu_module) {
@@ -375,6 +377,7 @@ size_t ModelGen::Finish() {
   bmodel::KernelModuleBuilder kb(builder_);
   kb.add_file_name(module_name);
   kb.add_binary(&kernel_module_.binary);
+  kb.add_mode(kernel_module_.mode);
   auto kernel_module = kb.Finish();
 
   bmodel::CpuopModuleBuilder cb(builder_);

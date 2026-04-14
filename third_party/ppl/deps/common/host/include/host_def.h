@@ -10,9 +10,12 @@
 #endif
 
 inline const std::string get_chip_code() {
-  auto chip_name = getenv("CHIP");
-  if (chip_name == nullptr) {
+  std::string chip_name = getenv("CHIP");
+  if (chip_name.empty()) {
     assert(0 && "CHIP is not set, please set CHIP env");
+  }
+  if (chip_name == "bm1690e") {
+    chip_name = "sg2260e";
   }
   if (CHIP_MAP.count(chip_name)) {
     return CHIP_MAP[chip_name];

@@ -58,9 +58,11 @@ struct SplitSlicePattern : public OpRewriterPatternEx<SliceOp> {
     const auto &ends = op->getAttr("ends");
     const auto &axes = op->getAttr("hasparamConvert_axes");
     rewriter.setInsertionPointAfterValue(opd);
+    int split_idx = 0;
     for (const auto user : users) {
       const std::string name_slice =
-          module::getName(user->getOperand(0)).str() + "_r_slice";
+          module::getName(user->getOperand(0)).str() + "_r_slice" +
+          std::to_string(split_idx++);
       const auto &loc_slice = NameLoc::get(rewriter.getStringAttr(name_slice));
       std::vector<NamedAttribute> attrs;
       attrs.push_back(rewriter.getNamedAttr("offset", offset));
@@ -109,6 +111,7 @@ struct MergeSlicePattern : public OpRewriterPatternEx<SliceOp> {
     auto output_shape = module::getShape(op.getOutput());
     auto num_dims = output_shape.size();
     auto in_slice = cast<SliceOp>(in_op);
+    auto in_input_shape = module::getShape(in_slice.getInput());
     auto cur_offset = module::getI64Array(op.getOffset());
     auto cur_ends = module::getI64Array(op.getEnds());
     auto cur_steps = module::getI64Array(op.getSteps());
@@ -132,10 +135,16 @@ struct MergeSlicePattern : public OpRewriterPatternEx<SliceOp> {
     for (int i = 0; i < num_dims; i++) {
       auto cur_off = cur_offset->at(i);
       auto cur_end = cur_ends->at(i);
+      if (cur_end < 0) {
+        cur_end += input_shape[i];
+      }
       auto cur_s = cur_steps->at(i);
       assert(cur_s > 0);
       auto in_off = in_offset->at(i);
       auto in_end = in_ends->at(i);
+      if (in_end < 0) {
+        in_end += in_input_shape[i];
+      }
       auto in_s = in_steps->at(i);
       assert(in_s > 0);
       new_offset[i] = in_off + cur_off * in_s;

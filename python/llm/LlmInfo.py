@@ -37,6 +37,7 @@ class LlmType:
     LLAMA = "llama"
     MLLAMA = "mllama"
     QWEN3 = "qwen3"
+    QWEN3_5 = "qwen3_5_text"
     CHATGLM3 = "chatglm"
     GEMMA3 = "gemma3_text"
     MINICPM4 = "minicpm"
@@ -55,8 +56,9 @@ class ActType:
 
 class WeightType:
     NORMAL = "Normal"
-    RMS_NORM = "RMSNorm"
-    LAYER_NORM = "LayerNorm"
+    RMSNORM = "RMSNorm"
+    ZEROCENTERED_RMSNORM = "ZeroCenteredRMSNorm"
+    LAYERNORM = "LayerNorm"
 
 
 class LlmList:

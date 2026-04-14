@@ -78,9 +78,10 @@ lib_changed=false
 NNTC_LIB_PATH=${PROJECT_ROOT}/third_party/nntoolchain/lib
 PPL_VER_PATH=${PROJECT_ROOT}/third_party/ppl/version
 VER_FILE=${PROJECT_ROOT}/third_party/nntoolchain/ppl/version
-LIBS=("libcmodel_1684x.a"  "libbm1684x_kernel_module.a"
-      "libcmodel_1688.a"   "libbmtpulv60_kernel_module.a"
-      "libcmodel_bm1690.a" "libbm1690_kernel_module.a")
+LIBS=("libcmodel_bm1684x.a"  "libbm1684x_kernel_module.a"
+      "libcmodel_bm1688.a"   "libbmtpulv60_kernel_module.a"
+      "libcmodel_bm1690.a"   "libbm1690_kernel_module.a"
+      "libcmodel_bm1690e.a"  "libbm1690e_kernel_module.a")
 mapfile -t libs_md5_list < <(
   for lib in "${LIBS[@]}"; do
     rel="$NNTC_LIB_PATH/$lib"
@@ -101,8 +102,8 @@ fi
 # build third_party/nntoolchain/ppl lib
 echo "rebuilding ppl..."
 pushd "$DIR"
-# dyn
-chips=("bm1684x" "bm1688" "bm1690")
+# dyn pio
+chips=("bm1684x" "bm1688" "bm1690" "sg2260e")
 for chip in "${chips[@]}"; do
   build_dir="build_${chip}_dyn"
   clean_up "$build_dir"
@@ -114,6 +115,23 @@ for chip in "${chips[@]}"; do
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}
   make -j${CPU_NUM} install
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=OFF -DBUILD_DIR=${build_dir} -DBUILD_DYN_HOST=ON
+  make -j${CPU_NUM} install
+  popd
+done
+# dyn rvti
+chips_rvti=("sg2260e")
+for chip in "${chips_rvti[@]}"; do
+  name="${chip}rv"
+  build_dir="build_${name}_dyn"
+  clean_up "$build_dir"
+  pushd "$build_dir"
+  for file in `ls ../src/*.pl`
+  do
+    ppl-compile $file --chip $chip --mode 5 --O2 --o . --rv
+  done
+  cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${name} -DCMODEL=ON -DBUILD_DIR=${build_dir}
+  make -j${CPU_NUM} install
+  cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${name} -DCMODEL=OFF -DBUILD_DIR=${build_dir}
   make -j${CPU_NUM} install
   popd
 done

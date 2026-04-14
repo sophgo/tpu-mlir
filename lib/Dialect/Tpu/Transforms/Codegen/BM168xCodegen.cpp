@@ -71,8 +71,32 @@ void setupMultiCoreCodegen() {
   }
 }
 
-void BMCodegen::init(ModuleOp m, const std::string &filename,
-                     bool bmodel_only) {
+std::string BMCodegen::getKernelModuleName(bool is_rvti) {
+  // chip support rvti first
+  if (module::isBM1690E()) {
+    if (is_rvti) {
+      return backend::BM1690E::LIB_RVTI_KERNEL_NAME.str();
+    }
+    return backend::BM1690E::LIB_KERNEL_NAME.str();
+  }
+  if (is_rvti) {
+    llvm_unreachable("Only BM1690E support RVTI kernel module.");
+    return "";
+  }
+  if (module::isBM1684X()) {
+    return backend::BM1684X::LIB_KERNEL_NAME.str();
+  } else if (module::isBM1688()) {
+    return backend::BM1688::LIB_KERNEL_NAME.str();
+  } else if (module::isSGTPUV8()) {
+    return backend::SGTPUV8::LIB_KERNEL_NAME.str();
+  } else if (module::isBM1690()) {
+    return backend::BM1690::LIB_KERNEL_NAME.str();
+  }
+  return ""; // no kernel module
+}
+
+void BMCodegen::init(ModuleOp m, const std::string &filename, bool bmodel_only,
+                     bool is_rvti) {
   this->filename = filename;
   llvm::raw_null_ostream os;
   AsmState state(m, OpPrintingFlags(), &opToLineCol);
@@ -88,29 +112,13 @@ void BMCodegen::init(ModuleOp m, const std::string &filename,
   // add chip name
   model_gen->AddChip(chip);
   model_gen->AddNumDevice(num_device);
-  if (module::isBM1684X() || module::isBM1688() || module::isBM1690Family() ||
-      module::isCV184X() || module::isSGTPUV8()) {
-    std::string kernel_name;
-    if (module::isBM1684X())
-      kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
-    else if (module::isBM1688())
-      kernel_name = backend::BM1688::LIB_KERNEL_NAME.str();
-    else if (module::isCV184X())
-      kernel_name = backend::CV184X::LIB_KERNEL_NAME.str();
-    else if (module::isSGTPUV8())
-      kernel_name = backend::SGTPUV8::LIB_KERNEL_NAME.str();
-    else if (module::isBM1690E())
-      kernel_name = backend::BM1690E::LIB_KERNEL_NAME.str();
-    else
-      kernel_name = backend::BM1690::LIB_KERNEL_NAME.str();
+  auto kernel_name = getKernelModuleName(is_rvti);
+  if (!kernel_name.empty()) {
     std::string root_path = getenv("TPUC_ROOT");
     std::string kernel_path = root_path + std::string("/lib/") + kernel_name;
-    // lite build does not need kernel module
-    if (!module::isCV184X()) {
-      bmodel::Binary kernel_module =
-          CreateBinaryFromFile(&(*model_gen), kernel_path);
-      model_gen->AddKernelModule(kernel_name, kernel_module);
-    }
+    bmodel::Binary kernel_module =
+        CreateBinaryFromFile(&(*model_gen), kernel_path);
+    model_gen->AddKernelModule(kernel_name, kernel_module, is_rvti);
   }
   input_names = module::getInputs();
   output_names = module::getOutputs();

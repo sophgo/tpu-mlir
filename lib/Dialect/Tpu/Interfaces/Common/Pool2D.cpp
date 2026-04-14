@@ -175,7 +175,6 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {
-
     if (module::isAsymmetric() == false) {
       auto rmode =
           module::isCV18xx() ? ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
@@ -187,6 +186,8 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
           int64_t v =
               to_int(p.outputs[0][i] * pooling->kh * pooling->kw, rmode);
           p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs);
+          if (getDoRelu() && p.outputs[0][i] < 0)
+            p.outputs[0][i] = 0;
           p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
         }
       } else {
@@ -197,11 +198,15 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
       }
     } else {
       auto round_mode = round_mode_convert(getRoundMode());
+      auto qtype = module::getUniformQuantizedType(getOutput());
+      auto o_zp = qtype.getZeroPoint();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
         p.outputs[0][i] = p.outputs[0][i] * pooling->kh * pooling->kw *
                               getScale().value().convertToDouble() +
                           getOffset().value().convertToDouble();
+        if (getDoRelu() && p.outputs[0][i] < o_zp)
+          p.outputs[0][i] = o_zp;
         p.outputs[0][i] = saturate(p.outputs[0][i], out_type, round_mode);
       }
     }

@@ -3,6 +3,7 @@ build_ap/
 build_en/
 build_zh/
 build_bm*/
+build_sg*/
 install/
 tmp/
 work_dir/

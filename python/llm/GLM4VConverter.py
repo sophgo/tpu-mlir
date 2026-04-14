@@ -933,17 +933,17 @@ class GLM4VConverter(LlmConverter):
                 rotary_cos + ".weight": self.cos,
                 rotary_sin + ".weight": self.sin,
             }
-            self.set_common_weight(input_ln, weight_dict, WeightType.RMS_NORM)
-            self.set_common_weight(post_mlp_ln, weight_dict, WeightType.RMS_NORM)
-            self.set_common_weight(post_attn_ln, weight_dict, WeightType.RMS_NORM)
-            self.set_common_weight(post_self_attn_ln, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(input_ln, weight_dict, self.rmsnorm_type)
+            self.set_common_weight(post_mlp_ln, weight_dict, self.rmsnorm_type)
+            self.set_common_weight(post_attn_ln, weight_dict, self.rmsnorm_type)
+            self.set_common_weight(post_self_attn_ln, weight_dict, self.rmsnorm_type)
             self.set_linear_weight(q_proj, weight_dict)
             self.set_linear_weight(k_proj, weight_dict)
             self.set_linear_weight(v_proj, weight_dict)
             self.set_linear_weight(o_proj, weight_dict)
             self.set_linear_weight(mlp_down, weight_dict)
             if do_norm:
-                self.set_common_weight(norm, weight_dict, WeightType.RMS_NORM)
+                self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
 
             # split mlp gate_up_proj to gate_proj and up_proj
             self.set_gate_up_weight(TOP_PATH, weight_dict)

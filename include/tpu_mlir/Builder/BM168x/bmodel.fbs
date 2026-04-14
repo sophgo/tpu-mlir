@@ -200,6 +200,8 @@ table Net {
 table KernelModule {
     file_name:string (required, id: 0);
     binary:Binary (required, id: 1);
+    mode:int32 (id: 2);                // 0: default, pio
+                                       // 1: rvti
 }
 
 table CpuopModule {

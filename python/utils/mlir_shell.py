@@ -677,6 +677,7 @@ def tpu_ada_options(
     compress_mode: str = "none",
     trunc_final: list = None,
     opt_post_processor: bool = False,
+    weight_deduplicate: bool = False,
     lg_debugger: int = 0,
     disable_group_overlap: bool = False,
     lgcache: bool = True,
@@ -717,6 +718,7 @@ def tpu_ada_options(
     if op_divide:
         op_divide_param = "--op-divide"
     opt_post_processor_param = "--opt-post-processor" if opt_post_processor else ""
+    weight_deduplicate_param = "--weight-deduplicate" if weight_deduplicate else ""
     options = [
         distribute_param,
         "--weight-reorder",
@@ -729,6 +731,7 @@ def tpu_ada_options(
         parallel_param,
         opt_post_processor_param,
         "--after-layergroup-weight-reorder",
+        weight_deduplicate_param,
         address_assign_param
     ]
     return options
@@ -889,10 +892,12 @@ def codegen_options(model: str,
                     embed_debug_info: bool = False,
                     model_version: str = "",
                     bmodel_only: bool = False,
-                    gdma_check: bool = True):
+                    gdma_check: bool = True,
+                    rvti: bool = False):
     options = [
-        '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={} gdma_check={}"'.format(
-          model, str(embed_debug_info).capitalize(), str(model_version).lower(), str(bmodel_only).capitalize(), str(gdma_check).capitalize())
+        '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={} gdma_check={} rvti={}"'.format(
+          model, str(embed_debug_info).capitalize(), str(model_version).lower(), str(bmodel_only).capitalize(),
+          str(gdma_check).capitalize(), str(rvti).capitalize())
     ]
     return options
 
@@ -974,6 +979,7 @@ def mlir_to_model(
     quant_input_int8: bool = False,
     quant_output_int8: bool = False,
     opt_post_processor: bool = False,
+    weight_deduplicate: bool = False,
     gdma_check: bool = True,
     lg_debugger: int = 0,
     time_fixed_subnet: str = None,
@@ -983,6 +989,7 @@ def mlir_to_model(
     disable_topo_sort: bool = False,
     enable_lghash: bool = False,
     lghash_dir: str = "",
+    rvti: bool = False,
 ):
     if command_mem is None:
         command_mem = {}
@@ -1012,6 +1019,7 @@ def mlir_to_model(
                               compress_mode=compress_mode,
                               trunc_final=trunc_final,
                               opt_post_processor=opt_post_processor,
+                              weight_deduplicate=weight_deduplicate,
                               lg_debugger=lg_debugger,
                               disable_group_overlap=(time_fixed_subnet != None),
                               layer_group_config=layer_group_config,
@@ -1060,7 +1068,11 @@ def mlir_to_model(
 
     # codegen based on final mlir
     cmd = ["tpuc-opt", final_mlir]
-    options = codegen_options(bmodel_path, embed_debug_info, model_version, gdma_check=gdma_check)
+    options = codegen_options(bmodel_path,
+                              embed_debug_info,
+                              model_version,
+                              gdma_check=gdma_check,
+                              rvti=rvti)
     cmd.extend(options)
     cmd.extend(["-o /dev/null"])
     _os_system(cmd, log_level=log_level)

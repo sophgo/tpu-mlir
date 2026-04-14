@@ -77,18 +77,22 @@ class MixQuantModel:
             self.calib_table = calib_table
             self.mix_table = mix_table
 
-        self.quanted_mlir_file = '{}.{}.tune.mlir'.format(fp32_mlir,
-                                                          'mix' if mix_table else self.mode)
-        mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip, 1, 1,
-                      self.calib_table, False, self.mix_table)
         if pymlir.support_cuda and using_cuda:
             self.using_cuda = True
             self.module = pymlir.cuda()
         else:
             self.using_cuda = False
             self.module = pymlir.module()
-        self.module.load(self.quanted_mlir_file)
-        self.parser = MlirParser(self.quanted_mlir_file)
+        if self.chip is not None:
+            self.quanted_mlir_file = '{}.{}.tune.mlir'.format(fp32_mlir,
+                                                              'mix' if mix_table else self.mode)
+            mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip, 1, 1,
+                          self.calib_table, False, self.mix_table)
+            self.module.load(self.quanted_mlir_file)
+            self.parser = MlirParser(self.quanted_mlir_file)
+        else:
+            self.module.load(self.fp32_mlir)
+            self.parser = MlirParser(self.fp32_mlir)
         self.weight_file = self.parser.module_weight_file
 
     def infer(self, data: list, global_compare_layers: list = None):
@@ -152,8 +156,9 @@ class MixQuantModel:
         try:
             del self.module
             del self.parser
-            os.remove(self.quanted_mlir_file)
-            os.remove(self.weight_file)
+            if self.chip is not None:
+                os.remove(self.quanted_mlir_file)
+                os.remove(self.weight_file)
         except:
             pass
 

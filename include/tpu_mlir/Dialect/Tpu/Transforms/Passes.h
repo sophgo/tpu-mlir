@@ -41,6 +41,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createOptPostProcessorPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTimeFixedSubnetPass();
 std::unique_ptr<OperationPass<ModuleOp>>
 createAfterLayerGroupWeightReorderPass();
+std::unique_ptr<OperationPass<ModuleOp>> createWeightDeduplicatePass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

@@ -15,18 +15,17 @@ void py_cuda::cudaTileOp(tpu::TileOp op) {
   void *output = getCudaData(op.getOutput());
   std::vector<int64_t> in_shape = module::getShape(op.getInput());
   std::vector<int64_t> out_shape = module::getShape(op.getOutput());
-  auto num_dims = out_shape.size();
-  if (num_dims > 4) {
-    UNREACHABLE_OP("Not Implemented", op);
-  }
-  if (num_dims < 4) {
-    for (int i = 0; i < 4 - num_dims; i++) {
-      in_shape.push_back(1);
-      out_shape.push_back(1);
-    }
-  }
-
-  cuda::tile4D(input, output, in_shape[0], in_shape[1], in_shape[2],
-               in_shape[3], out_shape[0], out_shape[1], out_shape[2],
-               out_shape[3], module::getDtypeSize(op.getOutput()));
+  int out_elems = module::getNumElements(op.getOutput());
+  auto num_dims = in_shape.size();
+  int64_t *device_in_shape;
+  int64_t *device_out_shape;
+  cudaMalloc(&device_in_shape, num_dims * sizeof(int64_t));
+  cudaMalloc(&device_out_shape, num_dims * sizeof(int64_t));
+  cudaMemcpy(device_in_shape, in_shape.data(), num_dims * sizeof(int64_t),
+             cudaMemcpyHostToDevice);
+  cudaMemcpy(device_out_shape, out_shape.data(), num_dims * sizeof(int64_t),
+             cudaMemcpyHostToDevice);
+  cuda::tile(input, output, device_in_shape, device_out_shape, num_dims, out_elems, module::getDtypeSize(op.getOutput()));
+  cudaFree(device_in_shape);
+  cudaFree(device_out_shape);
 }

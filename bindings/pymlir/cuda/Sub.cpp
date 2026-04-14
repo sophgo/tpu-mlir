@@ -11,9 +11,8 @@
 #include "cuda_helper.h"
 
 void py_cuda::cudaSubOp(tpu::SubOp op) {
-  auto asym = module::isAsymmetric();
   auto out = op.getOutput();
-  if (asym || op.getInputs().size() != 2)
+  if (op.getInputs().size() != 2)
     UNREACHABLE_OP("Not Implemented", op);
   auto shape0 = module::getShape(op.getInputs()[0]);
   auto shape1 = module::getShape(op.getInputs()[1]);
@@ -26,6 +25,12 @@ void py_cuda::cudaSubOp(tpu::SubOp op) {
     auto in0_unsign = module::getStorageType(in0).isUnsignedInteger();
     auto in1_unsign = module::getStorageType(in1).isUnsignedInteger();
     auto out_unsign = module::getStorageType(out).isUnsignedInteger();
+    auto in0_qtype = module::getUniformQuantizedType(in0);
+    auto in1_qtype = module::getUniformQuantizedType(in1);
+    auto out_qtype = module::getUniformQuantizedType(out);
+    auto in0_zp = in0_qtype.getZeroPoint();
+    auto in1_zp = in1_qtype.getZeroPoint();
+    auto out_zp = out_qtype.getZeroPoint();
     if (out_unsign)
       UNREACHABLE_OP("Not supported, and not possible", op);
     int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
@@ -38,7 +43,8 @@ void py_cuda::cudaSubOp(tpu::SubOp op) {
     cuda::sub4DInt8(getCudaData(in0), in0_unsign, multiplier_v->at(0), rshift_v->at(0), getCudaData(in1), in1_unsign, multiplier_v->at(1), rshift_v->at(1), getCudaData(out), out_unsign, op.getDoRelu(), op.getIsReverse(),
                     n0, c0, h0, w0,
                     n1, c1, h1, w1,
-                    n2, c2, h2, w2);
+                    n2, c2, h2, w2,
+                    in0_zp, in1_zp, out_zp);
   } else if (module::getStorageType(op.getInputs()[0]).isF32()) {
     auto in0 = op.getInputs()[0];
     auto in1 = op.getInputs()[1];
@@ -63,6 +69,11 @@ void py_cuda::cudaSubOp(tpu::SubOp op) {
     module::getNCHW(in0, n0, c0, h0, w0, false);
     module::getNCHW(in1, n1, c1, h1, w1, false);
     module::getNCHW(out, n2, c2, h2, w2, false);
+    if (module::getStorageType(in0).isFloat8E4M3FN()) {
+      auto scales = module::getF64Array(op.getF8Scales(), 2, 1.);
+      cuda::mulConst6DF32(input0_f32.get(), scales->at(0), input0_f32.get(), false, n0, c0, h0, w0, 1, 1);
+      cuda::mulConst6DF32(input1_f32.get(), scales->at(1), input1_f32.get(), false, n1, c1, h1, w1, 1, 1);
+    }
     cuda::sub4DF32(input0_f32.get(), input1_f32.get(), output_f32.get(), op.getDoRelu(), op.getIsReverse(),
                     n0, c0, h0, w0,
                     n1, c1, h1, w1,

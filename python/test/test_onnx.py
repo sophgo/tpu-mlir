@@ -389,6 +389,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
+            "ConcatVolume":  (self.test_ConcatVolume,   N, Y, Y, N, N, N, N),
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N, N),
             "SelectiveScan":   (self.test_SelectiveScan,    N, Y, N, N, N, N, N),
         }
@@ -6339,7 +6340,7 @@ class ONNX_IR_TESTER(object):
             {
                 arg_output = ArgMax<axis=%d, select_last_index=1>(input)
                 reduce_output_1 = ReduceMax<axes=%s>(input)
-                reduce_output_2 = ReduceMax<axes=%s>(input)
+                reduce_output_2 = ReduceMean<axes=%s>(input)
             }
             """ % (case_name, input_shape, output_shape, output_shape, output_shape, arg_axis,
                    reduce_axes, reduce_axes)
@@ -7955,6 +7956,50 @@ class ONNX_IR_TESTER(object):
         finally:
             self.dynamic = False
 
+    def test_ConcatVolume(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self, max_disp):
+                super(Model, self).__init__()
+                self.max_disp = max_disp
+
+            def forward(self, refimg_fea, targetimg_fea):
+                B, C, H, W = refimg_fea.shape
+                volume = refimg_fea.new_zeros([B, 2 * C, self.max_disp, H, W])
+                for i in range(self.max_disp):
+                    if i > 0:
+                        volume[:, :C, i, :, :] = refimg_fea[:, :, :, :]
+                        volume[:, C:, i, :, i:] = targetimg_fea[:, :, :, :-i]
+                    else:
+                        volume[:, :C, i, :, :] = refimg_fea
+                        volume[:, C:, i, :, :] = targetimg_fea
+                return volume.contiguous()
+
+        left = torch.randn(1, 12, 24, 30).float()
+        right = torch.randn(1, 12, 24, 30).float()
+        max_disp = 8
+        model = Model(max_disp)
+
+        in_names = ["in_0", "in_1"]
+        onnx_file = case_name + ".onnx"
+        torch.onnx.export(model, (left, right),
+                          onnx_file,
+                          export_params=True,
+                          verbose=True,
+                          opset_version=14,
+                          input_names=in_names)
+        onnx_model = onnx.load(onnx_file)
+        in_data = {
+            "in_0": left.numpy().astype(np.float32),
+            "in_1": right.numpy().astype(np.float32),
+        }
+        self.onnx_and_test(onnx_model.graph,
+                           name=case_name,
+                           input_data=in_data,
+                           check_last=True,
+                           support_modes=["f32", "f16", "bf16", "int8"])
+
     def test_Correlation(self, case_name):
 
         class Coustom(torch.autograd.Function):
@@ -8102,7 +8147,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8', 'bm1690e'],
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8', 'bm1690e', 'bm1684x2'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2', 'w4int8'],

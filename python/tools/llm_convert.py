@@ -71,8 +71,6 @@ if __name__ == '__main__':
                         help='use history kv for prefill, default is False')
     parser.add_argument('--share_prompt', action='store_true',
                         help='share the same prompt for multi dialog, default is False')
-    parser.add_argument('--use_same_addr', action='store_true',
-                        help='use same address between input_states and output_states, default is False')
     parser.add_argument('--max_input_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
     parser.add_argument('--max_prefill_kv_length', type=int, default=0,
@@ -83,6 +81,9 @@ if __name__ == '__main__':
                         help='enable dynamic compiling for llm prefill')
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
+    parser.add_argument('--only_mlir', action='store_true', help='only export mlir file, do not convert to bmodel')
+    parser.add_argument('--rvti', action='store_true',
+                        help='enable rvti, only for bm1684x2 and bm1690e')
     parser.add_argument("--again", action='store_true',
                         help='continue to convert the model, default is False')
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
@@ -147,6 +148,9 @@ if __name__ == '__main__':
     elif config.model_type in ['qwen3_vl']:
         from llm.Qwen3VLConverter import Qwen3VLConverter
         converter = Qwen3VLConverter(args, config)
+    elif config.model_type in ['qwen3_5']:
+        from llm.Qwen3_5Converter import Qwen3_5Converter
+        converter = Qwen3_5Converter(args, config)
     elif config.model_type in ['qwen2_5_omni']:
         from llm.Qwen2_5OConverter import Qwen2_5OConverter
         converter = Qwen2_5OConverter(args, config)

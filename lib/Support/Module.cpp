@@ -110,6 +110,13 @@ top::NoneOp getNoneOp(Operation *op) {
   return NoneOp;
 }
 
+int getNumUsers(Value v) {
+  if (!v) {
+    return 0;
+  }
+  return std::distance(v.getUsers().begin(), v.getUsers().end());
+}
+
 static ModuleOp getModuleOp(Value v) {
   auto parent_op = v.getParentBlock()->getParentOp();
   while (parent_op != nullptr && !isa<ModuleOp>(parent_op)) {
@@ -312,8 +319,13 @@ static void removeUnusedOp(ModuleOp submodule) {
   for (auto iter = all_ops.rbegin(); iter != all_ops.rend(); iter++) {
     if (isOpInGroup((*iter)))
       continue;
-    if ((*iter)->use_empty()) {
-      (*iter)->erase();
+    auto op = *iter;
+    if (op->hasAttrOfType<mlir::BoolAttr>("placeholder") &&
+        op->getAttrOfType<mlir::BoolAttr>("placeholder").getValue()) {
+      continue;
+    }
+    if (op->use_empty()) {
+      op->erase();
     }
   }
 }
@@ -1487,7 +1499,7 @@ bool isBM1684XFamily() {
 }
 bool isBM1690Family() {
   return (chip == Chip::BM1690 || chip == Chip::SG2262 ||
-          chip == Chip::BM1690E);
+          chip == Chip::BM1690E || chip == Chip::BM1684X2);
 }
 bool isSG2380() { return (chip == Chip::SG2380); }
 bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X); }
@@ -1497,6 +1509,8 @@ bool isSGTPUV8() { return (chip == Chip::SGTPUV8); }
 bool isSG2262() { return (chip == Chip::SG2262); }
 bool isMultiCoreArch() { return isBM1690Family() || isSG2380() || isBM1688(); }
 bool isBM1690E() { return (chip == Chip::BM1690E); }
+bool isBM1690() { return (chip == Chip::BM1690); }
+bool isBM1684X2() { return (chip == Chip::BM1684X2); }
 
 ModuleOp getModuleOp() { return m; }
 

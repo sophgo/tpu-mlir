@@ -399,6 +399,43 @@ public:
   bool shouldPrint(top::SubConstOp op) const override { return false; }
 };
 
+struct SetAddConstSignPattern : public OpRewriterPatternEx<top::AddConstOp> {
+public:
+  SetAddConstSignPattern(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<top::AddConstOp>(context,
+                                             "SetAddConstSignPattern") {}
+  LogicalResult matchAndRewriteImpl(top::AddConstOp op,
+                                    PatternRewriter &rewriter) const override {
+    Value in = op.getInput();
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(in) || !module::isCalibratedType(out)) {
+      return failure();
+    }
+    auto in_qtype = module::getCalibratedType(in);
+    auto out_qtype = module::getCalibratedType(out);
+    auto out_type = out.getType().cast<RankedTensorType>();
+    if (in_qtype.getMin() >= 0 && out_qtype.getMin() >= 0) {
+      auto const_val = op.getConstVal().convertToDouble();
+      if (const_val < 0) {
+        auto new_out_type = quant::CalibratedQuantizedType::get(
+            module::getStorageType(out), out_qtype.getMax() * (-0.1),
+            out_qtype.getMax());
+        auto new_type =
+            RankedTensorType::get(out_type.getShape(), new_out_type);
+        out.setType(new_type);
+        Forward(out);
+        return success();
+      } else {
+        return failure();
+      }
+    } else {
+      return failure();
+    }
+    return failure();
+  }
+  bool shouldPrint(top::AddConstOp op) const override { return false; }
+};
+
 struct SetSubSignPattern : public OpRewriterPatternEx<top::SubOp> {
 public:
   SetSubSignPattern(mlir::MLIRContext *context)
@@ -1709,18 +1746,6 @@ void ConvertTopToTpu::runOnOperation() {
     module::applyPatternOnce<W4INT8MatMulPreparePattern>(module_);
   }
 
-  // kv_cache
-  if ((module::isBM1684XFamily() || module::isBM1690Family()) &&
-      (module::getMode() == module::Mode::W8F16 ||
-       module::getMode() == module::Mode::W4F16 ||
-       module::getMode() == module::Mode::W8BF16 ||
-       module::getMode() == module::Mode::W4BF16 ||
-       module::getMode() == module::Mode::F16) &&
-      module::isState(
-          module::State::TOP_CALIBRATED)) { // if calibration table presents
-    kv_cache_process();
-  }
-
   // process shape related ops
   if (module::isBM1684XFamily() || module::isBM1690Family()) {
     bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
@@ -1781,6 +1806,7 @@ void ConvertTopToTpu::runOnOperation() {
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   cast_process();
   relu_process();
+  weight_process();
   if (module::isCV18xx()) {
     patterns.clear();
     patterns.add<CastInputCV18xxPattern>(ctx_);
@@ -1818,7 +1844,7 @@ void ConvertTopToTpu::calibration_process() {
     patterns.clear();
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, KeepAddSignPattern,
                  KeepSignPattern<top::AbsOp>,
-                 SetSubConstSignPattern>(ctx_);
+                 SetSubConstSignPattern, SetAddConstSignPattern>(ctx_);
 
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
@@ -1905,7 +1931,7 @@ void ConvertTopToTpu::calibration_process() {
   patterns.clear();
   patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>,
                KeepAddSignPattern, KeepSignPattern<top::AbsOp>,
-               SetSubConstSignPattern>(ctx_);
+               SetSubConstSignPattern, SetAddConstSignPattern>(ctx_);
   applyPatternsAndFoldGreedily(module_, std::move(patterns));
   patterns.clear();
   patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);
@@ -1946,6 +1972,24 @@ void ConvertTopToTpu::relu_process() {
         if (module::isUniformQuantized(op->getResult(0)) ||
             module::isUniformQuantized(op->getOperand(0))) {
           op->setAttr("relu_limit", builder.getF64FloatAttr(-1.0));
+        }
+      }
+    }
+  });
+}
+
+void ConvertTopToTpu::weight_process() {
+  Builder builder(ctx_);
+  mainFunc_.walk([&](Operation *op) {
+    if (auto weightOp = dyn_cast<top::WeightOp>(op)) {
+      auto dtype = module::getStorageType(weightOp.getType());
+      if (dtype.isF32() && weightOp.getPlaceholder().value_or(false)) {
+        if (module::isBF16Modes()) {
+          weightOp.clone_bf16(op);
+          op->setAttr("placeholder", builder.getBoolAttr(false));
+        } else if (module::isF16Modes()) {
+          weightOp.clone_f16(op);
+          op->setAttr("placeholder", builder.getBoolAttr(false));
         }
       }
     }
@@ -2142,93 +2186,6 @@ void ConvertTopToTpu::set_sub_float() {
   });
 }
 
-// match kv cache
-void ConvertTopToTpu::match_kv_cache(std::vector<Operation *> &kv_cache) {
-  mainFunc_.walk([&](Operation *op) {
-    if (auto addop = dyn_cast<top::AddOp>(op)) {
-      top::MulOp mulop = NULL;
-      top::ConcatOp ccop = NULL;
-      if (isa<ReturnOp>(*(addop.getResult().getUsers().begin()))) {
-        for (auto in : addop.getOperands()) {
-          if (isa<top::MulOp>(in.getDefiningOp())) {
-            mulop = dyn_cast_or_null<top::MulOp>(in.getDefiningOp());
-          }
-        }
-        for (auto user : addop.getResult().getUsers()) {
-          if (isa<top::ConcatOp>(user)) {
-            ccop = dyn_cast_or_null<top::ConcatOp>(user);
-          }
-        }
-      }
-      if (mulop == NULL || ccop == NULL)
-        return;
-      else
-        kv_cache.push_back(addop);
-    }
-    if (auto reshapeop = dyn_cast<top::ReshapeOp>(op)) {
-      top::MatMulOp mmop = NULL;
-      top::ConcatOp ccop = NULL;
-      top::RMSNormOp rmsop = NULL;
-      if (isa<ReturnOp>(*(reshapeop.getResult().getUsers().begin()))) {
-        auto preOp = reshapeop->getOperands()[0].getDefiningOp();
-        if (isa<top::MatMulOp>(preOp)) {
-          mmop = dyn_cast_or_null<top::MatMulOp>(preOp);
-          auto premmop = mmop->getOperands()[0].getDefiningOp();
-          if (isa<top::RMSNormOp>(premmop)) {
-            rmsop = dyn_cast_or_null<top::RMSNormOp>(premmop);
-          }
-        }
-        for (auto user : reshapeop.getResult().getUsers()) {
-          if (isa<top::ConcatOp>(user)) {
-            ccop = dyn_cast_or_null<top::ConcatOp>(user);
-          }
-        }
-      }
-      if (mmop == NULL || rmsop == NULL || ccop == NULL)
-        return;
-      else
-        kv_cache.push_back(reshapeop);
-    }
-  });
-}
-
-bool ConvertTopToTpu::kv_cache_mix_precision() {
-  std::vector<Operation *> kv_cache;
-  match_kv_cache(kv_cache);
-  for (auto it = kv_cache.begin(); it != kv_cache.end(); ++it) {
-    if (auto addop = dyn_cast<top::AddOp>(*it)) {
-      if (LoweringConfig::quantize_map.find(
-              module::getName(addop.getOperation()).str()) ==
-          LoweringConfig::quantize_map.end()) {
-        LoweringConfig::quantize_map.insert(
-            {module::getName(addop.getOperation()).str(), module::Mode::INT8});
-      }
-    }
-    if (auto rsop = dyn_cast<top::ReshapeOp>(*it)) {
-      if (LoweringConfig::quantize_map.find(
-              module::getName(rsop.getOperation()).str()) ==
-          LoweringConfig::quantize_map.end()) {
-        LoweringConfig::quantize_map.insert(
-            {module::getName(rsop.getOperation()).str(), module::Mode::INT8});
-      }
-      auto pre_reshape = rsop->getOperands()[0].getDefiningOp();
-      if (isa<top::MatMulOp>(pre_reshape)) {
-        auto pre_reshapeOp = dyn_cast<top::MatMulOp>(pre_reshape);
-        if (LoweringConfig::quantize_map.find(
-                module::getName(pre_reshapeOp.getOperation()).str()) ==
-            LoweringConfig::quantize_map.end()) {
-          LoweringConfig::quantize_map.insert(
-              {module::getName(pre_reshapeOp.getOperation()).str(),
-               module::Mode::INT8});
-        }
-      }
-    }
-  }
-  return false;
-}
-
-void ConvertTopToTpu::kv_cache_process() { kv_cache_mix_precision(); }
-
 Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
                                Operation *user_op) {
   auto to_stype = module::getStorageType(to);
@@ -2238,6 +2195,14 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
         (false == isa<tpu::GenericCpuOp>(user) ||
          dyn_cast<tpu::GenericCpuOp>(user).getCpuOpName() != "quant")) {
       continue;
+    }
+    if (user_op->getBlock() == user->getBlock()) {
+      if (!user->isBeforeInBlock(user_op)) {
+        // skip the user before the desired op, or the returned op may be after
+        // current op causing error. example is the output of topk which has
+        // multi users, and first of it is cast several op after the target user
+        continue;
+      }
     }
     if (type_need_cast(user->getResult(0).getType(), to) == false) {
       return user->getResult(0);

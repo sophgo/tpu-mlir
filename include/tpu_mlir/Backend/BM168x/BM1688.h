@@ -121,7 +121,7 @@ protected:
     IO_ADDR[2] = GMEM_START_ADDR | TAG_IO2;
     IO_ADDR[3] = GMEM_START_ADDR | TAG_IO3;
     IO_ADDR[4] = GMEM_START_ADDR | TAG_IO4;
-    LIB_BACKEND_NAME = "libbackend_1688.so";
+    LIB_BACKEND_NAME = "libbackend_bm1688.so";
     LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1688.so";
     SUPPORT_MEM_TAG = true;
     // GDMA format

@@ -342,6 +342,7 @@ public:
   void value_d2s(Value v, void *dst);
   void divide_sync_id();
   void merge_sync_id();
+  static int get_io_addr_num();
 
   // arch info
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;

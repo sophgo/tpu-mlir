@@ -85,7 +85,6 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
   const auto input_shape = module::getShape(getInput());
   auto out_type = module::getStorageType(getOutput());
   auto is_bf16 = out_type.isBF16();
-  auto is_f16 = out_type.isF16();
   int outer_dim = 1;
   for (int i = 0; i < axis_; i++) {
     outer_dim *= input_shape[i];
@@ -108,7 +107,6 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
 
   std::vector<float> mean_arr(outer_dim, 0);
   std::vector<float> rstd_arr(outer_dim, 0);
-
 #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
     float _mean_data = 0;
@@ -122,9 +120,6 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
                    _mean_data, _rstd_data, weight_data, bias_data, inner_dim,
                    eps_);
     }
-  }
-  if (is_f16) {
-    F16(p.outputs[0], p.outputs[0], outer_dim * inner_dim);
   }
   return success();
 }

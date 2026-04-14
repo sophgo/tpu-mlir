@@ -99,7 +99,8 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // inputs has been requant
-        double sum = p.outputs[0][i] + o_qtype.getZeroPoint();
+        double sum = applyMultiplierAndRShift(p.outputs[0][i], 1, getRshift());
+        sum += o_qtype.getZeroPoint();
         if (getDoRelu() && sum < o_qtype.getZeroPoint()) {
           sum = o_qtype.getZeroPoint();
         }

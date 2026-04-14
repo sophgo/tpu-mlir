@@ -100,10 +100,17 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
       for (int i = 0; i < rhs_num_elem; i++)
         rhs_tmp[i] = p.inputs[1][i] * scales->at(1);
       auto binary = (Binary *)p.handle;
-      (*binary)
-          .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
-          .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
-          .run();
+      if (getIsReverse()) {
+        (*binary)
+            .lhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
+            .rhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+            .run();
+      } else {
+        (*binary)
+            .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+            .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
+            .run();
+      }
       F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else {
       auto binary = (Binary *)p.handle;
@@ -166,7 +173,6 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
         rhs_tmp[i] = applyMultiplierAndRShift(
             p.inputs[1][i], multiplier_v->at(1), rshift_v->at(1));
       }
-
       auto binary = (Binary *)p.handle;
       (*binary)
           .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
@@ -189,7 +195,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
       lhs_tmp[i] = (p.inputs[0][i] - (float)qtype.getZeroPoint()) *
                    (float)qtype.getScale();
     }
-    qtype = module::getUniformQuantizedType(getInputs()[0]);
+    qtype = module::getUniformQuantizedType(getInputs()[1]);
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
     for (int i = 0; i < rhs_num_elem; i++) {
       rhs_tmp[i] = (p.inputs[1][i] - (float)qtype.getZeroPoint()) *
